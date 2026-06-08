@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="pl">
+
+
+    <head>
+        <meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Zawodowcy - napisy - w kinie Atlantic - NoveKino - Kino Atlantic Warszawa - Kino CYFROWE 3D</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="https://www.novekino.pl/kina/atlantic/">
+<link href="https://fonts.googleapis.com/css?family=Rubik:300,400,500,700&amp;subset=latin-ext" rel="stylesheet">
+<meta name="theme-color" content="#000">
+<meta name="description" content="Kino Atlantic - kino cyfrowe, ul. Chmielna 33, 00-021 Warszawa tel. 22 828 93 03">
+<meta name="keywords" content="kino, kino Atlantic, kinoatlantic, kino Atlantic repertuar, repertuar kina Atlantic, kino Warszawa, kina Warszawa">
+<meta name="robots" content="index, follow">
+<meta name="author" content="VEGA Internet Studio, https://www.vis.pl, e-mail: biuro@vis.pl, tel: 022 877 33 09">
+<style>
+    @media (min-width: 576px) {.hidden-sm-up {display: none !important}}
+    @media (max-width: 767px) {.hidden-sm-down {display: none !important}}
+    @media (min-width: 768px) {.hidden-md-up {display: none !important}}
+    @media (max-width: 991px) {.hidden-md-down {display: none !important}}
+    @media (min-width: 992px) {.hidden-lg-up {display: none !important}}
+    @media (max-width: 1199px) {.hidden-lg-down {display: none !important}}
+    @media (min-width: 1200px) {.hidden-xl-up {display: none !important}}
+    .hidden-xl-down {display: none !important}
+</style>
+<link rel="stylesheet" href="css/lib/css-lib.min_17.css">
+<link rel="stylesheet" href="css/style.min_17.css">
+<link rel="stylesheet" href="css/vis_17.css">
+<link rel="stylesheet" href="local_17.css">
+<!-- Facebook Pixel Code -->
+<script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '513278343299683');
+    fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+               src="https://www.facebook.com/tr?id=513278343299683&ev=PageView&noscript=1"
+    /></noscript>
+<!-- End Facebook Pixel Code -->    </head>
+
+    <body class="">
+        <a href="javascript:" id="return-to-top"><img src="/img/chevron-up.png" alt="" /></a>
+        <div id="fb-root"></div>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/pl_PL/sdk.js#xfbml=1&version=v9.0" nonce="J6QJ4OlG"></script>
+<header class="header">
+    <div class="cinema hidden-lg-up">
+        <select class="cinema-select" title="Kino">
+            <option value="/kina/atlantic/" selected="selected">Atlantic (Warszawa)</option>
+            <option value="/kina/przedwiosnie/">Przedwiośnie (Płock)</option>
+            <option value="/kina/siedlce/">Siedlce</option>
+            <option value="/kina/sybilla/">Sybilla (Puławy)</option>
+            <option value="/kina/wisla/">Wisła (Warszawa)</option>
+        </select>
+    </div>
+    <div class="container">
+        <div class="header-top">
+            <a href="/kina/atlantic/" class="header-logo" style="position: relative;">
+                <img src="images_local/atlantic.png" alt="">
+                            </a>
+            <div class="header-nav">
+                <div class="cinema_phone">
+                    <div class="phone">
+                        <span class="phone-label">Rezerwacja</span>
+                        <a class="phone-number" href="tel:228289303">22&nbsp;828&nbsp;93&nbsp;03</a>
+                    </div>
+                    <div class="cinema hidden-md-down">
+                        <select class="cinema-select" title="Kino">
+                            <option value="/kina/atlantic/" selected="selected">Atlantic (Warszawa)</option>
+                            <option value="/kina/przedwiosnie/">Przedwiośnie (Płock)</option>
+                            <option value="/kina/siedlce/">Siedlce</option>
+                            <option value="/kina/sybilla/">Sybilla (Puławy)</option>
+                            <option value="/kina/wisla/">Wisła (Warszawa)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <nav class="menu hidden-lg-down">
+    <ul class="menu-list">
+        <li class="menu-element"><a href="repertuar.php" class="menu-link">Repertuar</a></li>
+        <li class="menu-element"><a href="zapowiedzi.php" class="menu-link">Zapowiedzi</a></li>
+        <li class="menu-element"><a href="cennik.php" class="menu-link">Cennik</a></li>
+        <li class="menu-element"><a href="szkola.php" class="menu-link">Szkoła</a></li>   
+        <li class="menu-element"><a href="seniorzy.php" class="menu-link">Seniorzy</a></li>           
+        <li class="menu-element"><a href="wynajem-sal.php" class="menu-link">Wynajem sal</a></li>        
+         <li class="menu-element"><a href="o-nas.php" class="menu-link">O nas</a></li>
+        <li class="menu-element"><a href="kontakt.php" class="menu-link">Kontakt</a></li>
+        <li class="menu-element"><a href="partnerzy.php" class="menu-link">Partnerzy</a></li>
+    </ul>
+</nav>
+            </div>
+            <div class="header-menu_toggle hidden-xl-up">
+                <button class="header-menu_toggle-btn">
+                    <svg class="header-menu_toggle-ico header-menu_toggle-ico--close">
+                    <use xlink:href="#i-close"></use>
+                    </svg>
+                    <svg class="header-menu_toggle-ico header-menu_toggle-ico--open">
+                    <use xlink:href="#i-hamburger"></use>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="menu_mobile-ou hidden-xl-up">
+
+            <nav class="menu_mobile">
+    <ul class="menu_mobile-list">
+        <li class="menu_mobile-element"><a href="repertuar.php" class="menu_mobile-link">Repertuar</a></li>
+        <li class="menu_mobile-element"><a href="zapowiedzi.php" class="menu_mobile-link">Zapowiedzi</a></li>
+        <li class="menu_mobile-element"><a href="cennik.php" class="menu_mobile-link">Cennik</a></li>
+        <li class="menu_mobile-element"><a href="szkola.php" class="menu_mobile-link">Szkoła</a></li>   
+        <li class="menu_mobile-element"><a href="seniorzy.php" class="menu_mobile-link">Seniorzy</a></li>           
+        <li class="menu_mobile-element"><a href="wynajem-sal.php" class="menu_mobile-link">Wynajem sal</a></li>         
+         <li class="menu_mobile-element"><a href="o-nas.php" class="menu_mobile-link">O nas</a></li>
+        <li class="menu_mobile-element"><a href="kontakt.php" class="menu_mobile-link">Kontakt</a></li>
+        <li class="menu_mobile-element"><a href="partnerzy.php" class="menu_mobile-link">Partnerzy</a></li>
+    </ul>
+</nav>
+        </div>
+
+        <div class="ad_banner">
+
+                <div class="ad_banner">
+                <div id="animation_container" style="width:750px;">
+
+                                <a href="https://www.novekino.pl/kina/atlantic/film.php?id=19804" target="_blank"><img
+                                src="banery/gorne/ZDA_OJCZYZNA_baner-www2.jpg" alt="" width="750"/></a>
+                        </div>
+    </div>
+
+        </div>
+    </div>
+</header>
+
+        <main class="page_content">
+            <div class="page_content-main">
+                <div class="container">
+
+                    
+<section class="movie_header">
+    <div class="movie_header-title_info">
+        <h2 class="movie_header-title">
+            Zawodowcy - napisy        </h2>
+                    <h3 class="movie_header-subtitle">In the Grey</h3>
+                <div class="movie_header-info">
+            <span class="movie_header-info-entry">akcja/dramat</span>                                    <div class="clear"></div>
+        </div>
+        <div class="movie_header-nav">
+            <a href="film.php?id=19573#seanse" class="movie_header-btn btn btn--full_width btn--highlight btn--small_padding hidden-md-up">Rezerwuj
+                / kup bilet</a>
+            <a href="film.php?id=19573#seanse" class="movie_header-btn btn btn--bigger btn--small_padding hidden-sm-down">Rezerwuj / kup bilet</a>
+        </div>
+    </div>
+</section>
+
+<div class="slider-pro movie_slider" id="movie_slider" style="aspect-ratio: 16 / 9;">
+    <div class="sp-slides">
+                                                                <div class="sp-slide movie_slider-slide movie_slider-slide--movie">
+                    <iframe class="sp-video movie_slider-movie" src="https://www.youtube.com/embed/BlQ8JYhrRGQ?enablejsapi=1&amp;wmode=opaque" allowfullscreen></iframe>
+                </div>
+                                            <div class="sp-slide"><img class="sp-image" src="https://multimedia.novekino.pl/zawodowcy_2026/01.jpg" alt="Zawodowcy - napisy"></div>
+                        <div class="sp-slide"><img class="sp-image" src="https://multimedia.novekino.pl/zawodowcy_2026/02.jpg" alt="Zawodowcy - napisy"></div>
+                        <div class="sp-slide"><img class="sp-image" src="https://multimedia.novekino.pl/zawodowcy_2026/03.jpg" alt="Zawodowcy - napisy"></div>
+                        <div class="sp-slide"><img class="sp-image" src="https://multimedia.novekino.pl/zawodowcy_2026/04.jpg" alt="Zawodowcy - napisy"></div>
+            </div>
+</div>
+<div class="movie_slider-thumbs">
+    <button class="movie_slider-thumbs-arrow movie_slider-thumbs-arrow--left"></button>
+    <div class="movie_slider-thumbs-slider-ou">
+        <div class="movie_slider-thumbs-slider owl-carousel">
+                                                                    <button class="movie_slider-thumbs-slider-slide" data-movie-target="0">
+                        <svg class="movie_slider-thumbs-slider-slide-movie_ico" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid" x="0px" y="0px" viewBox="-246.5 334.5 124 124"><circle class="circle" cx="-184.5" cy="396.5" r="60.5"></circle><polygon class="triangle" points="-196.1,377.6 -163.5,396.5 -196.1,415.4 "></polygon></svg>
+                        <img src="https://img.youtube.com/vi/BlQ8JYhrRGQ/1.jpg" alt="" style="height: 100px; width: auto;">
+                    </button>
+                                                                            <button class="movie_slider-thumbs-slider-slide" data-movie-target="1"><img src="https://multimedia.novekino.pl/zawodowcy_2026/01.jpg" alt="" style="height: 100px; width: auto;"></button>
+                                            <button class="movie_slider-thumbs-slider-slide" data-movie-target="2"><img src="https://multimedia.novekino.pl/zawodowcy_2026/02.jpg" alt="" style="height: 100px; width: auto;"></button>
+                                            <button class="movie_slider-thumbs-slider-slide" data-movie-target="3"><img src="https://multimedia.novekino.pl/zawodowcy_2026/03.jpg" alt="" style="height: 100px; width: auto;"></button>
+                                            <button class="movie_slider-thumbs-slider-slide" data-movie-target="4"><img src="https://multimedia.novekino.pl/zawodowcy_2026/04.jpg" alt="" style="height: 100px; width: auto;"></button>
+                                    </div>
+    </div>
+    <button class="movie_slider-thumbs-arrow movie_slider-thumbs-arrow--right"></button>
+</div>
+
+<script>
+    var slidesNumber = 5;
+</script>
+
+<div class="row">
+    <div class="col-lg-8">
+        <section class="movie_details_panel panel">
+            <div class="panel-header">
+                <span class="panel-ico font_ico--br">o</span>
+                <h2 class="panel-title">Zawodowcy - napisy</h2>
+            </div>
+            <div class="movie_details_panel-content">
+                <div class="movie_details_panel-poster_nav">
+                    <div class="movie_details_panel-poster">
+                        <a href="https://multimedia.novekino.pl/zawodowcy_2026/plakat.jpg" data-lity><img src="https://multimedia.novekino.pl/zawodowcy_2026/plakat.jpg" alt=""></a>
+                    </div>
+                    <div class="movie_details_panel-nav hidden-sm-down">
+                        <a href="film.php?id=19573#seanse" class="movie_details_panel-btn btn btn--full_width">Rezerwuj / kup bilet</a>
+                    </div>
+                </div>
+                <div class="movie_details_panel-info">
+                    <dl>
+                                                <dt>Reżyseria<dt>
+                        <dd>Guy Ritchie</dd>
+                                                                                    <dt>Scenariusz:</dt>
+                            <dd>Guy Ritchie</dd>
+                                                                            <dt>Gatunek:</dt>
+                            <dd>akcja/dramat</dd>
+                                                                            <dt>Kraj produkcji:</dt>
+                            <dd>USA, Wielka Brytania</dd>
+                                                                            <dt>Rok produkcji:</dt>
+                            <dd>2026</dd>
+                                                                                                <dt>Obsada:</dt>
+                        <dd><br class="hidden-md-up">Henry Cavill, Jake Gyllenhaal, Eiza González, Rosamund Pike, Emmett J Scanlan, Fisher Stevens</dd>
+                                                                            </dl>
+                </div>
+            </div>
+        </section>
+        <section class="text_panel panel">
+            <div class="panel-header">
+                <span class="panel-ico font_ico--cr">c</span>
+                <h2 class="panel-title">Opis filmu</h2>
+            </div>
+            <p>Specjalistka od ekstremalnie trudnych negocjacji, wraz z ekipą najemników, wciela w życie misterny plan odzyskania wielomilionowego długu.</p>
+<p>JAKE GYLLENHAAL I HENRY CAVILL jako specjaliści od brudnej roboty w błyskotliwie skonstruowanym filmie akcji w reżyserii GUYA RITCHIEGO.</p>
+<p>Misterna intryga, porywające sceny akcji, solidna dawka humoru w najlepszym filmie Guya Ritchiego od czasu &bdquo;DŻENTELMENÓW&rdquo;.</p>
+<p>Specjalistka od zabójczo trudnych negocjacji i jej zaprawiona w bojach ekipa w starciu z cynicznym miliarderem.</p>
+<p>Pędzący przez kilka kontynentów filmowy rollercoaster, czyli rozrywka na najwyższym poziomie.</p>
+<p>Eve, działająca w szarej strefie specjalistka od załatwiania ekstremalnie trudnych spraw dla wyjątkowo bogatych klientów otrzymuje zlecenie od grupy nowojorskich inwestorów. Ma odzyskać dług od mieszkającego na prywatnej wyspie, dysponującego własną armią miliardera o szemranej reputacji. Gdy zawodzą cywilizowane metody negocjacji i staje się jasne, że dłużnik nie ma najmniejszego zamiaru regulować należności, do gry wchodzi ekipa do zadań specjalnych. To grupa byłych żołnierzy, z którymi Eve pracuje od lat. Wspólnie opracowują i wcielają w życie misterny plan wtargnięcia na wyspę, &bdquo;załatwienia sprawy&rdquo; i ucieczki. Brzmi prosto, ale ludzie miliardera są przygotowani na takie ewentualności, a okazywanie litości nie należy do zakresu ich obowiązków.</p>            
+        </section>
+        <section class="table_panel panel" id="seanse">
+            <div class="panel-header">
+                <span class="panel-ico font_ico--dr">a</span>
+                <h2 class="panel-title">Seanse</h2>
+            </div>
+            <div style="font-size: 13px; color: #fff; font-weight: bold; text-align:center; margin: -20px 0 20px 0;">Kliknij w godzinę aby zarezerwować/kupić bilety</div>
+            <table class="table">
+                                    <tr class="table-tr">
+                        <th class="table-th table-td--highlight">poniedz., 08 czerwca</th>
+                        <td class="table-td">
+                            <a href="#" class="table-link" data-repertoire-hour data-title="Zawodowcy - napisy" data-day="poniedz. 08 czerwca" data-hour="15:00" data-reserve-text="rezerwuj" data-reserve-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45828&typetran=1&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php" data-buy-text="kup" data-buy-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45828&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php">15:00</a><a href="#" class="table-link" data-repertoire-hour data-title="Zawodowcy - napisy" data-day="poniedz. 08 czerwca" data-hour="20:15" data-reserve-text="rezerwuj" data-reserve-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45824&typetran=1&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php" data-buy-text="kup" data-buy-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45824&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php">20:15</a>                        </td>
+                    </tr>
+                                    <tr class="table-tr">
+                        <th class="table-th ">wtorek, 09 czerwca</th>
+                        <td class="table-td">
+                            <a href="#" class="table-link" data-repertoire-hour data-title="Zawodowcy - napisy" data-day="wtorek 09 czerwca" data-hour="15:30" data-reserve-text="rezerwuj" data-reserve-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45839&typetran=1&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php" data-buy-text="kup" data-buy-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45839&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php">15:30</a><a href="#" class="table-link" data-repertoire-hour data-title="Zawodowcy - napisy" data-day="wtorek 09 czerwca" data-hour="17:45" data-reserve-text="rezerwuj" data-reserve-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45840&typetran=1&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php" data-buy-text="kup" data-buy-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45840&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php">17:45</a>                        </td>
+                    </tr>
+                                    <tr class="table-tr">
+                        <th class="table-th ">środa, 10 czerwca</th>
+                        <td class="table-td">
+                            <a href="#" class="table-link" data-repertoire-hour data-title="Zawodowcy - napisy" data-day="środa 10 czerwca" data-hour="14:30" data-reserve-text="rezerwuj" data-reserve-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45856&typetran=1&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php" data-buy-text="kup" data-buy-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45856&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php">14:30</a><a href="#" class="table-link" data-repertoire-hour data-title="Zawodowcy - napisy" data-day="środa 10 czerwca" data-hour="16:45" data-reserve-text="rezerwuj" data-reserve-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45857&typetran=1&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php" data-buy-text="kup" data-buy-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45857&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php">16:45</a><a href="#" class="table-link" data-repertoire-hour data-title="Zawodowcy - napisy" data-day="środa 10 czerwca" data-hour="20:30" data-reserve-text="rezerwuj" data-reserve-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45852&typetran=1&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php" data-buy-text="kup" data-buy-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45852&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php">20:30</a>                        </td>
+                    </tr>
+                                    <tr class="table-tr">
+                        <th class="table-th ">czwartek, 11 czerwca</th>
+                        <td class="table-td">
+                            <a href="#" class="table-link" data-repertoire-hour data-title="Zawodowcy - napisy" data-day="czwartek 11 czerwca" data-hour="14:30" data-reserve-text="rezerwuj" data-reserve-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45870&typetran=1&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php" data-buy-text="kup" data-buy-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45870&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php">14:30</a><a href="#" class="table-link" data-repertoire-hour data-title="Zawodowcy - napisy" data-day="czwartek 11 czerwca" data-hour="16:45" data-reserve-text="rezerwuj" data-reserve-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45871&typetran=1&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php" data-buy-text="kup" data-buy-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45871&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php">16:45</a><a href="#" class="table-link" data-repertoire-hour data-title="Zawodowcy - napisy" data-day="czwartek 11 czerwca" data-hour="20:00" data-reserve-text="rezerwuj" data-reserve-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45866&typetran=1&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php" data-buy-text="kup" data-buy-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45866&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php">20:00</a>                        </td>
+                    </tr>
+                            </table>
+        </section>
+
+        <br /><br />
+    </div>
+
+    <div class="col-lg-4">
+        <section class="movies_list_panel panel">
+    <div class="panel-header">
+        <span class="panel-ico font_ico--cr">y</span>
+        <h2 class="panel-title">Polecamy również</h2>
+    </div>
+    <div class="movies_list_panel-list">
+                    <section class="movies_list_panel-movie">
+                <div class="movies_list_panel-poster">
+                    <a href="film.php?id=19603"> <img src="https://multimedia.novekino.pl/drzewo_magii/plakat.jpg" alt=""></a>
+                </div>
+                <div class="movies_list_panel-info">
+                    <h3 class="movies_list_panel-title"><a href="film.php?id=19603">Drzewo magii - dubbing</a></h3>
+                    <div class="movies_list_panel-data">
+    To drzewo rodzinne jest pełne przygód, emocji i magii!
+Polly i Tim wraz z trójką dzieci to współczesna rodzina, która staje przed koniecznością przeprowadzenia się na odległą angielską...                    </div>
+                    <div class="movies_list_panel-category">familijny/fantasy/przygodowy</div>
+                </div>
+            </section>
+            <section class="movies_list_panel-movie">
+                <div class="movies_list_panel-poster">
+                    <a href="film.php?id=19796"> <img src="https://multimedia.novekino.pl/czas_apokalipsy_vrez/plakat.jpg" alt=""></a>
+                </div>
+                <div class="movies_list_panel-info">
+                    <h3 class="movies_list_panel-title"><a href="film.php?id=19796">Klasyka w kinie Atlantic: Czas Apokalipsy</a></h3>
+                    <div class="movies_list_panel-data">
+    Nagrodzone Złotą Palmą kultowe dzieło Francisa Forda Coppoli w odrestaurowanej wersji 4K.
+
+Jest to wersja, która nie była w Polsce rozpowszechniana i zdaniem twórcy jest to wersja...                    </div>
+                    <div class="movies_list_panel-category">dramat/wojenny</div>
+                </div>
+            </section>
+            <section class="movies_list_panel-movie">
+                <div class="movies_list_panel-poster">
+                    <a href="film.php?id=19801"> <img src="https://multimedia.novekino.pl/monterey_pop/plakat.jpg" alt=""></a>
+                </div>
+                <div class="movies_list_panel-info">
+                    <h3 class="movies_list_panel-title"><a href="film.php?id=19801">Klasyka w kinie Atlantic: Monterey Pop</a></h3>
+                    <div class="movies_list_panel-data">
+    W letni, czerwcowy weekend w 1967 roku, zaczęła się legenda Janis Joplin i Jimiego Hendrixa. Wystarczyły trzy gorące dni na stadionie w Monterey, by dzięki 27 artystom powstała kontrkultura i...                    </div>
+                    <div class="movies_list_panel-category">dokument/muzyczny</div>
+                </div>
+            </section>
+            <section class="movies_list_panel-movie">
+                <div class="movies_list_panel-poster">
+                    <a href="film.php?id=19753"> <img src="https://multimedia.novekino.pl/ojczyzna/plakat.jpg" alt=""></a>
+                </div>
+                <div class="movies_list_panel-info">
+                    <h3 class="movies_list_panel-title"><a href="film.php?id=19753">Ojczyzna - pokaz przedpremierowy</a></h3>
+                    <div class="movies_list_panel-data">
+    &bdquo;Ojczyzna&rdquo; to najnowszy, długo wyczekiwany film laureata Oscara&reg;, Pawła Pawlikowskiego, twórcy &bdquo;Idy&rdquo; i &bdquo;Zimnej wojny&rdquo;.
+W swoim najnowszym dziele, podobnie...                    </div>
+                    <div class="movies_list_panel-category">dramat</div>
+                </div>
+            </section>
+    </div>
+</section>        
+<section class="facebook_panel panel hidden-sm-down">
+    <h2 class="hide">Facebook</h2>
+    <div class="fb-page" data-href="https://www.facebook.com/NoveKino-Atlantic-110022151027053" data-tabs="timeline" data-height="500" data-width="" data-small-header="true" data-adapt-container-width="true" data-hide-cover="true" data-show-facepile="true">
+        <blockquote cite="https://www.facebook.com/NoveKino-Atlantic-110022151027053" class="fb-xfbml-parse-ignore">
+            <a href="https://www.facebook.com/NoveKino-Atlantic-110022151027053">Kino Atlantic</a></blockquote>
+    </div>
+
+</section>
+    </div>
+</div>
+                </div>
+            </div>
+
+        </main>
+
+        <footer class="footer">
+    <div class="footer-nav">
+
+        <div class="container">
+            <div class="row">
+                <div class="col-xl-8 col-lg-7 hidden-md-down">
+                    <nav class="footer_menu">
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <section class="footer_menu-section">
+                                    <h3 class="footer_menu--section-title footer-label footer-label--medium">Kino</h3>
+                                    <ul class="footer_menu-list">
+                                        <li class="footer_menu-element"><a href="/kina/atlantic/" class="footer_menu-link">Strona główna</a></li>
+                                        <li class="footer_menu-element"><a href="cennik.php" class="footer_menu-link">Cennik</a></li>
+                                        <li class="footer_menu-element"><a href="kontakt.php" class="footer_menu-link">Kontakt</a></li>
+                                        <li class="footer_menu-element"><a href="doc/regulaminy.pdf" target="_blank" class="footer_menu-link">Regulaminy</a></li>
+                                        <li class="footer_menu-element"><a href="doc/Reulamin-Karty-Widza.pdf" target="_blank" class="footer_menu-link">Regulamin Karty Widza</a></li>
+                                        <li class="footer_menu-element"><a href="pliki-cookie.php" class="footer_menu-link">Informacja o wykorzystaniu Cookies</a></li>
+                                        <li class="footer_menu-element"><a href="doc/Zasady-przetwarzania-danych-osobowych-newsletter.pdf" target="_blank" class="footer_menu-link">Zasady przetwarzania danych osobowych w związku z realizacją usługi Newsleter</a></li>
+                                    </ul>
+                                </section>
+                            </div>
+                            <div class="col-sm-3">
+                                <section class="footer_menu-section">
+                                    <h3 class="footer_menu--section-title footer-label footer-label--medium">Repertuar</h3>
+                                    <ul class="footer_menu-list">
+                                        <li class="footer_menu-element"><a href="repertuar.php" class="footer_menu-link">Repertuar</a></li>
+                                        <li class="footer_menu-element"><a href="zapowiedzi.php" class="footer_menu-link">Zapowiedzi</a></li>
+                                        <li class="footer_menu-element"><a href="repertuar.php" class="footer_menu-link">Rezerwacja</a></li>
+                                    </ul>
+                                </section>
+                            </div>
+                             <div class="col-sm-3">
+                                <section class="footer_menu-section">
+                                    <h3 class="footer_menu--section-title footer-label footer-label--medium">Partnerzy</h3>
+                                    <ul class="footer_menu-list">
+                                                                                   <li class="footer_menu-element"><a href="https://stowarzyszeniekinstudyjnych.pl" target="_blank" class="footer_menu-link">Stowarzyszenie Kin Studyjnych</a></li>
+                                        <li class="footer_menu-element"><a href="http://www.pisf.pl/pl" target="_blank" class="footer_menu-link">PISF</a></li>
+                                        <li class="footer_menu-element"><a href="http://www.fina.gov.pl" target="_blank" class="footer_menu-link">FINA</a></li>
+                                    </ul>
+                                </section>
+                            </div>
+
+                        </div>
+                    </nav>
+                </div>
+                <div class="col-xl-4 col-lg-5 col-md-12">
+                    <div class="footer-nav-right">
+                        <div class="footer-newsletter">
+                            <label for="newsletter" class="footer-newsletter-label footer-label">Zapisz się do
+                                newslettera</label>
+                            <form action="newsletter.php" method="post" class="footer-newsletter-form">
+                                <input title="newsletter" id="newsletter" name="email" type="text" placeholder="Tu wpisz email" class="footer-newsletter-input"><button type="submit" class="footer-newsletter-submit font_ico--cr"><span class="footer-newsletter-submit-ico">C</span></button>
+                            </form>
+                            <div style="font-size:10px; color: #ccc;"><br>
+                            Zapisując się do Newslettera zapoznałem się z <a href="doc/Zasady-przetwarzania-danych-osobowych-newsletter.pdf" style="color: #ccc; text-decoration:underline;" target="_blank">Zasadami przetwarzania danych osobowych w związku z realizacją usługi Newsleter</a>. Zgadzam się na otrzymanie od kin Novekino  na wskazany przeze mnie adres e-mail informacji marketingowych. Administratorem Twoich danych osobowych jest Instytucja Filmowa MAX-FILM Spółka Akcyjna z siedzibą w Warszawie, ul. Panieńska 11, Wpisana do Rejestru Przedsiębiorców prowadzonego przez Sąd Rejonowy dla Warszawy Mokotowa, XIII Wydział Gospodarczy pod numerem KRS 0000236457 Posiadasz prawo dostępu do treści Swoich danych osobowych oraz prawo ich sprostowania, usunięcia, ograniczenia przetwarzania, prawo do przenoszenia danych osobowych, prawo wniesienia sprzeciwu, a także prawo do cofnięcia zgody w dowolnym momencie. Wycofanie zgody nie wpływa na zgodność z prawem przetwarzania dokonanego przed jej wycofaniem.</div>
+                        </div>
+                        <div class="footer-reservation_info">
+                            <h3 class="footer-reservation_info-label footer-label">
+                                Rezerwacje telefoniczne
+                            </h3>
+                            <div class="footer-reservation_info-phone">
+                                <span class="footer-reservation_info-number-ico font_ico--bl">t</span>
+                                <a href="tel:228289303" class="footer-reservation_info-phone-number">22 828 93 03</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-socials">
+             <a href="https://www.facebook.com/NoveKino-Atlantic-110022151027053" class="footer-socials-link">
+                    <svg class="footer-socials-link-fb-ico" preserveAspectRatio="xMidYMid">
+                    <use xlink:href="#i-fb"></use>
+                    </svg>
+                    facebook
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <div class="container">
+            <div class="footer-bottom-in">
+                <span class="footer-rights">
+                    2026 © Novekino. All Rights Reserved
+                </span>
+                <span class="footer-author">
+                    projekt i wykonanie : <a href="http://www.vis.pl/" class="footer-link">VEGA Internet Studio</a>
+                </span>
+            </div>
+            <div class="footer-bottom-col footer-bottom-col--right">
+                <a href="http://www.maxfilm.com.pl/" target="_blank"><img src="img/instytucja.jpg" alt="Instytuacja Filmowa Max-Film S.A."></a>
+                <a href="https://stowarzyszeniekinstudyjnych.pl" target="_blank"><img src="img/logo_sks_1.jpg" alt="Stowarzyszenie Kin Studyjnych"></a>
+                  <a href="http://www.c-kino.pl/" target="_blank"><img src="img/spkc-logo.gif" alt="Polska Sieć Kin Cyfrowych"></a>
+                <a href="https://www.europa-cinemas.org/en" target="_blank"><img src="img/logo_europa_cinamas_2023.png" alt=""></a>
+                <a href="http://www.pisf.pl" target="_blank"><img src="img/pisf.gif" alt=""></a>
+                <a href="http://www.fina.gov.pl" target="_blank"><img src="img/fina.gif" alt=""></a>
+            </div>
+        </div>
+
+    </div>
+
+</footer>
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XPXQMPFRV5"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-XPXQMPFRV5');
+</script>
+
+<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "77f5473ca18944998ba21957f4b4ea53"}'></script><!-- End Cloudflare Web Analytics -->
+        <script src="https://code.createjs.com/createjs-2015.11.26.min.js"></script>
+
+<script src="js/lib/js-lib.min.js"></script>
+
+<script src="js/repertoire.min.js"></script>
+<script src="js/script.min_7.js"></script>
+<script src="js/local_2.js"></script>
+    </body>
+</html>

@@ -1,0 +1,30 @@
+<div class="content_rep_posters_b_1" id="poster_button_left"></div>	<div class="content_rep_posters_0" id="poster_set_1">
+									
+											<div class="content_rep_posters_1a hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780900509', '20563','17','30','2026-06-18','1','0','0','0'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">17</font>:30</div><img class="poster_photo" src="foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html" title="Dzień objawienia" alt="Dzień objawienia"/><div class="content_rep_posters_1_1a f_5" id="poster_cell_a_1">Rejs</div></div>
+											<div class="content_rep_posters_1b hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780900509', '19312','20','30','2026-06-18','1','0','0','0'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">20</font>:30</div><img class="poster_photo" src="foto,19312,7cdddc5d137657d228f766f72e663dd6,jpg.html" title="Mystery Train" alt="Mystery Train"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_a_2">Rejs</div></div>
+											<div class="content_rep_posters_1b " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1b " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1b " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1b " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											
+											
+											<div class="content_rep_posters_1c hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780900509', '20563','17','30','2026-06-18','1','0','0','0'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">17</font>:30</div><img class="poster_photo" src="foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html" title="Dzień objawienia" alt="Dzień objawienia"/><div class="content_rep_posters_1_1a f_5" id="poster_cell_b_1">Rejs</div></div>
+											<div class="content_rep_posters_1d hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780900509', '19312','20','30','2026-06-18','1','0','0','0'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">20</font>:30</div><img class="poster_photo" src="foto,19312,7cdddc5d137657d228f766f72e663dd6,jpg.html" title="Mystery Train" alt="Mystery Train"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_b_2">Rejs</div></div>
+											<div class="content_rep_posters_1d " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1c " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1d " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1d " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>						
+											
+									</div><div class="content_rep_posters_b_2" id="poster_button_right"></div>		

@@ -1,0 +1,610 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:og="http://ogp.me/ns#"
+      xmlns:fb="http://www.facebook.com/2008/fbml">
+
+<head>
+
+	<meta http-equiv='Content-Type' content='text/html; charset=UTF-8' />
+	<meta http-equiv="Content-Language" content="pl" />
+	<meta http-equiv="pragma" content="no-cache" />
+	
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-TZPSX3W');</script>
+<!-- End Google Tag Manager -->
+
+<!--<base href="http://www.kinokultura.pl" />-->
+
+    
+<title>Kino Kultura</title>
+
+	<meta name="keywords" content="kino, kino Kultura, kino Rejs, kultura, sieć kin, sieć kin art-house’owych, art-house"/>
+	<meta name="description" content="Kino Kultura to wyjątkowe kino studyjne w sercu Warszawy prowadzone przez Stowarzyszenie Filmowców Polskich. To kino z bogatą historią i tradycją, będące ważnym miejscem dla filmowców i widzów poszukujących nieoczywistych filmowych doświadczeń. W repertuarze znajdziecie przedpremiery oraz filmy niedostępne w szerokiej dystrybucji, ze szczególnym uwzględnieniem polskiej kinematografii i autorskich cykli filmowych. Kino dysponuje dwiema salami – Kultura oraz Rejs, która niegdyś służyła do kolaudacji polskich filmów – a jego przestrzeń regularnie odwiedzają twórcy i artyści, tworząc wyjątkową atmosferę spotkań i dialogu. "/>
+	<meta name="language" content="polish" />
+	<meta name="Author" content="Stowarzyszenie Filmowców Polskich" />
+	<meta name="robots" content="index,follow"/>
+	<meta name="referrer" content="https://www.kinokultura.pl/" />
+	<meta name="Reply-to" content="wpojda@sfp.org.pl" />
+	<meta name="Copyright" content="Stowarzyszenie Filmowców Polskich" />
+	<meta name="Distribution" content="global" />
+	<meta name="Rating" content="general" />
+	<meta name="Classification" content="Film" />
+	
+	<meta name="viewport" content="width=device-width, maximum-scale=1.0" />
+
+	<link rel="shortcut icon" href="favicon.ico" />
+	<link href='https://fonts.googleapis.com/css?family=Titillium+Web:300,200,400,600,700&subset=latin,latin-ext' rel='stylesheet' type='text/css'/>
+	<link rel="stylesheet" type="text/css" href="_core/_template/_css/style02.02.2020.css" />
+			
+	<script type="text/javascript" src="_core/_js/google.js"></script>	
+	<script type="text/javascript" src="_core/_js/jquery-1.10.2.js"></script>	
+	<script type="text/javascript" src="_core/_js/back2top.js"></script>		
+	<script type="text/javascript" src="_core/_js/index_01.js"></script>	
+	<script type="text/javascript" src="_core/_js/index_01_calc.js"></script>	
+	<script type="text/javascript" src="_core/_js/main_spot_3.js"></script>	
+
+
+	<script type="text/javascript" charset="UTF-8">	
+	
+	
+
+				
+	
+</script>	
+	
+ 	
+</head>
+<body>
+
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TZPSX3W"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+
+		<div class="content" id="top">
+
+			
+		
+			<div class="menu_fixed">
+				<div class="menu_fixed_1">
+					<div class="menu_fixed_1_1">
+					
+					
+						<div class="menu_fixed_1_1_1 f_5"><a href="#top">start</a></div>
+						<div class="menu_fixed_1_1_2 f_5"><a href="#repertuar">repertuar</a></div>
+						<div class="menu_fixed_1_1_3 f_5"><a href="#zapowiedzi">zapowiedzi</a></div>
+						<div class="menu_fixed_1_1_4 f_5"><a href="#wydarzenia">wydarzenia</a></div>
+						<div class="menu_fixed_1_1_5 f_5"><a href="#o_nas">o nas</a></div>
+						<div class="menu_fixed_1_1_6 f_5"><a href="#kontakt">kontakt</a></div>	
+											
+					</div>
+				</div>
+			</div>
+		
+		
+			<div class="content_top">
+				<div class="content_top_logo"></div>
+				<div class="content_top_menu">
+				
+								
+						<div class="content_top_menu_1 f_3">start</div>
+						<div class="content_top_menu_2 f_3"><a href="#repertuar" id="navi_repertuar">repertuar</a><a href="#content_movie_desc" id="navi_movie_desc"></a></div>
+						<div class="content_top_menu_3 f_3"><a href="#zapowiedzi" id="navi_zapowiedzi">zapowiedzi</a><a href="#content_zap_movie_desc" id="navi_zapowiedzi_box"></a></div>
+						<div class="content_top_menu_4 f_3"><a href="#wydarzenia">wydarzenia</a></div>
+						<div class="content_top_menu_5 f_3"><a href="#o_nas">o nas</a></div>
+						<div class="content_top_menu_6 f_3"><a href="#kontakt">kontakt</a></div>
+						
+						<div class="content_top_menu_7" onclick="window.open('http://www.sfp.org.pl', 'SFP');" title="Stowarzyszenie Filmowców Polskich"></div>
+						<div class="content_top_menu_8" onclick="window.open('https://www.facebook.com/pages/Kino-Kultura/264182313800', 'facebook');" title="Facebook"></div>
+						<div class="content_top_menu_10" onclick="window.open('https://www.instagram.com/kinokulturawarszawa', 'instagram');" title="Instagram"></div>
+			
+									
+				</div>
+				<div class="content_top_menu_sm f_4">MENU</div>
+			
+			</div>
+
+						<div class="content_main_photo">
+							<div class="content_main_photo_bg">
+					 <div class="main_photo_div" id="main_photo_2"><a href="film,20602,Podziemny-krag.html"><img class="main_photo" src="foto,20602,d156d71d840f58fe07656b9603e6b07c,jpg.html" alt=""/></a></div><div class="main_photo_div" id="main_photo_3"><a href="film,20601,Kosmiczny-mecz-30-rocznica.html"><img class="main_photo" src="foto,20601,da7371fcb6efc8f76f3ae1657213cf2e,jpg.html" alt=""/></a></div><div class="main_photo_div" id="main_photo_4"><a href="film,20600,Orly-republiki.html"><img class="main_photo" src="foto,20600,0ba91d88ee2850a01a4fabecc29b2dfd,jpg.html" alt=""/></a></div><div class="main_photo_div" id="main_photo_5"><a href="film,20557,Zawodowcy-.html"><img class="main_photo" src="foto,20557,8deb533329592f9147f072cbfd2372c8,jpg.html" alt=""/></a></div><div class="main_dot_1"></div><div class="main_dot_2"></div><div class="main_dot_3"></div><div class="main_dot_4"></div><div class="main_dot_5"></div><a href="wydarzenia,4,20437,1,Wajda-re-wizje-w-Kinie-Kultura-15-czerwca-Czlowiek-z-marmuru.html"><img class="main_photo" src="foto,20437,b37d5e59a926c30c4bade4445497c355,jpg.html" alt=""/></a>					
+							</div>
+						</div>
+					  			
+						<div class="content_top_menu_exp"> 
+							<div class="content_top_menu_exp_in f_15">  <a href="pl#top">start</a><br/>
+																<a href="#repertuar">repertuar</a><br/>
+																<a href="#zapowiedzi">zapowiedzi</a><br/>
+																<a href="#wydarzenia">wydarzenia</a><br/>
+																<a href="#o_nas">o nas</a><br/>
+																<a href="#kontakt">kontakt</a>
+							</div>
+							<div class="content_top_menu_exp_close"></div>
+						</div>
+
+												
+			<div class="menu_id" id="repertuar"></div>
+			
+			<div class="content_rep">
+				<div class="content_rep_1 f_1 f_shaddow">Repertuar</div>
+				
+				<div class="content_rep_1_bg"></div>
+				
+				<div class="content_rep_b_1" id="tm_button_left"></div>
+<div class="content_rep_1_0" id="tm_set_1">
+										  		 <div class="content_rep_1_1a f_2 hand f_600" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-08'); rep_movie('1780900508',  '2026-06-08',0,0,0,0,0,0); $('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a'); $(this).addClass('content_rep_1_1a').removeClass('content_rep_1_1'); 					$('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma');">Dzisiaj</div>
+										  		 <div class="content_rep_1_1_sma f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-08'); rep_movie('1780900508',  '2026-06-08',0,0,0,0,0,0); $('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma'); $(this).addClass('content_rep_1_1_sma').removeClass('content_rep_1_1_sm'); 	$('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a');">Pon.</div>
+										  
+									  		 <div class="content_rep_1_1 f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-09'); rep_movie('1780900508',  '2026-06-09',0,0,0,0,0,0); $('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a'); $(this).addClass('content_rep_1_1a').removeClass('content_rep_1_1'); 					$('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma');">Wtorek</div>
+									  		 <div class="content_rep_1_1_sm f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-09'); rep_movie('1780900508',  '2026-06-09',0,0,0,0,0,0); $('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma'); $(this).addClass('content_rep_1_1_sma').removeClass('content_rep_1_1_sm'); 	$('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a');">Wt.</div>
+									  
+									  		 <div class="content_rep_1_1 f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-10'); rep_movie('1780900508',  '2026-06-10',0,0,0,0,0,0); $('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a'); $(this).addClass('content_rep_1_1a').removeClass('content_rep_1_1'); 					$('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma');">Środa</div>
+									  		 <div class="content_rep_1_1_sm f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-10'); rep_movie('1780900508',  '2026-06-10',0,0,0,0,0,0); $('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma'); $(this).addClass('content_rep_1_1_sma').removeClass('content_rep_1_1_sm'); 	$('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a');">Śr.</div>
+									  
+									  		 <div class="content_rep_1_1 f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-11'); rep_movie('1780900508',  '2026-06-11',0,0,0,0,0,0); $('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a'); $(this).addClass('content_rep_1_1a').removeClass('content_rep_1_1'); 					$('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma');">Czwartek</div>
+									  		 <div class="content_rep_1_1_sm f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-11'); rep_movie('1780900508',  '2026-06-11',0,0,0,0,0,0); $('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma'); $(this).addClass('content_rep_1_1_sma').removeClass('content_rep_1_1_sm'); 	$('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a');">Czw.</div>
+									  
+									  		 <div class="content_rep_1_1 f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-12'); rep_movie('1780900508',  '2026-06-12',0,0,0,0,0,0); $('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a'); $(this).addClass('content_rep_1_1a').removeClass('content_rep_1_1'); 					$('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma');">Piątek</div>
+									  		 <div class="content_rep_1_1_sm f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-12'); rep_movie('1780900508',  '2026-06-12',0,0,0,0,0,0); $('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma'); $(this).addClass('content_rep_1_1_sma').removeClass('content_rep_1_1_sm'); 	$('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a');">Pt.</div>
+									  
+									  		 <div class="content_rep_1_1 f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-13'); rep_movie('1780900508',  '2026-06-13',0,0,0,0,0,0); $('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a'); $(this).addClass('content_rep_1_1a').removeClass('content_rep_1_1'); 					$('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma');">Sobota</div>
+									  		 <div class="content_rep_1_1_sm f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-13'); rep_movie('1780900508',  '2026-06-13',0,0,0,0,0,0); $('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma'); $(this).addClass('content_rep_1_1_sma').removeClass('content_rep_1_1_sm'); 	$('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a');">Sob.</div>
+									  
+									  		 <div class="content_rep_1_1 f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-14'); rep_movie('1780900508',  '2026-06-14',0,0,0,0,0,0); $('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a'); $(this).addClass('content_rep_1_1a').removeClass('content_rep_1_1'); 					$('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma');">Niedziela</div>
+									  		 <div class="content_rep_1_1_sm f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-14'); rep_movie('1780900508',  '2026-06-14',0,0,0,0,0,0); $('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma'); $(this).addClass('content_rep_1_1_sma').removeClass('content_rep_1_1_sm'); 	$('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a');">Niedz.</div>
+									  </div><div class="content_rep_1_0" id="tm_set_2">
+									  		 <div class="content_rep_1_1 f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-15'); rep_movie('1780900508',  '2026-06-15',0,0,0,0,0,0); $('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a'); $(this).addClass('content_rep_1_1a').removeClass('content_rep_1_1'); 					$('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma');">15.06</div>
+									  		 <div class="content_rep_1_1_sm f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-15'); rep_movie('1780900508',  '2026-06-15',0,0,0,0,0,0); $('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma'); $(this).addClass('content_rep_1_1_sma').removeClass('content_rep_1_1_sm'); 	$('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a');" id="rep_day_desc">15.06</div>
+									  
+									  		 <div class="content_rep_1_1 f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-16'); rep_movie('1780900508',  '2026-06-16',0,0,0,0,0,0); $('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a'); $(this).addClass('content_rep_1_1a').removeClass('content_rep_1_1'); 					$('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma');">16.06</div>
+									  		 <div class="content_rep_1_1_sm f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-16'); rep_movie('1780900508',  '2026-06-16',0,0,0,0,0,0); $('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma'); $(this).addClass('content_rep_1_1_sma').removeClass('content_rep_1_1_sm'); 	$('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a');" id="rep_day_desc">16.06</div>
+									  
+									  		 <div class="content_rep_1_1 f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-17'); rep_movie('1780900508',  '2026-06-17',0,0,0,0,0,0); $('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a'); $(this).addClass('content_rep_1_1a').removeClass('content_rep_1_1'); 					$('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma');">17.06</div>
+									  		 <div class="content_rep_1_1_sm f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-17'); rep_movie('1780900508',  '2026-06-17',0,0,0,0,0,0); $('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma'); $(this).addClass('content_rep_1_1_sma').removeClass('content_rep_1_1_sm'); 	$('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a');" id="rep_day_desc">17.06</div>
+									  
+									  		 <div class="content_rep_1_1 f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-18'); rep_movie('1780900508',  '2026-06-18',0,0,0,0,0,0); $('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a'); $(this).addClass('content_rep_1_1a').removeClass('content_rep_1_1'); 					$('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma');">18.06</div>
+									  		 <div class="content_rep_1_1_sm f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-18'); rep_movie('1780900508',  '2026-06-18',0,0,0,0,0,0); $('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma'); $(this).addClass('content_rep_1_1_sma').removeClass('content_rep_1_1_sm'); 	$('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a');" id="rep_day_desc">18.06</div>
+									  
+									  		 <div class="content_rep_1_1 f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-19'); rep_movie('1780900508',  '2026-06-19',0,0,0,0,0,0); $('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a'); $(this).addClass('content_rep_1_1a').removeClass('content_rep_1_1'); 					$('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma');">19.06</div>
+									  		 <div class="content_rep_1_1_sm f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-19'); rep_movie('1780900508',  '2026-06-19',0,0,0,0,0,0); $('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma'); $(this).addClass('content_rep_1_1_sma').removeClass('content_rep_1_1_sm'); 	$('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a');" id="rep_day_desc">19.06</div>
+									  
+									  		 <div class="content_rep_1_1 f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-21'); rep_movie('1780900508',  '2026-06-21',0,0,0,0,0,0); $('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a'); $(this).addClass('content_rep_1_1a').removeClass('content_rep_1_1'); 					$('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma');">21.06</div>
+									  		 <div class="content_rep_1_1_sm f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-21'); rep_movie('1780900508',  '2026-06-21',0,0,0,0,0,0); $('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma'); $(this).addClass('content_rep_1_1_sma').removeClass('content_rep_1_1_sm'); 	$('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a');" id="rep_day_desc">21.06</div>
+									  
+									  		 <div class="content_rep_1_1 f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-24'); rep_movie('1780900508',  '2026-06-24',0,0,0,0,0,0); $('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a'); $(this).addClass('content_rep_1_1a').removeClass('content_rep_1_1'); 					$('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma');">24.06</div>
+									  		 <div class="content_rep_1_1_sm f_2 hand" onclick="$('#navi_repertuar').trigger('click'); rep_posters('1780900508',  '2026-06-24'); rep_movie('1780900508',  '2026-06-24',0,0,0,0,0,0); $('.content_rep_1_1_sma').addClass('content_rep_1_1_sm').removeClass('content_rep_1_1_sma'); $(this).addClass('content_rep_1_1_sma').removeClass('content_rep_1_1_sm'); 	$('.content_rep_1_1a').addClass('content_rep_1_1').removeClass('content_rep_1_1a');" id="rep_day_desc">24.06</div>
+									  </div>				
+							
+				
+				<div class="content_rep_b_2" id="tm_button_right"></div>
+				
+				<div class="content_rep_2"></div>
+
+			</div>
+
+
+			<div class="content_rep_posters" id="content_rep_posters"></div>			
+			<div class="content_movie_desc" id="content_movie_desc"></div>
+			<div class="menu_id" id="zapowiedzi"></div>
+			
+			<div class="content_zap">
+				<div class="content_zap_1 f_1 f_shaddow">Zapowiedzi</div>
+				<div class="content_zap_2_empty"></div>
+			</div>
+			<div class="content_zap_posters">
+<div class="content_zap_posters_b_1" id="zap_poster_button_left"></div>	<div class="content_zap_posters_0" id="zap_poster_set_1">
+									
+											<div class="content_zap_posters_1a hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20564');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_1').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_1').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">10</font> czerwca</div><img class="poster_photo" src="foto,20564,32c001e0ae8a2e9d232986d52116352f,jpg.html" title="Podwójnym okiem: Aksinowicz/Oleszczyk o &quot;Dniu objawienia&quot; Spielberga" alt="Podwójnym okiem: Aksinowicz/Oleszczyk o &quot;Dniu objawienia&quot; Spielberga"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_1"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20613');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_2').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_2').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">11</font> czerwca</div><img class="poster_photo" src="foto,20613,2384f85e5bc352fbc25c9aa633d37f3c,jpg.html" title="Wojna o sztukę" alt="Wojna o sztukę"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_2"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20563');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_3').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_3').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">14</font> czerwca</div><img class="poster_photo" src="foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html" title="Dzień objawienia" alt="Dzień objawienia"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_3"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20585');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_4').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_4').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">15</font> czerwca</div><img class="poster_photo" src="foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html" title="Człowiek z marmuru" alt="Człowiek z marmuru"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_4"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20554');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_5').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_5').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_rep_pp"></div><div class="content_zap_posters_1_2 f_6"><font class="f_7">16</font> czerwca</div><img class="poster_photo" src="foto,20554,10620ad8d4bab4b7ccdb38b6ede35302,jpg.html" title="&quot;Monterey Pop&quot; z prelekcją Piotra Metza" alt="&quot;Monterey Pop&quot; z prelekcją Piotra Metza"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_5"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20572');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_6').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_6').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_rep_pp"></div><div class="content_zap_posters_1_2 f_6"><font class="f_7">16</font> czerwca</div><img class="poster_photo" src="foto,20572,8500400572f577e26a4d2907451f6f6c,jpg.html" title="Ojczyzna + spotkanie z producentką Ewą Puszczyńską" alt="Ojczyzna + spotkanie z producentką Ewą Puszczyńską"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_6"></div></div>
+											
+											
+											<div class="content_zap_posters_1c hand" onclick=" $('#navi_zapowiedzi_box').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20564');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_b_1').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_b_1').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">10</font>.06</div><img class="poster_photo" src="foto,20564,32c001e0ae8a2e9d232986d52116352f,jpg.html" title="Podwójnym okiem: Aksinowicz/Oleszczyk o &quot;Dniu objawienia&quot; Spielberga" alt="Podwójnym okiem: Aksinowicz/Oleszczyk o &quot;Dniu objawienia&quot; Spielberga"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_1"></div></div>
+											<div class="content_zap_posters_1d hand" onclick=" $('#navi_zapowiedzi_box').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20613');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_b_2').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_b_2').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">11</font>.06</div><img class="poster_photo" src="foto,20613,2384f85e5bc352fbc25c9aa633d37f3c,jpg.html" title="Wojna o sztukę" alt="Wojna o sztukę"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_2"></div></div>
+											<div class="content_zap_posters_1d hand" onclick=" $('#navi_zapowiedzi_box').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20563');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_b_3').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_b_3').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">14</font>.06</div><img class="poster_photo" src="foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html" title="Dzień objawienia" alt="Dzień objawienia"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_3"></div></div>
+											<div class="content_zap_posters_1c hand" onclick=" $('#navi_zapowiedzi_box').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20585');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_b_4').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_b_4').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">15</font>.06</div><img class="poster_photo" src="foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html" title="Człowiek z marmuru" alt="Człowiek z marmuru"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_4"></div></div>
+											<div class="content_zap_posters_1d hand" onclick=" $('#navi_zapowiedzi_box').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20554');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_b_5').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_b_5').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_rep_pp"></div><div class="content_zap_posters_1_2 f_6"><font class="f_7">16</font>.06</div><img class="poster_photo" src="foto,20554,10620ad8d4bab4b7ccdb38b6ede35302,jpg.html" title="&quot;Monterey Pop&quot; z prelekcją Piotra Metza" alt="&quot;Monterey Pop&quot; z prelekcją Piotra Metza"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_5"></div></div>
+											<div class="content_zap_posters_1d hand" onclick=" $('#navi_zapowiedzi_box').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20572');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_b_6').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_b_6').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_rep_pp"></div><div class="content_zap_posters_1_2 f_6"><font class="f_7">16</font>.06</div><img class="poster_photo" src="foto,20572,8500400572f577e26a4d2907451f6f6c,jpg.html" title="Ojczyzna + spotkanie z producentką Ewą Puszczyńską" alt="Ojczyzna + spotkanie z producentką Ewą Puszczyńską"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_6"></div></div>						
+											
+									</div>	<div class="content_zap_posters_0" id="zap_poster_set_2">
+									
+											<div class="content_zap_posters_1a hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20611');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_7').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_7').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">17</font> czerwca</div><img class="poster_photo" src="foto,20611,c30e0344e6a3b0a73d2a8b637d89cfd3,jpg.html" title="Wieczory z Kinem Polskim: Chłopaki nie płaczą" alt="Wieczory z Kinem Polskim: Chłopaki nie płaczą"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_7"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20577');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_8').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_8').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">17</font> czerwca</div><img class="poster_photo" src="foto,20577,ffe784cf71171f1a51144da77739b374,jpg.html" title="Following - pokaz specjalny z prelekcją Błażeja Hrapkowicza" alt="Following - pokaz specjalny z prelekcją Błażeja Hrapkowicza"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_8"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20612');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_9').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_9').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_rep_pp"></div><div class="content_zap_posters_1_2 f_6"><font class="f_7">21</font> czerwca</div><img class="poster_photo" src="foto,20612,a30edc1c47057a2226a4226476168337,jpg.html" title="Best Film on Tour: Dobra Strona Filmu – „Takie jest życie”" alt="Best Film on Tour: Dobra Strona Filmu – „Takie jest życie”"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_9"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20580');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_10').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_10').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">28</font> czerwca</div><img class="poster_photo" src="foto,20580,eb743d6c3494f691a9dc018645daf0d0,jpg.html" title="Ostatni dzień lata - pokaz + dyskusja" alt="Ostatni dzień lata - pokaz + dyskusja"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_10"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20581');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_11').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_11').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">29</font> czerwca</div><img class="poster_photo" src="foto,20581,afa279c61db618a9884fc911e5aacf36,jpg.html" title="Salto - pokaz + prelekcja" alt="Salto - pokaz + prelekcja"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_11"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20559');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_12').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_12').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">02</font> lipca</div><img class="poster_photo" src="foto,20559,b573bd5106937a0aa29c16ee2c5ab814,jpg.html" title="Chungking Express  - Wong Kar Wai 4K" alt="Chungking Express  - Wong Kar Wai 4K"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_12"></div></div>
+											
+											
+											<div class="content_zap_posters_1c hand" onclick=" $('#navi_zapowiedzi_box').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20611');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_b_7').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_b_7').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">17</font>.06</div><img class="poster_photo" src="foto,20611,c30e0344e6a3b0a73d2a8b637d89cfd3,jpg.html" title="Wieczory z Kinem Polskim: Chłopaki nie płaczą" alt="Wieczory z Kinem Polskim: Chłopaki nie płaczą"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_7"></div></div>
+											<div class="content_zap_posters_1d hand" onclick=" $('#navi_zapowiedzi_box').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20577');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_b_8').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_b_8').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">17</font>.06</div><img class="poster_photo" src="foto,20577,ffe784cf71171f1a51144da77739b374,jpg.html" title="Following - pokaz specjalny z prelekcją Błażeja Hrapkowicza" alt="Following - pokaz specjalny z prelekcją Błażeja Hrapkowicza"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_8"></div></div>
+											<div class="content_zap_posters_1d hand" onclick=" $('#navi_zapowiedzi_box').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20612');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_b_9').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_b_9').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_rep_pp"></div><div class="content_zap_posters_1_2 f_6"><font class="f_7">21</font>.06</div><img class="poster_photo" src="foto,20612,a30edc1c47057a2226a4226476168337,jpg.html" title="Best Film on Tour: Dobra Strona Filmu – „Takie jest życie”" alt="Best Film on Tour: Dobra Strona Filmu – „Takie jest życie”"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_9"></div></div>
+											<div class="content_zap_posters_1c hand" onclick=" $('#navi_zapowiedzi_box').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20580');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_b_10').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_b_10').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">28</font>.06</div><img class="poster_photo" src="foto,20580,eb743d6c3494f691a9dc018645daf0d0,jpg.html" title="Ostatni dzień lata - pokaz + dyskusja" alt="Ostatni dzień lata - pokaz + dyskusja"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_10"></div></div>
+											<div class="content_zap_posters_1d hand" onclick=" $('#navi_zapowiedzi_box').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20581');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_b_11').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_b_11').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">29</font>.06</div><img class="poster_photo" src="foto,20581,afa279c61db618a9884fc911e5aacf36,jpg.html" title="Salto - pokaz + prelekcja" alt="Salto - pokaz + prelekcja"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_11"></div></div>
+											<div class="content_zap_posters_1d hand" onclick=" $('#navi_zapowiedzi_box').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20559');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_b_12').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_b_12').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">02</font>.07</div><img class="poster_photo" src="foto,20559,b573bd5106937a0aa29c16ee2c5ab814,jpg.html" title="Chungking Express  - Wong Kar Wai 4K" alt="Chungking Express  - Wong Kar Wai 4K"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_12"></div></div>						
+											
+									</div>	<div class="content_zap_posters_0" id="zap_poster_set_3">
+									
+											<div class="content_zap_posters_1a hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20594');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_13').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_13').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">03</font> lipca</div><img class="poster_photo" src="foto,20594,528c9f762c0b385b8a7c05ba518a6d4e,jpg.html" title="Klasyka w Kulturze: La Strada" alt="Klasyka w Kulturze: La Strada"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_13"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20596');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_14').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_14').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">06</font> lipca</div><img class="poster_photo" src="foto,20596,1aed032cde4e99914dfe08e1cfb15ae5,jpg.html" title="Brzezina" alt="Brzezina"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_14"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20588');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_15').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_15').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">07</font> lipca</div><img class="poster_photo" src="foto,20588,4c7a52c7d23e72c6e8f7547bf656357c,jpg.html" title="Upadłe Anioły - Wong Kar Wai 4K" alt="Upadłe Anioły - Wong Kar Wai 4K"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_15"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20587');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_16').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_16').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">09</font> lipca</div><img class="poster_photo" src="foto,20587,88dd1e21ca28fe5bbc645896f37fac99,jpg.html" title="Happy Together - Wong Kar Wai 4K" alt="Happy Together - Wong Kar Wai 4K"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_16"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20609');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_17').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_17').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">10</font> lipca</div><img class="poster_photo" src="foto,20609,0e04f8f7aec2f7bb6d66e79b72a37925,jpg.html" title="Fellini. Ciao a tutti: Wałkonie" alt="Fellini. Ciao a tutti: Wałkonie"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_17"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20607');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_18').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_18').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">11</font> lipca</div><img class="poster_photo" src="foto,20607,d3b3cd5022012d11b0ff7b43ac7704b8,jpg.html" title="Fellini. Ciao a tutti: Noce Cabirii" alt="Fellini. Ciao a tutti: Noce Cabirii"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_18"></div></div>
+											
+											
+											<div class="content_zap_posters_1c hand" ><div class="content_zap_posters_1_2 f_6"><font class="f_7">03</font>.07</div><img class="poster_photo" src="foto,20594,528c9f762c0b385b8a7c05ba518a6d4e,jpg.html" title="Klasyka w Kulturze: La Strada" alt="Klasyka w Kulturze: La Strada"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_13"></div></div>
+											<div class="content_zap_posters_1d hand" ><div class="content_zap_posters_1_2 f_6"><font class="f_7">06</font>.07</div><img class="poster_photo" src="foto,20596,1aed032cde4e99914dfe08e1cfb15ae5,jpg.html" title="Brzezina" alt="Brzezina"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_14"></div></div>
+											<div class="content_zap_posters_1d hand" ><div class="content_zap_posters_1_2 f_6"><font class="f_7">07</font>.07</div><img class="poster_photo" src="foto,20588,4c7a52c7d23e72c6e8f7547bf656357c,jpg.html" title="Upadłe Anioły - Wong Kar Wai 4K" alt="Upadłe Anioły - Wong Kar Wai 4K"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_15"></div></div>
+											<div class="content_zap_posters_1c hand" ><div class="content_zap_posters_1_2 f_6"><font class="f_7">09</font>.07</div><img class="poster_photo" src="foto,20587,88dd1e21ca28fe5bbc645896f37fac99,jpg.html" title="Happy Together - Wong Kar Wai 4K" alt="Happy Together - Wong Kar Wai 4K"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_16"></div></div>
+											<div class="content_zap_posters_1d hand" ><div class="content_zap_posters_1_2 f_6"><font class="f_7">10</font>.07</div><img class="poster_photo" src="foto,20609,0e04f8f7aec2f7bb6d66e79b72a37925,jpg.html" title="Fellini. Ciao a tutti: Wałkonie" alt="Fellini. Ciao a tutti: Wałkonie"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_17"></div></div>
+											<div class="content_zap_posters_1d hand" ><div class="content_zap_posters_1_2 f_6"><font class="f_7">11</font>.07</div><img class="poster_photo" src="foto,20607,d3b3cd5022012d11b0ff7b43ac7704b8,jpg.html" title="Fellini. Ciao a tutti: Noce Cabirii" alt="Fellini. Ciao a tutti: Noce Cabirii"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_18"></div></div>						
+											
+									</div>	<div class="content_zap_posters_0" id="zap_poster_set_4">
+									
+											<div class="content_zap_posters_1a hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20608');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_19').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_19').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">12</font> lipca</div><img class="poster_photo" src="foto,20608,3a3a96d5e8e53c907bcf450bbc09083b,jpg.html" title="Fellini. Ciao a tutti: Słodkie życie" alt="Fellini. Ciao a tutti: Słodkie życie"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_19"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20605');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_20').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_20').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">14</font> lipca</div><img class="poster_photo" src="foto,20605,a25232f0ba8fd30f1631305a78f21217,jpg.html" title="Fellini. Ciao a tutti: Giulietta i duchy" alt="Fellini. Ciao a tutti: Giulietta i duchy"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_20"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20606');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_21').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_21').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">15</font> lipca</div><img class="poster_photo" src="foto,20606,efbb168633906780258ea5675011584a,jpg.html" title="Fellini. Ciao a tutti: Głos z księżyca" alt="Fellini. Ciao a tutti: Głos z księżyca"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_21"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20589');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_22').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_22').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">16</font> lipca</div><img class="poster_photo" src="foto,20589,f57136d72586aa693fa5f8866d4ff6e2,jpg.html" title="2046 -  Wong Kar Wai 4K" alt="2046 -  Wong Kar Wai 4K"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_22"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20571');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_23').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_23').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">12</font> sierpnia</div><img class="poster_photo" src="foto,20571,0f34408f93b2fa2f6e065202dc657374,jpg.html" title="Kronika wypadków miłosnych" alt="Kronika wypadków miłosnych"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_23"></div></div>
+											<div class="content_zap_posters_1b hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20567');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_24').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_24').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">13</font> września</div><img class="poster_photo" src="foto,20567,663a9416c5ce59bd91a75de6dab23710,jpg.html" title="Krajobraz po bitwie" alt="Krajobraz po bitwie"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_24"></div></div>
+											
+											
+											<div class="content_zap_posters_1c hand" ><div class="content_zap_posters_1_2 f_6"><font class="f_7">12</font>.07</div><img class="poster_photo" src="foto,20608,3a3a96d5e8e53c907bcf450bbc09083b,jpg.html" title="Fellini. Ciao a tutti: Słodkie życie" alt="Fellini. Ciao a tutti: Słodkie życie"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_19"></div></div>
+											<div class="content_zap_posters_1d hand" ><div class="content_zap_posters_1_2 f_6"><font class="f_7">14</font>.07</div><img class="poster_photo" src="foto,20605,a25232f0ba8fd30f1631305a78f21217,jpg.html" title="Fellini. Ciao a tutti: Giulietta i duchy" alt="Fellini. Ciao a tutti: Giulietta i duchy"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_20"></div></div>
+											<div class="content_zap_posters_1d hand" ><div class="content_zap_posters_1_2 f_6"><font class="f_7">15</font>.07</div><img class="poster_photo" src="foto,20606,efbb168633906780258ea5675011584a,jpg.html" title="Fellini. Ciao a tutti: Głos z księżyca" alt="Fellini. Ciao a tutti: Głos z księżyca"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_21"></div></div>
+											<div class="content_zap_posters_1c hand" ><div class="content_zap_posters_1_2 f_6"><font class="f_7">16</font>.07</div><img class="poster_photo" src="foto,20589,f57136d72586aa693fa5f8866d4ff6e2,jpg.html" title="2046 -  Wong Kar Wai 4K" alt="2046 -  Wong Kar Wai 4K"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_22"></div></div>
+											<div class="content_zap_posters_1d hand" ><div class="content_zap_posters_1_2 f_6"><font class="f_7">12</font>.08</div><img class="poster_photo" src="foto,20571,0f34408f93b2fa2f6e065202dc657374,jpg.html" title="Kronika wypadków miłosnych" alt="Kronika wypadków miłosnych"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_23"></div></div>
+											<div class="content_zap_posters_1d hand" ><div class="content_zap_posters_1_2 f_6"><font class="f_7">13</font>.09</div><img class="poster_photo" src="foto,20567,663a9416c5ce59bd91a75de6dab23710,jpg.html" title="Krajobraz po bitwie" alt="Krajobraz po bitwie"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_24"></div></div>						
+
+									</div>	<div class="content_zap_posters_0" id="zap_poster_set_5">
+									
+											<div class="content_zap_posters_1a" hand" onclick=" $('#navi_zapowiedzi').trigger('click'); $('#content_zap_movie_desc').animate({'height':'440'},500);  zap_movie('1780900508', '20584');
+														$('.content_rep_posters_zap_1_1a').addClass('content_rep_posters_zap_1_1').removeClass('content_rep_posters_zap_1_1a');
+														$('#zap_poster_cell_a_25').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1');
+													  	$('#zap_poster_cell_a_25').addClass('content_rep_posters_zap_1_1a').removeClass('content_rep_posters_zap_1_1'); "><div class="content_zap_posters_1_2 f_6"><font class="f_7">19</font> czerwca</div><img class="poster_photo" src="foto,20584,09b56fa27dcb3ac35b49c29e421ec221,jpg.html" title="Nowa Warszawa + rozmowa z Bartoszem Konopką" alt="Nowa Warszawa + rozmowa z Bartoszem Konopką"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_a_25"></div></div>
+											<div class="content_zap_posters_1b" " ><div class="content_zap_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_zap_1_1"></div></div>
+											<div class="content_zap_posters_1b" " ><div class="content_zap_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_zap_1_1"></div></div>
+											<div class="content_zap_posters_1b" " ><div class="content_zap_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_zap_1_1"></div></div>
+											<div class="content_zap_posters_1b" " ><div class="content_zap_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_zap_1_1"></div></div>
+											<div class="content_zap_posters_1b" " ><div class="content_zap_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_zap_1_1"></div></div>
+											
+											
+											<div class="content_zap_posters_1c" hand" ><div class="content_zap_posters_1_2 f_6"><font class="f_7">19</font>.06</div><img class="poster_photo" src="foto,20584,09b56fa27dcb3ac35b49c29e421ec221,jpg.html" title="Nowa Warszawa + rozmowa z Bartoszem Konopką" alt="Nowa Warszawa + rozmowa z Bartoszem Konopką"/><div class="content_rep_posters_zap_1_1" id="zap_poster_cell_b_25"></div></div>
+											<div class="content_zap_posters_1d" " ><div class="content_zap_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_zap_1_1"></div></div>
+											<div class="content_zap_posters_1d" " ><div class="content_zap_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_zap_1_1"></div></div>
+											<div class="content_zap_posters_1c" " ><div class="content_zap_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_zap_1_1"></div></div>
+											<div class="content_zap_posters_1d" " ><div class="content_zap_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_zap_1_1"></div></div>
+											<div class="content_zap_posters_1d" " ><div class="content_zap_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_zap_1_1"></div></div>						
+
+									</div><div class="content_zap_posters_b_2" id="zap_poster_button_right"></div>			</div>
+			<div class="content_zap_movie_desc" id="content_zap_movie_desc"></div>
+		
+		
+			
+			<div class="menu_id" id="wydarzenia"></div>			
+			
+			<div class="content_zap">
+				<div class="content_zap_1 f_1 f_shaddow">Wydarzenia</div>
+				<div class="content_zap_2" onclick="document.location.href='wydarzenia'"></div>
+			</div>		
+			<div class="content_news" id="news_news">
+							
+	<div class="content_news_1 hand"  onclick="document.location.href='wydarzenia,4,20610,1,Lipcowy-przeglad-Fellini-Ciao-a-tutti.html'">
+											<div class="content_news_1_1 f_8" id="news_1">Lipcowy przegląd &quot;Fellini. Ciao a tutti&quot;</div>
+											<div class="content_news_1_2"></div>
+											<div class="content_news_1_3"><img class="news_photo" src="foto,20610,e90ba41df91dec146a6e3037ae3bb9ab,jpg.html" alt=""/></div>	
+											<div class="content_news_1_4 f_9">Zapraszamy na lipcowy przegląd twórczości Federico Felliniego w Kinie Kultura. Bilety w cenie 18zł już w sprzedaży!</div>
+										</div>		<div class="content_news_1 hand"  onclick="document.location.href='wydarzenia,4,20437,1,Wajda-re-wizje-w-Kinie-Kultura-15-czerwca-Czlowiek-z-marmuru.html'">
+											<div class="content_news_1_1 f_8" id="news_2">Wajda: re-wizje w Kinie Kultura. 15 czerwca „Człowiek z marmuru”</div>
+											<div class="content_news_1_2"></div>
+											<div class="content_news_1_3"><img class="news_photo" src="foto,20437,7af1889dfd4cc4b1827572c6503c9efd,jpg.html" alt=""/></div>	
+											<div class="content_news_1_4 f_9">W setną rocznicę urodzin Andrzeja Wajdy zapraszamy na wyjątkowy przegląd „Wajda: re-wizje” – cykl dziesięciu filmów jednego z najwybitniejszych twórców światowego kina. Wydarzenie zostanie zainaugurowane projekcją „Popiołu i diamentu” 24 marca 2026 o godz. 19:00.</div>
+										</div>		<div class="content_news_1 hand"  onclick="document.location.href='wydarzenia,4,20595,1,Klasyka-w-Kulturze-La-Strada.html'">
+											<div class="content_news_1_1 f_8" id="news_3">Klasyka w Kulturze: La Strada</div>
+											<div class="content_news_1_2"></div>
+											<div class="content_news_1_3"><img class="news_photo" src="foto,20595,058d25f982d7e324aae3fb8f3b225631,jpg.html" alt=""/></div>	
+											<div class="content_news_1_4 f_9">3 lipca o godz. 20:30 odbędzie się specjalny seans &quot;La Strada&quot; w reżyserii Federico Felliniego. Bilety już w sprzedaży!</div>
+										</div>		<div class="content_news_1 hand" id="hide_news_1" onclick="document.location.href='wydarzenia,4,20593,1,Wong-Kar-Wai-4-K-Wszyscy-samotnicy-sa-do-siebie-podobni.html'">
+											<div class="content_news_1_1 f_8" id="news_4">Wong Kar Wai 4 K. Wszyscy samotnicy są do siebie podobni</div>
+											<div class="content_news_1_2"></div>
+											<div class="content_news_1_3"><img class="news_photo" src="foto,20593,454951fa3ca260133c22de190e9593e0,jpg.html" alt=""/></div>	
+											<div class="content_news_1_4 f_9">W lipcu w Kinie Kultura odbędzie się seria seansów twórczości Wong Kar Wai w odnowionej jakości! Bilety już w sprzedaży.</div>
+										</div>		<div class="content_news_1 hand" id="hide_news_2" onclick="document.location.href='wydarzenia,4,20583,1,Nowa-Warszawa-pokaz-specjalny-w-holdzie-S-Celinskiej-i-spotkanie-z-rezyserem.html'">
+											<div class="content_news_1_1 f_8" id="news_5">&quot;Nowa Warszawa&quot; - pokaz specjalny w hołdzie S. Celińskiej i spotkanie z reżyserem</div>
+											<div class="content_news_1_2"></div>
+											<div class="content_news_1_3"><img class="news_photo" src="foto,20583,160636417bebeeaed9c682b89f0345c9,jpg.html" alt=""/></div>	
+											<div class="content_news_1_4 f_9">19 czerwca o 18:00 zapraszamy na pokaz w hołdzie zmarłej 12 maja aktorce i wokalistce Stanisławie Celińskiej. Po seansie odbędzie się rozmowa Piotra Czerkawskiego z reżyserem filmu Bartoszem Konopką.
+</div>
+										</div>		<div class="content_news_1 hand" id="hide_news_3" onclick="document.location.href='wydarzenia,4,20582,1,KONWICKI-pisarz-scenarzysta-rezyser-przeglad-w-Kinie-Kultura.html'">
+											<div class="content_news_1_1 f_8" id="news_6">KONWICKI: pisarz - scenarzysta - reżyser - przegląd w Kinie Kultura</div>
+											<div class="content_news_1_2"></div>
+											<div class="content_news_1_3"><img class="news_photo" src="foto,20582,5ecbe962b792d9ee251e3c2599adb3ba,jpg.html" alt=""/></div>	
+											<div class="content_news_1_4 f_9">Zapraszamy na wyjątkowy przegląd filmów Tadeusza Konwickiego – spotkanie z artystą, który potrafił połączyć literacką wrażliwość z językiem kina w sposób do dziś pozostający zjawiskiem osobnym. Pokazy 28 oraz 29 czerwca.</div>
+										</div>					
+				
+			</div>	
+					
+			<div class="content_zap">
+				<div class="content_zap_1 f_1 f_shaddow" style="width: 450px">Kultura Kobietą</div>
+				<div class="content_zap_2_empty"></div>
+			</div>
+			<div class="content_news" id="news_about">
+							
+	<div class="content_news_1 hand" onclick="document.location.href='wydarzenia,10,20576,1,Posluchaj-co-chce-ci-powiedziec-Kultura-Kobieta-Psychoterapeutyczne-spotkania-filmowe.html'">
+											<div class="content_news_1_1a f_8">&quot;Posłuchaj, co chcę ci powiedzieć&quot; - Kultura Kobietą | Psychoterapeutyczne spotkania filmowe</div>
+											<div class="content_news_1_2"></div>
+											<div class="content_news_1_3"><img class="news_photo" src="foto,20576,f08f032a6cfd76d6c8bf0e43d7521e5b,jpg.html" alt=""/></div>	
+											<div class="content_news_1_4 f_9">&quot;Posłuchaj, co chcę ci powiedzieć&quot; (2024) - reżyserka i scenarzystka:  Małgorzata Imielska - 08.06 2026 r., godz. 19:00, sala Rejs. Reżyserka i scenarzystka - Małgorzata Imielska będzie rozmówczynią Justyny Rutkowskiej.
+</div>
+										</div>		<div class="content_news_1 hand" onclick="document.location.href='wydarzenia,10,20534,1,Powrot-Kultura-Kobieta-Psychoterapeutyczne-spotkania-filmowe.html'">
+											<div class="content_news_1_1a f_8">&quot;Powrót&quot; - Kultura Kobietą | Psychoterapeutyczne spotkania filmowe</div>
+											<div class="content_news_1_2"></div>
+											<div class="content_news_1_3"><img class="news_photo" src="foto,20534,8f7f9a79b8c7e763fca5ac5f4e1c1fbf,jpg.html" alt=""/></div>	
+											<div class="content_news_1_4 f_9">„Powrót” (2018) – reżyseria: Magdalena Łazarkiewicz, scenariusz: Katarzyna Terechowicz, Magdalena Łazarkiewicz - 25.05.2026r. 19:00, sala Rejs. Magdalena Łazarkiewicz – reżyserka oraz Agnieszka Warchulska – aktorka będą rozmówczyniami Justyny Rutkowskiej.</div>
+										</div>		<div class="content_news_1 hand" onclick="document.location.href='wydarzenia,10,20525,1,Vika-Kultura-Kobieta-Psychoterapeutyczne-spotkania-filmowe.html'">
+											<div class="content_news_1_1a f_8">Vika! - Kultura Kobietą | Psychoterapeutyczne spotkania filmowe</div>
+											<div class="content_news_1_2"></div>
+											<div class="content_news_1_3"><img class="news_photo" src="foto,20525,53221b3603e9a51a3e40fc2caf676c64,jpg.html" alt=""/></div>	
+											<div class="content_news_1_4 f_9">„Vika!” (2023) – scenariusz i reżyseria: Agnieszka Zwiefka
+KULTURA KOBIETĄ – 11.05 2026 r., godz. 19:00, sala Rejs
+DJ Vika czyli Wirginia Szmyt będzie rozmówczynią Justyny Rutkowskiej</div>
+										</div>		
+					
+			<div class="content_zap">
+				<div class="content_zap_1 f_1 f_shaddow" style="width: 450px">Wieczory z Kinem PL</div>
+				<div class="content_zap_2_empty"></div>
+			</div>
+			<div class="content_news" id="news_about">
+							
+	<div class="content_news_1 hand" onclick="document.location.href='wydarzenia,11,20570,1,Wieczory-z-Kinem-Polskim-Nic-smiesznego.html'">
+											<div class="content_news_1_1a f_8">Wieczory z Kinem Polskim: Nic śmiesznego</div>
+											<div class="content_news_1_2"></div>
+											<div class="content_news_1_3"><img class="news_photo" src="foto,20570,c26ecf3c22a1b85c381bb59d3fc2c42e,jpg.html" alt=""/></div>	
+											<div class="content_news_1_4 f_9">Już 3 czerwca, 19:00 obejrzymy wpsólnie film Nic śmiesznego&quot; w reżyserii Marka Koterskiego.
+Podczas rozmowy będziemy gościć specjalnego gościa!
+</div>
+										</div>		<div class="content_news_1 hand" onclick="document.location.href='wydarzenia,11,20539,1,Wieczory-z-Kinem-Polskim-Biale-malzenstwo.html'">
+											<div class="content_news_1_1a f_8">Wieczory z Kinem Polskim: Białe małżeństwo </div>
+											<div class="content_news_1_2"></div>
+											<div class="content_news_1_3"><img class="news_photo" src="foto,20539,e5d2dcbb479876bef58f1debff89864a,jpg.html" alt=""/></div>	
+											<div class="content_news_1_4 f_9">Zapraszamy na pokaz filmu &quot;Białe małżeństwo&quot; dnia 20 maja o 19:00 . Po projekcji będziemy gościć współscenarzystkę i reżyserkę Magdalenę Łazarkiewicz oraz dekoratorkę wnętrz Magdalenę Dipont. Rozmowę poprowadzi kurator cyklu – filmoznawca Andrzej Bukowiecki.
+</div>
+										</div>		<div class="content_news_1 hand" onclick="document.location.href='wydarzenia,11,20516,1,Wieczory-z-Kinem-Polskim-Slonce-wschodzi-raz-na-dzien.html'">
+											<div class="content_news_1_1a f_8">Wieczory z Kinem Polskim: Słońce wschodzi raz na dzień</div>
+											<div class="content_news_1_2"></div>
+											<div class="content_news_1_3"><img class="news_photo" src="foto,20516,9b8ce29542be56081928d60222c5cf54,jpg.html" alt=""/></div>	
+											<div class="content_news_1_4 f_9">6 maja o 19:00 zapraszamy na pokaz filmu &quot;Słońce wschodzi raz na dzień&quot;. Po projekcji będziemy gościć Grzegorza Kędzierskiego - autora zdjęć filmowych. Rozmowę poprowadzi kurator cyklu – filmoznawca Andrzej Bukowiecki.</div>
+										</div>		
+
+					
+			<div class="content_zap">
+				<div class="content_zap_1 f_1 f_shaddow" style="width: 450px">Dla szkół/grup</div>
+				<div class="content_zap_2_empty"></div>
+			</div>
+			<div class="content_news" id="news_about">
+							
+	<div class="content_news_1 hand" onclick="document.location.href='wydarzenia,12,20337,1,Seans-z-klasa-w-Kinie-Kultura.html'">
+											<div class="content_news_1_1a f_8">Seans z klasą w Kinie Kultura</div>
+											<div class="content_news_1_2"></div>
+											<div class="content_news_1_3"><img class="news_photo" src="foto,20337,9f386fba2d3a9ce4726c6b8bf5016d6b,jpg.html" alt=""/></div>	
+											<div class="content_news_1_4 f_9">Seansom towarzyszą prelekcje/ wideoprelekcje oraz przestrzeń
+na omówienie filmu / dyskusję z młodymi widzami po zakończonej projekcji.
+Cena biletu: 16zł, opiekunów zapraszamy bezpłatnie.
+P.S. Jesteśmy kinem bez reklam!
+</div>
+										</div>		<div class="content_news_1 hand" onclick="document.location.href='wydarzenia,12,20336,1,Filmy-o-sztuce-i-artystach.html'">
+											<div class="content_news_1_1a f_8">Filmy o sztuce i artystach</div>
+											<div class="content_news_1_2"></div>
+											<div class="content_news_1_3"><img class="news_photo" src="foto,20336,ab9ebc759346c8da93dfdbfb9f3931fc,jpg.html" alt=""/></div>	
+											<div class="content_news_1_4 f_9">Katalog filmów wybranych z myślą o studentach kierunków artystycznych,
+a także tych, którzy szukają inspiracji, chcą poszerzyć wiedzę o historii sztuki
+i designu oraz lepiej zrozumieć proces twórczy wielkich artystów</div>
+										</div>		
+			
+			<div class="menu_id" id="o_nas"></div>	
+					
+			<div class="content_zap">
+				<div class="content_zap_1 f_1 f_shaddow">O nas</div>
+				<div class="content_zap_2_empty"></div>
+			</div>
+			<div class="content_news" id="news_about">
+							
+<p class="content_contact_1" id="kontakt">
+  </p><p class="content_contact_1_1 f_8">Kino Kultura</p>
+  <div class="content_contact_1_2"></div>
+  
+  <div class="content_contact_1_3 f_13">Krakowskie Przedmieście 21/23 
+    <br>00-071 Warszawa
+  </div>
+  
+  <div class="content_contact_1_4 f_6"><strong>Organizator</strong>
+    <br>Stowarzyszenie Filmowców Polskich
+    <br>ul. Pańska 85
+    <br>00-834 Warszawa
+    <br>NIP 525-12-88-627
+  </div>
+
+  <div class="content_contact_1_4 f_6"><strong>Kurator Kina Kultura</strong>
+    <br>Piotr Czerkawski
+    <br>e-mail: <a href="mailto:p.czerkawski@sfp.org.pl"><u>p.czerkawski@sfp.org.pl</u></a>
+    <br>
+    <br><strong>Rezerwacja i zwrot biletów</strong>
+    <br>tel.: &#043        48 661 166 133 
+    <br>e-mail: <a href="mailto:rezerwacja@kinokultura.pl"><u>rezerwacja@kinokultura.pl</u></a> 
+     <br>
+     <br><strong>Współpraca</strong>
+     <br>Oferty współpracy prosimy kierować na adres:
+     <br>e-mail: <a href="mailto:kinokultura@sfp.org.pl"><u>kinokultura@sfp.org.pl</u></a>
+    <br>
+    <br><strong>Kasa kina</strong>
+    <br>Kasa czynna jest od 30 minut przed rozpoczęciem pierwszego seansu do 15 minut po rozpoczęciu ostatniego seansu danego dnia.
+    <br>
+    <br>Telefon kinowy dostępny jest w godzinach pracy kasy.</div><div class="content_contact_1_4 f_6"><img   width="720" border="0" src="https://www.kinokultura.pl/foto,17432,732dd3b3fd7a6dcf80174e5019e9b685,jpg.html"></div>
+    
+  <div class="content_contact_1_4 f_6"><span class="f_9">Pobierz:</span>
+    <br>
+    <strong><a href="https://www.kinokultura.pl/_vault/_main/Regulamin_Programu_Lojalnosciowego_Kina_Kultura.pdf" target="_blank">Regulamin programu lojalnościowego Wajda: re-wizje</a></strong><br><strong><a target="_rodo" href="https://www.kinokultura.pl/_vault/_main/Seans_z_klasa.pdf"><span class="f_600">POKAZY DLA SZKÓŁ - SEANS Z KLASĄ!</span></a></strong>
+	<br><strong><a target="_reg" href="https://www.kinokultura.pl/_vault/_main/regulamin_6.pdf"><span class="f_600">Regulamin rezerwacji miejsc i zakupu biletów do kina Kultura</span></a></strong>
+    <br><strong><a target="_reg" href="https://www.kinokultura.pl/_vault/_main/regulamin_10.pdf"><span class="f_600">Regulamin imprez publicznych organizowanych w kinie Kultura</span></a></strong>
+    <br><strong><a target="_rodo" href="https://www.kinokultura.pl/_vault/_main/SFP_RODO_KINO_KULTURA.pdf"><span class="f_600">Informacja o przetwarzaniu danych osobowych (RODO)</span></a></strong>
+	<br><br>
+  </div><div class="content_contact_1_4 f_6"><br></div>
+
+ 
+  
+	
+			
+				</div>
+				<div class="content_contact_sub">
+					<div class="content_contact_1"><img src="_vault/_main/logo_2025.png" /></div>
+					<div class="content_contact_1" id="dotpay_big"><img src="_vault/_main/dotpay.png" alt="dotpay logo"/></div>
+					<div class="content_contact_1" id="dotpay_small"><img src="_vault/_main/dotpay_small.png"  alt="dotpay logo"/></div>					
+				</div>
+				
+			</div>
+
+
+			<div class="google_map"><iframe src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d2443.0008066590253!2d21.014275999999995!3d52.243368999999994!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x471ecc6727c9fd1f%3A0x4dc87fb2ff8f73c0!2sKino+Kultura!5e0!3m2!1spl!2spl!4v1414510003536" width="100%" height="450" frameborder="0" style="border:0"></iframe></div>
+					
+<div class="footer f_5">Copyright © by <a href="http://www.sfp.org.pl" target="sfp">Stowarzyszenie Filmowców Polskich 2002 - 2026</a></div>				
+				
+	</div>
+
+		
+
+	<script type="text/javascript" src="_core/_js/cookie_alert.js"></script>		
+
+
+
+<script type="text/javascript" charset="UTF-8">	
+
+rep_posters('1780900508',  '2026-06-08');	
+
+	
+		//rep_posters('1780900508',  '2026-06-08');		
+		rep_movie('1780900508',  '2026-06-08',0,0,0,0,0,0,0);			
+	
+</script>
+
+</body>
+  
+    
+</html>

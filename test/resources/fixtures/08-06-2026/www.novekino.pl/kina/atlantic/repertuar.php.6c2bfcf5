@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="pl">
+
+
+    <head>
+        <meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Repertuar na niedziela (2026-06-28) - NoveKino - Kino Atlantic Warszawa - Kino CYFROWE 3D</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="https://www.novekino.pl/kina/atlantic/">
+<link href="https://fonts.googleapis.com/css?family=Rubik:300,400,500,700&amp;subset=latin-ext" rel="stylesheet">
+<meta name="theme-color" content="#000">
+<meta name="description" content="Kino Atlantic - kino cyfrowe, ul. Chmielna 33, 00-021 Warszawa tel. 22 828 93 03">
+<meta name="keywords" content="kino, kino Atlantic, kinoatlantic, kino Atlantic repertuar, repertuar kina Atlantic, kino Warszawa, kina Warszawa">
+<meta name="robots" content="index, follow">
+<meta name="author" content="VEGA Internet Studio, https://www.vis.pl, e-mail: biuro@vis.pl, tel: 022 877 33 09">
+<style>
+    @media (min-width: 576px) {.hidden-sm-up {display: none !important}}
+    @media (max-width: 767px) {.hidden-sm-down {display: none !important}}
+    @media (min-width: 768px) {.hidden-md-up {display: none !important}}
+    @media (max-width: 991px) {.hidden-md-down {display: none !important}}
+    @media (min-width: 992px) {.hidden-lg-up {display: none !important}}
+    @media (max-width: 1199px) {.hidden-lg-down {display: none !important}}
+    @media (min-width: 1200px) {.hidden-xl-up {display: none !important}}
+    .hidden-xl-down {display: none !important}
+</style>
+<link rel="stylesheet" href="css/lib/css-lib.min_17.css">
+<link rel="stylesheet" href="css/style.min_17.css">
+<link rel="stylesheet" href="css/vis_17.css">
+<link rel="stylesheet" href="local_17.css">
+<!-- Facebook Pixel Code -->
+<script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '513278343299683');
+    fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+               src="https://www.facebook.com/tr?id=513278343299683&ev=PageView&noscript=1"
+    /></noscript>
+<!-- End Facebook Pixel Code -->    </head>
+
+    <body class="">
+        <a href="javascript:" id="return-to-top"><img src="/img/chevron-up.png" alt="" /></a>
+        <div id="fb-root"></div>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/pl_PL/sdk.js#xfbml=1&version=v9.0" nonce="J6QJ4OlG"></script>
+<header class="header">
+    <div class="cinema hidden-lg-up">
+        <select class="cinema-select" title="Kino">
+            <option value="/kina/atlantic/" selected="selected">Atlantic (Warszawa)</option>
+            <option value="/kina/przedwiosnie/">Przedwiośnie (Płock)</option>
+            <option value="/kina/siedlce/">Siedlce</option>
+            <option value="/kina/sybilla/">Sybilla (Puławy)</option>
+            <option value="/kina/wisla/">Wisła (Warszawa)</option>
+        </select>
+    </div>
+    <div class="container">
+        <div class="header-top">
+            <a href="/kina/atlantic/" class="header-logo" style="position: relative;">
+                <img src="images_local/atlantic.png" alt="">
+                            </a>
+            <div class="header-nav">
+                <div class="cinema_phone">
+                    <div class="phone">
+                        <span class="phone-label">Rezerwacja</span>
+                        <a class="phone-number" href="tel:228289303">22&nbsp;828&nbsp;93&nbsp;03</a>
+                    </div>
+                    <div class="cinema hidden-md-down">
+                        <select class="cinema-select" title="Kino">
+                            <option value="/kina/atlantic/" selected="selected">Atlantic (Warszawa)</option>
+                            <option value="/kina/przedwiosnie/">Przedwiośnie (Płock)</option>
+                            <option value="/kina/siedlce/">Siedlce</option>
+                            <option value="/kina/sybilla/">Sybilla (Puławy)</option>
+                            <option value="/kina/wisla/">Wisła (Warszawa)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <nav class="menu hidden-lg-down">
+    <ul class="menu-list">
+        <li class="menu-element"><a href="repertuar.php" class="menu-link">Repertuar</a></li>
+        <li class="menu-element"><a href="zapowiedzi.php" class="menu-link">Zapowiedzi</a></li>
+        <li class="menu-element"><a href="cennik.php" class="menu-link">Cennik</a></li>
+        <li class="menu-element"><a href="szkola.php" class="menu-link">Szkoła</a></li>   
+        <li class="menu-element"><a href="seniorzy.php" class="menu-link">Seniorzy</a></li>           
+        <li class="menu-element"><a href="wynajem-sal.php" class="menu-link">Wynajem sal</a></li>        
+         <li class="menu-element"><a href="o-nas.php" class="menu-link">O nas</a></li>
+        <li class="menu-element"><a href="kontakt.php" class="menu-link">Kontakt</a></li>
+        <li class="menu-element"><a href="partnerzy.php" class="menu-link">Partnerzy</a></li>
+    </ul>
+</nav>
+            </div>
+            <div class="header-menu_toggle hidden-xl-up">
+                <button class="header-menu_toggle-btn">
+                    <svg class="header-menu_toggle-ico header-menu_toggle-ico--close">
+                    <use xlink:href="#i-close"></use>
+                    </svg>
+                    <svg class="header-menu_toggle-ico header-menu_toggle-ico--open">
+                    <use xlink:href="#i-hamburger"></use>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="menu_mobile-ou hidden-xl-up">
+
+            <nav class="menu_mobile">
+    <ul class="menu_mobile-list">
+        <li class="menu_mobile-element"><a href="repertuar.php" class="menu_mobile-link">Repertuar</a></li>
+        <li class="menu_mobile-element"><a href="zapowiedzi.php" class="menu_mobile-link">Zapowiedzi</a></li>
+        <li class="menu_mobile-element"><a href="cennik.php" class="menu_mobile-link">Cennik</a></li>
+        <li class="menu_mobile-element"><a href="szkola.php" class="menu_mobile-link">Szkoła</a></li>   
+        <li class="menu_mobile-element"><a href="seniorzy.php" class="menu_mobile-link">Seniorzy</a></li>           
+        <li class="menu_mobile-element"><a href="wynajem-sal.php" class="menu_mobile-link">Wynajem sal</a></li>         
+         <li class="menu_mobile-element"><a href="o-nas.php" class="menu_mobile-link">O nas</a></li>
+        <li class="menu_mobile-element"><a href="kontakt.php" class="menu_mobile-link">Kontakt</a></li>
+        <li class="menu_mobile-element"><a href="partnerzy.php" class="menu_mobile-link">Partnerzy</a></li>
+    </ul>
+</nav>
+        </div>
+
+        <div class="ad_banner">
+
+                <div class="ad_banner">
+                <div id="animation_container" style="width:750px;">
+
+                                <a href="https://www.novekino.pl/kina/atlantic/wiadomosci.php?id=328" target="_self"><img
+                                src="banery/gorne/KlasykaAtlanticBanerwww.jpg" alt="" width="750"/></a>
+                        </div>
+    </div>
+
+        </div>
+    </div>
+</header>
+
+        <main class="page_content">
+            <div class="page_content-main">
+                <div class="container">
+
+                    
+<section class="repertoire">
+    <header class="repertoire-header">
+        <h2 class="repertoire-title">Repertuar</h2>
+        <div class="repertoire-date_cinema">
+                        <span class="repertoire-date">niedziela 28.06</span>
+            <span class="repertoire-cinema">Atlantic</span>
+        </div>
+    </header>
+    <div class="repertoire-days">
+        <div class="repertoire-days-btn repertoire-days-btn--disable repertoire-days-btn--prev hidden-sm-down">
+            <svg class="repertoire-days-btn-ico">
+            <use xlink:href="#i-arrow"></use>
+            </svg>
+        </div>
+        <div class="repertoire-days-slider-ou">
+            <div class="repertoire-days-slider owl-carousel">
+
+                <a href="repertuar.php" class="repertoire-day " data-hash="1">
+                    <div class="repertoire-days-name">poniedz.</div>
+                    <div class="repertoire-days-number">08</div>
+                    <div class="repertoire-days-month">czerwca</div>
+                </a>
+
+                <a href="repertuar.php?data=2026-06-09" class="repertoire-day " data-hash="2">
+                    <div class="repertoire-days-name">wtorek</div>
+                    <div class="repertoire-days-number">09</div>
+                    <div class="repertoire-days-month">czerwca</div>
+                </a>
+
+                                                                        <a href="repertuar.php?data=2026-06-10" class="repertoire-day " data-hash="3">
+                        <div class="repertoire-days-name">środa</div>
+                        <div class="repertoire-days-number">10</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-11" class="repertoire-day " data-hash="4">
+                        <div class="repertoire-days-name">czwartek</div>
+                        <div class="repertoire-days-number">11</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-12" class="repertoire-day " data-hash="5">
+                        <div class="repertoire-days-name">piątek</div>
+                        <div class="repertoire-days-number">12</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-13" class="repertoire-day " data-hash="6">
+                        <div class="repertoire-days-name">sobota</div>
+                        <div class="repertoire-days-number">13</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-14" class="repertoire-day " data-hash="7">
+                        <div class="repertoire-days-name">niedziela</div>
+                        <div class="repertoire-days-number">14</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-15" class="repertoire-day " data-hash="8">
+                        <div class="repertoire-days-name">poniedz.</div>
+                        <div class="repertoire-days-number">15</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-16" class="repertoire-day " data-hash="9">
+                        <div class="repertoire-days-name">wtorek</div>
+                        <div class="repertoire-days-number">16</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-17" class="repertoire-day " data-hash="10">
+                        <div class="repertoire-days-name">środa</div>
+                        <div class="repertoire-days-number">17</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-18" class="repertoire-day " data-hash="11">
+                        <div class="repertoire-days-name">czwartek</div>
+                        <div class="repertoire-days-number">18</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-19" class="repertoire-day " data-hash="12">
+                        <div class="repertoire-days-name">piątek</div>
+                        <div class="repertoire-days-number">19</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-20" class="repertoire-day " data-hash="13">
+                        <div class="repertoire-days-name">sobota</div>
+                        <div class="repertoire-days-number">20</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-21" class="repertoire-day " data-hash="14">
+                        <div class="repertoire-days-name">niedziela</div>
+                        <div class="repertoire-days-number">21</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-22" class="repertoire-day " data-hash="15">
+                        <div class="repertoire-days-name">poniedz.</div>
+                        <div class="repertoire-days-number">22</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-23" class="repertoire-day " data-hash="16">
+                        <div class="repertoire-days-name">wtorek</div>
+                        <div class="repertoire-days-number">23</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-24" class="repertoire-day " data-hash="17">
+                        <div class="repertoire-days-name">środa</div>
+                        <div class="repertoire-days-number">24</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-25" class="repertoire-day " data-hash="18">
+                        <div class="repertoire-days-name">czwartek</div>
+                        <div class="repertoire-days-number">25</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                                                        <a href="repertuar.php?data=2026-06-28" class="repertoire-day repertoire-day--active" data-hash="19">
+                        <div class="repertoire-days-name">niedziela</div>
+                        <div class="repertoire-days-number">28</div>
+                        <div class="repertoire-days-month">czerwca</div>
+                    </a>
+                
+            </div>
+        </div>
+        <div class="repertoire-days-btn repertoire-days-btn--next hidden-sm-down">
+            <svg class="repertoire-days-btn-ico">
+            <use xlink:href="#i-arrow"></use>
+            </svg>
+        </div>
+        <div class="repertoire-days-mobile_nav hidden-md-up">
+            <button class="repertoire-days-mobile_btn repertoire-days-mobile_btn--prev btn--full_width btn">
+                Poprzednie
+                <svg class="repertoire-days-mobile_btn-ico">
+                <use xlink:href="#i-arrow-bold"></use>
+                </svg>
+            </button>
+            <button class="repertoire-days-mobile_btn repertoire-days-mobile_btn--next btn--full_width btn">
+                <svg class="repertoire-days-mobile_btn-ico">
+                <use xlink:href="#i-arrow-bold"></use>
+                </svg>
+                Następne
+            </button>
+        </div>
+    </div>
+    <div style="font-size: 12px; color: #fff; text-align: center; padding: 8px;">By zakupić / zarezerwować bilet kliknij na godzinę seansu / wydarzenia.</strong><br>
+Uprzejmie prosimy o przemyślany zakup biletów internetowych.<br>
+Zwroty biletów, nie wynikające z winy kina, nie będą uwzględniane</div>
+    <table class="repertoire-list">
+        <tr class="repertoire-list-header">
+            <th class="repertoire-list-header-th">
+                <div class="repertoire-list-header-th-in"></div>
+            </th>
+            <th class="repertoire-list-header-th">
+                <div class="repertoire-list-header-th-in">Godziny</div>
+            </th>
+        </tr>
+
+                        <tr class="repertoire-movie-tr">
+                    <td class="repertoire-movie-info-td">
+                        <div class="repertoire-movie-info-wr">
+                            <div class="repertoire-movie-info">
+                                <div class="repertoire-movie-poster">
+                                    <a href="film.php?id=19648"> <img src="/multimedia/90_urodziny_pavarottiego/plakat.jpg" alt=""></a>
+                                </div>
+                                <div class="repertoire-movie-details-wr">
+
+                                    <div class="repertoire-movie-details">
+                                        <div class="repertoire-movie-title_description">
+                                            <div class="repertoire-movie-title">
+                                                <a href="film.php?id=19648">90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025</a>
+                                            </div>
+                                            <div class="repertoire-movie-description">
+                                                Produkcja: Włochy                                                <br>
+                                                <br>
+                                                                                            </div>
+                                        </div>
+                                        <div class="repertoire-movie-tags">
+                                            <div class="repertoire-movie-tag"></div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="repertoire-movie-times-td">
+                        <div class="repertoire-movie-times">
+                            <a href="" class="repertoire-movie-time" data-title="90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025" data-day="2026-06-28" data-hour="15:00" data-buy-text="kup" data-buy-link="https://atlantic.novekino.pl/msi/default.aspx?event_id=45173&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php">15:00</a>                        </div>
+                    </td>
+                </tr>
+
+                
+    </table>
+</section>
+
+<section class="movies_slider_panel panel">
+    <div class="panel-header">
+        <span class="panel-ico font_ico--dr">K</span>
+        <h2 class="panel-title">
+            Zapowiedzi
+        </h2>
+    </div>
+    <div class="movies_slider_panel-slider-ou">
+        <div class="movies_slider_panel-slider owl-carousel">
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19692"> <img src="https://multimedia.novekino.pl/dzien_objawienia/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19692">Dzień objawienia - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-06-10                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19621"> <img src="https://multimedia.novekino.pl/drugie_zycie/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19621">Drugie życie - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-06-12                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19751"> <img src="https://multimedia.novekino.pl/savage_house/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19751">Savage House - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-06-12                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19794"> <img src="https://multimedia.novekino.pl/milczenie_owiec/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19794">Klasyka w kinie Atlantic: Milczenie owiec</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-06-13                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19795"> <img src="https://multimedia.novekino.pl/rozmowa/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19795">Klasyka w kinie Atlantic: Rozmowa</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-06-14                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19796"> <img src="https://multimedia.novekino.pl/czas_apokalipsy_vrez/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19796">Klasyka w kinie Atlantic: Czas Apokalipsy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-06-15                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19801"> <img src="https://multimedia.novekino.pl/monterey_pop/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19801">Klasyka w kinie Atlantic: Monterey Pop</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-06-16                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19597"> <img src="https://multimedia.novekino.pl/toy_story_5/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19597">Toy Story 5 - dubbing</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-06-17                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19798"> <img src="https://multimedia.novekino.pl/zawiescie_czerwone_latarnie_v2/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19798">Klasyka w kinie Atlantic: Zawieście czerwone latarnie</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-06-18                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19644"> <img src="https://multimedia.novekino.pl/backrooms_bez_wyjscia/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19644">Backrooms. Bez wyjścia - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-06-19                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19618"> <img src="https://multimedia.novekino.pl/czytajac_lolite_w_teheranie/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19618">Czytając Lolitę w Teheranie - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-06-19                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19736"> <img src="https://multimedia.novekino.pl/ojczyzna/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19736">Ojczyzna - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-06-19                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19757"> <img src="https://multimedia.novekino.pl/minionki_i_straszydla/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19757">Minionki i straszydła - dubbing - przedpremiera</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        26-28.06.                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19728"> <img src="https://multimedia.novekino.pl/takie_jest_zycie/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19728">Takie jest życie - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-06-26                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19743"> <img src="https://multimedia.novekino.pl/minionki_i_straszydla/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19743">Minionki i straszydła - dubbing</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-07-01                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19705"> <img src="https://multimedia.novekino.pl/zaproszenie/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19705">Zaproszenie - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-07-03                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19818"> <img src="https://multimedia.novekino.pl/przeklenstwa_niewinnosci/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19818">Przekleństwa niewinności - pokaz specjalny</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        11,12,13 i 15.07.                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19792"> <img src="https://multimedia.novekino.pl/o_czym_sobie_nie_mowimy/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19792">O czym sobie nie mówimy - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-07-17                    </div>
+                </div>
+                            <div class="movies_slider_panel-movie">
+                    <div class="movies_slider_panel-poster">
+                        <a href="film.php?id=19781"> <img src="https://multimedia.novekino.pl/odyseja/plakat.jpg" alt=""></a>
+                    </div>
+                    <h3 class="movies_slider_panel-title">
+                        <a href="film.php?id=19781">Odyseja - napisy</a>
+                    </h3>
+                    <div class="movies_slider_panel-info">
+                        <strong>Premiera:</strong> 2026-07-17                    </div>
+                </div>
+                    </div>
+        <div class="movies_slider_panel-btns">
+            <button class="movies_slider_panel-btn movies_slider_panel-btn--prev">
+                <svg class="movies_slider_panel-btn-ico movies_slider_panel-btn-ico--prev" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid" x="0px" y="0px" viewBox="-246.5 334.5 124 124">
+                    <circle class="circle" cx="-184.5" cy="396.5" r="60.5"></circle>
+                    <polygon class="triangle" points="-196.1,377.6 -163.5,396.5 -196.1,415.4 "></polygon>
+                </svg>
+            </button>
+            <button class="movies_slider_panel-btn movies_slider_panel-btn--next">
+                <svg class="movies_slider_panel-btn-ico movies_slider_panel-btn-ico--next" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid" x="0px" y="0px" viewBox="-246.5 334.5 124 124">
+                    <circle class="circle" cx="-184.5" cy="396.5" r="60.5"></circle>
+                    <polygon class="triangle" points="-196.1,377.6 -163.5,396.5 -196.1,415.4 "></polygon>
+                </svg>
+            </button>
+
+        </div>
+    </div>
+</section>
+                </div>
+            </div>
+
+        </main>
+
+        <footer class="footer">
+    <div class="footer-nav">
+
+        <div class="container">
+            <div class="row">
+                <div class="col-xl-8 col-lg-7 hidden-md-down">
+                    <nav class="footer_menu">
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <section class="footer_menu-section">
+                                    <h3 class="footer_menu--section-title footer-label footer-label--medium">Kino</h3>
+                                    <ul class="footer_menu-list">
+                                        <li class="footer_menu-element"><a href="/kina/atlantic/" class="footer_menu-link">Strona główna</a></li>
+                                        <li class="footer_menu-element"><a href="cennik.php" class="footer_menu-link">Cennik</a></li>
+                                        <li class="footer_menu-element"><a href="kontakt.php" class="footer_menu-link">Kontakt</a></li>
+                                        <li class="footer_menu-element"><a href="doc/regulaminy.pdf" target="_blank" class="footer_menu-link">Regulaminy</a></li>
+                                        <li class="footer_menu-element"><a href="doc/Reulamin-Karty-Widza.pdf" target="_blank" class="footer_menu-link">Regulamin Karty Widza</a></li>
+                                        <li class="footer_menu-element"><a href="pliki-cookie.php" class="footer_menu-link">Informacja o wykorzystaniu Cookies</a></li>
+                                        <li class="footer_menu-element"><a href="doc/Zasady-przetwarzania-danych-osobowych-newsletter.pdf" target="_blank" class="footer_menu-link">Zasady przetwarzania danych osobowych w związku z realizacją usługi Newsleter</a></li>
+                                    </ul>
+                                </section>
+                            </div>
+                            <div class="col-sm-3">
+                                <section class="footer_menu-section">
+                                    <h3 class="footer_menu--section-title footer-label footer-label--medium">Repertuar</h3>
+                                    <ul class="footer_menu-list">
+                                        <li class="footer_menu-element"><a href="repertuar.php" class="footer_menu-link">Repertuar</a></li>
+                                        <li class="footer_menu-element"><a href="zapowiedzi.php" class="footer_menu-link">Zapowiedzi</a></li>
+                                        <li class="footer_menu-element"><a href="repertuar.php" class="footer_menu-link">Rezerwacja</a></li>
+                                    </ul>
+                                </section>
+                            </div>
+                             <div class="col-sm-3">
+                                <section class="footer_menu-section">
+                                    <h3 class="footer_menu--section-title footer-label footer-label--medium">Partnerzy</h3>
+                                    <ul class="footer_menu-list">
+                                                                                   <li class="footer_menu-element"><a href="https://stowarzyszeniekinstudyjnych.pl" target="_blank" class="footer_menu-link">Stowarzyszenie Kin Studyjnych</a></li>
+                                        <li class="footer_menu-element"><a href="http://www.pisf.pl/pl" target="_blank" class="footer_menu-link">PISF</a></li>
+                                        <li class="footer_menu-element"><a href="http://www.fina.gov.pl" target="_blank" class="footer_menu-link">FINA</a></li>
+                                    </ul>
+                                </section>
+                            </div>
+
+                        </div>
+                    </nav>
+                </div>
+                <div class="col-xl-4 col-lg-5 col-md-12">
+                    <div class="footer-nav-right">
+                        <div class="footer-newsletter">
+                            <label for="newsletter" class="footer-newsletter-label footer-label">Zapisz się do
+                                newslettera</label>
+                            <form action="newsletter.php" method="post" class="footer-newsletter-form">
+                                <input title="newsletter" id="newsletter" name="email" type="text" placeholder="Tu wpisz email" class="footer-newsletter-input"><button type="submit" class="footer-newsletter-submit font_ico--cr"><span class="footer-newsletter-submit-ico">C</span></button>
+                            </form>
+                            <div style="font-size:10px; color: #ccc;"><br>
+                            Zapisując się do Newslettera zapoznałem się z <a href="doc/Zasady-przetwarzania-danych-osobowych-newsletter.pdf" style="color: #ccc; text-decoration:underline;" target="_blank">Zasadami przetwarzania danych osobowych w związku z realizacją usługi Newsleter</a>. Zgadzam się na otrzymanie od kin Novekino  na wskazany przeze mnie adres e-mail informacji marketingowych. Administratorem Twoich danych osobowych jest Instytucja Filmowa MAX-FILM Spółka Akcyjna z siedzibą w Warszawie, ul. Panieńska 11, Wpisana do Rejestru Przedsiębiorców prowadzonego przez Sąd Rejonowy dla Warszawy Mokotowa, XIII Wydział Gospodarczy pod numerem KRS 0000236457 Posiadasz prawo dostępu do treści Swoich danych osobowych oraz prawo ich sprostowania, usunięcia, ograniczenia przetwarzania, prawo do przenoszenia danych osobowych, prawo wniesienia sprzeciwu, a także prawo do cofnięcia zgody w dowolnym momencie. Wycofanie zgody nie wpływa na zgodność z prawem przetwarzania dokonanego przed jej wycofaniem.</div>
+                        </div>
+                        <div class="footer-reservation_info">
+                            <h3 class="footer-reservation_info-label footer-label">
+                                Rezerwacje telefoniczne
+                            </h3>
+                            <div class="footer-reservation_info-phone">
+                                <span class="footer-reservation_info-number-ico font_ico--bl">t</span>
+                                <a href="tel:228289303" class="footer-reservation_info-phone-number">22 828 93 03</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-socials">
+             <a href="https://www.facebook.com/NoveKino-Atlantic-110022151027053" class="footer-socials-link">
+                    <svg class="footer-socials-link-fb-ico" preserveAspectRatio="xMidYMid">
+                    <use xlink:href="#i-fb"></use>
+                    </svg>
+                    facebook
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <div class="container">
+            <div class="footer-bottom-in">
+                <span class="footer-rights">
+                    2026 © Novekino. All Rights Reserved
+                </span>
+                <span class="footer-author">
+                    projekt i wykonanie : <a href="http://www.vis.pl/" class="footer-link">VEGA Internet Studio</a>
+                </span>
+            </div>
+            <div class="footer-bottom-col footer-bottom-col--right">
+                <a href="http://www.maxfilm.com.pl/" target="_blank"><img src="img/instytucja.jpg" alt="Instytuacja Filmowa Max-Film S.A."></a>
+                <a href="https://stowarzyszeniekinstudyjnych.pl" target="_blank"><img src="img/logo_sks_1.jpg" alt="Stowarzyszenie Kin Studyjnych"></a>
+                  <a href="http://www.c-kino.pl/" target="_blank"><img src="img/spkc-logo.gif" alt="Polska Sieć Kin Cyfrowych"></a>
+                <a href="https://www.europa-cinemas.org/en" target="_blank"><img src="img/logo_europa_cinamas_2023.png" alt=""></a>
+                <a href="http://www.pisf.pl" target="_blank"><img src="img/pisf.gif" alt=""></a>
+                <a href="http://www.fina.gov.pl" target="_blank"><img src="img/fina.gif" alt=""></a>
+            </div>
+        </div>
+
+    </div>
+
+</footer>
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XPXQMPFRV5"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-XPXQMPFRV5');
+</script>
+
+<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "77f5473ca18944998ba21957f4b4ea53"}'></script><!-- End Cloudflare Web Analytics -->
+        <script src="https://code.createjs.com/createjs-2015.11.26.min.js"></script>
+
+<script src="js/lib/js-lib.min.js"></script>
+
+<script src="js/repertoire.min.js"></script>
+<script src="js/script.min_7.js"></script>
+<script src="js/local_2.js"></script>
+    </body>
+</html>

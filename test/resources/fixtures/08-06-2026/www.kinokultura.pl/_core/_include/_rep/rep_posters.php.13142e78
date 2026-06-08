@@ -1,0 +1,24 @@
+<div class="content_rep_posters_b_1" id="poster_button_left"></div>	<div class="content_rep_posters_0" id="poster_set_1">
+									
+											<div class="content_rep_posters_1a hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780900509', '20612','18','0','2026-06-21','0','0','0','0'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_pp"></div><div class="content_rep_posters_1_2 f_6"><font class="f_7">18</font>:00</div><img class="poster_photo" src="foto,20612,a30edc1c47057a2226a4226476168337,jpg.html" title="Best Film on Tour: Dobra Strona Filmu – „Takie jest życie”" alt="Best Film on Tour: Dobra Strona Filmu – „Takie jest życie”"/><div class="content_rep_posters_1_1a f_5" id="poster_cell_a_1">Kultura</div></div>
+											<div class="content_rep_posters_1b " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1b " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1b " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1b " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1b " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											
+											
+											<div class="content_rep_posters_1c hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780900509', '20612','18','0','2026-06-21','0','0','0','0'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_pp"></div><div class="content_rep_posters_1_2 f_6"><font class="f_7">18</font>:00</div><img class="poster_photo" src="foto,20612,a30edc1c47057a2226a4226476168337,jpg.html" title="Best Film on Tour: Dobra Strona Filmu – „Takie jest życie”" alt="Best Film on Tour: Dobra Strona Filmu – „Takie jest życie”"/><div class="content_rep_posters_1_1a f_5" id="poster_cell_b_1">Kultura</div></div>
+											<div class="content_rep_posters_1d " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1d " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1c " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1d " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1d " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>						
+											
+									</div>		

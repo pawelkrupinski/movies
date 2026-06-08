@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="pl">
+
+
+    <head>
+        <meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Repertuar - NoveKino - Kino Wisła Warszawa - Kino CYFROWE 3D</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="https://www.novekino.pl/kina/wisla/">
+<link href="https://fonts.googleapis.com/css?family=Rubik:300,400,500,700&amp;subset=latin-ext" rel="stylesheet">
+<meta name="theme-color" content="#000">
+<meta name="description" content="Kino Wisła pl. Wilsona 2 01-615 Warszawa tel.022 839 23 65 aktualny repertuar, zapowiedzi, oferta dla szkól, wyposażenie kina">
+<meta name="keywords" content="kino, novekino wisła, nove kino Wisła, kino wisła, repertuar kina wisła, Warszawa">
+<meta name="robots" content="index, follow">
+<meta name="author" content="VEGA Internet Studio, https://www.vis.pl, e-mail: biuro@vis.pl, tel: 022 877 33 09">
+<style>
+    @media (min-width: 576px) {.hidden-sm-up {display: none !important}}
+    @media (max-width: 767px) {.hidden-sm-down {display: none !important}}
+    @media (min-width: 768px) {.hidden-md-up {display: none !important}}
+    @media (max-width: 991px) {.hidden-md-down {display: none !important}}
+    @media (min-width: 992px) {.hidden-lg-up {display: none !important}}
+    @media (max-width: 1199px) {.hidden-lg-down {display: none !important}}
+    @media (min-width: 1200px) {.hidden-xl-up {display: none !important}}
+    .hidden-xl-down {display: none !important}
+</style>
+<link rel="stylesheet" href="css/lib/css-lib.min_17.css">
+<link rel="stylesheet" href="css/style.min_17.css">
+<link rel="stylesheet" href="css/vis_17.css">
+<link rel="stylesheet" href="local_17.css">
+<meta name="facebook-domain-verification" content="3py7iaga6ibggkyt63vv1df8sulrip" />    </head>
+
+    <body class="">
+        <a href="javascript:" id="return-to-top"><img src="/img/chevron-up.png" alt="" /></a>
+        <div id="fb-root"></div>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/pl_PL/sdk.js#xfbml=1&version=v9.0" nonce="J6QJ4OlG"></script>
+<header class="header">
+    <div class="cinema hidden-lg-up">
+        <select class="cinema-select" title="Kino">
+            <option value="/kina/atlantic/">Atlantic (Warszawa)</option>
+            <option value="/kina/przedwiosnie/">Przedwiośnie (Płock)</option>
+            <option value="/kina/siedlce/">Siedlce</option>
+            <option value="/kina/sybilla/">Sybilla (Puławy)</option>
+            <option value="/kina/wisla/" selected="selected">Wisła (Warszawa)</option>
+        </select>
+    </div>
+    <div class="container">
+        <div class="header-top">
+            <a href="/kina/wisla/" class="header-logo" style="position: relative;">
+                <img src="images_local/logo.gif" alt="">
+                            </a>
+            <div class="header-nav">
+                <div class="cinema_phone">
+                    <div class="phone">
+                        <span class="phone-label">Rezerwacja</span>
+                        <a class="phone-number" href="tel:228392365">22&nbsp;839&nbsp;23&nbsp;65</a>
+                    </div>
+                    <div class="cinema hidden-md-down">
+                        <select class="cinema-select" title="Kino">
+                            <option value="/kina/atlantic/">Atlantic (Warszawa)</option>
+                            <option value="/kina/przedwiosnie/">Przedwiośnie (Płock)</option>
+                            <option value="/kina/siedlce/">Siedlce</option>
+                            <option value="/kina/sybilla/">Sybilla (Puławy)</option>
+                            <option value="/kina/wisla/" selected="selected">Wisła (Warszawa)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <nav class="menu hidden-lg-down">
+    <ul class="menu-list">
+        <li class="menu-element"><a href="repertuar.php" class="menu-link">Repertuar</a></li>
+        <li class="menu-element"><a href="zapowiedzi.php" class="menu-link">Zapowiedzi</a></li>
+        <li class="menu-element"><a href="cennik.php" class="menu-link">Cennik</a></li>
+        <li class="menu-element"><a href="szkola.php" class="menu-link">Szkoła</a></li>
+        <li class="menu-element"><a href="cykle-filmowe.php" class="menu-link">Cykle filmowe</a></li>
+        <li class="menu-element"><a href="urodziny.php" class="menu-link">Urodziny</a></li>
+        <li class="menu-element"><a href="button_3.php" class="menu-link">Dla seniorów</a></li>
+        <li class="menu-element"><a href="partnerzy.php" class="menu-link">Partnerzy</a></li>
+        <li class="menu-element"><a href="wynajem-sal.php" class="menu-link">Wynajem sal</a></li>
+        <li class="menu-element"><a href="o-nas.php" class="menu-link">O nas</a></li>
+    </ul>
+</nav>
+            </div>
+            <div class="header-menu_toggle hidden-xl-up">
+                <button class="header-menu_toggle-btn">
+                    <svg class="header-menu_toggle-ico header-menu_toggle-ico--close">
+                    <use xlink:href="#i-close"></use>
+                    </svg>
+                    <svg class="header-menu_toggle-ico header-menu_toggle-ico--open">
+                    <use xlink:href="#i-hamburger"></use>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="menu_mobile-ou hidden-xl-up">
+
+            <nav class="menu_mobile">
+    <ul class="menu_mobile-list">
+        <li class="menu_mobile-element"><a href="repertuar.php" class="menu_mobile-link">Repertuar</a></li>
+        <li class="menu_mobile-element"><a href="zapowiedzi.php" class="menu_mobile-link">Zapowiedzi</a></li>
+        <li class="menu_mobile-element"><a href="cennik.php" class="menu_mobile-link">Cennik</a></li>
+        <li class="menu_mobile-element"><a href="szkola.php" class="menu_mobile-link">Szkoła</a></li>
+        <li class="menu_mobile-element"><a href="cykle-filmowe.php" class="menu_mobile-link">Cykle filmowe</a></li>
+        <li class="menu_mobile-element"><a href="urodziny.php" class="menu_mobile-link">Urodziny</a></li>
+        <li class="menu_mobile-element"><a href="button_3.php" class="menu_mobile-link">Dla seniorów</a></li>
+        <li class="menu_mobile-element"><a href="partnerzy.php" class="menu_mobile-link">Partnerzy</a></li>
+        <li class="menu_mobile-element"><a href="wynajem-sal.php" class="menu_mobile-link">Wynajem sal</a></li>
+        <li class="menu_mobile-element"><a href="o-nas.php" class="menu_mobile-link">O nas</a></li>
+    </ul>
+</nav>
+        </div>
+
+        <div class="ad_banner">
+
+                <div class="ad_banner">
+                <div id="animation_container" style="width:750px;">
+
+                                <a href="https://www.novekino.pl/kina/wisla/button_2.php" target="_self"><img
+                                src="banery/gorne/wisla_misiowe_baner.jpg" alt="" width="750"/></a>
+                        </div>
+    </div>
+
+        </div>
+    </div>
+</header>
+
+        <main class="page_content">
+            <div class="page_content-main">
+                <div class="container">
+
+                    
+<section class="movie_header">
+    <div class="movie_header-title_info">
+        <h2 class="movie_header-title">
+            Wielkie piękno – napisy        </h2>
+                    <h3 class="movie_header-subtitle">La grande bellezza</h3>
+                <div class="movie_header-info">
+            <span class="movie_header-info-entry">dramat/komedia</span>            <span class="movie_header-info-entry">142 minuty</span>                        <div class="clear"></div>
+        </div>
+        <div class="movie_header-nav">
+            <a href="film.php?id=18093#seanse" class="movie_header-btn btn btn--full_width btn--highlight btn--small_padding hidden-md-up">Rezerwuj
+                / kup bilet</a>
+            <a href="film.php?id=18093#seanse" class="movie_header-btn btn btn--bigger btn--small_padding hidden-sm-down">Rezerwuj / kup bilet</a>
+        </div>
+    </div>
+</section>
+
+<div class="slider-pro movie_slider" id="movie_slider" style="aspect-ratio: 16 / 9;">
+    <div class="sp-slides">
+                                                                <div class="sp-slide movie_slider-slide movie_slider-slide--movie">
+                    <iframe class="sp-video movie_slider-movie" src="https://www.youtube.com/embed/bVEdDvCTy84?enablejsapi=1&amp;wmode=opaque" allowfullscreen></iframe>
+                </div>
+                                            <div class="sp-slide"><img class="sp-image" src="https://multimedia.novekino.pl/psw_wielkie_piekno/01.jpg" alt="Wielkie piękno – napisy"></div>
+                        <div class="sp-slide"><img class="sp-image" src="https://multimedia.novekino.pl/psw_wielkie_piekno/02.jpg" alt="Wielkie piękno – napisy"></div>
+                        <div class="sp-slide"><img class="sp-image" src="https://multimedia.novekino.pl/psw_wielkie_piekno/03.jpg" alt="Wielkie piękno – napisy"></div>
+                        <div class="sp-slide"><img class="sp-image" src="https://multimedia.novekino.pl/psw_wielkie_piekno/04.jpg" alt="Wielkie piękno – napisy"></div>
+                        <div class="sp-slide"><img class="sp-image" src="https://multimedia.novekino.pl/psw_wielkie_piekno/05.jpg" alt="Wielkie piękno – napisy"></div>
+                        <div class="sp-slide"><img class="sp-image" src="https://multimedia.novekino.pl/psw_wielkie_piekno/06.jpg" alt="Wielkie piękno – napisy"></div>
+                        <div class="sp-slide"><img class="sp-image" src="https://multimedia.novekino.pl/psw_wielkie_piekno/07.jpg" alt="Wielkie piękno – napisy"></div>
+                        <div class="sp-slide"><img class="sp-image" src="https://multimedia.novekino.pl/psw_wielkie_piekno/08.jpg" alt="Wielkie piękno – napisy"></div>
+                        <div class="sp-slide"><img class="sp-image" src="https://multimedia.novekino.pl/psw_wielkie_piekno/09.jpg" alt="Wielkie piękno – napisy"></div>
+                        <div class="sp-slide"><img class="sp-image" src="https://multimedia.novekino.pl/psw_wielkie_piekno/10.jpg" alt="Wielkie piękno – napisy"></div>
+            </div>
+</div>
+<div class="movie_slider-thumbs">
+    <button class="movie_slider-thumbs-arrow movie_slider-thumbs-arrow--left"></button>
+    <div class="movie_slider-thumbs-slider-ou">
+        <div class="movie_slider-thumbs-slider owl-carousel">
+                                                                    <button class="movie_slider-thumbs-slider-slide" data-movie-target="0">
+                        <svg class="movie_slider-thumbs-slider-slide-movie_ico" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid" x="0px" y="0px" viewBox="-246.5 334.5 124 124"><circle class="circle" cx="-184.5" cy="396.5" r="60.5"></circle><polygon class="triangle" points="-196.1,377.6 -163.5,396.5 -196.1,415.4 "></polygon></svg>
+                        <img src="https://img.youtube.com/vi/bVEdDvCTy84/1.jpg" alt="" style="height: 100px; width: auto;">
+                    </button>
+                                                                            <button class="movie_slider-thumbs-slider-slide" data-movie-target="1"><img src="https://multimedia.novekino.pl/psw_wielkie_piekno/01.jpg" alt="" style="height: 100px; width: auto;"></button>
+                                            <button class="movie_slider-thumbs-slider-slide" data-movie-target="2"><img src="https://multimedia.novekino.pl/psw_wielkie_piekno/02.jpg" alt="" style="height: 100px; width: auto;"></button>
+                                            <button class="movie_slider-thumbs-slider-slide" data-movie-target="3"><img src="https://multimedia.novekino.pl/psw_wielkie_piekno/03.jpg" alt="" style="height: 100px; width: auto;"></button>
+                                            <button class="movie_slider-thumbs-slider-slide" data-movie-target="4"><img src="https://multimedia.novekino.pl/psw_wielkie_piekno/04.jpg" alt="" style="height: 100px; width: auto;"></button>
+                                            <button class="movie_slider-thumbs-slider-slide" data-movie-target="5"><img src="https://multimedia.novekino.pl/psw_wielkie_piekno/05.jpg" alt="" style="height: 100px; width: auto;"></button>
+                                            <button class="movie_slider-thumbs-slider-slide" data-movie-target="6"><img src="https://multimedia.novekino.pl/psw_wielkie_piekno/06.jpg" alt="" style="height: 100px; width: auto;"></button>
+                                            <button class="movie_slider-thumbs-slider-slide" data-movie-target="7"><img src="https://multimedia.novekino.pl/psw_wielkie_piekno/07.jpg" alt="" style="height: 100px; width: auto;"></button>
+                                            <button class="movie_slider-thumbs-slider-slide" data-movie-target="8"><img src="https://multimedia.novekino.pl/psw_wielkie_piekno/08.jpg" alt="" style="height: 100px; width: auto;"></button>
+                                            <button class="movie_slider-thumbs-slider-slide" data-movie-target="9"><img src="https://multimedia.novekino.pl/psw_wielkie_piekno/09.jpg" alt="" style="height: 100px; width: auto;"></button>
+                                            <button class="movie_slider-thumbs-slider-slide" data-movie-target="10"><img src="https://multimedia.novekino.pl/psw_wielkie_piekno/10.jpg" alt="" style="height: 100px; width: auto;"></button>
+                                    </div>
+    </div>
+    <button class="movie_slider-thumbs-arrow movie_slider-thumbs-arrow--right"></button>
+</div>
+
+<script>
+    var slidesNumber = 11;
+</script>
+
+<div class="row">
+    <div class="col-lg-8">
+        <section class="movie_details_panel panel">
+            <div class="panel-header">
+                <span class="panel-ico font_ico--br">o</span>
+                <h2 class="panel-title">Wielkie piękno – napisy</h2>
+            </div>
+            <div class="movie_details_panel-content">
+                <div class="movie_details_panel-poster_nav">
+                    <div class="movie_details_panel-poster">
+                        <a href="https://multimedia.novekino.pl/psw_wielkie_piekno/plakat.jpg" data-lity><img src="https://multimedia.novekino.pl/psw_wielkie_piekno/plakat.jpg" alt=""></a>
+                    </div>
+                    <div class="movie_details_panel-nav hidden-sm-down">
+                        <a href="film.php?id=18093#seanse" class="movie_details_panel-btn btn btn--full_width">Rezerwuj / kup bilet</a>
+                    </div>
+                </div>
+                <div class="movie_details_panel-info">
+                    <dl>
+                                                <dt>Reżyseria<dt>
+                        <dd>Paolo Sorrentino</dd>
+                                                                                    <dt>Scenariusz:</dt>
+                            <dd>Umberto Contarello, Paolo Sorrentino</dd>
+                                                                            <dt>Gatunek:</dt>
+                            <dd>dramat/komedia</dd>
+                                                                            <dt>Kraj produkcji:</dt>
+                            <dd>Francja, Włochy</dd>
+                                                                            <dt>Rok produkcji:</dt>
+                            <dd>2013</dd>
+                                                                            <dt>Czas trwania:</dt>
+                            <dd>142 minuty</dd>
+                                                                        <dt>Obsada:</dt>
+                        <dd><br class="hidden-md-up">Toni Servillo, Carlo Verdone, Sabrina Ferilli, Carlo Buccirosso</dd>
+                                                                            </dl>
+                </div>
+            </div>
+        </section>
+        <section class="text_panel panel">
+            <div class="panel-header">
+                <span class="panel-ico font_ico--cr">c</span>
+                <h2 class="panel-title">Opis filmu</h2>
+            </div>
+            <p>&bdquo;Wielkie piękno&rdquo; to wizualnie oszałamiająca, kontemplacyjna podróż przez Rzym i życie głównego bohatera filmu, Jepa Gambardelli, starzejącego się dziennikarza i pisarza, który po latach hedonistycznego życia zaczyna rozliczać się ze swoją przeszłością. Słynący z ironicznego dystansu i bycia stałym bywalcem elitarnych przyjęć, Jep z pozornym spokojem dryfuje przez świat włoskiej wyższej sfery. Jednak pod powierzchnią blichtru, rozmów o sztuce i filozofii kryje się głęboka tęsknota za autentycznym pięknem i duchowym spełnieniem.<br />
+&nbsp;<br />
+Film Paolo Sorrentino jest nie tylko melancholijną medytacją nad przemijaniem i pustką życia towarzyskiego, lecz także listem miłosnym do Rzymu &ndash; miasta pełnego kontrastów, historii i ukrytych cudów. Rzym, nostalgiczny i okrutny, staje się równorzędnym bohaterem. Jego zabytki, ulice i życie nocne tworzą kontrast między historycznym pięknem a współczesną dekadencją. Stylowa reżyseria, wyrafinowane zdjęcia i symboliczne obrazy tworzą razem film, który bywa porównywany do dzieł Federica Felliniego, zwłaszcza do &bdquo;Słodkiego życia&rdquo;.<br />
+&nbsp;<br />
+&bdquo;Wielkie piękno&rdquo; to jeden z najważniejszych tytułów europejskiego kina XXI wieku.</p>            
+        </section>
+        <section class="table_panel panel" id="seanse">
+            <div class="panel-header">
+                <span class="panel-ico font_ico--dr">a</span>
+                <h2 class="panel-title">Seanse</h2>
+            </div>
+            <div style="font-size: 13px; color: #fff; font-weight: bold; text-align:center; margin: -20px 0 20px 0;">Kliknij w godzinę aby zarezerwować/kupić bilety</div>
+            <table class="table">
+                                    <tr class="table-tr">
+                        <th class="table-th table-td--highlight">poniedz., 08 czerwca</th>
+                        <td class="table-td">
+                            <a href="#" class="table-link" data-repertoire-hour data-title="Wielkie piękno – napisy" data-day="poniedz. 08 czerwca" data-hour="12:15" data-reserve-text="rezerwuj" data-reserve-link="https://wisla.novekino.pl/msi/default.aspx?event_id=112963&typetran=1&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php" data-buy-text="kup" data-buy-link="https://wisla.novekino.pl/msi/default.aspx?event_id=112963&typetran=0&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php">12:15</a>                        </td>
+                    </tr>
+                                    <tr class="table-tr">
+                        <th class="table-th ">wtorek, 09 czerwca</th>
+                        <td class="table-td">
+                            <a href="#" class="table-link" data-repertoire-hour data-title="Wielkie piękno – napisy" data-day="wtorek 09 czerwca" data-hour="14:45" data-reserve-text="rezerwuj" data-reserve-link="https://wisla.novekino.pl/msi/default.aspx?event_id=112973&typetran=1&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php" data-buy-text="kup" data-buy-link="https://wisla.novekino.pl/msi/default.aspx?event_id=112973&typetran=0&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php">14:45</a>                        </td>
+                    </tr>
+                                    <tr class="table-tr">
+                        <th class="table-th ">czwartek, 11 czerwca</th>
+                        <td class="table-td">
+                            <a href="#" class="table-link" data-repertoire-hour data-title="Wielkie piękno – napisy" data-day="czwartek 11 czerwca" data-hour="20:10" data-reserve-text="rezerwuj" data-reserve-link="https://wisla.novekino.pl/msi/default.aspx?event_id=112998&typetran=1&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php" data-buy-text="kup" data-buy-link="https://wisla.novekino.pl/msi/default.aspx?event_id=112998&typetran=0&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php">20:10</a>                        </td>
+                    </tr>
+                            </table>
+        </section>
+
+        <br /><br />
+    </div>
+
+    <div class="col-lg-4">
+        <section class="movies_list_panel panel">
+    <div class="panel-header">
+        <span class="panel-ico font_ico--cr">y</span>
+        <h2 class="panel-title">Polecamy również</h2>
+    </div>
+    <div class="movies_list_panel-list">
+                    <section class="movies_list_panel-movie">
+                <div class="movies_list_panel-poster">
+                    <a href="film.php?id=19648"> <img src="https://multimedia.novekino.pl/90_urodziny_pavarottiego/plakat.jpg" alt=""></a>
+                </div>
+                <div class="movies_list_panel-info">
+                    <h3 class="movies_list_panel-title"><a href="film.php?id=19648">90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025</a></h3>
+                    <div class="movies_list_panel-data">
+    Jesienią 2025 roku w słynnej Arena di Verona zebrały się największe gwiazdy opery i popu, w tym Andrea Bocelli, Jonathan Tetelman, Angela Gheorghiu i Il Volo, by dać niebywały koncert,...                    </div>
+                    <div class="movies_list_panel-category"></div>
+                </div>
+            </section>
+            <section class="movies_list_panel-movie">
+                <div class="movies_list_panel-poster">
+                    <a href="film.php?id=19753"> <img src="https://multimedia.novekino.pl/ojczyzna/plakat.jpg" alt=""></a>
+                </div>
+                <div class="movies_list_panel-info">
+                    <h3 class="movies_list_panel-title"><a href="film.php?id=19753">Ojczyzna - pokaz przedpremierowy</a></h3>
+                    <div class="movies_list_panel-data">
+    &bdquo;Ojczyzna&rdquo; to najnowszy, długo wyczekiwany film laureata Oscara&reg;, Pawła Pawlikowskiego, twórcy &bdquo;Idy&rdquo; i &bdquo;Zimnej wojny&rdquo;.
+W swoim najnowszym dziele, podobnie...                    </div>
+                    <div class="movies_list_panel-category">dramat</div>
+                </div>
+            </section>
+            <section class="movies_list_panel-movie">
+                <div class="movies_list_panel-poster">
+                    <a href="film.php?id=19730"> <img src="https://multimedia.novekino.pl/podziemny_krag_4k/plakat.jpg" alt=""></a>
+                </div>
+                <div class="movies_list_panel-info">
+                    <h3 class="movies_list_panel-title"><a href="film.php?id=19730">Podziemny krąg - zrekonstruowana wersja 4K - napisy</a></h3>
+                    <div class="movies_list_panel-data">
+    Już 4 czerwca kultowy &bdquo;Podziemny krąg&rdquo; (&bdquo;Fight Club&rdquo;) wraca do kin po ponad 25 latach od premiery!
+Ten prowokacyjny dramat, z udziałem Brada Pitta i Edwarda Nortona...                    </div>
+                    <div class="movies_list_panel-category">thriller/psychologiczny</div>
+                </div>
+            </section>
+            <section class="movies_list_panel-movie">
+                <div class="movies_list_panel-poster">
+                    <a href="film.php?id=19674"> <img src="https://multimedia.novekino.pl/the_amazing_digital_circus_the_last_act/plakat.jpg" alt=""></a>
+                </div>
+                <div class="movies_list_panel-info">
+                    <h3 class="movies_list_panel-title"><a href="film.php?id=19674">The Amazing Digital Circus: The Last Act - dubbing</a></h3>
+                    <div class="movies_list_panel-data">
+    Internetowy hit &bdquo;The Amazing Digital Circus&rdquo; doczekał się długo wyczekiwanej finałowej odsłony w formie pełnometrażowego filmu kinowego! Ten &bdquo;Ostatni akt&rdquo; łączy w...                    </div>
+                    <div class="movies_list_panel-category">animowany/przygodowy/science-fiction</div>
+                </div>
+            </section>
+    </div>
+</section>        <section class="facebook_panel panel hidden-sm-down">
+    <h2 class="hide">Facebook</h2>
+    <div class="fb-page" data-href="https://www.facebook.com/KinoWisla/" data-tabs="timeline" data-height="500" data-width="" data-small-header="true" data-adapt-container-width="true" data-hide-cover="true" data-show-facepile="true">
+        <blockquote cite="https://www.facebook.com/KinoWisla/" class="fb-xfbml-parse-ignore">
+            <a href="https://www.facebook.com/KinoWisla/">Kino Wisła</a></blockquote>
+    </div>
+</section>
+
+<div class="insta-widget">
+    <div class="insta-frame">
+        <iframe src="https://www.instagram.com/novekinowisla/embed" loading="lazy" scrolling="no"></iframe>
+    </div>
+</div>
+    </div>
+</div>
+                </div>
+            </div>
+
+        </main>
+
+        <footer class="footer">
+    <div class="footer-nav">
+
+        <div class="container">
+            <div class="row">
+                <div class="col-xl-8 col-lg-7 hidden-md-down">
+                    <nav class="footer_menu">
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <section class="footer_menu-section">
+                                    <h3 class="footer_menu--section-title footer-label footer-label--medium">Kino</h3>
+                                    <ul class="footer_menu-list">
+                                        <li class="footer_menu-element"><a href="/kina/wisla/" class="footer_menu-link">Strona główna</a></li>
+                                        <li class="footer_menu-element"><a href="cennik.php" class="footer_menu-link">Cennik</a></li>
+                                        <li class="footer_menu-element"><a href="kontakt.php" class="footer_menu-link">Kontakt</a></li>
+                                        <li class="footer_menu-element"><a href="doc/regulaminy.pdf" class="footer_menu-link">Regulaminy</a></li>
+                                        <li class="footer_menu-element"><a href="pliki-cookie.php" class="footer_menu-link">Informacja o wykorzystaniu Cookies</a></li>
+                                        <li class="footer_menu-element"><a href="doc/Zasady-przetwarzania-danych-osobowych-newsletter.pdf" target="_blank" class="footer_menu-link">Zasady przetwarzania danych osobowych w związku z realizacją usługi Newsleter</a></li>                                         
+                                    </ul>
+                                </section>
+                            </div>
+                            <div class="col-sm-3">
+                                <section class="footer_menu-section">
+                                    <h3 class="footer_menu--section-title footer-label footer-label--medium">Repertuar</h3>
+                                    <ul class="footer_menu-list">
+                                        <li class="footer_menu-element"><a href="repertuar.php" class="footer_menu-link">Repertuar</a></li>
+                                        <li class="footer_menu-element"><a href="zapowiedzi.php" class="footer_menu-link">Zapowiedzi</a></li>
+                                        <li class="footer_menu-element"><a href="repertuar.php" class="footer_menu-link">Rezerwacja</a></li>
+                                    </ul>
+                                </section>
+                            </div>
+                            <div class="col-sm-3">
+                                <section class="footer_menu-section">
+                                    <h3 class="footer_menu--section-title footer-label footer-label--medium">O nas</h3>
+                                    <ul class="footer_menu-list">
+                                        <li class="footer_menu-element"><a href="o-nas.php" class="footer_menu-link">O nas</a></li>
+                                        <li class="footer_menu-element"><a href="szkola.php" class="footer_menu-link">Szkoła</a></li>
+                                        <li class="footer_menu-element"><a href="cykle-filmowe.php" class="footer_menu-link">Cykle filmowe</a></li>
+                                        <li class="footer_menu-element"><a href="urodziny.php" class="footer_menu-link">Urodziny</a></li>
+                                        <li class="footer_menu-element"><a href="button_3.php" class="footer_menu-link">Dla seniorów</a></li>
+                                    </ul>
+                                </section>
+                            </div>
+                            <div class="col-sm-3">
+                                <section class="footer_menu-section">
+                                    <h3 class="footer_menu--section-title footer-label footer-label--medium">Partnerzy</h3>
+                                    <ul class="footer_menu-list">
+                                        <li class="footer_menu-element"><a href="partnerzy.php" class="footer_menu-link">Partnerzy</a></li>
+                                        <li class="footer_menu-element"><a href="https://stowarzyszeniekinstudyjnych.pl" target="_blank" class="footer_menu-link">Stowarzyszenie Kin Studyjnych</a></li>
+                                        <li class="footer_menu-element"><a href="http://www.pisf.pl/pl" target="_blank" class="footer_menu-link">PISF</a></li>
+                                        <li class="footer_menu-element"><a href="http://www.fina.gov.pl" target="_blank" class="footer_menu-link">FINA</a></li>
+                                    </ul>
+                                </section>
+                            </div>
+
+                        </div>
+                    </nav>
+                </div>
+                <div class="col-xl-4 col-lg-5 col-md-12">
+                    <div class="footer-nav-right">
+                        <div class="footer-newsletter">
+                            <label for="newsletter" class="footer-newsletter-label footer-label">Zapisz się do
+                                newslettera</label>
+                            <form action="newsletter.php" method="post" class="footer-newsletter-form">
+                                <input title="newsletter" id="newsletter" name="email" type="text" placeholder="Tu wpisz email" class="footer-newsletter-input"><button type="submit" class="footer-newsletter-submit font_ico--cr"><span class="footer-newsletter-submit-ico">C</span></button>
+                            </form>
+                            <div style="font-size:10px; color: #ccc;"><br>
+                            Zapisując się do Newslettera zapoznałem się z <a href="doc/Zasady-przetwarzania-danych-osobowych-newsletter.pdf" style="color: #ccc; text-decoration:underline;" target="_blank">Zasadami przetwarzania danych osobowych w związku z realizacją usługi Newsleter</a>. Zgadzam się na otrzymanie od kin Novekino  na wskazany przeze mnie adres e-mail informacji marketingowych. Administratorem Twoich danych osobowych jest Instytucja Filmowa MAX-FILM Spółka Akcyjna z siedzibą w Warszawie, ul. Panieńska 11, Wpisana do Rejestru Przedsiębiorców prowadzonego przez Sąd Rejonowy dla Warszawy Mokotowa, XIII Wydział Gospodarczy pod numerem KRS 0000236457 Posiadasz prawo dostępu do treści Swoich danych osobowych oraz prawo ich sprostowania, usunięcia, ograniczenia przetwarzania, prawo do przenoszenia danych osobowych, prawo wniesienia sprzeciwu, a także prawo do cofnięcia zgody w dowolnym momencie. Wycofanie zgody nie wpływa na zgodność z prawem przetwarzania dokonanego przed jej wycofaniem.</div>
+                        </div>
+                        <div class="footer-reservation_info">
+                            <h3 class="footer-reservation_info-label footer-label">
+                                Rezerwacje telefoniczne
+                            </h3>
+                            <div class="footer-reservation_info-phone">
+                                <span class="footer-reservation_info-number-ico font_ico--bl">t</span>
+                                <a href="tel:228392365" class="footer-reservation_info-phone-number">22 839 23 65</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-socials">
+                <a href="https://www.facebook.com/KinoWisla/" class="footer-socials-link">
+                    <svg class="footer-socials-link-fb-ico" preserveAspectRatio="xMidYMid">
+                    <use xlink:href="#i-fb"></use>
+                    </svg>
+                    facebook
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <div class="container">
+            <div class="footer-bottom-in">
+                <span class="footer-rights">
+                    2026 © Novekino. All Rights Reserved
+                </span>
+                <span class="footer-author">
+                    projekt i wykonanie : <a href="http://www.vis.pl/" class="footer-link">VEGA Internet Studio</a>
+                </span>
+            </div>
+            <div class="footer-bottom-col footer-bottom-col--right">
+                <a href="http://www.maxfilm.com.pl/" target="_blank"><img src="img/instytucja.jpg" alt="Instytuacja Filmowa Max-Film S.A."></a>
+                <a href="https://stowarzyszeniekinstudyjnych.pl" target="_blank"><img src="img/logo_sks_1.jpg" alt="Stowarzyszenie Kin Studyjnych"></a>
+                <a href="http://www.europa-cinemas.org/en/cinema/fiche_salle.php?IdSalle=1802&amp;IdPeriode=89" target="_blank"><img src="img/Europa_cinemas2.gif" alt=""></a>
+                <a href="http://www.c-kino.pl/" target="_blank"><img src="img/spkc-logo.gif" alt="Polska Sieć Kin Cyfrowych"></a>
+                <a href="http://www.pisf.pl" target="_blank"><img src="img/pisf.gif" alt=""></a>
+                <a href="http://www.fina.gov.pl" target="_blank"><img src="img/fina.gif" alt=""></a>
+            </div>
+        </div>
+
+    </div>
+
+</footer>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-YEKEXYWECL"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-YEKEXYWECL');
+</script>
+
+<!-- Meta Pixel Code -->
+<script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '1140469136905578');
+    fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=1140469136905578&ev=PageView&noscript=1"></noscript>
+<!-- End Meta Pixel Code -->
+
+<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "77f5473ca18944998ba21957f4b4ea53"}'></script><!-- End Cloudflare Web Analytics -->
+
+        <script src="https://code.createjs.com/createjs-2015.11.26.min.js"></script>
+
+<script src="js/lib/js-lib.min.js"></script>
+
+<script src="js/repertoire.min.js"></script>
+<script src="js/script.min_7.js"></script>
+<script src="js/local_2.js"></script>
+    </body>
+</html>

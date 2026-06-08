@@ -1,0 +1,4271 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" xmlns="http://www.w3.org/1999/xhtml" prefix="fb: http://www.facebook.com/2008/fbml og: http://opengraphprotocol.org/schema/">
+    <head prefix="og: http://ogp.me/ns# flixstertomatoes: http://ogp.me/ns/apps/flixstertomatoes#">
+
+        
+            <script>
+                const encodedData = sessionStorage.getItem('oneTrustSyncData');
+                let id, token;
+
+                if (encodedData) {
+                    try {
+                        const oneTrustSyncData = JSON.parse(atob(encodedData));
+                        id = oneTrustSyncData?.id;
+                        token = oneTrustSyncData?.token;
+                    } catch (e) {}
+                }
+
+                if (id && token) {
+                    var OneTrust = {
+                        dataSubjectParams: {
+                            id,
+                            isAnonymous: false,
+                            token
+                        }
+                    };
+                }
+            </script>
+            
+            <script
+                charset="UTF-8"
+                crossorigin="anonymous"
+                data-domain-script="01978557-1604-76a7-ad7c-18216757cf52"
+                integrity="sha384-ZSwMA1OqSOznvxMtYdWlw0CUYqxpHjUOjfz9IcOnQUXvWoX7QfD7wjN7tgv+SpLT"
+                src="https://cdn.cookielaw.org/consent/01978557-1604-76a7-ad7c-18216757cf52/otSDKStub.js"
+                type="text/javascript"
+            >
+            </script>
+            <script type="text/javascript">
+                function OptanonWrapper() {
+                    if (OnetrustActiveGroups.includes('7')) {
+                        document.querySelector('search-results-nav-manager')?.setAlgoliaInsightUserToken?.();
+                    }
+                }
+            </script>
+            
+
+            
+                <script
+                    ccpa-opt-out-ids="USP"
+                    ccpa-opt-out-geo="US"
+                    ccpa-opt-out-lspa="false"
+                    charset="UTF-8"
+                    src="https://cdn.cookielaw.org/opt-out/otCCPAiab.js"
+                    type="text/javascript"
+                >
+                </script>
+            
+        
+
+        
+            
+            <script src="/assets/pizza-pie/javascripts/bundles/roma/rt-common.js?single"></script>
+            
+        
+
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="shortcut icon" sizes="76x76" type="image/x-icon" href="https://www.rottentomatoes.com/assets/pizza-pie/images/favicon.ico" />
+
+        
+
+        
+    
+        
+    
+<title>Calle Málaga | Rotten Tomatoes</title>
+
+
+    <meta name="description" content="Discover reviews, ratings, and trailers for Calle Málaga on Rotten Tomatoes. Stay updated with critic and audience scores today!" />
+
+    <meta name="twitter:card" content="summary" />
+
+    <meta name="twitter:image" content="https://resizing.flixster.com/EcQ95GszA5UcWxT3zyJl2CxPjHQ=/206x305/v2/https://resizing.flixster.com/5jA8M0AIcMM4oM98tqdc9v5wK-s=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2M5MzhjM2UxLTg1N2EtNDI1MC1iZmM0LWQ4OTYzYjhiNzIyYi5qcGc=" />
+
+    <meta name="twitter:title" content="Calle Málaga | Rotten Tomatoes" />
+
+    <meta name="twitter:text:title" content="Calle Málaga | Rotten Tomatoes" />
+
+    <meta name="twitter:description" content="Discover reviews, ratings, and trailers for Calle Málaga on Rotten Tomatoes. Stay updated with critic and audience scores today!" />
+
+
+
+    <meta property="og:site_name" content="Rotten Tomatoes" />
+
+    <meta property="og:title" content="Calle Málaga | Rotten Tomatoes" />
+
+    <meta property="og:description" content="Discover reviews, ratings, and trailers for Calle Málaga on Rotten Tomatoes. Stay updated with critic and audience scores today!" />
+
+    <meta property="og:type" content="video.movie" />
+
+    <meta property="og:url" content="https://www.rottentomatoes.com/m/calle_malaga" />
+
+    <meta property="og:image" content="https://resizing.flixster.com/EcQ95GszA5UcWxT3zyJl2CxPjHQ=/206x305/v2/https://resizing.flixster.com/5jA8M0AIcMM4oM98tqdc9v5wK-s=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2M5MzhjM2UxLTg1N2EtNDI1MC1iZmM0LWQ4OTYzYjhiNzIyYi5qcGc=" />
+
+    <meta property="og:locale" content="en_US" />
+
+
+
+    <link rel="canonical" href="https://www.rottentomatoes.com/m/calle_malaga" />
+
+
+<script>
+    var dataLayer = dataLayer || [];
+    var RottenTomatoes = RottenTomatoes || {};
+    RottenTomatoes.dtmData = {"customerId":"","loggedInStatus":"","rtVersion":3.1,"webVersion":"node","emsID":"d63985b5-ae26-42ee-83dc-08ce7815d19e","pageName":"rt | movies | overview | Calle Málaga","titleGenre":"Drama","titleId":"d63985b5-ae26-42ee-83dc-08ce7815d19e","titleName":"Calle Málaga","titleType":"Movie"};
+    dataLayer.push({"customerId":"","loggedInStatus":"","rtVersion":3.1,"webVersion":"node","emsID":"d63985b5-ae26-42ee-83dc-08ce7815d19e","pageName":"rt | movies | overview | Calle Málaga","titleGenre":"Drama","titleId":"d63985b5-ae26-42ee-83dc-08ce7815d19e","titleName":"Calle Málaga","titleType":"Movie"});
+</script>
+
+
+    <script id="mps-page-integration">
+        window.mpscall = {"cag[certified_fresh]":"0","cag[fresh_rotten]":"rotten","cag[genre]":"Drama|Romance","cag[movieshow]":"Calle Málaga","cag[release]":"Feb 6, 2026","cag[score]":"null","cag[urlid]":"/calle_malaga","cat":"movie|movie_page","field[env]":"production","field[rtid]":"d63985b5-ae26-42ee-83dc-08ce7815d19e","title":"Calle Málaga","type":"movie_page","site":"rottentomatoes-web"};
+        var mpsopts={'host':'app.mps.vsnt.net', 'updatecorrelator':1};
+        var mps=mps||{};mps._ext=mps._ext||{};mps._adsheld=[];mps._queue=mps._queue||{};mps._queue.mpsloaded=mps._queue.mpsloaded||[];mps._queue.mpsinit=mps._queue.mpsinit||[];mps._queue.gptloaded=mps._queue.gptloaded||[];mps._queue.adload=mps._queue.adload||[];mps._queue.adclone=mps._queue.adclone||[];mps._queue.adview=mps._queue.adview||[];mps._queue.refreshads=mps._queue.refreshads||[];mps.__timer=Date.now||function(){return+new Date};mps.__intcode="v2";if(typeof mps.getAd!="function")mps.getAd=function(adunit){if(typeof adunit!="string")return false;var slotid="mps-getad-"+adunit.replace(/\W/g,"");if(!mps._ext||!mps._ext.loaded){mps._queue.gptloaded.push(function(){typeof mps._gptfirst=="function"&&mps._gptfirst(adunit,slotid);mps.insertAd("#"+slotid,adunit)});mps._adsheld.push(adunit)}return'<div id="'+slotid+'" class="mps-wrapper" data-mps-fill-slot="'+adunit+'"></div>'};
+    </script>
+    <script src="//app.mps.vsnt.net/fetch/ext/load-rottentomatoes-web.js?nowrite=2" id="mps-load"></script>
+
+
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"Movie","actor":[{"@type":"Person","name":"Carmen Maura","sameAs":"https://www.rottentomatoes.com/celebrity/carmen_maura","image":"https://resizing.flixster.com/QiHev0UI-aYaTIXu_uD-d8mhEhY=/100x120/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/75941_v9_bc.jpg"},{"@type":"Person","name":"Marta Etura","sameAs":"https://www.rottentomatoes.com/celebrity/marta_etura","image":"https://resizing.flixster.com/wChcrBBxGlL9mhir7ezuSqhTExQ=/100x120/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/232581_v9_bb.jpg"},{"@type":"Person","name":"Ahmed Boulane","sameAs":"https://www.rottentomatoes.com/celebrity/ahmed_boulane","image":"https://images.fandango.com/cms/assets/b0cefeb0-b6a8-11ed-81d8-51a487a38835--poster-default-thumbnail.jpg"},{"@type":"Person","name":"María Alfonsa Rosso","sameAs":"https://www.rottentomatoes.com/celebrity/maria_alfonsa_rosso","image":"https://images.fandango.com/cms/assets/b0cefeb0-b6a8-11ed-81d8-51a487a38835--poster-default-thumbnail.jpg"}],"aggregateRating":{"@type":"AggregateRating","bestRating":"100","description":"The Tomatometer rating – based on the published opinions of hundreds of film and television critics – is a trusted measurement of movie and TV programming quality for millions of moviegoers. It represents the percentage of professional critic reviews that are positive for a given film or television show.","name":"Tomatometer","ratingCount":41,"ratingValue":"98","reviewCount":41,"worstRating":"0"},"dateCreated":"2026-02-06","director":[{"@type":"Person","name":"Maryam Touzani","sameAs":"https://www.rottentomatoes.com/celebrity/maryam_touzani","image":"https://images.fandango.com/cms/assets/b0cefeb0-b6a8-11ed-81d8-51a487a38835--poster-default-thumbnail.jpg"}],"description":"Discover reviews, ratings, and trailers for Calle Málaga on Rotten Tomatoes. Stay updated with critic and audience scores today!","genre":["Drama","Romance"],"image":"https://resizing.flixster.com/5jA8M0AIcMM4oM98tqdc9v5wK-s=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2M5MzhjM2UxLTg1N2EtNDI1MC1iZmM0LWQ4OTYzYjhiNzIyYi5qcGc=","name":"Calle Málaga","url":"https://www.rottentomatoes.com/m/calle_malaga","video":{"@type":"VideoObject","thumbnailUrl":"https://statcdn.fandango.com/MPX/image/NBCU_Fandango/888/643/thumb_1A90E9BD-16F4-49BA-AB64-92C5DA388912.jpg","name":"Calle Málaga: Trailer 1","duration":"1:52","sourceOrganization":"MPX","uploadDate":"2026-01-20T20:53:41","description":"","contentUrl":"https://www.rottentomatoes.com/m/calle_malaga/videos/sB4GXtptFGEe"}}</script>
+
+
+        <link rel="manifest" href="https://www.rottentomatoes.com/assets/pizza-pie/manifest/manifest.json" />
+
+        <link rel="apple-touch-icon" href="https://www.rottentomatoes.com/assets/pizza-pie/head-assets/images/apple-touch-icon-60.jpg" />
+        <link rel="apple-touch-icon" sizes="152x152" href="https://www.rottentomatoes.com/assets/pizza-pie/head-assets/images/apple-touch-icon-152.jpg" />
+        <link rel="apple-touch-icon" sizes="167x167" href="https://www.rottentomatoes.com/assets/pizza-pie/head-assets/images/apple-touch-icon-167.jpg" />
+        <link rel="apple-touch-icon" sizes="180x180" href="https://www.rottentomatoes.com/assets/pizza-pie/head-assets/images/apple-touch-icon-180.jpg" />
+
+        
+            <!-- iOS Smart Banner -->
+            <meta name="apple-itunes-app" content="app-id=6673916573">
+        
+
+        
+        
+
+        
+        <meta name="google-site-verification" content="VPPXtECgUUeuATBacnqnCm4ydGO99reF-xgNklSbNbc" />
+
+        
+        <meta name="msvalidate.01" content="034F16304017CA7DCF45D43850915323" />
+        <meta name="theme-color" content="#FA320A">
+
+        <!-- DNS prefetch -->
+        <meta http-equiv="x-dns-prefetch-control" content="on">
+        
+            <link rel="dns-prefetch" href="//www.rottentomatoes.com" />
+        
+        
+            <link rel="preconnect" href="//www.rottentomatoes.com" />
+        
+
+        
+    
+            <link rel="stylesheet" href="/assets/pizza-pie/stylesheets/bundles/layouts/default.6bf23866584.css" />
+
+            
+        
+
+    <link rel="preload" href="/assets/pizza-pie/stylesheets/bundles/pages/movie.44ca31060d5.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+
+
+        <script>
+            window.RottenTomatoes = {};
+            window.RTLocals = {};
+            window.nunjucksPrecompiled = {};
+            window.__RT__ = {};
+        </script>
+
+        
+            
+            <script src="https://cdn.jwplayer.com/libraries/U8MHzHHR.js"></script>
+            <script src="https://sb.scorecardresearch.com/c2/plugins/streamingtag_plugin_jwplayer.js"></script>
+        
+
+        
+        
+    </head>
+    
+    <body
+        class="body no-touch js-mptd-layout"
+        data-AdsGlobalSkinTakeoverManager="body"
+        data-SearchResultsNavManager="body"
+    >
+        <cookie-manager></cookie-manager>
+        <device-inspection-manager endpoint="https://www.rottentomatoes.com/napi/device/inspection"></device-inspection-manager>
+        <user-activity-manager></user-activity-manager>
+        <user-identity-manager></user-identity-manager>
+        <ad-unit-manager></ad-unit-manager>
+
+        <auth-initiate-manager
+    data-ArtiManager="authInitiateManager"
+    data-WatchlistButtonManager="authInitiateManager:createAccount"
+>
+</auth-initiate-manager>
+<auth-profile-manager data-AuthInitiateManager="authProfileManager"></auth-profile-manager>
+<auth-validation-manager data-AuthInitiateManager="authValidation"></auth-validation-manager>
+<overlay-base
+    data-AuthInitiateManager="overlayBase:close"
+    data-AuthProfileManager="overlayBase"
+    data-PagePollsIndexManager="authOverlay:close"
+    hidden
+>
+    <overlay-flows data-AuthInitiateManager="overlayFlows" data-AuthProfileManager="overlayFlows" slot="content">
+        <action-icon
+            slot="close"
+            class="auth-overlay__icon-button auth-overlay__icon-button--close"
+            proxy-aria-label="Close"
+            data-qa="close-overlay-btn"
+            icon="close"
+        ></action-icon>
+
+    </overlay-flows>
+</overlay-base>
+
+<aside aria-label="Notifications">
+    <notification-alert data-AuthInitiateManager="authSuccess" animate hidden role="status">
+        <rt-icon icon="checkmark-circle-filled"></rt-icon>
+        <span>Signed in</span>
+    </notification-alert>
+</aside>
+
+<div id="auth-templates" data-AuthInitiateManager="authTemplates">
+    <template slot="screens" id="account-create-username-screen">
+  <account-create-username-screen data-qa="account-create-username-screen">
+    <input-label slot="input-username" state="default" data-qa="username-input-label">
+      <label slot="label" for="create-username-input">Username</label>
+      <input slot="input" id="create-username-input" type="text" placeholder="Username" data-qa="username-input"/>
+    </input-label>
+    <rt-button slot="btn-continue" data-qa="continue-btn" disabled type="cta-large">
+      Continue
+    </rt-button>
+    <rt-text class="terms-and-policies" slot="terms-and-policies" size="0.75">
+      By joining, you agree to the <rt-link href="https://www.rottentomatoes.com/policies/terms-and-policies" target="_blank" data-qa="terms-policies-link">Terms and Policies</rt-link> and
+      the <rt-link href="https://www.versantprivacy.com/privacy" target="_blank" data-qa="privacy-policy-link">Privacy Policy</rt-link> and to receive email from 
+      <rt-link href="//www.fandango.com/about-us" target="_blank" data-qa="about-fandango-link">Fandango Media Brands</rt-link>.
+    </rt-text>
+  </account-create-username-screen>
+</template>
+
+    <template slot="screens" id="account-email-change-success-screen">
+  <account-email-change-success-screen data-qa="login-create-success-screen">
+    <rt-text slot="message" size="1.5" style="--fontWeight: var(--franklinGothicDemi);">Email change successful</rt-text>
+    <rt-text slot="submessage">You are signed out for your security. </br> Please sign in again.</rt-text>
+    <img slot="icon" src="/assets/pizza-pie/images/icons/cognito-success.3a3d5f32fab.svg" width="111" height="105" />
+  </account-email-change-success-screen>
+</template>
+
+    <template slot="screens" id="account-verifying-email-screen">
+  <account-verifying-email-screen data-qa="account-verifying-email-screen">
+    <img slot="icon" src="/assets/pizza-pie/images/icons/cognito-auth-verify.e74a69e9a77.svg" alt="email" />
+    <rt-text slot="status"> Verifying your email... </rt-text>
+    <rt-button
+      type="cta-large"
+      href="/?authFlowScreen=loginStartScreen"
+      slot="retry-link"
+      size="0.875"
+      style="--fontWeight: var(--franklinGothicMedium);"
+      data-qa="retry-link"
+    >
+      Retry
+    </rt-button>
+    <rt-text slot="terms-and-policies" size="0.75">
+      By continuing, you agree to the 
+      <rt-link href="https://www.rottentomatoes.com/policies/terms-and-policies" target="_blank" data-qa="terms-policies-link" style="--textColor: var(--blueLink);">Terms and Policies</rt-link> 
+      and the 
+      <rt-link href="https://www.versantprivacy.com/privacy" target="_blank" data-qa="privacy-policy-link" style="--textColor: var(--blueLink);">Privacy Policy</rt-link> 
+      and to receive email from 
+      <rt-link href="//www.fandango.com/about-us" target="_blank" data-qa="about-fandango-link" style="--textColor: var(--blueLink);">Fandango Media Brands</rt-link>.
+    </rt-text>
+  </account-verifying-email-screen>
+</template>
+    <template slot="screens" id="cognito-loading">
+    <div>
+        <loading-spinner id="cognito-auth-loading-spinner"></loading-spinner>
+        <style>
+            #cognito-auth-loading-spinner {
+                font-size: 2rem;
+                transform: translate(calc(100% - 1em), 250px);
+                width: 50%;
+            }
+        </style>
+    </div>
+</template>
+
+    <template slot="screens" id="login-check-email-screen">
+  <login-check-email-screen data-qa="login-check-email-screen" email="user@email.com">
+    <rt-text slot="got-email-message" size="0.875">
+      Didn't you get the email?
+    </rt-text>
+    <rt-button slot="resend-email-link" size="0.875" type="cta-large" data-qa="resend-email-link">
+      Resend email
+    </rt-button>
+    <rt-link context="label" slot="trouble-login-link" size="0.875" href="/reset-client" data-qa="reset-link">Having trouble logging in?</rt-link>
+
+    <rt-text class="terms-and-policies" slot="terms-and-policies" size="0.75">
+      By continuing, you agree to the
+      <rt-link href="https://www.rottentomatoes.com/policies/terms-and-policies" target="_blank" data-qa="terms-policies-link" style="--textColor: var(--blueLink);">Terms and Policies</rt-link>
+      and the
+      <rt-link href="https://www.versantprivacy.com/privacy" target="_blank" data-qa="privacy-policy-link" style="--textColor: var(--blueLink);">Privacy Policy</rt-link>
+      and to receive email from
+      <rt-link href="//www.fandango.com/about-us" target="_blank" data-qa="about-fandango-link" style="--textColor: var(--blueLink);">Fandango Media Brands</rt-link>.
+    </rt-text>
+  </login-check-email-screen>
+</template>
+
+    <template slot="screens" id="login-error-screen">
+    <login-error-screen data-qa="login-error">
+        <rt-text slot="header" size="1.5" context="heading" data-qa="header">
+            Something went wrong...
+        </rt-text>
+        <rt-text slot="description-1" size="1" context="label" data-qa="description1">
+            Please try again.
+        </rt-text>
+        <img slot="image" src="/assets/pizza-pie/images/icons/cognito-error.c55e509a7fd.svg" />
+        <rt-text hidden slot="description-2" size="1" context="label" data-qa="description2"></rt-text>
+        <rt-link slot="cta-link" hidden context="label" size="0.875" data-qa="retry-link">Retry</rt-link>
+    </login-error-screen>
+</template>
+
+    <template slot="screens" id="login-enter-password-screen">
+  <login-enter-password-screen data-qa="login-enter-password-screen">
+    <rt-text slot="title" size="1.5" style="--fontWeight: var(--franklinGothicMedium);">
+      Welcome back!
+    </rt-text>
+    <rt-text slot="username" data-qa="user-email">
+      username@email.com
+    </rt-text>
+    <input slot="username-hidden" type="email" autocomplete="username" class="hide"></input>
+    <input-label slot="input-password" state="default" data-qa="password-input-label">
+      <label slot="label" for="pass">Password</label>
+      <input slot="input" id="pass" type="password" name="password" placeholder="Password" autocomplete="current-password" data-qa="password-input"></input>
+    </input-label>
+    <rt-button disabled slot="continue-button" type="cta-large" data-qa="continue-btn">
+      Continue
+    </rt-button>
+    <rt-button slot="email-login-button" theme="light" shape="pill" data-qa="send-email-btn">
+      Send email to verify
+    </rt-button>
+    <rt-link slot="forgot-password-link" context="label" size="0.875" data-qa="forgot-password-link">Forgot password</rt-link>
+    <rt-text class="terms-and-policies" slot="terms-and-policies" size="0.75">
+      By continuing, you agree to the
+      <rt-link href="https://www.rottentomatoes.com/policies/terms-and-policies" target="_blank" data-qa="terms-policies-link" style="--textColor: var(--blueLink);">Terms and Policies</rt-link>
+      and the
+      <rt-link href="https://www.versantprivacy.com/privacy" target="_blank" data-qa="privacy-policy-link" style="--textColor: var(--blueLink);">Privacy Policy</rt-link>
+      and to receive email from
+      <rt-link href="//www.fandango.com/about-us" target="_blank" data-qa="about-fandango-link" style="--textColor: var(--blueLink);">Fandango Media Brands</rt-link>.
+    </rt-text>
+  </login-enter-password-screen>
+</template>
+
+    <template slot="screens" id="login-start-screen">
+  <login-start-screen data-qa="login-start-screen">
+    <input-label
+      slot="input-email"
+      state="default"
+      data-qa="email-input-label"
+    >
+      <label slot="label" for="login-email-input">Email address</label>
+      <input
+        slot="input"
+        autocomplete="username"
+        id="login-email-input"
+        placeholder="Email address"
+        type="email"
+        data-qa="email-input"
+      />
+    </input-label>
+    <input class="hide" type="password"></input>
+    <rt-button disabled slot="email-login-button" type="cta-large" data-qa="continue-btn">
+      Continue
+    </rt-button>
+    <rt-button
+      slot="google-login-button"
+      shape="pill" theme="light" style="--buttonHeight: 52px; --borderRadius: 32px;"
+      data-qa="google-login-btn" data-type="google"
+    >
+      <div class="social-login-btn-content">
+        <img height="16px" width="16px" src="/assets/pizza-pie/images/vendor/google/google_logo.28d9eb28faa.svg" />
+        Continue with Google
+      </div>
+    </rt-button>
+    <rt-button
+      slot="apple-login-button"
+      shape="pill" theme="light" style="--buttonHeight: 52px; --borderRadius: 32px;"
+      data-qa="apple-login-btn" data-type="apple"
+    >
+      <div class="social-login-btn-content">
+        <rt-icon size-pixel="20" icon="apple" style="--topPosition: 3%"></rt-icon>
+        Continue with apple
+      </div>
+    </rt-button>
+    <rt-link slot="reset-link" class="reset-link" context="label" size="0.875" href="/reset-client" data-qa="reset-link">
+      Having trouble logging in?
+    </rt-link>
+    <rt-text class="terms-and-policies" slot="terms-and-policies" size="0.75">
+      By continuing, you agree to the
+      <rt-link href="https://www.rottentomatoes.com/policies/terms-and-policies" target="_blank" data-qa="terms-policies-link" style="--textColor: var(--blueLink);">Terms and Policies</rt-link>
+      and the
+      <rt-link href="https://www.versantprivacy.com/privacy" target="_blank" data-qa="privacy-policy-link" style="--textColor: var(--blueLink);">Privacy Policy</rt-link>
+      and to receive email from
+      <rt-link href="//www.fandango.com/about-us" target="_blank" data-qa="about-fandango-link" style="--textColor: var(--blueLink);">Fandango Media Brands</rt-link>.
+    </rt-text>
+  </login-start-screen>
+</template>
+
+    <template slot="screens" id="login-success-screen">
+  <login-success-screen data-qa="login-success-screen">
+    <rt-text slot="status" size="1.5">
+      Login successful!
+    </rt-text>
+    <img slot="icon" src="/assets/pizza-pie/images/icons/cognito-success.3a3d5f32fab.svg" width="111" height="105" />
+  </login-success-screen>
+</template>
+    <template slot="screens" id="cognito-opt-in-us">
+  <auth-optin-screen data-qa="auth-opt-in-screen">
+    <div slot="newsletter-text">
+      <h2 class="cognito-optin-form__header unset">Let's keep in touch!</h2>
+    </div>
+    <img slot="image" class="image" src="https://images.fandango.com/cms/assets/97c33f00-313f-11ee-9aaf-6762c75465cf--newsletter.png" alt="Rotten Tomatoes Newsletter">>
+    <h2 slot="sub-title" class="subTitle unset">Sign up for the Rotten Tomatoes newsletter to get weekly updates on:</h2>
+    <ul slot="options">
+      <li class="icon-item">Upcoming Movies and TV shows</li>
+      <li class="icon-item">Rotten Tomatoes Podcast</li>
+      <li class="icon-item">Media News + More</li>
+    </ul>
+    <rt-button slot="opt-in-button" data-qa="auth-opt-in-screen-opt-in-btn">
+      Sign me up
+    </rt-button>
+    <rt-button slot="opt-out-button" class="button--outline" data-qa="auth-opt-in-screen-opt-out-btn">
+      No thanks
+    </rt-button>
+    <p slot="foot-note">
+      By clicking "Sign Me Up," you are agreeing to receive occasional emails and communications from Fandango Media (Fandango, Vudu, and Rotten Tomatoes) and consenting to Fandango's 
+      <a href="https://www.versantprivacy.com/privacy" class="optin-link" target="_blank" rel="noopener" data-qa="auth-name-screen-privacy-policy-link">Privacy Policy</a>
+      and 
+      <a href="https://www.rottentomatoes.com/policies/terms-and-policies" class="optin-link" target="_blank" rel="noopener" data-qa="auth-name-screen-privacy-policy-link">Terms and Policies</a>.
+      Please allow 10 business days for your account to reflect your preferences.
+    </p>
+  </auth-optin-screen>
+</template>
+    <template slot="screens" id="cognito-opt-in-foreign">
+  <auth-optin-screen data-qa="auth-opt-in-screen">
+    <div slot="newsletter-text">
+      <h2 class="cognito-optin-form__header unset">Let's keep in touch!</h2>
+    </div>
+    <img slot="image" class="image" src="https://images.fandango.com/cms/assets/97c33f00-313f-11ee-9aaf-6762c75465cf--newsletter.png" alt="Rotten Tomatoes Newsletter">>
+    <h2 slot="sub-title" class="subTitle unset">Sign up for the Rotten Tomatoes newsletter to get weekly updates on:</h2>
+    <ul slot="options">
+      <li class="icon-item">Upcoming Movies and TV shows</li>
+      <li class="icon-item">Rotten Tomatoes Podcast</li>
+      <li class="icon-item">Media News + More</li>
+    </ul>
+    <rt-button slot="opt-in-button" data-qa="auth-opt-in-screen-opt-in-btn">
+      Sign me up
+    </rt-button>
+    <rt-button slot="opt-out-button" class="button--outline" data-qa="auth-opt-in-screen-opt-out-btn">
+      No thanks
+    </rt-button>
+  </auth-optin-screen>
+</template>
+    <template slot="screens" id="cognito-opt-in-success">
+    <auth-verify-screen>
+        <rt-icon icon="checkmark-circle-filled" slot="icon"></rt-icon>
+        <p class="h3" slot="status">OK, got it!</p>
+    </auth-verify-screen>
+</template>
+
+</div>
+
+
+        <div id="emptyPlaceholder"></div> 
+
+        
+            
+            <script ASYNC src="//assets.adobedtm.com/launch-EN549327edc13e414a9beb5d61bfd9aac6.min.js"></script>
+            
+        
+
+        <div id="main" class="container rt-layout__body">
+            <header>
+                <a href="#main-page-content" class="skip-link">Skip to Main Content</a>
+
+                
+                    <mobile-android-banner env="production" hidden></mobile-android-banner>
+                    <rt-app-manager></rt-app-manager>
+                    <overlay-base
+                        data-RtAppManager="overlayBase:close"
+                        hidden
+                    >
+                        <rt-app-modal-content slot="content">
+                            <action-icon
+                                slot="btn-close"
+                                proxy-aria-label="Close"
+                                icon="close"
+                                data-RtAppManager="btnClose:click"
+                            ></action-icon>
+                            <rt-button slot="btn-download" type="cta-large" href="/device/app">
+                                DOWNLOAD THE APP
+                            </rt-button>
+                            <rt-button slot="btn-continue" type="cta-secondary-large" data-RtAppManager="btnContinue:click">
+                                CONTINUE IN BROWSER
+                            </rt-button>
+                        </rt-app-modal-content>
+                    </overlay-base>
+                
+
+                <div id="header_and_leaderboard">
+                    <div id="top_leaderboard_wrapper" class="leaderboard_wrapper ">
+                        <ad-unit hidden unit-display="desktop" unit-type="topbanner" adjust-height>
+                            <div slot="ad-inject"></div>
+                        </ad-unit>
+
+                        <ad-unit hidden unit-display="mobile" unit-type="mbanner">
+                            <div slot="ad-inject"></div>
+                        </ad-unit>
+                    </div>
+                </div>
+                
+
+  <rt-header-manager></rt-header-manager>
+
+  <rt-header
+    aria-label="Main"
+    class="navbar"
+    data-qa="header-nav-bar"
+    data-AdsGlobalNavTakeoverManager="header"
+    id="header-main"
+    role="navigation"
+    skeleton="panel"
+    
+  >
+
+  
+  <button
+    aria-label="Open aRTi"
+    class="arti-mobile"
+    data-ArtiManager="btnArti:click"
+    data-SearchResultsNavManager="btnArti"
+    slot="arti-mobile"
+  >
+    <img
+      alt="arti"
+      src="/assets/pizza-pie/images/arti.041d204c4a4.svg"
+    />
+  </button>
+  
+
+    <div slot="mobile-header-nav" data-SearchResultsNavManager="mobileHeaderNavWrap">
+        <rt-button
+          id="mobile-header-nav-btn"
+          proxy-aria-label="Open menu"
+          data-MobileHeaderNav="opener"
+          theme="transparent"
+          style="--buttonPadding: 0 4px 0 10px; --textColor: var(--white);"
+        >
+          <rt-icon icon="hamburger-menu" image ></rt-icon>
+        </rt-button>
+
+        <mobile-header-nav id="mobile-header-nav">
+                        <rt-img
+              slot="logo-image"
+              alt="Rotten Tomatoes"
+              fetchpriority="high"
+              src="/assets/pizza-pie/images/rt-tomato-logo.20c3bdbc97b.svg"
+            ></rt-img>
+            <div slot="menus-css"></div>
+            <div slot="menus"></div>
+        </mobile-header-nav>
+    </div>
+
+  <a
+    class="logo-wrap"
+    data-AdsGlobalNavTakeoverManager="logoLink"
+    data-SearchResultsNavManager="rtNavLogo"
+    href="/"
+    id="navbar"
+    slot="logo"
+  >
+    <img
+      alt="Rotten Tomatoes"
+      data-qa="header-logo"
+      data-AdsGlobalNavTakeoverManager="logo"
+      src="/assets/pizza-pie/images/rtlogo.9b892cff3fd.png"
+      fetchpriority="high"
+    />
+
+    <div class="hide">
+      <ad-unit hidden unit-display="desktop,mobile" unit-type="logorepeat" unit-targeting="ploc=rtlogo;">
+        <div slot="ad-inject"></div>
+      </ad-unit>
+    </div>
+  </a>
+
+  <search-results-nav-manager
+    
+      arti-search-nav-enabled="true"
+    
+  >
+    
+  </search-results-nav-manager>
+
+  <search-results-nav
+    data-adobe-id="global-nav-search"
+    data-SearchResultsNavManager="search"
+    slot="search"
+    skeleton="chip"
+  >
+    <search-results-controls
+      data-SearchResultsNavManager="searchControls"
+      slot="controls"
+    >
+      <input
+        aria-label="Search"
+        data-AdsGlobalNavTakeoverManager="searchInput"
+        data-SearchResultsNavManager="inputText:click,input,keydown"
+        data-qa="search-input"
+        placeholder="Search"
+        slot="search-input"
+        type="text"
+      />
+      <rt-button
+        class="search-clear"
+        data-qa="search-clear"
+        data-AdsGlobalNavTakeoverManager="searchClearBtn"
+        data-SearchResultsNavManager="clearBtn:click"
+        hidden
+        slot="search-clear"
+        theme="transparent"
+      >
+        <rt-icon icon="close" size-pixel="20"></rt-icon>
+      </rt-button>
+      <rt-link
+        class="search-submit"
+        data-qa="search-submit"
+        data-AdsGlobalNavTakeoverManager="searchSubmitBtn"
+        data-SearchResultsNavManager="submitBtn:click"
+        href="/search"
+        slot="search-submit"
+      >
+        <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px;">
+          <sr-text>Submit search</sr-text>
+          <rt-icon icon="search" size-pixel="16"></rt-icon>
+        </span>
+      </rt-link>
+      <rt-button
+        class="search-cancel"
+        data-qa="search-cancel"
+        data-AdsGlobalNavTakeoverManager="searchCancelBtn"
+        data-SearchResultsNavManager="cancelBtn:click"
+        hidden
+        size="0.875"
+        slot="search-cancel"
+        theme="transparent"
+      >
+        Cancel
+      </rt-button>
+    </search-results-controls>
+
+    <search-results
+      aria-expanded="false"
+      data-SearchResultsNavManager="searchResults"
+      hidden
+      slot="results"
+    >
+    </search-results>
+  </search-results-nav>
+
+  <ul slot="nav-links">
+    <li>
+      <a
+        href="/about"
+        data-qa="header:link-whats-tmeter"
+        data-AdsGlobalNavTakeoverManager="text"
+      >
+        About Rotten Tomatoes&reg;
+      </a>
+    </li>
+    <li>
+      <a
+        href="/critics"
+        data-qa="header:link-critics-home"
+        data-AdsGlobalNavTakeoverManager="text"
+      >
+        Critics
+      </a>
+    </li>
+    <li data-RtHeaderManager="loginLink">
+      <ul>
+        <li>
+          <button
+            id="masthead-show-login-btn"
+            class="js-cognito-signin button--link"
+            data-AuthInitiateManager="btnSignIn:click"
+            data-qa="header:login-btn"
+            data-AdsGlobalNavTakeoverManager="text"
+          >
+            Login/signup
+          </button>
+        </li>
+      </ul>
+    </li>
+    <li class="hide" data-RtHeaderManager="userItem:keydown,keyup,mouseenter" data-qa="header:user">
+      <a
+        class="masthead-user-link"
+        data-RtHeaderManager="navUserlink:focus"
+        data-UserIdentityManager="profileLink"
+        rel="nofollow"
+        data-qa="user-profile-link"
+      >
+        <p
+          data-AdsGlobalNavTakeoverManager="text"
+          data-RtHeaderManager="navUserFirstName"
+          data-qa="user-profile-name"
+        ></p>
+        <rt-icon
+          data-AdsGlobalNavTakeoverManager="text"
+          icon="dropdown-arrow-down"
+          image
+        >
+        </rt-icon>
+      </a>
+      <rt-header-user-info
+        class="hide"
+        data-RtHeaderManager="userInfo:focusout,mouseleave"
+      >
+        <a
+          data-qa="user-stats-profile-pic"
+          data-UserIdentityManager="profileLink"
+          rel="nofollow"
+          slot="image-expanded"
+          tabindex="-1"
+        >
+          <rt-img alt="" src="" style="width:40px; height:40px;"></rt-img>
+        </a>
+        <a
+          slot="full-name"
+          data-UserIdentityManager="profileLink"
+          rel="nofollow"
+          class="username"
+          data-qa="user-stats-name"
+        ></a>
+        <a
+          slot="wts"
+          data-UserIdentityManager="watchlistLink"
+          rel="nofollow"
+          class="wts-count-block"
+          data-qa="user-stats-wts"
+        >
+          <rt-icon icon="add" data-qa="user-stats-ratings-count"></rt-icon>
+          <span class="count" data-qa="user-stats-wts-count"></span>
+          &nbsp;Wants to See
+        </a>
+        <a
+          slot="rating"
+          data-UserIdentityManager="ratingsLink"
+          rel="nofollow"
+          class="rating-count-block"
+          data-qa="user-stats-ratings"
+        >
+          <rt-icon icon="star-filled" data-qa="user-stats-ratings-count"></rt-icon>
+          <span class="count"></span>
+          &nbsp;Reviews
+        </a>
+
+        <a
+          slot="profile-link"
+          data-UserIdentityManager="profileLink"
+          rel="nofollow"
+          class="dropdown-link"
+          data-qa="user-stats-profile-link"
+        >Profile</a>
+        <a
+          slot="account-link"
+          data-UserIdentityManager="accountLink"
+          rel="nofollow"
+          class="dropdown-link"
+          data-qa="user-stats-account-link"
+        >Account</a>
+        <a
+          slot="logout-link"
+          class="dropdown-link"
+          data-RtHeaderManager="logoutLink:click"
+          data-qa="user-stats-logout-link"
+        >Log Out</a>
+      </rt-header-user-info>
+    </li>
+  </ul>
+
+  <rt-header-nav slot="nav-dropdowns">
+    
+      <button
+        aria-label="Open aRTi"
+        class="arti-desktop"
+        data-ArtiManager="btnArti:click"
+        slot="arti-desktop"
+      >
+        <img
+          alt="arti"
+          src="/assets/pizza-pie/images/arti.041d204c4a4.svg"
+        />
+  </button>
+    
+    <rt-header-nav-item slot="movies" data-qa="masthead:movies-dvds">
+      <a
+        class="unset"
+        slot="link"
+        href="/browse/movies_in_theaters/sort:popular"
+        data-qa="masthead:movies-dvds-link"
+        data-AdsGlobalNavTakeoverManager="text"
+      >
+        Movies
+      </a>
+      <rt-header-nav-item-dropdown aria-expanded="false" slot="dropdown" data-qa="movies-menu">
+        <rt-header-nav-item-dropdown-list slot="column" data-qa="header-movies-in-theaters">
+          <p slot="title" class="h4" data-qa="movies-in-theaters-main-link"><a class="unset" href="/browse/movies_in_theaters/sort:popular">Movies in theaters</a></p>
+          <ul slot="links">
+            <li data-qa="in-theaters-item">
+              <a href="/browse/movies_in_theaters/sort:newest" data-qa="opening-this-week-link">Opening This Week</a>
+            </li>
+            <li data-qa="in-theaters-item">
+              <a href="/browse/movies_in_theaters/sort:top_box_office" data-qa="top-box-office-link">Top Box Office</a>
+            </li>
+            <li data-qa="in-theaters-item">
+              <a href="/browse/movies_coming_soon/" data-qa="coming-soon-link">Coming Soon to Theaters</a>
+            </li>
+            <li data-qa="in-theaters-item">
+              <a href="/browse/movies_in_theaters/critics:certified_fresh~sort:popular" data-qa="certified-fresh-link">Certified Fresh Movies</a>
+            </li>
+          </ul>
+        </rt-header-nav-item-dropdown-list>
+        <rt-header-nav-item-dropdown-list slot="column" data-qa="header-on-dvd-streaming">
+          <p slot="title" class="h4" data-qa="dvd-streaming-main-link"><a class="unset" href="/browse/movies_at_home">Movies at Home</a></p>
+          <ul slot="links" data-curation="rt-nav-movies-at-home">
+            
+            <li data-qa="movies-at-home-item">
+              <a href="/browse/movies_at_home/affiliates:fandango-at-home" data-qa="fandango-at-home-link">Fandango at Home</a>
+            </li>
+            
+            <li data-qa="movies-at-home-item">
+              <a href="/browse/movies_at_home/affiliates:netflix" data-qa="netflix-link">Netflix</a>
+            </li>
+            
+            <li data-qa="movies-at-home-item">
+              <a href="/browse/movies_at_home/affiliates:apple-tv-plus" data-qa="apple-tv-link">Apple TV</a>
+            </li>
+            
+            <li data-qa="movies-at-home-item">
+              <a href="/browse/movies_at_home/affiliates:prime-video" data-qa="prime-video-link">Prime Video</a>
+            </li>
+            
+            <li data-qa="movies-at-home-item">
+              <a href="/browse/movies_at_home/sort:popular" data-qa="most-popular-streaming-movies-link">Most Popular Streaming movies</a>
+            </li>
+            
+            <li data-qa="movies-at-home-item">
+              <a href="/browse/movies_at_home/critics:certified_fresh" data-qa="certified-fresh-movies-link">Certified Fresh movies</a>
+            </li>
+            
+            <li data-qa="movies-at-home-item">
+              <a href="/browse/movies_at_home" data-qa="browse-all-link">Browse all</a>
+            </li>
+            
+          </ul>
+        </rt-header-nav-item-dropdown-list>
+        <rt-header-nav-item-dropdown-list slot="column" data-qa="header-movies-more">
+          <p slot="title" class="h4">More</p>
+          <ul slot="links">
+            <li data-qa="what-to-watch-item">
+                <a href="https://editorial.rottentomatoes.com/rt-hub/what-to-watch" class="what-to-watch" data-qa="what-to-watch-link">What to Watch<rt-badge>New</rt-badge></a>
+            </li>
+          </ul>
+        </rt-header-nav-item-dropdown-list>
+        
+          <rt-header-nav-item-dropdown-list slot="column" cfp>
+            <p slot="title" class="h4">Certified fresh picks</p>
+            <ul slot="links" class="cfp-wrap" data-qa="header-certified-fresh-picks" data-curation="rt-nav-list-cf-picks">
+              
+                <li data-qa="cert-fresh-item">
+                  
+                  <a class="cfp-tile" href="/m/power_ballad" data-qa="cert-fresh-link">
+    <tile-dynamic data-qa="tile">
+        <rt-img
+            alt="Power Ballad poster image"
+            slot="image"
+            src="https://resizing.flixster.com/3c7TR36TEzd1dSZXLfch04MjdHw=/206x305/v2/https://resizing.flixster.com/dDPvCDNdpjlRDJDuVfc2HzELuyA=/fit-in/180x240/v2/https://resizing.flixster.com/D6ZNf6XfT_f-L-2iIpnUFpG21rA=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzM3MTdjMjYzLTE4MzItNGU1MC1hZTYzLWI3NzUwMThjODI4OC5qcGc="
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption" data-track="scores">
+            <div class="score-wrap">
+                <score-icon-critics
+                    certified
+                    sentiment="positive"
+                    size="1"
+                ></score-icon-critics>
+                <rt-text class="critics-score" size="1" context="label">86%</rt-text>
+            </div>
+            <span class="p--small">Power Ballad</span>
+            <span class="sr-only">Link to Power Ballad</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+              
+                <li data-qa="cert-fresh-item">
+                  
+                  <a class="cfp-tile" href="/m/carolina_caroline" data-qa="cert-fresh-link">
+    <tile-dynamic data-qa="tile">
+        <rt-img
+            alt="Carolina Caroline poster image"
+            slot="image"
+            src="https://resizing.flixster.com/UmAIHL4Ghqmco2HlK4l6pgkEpCE=/206x305/v2/https://resizing.flixster.com/u4rX9TIrc5nqtP25dVtXpNGSt_A=/fit-in/180x240/v2/https://resizing.flixster.com/VNue0wrvKzpz1UBk7x7SPbIsiQQ=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2M1Mjk0MGQxLWI3YTYtNDc2Yy1iYmU1LTIzOWI5YjA3NmJhNS5qcGc="
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption" data-track="scores">
+            <div class="score-wrap">
+                <score-icon-critics
+                    certified
+                    sentiment="positive"
+                    size="1"
+                ></score-icon-critics>
+                <rt-text class="critics-score" size="1" context="label">93%</rt-text>
+            </div>
+            <span class="p--small">Carolina Caroline</span>
+            <span class="sr-only">Link to Carolina Caroline</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+              
+                <li data-qa="cert-fresh-item">
+                  
+                  <a class="cfp-tile" href="/m/backrooms" data-qa="cert-fresh-link">
+    <tile-dynamic data-qa="tile">
+        <rt-img
+            alt="Backrooms poster image"
+            slot="image"
+            src="https://resizing.flixster.com/5sBvJuFdW1XoNok3YfJcbx9cuH8=/206x305/v2/https://resizing.flixster.com/xq5AiE2VCNI9IXXd3-YPBo4THLQ=/fit-in/180x240/v2/https://resizing.flixster.com/rhgxSrAD0DJLjAa7CXGBQU5h81E=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2U3YzFlM2U0LWM1NzctNDg5Yy05M2Y4LTVmYWYxOTQyMDEyMy5qcGc="
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption" data-track="scores">
+            <div class="score-wrap">
+                <score-icon-critics
+                    certified
+                    sentiment="positive"
+                    size="1"
+                ></score-icon-critics>
+                <rt-text class="critics-score" size="1" context="label">88%</rt-text>
+            </div>
+            <span class="p--small">Backrooms</span>
+            <span class="sr-only">Link to Backrooms</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+            </ul>
+          </rt-header-nav-item-dropdown-list>
+        
+      </rt-header-nav-item-dropdown>
+    </rt-header-nav-item>
+
+    <rt-header-nav-item slot="tv" data-qa="masthead:tv">
+      <a
+        class="unset"
+        slot="link"
+        href="/browse/tv_series_browse/sort:popular"
+        data-qa="masthead:tv-link"
+        data-AdsGlobalNavTakeoverManager="text"
+      >
+        Tv shows
+      </a>
+      <rt-header-nav-item-dropdown aria-expanded="false" slot="dropdown" data-qa="tv-menu">
+        
+          <rt-header-nav-item-dropdown-list slot="column" data-qa="header-tv-list1">
+            <p slot="title" class="h4" data-curation="rt-hp-text-list-3">
+              New TV Tonight
+            </p>
+            <ul slot="links" class="score-list-wrap">
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/tony_awards/s79" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="empty"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score-empty"
+            context="label"
+            size="1"
+            style="--textColor: var(--grayLight4); --lineHeight: 1; --letterSpacing: 0.2em;" 
+        >--</rt-text>
+        
+    </div>
+    <span>
+        
+            Tony Awards: Season 79
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/the_vampire_lestat/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >100%</rt-text>
+        
+    </div>
+    <span>
+        
+            The Vampire Lestat: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/the_listeners/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >92%</rt-text>
+        
+    </div>
+    <span>
+        
+            The Listeners: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/alice_and_steve/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="empty"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score-empty"
+            context="label"
+            size="1"
+            style="--textColor: var(--grayLight4); --lineHeight: 1; --letterSpacing: 0.2em;" 
+        >--</rt-text>
+        
+    </div>
+    <span>
+        
+            Alice and Steve: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/every_year_after/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="empty"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score-empty"
+            context="label"
+            size="1"
+            style="--textColor: var(--grayLight4); --lineHeight: 1; --letterSpacing: 0.2em;" 
+        >--</rt-text>
+        
+    </div>
+    <span>
+        
+            Every Year After: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/sweet_magnolias/s05" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="empty"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score-empty"
+            context="label"
+            size="1"
+            style="--textColor: var(--grayLight4); --lineHeight: 1; --letterSpacing: 0.2em;" 
+        >--</rt-text>
+        
+    </div>
+    <span>
+        
+            Sweet Magnolias: Season 5
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/outlast/s03" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="empty"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score-empty"
+            context="label"
+            size="1"
+            style="--textColor: var(--grayLight4); --lineHeight: 1; --letterSpacing: 0.2em;" 
+        >--</rt-text>
+        
+    </div>
+    <span>
+        
+            Outlast: The Jungle: Season 3
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/surviving_earth/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="empty"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score-empty"
+            context="label"
+            size="1"
+            style="--textColor: var(--grayLight4); --lineHeight: 1; --letterSpacing: 0.2em;" 
+        >--</rt-text>
+        
+    </div>
+    <span>
+        
+            Surviving Earth: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/best_of_the_world_with_antoni_porowski/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="empty"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score-empty"
+            context="label"
+            size="1"
+            style="--textColor: var(--grayLight4); --lineHeight: 1; --letterSpacing: 0.2em;" 
+        >--</rt-text>
+        
+    </div>
+    <span>
+        
+            Best of the World With Antoni Porowski: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/power_book_iii_raising_kanan/s05" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="empty"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score-empty"
+            context="label"
+            size="1"
+            style="--textColor: var(--grayLight4); --lineHeight: 1; --letterSpacing: 0.2em;" 
+        >--</rt-text>
+        
+    </div>
+    <span>
+        
+            Power Book III: Raising Kanan: Season 5
+        
+    </span>
+</a>
+                </li>
+              
+            </ul>
+            <a
+              class="a--short"
+              data-qa="tv-list1-view-all-link"
+              href="/browse/tv_series_browse/sort:newest"
+              slot="view-all-link"
+            >
+                View All
+            </a>
+          </rt-header-nav-item-dropdown-list>
+        
+
+        
+          <rt-header-nav-item-dropdown-list slot="column" data-qa="header-tv-list2">
+            <p slot="title" class="h4" data-curation="rt-hp-text-list-2">
+              Most Popular TV on RT
+            </p>
+            <ul slot="links" class="score-list-wrap">
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/cape_fear/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >76%</rt-text>
+        
+    </div>
+    <span>
+        
+            Cape Fear: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/spider_noir/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >91%</rt-text>
+        
+    </div>
+    <span>
+        
+            Spider-Noir: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/the_boroughs/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >97%</rt-text>
+        
+    </div>
+    <span>
+        
+            The Boroughs: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/widows_bay/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >97%</rt-text>
+        
+    </div>
+    <span>
+        
+            Widow&#39;s Bay: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/the_witness/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >100%</rt-text>
+        
+    </div>
+    <span>
+        
+            The Witness: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/star_city/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >96%</rt-text>
+        
+    </div>
+    <span>
+        
+            Star City: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/a_good_girls_guide_to_murder/s02" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >92%</rt-text>
+        
+    </div>
+    <span>
+        
+            A Good Girl&#39;s Guide to Murder: Season 2
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/maximum_pleasure_guaranteed/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >94%</rt-text>
+        
+    </div>
+    <span>
+        
+            Maximum Pleasure Guaranteed: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/off_campus/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >94%</rt-text>
+        
+    </div>
+    <span>
+        
+            Off Campus: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/legends_2026/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >97%</rt-text>
+        
+    </div>
+    <span>
+        
+            Legends: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+            </ul>
+            <a
+              class="a--short"
+              data-qa="tv-list2-view-all-link"
+              href="/browse/tv_series_browse/sort:popular?"
+              slot="view-all-link"
+            >
+                View All
+            </a>
+          </rt-header-nav-item-dropdown-list>
+        
+
+        <rt-header-nav-item-dropdown-list slot="column" data-qa="header-tv-more">
+          <p slot="title" class="h4">More</p>
+          <ul slot="links">
+            <li>
+              <a href="https://editorial.rottentomatoes.com/rt-hub/what-to-watch/" class="what-to-watch" data-qa="what-to-watch-link-tv">
+                What to Watch<rt-badge>New</rt-badge>
+              </a>
+            </li>
+            <li>
+              <a href="/browse/tv_series_browse/sort:popular" data-qa="tv-best-link">
+                <span>Best TV Shows</span>
+              </a>
+            </li>
+            <li>
+              <a href="/browse/tv_series_browse/sort:popular" data-qa="tv-popular-link">
+                <span>Most Popular TV</span>
+              </a>
+            </li>
+            <li>
+              <a href="/browse/tv_series_browse/affiliates:fandango-at-home" data-qa="tv-fandango-at-home-link">
+                <span>Fandango at Home</span>
+              </a>
+            </li>
+            <li>
+              <a href="/browse/tv_series_browse/affiliates:paramount-plus" data-qa="tv-paramount-link">
+                <span>Paramount+</span>
+              </a>
+            </li>
+            <li>
+              <a href="/browse/tv_series_browse/affiliates:netflix" data-qa="tv-netflix-link">
+                <span>Netflix</span>
+              </a>
+            </li>
+            <li>
+              <a href="/browse/tv_series_browse/affiliates:prime-video" data-qa="tv-prime-video-link">
+                <span>Prime Video</span>
+              </a>
+            </li>
+            <li>
+              <a href="/browse/tv_series_browse/affiliates:apple-tv-plus" data-qa="tv-apple-tv-plus-link">
+                <span>Apple TV</span>
+              </a>
+            </li>
+          </ul>
+        </rt-header-nav-item-dropdown-list>
+
+        
+          <rt-header-nav-item-dropdown-list slot="column" cfp data-qa="header-certified-fresh-pick">
+            <p slot="title" class="h4">
+              Certified fresh pick
+            </p>
+            <ul slot="links" class="cfp-wrap" data-curation="rt-nav-list-cf-picks">
+              <li>
+                
+                <a class="cfp-tile" href="/tv/cape_fear/s01" data-qa="cert-fresh-link">
+    <tile-dynamic data-qa="tile">
+        <rt-img
+            alt="Cape Fear: Season 1 poster image"
+            slot="image"
+            src="https://resizing.flixster.com/80ScTYpkoMsdLZz0H_4QuDzXAIg=/206x305/v2/https://resizing.flixster.com/OOCVhgIg_M1EmLLfD_4T5q3gi-k=/fit-in/180x240/v2/https://resizing.flixster.com/h5H-b_D9k9NOnbNGWO-QDjk4mVE=/ems.cHJkLWVtcy1hc3NldHMvdHZzZWFzb24vYmYxMDhkNjAtYjNhMC00M2RlLTg1YWYtMDc3NzU5MjIxZGVhLnBuZw=="
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption" data-track="scores">
+            <div class="score-wrap">
+                <score-icon-critics
+                    certified
+                    sentiment="positive"
+                    size="1"
+                ></score-icon-critics>
+                <rt-text class="critics-score" size="1" context="label">76%</rt-text>
+            </div>
+            <span class="p--small">Cape Fear: Season 1</span>
+            <span class="sr-only">Link to Cape Fear: Season 1</span>
+        </div>
+    </tile-dynamic>
+</a>
+              </li>
+            </ul>
+          </rt-header-nav-item-dropdown-list>
+        
+      </rt-header-nav-item-dropdown>
+    </rt-header-nav-item>
+
+    <rt-header-nav-item slot="shop">
+      <a class="unset"
+          id="appLink"
+          slot="link"
+          href="https://editorial.rottentomatoes.com/article/app/"
+          target="_blank"
+          data-qa="masthead:app-link"
+          data-AdsGlobalNavTakeoverManager="text"
+      >
+          RT App
+          <temporary-display
+            slot="temporary-display"
+            key="app"
+            element="#appLink"
+            event="click"
+          >
+            <rt-badge hidden>New</rt-badge>
+          </temporary-display>
+      </a>
+    </rt-header-nav-item>
+
+    <rt-header-nav-item slot="news" data-qa="masthead:news">
+      <a
+        class="unset"
+        slot="link"
+        href="https://editorial.rottentomatoes.com"
+        data-qa="masthead:news-link"
+        data-AdsGlobalNavTakeoverManager="text"
+      >
+        News
+      </a>
+      <rt-header-nav-item-dropdown aria-expanded="false" slot="dropdown" data-qa="news-menu">
+        <rt-header-nav-item-dropdown-list slot="column" data-qa="header-news-columns">
+          <p slot="title" class="h4">Columns</p>
+          <ul slot="links">
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/all-time-lists/" data-pageheader="All-Time Lists" data-qa="column-link">
+                All-Time Lists
+              </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/binge-guide/" data-pageheader="Binge Guide" data-qa="column-link">
+                Binge Guide
+              </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/comics-on-tv/" data-pageheader="Comics on TV" data-qa="column-link">
+                Comics on TV
+              </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/countdown/" data-pageheader="Countdown" data-qa="column-link">
+                Countdown
+              </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/five-favorite-films/" data-pageheader="Five Favorite Films" data-qa="column-link">
+                Five Favorite Films
+              </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/video-interviews/" data-pageheader="Video Interviews" data-qa="column-link">
+                Video Interviews
+              </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/weekend-box-office/" data-pageheader="Weekend Box Office" data-qa="column-link"
+              >Weekend Box Office
+            </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/weekly-ketchup/" data-pageheader="Weekly Ketchup" data-qa="column-link">
+                Weekly Ketchup
+              </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/what-to-watch/" data-pageheader="What to Watch" data-qa="column-link">
+                What to Watch
+              </a>
+            </li>
+          </ul>
+        </rt-header-nav-item-dropdown-list>
+
+        
+          <rt-header-nav-item-dropdown-list slot="column" data-qa="header-news-guides">
+            <p slot="title" class="h4">Guides</p>
+            <ul slot="links" class="news-wrap">
+              
+                <li data-qa="guides-item">
+                  <a class="news-tile" href="https://editorial.rottentomatoes.com/guide/the-scary-movie-franchise-ranked/" data-qa="news-link">
+    <tile-dynamic
+        data-qa="tile"
+        orientation="landscape"
+    >
+        <rt-img
+            alt="The <em>Scary Movie</em> Franchise Ranked poster image"
+            slot="image"
+            src="https://editorial.rottentomatoes.com/wp-content/uploads/2026/03/Scary_Movie600-1.jpg"
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption">
+            <p>The <em>Scary Movie</em> Franchise Ranked</p>
+            <span class="sr-only">Link to The <em>Scary Movie</em> Franchise Ranked</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+                <li data-qa="guides-item">
+                  <a class="news-tile" href="https://editorial.rottentomatoes.com/guide/best-movies-fandango-at-home/" data-qa="news-link">
+    <tile-dynamic
+        data-qa="tile"
+        orientation="landscape"
+    >
+        <rt-img
+            alt="50 Best Free Movies on Fandango at Home (June 2026) poster image"
+            slot="image"
+            src="https://editorial.rottentomatoes.com/wp-content/uploads/2025/12/RT_Representative_BestFreeMovies.png"
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption">
+            <p>50 Best Free Movies on Fandango at Home (June 2026)</p>
+            <span class="sr-only">Link to 50 Best Free Movies on Fandango at Home (June 2026)</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+            </ul>
+            <a
+              class="a--short"
+              data-qa="guides-view-all-link"
+              href="https://editorial.rottentomatoes.com/countdown/"
+              slot="view-all-link"
+            >
+              View All
+            </a>
+          </rt-header-nav-item-dropdown-list>
+        
+
+        
+          <rt-header-nav-item-dropdown-list slot="column" data-qa="header-news-hubs">
+            <p slot="title" class="h4">Hubs</p>
+            <ul slot="links" class="news-wrap">
+              
+                <li data-qa="hubs-item">
+                  <a class="news-tile" href="https://editorial.rottentomatoes.com/rt-hub/awards-tour/" data-qa="news-link">
+    <tile-dynamic
+        data-qa="tile"
+        orientation="landscape"
+    >
+        <rt-img
+            alt="Awards Tour poster image"
+            slot="image"
+            src="https://editorial.rottentomatoes.com/wp-content/uploads/2023/12/RT_AwardsTour_Thumbnail_600x314.jpg"
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption">
+            <p>Awards Tour</p>
+            <span class="sr-only">Link to Awards Tour</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+                <li data-qa="hubs-item">
+                  <a class="news-tile" href="https://editorial.rottentomatoes.com/rt-hub/what-to-watch/" data-qa="news-link">
+    <tile-dynamic
+        data-qa="tile"
+        orientation="landscape"
+    >
+        <rt-img
+            alt="What to Watch: In Theaters and On Streaming poster image"
+            slot="image"
+            src="https://editorial.rottentomatoes.com/wp-content/uploads/2023/05/RT_WTW_Generic_2023_Thumbnail_600x314_021623.jpg"
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption">
+            <p>What to Watch: In Theaters and On Streaming</p>
+            <span class="sr-only">Link to What to Watch: In Theaters and On Streaming</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+            </ul>
+            <a
+              class="a--short"
+              data-qa="hubs-view-all-link"
+              href="https://editorial.rottentomatoes.com/rt-hubs/"
+              slot="view-all-link"
+            >
+              View All
+            </a>
+          </rt-header-nav-item-dropdown-list>
+        
+
+        
+          <rt-header-nav-item-dropdown-list slot="column" data-qa="header-news-rt-news">
+            <p slot="title" class="h4">RT News</p>
+            <ul slot="links" class="news-wrap">
+              
+                <li data-qa="rt-news-item">
+                  <a class="news-tile" href="https://editorial.rottentomatoes.com/article/weekend-box-office-scary-movie-defeats-he-man-with-55-million-opening/" data-qa="news-link">
+    <tile-dynamic
+        data-qa="tile"
+        orientation="landscape"
+    >
+        <rt-img
+            alt="Weekend Box Office: <em>Scary Movie</em> Defeats He-Man with $55 Million Opening poster image"
+            slot="image"
+            src="https://editorial.rottentomatoes.com/wp-content/uploads/2026/06/Scary_Movie_BO1-Rep.jpg"
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption">
+            <p>Weekend Box Office: <em>Scary Movie</em> Defeats He-Man with $55 Million Opening</p>
+            <span class="sr-only">Link to Weekend Box Office: <em>Scary Movie</em> Defeats He-Man with $55 Million Opening</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+                <li data-qa="rt-news-item">
+                  <a class="news-tile" href="https://editorial.rottentomatoes.com/article/men-smear-revisiting-seminal-lgbtq-comedy-the-birdcage/" data-qa="news-link">
+    <tile-dynamic
+        data-qa="tile"
+        orientation="landscape"
+    >
+        <rt-img
+            alt="&#8220;Men Smear!&#8221;: Revisiting Seminal LGBTQ Comedy <em>The Birdcage</em> poster image"
+            slot="image"
+            src="https://editorial.rottentomatoes.com/wp-content/uploads/2019/06/The-Birdcage-Lane-600x314.jpg"
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption">
+            <p>&#8220;Men Smear!&#8221;: Revisiting Seminal LGBTQ Comedy <em>The Birdcage</em></p>
+            <span class="sr-only">Link to &#8220;Men Smear!&#8221;: Revisiting Seminal LGBTQ Comedy <em>The Birdcage</em></span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+            </ul>
+            <a
+              class="a--short"
+              data-qa="rt-news-view-all-link"
+              href="https://editorial.rottentomatoes.com/news/"
+              slot="view-all-link"
+            >
+              View All
+            </a>
+          </rt-header-nav-item-dropdown-list>
+        
+      </rt-header-nav-item-dropdown>
+    </rt-header-nav-item>
+
+    <rt-header-nav-item slot="showtimes">
+      <a
+        class="unset"
+        slot="link"
+        href="https://www.fandango.com/movies-in-theaters?a=13036"
+        target="_blank"
+        rel="noopener"
+        data-qa="masthead:tickets-showtimes-link"
+        data-AdsGlobalNavTakeoverManager="text"
+      >
+        Showtimes
+      </a>
+    </rt-header-nav-item>
+  </rt-header-nav>
+
+</rt-header>
+
+<ads-global-nav-takeover-manager></ads-global-nav-takeover-manager>
+<section class="trending-bar">
+  
+
+  <ad-unit hidden id="trending_bar_ad" unit-display="desktop" unit-type="trendinggraphic">
+    <div slot="ad-inject"></div>
+  </ad-unit>
+  <div id="trending-bar-start" class="trending-list-wrap" data-qa="trending-bar">
+    <ul class="list-inline trending-bar__list" data-curation="rt-nav-trending"
+      data-qa="trending-bar-list">
+      <li class="trending-bar__header">Trending on RT</li>
+      
+      <li><a class="trending-bar__link" href="https://editorial.rottentomatoes.com/article/seen-on-screen-podcast-a-celebration-of-universal-stories/"  data-qa="trending-bar-item"> Seen on the Screen </a></li>
+      
+      <li><a class="trending-bar__link" href="https://editorial.rottentomatoes.com/article/fresh-movies-you-can-watch-for-free-online-right-now/"  data-qa="trending-bar-item"> Free Movies </a></li>
+      
+      <li><a class="trending-bar__link" href="https://editorial.rottentomatoes.com/article/pride-month-2026-movies-tv-streaming/"  data-qa="trending-bar-item"> Pride Month </a></li>
+      
+      <li><a class="trending-bar__link" href="https://editorial.rottentomatoes.com/article/app/"  data-qa="trending-bar-item"> Rotten Tomatoes App  </a></li>
+      
+    </ul>
+    <div class="trending-bar__social" data-qa="trending-bar-social-list">
+      <social-media-icons theme="light" size="14px"></social-media-icons>
+    </div>
+  </div>
+</section>
+
+
+
+
+            </header>
+            <main
+                id="main_container"
+                class="container rt-layout__content"
+            >
+                <div id="main-page-content">
+                    <toast-notification
+                        aria-live="polite"
+                        data-WatchlistButtonManager="notification"
+                        data-ProfilesCriticPageManager="notification"
+                        data-ProfilesPublicationPageManager="notification"
+                        data-ProfilesUserPageManager="notification"
+                        hidden
+                    >
+                        <rt-icon slot="icon" icon="error-filled" image size-pixel="16"></rt-icon>
+                        <rt-text slot="message" context="label" size="0.875"></rt-text>
+                        <rt-button slot="close" theme="transparent">
+                            <rt-icon icon="close" image size-pixel="16"></rt-icon>
+                        </rt-button>
+                    </toast-notification>
+
+                    
+    
+                    
+
+    <div id="movie-overview" data-HeroModulesManager="overviewWrap">
+        <watchlist-button-manager></watchlist-button-manager>
+
+        <div
+            id="hero-wrap"
+            data-AdUnitManager="heroWrap"
+            data-AdsMediaScorecardManager="heroWrap"
+            data-HeroModulesManager="heroWrap"
+        >
+            
+                <div
+  aria-labelledby="media-hero-label"
+  class="media-hero-wrap"
+  skeleton="panel"
+  data-adobe-id="media-hero"
+  data-qa="section:media-hero"
+  data-HeroModulesManager="mediaHeroWrap"
+>
+  <h1 class="unset" id="media-hero-label">
+    <sr-text> Calle Málaga  </sr-text>
+  </h1>
+
+  <media-hero
+    average-color-hsl="23, 74%, 15%"
+    media-type="Movie"
+    scroll-y="0"
+    scroll-y-start="0"
+    data-AdsMediaScorecardManager="mediaHero"
+    data-HeroModulesManager="mediaHero:collapse"
+  >
+    <rt-button
+      slot="iconic-video-cta"
+      theme="transparent"
+      data-content-type="PROMO"
+      data-ems-id="d63985b5-ae26-42ee-83dc-08ce7815d19e"
+      data-mpx-id="2482348099988"
+      data-public-id="sB4GXtptFGEe"
+      data-title="Calle Málaga"
+      data-type="Movie"
+      data-VideoPlayerOverlayManager="btnVideo:click"
+    ><sr-text>Play trailer</sr-text></rt-button>
+
+    <rt-text slot="iconic-video-runtime" size="0.75">1:52</rt-text>
+
+    <rt-img
+      slot="iconic"
+      alt="Main image for Calle Málaga"
+      fallback-theme="iconic"
+      fetchpriority="high"
+      src="https://resizing.flixster.com/_eAxgjH5fz0QN2iRUguzPQ-XvVU=/375x210/v2/https://resizing.flixster.com/v45LX5qOeEkO_5Yok0QpyztPiNQ=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzBmZmE2YjMxLTBmNjEtNDRhMy1hMjY2LTI4ZDBjNzA4NDM5Yi5qcGc=,https://resizing.flixster.com/0rzw9irhBk-lN324g6kDGFfhA0c=/620x336/v2/https://resizing.flixster.com/v45LX5qOeEkO_5Yok0QpyztPiNQ=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzBmZmE2YjMxLTBmNjEtNDRhMy1hMjY2LTI4ZDBjNzA4NDM5Yi5qcGc="
+    ></rt-img>
+
+    
+      <img
+        slot="poster"
+        alt="Poster for "
+        fetchpriority="high"
+        src="https://resizing.flixster.com/aLpkLGBJ6AoI85tpfiGW9XUgXqw=/68x102/v2/https://resizing.flixster.com/5jA8M0AIcMM4oM98tqdc9v5wK-s=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2M5MzhjM2UxLTg1N2EtNDI1MC1iZmM0LWQ4OTYzYjhiNzIyYi5qcGc="
+      />
+    
+
+    <rt-text slot="title" size="1.25,1.75" context="heading">Calle Málaga</rt-text>
+    <rt-text slot="episode-title" size="1,1.5" context="label"></rt-text>
+
+    
+      <rt-text slot="metadata-prop" context="label" size="0.875">Feb 2026</rt-text>
+    
+      <rt-text slot="metadata-prop" context="label" size="0.875">1h 56m</rt-text>
+    
+
+    
+      <rt-text slot="metadata-genre" size="0.875">Drama</rt-text>
+    
+      <rt-text slot="metadata-genre" size="0.875">Romance</rt-text>
+    
+
+    <rt-button
+      slot="trailer-cta"
+      shape="pill"
+      theme="light"
+      data-content-type="PROMO"
+      data-ems-id="d63985b5-ae26-42ee-83dc-08ce7815d19e"
+      data-mpx-id="2482348099988"
+      data-public-id="sB4GXtptFGEe"
+      data-title="Calle Málaga"
+      data-type="Movie"
+      data-VideoPlayerOverlayManager="btnVideo:click"
+    >
+      <rt-icon icon="play-filled" size-pixel="16"></rt-icon> <sr-text>Play</sr-text> Trailer
+    </rt-button>
+
+    <watchlist-button
+      slot="watchlist-cta"
+      ems-id="d63985b5-ae26-42ee-83dc-08ce7815d19e"
+      media-type="Movie"
+      media-title="Calle Málaga"
+      state="unchecked"
+      theme="transparent-lighttext"
+      data-HeroModulesManager="mediaHeroWatchlistBtn"
+      data-WatchlistButtonManager="watchlistButton:click"
+    >
+      <span slot="text">Watchlist</span>
+    </watchlist-button>
+
+    <watchlist-button
+      slot="mobile-watchlist-cta"
+      ems-id="d63985b5-ae26-42ee-83dc-08ce7815d19e"
+      media-type="Movie"
+      media-title="Calle Málaga"
+      state="unchecked"
+      data-HeroModulesManager="mediaHeroWatchlistBtn"
+      data-WatchlistButtonManager="watchlistButton:click"
+    ></watchlist-button>
+
+    <div slot="desktop-videos" data-HeroModulesManager="mediaHeroVideos"></div>
+
+    <rt-button
+        slot="collapsed-primary-cta"
+        hidden
+        shape="pill"
+        theme="simplified"
+        data-AdsMediaScorecardManager="collapsedPrimaryCta"
+        data-HeroModulesManager="mediaHeroCta:click"
+    ></rt-button>
+
+    <watchlist-button
+      slot="collapsed-watchlist-cta"
+      ems-id="d63985b5-ae26-42ee-83dc-08ce7815d19e"
+      media-type="Movie"
+      media-title="Calle Málaga"
+      state="unchecked"
+      theme="transparent-lighttext"
+      data-HeroModulesManager="mediaHeroWatchlistBtn"
+      data-WatchlistButtonManager="watchlistButton:click"
+    >
+      <span slot="text">Watchlist</span>
+    </watchlist-button>
+
+    <score-icon-critics slot="collapsed-critics-icon" size="2.5"></score-icon-critics>
+    <rt-text slot="collapsed-critics-score" context="label" size="1.375"></rt-text>
+    <rt-link slot="collapsed-critics-link" size="small"></rt-link>
+    <rt-text slot="collapsed-critics-label" size="0.75">Tomatometer</rt-text>
+
+    <score-icon-audience slot="collapsed-audience-icon" size="2.5"></score-icon-audience>
+    <rt-text slot="collapsed-audience-score" context="label" size="1.375"></rt-text>
+    <rt-link slot="collapsed-audience-link" size="small"></rt-link>
+    <rt-text slot="collapsed-audience-label" size="0.75">Popcornmeter</rt-text>
+  </media-hero>
+
+  <script id="media-hero-json" data-json="mediaHero" type="application/json">
+    {"averageColorHsl":"23, 74%, 15%","iconic":{"srcDesktop":"https://resizing.flixster.com/0rzw9irhBk-lN324g6kDGFfhA0c=/620x336/v2/https://resizing.flixster.com/v45LX5qOeEkO_5Yok0QpyztPiNQ=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzBmZmE2YjMxLTBmNjEtNDRhMy1hMjY2LTI4ZDBjNzA4NDM5Yi5qcGc=","srcMobile":"https://resizing.flixster.com/_eAxgjH5fz0QN2iRUguzPQ-XvVU=/375x210/v2/https://resizing.flixster.com/v45LX5qOeEkO_5Yok0QpyztPiNQ=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzBmZmE2YjMxLTBmNjEtNDRhMy1hMjY2LTI4ZDBjNzA4NDM5Yi5qcGc="},"content":{"episodeTitle":"","metadataGenres":["Drama","Romance"],"metadataProps":["Feb 2026","1h 56m"],"posterSrc":"https://resizing.flixster.com/aLpkLGBJ6AoI85tpfiGW9XUgXqw=/68x102/v2/https://resizing.flixster.com/5jA8M0AIcMM4oM98tqdc9v5wK-s=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2M5MzhjM2UxLTg1N2EtNDI1MC1iZmM0LWQ4OTYzYjhiNzIyYi5qcGc=","title":"Calle Málaga","primaryVideo":{"contentType":"PROMO","durationInSeconds":"112.875","mpxId":"2482348099988","publicId":"sB4GXtptFGEe","thumbnail":{"url":"https://statcdn.fandango.com/MPX/image/NBCU_Fandango/888/643/thumb_1A90E9BD-16F4-49BA-AB64-92C5DA388912.jpg"},"title":"Calle Málaga: Trailer 1","runtime":"1:52"}}}
+  </script>
+</div>
+
+            
+
+            <hero-modules-manager>
+                <script data-json="vanity" type="application/json">{"emsId":"d63985b5-ae26-42ee-83dc-08ce7815d19e","href":"/m/calle_malaga","lifecycleWindow":{},"title":"Calle Málaga","type":"movie","value":"calle_malaga","parents":[],"mediaType":"Movie"}</script>
+            </hero-modules-manager>
+        </div>
+
+        <div id="main-wrap">
+            <div id="modules-wrap" data-curation="drawer">
+                
+                    
+
+                    <div class="media-scorecard no-border" data-adobe-id="media-scorecard" data-qa="section:media-scorecard">
+    <media-scorecard
+        hide-audience-score="false"
+        skeleton="panel"
+        data-AdsMediaScorecardManager="mediaScorecard"
+        data-HeroModulesManager="mediaScorecard"
+    >
+        <rt-img
+            alt="poster image"
+            loading="lazy"
+            slot="poster-image"
+            src="https://resizing.flixster.com/EcQ95GszA5UcWxT3zyJl2CxPjHQ=/206x305/v2/https://resizing.flixster.com/5jA8M0AIcMM4oM98tqdc9v5wK-s=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2M5MzhjM2UxLTg1N2EtNDI1MC1iZmM0LWQ4OTYzYjhiNzIyYi5qcGc="
+        ></rt-img>
+        <rt-button slot="critics-score-icon" data-MediaScorecardManager="overlayOpen:click" theme="transparent">
+            <score-icon-critics
+                certified="true"
+                sentiment="POSITIVE"
+                size="2.5"
+            ></score-icon-critics>
+        </rt-button>
+        <rt-text
+            slot="critics-score"
+            context="label"
+            role="button"
+            size="1.375"
+            data-MediaScorecardManager="overlayOpen:click"
+        >98%</rt-text>
+        <rt-text
+            slot="critics-score-type"
+            class="critics-score-type"
+            role="button"
+            size="0.75"
+            data-MediaScorecardManager="overlayOpen:click"
+        >Tomatometer</rt-text>
+        <rt-link slot="critics-reviews" size="small" href="/m/calle_malaga/reviews">
+            41 Reviews
+        </rt-link>
+
+        <rt-button slot="audience-score-icon" data-MediaScorecardManager="overlayOpen:click" theme="transparent">
+            <score-icon-audience
+                certified="false"
+                size="2.5"
+                sentiment=""
+            ></score-icon-audience>
+        </rt-button>
+        <rt-text
+            slot="audience-score"
+            context="label"
+            role="button"
+            size="1.375"
+            data-MediaScorecardManager="overlayOpen:click"
+        ></rt-text>
+        <rt-text
+            slot="audience-score-type"
+            class="audience-score-type"
+            role="button"
+            size="0.75"
+            data-MediaScorecardManager="overlayOpen:click"
+        >Popcornmeter</rt-text>
+        <rt-link slot="audience-reviews" size="small" href="/m/calle_malaga/reviews/all-audience">
+            Fewer than 50 Ratings
+        </rt-link>
+
+        <div slot="description" data-AdsMediaScorecardManager="description">
+            <drawer-more max-lines="2" skeleton="panel" status="closed" style="--display: flex; gap: 4px;">
+                <rt-text slot="content" size="1">
+                    Maria Angeles, a 79-year-old Spanish woman, lives alone in Tangier, Morocco, and enjoys her daily routine. However, her life is turned upside down when her daughter arrives from Madrid to sell the apartment in which she has always lived. Determined to stay, she does everything she can to get her home and her belongings back and, unexpectedly, rediscovers love and sensuality.
+                </rt-text>
+                <rt-link aria-label="expand content" slot="cta-open">
+                    <rt-icon icon="chevron-down" image></rt-icon>
+                </rt-link>
+                <rt-link aria-label="collapse content" slot="cta-close">
+                    <rt-icon icon="chevron-up" image></rt-icon>
+                </rt-link>
+            </drawer-more>
+        </div>
+
+        
+    </media-scorecard>
+
+    <media-scorecard-manager>
+        <script
+            id="media-scorecard-json"
+            data-json="mediaScorecard"
+            type="application/json"
+        >
+            {"audienceScore":{"certifiedFresh":"none","bandedRatingCount":"Fewer than 50 Ratings","likedCount":18,"notLikedCount":1,"reviewCount":6,"scoreType":"ALL","certified":false,"reviewsPageUrl":"/m/calle_malaga/reviews/all-audience","title":"Popcornmeter"},"criticsScore":{"averageRating":"7.70","certified":true,"likedCount":40,"notLikedCount":1,"ratingCount":41,"reviewCount":41,"score":"98","sentiment":"POSITIVE","reviewsPageUrl":"/m/calle_malaga/reviews","scorePercent":"98%","title":"Tomatometer"},"criticReviewHref":"/critics/self-submission/movie/d63985b5-ae26-42ee-83dc-08ce7815d19e","description":"Maria Angeles, a 79-year-old Spanish woman, lives alone in Tangier, Morocco, and enjoys her daily routine. However, her life is turned upside down when her daughter arrives from Madrid to sell the apartment in which she has always lived. Determined to stay, she does everything she can to get her home and her belongings back and, unexpectedly, rediscovers love and sensuality.","hideAudienceScore":false,"overlay":{"audienceAll":{"certifiedFresh":"none","bandedRatingCount":"Fewer than 50 Ratings","likedCount":18,"notLikedCount":1,"reviewCount":6,"scoreType":"ALL","certified":false,"reviewsPageUrl":"/m/calle_malaga/reviews/all-audience","title":"Popcornmeter","scoreLinkUrl":"/m/calle_malaga/reviews/all-audience"},"audienceTitle":"Popcornmeter","audienceVerified":{"certifiedFresh":"none","bandedRatingCount":"Fewer than 50 Verified Ratings","likedCount":1,"notLikedCount":0,"reviewCount":0,"scoreType":"VERIFIED","certified":false,"title":"Popcornmeter","scoreLinkUrl":"/m/calle_malaga/reviews/verified-audience"},"criticsAll":{"averageRating":"7.70","certified":true,"likedCount":40,"notLikedCount":1,"ratingCount":41,"reviewCount":41,"score":"98","sentiment":"POSITIVE","reviewsPageUrl":"/m/calle_malaga/reviews","scorePercent":"98%","title":"Tomatometer","scoreLinkUrl":"/m/calle_malaga/reviews/all-critics","scoreLinkText":"41 Reviews"},"criticsTitle":"Tomatometer","criticsTop":{"likedCount":0,"notLikedCount":0,"ratingCount":0,"reviewCount":0,"title":"Tomatometer","scoreLinkUrl":"/m/calle_malaga/reviews/top-critics","scoreLinkText":"0 Top Critic Reviews"},"hasAudienceAll":false,"hasAudienceVerified":false,"hasCriticsAll":true,"hasCriticsTop":false,"mediaType":"Movie","showScoreDetailsAudience":true,"learnMoreUrl":"https://editorial.rottentomatoes.com/article/introducing-verified-audience-score/"},"primaryImageUrl":"https://resizing.flixster.com/EcQ95GszA5UcWxT3zyJl2CxPjHQ=/206x305/v2/https://resizing.flixster.com/5jA8M0AIcMM4oM98tqdc9v5wK-s=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2M5MzhjM2UxLTg1N2EtNDI1MC1iZmM0LWQ4OTYzYjhiNzIyYi5qcGc="}
+        </script>
+    </media-scorecard-manager>
+</div>
+
+
+                    
+                
+                    
+
+                    <section class="modules-nav" data-ModulesNavigationManager="navWrap">
+    <modules-navigation-manager></modules-navigation-manager>
+
+    <nav>
+        <modules-navigation-carousel
+            skeleton="panel"
+            data-ModulesNavigationManager="navCarousel"
+        >
+            
+                
+            
+                
+            
+                
+                    <a slot="tile" href="#what-to-know">
+                        <rt-tab data-ModulesNavigationManager="navTab">What to Know</rt-tab>
+                    </a>
+                
+            
+                
+            
+                
+            
+                
+                    <a slot="tile" href="#critics-reviews">
+                        <rt-tab data-ModulesNavigationManager="navTab">Reviews</rt-tab>
+                    </a>
+                
+            
+                
+            
+                
+            
+                
+                    <a slot="tile" href="#cast-and-crew">
+                        <rt-tab data-ModulesNavigationManager="navTab">Cast &amp; Crew</rt-tab>
+                    </a>
+                
+            
+                
+                    <a slot="tile" href="#videos">
+                        <rt-tab data-ModulesNavigationManager="navTab">Videos</rt-tab>
+                    </a>
+                
+            
+                
+                    <a slot="tile" href="#photos">
+                        <rt-tab data-ModulesNavigationManager="navTab">Photos</rt-tab>
+                    </a>
+                
+            
+                
+            
+                
+            
+                
+                    <a slot="tile" href="#media-info">
+                        <rt-tab data-ModulesNavigationManager="navTab">Media Info</rt-tab>
+                    </a>
+                
+            
+        </modules-navigation-carousel>
+    </nav>
+</section>
+
+
+                    
+                
+                    
+
+                    <div
+  class="modules-layout"
+  tabindex="-1"
+  data-ModulesNavigationManager="content:focusin"
+>
+  
+    <div
+      id="what-to-know"
+      class="dom-anchor"
+      data-ModulesNavigationManager="domAnchor"
+    ></div>
+  
+
+  
+<section
+  aria-labelledby="what-to-know-label"
+  class="what-to-know"
+  data-adobe-id="what-to-know"
+  data-qa="section:what-to-know"
+>
+  <div class="header-wrap">
+    <rt-text context="heading" size="0.75" style="--textColor: var(--grayDark4); --letterSpacing: 1px;--textTransform: capitalize;">
+      Calle Málaga
+    </rt-text>
+    <h2 class="unset" id="what-to-know-label">
+      <rt-text context="heading" size="1.25" style="--textTransform: capitalize;">What to Know</rt-text>
+    </h2>
+  </div>
+
+  <div class="content">
+    
+    
+
+    
+      <div id="critics-consensus" class="consensus">
+        <rt-text context="heading">
+          <score-icon-critics
+            certified="true"
+            sentiment="POSITIVE"
+            size="1"
+          ></score-icon-critics>
+          Critics Consensus
+        </rt-text>
+        <p>Anchored by a resplendent turn from Carmen Maura, <em>Calle Málaga</em>'s modest scale belies an outsize charm and wisdom as it gently celebrates the right to self-determination.</p>
+        <a href="/m/calle_malaga/reviews">Read Critics Reviews</a>
+      </div>
+    
+
+    
+
+    
+  </div>
+</section>
+
+</div>
+
+
+                    
+                
+                    
+
+                    <ad-unit
+  hidden
+  unit-display="mobile"
+  unit-type="interscroller"
+  no-retry
+  data-AdUnitManager="adUnit:interscrollerinstantiated"
+>
+  <aside slot="ad-inject" class="center mobile-interscroller"></aside>
+</ad-unit>
+
+
+                    
+                
+                    
+
+                    <ad-unit hidden unit-display="desktop" unit-type="opbannerone">
+  <div slot="ad-inject" class="banner-ad"></div>
+</ad-unit>
+
+
+                    
+                
+                    
+
+                    <div
+  class="modules-layout"
+  tabindex="-1"
+  data-ModulesNavigationManager="content:focusin"
+>
+  
+    <div
+      id="critics-reviews"
+      class="dom-anchor"
+      data-ModulesNavigationManager="domAnchor"
+    ></div>
+  
+
+  
+<section
+  aria-labelledby="critics-reviews-label"
+  class="critics-reviews"
+  data-adobe-id="critics-reviews"
+  data-qa="section:critics-reviews"
+>
+  <div class="header-wrap">
+    <h2 class="unset" id="critics-reviews-label">
+      <rt-text size="1.25" context="heading" data-qa="title">Critics Reviews</rt-text>
+    </h2>
+    <rt-button
+      proxy-aria-label="Critics Reviews"
+      class=""
+      data-qa="view-all-link"
+      href="/m/calle_malaga/reviews"
+      shape="pill"
+      size="0.875"
+      style="--buttonPadding: 6px 24px;--backgroundColor: var(--grayLight1);--borderColor: transparent;--letterSpacing: 1px;"
+      theme="light"
+    >
+      View More
+    </rt-button>
+  </div>
+
+  <div class="content-wrap">
+    <media-critic-reviews-manager>
+      <script data-json="props" type="application/json">{
+        "links": {
+          "flagCriticReview": "https://fandango.az1.qualtrics.com/jfe/form/SV_3NMwx66TSe9KAfz"
+        }
+      }</script>
+    </media-critic-reviews-manager>
+    <carousel-slider tile-width="332px" skeleton="panel" data-qa="carousel">
+      
+        <review-card-critic
+          slot="tile"
+          fixed-size
+          approved-critic
+          approved-publication
+          
+          top-publication
+        >
+          <rt-link 
+            slot="avatar-icon" href="https://www.rottentomatoes.com/critic/robert-abele"
+            proxy-aria-label="Robert Abele profile"
+          >
+            
+              <avatar-icon display-name="Robert Abele" initials="RA"></avatar-icon>
+            
+          </rt-link>
+          <rt-link
+            slot="name" href="https://www.rottentomatoes.com/critic/robert-abele" 
+            proxy-aria-label="Robert Abele profile"
+          >
+            Robert Abele
+          </rt-link>
+          <rt-link
+            slot="publication" context="label" size="0.875"
+            href="/profiles/publication/W4y38qZn"
+            proxy-aria-label="Los Angeles Times publication profile"
+          >
+            Los Angeles Times
+          </rt-link>
+          <span slot="timestamp">Feb 19</span>
+          <div slot="rating">
+            <score-icon-critics size="1.5" sentiment="POSITIVE"></score-icon-critics>
+            <span></span>
+          </div>
+          
+            <span slot="review">There is, after all, a reckoning for Maria’s situation we can’t help but keep in the back of our mind. Because our first brief glimpse of Clara is a sympathetic one, we know “Calle Málaga” won’t settle for a tidy resolution.</span>
+            <rt-link slot="review-link" context="link" href="https://www.latimes.com/entertainment-arts/movies/story/2026-02-13/calle-malaga-review-carmen-maura-maryan-touzani-tangier" target="_blank">
+              Go to Full Review
+            </rt-link>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaCriticsReviewsManager="optionsMenuBtn:click"
+            data-encrypted-publication-id="W4y38qZn"
+            proxy-aria-label="More options for Robert Abele review"
+            theme="transparent"
+          ><rt-icon icon="more"></rt-icon></rt-button>
+        </review-card-critic>
+      
+        <review-card-critic
+          slot="tile"
+          fixed-size
+          
+          approved-publication
+          
+          top-publication
+        >
+          <rt-link 
+            slot="avatar-icon" href="https://www.rottentomatoes.com/critic/g-allen-johnson"
+            proxy-aria-label="G. Allen Johnson profile"
+          >
+            
+              <avatar-icon display-name="G. Allen Johnson" initials="GA"></avatar-icon>
+            
+          </rt-link>
+          <rt-link
+            slot="name" href="https://www.rottentomatoes.com/critic/g-allen-johnson" 
+            proxy-aria-label="G. Allen Johnson profile"
+          >
+            G. Allen Johnson
+          </rt-link>
+          <rt-link
+            slot="publication" context="label" size="0.875"
+            href="/profiles/publication/64rwPnlA"
+            proxy-aria-label="San Francisco Chronicle publication profile"
+          >
+            San Francisco Chronicle
+          </rt-link>
+          <span slot="timestamp">Feb 13</span>
+          <div slot="rating">
+            <score-icon-critics size="1.5" sentiment="POSITIVE"></score-icon-critics>
+            <span>4/4</span>
+          </div>
+          
+            <span slot="review">There are some heart-tugging scenes, but overall, this is the cinematic equivalent of a blissful weekend at the spa, a relaxing respite from the stressful news cycles of our times. </span>
+            <rt-link slot="review-link" context="link" href="https://www.sfchronicle.com/entertainment/movies-tv/article/calle-malaga-carmen-maura-21332729.php" target="_blank">
+              Go to Full Review
+            </rt-link>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaCriticsReviewsManager="optionsMenuBtn:click"
+            data-encrypted-publication-id="64rwPnlA"
+            proxy-aria-label="More options for G. Allen Johnson review"
+            theme="transparent"
+          ><rt-icon icon="more"></rt-icon></rt-button>
+        </review-card-critic>
+      
+        <review-card-critic
+          slot="tile"
+          fixed-size
+          approved-critic
+          approved-publication
+          top-critic
+          top-publication
+        >
+          <rt-link 
+            slot="avatar-icon" href="https://www.rottentomatoes.com/critic/monica-castillo"
+            proxy-aria-label="Monica Castillo profile"
+          >
+            
+              <avatar-icon display-name="Monica Castillo" icon="https://resizing.flixster.com/QhX-X8_DIQlG0ZaGNCZBtzlCmWY=/128x128/v1.YzsyNTYxO2c7MjA2NTU7MjA0ODsxNTI7MTY4" initials="MC"></avatar-icon>
+            
+          </rt-link>
+          <rt-link
+            slot="name" href="https://www.rottentomatoes.com/critic/monica-castillo" 
+            proxy-aria-label="Monica Castillo profile"
+          >
+            Monica Castillo
+          </rt-link>
+          <rt-link
+            slot="publication" context="label" size="0.875"
+            href="/profiles/publication/eoraDKZg"
+            proxy-aria-label="RogerEbert.com publication profile"
+          >
+            RogerEbert.com
+          </rt-link>
+          <span slot="timestamp">Feb 9</span>
+          <div slot="rating">
+            <score-icon-critics size="1.5" sentiment="POSITIVE"></score-icon-critics>
+            <span>3/4</span>
+          </div>
+          
+            <span slot="review">Yet, Touzani’s &#39;Calle Málaga’ is a reminder to savor the days we have in the places and communities we hold dear.</span>
+            <rt-link slot="review-link" context="link" href="https://www.rogerebert.com/reviews/calle-malaga-carmen-maura-film-review-2026" target="_blank">
+              Go to Full Review
+            </rt-link>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaCriticsReviewsManager="optionsMenuBtn:click"
+            data-encrypted-publication-id="eoraDKZg"
+            proxy-aria-label="More options for Monica Castillo review"
+            theme="transparent"
+          ><rt-icon icon="more"></rt-icon></rt-button>
+        </review-card-critic>
+      
+        <review-card-critic
+          slot="tile"
+          fixed-size
+          approved-critic
+          
+          
+          
+        >
+          <rt-link 
+            slot="avatar-icon" href="https://www.rottentomatoes.com/critic/david-griffiths"
+            proxy-aria-label="David Griffiths profile"
+          >
+            
+              <avatar-icon display-name="David Griffiths" icon="https://resizing.flixster.com/argI94qtRAZPecYCEODBt5eScKw=/128x128/v1.YzsxMDAwMDAzMDE5O2o7MjA2NjQ7MjA0ODs0MDgwOzMwNjA" initials="DG"></avatar-icon>
+            
+          </rt-link>
+          <rt-link
+            slot="name" href="https://www.rottentomatoes.com/critic/david-griffiths" 
+            proxy-aria-label="David Griffiths profile"
+          >
+            David Griffiths
+          </rt-link>
+          <rt-link
+            slot="publication" context="label" size="0.875"
+            href="/profiles/publication/yMPonAPl"
+            proxy-aria-label="Subculture Entertainment publication profile"
+          >
+            Subculture Entertainment
+          </rt-link>
+          <span slot="timestamp">May 14</span>
+          <div slot="rating">
+            <score-icon-critics size="1.5" sentiment="POSITIVE"></score-icon-critics>
+            <span>4/5</span>
+          </div>
+          
+            <span slot="review">A remarkable film that explores the deep subject of elder abuse while remaining light-hearted and full of hope. You will laugh, you will cry. This may well be one of the most underrated films of the year.</span>
+            <rt-link slot="review-link" context="link" href="https://subcultureentertainment.com/2026/04/film-review-calle-malaga-review-2026/" target="_blank">
+              Go to Full Review
+            </rt-link>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaCriticsReviewsManager="optionsMenuBtn:click"
+            data-encrypted-publication-id="yMPonAPl"
+            proxy-aria-label="More options for David Griffiths review"
+            theme="transparent"
+          ><rt-icon icon="more"></rt-icon></rt-button>
+        </review-card-critic>
+      
+        <review-card-critic
+          slot="tile"
+          fixed-size
+          approved-critic
+          
+          
+          
+        >
+          <rt-link 
+            slot="avatar-icon" href="https://www.rottentomatoes.com/critic/jim-schembri"
+            proxy-aria-label="Jim Schembri profile"
+          >
+            
+              <avatar-icon display-name="Jim Schembri" icon="https://resizing.flixster.com/7IGWn-fBPzL1pLGY_Y8DOeVVeZI=/128x128/v1.YzsxMDAwMDAyNzUwO2o7MjA2NjQ7MjA0ODs0NzU7NDc1" initials="JS"></avatar-icon>
+            
+          </rt-link>
+          <rt-link
+            slot="name" href="https://www.rottentomatoes.com/critic/jim-schembri" 
+            proxy-aria-label="Jim Schembri profile"
+          >
+            Jim Schembri
+          </rt-link>
+          <rt-link
+            slot="publication" context="label" size="0.875"
+            href="/profiles/publication/7ZWe58lm"
+            proxy-aria-label="jimschembri.com publication profile"
+          >
+            jimschembri.com
+          </rt-link>
+          <span slot="timestamp">Apr 23</span>
+          <div slot="rating">
+            <score-icon-critics size="1.5" sentiment="POSITIVE"></score-icon-critics>
+            <span>4/5</span>
+          </div>
+          
+            <span slot="review">[A] strong, moving, beautifully contoured drama...Brandishing a fully developed narrative and delicate direction, the film chimes in as one of the finest movies in a long time about the elderly. </span>
+            <rt-link slot="review-link" context="link" href="https://tinyurl.com/u4zwt9x8" target="_blank">
+              Go to Full Review
+            </rt-link>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaCriticsReviewsManager="optionsMenuBtn:click"
+            data-encrypted-publication-id="7ZWe58lm"
+            proxy-aria-label="More options for Jim Schembri review"
+            theme="transparent"
+          ><rt-icon icon="more"></rt-icon></rt-button>
+        </review-card-critic>
+      
+        <review-card-critic
+          slot="tile"
+          fixed-size
+          approved-critic
+          
+          
+          
+        >
+          <rt-link 
+            slot="avatar-icon" href="https://www.rottentomatoes.com/critic/andiee-paviour"
+            proxy-aria-label="Andiee Paviour profile"
+          >
+            
+              <avatar-icon display-name="Andiee Paviour" icon="https://resizing.flixster.com/yXJMTpj7J7klUxhXa-O_WAgnGME=/128x128/v1.YzszNDAzO2o7MjA2NTU7MjA0ODszNTg7MzU4" initials="AP"></avatar-icon>
+            
+          </rt-link>
+          <rt-link
+            slot="name" href="https://www.rottentomatoes.com/critic/andiee-paviour" 
+            proxy-aria-label="Andiee Paviour profile"
+          >
+            Andiee Paviour
+          </rt-link>
+          <rt-link
+            slot="publication" context="label" size="0.875"
+            href="/profiles/publication/vZpk01yV"
+            proxy-aria-label="Nobody&#39;s Reading This But Me publication profile"
+          >
+            Nobody&#39;s Reading This But Me
+          </rt-link>
+          <span slot="timestamp">Apr 22</span>
+          <div slot="rating">
+            <score-icon-critics size="1.5" sentiment="POSITIVE"></score-icon-critics>
+            <span>4/5</span>
+          </div>
+          
+            <span slot="review">The impossible is just a fork in the road in this subversive jewel.</span>
+            <rt-link slot="review-link" context="link" href="https://www.nobodysreadingthisbutme.com/2026/04/22/calle-m%C3%A1laga/" target="_blank">
+              Go to Full Review
+            </rt-link>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaCriticsReviewsManager="optionsMenuBtn:click"
+            data-encrypted-publication-id="vZpk01yV"
+            proxy-aria-label="More options for Andiee Paviour review"
+            theme="transparent"
+          ><rt-icon icon="more"></rt-icon></rt-button>
+        </review-card-critic>
+      
+      <tile-view-more
+        aspect="fill"
+        background="mediaHero"
+        slot="tile"
+      >
+        <rt-button
+          href="/m/calle_malaga/reviews"
+          shape="pill"
+          theme="transparent-lighttext"
+        >
+          Read all reviews
+        </rt-button>
+      </tile-view-more>
+    </carousel-slider>
+  </div>
+
+  <div data-MediaCriticsReviewsManager="renderOptionsMenu"></div>
+</section>
+
+</div>
+
+
+                    
+                
+                    
+
+                    
+
+<section
+  aria-labelledby="audience-reviews-label"
+  class="audience-reviews"
+  data-adobe-id="audience-reviews"
+  data-qa="section:audience-reviews"
+>
+  <div class="header-wrap">
+    <h2 class="unset" id="audience-reviews-label">
+      <rt-text size="1.25" context="heading" data-qa="title">Audience Reviews</rt-text>
+    </h2>
+    <rt-button
+      proxy-aria-label="Audience Reviews"
+      class=""
+      data-qa="view-all-link"
+      href="/m/calle_malaga/reviews/all-audience"
+      shape="pill"
+      size="0.875"
+      style="--buttonPadding: 6px 24px;--backgroundColor: var(--grayLight1);--borderColor: transparent;--letterSpacing: 1px;"
+      theme="light"
+    >
+      View More
+    </rt-button>
+  </div>
+
+  <div class="content-wrap">
+    <media-audience-reviews-manager>
+      <script type="application/json" data-json="reviewsData">{"audienceScore":{"certifiedFresh":"none","reviewCount":6,"certified":false},"criticsScore":{"certified":true,"score":"98","sentiment":"POSITIVE","scorePercent":"98%"},"reviews":[{"avatarIcon":"","avatarInitials":"GT","displayDate":"May 28","displayName":"George T","isVerified":false,"profileHandle":"Griegocanadiense","profileLink":"/profiles/user/Nn6hoGUDAu1Bh8LFNLH5jt6VteecodiQ5HeEuBYsYYcOatMLt2Dh9Otqqc0DhVvFbzumau99cXLI6jtWMc0EfLmsNnC7Yu8dFmJHB1cwYc2j","rating":5,"ratingRange":"Rated 5/5 Stars &bull;&nbsp;","ratingRangeA11y":"Rated 5 out of 5 stars","ratingId":"6e1d78da-6dfc-48e2-af04-4dbcf5abc013","review":"This film is begging to be seen back to back with Women on the Verge of a Nervous Breakdown. It is exhilarating to watch Carmen Maura still misbehaving after all these years, but now with a considerably greater grip on herself. As Maria Angeles, she is not to be messed with. ","isFandangoReview":false,"user":{"encryptedUserId":"Nn6hoGUDAu1Bh8LFNLH5jt6VteecodiQ5HeEuBYsYYcOatMLt2Dh9Otqqc0DhVvFbzumau99cXLI6jtWMc0EfLmsNnC7Yu8dFmJHB1cwYc2j","realm":"RT","familyName":"Tesseris","givenName":"George","fullName":"George Tesseris","profileImage":null,"profileHandle":"Griegocanadiense","background":null,"initials":"GT","displayName":"George T"}},{"avatarIcon":"","avatarInitials":"WH","displayDate":"May 19","displayName":"Whinray H","isVerified":false,"profileHandle":"Whinray","profileLink":"/profiles/user/7xDiW5UAnT6mF8LUQ8fx6FpKH44ca1uKauLgHePu22c3btzdi8PHPmTnncO2FeXIO5ha0iMMczXi15uXaS52H9KtoaIE2UeYFOVtqWt5ehLk","rating":5,"ratingRange":"Rated 5/5 Stars &bull;&nbsp;","ratingRangeA11y":"Rated 5 out of 5 stars","ratingId":"a3cc67c5-a604-4a9b-beeb-1374fc0ee3a5","review":"A charming film which celebrates the older person and shows how resilient people can be in the face of adversity.  I both sympathise and celebrate the lead character","isFandangoReview":false,"user":{"encryptedUserId":"7xDiW5UAnT6mF8LUQ8fx6FpKH44ca1uKauLgHePu22c3btzdi8PHPmTnncO2FeXIO5ha0iMMczXi15uXaS52H9KtoaIE2UeYFOVtqWt5ehLk","realm":"RT","familyName":"Hallam","givenName":"Whinray","fullName":"Whinray Hallam","profileImage":null,"profileHandle":"Whinray","background":null,"initials":"WH","displayName":"Whinray H"}},{"avatarIcon":"","avatarInitials":"DT","displayDate":"Apr 11","displayName":"danelectro T","isVerified":false,"profileHandle":"danelectro","profileLink":"/profiles/user/7xeuWbFmLh6mF8qsQ8fMwTpPh44c50UK2HLVfbWC22c3bt0Gu86u5qfnnc8GUKMiJbHweFMMca5t1afXEI5GfpAcoaI76uxGFO8sqguOvtL2","rating":5,"ratingRange":"Rated 5/5 Stars &bull;&nbsp;","ratingRangeA11y":"Rated 5 out of 5 stars","ratingId":"f228229b-94bf-4739-8c18-ab343ff8b1b5","review":"One of the best movies of 2026 hands down. Moving, human, story of a Spanish elderly lady in Tangiers, Morocco (many Spaniards fled there when Franco took power), whose daughter in Madrid, Spain, wants to sell her home but she is insistent upon preserving her connection to her communal neighborhood, the beautiful Moorish architecture, a local market where sellers know her well, her husband's cemetery, a confidant who is a nun she's known since childhood, and other treasures without which her quality of life would be seriously jeopardized. A movie about love at any age, and about the value of the place we call home. Great acting, gorgeous indoor sets, lively outdoor street and market scenes in a town you wished you were living in. A work of art at the highest level. The director deserves top marks. You'll also find the story engaging, constantly shifting, commanding your attention. This is a movie that will make you feel alive and seduced by the magic of cinema. A must-see film.","isFandangoReview":false,"user":{"encryptedUserId":"7xeuWbFmLh6mF8qsQ8fMwTpPh44c50UK2HLVfbWC22c3bt0Gu86u5qfnnc8GUKMiJbHweFMMca5t1afXEI5GfpAcoaI76uxGFO8sqguOvtL2","realm":"RT","familyName":"T","givenName":"danelectro","fullName":"danelectro T","profileImage":null,"profileHandle":"danelectro","background":null,"initials":"DT","displayName":"danelectro T"}},{"avatarIcon":"","avatarInitials":"LK","displayDate":"Mar 24","displayName":"Lucia K","isVerified":false,"profileHandle":"RT76710953","profileLink":"/profiles/user/DDgcOkc1WcdVhADhGLSBnsGkUzzcPMfR1FKOHpAiPPcOztm6fdvIANtzzc7AtYKiLJuRPu22c59tP5sROS2RI5RtgRfeYcbaF6LCKkIzMFKM","rating":4,"ratingRange":"Rated 4/5 Stars &bull;&nbsp;","ratingRangeA11y":"Rated 4 out of 5 stars","ratingId":"fd16e7ad-82a5-421d-a5ed-d5a11e8dc7ed","review":"Carmen Maura is amazing. It's hard not to fall in love with the character. The storyline bounces you around from joy to heartache but is never mundane or predictable. There is almost a fairy tale quality to it. The only weakness is 'unanswered questions'.","isFandangoReview":false,"user":{"encryptedUserId":"DDgcOkc1WcdVhADhGLSBnsGkUzzcPMfR1FKOHpAiPPcOztm6fdvIANtzzc7AtYKiLJuRPu22c59tP5sROS2RI5RtgRfeYcbaF6LCKkIzMFKM","realm":"RT","familyName":"K","givenName":"Lucia","fullName":"Lucia K","profileImage":null,"profileHandle":"RT76710953","background":null,"initials":"LK","displayName":"Lucia K"}},{"avatarIcon":"","avatarInitials":"LD","displayDate":"Feb 18","displayName":"Louise D.","isVerified":false,"profileHandle":"FastGal","profileLink":"/profiles/user/bWoIJvtnPta2FD6umkf9As9jFBBckXfYoFaPFoWiLLcJpt0WtgqUNvsxxc3gFDBHWEsDpUPPcNzt5PIL1c91FXYhRAueAsEks7GSoYsk2h4a","rating":5,"ratingRange":"Rated 5/5 Stars &bull;&nbsp;","ratingRangeA11y":"Rated 5 out of 5 stars","ratingId":"f013d405-9c42-4b04-8a0f-8be5457c26b5","review":"Very enjoyable. I loved it. The street scenes are great. Lots of fun with the soccer playing. You don’t have to be a soccer fan. It’s nothing to do with that.","isFandangoReview":false,"user":{"encryptedUserId":"bWoIJvtnPta2FD6umkf9As9jFBBckXfYoFaPFoWiLLcJpt0WtgqUNvsxxc3gFDBHWEsDpUPPcNzt5PIL1c91FXYhRAueAsEks7GSoYsk2h4a","realm":"RT","familyName":"Dobbs","givenName":"Louise","fullName":"Louise Dobbs","profileImage":null,"profileHandle":"FastGal","background":null,"initials":"LD","displayName":"Louise D"}},{"avatarIcon":"","avatarInitials":"SC","displayDate":"Feb 8","displayName":"Stephen C","isVerified":false,"profileHandle":"bob25009","profileLink":"/profiles/user/BM9u8vFN2H1VUp0uo5tnNfM5sggcw3UAbtQYf9xi22caLtWwf6xSeQIddc48h0VIkES1wCJJcR7upqu4BtXBFJ8FPqhJDH8KHOYuxGsjvSB1","rating":5,"ratingRange":"Rated 5/5 Stars &bull;&nbsp;","ratingRangeA11y":"Rated 5 out of 5 stars","ratingId":"dbc796eb-902b-4c49-88cd-496efcac93a8","review":"Success in 1 hour and 56 minutes.","isFandangoReview":false,"user":{"encryptedUserId":"BM9u8vFN2H1VUp0uo5tnNfM5sggcw3UAbtQYf9xi22caLtWwf6xSeQIddc48h0VIkES1wCJJcR7upqu4BtXBFJ8FPqhJDH8KHOYuxGsjvSB1","realm":"RT","familyName":"Chase","givenName":"Stephen","fullName":"Stephen Chase","profileImage":null,"profileHandle":"bob25009","background":null,"initials":"SC","displayName":"Stephen C"}}],"reviewsUrl":"/m/calle_malaga/reviews/all-audience","title":"Calle Málaga","vanity":{"emsId":"d63985b5-ae26-42ee-83dc-08ce7815d19e","href":"/m/calle_malaga","lifecycleWindow":{},"title":"Calle Málaga","type":"movie","value":"calle_malaga","parents":[],"mediaType":"Movie"},"viewMoreText":"View More"}</script>
+      <script type="application/json" data-json="links">{
+        "codeOfConduct": "https://editorial.rottentomatoes.com/otg-article/community-code-of-conduct/"
+      }</script>
+    </media-audience-reviews-manager>
+
+    <carousel-slider tile-width="332px" skeleton="panel" data-qa="carousel">
+      
+        <review-card-audience slot="tile"  fixed-size>
+          <rt-link
+            slot="avatar-icon" href="/profiles/user/Nn6hoGUDAu1Bh8LFNLH5jt6VteecodiQ5HeEuBYsYYcOatMLt2Dh9Otqqc0DhVvFbzumau99cXLI6jtWMc0EfLmsNnC7Yu8dFmJHB1cwYc2j"
+            proxy-aria-label="George T profile"
+          >
+            <avatar-icon
+              display-name="George T"
+              icon=""
+              initials="GT"
+              data-user="George T"
+              
+            ></avatar-icon>
+          </rt-link>
+          <rt-link slot="name"
+            data-user="George T"
+            href="/profiles/user/Nn6hoGUDAu1Bh8LFNLH5jt6VteecodiQ5HeEuBYsYYcOatMLt2Dh9Otqqc0DhVvFbzumau99cXLI6jtWMc0EfLmsNnC7Yu8dFmJHB1cwYc2j"
+            proxy-aria-label="George T profile"
+            
+          >
+            George T
+          </rt-link>
+          
+            <span slot="user-handle">@Griegocanadiense</span>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaAudienceReviewsManager="optionsMenuBtn:click"
+            data-display-name="George T"
+            data-rating-id="6e1d78da-6dfc-48e2-af04-4dbcf5abc013"
+            data-reviewer-id="Nn6hoGUDAu1Bh8LFNLH5jt6VteecodiQ5HeEuBYsYYcOatMLt2Dh9Otqqc0DhVvFbzumau99cXLI6jtWMc0EfLmsNnC7Yu8dFmJHB1cwYc2j"
+            proxy-aria-label="More options for George T review"
+            theme="transparent"
+            data-UserIdentityManager="hideFromSelf"
+            data-author-id="Nn6hoGUDAu1Bh8LFNLH5jt6VteecodiQ5HeEuBYsYYcOatMLt2Dh9Otqqc0DhVvFbzumau99cXLI6jtWMc0EfLmsNnC7Yu8dFmJHB1cwYc2j"
+            class="hide"
+          >
+            <rt-icon icon="more"></rt-icon>
+          </rt-button>
+          <span slot="timestamp">May 28</span>
+          <rating-stars-group slot="rating" score="5"></rating-stars-group>
+          
+            <drawer-more
+              slot="review"
+              max-lines="3"
+              status="closed"
+            >
+              <span slot="content">This film is begging to be seen back to back with Women on the Verge of a Nervous Breakdown. It is exhilarating to watch Carmen Maura still misbehaving after all these years, but now with a considerably greater grip on herself. As Maria Angeles, she is not to be messed with. </span>
+            </drawer-more>
+            <rt-link
+              slot="review-link"
+              context="link"
+              data-MediaAudienceReviewsManager="btnFullReview:click"
+              data-rating-id="6e1d78da-6dfc-48e2-af04-4dbcf5abc013"
+            >
+              See more
+            </rt-link>
+          
+        </review-card-audience>
+      
+        <review-card-audience slot="tile"  fixed-size>
+          <rt-link
+            slot="avatar-icon" href="/profiles/user/7xDiW5UAnT6mF8LUQ8fx6FpKH44ca1uKauLgHePu22c3btzdi8PHPmTnncO2FeXIO5ha0iMMczXi15uXaS52H9KtoaIE2UeYFOVtqWt5ehLk"
+            proxy-aria-label="Whinray H profile"
+          >
+            <avatar-icon
+              display-name="Whinray H"
+              icon=""
+              initials="WH"
+              data-user="Whinray H"
+              
+            ></avatar-icon>
+          </rt-link>
+          <rt-link slot="name"
+            data-user="Whinray H"
+            href="/profiles/user/7xDiW5UAnT6mF8LUQ8fx6FpKH44ca1uKauLgHePu22c3btzdi8PHPmTnncO2FeXIO5ha0iMMczXi15uXaS52H9KtoaIE2UeYFOVtqWt5ehLk"
+            proxy-aria-label="Whinray H profile"
+            
+          >
+            Whinray H
+          </rt-link>
+          
+            <span slot="user-handle">@Whinray</span>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaAudienceReviewsManager="optionsMenuBtn:click"
+            data-display-name="Whinray H"
+            data-rating-id="a3cc67c5-a604-4a9b-beeb-1374fc0ee3a5"
+            data-reviewer-id="7xDiW5UAnT6mF8LUQ8fx6FpKH44ca1uKauLgHePu22c3btzdi8PHPmTnncO2FeXIO5ha0iMMczXi15uXaS52H9KtoaIE2UeYFOVtqWt5ehLk"
+            proxy-aria-label="More options for Whinray H review"
+            theme="transparent"
+            data-UserIdentityManager="hideFromSelf"
+            data-author-id="7xDiW5UAnT6mF8LUQ8fx6FpKH44ca1uKauLgHePu22c3btzdi8PHPmTnncO2FeXIO5ha0iMMczXi15uXaS52H9KtoaIE2UeYFOVtqWt5ehLk"
+            class="hide"
+          >
+            <rt-icon icon="more"></rt-icon>
+          </rt-button>
+          <span slot="timestamp">May 19</span>
+          <rating-stars-group slot="rating" score="5"></rating-stars-group>
+          
+            <drawer-more
+              slot="review"
+              max-lines="3"
+              status="closed"
+            >
+              <span slot="content">A charming film which celebrates the older person and shows how resilient people can be in the face of adversity.  I both sympathise and celebrate the lead character</span>
+            </drawer-more>
+            <rt-link
+              slot="review-link"
+              context="link"
+              data-MediaAudienceReviewsManager="btnFullReview:click"
+              data-rating-id="a3cc67c5-a604-4a9b-beeb-1374fc0ee3a5"
+            >
+              See more
+            </rt-link>
+          
+        </review-card-audience>
+      
+        <review-card-audience slot="tile"  fixed-size>
+          <rt-link
+            slot="avatar-icon" href="/profiles/user/7xeuWbFmLh6mF8qsQ8fMwTpPh44c50UK2HLVfbWC22c3bt0Gu86u5qfnnc8GUKMiJbHweFMMca5t1afXEI5GfpAcoaI76uxGFO8sqguOvtL2"
+            proxy-aria-label="danelectro T profile"
+          >
+            <avatar-icon
+              display-name="danelectro T"
+              icon=""
+              initials="DT"
+              data-user="danelectro T"
+              
+            ></avatar-icon>
+          </rt-link>
+          <rt-link slot="name"
+            data-user="danelectro T"
+            href="/profiles/user/7xeuWbFmLh6mF8qsQ8fMwTpPh44c50UK2HLVfbWC22c3bt0Gu86u5qfnnc8GUKMiJbHweFMMca5t1afXEI5GfpAcoaI76uxGFO8sqguOvtL2"
+            proxy-aria-label="danelectro T profile"
+            
+          >
+            danelectro T
+          </rt-link>
+          
+            <span slot="user-handle">@danelectro</span>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaAudienceReviewsManager="optionsMenuBtn:click"
+            data-display-name="danelectro T"
+            data-rating-id="f228229b-94bf-4739-8c18-ab343ff8b1b5"
+            data-reviewer-id="7xeuWbFmLh6mF8qsQ8fMwTpPh44c50UK2HLVfbWC22c3bt0Gu86u5qfnnc8GUKMiJbHweFMMca5t1afXEI5GfpAcoaI76uxGFO8sqguOvtL2"
+            proxy-aria-label="More options for danelectro T review"
+            theme="transparent"
+            data-UserIdentityManager="hideFromSelf"
+            data-author-id="7xeuWbFmLh6mF8qsQ8fMwTpPh44c50UK2HLVfbWC22c3bt0Gu86u5qfnnc8GUKMiJbHweFMMca5t1afXEI5GfpAcoaI76uxGFO8sqguOvtL2"
+            class="hide"
+          >
+            <rt-icon icon="more"></rt-icon>
+          </rt-button>
+          <span slot="timestamp">Apr 11</span>
+          <rating-stars-group slot="rating" score="5"></rating-stars-group>
+          
+            <drawer-more
+              slot="review"
+              max-lines="3"
+              status="closed"
+            >
+              <span slot="content">One of the best movies of 2026 hands down. Moving, human, story of a Spanish elderly lady in Tangiers, Morocco (many Spaniards fled there when Franco took power), whose daughter in Madrid, Spain, wants to sell her home but she is insistent upon preserving her connection to her communal neighborhood, the beautiful Moorish architecture, a local market where sellers know her well, her husband&#39;s cemetery, a confidant who is a nun she&#39;s known since childhood, and other treasures without which her quality of life would be seriously jeopardized. A movie about love at any age, and about the value of the place we call home. Great acting, gorgeous indoor sets, lively outdoor street and market scenes in a town you wished you were living in. A work of art at the highest level. The director deserves top marks. You&#39;ll also find the story engaging, constantly shifting, commanding your attention. This is a movie that will make you feel alive and seduced by the magic of cinema. A must-see film.</span>
+            </drawer-more>
+            <rt-link
+              slot="review-link"
+              context="link"
+              data-MediaAudienceReviewsManager="btnFullReview:click"
+              data-rating-id="f228229b-94bf-4739-8c18-ab343ff8b1b5"
+            >
+              See more
+            </rt-link>
+          
+        </review-card-audience>
+      
+        <review-card-audience slot="tile"  fixed-size>
+          <rt-link
+            slot="avatar-icon" href="/profiles/user/DDgcOkc1WcdVhADhGLSBnsGkUzzcPMfR1FKOHpAiPPcOztm6fdvIANtzzc7AtYKiLJuRPu22c59tP5sROS2RI5RtgRfeYcbaF6LCKkIzMFKM"
+            proxy-aria-label="Lucia K profile"
+          >
+            <avatar-icon
+              display-name="Lucia K"
+              icon=""
+              initials="LK"
+              data-user="Lucia K"
+              
+            ></avatar-icon>
+          </rt-link>
+          <rt-link slot="name"
+            data-user="Lucia K"
+            href="/profiles/user/DDgcOkc1WcdVhADhGLSBnsGkUzzcPMfR1FKOHpAiPPcOztm6fdvIANtzzc7AtYKiLJuRPu22c59tP5sROS2RI5RtgRfeYcbaF6LCKkIzMFKM"
+            proxy-aria-label="Lucia K profile"
+            
+          >
+            Lucia K
+          </rt-link>
+          
+            <span slot="user-handle">@RT76710953</span>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaAudienceReviewsManager="optionsMenuBtn:click"
+            data-display-name="Lucia K"
+            data-rating-id="fd16e7ad-82a5-421d-a5ed-d5a11e8dc7ed"
+            data-reviewer-id="DDgcOkc1WcdVhADhGLSBnsGkUzzcPMfR1FKOHpAiPPcOztm6fdvIANtzzc7AtYKiLJuRPu22c59tP5sROS2RI5RtgRfeYcbaF6LCKkIzMFKM"
+            proxy-aria-label="More options for Lucia K review"
+            theme="transparent"
+            data-UserIdentityManager="hideFromSelf"
+            data-author-id="DDgcOkc1WcdVhADhGLSBnsGkUzzcPMfR1FKOHpAiPPcOztm6fdvIANtzzc7AtYKiLJuRPu22c59tP5sROS2RI5RtgRfeYcbaF6LCKkIzMFKM"
+            class="hide"
+          >
+            <rt-icon icon="more"></rt-icon>
+          </rt-button>
+          <span slot="timestamp">Mar 24</span>
+          <rating-stars-group slot="rating" score="4"></rating-stars-group>
+          
+            <drawer-more
+              slot="review"
+              max-lines="3"
+              status="closed"
+            >
+              <span slot="content">Carmen Maura is amazing. It&#39;s hard not to fall in love with the character. The storyline bounces you around from joy to heartache but is never mundane or predictable. There is almost a fairy tale quality to it. The only weakness is &#39;unanswered questions&#39;.</span>
+            </drawer-more>
+            <rt-link
+              slot="review-link"
+              context="link"
+              data-MediaAudienceReviewsManager="btnFullReview:click"
+              data-rating-id="fd16e7ad-82a5-421d-a5ed-d5a11e8dc7ed"
+            >
+              See more
+            </rt-link>
+          
+        </review-card-audience>
+      
+        <review-card-audience slot="tile"  fixed-size>
+          <rt-link
+            slot="avatar-icon" href="/profiles/user/bWoIJvtnPta2FD6umkf9As9jFBBckXfYoFaPFoWiLLcJpt0WtgqUNvsxxc3gFDBHWEsDpUPPcNzt5PIL1c91FXYhRAueAsEks7GSoYsk2h4a"
+            proxy-aria-label="Louise D. profile"
+          >
+            <avatar-icon
+              display-name="Louise D."
+              icon=""
+              initials="LD"
+              data-user="Louise D."
+              
+            ></avatar-icon>
+          </rt-link>
+          <rt-link slot="name"
+            data-user="Louise D."
+            href="/profiles/user/bWoIJvtnPta2FD6umkf9As9jFBBckXfYoFaPFoWiLLcJpt0WtgqUNvsxxc3gFDBHWEsDpUPPcNzt5PIL1c91FXYhRAueAsEks7GSoYsk2h4a"
+            proxy-aria-label="Louise D. profile"
+            
+          >
+            Louise D.
+          </rt-link>
+          
+            <span slot="user-handle">@FastGal</span>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaAudienceReviewsManager="optionsMenuBtn:click"
+            data-display-name="Louise D."
+            data-rating-id="f013d405-9c42-4b04-8a0f-8be5457c26b5"
+            data-reviewer-id="bWoIJvtnPta2FD6umkf9As9jFBBckXfYoFaPFoWiLLcJpt0WtgqUNvsxxc3gFDBHWEsDpUPPcNzt5PIL1c91FXYhRAueAsEks7GSoYsk2h4a"
+            proxy-aria-label="More options for Louise D. review"
+            theme="transparent"
+            data-UserIdentityManager="hideFromSelf"
+            data-author-id="bWoIJvtnPta2FD6umkf9As9jFBBckXfYoFaPFoWiLLcJpt0WtgqUNvsxxc3gFDBHWEsDpUPPcNzt5PIL1c91FXYhRAueAsEks7GSoYsk2h4a"
+            class="hide"
+          >
+            <rt-icon icon="more"></rt-icon>
+          </rt-button>
+          <span slot="timestamp">Feb 18</span>
+          <rating-stars-group slot="rating" score="5"></rating-stars-group>
+          
+            <drawer-more
+              slot="review"
+              max-lines="3"
+              status="closed"
+            >
+              <span slot="content">Very enjoyable. I loved it. The street scenes are great. Lots of fun with the soccer playing. You don’t have to be a soccer fan. It’s nothing to do with that.</span>
+            </drawer-more>
+            <rt-link
+              slot="review-link"
+              context="link"
+              data-MediaAudienceReviewsManager="btnFullReview:click"
+              data-rating-id="f013d405-9c42-4b04-8a0f-8be5457c26b5"
+            >
+              See more
+            </rt-link>
+          
+        </review-card-audience>
+      
+        <review-card-audience slot="tile"  fixed-size>
+          <rt-link
+            slot="avatar-icon" href="/profiles/user/BM9u8vFN2H1VUp0uo5tnNfM5sggcw3UAbtQYf9xi22caLtWwf6xSeQIddc48h0VIkES1wCJJcR7upqu4BtXBFJ8FPqhJDH8KHOYuxGsjvSB1"
+            proxy-aria-label="Stephen C profile"
+          >
+            <avatar-icon
+              display-name="Stephen C"
+              icon=""
+              initials="SC"
+              data-user="Stephen C"
+              
+            ></avatar-icon>
+          </rt-link>
+          <rt-link slot="name"
+            data-user="Stephen C"
+            href="/profiles/user/BM9u8vFN2H1VUp0uo5tnNfM5sggcw3UAbtQYf9xi22caLtWwf6xSeQIddc48h0VIkES1wCJJcR7upqu4BtXBFJ8FPqhJDH8KHOYuxGsjvSB1"
+            proxy-aria-label="Stephen C profile"
+            
+          >
+            Stephen C
+          </rt-link>
+          
+            <span slot="user-handle">@bob25009</span>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaAudienceReviewsManager="optionsMenuBtn:click"
+            data-display-name="Stephen C"
+            data-rating-id="dbc796eb-902b-4c49-88cd-496efcac93a8"
+            data-reviewer-id="BM9u8vFN2H1VUp0uo5tnNfM5sggcw3UAbtQYf9xi22caLtWwf6xSeQIddc48h0VIkES1wCJJcR7upqu4BtXBFJ8FPqhJDH8KHOYuxGsjvSB1"
+            proxy-aria-label="More options for Stephen C review"
+            theme="transparent"
+            data-UserIdentityManager="hideFromSelf"
+            data-author-id="BM9u8vFN2H1VUp0uo5tnNfM5sggcw3UAbtQYf9xi22caLtWwf6xSeQIddc48h0VIkES1wCJJcR7upqu4BtXBFJ8FPqhJDH8KHOYuxGsjvSB1"
+            class="hide"
+          >
+            <rt-icon icon="more"></rt-icon>
+          </rt-button>
+          <span slot="timestamp">Feb 8</span>
+          <rating-stars-group slot="rating" score="5"></rating-stars-group>
+          
+            <drawer-more
+              slot="review"
+              max-lines="3"
+              status="closed"
+            >
+              <span slot="content">Success in 1 hour and 56 minutes.</span>
+            </drawer-more>
+            <rt-link
+              slot="review-link"
+              context="link"
+              data-MediaAudienceReviewsManager="btnFullReview:click"
+              data-rating-id="dbc796eb-902b-4c49-88cd-496efcac93a8"
+            >
+              See more
+            </rt-link>
+          
+        </review-card-audience>
+      
+      <tile-view-more
+        aspect="fill"
+        background="mediaHero"
+        slot="tile"
+      >
+        <rt-button
+          href="/m/calle_malaga/reviews/all-audience"
+          shape="pill"
+          theme="transparent-lighttext"
+        >
+          Read all reviews
+        </rt-button>
+      </tile-view-more>
+    </carousel-slider>
+  </div>
+
+  <div data-MediaAudienceReviewsManager="renderOptionsMenu"></div>
+  <div data-MediaAudienceReviewsManager="renderReview"></div>
+  <div data-MediaAudienceReviewsManager="renderVerifiedUser"></div>
+  <div data-MediaAudienceReviewsManager="renderReportReview"></div>
+</section>
+
+
+
+                    
+                
+                    
+
+                    <section
+  aria-labelledby="rate-and-review-label"
+  class="rate-and-review"
+  data-adobe-id="rate-and-review"
+  data-qa="section:rate-and-review"
+>
+  <div
+    id="rate-and-review-module"
+    class="dom-anchor"
+    data-ModulesNavigationManager="domAnchor"
+    data-RateAndReviewModuleManager="moduleAnchor"
+  ></div>
+  <rate-and-review-module-manager>
+    <script data-json="rateAndReviewModule" type="application/json">{"emsId":"d63985b5-ae26-42ee-83dc-08ce7815d19e","isActivelyModerated":false,"mediaType":"movie","releaseDate":"","title":"Calle Málaga"}</script>
+  </rate-and-review-module-manager>
+
+  <div class="header-wrap">
+    <rt-text
+      context="heading"
+      size="0.75"
+      style="--textColor: #62686F; --letterSpacing: 1px; --textTransform: capitalize;"
+    >
+      Calle Málaga
+    </rt-text>
+    <h2 class="unset" id="rate-and-review-label">
+      <rt-text size="1.25" context="heading">My Rating</rt-text>
+    </h2>
+  </div>
+
+  <div class="content" data-RateAndReviewModuleManager="moduleContent">
+    <rate-and-review-module
+      data-RateAndReviewModuleManager="rateAndReviewModule"
+      skeleton="panel"
+      status="unrated"
+    >
+      <rating-stars-group
+        data-RateAndReviewModuleManager="stars:changed"
+        data-RateAndReviewOverlayManager="moduleStars"
+        aria-labelledby="ratingStarsLabel"
+        is-selectable
+        size="2.75,2"
+        slot="rating">
+      </rating-stars-group>
+      <rating-descriptions
+        context="label"
+        data-RateAndReviewModuleManager="ratingDescriptions"
+        size="1"
+        slot="description"
+        hidden></rating-descriptions>
+      <drawer-more max-lines="2" slot="review-quote" status="closed">
+        <rt-text
+          data-RateAndReviewModuleManager="userReview"
+          data-RateAndReviewOverlayManager="moduleReview"
+          size="0.875"
+          slot="content"
+        ></rt-text>
+        <rt-link slot="cta-open" size="0.875" context="label">Read More</rt-link>
+        <rt-link slot="cta-close" size="0.875" context="label">Read Less</rt-link>
+      </drawer-more>
+
+      <rt-button
+        data-RateAndReviewModuleManager="writeReviewBtn:click"
+        shape="pill"
+        size="1"
+        slot="cta-review"
+      > WRITE A REVIEW </rt-button>
+      <rt-button
+        data-RateAndReviewModuleManager="editReviewBtn:click"
+        shape="pill"
+        size="1"
+        slot="cta-edit"
+      > EDIT REVIEW </rt-button>
+      <rt-button
+        data-RateAndReviewModuleManager="rateBtn:click"
+        size="1"
+        slot="cta-rate"
+        theme="transparent"
+      > POST RATING </rt-button>
+    </rate-and-review-module>
+  </div>
+
+  <rate-and-review-overlay-manager data-RateAndReviewModuleManager="overlayManager:error,success">
+    <script type="application/json" data-json="props">{
+        "links": {
+            "codeOfConduct":"https://editorial.rottentomatoes.com/otg-article/community-code-of-conduct/",
+            "fandangoBrands":"//www.fandango.com/about-us",
+            "privacyPolicy":"https://www.versantprivacy.com/privacy",
+            "termsAndPolicies":"https://www.rottentomatoes.com/policies/terms-and-policies"
+        }
+    }</script>
+  </rate-and-review-overlay-manager>
+</section>
+
+
+                    
+                
+                    
+
+                    <div
+  class="modules-layout"
+  tabindex="-1"
+  data-ModulesNavigationManager="content:focusin"
+>
+  
+    <div
+      id="cast-and-crew"
+      class="dom-anchor"
+      data-ModulesNavigationManager="domAnchor"
+    ></div>
+  
+
+  
+<section
+  aria-labelledby="cast-and-crew-label"
+  class="cast-and-crew"
+  data-adobe-id="cast-and-crew"
+  data-qa="section:cast-and-crew"
+>
+  <div class="header-wrap">
+    <h2 class="unset" id="cast-and-crew-label">
+      <rt-text size="1.25" context="heading" data-qa="title">Cast & Crew</rt-text>
+    </h2>
+    <rt-button
+      proxy-aria-label="Cast and Crew"
+      data-qa="view-all-link"
+      href="/m/calle_malaga/cast-and-crew"
+      shape="pill"
+      size="0.875"
+      style="--buttonPadding: 6px 24px;--backgroundColor: var(--grayLight1);--borderColor: transparent;--letterSpacing: 1px;"
+      theme="light"
+    >
+      View All
+    </rt-button>
+  </div>
+
+  <div class="content-wrap">
+      
+      
+    <a href="/celebrity/maryam_touzani" data-qa="person-item">
+        <tile-dynamic skeleton="panel">
+            <rt-img 
+                alt="Maryam Touzani thumbnail image" 
+                aria-hidden="true"
+                loading="lazy" 
+                slot="image" 
+                src="https://resizing.flixster.com/7a5sE02ETXC_ip6rPU8u-H1BDzU=/100x120/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/1118282_v9_ba.jpg"
+            ></rt-img>
+            <div slot="inset-text" aria-label="Maryam Touzani, Director">
+                <p class="name" data-qa="person-name">Maryam Touzani</p>
+                <p class="role" data-qa="person-role">Director</p>
+            </div>
+        </tile-dynamic>
+    </a>
+
+    <a href="/celebrity/carmen_maura" data-qa="person-item">
+        <tile-dynamic skeleton="panel">
+            <rt-img 
+                alt="Carmen Maura thumbnail image" 
+                aria-hidden="true"
+                loading="lazy" 
+                slot="image" 
+                src="https://resizing.flixster.com/QiHev0UI-aYaTIXu_uD-d8mhEhY=/100x120/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/75941_v9_bc.jpg"
+            ></rt-img>
+            <div slot="inset-text" aria-label="Carmen Maura, Actor">
+                <p class="name" data-qa="person-name">Carmen Maura</p>
+                <p class="role" data-qa="person-role">Actor</p>
+            </div>
+        </tile-dynamic>
+    </a>
+
+    <a href="/celebrity/marta_etura" data-qa="person-item">
+        <tile-dynamic skeleton="panel">
+            <rt-img 
+                alt="Marta Etura thumbnail image" 
+                aria-hidden="true"
+                loading="lazy" 
+                slot="image" 
+                src="https://resizing.flixster.com/wChcrBBxGlL9mhir7ezuSqhTExQ=/100x120/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/232581_v9_bb.jpg"
+            ></rt-img>
+            <div slot="inset-text" aria-label="Marta Etura, Actor">
+                <p class="name" data-qa="person-name">Marta Etura</p>
+                <p class="role" data-qa="person-role">Actor</p>
+            </div>
+        </tile-dynamic>
+    </a>
+
+    <a href="/celebrity/ahmed_boulane" data-qa="person-item">
+        <tile-dynamic skeleton="panel">
+            <rt-img 
+                alt="Ahmed Boulane thumbnail image" 
+                aria-hidden="true"
+                loading="lazy" 
+                slot="image" 
+                src="none"
+            ></rt-img>
+            <div slot="inset-text" aria-label="Ahmed Boulane, Actor">
+                <p class="name" data-qa="person-name">Ahmed Boulane</p>
+                <p class="role" data-qa="person-role">Actor</p>
+            </div>
+        </tile-dynamic>
+    </a>
+
+    <a href="/celebrity/maria_alfonsa_rosso" data-qa="person-item">
+        <tile-dynamic skeleton="panel">
+            <rt-img 
+                alt="María Alfonsa Rosso thumbnail image" 
+                aria-hidden="true"
+                loading="lazy" 
+                slot="image" 
+                src="none"
+            ></rt-img>
+            <div slot="inset-text" aria-label="María Alfonsa Rosso, Actor">
+                <p class="name" data-qa="person-name">María Alfonsa Rosso</p>
+                <p class="role" data-qa="person-role">Actor</p>
+            </div>
+        </tile-dynamic>
+    </a>
+
+    <a href="/celebrity/maryam_touzani" data-qa="person-item">
+        <tile-dynamic skeleton="panel">
+            <rt-img 
+                alt="Maryam Touzani thumbnail image" 
+                aria-hidden="true"
+                loading="lazy" 
+                slot="image" 
+                src="https://resizing.flixster.com/7a5sE02ETXC_ip6rPU8u-H1BDzU=/100x120/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/1118282_v9_ba.jpg"
+            ></rt-img>
+            <div slot="inset-text" aria-label="Maryam Touzani, Screenwriter">
+                <p class="name" data-qa="person-name">Maryam Touzani</p>
+                <p class="role" data-qa="person-role">Screenwriter</p>
+            </div>
+        </tile-dynamic>
+    </a>
+
+  </div>
+
+</section>
+
+</div>
+
+
+                    
+                
+                    
+
+                    <div
+  class="modules-layout"
+  tabindex="-1"
+  data-ModulesNavigationManager="content:focusin"
+>
+  
+    <div
+      id="videos"
+      class="dom-anchor"
+      data-ModulesNavigationManager="domAnchor"
+    ></div>
+  
+
+  
+<section
+  aria-labelledby="videos-carousel-label"
+  class="videos-carousel"
+  data-adobe-id="videos-carousel"
+  data-qa="section:videos-carousel"
+>
+  <div class="header-wrap">
+    <div class="link-wrap">
+      <h2 class="unset" data-qa="videos-section-title" id="videos-carousel-label">
+        <rt-text size="1.25" context="heading">Videos</rt-text>
+      </h2>
+      <rt-button
+        proxy-aria-label=" videos"
+        data-qa="videos-view-all-link"
+        href="/m/calle_malaga/videos"
+        shape="pill"
+        size="0.875"
+        style="--buttonPadding: 6px 24px;--backgroundColor: var(--grayLight1);--borderColor: transparent;--letterSpacing: 1px;"
+        theme="light"
+      >
+        View All
+      </rt-button>
+    </div>
+    <h3 class="unset">
+      <rt-text
+        context="heading"
+        size="0.75"
+        style="--letterSpacing: 1px; --textColor: var(--grayDark4); --textTransform: capitalize;">
+        Calle Málaga
+      </rt-text>
+    </h3>
+  </div>
+
+  <carousel-slider
+    tile-width="80%,240px"
+    data-VideosCarouselManager="carousel"
+    skeleton="panel"
+    data-qa="videos-carousel"
+  >
+    
+        <tile-video
+          skeleton="panel"
+          slot="tile"
+          data-qa="video-item"
+        >
+          <rt-img
+            slot="image"
+            fallback-theme="iconic"
+            loading=""
+            src="https://resizing.flixster.com/UNMQGcQ9qybmvvhbibl3muijhLk=/270x160/v2/https://statcdn.fandango.com/MPX/image/NBCU_Fandango/888/643/thumb_1A90E9BD-16F4-49BA-AB64-92C5DA388912.jpg"
+            alt="Calle Málaga: Trailer 1"
+          ></rt-img>
+          <rt-button
+            theme="transparent"
+            data-ems-id="d63985b5-ae26-42ee-83dc-08ce7815d19e"
+            data-mpx-id="2482348099988"
+            data-public-id="sB4GXtptFGEe"
+            data-type="Movie"
+            data-VideoPlayerOverlayManager="btnVideo:click"
+            slot="image-action"
+            data-qa="video-trailer-play-btn"
+          >
+            <span class="sr-only">Calle Málaga: Trailer 1</span>
+          </rt-button>
+
+          <drawer-more slot="caption" max-lines="2" status="closed">
+            <rt-text slot="content" size="1" context="label" data-qa="video-item-title">Calle Málaga: Trailer 1</rt-text>
+          </drawer-more>
+
+          <rt-badge
+            slot="image-inset-label"
+            theme="gray"
+          >
+            1:52
+          </rt-badge>
+        </tile-video>
+    
+      <tile-view-more
+        aspect="landscape"
+        background="mediaHero"
+        slot="tile"
+      >
+        <rt-button
+          href="/m/calle_malaga/videos"
+          shape="pill"
+          theme="transparent-lighttext"
+        >
+          View more videos
+        </rt-button>
+      </tile-view-more>
+  </carousel-slider>
+</section>
+
+</div>
+
+
+                    
+                
+                    
+
+                    <div
+  class="modules-layout"
+  tabindex="-1"
+  data-ModulesNavigationManager="content:focusin"
+>
+  
+    <div
+      id="photos"
+      class="dom-anchor"
+      data-ModulesNavigationManager="domAnchor"
+    ></div>
+  
+
+  
+<section
+  aria-labelledby="photos-carousel-label"
+  class="photos-carousel"
+  data-adobe-id="photos-carousel"
+  data-qa="section:photos-carousel"
+>
+  <div class="header-wrap">
+    <div class="link-wrap">
+      <h2 class="unset" id="photos-carousel-label">
+        <rt-text size="1.25" context="heading">Photos</rt-text>
+      </h2>
+      <rt-button
+        proxy-aria-label="Calle Málaga photos"
+        data-qa="photos-view-all-link"
+        href="/m/calle_malaga/pictures"
+        shape="pill"
+        size="0.875"
+        style="--buttonPadding: 6px 24px;--backgroundColor: var(--grayLight1);--borderColor: transparent;--letterSpacing: 1px;"
+        theme="light"
+      >
+        View All
+      </rt-button>
+    </div>
+    <h3 class="unset">
+      <rt-text
+        context="label"
+        size="0.75"
+        style="--textColor: var(--grayDark4);"
+      >
+        Calle Málaga
+      </rt-text>
+    </h3>
+  </div>
+
+  <carousel-slider
+    tile-width="80%,240px"
+    skeleton="panel"
+  >
+    
+      <tile-photo
+        data-PhotosCarouselManager="tilePhoto:click"
+        slot="tile"
+        skeleton="panel"
+      >
+        <span class="sr-only"></span>
+        
+          
+        
+          <rt-img
+            slot="image"
+            loading=""
+            src="https://resizing.flixster.com/JBz65cJ_VQI2-Y41hizc26e7Ef8=/fit-in/352x330/v2/https://resizing.flixster.com/oT_CrmM-clfzEllQKUaG-0-7VkU=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzczYTI0OGU5LWViMDUtNGEzNC04NjhmLTJlOThhZjUwNDJlZi5wbmc=,https://resizing.flixster.com/PiDxG1ij-pQVRZe4dJj4DkKKaQY=/fit-in/705x460/v2/https://resizing.flixster.com/oT_CrmM-clfzEllQKUaG-0-7VkU=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzczYTI0OGU5LWViMDUtNGEzNC04NjhmLTJlOThhZjUwNDJlZi5wbmc="
+            alt="Calle Málaga photo 1"
+          ></rt-img>
+      </tile-photo>
+    
+      <tile-photo
+        data-PhotosCarouselManager="tilePhoto:click"
+        slot="tile"
+        skeleton="panel"
+      >
+        <span class="sr-only"></span>
+        
+          
+        
+          <rt-img
+            slot="image"
+            loading=""
+            src="https://resizing.flixster.com/S_W0aWeBFSKCvQQJUPE22FfO-Tk=/fit-in/352x330/v2/https://resizing.flixster.com/v45LX5qOeEkO_5Yok0QpyztPiNQ=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzBmZmE2YjMxLTBmNjEtNDRhMy1hMjY2LTI4ZDBjNzA4NDM5Yi5qcGc=,https://resizing.flixster.com/JjpYu9yz7HFNzbnZznXOW4scH7Q=/fit-in/705x460/v2/https://resizing.flixster.com/v45LX5qOeEkO_5Yok0QpyztPiNQ=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzBmZmE2YjMxLTBmNjEtNDRhMy1hMjY2LTI4ZDBjNzA4NDM5Yi5qcGc="
+            alt="Calle Málaga photo 2"
+          ></rt-img>
+      </tile-photo>
+    
+      <tile-photo
+        data-PhotosCarouselManager="tilePhoto:click"
+        slot="tile"
+        skeleton="panel"
+      >
+        <span class="sr-only"></span>
+        
+          
+        
+          <rt-img
+            slot="image"
+            loading=""
+            src="https://resizing.flixster.com/sJ0kOsV1h_vpCme2rQ63358WPSk=/fit-in/352x330/v2/https://resizing.flixster.com/5jA8M0AIcMM4oM98tqdc9v5wK-s=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2M5MzhjM2UxLTg1N2EtNDI1MC1iZmM0LWQ4OTYzYjhiNzIyYi5qcGc=,https://resizing.flixster.com/_Op4PEQvxiaLYVqcaOg2t7QHIzQ=/fit-in/705x460/v2/https://resizing.flixster.com/5jA8M0AIcMM4oM98tqdc9v5wK-s=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2M5MzhjM2UxLTg1N2EtNDI1MC1iZmM0LWQ4OTYzYjhiNzIyYi5qcGc="
+            alt="Calle Málaga photo 3"
+          ></rt-img>
+      </tile-photo>
+    
+      <tile-view-more
+        aspect="square,landscape"
+        background="mediaHero"
+        slot="tile"
+      >
+        <rt-button
+          href="/m/calle_malaga/pictures"
+          shape="pill"
+          theme="transparent-lighttext"
+          proxy-aria-label="View more Calle Málaga photos"
+        >
+          View more photos
+        </rt-button>
+      </tile-view-more>
+  </carousel-slider>
+
+  <photos-carousel-manager>
+    <script
+      id="photosCarousel"
+      type="application/json"
+      hidden
+    >
+        {"title":"Calle Málaga","images":[{"aspectRatio":"ASPECT_RATIO_16_9","height":"3375","width":"6000","imageUrl":"https://resizing.flixster.com/PiDxG1ij-pQVRZe4dJj4DkKKaQY=/fit-in/705x460/v2/https://resizing.flixster.com/oT_CrmM-clfzEllQKUaG-0-7VkU=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzczYTI0OGU5LWViMDUtNGEzNC04NjhmLTJlOThhZjUwNDJlZi5wbmc=","imageUrlMobile":"https://resizing.flixster.com/JBz65cJ_VQI2-Y41hizc26e7Ef8=/fit-in/352x330/v2/https://resizing.flixster.com/oT_CrmM-clfzEllQKUaG-0-7VkU=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzczYTI0OGU5LWViMDUtNGEzNC04NjhmLTJlOThhZjUwNDJlZi5wbmc=","imageLoading":""},{"height":"500","width":"1100","imageUrl":"https://resizing.flixster.com/JjpYu9yz7HFNzbnZznXOW4scH7Q=/fit-in/705x460/v2/https://resizing.flixster.com/v45LX5qOeEkO_5Yok0QpyztPiNQ=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzBmZmE2YjMxLTBmNjEtNDRhMy1hMjY2LTI4ZDBjNzA4NDM5Yi5qcGc=","imageUrlMobile":"https://resizing.flixster.com/S_W0aWeBFSKCvQQJUPE22FfO-Tk=/fit-in/352x330/v2/https://resizing.flixster.com/v45LX5qOeEkO_5Yok0QpyztPiNQ=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzBmZmE2YjMxLTBmNjEtNDRhMy1hMjY2LTI4ZDBjNzA4NDM5Yi5qcGc=","imageLoading":""},{"aspectRatio":"ASPECT_RATIO_2_3","height":"2889","width":"2000","imageUrl":"https://resizing.flixster.com/_Op4PEQvxiaLYVqcaOg2t7QHIzQ=/fit-in/705x460/v2/https://resizing.flixster.com/5jA8M0AIcMM4oM98tqdc9v5wK-s=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2M5MzhjM2UxLTg1N2EtNDI1MC1iZmM0LWQ4OTYzYjhiNzIyYi5qcGc=","imageUrlMobile":"https://resizing.flixster.com/sJ0kOsV1h_vpCme2rQ63358WPSk=/fit-in/352x330/v2/https://resizing.flixster.com/5jA8M0AIcMM4oM98tqdc9v5wK-s=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2M5MzhjM2UxLTg1N2EtNDI1MC1iZmM0LWQ4OTYzYjhiNzIyYi5qcGc=","imageLoading":""}],"picturesPageUrl":"/m/calle_malaga/pictures"}
+    </script>
+  </photos-carousel-manager>
+</section>
+
+</div>
+
+
+                    
+                
+                    
+
+                    <ad-unit hidden unit-display="mobile" unit-type="mboxadtwo" show-ad-link>
+  <div slot="ad-inject" class="rectangle_ad mobile center"></div>
+</ad-unit>
+
+
+                    
+                
+                    
+
+                    <ad-unit hidden unit-display="desktop" unit-type="opbannertwo">
+  <div slot="ad-inject" class="banner-ad"></div>
+</ad-unit>
+
+
+                    
+                
+                    
+
+                    <div
+  class="modules-layout"
+  tabindex="-1"
+  data-ModulesNavigationManager="content:focusin"
+>
+  
+    <div
+      id="media-info"
+      class="dom-anchor"
+      data-ModulesNavigationManager="domAnchor"
+    ></div>
+  
+
+  
+<section
+  aria-labelledby="media-info-label"
+  class="media-info"
+  data-adobe-id="media-info"
+  data-qa="section:media-info"
+>
+  <div class="header-wrap">
+    <h2 class="unset" id="media-info-label">
+      <rt-text
+        context="heading"
+        size="1.25"
+        style="--textTransform: capitalize;"
+        data-qa="title"
+      >
+        Movie Info
+      </rt-text>
+    </h2>
+  </div>
+
+  <div class="content-wrap">
+    
+      <div class="synopsis-wrap">
+        <rt-text class="key" size="0.875" data-qa="synopsis-label">Synopsis</rt-text>
+        <rt-text data-qa="synopsis-value">Maria Angeles, a 79-year-old Spanish woman, lives alone in Tangier, Morocco, and enjoys her daily routine. However, her life is turned upside down when her daughter arrives from Madrid to sell the apartment in which she has always lived. Determined to stay, she does everything she can to get her home and her belongings back and, unexpectedly, rediscovers love and sensuality.</rt-text>
+      </div>
+    
+
+    <dl>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Director</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-link href="/celebrity/maryam_touzani" data-qa="item-value">Maryam Touzani</rt-link>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Producer</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-link href="/celebrity/nabil_ayouch" data-qa="item-value">Nabil Ayouch</rt-link><rt-text class="delimiter">, </rt-text>
+          
+            <rt-link href="/celebrity/amine_benjelloun" data-qa="item-value">Amine Benjelloun</rt-link><rt-text class="delimiter">, </rt-text>
+          
+            <rt-link href="/celebrity/jean_remi_ducourtioux" data-qa="item-value">Jean-Rémi Ducourtioux</rt-link>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Screenwriter</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-link href="/celebrity/maryam_touzani" data-qa="item-value">Maryam Touzani</rt-link><rt-text class="delimiter">, </rt-text>
+          
+            <rt-link href="/celebrity/nabil_ayouch" data-qa="item-value">Nabil Ayouch</rt-link>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Distributor</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-text data-qa="item-value">Strand Releasing</rt-text>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Genre</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-link href="/browse/movies_in_theaters/genres:drama" data-qa="item-value">Drama</rt-link><rt-text class="delimiter">, </rt-text>
+          
+            <rt-link href="/browse/movies_in_theaters/genres:romance" data-qa="item-value">Romance</rt-link>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Original Language</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-text data-qa="item-value">Spanish</rt-text>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Release Date (Theaters)</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-text data-qa="item-value">Feb 6, 2026, Limited</rt-text>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Runtime</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-text data-qa="item-value">1h 56m</rt-text>
+          
+        </dd>
+      </div>
+      
+    </dl>
+  </div>
+</section>
+
+</div>
+
+
+                    
+                
+            </div>
+
+            <div id="sidebar-wrap">
+    <div data-adobe-id="discovery-sidebar" data-DiscoverySidebarManager="sticky">
+        <discovery-sidebar-manager no-hero="false">
+            <script data-json="props" type="application/json">{"vanity":{"emsId":"d63985b5-ae26-42ee-83dc-08ce7815d19e","href":"/m/calle_malaga","lifecycleWindow":{},"title":"Calle Málaga","type":"movie","value":"calle_malaga","parents":[],"mediaType":"Movie"}}</script>
+        </discovery-sidebar-manager>
+
+        <div data-DiscoverySidebarManager="renderSidebar:focusin" skeleton="panel"></div>
+        <style>
+            div[data-DiscoverySidebarManager][skeleton] {
+                min-height: 600px;
+            }
+        </style>
+
+        
+
+        <ad-unit
+            data-DiscoverySidebarManager="ad:instantiated"
+            unit-display="desktop"
+            unit-type="topmulti"
+            show-ad-link
+        >
+            <div slot="ad-inject"></div>
+        </ad-unit>
+    </div>
+</div>
+
+
+            <script id="curation-json" type="application/json">{"emsId":"d63985b5-ae26-42ee-83dc-08ce7815d19e","hasShowtimes":false,"rtId":"900102287","type":"movie"}</script>
+
+        </div>
+    </div>
+
+    
+<tool-tip data-MediaScorecardManager="tipCritics" hidden id="tip-critics" role="tooltip">
+    <rt-button 
+        slot="btn-close" proxy-aria-label="Close" theme="transparent"
+        data-MediaScorecardManager="tipCriticsClose:click"
+    >
+        <rt-icon icon="close" image="true"></rt-icon>
+    </rt-button>
+    <div data-MediaScorecardManager="tipCriticsContent"></div>
+</tool-tip>
+
+<tool-tip data-MediaScorecardManager="tipAudience" hidden id="tip-audience" role="tooltip">
+    <rt-button
+        slot="btn-close" proxy-aria-label="Close" theme="transparent"
+        data-MediaScorecardManager="tipAudienceClose:click"
+    >
+        <rt-icon icon="close" image="true"></rt-icon>
+    </rt-button>
+    <div data-MediaScorecardManager="tipAudienceContent"></div>
+</tool-tip>
+
+<tool-tip data-MediaScorecardManager="tipAverageRating" hidden id="tip-avg-rating" role="tooltip">
+    <rt-button
+        slot="btn-close" proxy-aria-label="Close" theme="transparent"
+        data-MediaScorecardManager="tipAverageRatingClose:click"
+    >
+        <rt-icon icon="close" image="true"></rt-icon>
+    </rt-button>
+    <div data-MediaScorecardManager="tipAverageRatingContent"></div>
+</tool-tip>
+
+<overlay-base data-MediaScorecardManager="overlay:close" hidden>
+    <!-- do not remove content slot preset -->
+    <div slot="content"></div>
+</overlay-base>
+
+    <overlay-base
+    data-PhotosCarouselManager="overlayBase:close"
+    hidden
+    >
+    <photos-carousel-overlay
+        data-PhotosCarouselManager="photosOverlay:sliderBtnClick"
+        slot="content"
+    >
+        <rt-button
+            data-PhotosCarouselManager="closeBtn:click"
+            slot="close-btn"
+            theme="transparent"
+        >
+            <rt-icon icon="close"></rt-icon>
+        </rt-button>
+    </photos-carousel-overlay>
+</overlay-base>
+
+    <overlay-base
+    data-RateAndReviewOverlayManager="overlayBase:close"
+    hidden
+    no-click-outside
+>
+    <div slot="content"></div>
+</overlay-base>
+
+<bottom-sheet-modal
+    data-RateAndReviewModuleManager="moderationInfoModal"
+    full-height
+    style="--maxHeightOffset: 90px;"
+    hidden
+>
+    <community-watch-content slot="content">
+    <rt-text slot="title" context="heading" size="1.25">Community Watch</rt-text>
+    <rt-text slot="text" style="--textColor: #62686F; --lineHeight: 1.5;">
+        "<span data-RateAndReviewModuleManager="moderationInfoTitle"></span>" is under
+        <rt-link href="/faq" context="label" target="_blank">Community Watch</rt-link>.
+        Please write a review for your rating to count toward the Popcornmeter.
+    </rt-text>
+    <rt-button
+        data-RateAndReviewModuleManager="moderationInfoBtn:click"
+        type="cta-large"
+        slot="button"
+        size="1"
+    >Write a review</rt-button>
+    </community-watch-content>
+</bottom-sheet-modal>
+<bottom-sheet-modal
+    data-RateAndReviewModuleManager="moderationSubmitModal"
+    full-height
+    style="--maxHeightOffset: 90px;"
+    hidden
+>
+    <community-watch-content slot="content">
+    <rt-text slot="title" context="heading" size="1.25">Thanks for your submission!</rt-text>
+    <rt-text slot="text" style="--textColor: #62686F; --lineHeight: 1.5;">
+        Your review is awaiting approval. Once accepted, your review will get its big debut
+        in the Popcornmeter. Visit
+        <rt-link href="/faq" context="label" target="_blank">FAQ</rt-link>
+        to learn more about Community Watch.
+    </rt-text>
+    <rt-button
+        data-RateAndReviewModuleManager="moderationSubmitBtn:click"
+        type="cta-large"
+        slot="button"
+        size="1"
+    >Got it</rt-button>
+    </community-watch-content>
+</bottom-sheet-modal>
+
+<toast-notification data-RateAndReviewOverlayManager="toast" aria-live="polite" hidden>
+    <rt-icon slot="icon" icon="checkmark-circle-filled" image size-pixel="16"></rt-icon>
+    <rt-text
+        slot="message"
+        data-RateAndReviewOverlayManager="toastMessage"
+        context="label"
+        size="0.875"
+    >- -</rt-text>
+    <rt-button slot="close" theme="transparent">
+        <rt-icon icon="close" image size-pixel="16"></rt-icon>
+    </rt-button>
+</toast-notification>
+
+    <overlay-base
+    data-JwPlayerManager="overlayBase:close"
+    data-VideoPlayerOverlayManager="overlayBase:close,open"
+    hidden
+>
+    <video-player-overlay
+        class="video-overlay-wrap"
+        data-qa="video-overlay"
+        data-VideoPlayerOverlayManager="videoPlayerOverlay:unmute"
+        slot="content"
+    >
+        <rt-button
+            data-JwPlayerManager="unmuteBtn:click"
+            slot="unmute-btn"
+            theme="light"
+        >
+            <rt-icon icon="volume-mute-fill"></rt-icon>
+            &ensp; Tap to Unmute
+        </rt-button>
+        <div slot="header">
+            <button
+                class="unset transparent"
+                data-VideoPlayerOverlayManager="btnOverlayClose:click"
+                data-qa="video-close-btn"
+            >
+                <rt-icon icon="close">
+                    <span class="sr-only">Close video</span>
+                </rt-icon>
+            </button>
+            <a class="cta-btn header-cta button hide">See Details</a>
+        </div>
+
+        <div slot="content"></div>
+
+        <a slot="footer" class="cta-btn footer-cta button hide">See Details</a>
+    </video-player-overlay>
+</overlay-base>
+
+<div id="video-overlay-centered-wrap" data-VideoPlayerOverlayManager="centeredWrap">
+    <div id="video-overlay-player" data-VideoPlayerOverlayManager="player" hidden></div>
+    
+    <action-icon
+        id="video-overlay-centered-close"
+        icon="close"
+        proxy-aria-label="Close video"
+        data-VideoPlayerOverlayManager="centeredCloseBtn:click"
+        data-qa="video-centered-close-btn"
+        hidden
+    ></action-icon>
+    
+</div>
+
+<video-player-overlay-manager
+    jw-player-2026-q2-enabled="true"
+></video-player-overlay-manager>
+<jw-player-manager
+    data-AdsVideoSpotlightManager="jwPlayerManager:playlistItem,ready,remove"
+    data-VideoPlayerOverlayManager="jwPlayerManager:playlistItem,pause,ready,relatedClose,relatedOpen,remove"
+>
+</jw-player-manager>
+
+
+    <ads-media-scorecard-manager></ads-media-scorecard-manager>
+
+                </div>
+
+                <back-to-top hidden></back-to-top>
+            </main>
+
+            <ad-unit hidden unit-display="desktop" unit-type="bottombanner">
+                <div slot="ad-inject" class="sleaderboard_wrapper"></div>
+            </ad-unit>
+
+            <ads-global-skin-takeover-manager></ads-global-skin-takeover-manager>
+
+            <footer-manager></footer-manager>
+<footer class="footer container" data-PagePicturesManager="footer">
+    
+        <mobile-app-desktop-footer env="production" hidden></mobile-app-desktop-footer>
+    
+
+    <div class="footer__content-desktop-block" data-qa="footer:section">
+        <div class="footer__content-group">
+            <ul class="footer__links-list">
+                <li class="footer__links-list-item">
+                    <a href="/help_desk" data-qa="footer:link-helpdesk">Help</a>
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="/about" data-qa="footer:link-about">About Rotten Tomatoes</a>
+                </li>
+                <li id="footer-feedback" class="footer__links-list-item" data-qa="footer-feedback-desktop">
+                    
+                </li>
+            </ul>
+        </div>
+        <div class="footer__content-group">
+            <ul class="footer__links-list">
+                <li class="footer__links-list-item">
+                    <a href="/critics/criteria" data-qa="footer:link-critic-submission">Critic Submission</a>
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="/help_desk/licensing" data-qa="footer:link-licensing">Licensing</a>
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="https://www.versantmedia.com/" target="_blank" rel="noopener" data-qa="footer:link-ads">Advertise With Us</a>
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="//www.fandango.com/careers" target="_blank" rel="noopener" data-qa="footer:link-careers">Careers</a>
+                </li>
+            </ul>
+        </div>
+        <div class="footer__content-group footer__newsletter-block">
+            <p class="h3 footer__content-group-title">
+                <rt-icon icon="mail-filled" size-pixel="20" style="fill:#fff"></rt-icon>&ensp;Join the Newsletter
+            </p>
+            <p class="footer__newsletter-copy">Get the freshest reviews, news, and more delivered right to your inbox!</p>
+            <rt-button shape="pill" data-FooterManager="btnNewsLetter:click" data-qa="footer-newsletter-desktop">
+                Join The Newsletter
+            </rt-button>
+            <a data-FooterManager="linkNewsLetter" class="button footer__newsletter-btn hide" target="_blank" rel="noopener">
+                Join The Newsletter
+            </a>
+        </div>
+        <div class="footer__content-group footer__social-block" data-qa="footer:social">
+            <p class="h3 footer__content-group-title">Follow Us</p>
+            <social-media-icons theme="light" size="20px"></social-media-icons>
+        </div>
+    </div>
+
+    <div class="footer__content-mobile-block" data-qa="mfooter:section">
+        <div class="footer__content-group">
+            <div class="mobile-app-cta-wrap">
+                
+                <mobile-app-cta
+                    env="production"
+                    showandroid="true"
+                    showios="true"
+                    hidden
+                ></mobile-app-cta>
+            </div>
+
+            <p class="footer__copyright-legal" data-qa="mfooter:copyright">
+                <rt-text size="0.75">Copyright &copy; Fandango. All rights reserved.</rt-text>
+            </p>
+            <p>
+                <rt-button shape="pill" data-FooterManager="btnNewsLetter:click" data-qa="footer-newsletter-mobile">
+                    Join The Newsletter
+                </rt-button>
+            </p>
+            <a
+                data-FooterManager="linkNewsLetter"
+                class= "button footer__newsletter-btn hide"
+                target="_blank"
+                rel="noopener"
+            >Join The Newsletter</a>
+
+            <ul class="footer__links-list list-inline">
+                <li class="footer__links-list-item">
+                    <a href="https://www.versantprivacy.com/privacy/cookies#accordionheader3" target="_blank" rel="noopener" data-qa="mfooter:link-adChoices">Ad Choices</a>
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="https://www.versantprivacy.com/privacy" target="_blank" rel="noopener" data-qa="mfooter:link-privacy-policy">
+                        Privacy Policy
+                    </a>
+                </li>
+                <li class="footer__links-list-item">
+                    <img data-FooterManager="iconCCPA" src="https://images.fandango.com/cms/assets/266533e0-7afb-11ed-83f2-4f600722b564--privacyoptions.svg" class="footer__ccpa-icon" loading="lazy" alt="CCPA icon" />
+                    <!-- OneTrust Cookies Settings button start -->
+                    <a href="javascript:void(0)" id="ot-sdk-btn" class="ot-sdk-show-settings mobile" data-qa="footer-cookie-settings-mobile">Cookie Settings</a>
+                    <!-- OneTrust Cookies Settings button end -->
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="https://www.versantprivacy.com/privacy/california-consumer-privacy-act" target="_blank" rel="noopener" data-qa="mfooter:link-california-notice">CA Notice</a>
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="https://www.rottentomatoes.com/policies/terms-and-policies" data-qa="mfooter:link-terms-policies">Terms and Policies</a>
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="/faq#accessibility" data-qa="mfooter:link-accessibility">Accessibility</a>
+                </li>
+                <li id="footer-feedback-mobile" class="footer__links-list-item" data-qa="footer-feedback-mobile">
+                    
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer__copyright">
+        <ul class="footer__links-list list-inline list-inline--separator" data-qa="footer:links-list-privacy">
+            <li class="footer__links-list-item version" data-qa="footer:version">
+                <span>V3.1</span>
+            </li>
+            <li class="footer__links-list-item">
+                <a href="https://www.versantprivacy.com/privacy/cookies#accordionheader3" target="_blank" rel="noopener" data-qa="footer:link-adChoices">Ad Choices</a>
+            </li>
+            <li class="footer__links-list-item">
+                <a href="https://www.versantprivacy.com/privacy" target="_blank" rel="noopener" data-qa="footer:link-privacy-policy">
+                    Privacy Policy
+                </a>
+            </li>
+            <li class="footer__links-list-item">
+                <img data-FooterManager="iconCCPA" src="https://images.fandango.com/cms/assets/266533e0-7afb-11ed-83f2-4f600722b564--privacyoptions.svg" class="footer__ccpa-icon" loading="lazy" alt="CCPA icon" />
+                <!-- OneTrust Cookies Settings button start -->
+                <a href="javascript:void(0)" id="ot-sdk-btn" class="ot-sdk-show-settings" data-qa="footer-cookie-settings-desktop">Cookie Settings</a>
+                <!-- OneTrust Cookies Settings button end -->
+            </li>
+            <li class="footer__links-list-item">
+                <a href="https://www.versantprivacy.com/privacy/california-consumer-privacy-act" target="_blank" rel="noopener" data-qa="footer:link-california-notice">CA Notice</a>
+            </li>
+            <li class="footer__links-list-item">
+                <a href="https://www.rottentomatoes.com/policies/terms-and-policies" data-qa="footer:link-terms-policies">Terms and Policies</a>
+            </li>
+            <li class="footer__links-list-item">
+                <a href="/faq#accessibility" data-qa="footer:link-accessibility">Accessibility</a>
+            </li>
+        </ul>
+        <span class="footer__copyright-legal" data-qa="footer:copyright">
+            Copyright &copy; Fandango. A
+            <a href="https://versantmedia.com/" target="_blank" rel="noopener" data-qa="footer:link-nbcuniversal">
+                Versant Media
+            </a> company. All rights reserved.
+        </span>
+    </div>
+</footer>
+
+        </div>
+
+        
+        <iframe-container
+            hidden
+            data-ArtiManager="iframeContainer:close,resize"
+            data-iframe-src="https://arti.rottentomatoes.com?theme=iframe"
+            theme="widget"
+        >
+            <span slot="logo"><img src="/assets/pizza-pie/images/arti.041d204c4a4.svg" alt="Logo"></img><span>beta</span></span>
+            <rt-button
+                proxy-aria-label="New chat"
+                data-ArtiManager="btnNewChat:click"
+                id="artiNewChatButton"
+                slot="opt-btns"
+                theme="transparent"
+                title="New chat"
+            >
+                <rt-icon icon="new-chat" size-pixel="20" image></rt-icon>
+            </rt-button>
+        </iframe-container>
+        <arti-manager data-SearchResultsNavManager="artiManager"></arti-manager>
+        
+
+        
+    
+        <script type="text/javascript">
+      (function (root) {
+        /* -- Data -- */
+        root.RottenTomatoes || (root.RottenTomatoes = {});
+root.RottenTomatoes.context || (root.RottenTomatoes.context = {});
+root.RottenTomatoes.context.resetCookies = ["AMCVS_8CF467C25245AE3F0A490D4C%40AdobeOrg","AMCV_8CF467C25245AE3F0A490D4C%40AdobeOrg","WRIgnore","WRUIDAWS","__CT_Data","__gads","_admrla","_awl","_cs_c","_cs_id","_cs_mk","_cs_s","_fbp","_ga","_gat_gtmTracker","_gid","aam_uuid","akamai_generated_location","auth_token","auth_user","auth_client","check","cognito","fblo_326803741017","fbm_326803741017","fbsr_326803741017","gpv_Page","id_token","is_auth","loginPlatform","mbox","notice_behavior","optimizelyBuckets","optimizelyEndUserId","optimizelyPendingLogEvents","optimizelySegments","s_cc","s_dayslastvisit","s_dayslastvisit_s","s_invisit","s_prevPage","s_sq","s_vnum","cognito","fbm_326803741017","fbsr_326803741017","id_token","JSESSIONID","QSI_HistorySession","QSI_SI_8up4dWDOtjAg0hn_intercept","_ALGOLIA","__Host-color-scheme","__Host-theme-options","__host_color_scheme","__host_theme_options","_cb","_cb_ls","_cb_svref","_chartbeat2","_chartbeat4","_chartbeat5","_sp_id.47f3","_sp_ses.47f3","_v__chartbeat3","adops_master_kvs","akacd_RTReplatform","algoliaUT","cognito","cl_duid","fbsr_326803741017","id_token","mps_uuid","session_id","_admrla","_awl","_ga","_gid","aam_uuid","cognito","fbm_326803741017","id_token","_cb","_cb_ls","_cb_svref","_chartbeat2","adops_master_kvs","cognito","id_token","krg_crb","krg_uid","mps_uuid"];
+root.RottenTomatoes.context.review = {"mediaType":"movie","title":"The Loft","emsId":"4fffae7c-5f99-3614-b70e-146384ce8030","type":"all-critics","sort":undefined,"reviewsCount":0,"pageInfo":undefined,"reviewerDefaultImg":"https:\u002F\u002Fimages.fandango.com\u002Fcms\u002Fassets\u002F5b6ff500-1663-11ec-ae31-05a670d2d590--rtactordefault.png","reviewerDefaultImgWidth":"100"};
+root.RottenTomatoes.context.useCursorPagination = true;
+root.RottenTomatoes.context.verifiedTooltip = undefined;
+root.RottenTomatoes.context.video = {"file":"https:\u002F\u002Flink.theplatform.com\u002Fs\u002FNGweTC\u002Fmedia\u002FcHUFTfqq_Y2Q?formats=MPEG-DASH+widevine,M3U+appleHlsEncryption,M3U+none,MPEG-DASH+none,MPEG4,MP3","type":"hls","description":"Mickey (Woody Allen) struggles to find enjoyment in rock music on his date with Holly (Dianne Wiest).","image":"https:\u002F\u002Fstatcdn.fandango.com\u002FMPX\u002Fimage\u002FNBCU_Fandango\u002F510\u002F238\u002Fthumb_4CC3B918-8E41-4981-8549-5065396EB3A5.jpg","isRedBand":false,"mediaid":"2375650883525","mpxId":"2375650883525","publicId":"cHUFTfqq_Y2Q","title":"Hannah and Her Sisters: Punk Rock Earache","default":false,"label":"0","duration":"1:38","durationInSeconds":"98.07","emsMediaType":"Movie","emsId":"59750067-1c45-3ed4-8579-c13174fd7938","overviewPageUrl":"\u002Fm\u002Fhannah_and_her_sisters","videoPageUrl":"\u002Fm\u002Fhannah_and_her_sisters\u002Fvideos\u002FcHUFTfqq_Y2Q","videoType":"CLIP","adobeDataLayer":{"content":{"id":"fandango_2375650883525","length":"98.07","type":"vod","player_name":"jw","sdk_version":"web: 6.51.0","channel":"movie","originator":"orion pictures","name":"hannah and her sisters: punk rock earache","rating":"not adult","stream_type":"video"},"media_params":{"genre":"comedy, drama","show_type":2}},"comscore":{"labelmapping":"c3=\"rottentomatoes.com\", ns_st_st=\"Rotten Tomatoes\", ns_st_pu=\"Orion Pictures\", ns_st_pr=\"Hannah and Her Sisters\", ns_st_sn=\"*null\", ns_st_en=\"*null\", ns_st_ge=\"Comedy,Drama\", ns_st_ia=\"0\", ns_st_ce=\"0\", ns_st_ddt=\"1986\", ns_st_tdt=\"1986\""},"thumbnail":"https:\u002F\u002Fresizing.flixster.com\u002FMMp92LI5iB34o9dXGuCWbVr9rKY=\u002F270x160\u002Fv2\u002Fhttps:\u002F\u002Fstatcdn.fandango.com\u002FMPX\u002Fimage\u002FNBCU_Fandango\u002F510\u002F238\u002Fthumb_4CC3B918-8E41-4981-8549-5065396EB3A5.jpg"};
+root.RottenTomatoes.context.videoClipsJson = {"count":12};
+root.RottenTomatoes.context.layout = {"header":{"movies":{"moviesAtHome":{"tarsSlug":"rt-nav-movies-at-home","linkList":[{"header":"Fandango at Home","slug":"fandango-at-home-link","url":"\u002Fbrowse\u002Fmovies_at_home\u002Faffiliates:fandango-at-home"},{"header":"Netflix","slug":"netflix-link","url":"\u002Fbrowse\u002Fmovies_at_home\u002Faffiliates:netflix"},{"header":"Apple TV","slug":"apple-tv-link","url":"\u002Fbrowse\u002Fmovies_at_home\u002Faffiliates:apple-tv-plus"},{"header":"Prime Video","slug":"prime-video-link","url":"\u002Fbrowse\u002Fmovies_at_home\u002Faffiliates:prime-video"},{"header":"Most Popular Streaming movies","slug":"most-popular-streaming-movies-link","url":"\u002Fbrowse\u002Fmovies_at_home\u002Fsort:popular"},{"header":"Certified Fresh movies","slug":"certified-fresh-movies-link","url":"\u002Fbrowse\u002Fmovies_at_home\u002Fcritics:certified_fresh"},{"header":"Browse all","slug":"browse-all-link","url":"\u002Fbrowse\u002Fmovies_at_home"}]}},"editorial":{"guides":{"posts":[{"ID":286104,"author":944,"featured_image":{"source":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fwp-content\u002Fuploads\u002F2026\u002F03\u002FScary_Movie600-1.jpg"},"link":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fguide\u002Fthe-scary-movie-franchise-ranked\u002F","status":"publish","title":"The \u003Cem\u003EScary Movie\u003C\u002Fem\u003E Franchise Ranked","type":"guide"},{"ID":260662,"author":919,"featured_image":{"source":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fwp-content\u002Fuploads\u002F2025\u002F12\u002FRT_Representative_BestFreeMovies.png"},"link":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fguide\u002Fbest-movies-fandango-at-home\u002F","status":"publish","title":"50 Best Free Movies on Fandango at Home (June 2026)","type":"guide"}],"title":"Guides","url":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fcountdown\u002F"},"hubs":{"posts":[{"ID":140214,"author":12,"featured_image":{"source":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fwp-content\u002Fuploads\u002F2023\u002F12\u002FRT_AwardsTour_Thumbnail_600x314.jpg"},"link":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Frt-hub\u002Fawards-tour\u002F","status":"publish","title":"Awards Tour","type":"rt-hub"},{"ID":237626,"author":12,"featured_image":{"source":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fwp-content\u002Fuploads\u002F2023\u002F05\u002FRT_WTW_Generic_2023_Thumbnail_600x314_021623.jpg"},"link":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Frt-hub\u002Fwhat-to-watch\u002F","status":"publish","title":"What to Watch: In Theaters and On Streaming","type":"rt-hub"}],"title":"Hubs","url":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Frt-hubs\u002F"},"news":{"posts":[{"ID":291564,"author":236,"featured_image":{"source":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fwp-content\u002Fuploads\u002F2026\u002F06\u002FScary_Movie_BO1-Rep.jpg"},"link":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Farticle\u002Fweekend-box-office-scary-movie-defeats-he-man-with-55-million-opening\u002F","status":"publish","title":"Weekend Box Office: \u003Cem\u003EScary Movie\u003C\u002Fem\u003E Defeats He-Man with $55 Million Opening","type":"article"},{"ID":156194,"author":846,"featured_image":{"source":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fwp-content\u002Fuploads\u002F2019\u002F06\u002FThe-Birdcage-Lane-600x314.jpg"},"link":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Farticle\u002Fmen-smear-revisiting-seminal-lgbtq-comedy-the-birdcage\u002F","status":"publish","title":"&#8220;Men Smear!&#8221;: Revisiting Seminal LGBTQ Comedy \u003Cem\u003EThe Birdcage\u003C\u002Fem\u003E","type":"article"}],"title":"RT News","url":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fnews\u002F"}},"trendingTarsSlug":"rt-nav-trending","trending":[{"header":"Seen on the Screen","url":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Farticle\u002Fseen-on-screen-podcast-a-celebration-of-universal-stories\u002F"},{"header":"Free Movies","url":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Farticle\u002Ffresh-movies-you-can-watch-for-free-online-right-now\u002F"},{"header":"Pride Month","url":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Farticle\u002Fpride-month-2026-movies-tv-streaming\u002F"},{"header":"Rotten Tomatoes App ","url":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Farticle\u002Fapp\u002F"}],"certifiedMedia":{"certifiedFreshTvSeason":{"header":null,"media":{"url":"\u002Ftv\u002Fcape_fear\u002Fs01","name":"Cape Fear: Season 1","score":76,"posterImg":"https:\u002F\u002Fresizing.flixster.com\u002F80ScTYpkoMsdLZz0H_4QuDzXAIg=\u002F206x305\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002FOOCVhgIg_M1EmLLfD_4T5q3gi-k=\u002Ffit-in\u002F180x240\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002Fh5H-b_D9k9NOnbNGWO-QDjk4mVE=\u002Fems.cHJkLWVtcy1hc3NldHMvdHZzZWFzb24vYmYxMDhkNjAtYjNhMC00M2RlLTg1YWYtMDc3NzU5MjIxZGVhLnBuZw=="},"tarsSlug":"rt-nav-list-cf-picks"},"certifiedFreshMovieInTheater":{"header":null,"media":{"url":"\u002Fm\u002Fpower_ballad","name":"Power Ballad","score":86,"posterImg":"https:\u002F\u002Fresizing.flixster.com\u002F3c7TR36TEzd1dSZXLfch04MjdHw=\u002F206x305\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002FdDPvCDNdpjlRDJDuVfc2HzELuyA=\u002Ffit-in\u002F180x240\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002FD6ZNf6XfT_f-L-2iIpnUFpG21rA=\u002Fems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzM3MTdjMjYzLTE4MzItNGU1MC1hZTYzLWI3NzUwMThjODI4OC5qcGc="}},"certifiedFreshMovieInTheater4":{"header":null,"media":{"url":"\u002Fm\u002Fcarolina_caroline","name":"Carolina Caroline","score":93,"posterImg":"https:\u002F\u002Fresizing.flixster.com\u002FUmAIHL4Ghqmco2HlK4l6pgkEpCE=\u002F206x305\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002Fu4rX9TIrc5nqtP25dVtXpNGSt_A=\u002Ffit-in\u002F180x240\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002FVNue0wrvKzpz1UBk7x7SPbIsiQQ=\u002Fems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2M1Mjk0MGQxLWI3YTYtNDc2Yy1iYmU1LTIzOWI5YjA3NmJhNS5qcGc="}},"certifiedFreshMovieAtHome":{"header":null,"media":{"url":"\u002Fm\u002Fbackrooms","name":"Backrooms","score":88,"posterImg":"https:\u002F\u002Fresizing.flixster.com\u002F5sBvJuFdW1XoNok3YfJcbx9cuH8=\u002F206x305\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002Fxq5AiE2VCNI9IXXd3-YPBo4THLQ=\u002Ffit-in\u002F180x240\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002FrhgxSrAD0DJLjAa7CXGBQU5h81E=\u002Fems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2U3YzFlM2U0LWM1NzctNDg5Yy05M2Y4LTVmYWYxOTQyMDEyMy5qcGc="}},"tarsSlug":"rt-nav-list-cf-picks"},"tvLists":{"newTvTonight":{"tarsSlug":"rt-hp-text-list-3","title":"New TV Tonight","shows":[{"title":"Tony Awards: Season 79","tomatometer":{"tomatometer":null,"sentiment":"empty","certified":false},"tvPageUrl":"\u002Ftv\u002Ftony_awards\u002Fs79"},{"title":"The Vampire Lestat: Season 1","tomatometer":{"tomatometer":100,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Fthe_vampire_lestat\u002Fs01"},{"title":"The Listeners: Season 1","tomatometer":{"tomatometer":92,"sentiment":"positive","certified":false},"tvPageUrl":"\u002Ftv\u002Fthe_listeners\u002Fs01"},{"title":"Alice and Steve: Season 1","tomatometer":{"tomatometer":null,"sentiment":"empty","certified":false},"tvPageUrl":"\u002Ftv\u002Falice_and_steve\u002Fs01"},{"title":"Every Year After: Season 1","tomatometer":{"tomatometer":null,"sentiment":"empty","certified":false},"tvPageUrl":"\u002Ftv\u002Fevery_year_after\u002Fs01"},{"title":"Sweet Magnolias: Season 5","tomatometer":{"tomatometer":null,"sentiment":"empty","certified":false},"tvPageUrl":"\u002Ftv\u002Fsweet_magnolias\u002Fs05"},{"title":"Outlast: The Jungle: Season 3","tomatometer":{"tomatometer":null,"sentiment":"empty","certified":false},"tvPageUrl":"\u002Ftv\u002Foutlast\u002Fs03"},{"title":"Surviving Earth: Season 1","tomatometer":{"tomatometer":null,"sentiment":"empty","certified":false},"tvPageUrl":"\u002Ftv\u002Fsurviving_earth\u002Fs01"},{"title":"Best of the World With Antoni Porowski: Season 1","tomatometer":{"tomatometer":null,"sentiment":"empty","certified":false},"tvPageUrl":"\u002Ftv\u002Fbest_of_the_world_with_antoni_porowski\u002Fs01"},{"title":"Power Book III: Raising Kanan: Season 5","tomatometer":{"tomatometer":null,"sentiment":"empty","certified":false},"tvPageUrl":"\u002Ftv\u002Fpower_book_iii_raising_kanan\u002Fs05"}]},"mostPopularTvOnRt":{"tarsSlug":"rt-hp-text-list-2","title":"Most Popular TV on RT","shows":[{"title":"Cape Fear: Season 1","tomatometer":{"tomatometer":76,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Fcape_fear\u002Fs01"},{"title":"Spider-Noir: Season 1","tomatometer":{"tomatometer":91,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Fspider_noir\u002Fs01"},{"title":"The Boroughs: Season 1","tomatometer":{"tomatometer":97,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Fthe_boroughs\u002Fs01"},{"title":"Widow's Bay: Season 1","tomatometer":{"tomatometer":97,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Fwidows_bay\u002Fs01"},{"title":"The Witness: Season 1","tomatometer":{"tomatometer":100,"sentiment":"positive","certified":false},"tvPageUrl":"\u002Ftv\u002Fthe_witness\u002Fs01"},{"title":"Star City: Season 1","tomatometer":{"tomatometer":96,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Fstar_city\u002Fs01"},{"title":"A Good Girl's Guide to Murder: Season 2","tomatometer":{"tomatometer":92,"sentiment":"positive","certified":false},"tvPageUrl":"\u002Ftv\u002Fa_good_girls_guide_to_murder\u002Fs02"},{"title":"Maximum Pleasure Guaranteed: Season 1","tomatometer":{"tomatometer":94,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Fmaximum_pleasure_guaranteed\u002Fs01"},{"title":"Off Campus: Season 1","tomatometer":{"tomatometer":94,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Foff_campus\u002Fs01"},{"title":"Legends: Season 1","tomatometer":{"tomatometer":97,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Flegends_2026\u002Fs01"}]}}}};
+root.RottenTomatoes.thirdParty = {"chartBeat":{"auth":"64558","domain":"rottentomatoes.com"},"mpx":{"accountPid":"NGweTC","playerPid":"y__7B0iQTi4P","playerPidPDK6":"pdk6_y__7B0iQTi4P","accountId":"2474312077"},"algoliaSearch":{"aId":"79FRDP12PN","sId":"175588f6e5f8319b27702e4cc4013561"},"cognito":{"upId":"us-west-2_4L0ZX4b1U","clientId":"7pu48v8i2n25t4vhes0edck31c"}};
+root.RottenTomatoes.serviceWorker = {"isServiceWokerOn":true};
+root.__RT__ || (root.__RT__ = {});
+root.__RT__.featureFlags = {"adsCarouselHP":true,"adsCarouselHPSlug":"rt-sponsored-carousel-list-disney-plus-throwbacks-campaign","adsCarouselOP":true,"adsCarouselOPSlug":"rt-sponsored-carousel-list-disney-plus-throwbacks-campaign","adsMockDLP":false,"adsPages":"none","adsSponsoredOverrideOP":true,"adsSponsoredOverrideOPSlugs":"rt-sponsored-override-op-starz","adsVideoSpotlightHP":false,"artiEnabled":true,"artiSearchNavEnabled":true,"authVerboseLogs":false,"avgTomatometer2025Q4Enabled":true,"bypassCriticValidationEnabled":false,"codeOfConductText2026Q1Enabled":true,"communityWatch2026Q1Enabled":true,"criticPublicationProfile2026Q1Enabled":true,"editorialApiDisabled":false,"jwPlayer2026Q2Enabled":true,"kalshi2026Q1Enabled":false,"legacyBridge":true,"logVerboseEnabled":false,"mobileAppAndroid":"https:\u002F\u002Fplay.google.com\u002Fstore\u002Fapps\u002Fdetails?id=com.rottentomatoes.android","mobileAppIos":"https:\u002F\u002Fapps.apple.com\u002Fus\u002Fapp\u002Frotten-tomatoes-movies-tv\u002Fid6673916573","mobileAppIosMeta":"app-id=6673916573","profilesFeaturesEnabled":true,"removeFetcherSessionStorage":true,"rtebProxyEnabled":false,"trafficAndroidEnabled":true,"trafficSafariEnabled":true,"versantMpsEnabled":true};
+root.RottenTomatoes.context.adsMockDLP = false;
+root.RottenTomatoes.context.req = {"params":{"vanity":"calle_malaga"},"query":{},"route":{},"url":"\u002Fm\u002Fcalle_malaga","secure":false,"buildVersion":undefined};
+root.RottenTomatoes.context.config = {};
+root.BK = {"PageName":"http:\u002F\u002Fwww.rottentomatoes.com\u002Fm\u002Fcalle_malaga","SiteID":37528,"SiteSection":"movie","MovieId":"d63985b5-ae26-42ee-83dc-08ce7815d19e","MovieTitle":"Calle Málaga"};
+root.RottenTomatoes.dtmData = {"customerId":"","loggedInStatus":"","rtVersion":3.1,"webVersion":"node","emsID":"d63985b5-ae26-42ee-83dc-08ce7815d19e","lifeCycleWindow":undefined,"pageName":"rt | movies | overview | Calle Málaga","titleGenre":"Drama","titleId":"d63985b5-ae26-42ee-83dc-08ce7815d19e","titleName":"Calle Málaga","titleType":"Movie"};
+root.RottenTomatoes.context.gptSite = "movie";
+
+      }(this));
+    </script>
+
+        <script fetchpriority="high" src="/assets/pizza-pie/javascripts/bundles/roma/preload.2c182594cc9.js"></script>
+
+        <script  src="/assets/pizza-pie/javascripts/bundles/roma/vendors.a4cc402b78a.js"></script>
+
+        <script  src="/assets/pizza-pie/javascripts/bundles/roma/default.66d4fbeb3b6.js"></script>
+
+        
+            <script
+                async
+                data-SearchResultsNavManager="script:load"
+                src="https://cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js">
+            </script>
+            <script  src="/assets/pizza-pie/javascripts/templates/roma/searchNav.482648261fd.js"></script>
+            <script  src="/assets/pizza-pie/javascripts/bundles/roma/searchNav.b978cc9ee5a.js"></script>
+        
+        
+
+    <script  src="/assets/pizza-pie/javascripts/templates/pages/movie/index.8f0ccc7f6bc.js"></script>
+
+    <script  src="/assets/pizza-pie/javascripts/bundles/pages/movie/index.59e25a316b0.js"></script>
+
+
+        
+            
+            <script>
+                if (window.mps && typeof window.mps.writeFooter === 'function') {
+                    window.mps.writeFooter();
+                }
+            </script>
+            
+        
+
+        
+            
+            <script>
+                window._satellite && _satellite.pageBottom();
+            </script>
+            
+        
+    </body>
+</html>

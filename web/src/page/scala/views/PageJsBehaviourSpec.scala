@@ -11,7 +11,7 @@ import java.time.LocalDateTime
 
 /**
  * JavaScript-behaviour regression for the rendered pages. Spins up a
- * tiny embedded HTTP server in front of the same `17-05-2026` fixture-
+ * tiny embedded HTTP server in front of the same `08-06-2026` fixture-
  * rendered HTML the snapshot spec asserts on, drives the pages in a
  * headless Chrome over CDP, and asserts on actual DOM state after JS
  * interactions (pill click, search input, URL pinning, reload).
@@ -36,7 +36,7 @@ import java.time.LocalDateTime
  */
 class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  private val now = LocalDateTime.of(2026, 5, 17, 0, 0)
+  private val now = LocalDateTime.of(2026, 6, 8, 0, 0)
 
   private implicit val city: models.City = Poznan
   private val cityPrefix = s"/${city.slug}"
@@ -51,7 +51,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   override def beforeAll(): Unit = {
     chrome = Chrome.tryStart()
     if (chrome.nonEmpty) {
-      val wiring = new FixtureTestWiring("17-05-2026")
+      val wiring = new FixtureTestWiring("08-06-2026")
       wiring.bootStartup()
       // Web read transform over the worker-populated cache (the shared seam).
       val svc     = new controllers.MovieControllerService(wiring.movieCache)
@@ -212,26 +212,22 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val totalCards = page.evalInt("document.querySelectorAll('.col[data-title]').length")
       totalCards should be > 5
 
-      // "Diabeł" matches the Polish-titled Prada rows in the 17-05-2026
-      // corpus: the regular row, the Polish-titled Ukrainian-dub row
-      // ("Diabeł ubiera się u Prady 2 ukraiński dubbing"), and the
-      // separate "Filmowy klub seniora: diabeł ubiera się u prady 2"
-      // programme row (senior-club screenings keep their own card via
-      // TitleNormalizer.ProgrammePrefix). The Cyrillic dub
-      // ("ДИЯВОЛ НОСИТЬ ПРАДА 2") is a separate card and doesn't share the
-      // substring. Asserting exactly 3 catches a regression where the
-      // search either over-matches (folds in the Cyrillic card, e.g. by
-      // stripping diacritics too aggressively) or under-matches (drops
-      // one of the Polish rows).
-      page.eval("document.getElementById('search-input').value = 'Diabeł'; applyFilters()")
+      // "Straszny film" matches exactly two distinct cards in the 08-06-2026
+      // Poznań corpus: the regular Polish row ("Straszny film") and its
+      // Ukrainian-dub sibling ("Straszny film ukraiński dubbing"), which
+      // TitleNormalizer keeps as its own card. Asserting exactly 2 catches a
+      // regression where the search over-matches (folds an unrelated title in)
+      // or under-matches (drops one of the two rows). (Was "Diabeł"/3 against
+      // the old Prada corpus; Prada left cinemas and now has a single card.)
+      page.eval("document.getElementById('search-input').value = 'Straszny film'; applyFilters()")
       val matchingCards = page.evalInt(
         "[...document.querySelectorAll('.col[data-title]')].filter(c => c.style.display !== 'none').length"
       )
-      matchingCards shouldBe 3
+      matchingCards shouldBe 2
       page.evalBool(
         "[...document.querySelectorAll('.col[data-title]')]" +
           ".filter(c => c.style.display !== 'none')" +
-          ".every(c => c.dataset.title.toLowerCase().includes('diabeł'))"
+          ".every(c => c.dataset.title.toLowerCase().includes('straszny film'))"
       ) shouldBe true
     }
   }
@@ -246,8 +242,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val baselineVisible = page.evalInt(
         "[...document.querySelectorAll('.col[data-title]')].filter(c => c.style.display !== 'none').length"
       )
-      page.eval("document.getElementById('search-input').value = 'Diabeł'; applyFilters()")
-      page.eval("document.getElementById('search-input').value = '';        applyFilters()")
+      page.eval("document.getElementById('search-input').value = 'Straszny film'; applyFilters()")
+      page.eval("document.getElementById('search-input').value = '';             applyFilters()")
       page.evalInt(
         "[...document.querySelectorAll('.col[data-title]')].filter(c => c.style.display !== 'none').length"
       ) shouldBe baselineVisible

@@ -1,0 +1,54 @@
+<div class="content_rep_posters_b_1" id="poster_button_left"></div>	<div class="content_rep_posters_0" id="poster_set_1">
+									
+											<div class="content_rep_posters_1a hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780899906', '20550','14','45','2026-06-11','0','0','22','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">14</font>:45</div><img class="poster_photo" src="foto,20550,6dfd152f3bd82e4fd6f49d90077445f9,jpg.html" title="Zawieście czerwone latarnie" alt="Zawieście czerwone latarnie"/><div class="content_rep_posters_1_1a f_5" id="poster_cell_a_1">Kultura</div></div>
+											<div class="content_rep_posters_1b hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780899906', '20602','15','0','2026-06-11','1','0','22','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">15</font>:00</div><img class="poster_photo" src="foto,20602,7cd459c6625fa47a412c040a4deafe8a,jpg.html" title="Podziemny krąg" alt="Podziemny krąg"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_a_2">Rejs</div></div>
+											<div class="content_rep_posters_1b hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780899906', '20563','17','30','2026-06-11','0','0','22','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_3').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_3').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">17</font>:30</div><img class="poster_photo" src="foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html" title="Dzień objawienia" alt="Dzień objawienia"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_a_3">Kultura</div></div>
+											<div class="content_rep_posters_1b hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780899906', '20613','18','0','2026-06-11','1','0','99','99'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_4').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_4').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">18</font>:00</div><img class="poster_photo" src="foto,20613,2384f85e5bc352fbc25c9aa633d37f3c,jpg.html" title="Wojna o sztukę" alt="Wojna o sztukę"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_a_4">Rejs</div></div>
+											<div class="content_rep_posters_1b hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780899906', '19310','20','30','2026-06-11','0','0','22','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_5').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_5').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">20</font>:30</div><img class="poster_photo" src="foto,19310,7cf51dc761e14025dc717a92c34fcba6,jpg.html" title="Inaczej niż w raju" alt="Inaczej niż w raju"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_a_5">Kultura</div></div>
+											<div class="content_rep_posters_1b hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780899906', '20557','20','30','2026-06-11','1','0','22','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_6').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_6').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">20</font>:30</div><img class="poster_photo" src="foto,20557,131a305436bf4ff9c74fa7deb48c37af,jpg.html" title="Zawodowcy" alt="Zawodowcy"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_a_6">Rejs</div></div>
+											
+											
+											<div class="content_rep_posters_1c hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780899906', '20550','14','45','2026-06-11','0','0','22','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">14</font>:45</div><img class="poster_photo" src="foto,20550,6dfd152f3bd82e4fd6f49d90077445f9,jpg.html" title="Zawieście czerwone latarnie" alt="Zawieście czerwone latarnie"/><div class="content_rep_posters_1_1a f_5" id="poster_cell_b_1">Kultura</div></div>
+											<div class="content_rep_posters_1d hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780899906', '20602','15','0','2026-06-11','1','0','22','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">15</font>:00</div><img class="poster_photo" src="foto,20602,7cd459c6625fa47a412c040a4deafe8a,jpg.html" title="Podziemny krąg" alt="Podziemny krąg"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_b_2">Rejs</div></div>
+											<div class="content_rep_posters_1d hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780899906', '20563','17','30','2026-06-11','0','0','22','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_3').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_3').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">17</font>:30</div><img class="poster_photo" src="foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html" title="Dzień objawienia" alt="Dzień objawienia"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_b_3">Kultura</div></div>
+											<div class="content_rep_posters_1c hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780899906', '20613','18','0','2026-06-11','1','0','99','99'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_4').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_4').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">18</font>:00</div><img class="poster_photo" src="foto,20613,2384f85e5bc352fbc25c9aa633d37f3c,jpg.html" title="Wojna o sztukę" alt="Wojna o sztukę"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_b_4">Rejs</div></div>
+											<div class="content_rep_posters_1d hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780899906', '19310','20','30','2026-06-11','0','0','22','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_5').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_5').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">20</font>:30</div><img class="poster_photo" src="foto,19310,7cf51dc761e14025dc717a92c34fcba6,jpg.html" title="Inaczej niż w raju" alt="Inaczej niż w raju"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_b_5">Kultura</div></div>
+											<div class="content_rep_posters_1d hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780899906', '20557','20','30','2026-06-11','1','0','22','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_6').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_6').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">20</font>:30</div><img class="poster_photo" src="foto,20557,131a305436bf4ff9c74fa7deb48c37af,jpg.html" title="Zawodowcy" alt="Zawodowcy"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_b_6">Rejs</div></div>						
+											
+									</div><div class="content_rep_posters_b_2" id="poster_button_right"></div>		

@@ -11,19 +11,19 @@ import java.time.LocalDateTime
 
 /**
  * Whole-page HTML snapshot regression. Renders the user-facing pages
- * (`/` per city, `/plan`) against the recorded `17-05-2026` fixture corpus
+ * (`/` per city, `/plan`) against the recorded `08-06-2026` fixture corpus
  * and diffs each rendered body against a checked-in expected file.
  */
 class PageSnapshotSpec extends AnyFlatSpec with Matchers {
 
-  private val now = LocalDateTime.of(2026, 5, 17, 0, 0)
+  private val now = LocalDateTime.of(2026, 6, 8, 0, 0)
 
   private implicit val city: models.City = Poznan
 
   private val anonymousUser    = Option.empty[models.User]
   private val noOauthProviders = Set.empty[String]
 
-  private val snapshotDir = Paths.get("test/resources/fixtures/17-05-2026")
+  private val snapshotDir = Paths.get("test/resources/fixtures/08-06-2026")
 
   // Boot the whole pipeline ONCE and render every page from the shared cache.
   // The scrape tick is the spec's dominant cost (~3s warm, ~15s cold-JIT) and
@@ -31,7 +31,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
   // cache state after bootStartup is the same for all renders. (Sharing is safe
   // because the boot is deterministic; the tick stays sequential.)
   private lazy val wiring: FixtureTestWiring = {
-    val w = new FixtureTestWiring("17-05-2026")
+    val w = new FixtureTestWiring("08-06-2026")
     w.bootStartup()
     w
   }
