@@ -95,8 +95,20 @@ class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
       .map(Paths.get(_))
       .find(p => Files.exists(p) && Files.isRegularFile(p))
       .map(p => Files.readAllBytes(p))
-      .getOrElse(throw new java.io.FileNotFoundException(
-        s"No fixture file for $url — tried:\n  ${candidates.mkString("\n  ")}"
-      ))
+      .getOrElse(missingFixture(uri.getHost, path, url, candidates))
   }
+
+  /** A missing **TMDB search** fixture means that query was simply never
+   *  recorded — and in production an unknown query returns an empty result set,
+   *  not an error. Mirror that: replay an empty TMDB search response so callers
+   *  fall through to their next resolution strategy (originalTitle search,
+   *  director-walk) deterministically, instead of the lookup throwing and the
+   *  row's fate hinging on whether a sibling happened to resolve first (the
+   *  PageSnapshot/e2e flake). Every other endpoint still throws — a missing
+   *  detail / ratings / cinema-HTML fixture is a real recording gap. */
+  private def missingFixture(host: String, path: String, url: String, candidates: Seq[String]): Array[Byte] =
+    if (host == "api.themoviedb.org" && path.startsWith("3/search/"))
+      """{"page":1,"results":[],"total_pages":1,"total_results":0}""".getBytes("UTF-8")
+    else throw new java.io.FileNotFoundException(
+      s"No fixture file for $url — tried:\n  ${candidates.mkString("\n  ")}")
 }

@@ -432,8 +432,30 @@ class MovieService(
     // "Kino bez barier: Freak Show (AD)" row queries TMDB as "Freak Show"
     // and resolves to the right film instead of falling through to a
     // director-walk false positive onto a different film by the same director.
+    // Resolve from the row's OWN reported titles instead of depending on a
+    // sibling. `sisterRowMatch` (below) can only copy a tmdbId from an *already
+    // resolved* relative, so a decorated festival/preview row whose own title
+    // ("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", "Ojczyzna (pokaz przedpremierowy)")
+    // doesn't match TMDB used to resolve ONLY if a relative happened to resolve
+    // first — an enrichment-order race that made whole-corpus snapshots flaky.
+    // Build search candidates from the SAME signals sisterRowMatch links on —
+    // every cinema-reported title + every slot's original (English) title — plus
+    // de-decorated forms (each side of a "X | Y" pipe, trailing "(…)" dropped),
+    // and try each (verifyByDirector-gated so extra terms can't mis-resolve onto
+    // a same-title different film). Whatever searchable title a relative would
+    // have resolved by, this row already holds it and searches it itself.
+    val rowRecord  = cache.get(cache.keyOf(title, year))
+    val cinemaTitles  = rowRecord.map(_.cinemaTitles).getOrElse(Set.empty[String])
+    val slotOriginals = rowRecord.map(_.data.values.flatMap(_.originalTitle).toSet).getOrElse(Set.empty[String])
+    val candidates = MovieService
+      .searchTitleCandidates(title, originalTitle, cinemaTitles ++ slotOriginals)
+      .map(MovieService.apiQuery).filter(_.nonEmpty).distinct
+    val searchHit = candidates.iterator
+      .flatMap(q => verifyByDirector(tmdb.search(q, year), director))
+      .nextOption()
+
     sisterRowMatch(title, year, originalTitle)
-      .orElse(verifyByDirector(tmdb.search(MovieService.apiQuery(title), year), director).map(viaTmdb))
+      .orElse(searchHit.map(viaTmdb))
       .orElse(directorWalk(director, year).map(viaTmdb))
   }
 
@@ -574,4 +596,25 @@ object MovieService {
    *  cache keys preserve the accessibility row's identity, but the upstream
    *  resolver should see the bare film title. */
   def apiQuery(display: String): String = TitleNormalizer.apiQuery(display)
+
+  /** TMDB title-search candidates for a row, in priority order: the row's title,
+   *  the cinema-provided original title, then every other reported title
+   *  (`extraTitles` = the row's cinemaTitles + per-slot original titles). Each is
+   *  additionally expanded with its de-decorated forms — every side of a `" | "`
+   *  festival/preview split ("Opętanie | ŻUŁAWSKI. KINO EKSTAZY",
+   *  "WTF Fest | Stolik kawowy") and the trailing-parenthetical-stripped form
+   *  ("Ojczyzna (pokaz przedpremierowy)" → "Ojczyzna"). Blanks/duplicates
+   *  collapse. Callers verify each hit by director, so extra candidates can't
+   *  mis-resolve onto a same-title different film. */
+  def searchTitleCandidates(title: String, originalTitle: Option[String], extraTitles: Iterable[String] = Nil): Seq[String] = {
+    def deDecorate(t: String): Seq[String] = {
+      val pipeParts       = if (t.contains(" | ")) t.split("""\s+\|\s+""").toIndexedSeq else Nil
+      val noTrailingParen = t.replaceAll("""\s*\([^)]*\)\s*$""", "").trim
+      (Seq(t) ++ pipeParts :+ noTrailingParen)
+    }
+    (Seq(title) ++ originalTitle.toSeq ++ extraTitles)
+      .map(_.trim).filter(_.nonEmpty).distinct
+      .flatMap(deDecorate)
+      .map(_.trim).filter(_.nonEmpty).distinct
+  }
 }

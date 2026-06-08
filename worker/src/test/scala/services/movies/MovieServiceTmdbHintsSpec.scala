@@ -145,4 +145,52 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     row.flatMap(_.tmdbId) shouldBe Some(TmdbId)
     row.flatMap(_.imdbId) shouldBe Some(ImdbId)
   }
+
+  // ── Festival/preview "decorated" titles resolve independently of siblings ──
+  // "Opętanie | ŻUŁAWSKI. KINO EKSTAZY", "Ojczyzna (pokaz przedpremierowy)" and
+  // the like don't match TMDB by their decorated title, so they used to resolve
+  // ONLY via `sisterRowMatch` — i.e. only if a plain-title sibling happened to
+  // resolve first. Under the parallel enrichment cascade that ordering is
+  // nondeterministic, which made whole-corpus snapshots flaky. The fix searches
+  // the cinema-provided original title + each side of the "X | Y" pipe + the
+  // de-parenthesised title, so the row resolves on its own.
+
+  "searchTitleCandidates" should "offer the original title, each pipe side, and the de-parenthesised title" in {
+    MovieService.searchTitleCandidates("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some("Possession")) should
+      contain allOf ("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", "Possession", "Opętanie", "ŻUŁAWSKI. KINO EKSTAZY")
+    MovieService.searchTitleCandidates("Ojczyzna (pokaz przedpremierowy)", None) should contain ("Ojczyzna")
+    MovieService.searchTitleCandidates("Plain Title", None) shouldBe Seq("Plain Title")
+  }
+
+  it should "also draw on the row's other reported titles (cinemaTitles + slot originals), de-decorated" in {
+    // The same signals sisterRowMatch links on — fed straight to the search.
+    MovieService.searchTitleCandidates(
+      title = "KINO SENIORA | Opętanie", originalTitle = None,
+      extraTitles = Seq("Opętanie (pokaz)", "Possession")
+    ) should contain allOf ("Opętanie", "Possession")
+  }
+
+  "resolveTmdb" should "resolve a decorated title via its original-title search candidate, not only via a resolved sibling" in {
+    val repo  = new InMemoryMovieRepo()
+    val cache = new CaffeineMovieCache(repo)
+    val bus   = new InProcessEventBus()
+    // The decorated title finds nothing on TMDB; searching the cinema's original
+    // title "Possession" finds the film. No sibling row exists and the event
+    // carries no director, so the ONLY way this resolves is the originalTitle
+    // search candidate — exactly the path that removes the sister-timing race.
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "query=Possession"          -> """{"results":[{"id":21484,"title":"Possession","original_title":"Possession","release_date":"1981-05-27","popularity":9.0}]}""",
+      "/search/movie"             -> """{"results":[]}""",
+      "/movie/21484/external_ids" -> """{"id":21484,"imdb_id":"tt0082933"}"""
+    )), apiKey = Some("stub"))
+    val svc = new MovieService(cache, bus, tmdb)
+    bus.subscribe(svc.onMovieRecordCreated)
+
+    bus.publish(MovieRecordCreated("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some(2026), originalTitle = Some("Possession"), director = None))
+    svc.stop()
+
+    val row = cache.get(cache.keyOf("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some(2026)))
+    row.flatMap(_.tmdbId) shouldBe Some(21484)
+    row.flatMap(_.imdbId) shouldBe Some("tt0082933")
+  }
 }
