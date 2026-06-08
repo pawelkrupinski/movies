@@ -3,7 +3,7 @@ package services.tasks
 import models.{Cinema, CinemaMovie, KinoApollo, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{CinemaScrapeRunner, CinemaScraper, DetailEnricher, FilmDetail}
+import services.cinemas.{CinemaScrapeRunner, CinemaScraper, FakeDetailEnricher}
 import services.events.InProcessEventBus
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
@@ -94,7 +94,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 2L
   }
 
-  // ── CinemaScrapeRunner enqueues detail tasks for detail-deferring cinemas ───
+  // ── Detail enqueue is event-driven, not done by the runner ──────────────────
 
   private def movieWithRef(c: Cinema, title: String = "Dune") = Seq(
     CinemaMovie(Movie(title), c, posterUrl = None, filmUrl = Some(s"http://detail/$title"),
@@ -102,26 +102,26 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
       showtimes = Seq(Showtime(LocalDateTime.now(), Some("https://book"))))
   )
 
-  private def runnerWith(queue: TaskQueue, enrichers: Map[String, DetailEnricher]) =
-    new CinemaScrapeRunner(
-      new CaffeineMovieCache(new InMemoryMovieRepo(), new InProcessEventBus()),
-      new InProcessEventBus(), queue, new InMemoryFreshnessStore, enrichers)
+  "CinemaScrapeRunner" should "enqueue detail via the bus (CinemaMovieAdded → DetailTaskEnqueuer), not inline" in {
+    // The runner only records + publishes; the cache fires CinemaMovieAdded for
+    // the new film, the cinema's enqueuer (subscribed to the same bus) turns that
+    // into one EnrichDetails task. End-to-end proof the event path replaces the
+    // old inline enqueue.
+    val bus     = new InProcessEventBus()
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepo(), bus)
+    val queue   = new InMemoryTaskQueue
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo")
+    bus.subscribe(new DetailTaskEnqueuer(enricher, cache, queue, new InMemoryFreshnessStore).onCinemaMovieAdded)
 
-  "CinemaScrapeRunner" should "enqueue an EnrichDetails task per scraped film for a detail-deferring cinema" in {
-    val scraper  = new FakeScraper(KinoApollo, movieWithRef(KinoApollo))
-    val queue    = new InMemoryTaskQueue
-    val enricher = new DetailEnricher {
-      val cinema = KinoApollo; val detailGroup = "kino-apollo"
-      def fetchFilmDetail(ref: String) = Some(FilmDetail())
-    }
-    runnerWith(queue, Map(KinoApollo.displayName -> enricher)).run(scraper)
-    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L // one EnrichDetails task
+    new CinemaScrapeRunner(cache, bus).run(new FakeScraper(KinoApollo, movieWithRef(KinoApollo)))
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 
-  it should "not enqueue detail tasks for a cinema without a detail enricher" in {
-    val scraper = new FakeScraper(KinoApollo, movieWithRef(KinoApollo))
-    val queue   = new InMemoryTaskQueue
-    runnerWith(queue, Map.empty).run(scraper)
+  it should "leave the queue empty when no enqueuer is subscribed for the cinema" in {
+    val bus   = new InProcessEventBus()
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo(), bus)
+    val queue = new InMemoryTaskQueue
+    new CinemaScrapeRunner(cache, bus).run(new FakeScraper(KinoApollo, movieWithRef(KinoApollo)))
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
   }
 }
