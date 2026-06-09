@@ -1370,8 +1370,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val touchMs = slideDurationMs(page)
 
       touchMs shouldBe 220
-      desktopMs shouldBe 330
-      desktopMs shouldBe (touchMs * 1.5).round.toInt
+      desktopMs shouldBe 550
+      desktopMs shouldBe (touchMs * 2.5).round.toInt
     }
   }
 

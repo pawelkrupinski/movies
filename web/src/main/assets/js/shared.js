@@ -1584,7 +1584,7 @@
   // Desktop (fine pointer) takes a longer, more deliberate glide — 1.5× the base —
   // while touch/mobile keeps the snappy base. A finger-flick wants an immediate
   // response; a mouse-driven arrow / keyboard / dropdown step reads better slower.
-  const DESKTOP_ANIM_FACTOR = 1.5;
+  const DESKTOP_ANIM_FACTOR = 2.5;
   function swipeAnimMs() {
     return matchMedia('(pointer: coarse)').matches
       ? SWIPE_ANIM_MS
