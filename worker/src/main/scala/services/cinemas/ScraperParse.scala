@@ -3,6 +3,7 @@ package services.cinemas
 import org.jsoup.nodes.Document
 
 import java.time.LocalTime
+import java.util.Locale
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -70,7 +71,7 @@ private[cinemas] object ScraperParse {
    */
   def sentenceCase(title: String): String = {
     if (title.isEmpty) return title
-    val chars = title.toLowerCase.toCharArray
+    val chars = title.toLowerCase(Locale.ROOT).toCharArray
     chars(0) = chars(0).toUpper
     var i = 0
     while (i + 2 < chars.length) {
@@ -92,7 +93,7 @@ private[cinemas] object ScraperParse {
     """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|4DX|dubbing|napisy|lektor|pokaz)\b[^)]*)\)\s*$""".r
 
   private def isDroppableTag(tok: String): Boolean = {
-    val w = tok.toLowerCase.replaceAll("""[\[\]().,]""", "")
+    val w = tok.toLowerCase(Locale.ROOT).replaceAll("""[\[\]().,]""", "")
     w.isEmpty || FormatSeparators.contains(w) || FormatVersionWords.contains(w)
   }
 

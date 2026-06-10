@@ -9,6 +9,7 @@ import tools.FixtureTestWiring
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
+import java.util.Locale
 import java.time.{LocalDate, LocalDateTime}
 import scala.collection.mutable
 
@@ -340,7 +341,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
    *  imdbId, ratings, MC/RT/FW URLs, per-cinema slot provenance) plus the
    *  full per-(date, cinema) showtime list with room + format tokens. */
   private def renderSchedules(schedules: Seq[FilmSchedule]): String =
-    schedules.sortBy(s => (s.movie.title.toLowerCase, s.movie.releaseYear)).map(renderOne).mkString("\n\n")
+    schedules.sortBy(s => (s.movie.title.toLowerCase(Locale.ROOT), s.movie.releaseYear)).map(renderOne).mkString("\n\n")
 
   private def renderOne(s: FilmSchedule): String = {
     val e = s.enrichment
