@@ -127,7 +127,16 @@ struct ContentView: View {
                         .onTapGesture { searchFocused = false }
                         .allowsHitTesting(searchFocused)
                 )
-                .ignoresSafeArea(edges: [.bottom, .horizontal])
+                // Ignore only the BOTTOM safe area (so the grid scrolls under
+                // the home indicator) — NOT horizontal. In landscape the
+                // horizontal inset is where the Dynamic Island / rounded corners
+                // sit; ignoring it ran the top bar and the poster grid under the
+                // island. Respecting it keeps content clear of the island, with
+                // the leftover margin showing the app's (dark) background — which
+                // matches the black island hardware. In portrait the horizontal
+                // inset is 0, so this is a no-op there. Guarded by
+                // RotationColumnsUITests.testGridStaysClearOfDynamicIslandInLandscape.
+                .ignoresSafeArea(edges: .bottom)
                 .toolbar(.hidden, for: .navigationBar)
                 // No frost and no separate strip: the under-bar treatment is the
                 // gradient fade on the grid's top edge (see `content`). A true
@@ -319,11 +328,13 @@ struct ContentView: View {
             // `.page(indexDisplayMode: .never)` gives the horizontal swipe with
             // no dot indicator — the date-pill row is the "which day" affordance.
             .tabViewStyle(.page(indexDisplayMode: .never))
-            // Ignore only bottom/horizontal — NOT the top: the TabView sits below
-            // the bar in the VStack, so its paged scroll view (and pan gesture)
-            // starts at the bar's bottom edge and never reaches up under the pill
-            // row to steal the day-pill taps. See ContentView's VStack comment.
-            .ignoresSafeArea(edges: [.bottom, .horizontal])
+            // Ignore only the bottom — NOT the top (the TabView sits below the
+            // bar in the VStack, so its paged scroll view and pan gesture start
+            // at the bar's bottom edge and never reach up under the pill row to
+            // steal the day-pill taps; see ContentView's VStack comment) and NOT
+            // horizontal (in landscape that inset is the Dynamic Island region —
+            // see the outer VStack's ignoresSafeArea note).
+            .ignoresSafeArea(edges: .bottom)
             // Resolve NavigationLink(value: Film) from the grids to the per-film
             // detail screen — the container owns the destination so the push
             // survives a page change.
