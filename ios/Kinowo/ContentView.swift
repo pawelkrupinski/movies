@@ -16,6 +16,16 @@ struct ContentView: View {
     /// orientation's width, so the grid overflows the portrait screen.
     @Environment(\.verticalSizeClass) private var vSizeClass
 
+    /// The film-detail push stack. Held as ContentView state — NOT inside the
+    /// NavigationStack — so it survives the `.id(vSizeClass)` rebuild on every
+    /// rotation. `.id` re-identifies (and tears down) only the NavigationStack
+    /// subtree, leaving ContentView's own state intact; the rebuilt stack then
+    /// restores its pushes from this binding. With a link-driven stack the
+    /// push state lived *inside* the recreated subtree, so a rotation while on
+    /// a film detail popped the user back to the grid (guarded by
+    /// RotationColumnsUITests.testStaysOnFilmDetailAfterRotation).
+    @State private var navPath: [Film] = []
+
     @State private var dateFilter: DateFilter = .today
     @State private var formatFilter: FormatFilter = .empty
     @State private var excludedCountries: Set<String> = []
@@ -64,7 +74,7 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navPath) {
             // The bar and the paged grids are a VStack, NOT an overlay /
             // safeAreaInset: the bar must sit ABOVE the TabView in the layout,
             // so the paged scroll view's frame — and its pan gesture — starts

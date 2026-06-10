@@ -81,6 +81,39 @@ final class RotationColumnsUITests: XCTestCase {
                        "Portrait grid should show two columns; saw \(topRowCount) cards in the top row")
     }
 
+    /// Regression for "open a film, rotate the device, you're thrown back to
+    /// the grid". The `.id(vSizeClass)` that fixes the stale-width zoom rebuilds
+    /// the whole NavigationStack on every rotation; when the push state lived
+    /// inside that subtree, the rebuild dropped it and popped back to the film
+    /// grid. The fix hoists the nav path into ContentView state so the rebuilt
+    /// stack restores the detail screen.
+    func testStaysOnFilmDetailAfterRotation() throws {
+        // Open a film's detail screen. Tap the poster region (top of the card),
+        // not the centre: the card's rating links and showtime chips keep their
+        // own hit areas, so a centre tap can land on one of those instead of the
+        // NavigationLink (mirrors PosterFullScreenUITests).
+        firstFilmCard().coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18)).tap()
+
+        let poster = app.buttons[A11y.FilmDetail.poster]
+        XCTAssertTrue(poster.waitForExistence(timeout: 10),
+                      "Film detail never opened after tapping a card")
+
+        // The reported sequence: rotate to landscape and back to portrait.
+        XCUIDevice.shared.orientation = .landscapeLeft
+        Thread.sleep(forTimeInterval: 1.5)
+        XCUIDevice.shared.orientation = .portrait
+        Thread.sleep(forTimeInterval: 1.5)
+
+        XCTAssertTrue(
+            poster.waitForExistence(timeout: 5),
+            """
+            Rotating while on a film's detail screen popped back to the grid — \
+            the detail poster is gone. The `.id(vSizeClass)` rebuild dropped the \
+            NavigationStack's push instead of restoring it from ContentView state.
+            """
+        )
+    }
+
     // MARK: - helpers
 
     private func cellFrames() -> [CGRect] {
