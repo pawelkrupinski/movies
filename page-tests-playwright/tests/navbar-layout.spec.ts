@@ -127,6 +127,15 @@ test.describe('navbar uniformity — mobile portrait', () => {
     // the Linux-WebKit 16px form-control font floor and ride the navbar's
     // scaled font like every other text control.
     const textAndInputs = [...byGroup.text, ...byGroup.input];
+    // Below ~290px (zoomed phones) the navbar drops the search input, and the
+    // signed-out "Zaloguj" button is hidden on mobile — leaving only the
+    // icon-only Filtry button as a navbar-font control. With a single control
+    // there's nothing to compare, so skip there (the same emergency-layout
+    // carve-out the avatar-pill test uses for the hidden search box).
+    test.skip(
+      textAndInputs.length < 2,
+      'only one navbar-font control at this width (search + login both hidden)',
+    );
     expectUniform('mobile-portrait text+input font', textAndInputs, 'fontPx', 0.5);
   });
 
@@ -512,7 +521,12 @@ test.describe('navbar orientation uniformity', () => {
     const { width, height } = portrait!;
 
     const portraitHeights = await measureHeights(page);
-    expect(Object.keys(portraitHeights).length).toBeGreaterThanOrEqual(3);
+    // Below ~290px (zoomed phones) the navbar drops the search input and the
+    // mobile-hidden "Zaloguj" button, leaving Filtry + day pills (2 controls);
+    // wider phones keep search too (3). Assert the realistic floor for the
+    // width so the rotation comparison below still has ≥2 controls.
+    const minControls = width <= 290 ? 2 : 3;
+    expect(Object.keys(portraitHeights).length).toBeGreaterThanOrEqual(minControls);
 
     await page.setViewportSize({ width: height, height: width });
     const landscapeHeights = await measureHeights(page);
