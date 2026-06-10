@@ -54,4 +54,23 @@ class NoWallClockInClientsSpec extends AnyFlatSpec with Matchers {
       offenders shouldBe empty
     }
   }
+
+  // The spec above trusts the catalog to override each client's `today` default;
+  // `EkobiletClient` was constructed WITHOUT `today` at five `byCity` sites, so
+  // Kino Meduza et al. resolved screening dates against the real clock. That
+  // made the whole-corpus snapshot drift with the calendar — "Bez wyjścia"'s
+  // 10/11-June screenings fell out of the fixture window once the real date
+  // passed them, so the row appeared or vanished depending on the day the
+  // snapshot was regenerated. Guard the override the comment above assumes.
+  it should "pin the injected `today` on every EkobiletClient in CinemaScraperCatalog" in {
+    val catalog = Paths.get("worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala")
+    Files.exists(catalog) shouldBe true
+    val src   = new String(Files.readAllBytes(catalog), java.nio.charset.StandardCharsets.UTF_8)
+    val ctors = """new EkobiletClient\([^)]*\)""".r.findAllIn(src).toSeq
+    ctors should not be empty
+    val unpinned = ctors.filterNot(_.matches(""".*,\s*today\)"""))
+    withClue(s"EkobiletClient constructed without the injected `today` (wall-clock leak):\n${unpinned.mkString("\n")}\n") {
+      unpinned shouldBe empty
+    }
+  }
 }
