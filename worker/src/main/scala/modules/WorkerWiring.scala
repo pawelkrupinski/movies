@@ -11,6 +11,7 @@ import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, UnscreenedCleanup}
 import services.tasks.{DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, RatingEnqueuer, RatingHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker}
+import services.titlerules.{MongoTitleRulesRepo, TitleRulesCache, TitleRulesRepo}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
 /**
@@ -189,6 +190,11 @@ class WorkerWiring {
   lazy val movieRepo: MovieRepo = new MongoMovieRepo(mongoConnection.database, fallbackToOwnInit = false)
   lazy val movieCache: CaffeineMovieCache = new CaffeineMovieCache(movieRepo, eventBus)
 
+  // Title-stripping rules. The worker owns seeding: a fresh DB gets the migrated
+  // defaults so behaviour is unchanged from the hardcoded baseline.
+  lazy val titleRulesRepo: TitleRulesRepo = new MongoTitleRulesRepo(mongoConnection.database, fallbackToOwnInit = false)
+  lazy val titleRulesCache: TitleRulesCache = new TitleRulesCache(titleRulesRepo, seedIfEmpty = true)
+
   lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, backgroundBudget.ec("IMDb-stage"))
   lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient, eventBus, backgroundBudget.ec("imdb-id-resolver"))
   lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, backgroundBudget.ec("RT-stage"))
@@ -321,6 +327,9 @@ class WorkerWiring {
   def start(): Unit = {
     // Force Mongo at boot so connection errors surface in the boot timeline.
     mongoConnection.database
+    // Seed + install title rules before the cache hydrates so scrape/merge keys
+    // are computed with the active rules from the very first tick.
+    titleRulesCache.start()
     movieCache.start()
     movieService.start()
     // The *Ratings 4h cache walks run only in legacy mode; the EnrichmentReaper
@@ -370,7 +379,9 @@ class WorkerWiring {
     unscreenedCleanup.stop()
     kinoMuzaSynopsisRefresher.stop()
     movieCache.stop()
+    titleRulesCache.stop()
     movieRepo.close()
+    titleRulesRepo.close()
     mongoConnection.close()
   }
 }

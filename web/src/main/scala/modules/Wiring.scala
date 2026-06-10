@@ -9,6 +9,7 @@ import services.events.{EventBus, InProcessEventBus}
 import services.fallback.{FilmwebFallbackStore, MongoFilmwebFallbackStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo}
 import services.tasks.{MongoTaskQueue, TaskQueue}
+import services.titlerules.{MongoTitleRulesRepo, TitleRulesCache, TitleRulesRepo}
 import services.users.{AccountDeletion, CachingUserRepo, CachingUserStateRepo, MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
 
@@ -57,6 +58,12 @@ trait Wiring {
   // this process.
   lazy val movieRepo: MovieRepo = new MongoMovieRepo(mongoConnection.database, fallbackToOwnInit = false)
   lazy val movieCache: CaffeineMovieCache = new CaffeineMovieCache(movieRepo, eventBus)
+
+  // Title-stripping rules, shared with the worker via Mongo. The web app reads
+  // and never seeds (the worker owns seeding); it watches the change stream so
+  // an admin edit takes effect here without a redeploy.
+  lazy val titleRulesRepo: TitleRulesRepo = new MongoTitleRulesRepo(mongoConnection.database, fallbackToOwnInit = false)
+  lazy val titleRulesCache: TitleRulesCache = new TitleRulesCache(titleRulesRepo, seedIfEmpty = false)
 
   // Reads come straight from the cache; enrichment happens in the worker
   // process on its continuous pass.
@@ -122,15 +129,20 @@ trait Wiring {
   // — hydrate from Mongo + open the change stream that keeps it warm.
   protected def start(): Unit = {
     mongoConnection.database
+    // Install rules before the cache hydrates so its keys are computed with the
+    // same normalisation the worker used to write them.
+    titleRulesCache.start()
     movieCache.start()
   }
 
   protected def stop(): Unit = {
     uptimeMonitor.close()
     movieCache.stop()
+    titleRulesCache.stop()
     // Each repo's close() is a no-op when it borrowed its database from
     // `mongoConnection` — closing the shared MongoClient is owned here.
     movieRepo.close()
+    titleRulesRepo.close()
     userRepo.close()
     userStateRepo.close()
     mongoConnection.close()
