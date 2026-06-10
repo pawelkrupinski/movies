@@ -17,6 +17,11 @@ final class UserPreferences: ObservableObject {
     /// shown for, or `nil` if never. Only the single latest pair is kept, so
     /// returning to a previously-declined city re-arms the prompt.
     @Published private(set) var citySwitchPromptKey: String?
+    /// True once `StateSyncService` has done its one-time migration of this
+    /// device's local picks up to the account. After that the server is the
+    /// source of truth on every launch (so removals stick); cleared on logout
+    /// so the next sign-in migrates afresh.
+    @Published private(set) var serverStateSynced: Bool = false
 
     private let store: UserDefaults
     private let kHidden        = "hiddenFilms"
@@ -25,6 +30,7 @@ final class UserPreferences: ObservableObject {
     private let kHintDate      = "swipeHintShownDate"
     private let kCity          = "selectedCity"
     private let kSwitchPrompt  = "citySwitchPromptKey"
+    private let kServerSynced  = "serverStateSynced"
 
     init(store: UserDefaults = .standard) {
         self.store = store
@@ -34,6 +40,7 @@ final class UserPreferences: ObservableObject {
         swipeHintShownDate  = store.string(forKey: kHintDate)              ?? ""
         selectedCity        = store.string(forKey: kCity)
         citySwitchPromptKey = store.string(forKey: kSwitchPrompt)
+        serverStateSynced   = store.bool(forKey: kServerSynced)
 
         #if DEBUG
         // UI tests force the first-launch city gate by ignoring any persisted
@@ -62,6 +69,21 @@ final class UserPreferences: ObservableObject {
     func setDisabledCinemas(_ s: Set<String>) {
         disabledCinemas = s
         store.set(Array(disabledCinemas), forKey: kDisabled)
+    }
+
+    /// Replace the whole hidden-films set — used by `StateSyncService` when the
+    /// server is authoritative (mirror the remote set, dropping local-only
+    /// entries the user removed elsewhere).
+    func setHiddenFilms(_ s: Set<String>) {
+        hiddenFilms = s
+        store.set(Array(hiddenFilms), forKey: kHidden)
+    }
+
+    /// Mark the one-time local→server migration done / undone. Set after the
+    /// first successful sync, cleared on logout so the next sign-in migrates.
+    func setServerStateSynced(_ v: Bool) {
+        serverStateSynced = v
+        store.set(v, forKey: kServerSynced)
     }
 
     func toggleCinema(_ cinema: String, disabled: Bool) {

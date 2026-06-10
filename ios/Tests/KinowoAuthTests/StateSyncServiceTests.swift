@@ -32,6 +32,18 @@ final class StateSyncServiceTests: XCTestCase {
         )
     }
 
+    /// Poll until `cond` holds — for the server-authoritative path, which
+    /// mirrors state without a push, so there's no `onPut` to await.
+    private func waitUntil(_ cond: @escaping () -> Bool, timeout: TimeInterval = 1) async throws {
+        let start = Date()
+        while !cond() {
+            if Date().timeIntervalSince(start) > timeout {
+                XCTFail("condition not met within \(timeout)s"); return
+            }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
     private func login() {
         userSubject.send(UserProfile(
             displayName: "Test",
@@ -97,6 +109,58 @@ final class StateSyncServiceTests: XCTestCase {
 
         XCTAssertEqual(client.lastPushed?.hiddenFilms, ["Already Hidden", "From Server"])
         XCTAssertEqual(client.lastPushed?.disabledCinemas, ["Local Cinema", "Remote Cinema"])
+        _ = sync
+    }
+
+    // MARK: - Server authoritative after first sync
+
+    /// Regression: once the one-time migration has run, a later launch must
+    /// MIRROR the server, not blindly union. A film removed on another device
+    /// (server now empty) must not be resurrected from this device's stale
+    /// local copy. The previous union-on-every-login made removals impossible.
+    func testServerAuthoritativeAfterFirstSyncDropsStaleLocal() async throws {
+        // Launch 1: migrate from server = ["Film A"], flag flips on.
+        client.remoteState = UserSyncState(hiddenFilms: ["Film A"], disabledCinemas: [])
+        let pushed = expectation(description: "first push")
+        client.onPut = { _ in pushed.fulfill() }
+        let sync1 = makeSyncService()
+        login()
+        await fulfillment(of: [pushed], timeout: 1)
+        XCTAssertEqual(prefs.hiddenFilms, ["Film A"])
+        XCTAssertTrue(prefs.serverStateSynced)
+
+        // Another device removes "Film A" from the account.
+        client.remoteState = UserSyncState(hiddenFilms: [], disabledCinemas: [])
+        client.onPut = nil
+
+        // Launch 2: same persisted prefs (flag still set), a fresh session
+        // restore (publisher starts nil, then the user) — must NOT clear the
+        // flag on the initial nil, and must mirror the now-empty server.
+        let userSubject2 = CurrentValueSubject<UserProfile?, Never>(nil)
+        let sync2 = StateSyncService(
+            prefs: prefs, userPublisher: userSubject2.eraseToAnyPublisher(), client: client)
+        userSubject2.send(UserProfile(
+            displayName: "Test", email: "test@test.com", avatarUrl: nil, provider: "google"))
+
+        try await waitUntil { self.prefs.hiddenFilms.isEmpty }
+        XCTAssertEqual(prefs.hiddenFilms, [])
+        _ = (sync1, sync2)
+    }
+
+    /// A genuine logout re-arms migration so the next sign-in carries this
+    /// device's current local picks up again.
+    func testLogoutReArmsMigration() async throws {
+        client.remoteState = UserSyncState(hiddenFilms: ["Film A"], disabledCinemas: [])
+        let pushed = expectation(description: "first push")
+        client.onPut = { _ in pushed.fulfill() }
+        let sync = makeSyncService()
+        login()
+        await fulfillment(of: [pushed], timeout: 1)
+        XCTAssertTrue(prefs.serverStateSynced)
+
+        userSubject.send(nil)  // logout
+        try await waitUntil { self.prefs.serverStateSynced == false }
+        XCTAssertFalse(prefs.serverStateSynced)
         _ = sync
     }
 
