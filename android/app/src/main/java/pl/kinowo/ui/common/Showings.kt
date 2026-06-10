@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -26,13 +25,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import pl.kinowo.filter.FormatTokenFilter
 import pl.kinowo.model.Film
 import pl.kinowo.ui.theme.CinemaBlue
@@ -240,18 +246,29 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
             }
         }
         if (holding && room != null) {
-            // Floated clear of the pill (and the finger holding it) so the thumb
-            // doesn't obscure the room name — see RoomTooltip's size. The lift
-            // tracks the finger, not the glyph box, so the bubble's bottom keeps
-            // a comfortable gap above the held chip even though the bubble itself
-            // is now half its old size.
-            RoomTooltip(room, Modifier.align(Alignment.TopCenter).offset(y = (-88).dp).zIndex(1f))
+            // The tooltip rides in a Popup, NOT as a child of this Box: a Box
+            // sizes itself to its largest child, so an in-layout bubble would
+            // grow the Box the instant it appeared and shove the pill (and its
+            // FlowRow neighbours) sideways. A Popup is its own window — it never
+            // resizes the pill, and with clipping disabled it floats free of the
+            // card's rounded-Surface clip. It's anchored just above the pill.
+            val gapPx = with(LocalDensity.current) { RoomTooltipGap.roundToPx() }
+            Popup(
+                popupPositionProvider = remember(gapPx) { RoomTooltipPositionProvider(gapPx) },
+                properties = PopupProperties(focusable = false, clippingEnabled = false),
+            ) {
+                RoomTooltip(room)
+            }
         }
     }
 }
 
+/** Gap between the tooltip's bottom edge and the pill's top — small so the
+ *  bubble hugs the finger that popped it, but clear enough to stay readable. */
+private val RoomTooltipGap = 20.dp
+
 @Composable
-private fun RoomTooltip(room: String, modifier: Modifier = Modifier) {
+private fun RoomTooltip(room: String) {
     // The tooltip pops on a press-and-hold, so the thumb is parked right on the
     // pill. It's sized to stay legible around the finger — the 24sp text (1.5×
     // the pill) + padding carry it — without dominating the card; half the size
@@ -261,12 +278,41 @@ private fun RoomTooltip(room: String, modifier: Modifier = Modifier) {
         color = RoomTooltipText,
         fontSize = 24.sp,
         fontWeight = FontWeight.SemiBold,
-        modifier = modifier
+        modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
             .background(RoomTooltipBackground)
             .border(1.dp, RoomTooltipBorder, RoundedCornerShape(6.dp))
             .padding(horizontal = 10.dp, vertical = 6.dp),
     )
+}
+
+/**
+ * Top-left of the room tooltip in window pixels: centred horizontally over the
+ * pill ([anchorBounds]) and lifted so its bottom sits [gapPx] above the pill's
+ * top. The x is clamped to `[0, windowWidth − bubbleWidth]` so a chip in the
+ * right-hand column can't push the bubble off the screen edge.
+ */
+internal fun roomTooltipPopupOffset(
+    anchorBounds: IntRect,
+    popupContentSize: IntSize,
+    gapPx: Int,
+    windowWidth: Int,
+): IntOffset {
+    val centredX = anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2
+    val maxX = (windowWidth - popupContentSize.width).coerceAtLeast(0)
+    return IntOffset(
+        x = centredX.coerceIn(0, maxX),
+        y = anchorBounds.top - popupContentSize.height - gapPx,
+    )
+}
+
+private class RoomTooltipPositionProvider(private val gapPx: Int) : PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize,
+    ): IntOffset = roomTooltipPopupOffset(anchorBounds, popupContentSize, gapPx, windowSize.width)
 }
 
 /** Polish plural: 1 seans, 2–4 seanse, else seansów. */

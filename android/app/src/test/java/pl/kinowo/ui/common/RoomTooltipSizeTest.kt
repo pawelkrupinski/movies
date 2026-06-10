@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -34,9 +35,10 @@ import pl.kinowo.ui.theme.KinowoTheme
  *  1. The room name renders at 24sp — half the original oversized 48sp bubble,
  *     still 1.5× a 16sp reference so it stays legible around the finger. A
  *     regression back to 48sp (too big) or down to 16sp (too small) fails here.
- *  2. The bubble's bottom edge floats clear of the pill the thumb is pressing,
- *     so the finger doesn't obscure the name. Drop the lift and the bubble
- *     overlaps the chip top, failing the clearance check.
+ *  2. Popping the tooltip must NOT move the pill. The bubble rides in a Popup
+ *     precisely so it can't grow the pill's Box; if it ever went back to being an
+ *     in-layout child the Box would resize and shove the chip sideways — caught
+ *     here by comparing the chip's bounds before and during the hold.
  *
  * NATIVE graphics gives real text metrics; `xhdpi` (density 2) so dp resolve.
  * Runs on the JVM via `./gradlew app:testDebugUnitTest` — no emulator.
@@ -74,11 +76,11 @@ class RoomTooltipSizeTest {
         ),
     )
 
-    private fun renderAndHold() {
+    private fun setUp() {
         // The tooltip lives only while the finger stays down (release clears
         // `holding`), so a `longClick()` — which releases — would never leave it
-        // on screen. Press, hold, and advance the clock past the long-press
-        // timeout with autoAdvance off so the pointer is still down when we look.
+        // on screen. Drive the press manually with autoAdvance off so the pointer
+        // is still down when we look.
         compose.mainClock.autoAdvance = false
         compose.setContent {
             KinowoTheme {
@@ -91,9 +93,17 @@ class RoomTooltipSizeTest {
                 }
             }
         }
+    }
+
+    private fun hold() {
         compose.onNodeWithTag(ShowtimeChipTestTag).performTouchInput { down(center) }
         compose.mainClock.advanceTimeBy(1000L)
         compose.mainClock.advanceTimeByFrame()
+    }
+
+    private fun renderAndHold() {
+        setUp()
+        hold()
     }
 
     @Test
@@ -125,18 +135,20 @@ class RoomTooltipSizeTest {
         compose.onNodeWithText(text).getUnclippedBoundsInRoot().let { (it.bottom - it.top).value }
 
     @Test
-    fun tooltipBottomFloatsClearOfTheHeldPill() {
-        renderAndHold()
+    fun pillDoesNotMoveWhenTheTooltipPops() {
+        setUp()
+        val before = compose.onNodeWithTag(ShowtimeChipTestTag).getUnclippedBoundsInRoot()
+        hold()
+        val after = compose.onNodeWithTag(ShowtimeChipTestTag).getUnclippedBoundsInRoot()
 
-        val chip = compose.onNodeWithTag(ShowtimeChipTestTag).getUnclippedBoundsInRoot()
-        val tooltip = compose.onNodeWithText(room).getUnclippedBoundsInRoot()
-
-        // Gap between the bubble's bottom and the pill's top: the finger is on the
-        // pill, so a positive, generous gap means the name sits above the thumb.
-        val gap = (chip.top - tooltip.bottom).value
-        assertTrue(
-            "room tooltip must float clear of the held pill (gap above chip top = $gap dp)",
-            gap >= 30f,
-        )
+        // The bubble pops in a Popup, so it must not resize the pill's Box and
+        // shove the chip. Before the Popup fix the in-layout bubble grew the Box
+        // and the chip jumped sideways (and the row taller); here it stays put.
+        assertEquals("pill left must not move when the tooltip pops",
+            before.left.value, after.left.value, 0.5f)
+        assertEquals("pill top must not move when the tooltip pops",
+            before.top.value, after.top.value, 0.5f)
+        assertEquals("pill width must not change when the tooltip pops",
+            (before.right - before.left).value, (after.right - after.left).value, 0.5f)
     }
 }
