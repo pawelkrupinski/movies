@@ -221,26 +221,28 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   // canonical keys, so both cinemas' bus events name the same key and the
   // TMDB stage runs exactly once. No phantom row, no startup merge.
 
-  "recordCinemaScrape" should "return Helios's canonical key as Multikino's row when both report Diabeł Prada with different years" in {
+  "recordCinemaScrape" should "collapse Multikino + Helios onto one canonical key (year-bearing wins) when they report Diabeł Prada with different years" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
 
-    // Multikino lands first with year=None.
+    // Multikino lands first with year=None — creates the row at its own key.
     val mkTouched = cache.recordCinemaScrape(Multikino, Seq(multikinoPrada))
     mkTouched                 should have size 1
     mkTouched.head._1         shouldBe multikinoPrada
     mkTouched.head._2         shouldBe cache.keyOf(PradaTitle, None)
 
     // Helios reports year=Some(2026). The redirect absorbs Helios's slot into
-    // Multikino's row, and recordCinemaScrape returns that as the canonical
-    // key — NOT cache.keyOf(PradaTitle, Some(2026)).
+    // the existing row, then `canonicalRank` promotes the WHOLE row onto the
+    // year-bearing key — so the stored identity is a pure function of the
+    // reported variants, not arrival order. The slot lands on (PradaTitle, 2026).
     val helTouched = cache.recordCinemaScrape(Helios, Seq(heliosPrada))
     helTouched                should have size 1
     helTouched.head._1        shouldBe heliosPrada
-    helTouched.head._2        shouldBe cache.keyOf(PradaTitle, None)
+    helTouched.head._2        shouldBe cache.keyOf(PradaTitle, Some(2026))
 
-    // Only one row exists in the cache — no (PradaTitle, Some(2026)) phantom.
+    // Still exactly one row — no phantom at the yearless key it was promoted off.
     cache.snapshot().size     shouldBe 1
-    cache.get(cache.keyOf(PradaTitle, Some(2026))) shouldBe None
+    cache.get(cache.keyOf(PradaTitle, None)) shouldBe None
+    cache.get(cache.keyOf(PradaTitle, Some(2026))) should not be None
   }
 
   // End-to-end via the bus-driven pipeline: confirms that publishing events

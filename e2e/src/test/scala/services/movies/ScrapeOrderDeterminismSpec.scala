@@ -37,21 +37,22 @@ import scala.collection.mutable
  * structural `==` (these models carry no timestamps/random ids, so `==` is
  * exact; the `data` map compares order-independently by construction).
  *
- * Two things are asserted identical across orders:
- *   - the persisted `MovieRecord` VALUES (enrichment fields + every per-cinema
+ * Two things are asserted FULLY identical across orders — no normalisation,
+ * no tolerated fields:
+ *   - the persisted `StoredMovieRecord` (its `(cleanTitle, year)` storage key
+ *     AND the whole `MovieRecord`: enrichment fields + every per-cinema
  *     `SourceData` slot), and
  *   - the controller-level rendered rows (`FilmSchedule` from
  *     `MovieControllerService.toSchedules`, across every city).
  *
- * Records are matched by NORMALISED title (`TitleNormalizer.sanitize`), NOT by
- * the raw `(cleanTitle, year)` storage key. The key's casing and year are still
- * order-dependent (the first cinema to create the row pins them; for a film
- * that resolves on TMDB the year is later canonicalised by the TMDB stage, but
- * a fixture-unenriched row keeps the first arriver's). That residual is
- * STORAGE-ONLY and display-neutral — `displayTitle`/derived `releaseYear` drive
- * the rendered output, so the rows below are asserted in full — and a clean
- * canonicalisation of the key needs a keying refactor + fixture re-record;
- * tracked as a follow-up, deliberately out of scope here.
+ * Getting there required making the pipeline order-independent end to end: the
+ * canonical `(cleanTitle, year)` key is chosen by `canonicalRank` not arrival
+ * order (`MovieCache.recordCinemaScrape`); every enrichment stage addresses the
+ * row through `canonicalKeyFor` so a write never lands on a stale key; and a
+ * cinema's multiple same-film rows (per-screening pages) are folded with a
+ * deterministic representative + unioned showtimes. The spec was run across the
+ * WHOLE corpus (every multi-cinema film) until zero divergences remained; the
+ * committed config samples a generous subset for CI speed.
  *
  * The scrape is limited to ONE film at a time: only that film's cinema slots
  * are fed into a fresh cache, so the run is cheap (no full-corpus fetch beyond
@@ -61,14 +62,26 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
 
   private val Fixture          = "08-06-2026"
   private val Now              = LocalDateTime.of(2026, 6, 8, 0, 0)
-  // Tuned to stay under ~10s wall-clock (the one-time harvest dominates; each
-  // replay is one film's merge + enrichment + drain). 8×8 = 64 replays lands
-  // ~9s; 10×10 ran ~12s. Raise if the reported timing leaves headroom.
-  private val MoviesToTest     = 8
-  private val IterationsPerMovie = 8
+  // The one-time harvest dominates wall-clock; each replay is one film's merge
+  // + enrichment + drain (~100ms). `MustTest` films are always exercised, then
+  // the busiest-N auto-selection fills out the rest; iterations kept modest so
+  // the (now larger) film set still finishes in ~15s.
+  private val MoviesToTest     = 40
+  private val IterationsPerMovie = 5
   // Per-fetch sleep ceiling (ms). Small enough that the perturbation adds only
   // a few ms per replay, large enough that concurrent rating stages reorder.
   private val MaxJitterMillis  = 3
+
+  // Films that surfaced an order-dependence (or were near-misses) while this
+  // spec was built — pinned so they're always replayed even when they're not in
+  // the busiest-N: Tom i Jerry (enrichment-race director gate), Zawodowcy (the
+  // anchor + MC/RT URL race), Straszny film + its Ukrainian dub (same-tmdbId
+  // sibling fold), Mortal Kombat II / Diabeł u Prady 2 (multi-year canonical-key
+  // merge), Bez wyjścia (multi-cinema yearless/year mix).
+  private val MustTest = Seq(
+    "Tom i Jerry", "Zawodowcy", "Straszny film", "Mortal Kombat",
+    "Diabeł ubiera się u Prady", "Bez wyjścia"
+  )
 
   /** A scraped film grouped across the cinemas that report it, keyed by the
    *  canonical cleanTitle `recordCinemaScrape` assigns. `byCinema` is what we
@@ -96,14 +109,17 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** The films worth testing: those reported by ≥2 cinemas (so cross-cinema
-   *  merge order actually matters), the busiest first (these are the mainstream
-   *  titles that also enrich fully, exercising the TMDB→IMDb→ratings cascade).
-   *  Deterministic given the fixture. */
-  private lazy val targets: Seq[FilmGroup] =
-    harvest.filter(_.cinemaCount >= 2)
-      .sortBy(g => (-g.cinemaCount, g.cleanTitle))
-      .take(MoviesToTest)
+  /** The films worth testing: every `MustTest` film present in the corpus
+   *  (always, even single-cinema), plus the busiest-N multi-cinema films (where
+   *  cross-cinema merge order matters and the full TMDB→IMDb→ratings cascade
+   *  runs). Deduplicated by cleanTitle, deterministic given the fixture. */
+  private lazy val targets: Seq[FilmGroup] = {
+    def matches(g: FilmGroup, needle: String): Boolean =
+      g.cleanTitle.toLowerCase(java.util.Locale.ROOT).contains(needle.toLowerCase(java.util.Locale.ROOT))
+    val curated = MustTest.flatMap(n => harvest.filter(matches(_, n))).sortBy(_.cleanTitle)
+    val auto    = harvest.filter(_.cinemaCount >= 2).sortBy(g => (-g.cinemaCount, g.cleanTitle)).take(MoviesToTest)
+    (curated ++ auto).distinctBy(_.cleanTitle)
+  }
 
   /** Replay one film with a given RNG seed: fresh wiring (jittered enrichment
    *  fetch), shuffled cinema arrival + within-cinema order, shuffled event
@@ -146,47 +162,39 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     targets should not be empty
 
     val started = System.nanoTime()
+    val divergences = mutable.ListBuffer.empty[String]
     targets.zipWithIndex.foreach { case (group, mi) =>
       val (record0, rows0) = replay(group, seed(mi, 0))
-      withClue(s"film '${group.cleanTitle}' (${group.cinemaCount} cinemas) yielded no record\n") {
-        record0 should not be empty
-      }
+      if (record0.isEmpty) divergences += s"NO RECORD for '${group.cleanTitle}' (${group.cinemaCount} cinemas)"
       (1 until IterationsPerMovie).foreach { i =>
-        val s = seed(mi, i)
-        val (recordI, rowsI) = replay(group, s)
-        withClue(
-          s"RECORD diverged for '${group.cleanTitle}' on iteration $i (seed=$s):\n${recordDiff(record0, recordI)}\n"
-        ) { byTitle(recordI) shouldBe byTitle(record0) }
-        withClue(
-          s"ROW diverged for '${group.cleanTitle}' on iteration $i (seed=$s):\n" +
-            s"--- iteration 0 ---\n${renderRows(rows0)}\n--- iteration $i ---\n${renderRows(rowsI)}\n"
-        ) { rowsI shouldBe rows0 }
+        val (recordI, rowsI) = replay(group, seed(mi, i))
+        if (recordI != record0)
+          divergences += s"RECORD '${group.cleanTitle}' iter $i:\n${recordDiff(record0, recordI)}"
+        if (rowsI != rows0)
+          divergences += s"ROW '${group.cleanTitle}' iter $i (cinemas=${group.cinemaCount})"
       }
     }
     val elapsedMs = (System.nanoTime() - started) / 1000000
     info(s"${targets.size} films × $IterationsPerMovie iterations = ${targets.size * IterationsPerMovie} replays in ${elapsedMs}ms")
+    withClue(s"${divergences.size} divergence(s):\n${divergences.take(60).mkString("\n")}\n") {
+      divergences.toList shouldBe empty
+    }
   }
 
   // Distinct, reproducible seed per (film, iteration) so a divergence replays.
   private def seed(movieIdx: Int, iter: Int): Long = movieIdx.toLong * 1000L + iter
-
-  // The persisted record VALUES keyed by normalised title — drops the
-  // order-dependent storage key (casing/year, see class doc) so the comparison
-  // asserts the enrichment + per-cinema slots, which must be order-invariant.
-  private def byTitle(rs: Seq[StoredMovieRecord]): Map[String, models.MovieRecord] =
-    rs.map(r => TitleNormalizer.sanitize(r.title) -> r.record).toMap
 
   /** Concise field-level diff of two persisted record sets — pinpoints the
    *  exact (record, source, field) that diverged instead of dumping the whole
    *  (huge) record, so the failure clue is actionable. */
   private def recordDiff(a: Seq[StoredMovieRecord], b: Seq[StoredMovieRecord]): String = {
     def short(x: Any): String = { val t = x.toString; if (t.length > 140) s"${t.take(140)}…(len ${t.length})" else t }
-    val ka = a.map(r => TitleNormalizer.sanitize(r.title)).toSet
-    val kb = b.map(r => TitleNormalizer.sanitize(r.title)).toSet
-    if (ka != kb) return s"record set differs (by normalised title): only0=${ka -- kb} only1=${kb -- ka}"
-    val byKey = b.map(r => TitleNormalizer.sanitize(r.title) -> r.record).toMap
+    val ka = a.map(r => (r.title, r.year)).toSet
+    val kb = b.map(r => (r.title, r.year)).toSet
+    if (ka != kb) return s"record keys differ: only0=${ka -- kb} only1=${kb -- ka}"
+    val byKey = b.map(r => (r.title, r.year) -> r.record).toMap
     a.flatMap { ra =>
-      val ea = ra.record; val eb = byKey(TitleNormalizer.sanitize(ra.title))
+      val ea = ra.record; val eb = byKey((ra.title, ra.year))
       val scalars = Seq[(String, Any, Any)](
         ("tmdbId", ea.tmdbId, eb.tmdbId), ("imdbId", ea.imdbId, eb.imdbId),
         ("imdbRating", ea.imdbRating, eb.imdbRating), ("metascore", ea.metascore, eb.metascore),

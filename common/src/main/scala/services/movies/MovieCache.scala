@@ -60,6 +60,13 @@ trait MovieCache {
 
   // ── Internal surface (services.* only) ───────────────────────────────────
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey
+  /** The key of the existing row whose normalised cleanTitle matches `key`'s,
+   *  regardless of year. An event can carry a pre-canonicalisation `(title,
+   *  year)` that no longer addresses the row after `recordCinemaScrape`
+   *  promoted it; every enrichment stage resolves through this so its read /
+   *  write hits the live row, never a stale or phantom key. None when no row
+   *  exists yet. */
+  private[services] def canonicalKeyFor(key: CacheKey): Option[CacheKey]
   private[services] def get(key: CacheKey): Option[MovieRecord]
   private[services] def isNegative(key: CacheKey): Boolean
   private[services] def put(key: CacheKey, e: MovieRecord): Unit
@@ -239,6 +246,14 @@ class CaffeineMovieCache(
   private def canonicalRank(k: CacheKey): (Boolean, Int, String) =
     (k.year.isEmpty, k.year.getOrElse(Int.MaxValue), k.cleanTitle)
 
+  private[services] def canonicalKeyFor(key: CacheKey): Option[CacheKey] = {
+    import scala.jdk.CollectionConverters._
+    val target = TitleNormalizer.sanitize(key.cleanTitle)
+    positive.asMap().asScala.keysIterator
+      .filter(k => TitleNormalizer.sanitize(k.cleanTitle) == target)
+      .minByOption(canonicalRank)
+  }
+
   /** Collapse two same-tmdbId rows into one. The surviving key is chosen by
    *  `canonicalRank` (NOT arrival order), and the record is the union of every
    *  per-source slot — so no scraped data is lost whichever key wins, and the
@@ -415,8 +430,29 @@ class CaffeineMovieCache(
     val ruleKey = TitleRuleKey.of(cinema)
     val cleaned: CinemaMovie => String = cm => TitleNormalizer.cinemaClean(ruleKey, cm.movie.title)
 
+    // A single cinema can report one film as several rows — one per screening
+    // page (Kino Nowe Horyzonty's per-event `op.s?id=…` URLs), which all
+    // normalise to the same `(cleanTitle, year)` slot. Recording them one by
+    // one let the LAST win, keeping only its filmUrl + showtimes and silently
+    // dropping every other screening — and which row won depended on the order
+    // the scraper emitted them. Fold each cinema's same-key rows into one:
+    // union every screening's showtimes (deduped, ordered) so none is lost, and
+    // keep a deterministic representative for the scalar film fields.
+    val deduped: Seq[CinemaMovie] =
+      movies.groupBy(cm => (cleaned(cm), cm.movie.releaseYear)).toSeq
+        .sortBy { case ((t, y), _) => (t, y.getOrElse(Int.MinValue)) }
+        .map { case (_, group) =>
+          if (group.lengthCompare(1) == 0) group.head
+          else {
+            val rep = group.minBy(cm => (cm.filmUrl.getOrElse(""), cm.movie.title))
+            val showtimes = group.flatMap(_.showtimes).distinct
+              .sortBy(st => (st.dateTime.toString, st.bookingUrl.getOrElse("")))
+            rep.copy(showtimes = showtimes)
+          }
+        }
+
     val resolved: Seq[((CinemaMovie, CacheKey, Boolean), SourceData)] =
-      movies.sortBy(cm => (cleaned(cm), cm.movie.releaseYear.getOrElse(Int.MinValue))).map { cm =>
+      deduped.sortBy(cm => (cleaned(cm), cm.movie.releaseYear.getOrElse(Int.MinValue))).map { cm =>
       val displayTitle = cleaned(cm)
       // Lock per normalised title so a concurrent first-scrape from another
       // cinema can't create a duplicate row at a different `(title, year)`
@@ -424,7 +460,21 @@ class CaffeineMovieCache(
       // films don't contend.
       withTitleLock(displayTitle) {
         val primary = keyOf(displayTitle, cm.movie.releaseYear)
-        val key     = redirectToExistingVariant(primary).getOrElse(primary)
+        // Land the slot on the *canonical* key for this film, chosen by
+        // `canonicalRank` (NOT arrival order): when this cinema's primary key
+        // out-ranks the existing variant's (a year where the row was created
+        // yearless, a lower year, or a casing that sorts first), promote the
+        // whole row onto it before writing. Keeps the stored `(cleanTitle,
+        // year)` a pure function of the reported variants — so every stage
+        // addresses the film by the same deterministic key and no slot or
+        // rating write lands on a stale key. Display title is unaffected.
+        val key = redirectToExistingVariant(primary) match {
+          case Some(existingKey) =>
+            val canonical = Seq(primary, existingKey).minBy(canonicalRank)
+            if (canonical != existingKey) rekey(existingKey, canonical, identity)
+            canonical
+          case None => primary
+        }
         val existingOpt = Option(positive.getIfPresent(key))
         val existing    = existingOpt.getOrElse(MovieRecord())
         // Two-stage scrapers (today: Kino Muza) leave `cm.posterUrl` /

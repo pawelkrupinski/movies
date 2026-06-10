@@ -581,13 +581,15 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   it should "flag a year correction from the same cinema as new" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Bez wyjścia", Multikino, None)))
-    // Same cinema now reports the same title with a year — different scrape
-    // tuple, even though the redirect routes it onto the same row.
+    // Same cinema now reports the same title with a year — a different scrape
+    // tuple. The redirect routes it onto the same row, then `canonicalRank`
+    // promotes the row onto the year-bearing key (a year out-ranks yearless), so
+    // the returned canonical key now carries the corrected year.
     val corrected = cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("Bez wyjścia", Multikino, Some(2025))
     ))
     corrected.head._3 shouldBe true
-    corrected.head._2 shouldBe cache.keyOf("Bez wyjścia", None)  // canonical key unchanged
+    corrected.head._2 shouldBe cache.keyOf("Bez wyjścia", Some(2025))  // promoted to the year-bearing canonical key
   }
 
   // Helios sources `releaseYear` only from a best-effort REST lookup with no
@@ -973,11 +975,17 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       val latch = new java.util.concurrent.CountDownLatch(1)
       val ec    = tools.DaemonExecutors.virtualThreadEC("rekey-race")
 
-      // Thread A: TMDB stage's re-key. Atomic via `cache.rekey` — single
-      // operation, holds the per-title lock for its full duration.
+      // Thread A: the TMDB stage's re-key, mirroring `runTmdbStageSync`'s
+      // canonical-key resolution — it addresses the row by its LIVE canonical
+      // key (computed under the per-title lock), so a concurrent scrape that
+      // already promoted the row onto a year-bearing key can't strand this
+      // write at the now-empty (None) key (which is how a phantom used to form).
       val tmdbStage = scala.concurrent.Future {
         latch.await()
-        cache.rekey(keyNone, key2000, _ => resolved)
+        cache.withTitleLock(keyNone.cleanTitle) {
+          val live = cache.canonicalKeyFor(keyNone).getOrElse(keyNone)
+          cache.rekey(live, key2000, _ => resolved)
+        }
       }(using ec)
       // Thread B: a concurrent cinema scrape with year=2026. Contends for
       // the same lock — must either see the old (None) row (before the
