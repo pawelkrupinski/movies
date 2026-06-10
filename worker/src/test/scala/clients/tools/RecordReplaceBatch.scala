@@ -33,7 +33,7 @@ object RecordReplaceBatch {
 
     // ── Ekobilet (5) ──
     val eko: Seq[(String, Cinema)] = Seq(
-      "OPOLSKIELAMY" -> KinoMeduza, "kinorejs" -> KinoRejs, "mokis-bielawa" -> KinoMOKiS,
+      "opolskielamy" -> KinoMeduza, "kinorejs" -> KinoRejs, "mokis-bielawa" -> KinoMOKiS,
       "kino-jaworzyna" -> KinoJaworzyna, "kino-centrum-jastrzebiezdrj" -> KinoCentrum)
     eko.foreach { case (slug, c) => rep(c.displayName)(new EkobiletClient(corpus, slug, c, today).fetch().size) }
 
@@ -52,7 +52,7 @@ object RecordReplaceBatch {
 
     // ── Per-client fixtures for the new specs ──
     println("--- spec fixtures ---")
-    rep("ekobilet spec (Meduza)")(new EkobiletClient(rec("kino-meduza"), "OPOLSKIELAMY", KinoMeduza, today).fetch().size)
+    rep("ekobilet spec (Meduza)")(new EkobiletClient(rec("kino-meduza"), "opolskielamy", KinoMeduza, today).fetch().size)
     rep("systembiletowy-alt spec")(new SystemBiletowyClient(rec("kino-pckul"), "https://bilety.pckul.pl", KinoPckulKino).fetch().size)
   }
 }

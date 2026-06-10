@@ -279,7 +279,7 @@ class CinemaScraperCatalog(
   // (a bilety24.pl venue), or NoveKinoClient.
   private val olsztynScrapers      = Seq(helios(HeliosNuxt.Olsztyn), new MultikinoClient(mkFetch, "0036", MultikinoOlsztyn), new FilmwebShowtimesClient(http, 1527, KinoAwangarda2, today = today))
   private val bielskoBialaScrapers = Seq(helios(HeliosNuxt.BielskoBiala), cinemaCity("1088", CinemaCityBielskoBiala), new FilmwebShowtimesClient(http, 3044, KinoKreska, today = today))
-  private val opoleScrapers        = Seq(helios(HeliosNuxt.OpoleKarolinka), helios(HeliosNuxt.OpoleSolaris), new EkobiletClient(http, "OPOLSKIELAMY", KinoMeduza, today))
+  private val opoleScrapers        = Seq(helios(HeliosNuxt.OpoleKarolinka), helios(HeliosNuxt.OpoleSolaris), new EkobiletClient(http, "opolskielamy", KinoMeduza, today))
   private val rybnikScrapers       = Seq(new MultikinoClient(mkFetch, "0014", MultikinoRybnik), cinemaCity("1082", CinemaCityRybnik))
   private val gorzowScrapers       = Seq(helios(HeliosNuxt.Gorzow), new MultikinoClient(mkFetch, "0047", MultikinoGorzow), new Bilety24OrganizerClient(http, "https://www.bilety24.pl/kino/organizator/miejski-osrodek-sztuki-kino-60-krzesel-dkf-megaron-776", Kino60Krzesel))
   private val elblagScrapers       = Seq(new MultikinoClient(mkFetch, "0037", MultikinoElblag), cinemaCity("1099", CinemaCityElblag))

@@ -18,7 +18,7 @@ import java.time.{LocalDate, LocalDateTime}
 class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val movies =
-    new EkobiletClient(new FakeHttpFetch("kino-meduza"), "OPOLSKIELAMY", KinoMeduza,
+    new EkobiletClient(new FakeHttpFetch("kino-meduza"), "opolskielamy", KinoMeduza,
       today = LocalDate.of(2026, 6, 8)).fetch()
 
   "EkobiletClient" should "return a non-empty, single-cinema film list" in {

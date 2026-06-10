@@ -3,7 +3,7 @@ package clients.tools
 import tools.HttpFetch
 
 import java.net.URI
-import java.nio.file.{Files, Paths}
+import java.nio.file.{Files, Path, Paths}
 import java.util.concurrent.CompletableFuture
 
 class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
@@ -93,10 +93,25 @@ class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
     ).distinct
     candidates
       .map(Paths.get(_))
-      .find(p => Files.exists(p) && Files.isRegularFile(p))
+      .find(existsCaseExact)
       .map(p => Files.readAllBytes(p))
       .getOrElse(missingFixture(uri.getHost, path, url, candidates))
   }
+
+  /** macOS APFS is case-insensitive, so `Files.exists` happily resolves a
+   *  fixture requested with the wrong case (e.g. a client slug `"OPOLSKIELAMY"`
+   *  against the recorded `opolskielamy.content`). Case-sensitive Linux CI
+   *  404s on the same lookup, so the bug stays invisible until CI. Enforce
+   *  case-exact matching here so a mis-cased URL fails the SAME way on a dev
+   *  Mac as it does on CI: `toRealPath` reports the on-disk casing of every
+   *  path component, which we compare component-by-component to the request. */
+  private def existsCaseExact(p: Path): Boolean =
+    Files.isRegularFile(p) && {
+      val real = p.toRealPath()
+      val want = p.toAbsolutePath.normalize
+      real.getNameCount == want.getNameCount &&
+        (0 until want.getNameCount).forall(i => real.getName(i).toString == want.getName(i).toString)
+    }
 
   /** A missing **TMDB search** fixture means that query was simply never
    *  recorded — and in production an unknown query returns an empty result set,
