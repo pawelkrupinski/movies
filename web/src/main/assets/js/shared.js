@@ -1112,7 +1112,20 @@
     const sel  = document.getElementById('date-filter');
     if (!sel) return;
     const next = sel.selectedIndex + dir;
-    if (next >= 0 && next < sel.options.length) animateToDay(sel.options[next].value, dir);
+    if (next < 0 || next >= sel.options.length) return;
+    const targetValue = sel.options[next].value;
+    // If a day pill currently holds focus (a prior mouse tap), carry that focus
+    // to the destination pill before sliding. A keyboard step flips the browser's
+    // focus-visible heuristic on, so leaving focus on the old pill paints its
+    // `:focus-visible` border there while the `.active` background moves to the
+    // new day — the old pill looks "stuck" with a border but no fill.
+    const focused = document.activeElement;
+    if (focused && focused.classList && focused.classList.contains('day-pill')) {
+      const dest = [...document.querySelectorAll('#day-pills .day-pill')]
+        .find(p => p.dataset.day === targetValue);
+      if (dest) dest.focus();
+    }
+    animateToDay(targetValue, dir);
   }
 
   // The `#date-filter` dropdown changed — slide to the chosen day (one slide

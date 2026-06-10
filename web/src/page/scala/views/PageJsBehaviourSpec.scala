@@ -1533,6 +1533,29 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // Regression: a mouse click leaves the tapped pill focused. A following Left/
+  // Right arrow key flips the browser's focus-visible heuristic on, so the OLD
+  // pill paints its `:focus-visible` border (box-shadow ring) even though the
+  // `.active` background has moved to the new day — the old pill looks "stuck"
+  // with a border but no fill. The keyboard step must carry focus to the new
+  // day's pill so the ring tracks the active day.
+  it should "carry keyboard focus to the new day's pill, not leave a stray ring on the old one" in {
+    onPath("/") { page =>
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+      // Model a prior mouse click: the 'today' pill holds focus.
+      page.eval("document.querySelector('.day-pill[data-day=\"today\"]').focus()")
+      page.evalString("document.activeElement.dataset.day") shouldBe "today"
+
+      // Press the Right arrow (the document keydown path → stepDate).
+      page.eval("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))")
+
+      // Focus follows to the destination pill — no stale focus on the old 'today'
+      // pill that the keyboard would paint a :focus-visible ring on.
+      page.evalBool("document.activeElement.classList.contains('day-pill')") shouldBe true
+      page.evalString("document.activeElement.dataset.day") shouldBe "tomorrow"
+    }
+  }
+
   it should "preview the destination day mid-drag — flip past the commit boundary, return when dragged back" in {
     onPath("/") { page =>
       coarsePointer(page)
