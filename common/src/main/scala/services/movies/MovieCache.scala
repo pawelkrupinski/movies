@@ -6,6 +6,7 @@ import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
 import services.events.{CinemaMovieAdded, EventBus, InProcessEventBus}
+import services.titlerules.TitleRuleKey
 import tools.{DaemonExecutors, Env, TextNormalization}
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -379,14 +380,24 @@ class CaffeineMovieCache(
     // made FilmScheduleEndToEndSpec's per-cinema counts + dub-slot assertions
     // flaky. Sorting here makes the scrape→merge reproducible at no cost to
     // production correctness.
+    // Per-cinema title cleanup (the formerly per-client `cleanTitle`) is applied
+    // HERE, centrally and rule-driven, so the merge key is a pure function of the
+    // raw scraped title + the active rules — re-derivable for backfill/un-merge.
+    // `cm.movie.title` is the title the scraper emitted; for clients that still
+    // clean inline it's already clean and the (empty) rule set is a no-op, so
+    // this is behaviour-neutral until a per-cinema rule is seeded.
+    val ruleKey = TitleRuleKey.of(cinema)
+    val cleaned: CinemaMovie => String = cm => TitleNormalizer.cinemaClean(ruleKey, cm.movie.title)
+
     val resolved: Seq[((CinemaMovie, CacheKey, Boolean), SourceData)] =
-      movies.sortBy(cm => (cm.movie.title, cm.movie.releaseYear.getOrElse(Int.MinValue))).map { cm =>
+      movies.sortBy(cm => (cleaned(cm), cm.movie.releaseYear.getOrElse(Int.MinValue))).map { cm =>
+      val displayTitle = cleaned(cm)
       // Lock per normalised title so a concurrent first-scrape from another
       // cinema can't create a duplicate row at a different `(title, year)`
       // key while we're between the redirect check and the put. Different
       // films don't contend.
-      withTitleLock(cm.movie.title) {
-        val primary = keyOf(cm.movie.title, cm.movie.releaseYear)
+      withTitleLock(displayTitle) {
+        val primary = keyOf(displayTitle, cm.movie.releaseYear)
         val key     = redirectToExistingVariant(primary).getOrElse(primary)
         val existingOpt = Option(positive.getIfPresent(key))
         val existing    = existingOpt.getOrElse(MovieRecord())
@@ -414,11 +425,11 @@ class CaffeineMovieCache(
         // to another) still flows.
         val effectiveYear = cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))
         val slot = SourceData(
-          title          = Some(cm.movie.title),
-          // Verbatim upstream title, kept so the merge key is re-derivable when
-          // stripping rules change. Today the client has already cleaned
-          // `cm.movie.title`; once per-cinema cleaning moves to the rule engine
-          // this becomes the true pre-strip string.
+          title          = Some(displayTitle),
+          // Verbatim scraped title, kept so the merge key is re-derivable when
+          // the per-cinema rules change (backfill / un-merge). For clients that
+          // still clean inline this equals `displayTitle`; for migrated clients
+          // it's the true pre-strip string.
           rawTitle       = Some(cm.movie.title),
           originalTitle  = cm.movie.originalTitle,
           synopsis       = cm.synopsis.orElse(priorSlot.flatMap(_.synopsis)),
@@ -457,7 +468,7 @@ class CaffeineMovieCache(
         // (no prior slot to compare against), which is harmless since the
         // listeners early-exit on already-resolved rows.
         val isNew = !priorSlot.exists(s =>
-          s.title.contains(cm.movie.title) && s.releaseYear == effectiveYear
+          s.title.contains(displayTitle) && s.releaseYear == effectiveYear
         )
         // For existing rows, route through `putIfPresent` so the Mongo write
         // is a `$set`-diff against the (before, after) pair. The diff only
