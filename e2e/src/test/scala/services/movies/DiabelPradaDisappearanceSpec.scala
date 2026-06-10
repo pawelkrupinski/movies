@@ -34,11 +34,17 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
     """{"results":[{"id":928344,"title":"Diabeł ubiera się u Prady 2","original_title":"The Devil Wears Prada 2",""" +
     """"release_date":"2026-05-01","popularity":120.0}]}"""
   private val PradaExternalIds = """{"id":928344,"imdb_id":"tt12340108"}"""
+  // `/movie/928344/credits` — `resolveTmdb` now verifies a title hit against the
+  // row's reported director (Multikino reports "David Frankel" for this film),
+  // keeping resolution order-independent. The credit must be present for the
+  // verification to pass, exactly as the recorded fixture corpus carries it.
+  private val PradaCredits = """{"crew":[{"job":"Director","name":"David Frankel"}]}"""
 
   private def tmdbStub() = new TmdbClient(
     http = new RoutingHttpFetch(Map(
       "/search/movie" -> PradaSearch,
-      "/external_ids" -> PradaExternalIds
+      "/external_ids" -> PradaExternalIds,
+      "/credits"      -> PradaCredits
     ), getOnly = true),
     apiKey = Some("stub")
   )
@@ -249,9 +255,10 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
 
     // Drive the same wiring `ShowtimeCache.refreshOne` does: publish a
     // MovieRecordCreated for each canonical key returned by recordCinemaScrape.
-    // The director hint is deliberately omitted — `verifyByDirector` would
-    // otherwise call `/credits`, which the stub doesn't expose, and the
-    // duplicate-prevention contract under test doesn't depend on it.
+    // The event's director hint is omitted here; `resolveTmdb` still verifies the
+    // title hit against the director the row already carries (via `/credits`),
+    // which the stub now exposes — the duplicate-prevention contract under test
+    // is unaffected either way.
     def scrape(cinema: Cinema, cm: CinemaMovie): Unit = {
       val touched = cache.recordCinemaScrape(cinema, Seq(cm))
       touched.foreach { case (m, key, isNew) =>
