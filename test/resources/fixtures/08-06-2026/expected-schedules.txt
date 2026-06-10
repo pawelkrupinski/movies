@@ -347,6 +347,7 @@ cinemaScrapes:
   Cinema City Poznań Plaza / Backrooms. Bez wyjścia / 2026
   Cinema City Promenada / Backrooms. Bez wyjścia / 2026
   Cinema City Punkt 44 / Backrooms. Bez wyjścia / 2026
+  Cinema City Ruda Śląska / Backrooms. Bez wyjścia / 2026
   Cinema City Rybnik / Backrooms. Bez wyjścia / 2026
   Cinema City Sadyba / Backrooms. Bez wyjścia / 2026
   Cinema City Silesia / Backrooms. Bez wyjścia / 2026
@@ -358,6 +359,7 @@ cinemaScrapes:
   Cinema City Zakopianka / Backrooms. Bez wyjścia / 2026
   Cinema City Zielona Góra / Backrooms. Bez wyjścia / 2026
   Cinema1 / Backrooms. Bez wyjścia / —
+  Forum / Backrooms. Bez wyjścia / —
   Fregata / Backrooms. Bez wyjścia / —
   Helios Aleja Bielany / Backrooms. Bez wyjścia / —
   Helios Alfa / Backrooms. Bez wyjścia / —
@@ -376,12 +378,16 @@ cinemaScrapes:
   Helios Kielce / Backrooms. Bez wyjścia / —
   Helios Konin / Backrooms. Bez wyjścia / —
   Helios Koszalin / Backrooms. Bez wyjścia / —
+  Helios Krosno / Backrooms. Bez wyjścia / —
   Helios Kupiec / Backrooms. Bez wyjścia / —
+  Helios Kędzierzyn-Koźle / Backrooms. Bez wyjścia / —
   Helios Legnica / Backrooms. Bez wyjścia / —
+  Helios Lubin / Backrooms. Bez wyjścia / —
   Helios Magnolia Park / Backrooms. Bez wyjścia / —
   Helios Metropolia / Backrooms. Bez wyjścia / —
   Helios Nowy Sącz / Backrooms. Bez wyjścia / —
   Helios Olsztyn / Backrooms. Bez wyjścia / —
+  Helios Ostrów Wlkp. / Backrooms. Bez wyjścia / —
   Helios Outlet Park / Backrooms. Bez wyjścia / —
   Helios Posnania / Backrooms. Bez wyjścia / —
   Helios Przemyśl / Backrooms. Bez wyjścia / —
@@ -391,7 +397,10 @@ cinemaScrapes:
   Helios Rzeszów / Backrooms. Bez wyjścia / —
   Helios Solaris / Backrooms. Bez wyjścia / —
   Helios Sosnowiec / Backrooms. Bez wyjścia / —
+  Helios Starachowice / Backrooms. Bez wyjścia / —
+  Helios Tczew / Backrooms. Bez wyjścia / —
   Helios Łódź / Backrooms. Bez wyjścia / —
+  Helios Żory / Backrooms. Bez wyjścia / —
   Kino Atlantic / Backrooms. Bez wyjścia / 2026
   Kino CK Lublin / Backrooms. Bez wyjścia / —
   Kino Centrum / Backrooms. Bez wyjścia / —
@@ -401,6 +410,7 @@ cinemaScrapes:
   Kino Lewart / Backrooms. Bez wyjścia / —
   Kino MOK Centrum / BACKROOMS. BEZ WYJŚCIA / —
   Kino Na Biegunach / Backrooms. Bez wyjśćia / —
+  Kino PCKul / Backrooms. Bez wyjścia / —
   Kino Pałacowe / Backrooms. Bez wyjścia / 2026
   Kino Pionier 1907 / BACKROOMS. BEZ WYJŚCIA / —
   Kino Przedwiośnie / Backrooms. Bez wyjścia / 2026
@@ -480,7 +490,7 @@ cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/bez-wyjscia
 cinemaScrapes:
   Kino Malta Charlie Monroe / Bez wyjścia / —
-  Kino Meduza / Bez wyjścia / 2025
+  Kino Meduza / Bez wyjścia / —
   Kino Muranów / Bez wyjścia / 2025
   Kino na Szekspirowskim / Bez wyjścia / —
   Służewski Dom Kultury / Bez wyjścia / 2025
@@ -796,6 +806,7 @@ cinemaScrapes:
   Cinema City Arkadia / Chłopiec na krańcach świata / 2025
   Cinema City Bytom / Chłopiec na krańcach świata / 2025
   Cinema City Mokotów / Chłopiec na krańcach świata / 2025
+  Cinema City Ruda Śląska / Chłopiec na krańcach świata / 2025
   Cinema City Rybnik / Chłopiec na krańcach świata / 2025
   Cinema City Sadyba / Chłopiec na krańcach świata / 2025
   Cinema City Wolność / Chłopiec na krańcach świata / 2025
@@ -803,7 +814,7 @@ cinemaScrapes:
   Helios Forum / Chłopiec na krańcach świata / —
   Helios Kielce / Chłopiec na krańcach świata / —
   Helios Płock / Chłopiec na krańcach świata / —
-  Helios Tczew / Chłopiec na krańcach świata / 2025
+  Helios Tczew / Chłopiec na krańcach świata / —
   Kino CK Lublin / Chłopiec na krańcach świata / —
   Kino Kryterium / Chłopiec na krańcach świata / 2025
   Kino Muranów / Chłopiec na krańcach świata / 2025
@@ -1187,6 +1198,7 @@ cinemaScrapes:
   Helios Katowice / Diabeł ubiera się u Prady 2 / 2026
   Helios Kielce / Diabeł ubiera się u Prady 2 / 2026
   Helios Koszalin / Diabeł ubiera się u Prady 2 / 2026
+  Helios Krosno / Diabeł ubiera się u Prady 2 / —
   Helios Legnica / Diabeł ubiera się u Prady 2 / 2026
   Helios Lubin / Diabeł ubiera się u Prady 2 / 2026
   Helios Magnolia Park / Diabeł ubiera się u Prady 2 / 2026
@@ -1209,7 +1221,7 @@ cinemaScrapes:
   Kino Echo / Diabeł ubiera się u Prady 2 / —
   Kino GCK / Diabeł ubiera się u Prady 2 / —
   Kino Kępa / Diabeł ubiera się u Prady 2 / —
-  Kino MOKiS / Diabeł ubiera się u Prady 2 / 2026
+  Kino MOKiS / Diabeł ubiera się u Prady 2 / —
   Kino Moskwa / DIABEŁ UBIERA SIĘ U PRADY 2 / —
   Kino Na Biegunach / Diabeł ubiera się u prady 2 / —
   Kino Nowe Horyzonty / Diabeł ubiera się u Prady 2 / 2026
@@ -1222,11 +1234,8 @@ cinemaScrapes:
   Kino Świt / Diabeł ubiera się u Prady 2 / 2026
   KinoGram / Diabeł ubiera się u Prady 2 / 2026
   Kinoteatr Rialto / Diabeł ubiera się u Prady 2 / —
-  Kinoteatr Rondo / Diabeł ubiera się u Prady 2 / 2026
+  Kinoteatr Rondo / Diabeł ubiera się u Prady 2 / —
   Kinoteka / Diabeł ubiera się u Prady 2 / 2026
-  Multikino Czechowice-Dziedzice / Diabeł ubiera się u Prady 2 / 2026
-  Multikino Kłodzko / Diabeł ubiera się u Prady 2 / 2026
-  Multikino Świdnica / Diabeł ubiera się u Prady 2 / 2026
   Planet Cinema / Diabeł ubiera się u Prady 2 / 2026
 showings:
   2026-06-08  Cinema City Kinepolis         16:30 Sala 6 2D/NAP · 18:40 Sala 16 2D/NAP · 19:10 Sala 6 2D/NAP · 21:50 Sala 6 2D/NAP · 21:50 Sala 13 2D/NAP
@@ -1333,6 +1342,7 @@ cinemaScrapes:
   Cinema City Wolność / Drugie życie / 2025
   Cinema Lumiere / Drugie życie / —
   Dolnośląskie Centrum Filmowe / Drugie życie / 2025
+  Forum / Drugie życie / —
   Helios Aleja Bielany / Drugie życie / —
   Helios Alfa / Drugie życie / —
   Helios Biała / Drugie życie / —
@@ -1350,16 +1360,16 @@ cinemaScrapes:
   Helios Kielce / Drugie życie / —
   Helios Konin / Drugie życie / —
   Helios Koszalin / Drugie życie / —
-  Helios Krosno / Drugie życie / 2025
+  Helios Krosno / Drugie życie / —
   Helios Kupiec / Drugie życie / —
-  Helios Kędzierzyn-Koźle / Drugie życie / 2025
+  Helios Kędzierzyn-Koźle / Drugie życie / —
   Helios Legnica / Drugie życie / —
-  Helios Lubin / Drugie życie / 2025
+  Helios Lubin / Drugie życie / —
   Helios Magnolia Park / Drugie życie / —
   Helios Metropolia / Drugie życie / —
   Helios Nowy Sącz / Drugie życie / —
   Helios Olsztyn / Drugie życie / —
-  Helios Ostrów Wlkp. / Drugie życie / 2025
+  Helios Ostrów Wlkp. / Drugie życie / —
   Helios Outlet Park / Drugie życie / —
   Helios Posnania / Drugie życie / —
   Helios Przemyśl / Drugie życie / —
@@ -1369,10 +1379,10 @@ cinemaScrapes:
   Helios Rzeszów / Drugie życie / —
   Helios Solaris / Drugie życie / —
   Helios Sosnowiec / Drugie życie / —
-  Helios Starachowice / Drugie życie / 2025
-  Helios Tczew / Drugie życie / 2025
+  Helios Starachowice / Drugie życie / —
+  Helios Tczew / Drugie życie / —
   Helios Łódź / Drugie życie / —
-  Helios Żory / Drugie życie / 2025
+  Helios Żory / Drugie życie / —
   Janosik / Drugie życie / —
   Kino 60 Krzeseł / Drugie życie / —
   Kino Agrafka / DRUGIE ŻYCIE / —
@@ -1454,6 +1464,7 @@ cinemaScrapes:
   Bajka / Drzewo magii / —
   Baszta / Drzewo magii / —
   Bałtyk / Drzewo magii / —
+  Centrum / Drzewo magii / —
   Centrum 3D / Drzewo magii / 2026
   Cinema City Arkadia / Drzewo magii / 2025
   Cinema City Bemowo / Drzewo magii / 2025
@@ -1477,7 +1488,7 @@ cinemaScrapes:
   Cinema City Poznań Plaza / Drzewo magii / 2025
   Cinema City Promenada / Drzewo magii / 2025
   Cinema City Punkt 44 / Drzewo magii / 2025
-  Cinema City Ruda Śląska / Drzewo magii / 2026
+  Cinema City Ruda Śląska / Drzewo magii / 2025
   Cinema City Rybnik / Drzewo magii / 2025
   Cinema City Sadyba / Drzewo magii / 2025
   Cinema City Silesia / Drzewo magii / 2025
@@ -1489,7 +1500,7 @@ cinemaScrapes:
   Cinema City Zakopianka / Drzewo magii / 2025
   Cinema City Zielona Góra / Drzewo magii / 2025
   Cinema1 / Drzewo magii / —
-  Forum / Drzewo magii / 2026
+  Forum / Drzewo magii / —
   Fregata / Drzewo magii / —
   Gdyńskie Centrum Filmowe / Drzewo magii / —
   Helios Aleja Bielany / Drzewo magii / 2026
@@ -1561,6 +1572,7 @@ cinemaScrapes:
   Kino ODEON / Drzewo magii / 2026
   Kino Oskard / Drzewo magii / —
   Kino PCA / Drzewo magii / —
+  Kino PCKul / Drzewo magii / —
   Kino Planeta / Drzewo magii / —
   Kino Przedwiośnie / Drzewo magii / 2026
   Kino Scena Kultura / Drzewo magii / 2026
@@ -1572,14 +1584,11 @@ cinemaScrapes:
   Kino na Boku / Drzewo magii / —
   Kino nad Wartą / Drzewo magii / —
   Kinomax / Drzewo magii / —
+  Kinoteatr Rondo / Drzewo magii / —
   Klaps / Drzewo magii / —
   Kozienicki Dom Kultury / Drzewo magii / 2026
   Max Kino / Drzewo magii / 2026
   Mikro Bronowice / Drzewo magii / —
-  Multikino Czechowice-Dziedzice / Drzewo magii / 2026
-  Multikino Kłodzko / Drzewo magii / 2026
-  Multikino Rumia / Drzewo magii / 2026
-  Multikino Świdnica / Drzewo magii / 2026
   Muza / Drzewo magii / —
   OKF Iluzja / Drzewo magii / —
   Patria / Drzewo magii / 2026
@@ -1695,6 +1704,7 @@ cinemaScrapes:
   Cinema City Zielona Góra / Dzień objawienia / 2026
   Cinema1 / Dzień objawienia / —
   Dolnośląskie Centrum Filmowe / Dzień objawienia / 2026
+  Forum / Dzień Objawienia / —
   Gdyńskie Centrum Filmowe / Dzień objawienia / —
   Helios Aleja Bielany / Dzień objawienia / 2026
   Helios Alfa / Dzień objawienia / 2026
@@ -1755,6 +1765,7 @@ cinemaScrapes:
   Kino MCSW Elektrownia / DZIEŃ OBJAWIENIA / —
   Kino MDK / DZIEŃ OBJAWIENIA / —
   Kino MOK Centrum / DZIEŃ OBJAWIENIA / —
+  Kino MOKiS / Dzień Objawienia / —
   Kino Mikro / Dzień objawienia / —
   Kino Moskwa / DZIEŃ OBJAWIENIA / —
   Kino Na Biegunach / Dzień objawienia / —
@@ -1771,14 +1782,10 @@ cinemaScrapes:
   Kino Śnieżka / Dzień objawienia / —
   KinoGram / Dzień objawienia / 2026
   Kinomax / Dzień objawienia / —
-  Kinoteatr Rondo / Dzień objawienia / 2026
+  Kinoteatr Rondo / Dzień objawienia / —
   Kinoteka / Dzień objawienia / 2026
   Klaps / Dzień Objawienia / —
   Kozienicki Dom Kultury / Dzień objawienia / 2026
-  Multikino Czechowice-Dziedzice / Dzień objawienia / 2026
-  Multikino Kłodzko / Dzień objawienia / 2026
-  Multikino Rumia / Dzień objawienia / 2026
-  Multikino Świdnica / Dzień objawienia / 2026
   Muza / Dzień Objawienia / —
   Pionier / Dzień objawienia / —
   Przedwiośnie / Dzień Objawienia / —
@@ -1913,7 +1920,7 @@ cinemaScrapes:
   Kino Muza / Erupcja / 2025
   Kino NCKF EC1 / Erupcja / —
   Kino Pałacowe / Erupcja / 2025
-  Kino Rejs / Erupcja / 2025
+  Kino Rejs / Erupcja / —
   Kino Spektrum / Erupcja / —
   Kino U-jazdowski / Erupcja / 2025
   Kinoteka / Erupcja / 2026
@@ -2027,11 +2034,15 @@ cinemaScrapes:
   Helios Kielce / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
   Helios Konin / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
   Helios Koszalin / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
+  Helios Krosno / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
+  Helios Kędzierzyn-Koźle / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
   Helios Legnica / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
+  Helios Lubin / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
   Helios Magnolia Park / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
   Helios Metropolia / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
   Helios Nowy Sącz / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
   Helios Olsztyn / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
+  Helios Ostrów Wlkp. / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
   Helios Outlet Park / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
   Helios Posnania / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
   Helios Przemyśl / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
@@ -2041,7 +2052,10 @@ cinemaScrapes:
   Helios Rzeszów / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
   Helios Solaris / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
   Helios Sosnowiec / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
+  Helios Starachowice / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
+  Helios Tczew / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
   Helios Łódź / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
+  Helios Żory / Filmowe Poranki: Bob Budowniczy, cz. 2 / —
 showings:
   2026-06-21  Helios Posnania               10:30 2D/DUB
 
@@ -2468,7 +2482,7 @@ showings:
 
 === K-popowe łowczynie demonów ===
 displayTitle:      K-popowe łowczynie demonów
-cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-Popowe Łowczynie Demonów | K-popowe łowczynie demonów
+cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-Popowe Łowczynie Demonów | K-popowe łowczynie demonów | Kpopowe łowczynie demonów / napisy karaoke - nasze kino
 runtimeMinutes:    96
 releaseYear:       2025
 countries:         USA, Kanada
@@ -2524,26 +2538,21 @@ cinemaScrapes:
   Cinema City Wroclavia / K-popowe łowczynie demonów / 2025
   Cinema City Zakopianka / K-popowe łowczynie demonów / 2025
   Cinema City Zielona Góra / K-popowe łowczynie demonów / 2025
+  Forum / K-popowe łowczynie demonów / —
   Fregata / K-popowe łowczynie demonów / —
-  Helios Krosno / K-popowe łowczynie demonów / 2025
-  Helios Kędzierzyn-Koźle / K-popowe łowczynie demonów / 2025
-  Helios Lubin / K-popowe łowczynie demonów / 2025
-  Helios Ostrów Wlkp. / K-popowe łowczynie demonów / 2025
-  Helios Starachowice / K-popowe łowczynie demonów / 2025
-  Helios Tczew / K-popowe łowczynie demonów / 2025
-  Helios Żory / K-popowe łowczynie demonów / 2025
   Kino Iluzjon / K-popowe łowczynie demonów / 2025
   Kino Lewart / K-popowe łowczynie demonów / —
   Kino MCSW Elektrownia / K- POPOWE ŁOWCZYNIE DEMONÓW / —
   Kino Muranów / K-popowe łowczynie demonów / 2025
   Kino NCKF EC1 / K-Popowe Łowczynie Demonów / —
   Kino Nowe Horyzonty / K-popowe łowczynie demonów / 2025
+  Kino PCKul / K-popowe łowczynie demonów / —
   Kino Rialto / K-popowe łowczynie demonów / 2025
   Kino Roma / K-POPOWE ŁOWCZYNIE DEMONÓW / —
   Kino Śnieżka / K-popowe łowczynie demonów / —
-  Kinoteatr Rondo / K-popowe łowczynie demonów / 2025
+  Kinoteatr Rondo / K-popowe łowczynie demonów / —
   Kinoteka / K-popowe łowczynie demonów / 2026
-  Nasze Kino / K-popowe łowczynie demonów / 2025
+  Nasze Kino / Kpopowe łowczynie demonów / napisy karaoke - nasze kino / —
   Świt / K-popowe łowczynie demonów / —
   Świt Zwoleń / K-popowe łowczynie demonów / 2025
 showings:
@@ -2601,12 +2610,16 @@ cinemaScrapes:
   Helios Kielce / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Konin / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Koszalin / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Krosno / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Kupiec / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Kędzierzyn-Koźle / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Legnica / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Lubin / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Magnolia Park / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Metropolia / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Nowy Sącz / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Olsztyn / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Ostrów Wlkp. / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Outlet Park / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Posnania / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Przemyśl / K-popowe Łowczynie Demonów: Karaoke / —
@@ -2616,7 +2629,10 @@ cinemaScrapes:
   Helios Rzeszów / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Solaris / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Sosnowiec / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Starachowice / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Tczew / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Łódź / K-popowe Łowczynie Demonów: Karaoke / —
+  Helios Żory / K-popowe Łowczynie Demonów: Karaoke / —
   Kino Apollo / K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE / —
   Kino Paradox / K-popowe łowczynie demonów: Karaoke / —
   Kino Wisła / K-popowe Łowczynie Demonów: Karaoke / 2025
@@ -2651,10 +2667,11 @@ filmwebUrl:        https://www.filmweb.pl/serial/Kicia+Kocia+w+podr%C3%B3%C5%BCy
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/13758-poranek-dla-dzieci-kicia-kocia-w-podrozy/
 cinemaScrapes:
+  Cinema City Ruda Śląska / Kicia Kocia w podróży / 2026
   Cinema City Rybnik / Kicia Kocia w podróży / 2026
   Helios Jelenia Góra / Kicia Kocia w podróży / 2025
   Helios Koszalin / Kicia Kocia w podróży / 2025
-  Helios Krosno / Kicia Kocia w podróży / 2026
+  Helios Krosno / Kicia Kocia w podróży / 2025
   Helios Radom / Kicia Kocia w podróży / 2025
   Kino Pałacowe / Kicia Kocia w podróży / 2026
   Służewski Dom Kultury / Kicia Kocia w podróży / —
@@ -2878,7 +2895,7 @@ cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/kopnelabym-cie-gdybym-mogla
 cinemaScrapes:
   Kino Malta Charlie Monroe / Kopnęłabym cię, gdybym mogła / —
-  Kino Meduza / Kopnęłabym cię, gdybym mogła / 2025
+  Kino Meduza / Kopnęłabym cię, gdybym mogła / —
   Kino Studyjne Kadr / Kopnęłabym cię, gdybym mogła / 2025
   Kino na Szekspirowskim / Kopnęłabym cię, gdybym mogła / —
   Służewski Dom Kultury / Kopnęłabym cię, gdybym mogła / 2025
@@ -2946,9 +2963,7 @@ cinemaScrapes:
   Kino Kultura / Kosmiczny mecz. 30 rocznica / —
   Kino Nowe Horyzonty / Kosmiczny Mecz 30. Rocznica / 1996
   Koneckie Centrum Kultury / Kosmiczny mecz. 30 rocznica / —
-  Multikino Czechowice-Dziedzice / Kosmiczny mecz / 1996
-  Multikino Kłodzko / Kosmiczny mecz / 1996
-  Multikino Świdnica / Kosmiczny mecz / 1996
+  Na Starówce / Kosmiczny mecz. 30 rocznica / —
 showings:
   2026-06-08  Cinema City Kinepolis         17:30 Sala 2 2D/DUB
   2026-06-08  Cinema City Poznań Plaza      15:50 Sala 2 2D/DUB
@@ -3084,7 +3099,7 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/kurozajac-i-swiatynia-swistaka/7921d2r
 cinemaScrapes:
   Bałtyk / Kurozając i Świątynia Świstaka / —
-  Centrum / Kurozając i świątynia Świstaka / 2025
+  Centrum / Kurozając i świątynia Świstaka / —
   Cinema City Arkadia / Kurozając i świątynia świstaka / 2026
   Cinema City Bemowo / Kurozając i świątynia świstaka / 2026
   Cinema City Bielsko-Biała / Kurozając i świątynia świstaka / 2026
@@ -3101,6 +3116,7 @@ cinemaScrapes:
   Cinema City Poznań Plaza / Kurozając i świątynia świstaka / 2026
   Cinema City Promenada / Kurozając i świątynia świstaka / 2026
   Cinema City Punkt 44 / Kurozając i świątynia świstaka / 2026
+  Cinema City Ruda Śląska / Kurozając i świątynia świstaka / 2026
   Cinema City Rybnik / Kurozając i świątynia świstaka / 2026
   Cinema City Sadyba / Kurozając i świątynia świstaka / 2026
   Cinema City Silesia / Kurozając i świątynia świstaka / 2026
@@ -3112,20 +3128,22 @@ cinemaScrapes:
   Helios Biała / Kurozając i Świątynia Świstaka / 2025
   Helios Forum / Kurozając i Świątynia Świstaka / 2025
   Helios Gorzów Wielkopolski / Kurozając i Świątynia Świstaka / 2025
+  Helios Krosno / Kurozając i Świątynia Świstaka / —
   Helios Magnolia Park / Kurozając i Świątynia Świstaka / —
   Helios Olsztyn / Kurozając i Świątynia Świstaka / —
   Helios Outlet Park / Kurozając i Świątynia Świstaka / 2025
   Helios Rzeszów / Kurozając i Świątynia Świstaka / —
-  Helios Żory / Kurozając i świątynia Świstaka / 2025
+  Helios Tczew / Kurozając i Świątynia Świstaka / —
+  Helios Żory / Kurozając i Świątynia Świstaka / —
   Kino Bajka Kluczbork / Kurozając i świątynia Świstaka / —
   Kino MCK / Kurozając i świątynia świstaka / —
-  Kino MOKiS / Kurozając i świątynia Świstaka / 2025
+  Kino MOKiS / Kurozając i świątynia Świstaka / —
   Kino Na Biegunach / Kurozając i świątynia świstaka / —
   Kino Promień / Kurozając i świątynia Świstaka / 2025
   Kino Przedwiośnie / Kurozając i świątynia Świstaka / 2026
   Kino SDK / Kurozając i świątynia Świstaka / 2025
   Kino Sokół / KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA / —
-  Multikino Kłodzko / Kurozając i świątynia Świstaka / 2025
+  Na Starówce / Kurozając i świątynia świstaka / —
 showings:
   2026-06-08  Cinema City Poznań Plaza      10:00 Sala 4 2D/DUB
   2026-06-09  Cinema City Poznań Plaza      10:00 Sala 4 2D/DUB
@@ -3187,6 +3205,7 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/mandalorian-grogu-4347
 cinemaScrapes:
+  Centrum / Mandalorian i Grogu / —
   Cinema City Arkadia / Gwiezdne Wojny: Mandalorian i Grogu / 2026
   Cinema City Bemowo / Gwiezdne Wojny: Mandalorian i Grogu / 2026
   Cinema City Bielsko-Biała / Gwiezdne Wojny: Mandalorian i Grogu / 2026
@@ -3209,6 +3228,7 @@ cinemaScrapes:
   Cinema City Poznań Plaza / Gwiezdne Wojny: Mandalorian i Grogu / 2026
   Cinema City Promenada / Gwiezdne Wojny: Mandalorian i Grogu / 2026
   Cinema City Punkt 44 / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Ruda Śląska / Gwiezdne Wojny: Mandalorian i Grogu / 2026
   Cinema City Rybnik / Gwiezdne Wojny: Mandalorian i Grogu / 2026
   Cinema City Sadyba / Gwiezdne Wojny: Mandalorian i Grogu / 2026
   Cinema City Silesia / Gwiezdne Wojny: Mandalorian i Grogu / 2026
@@ -3239,12 +3259,16 @@ cinemaScrapes:
   Helios Kielce / Mandalorian & Grogu / 2025
   Helios Konin / Mandalorian & Grogu / 2025
   Helios Koszalin / Mandalorian & Grogu / 2025
+  Helios Krosno / Mandalorian & Grogu / 2025
   Helios Kupiec / Mandalorian & Grogu / 2025
+  Helios Kędzierzyn-Koźle / Mandalorian & Grogu / 2025
   Helios Legnica / Mandalorian & Grogu / 2025
+  Helios Lubin / Mandalorian & Grogu / 2025
   Helios Magnolia Park / Mandalorian & Grogu / 2025
   Helios Metropolia / Mandalorian & Grogu / 2025
   Helios Nowy Sącz / Mandalorian & Grogu / 2025
   Helios Olsztyn / Mandalorian & Grogu / 2025
+  Helios Ostrów Wlkp. / Mandalorian & Grogu / 2025
   Helios Outlet Park / Mandalorian & Grogu / 2025
   Helios Posnania / Mandalorian & Grogu / 2025
   Helios Przemyśl / Mandalorian & Grogu / 2025
@@ -3254,12 +3278,17 @@ cinemaScrapes:
   Helios Rzeszów / Mandalorian & Grogu / 2025
   Helios Solaris / Mandalorian & Grogu / 2025
   Helios Sosnowiec / Mandalorian & Grogu / —
+  Helios Starachowice / Mandalorian & Grogu / 2025
+  Helios Tczew / Mandalorian & Grogu / 2025
   Helios Łódź / Mandalorian & Grogu / 2025
+  Helios Żory / Mandalorian & Grogu / 2025
   Kino GCK / Mandalorian i Grogu / —
   Kino Ignacy / Mandalorian i grogu / —
   Kino Kalejdoskop / Mandalorian i grogu / —
+  Kino MOKiS / Mandalorian i Grogu / —
   Kino Na Biegunach / Mandalorian i grogu / —
   Kino Nowe Horyzonty / Mandalorian i Grogu / 2026
+  Kino PCKul / Mandalorian i grogu / —
   Kino Przedwiośnie / Mandalorian i Grogu / 2026
   Kino Sokół / MANDALORIAN I GROGU / —
   Kino Zdrój / Mandalorian i Grogu / —
@@ -3323,6 +3352,7 @@ cinemaScrapes:
   Cinema City Mokotów / Maraton Horrorów / —
   Cinema City Poznań Plaza / Maraton Horrorów / —
   Cinema City Promenada / Maraton Horrorów / —
+  Cinema City Ruda Śląska / Maraton Horrorów / —
   Cinema City Rybnik / Maraton Horrorów / —
   Cinema City Silesia / Maraton Horrorów / —
   Cinema City Sosnowiec / Maraton Horrorów / —
@@ -3347,12 +3377,16 @@ cinemaScrapes:
   Helios Kielce / Maraton horrorów / —
   Helios Konin / Maraton horrorów / —
   Helios Koszalin / Maraton horrorów / —
+  Helios Krosno / Maraton horrorów / —
   Helios Kupiec / Maraton horrorów / —
+  Helios Kędzierzyn-Koźle / Maraton horrorów / —
   Helios Legnica / Maraton horrorów / —
+  Helios Lubin / Maraton horrorów / —
   Helios Magnolia Park / Maraton horrorów / —
   Helios Metropolia / Maraton horrorów / —
   Helios Nowy Sącz / Maraton horrorów / —
   Helios Olsztyn / Maraton horrorów / —
+  Helios Ostrów Wlkp. / Maraton horrorów / —
   Helios Outlet Park / Maraton horrorów / —
   Helios Posnania / Maraton horrorów / —
   Helios Przemyśl / Maraton horrorów / —
@@ -3362,7 +3396,10 @@ cinemaScrapes:
   Helios Rzeszów / Maraton horrorów / —
   Helios Solaris / Maraton horrorów / —
   Helios Sosnowiec / Maraton horrorów / —
+  Helios Starachowice / Maraton horrorów / —
+  Helios Tczew / Maraton horrorów / —
   Helios Łódź / Maraton horrorów / —
+  Helios Żory / Maraton horrorów / —
 showings:
   2026-06-19  Cinema City Kinepolis         21:00 Sala 15 2D/NAP
   2026-06-19  Cinema City Poznań Plaza      21:00 Sala 2 2D/NAP
@@ -3586,7 +3623,7 @@ showings:
 
 === Milczenie owiec ===
 displayTitle:      Milczenie owiec
-cinemaTitles:      MILCZENIE OWIEC | Milczenie owiec
+cinemaTitles:      MILCZENIE OWIEC | Milczenie owiec | Milczenie owiec. 35 rocznica
 runtimeMinutes:    118
 releaseYear:       1991
 countries:         USA
@@ -3624,6 +3661,7 @@ cinemaScrapes:
   Cinema City Mokotów / Milczenie owiec / 1991
   Cinema City Poznań Plaza / Milczenie owiec / 1991
   Cinema City Promenada / Milczenie owiec / 1991
+  Cinema City Ruda Śląska / Milczenie owiec / 1991
   Cinema City Rybnik / Milczenie owiec / 1991
   Cinema City Silesia / Milczenie owiec / 1991
   Cinema City Sosnowiec / Milczenie owiec / 1991
@@ -3649,12 +3687,16 @@ cinemaScrapes:
   Helios Kielce / Milczenie owiec / —
   Helios Konin / Milczenie owiec / —
   Helios Koszalin / Milczenie owiec / —
+  Helios Krosno / Milczenie owiec / —
   Helios Kupiec / Milczenie owiec / —
+  Helios Kędzierzyn-Koźle / Milczenie owiec / —
   Helios Legnica / Milczenie owiec / —
+  Helios Lubin / Milczenie owiec / —
   Helios Magnolia Park / Milczenie owiec / —
   Helios Metropolia / Milczenie owiec / —
   Helios Nowy Sącz / Milczenie owiec / —
   Helios Olsztyn / Milczenie owiec / —
+  Helios Ostrów Wlkp. / Milczenie owiec / —
   Helios Outlet Park / Milczenie owiec / —
   Helios Posnania / Milczenie owiec / —
   Helios Przemyśl / Milczenie owiec / —
@@ -3664,7 +3706,10 @@ cinemaScrapes:
   Helios Rzeszów / Milczenie owiec / —
   Helios Solaris / Milczenie owiec / —
   Helios Sosnowiec / Milczenie owiec / —
+  Helios Starachowice / Milczenie owiec / —
+  Helios Tczew / Milczenie owiec / —
   Helios Łódź / Milczenie owiec / —
+  Helios Żory / Milczenie owiec / —
   Kino Iluzjon / Milczenie owiec / 1991
   Kino MDK / MILCZENIE OWIEC / —
   Kino Nowe Horyzonty / Milczenie owiec / 1991
@@ -3672,6 +3717,7 @@ cinemaScrapes:
   Kino Pionier 1907 / MILCZENIE OWIEC / —
   Kino Pod Baranami / Milczenie owiec / —
   Kino Sfinks / MILCZENIE OWIEC / —
+  Na Starówce / Milczenie owiec. 35 rocznica / —
   OKF Iluzja / Milczenie owiec / —
 showings:
   2026-06-12  Cinema City Poznań Plaza      19:00 Sala 7 2D/NAP
@@ -3784,6 +3830,7 @@ cinemaScrapes:
   Cinema City Poznań Plaza / Minionki i straszydła / 2026
   Cinema City Promenada / Minionki i straszydła / 2026
   Cinema City Punkt 44 / Minionki i straszydła / 2026
+  Cinema City Ruda Śląska / Minionki i straszydła / 2026
   Cinema City Rybnik / Minionki i straszydła / 2026
   Cinema City Sadyba / Minionki i straszydła / 2026
   Cinema City Silesia / Minionki i straszydła / 2026
@@ -3794,6 +3841,7 @@ cinemaScrapes:
   Cinema City Wroclavia / Minionki i straszydła / 2026
   Cinema City Zakopianka / Minionki i straszydła / 2026
   Cinema City Zielona Góra / Minionki i straszydła / 2026
+  Forum / Minionki i straszydła / —
   Helios Aleja Bielany / Minionki i straszydła / —
   Helios Alfa / Minionki i straszydła / —
   Helios Biała / Minionki i straszydła / —
@@ -3811,12 +3859,16 @@ cinemaScrapes:
   Helios Kielce / Minionki i straszydła / —
   Helios Konin / Minionki i straszydła / —
   Helios Koszalin / Minionki i straszydła / —
+  Helios Krosno / Minionki i straszydła / —
   Helios Kupiec / Minionki i straszydła / —
+  Helios Kędzierzyn-Koźle / Minionki i straszydła / —
   Helios Legnica / Minionki i straszydła / —
+  Helios Lubin / Minionki i straszydła / —
   Helios Magnolia Park / Minionki i straszydła / —
   Helios Metropolia / Minionki i straszydła / —
   Helios Nowy Sącz / Minionki i straszydła / —
   Helios Olsztyn / Minionki i straszydła / —
+  Helios Ostrów Wlkp. / Minionki i straszydła / —
   Helios Outlet Park / Minionki i straszydła / —
   Helios Posnania / Minionki i straszydła / —
   Helios Przemyśl / Minionki i straszydła / —
@@ -3826,7 +3878,10 @@ cinemaScrapes:
   Helios Rzeszów / Minionki i straszydła / —
   Helios Solaris / Minionki i straszydła / —
   Helios Sosnowiec / Minionki i straszydła / —
+  Helios Starachowice / Minionki i straszydła / —
+  Helios Tczew / Minionki i straszydła / —
   Helios Łódź / Minionki i straszydła / —
+  Helios Żory / Minionki i straszydła / —
   Kino Goplana / Minionki i straszydła / —
   Kino MOK Centrum / MINIONKI I STRASZYDŁA / —
 showings:
@@ -4031,7 +4086,7 @@ cinemaScrapes:
   Janosik / Mortal Kombat II / —
   Kino Goplana / Mortal kombat ii / —
   Kino Ignacy / Mortal kombat ii / —
-  Kino MOKiS / Mortal Kombat II / 2026
+  Kino MOKiS / Mortal Kombat II / —
   Kino Nawojka / Mortal Kombat II / —
 showings:
   2026-06-08  Cinema City Kinepolis         15:50 Sala 5 2D/NAP
@@ -4287,6 +4342,7 @@ cinemaScrapes:
   Cinema City Poznań Plaza / Niesamowite przygody skarpetek 3. Ale ko / 2026
   Cinema City Promenada / Niesamowite przygody skarpetek 3. Ale ko / 2026
   Cinema City Punkt 44 / Niesamowite przygody skarpetek 3. Ale ko / 2026
+  Cinema City Ruda Śląska / Niesamowite przygody skarpetek 3. Ale ko / 2026
   Cinema City Rybnik / Niesamowite przygody skarpetek 3. Ale ko / 2026
   Cinema City Sadyba / Niesamowite przygody skarpetek 3. Ale ko / 2026
   Cinema City Silesia / Niesamowite przygody skarpetek 3. Ale ko / 2026
@@ -4378,7 +4434,6 @@ cinemaScrapes:
   Helios Łódź / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Helios Żory / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Janosik / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Jaworzyna / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   KINOkawiarnia Stacja Falenica / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Agrafka / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / —
   Kino Bajka / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -4420,12 +4475,7 @@ cinemaScrapes:
   Klaps / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kozienicki Dom Kultury / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Mikro Bronowice / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Multikino Czechowice-Dziedzice / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
-  Multikino Kłodzko / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
-  Multikino Rumia / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
-  Multikino Świdnica / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Muza / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Na Starówce / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Piast / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS / —
   Planet Cinema / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Służewski Dom Kultury / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -4470,6 +4520,7 @@ cinemaScrapes:
   Helios Koszalin / Niezwykły chłopak / 2025
   Helios Magnolia Park / Niezwykły chłopak / —
   Helios Metropolia / Niezwykły chłopak / —
+  Helios Ostrów Wlkp. / Niezwykły chłopak / —
   Kino SDK / Niezwykły chłopak / 2025
 showings:
   2026-06-10  Cinema City Poznań Plaza      10:00 Sala 2 2D/DUB
@@ -4633,6 +4684,7 @@ cinemaScrapes:
   Helios Konin / O dziewczynie skaczącej przez czas / —
   Helios Koszalin / O dziewczynie skaczącej przez czas / —
   Helios Legnica / O dziewczynie skaczącej przez czas / —
+  Helios Lubin / O dziewczynie skaczącej przez czas / —
   Helios Magnolia Park / O dziewczynie skaczącej przez czas / —
   Helios Metropolia / O dziewczynie skaczącej przez czas / —
   Helios Nowy Sącz / O dziewczynie skaczącej przez czas / —
@@ -4747,6 +4799,7 @@ cinemaScrapes:
   Cinema Lumiere / Obsesja. / —
   Cinema1 / Obsesja / —
   Dolnośląskie Centrum Filmowe / Obsesja / 2025
+  Forum / Obsesja / —
   Helios Aleja Bielany / Obsesja / 2026
   Helios Alfa / Obsesja / 2026
   Helios Biała / Obsesja / 2026
@@ -4764,7 +4817,7 @@ cinemaScrapes:
   Helios Konin / Obsesja / 2026
   Helios Koszalin / Obsesja / 2026
   Helios Legnica / Obsesja / 2026
-  Helios Lubin / Obsesja / 2025
+  Helios Lubin / Obsesja / 2026
   Helios Magnolia Park / Obsesja / 2026
   Helios Metropolia / Obsesja / 2026
   Helios Nowy Sącz / Obsesja / 2026
@@ -4790,9 +4843,6 @@ cinemaScrapes:
   Kinomax / Obsesja / —
   Kinoteka / Obsesja / 2026
   Max Kino / Obsesja / 2025
-  Multikino Czechowice-Dziedzice / Obsesja / 2025
-  Multikino Kłodzko / Obsesja / 2025
-  Multikino Świdnica / Obsesja / 2025
   Świt Zwoleń / Obsesja / 2025
 showings:
   2026-06-08  Cinema City Kinepolis         14:25 Sala 13 2D/NAP · 16:50 Sala 13 2D/NAP · 17:10 Sala 4 2D/NAP · 19:20 Sala 13 2D/NAP · 19:45 Sala 4 2D/NAP · 21:10 Sala 8 2D/NAP · 21:30 Sala 16 2D/NAP
@@ -4841,9 +4891,11 @@ cinemaScrapes:
   Cinema City Mokotów / Ojczyzna / 2026
   Cinema City Promenada / Ojczyzna / 2026
   Cinema City Punkt 44 / Ojczyzna / 2026
+  Cinema City Ruda Śląska / Ojczyzna / 2026
   Cinema City Wolność / Ojczyzna / 2026
   Cinema City Wroclavia / Ojczyzna / 2026
   Dolnośląskie Centrum Filmowe / Ojczyzna / 2026
+  Forum / Ojczyzna / —
   Janosik / Ojczyzna / —
   KINOMUZEUM / Ojczyzna / 2026
   Kino 60 Krzeseł / Ojczyzna / —
@@ -4929,15 +4981,11 @@ cinemaScrapes:
   Helios Kielce / Orły republiki / —
   Helios Konin / Orły republiki / —
   Helios Koszalin / Orły republiki / —
-  Helios Krosno / Orły Republiki / 2025
   Helios Kupiec / Orły republiki / —
-  Helios Kędzierzyn-Koźle / Orły Republiki / 2025
   Helios Legnica / Orły republiki / —
-  Helios Lubin / Orły Republiki / 2025
   Helios Metropolia / Orły republiki / —
   Helios Nowy Sącz / Orły republiki / —
   Helios Olsztyn / Orły republiki / —
-  Helios Ostrów Wlkp. / Orły Republiki / 2025
   Helios Outlet Park / Orły republiki / —
   Helios Posnania / Orły republiki / —
   Helios Przemyśl / Orły republiki / —
@@ -4947,10 +4995,7 @@ cinemaScrapes:
   Helios Rzeszów / Orły republiki / —
   Helios Solaris / Orły republiki / —
   Helios Sosnowiec / Orły republiki / —
-  Helios Starachowice / Orły Republiki / 2025
-  Helios Tczew / Orły Republiki / 2025
   Helios Łódź / Orły republiki / —
-  Helios Żory / Orły Republiki / 2025
   KINOMUZEUM / Orły republiki / 2025
   KINOkawiarnia Stacja Falenica / Orły Republiki / —
   Kino 60 Krzeseł / Orły republiki / —
@@ -4971,7 +5016,7 @@ cinemaScrapes:
   Kino Luna / Orły Republiki / —
   Kino MCSW Elektrownia / ORŁY REPUBLIKI / —
   Kino Malta Charlie Monroe / Orły republiki / —
-  Kino Meduza / Orły Republiki / 2025
+  Kino Meduza / Orły republiki / —
   Kino Mikro / Orły republiki / —
   Kino Muza / Orły republiki / 2025
   Kino NCKF EC1 / Orły republiki / —
@@ -5246,12 +5291,16 @@ cinemaScrapes:
   Helios Kielce / Pianista / —
   Helios Konin / Pianista / —
   Helios Koszalin / Pianista / —
+  Helios Krosno / Pianista / —
   Helios Kupiec / Pianista / —
+  Helios Kędzierzyn-Koźle / Pianista / —
   Helios Legnica / Pianista / —
+  Helios Lubin / Pianista / —
   Helios Magnolia Park / Pianista / —
   Helios Metropolia / Pianista / —
   Helios Nowy Sącz / Pianista / —
   Helios Olsztyn / Pianista / —
+  Helios Ostrów Wlkp. / Pianista / —
   Helios Outlet Park / Pianista / —
   Helios Posnania / Pianista / —
   Helios Przemyśl / Pianista / —
@@ -5261,7 +5310,10 @@ cinemaScrapes:
   Helios Rzeszów / Pianista / —
   Helios Solaris / Pianista / —
   Helios Sosnowiec / Pianista / —
+  Helios Starachowice / Pianista / —
+  Helios Tczew / Pianista / —
   Helios Łódź / Pianista / —
+  Helios Żory / Pianista / —
 showings:
   2026-06-14  Helios Posnania               15:00 Sala 2 2D/NAP
 
@@ -5291,6 +5343,7 @@ cinemaScrapes:
   Cinema City Bydgoszcz / Piep*zyć Mickiewicza 3 / 2026
   Helios Bielsko-Biała / Piep*zyć Mickiewicza 3 / —
   Helios Gorzów Wielkopolski / Piep*zyć Mickiewicza 3 / —
+  Helios Kędzierzyn-Koźle / Piep*zyć Mickiewicza 3 / —
   Helios Posnania / Piep*zyć Mickiewicza 3 / —
   Helios Solaris / Piep*zyć Mickiewicza 3 / 2025
   Kino Pionier 1907 / PIEP*ZYĆ MICKIEWICZA 3 / —
@@ -5966,6 +6019,7 @@ cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/podziemny-krag
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14418-podziemny-krag-repremiera-w-4k/
 cinemaScrapes:
+  Centrum / Podziemny krąg / —
   Centrum 3D / Podziemny krąg / 1999
   Cinema City Arkadia / Podziemny krąg / 1999
   Cinema City Bemowo / Podziemny krąg / 1999
@@ -6019,16 +6073,16 @@ cinemaScrapes:
   Helios Kielce / Podziemny krąg / —
   Helios Konin / Podziemny krąg / —
   Helios Koszalin / Podziemny krąg / —
-  Helios Krosno / Podziemny krąg / 1999
+  Helios Krosno / Podziemny krąg / —
   Helios Kupiec / Podziemny krąg / —
-  Helios Kędzierzyn-Koźle / Podziemny krąg / 1999
+  Helios Kędzierzyn-Koźle / Podziemny krąg / —
   Helios Legnica / Podziemny krąg / —
-  Helios Lubin / Podziemny krąg / 1999
+  Helios Lubin / Podziemny krąg / —
   Helios Magnolia Park / Podziemny krąg / —
   Helios Metropolia / Podziemny krąg / —
   Helios Nowy Sącz / Podziemny krąg / —
   Helios Olsztyn / Podziemny krąg / —
-  Helios Ostrów Wlkp. / Podziemny krąg / 1999
+  Helios Ostrów Wlkp. / Podziemny krąg / —
   Helios Outlet Park / Podziemny krąg / —
   Helios Posnania / Podziemny krąg / —
   Helios Przemyśl / Podziemny krąg / —
@@ -6038,10 +6092,10 @@ cinemaScrapes:
   Helios Rzeszów / Podziemny krąg / —
   Helios Solaris / Podziemny krąg / —
   Helios Sosnowiec / Podziemny krąg / —
-  Helios Starachowice / Podziemny krąg / 1999
-  Helios Tczew / Podziemny krąg / 1999
+  Helios Starachowice / Podziemny krąg / —
+  Helios Tczew / Podziemny krąg / —
   Helios Łódź / Podziemny krąg / —
-  Helios Żory / Podziemny krąg / 1999
+  Helios Żory / Podziemny krąg / —
   Kino 60 Krzeseł / Podziemny krąg / —
   Kino Fenomen (WDK) / Podziemny krąg / —
   Kino Kika / PODZIEMNY KRĄG / —
@@ -6052,10 +6106,6 @@ cinemaScrapes:
   Kino Sfinks / PODZIEMNY KRĄG / —
   Kino Spektrum / Podziemny krąg / —
   Kinoteka / Podziemny krąg / 2026
-  Multikino Czechowice-Dziedzice / Podziemny krąg / 1999
-  Multikino Kłodzko / Podziemny krąg / 1999
-  Multikino Rumia / Podziemny krąg / 1999
-  Multikino Świdnica / Podziemny krąg / 1999
   OKF Iluzja / Podziemny krąg / —
 showings:
   2026-06-08  Cinema City Kinepolis         18:30 Sala 1 2D/NAP · 21:30 Sala 1 2D/NAP
@@ -6154,17 +6204,21 @@ cinemaFilmUrls:
 cinemaScrapes:
   Helios Bielsko-Biała / Posłani / 2026
   Helios Karolinka / Posłani / 2026
+  Helios Kędzierzyn-Koźle / Posłani / 2026
   Helios Outlet Park / Posłani / 2026
+  Helios Tczew / Posłani / —
   Kino Bajka / Posłani / —
   Kino Bułgarska 19 / Posłani / 2026
   Kino Kijów / Posłani / —
+  Kino MOKiS / Posłani / —
   Kino Moskwa / POSŁANI / —
+  Kino PCKul / Posłani / —
   Kino Promień / Posłani / 2026
   Kino Sokół / POSŁANI / —
   Kino Stary Młyn / Posłani / —
   Kino Zdrój / Posłani / —
   Kino nad Wartą / Posłani / —
-  Na Starówce / Posłani / 2026
+  Kinoteatr Rondo / Posłani / —
   Przedwiośnie / Posłani / —
   Świt / Posłani / —
 showings:
@@ -6208,12 +6262,16 @@ cinemaScrapes:
   Helios Kielce / Powrót do przyszłości II / —
   Helios Konin / Powrót do przyszłości II / —
   Helios Koszalin / Powrót do przyszłości II / —
+  Helios Krosno / Powrót do przyszłości II / —
   Helios Kupiec / Powrót do przyszłości II / —
+  Helios Kędzierzyn-Koźle / Powrót do przyszłości II / —
   Helios Legnica / Powrót do przyszłości II / —
+  Helios Lubin / Powrót do przyszłości II / —
   Helios Magnolia Park / Powrót do przyszłości II / —
   Helios Metropolia / Powrót do przyszłości II / —
   Helios Nowy Sącz / Powrót do przyszłości II / —
   Helios Olsztyn / Powrót do przyszłości II / —
+  Helios Ostrów Wlkp. / Powrót do przyszłości II / —
   Helios Outlet Park / Powrót do przyszłości II / —
   Helios Posnania / Powrót do przyszłości II / —
   Helios Przemyśl / Powrót do przyszłości II / —
@@ -6223,7 +6281,10 @@ cinemaScrapes:
   Helios Rzeszów / Powrót do przyszłości II / —
   Helios Solaris / Powrót do przyszłości II / —
   Helios Sosnowiec / Powrót do przyszłości II / —
+  Helios Starachowice / Powrót do przyszłości II / —
+  Helios Tczew / Powrót do przyszłości II / —
   Helios Łódź / Powrót do przyszłości II / —
+  Helios Żory / Powrót do przyszłości II / —
 showings:
   2026-06-20  Helios Posnania               15:00 2D/NAP
   2026-06-25  Helios Posnania               18:00 2D/NAP
@@ -6266,12 +6327,16 @@ cinemaScrapes:
   Helios Kielce / Powrót do przyszłości III / —
   Helios Konin / Powrót do przyszłości III / —
   Helios Koszalin / Powrót do przyszłości III / —
+  Helios Krosno / Powrót do przyszłości III / —
   Helios Kupiec / Powrót do przyszłości III / —
+  Helios Kędzierzyn-Koźle / Powrót do przyszłości III / —
   Helios Legnica / Powrót do przyszłości III / —
+  Helios Lubin / Powrót do przyszłości III / —
   Helios Magnolia Park / Powrót do przyszłości III / —
   Helios Metropolia / Powrót do przyszłości III / —
   Helios Nowy Sącz / Powrót do przyszłości III / —
   Helios Olsztyn / Powrót do przyszłości III / —
+  Helios Ostrów Wlkp. / Powrót do przyszłości III / —
   Helios Outlet Park / Powrót do przyszłości III / —
   Helios Posnania / Powrót do przyszłości III / —
   Helios Przemyśl / Powrót do przyszłości III / —
@@ -6281,7 +6346,10 @@ cinemaScrapes:
   Helios Rzeszów / Powrót do przyszłości III / —
   Helios Solaris / Powrót do przyszłości III / —
   Helios Sosnowiec / Powrót do przyszłości III / —
+  Helios Starachowice / Powrót do przyszłości III / —
+  Helios Tczew / Powrót do przyszłości III / —
   Helios Łódź / Powrót do przyszłości III / —
+  Helios Żory / Powrót do przyszłości III / —
 showings:
   2026-07-05  Helios Posnania               15:00 2D/NAP
   2026-07-09  Helios Posnania               18:00 2D/NAP
@@ -6507,6 +6575,7 @@ cinemaScrapes:
   Cinema City Gliwice / Pucio / 2026
   Cinema City Kazimierz / Pucio / 2026
   Cinema City Promenada / Pucio / 2026
+  Cinema City Ruda Śląska / Pucio / 2026
   Cinema City Rybnik / Pucio / 2026
   Cinema City Wroclavia / Pucio / 2026
   Cinema City Zakopianka / Pucio / 2026
@@ -6521,8 +6590,6 @@ cinemaScrapes:
   Kino Sokół Dąbrowa Tarnowska / PUCIO / —
   Kino Tur / Pucio / —
   Kozienicki Dom Kultury / Pucio / 2026
-  Multikino Czechowice-Dziedzice / Pucio / 2026
-  Multikino Świdnica / Pucio / 2026
   Służewski Dom Kultury / Pucio / —
   Teatr Elektryczny / Pucio / —
 showings:
@@ -6584,7 +6651,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Bajka / Romeria / —
   Janosik / Romeria / —
-  Jaworzyna / Romería / 2025
+  Jaworzyna / Romeria / —
   Kino Bułgarska 19 / Romería / 2025
   Kino IKM / Romeria / —
   Kino Iluzjon / Romería / 2025
@@ -6672,12 +6739,16 @@ cinemaScrapes:
   Helios Kielce / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
   Helios Konin / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
   Helios Koszalin / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
+  Helios Krosno / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
   Helios Kupiec / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
+  Helios Kędzierzyn-Koźle / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
   Helios Legnica / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
+  Helios Lubin / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
   Helios Magnolia Park / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
   Helios Metropolia / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
   Helios Nowy Sącz / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
   Helios Olsztyn / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
+  Helios Ostrów Wlkp. / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
   Helios Outlet Park / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
   Helios Posnania / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
   Helios Przemyśl / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
@@ -6687,7 +6758,10 @@ cinemaScrapes:
   Helios Rzeszów / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
   Helios Solaris / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
   Helios Sosnowiec / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
+  Helios Starachowice / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
+  Helios Tczew / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
   Helios Łódź / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
+  Helios Żory / Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios / —
 showings:
   2026-06-22  Helios Posnania               20:00 2D/NAP · 20:00 2D/NAP
 
@@ -6836,6 +6910,7 @@ cinemaScrapes:
   Cinema City Poznań Plaza / Sprawiedliwość owiec / 2026
   Cinema City Promenada / Sprawiedliwość owiec / 2026
   Cinema City Punkt 44 / Sprawiedliwość owiec / 2026
+  Cinema City Ruda Śląska / Sprawiedliwość owiec / 2026
   Cinema City Rybnik / Sprawiedliwość owiec / 2026
   Cinema City Sadyba / Sprawiedliwość owiec / 2026
   Cinema City Silesia / Sprawiedliwość owiec / 2026
@@ -6926,7 +7001,6 @@ cinemaScrapes:
   Cinema City Zielona Góra / Straszny film / 2026
   Cinema Lumiere / Straszny film / —
   Cinema1 / Straszny film / —
-  Forum / Straszny film / 2026
   Fregata / Straszny film / —
   Helios Aleja Bielany / Straszny film / 2026
   Helios Alfa / Straszny film / 2026
@@ -6979,10 +7053,11 @@ cinemaScrapes:
   Kino Lewart / Straszny film / —
   Kino MOK / Straszny film / —
   Kino MOK Centrum / STRASZNY FILM / —
+  Kino MOKiS / Straszny film / —
   Kino Na Biegunach / Straszny film / —
   Kino Narie / Straszny film / —
   Kino ODEON / Straszny film / 2026
-  Kino PCKul / Straszny film / 2026
+  Kino PCKul / Straszny film / —
   Kino Planeta / Straszny film / —
   Kino Przedwiośnie / Straszny film / 2026
   Kino Sokół / STRASZNY FILM / —
@@ -6994,10 +7069,6 @@ cinemaScrapes:
   Koneckie Centrum Kultury / Straszny film / —
   Max Kino / Straszny film / 2026
   Miejskie Centrum Kultury / Straszny film / —
-  Multikino Czechowice-Dziedzice / Straszny film / 2026
-  Multikino Kłodzko / Straszny film / 2026
-  Multikino Rumia / Straszny film / 2026
-  Multikino Świdnica / Straszny film / 2026
   Piast / STRASZNY FILM / —
   Pionier / Straszny film / —
   Planet Cinema / Straszny film / 2026
@@ -7181,7 +7252,6 @@ cinemaScrapes:
   Kino ODEON / Super Mario Galaxy Film / 2026
   Kino Sokół / SUPER MARIO GALAXY FILM / —
   Max Kino / Super Mario Galaxy Film / 2026
-  Multikino Kłodzko / Super Mario Galaxy Film / 2026
 showings:
   2026-06-08  Cinema City Kinepolis         12:00 Sala 18 2D/DUB · 14:20 Sala 18 2D/DUB
   2026-06-08  Cinema City Poznań Plaza      11:30 Sala 3 2D/DUB · 13:50 Sala 3 2D/DUB
@@ -7244,6 +7314,7 @@ cinemaScrapes:
   Cinema City Poznań Plaza / Supergirl / 2026
   Cinema City Promenada / Supergirl / 2026
   Cinema City Punkt 44 / Supergirl / 2026
+  Cinema City Ruda Śląska / Supergirl / 2026
   Cinema City Rybnik / Supergirl / 2026
   Cinema City Sadyba / Supergirl / 2026
   Cinema City Silesia / Supergirl / 2026
@@ -7271,12 +7342,16 @@ cinemaScrapes:
   Helios Kielce / Supergirl / —
   Helios Konin / Supergirl / —
   Helios Koszalin / Supergirl / —
+  Helios Krosno / Supergirl / —
   Helios Kupiec / Supergirl / —
+  Helios Kędzierzyn-Koźle / Supergirl / —
   Helios Legnica / Supergirl / —
+  Helios Lubin / Supergirl / —
   Helios Magnolia Park / Supergirl / —
   Helios Metropolia / Supergirl / —
   Helios Nowy Sącz / Supergirl / —
   Helios Olsztyn / Supergirl / —
+  Helios Ostrów Wlkp. / Supergirl / —
   Helios Outlet Park / Supergirl / —
   Helios Posnania / Supergirl / —
   Helios Przemyśl / Supergirl / —
@@ -7286,9 +7361,13 @@ cinemaScrapes:
   Helios Rzeszów / Supergirl / —
   Helios Solaris / Supergirl / —
   Helios Sosnowiec / Supergirl / —
+  Helios Starachowice / Supergirl / —
+  Helios Tczew / Supergirl / —
   Helios Łódź / Supergirl / —
+  Helios Żory / Supergirl / —
   Kino Bajka Kluczbork / Supergirl / —
   Kino Kolory / Supergirl / —
+  Kino PCKul / Supergirl / —
   Koneckie Centrum Kultury / Supergirl / —
 showings:
   2026-06-26  Cinema City Kinepolis         10:30 Sala 12 2D/NAP · 11:00 Sala 14 2D/DUB · 11:30 Sala 11 2D/DUB · 13:00 Sala 12 2D/NAP · 13:30 Sala 14 2D/DUB · 14:00 Sala 11 2D/DUB · 15:30 Sala 12 2D/NAP · 16:00 Sala 14 2D/NAP · 16:30 Sala 11 2D/DUB · 17:00 Sala 4 3D/DUB · 18:00 Sala 12 2D/NAP · 18:30 Sala 14 2D/NAP · 19:00 Sala 11 2D/DUB · 20:30 Sala 12 2D/NAP · 21:00 Sala 14 2D/NAP
@@ -7384,6 +7463,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14532-takie-jest-zycie-przedpremiera-i-spotkanie-woko-fi/
 cinemaScrapes:
   Dolnośląskie Centrum Filmowe / Takie jest życie / 2025
+  Forum / Takie jest życie / —
   Kino 60 Krzeseł / Takie jest życie / —
   Kino Apollo / Takie jest życie / —
   Kino Bajka / Takie jest życie / —
@@ -7515,7 +7595,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Bajka / Tom i jerry: przygoda w muzeum / —
   Baszta / Tom i Jerry: Przygoda w muzeum / —
-  Centrum / Tom i Jerry: Przygoda w muzeum / 2025
+  Centrum / Tom i Jerry: Przygoda w muzeum / —
   Chemik / Tom i Jerry: Przygoda w muzeum / 2025
   Cinema City Arkadia / Tom i Jerry: Przygoda w muzeum / 2026
   Cinema City Bemowo / Tom i Jerry: Przygoda w muzeum / 2026
@@ -7539,7 +7619,7 @@ cinemaScrapes:
   Cinema City Poznań Plaza / Tom i Jerry: Przygoda w muzeum / 2026
   Cinema City Promenada / Tom i Jerry: Przygoda w muzeum / 2026
   Cinema City Punkt 44 / Tom i Jerry: Przygoda w muzeum / 2026
-  Cinema City Ruda Śląska / Tom i Jerry: Przygoda w muzeum / 2025
+  Cinema City Ruda Śląska / Tom i Jerry: Przygoda w muzeum / 2026
   Cinema City Rybnik / Tom i Jerry: Przygoda w muzeum / 2026
   Cinema City Sadyba / Tom i Jerry: Przygoda w muzeum / 2026
   Cinema City Silesia / Tom i Jerry: Przygoda w muzeum / 2026
@@ -7569,16 +7649,16 @@ cinemaScrapes:
   Helios Kielce / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Konin / Tom i Jerry: Przygoda w muzeum / —
   Helios Koszalin / Tom i Jerry: Przygoda w muzeum / 2026
-  Helios Krosno / Tom i Jerry: Przygoda w muzeum / 2025
+  Helios Krosno / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Kupiec / Tom i Jerry: Przygoda w muzeum / 2026
-  Helios Kędzierzyn-Koźle / Tom i Jerry: Przygoda w muzeum / 2025
+  Helios Kędzierzyn-Koźle / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Legnica / Tom i Jerry: Przygoda w muzeum / —
-  Helios Lubin / Tom i Jerry: Przygoda w muzeum / 2025
+  Helios Lubin / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Magnolia Park / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Metropolia / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Nowy Sącz / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Olsztyn / Tom i Jerry: Przygoda w muzeum / 2026
-  Helios Ostrów Wlkp. / Tom i Jerry: Przygoda w muzeum / 2025
+  Helios Ostrów Wlkp. / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Outlet Park / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Posnania / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Przemyśl / Tom i Jerry: Przygoda w muzeum / 2026
@@ -7588,11 +7668,11 @@ cinemaScrapes:
   Helios Rzeszów / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Solaris / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Sosnowiec / Tom i Jerry: Przygoda w muzeum / —
-  Helios Starachowice / Tom i Jerry: Przygoda w muzeum / 2025
-  Helios Tczew / Tom i Jerry: Przygoda w muzeum / 2025
+  Helios Starachowice / Tom i Jerry: Przygoda w muzeum / 2026
+  Helios Tczew / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Łódź / Tom i Jerry: Przygoda w muzeum / 2026
-  Helios Żory / Tom i Jerry: Przygoda w muzeum / 2025
-  Jaworzyna / Tom i Jerry: Przygoda w muzeum / 2025
+  Helios Żory / Tom i Jerry: Przygoda w muzeum / 2026
+  Jaworzyna / Tom i Jerry: Przygoda w muzeum / —
   Jutrzenka / Tom i jerry: przygoda w muzeum / —
   KINOkawiarnia Stacja Falenica / TOM I JERRY: PRZYGODA W MUZEUM / —
   Kino Astra / Tom i Jerry: Przygoda w muzeum / 2025
@@ -7613,6 +7693,7 @@ cinemaScrapes:
   Kino Luna / Tom i Jerry: Przygoda w muzeum / —
   Kino MOK / Tom i Jerry: Przygoda w muzeum / —
   Kino MOK Centrum / TOM I JERRY : PRZYGODA W MUZEUM / —
+  Kino MOKiS / Tom i Jerry: Przygoda w muzeum / —
   Kino Moskwa / TOM I JERRY: PRZYGODA W MUZEUM / —
   Kino NCKF EC1 / Tom i Jerry: Przygoda w muzeum / —
   Kino Na Biegunach / Tom i jerry: przygoda w muzeum / —
@@ -7634,17 +7715,12 @@ cinemaScrapes:
   Kino na Boku / Tom i Jerry: Przygoda w muzeum / —
   Kino ŚDK / Tom i jerry: przygoda w muzeum / —
   Kinomax / Tom i jerry: przygoda w muzeum / —
-  Kinoteatr Rondo / Tom i Jerry: Przygoda w muzeum / 2025
+  Kinoteatr Rondo / Tom i Jerry: Przygoda w muzeum / —
   Klaps / Tom i Jerry: Przygoda w muzeum / —
   Max Kino / Tom i Jerry: Przygoda w muzeum / 2025
   Miejskie Centrum Kultury / Tom i Jerry: Przygoda w muzeum / —
   Mikro Bronowice / Tom i Jerry: Przygoda w muzeum / —
-  Multikino Czechowice-Dziedzice / Tom i Jerry: Przygoda w muzeum / 2025
-  Multikino Kłodzko / Tom i Jerry: Przygoda w muzeum / 2025
-  Multikino Rumia / Tom i Jerry: Przygoda w muzeum / 2025
-  Multikino Świdnica / Tom i Jerry: Przygoda w muzeum / 2025
   Muza / Tom i Jerry: Przygoda w muzeum / —
-  Na Starówce / Tom i Jerry: Przygoda w muzeum / 2025
   Piast / TOM I JERRY:PRZYGODA W MUZEUM / —
   Pionier / Tom i Jerry: Przygoda w muzeum / —
   Planet Cinema / Tom i Jerry: Przygoda w muzeum / 2025
@@ -7690,6 +7766,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Bajka / Toy story 5 / —
   Bałtyk / Toy Story 5 / —
+  Centrum / Toy Story 5 / —
   Cinema City Arkadia / Toy Story 5 / 2026
   Cinema City Bemowo / Toy Story 5 / 2026
   Cinema City Bielsko-Biała / Toy Story 5 / 2026
@@ -7712,6 +7789,7 @@ cinemaScrapes:
   Cinema City Poznań Plaza / Toy Story 5 / 2026
   Cinema City Promenada / Toy Story 5 / 2026
   Cinema City Punkt 44 / Toy Story 5 / 2026
+  Cinema City Ruda Śląska / Toy Story 5 / 2026
   Cinema City Rybnik / Toy Story 5 / 2026
   Cinema City Sadyba / Toy Story 5 / 2026
   Cinema City Silesia / Toy Story 5 / 2026
@@ -7723,6 +7801,7 @@ cinemaScrapes:
   Cinema City Zakopianka / Toy Story 5 / 2026
   Cinema City Zielona Góra / Toy Story 5 / 2026
   Cinema1 / Toy story 5 / —
+  Forum / Toy Story 5 / —
   Fregata / Toy Story 5 / —
   Helios Aleja Bielany / Toy Story 5 / —
   Helios Alfa / Toy Story 5 / —
@@ -7741,12 +7820,16 @@ cinemaScrapes:
   Helios Kielce / Toy Story 5 / —
   Helios Konin / Toy Story 5 / —
   Helios Koszalin / Toy Story 5 / —
+  Helios Krosno / Toy Story 5 / —
   Helios Kupiec / Toy Story 5 / —
+  Helios Kędzierzyn-Koźle / Toy Story 5 / —
   Helios Legnica / Toy Story 5 / —
+  Helios Lubin / Toy Story 5 / —
   Helios Magnolia Park / Toy Story 5 / —
   Helios Metropolia / Toy Story 5 / —
   Helios Nowy Sącz / Toy Story 5 / —
   Helios Olsztyn / Toy Story 5 / —
+  Helios Ostrów Wlkp. / Toy Story 5 / —
   Helios Outlet Park / Toy Story 5 / —
   Helios Posnania / Toy Story 5 / —
   Helios Przemyśl / Toy Story 5 / —
@@ -7756,7 +7839,10 @@ cinemaScrapes:
   Helios Rzeszów / Toy Story 5 / —
   Helios Solaris / Toy Story 5 / —
   Helios Sosnowiec / Toy Story 5 / —
+  Helios Starachowice / Toy Story 5 / —
+  Helios Tczew / Toy Story 5 / —
   Helios Łódź / Toy Story 5 / —
+  Helios Żory / Toy Story 5 / —
   Janosik / Toy Story 5 / —
   Kino Bajka Kluczbork / Toy Story 5 / —
   Kino Centrum / Toy Story 5 / —
@@ -7770,6 +7856,7 @@ cinemaScrapes:
   Kino Lewart / Toy Story 5 / —
   Kino MOK / Toy Story 5 / —
   Kino MOK Centrum / TOY STORY 5 / —
+  Kino MOKiS / Toy Story 5 / —
   Kino Na Biegunach / Toy story 5 / —
   Kino Oskard / Toy Story 5 / —
   Kino Przedwiośnie / Toy Story 5 / 2026
@@ -7782,6 +7869,7 @@ cinemaScrapes:
   Kino Śnieżka / Toy story 5 / —
   Koneckie Centrum Kultury / Toy Story 5 / —
   Muza / Toy Story 5 / —
+  Na Starówce / Toy story 5 / —
   Pionier / Toy Story 5 / —
   Teatr Elektryczny / Toy Story 5 / —
 showings:
@@ -7879,6 +7967,7 @@ cinemaScrapes:
   Cinema City Mokotów / UNLIMITED SHOW - Nowa Fala / 2025
   Cinema City Poznań Plaza / UNLIMITED SHOW - Nowa Fala / 2025
   Cinema City Promenada / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Ruda Śląska / UNLIMITED SHOW - Nowa Fala / 2025
   Cinema City Rybnik / UNLIMITED SHOW - Nowa Fala / 2025
   Cinema City Silesia / UNLIMITED SHOW - Nowa Fala / 2025
   Cinema City Sosnowiec / UNLIMITED SHOW - Nowa Fala / 2025
@@ -7982,6 +8071,7 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/werdykt/
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14499-werdykt/
 cinemaScrapes:
+  Centrum / Werdykt / —
   Cinema City Arkadia / Werdykt / 2025
   Cinema City Bonarka / Werdykt / 2025
   Cinema City Kazimierz / Werdykt / 2025
@@ -7995,7 +8085,7 @@ cinemaScrapes:
   Kino Kreska / Werdykt / 2025
   Kino Luna / Werdykt / —
   Kino Malta Charlie Monroe / Werdykt / —
-  Kino Meduza / Werdykt / 2025
+  Kino Meduza / Werdykt / —
   Kino Millenium / Werdykt / 2025
   Kino Muza / Werdykt / 2025
   Kino Nowe Horyzonty / Werdykt / 2025
@@ -8258,8 +8348,8 @@ cinemaScrapes:
 showings:
   2026-06-24  Kino Muza                     20:00 Sala 1
 
-=== Władcy Wszechświata ===
-displayTitle:      Władcy Wszechświata
+=== Władcy wszechświata ===
+displayTitle:      Władcy wszechświata
 cinemaTitles:      WŁADCY WSZECHŚWIATA | Władcy Wszechświata | Władcy wszechświata
 runtimeMinutes:    141
 releaseYear:       2026
@@ -8317,7 +8407,6 @@ cinemaScrapes:
   Cinema City Zakopianka / Władcy Wszechświata / 2026
   Cinema City Zielona Góra / Władcy Wszechświata / 2026
   Cinema1 / Władcy wszechświata / —
-  Forum / Władcy Wszechświata / 2026
   Helios Aleja Bielany / Władcy wszechświata / 2026
   Helios Alfa / Władcy wszechświata / 2026
   Helios Biała / Władcy wszechświata / 2026
@@ -8335,16 +8424,16 @@ cinemaScrapes:
   Helios Kielce / Władcy wszechświata / 2026
   Helios Konin / Władcy wszechświata / 2026
   Helios Koszalin / Władcy wszechświata / 2026
-  Helios Krosno / Władcy Wszechświata / 2026
+  Helios Krosno / Władcy wszechświata / 2026
   Helios Kupiec / Władcy wszechświata / 2026
-  Helios Kędzierzyn-Koźle / Władcy Wszechświata / 2026
+  Helios Kędzierzyn-Koźle / Władcy wszechświata / 2026
   Helios Legnica / Władcy wszechświata / 2026
-  Helios Lubin / Władcy Wszechświata / 2026
+  Helios Lubin / Władcy wszechświata / 2026
   Helios Magnolia Park / Władcy wszechświata / 2026
   Helios Metropolia / Władcy wszechświata / 2026
   Helios Nowy Sącz / Władcy wszechświata / 2026
   Helios Olsztyn / Władcy wszechświata / 2026
-  Helios Ostrów Wlkp. / Władcy Wszechświata / 2026
+  Helios Ostrów Wlkp. / Władcy wszechświata / 2026
   Helios Outlet Park / Władcy wszechświata / 2026
   Helios Posnania / Władcy wszechświata / 2026
   Helios Przemyśl / Władcy wszechświata / 2026
@@ -8354,24 +8443,20 @@ cinemaScrapes:
   Helios Rzeszów / Władcy wszechświata / 2026
   Helios Solaris / Władcy wszechświata / 2026
   Helios Sosnowiec / Władcy wszechświata / —
-  Helios Starachowice / Władcy Wszechświata / 2026
-  Helios Tczew / Władcy Wszechświata / 2026
+  Helios Starachowice / Władcy wszechświata / 2026
+  Helios Tczew / Władcy wszechświata / 2026
   Helios Łódź / Władcy wszechświata / 2026
-  Helios Żory / Władcy Wszechświata / 2026
+  Helios Żory / Władcy wszechświata / 2026
   Kino Centrum / Władcy wszechświata / —
   Kino MOK Centrum / WŁADCY WSZECHŚWIATA / —
   Kino Na Biegunach / Władcy wszechświata / —
   Kino ODEON / Władcy Wszechświata / 2026
-  Kino PCKul / Władcy Wszechświata / 2026
+  Kino PCKul / Władcy wszechświata / —
   Kino Sokół / WŁADCY WSZECHŚWIATA / —
   Kino Zachęta / Władcy Wszechświata / 2026
   Kinomax / Władcy wszechświata / —
   Klaps / Władcy Wszechświata / —
   Max Kino / Władcy Wszechświata / 2026
-  Multikino Czechowice-Dziedzice / Władcy Wszechświata / 2026
-  Multikino Kłodzko / Władcy Wszechświata / 2026
-  Multikino Rumia / Władcy Wszechświata / 2026
-  Multikino Świdnica / Władcy Wszechświata / 2026
   Planet Cinema / Władcy Wszechświata / 2026
   Przedwiośnie / Władcy wszechświata / —
 showings:
@@ -8507,7 +8592,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14534-zawodowcy/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157065
 cinemaScrapes:
-  Centrum / Zawodowcy / 2026
+  Centrum / Zawodowcy / —
   Centrum 3D / Zawodowcy / 2026
   Cinema City Arkadia / Zawodowcy / 2025
   Cinema City Bemowo / Zawodowcy / 2025
@@ -8531,7 +8616,7 @@ cinemaScrapes:
   Cinema City Poznań Plaza / Zawodowcy / 2025
   Cinema City Promenada / Zawodowcy / 2025
   Cinema City Punkt 44 / Zawodowcy / 2025
-  Cinema City Ruda Śląska / Zawodowcy / 2026
+  Cinema City Ruda Śląska / Zawodowcy / 2025
   Cinema City Rybnik / Zawodowcy / 2025
   Cinema City Sadyba / Zawodowcy / 2025
   Cinema City Silesia / Zawodowcy / 2025
@@ -8632,16 +8717,13 @@ cinemaScrapes:
   Kino Świt / Zawodowcy / —
   KinoGram / Zawodowcy / 2026
   Kinomax / Zawodowcy / —
-  Kinoteatr Rondo / Zawodowcy / 2026
+  Kinoteatr Rondo / Zawodowcy / —
   Kinoteka / Zawodowcy / 2026
   Klaps / Zawodowcy / —
   Miejskie Centrum Kultury / Zawodowcy / —
   Mikro Bronowice / Zawodowcy / —
-  Multikino Czechowice-Dziedzice / Zawodowcy / 2026
-  Multikino Kłodzko / Zawodowcy / 2026
-  Multikino Rumia / Zawodowcy / 2026
-  Multikino Świdnica / Zawodowcy / 2026
   Muza / Zawodowcy / —
+  Na Starówce / Zawodowcy / —
   Piast / ZAWODOWCY / —
   Pionier / Zawodowcy / —
   Planet Cinema / Zawodowcy / 2026
@@ -8787,12 +8869,16 @@ cinemaScrapes:
   Helios Kielce / Ścieżki życia / —
   Helios Konin / Ścieżki życia / —
   Helios Koszalin / Ścieżki życia / —
+  Helios Krosno / Ścieżki życia / —
   Helios Kupiec / Ścieżki życia / —
+  Helios Kędzierzyn-Koźle / Ścieżki życia / —
   Helios Legnica / Ścieżki życia / —
+  Helios Lubin / Ścieżki życia / —
   Helios Magnolia Park / Ścieżki życia / —
   Helios Metropolia / Ścieżki życia / —
   Helios Nowy Sącz / Ścieżki życia / —
   Helios Olsztyn / Ścieżki życia / —
+  Helios Ostrów Wlkp. / Ścieżki życia / —
   Helios Outlet Park / Ścieżki życia / —
   Helios Posnania / Ścieżki życia / —
   Helios Przemyśl / Ścieżki życia / —
@@ -8802,7 +8888,10 @@ cinemaScrapes:
   Helios Rzeszów / Ścieżki życia / —
   Helios Solaris / Ścieżki życia / —
   Helios Sosnowiec / Ścieżki życia / —
+  Helios Starachowice / Ścieżki życia / —
+  Helios Tczew / Ścieżki życia / —
   Helios Łódź / Ścieżki życia / —
+  Helios Żory / Ścieżki życia / —
   Kino Awangarda 2 / Ścieżki życia / 2024
   Kinoteatr Rialto / Ścieżki życia / —
 showings:
@@ -8833,6 +8922,7 @@ cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/czlowiek-z-marmuru
 cinemaScrapes:
   Chemik / Człowiek z marmuru / 1976
+  Forum / CZŁOWIEK Z MARMURU / —
   Kino Agrafka / CZŁOWIEK Z MARMURU / —
   Kino Amok / Człowiek z marmuru / —
   Kino Apollo / Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) / —
@@ -8879,7 +8969,6 @@ cinemaFilmUrls:
 cinemaScrapes:
   Cinema City Bonarka / Milcząca przyjaciółka / 2025
   Dolnośląskie Centrum Filmowe / Milcząca przyjaciółka / 2025
-  Forum / Milcząca przyjaciółka / 2025
   Gdyńskie Centrum Filmowe / Milcząca przyjaciółka / —
   KINOMUZEUM / Milcząca przyjaciółka / 2025
   Kino Agrafka / MILCZĄCA PRZYJACIÓŁKA / —
@@ -8894,6 +8983,7 @@ cinemaScrapes:
   Kino Kultura / Milcząca przyjaciółka / —
   Kino Luna / Milcząca przyjaciółka / —
   Kino Malta Charlie Monroe / Milcząca przyjaciółka / —
+  Kino Meduza / Milcząca przyjaciółka / —
   Kino Mikro / Milcząca przyjaciółka / —
   Kino Muranów / Milcząca przyjaciółka / 2025
   Kino Muza / Milcząca przyjaciółka / 2025
@@ -8909,7 +8999,6 @@ cinemaScrapes:
   Kino Spektrum / Milcząca przyjaciółka / —
   Kino Wisła / Milcząca przyjaciółka / 2025
   Kinoteatr Rialto / Milcząca przyjaciółka / —
-  Na Starówce / Milcząca przyjaciółka / 2025
   Patria / Milcząca przyjaciółka / 2025
   Świt / Milcząca przyjaciółka / —
 showings:

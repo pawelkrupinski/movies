@@ -742,7 +742,13 @@ Konferencja, szkolenie, prezentacja, spotkanie biznesowe, walne zgromadzenie, po
     </div> 
     <div class="row offers"> 
      <div class="col-xs-12 col-sm-6 col-md-2"> 
-      <a class="experiences-link" href="/static/pl/pl/blog/dnarodziny-gwiazdy-na-ladies-night-w-cinema-city"> 
+      <a class="experiences-link" href="/static/pl/pl/blog/nowe-kino-Cinema-City-w-Bialej-Podlaskiej-juz-otwarte"> 
+       <div class="darkOverlay"> 
+        <img src="/magnoliaPublic/dam/jcr:52381fae-c5e6-4e82-952f-4098e32b3b5e" class="img-responsive lazyload" data-src="/magnoliaPublic/dam/jcr:52381fae-c5e6-4e82-952f-4098e32b3b5e"> 
+       </div> <p>Nowe kino Cinema City w Białej Podlaskiej już otwarte. Cztery sale, laserowe projektory i ponad 550 miejsc dla widzów</p> </a> 
+     </div> 
+     <div class="col-xs-12 col-sm-6 col-md-2"> 
+      <a class="experiences-link" href="/static/pl/pl/blog/narodziny-gwiazdy-na-ladies-night-w-cinema-city"> 
        <div class="darkOverlay"> 
         <img src="/magnoliaPublic/dam/jcr:d29db14f-e25d-4ee1-9cb5-f298055d785f" class="img-responsive lazyload" data-src="/magnoliaPublic/dam/jcr:d29db14f-e25d-4ee1-9cb5-f298055d785f"> 
        </div> <p>„Narodziny gwiazdy” na Ladies Night w Cinema City</p> </a> 
@@ -770,12 +776,6 @@ Konferencja, szkolenie, prezentacja, spotkanie biznesowe, walne zgromadzenie, po
        <div class="darkOverlay"> 
         <img src="/magnoliaPublic/dam/jcr:47b61248-d0bb-484e-908f-67fdf3534b40" class="img-responsive lazyload" data-src="/magnoliaPublic/dam/jcr:47b61248-d0bb-484e-908f-67fdf3534b40"> 
        </div> <p>Nowy smak popcornu w kinowych barach Cinema City! Spróbuj limitowanego matcha popcornu!</p> </a> 
-     </div> 
-     <div class="col-xs-12 col-sm-6 col-md-2"> 
-      <a class="experiences-link" href="/static/pl/pl/blog/el-clasico-20252026-fc-barcelona-vs-real-madryt-na-zywo-w-cinema-city"> 
-       <div class="darkOverlay"> 
-        <img src="/magnoliaPublic/dam/jcr:79178a9e-c98a-4c83-a3aa-48af4cb4dafc" class="img-responsive lazyload" data-src="/magnoliaPublic/dam/jcr:79178a9e-c98a-4c83-a3aa-48af4cb4dafc"> 
-       </div> <p>El Clasico 2025/2026 FC Barcelona vs Real Madryt na zywo w Cinema City</p> </a> 
      </div> 
     </div> 
     <div class="row"> 

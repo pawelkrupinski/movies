@@ -1,7 +1,7 @@
 package clients.kino_kuznica
 
 import clients.tools.FakeHttpFetch
-import models.{KinoFarys, KinoKuznica}
+import models.{KinoFarys, KinoKuznica, KinoPckulKino}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -52,5 +52,16 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
     farys.map(_.cinema).toSet shouldBe Set(KinoFarys)
     val film = farys.find(_.movie.title.toLowerCase.contains("willow")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 12, 15, 0))
+  }
+
+  // ── Alternate div.event-item skin (Kino PCKul, Pszczyna) ────────────────────
+  private val pckul =
+    new SystemBiletowyClient(new FakeHttpFetch("kino-pckul"), "https://bilety.pckul.pl", KinoPckulKino).fetch()
+
+  "SystemBiletowyClient (alt skin)" should "parse the div.event-item Bootstrap skin" in {
+    pckul should not be empty
+    pckul.map(_.cinema).toSet shouldBe Set(KinoPckulKino)
+    val film = pckul.find(_.movie.title.toLowerCase.contains("mumbo jumbo")).value
+    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 10, 13, 30))
   }
 }

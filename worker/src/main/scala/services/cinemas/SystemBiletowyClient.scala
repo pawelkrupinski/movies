@@ -44,7 +44,7 @@ object SystemBiletowyClient {
   def parse(html: String, cinema: Cinema, baseUrl: String): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(html, baseUrl)
 
-    val slots = doc.select("table.tbl_repertoire tr").asScala.toSeq.flatMap { tr =>
+    val tblSlots = doc.select("table.tbl_repertoire tr").asScala.toSeq.flatMap { tr =>
       // Only rows that are a real screening carry a repertoire/booking link.
       if (tr.selectFirst("a[href*=repertoire.html]") == null) None
       else for {
@@ -63,7 +63,28 @@ object SystemBiletowyClient {
       )
     }
 
-    slots.groupBy(_.title).toSeq.flatMap { case (title, group) =>
+    // Alternate Bootstrap-grid skin (Pszczyna, Żory, Oświęcim): one
+    // `div.event-item` per screening, with the Polish full date + time mashed
+    // into `div.date` ("… 10 czerwca 2026 … godz. 13:30") and the title/booking
+    // in `div.title a`.
+    val altSlots = doc.select("div.event-item:has(a[href*=repertoire.html])").asScala.toSeq.flatMap { item =>
+      for {
+        titleEl <- Option(item.selectFirst("div.title a"))
+        title    = cleanTitle(titleEl.text) if title.nonEmpty
+        dateText <- Option(item.selectFirst("div.date")).map(_.text)
+        d       <- DatePat.findFirstMatchIn(dateText)
+        month   <- ScraperParse.PolishMonths.get(d.group(2).toLowerCase)
+        time    <- ScraperParse.parseHHmm(dateText)
+        dt      <- Try(LocalDateTime.of(d.group(3).toInt, month, d.group(1).toInt, time.getHour, time.getMinute)).toOption
+      } yield RawSlot(
+        title    = title,
+        dateTime = dt,
+        booking  = Option(titleEl.attr("abs:href")).filter(_.nonEmpty)
+      )
+    }
+
+    (tblSlots ++ altSlots).distinctBy(s => (s.title, s.dateTime, s.booking))
+      .groupBy(_.title).toSeq.flatMap { case (title, group) =>
       val showtimes = group
         .map(s => Showtime(s.dateTime, s.booking))
         .distinctBy(s => (s.dateTime, s.bookingUrl))
