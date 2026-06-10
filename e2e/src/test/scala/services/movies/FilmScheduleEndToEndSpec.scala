@@ -325,6 +325,17 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       fail(s"Snapshot didn't exist — wrote ${snapshotPath}. Review the contents, commit, and re-run.")
     }
     val expected = new String(Files.readAllBytes(snapshotPath), StandardCharsets.UTF_8)
+    if (actual != expected) {
+      val expLines = expected.split("\n", -1)
+      val actLines = actual.split("\n", -1)
+      info(s"SNAPDIAG2 sorted-equal=${expLines.sorted.sameElements(actLines.sorted)} expLines=${expLines.length} actLines=${actLines.length}")
+      val diffs = expLines.zipAll(actLines, "<none>", "<none>").zipWithIndex.collect { case ((e, a), i) if e != a => i }
+      info(s"SNAPDIAG2 totalDiffLines=${diffs.length} firstDiffIdx=${diffs.headOption.getOrElse(-1)}")
+      diffs.take(8).foreach { i =>
+        val film = expLines.take(i + 1).reverseIterator.find(_.startsWith("=== ")).getOrElse("?")
+        info(s"SNAPDIAG2 L$i film='$film' EXP=${if (i < expLines.length) expLines(i) else "<none>"} ACT=${if (i < actLines.length) actLines(i) else "<none>"}")
+      }
+    }
     withClue(
       s"Whole-corpus snapshot mismatch. To regenerate after an intentional change:\n" +
         s"  rm $snapshotPath && sbt 'e2e/testOnly services.movies.FilmScheduleEndToEndSpec'\n"
