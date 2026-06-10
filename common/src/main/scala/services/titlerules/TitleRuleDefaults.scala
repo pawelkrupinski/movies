@@ -149,6 +149,8 @@ object TitleRuleDefaults {
     TitleRule("apollo-przedpremierowy", PerCinema, Some("kino-apollo"),
       """ - seans przedpremierowy$""", "", applyAll = false, order = 20,
       note = Some("Kino Apollo pre-premiere suffix"))
+    // MSI format-tag stripping is NOT a per-cinema rule: it's a cross-client
+    // concern shared across the portal clients via ScraperParse.stripFormatTags.
   )
 
   val all: Seq[TitleRule] = structural ++ search ++ canonical ++ perCinema

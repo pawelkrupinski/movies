@@ -84,7 +84,8 @@ object MsiClient {
    *    "STRASZNY FILM - NAPISY"     → "Straszny film"
    *    "90. URODZINY PAVAROTTIEGO (2D NAPISY)" → "90. Urodziny pavarottiego"
    *  (Tag stripping is shared with the other portal clients via
-   *  `ScraperParse.stripFormatTags`.) */
+   *  `ScraperParse.stripFormatTags` — not migrated to a per-cinema rule, since
+   *  it's a cross-client concern, not MSI-specific.) */
   private[cinemas] def cleanTitle(raw: String): String =
     ScraperParse.sentenceCase(ScraperParse.stripFormatTags(raw))
 }

@@ -47,7 +47,7 @@ private[cinemas] object MsiScraper {
 
   private val EventTimePat = """(\d{1,2})\s+(\w+)\s+(\d{2}):(\d{2})""".r
 
-  private[cinemas] case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String])
+  private[cinemas] case class RawSlot(title: String, rawTitle: String, dateTime: LocalDateTime, booking: Option[String])
 
   /**
    * Parse one MSI month page with full year context.  Returns one `RawSlot`
@@ -82,7 +82,7 @@ private[cinemas] object MsiScraper {
             val text    = a.text.trim
             val href    = a.attr("abs:href")
             val booking = if (href.nonEmpty) Some(href) else None
-            parseEventTime(text, yearMonth).map { dt => RawSlot(title, dt, booking) }
+            parseEventTime(text, yearMonth).map { dt => RawSlot(title, rawTitle, dt, booking) }
           }
         }
       }
@@ -117,7 +117,7 @@ private[cinemas] object MsiScraper {
           .sortBy(_.dateTime)
         if (showtimes.isEmpty) None
         else Some(CinemaMovie(
-          movie     = Movie(title),
+          movie     = Movie(title, rawTitle = group.map(_.rawTitle).headOption),
           cinema    = cinema,
           posterUrl = None,
           filmUrl   = None,
