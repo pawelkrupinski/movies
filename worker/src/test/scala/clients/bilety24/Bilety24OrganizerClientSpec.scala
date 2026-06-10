@@ -30,7 +30,15 @@ class Bilety24OrganizerClientSpec
     ("Kino Światowid", "kino-swiatowid", "https://www.bilety24.pl/kino/organizator/kino-swiatowid-1503",
       KinoSwiatowid, "erupcja", LocalDateTime.of(2026, 6, 10, 16, 15)),
     ("Kino Elektronik", "kino-elektronik", "https://www.bilety24.pl/kino/organizator/kino-elektronik-631",
-      KinoElektronik, "kumotry", LocalDateTime.of(2026, 6, 12, 18, 15))
+      KinoElektronik, "kumotry", LocalDateTime.of(2026, 6, 12, 18, 15)),
+    ("Kino CK Jędrzejów", "kino-ck", "https://www.bilety24.pl/kino/organizator/centrum-kultury-w-jedrzejowie-1458",
+      KinoCK, "toy story 5", LocalDateTime.of(2026, 6, 19, 15, 0)),
+    ("Kino Metalowiec Kraśnik", "kino-metalowiec", "https://www.bilety24.pl/kino/organizator/centrum-kultury-i-promocji-w-krasniku-1529",
+      KinoMetalowiec, "mandalorian i grogu", LocalDateTime.of(2026, 6, 12, 17, 0)),
+    ("Kino Sokolnia Słupca", "kino-sokolnia", "https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-w-slupcy-1423",
+      KinoSokolnia, "dzień objawienia", LocalDateTime.of(2026, 6, 12, 19, 0)),
+    ("Kino Krapkowice", "kino-krapkowice", "https://www.bilety24.pl/kino/organizator/krapkowicki-dom-kultury-1244",
+      KinoKrapkowice, "drzewo magii", LocalDateTime.of(2026, 6, 12, 17, 0))
   )
 
   forAll(venues) { (label, dir, url, cinema, titleSub, when) =>

@@ -1,7 +1,7 @@
 package clients.kino_kuznica
 
 import clients.tools.FakeHttpFetch
-import models.KinoKuznica
+import models.{KinoFarys, KinoKuznica}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -41,5 +41,16 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
 
   it should "carry a per-screening booking link" in {
     movies.flatMap(_.showtimes).flatMap(_.bookingUrl).head should include("repertoire.html?id=")
+  }
+
+  // ── Kino Farys (Biecz, the kfb.systembiletowy.pl instance) ──────────────────
+  private val farys =
+    new SystemBiletowyClient(new FakeHttpFetch("kino-farys"), "https://kfb.systembiletowy.pl", KinoFarys).fetch()
+
+  "SystemBiletowyClient (Farys)" should "parse the Biecz instance off the same client" in {
+    farys should not be empty
+    farys.map(_.cinema).toSet shouldBe Set(KinoFarys)
+    val film = farys.find(_.movie.title.toLowerCase.contains("willow")).value
+    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 12, 15, 0))
   }
 }

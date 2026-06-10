@@ -58,5 +58,14 @@ object RecordGapCinemas {
     report("Kino MOK Nowa Ruda")(new MsiClient(rec("kino-mok-nowa-ruda"), "https://bilety.nowaruda.pl", KinoMOKNowaRuda).fetch().size)
     report("Kino Warszawa (Przeworsk)")(new MsiClient(rec("kino-warszawa-przeworsk"), "https://bilety-kino.przeworsk.um.gov.pl", KinoWarszawa).fetch().size)
     report("Kino Powiśle (Sztum)")(new MsiClient(rec("kino-powisle-sztum"), "https://kinosztumbilety.pl", KinoPowisle).fetch().size)
+    // ── Wave 3: more Filmweb-dropped venues, on existing platform clients ──
+    report("Kino Centrum (Skarżysko)")(new MsiClient(rec("kino-centrum-skarzysko"), "https://bilet-mck.skarzysko.pl", KinoCentrumSkarzyskoKamienna).fetch().size)
+    report("Nowe Kino Warszawa (Gostynin)")(new MsiClient(rec("nowe-kino-warszawa"), "https://bilety.mck-gostynin.pl", KinoNoweKinoWarszawa).fetch().size)
+    report("Farys (Biecz)")(new SystemBiletowyClient(rec("kino-farys"), "https://kfb.systembiletowy.pl", KinoFarys).fetch().size)
+    val b24 = "https://www.bilety24.pl/kino/organizator"
+    report("Kino CK (Jędrzejów)")(new Bilety24OrganizerClient(rec("kino-ck"), s"$b24/centrum-kultury-w-jedrzejowie-1458", KinoCK).fetch().size)
+    report("Metalowiec (Kraśnik)")(new Bilety24OrganizerClient(rec("kino-metalowiec"), s"$b24/centrum-kultury-i-promocji-w-krasniku-1529", KinoMetalowiec).fetch().size)
+    report("Kino Sokolnia (Słupca)")(new Bilety24OrganizerClient(rec("kino-sokolnia"), s"$b24/miejski-dom-kultury-w-slupcy-1423", KinoSokolnia).fetch().size)
+    report("Kino Krapkowice")(new Bilety24OrganizerClient(rec("kino-krapkowice"), s"$b24/krapkowicki-dom-kultury-1244", KinoKrapkowice).fetch().size)
   }
 }
