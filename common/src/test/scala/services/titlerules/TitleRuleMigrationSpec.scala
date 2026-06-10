@@ -89,6 +89,12 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
       name.stripPrefix("Ladies Night - ")
         .stripSuffix(" - powrót do kin")
         .replaceFirst("^Kolekcja\\s+Mamoru\\s+Hosody:\\s*", "")
+
+    // Per-cinema: Multikino (verbatim from MultikinoParser.cleanTitle, pre-rules).
+    def multikino(filmTitle: String): String =
+      filmTitle
+        .replaceFirst("^Kino na obcasach:\\s*", "")
+        .replaceFirst("^Kolekcja\\s+Mamoru\\s+Hosody:\\s*", "")
   }
 
   // Corpus exercising every pattern + plain titles that must NOT be touched.
@@ -161,6 +167,20 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
     cinemaCityCorpus.foreach { t =>
       withClue(s"perCinema('cinema-city', '$t'): ")(
         rs.perCinema("cinema-city", t) shouldBe Legacy.cinemaCity(t))
+    }
+  }
+
+  private val multikinoCorpus = Seq(
+    "Kino na obcasach: Anora",
+    "Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas",
+    "Top Gun: Maverick",          // untouched (real colon title)
+    "Mufasa: Król Lew"            // untouched
+  )
+
+  "the multikino per-cinema rules" should "match the frozen legacy MultikinoParser.cleanTitle" in {
+    multikinoCorpus.foreach { t =>
+      withClue(s"perCinema('multikino', '$t'): ")(
+        rs.perCinema("multikino", t) shouldBe Legacy.multikino(t))
     }
   }
 }

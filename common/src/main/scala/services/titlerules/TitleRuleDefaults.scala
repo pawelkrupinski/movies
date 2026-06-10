@@ -89,7 +89,14 @@ object TitleRuleDefaults {
       note = Some("Cinema City re-release suffix")),
     TitleRule("cc-mamoru-hosody", PerCinema, Some("cinema-city"),
       """^Kolekcja\s+Mamoru\s+Hosody:\s*""", "", applyAll = false, order = 30,
-      note = Some("Cinema City anime-retrospective prefix"))
+      note = Some("Cinema City anime-retrospective prefix")),
+    // Multikino (chain) — "Kino na obcasach: X", "Kolekcja Mamoru Hosody: X".
+    TitleRule("mk-kino-na-obcasach", PerCinema, Some("multikino"),
+      """^Kino na obcasach:\s*""", "", applyAll = false, order = 10,
+      note = Some("Multikino ladies' programme prefix")),
+    TitleRule("mk-mamoru-hosody", PerCinema, Some("multikino"),
+      """^Kolekcja\s+Mamoru\s+Hosody:\s*""", "", applyAll = false, order = 20,
+      note = Some("Multikino anime-retrospective prefix"))
   )
 
   val all: Seq[TitleRule] = structural ++ search ++ canonical ++ perCinema

@@ -27,13 +27,14 @@ object MultikinoParser {
    *  retrospective). The underlying films are widely-released titles other
    *  cinemas list bare; leaving the prefix on produces a Multikino-only
    *  variant TMDB / Filmweb queries can't find. Public for direct unit tests. */
+  // Cycle-decoration stripping now lives in the editable "multikino" rules (see
+  // TitleRuleDefaults); this delegates so it stays unit-testable here.
   def cleanTitle(filmTitle: String): String =
-    filmTitle
-      .replaceFirst("^Kino na obcasach:\\s*", "")
-      .replaceFirst("^Kolekcja\\s+Mamoru\\s+Hosody:\\s*", "")
+    services.movies.TitleNormalizer.cinemaClean("multikino", filmTitle)
 
   private def parseFilm(film: JsValue, cinema: Cinema): CinemaMovie = {
-    val title       = normaliseCase(cleanTitle((film \ "filmTitle").as[String]))
+    val rawFilmTitle = (film \ "filmTitle").as[String]
+    val title        = normaliseCase(cleanTitle(rawFilmTitle))
     val multikinoId = (film \ "filmId").asOpt[String].filter(_.nonEmpty)
     val mxcId       = (film \ "movieXchangeCode").asOpt[String].filter(_.nonEmpty)
     val sessions    = (film \ "showingGroups").asOpt[JsArray].map(_.value).getOrElse(Seq.empty)
@@ -41,6 +42,7 @@ object MultikinoParser {
     CinemaMovie(
       movie       = Movie(
         title          = title,
+        rawTitle       = Some(rawFilmTitle),
         runtimeMinutes = (film \ "runningTime").asOpt[Int],
         // `releaseDate` from Multikino's API is the Polish theatrical (re-)
         // release date, not the film's production year — e.g. "Zawieście
