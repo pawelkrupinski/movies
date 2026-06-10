@@ -185,6 +185,58 @@ groups:
                   reducer: { type: last, params: [] }
               refId: C
 
+      # ---- Disk space low (the 2026-06-10 Mongo disk-full crash) -----------
+      # A persistent Fly volume filling up. The 2026-06-10 outage was the
+      # kinowo-mongo /data/db volume at ~92% full: mongod's FTDC thread could no
+      # longer write metrics.interim.temp, aborted (SIGABRT, exit 134), and the
+      # crash-loop took web down with it (the blocking boot dependency). This
+      # was only visible via `df` on the box — nothing alerted on it. Covers
+      # every attached data volume (Mongo /data/db, Grafana's own /var/lib/
+      # grafana); the web app has no persistent volume so it never produces a
+      # series here. fraction-used = 1 - blocks_avail/blocks, which counts the
+      # root-reserved blocks as used and so reads a touch higher than `df` Use%
+      # — conservative on purpose. The Mongo volume sits ~50% at steady state
+      # (the 990MB oplog cap + journal + tiny dataset on a 3GB volume), so 80%
+      # is genuine headroom-gone with days of runway, not noise.
+      - uid: kinowo-disk-space-low
+        title: Disk space low (persistent volume)
+        condition: C
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $labels.app }} volume {{ $labels.mount }} is > 80% full'
+          description: 'fly_instance_filesystem on {{ $labels.app }} ({{ $labels.instance }}) mount {{ $labels.mount }} is > 80% used for 15m. A full data volume is what crashed kinowo-mongo on 2026-06-10 (FTDC write failure -> SIGABRT -> web cascade). Extend the volume (`flyctl volumes extend <id> --size N -a {{ $labels.app }}`, then stop/start the machine) or prune /data/db.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max by (app, instance, mount) (1 - fly_instance_filesystem_blocks_avail{mount=~"/data/db|/var/lib/grafana"} / fly_instance_filesystem_blocks{mount=~"/data/db|/var/lib/grafana"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.8] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
   - orgId: 1
     name: fly-serving
     folder: Fly Alerts

@@ -13,7 +13,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IMG="$(grep -m1 '^FROM ' "$DIR/Dockerfile" | awk '{print $2}')"
 NAME="kinowo-grafana-smoke"
 PORT="${SMOKE_PORT:-3999}"
-EXPECTED_RULES=7
+EXPECTED_RULES=8
 
 # Mount a FRESH copy, not the source tree directly: Docker Desktop's macOS
 # bind-mount cache can keep serving a file's pre-edit bytes after you edit it,
@@ -64,6 +64,10 @@ assert "all $EXPECTED_RULES alert rules provisioned" \
 assert "serving-down rule alarms on NoData" \
   "api/v1/provisioning/alert-rules" \
   "any(r['uid']=='kinowo-serving-down' and r.get('noDataState')=='Alerting' for r in d)"
+
+assert "disk-space-low rule provisioned with 0.8 threshold" \
+  "api/v1/provisioning/alert-rules" \
+  "any(r['uid']=='kinowo-disk-space-low' and any(c['model']['conditions'][0]['evaluator']['params']==[0.8] for c in r['data'] if c['refId']=='C') for r in d)"
 
 assert "Telegram contact point provisioned" \
   "api/v1/provisioning/contact-points" \
