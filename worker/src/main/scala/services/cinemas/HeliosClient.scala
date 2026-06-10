@@ -28,6 +28,7 @@ class HeliosClient(
 ) extends CinemaScraper {
 
   override val cinema: Cinema = cfg.cinema
+  override def chain: Boolean = true
   private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   private val sourceId   = cfg.sourceId

@@ -45,6 +45,14 @@ trait CinemaScraper {
    *  ceiling, so the fixture-replay test wiring can still force a single
    *  no-retry attempt for every cinema. */
   def maxFetchAttempts: Int = 3
+
+  /** Whether this scraper is a *chain* (Cinema City, Helios, Multikino) rather
+   *  than a single independent venue. Chains are excluded from the Filmweb
+   *  fallback (`FallbackEligibility`): they're large, reliably-fed networks
+   *  whose own API is the source of truth, and Filmweb's per-cinema feed
+   *  doesn't model them venue-for-venue. Defaults to false — every ordinary
+   *  single-venue scraper is fallback-eligible. */
+  def chain: Boolean = false
 }
 
 object CinemaScraper {
@@ -82,4 +90,5 @@ class CinemaCityScraper(
   override def detailTarget: Source = CinemaCityChain
   override def enrichmentServiceOverride: Option[String] = Some("Cinema City Enrichment")
   override def fetchFilmDetail(ref: String): Option[FilmDetail] = client.fetchFilmDetail(ref)
+  override def chain: Boolean = true
 }
