@@ -7,7 +7,7 @@ import services.{MongoConnection, UptimeMonitor}
 import services.auth.{AppleTokenValidator, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, OauthProvider}
 import services.events.{EventBus, InProcessEventBus}
 import services.fallback.{FilmwebFallbackStore, MongoFilmwebFallbackStore}
-import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo}
+import services.movies.{CaffeineMovieCache, MongoMovieRepo, MongoNormalizationReportRepo, MovieRepo, NormalizationReportRepo}
 import services.tasks.{MongoTaskQueue, TaskQueue}
 import services.titlerules.{MongoTitleRulesRepo, TitleRulesCache, TitleRulesRepo}
 import services.users.{AccountDeletion, CachingUserRepo, CachingUserStateRepo, MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
@@ -64,6 +64,9 @@ trait Wiring {
   // an admin edit takes effect here without a redeploy.
   lazy val titleRulesRepo: TitleRulesRepo = new MongoTitleRulesRepo(mongoConnection.database, fallbackToOwnInit = false)
   lazy val titleRulesCache: TitleRulesCache = new TitleRulesCache(titleRulesRepo, seedIfEmpty = false)
+  // The worker writes the backfill outcome here; the editor reads it.
+  lazy val normalizationReportRepo: NormalizationReportRepo =
+    new MongoNormalizationReportRepo(mongoConnection.database, fallbackToOwnInit = false)
 
   // Reads come straight from the cache; enrichment happens in the worker
   // process on its continuous pass.
@@ -128,7 +131,7 @@ trait Wiring {
   lazy val adminAllowlist: Set[String] =
     Env.get("ADMIN_ALLOWLIST").map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet).getOrElse(Set.empty)
   lazy val adminTitleRulesController =
-    new AdminTitleRulesController(controllerComponents, titleRulesRepo, movieCache, adminAllowlist)
+    new AdminTitleRulesController(controllerComponents, titleRulesRepo, movieCache, normalizationReportRepo, adminAllowlist)
 
   // Start the data layer. Force the Mongo connection at boot (so connection
   // errors surface in the boot timeline, not mid-request), then start the cache

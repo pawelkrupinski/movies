@@ -2,7 +2,7 @@ package controllers
 
 import play.api.libs.json._
 import play.api.mvc._
-import services.movies.{MovieCache, RuleMergePreview, TitleNormalizer}
+import services.movies.{MovieCache, NormalizationReportRepo, RuleMergePreview, TitleNormalizer}
 import services.titlerules.{RuleScope, TitleRule, TitleRuleSet, TitleRulesRepo}
 
 import java.util.UUID
@@ -19,6 +19,7 @@ class AdminTitleRulesController(
   cc:             ControllerComponents,
   titleRulesRepo: TitleRulesRepo,
   movieCache:     MovieCache,
+  reportRepo:     NormalizationReportRepo,
   adminAllowlist: Set[String]
 ) extends AbstractController(cc) {
 
@@ -47,6 +48,21 @@ class AdminTitleRulesController(
           case Right(rule) =>
             if (!rule.patternValid) BadRequest(Json.obj("error" -> s"Invalid regex: ${rule.pattern}"))
             else { titleRulesRepo.upsert(rule); Ok(ruleToJson(rule)) }
+        }
+    }
+  }
+
+  /** The realized outcome of the last rule-change backfill (written by the
+   *  worker) — "what actually got merged / split / re-enriched". */
+  def report(): Action[AnyContent] = Action { request =>
+    authed(request) match {
+      case Left(deny) => deny
+      case Right(_) =>
+        reportRepo.readLatest() match {
+          case None => Ok(Json.obj("empty" -> true))
+          case Some(r) => Ok(Json.obj(
+            "atEpochMs" -> r.atEpochMs, "merges" -> r.merges,
+            "splits" -> r.splits, "reEnriched" -> r.reEnriched))
         }
     }
   }

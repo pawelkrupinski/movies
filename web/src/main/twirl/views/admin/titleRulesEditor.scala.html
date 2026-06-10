@@ -32,6 +32,9 @@
   <div id="tables"></div>
   <div id="preview"><span class="muted">Preview not run yet.</span></div>
 
+  <h2>Last backfill outcome</h2>
+  <div id="report"><span class="muted">Loading…</span></div>
+
   <script type="application/json" id="seed">@play.twirl.api.Html(
     play.api.libs.json.Json.stringify(play.api.libs.json.JsArray(
       rules.map(controllers.AdminTitleRulesController.ruleToJson))))</script>
@@ -122,7 +125,27 @@
     }
     function esc(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
 
+    async function loadReport() {
+      const box = document.getElementById("report");
+      try {
+        const res = await fetch("/admin/title-rules/report");
+        const r = await res.json();
+        if (r.empty) { box.innerHTML = "<span class='muted'>No backfill has run yet.</span>"; return; }
+        const parts = ["<div class='muted'>at " + new Date(r.atEpochMs).toLocaleString() + " — " + r.reEnriched + " row(s) re-enriched</div>"];
+        (r.merges||[]).forEach(m => parts.push("<div class='merge'>merged: " + esc(m) + "</div>"));
+        (r.splits||[]).forEach(s => parts.push("<div class='merge'>split: " + esc(s) + "</div>"));
+        if (!(r.merges||[]).length && !(r.splits||[]).length) parts.push("<span class='muted'>No merges or splits.</span>");
+        box.innerHTML = parts.join("");
+      } catch (e) { box.innerHTML = "<span class='muted'>Report unavailable.</span>"; }
+    }
+
+    // Saving a rule triggers the worker backfill asynchronously; poll the report
+    // a few seconds later so the user sees the realized outcome.
+    const _save = saveRule;
+    saveRule = async (r) => { await _save(r); setTimeout(loadReport, 4000); };
+
     render();
+    loadReport();
   </script>
 </body>
 </html>

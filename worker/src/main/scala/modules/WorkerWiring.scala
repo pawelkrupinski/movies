@@ -9,7 +9,7 @@ import services.enrichment._
 import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
 import services.events.{EventBus, InProcessEventBus, MovieRecordCreated}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
-import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, NormalizationRebuilder, UnscreenedCleanup}
+import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, MongoNormalizationReportRepo, NormalizationRebuilder, NormalizationReport, NormalizationReportRepo, UnscreenedCleanup}
 import services.tasks.{DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, RatingEnqueuer, RatingHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker}
 import services.titlerules.{MongoTitleRulesRepo, TitleRuleSet, TitleRulesCache, TitleRulesRepo}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
@@ -196,17 +196,22 @@ class WorkerWiring {
   // retroactively, not just to future scrapes.
   lazy val normalizationRebuilder = new NormalizationRebuilder(movieCache,
     onSplitOff = (title, year) => eventBus.publish(MovieRecordCreated(title, year)))
+  lazy val normalizationReportRepo: NormalizationReportRepo =
+    new MongoNormalizationReportRepo(mongoConnection.database, fallbackToOwnInit = false)
   lazy val titleRulesRepo: TitleRulesRepo = new MongoTitleRulesRepo(mongoConnection.database, fallbackToOwnInit = false)
   lazy val titleRulesCache: TitleRulesCache =
     new TitleRulesCache(titleRulesRepo, seedIfEmpty = true,
       onRulesChanged = (oldRules, newRules) => {
         // Merge-key changes (per-cinema / structural / canonical) → re-merge /
         // un-merge existing rows.
-        normalizationRebuilder.rebuild()
+        val result = normalizationRebuilder.rebuild()
         // Search-tier changes → re-resolve the rows whose upstream query moved.
-        normalizationRebuilder.reEnrichSearchChanges(
+        val reEnriched = normalizationRebuilder.reEnrichSearchChanges(
           TitleRuleSet(oldRules), TitleRuleSet(newRules),
           (title, year) => eventBus.publish(MovieRecordCreated(title, year)))
+        // Publish the realized outcome so the admin editor can show what happened.
+        normalizationReportRepo.writeLatest(
+          NormalizationReport.render(result, reEnriched, System.currentTimeMillis()))
       })
 
   lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, backgroundBudget.ec("IMDb-stage"))

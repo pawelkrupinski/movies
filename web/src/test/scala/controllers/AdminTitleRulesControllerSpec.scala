@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.movies.{CaffeineMovieCache, MovieRepo}
+import services.movies.{CaffeineMovieCache, InMemoryNormalizationReportRepo, MovieRepo, NormalizationReport, NormalizationRebuilder}
 import services.titlerules.{InMemoryTitleRulesRepo, RuleScope, TitleRule}
 
 /**
@@ -28,8 +28,9 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
   private def cache = new CaffeineMovieCache(emptyRepo)
 
   private def controller(repo: InMemoryTitleRulesRepo = new InMemoryTitleRulesRepo(),
-                         allow: Set[String] = Set("admin1")) =
-    new AdminTitleRulesController(Helpers.stubControllerComponents(), repo, cache, allow)
+                         allow: Set[String] = Set("admin1"),
+                         reports: InMemoryNormalizationReportRepo = new InMemoryNormalizationReportRepo()) =
+    new AdminTitleRulesController(Helpers.stubControllerComponents(), repo, cache, reports, allow)
 
   private val adminSession = FakeRequest().withSession("userId" -> "admin1")
 
@@ -89,6 +90,24 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     val result = controller().preview().apply(jsonReq(session = true, body))
     status(result) shouldBe OK
     (contentAsJson(result) \ "newMergeCount").as[Int] shouldBe 0
+  }
+
+  "report" should "surface the latest backfill outcome" in {
+    val reports = new InMemoryNormalizationReportRepo()
+    reports.writeLatest(NormalizationReport.render(
+      NormalizationRebuilder.RebuildResult(1,
+        Seq(NormalizationRebuilder.MergeEvent("Anora", Some(2024), Seq("Anora", "Ladies Night - Anora"))),
+        Seq.empty),
+      reEnriched = 2, atEpochMs = 1000L))
+    val result = controller(reports = reports).report().apply(adminSession)
+    status(result) shouldBe OK
+    val js = contentAsJson(result)
+    (js \ "reEnriched").as[Int] shouldBe 2
+    (js \ "merges").as[Seq[String]].head should include ("Anora")
+  }
+
+  it should "401 the report for an anonymous request" in {
+    status(controller().report().apply(FakeRequest())) shouldBe UNAUTHORIZED
   }
 
   "ruleFromJson / ruleToJson" should "round-trip" in {

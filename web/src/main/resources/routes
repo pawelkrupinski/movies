@@ -103,6 +103,7 @@ POST    /admin/title-rules               controllers.AdminTitleRulesController.s
 POST    /admin/title-rules/delete        controllers.AdminTitleRulesController.delete()
 + nocsrf
 POST    /admin/title-rules/preview       controllers.AdminTitleRulesController.preview()
+GET     /admin/title-rules/report        controllers.AdminTitleRulesController.report()
 
 # ── robots.txt ────────────────────────────────────────────────────────────────
 # Returning a 404 on /robots.txt confused Facebook's link-preview scraper
