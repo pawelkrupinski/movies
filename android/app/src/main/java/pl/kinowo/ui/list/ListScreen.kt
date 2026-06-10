@@ -201,27 +201,15 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
         // grid above the nav bar. (DetailScreen's Scaffold handles its own insets.)
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
             // ── top chrome ────────────────────────────────────────────────────
-            Row(
-                Modifier.fillMaxWidth().padding(start = 10.dp, end = 4.dp, top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("🎬", fontSize = 22.sp)
-                // The date pills always spread to fill the row; on wide screens
-                // the inline search field sits between them and Filtry, capped
-                // at a fixed width rather than eating the leftover space.
-                DatePills(wide, highlighted = previewDay, onSelect = { vm.dateFilter = it })
-                if (wide) {
-                    InlineSearchField(value = vm.search, onValueChange = { vm.search = it })
-                }
-                IconButton(onClick = { showFilters = true }) {
-                    Icon(
-                        Icons.Outlined.FilterList,
-                        contentDescription = "Filtry",
-                        tint = if (vm.filtersActive(vm.allCinemas(films))) Brand else TextSecondary,
-                    )
-                }
-            }
+            DateBar(
+                wide = wide,
+                highlighted = previewDay,
+                filtersActive = vm.filtersActive(vm.allCinemas(films)),
+                search = vm.search,
+                onSearch = { vm.search = it },
+                onSelect = { vm.dateFilter = it },
+                onOpenFilters = { showFilters = true },
+            )
 
             // ── content ───────────────────────────────────────────────────────
             // The search field floats over the grid as a bottom capsule
@@ -462,30 +450,74 @@ private fun RowScope.SearchFieldContent(value: String, onValueChange: (String) -
     }
 }
 
+// The top-bar chrome: the 🎬 mark, the four date pills, the inline search
+// field (wide screens only), and the Filtry button — all on one row. Extracted
+// so DayPillFitTest can render it at a fixed viewport width and assert the day
+// labels never clip. [filtersActive] tints the Filtry icon; [highlighted] drives
+// which date pill reads as selected (see DatePills).
+@Composable
+internal fun DateBar(
+    wide: Boolean,
+    highlighted: DateFilter,
+    filtersActive: Boolean,
+    search: String,
+    onSearch: (String) -> Unit,
+    onSelect: (DateFilter) -> Unit,
+    onOpenFilters: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(start = 10.dp, end = 4.dp, top = 8.dp),
+        // Narrow phones tighten the inter-item gap so the four intrinsic-width
+        // pills + 🎬 + Filtry fit the row without clipping (see DatePill).
+        horizontalArrangement = Arrangement.spacedBy(if (wide) 6.dp else 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("🎬", fontSize = 22.sp)
+        // The date pills spread to fill the row on wide screens; on narrow ones
+        // they keep their intrinsic width (see DatePill) and this spacer pushes
+        // the Filtry button flush to the right edge, where it sits on wide
+        // screens too once the pills have eaten the leftover width.
+        DatePills(wide, highlighted = highlighted, onSelect = onSelect)
+        if (wide) {
+            InlineSearchField(value = search, onValueChange = onSearch)
+        } else {
+            Spacer(Modifier.weight(1f))
+        }
+        IconButton(onClick = onOpenFilters) {
+            Icon(
+                Icons.Outlined.FilterList,
+                contentDescription = "Filtry",
+                tint = if (filtersActive) Brand else TextSecondary,
+            )
+        }
+    }
+}
+
 // The four date presets, laid out inline in the top bar (mirroring iOS
 // DatePillsRow). On wide screens all four pills share the row width equally
 // via `weight` — including "Wszystkie" — so they read as one evenly-spaced
-// segmented control. On narrow screens only the three short pills (Dziś /
-// Jutro / 7 dni) get weight while "Wszystkie" keeps its intrinsic width, so
-// the row still fits beside the 🎬 mark and Filtry icon without a separate
-// strip or horizontal scrolling. See TopBarLayout.datePillFillsRow.
+// segmented control. On narrow screens (portrait phones) every pill keeps its
+// intrinsic width instead, so a label can't be squeezed below its text and
+// clip; the pills pack left and DateBar's spacer pushes Filtry flush-right. See
+// TopBarLayout.datePillFillsRow.
 // [highlighted] drives which pill reads as selected — it tracks vm.dateFilter at
 // rest but flips to the swipe-preview day mid-drag (see ListScreen.previewDay).
 // A TAP still sets vm.dateFilter directly, which becomes the new highlight.
 @Composable
 private fun RowScope.DatePills(wide: Boolean, highlighted: DateFilter, onSelect: (DateFilter) -> Unit) {
     for (preset in DateFilter.presets) {
-        val fills = TopBarLayout.datePillFillsRow(preset == DateFilter.Anytime, wide)
+        val fills = TopBarLayout.datePillFillsRow(wide)
         DatePill(
             label = preset.label,
             selected = highlighted == preset,
+            wide = wide,
             modifier = if (fills) Modifier.weight(1f) else Modifier,
         ) { onSelect(preset) }
     }
 }
 
 @Composable
-private fun DatePill(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun DatePill(label: String, selected: Boolean, wide: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
         modifier
             .clip(CircleShape)
@@ -494,7 +526,10 @@ private fun DatePill(label: String, selected: Boolean, modifier: Modifier = Modi
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
             ) { onClick() }
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+            // Roomy 12dp inset on wide screens; narrow phones tighten to 8dp so
+            // the four intrinsic-width pills + 🎬 + Filtry fit a 360dp row (Galaxy
+            // S24) without the labels clipping. Guarded by DayPillFitTest.
+            .padding(horizontal = if (wide) 12.dp else 8.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
