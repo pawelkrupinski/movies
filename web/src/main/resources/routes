@@ -92,6 +92,18 @@ GET     /polityka-prywatnosci       controllers.LegalController.privacy
 POST    /facebook/data-deletion          controllers.FacebookDataDeletionController.callback()
 GET     /facebook/data-deletion/status   controllers.FacebookDataDeletionController.status(code: String)
 
+# ── Admin: title-stripping rules editor ─────────────────────────────────────
+# Gated by the login session + the ADMIN_ALLOWLIST env (comma-separated user
+# ids). Edits write straight to Mongo; the change stream propagates them to the
+# worker and back, so they take effect on the next scrape and the live display.
+GET     /admin/title-rules               controllers.AdminTitleRulesController.index()
++ nocsrf
+POST    /admin/title-rules               controllers.AdminTitleRulesController.save()
++ nocsrf
+POST    /admin/title-rules/delete        controllers.AdminTitleRulesController.delete()
++ nocsrf
+POST    /admin/title-rules/preview       controllers.AdminTitleRulesController.preview()
+
 # ── robots.txt ────────────────────────────────────────────────────────────────
 # Returning a 404 on /robots.txt confused Facebook's link-preview scraper
 # (`facebookexternalhit`) — its debugger reported "403 due to robots.txt

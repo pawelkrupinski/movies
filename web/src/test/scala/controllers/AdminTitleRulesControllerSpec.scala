@@ -1,0 +1,99 @@
+package controllers
+
+import models.MovieRecord
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import play.api.libs.json.Json
+import play.api.test.Helpers._
+import play.api.test.{FakeRequest, Helpers}
+import services.movies.{CaffeineMovieCache, MovieRepo}
+import services.titlerules.{InMemoryTitleRulesRepo, RuleScope, TitleRule}
+
+/**
+ * Locks the admin editor's contract: session + allowlist auth on every action,
+ * rule JSON round-trips, saves/deletes hit the repo, and preview returns a
+ * well-formed shape. The merge math itself is covered by RuleMergePreviewSpec.
+ */
+class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
+
+  // Disabled repo → empty corpus; the cache's snapshot() is empty.
+  private val emptyRepo = new MovieRepo {
+    def enabled = false
+    def findAll() = Seq.empty
+    def delete(title: String, year: Option[Int]) = ()
+    def upsert(title: String, year: Option[Int], e: MovieRecord) = ()
+    def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord) = false
+    override def close() = ()
+  }
+  private def cache = new CaffeineMovieCache(emptyRepo)
+
+  private def controller(repo: InMemoryTitleRulesRepo = new InMemoryTitleRulesRepo(),
+                         allow: Set[String] = Set("admin1")) =
+    new AdminTitleRulesController(Helpers.stubControllerComponents(), repo, cache, allow)
+
+  private val adminSession = FakeRequest().withSession("userId" -> "admin1")
+
+  private def jsonReq(session: Boolean, body: play.api.libs.json.JsValue) = {
+    val base = if (session) adminSession else FakeRequest()
+    base.withBody(body).withHeaders("Content-Type" -> "application/json")
+  }
+
+  "index" should "401 when not logged in" in {
+    status(controller().index().apply(FakeRequest())) shouldBe UNAUTHORIZED
+  }
+
+  it should "403 when logged in but not on the allowlist" in {
+    val req = FakeRequest().withSession("userId" -> "rando")
+    status(controller().index().apply(req)) shouldBe FORBIDDEN
+  }
+
+  it should "render the editor for an allowlisted user" in {
+    val result = controller().index().apply(adminSession)
+    status(result) shouldBe OK
+    contentAsString(result) should include ("Title-stripping rules")
+  }
+
+  "save" should "persist a valid rule and mint an id when blank" in {
+    val repo = new InMemoryTitleRulesRepo()
+    val body = Json.obj("scope" -> "PerCinema", "cinemaId" -> "cinema-city",
+      "pattern" -> "^Ladies Night - ", "replacement" -> "", "order" -> 10)
+    val result = controller(repo).save().apply(jsonReq(session = true, body))
+    status(result) shouldBe OK
+    val saved = repo.findAll()
+    saved should have size 1
+    saved.head.cinemaId shouldBe Some("cinema-city")
+    saved.head.id should not be empty
+  }
+
+  it should "reject an invalid regex" in {
+    val body = Json.obj("scope" -> "GlobalStructural", "pattern" -> "(unclosed")
+    status(controller().save().apply(jsonReq(session = true, body))) shouldBe BAD_REQUEST
+  }
+
+  it should "401 a save with no session" in {
+    val body = Json.obj("scope" -> "Search", "pattern" -> "x")
+    status(controller().save().apply(jsonReq(session = false, body))) shouldBe UNAUTHORIZED
+  }
+
+  "delete" should "remove the rule by id" in {
+    val repo = new InMemoryTitleRulesRepo(Seq(
+      TitleRule("r1", RuleScope.Search, None, "x", "", applyAll = false, order = 1)))
+    val result = controller(repo).delete().apply(jsonReq(session = true, Json.obj("id" -> "r1")))
+    status(result) shouldBe OK
+    repo.findAll() shouldBe empty
+  }
+
+  "preview" should "return a zero-merge result over an empty corpus" in {
+    val body = Json.obj("rules" -> Json.arr(
+      Json.obj("scope" -> "PerCinema", "cinemaId" -> "cinema-city", "pattern" -> "^X ", "order" -> 1)))
+    val result = controller().preview().apply(jsonReq(session = true, body))
+    status(result) shouldBe OK
+    (contentAsJson(result) \ "newMergeCount").as[Int] shouldBe 0
+  }
+
+  "ruleFromJson / ruleToJson" should "round-trip" in {
+    val rule = TitleRule("id1", RuleScope.Search, None, "(?i)^Klub: ", "", applyAll = false,
+      order = 10, enabled = true, tag = Some("programmePrefix"), note = Some("n"))
+    AdminTitleRulesController.ruleFromJson(AdminTitleRulesController.ruleToJson(rule)) shouldBe Right(rule)
+  }
+}

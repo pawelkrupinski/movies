@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{AuthController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController}
+import controllers.{AdminTitleRulesController, AuthController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
@@ -123,6 +123,12 @@ trait Wiring {
   lazy val legalController   = new LegalController(controllerComponents)
   lazy val facebookDataDeletionController =
     new FacebookDataDeletionController(controllerComponents, Env.get("FACEBOOK_APP_SECRET"), userRepo, accountDeletion)
+  // Comma-separated allowlist of user ids permitted to edit title rules. Empty
+  // (unset) → nobody is authorised, so the editor is closed by default.
+  lazy val adminAllowlist: Set[String] =
+    Env.get("ADMIN_ALLOWLIST").map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet).getOrElse(Set.empty)
+  lazy val adminTitleRulesController =
+    new AdminTitleRulesController(controllerComponents, titleRulesRepo, movieCache, adminAllowlist)
 
   // Start the data layer. Force the Mongo connection at boot (so connection
   // errors surface in the boot timeline, not mid-request), then start the cache

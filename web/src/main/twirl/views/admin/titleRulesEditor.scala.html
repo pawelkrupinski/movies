@@ -1,0 +1,128 @@
+@(rules: Seq[services.titlerules.TitleRule])
+@import services.titlerules.RuleScope
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Title rules — admin</title>
+  <style>
+    body { font: 14px/1.4 system-ui, sans-serif; margin: 1.5rem; color: #1a1a1a; }
+    h1 { font-size: 1.3rem; } h2 { font-size: 1rem; margin-top: 1.5rem; color: #555; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: .5rem; }
+    th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; vertical-align: top; }
+    th { background: #f6f6f6; font-weight: 600; }
+    input[type=text], input[type=number] { width: 100%; box-sizing: border-box; font: inherit; padding: 2px 4px; }
+    input.pattern { font-family: ui-monospace, monospace; }
+    .narrow { width: 5rem; } .check { text-align: center; }
+    button { font: inherit; padding: 3px 10px; cursor: pointer; }
+    .row-actions { white-space: nowrap; }
+    #preview { margin-top: 1rem; padding: .75rem 1rem; background: #f0f7ff; border: 1px solid #cfe2ff; border-radius: 6px; }
+    .merge { margin: .25rem 0; } .merge b { color: #0a58ca; }
+    .muted { color: #888; } .bad { color: #b00; }
+  </style>
+</head>
+<body>
+  <h1>Title-stripping rules</h1>
+  <p class="muted">Edits save to Mongo and propagate to the worker + web via the change stream — they take effect on the next scrape and on the live display. The merge preview shows which rows would <b>newly merge</b> under the current draft.</p>
+
+  <p><button onclick="addRule()">+ Add rule</button>
+     <button onclick="runPreview()">Preview merges</button></p>
+
+  <div id="tables"></div>
+  <div id="preview"><span class="muted">Preview not run yet.</span></div>
+
+  <script type="application/json" id="seed">@play.twirl.api.Html(
+    play.api.libs.json.Json.stringify(play.api.libs.json.JsArray(
+      rules.map(controllers.AdminTitleRulesController.ruleToJson))))</script>
+  <script>
+    const SCOPES = ["PerCinema", "GlobalStructural", "Search", "Canonical"];
+    let rules = JSON.parse(document.getElementById("seed").textContent);
+
+    function h(tag, attrs, children) {
+      const e = document.createElement(tag);
+      for (const k in (attrs||{})) {
+        if (k === "value") e.value = attrs[k];
+        else if (k === "checked") e.checked = attrs[k];
+        else e.setAttribute(k, attrs[k]);
+      }
+      (children||[]).forEach(c => e.appendChild(typeof c === "string" ? document.createTextNode(c) : c));
+      return e;
+    }
+
+    function render() {
+      const root = document.getElementById("tables");
+      root.innerHTML = "";
+      SCOPES.forEach(scope => {
+        const inScope = rules.filter(r => r.scope === scope);
+        const h2 = h("h2", {}, [scope + " (" + inScope.length + ")"]);
+        root.appendChild(h2);
+        const tbl = h("table");
+        tbl.appendChild(h("tr", {}, ["cinemaId","pattern","replacement","order","all","on","note",""].map(t => h("th",{},[t]))));
+        rules.forEach((r, i) => {
+          if (r.scope !== scope) return;
+          const row = h("tr");
+          row.dataset.idx = i;
+          const inp = (field, cls, type) => {
+            const e = h("input", {type: type||"text", value: r[field]==null?"":r[field]});
+            if (cls) e.className = cls;
+            e.oninput = () => { r[field] = (type==="number") ? (e.value===""?null:+e.value) : e.value; };
+            return e;
+          };
+          row.appendChild(h("td", {}, [inp("cinemaId")]));
+          row.appendChild(h("td", {}, [inp("pattern","pattern")]));
+          row.appendChild(h("td", {}, [inp("replacement","pattern")]));
+          row.appendChild(h("td", {class:"narrow"}, [inp("order",null,"number")]));
+          const all = h("input",{type:"checkbox",checked:r.applyAll}); all.onchange=()=>r.applyAll=all.checked;
+          const on  = h("input",{type:"checkbox",checked:r.enabled});  on.onchange =()=>r.enabled=on.checked;
+          row.appendChild(h("td",{class:"check"},[all]));
+          row.appendChild(h("td",{class:"check"},[on]));
+          row.appendChild(h("td", {}, [inp("note")]));
+          const save = h("button",{},["Save"]); save.onclick = () => saveRule(r);
+          const del  = h("button",{},["Delete"]); del.onclick = () => delRule(r, i);
+          row.appendChild(h("td",{class:"row-actions"},[save, del]));
+          tbl.appendChild(row);
+        });
+        root.appendChild(tbl);
+      });
+    }
+
+    function addRule() {
+      rules.push({id:"", scope:"PerCinema", cinemaId:"", pattern:"", replacement:"", applyAll:false, order:100, enabled:true, tag:null, note:null});
+      render();
+    }
+
+    async function saveRule(r) {
+      const res = await fetch("/admin/title-rules", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(r)});
+      const body = await res.json();
+      if (!res.ok) { alert("Save failed: " + (body.error||res.status)); return; }
+      r.id = body.id; render();
+    }
+
+    async function delRule(r, i) {
+      if (r.id) {
+        const res = await fetch("/admin/title-rules/delete", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({id:r.id})});
+        if (!res.ok) { alert("Delete failed"); return; }
+      }
+      rules.splice(i, 1); render();
+    }
+
+    async function runPreview() {
+      const box = document.getElementById("preview");
+      box.innerHTML = "<span class='muted'>Computing…</span>";
+      const res = await fetch("/admin/title-rules/preview", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({rules})});
+      const body = await res.json();
+      if (!res.ok) { box.innerHTML = "<span class='bad'>" + (body.error||"preview failed") + "</span>"; return; }
+      if (body.newMergeCount === 0) { box.innerHTML = "<span class='muted'>No new merges under this draft.</span>"; return; }
+      const parts = ["<b>" + body.newMergeCount + " new merge(s)</b> vs the live rules:"];
+      body.newMerges.forEach(g => {
+        parts.push("<div class='merge'>→ <b>" + esc(g.display) + (g.year? " ("+g.year+")":"") + "</b>: " + g.titles.map(esc).join("  +  ") + "</div>");
+      });
+      box.innerHTML = parts.join("");
+    }
+    function esc(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+
+    render();
+  </script>
+</body>
+</html>

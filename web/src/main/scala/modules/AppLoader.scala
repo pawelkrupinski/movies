@@ -79,7 +79,7 @@ class AppComponents(context: Context)
     Some(router)
   )
 
-  lazy val router: Router = new Routes(httpErrorHandler, landingController, movieController, planController, authController, userStateController, healthController, uptimeController, tasksController, legalController, facebookDataDeletionController, assets)
+  lazy val router: Router = new Routes(httpErrorHandler, landingController, movieController, planController, authController, userStateController, healthController, uptimeController, tasksController, legalController, facebookDataDeletionController, adminTitleRulesController, assets)
 
   start()
 
