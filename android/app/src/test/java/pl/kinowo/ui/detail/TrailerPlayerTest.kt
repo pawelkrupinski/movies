@@ -1,8 +1,11 @@
 package pl.kinowo.ui.detail
 
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
+import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import org.junit.Assert.assertEquals
@@ -90,6 +93,39 @@ class TrailerPlayerTest {
         assertTrue(
             "iframe src should carry the autoplay embed URL, got: ${loaded.data}",
             loaded.data.contains("https://www.youtube.com/embed/abcdefghijk?autoplay=1&amp;playsinline=1"),
+        )
+    }
+
+    @Test
+    fun trailerWebViewIsTransparentAndWrappedSoVideoRenders() {
+        val details = FilmDetails(
+            title = "Diuna",
+            trailerURLs = listOf("https://www.youtube.com/embed/abcdefghijk"),
+        )
+        compose.setContent { DetailScreen(film, details, onBack = {}) }
+        compose.waitForIdle()
+
+        val web = findWebView(compose.activity.window.decorView)
+        requireNotNull(web) { "trailer WebView never composed" }
+
+        // YouTube renders inline video into a SurfaceView that punches a transparent
+        // hole through the window. An OPAQUE WebView background paints over that hole
+        // — the trailer plays audio but shows black. The background MUST be
+        // transparent (verified on a physical device: opaque black = black video).
+        val bg = web.background
+        val color = (bg as? ColorDrawable)?.color ?: Color.TRANSPARENT
+        assertEquals(
+            "trailer WebView background must be transparent so the video surface " +
+                "shows through; an opaque background blacks out the video (audio only)",
+            0,
+            Color.alpha(color),
+        )
+
+        // It must be wrapped in a plain ViewGroup, not returned as the AndroidView
+        // root, or Compose imposes an offscreen layer that also blacks the video.
+        assertTrue(
+            "trailer WebView must be wrapped in a FrameLayout, not the AndroidView root",
+            web.parent is FrameLayout,
         )
     }
 
