@@ -6,6 +6,7 @@ import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
 import services.auth.{AppleTokenValidator, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, OauthProvider}
 import services.events.{EventBus, InProcessEventBus}
+import services.fallback.{FilmwebFallbackStore, MongoFilmwebFallbackStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo}
 import services.tasks.{MongoTaskQueue, TaskQueue}
 import services.users.{AccountDeletion, CachingUserRepo, CachingUserStateRepo, MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
@@ -104,7 +105,10 @@ trait Wiring {
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, movieCache, userRepo, oauthProviders.keySet, environmentMode, gzippedResponseCache)
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
-  lazy val uptimeController = new UptimeController(controllerComponents, uptimeMonitor)(using materializer)
+  // Read-only on the web side: the worker writes fallback state; the /uptime/fallback
+  // page reads it (hydrated from Mongo at boot).
+  lazy val filmwebFallbackStore: FilmwebFallbackStore = new MongoFilmwebFallbackStore(mongoConnection.database)
+  lazy val uptimeController = new UptimeController(controllerComponents, uptimeMonitor, filmwebFallbackStore)(using materializer)
   lazy val tasksController  = new TasksController(controllerComponents, taskQueue)
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepo, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
   lazy val accountDeletion   = new AccountDeletion(userRepo, userStateRepo)

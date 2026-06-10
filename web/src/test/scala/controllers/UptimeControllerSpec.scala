@@ -6,9 +6,12 @@ import org.apache.pekko.stream.Materializer
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.test.Helpers
+import play.api.test.{FakeRequest, Helpers}
+import play.api.test.Helpers._
 import services.UptimeMonitor
+import services.fallback.{FallbackEvent, FilmwebFallbackState, InMemoryFilmwebFallbackStore}
 
+import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
@@ -23,8 +26,19 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   private implicit val mat: Materializer = Materializer(sys)
   override def afterAll(): Unit = Await.result(sys.terminate(), 10.seconds)
 
-  private val controller = new UptimeController(Helpers.stubControllerComponents(), new UptimeMonitor())
+  private val fallbackStore = new InMemoryFilmwebFallbackStore
+  private val controller = new UptimeController(Helpers.stubControllerComponents(), new UptimeMonitor(), fallbackStore)
   private def fakeRow(n: String) = ServiceRow(n, Seq.empty)
+
+  private def fallbackState(name: String, active: Boolean) = FilmwebFallbackState(
+    cinema = name, active = active, filmwebCinemaId = Some(2180),
+    since = Some(Instant.ofEpochMilli(1_700_000_000_000L)), lastReason = Some("RuntimeException: down"),
+    consecutiveFailures = if (active) 2 else 0,
+    lastPrimaryProbeAt = Some(Instant.ofEpochMilli(1_700_000_100_000L)),
+    nextPrimaryProbeAt = if (active) Some(Instant.ofEpochMilli(1_700_001_000_000L)) else None,
+    updatedAt = Instant.ofEpochMilli(1_700_000_200_000L),
+    history = List(FallbackEvent(Instant.ofEpochMilli(1_700_000_000_000L), FallbackEvent.Enter, "down"))
+  )
 
   // A real cinema that the controller will place under "Cinemas" via Cinema.byCity.
   private val cinema = Cinema.byCity.head._2.head.displayName
@@ -60,5 +74,21 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   it should "render Cinema City Enrichment first among enrichment services" in {
     val (_, services, _) = controller.groupRows(Set("Cinema City Enrichment", "TMDB", "IMDb"), fakeRow)
     services.map(_.name).head shouldBe "Cinema City Enrichment"
+  }
+
+  "the /uptime/fallback page" should "list active fallbacks, recovered cinemas, and Filmweb-only-by-design venues" in {
+    fallbackStore.put(fallbackState("Kino Praha", active = true))
+    fallbackStore.put(fallbackState("Kino Iluzjon", active = false))
+    fallbackStore.putFilmwebOnly(Set("Kino Astra"))
+
+    val result = controller.fallback()(FakeRequest())
+    status(result) shouldBe OK
+    val html = contentAsString(result)
+    html should include ("Currently on fallback (1)")
+    html should include ("Kino Praha")        // active
+    html should include ("Recently recovered (1)")
+    html should include ("Kino Iluzjon")       // recovered (inactive, has history)
+    html should include ("Kino Astra")         // Filmweb-only by design
+    html should include ("RuntimeException: down")  // the active row's reason rendered
   }
 }

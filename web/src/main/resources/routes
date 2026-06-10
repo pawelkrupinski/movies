@@ -64,6 +64,7 @@ DELETE  /api/me                     controllers.UserStateController.deleteAccoun
 # ── Health / Uptime ───────────────────────────────────────────────────────────
 GET     /health                     controllers.HealthController.check
 GET     /uptime                     controllers.UptimeController.index()
+GET     /uptime/fallback            controllers.UptimeController.fallback()
 GET     /uptime/stream              controllers.UptimeController.stream()
 + nocsrf
 POST    /uptime/img-event           controllers.UptimeController.imgEvent()

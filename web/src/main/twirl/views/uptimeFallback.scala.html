@@ -1,0 +1,83 @@
+@import controllers.FallbackRow
+@(onFallback: Seq[FallbackRow], recovered: Seq[FallbackRow], filmwebOnly: Seq[String])
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Filmweb fallback — Kinowo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font: 13px/1.5 monospace; background: #0d0d0d; color: #ccc; padding: 24px; }
+    a { color: #c9962b; }
+    h1 { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+    .sub { color: #666; font-size: 12px; margin-bottom: 24px; }
+    h2 {
+      font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase;
+      letter-spacing: 1px; margin: 28px 0 10px; padding-bottom: 6px;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+    th, td { text-align: left; padding: 5px 12px 5px 0; vertical-align: top; white-space: nowrap; }
+    th { color: #666; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+    td.cinema { color: #fff; }
+    td.reason, .hist { white-space: normal; color: #999; }
+    .gold { color: #c9962b; }
+    .hist { color: #777; font-size: 11px; }
+    .hist div { margin: 1px 0; }
+    .empty-msg { color: #444; margin: 8px 0 4px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { background: #161616; border: 1px solid #262626; border-radius: 4px; padding: 3px 8px; color: #aaa; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Filmweb fallback</h1>
+  <div class="sub"><a href="/uptime">← back to uptime</a> · cinemas served by Filmweb when their own scraper is down or empty</div>
+
+  <h2>Currently on fallback (@onFallback.size)</h2>
+  @if(onFallback.isEmpty) {
+    <div class="empty-msg">None — every cinema is being served by its own scraper.</div>
+  } else {
+    <table>
+      <tr><th>Cinema</th><th>Filmweb id</th><th>Since</th><th>Fails</th><th>Next re-probe</th><th>Reason</th><th>History</th></tr>
+      @for(r <- onFallback) {
+        <tr>
+          <td class="cinema">@r.cinema</td>
+          <td class="gold">@r.filmwebId</td>
+          <td>@r.since</td>
+          <td>@r.fails</td>
+          <td>@r.nextProbe</td>
+          <td class="reason">@r.reason</td>
+          <td class="hist">@for(h <- r.history) { <div>@h</div> }</td>
+        </tr>
+      }
+    </table>
+  }
+
+  <h2>Recently recovered (@recovered.size)</h2>
+  @if(recovered.isEmpty) {
+    <div class="empty-msg">None recorded.</div>
+  } else {
+    <table>
+      <tr><th>Cinema</th><th>Last updated</th><th>History</th></tr>
+      @for(r <- recovered) {
+        <tr>
+          <td class="cinema">@r.cinema</td>
+          <td>@r.updated</td>
+          <td class="hist">@for(h <- r.history) { <div>@h</div> }</td>
+        </tr>
+      }
+    </table>
+  }
+
+  <h2>Filmweb-only by design (@filmwebOnly.size)</h2>
+  <div class="sub">these venues have no own-site scraper — Filmweb is their primary, not a fallback</div>
+  @if(filmwebOnly.isEmpty) {
+    <div class="empty-msg">None.</div>
+  } else {
+    <div class="chips">
+      @for(c <- filmwebOnly) { <span class="chip">@c</span> }
+    </div>
+  }
+</body>
+</html>

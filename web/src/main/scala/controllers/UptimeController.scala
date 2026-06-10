@@ -7,13 +7,14 @@ import play.api.mvc._
 import models.Cinema
 import services.UptimeMonitor
 import services.UptimeMonitor._
+import services.fallback.{FilmwebFallbackState, FilmwebFallbackStore}
 
 import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using mat: Materializer) extends AbstractController(cc) {
+class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor, filmwebFallback: FilmwebFallbackStore)(using mat: Materializer) extends AbstractController(cc) {
 
   // Derived from the cinema model so every wired scraper groups under the
   // "Cinemas" header automatically — no edit needed when a cinema is added.
@@ -44,11 +45,12 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using m
   /** One rendered bar, with its bucket window stamped in Warsaw time. Shared by
    *  the full-page render and the live SSE feed so both label a bucket the same. */
   private def barData(service: String, bucketTs: Long, status: String,
-                      successes: Int, failures: Int, zeroes: Int, errors: Seq[String]): BarData = {
+                      successes: Int, failures: Int, zeroes: Int, errors: Seq[String],
+                      fallback: Boolean = false): BarData = {
     val from = Instant.ofEpochMilli(bucketTs)
     val to   = Instant.ofEpochMilli(bucketTs + BucketDurationMs)
     BarData(service, bucketTs, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
-      status, successes, failures, zeroes, errors)
+      status, successes, failures, zeroes, errors, fallback)
   }
 
   def index: Action[AnyContent] = Action {
@@ -61,7 +63,7 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using m
       val history = monitor.history(serviceName).map(b => b.timestamp -> b).toMap
       slots.map { ts =>
         history.get(ts) match {
-          case Some(b) => barData(serviceName, ts, b.status, b.successes, b.failures, b.zeroes, b.errors)
+          case Some(b) => barData(serviceName, ts, b.status, b.successes, b.failures, b.zeroes, b.errors, b.fallback)
           case None    => barData(serviceName, ts, "empty", 0, 0, 0, Seq.empty)
         }
       }
@@ -110,7 +112,7 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using m
 
     val listener: BucketListener = { (service, snapshot) =>
       queue.offer(barData(service, snapshot.timestamp, snapshot.status,
-        snapshot.successes, snapshot.failures, snapshot.zeroes, snapshot.errors))
+        snapshot.successes, snapshot.failures, snapshot.zeroes, snapshot.errors, snapshot.fallback))
       ()
     }
     monitor.addListener(listener)
@@ -143,6 +145,31 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using m
     }
     NoContent
   }
+
+  /** Status page for the Filmweb fallback: cinemas CURRENTLY served by Filmweb
+   *  because their own scraper is down/empty, cinemas that RECENTLY RECOVERED, and
+   *  cinemas that are Filmweb-only BY DESIGN (their only scraper is Filmweb). */
+  def fallback: Action[AnyContent] = Action {
+    val all         = filmwebFallback.findAll()
+    val onFallback  = all.filter(_.active).sortBy(_.cinema).map(fallbackRow)
+    val recovered   = all.filterNot(_.active).filter(_.history.nonEmpty).sortBy(_.cinema).map(fallbackRow)
+    val filmwebOnly = filmwebFallback.filmwebOnly().toSeq.sorted
+    Ok(views.html.uptimeFallback(onFallback, recovered, filmwebOnly))
+  }
+
+  private val tsFmt = DateTimeFormatter.ofPattern("d MMM HH:mm").withZone(warsawZone)
+  private def fmtInstant(i: Instant): String = tsFmt.format(i)
+
+  private def fallbackRow(s: FilmwebFallbackState): FallbackRow = FallbackRow(
+    cinema    = s.cinema,
+    filmwebId = s.filmwebCinemaId.map(_.toString).getOrElse("—"),
+    since     = s.since.map(fmtInstant).getOrElse("—"),
+    reason    = s.lastReason.getOrElse("—"),
+    fails     = s.consecutiveFailures,
+    nextProbe = s.nextPrimaryProbeAt.map(fmtInstant).getOrElse("—"),
+    updated   = fmtInstant(s.updatedAt),
+    history   = s.history.take(8).map(e => s"${fmtInstant(e.at)} · ${e.event} · ${e.reason}")
+  )
 }
 
 case class BarData(
@@ -155,7 +182,8 @@ case class BarData(
   successes: Int,
   failures: Int,
   zeroes: Int,
-  errors: Seq[String]
+  errors: Seq[String],
+  fallback: Boolean = false
 )
 
 object BarData {
@@ -169,9 +197,15 @@ object BarData {
     "successes" -> b.successes,
     "failures"  -> b.failures,
     "zeroes"    -> b.zeroes,
-    "errors"    -> b.errors
+    "errors"    -> b.errors,
+    "fallback"  -> b.fallback
   )
 }
+
+case class FallbackRow(
+  cinema: String, filmwebId: String, since: String, reason: String,
+  fails: Int, nextProbe: String, updated: String, history: Seq[String]
+)
 
 case class ServiceRow(
   name:       String,

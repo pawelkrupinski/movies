@@ -110,6 +110,14 @@ class WorkerWiring {
   // production main to post Telegram alerts. No-op by default.
   protected def filmwebFallbackOnEvent: (FilmwebFallbackState, FallbackEvent) => Unit = (_, _) => ()
 
+  // Cinemas whose ONLY scraper is a FilmwebShowtimesClient — served by Filmweb by
+  // design, not as a fallback. Published to Mongo at start() for the status page.
+  lazy val filmwebOnlyCinemas: Set[String] =
+    cinemaScraperCatalog.all.groupBy(_.cinema)
+      .collect { case (c, scrapers) if scrapers.nonEmpty && scrapers.forall(_.isInstanceOf[FilmwebShowtimesClient]) =>
+        c.displayName }
+      .toSet
+
   lazy val cinemaScrapers: Seq[CinemaScraper] =
     City.all
       .filter(c => scrapeCities(c.slug))
@@ -293,6 +301,9 @@ class WorkerWiring {
     }
     unscreenedCleanup.start()
     kinoMuzaSynopsisRefresher.start()
+    // Publish the by-design Filmweb-only cinemas so the /uptime/fallback page can
+    // list them (the catalog is worker-only; the web reads this from Mongo).
+    filmwebFallbackStore.putFilmwebOnly(filmwebOnlyCinemas)
     // The task worker runs whenever there's queue work: queue-driven scraping,
     // deferred detail, and/or queue-driven rating enrichment.
     if (queueScraping || deferDetail || queueEnrichment) taskWorker.start()
