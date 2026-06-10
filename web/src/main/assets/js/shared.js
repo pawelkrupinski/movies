@@ -1611,6 +1611,7 @@
 
   let _drag = null;
   let _animating = false;   // guards re-entrancy while a commit animation runs
+  let _dayHighlightTimer = null;   // pending mid-slide pill-highlight flip (keyboard/dropdown)
 
   // Step the day dropdown by `dir` (+1 = next day, -1 = previous), WRAPPING
   // around its full option list, then re-render via the normal date-change path
@@ -1777,6 +1778,7 @@
   // set the dropdown, fire the normal date-change render, scroll to top (the
   // committed-change behaviour), then tear the clones down.
   function commitDay(targetValue) {
+    clearTimeout(_dayHighlightTimer);   // the slide landed; onDateChange syncs the pills below
     const sel = document.getElementById('date-filter');
     if (sel) { sel.value = targetValue; onDateChange(); }
     window.scrollTo(0, 0);
@@ -1846,6 +1848,17 @@
     const armed = dir > 0 ? armTrack(null, targetValue) : armTrack(targetValue, null);
     if (!armed) { commitDay(targetValue); return; }
     slideArmedTo(dir, targetValue, 0);
+    // A finger drag flips the day-pill highlight to the destination as it crosses
+    // the commit boundary (COMMIT_FRACTION of the travel). This slide has no
+    // finger, so flip the highlight at the SAME fractional point of the auto-
+    // slide rather than waiting for it to land — keyboard/dropdown then reads the
+    // same as the gesture. (A pill TAP has already eager-highlighted in `pickDay`;
+    // this just re-affirms the same day.)
+    clearTimeout(_dayHighlightTimer);
+    _dayHighlightTimer = setTimeout(
+      () => highlightDayPill(targetValue),
+      Math.round(swipeAnimMs() * COMMIT_FRACTION)
+    );
   }
   window.animateToDay = animateToDay;
 

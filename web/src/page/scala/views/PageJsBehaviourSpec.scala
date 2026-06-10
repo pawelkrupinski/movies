@@ -1556,6 +1556,35 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // A keyboard/dropdown slide must flip the day-pill highlight at the SAME stage
+  // as a finger drag — at the commit boundary (COMMIT_FRACTION of the travel),
+  // mid-slide — not only when the slide lands. A drag flips the pill the moment
+  // the finger crosses 40% of the width; pressing an arrow key should feel the
+  // same rather than holding the old day lit until the animation finishes.
+  it should "flip the day-pill highlight mid-slide on a keyboard step, not only at commit" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)   // take the real slide, not the reduced-motion instant commit
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "today"
+
+      page.eval("stepDate(1)")
+      // It does NOT flip instantly at slide start — the old day stays lit briefly.
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "today"
+
+      // …then flips to the destination WHILE the slide is still in flight (the
+      // track is still armed), i.e. before the commit that lands it.
+      page.waitFor(
+        "document.getElementById('day-track').classList.contains('day-track--armed') && " +
+        "document.querySelector('#day-pills .day-pill.active').dataset.day === 'tomorrow'",
+        timeoutMs = 2000
+      )
+
+      // And it settles on the destination once the slide commits.
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "tomorrow"
+    }
+  }
+
   it should "preview the destination day mid-drag — flip past the commit boundary, return when dragged back" in {
     onPath("/") { page =>
       coarsePointer(page)
