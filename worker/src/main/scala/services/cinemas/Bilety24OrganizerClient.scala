@@ -48,13 +48,14 @@ object Bilety24OrganizerClient {
 
   private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String])
 
+
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(html, BaseUrl)
 
     val slots = doc.select("a[title]").asScala.toSeq.flatMap { a =>
       SlotPat.findFirstMatchIn(a.attr("title")).flatMap { m =>
         Try(LocalDateTime.parse(s"${m.group(2)} ${m.group(3)}", Fmt)).toOption.map { dt =>
-          RawSlot(m.group(1).trim, dt, Option(a.attr("abs:href")).filter(_.nonEmpty))
+          RawSlot(ScraperParse.stripFormatTags(m.group(1)), dt, Option(a.attr("abs:href")).filter(_.nonEmpty))
         }
       }
     }

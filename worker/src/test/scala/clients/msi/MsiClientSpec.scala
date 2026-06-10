@@ -75,4 +75,12 @@ class MsiClientSpec
     found.movie.title should not include "(2D"
     found.movie.title should not include "(3D"
   }
+
+  it should "honour a non-default mvcPath (Kino Planeta serves the page at /Rezerwacja/mvc/pl)" in {
+    val movies = new MsiClient(new FakeHttpFetch("kino-planeta"), "https://rezerwacja.planetabrzesko.pl",
+      KinoPlaneta, today = LocalDate.of(2026, 6, 10), mvcPath = "/Rezerwacja/mvc/pl").fetch()
+    movies should not be empty
+    val film = movies.find(_.movie.title.toLowerCase.contains("drzewo magii")).value
+    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 11, 13, 50))
+  }
 }

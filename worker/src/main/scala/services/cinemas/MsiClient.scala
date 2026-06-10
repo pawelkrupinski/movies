@@ -47,7 +47,11 @@ class MsiClient(
   http:    HttpFetch,
   baseUrl: String,
   override val cinema: Cinema,
-  today:   LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:   LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  // The month-page route. Almost every venue serves it at `/MSI/mvc/pl`, but a
+  // few VisualTicket installs expose the identical page under a different prefix
+  // (e.g. Kino Planeta Brzesko at `/Rezerwacja/mvc/pl`); override for those.
+  mvcPath: String = "/MSI/mvc/pl"
 ) extends CinemaScraper {
 
   import MsiClient._
@@ -59,7 +63,7 @@ class MsiClient(
     val nextMonth = thisMonth.plusMonths(1)
 
     val slots = Seq(thisMonth, nextMonth).flatMap { ym =>
-      val url  = monthUrl(baseUrl, ym)
+      val url  = monthUrl(baseUrl, mvcPath, ym)
       val html = Try(http.get(url)).getOrElse("")
       if (html.isEmpty) Seq.empty
       else MsiScraper.parseMonthWithYear(html, ym, baseUrl, cleanTitle)
@@ -71,26 +75,16 @@ class MsiClient(
 
 object MsiClient {
 
-  def monthUrl(baseUrl: String, ym: YearMonth): String =
-    s"$baseUrl/MSI/mvc/pl?sort=Name&date=${ym.getYear}-${"%02d".format(ym.getMonthValue)}"
+  def monthUrl(baseUrl: String, mvcPath: String, ym: YearMonth): String =
+    s"$baseUrl$mvcPath?sort=Name&date=${ym.getYear}-${"%02d".format(ym.getMonthValue)}"
 
-  /** Strip a trailing format-code parenthetical and sentence-case the result.
-   *
-   * Format tags match `(…)` at the end of the title where the inner text
-   * contains one of the screen-technology keywords: `2D`, `3D`, `IMAX`,
-   * `DOLBY`, `4DX`.  Examples:
-   *   "TOY STORY 5 (2D DUBBING)"          → "Toy story 5"
-   *   "OBSESJA (2D NAPISY DOLBY ATMOS)"   → "Obsesja"
-   *   "90. URODZINY PAVAROTTIEGO (2D NAPISY)" → "90. Urodziny pavarottiego"
-   * Titles that don't end in a format tag are sentence-cased verbatim.
-   */
-  private[cinemas] val FormatSuffixPat =
-    """\s*\((?:2D|3D|IMAX|DOLBY|4DX)[^)]*\)\s*$""".r
-
-  private[cinemas] def cleanTitle(raw: String): String = {
-    // Jsoup already decodes HTML entities in attribute values; no need to
-    // call Parser.unescapeEntities separately.
-    val stripped = FormatSuffixPat.replaceFirstIn(raw.trim, "").trim
-    ScraperParse.sentenceCase(stripped)
-  }
+  /** Strip the trailing format/version tag MSI appends and sentence-case the
+   *  result, so screening variants of one film merge. Examples:
+   *    "TOY STORY 5 (2D DUBBING)"   → "Toy story 5"
+   *    "STRASZNY FILM - NAPISY"     → "Straszny film"
+   *    "90. URODZINY PAVAROTTIEGO (2D NAPISY)" → "90. Urodziny pavarottiego"
+   *  (Tag stripping is shared with the other portal clients via
+   *  `ScraperParse.stripFormatTags`.) */
+  private[cinemas] def cleanTitle(raw: String): String =
+    ScraperParse.sentenceCase(ScraperParse.stripFormatTags(raw))
 }

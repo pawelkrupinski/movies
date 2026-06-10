@@ -38,8 +38,6 @@ object SystemBiletowyClient {
 
   // "12 czerwca 2026" — day, Polish genitive month, year (all present).
   private val DatePat = """(\d{1,2})\s+(\p{L}+)\s+(\d{4})""".r
-  // Trailing screening-version tag on a title ("… GROGU  dubbing").
-  private val VersionSuffix = """(?i)[\s,]+(dubbing|napisy|lektor|dubb\.|nap\.|2D|3D)\s*$""".r
 
   private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String])
 
@@ -86,11 +84,7 @@ object SystemBiletowyClient {
 
   /** Drop the trailing `dubbing`/`napisy`/… version tag (so the same film's
    *  dubbed and subtitled screenings merge into one row) and sentence-case the
-   *  result. */
-  private[cinemas] def cleanTitle(raw: String): String = {
-    var t    = raw.trim
-    var prev = ""
-    while (t != prev) { prev = t; t = VersionSuffix.replaceFirstIn(t, "").trim }
-    ScraperParse.sentenceCase(t)
-  }
+   *  result. Tag stripping is shared with the other portal clients. */
+  private[cinemas] def cleanTitle(raw: String): String =
+    ScraperParse.sentenceCase(ScraperParse.stripFormatTags(raw))
 }

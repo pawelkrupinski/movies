@@ -81,6 +81,41 @@ private[cinemas] object ScraperParse {
     new String(chars)
   }
 
+  // Words that, alone, mark a trailing screening-format/version tag.
+  private val FormatVersionWords = Set(
+    "2d", "3d", "imax", "dolby", "atmos", "4dx", "dubbing", "napisy", "lektor",
+    "dubb", "dub", "nap", "premiera", "krajowa", "pokaz", "jednorazowy",
+    "specjalny", "przedpremierowy", "vood", "vod", "hd")
+  private val FormatSeparators = Set("-", "–", "—", "|", "/", ":")
+  private val FormatBracketTag = """\s*\[[^\]]*\]\s*$""".r
+  private val FormatParenTag   =
+    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|4DX|dubbing|napisy|lektor|pokaz)\b[^)]*)\)\s*$""".r
+
+  private def isDroppableTag(tok: String): Boolean = {
+    val w = tok.toLowerCase.replaceAll("""[\[\]().,]""", "")
+    w.isEmpty || FormatSeparators.contains(w) || FormatVersionWords.contains(w)
+  }
+
+  /** Strip the trailing format/version tags a ticketing-portal title carries —
+   *  `[2D napisy]`, `(2D dubbing)`, ` - napisy`, ` / 2D dubbing`, ` NAPISY 2D`,
+   *  ` dubb` — so the same film's screening variants collapse to one title and
+   *  merge. Removes trailing tokens that are pure separators or format/version
+   *  words after peeling any bracket/paren tag, repeating until stable. A
+   *  leading programme tag (e.g. "DKF -") is never trailing, so it survives. */
+  def stripFormatTags(raw: String): String = {
+    var t    = raw.replaceAll("\\s+", " ").trim
+    var prev = ""
+    while (t != prev) {
+      prev = t
+      t = FormatBracketTag.replaceFirstIn(t, "").trim
+      t = FormatParenTag.replaceFirstIn(t, "").trim
+      var toks = t.split(" ").filter(_.nonEmpty).toVector
+      while (toks.length > 1 && isDroppableTag(toks.last)) toks = toks.dropRight(1)
+      t = toks.mkString(" ").trim
+    }
+    t
+  }
+
   private def precedingTokenEndsSentence(chars: Array[Char], dotIdx: Int): Boolean = {
     if (dotIdx == 0) return false
     val prev = chars(dotIdx - 1)

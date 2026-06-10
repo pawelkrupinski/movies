@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html data-current_view="hall-view" lang="pl-PL">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+      @font-face {
+          font-family: 'Montserrat';
+          src: url("/fonts/montserrat/montserrat-200.woff2") format('woff2'),
+          url("/fonts/montserrat/montserrat-200.woff") format('woff');
+          font-weight: 200;
+          font-display: swap;
+          font-style: normal;
+      }
+      @font-face {
+          font-family: 'Montserrat';
+          src: url("/fonts/montserrat/montserrat-400.woff2") format('woff2'),
+          url("/fonts/montserrat/montserrat-400.woff") format('woff');
+          font-weight: 400;
+          font-display: swap;
+          font-style: normal;
+      }
+  </style>
+
+    <link rel="preload" as="image" href="/gfx/logo/biletyna_pl_kontra.svg">
+  <link href="https://biletyna.pl/Piekary-Slaskie/Kino-Zacisze" rel="canonical" >
+  <script id="profile-data" type="application/json"></script>
+  
+    <script>
+    var site_language = 'pl';
+    var get_filter = {"0":{"name":"h","hall_id":6941,"value":"Piekary \u015al\u0105skie"}};
+    var isFacebookPixelEnabled = 1 ? true : false;
+    var fbEventRef = '';
+    var fbAfilliatePixelId = '';
+    var fbAfilliatePixelOrganizingCompanyId = '';
+    var fbBiletynaPixelId = '563912484036133';
+    var fbBiletynaAppId = '178433258981904';
+    var _smswdir = "/js/sales-manago/sw.js";
+    var BNK_context = {"theme_name":"biletyna-v2","is_mobile_app":false,"page_metadata":{}};
+    var gtm_id = 'GTM-KMVQKH';
+    var isMobileApp = 0;
+          window.bnkInpostGeowidgetToken = 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJzQlpXVzFNZzVlQnpDYU1XU3JvTlBjRWFveFpXcW9Ua2FuZVB3X291LWxvIn0.eyJleHAiOjIwNzk2MDQ5NzAsImlhdCI6MTc2NDI0NDk3MCwianRpIjoiMWQ3NDRhMTQtODEzNi00ODI1LTkyMjMtNGQ4YTVlOTQwMmQwIiwiaXNzIjoiaHR0cHM6Ly9sb2dpbi5pbnBvc3QucGwvYXV0aC9yZWFsbXMvZXh0ZXJuYWwiLCJzdWIiOiJmOjEyNDc1MDUxLTFjMDMtNGU1OS1iYTBjLTJiNDU2OTVlZjUzNTprVzdLOV94UW5oT3oyc1A5OGM5UlZvbG0xQ2tNOXgweGM2a3Q3dlhESFl3IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoic2hpcHgiLCJzZXNzaW9uX3N0YXRlIjoiN2U4YjFmMWItMmQyNS00MWNmLTg2MWYtZDVkNTgzY2E2NTQ0Iiwic2NvcGUiOiJvcGVuaWQgYXBpOmFwaXBvaW50cyIsInNpZCI6IjdlOGIxZjFiLTJkMjUtNDFjZi04NjFmLWQ1ZDU4M2NhNjU0NCIsImFsbG93ZWRfcmVmZXJyZXJzIjoiYmlsZXR5bmEucGwiLCJ1dWlkIjoiMDFmYzgzMTItNzRmZC00NDQzLThjMmMtYTg3M2MyYmYwNjFiIn0.oSSShoKTQis6OTz9_0ylSDqbfa_mOHWjc1iCi5RfRxLOLXYOakhk6pkihf5Vu-HjmxEVNYOSMwJOmWyKYxk7IiriXOfqFCaGp4syDnaK1QziajyXWfoZFrxojXgRdewGvkYLJcA-R_fu366ode5Cpz2tNfRMXlKP0spJQYcIs_G_xSLHHKgcp21v-Aw9gMFErydb1xkwA8LeC_mVS4DTf862TFpRtm2HOQ57WHoMGBcgTinPOoPnEPT74-JfHYKklSQxRcAqG04agFGj6Xlz1nvJ-PFmVo2sZYrET97OuY_HOWwJh58go9P4lN6d5q31CDOWns3UwU7U1FoD6TgePg';
+        window.bnkInpostGeowidgetConfig = {
+      token: window.bnkInpostGeowidgetToken,
+      cssUrl: 'https://geowidget.inpost.pl/inpost-geowidget.css',
+      jsUrl: 'https://geowidget.inpost.pl/inpost-geowidget.js'
+    };
+  </script>
+  <!-- start of webpack files -->
+<link rel="preload" href="/dist/shared/css/app-3574871a-2517cbcc2c6006951eba.css" as="style">
+<link rel="stylesheet" type="text/css" href="/dist/shared/css/app-3574871a-2517cbcc2c6006951eba.css"/>
+<link rel="preload" href="/dist/biletyna-v2/css/app-c17c61f22f44f0406fd5.css" as="style">
+<link rel="stylesheet" type="text/css" href="/dist/biletyna-v2/css/app-c17c61f22f44f0406fd5.css"/>
+<!-- end of webpack files -->
+  <meta name="description" content="Kup bilet online na wydarzenia w miejscu: Miejski Domu Kultury w Piekarach Śląskich (Piekary Śląskie), Bytomska 73" >
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" ><title>Miejski Domu Kultury w Piekarach Śląskich | Imprezy i Wydarzenia Piekary Śląskie - biletyna.pl</title>
+<meta property="og:site_name" content="biletyna.pl" />
+<meta property="og:locale" content="pl_PL" />
+<meta property="og:url" content="https://biletyna.pl/Piekary-Slaskie/Kino-Zacisze" />
+<meta property="og:title" content="Miejski Domu Kultury w Piekarach Śląskich | Imprezy i Wydarzenia Piekary Śląskie" />
+<meta property="og:type" content="website" />
+<meta property="og:description" content="Kup bilet online na wydarzenia w miejscu: Miejski Domu Kultury w Piekarach Śląskich (Piekary Śląskie), Bytomska 73" />
+<script type="application/ld+json">{"@context":"https:\/\/schema.org","@type":"Place","url":"https:\/\/biletyna.pl\/Piekary-Slaskie\/Kino-Zacisze","name":"Miejski Domu Kultury w Piekarach Śląskich - Piekary Śląskie","address":{"@type":"PostalAddress","addressLocality":"Piekary Śląskie","postalCode":"41-940","addressRegion":"śląskie","streetAddress":"Bytomska 73","addressCountry":"PL"},"geo":{"@type":"GeoCoordinates","latitude":50.3747398,"longitude":18.943574},"events":[{"@type":"ComedyEvent","name":"Katarzyna Piasecka - Nowy program stand-up „BAGUS”","description":"🎤😂 Katarzyna Piasecka wraca z nowym stand-upem \"BAGUS\" – świeże historie, bezkompromisowe żarty i charyzma w topowej formie. Wieczór rozkręci też support Szymona Baranieckiego – gwarancja śmiechu od pierwszej minuty! 🔥🎟️. Wydarzenie odbędzie się w Miejski Domu Kultury w Piekarach Śląskich, Piekary Śląskie już 18.06.2026 o godz. 18:00","image":"https:\/\/biletyna.pl\/file\/get\/id\/364664","performer":{"@type":"PerformingGroup","name":"Katarzyna Piasecka - Nowy program stand-up „BAGUS”"},"url":"https:\/\/biletyna.pl\/stand-up\/Katarzyna-Piasecka\/BAGUS?eid=638251#opis","location":{"@type":"Place","name":"Miejski Domu Kultury w Piekarach Śląskich","url":"https:\/\/biletyna.pl\/Piekary-Slaskie\/Kino-Zacisze","address":{"@type":"PostalAddress","addressLocality":"Piekary Śląskie","postalCode":"41-940","streetAddress":"Bytomska 73","addressRegion":"śląskie","addressCountry":"PL"},"latitude":50.3747398,"longitude":18.943574},"startDate":"2026-06-18T18:00:00+02:00","endDate":"2026-06-18T19:30:00+02:00","duration":"PT1H30M","eventStatus":"https:\/\/schema.org\/EventScheduled","remainingAttendeeCapacity":20,"eventAttendanceMode":"OfflineEventAttendanceMode","offers":{"@type":"AggregateOffer","category":"tickets","availability":"https:\/\/schema.org\/InStock","priceCurrency":"PLN","lowPrice":"70.00","validFrom":"2026-02-13T14:32:55+01:00","url":"https:\/\/biletyna.pl\/stand-up\/Katarzyna-Piasecka\/BAGUS?eid=638251#opis","seller":{"@type":"Organization","name":"biletyna.pl","url":"https:\/\/biletyna.pl"}},"organizer":{"@type":"Organization","name":"biletyna.pl","url":"https:\/\/biletyna.pl"}}],"@id":"https:\/\/biletyna.pl\/Piekary-Slaskie\/Kino-Zacisze"}</script>  <link href="https://www.googletagmanager.com" rel="preconnect">
+  <link href="https://static.cloudflareinsights.com" rel="preconnect">
+  <link href="https://sslwidget.criteo.com" rel="preconnect">
+  <link href="https://js-agent.newrelic.com" rel="preconnect">
+  <link href="https://dynamic.criteo.com" rel="preconnect">
+  <link href="https://consentcdn.cookiebot.com" rel="preconnect">
+  <link href="https://consent.cookiebot.com" rel="preconnect">
+  <link href="https://connect.facebook.net" rel="preconnect">
+  <link href="https://bat.bing.com" rel="preconnect">
+  <link href="https://app3.salesmanago.pl" rel="preconnect">
+  <link href="https://analytics.tiktok.com" rel="preconnect">
+
+  <script src="/lib/twistopay-wiget.js" async></script>
+
+  
+  <link rel="apple-touch-icon" sizes="180x180" href="/th/biletyna-v2/icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/th/biletyna-v2/icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/th/biletyna-v2/icons/favicon-16x16.png">
+  <link rel="manifest" href="/th/biletyna-v2/site.webmanifest.json?ver=1.2">
+  <link rel="mask-icon" href="/th/biletyna-v2/icons/safari-pinned-tab.svg" color="#ae347a">
+  <link rel="shortcut icon" href="/th/biletyna-v2/icons/favicon.ico">
+  <meta name="apple-mobile-web-app-title" content="Biletyna.pl">
+  <meta name="application-name" content="Biletyna.pl">
+  <meta name="msapplication-TileColor" content="#ae347a">
+  <meta name="msapplication-config" content="/th/biletyna-v2/browserconfig.xml?ver=1.1">
+  <meta name="theme-color" content="#ae347a">
+
+  <meta property="fb:app_id" content="178433258981904"/>
+  <meta property="fb:admins" content="100000669639818" />
+
+    <meta name="google-site-verification" content="1m3Nl48OXydauJ8Ym31l86R23C1Tq26YjrO3-bl46GQ" />
+  <meta name="google-site-verification" content="pnJWSqnAMxzWlt-y2SKTYNi9BY42YpalfA7O8CP9z-w" />
+
+    <meta name="google-site-verification" content="dw9NZ8jh0MLPUjF-hNBtWegCSFUBOYQNRFMON3qyqsA" />
+
+  
+  
+      <script>
+      window.inpostPayConfig = {"options":{"merchantClientId":"9052b2ce-a7bb-4016-9eb4-7aee054f04fe"},"url":"https:\/\/inpostpay-widget-v2.inpost.pl\/inpostpay.widget.v2.js","inpost_checkout":false};
+    </script>
+  
+  <meta name="msvalidate.01" content="8F882F2B058C2E6ECA47CC3D817DD896" />
+  
+  <script type="text/javascript">
+      _gaq = {
+          'conversionReady': 'yes',
+          'transaction': {},
+          'push': function(data) {
+              if (data.length > 0) {
+                  if (data[0] == '_addTrans') {
+                      _gaq.transaction = {
+                          'transactionId': data[1],
+                          'transactionAffiliation': data[2],
+                          'transactionTotal': data[3],
+                          'transactionShipping': data[5],
+                          'transactionProducts': []
+                      };
+                  }
+                  else if (data[0] == '_addItem') {
+                      _gaq.transaction.transactionProducts = _gaq.transaction.transactionProducts || [];
+                      _gaq.transaction.transactionProducts.push({
+                          'sku': data[2],
+                          'name': data[3],
+                          'category': data[4],
+                          'price': data[5],
+                          'quantity': data[6]
+                      });
+                  }
+                  else if (data[0] == '_trackTrans') {
+                      try {
+                          var object = _gaq.transaction;
+                          object.event = 'customEventTransaction';
+                          dataLayer.push(object);
+                      } catch(error) {};
+                  };
+              };
+          }
+      };
+  </script>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+              new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+          j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+          'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+      })(window,document,'script','dataLayer','GTM-KMVQKH');</script>
+  <!-- End Google Tag Manager -->
+
+  <!-- integracja Google Tag Manager -->
+  <script>
+            window.dataLayer = window.dataLayer || [];
+      dataLayer.push({
+        'biletyna-controller': 'hall',
+        'biletyna-action': 'view',
+        'biletyna-id': '6941',
+        'biletyna-page-name': 'hall_view',
+        'at_fb_pixel_id': '',
+        'at_ga4_id': '',
+        'ga-4-id': 'G-F9P95MG1WG'
+      });
+  </script>
+    <script>
+    var categories_json = {"2":"kabaret","3":"spektakl","4":"koncert","5":"sport","7":"inne","13":"dla dzieci","14":"film","17":"stand-up","33":"transmisje on-line","35":"cyrk","36":"festiwal","37":"balet","38":"opera","39":"musical","40":"wystawa","41":"targi","42":"imprezy klubowe"};
+    var flashMessage = '';
+  </script>
+    <link rel="preload" href="/fonts/montserrat/font-other.css" as="style">
+  <link rel="stylesheet" type="text/css" href="/fonts/montserrat/font-other.css"/>
+  <!-- start of webpack files -->
+<script defer type="text/javascript" src="/dist/shared/js/app-e96e9bea-02c43ad04cfe9ee600d7.js"></script>
+<script defer type="text/javascript" src="/dist/shared/js/app-1fd18a3a-f104719d1f026406bb4c.js"></script>
+<script defer type="text/javascript" src="/dist/shared/js/app-4684ec84-108c91715aef5ac46328.js"></script>
+<script defer type="text/javascript" src="/dist/shared/js/app-a189ee2e-53e0252bc81bdf150930.js"></script>
+<script defer type="text/javascript" src="/dist/shared/js/app-d9cd5f2e-0d887d203f70e1b30b7b.js"></script>
+<script defer type="text/javascript" src="/dist/shared/js/app-a6481472-fab9bc86de8895243900.js"></script>
+<script defer type="text/javascript" src="/dist/shared/js/app-9585abe4-b68ad806b0366ed599c7.js"></script>
+<script defer type="text/javascript" src="/dist/shared/js/app-67028aca-85d1f291f881caf21139.js"></script>
+<script defer type="text/javascript" src="/dist/shared/js/app-daddcf13-9f0ae2a3e368a3641ea2.js"></script>
+<script defer type="text/javascript" src="/dist/shared/js/app-1f88bf92-28e82aba4a60b913e42a.js"></script>
+<script defer type="text/javascript" src="/dist/shared/js/app-65cb2941-479bed98bbcddaa5bae1.js"></script>
+<script defer type="text/javascript" src="/dist/shared/js/app-e883c8fb-58219e901c0ba8971bbc.js"></script>
+<script defer type="text/javascript" src="/dist/shared/js/app-da221d79-9b73866b619591a3c3a3.js"></script>
+<script defer type="text/javascript" src="/dist/shared/js/app-1199201b-fc86c4ee29a77a906b3e.js"></script>
+<script defer type="text/javascript" src="/dist/shared/vendors/rxjs.vendor-abab9e4bf3a490327a6c.js"></script>
+<script defer type="text/javascript" src="/dist/shared/vendors/process.vendor-e2513162d0c81758a0a7.js"></script>
+<script defer type="text/javascript" src="/dist/shared/vendors/jquery.vendor-c2be2383022f6e9b642b.js"></script>
+<script defer type="text/javascript" src="/dist/shared/vendors/rxjs.ecdc5b47e7.vendor-f52ac0500ead39bd8bfb.js"></script>
+<script defer type="text/javascript" src="/dist/shared/vendors/tslib.vendor-bdb3cab83566982fecd0.js"></script>
+<script defer type="text/javascript" src="/dist/shared/vendors/bootstrap-sass.vendor-d1c62770c481728be2e4.js"></script>
+<script defer type="text/javascript" src="/dist/shared/vendors/js-cookie.vendor-b612e527b3ce4b6de72f.js"></script>
+<script defer type="text/javascript" src="/dist/shared/vendors/rxjs.b928308be6.vendor-b2c7cd1497d718e79de3.js"></script>
+<script defer type="text/javascript" src="/dist/shared/vendors/core-js.vendor-e09b8b7cd7bbfc87c02e.js"></script>
+<script defer type="text/javascript" src="/dist/shared/vendors/intersection-observer.vendor-abc796a98a610bd62520.js"></script>
+<script defer type="text/javascript" src="/dist/biletyna-v2/js/app-97cd83da0711067e4d1c.js"></script>
+<!-- end of webpack files -->
+</head>
+<body data-current_view="hall-view" class="  ">
+<div id="fb-root"></div>
+<!-- preload svg-->
+<svg display="none"><use href="/gfx/bnk-icons.svg?v=1.3#icon-bag"></use></svg>
+
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KMVQKH" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+  <div id="mobile-side-menu" class="primary-bcg white-font visible-xs hidden-print">
+    <aside id="left-menu" class="primary-bcg white-font side-menu">
+      <header>
+        <a href="/" rel="home">
+          <img class="logo" src="/gfx/logo/biletyna_pl_kontra.svg" alt="Logo biletyna.pl – strona główna">
+        </a>
+        <ul class="B-sm-icons B-flex B-flex--direction-row B-flex--justify-content-center B-flex--align-items-center">
+	<li><a target="_blank" href="https://www.youtube.com/@biletyna"><img class="B-sm-icons__item--bigger blazy-img" src="/th/biletyna-v2/gfx/icons/yt.png" alt="Youtube Biletyna"></a></li>
+	<li><a target="_blank" href="https://www.facebook.com/biletyna/"><img class="B-sm-icons__item blazy-img" src="/th/biletyna-v2/gfx/icons/meta.png" alt="Facebook Biletyna"></a></li>
+	<li><a target="_blank" href="https://www.tiktok.com/@biletyna"><img class="B-sm-icons__item blazy-img" src="/th/biletyna-v2/gfx/icons/tiktok.png" alt="Tik Tok Biletyna"></a></li>
+	<li><a target="_blank" href="https://www.instagram.com/biletyna_pl/"><img class="B-sm-icons__item blazy-img" src="/th/biletyna-v2/gfx/icons/ig.png" alt="Instagram Biletyna"></a></li>
+</ul>
+      </header>
+      <section>
+        <div id="mobile-filters">
+          <mobile-filters></mobile-filters>
+        </div>
+        <ul>
+          <li class="header">KLIENCI</li>
+          <li>
+            <a href="/news">AKTUALNOŚCI</a>
+          </li>
+                      <li>
+              <a rel="nofollow" href="/order/auth">STATUS REZERWACJI</a>
+            </li>
+                    <li>
+            <a href="/newsletter">NEWSLETTER</a>
+          </li>
+          <li>
+            <a href="/katalog">KATALOG</a>
+          </li>
+          <li>
+            <a href="/contact">POMOC</a>
+          </li>
+          <li>
+            <a href="/contact">KONTAKT</a>
+          </li>
+          <li>
+            <a href="/blog/">BLOG</a>
+          </li>
+        </ul>
+        <ul>
+          <li class="header">WSPÓŁPRACA</li>
+          <li>
+            <a href="https://biletyna.pro/" target="_blank">SPRZEDAWAJ Z<br>BILETYNA.PRO</a>
+          </li>
+          <li>
+            <a href="https://biletyna.pro/produkty/dystrybucja" target="_blank">OFERTA DLA<br>ORGANIZATORÓW</a>
+          </li>
+          <li>
+            <a href="https://biletyna.pro/produkty/sprzedaz-wlasna" target="_blank">SYSTEM BILETOWY</a>
+          </li>
+          <li>
+            <a href="https://biletyna.pro/produkty/biletomat" target="_blank">WYNAJMIJ BILETOMAT</a>
+          </li>
+          <li>
+            <a href="/static/kariera">KARIERA</a>
+          </li>
+        </ul>
+        <ul>
+          <li class="header">INFORMACJE</li>
+          <li>
+            <a href="/static/o-nas">O NAS</a>
+          </li>
+          <li>
+            <a href="/static/regulamin">REGULAMIN</a>
+          </li>
+          <li>
+            <a href="/static/polityka-prywatnosci">POLITYKA PRYWATNOŚCI</a>
+          </li>
+          <li>
+            <a href="/static/pliki-cookie">PLIKI COOKIE</a>
+          </li>
+          <li>
+            <a href="javascript:Cookiebot.renew()">ZARZĄDZAJ ZGODAMI COOKIES</a>
+          </li>
+          <li>
+            <a href="/static/administrator-danych">ADMINISTRATOR DANYCH</a>
+          </li>
+          <li>
+            <a href="/static/bilet-chroniony">UBEZPIECZENIE BILETU</a>
+          </li>
+        </ul>
+        <hr>
+        <div class="B-font-size--small">&copy; <a href="https://biletyna.pl">biletyna.pl</a> 2006-2026. Wszystkie prawa zastrzeżone</div>
+      </section>
+    </aside>
+  </div>
+  <div id="wrapper" class=" ">
+          
+<header id="menu" class="hidden-print" role="banner">
+  
+  <!-- SMALL HEADER -->
+  <nav class="white-font header-menu-small" style="background-image: url(/th/biletyna-v2/gfx/header-small.jpg);">
+    <div class="container nav-bar">
+      <div class="left visible-xs">
+        <ul class="nav">
+	                  <li data-target="#left-menu" class="side-menu-select">
+            <i class="icon-svg filter-icon">
+              <svg class="svg-icon">
+                                  <use href="/gfx/bnk-icons.svg#icon-menu"></use>
+                              </svg>
+            </i>
+          </li>
+        </ul>
+      </div>
+      <div class="left menu-logo-wrapper">
+        <ul class="nav">
+                      <li class="menu-logo">
+              <a href="/" rel="home">
+                <img class="logo" src="/gfx/logo/biletyna_pl_kontra.svg" alt="Logo biletyna.pl – strona główna">
+              </a>
+            </li>
+                  </ul>
+      </div>
+      <div class="right">
+        <div class="filters-nav hidden-xs">
+          <div class="nav B-p-10">
+            <ul class="B-sm-icons B-flex B-flex--direction-row B-flex--justify-content-center B-flex--align-items-center">
+	<li><a target="_blank" href="https://www.youtube.com/@biletyna"><img class="B-sm-icons__item--bigger blazy-img" src="/th/biletyna-v2/gfx/icons/yt.png" alt="Youtube Biletyna"></a></li>
+	<li><a target="_blank" href="https://www.facebook.com/biletyna/"><img class="B-sm-icons__item blazy-img" src="/th/biletyna-v2/gfx/icons/meta.png" alt="Facebook Biletyna"></a></li>
+	<li><a target="_blank" href="https://www.tiktok.com/@biletyna"><img class="B-sm-icons__item blazy-img" src="/th/biletyna-v2/gfx/icons/tiktok.png" alt="Tik Tok Biletyna"></a></li>
+	<li><a target="_blank" href="https://www.instagram.com/biletyna_pl/"><img class="B-sm-icons__item blazy-img" src="/th/biletyna-v2/gfx/icons/ig.png" alt="Instagram Biletyna"></a></li>
+</ul>
+          </div>
+        </div>
+        <ul class="nav">
+          <li class="hidden-md hidden-sm hidden-xs">
+            <a href="/contact">POMOC</a>
+          </li>
+          <li class="phone hidden-sm hidden-xs">
+            <a href="tel:+48669895798" class="phone-number B-Marketing-00008">
+              <i class="icon-svg icon-small"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-telefon"></use></svg></i>
+              669 895 798
+            </a>
+          </li>
+          <li class="cart-button-wrapper">
+            <a href="#" data-toggle="modal" data-target="#cart-modal-popup">
+              <div class="cart-button">
+                <i class="icon-svg">
+                  <svg class="svg-icon">
+                                          <use href="/gfx/bnk-icons.svg#icon-bag"></use>
+                                      </svg>
+                </i>
+                <span class="indicator"></span>
+              </div>
+            </a>
+          </li>
+                      
+<li class="profile-btn dropdown">
+  <button class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <i class="icon-svg btn-icon">
+      <svg class="svg-icon">
+        <use href="/gfx/bnk-icons.svg#icon-user-outline"></use>
+      </svg>
+    </i>
+      </button>
+  <ul class="dropdown-menu">
+          <li class="dropdown-header">Mój profil</li>
+      <li>
+        <a href="/order/auth">
+          <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-bilet"></use></svg></i>
+          Twoja rezerwacja        </a>
+      </li>
+      <li>
+        <a href="/profile/login" class="profile-btn__login">
+          <i class="icon-svg">
+            <svg class="svg-icon">
+              <use href="/gfx/bnk-icons.svg#icon-log-in"></use>
+            </svg>
+          </i>
+          Zaloguj się        </a>
+      </li>
+      <li>
+        <a href="/profile/create">
+          <i class="icon-svg">
+            <svg class="svg-icon">
+              <use href="/gfx/bnk-icons.svg#icon-user-outline"></use>
+            </svg>
+          </i>
+          Zarejestruj się        </a>
+      </li>
+      </ul>
+</li>
+                  </ul>
+      </div>
+      <div class="search-nav">
+        <span data-target="#search-event" class="right search-btn">
+          <i class="icon-svg filter-icon">
+            <svg class="svg-icon">
+                              <use href="/gfx/bnk-icons.svg#icon-wyszukaj"></use>
+                          </svg>
+          </i>
+        </span>
+        <div class="clearfix visible-xxs"></div>
+        <div class="header-search dark-grey-font search-bar B-Marketing-00009">
+          <i class="icon-svg close"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-cancel"></use></svg></i>
+          <header-search :is-mobile-app="0">
+            <form action="/event/index/">
+              <input class="header_search" type="text" name="q" role="search" placeholder="Szukaj" autocomplete="off">
+              <i class="icon-svg search-icon">
+                <svg class="svg-icon">
+                                      <use href="/gfx/bnk-icons.svg#icon-wyszukaj"></use>
+                                  </svg>
+              </i>
+            </form>
+          </header-search>
+        </div>
+      </div>
+
+      <div class="filters-nav hidden-xs hidden-sm hidden-md">
+        <ul class="nav">
+          <li>
+            <span data-target="#category-filter" class="filter-select">
+              <i class="filter-icon icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-kategoria"></use></svg></i>
+              <span class="filter-title">Kategoria</span>
+              <i class="icon-svg hidden-xs hidden-sm rotate-icon B-font-size--small"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-strzalka-dol"></use></svg></i>
+            </span>
+          </li>
+          <li>
+            <span data-target="#place-filter" class="filter-select">
+              <i class="filter-icon icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-lokalizacja"></use></svg></i>
+              <span class="filter-title">Miejsce</span>
+              <i class="icon-svg hidden-xs hidden-sm rotate-icon B-font-size--small"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-strzalka-dol"></use></svg></i>
+            </span>
+          </li>
+          <li>
+            <span data-target="#date-filter" class="filter-select">
+              <i class="filter-icon icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-kalendarz"></use></svg></i>
+              <span class="filter-title">Data</span>
+              <i class="icon-svg hidden-xs hidden-sm rotate-icon B-font-size--small"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-strzalka-dol"></use></svg></i>
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="clearfix"></div>
+    </div>
+    <div class="subheader">
+      <div class="container">
+          <nav aria-label="Breadcrumbs">
+    <ol class="breadcrumbs" itemscope itemtype="https://schema.org/BreadcrumbList">
+                                <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+            <a class="text-ellipsis" itemprop="item" href="/">
+              <span itemprop="name">Bilety na biletyna.pl</span>
+              <meta itemprop="position" content="1" />
+            </a>
+          </li>
+                <i aria-hidden="true" class="icon-svg breadcrumbs__chevron"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#mobile-app-chevron-left"></use></svg></i>
+                                <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+            <a class="text-ellipsis" itemprop="item" href="/Piekary-Slaskie">
+              <span itemprop="name">Piekary Śląskie</span>
+              <meta itemprop="position" content="2" />
+            </a>
+          </li>
+                <i aria-hidden="true" class="icon-svg breadcrumbs__chevron"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#mobile-app-chevron-left"></use></svg></i>
+                                <li aria-current="page">
+            <span class="text-ellipsis nolink">
+              <strong>Miejski Domu Kultury w Piekarach Śląskich</strong>
+            </span>
+          </li>
+                <i aria-hidden="true" class="icon-svg breadcrumbs__chevron"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#mobile-app-chevron-left"></use></svg></i>
+          </ol>
+  </nav>
+      </div>
+    </div>
+  </nav>
+  <!-- END OF SMALL HEADER -->
+
+  <nav id="menu-expand">
+    <div id="category-filter" class="filter-box container-fluid primary-bcg white-font scrollbar-bnk">
+      <category-filter></category-filter>
+    </div>
+    <div id="place-filter" class="filter-box container-fluid primary-bcg white-font scrollbar-bnk">
+      <place-filter></place-filter>
+    </div>
+    <div id="date-filter" class="filter-box">
+      <date-filter :auto-select-date-to="true"></date-filter>
+    </div>
+    <div id="search-results"></div>
+    <div class="clearfix"></div>
+  </nav>
+</header>
+        
+    
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+
+<main id="hall-view" class="event-index lp">
+  <!-- Modal -->
+  <section class="section" style="padding: 0">
+    <div class="lp-hero">
+      <div class="lp-hero__img lp-hero__img--gradient" style="background-image: url(/th/biletyna-v2/gfx/category_3.jpg)">
+      </div>
+      <div class="lp-hero__right">
+        <div class="lp-hero__content">
+          <h1 class="lp-hero__title">Miejski Domu Kultury w Piekarach Śląskich - Piekary Śląskie</h1>
+                    <p class="lp-hero__description">
+            Bytomska 73,
+            41-940            Piekary Śląskie            <br>
+                      </p>
+          <a class="B-btn B-btn--white lp-hero__btn" href="#wydarzenia-w-twoim-miescie">SPRAWDŹ WYDARZENIA</a>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div class="container transparent-bcg B-mt-15">
+		
+
+<script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>
+<script>
+    window.googletag = window.googletag || {cmd: []};
+    googletag.cmd.push(function () {
+        // Definiowanie size mapping dla responsywnych reklam
+        var leaderboardMapping = googletag.sizeMapping()
+            .addSize([1220, 0], [[1140, 150], ['fluid']]) // Desktop 1199 1256-20
+            .addSize([768, 0], ['fluid']) // Tablet 991
+            .addSize([480, 0], ['fluid']) // Mobile 767
+            .addSize([0, 0], ['fluid']) // Mniejsze rozmiary - brak reklamy
+            .build();
+
+        googletag.defineSlot('/1007711/banner_height_150px_3_sizes', ['fluid', [1140, 150]], 'div-gpt-ad-1732114965883-0')
+            .defineSizeMapping(leaderboardMapping)
+            .addService(googletag.pubads());
+        googletag.pubads().enableSingleRequest();
+        googletag.enableServices();
+    });
+</script>
+<div class="B-promo-app-banner B-border-radius--standard">
+  <div class="B-border-radius--standard">
+    <div id='div-gpt-ad-1732114965883-0'>
+      <script>
+          googletag.cmd.push(function () {
+              googletag.display('div-gpt-ad-1732114965883-0');
+          });
+      </script>
+    </div>
+  </div>
+</div>
+  </div>
+  <div class="container">
+    <div class="row">
+      <div id="B-filters-btn" class="B-flex B-flex--justify-content-center B-pt-10 B-pb-10 B-filters-wrapper">
+  <div id="side-menu-toggle" class="B-filters-btn B-btn B-btn--medium B-btn--primary B-m-5">
+    <i class="icon-svg B-mr-5">
+      <svg class="svg-icon">
+        <use href="/gfx/bnk-icons.svg#icon-filter"></use>
+      </svg>
+    </i>
+    Filtruj wydarzenia
+  </div>
+</div>
+      <br>
+      <span id="wydarzenia-w-twoim-miescie" class="B-anchor__target"></span>
+      <div
+  class="event-list"
+  data-ajax_params="{&quot;events_ipp&quot;:12,&quot;ipp&quot;:36,&quot;params&quot;:{&quot;h&quot;:6941},&quot;h&quot;:6941}"
+  data-v2_city_seo_url="/Piekary-Slaskie"
+  data-infinity_scroll="1"
+>
+      <div class="tabs">
+              <div class="container">
+          <ul class="nav nav-tabs tabs-select">
+                          <li class="tab tab-active"><a rel="nofollow" href="#catalogue">Kafelki</a></li>
+                                      <li class="tab"><a rel="nofollow" href="#list">Lista</a></li>
+                                      <li class="tab"><a rel="nofollow" href="#calendar">Kalendarz</a></li>
+                      </ul>
+        </div>
+        
+      <div class="tab-content">
+                <div id="catalogue" class="tab-pane tab-view active">
+          <section class="events">
+            <div class="event-box">
+                                                            <div class="col-xs-4 event-wrapper">
+                    
+
+  
+  
+
+<article data-artist_id="57513" class="event light-grey-bcg">
+  <a href="/stand-up/Katarzyna-Piasecka/BAGUS/Piekary-Slaskie" class="event-img">
+          <img class="img-responsive" src="/th/biletyna-v2/gfx/zaslepka.jpg" data-src="/file/get/w/260/id/364664/filename/c6369f89105f12924f40c7c06db5bbfd.jpg" alt="Katarzyna Piasecka - Nowy program stand-up „BAGUS”">
+      </a>
+  <div class="event-left-side">
+    <div>
+              <div class="event-label stars-fun accent-font">
+                                    <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                                                <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                                                <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                                                <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                                                <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pusta"></use></svg></i>
+                                <span class="stars-info">(25)</span>
+        </div>
+      
+      <h3 class="h3 event-title">
+        <a href="/stand-up/Katarzyna-Piasecka/BAGUS/Piekary-Slaskie">Katarzyna Piasecka - Nowy program stand-up „BAGUS”</a>
+      </h3>
+    </div>
+
+    <div class="content">
+                    <div class="icon-row-flex">
+          <svg class="icon-svg"><use href="/gfx/bnk-icons.svg#icon-kalendarz"></use></svg>
+          <p>
+            od 18.06.2026
+          </p>
+        </div>
+            <a href="/stand-up/Katarzyna-Piasecka/BAGUS/Piekary-Slaskie" class="B-btn B-btn--primary ticket-buy">
+        <svg class="icon-svg"><use href="/gfx/bnk-icons.svg#icon-bilet"></use></svg>
+        <span class="B-text-transform--uppercase">kup bilet</span>
+      </a>
+    </div>
+  </div>
+</article>
+                </div>
+                                  <div class="col-xs-12 event-expand-dest">
+                                          
+                                    
+
+
+<div
+  class="row event-expand primary-bcg white-font"
+  data-artist_id="57513"
+  data-ajax_params='{&quot;params&quot;:{&quot;h&quot;:6941,&quot;event_id&quot;:&quot;&quot;}}'
+  data-options='{&quot;theme&quot;:&quot;dark&quot;,&quot;show_artist_description&quot;:false,&quot;show_loading&quot;:true,&quot;v2_city_seo_url&quot;:&quot;\/Piekary-Slaskie&quot;,&quot;more_events_link&quot;:&quot;\/stand-up\/Katarzyna-Piasecka\/BAGUS&quot;,&quot;countdown&quot;:false,&quot;show_tickets_fee_info&quot;:true}'
+>
+  <div class="col-lg-12">
+    <div class="tickets-table small-table scrollbar-bnk scrollbar-bnk-dark">
+              <div class="no-results">
+                      <svg style="width: 60px;height: 60px;" class="spinner spinner--circle" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg">
+  <circle class="path" fill="none" stroke-width="6" stroke-linecap="round" cx="33" cy="33" r="30"></circle>
+</svg>                  </div>
+          </div>
+  </div>
+</div>
+                                      </div>
+                                                            </div>
+            <div class="clearfix"></div>
+          </section>
+        </div>
+                        <div id="list" class="tab-pane tab-view ">
+          
+                                    
+
+
+<div
+  class="row event-expand "
+  data-artist_id=""
+  data-ajax_params='{&quot;events_ipp&quot;:12,&quot;ipp&quot;:36,&quot;params&quot;:{&quot;h&quot;:6941},&quot;h&quot;:6941}'
+  data-options='{&quot;theme&quot;:&quot;light&quot;,&quot;show_artist_description&quot;:false,&quot;show_artist_thumbnail&quot;:true,&quot;show_artist_title&quot;:true,&quot;countdown&quot;:false,&quot;infinite_scroll_only&quot;:true,&quot;show_tickets_fee_info&quot;:true}'
+>
+  <div class="col-lg-12">
+    <div class="tickets-table small-table scrollbar-bnk scrollbar-bnk-dark">
+              <table class="table">
+          <tbody>
+                          
+
+        
+
+<tr class="event-row    event--with-thumbnail" data-enable_countdown="0">
+  <td colspan="5" style="text-align: left">
+    <div class="event-content">
+              <div class="event-thumbnail">
+          <a href="/stand-up/Katarzyna-Piasecka/BAGUS" data-title="Katarzyna Piasecka - Nowy program stand-up „BAGUS”">
+                          <img class="thumbnail thumbnail-portrait B-border-radius--standard" src="/th/biletyna-v2/gfx/zaslepka.jpg" data-src="/file/get/w/160/id/364664" alt="Katarzyna Piasecka - Nowy program stand-up „BAGUS”"></img>
+                      </a>
+        </div>
+            <div class="event-title">
+        <p class="h3">
+                    <a href="/stand-up/Katarzyna-Piasecka/BAGUS" data-title="Katarzyna Piasecka - Nowy program stand-up „BAGUS”">
+                        Katarzyna Piasecka - Nowy program stand-up „BAGUS”
+                      </a>
+                  </p>
+        
+                      </div>
+      <div class="event-date">
+        <div class="icon-box">
+          <div class="icon-row">
+            <div>
+              <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-kalendarz"></use></svg></i>
+            </div>
+            <div>
+                              <span class="table-important-text">18.06.2026</span><br>
+                godz. 18:00
+                          </div>
+          </div>
+        </div>
+      </div>
+      <div class="event-place">
+        <div class="icon-box">
+          <div class="icon-row">
+            <div>
+              <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-lokalizacja"></use></svg></i>
+            </div>
+            <div>
+                              <h3 class="h3 table-important-text">
+                <a href="/stand-up/Katarzyna-Piasecka/BAGUS/Piekary-Slaskie">
+                  Piekary Śląskie
+                </a>
+                </h3>
+                            <a href="/Piekary-Slaskie/Kino-Zacisze">Miejski Domu Kultury w Piekarach Śląskich</a>
+            </div>
+          </div>
+        </div>
+      </div>
+            <div class="event-ticket-info">
+        <div class="icon-box">
+          <div class="icon-row">
+            <div>
+              <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-cena"></use></svg></i>
+            </div>
+            <p>
+                                                                    Dostępne&nbsp;bilety:&nbsp;<span class="table-important-text">20</span>
+                                    <br>
+                                                            <span
+                    class=""
+                    data-price_category_id=""
+                    data-event_min_price_category_is_promo=""
+                    data-event_min_price_category_regular_price=""
+                    data-event_id="638251"
+                >
+                  <span>Bilety od&nbsp;<span class="event_row__min-price">73,78&nbsp;zł</span>
+                  <span class="event_row__price-info">
+                                          <span class="B-d--inline-block B-font-size--small">
+                        <span
+                            class="B-icon B-icon--small-x2 B-icon--blue"
+                            data-toggle="tooltip"
+                            data-placement="top"
+                            title="Cena zawiera opłatę serwisową. Kupuj w aplikacji mobilnej biletyna.pl i zapłać tylko 50% opłaty serwisowej!"
+                        >
+                          <svg class="icon-svg" aria-hidden="true">
+                              <use href="/gfx/bnk-icons.svg#icon-info"></use>
+                          </svg>
+                        </span>
+                      </span>
+                                      </span>
+                                  </span>
+                                        </p>
+          </div>
+        </div>
+      </div>
+      <div class="event-btn B-mt-10@xs">
+                              <a href="/event/view/id/638251" class="B-btn link-simulator B-btn--primary">
+              <i class="icon-svg" aria-hidden="true"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-bilet"></use></svg></i><span class="B-text-transform--uppercase B-ml-5">kup bilet</span>
+            </a>
+                        </div>
+    </div>
+  </td>
+</tr>
+                      </tbody>
+        </table>
+                  <div class="text-center">
+                                  </div>
+                  </div>
+  </div>
+</div>
+          <div class="clearfix"></div>
+        </div>
+                                  <div id="calendar" class="tab-pane tab-view ">
+          <div class="col-xs-12">
+            <div id="event-calendar">
+              <event-calendar
+                :filter="{&quot;search_query&quot;:0,&quot;category_id&quot;:0,&quot;area_id&quot;:0,&quot;city_id&quot;:0,&quot;hall_id&quot;:6941}"
+                :calendar_config='{&quot;show_event_title&quot;:1,&quot;show_event_city&quot;:0,&quot;show_event_hall&quot;:0,&quot;thumbnail_url&quot;:&quot;\/th\/biletyna-v2\/gfx\/Adobe_84056174_city_landscape.jpg&quot;}'
+              ></event-calendar>
+            </div>
+            <br>
+            <br>
+            <br>
+          </div>
+        </div>
+              </div>
+    </div>
+        <div class="col-xs-12">
+      
+<div class="text-center spinner-wrapper">
+  <svg style="width: 60px;height: 60px;" class="spinner spinner--circle" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg">
+    <circle class="path" fill="none" stroke-width="6" stroke-linecap="round" cx="33" cy="33" r="30"></circle>
+  </svg>
+</div>
+    </div>
+  </div>
+    </div>
+  </div>
+  
+	<div class="container">
+		<!-- generated 2026-06-10 09:49:53 partial_cache_id: partial_cache_78e5558575276bbc578615d820a1af29 --><div class="B-mb-20">
+  <h2>
+    Sprawdź również
+  </h2>
+
+      
+      <div class="B-mt-15">
+        <p class="B-m-0 B-font-weight--light B-text--nowhitespace">Popularne kategorie w Piekarach Śląskich:</p>
+        <ul class="B-flex B-flex--wrap B-flex-gap--10 B-list-style--none B-line-height--big B-p-0 B-mt-10">
+                                    <li>
+                <a class="B-pl-15 B-pr-15 B-pt-10 B-pb-10 B-font-size--small B-bgc-color--grey B-color--faded B-text--nowrap B-border-radius--standard"
+                   href="/koncert/Piekary-Slaskie">
+                  
+                  koncert
+                  W Piekarach Śląskich
+                </a>
+              </li>
+                                                <li>
+                <a class="B-pl-15 B-pr-15 B-pt-10 B-pb-10 B-font-size--small B-bgc-color--grey B-color--faded B-text--nowrap B-border-radius--standard"
+                   href="/kabaret/Piekary-Slaskie">
+                  
+                  kabaret
+                  W Piekarach Śląskich
+                </a>
+              </li>
+                                                <li>
+                <a class="B-pl-15 B-pr-15 B-pt-10 B-pb-10 B-font-size--small B-bgc-color--grey B-color--faded B-text--nowrap B-border-radius--standard"
+                   href="/stand-up/Piekary-Slaskie">
+                  
+                  stand-up
+                  W Piekarach Śląskich
+                </a>
+              </li>
+                              </ul>
+      </div>
+
+          
+      <div class="B-mt-15">
+        <p class="B-m-0 B-font-weight--light B-text--nowhitespace">Inne sale w Piekarach Śląskich:</p>
+        <ul class="B-flex B-flex--wrap B-flex-gap--10 B-list-style--none B-line-height--big B-p-0 B-mt-10">
+                                    <li>
+                <a class="B-pl-15 B-pr-15 B-pt-10 B-pb-10 B-font-size--small B-bgc-color--grey B-color--faded B-text--nowrap B-border-radius--standard"
+                   href="/Piekary-Slaskie/Osrodek-Kultury-Andaluzja">
+                  
+                  Ośrodek Kultury &quot;Andaluzja&quot;
+                  
+                </a>
+              </li>
+                                                <li>
+                <a class="B-pl-15 B-pr-15 B-pt-10 B-pb-10 B-font-size--small B-bgc-color--grey B-color--faded B-text--nowrap B-border-radius--standard"
+                   href="/Piekary-Slaskie/Miejski-Dom-Kultury">
+                  
+                  Miejski Dom Kultury
+                  
+                </a>
+              </li>
+                              </ul>
+      </div>
+
+      
+</div>
+<!-- end generated 2026-06-10 09:49:53 partial_cache_id: partial_cache_78e5558575276bbc578615d820a1af29 -->  </div>
+
+  <div class="container smarty-template">
+      </div>
+
+  <!-- generated 2026-06-10 09:49:53 partial_cache_id: partial_cache_99b0b8bccfc9fe68ec25dd6434a924f9 -->
+<section
+  class="events event-slider slider container-fluid light-grey-bcg"
+  data-artist_box_css_class="white-bcg"
+  data-ajax_params="{&quot;ipp&quot;:9,&quot;events_ipp&quot;:12,&quot;order&quot;:null,&quot;city_id&quot;:437,&quot;nearest_events_city_id&quot;:null,&quot;category_id&quot;:null,&quot;excluded_hall_id&quot;:6941,&quot;excluded_category_id&quot;:null,&quot;excluded_artist_id&quot;:null,&quot;excluded_tag_id&quot;:null,&quot;df&quot;:null,&quot;dt&quot;:null,&quot;tag_artist_id&quot;:null}"
+>
+  <span id="piekary-śląskie---inne-wydarzenia" class="B-anchor__target"></span>
+  <div class="container slider-controller">
+    <header class="section-header flex-display justify-content-between">
+      <div class="title flex-display align-items-center">
+                  <i class="icon-svg" aria-hidden="true"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-lokalizacja"></use></svg></i>
+                              <h2>Piekary Śląskie   inne wydarzenia</h2>
+                </div>
+      <div class="btns flex-display" style="align-items: center;">
+                
+        <div class="B-btn-group hidden-xs right">
+          <button class="B-btn B-btn--hover-accent B-btn--border-accent slider-prev" aria-label="Przewiń w lewo">
+            <i class="icon-svg" aria-hidden="true"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-strzalka-lewa"></use></svg></i>
+          </button>
+          <button class="B-btn B-btn--hover-accent B-btn--border-accent slider-next" aria-label="Przewiń w prawo">
+            <i class="icon-svg" aria-hidden="true"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-strzalka-prawa"></use></svg></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="row">
+      <div class="event-box event-slides swiper-container">
+        <div class="swiper-wrapper">
+                      <div class="swiper-slide">
+                
+
+  
+  
+
+<article data-artist_id="60639" class="event white-bcg">
+  <a href="/kabaret/Zdolni-i-skromni/Gramy-na-ostro-Testy-programu/Piekary-Slaskie" class="event-img">
+          <img class="img-responsive" src="/th/biletyna-v2/gfx/zaslepka.jpg" data-src="/file/get/w/260/id/352318/filename/f19370cda08c522c8d45da85b02177b2.jpg" alt="Zdolni i Skromni - &quot;Gramy na ostro&quot;: Testy programu">
+      </a>
+  <div class="event-left-side">
+    <div>
+              <div class="event-label">
+          <p class="B-m-0 B-text--accent-color B-font-weight--bold">Nowość!</p>
+        </div>
+      
+      <h3 class="h3 event-title">
+        <a href="/kabaret/Zdolni-i-skromni/Gramy-na-ostro-Testy-programu/Piekary-Slaskie">Zdolni i Skromni - &quot;Gramy na ostro&quot;: Testy programu</a>
+      </h3>
+    </div>
+
+    <div class="content">
+                    <div class="icon-row-flex">
+          <svg class="icon-svg"><use href="/gfx/bnk-icons.svg#icon-kalendarz"></use></svg>
+          <p>
+            od 11.09.2026
+          </p>
+        </div>
+            <a href="/kabaret/Zdolni-i-skromni/Gramy-na-ostro-Testy-programu/Piekary-Slaskie" class="B-btn B-btn--primary ticket-buy">
+        <svg class="icon-svg"><use href="/gfx/bnk-icons.svg#icon-bilet"></use></svg>
+        <span class="B-text-transform--uppercase">kup bilet</span>
+      </a>
+    </div>
+  </div>
+</article>
+            </div>
+                      <div class="swiper-slide">
+                
+
+  
+  
+
+<article data-artist_id="61148" class="event white-bcg">
+  <a href="/koncert/Martin-Turner-ex-Wishbone-Ash-Two-Eras-Tour/Piekary-Slaskie" class="event-img">
+          <img class="img-responsive" src="/th/biletyna-v2/gfx/zaslepka.jpg" data-src="/file/get/w/260/id/355403/filename/6ad00d6f12b0fd1ac4a1b020de055dcf.jpg" alt="Martin Turner ex-Wishbone Ash - Two Eras Tour">
+      </a>
+  <div class="event-left-side">
+    <div>
+              <div class="event-label">
+          <p class="B-m-0 B-text--accent-color B-font-weight--bold">Nowość!</p>
+        </div>
+      
+      <h3 class="h3 event-title">
+        <a href="/koncert/Martin-Turner-ex-Wishbone-Ash-Two-Eras-Tour/Piekary-Slaskie">Martin Turner ex-Wishbone Ash - Two Eras Tour</a>
+      </h3>
+    </div>
+
+    <div class="content">
+                    <div class="icon-row-flex">
+          <svg class="icon-svg"><use href="/gfx/bnk-icons.svg#icon-kalendarz"></use></svg>
+          <p>
+            od 08.11.2026
+          </p>
+        </div>
+            <a href="/koncert/Martin-Turner-ex-Wishbone-Ash-Two-Eras-Tour/Piekary-Slaskie" class="B-btn B-btn--primary ticket-buy">
+        <svg class="icon-svg"><use href="/gfx/bnk-icons.svg#icon-bilet"></use></svg>
+        <span class="B-text-transform--uppercase">kup bilet</span>
+      </a>
+    </div>
+  </div>
+</article>
+            </div>
+                      <div class="swiper-slide">
+                
+
+  
+  
+
+<article data-artist_id="59729" class="event white-bcg">
+  <a href="/koncert/Lone-Assembly/Piekary-Slaskie" class="event-img">
+          <img class="img-responsive" src="/th/biletyna-v2/gfx/zaslepka.jpg" data-src="/file/get/w/260/id/341535/filename/ad7f41d3efaa5aa688c7bfb88604a541.png" alt="Lone Assembly - Knots &amp; Chains Tour!">
+      </a>
+  <div class="event-left-side">
+    <div>
+              <div class="event-label">
+          <p class="B-m-0 B-text--accent-color B-font-weight--bold">Nowość!</p>
+        </div>
+      
+      <h3 class="h3 event-title">
+        <a href="/koncert/Lone-Assembly/Piekary-Slaskie">Lone Assembly - Knots &amp; Chains Tour!</a>
+      </h3>
+    </div>
+
+    <div class="content">
+                    <div class="icon-row-flex">
+          <svg class="icon-svg"><use href="/gfx/bnk-icons.svg#icon-kalendarz"></use></svg>
+          <p>
+            od 14.11.2026
+          </p>
+        </div>
+            <a href="/koncert/Lone-Assembly/Piekary-Slaskie" class="B-btn B-btn--primary ticket-buy">
+        <svg class="icon-svg"><use href="/gfx/bnk-icons.svg#icon-bilet"></use></svg>
+        <span class="B-text-transform--uppercase">kup bilet</span>
+      </a>
+    </div>
+  </div>
+</article>
+            </div>
+                      <div class="swiper-slide">
+                
+
+  
+  
+
+<article data-artist_id="55904" class="event white-bcg">
+  <a href="/koncert/Maiden-UniteD-The-1980-Reprise-POLISH-CHAPTER/Piekary-Slaskie" class="event-img">
+          <img class="img-responsive" src="/th/biletyna-v2/gfx/zaslepka.jpg" data-src="/file/get/w/260/id/361503/filename/fb8dc0d66f1c7d067e9df6a131867f59.png" alt="Maiden UniteD - The 1980 Reprise: POLISH CHAPTER ">
+      </a>
+  <div class="event-left-side">
+    <div>
+              <div class="event-label">
+          <p class="B-m-0 B-text--accent-color B-font-weight--bold">Nowość!</p>
+        </div>
+      
+      <h3 class="h3 event-title">
+        <a href="/koncert/Maiden-UniteD-The-1980-Reprise-POLISH-CHAPTER/Piekary-Slaskie">Maiden UniteD - The 1980 Reprise: POLISH CHAPTER </a>
+      </h3>
+    </div>
+
+    <div class="content">
+                    <div class="icon-row-flex">
+          <svg class="icon-svg"><use href="/gfx/bnk-icons.svg#icon-kalendarz"></use></svg>
+          <p>
+            od 24.10.2026
+          </p>
+        </div>
+            <a href="/koncert/Maiden-UniteD-The-1980-Reprise-POLISH-CHAPTER/Piekary-Slaskie" class="B-btn B-btn--primary ticket-buy">
+        <svg class="icon-svg"><use href="/gfx/bnk-icons.svg#icon-bilet"></use></svg>
+        <span class="B-text-transform--uppercase">kup bilet</span>
+      </a>
+    </div>
+  </div>
+</article>
+            </div>
+                  </div>
+        <div class="col-sm-12 event-expand-dest">
+                      
+                        
+
+
+<div
+  class="row event-expand primary-bcg white-font"
+  data-artist_id="60639"
+  data-ajax_params='{&quot;ipp&quot;:9,&quot;events_ipp&quot;:12,&quot;order&quot;:null,&quot;city_id&quot;:437,&quot;nearest_events_city_id&quot;:null,&quot;category_id&quot;:null,&quot;excluded_hall_id&quot;:6941,&quot;excluded_category_id&quot;:null,&quot;excluded_artist_id&quot;:null,&quot;excluded_tag_id&quot;:null,&quot;df&quot;:null,&quot;dt&quot;:null,&quot;tag_artist_id&quot;:null}'
+  data-options='{&quot;theme&quot;:&quot;dark&quot;,&quot;show_artist_description&quot;:false,&quot;show_loading&quot;:true,&quot;more_events_link&quot;:&quot;\/kabaret\/Zdolni-i-skromni\/Gramy-na-ostro-Testy-programu&quot;,&quot;show_tickets_fee_info&quot;:false,&quot;v2_city_seo_url&quot;:&quot;\/Piekary-Slaskie&quot;}'
+>
+  <div class="col-lg-12">
+    <div class="tickets-table small-table scrollbar-bnk scrollbar-bnk-dark">
+              <div class="no-results">
+                      <svg style="width: 60px;height: 60px;" class="spinner spinner--circle" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg">
+  <circle class="path" fill="none" stroke-width="6" stroke-linecap="round" cx="33" cy="33" r="30"></circle>
+</svg>                  </div>
+          </div>
+  </div>
+</div>
+                      
+                        
+
+
+<div
+  class="row event-expand primary-bcg white-font"
+  data-artist_id="61148"
+  data-ajax_params='{&quot;ipp&quot;:9,&quot;events_ipp&quot;:12,&quot;order&quot;:null,&quot;city_id&quot;:437,&quot;nearest_events_city_id&quot;:null,&quot;category_id&quot;:null,&quot;excluded_hall_id&quot;:6941,&quot;excluded_category_id&quot;:null,&quot;excluded_artist_id&quot;:null,&quot;excluded_tag_id&quot;:null,&quot;df&quot;:null,&quot;dt&quot;:null,&quot;tag_artist_id&quot;:null}'
+  data-options='{&quot;theme&quot;:&quot;dark&quot;,&quot;show_artist_description&quot;:false,&quot;show_loading&quot;:true,&quot;more_events_link&quot;:&quot;\/koncert\/Martin-Turner-ex-Wishbone-Ash-Two-Eras-Tour&quot;,&quot;show_tickets_fee_info&quot;:false,&quot;v2_city_seo_url&quot;:&quot;\/Piekary-Slaskie&quot;}'
+>
+  <div class="col-lg-12">
+    <div class="tickets-table small-table scrollbar-bnk scrollbar-bnk-dark">
+              <div class="no-results">
+                      <svg style="width: 60px;height: 60px;" class="spinner spinner--circle" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg">
+  <circle class="path" fill="none" stroke-width="6" stroke-linecap="round" cx="33" cy="33" r="30"></circle>
+</svg>                  </div>
+          </div>
+  </div>
+</div>
+                      
+                        
+
+
+<div
+  class="row event-expand primary-bcg white-font"
+  data-artist_id="59729"
+  data-ajax_params='{&quot;ipp&quot;:9,&quot;events_ipp&quot;:12,&quot;order&quot;:null,&quot;city_id&quot;:437,&quot;nearest_events_city_id&quot;:null,&quot;category_id&quot;:null,&quot;excluded_hall_id&quot;:6941,&quot;excluded_category_id&quot;:null,&quot;excluded_artist_id&quot;:null,&quot;excluded_tag_id&quot;:null,&quot;df&quot;:null,&quot;dt&quot;:null,&quot;tag_artist_id&quot;:null}'
+  data-options='{&quot;theme&quot;:&quot;dark&quot;,&quot;show_artist_description&quot;:false,&quot;show_loading&quot;:true,&quot;more_events_link&quot;:&quot;\/koncert\/Lone-Assembly&quot;,&quot;show_tickets_fee_info&quot;:false,&quot;v2_city_seo_url&quot;:&quot;\/Piekary-Slaskie&quot;}'
+>
+  <div class="col-lg-12">
+    <div class="tickets-table small-table scrollbar-bnk scrollbar-bnk-dark">
+              <div class="no-results">
+                      <svg style="width: 60px;height: 60px;" class="spinner spinner--circle" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg">
+  <circle class="path" fill="none" stroke-width="6" stroke-linecap="round" cx="33" cy="33" r="30"></circle>
+</svg>                  </div>
+          </div>
+  </div>
+</div>
+                      
+                        
+
+
+<div
+  class="row event-expand primary-bcg white-font"
+  data-artist_id="55904"
+  data-ajax_params='{&quot;ipp&quot;:9,&quot;events_ipp&quot;:12,&quot;order&quot;:null,&quot;city_id&quot;:437,&quot;nearest_events_city_id&quot;:null,&quot;category_id&quot;:null,&quot;excluded_hall_id&quot;:6941,&quot;excluded_category_id&quot;:null,&quot;excluded_artist_id&quot;:null,&quot;excluded_tag_id&quot;:null,&quot;df&quot;:null,&quot;dt&quot;:null,&quot;tag_artist_id&quot;:null}'
+  data-options='{&quot;theme&quot;:&quot;dark&quot;,&quot;show_artist_description&quot;:false,&quot;show_loading&quot;:true,&quot;more_events_link&quot;:&quot;\/koncert\/Maiden-UniteD-The-1980-Reprise-POLISH-CHAPTER&quot;,&quot;show_tickets_fee_info&quot;:false,&quot;v2_city_seo_url&quot;:&quot;\/Piekary-Slaskie&quot;}'
+>
+  <div class="col-lg-12">
+    <div class="tickets-table small-table scrollbar-bnk scrollbar-bnk-dark">
+              <div class="no-results">
+                      <svg style="width: 60px;height: 60px;" class="spinner spinner--circle" viewBox="0 0 66 66" xmlns="http://www.w3.org/2000/svg">
+  <circle class="path" fill="none" stroke-width="6" stroke-linecap="round" cx="33" cy="33" r="30"></circle>
+</svg>                  </div>
+          </div>
+  </div>
+</div>
+                  </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- end generated 2026-06-10 09:49:53 partial_cache_id: partial_cache_99b0b8bccfc9fe68ec25dd6434a924f9 --></main>
+          <!-- generated 2026-06-10 09:54:23 partial_cache_id: partial_cache_05248c206098dcea8f0a13ef7115f9d8 --><footer id="main-footer" class="hidden-print" role="contentinfo">
+  <button id="go-site-up" class="rotate-icon rotate-up B-btn B-btn--accent B-btn--circle" aria-label="Przejdź na górę strony">
+    <i class="icon-svg B-btn__icon" aria-hidden="true"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-strzalka-lewa"></use></svg></i>
+  </button>
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-2">
+        <ul>
+          <li class="header">KLIENCI</li>
+          <li>
+            <a href="/news">AKTUALNOŚCI</a>
+          </li>
+          <li>
+                          <a rel="nofollow" href="/order/auth">STATUS REZERWACJI</a>
+                      </li>
+          <li>
+            <a href="/newsletter">NEWSLETTER</a>
+          </li>
+          <li>
+            <a href="/katalog">KATALOG</a>
+          </li>
+          <li>
+            <a href="/contact">POMOC</a>
+          </li>
+          <li>
+            <a href="/contact">KONTAKT</a>
+          </li>
+        </ul>
+      </div>
+      <div class="hidden-xs col-sm-2">
+        <ul>
+          <li class="header">&nbsp;</li>
+          <li>
+            <a href="/blog/">BLOG</a>
+          </li>
+          <li>
+            <a href="/vip">BILETYNA VIP</a>
+          </li>
+          <li>
+            <a href="/voucher">VOUCHERY</a>
+          </li>
+        </ul>
+      </div>
+      <div class="col-sm-2">
+        <ul>
+          <li class="header">WSPÓŁPRACA</li>
+          <li>
+            <a href="https://biletyna.pro/" target="_blank">SPRZEDAWAJ Z<br>BILETYNA.PRO</a>
+          </li>
+          <li>
+            <a href="https://biletyna.pro/produkty/dystrybucja" target="_blank">OFERTA DLA<br>ORGANIZATORÓW</a>
+          </li>
+          <li>
+            <a href="https://biletyna.pro/produkty/sprzedaz-wlasna" target="_blank">SYSTEM BILETOWY</a>
+          </li>
+          <li>
+            <a href="https://biletyna.pro/produkty/biletomat" target="_blank">WYNAJMIJ BILETOMAT</a>
+          </li>
+          <li>
+            <a href="/static/kariera">KARIERA</a>
+          </li>
+        </ul>
+      </div>
+      <div class="col-sm-2">
+        <ul>
+          <li class="header">INFORMACJE</li>
+          <li>
+            <a href="/static/o-nas">O NAS</a>
+          </li>
+          <li>
+            <a href="/static/regulamin">REGULAMIN</a>
+          </li>
+          <li>
+            <a href="/static/polityka-prywatnosci">POLITYKA PRYWATNOŚCI</a>
+          </li>
+          <li>
+            <a href="/static/pliki-cookie">PLIKI COOKIE</a>
+          </li>
+          <li>
+            <a href="javascript:Cookiebot.renew()">ZARZĄDZAJ ZGODAMI COOKIES</a>
+          </li>
+          <li>
+            <a href="/static/administrator-danych">ADMINISTRATOR DANYCH</a>
+          </li>
+          <li>
+            <a href="/static/bilet-chroniony">UBEZPIECZENIE BILETU</a>
+          </li>
+        </ul>
+      </div>
+      <div class="col-sm-3">
+        <ul class="mobile-app-footer">
+          <li class="header">Pobierz aplikację</li>
+          <li>
+            <a target="_blank" href="https://apps.apple.com/app/id1599249171">
+              <img class="B-btn--radius-medium mobile-app-download__btn mobile-app-download__btn--ios blazy-img" alt="Aplikacja mobilna biletyna.pl - pobierz z app store" src="/th/biletyna-v2/gfx/mobile-app/app-store__btn.svg">
+            </a>
+            <br>
+            <br>
+            <a target="_blank" href="https://play.google.com/store/apps/details?id=pl.biletyna.app">
+              <img class="B-btn--radius-medium mobile-app-download__btn mobile-app-download__btn--android blazy-img" alt="Aplikacja mobilna biletyna.pl - pobierz z google play" src="/th/biletyna-v2/gfx/mobile-app/g-play__btn.svg">
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <br>
+    <br>
+
+    
+    <div class="row">
+  <div class="col-sm-2">
+    <ul>
+      <li class="header">KATEGORIE</li>
+      <li>
+        <a href="/kabaret">Kabarety</a>
+      </li>
+      <li>
+        <a href="/stand-up">Stand-up</a>
+      </li>
+      <li>
+        <a href="/koncert">Koncerty</a>
+      </li>
+      <li>
+        <a href="/spektakl">Spektakle</a>
+      </li>
+      <li>
+        <a href="/film">Filmy</a>
+      </li>
+      <li>
+        <a href="/dla-dzieci">Dla dzieci</a>
+      </li>
+      <li>
+        <a href="/inne">Inne</a>
+      </li>
+    </ul>
+  </div>
+  <div class="col-sm-2">
+    <ul>
+      <li class="header">MIASTA</li>
+      <li>
+        <a href="/Warszawa">Warszawa</a>
+      </li>
+      <li>
+        <a href="/Krakow">Kraków</a>
+      </li>
+      <li>
+        <a href="/Wroclaw">Wrocław</a>
+      </li>
+      <li>
+        <a href="/Poznan">Poznań</a>
+      </li>
+      <li>
+        <a href="/Katowice">Katowice</a>
+      </li>
+      <li>
+        <a href="/Lodz">Łódź</a>
+      </li>
+      <li>
+        <a href="/Bydgoszcz">Bydgoszcz</a>
+      </li>
+    </ul>
+  </div>
+  <div class="col-sm-2">
+    <ul>
+      <li class="header">SALE</li>
+      <li>
+        <a href="/Warszawa/Hala-Torwar">Hala Torwar</a>
+      </li>
+      <li>
+        <a href="/Sopot/Opera-Lesna">Opera Leśna</a>
+      </li>
+      <li>
+        <a href="/Krakow/ICE-Krakow-Congress-Centre">ICE Congress Center</a>
+      </li>
+      <li>
+        <a href="/Gdansk/ERGO-ARENA">Ergo Arena</a>
+      </li>
+      <li>
+        <a href="/Warszawa/Teatr-Capitol">Teatr Capitol</a>
+      </li>
+      <li>
+        <a href="/Warszawa/Teatr-IMKA">Teatr IMKA</a>
+      </li>
+      <li>
+        <a href="/Krakow/NCK-Nowohuckie-Centrum-Kultury">Nowohuckie Centrum Kultury</a>
+      </li>
+    </ul>
+  </div>
+  <div class="col-sm-6">
+    <ul>
+      <li class="header">TYTUŁY</li>
+                  <li>
+            <a href="/koncert/Jean-Michel-Jarre">Jean-Michel Jarre</a>
+          </li>
+                  <li>
+            <a href="/kabaret/Kabaret-Neo-Nowka/IQ">Kabaret Neo-Nówka - nowy program: IQ</a>
+          </li>
+                  <li>
+            <a href="/spektakl/Moja-wersja-prawdy">Moja wersja prawdy</a>
+          </li>
+                  <li>
+            <a href="/kabaret/Puls-Kabaret">Puls Kabaret - realizacja TV</a>
+          </li>
+                  <li>
+            <a href="/kabaret/Polska-Noc-Kabaretowa/2026">Polska Noc Kabaretowa 2026</a>
+          </li>
+                  <li>
+            <a href="/kabaret/Zdolni-i-skromni/Gramy-na-ostro">Zdolni i Skromni - &quot;Gramy na ostro&quot;</a>
+          </li>
+                  <li>
+            <a href="/koncert/Lady-Pank/45-lat">Lady Pank - 45 lat</a>
+          </li>
+            </ul>
+  </div>
+</div>
+    <hr>
+
+    <div class="row">
+      <div class="col-xs-12 footer-bottom">
+        <div class="footer-bottom__left">
+          <p>
+          &copy; <a href="https://biletyna.pl">biletyna.pl</a> 2006-2026. Wszystkie prawa zastrzeżone<br>
+          </p>
+        </div>
+        <div class="footer-bottom__right">
+          <ul class="B-flex" aria-label="Linki social media">
+            <li>
+              <a class="social-link" target="_blank" href="https://www.instagram.com/biletyna_pl/">
+                <img aria-hidden="true" class="social-link__icon blazy-img" width="20" alt="" src="/th/biletyna-v2/gfx/icons/Instagram_icon.svg">
+                <span class="social-link__text">Instagram</span>
+              </a>
+            </li>
+            <li>
+              <a class="social-link" target="_blank" href="https://www.facebook.com/biletyna">
+                <img aria-hidden="true" class="social-link__icon blazy-img" width="20" alt="" src="/th/biletyna-v2/gfx/icons/Facebook_icon.svg">
+                <span class="social-link__text">Facebook</span>
+              </a>
+            </li>
+            <li>
+              <a class="social-link" target="_blank" href="https://www.youtube.com/@biletyna">
+                <img aria-hidden="true" class="social-link__icon blazy-img" width="20" alt="" src="/th/biletyna-v2/gfx/icons/YouTube_icon.svg">
+                <span class="social-link__text">Youtube</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="clearfix"></div>
+    <br>
+    <br>
+    <br>
+  </div>
+</footer>
+<!-- end generated 2026-06-10 09:54:23 partial_cache_id: partial_cache_05248c206098dcea8f0a13ef7115f9d8 -->        <div id="shadowbox"></div>
+  </div>
+  
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"d28505d171ac4e3ea04a59b48da26733","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
