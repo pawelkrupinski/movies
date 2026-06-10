@@ -448,11 +448,28 @@ class MovieService(
     val rowRecord  = cache.get(cache.keyOf(title, year))
     val cinemaTitles  = rowRecord.map(_.cinemaTitles).getOrElse(Set.empty[String])
     val slotOriginals = rowRecord.map(_.data.values.flatMap(_.originalTitle).toSet).getOrElse(Set.empty[String])
+    // Sorted so the candidate order — hence which query resolves first when
+    // several map to the same film — is independent of the (Set) iteration
+    // order, which varied run-to-run.
+    val extraTitles = (cinemaTitles ++ slotOriginals).toSeq.sorted
     val candidates = MovieService
-      .searchTitleCandidates(title, originalTitle, cinemaTitles ++ slotOriginals)
+      .searchTitleCandidates(title, originalTitle, extraTitles)
       .map(MovieService.apiQuery).filter(_.nonEmpty).distinct
+    // Director hints drawn from the WHOLE merged row, not just the one cinema
+    // event that happened to trigger this stage. Every cinema fires its own
+    // `MovieRecordCreated`, so the triggering event's director varied with
+    // arrival order (Helios/Multikino report a director, CinemaCity/Charlie
+    // Monroe don't) — and a director-bearing trigger that failed verification
+    // poisoned the negative cache (`markMissing`) before a director-less trigger
+    // could resolve the same row, so whether the film enriched hinged on which
+    // event won the per-key `pending` race. Sourcing the hints from the row's
+    // own slots (sorted) makes the resolution a deterministic function of the
+    // row's state — every event computes the same outcome, so the race is moot.
+    val rowDirectors = (director.toSeq.flatMap(_.split(",")) ++
+      rowRecord.map(_.data.values.flatMap(_.director).toSeq).getOrElse(Nil))
+      .map(_.trim).filter(_.nonEmpty).distinct.sorted
     val searchHit = candidates.iterator
-      .flatMap(q => verifyByDirector(tmdb.search(q, year), director))
+      .flatMap(q => verifyByDirector(tmdb.search(q, year), Some(rowDirectors.mkString(",")).filter(_.nonEmpty)))
       .nextOption()
 
     // Resolve from this row's own titles only — no sister-row shortcut. Copying
@@ -460,8 +477,10 @@ class MovieService(
     // only borrow once the relative had resolved), which is what made
     // whole-corpus snapshots flaky. Own-title search + director-walk are
     // order-independent, so the row resolves to the same film every run.
+    // Director-walk each reported director in turn (sorted) so a row whose
+    // first-sorted director name happens to miss still recovers via the others.
     searchHit.map(viaTmdb)
-      .orElse(directorWalk(director, year).map(viaTmdb))
+      .orElse(rowDirectors.iterator.flatMap(d => directorWalk(Some(d), year)).nextOption().map(viaTmdb))
   }
 
   /** When the cinema reports a director, drop title-search candidates whose

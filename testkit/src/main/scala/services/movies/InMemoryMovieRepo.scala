@@ -23,6 +23,16 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
   val upserts         = mutable.ListBuffer.empty[(String, Option[Int], MovieRecord)]
   val deletes         = mutable.ListBuffer.empty[(String, Option[Int])]
 
+  // The enrichment cascade writes from several worker pools at once (TMDB,
+  // IMDb, and the four *Ratings stages), so every store access is guarded by
+  // this monitor. Production's `MongoMovieRepo` gets the same atomicity for
+  // free (per-document `$set`/`$unset`, single-document writes are atomic in
+  // Mongo); without it here the bare `mutable.Map` loses concurrent updates —
+  // e.g. a rating stage's read-modify-write `updateIfPresent` interleaving with
+  // a TMDB full-record `upsert` dropped the just-written `metacriticUrl`,
+  // making the persisted row order-dependent even though the cache was correct.
+  private val lock = new AnyRef
+
   // Stand-in for Mongo's change stream: any write (in-process or simulated
   // out-of-band) notifies the registered watcher, just like a real change
   // stream fires for every persisted edit.
@@ -39,15 +49,15 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
 
   def enabled: Boolean = true
 
-  def findAll(): Seq[StoredMovieRecord] = store.values.toSeq
+  def findAll(): Seq[StoredMovieRecord] = lock.synchronized { store.values.toSeq }
 
-  def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = {
+  def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
     store.put(idOf(t, y), StoredMovieRecord(t, y, e))
     upserts.append((t, y, e))
     notifyWatcher(t, y, e)
   }
 
-  def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = {
+  def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = lock.synchronized {
     val id = idOf(t, y)
     store.get(id) match {
       case None => false
@@ -65,7 +75,7 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
     }
   }
 
-  def delete(t: String, y: Option[Int]): Unit = {
+  def delete(t: String, y: Option[Int]): Unit = lock.synchronized {
     store.remove(idOf(t, y))
     deletes.append((t, y))
   }

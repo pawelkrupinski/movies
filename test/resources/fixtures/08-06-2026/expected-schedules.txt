@@ -1821,7 +1821,7 @@ runtimeMinutes:    145
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R1.jpg
-synopsis.length:   311
+synopsis.length:   310
 cast:              Emily Blunt, Josh O'Connor, Colin Firth, Eve Hewson, Colman Domingo
 director:          Steven Spielberg
 tmdbId:            1275779
@@ -1974,7 +1974,7 @@ runtimeMinutes:    102
 releaseYear:       2026
 countries:         Irlandia, Wielka Brytania
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/500_MIL_wkrotce-w-kinach-1-557x800.jpg
-synopsis.length:   2304
+synopsis.length:   2276
 cast:              Bill Nighy, Roman Griffin Davis, Dexter Sol Ansell, Clare Dunne, Michael Socha
 director:          Morgan Matthews
 tmdbId:            1242876
@@ -4946,7 +4946,7 @@ runtimeMinutes:    127
 releaseYear:       2025
 countries:         Dania, Francja, Szwecja, Finlandia, Niemcy, Turcja
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/06/plakat_orly-republiki.jpg
-synopsis.length:   3042
+synopsis.length:   2921
 cast:              Fares Fares, Lyna Khoudri, Cherien Dabis, Amr Waked, Zineb Triki, Donia Massoud
 director:          Tarik Saleh
 tmdbId:            1220566
@@ -5117,7 +5117,7 @@ runtimeMinutes:    90
 releaseYear:       2025
 countries:         Czechy, Dania, Niemcy, Wielka Brytania, USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Pan_NIKT_kontra_PUTIN_plakat_net_DBKDtLN.jpg
-synopsis.length:   911
+synopsis.length:   867
 cast:              Павел Таланкин, Władimir Putin, Roman Abalin, Лаврентий Берия, Viktor Abakumov
 director:          David Borenstein, Pasha Talankin
 tmdbId:            1393151
@@ -5537,7 +5537,7 @@ runtimeMinutes:    97
 releaseYear:       1991
 countries:         Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/DELICATESSEN_-_PLAKAT_3bVqvjy.jpg
-synopsis.length:   530
+synopsis.length:   529
 cast:              Dominique Pinon, Marie-Laure Dougnac, Jean-Claude Dreyfus, Karin Viard, Ticky Holgado
 director:          Jean-Pierre Jeunet, Marc Caro
 tmdbId:            892
@@ -5915,7 +5915,7 @@ runtimeMinutes:    133
 releaseYear:       2025
 countries:         Norwegia, Niemcy, Dania, Turcja, Francja, Szwecja, Wielka Brytania
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Sentimental_Value_PL_Poster_B1_net_B5XVU1V.jpg
-synopsis.length:   769
+synopsis.length:   768
 cast:              Renate Reinsve, Stellan Skarsgård, Inga Ibsdotter Lilleaas, Elle Fanning, Anders Danielsen Lie
 director:          Joachim Trier
 tmdbId:            1124566
@@ -6231,7 +6231,7 @@ runtimeMinutes:    108
 releaseYear:       1989
 countries:         USA
 posterUrl:         https://img.helios.pl/pliki/film/powrot-do-przyszlosci-ii/powrot-do-przyszlosci-ii-plakat-70759.jpg
-synopsis.length:   556
+synopsis.length:   555
 cast:              Michael J. Fox, Christopher Lloyd, Lea Thompson, Thomas F. Wilson, Elisabeth Shue
 director:          Robert Zemeckis
 tmdbId:            165
@@ -6296,7 +6296,7 @@ runtimeMinutes:    118
 releaseYear:       1990
 countries:         USA
 posterUrl:         https://img.helios.pl/pliki/film/powrot-do-przyszlosci-iii/powrot-do-przyszlosci-iii-plakat-29754.jpg
-synopsis.length:   764
+synopsis.length:   763
 cast:              Michael J. Fox, Christopher Lloyd, Mary Steenburgen, Thomas F. Wilson, Lea Thompson
 director:          Robert Zemeckis
 tmdbId:            196
@@ -6551,7 +6551,7 @@ runtimeMinutes:    50
 releaseYear:       2026
 countries:         Polska
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/04/Pucio-PLAKAT-online.jpg
-synopsis.length:   1552
+synopsis.length:   1508
 cast:              Joanna Pach, Antonina Żbikowska, Małgorzata Socha, Waldemar Barwiński, Ewa Kania
 director:          Marta Stróżycka
 tmdbId:            1645035
@@ -6772,7 +6772,7 @@ runtimeMinutes:    65
 releaseYear:       2006
 countries:         Polska
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/Sarnie-zniwo-plakat-1-553x800.jpg
-synopsis.length:   2304
+synopsis.length:   2275
 cast:              Krzysztof Radzimski, Patryk Michoń, Adam Pabudziński, Bartosz Walaszek, Bartek Flisek
 director:          Bartosz Walaszek
 tmdbId:            644270
@@ -7985,7 +7985,7 @@ runtimeMinutes:    133
 releaseYear:       2025
 countries:         Turcja, Norwegia, Francja, Dania, Szwecja, Niemcy, Wielka Brytania
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/02/WartoscSentymentalna_plakat_NET-po-zmniejszeniu-200x288.jpg
-synopsis.length:   769
+synopsis.length:   768
 cast:              Renate Reinsve, Stellan Skarsgård, Inga Ibsdotter Lilleaas, Elle Fanning, Anders Danielsen Lie
 director:          Joachim Trier
 tmdbId:            1124566
@@ -8948,7 +8948,7 @@ runtimeMinutes:    145
 releaseYear:       2025
 countries:         Francja, Niemcy, Węgry, Chiny, Belgia
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Milcząca-przyjaciółka_plakat-PL_LQ.jpg
-synopsis.length:   1731
+synopsis.length:   1708
 cast:              Tony Leung, Luna Wedler, Enzo Brumm, Sylvester Groth, Martin Wuttke, Johannes Hegemann, Rainer Bock, Léa Seydoux
 director:          Ildikó Enyedi
 tmdbId:            1168719

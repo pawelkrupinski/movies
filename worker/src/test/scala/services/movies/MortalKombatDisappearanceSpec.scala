@@ -51,11 +51,17 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
     """{"results":[{"id":931285,"title":"Mortal Kombat II","original_title":"Mortal Kombat II",""" +
     """"release_date":"2026-05-06","popularity":223.66}]}"""
   private val Mk2ExternalIds = """{"id":931285,"imdb_id":"tt17490712"}"""
+  // `/movie/931285/credits` — `resolveTmdb` now verifies a title hit against the
+  // row's reported director (Multikino + Helios both report "Simon McQuoid"),
+  // which keeps resolution order-independent. The credit must be present for the
+  // verification to pass, exactly as the recorded fixture corpus carries it.
+  private val Mk2Credits = """{"crew":[{"job":"Director","name":"Simon McQuoid"}]}"""
 
   private def tmdbStub() = new TmdbClient(
     http = new RoutingHttpFetch(Map(
       "/search/movie" -> Mk2Search,
-      "/external_ids" -> Mk2ExternalIds
+      "/external_ids" -> Mk2ExternalIds,
+      "/credits"      -> Mk2Credits
     ), getOnly = true),
     apiKey = Some("stub")
   )
