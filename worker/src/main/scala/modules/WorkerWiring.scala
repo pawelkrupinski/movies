@@ -1,10 +1,11 @@
 package modules
 
 import clients.TmdbClient
-import models.City
+import models.{Cinema, City}
 import services.{MongoCachingDetailFetch, MongoConnection, ShowtimeCache, Stoppable, UptimeMonitor}
 import services.cinemas._
 import services.enrichment._
+import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
 import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, UnscreenedCleanup}
@@ -84,13 +85,48 @@ class WorkerWiring {
   // port-file ceiling).
   protected def scrapeAttemptCeiling: Int = 6
 
+  // ── Filmweb fallback ────────────────────────────────────────────────────────
+  // Each non-chain venue whose own scraper throws or comes back empty is served
+  // from Filmweb instead (FilmwebFallbackScraper), and the swap is recorded for
+  // the /uptime/fallback page. Each cinema's Filmweb id is resolved once (one GET
+  // per Filmweb-listed city), guarded so a network/resolver failure yields no
+  // fallback rather than a boot failure; cinemas Filmweb doesn't list simply have
+  // no fallback available. Test wirings pin this empty so fixture replay never
+  // resolves or fetches Filmweb live (see TestWiring).
+  protected lazy val filmwebFallbackIds: Map[Cinema, Int] =
+    scala.util.Try(new FilmwebCinemaIdResolver(httoFetch).resolveAll())
+      .toOption.getOrElse(Nil)
+      .collect { case r if r.resolved => r.cinema -> r.filmwebId.get }
+      .toMap
+
+  protected def filmwebFallbackFor(cinema: Cinema): Option[CinemaScraper] =
+    filmwebFallbackIds.get(cinema).map(id =>
+      new FilmwebShowtimesClient(httoFetch, id, cinema, today = heliosToday))
+
+  lazy val filmwebFallbackStore: FilmwebFallbackStore =
+    new MongoFilmwebFallbackStore(mongoConnection.database)
+
+  // Fired on each ENTER / PROBE_FAILED / RECOVERED transition; overridden in the
+  // production main to post Telegram alerts. No-op by default.
+  protected def filmwebFallbackOnEvent: (FilmwebFallbackState, FallbackEvent) => Unit = (_, _) => ()
+
   lazy val cinemaScrapers: Seq[CinemaScraper] =
     City.all
       .filter(c => scrapeCities(c.slug))
       .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
-      .map(s => new UptimeRecordingScraper(
-        new RetryingCinemaScraper(s, maxAttempts = math.min(s.maxFetchAttempts, scrapeAttemptCeiling)),
-        uptimeMonitor))
+      .map { raw =>
+        val retried = new RetryingCinemaScraper(raw, maxAttempts = math.min(raw.maxFetchAttempts, scrapeAttemptCeiling))
+        if (FallbackEligibility.eligible(raw))
+          new FilmwebFallbackScraper(
+            retried,
+            () => filmwebFallbackFor(raw.cinema),
+            () => filmwebFallbackIds.get(raw.cinema),
+            uptimeMonitor,
+            filmwebFallbackStore,
+            onEvent = filmwebFallbackOnEvent)
+        else
+          new UptimeRecordingScraper(retried, uptimeMonitor)
+      }
 
   // ── Background concurrency budget ───────────────────────────────────────────
   // Scrape + enrichment + the rating refreshers draw run permits from ONE shared

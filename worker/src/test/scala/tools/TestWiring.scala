@@ -1,6 +1,7 @@
 package tools
 
 import clients.TmdbClient
+import models.Cinema
 import modules.WorkerWiring
 import services.{MongoConnection, Stoppable}
 
@@ -28,6 +29,13 @@ trait TestWiring extends WorkerWiring {
   // wiring deterministic regardless of the local environment.
   override lazy val mongoConnection: MongoConnection =
     new MongoConnection(uri = None, dbName = "kinowo", required = false)
+
+  // No Filmweb fallback in tests: pin the id map empty so fixture replay never
+  // resolves (one GET per Filmweb city) or fetches Filmweb live. Eligible scrapers
+  // are still wrapped in FilmwebFallbackScraper, but with no id the fallback
+  // short-circuits to the primary's real outcome — identical to pre-fallback
+  // behaviour, so fixture snapshots are unaffected.
+  override protected lazy val filmwebFallbackIds: Map[Cinema, Int] = Map.empty
 
   // Inject a stub TMDB API key so the test doesn't depend on a `TMDB_API_KEY`
   // env var. `TmdbClient.search` short-circuits to `None` when the key is

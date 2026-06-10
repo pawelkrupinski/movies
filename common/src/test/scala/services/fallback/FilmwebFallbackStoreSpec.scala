@@ -69,4 +69,15 @@ class FilmwebFallbackStoreSpec extends AnyFlatSpec with Matchers {
       updatedAt = Instant.EPOCH, history = Nil
     ))
   }
+
+  // Pure write→read round-trip with no Mongo: render the $set toUpdate produces,
+  // feed it back through fromDoc. Catches any field-name drift between the two
+  // halves of the codec (a typo only a live Mongo would otherwise reveal).
+  "MongoFilmwebFallbackStore write→read" should "round-trip a state through toUpdate + fromDoc" in {
+    val s = state("Kino Praha", active = true)
+    val set = MongoFilmwebFallbackStore.toUpdate(s)
+      .toBsonDocument(classOf[org.bson.BsonDocument], com.mongodb.MongoClientSettings.getDefaultCodecRegistry)
+      .getDocument("$set")
+    MongoFilmwebFallbackStore.fromDoc(Document(set) + ("_id" -> s.cinema)) shouldBe Some(s)
+  }
 }
