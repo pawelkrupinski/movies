@@ -4,14 +4,15 @@ import play.api.libs.json._
 import play.api.mvc._
 import services.movies.{MovieCache, NormalizationReportRepo, RuleMergePreview, TitleNormalizer}
 import services.titlerules.{RuleScope, TitleRule, TitleRuleSet, TitleRulesRepo}
+import services.users.UserRepo
 
 import java.util.UUID
 
 /** Admin page to edit the title-stripping rules. Gated by the login session +
- *  an explicit allowlist of user ids (`ADMIN_ALLOWLIST`). Writes go straight to
- *  the `titleRules` collection; the change stream propagates them to the worker
- *  and back to this process, so an edit takes effect on the next scrape and on
- *  the live display without a redeploy.
+ *  an `ADMIN_ALLOWLIST` of admin EMAILS (the logged-in user's email must be on
+ *  it). Writes go straight to the `titleRules` collection; the change stream
+ *  propagates them to the worker and back to this process, so an edit takes
+ *  effect on the next scrape and on the live display without a redeploy.
  *
  *  Reads use the cache's current corpus to preview which rows a draft rule set
  *  would merge — computed but NOT persisted until the user saves. */
@@ -20,16 +21,22 @@ class AdminTitleRulesController(
   titleRulesRepo: TitleRulesRepo,
   movieCache:     MovieCache,
   reportRepo:     NormalizationReportRepo,
+  userRepo:       UserRepo,
   adminAllowlist: Set[String]
 ) extends AbstractController(cc) {
 
   import AdminTitleRulesController._
 
-  private def authed(request: RequestHeader): Either[Result, String] =
+  // The session carries our internal user UUID; resolve it to the user and gate
+  // on their email being on the allowlist (UUIDs are opaque; emails aren't).
+  private def authed(request: RequestHeader): Either[Result, models.User] =
     request.session.get("userId") match {
-      case None                                       => Left(Unauthorized("Not logged in."))
-      case Some(uid) if !adminAllowlist.contains(uid) => Left(Forbidden("Not an admin."))
-      case Some(uid)                                  => Right(uid)
+      case None => Left(Unauthorized("Not logged in."))
+      case Some(uid) =>
+        userRepo.findById(uid).filter(_.email.exists(adminAllowlist.contains)) match {
+          case Some(user) => Right(user)
+          case None       => Left(Forbidden("Not an admin."))
+        }
     }
 
   def index(): Action[AnyContent] = Action { request =>

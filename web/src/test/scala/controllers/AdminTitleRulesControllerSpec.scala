@@ -1,6 +1,6 @@
 package controllers
 
-import models.MovieRecord
+import models.{MovieRecord, User}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
@@ -8,6 +8,9 @@ import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import services.movies.{CaffeineMovieCache, InMemoryNormalizationReportRepo, MovieRepo, NormalizationReport, NormalizationRebuilder}
 import services.titlerules.{InMemoryTitleRulesRepo, RuleScope, TitleRule}
+import services.users.InMemoryUserRepo
+
+import java.time.Instant
 
 /**
  * Locks the admin editor's contract: session + allowlist auth on every action,
@@ -27,10 +30,19 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
   }
   private def cache = new CaffeineMovieCache(emptyRepo)
 
+  // A user repo holding one admin (session id "admin1" → email "admin@example.com").
+  private def adminUserRepo: InMemoryUserRepo = {
+    val r = new InMemoryUserRepo
+    r.upsert(User("admin1", "google", "sub-admin", Some("admin@example.com"),
+      Some("Admin"), None, Instant.EPOCH, Instant.EPOCH))
+    r
+  }
+
   private def controller(repo: InMemoryTitleRulesRepo = new InMemoryTitleRulesRepo(),
-                         allow: Set[String] = Set("admin1"),
-                         reports: InMemoryNormalizationReportRepo = new InMemoryNormalizationReportRepo()) =
-    new AdminTitleRulesController(Helpers.stubControllerComponents(), repo, cache, reports, allow)
+                         allow: Set[String] = Set("admin@example.com"),
+                         reports: InMemoryNormalizationReportRepo = new InMemoryNormalizationReportRepo(),
+                         users: InMemoryUserRepo = adminUserRepo) =
+    new AdminTitleRulesController(Helpers.stubControllerComponents(), repo, cache, reports, users, allow)
 
   private val adminSession = FakeRequest().withSession("userId" -> "admin1")
 
@@ -43,8 +55,16 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     status(controller().index().apply(FakeRequest())) shouldBe UNAUTHORIZED
   }
 
-  it should "403 when logged in but not on the allowlist" in {
-    val req = FakeRequest().withSession("userId" -> "rando")
+  it should "403 when logged in but the user's email is not on the allowlist" in {
+    val users = new InMemoryUserRepo
+    users.upsert(User("rando1", "google", "sub-rando", Some("rando@example.com"),
+      None, None, Instant.EPOCH, Instant.EPOCH))
+    val req = FakeRequest().withSession("userId" -> "rando1")
+    status(controller(users = users).index().apply(req)) shouldBe FORBIDDEN
+  }
+
+  it should "403 when the session user id can't be resolved" in {
+    val req = FakeRequest().withSession("userId" -> "ghost")
     status(controller().index().apply(req)) shouldBe FORBIDDEN
   }
 
