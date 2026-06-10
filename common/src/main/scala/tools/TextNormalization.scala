@@ -1,6 +1,7 @@
 package tools
 
 import java.text.Normalizer
+import java.util.Locale
 import org.jsoup.Jsoup
 
 /**
@@ -61,7 +62,7 @@ object TextNormalization {
    *  genre labels at the write boundary. */
   def titleCaseIfAllLower(s: String): String = {
     if (s.isEmpty || s.exists(c => c.isLetter && c.isUpper)) return s
-    titleCaseIfAllCaps(s.toUpperCase)
+    titleCaseIfAllCaps(s.toUpperCase(Locale.ROOT))
   }
 
   /**

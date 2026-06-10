@@ -2,6 +2,8 @@ package services.titlerules
 
 import models.Cinema
 
+import java.util.Locale
+
 /** Maps a `Cinema` to the per-client rule key its title-cleanup rules live under.
  *
  *  Per the "per client" model: a chain (Cinema City, Helios, Multikino) is one
@@ -28,7 +30,7 @@ object TitleRuleKey {
     else slug(displayName)
 
   private def slug(s: String): String =
-    tools.TextNormalization.deburr(s).toLowerCase
+    tools.TextNormalization.deburr(s).toLowerCase(Locale.ROOT)
       .replaceAll("[^a-z0-9]+", "-")
       .replaceAll("(^-|-$)", "")
 }

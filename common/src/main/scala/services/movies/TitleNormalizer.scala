@@ -2,6 +2,8 @@ package services.movies
 
 import services.titlerules.{TitleRuleSet, TitleRuleDefaults}
 
+import java.util.Locale
+
 object TitleNormalizer {
   // The active rule set drives every prefix/suffix/canonical strip below. It's
   // swapped wholesale by the change-stream consumer when an admin edits a rule;
@@ -83,7 +85,7 @@ object TitleNormalizer {
   private def stripPunct(t: String): String =
     java.text.Normalizer.normalize(t, java.text.Normalizer.Form.NFD)
       .replaceAll("\\p{M}", "")
-      .toLowerCase
+      .toLowerCase(Locale.ROOT)
       .replaceAll("[^a-z0-9]+", "")
 
   /** Corpus-independent stable key — the same collapse as `mergeKeyLookup`'s
@@ -104,7 +106,7 @@ object TitleNormalizer {
    *  (later phase) folds those across scripts. */
   def sanitize(title: String): String =
     tools.TextNormalization.deburr(canonical(normalize(title)))
-      .toLowerCase
+      .toLowerCase(Locale.ROOT)
       .replaceAll("[^\\p{L}\\p{N}]+", "")
 
   // Group key for merging. Falls back to the plain Roman-numeral form when no
@@ -122,7 +124,7 @@ object TitleNormalizer {
   def mergeKeyLookup(allTitles: Iterable[String]): String => String = {
     val romanized = allTitles.iterator.map(normalize).toSet
     val canonicalCounts: Map[String, Int] =
-      romanized.iterator.map(t => canonical(t).toLowerCase).toSeq
+      romanized.iterator.map(t => canonical(t).toLowerCase(Locale.ROOT)).toSeq
         .groupBy(identity).view.mapValues(_.size).toMap
     // Punctuation-stripped counts — for cases where two titles share words +
     // word order but differ only in : / - / whitespace. Built on top of
@@ -133,8 +135,8 @@ object TitleNormalizer {
         .groupBy(identity).view.mapValues(_.size).toMap
     title => {
       val r       = normalize(title)
-      val cLower  = canonical(r).toLowerCase
-      val rLower  = r.toLowerCase
+      val cLower  = canonical(r).toLowerCase(Locale.ROOT)
+      val rLower  = r.toLowerCase(Locale.ROOT)
       val p       = stripPunct(cLower)
       // Punctuation-strip is the widest collapse — check first. Only fires
       // when ≥2 distinct corpus titles reduce to the same form, so a lone

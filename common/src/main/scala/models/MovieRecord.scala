@@ -1,5 +1,7 @@
 package models
 
+import java.util.Locale
+
 /**
  * Cross-cinema metadata about a film — ratings, IDs, and the per-source
  * content slots used to derive the merged display values. Looked up by
@@ -216,8 +218,8 @@ case class MovieRecord(
     prioritized.flatMap(_._2.countries)
       .filter(services.cinemas.CountryNames.isPolish)
       .foreach { c =>
-        val key = c.toLowerCase
-        if (!seen.exists(_.toLowerCase == key)) seen += c
+        val key = c.toLowerCase(Locale.ROOT)
+        if (!seen.exists(_.toLowerCase(Locale.ROOT) == key)) seen += c
       }
     seen.toSeq
   }
