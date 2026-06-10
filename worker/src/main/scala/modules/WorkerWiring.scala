@@ -9,7 +9,7 @@ import services.enrichment._
 import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
 import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
-import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, UnscreenedCleanup}
+import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, NormalizationRebuilder, UnscreenedCleanup}
 import services.tasks.{DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, RatingEnqueuer, RatingHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker}
 import services.titlerules.{MongoTitleRulesRepo, TitleRulesCache, TitleRulesRepo}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
@@ -191,9 +191,14 @@ class WorkerWiring {
   lazy val movieCache: CaffeineMovieCache = new CaffeineMovieCache(movieRepo, eventBus)
 
   // Title-stripping rules. The worker owns seeding: a fresh DB gets the migrated
-  // defaults so behaviour is unchanged from the hardcoded baseline.
+  // defaults so behaviour is unchanged from the hardcoded baseline. When an edit
+  // arrives over the change stream, re-merge existing records so the rule applies
+  // retroactively, not just to future scrapes.
+  lazy val normalizationRebuilder = new NormalizationRebuilder(movieCache)
   lazy val titleRulesRepo: TitleRulesRepo = new MongoTitleRulesRepo(mongoConnection.database, fallbackToOwnInit = false)
-  lazy val titleRulesCache: TitleRulesCache = new TitleRulesCache(titleRulesRepo, seedIfEmpty = true)
+  lazy val titleRulesCache: TitleRulesCache =
+    new TitleRulesCache(titleRulesRepo, seedIfEmpty = true,
+      onRulesChanged = () => normalizationRebuilder.rebuild())
 
   lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, backgroundBudget.ec("IMDb-stage"))
   lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient, eventBus, backgroundBudget.ec("imdb-id-resolver"))

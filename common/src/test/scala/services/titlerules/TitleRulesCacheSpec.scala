@@ -49,4 +49,21 @@ class TitleRulesCacheSpec extends AnyFlatSpec with Matchers {
     try cache.start() finally cache.stop()
     repo.findAll() shouldBe empty
   }
+
+  "onRulesChanged" should "fire on a real change but NOT on the first load" in {
+    val (install, _) = capturing()
+    val repo = new InMemoryTitleRulesRepo()
+    var fired = 0
+    val cache = new TitleRulesCache(repo, install = install, onRulesChanged = () => fired += 1)
+
+    cache.reload()            // first load (defaults) — must NOT fire
+    fired shouldBe 0
+    cache.reload()            // unchanged — must NOT fire
+    fired shouldBe 0
+    repo.upsert(TitleRule("new", RuleScope.Search, None, "x$", "", applyAll = false, order = 1))
+    cache.reload()            // changed — fires once
+    fired shouldBe 1
+    cache.reload()            // unchanged again — no further fire
+    fired shouldBe 1
+  }
 }

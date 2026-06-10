@@ -20,23 +20,37 @@ import scala.util.Try
 class TitleRulesCache(
   repo: TitleRulesRepo,
   seedIfEmpty: Boolean = false,
-  install: TitleRuleSet => Unit = TitleNormalizer.installRules
+  install: TitleRuleSet => Unit = TitleNormalizer.installRules,
+  // Fired AFTER a reload that actually changed the rules (never on the first
+  // load). The worker hooks this to re-merge existing records; the web app
+  // leaves it a no-op (it's read-only and picks merges up via the movies stream).
+  onRulesChanged: () => Unit = () => ()
 ) extends Logging {
 
   private val scheduler          = DaemonExecutors.scheduler("title-rules-refresh")
   private val IntervalSeconds    = Env.positiveLong("KINOWO_TITLE_RULES_REFRESH_SECONDS", 1800L)
   @volatile private var watchHandle: Option[AutoCloseable] = None
+  // Last installed rule set (by value), to detect real changes vs backstop
+  // reloads. None until the first reload, so the first load never fires the hook.
+  @volatile private var lastRules: Option[Set[TitleRule]] = None
 
   /** Read the current rules and install them. An empty store → in-code defaults,
-   *  so the normaliser is never left rule-less. */
+   *  so the normaliser is never left rule-less. Fires `onRulesChanged` when the
+   *  effective rule set differs from the previously-installed one. */
   def reload(): Unit = {
     val rules = repo.findAll()
-    if (rules.nonEmpty) {
-      install(TitleRuleSet(rules))
-      logger.info(s"TitleRulesCache: installed ${rules.size} rules from store.")
-    } else {
-      install(TitleRuleDefaults.ruleSet)
-      logger.info("TitleRulesCache: store empty — using in-code default rules.")
+    val effective = if (rules.nonEmpty) rules else TitleRuleDefaults.all
+    install(TitleRuleSet(effective))
+    logger.info(
+      if (rules.nonEmpty) s"TitleRulesCache: installed ${rules.size} rules from store."
+      else "TitleRulesCache: store empty — using in-code default rules.")
+
+    val current = effective.toSet
+    val changed = lastRules.exists(_ != current)
+    lastRules = Some(current)
+    if (changed) {
+      logger.info("TitleRulesCache: rules changed — running the change hook.")
+      try onRulesChanged() catch { case ex: Throwable => logger.warn(s"onRulesChanged failed: ${ex.getMessage}") }
     }
   }
 
