@@ -29,14 +29,14 @@ import pl.kinowo.ui.theme.KinowoTheme
 
 /**
  * Off-device (Robolectric) Compose test for the room tooltip that pops on a
- * press-and-hold of a showtime pill. Pins the two things a fat-finger demands:
+ * press-and-hold of a showtime pill. Pins the two things the tooltip must keep:
  *
- *  1. The room name is rendered ~3× its old size — its glyph box is roughly three
- *     times a 16sp reference (the previous tooltip font). A regression back to
- *     16sp collapses the ratio to ~1 and fails here.
- *  2. The bubble's bottom edge floats well clear of the pill the thumb is
- *     pressing, so the finger doesn't obscure the name. Drop the lift and the
- *     bubble overlaps the chip top, failing the clearance check.
+ *  1. The room name renders at 24sp — half the original oversized 48sp bubble,
+ *     still 1.5× a 16sp reference so it stays legible around the finger. A
+ *     regression back to 48sp (too big) or down to 16sp (too small) fails here.
+ *  2. The bubble's bottom edge floats clear of the pill the thumb is pressing,
+ *     so the finger doesn't obscure the name. Drop the lift and the bubble
+ *     overlaps the chip top, failing the clearance check.
  *
  * NATIVE graphics gives real text metrics; `xhdpi` (density 2) so dp resolve.
  * Runs on the JVM via `./gradlew app:testDebugUnitTest` — no emulator.
@@ -51,12 +51,12 @@ class RoomTooltipSizeTest {
 
     private val room = "Sala 8"
 
-    // Sibling references: the tooltip's old 16sp font and its new 48sp (= 3×) font.
+    // Sibling references: a 16sp baseline and the tooltip's 24sp (= 1.5×) font.
     // The test pins the tooltip against these rather than an absolute dp that
     // drifts with metrics (font padding doesn't scale, so a raw box-height ratio
-    // undershoots 3×).
+    // undershoots the nominal 1.5×).
     private val ref16 = "REF16"
-    private val ref48 = "REF48"
+    private val ref24 = "REF24"
 
     private fun roomFilm() = Film(
         title = "T",
@@ -87,7 +87,7 @@ class RoomTooltipSizeTest {
                         Showings(film = roomFilm(), showCinemaHeaders = false)
                     }
                     Text(ref16, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                    Text(ref48, fontSize = 48.sp, fontWeight = FontWeight.SemiBold)
+                    Text(ref24, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -97,25 +97,27 @@ class RoomTooltipSizeTest {
     }
 
     @Test
-    fun tooltipTextIsThreeTimesItsOldSize() {
+    fun tooltipTextRendersAt24sp() {
         renderAndHold()
 
         val tooltipHeight = heightOf(room)
         val small = heightOf(ref16)
-        val big = heightOf(ref48)
+        val mid = heightOf(ref24)
 
         assertTrue("reference text measured no height — metrics are stubbed", small > 0f)
-        // The room name now matches a 48sp reference (3× the old 16sp), and that
-        // 48sp reference towers over the 16sp one. The old 16sp tooltip matched
-        // `small`, not `big`, so this fails before the change.
+        // The room name matches a 24sp reference — half the original 48sp bubble.
+        // The old 48sp tooltip measured ~2× this, and a regression to 16sp would
+        // match `small` instead, so both directions fail this bound.
         assertTrue(
-            "room name should render at 48sp (3× old 16sp): tooltip=$tooltipHeight dp, " +
-                "48sp ref=$big dp, 16sp ref=$small dp",
-            kotlin.math.abs(tooltipHeight - big) <= 2f,
+            "room name should render at 24sp (half the old 48sp): tooltip=$tooltipHeight dp, " +
+                "24sp ref=$mid dp, 16sp ref=$small dp",
+            kotlin.math.abs(tooltipHeight - mid) <= 2f,
         )
+        // 24sp must still stand clearly above the 16sp baseline (nominal 1.5×;
+        // font padding compresses the box ratio, so assert a modest margin).
         assertTrue(
-            "48sp must dwarf 16sp: big=$big dp, small=$small dp",
-            big > small * 2f,
+            "24sp must exceed 16sp baseline: mid=$mid dp, small=$small dp",
+            mid > small * 1.2f,
         )
     }
 

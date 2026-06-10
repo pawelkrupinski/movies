@@ -240,31 +240,32 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
             }
         }
         if (holding && room != null) {
-            // Floated well clear of the pill (and the finger holding it) so the
-            // thumb doesn't obscure the room name — see RoomTooltip's size. The
-            // bubble is now ~3× taller, so it's lifted further to keep its bottom
-            // edge above the held finger.
-            RoomTooltip(room, Modifier.align(Alignment.TopCenter).offset(y = (-124).dp).zIndex(1f))
+            // Floated clear of the pill (and the finger holding it) so the thumb
+            // doesn't obscure the room name — see RoomTooltip's size. The lift
+            // tracks the finger, not the glyph box, so the bubble's bottom keeps
+            // a comfortable gap above the held chip even though the bubble itself
+            // is now half its old size.
+            RoomTooltip(room, Modifier.align(Alignment.TopCenter).offset(y = (-88).dp).zIndex(1f))
         }
     }
 }
 
 @Composable
 private fun RoomTooltip(room: String, modifier: Modifier = Modifier) {
-    // Deliberately huge: the tooltip pops on a press-and-hold, so the thumb is
-    // parked right on the pill. A big bubble lifted well above the pill stays
-    // readable around the finger; the 48sp text (3× the pill) + roomy padding
-    // carry it. Size pinned by RoomTooltipSizeTest.
+    // The tooltip pops on a press-and-hold, so the thumb is parked right on the
+    // pill. It's sized to stay legible around the finger — the 24sp text (1.5×
+    // the pill) + padding carry it — without dominating the card; half the size
+    // of the original oversized bubble. Size pinned by RoomTooltipSizeTest.
     Text(
         text = room,
         color = RoomTooltipText,
-        fontSize = 48.sp,
+        fontSize = 24.sp,
         fontWeight = FontWeight.SemiBold,
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(6.dp))
             .background(RoomTooltipBackground)
-            .border(1.dp, RoomTooltipBorder, RoundedCornerShape(12.dp))
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .border(1.dp, RoomTooltipBorder, RoundedCornerShape(6.dp))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
     )
 }
 
