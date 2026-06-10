@@ -162,7 +162,14 @@ class MovieControllerService(
             .map { case (date, slots) =>
               val perCinema = slots
                 .groupBy(_._1)
-                .toSeq.sortBy { case (_, ss) => ss.map(_._2.dateTime).min }
+                // `displayName` is the tiebreaker: when two cinemas share a film
+                // at the same earliest showtime (common once a film merges across
+                // venues), ordering by time alone leaves their relative order to
+                // the upstream `Map` iteration order, which varies with scrape
+                // thread-merge timing — non-deterministic across JVM boots and the
+                // source of the "Kino Malta vs Kino Meduza" snapshot flake. The
+                // total order makes the rendered schedule reproducible.
+                .toSeq.sortBy { case (cinema, ss) => (ss.map(_._2.dateTime).min, cinema.displayName) }
                 .map { case (cinema, ss) => CinemaShowtimes(cinema, ss.map(_._2).sortBy(_.dateTime)) }
               (date, perCinema)
             }
@@ -181,7 +188,7 @@ class MovieControllerService(
           enrichment = Some(e)
         )))
       }
-    }.sortBy(_._1).map(_._2)
+    }.sortBy { case (earliest, fs) => (earliest, fs.movie.title) }.map(_._2)
   }
 
   def film(city: City, title: String): Option[FilmSchedule] = {
