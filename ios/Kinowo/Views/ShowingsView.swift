@@ -65,6 +65,11 @@ struct ShowingsView: View {
                 moreLabel(hiddenShowtimes: hiddenShowtimes)
             }
         }
+        // The card's content box: x runs 0…cardShowingsWidth from this VStack's
+        // leading edge (which is the card's left content edge). Each pill's
+        // room tooltip reads its centre in this space to clamp itself inside the
+        // card rather than spilling past the edge — see `ShowtimeBadge`.
+        .coordinateSpace(name: ShowtimeBadge.cardCoordinateSpace)
     }
 
     private func truncated(_ allDays: [DayShowings]) -> (visible: [DayShowings], hidden: Int) {
@@ -201,6 +206,24 @@ private struct ShowtimeBadge: View {
     /// a quick tap never flashes the tooltip.
     @State private var holding = false
 
+    /// This pill's horizontal centre within the card's content box (the
+    /// `cardCoordinateSpace` set on `ShowingsView`). Measured continuously so
+    /// it's settled well before any hold; the room tooltip reads it to clamp
+    /// itself inside the card instead of spilling past the edge.
+    @State private var pillMidX: CGFloat = 0
+
+    /// Named coordinate space `ShowingsView` pins to the card's content box.
+    static let cardCoordinateSpace = "kinowoFilmCardShowings"
+
+    /// Width of the card's content box — the same value `ShowingsView` uses for
+    /// its own wrap math. The card's right content edge sits at this x in
+    /// `cardCoordinateSpace`.
+    private static let cardWidth: CGFloat =
+        ShowtimePillMetrics.cardShowingsWidth(screenWidth: UIScreen.main.bounds.width)
+
+    /// Margin the tooltip keeps from the card's left/right edges.
+    private static let tooltipEdgePadding: CGFloat = 4
+
     // Web `.badge-time` palette, sourced from the SwiftUI-free `ShowtimePillMetrics`.
     private static let fill = Color(
         red: ShowtimePillMetrics.backgroundRGB.red,
@@ -232,6 +255,14 @@ private struct ShowtimeBadge: View {
         .padding(.horizontal, style.horizontalInset)
         .padding(.vertical, style.verticalInset)
         .background(holding ? Self.pressedFill : Self.fill, in: RoundedRectangle(cornerRadius: 5))
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: PillMidXKey.self,
+                    value: geo.frame(in: .named(Self.cardCoordinateSpace)).midX)
+            }
+        )
+        .onPreferenceChange(PillMidXKey.self) { pillMidX = $0 }
         .overlay(alignment: .top) {
             if holding, let room {
                 roomTooltip(room)
@@ -263,11 +294,17 @@ private struct ShowtimeBadge: View {
         }
     }
 
-    // Deliberately large and lifted well above the pill: the tooltip pops on a
-    // press-and-hold, so the finger is parked right on the pill. A big bubble
-    // floated ~52 pt up stays readable around the thumb.
+    // Lifted ~52 pt above the pill (the finger is parked right on it during the
+    // press-and-hold) and clamped horizontally: the bubble is centred over the
+    // pill but shifted back inside the card when a pill near a column edge would
+    // otherwise push it past the card's edge. See `clampedTooltipOffsetX`.
     @ViewBuilder
     private func roomTooltip(_ room: String) -> some View {
+        let dx = ShowtimePillMetrics.clampedTooltipOffsetX(
+            pillMidX: pillMidX,
+            tooltipWidth: Self.tooltipWidth(for: room),
+            cardWidth: Self.cardWidth,
+            padding: Self.tooltipEdgePadding)
         Text(room)
             .font(.system(size: 16, weight: .semibold))
             .foregroundColor(Color(white: 0.92))
@@ -279,9 +316,27 @@ private struct ShowtimeBadge: View {
                     .stroke(Color(red: 0.23, green: 0.23, blue: 0.43), lineWidth: 1)
             )
             .fixedSize()
-            .offset(y: -52)
+            .offset(x: dx, y: -52)
             .transition(.opacity)
             .allowsHitTesting(false)
             .zIndex(1)
+    }
+
+    /// Rendered width of the tooltip bubble: the room text at its 16 pt semibold
+    /// font plus the 14 pt horizontal padding on each side. Used to decide how
+    /// far the bubble has to shift to stay inside the card.
+    private static func tooltipWidth(for room: String) -> CGFloat {
+        let font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        let textWidth = (room as NSString).size(withAttributes: [.font: font]).width
+        return ceil(textWidth) + 2 * 14
+    }
+}
+
+/// Carries each showtime pill's centre-x (in the card coordinate space) up to
+/// its `ShowtimeBadge`, which reads it to clamp the room tooltip inside the card.
+private struct PillMidXKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }

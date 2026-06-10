@@ -95,6 +95,30 @@ enum ShowtimePillMetrics {
         return cardWidth - 24
     }
 
+    /// Horizontal correction that keeps a room tooltip — laid out centred over
+    /// its showtime pill — from spilling past the movie card's edges. The pill
+    /// sits at `pillMidX` (its centre in the card's coordinate space, where x
+    /// runs 0…`cardWidth`); the bubble is `tooltipWidth` wide. This returns the
+    /// x-offset to apply so the bubble's nearer edge stays `padding` inside the
+    /// card: a pill comfortably mid-card needs no shift (0), one near the right
+    /// edge gets pulled left (negative), one near the left edge pushed right
+    /// (positive). A bubble too wide for the `padding`-inset band is centred in
+    /// the card instead — the best it can do without clipping unevenly.
+    static func clampedTooltipOffsetX(
+        pillMidX: CGFloat,
+        tooltipWidth: CGFloat,
+        cardWidth: CGFloat,
+        padding: CGFloat
+    ) -> CGFloat {
+        let half = tooltipWidth / 2
+        let minCentre = padding + half
+        let maxCentre = cardWidth - padding - half
+        let targetCentre = minCentre <= maxCentre
+            ? min(max(pillMidX, minCentre), maxCentre)
+            : cardWidth / 2
+        return targetCentre - pillMidX
+    }
+
     /// Typographic width of `s` in the system font at `size`/`weight`.
     static func textWidth(_ s: String, size: CGFloat, weight: CGFloat) -> CGFloat {
         guard !s.isEmpty else { return 0 }
