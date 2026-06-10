@@ -180,15 +180,21 @@ case class MovieRecord(
    *  a link). Cleaning here — the single read boundary `FilmSchedule.synopsis`
    *  and `/api/details` both go through — fixes web + mobile at once without
    *  re-scraping the stored value. */
+  // Iterate in source-priority order (not raw `data.values`, whose Map
+  // iteration order is JVM/platform-dependent) so that when two sources tie on
+  // length the STABLE sort keeps the higher-priority source — deterministic
+  // across machines. Raw `data.values` made the longest-wins tie-break differ
+  // between a dev box and CI, drifting the whole-corpus snapshot.
   def synopsis: Option[String] =
-    data.values.flatMap(_.synopsis)
+    prioritized.iterator.flatMap(_._2.synopsis)
       .map(tools.TextNormalization.stripUrls)
       .filter(_.nonEmpty)
       .toSeq.sortBy(-_.length).headOption
 
-  /** Longest non-empty cast list across all sources. */
+  /** Longest non-empty cast list across all sources (ties broken by source
+   *  priority — see `synopsis`). */
   def cast: Seq[String] =
-    data.values.map(_.cast).filter(_.nonEmpty).toSeq.sortBy(-_.length).headOption.getOrElse(Seq.empty)
+    prioritized.iterator.map(_._2.cast).filter(_.nonEmpty).toSeq.sortBy(-_.length).headOption.getOrElse(Seq.empty)
 
   /** First non-empty director list across sources in priority order. */
   def director: Seq[String] =

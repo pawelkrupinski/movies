@@ -8326,7 +8326,7 @@ releaseYear:       2025
 countries:         Holandia
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/wedrowkanapolnoc-b1-lq.jpg
 synopsis.length:   1940
-cast:              Bart Harder, Carles Pulido, Olly Bassi, Gráinne Blumenthal
+cast:              Bart Harder, Carlos Pulido, Matthijs van de Sande Bakhuyzen, Olly Bassi
 director:          Bart Schrijver
 tmdbId:            1434113
 imdbId:            tt35331003
@@ -8481,7 +8481,7 @@ releaseYear:       2026
 countries:         USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg
 synopsis.length:   649
-cast:              Seth Rogen, Olivia Wilde, Penélope Cruz, Edward Norton
+cast:              Olivia Wilde, Seth Rogen, Penélope Cruz, Edward Norton
 director:          Olivia Wilde
 tmdbId:            950028
 imdbId:            tt14173636
@@ -8572,7 +8572,7 @@ releaseYear:       2026
 countries:         Wielka Brytania, USA
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/zawodowcy-zawodowcy-plakat-po-zmniejszeniu-200x288.jpg
 synopsis.length:   2268
-cast:              Henry Cavill, Jake Gyllenhaal, Eiza González, Rosamund Pike, Emmett J Scanlan, Fisher Stevens
+cast:              Henry Cavill, Jake Gyllenhaal, Eiza González, Rosamund Pike, Fisher Stevens, Emmett J Scanlan
 director:          Guy Ritchie
 tmdbId:            1122573
 imdbId:            tt27681354
