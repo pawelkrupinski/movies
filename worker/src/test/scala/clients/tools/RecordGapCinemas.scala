@@ -36,6 +36,8 @@ object RecordGapCinemas {
     report("NCKF (Łódź)")(new NckfClient(rec("nckf"), Nckf).fetch().size)
     report("Kino Spójnia (Aleksandrów)")(new KinoSpojniaClient(rec("kino-spojnia"), KinoSpojnia).fetch().size)
     report("Kino Ślęża (Sobótka)")(new KinoSlezaClient(rec("kino-sleza"), KinoSleza).fetch().size)
+    report("Cyfrowe Kino (Środa Śl.)")(new CyfroweKinoClient(rec("cyfrowe-kino"), KinoCyfroweKino).fetch().size)
+    report("Kino Kuźnica (Suchedniów)")(new SystemBiletowyClient(rec("kino-kuznica"), "https://shd.systembiletowy.pl", KinoKuznica).fetch().size)
     // ── Lublin ──
     report("Kino CK Lublin")(new Bilety24Client(rec("kino-ck-lublin"), "https://ck-lublin.bilety24.pl", KinoCkLublin).fetch().size)
     // ── Częstochowa / Radom ──
