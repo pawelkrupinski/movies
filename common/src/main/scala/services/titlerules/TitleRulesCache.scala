@@ -9,13 +9,19 @@ import scala.util.Try
 
 /** Owns the title-rule business logic that's shared between the real Mongo store
  *  and the in-memory fake: load the rules, compile them into a `TitleRuleSet`,
- *  install it on `TitleNormalizer`, and keep it current via the change stream
- *  plus a periodic backstop reload. The repo is the only infrastructure seam.
+ *  install it via `install`, and keep it current via the change stream plus a
+ *  periodic backstop reload. The repo is the only infrastructure seam.
  *
  *  Runs on BOTH web and worker (each its own JVM, its own `TitleNormalizer`
  *  global). The worker passes `seedIfEmpty = true` so a fresh DB gets the
- *  migrated defaults; the web app is read-only and never seeds. */
-class TitleRulesCache(repo: TitleRulesRepo, seedIfEmpty: Boolean = false) extends Logging {
+ *  migrated defaults; the web app is read-only and never seeds. `install`
+ *  defaults to mutating the `TitleNormalizer` global but is injectable so tests
+ *  capture the installed set instead of racing on process-global state. */
+class TitleRulesCache(
+  repo: TitleRulesRepo,
+  seedIfEmpty: Boolean = false,
+  install: TitleRuleSet => Unit = TitleNormalizer.installRules
+) extends Logging {
 
   private val scheduler          = DaemonExecutors.scheduler("title-rules-refresh")
   private val IntervalSeconds    = Env.positiveLong("KINOWO_TITLE_RULES_REFRESH_SECONDS", 1800L)
@@ -26,10 +32,10 @@ class TitleRulesCache(repo: TitleRulesRepo, seedIfEmpty: Boolean = false) extend
   def reload(): Unit = {
     val rules = repo.findAll()
     if (rules.nonEmpty) {
-      TitleNormalizer.installRules(TitleRuleSet(rules))
+      install(TitleRuleSet(rules))
       logger.info(s"TitleRulesCache: installed ${rules.size} rules from store.")
     } else {
-      TitleNormalizer.resetToDefaults()
+      install(TitleRuleDefaults.ruleSet)
       logger.info("TitleRulesCache: store empty — using in-code default rules.")
     }
   }

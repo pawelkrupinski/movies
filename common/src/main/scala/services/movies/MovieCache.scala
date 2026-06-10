@@ -380,12 +380,12 @@ class CaffeineMovieCache(
     // made FilmScheduleEndToEndSpec's per-cinema counts + dub-slot assertions
     // flaky. Sorting here makes the scrape→merge reproducible at no cost to
     // production correctness.
-    // Per-cinema title cleanup (the formerly per-client `cleanTitle`) is applied
-    // HERE, centrally and rule-driven, so the merge key is a pure function of the
-    // raw scraped title + the active rules — re-derivable for backfill/un-merge.
-    // `cm.movie.title` is the title the scraper emitted; for clients that still
-    // clean inline it's already clean and the (empty) rule set is a no-op, so
-    // this is behaviour-neutral until a per-cinema rule is seeded.
+    // Per-cinema title cleanup, rule-driven and keyed by the cinema. A migrated
+    // client already applies these rules to `title` (carrying the pre-strip
+    // string in `rawTitle`), so this re-application is idempotent insurance; a
+    // client that emits a raw title with no inline cleanup gets cleaned here.
+    // Either way `displayTitle` is a pure function of the scraped title + the
+    // active rules. A key with no rules is an identity no-op.
     val ruleKey = TitleRuleKey.of(cinema)
     val cleaned: CinemaMovie => String = cm => TitleNormalizer.cinemaClean(ruleKey, cm.movie.title)
 
@@ -426,11 +426,11 @@ class CaffeineMovieCache(
         val effectiveYear = cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))
         val slot = SourceData(
           title          = Some(displayTitle),
-          // Verbatim scraped title, kept so the merge key is re-derivable when
-          // the per-cinema rules change (backfill / un-merge). For clients that
-          // still clean inline this equals `displayTitle`; for migrated clients
-          // it's the true pre-strip string.
-          rawTitle       = Some(cm.movie.title),
+          // Verbatim upstream title, kept so the merge key is re-derivable when
+          // the per-cinema rules change (backfill / un-merge). A rule-driven
+          // client carries the pre-strip string in `movie.rawTitle`; clients that
+          // did no cleanup leave it None and `title` is already raw.
+          rawTitle       = cm.movie.rawTitle.orElse(Some(cm.movie.title)),
           originalTitle  = cm.movie.originalTitle,
           synopsis       = cm.synopsis.orElse(priorSlot.flatMap(_.synopsis)),
           // Normalise cast at the write boundary: Cinema City returns

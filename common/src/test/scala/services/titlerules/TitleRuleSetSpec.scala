@@ -2,7 +2,6 @@ package services.titlerules
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.TitleNormalizer
 
 /** Unit tests for the rule-set abstraction itself — the behaviours the migration
  *  golden (which only exercises the default tiers) doesn't reach: per-cinema
@@ -58,18 +57,7 @@ class TitleRuleSetSpec extends AnyFlatSpec with Matchers {
     rs.programmePrefix("Vertigo (AD)") shouldBe None
   }
 
-  "TitleNormalizer.installRules / resetToDefaults" should "swap the active set and restore it" in {
-    try {
-      TitleNormalizer.installRules(TitleRuleSet(Seq(
-        rule("only", GlobalStructural, " CUSTOM$", "")
-      )))
-      TitleNormalizer.searchTitle("Film CUSTOM") shouldBe "Film"
-      // The default anniversary strip is gone under the custom set.
-      TitleNormalizer.searchTitle("Top Gun 40th Anniversary") shouldBe "Top Gun 40th Anniversary"
-    } finally {
-      TitleNormalizer.resetToDefaults()
-    }
-    // Defaults restored.
-    TitleNormalizer.searchTitle("Top Gun 40th Anniversary") shouldBe "Top Gun"
+  "perCinema with no rules for a key" should "be an identity transform" in {
+    TitleRuleSet.empty.perCinema("anything", "Untouched - X") shouldBe "Untouched - X"
   }
 }

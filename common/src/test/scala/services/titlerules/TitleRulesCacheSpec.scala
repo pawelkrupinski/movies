@@ -1,45 +1,51 @@
 package services.titlerules
 
-import org.scalatest.BeforeAndAfterEach
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.TitleNormalizer
 
-/** The shared business logic of the rules cache, exercised against the in-memory
- *  fake repo (no Mongo): install-from-store, fall-back-to-defaults, and the
- *  worker's seed-if-empty. */
-class TitleRulesCacheSpec extends AnyFlatSpec with Matchers with BeforeAndAfterEach {
+import java.util.concurrent.atomic.AtomicReference
 
-  override def afterEach(): Unit = TitleNormalizer.resetToDefaults()
+/** The shared business logic of the rules cache, against the in-memory fake repo
+ *  and a capturing `install` sink — so the spec never touches the process-global
+ *  `TitleNormalizer` and can't race other suites. */
+class TitleRulesCacheSpec extends AnyFlatSpec with Matchers {
+
+  private def capturing(): (TitleRuleSet => Unit, () => TitleRuleSet) = {
+    val ref = new AtomicReference[TitleRuleSet](TitleRuleSet.empty)
+    ((rs: TitleRuleSet) => ref.set(rs), () => ref.get())
+  }
 
   "reload" should "install the store's rules, replacing the defaults" in {
+    val (install, last) = capturing()
     val repo = new InMemoryTitleRulesRepo(Seq(
       TitleRule("custom", RuleScope.GlobalStructural, None, " ZZZ$", "", applyAll = false, order = 10)))
-    new TitleRulesCache(repo).reload()
-    TitleNormalizer.searchTitle("Film ZZZ") shouldBe "Film"
+    new TitleRulesCache(repo, install = install).reload()
+    last().structural("Film ZZZ") shouldBe "Film"
     // The default anniversary strip is absent under the custom-only set.
-    TitleNormalizer.searchTitle("Top Gun 40th Anniversary") shouldBe "Top Gun 40th Anniversary"
+    last().structural("Top Gun 40th Anniversary") shouldBe "Top Gun 40th Anniversary"
   }
 
   it should "fall back to the in-code defaults when the store is empty" in {
-    TitleNormalizer.installRules(TitleRuleSet.empty) // pollute
-    new TitleRulesCache(new InMemoryTitleRulesRepo()).reload()
-    TitleNormalizer.searchTitle("Top Gun 40th Anniversary") shouldBe "Top Gun"
+    val (install, last) = capturing()
+    new TitleRulesCache(new InMemoryTitleRulesRepo(), install = install).reload()
+    last().structural("Top Gun 40th Anniversary") shouldBe "Top Gun"
   }
 
   "start with seedIfEmpty" should "populate an empty enabled store with the defaults and install them" in {
+    val (install, last) = capturing()
     val repo = new InMemoryTitleRulesRepo()
     repo.findAll() shouldBe empty
-    val cache = new TitleRulesCache(repo, seedIfEmpty = true)
+    val cache = new TitleRulesCache(repo, seedIfEmpty = true, install = install)
     try cache.start() finally cache.stop()
     repo.findAll().map(_.id) should contain("structural-anniversary-suffix")
     repo.findAll().size shouldBe TitleRuleDefaults.all.size
-    TitleNormalizer.searchTitle("Top Gun 40th Anniversary") shouldBe "Top Gun"
+    last().structural("Top Gun 40th Anniversary") shouldBe "Top Gun"
   }
 
   "start without seedIfEmpty" should "leave an empty store untouched" in {
+    val (install, _) = capturing()
     val repo = new InMemoryTitleRulesRepo()
-    val cache = new TitleRulesCache(repo, seedIfEmpty = false)
+    val cache = new TitleRulesCache(repo, seedIfEmpty = false, install = install)
     try cache.start() finally cache.stop()
     repo.findAll() shouldBe empty
   }

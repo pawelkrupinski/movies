@@ -2,19 +2,35 @@ package services.titlerules
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.TitleNormalizer
+import services.movies.TitleNormalizer.normalize
 
 /**
  * The no-regression gate for migrating the hardcoded `TitleNormalizer` regexes
  * into editable DB rules. It pins a FROZEN copy of the pre-rules implementation
  * (the exact regex chains as they were before this change) and asserts that the
- * rule-driven `TitleNormalizer.searchTitle` / `apiQuery` / `sanitize` produce
- * byte-identical output for every title in a corpus that exercises each pattern.
+ * default rule set in `TitleRuleDefaults` produces byte-identical output for
+ * every title in a corpus that exercises each pattern.
+ *
+ * Tests the PURE `TitleRuleDefaults.ruleSet` rather than the `TitleNormalizer`
+ * process-global, so it can't be perturbed by a concurrently-running spec that
+ * installs a different rule set.
  *
  * If this fails, the seed rules in `TitleRuleDefaults` drifted from the original
  * behaviour — fix the seed, never this frozen baseline.
  */
 class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
+
+  private val rs = TitleRuleDefaults.ruleSet
+
+  // The pure equivalents of TitleNormalizer.{searchTitle,apiQuery,sanitize},
+  // computed off the default rule set (the global-free script bits — Arabic→Roman
+  // `normalize`, NFD `deburr`, the final strip — stay as the production code).
+  private def searchTitle(t: String): String = rs.structural(t)
+  private def apiQuery(t: String): String    = rs.search(t)
+  private def programmePrefix(t: String): Option[String] = rs.programmePrefix(t)
+  private def sanitize(t: String): String =
+    tools.TextNormalization.deburr(rs.canonical(normalize(t)))
+      .toLowerCase.replaceAll("[^\\p{L}\\p{N}]+", "")
 
   // ── Frozen legacy implementation (verbatim from pre-rules TitleNormalizer) ──
   private object Legacy {
@@ -67,6 +83,12 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
       tools.TextNormalization.deburr(canonical(normalize(title)))
         .toLowerCase
         .replaceAll("[^\\p{L}\\p{N}]+", "")
+
+    // Per-cinema: Cinema City (verbatim from CinemaCityClient.cleanTitle).
+    def cinemaCity(name: String): String =
+      name.stripPrefix("Ladies Night - ")
+        .stripSuffix(" - powrót do kin")
+        .replaceFirst("^Kolekcja\\s+Mamoru\\s+Hosody:\\s*", "")
   }
 
   // Corpus exercising every pattern + plain titles that must NOT be touched.
@@ -101,31 +123,44 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
     "Star Wars: A New Hope"
   )
 
-  "TitleRuleDefaults-driven TitleNormalizer" should "match the frozen legacy searchTitle for every corpus title" in {
-    TitleNormalizer.resetToDefaults()
+  "TitleRuleDefaults" should "match the frozen legacy searchTitle for every corpus title" in {
     corpus.foreach { t =>
-      withClue(s"searchTitle('$t'): ")(TitleNormalizer.searchTitle(t) shouldBe Legacy.searchTitle(t))
+      withClue(s"searchTitle('$t'): ")(searchTitle(t) shouldBe Legacy.searchTitle(t))
     }
   }
 
   it should "match the frozen legacy apiQuery for every corpus title" in {
-    TitleNormalizer.resetToDefaults()
     corpus.foreach { t =>
-      withClue(s"apiQuery('$t'): ")(TitleNormalizer.apiQuery(t) shouldBe Legacy.apiQuery(t))
+      withClue(s"apiQuery('$t'): ")(apiQuery(t) shouldBe Legacy.apiQuery(t))
     }
   }
 
   it should "match the frozen legacy sanitize for every corpus title" in {
-    TitleNormalizer.resetToDefaults()
     corpus.foreach { t =>
-      withClue(s"sanitize('$t'): ")(TitleNormalizer.sanitize(t) shouldBe Legacy.sanitize(t))
+      withClue(s"sanitize('$t'): ")(sanitize(t) shouldBe Legacy.sanitize(t))
     }
   }
 
   it should "match the frozen legacy programmePrefix for every corpus title" in {
-    TitleNormalizer.resetToDefaults()
     corpus.foreach { t =>
-      withClue(s"programmePrefix('$t'): ")(TitleNormalizer.programmePrefix(t) shouldBe Legacy.programmePrefix(t))
+      withClue(s"programmePrefix('$t'): ")(programmePrefix(t) shouldBe Legacy.programmePrefix(t))
+    }
+  }
+
+  // ── per-cinema migrations ──────────────────────────────────────────────────
+  private val cinemaCityCorpus = Seq(
+    "Ladies Night - Narodziny gwiazdy",
+    "Top Gun - powrót do kin",
+    "Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas",
+    "Kolekcja Mamoru Hosody:   Spacer w chmurach",
+    "Diabeł ubiera się u Prady 2", // untouched
+    "Ladies Night - Anora - powrót do kin" // prefix + suffix together
+  )
+
+  "the cinema-city per-cinema rules" should "match the frozen legacy CinemaCityClient.cleanTitle" in {
+    cinemaCityCorpus.foreach { t =>
+      withClue(s"perCinema('cinema-city', '$t'): ")(
+        rs.perCinema("cinema-city", t) shouldBe Legacy.cinemaCity(t))
     }
   }
 }

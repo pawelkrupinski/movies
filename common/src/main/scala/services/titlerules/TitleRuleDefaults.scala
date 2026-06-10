@@ -75,7 +75,24 @@ object TitleRuleDefaults {
       note = Some("Unify ' & ' and ' i ' spellings"))
   )
 
-  val all: Seq[TitleRule] = structural ++ search ++ canonical
+  // ── per-cinema tier — migrated from each client's `cleanTitle` ─────────────
+  // Keyed by `TitleRuleKey.of(cinema)`. A chain shares one key across its venues.
+  // As each client's inline `cleanTitle` is removed, its rules land here.
+  private val perCinema: Seq[TitleRule] = Seq(
+    // Cinema City (chain) — "Ladies Night - X", "X - powrót do kin",
+    // "Kolekcja Mamoru Hosody: X".
+    TitleRule("cc-ladies-night", PerCinema, Some("cinema-city"),
+      "^Ladies Night - ", "", applyAll = false, order = 10,
+      note = Some("Cinema City ladies-night prefix")),
+    TitleRule("cc-powrot-do-kin", PerCinema, Some("cinema-city"),
+      " - powrót do kin$", "", applyAll = false, order = 20,
+      note = Some("Cinema City re-release suffix")),
+    TitleRule("cc-mamoru-hosody", PerCinema, Some("cinema-city"),
+      """^Kolekcja\s+Mamoru\s+Hosody:\s*""", "", applyAll = false, order = 30,
+      note = Some("Cinema City anime-retrospective prefix"))
+  )
+
+  val all: Seq[TitleRule] = structural ++ search ++ canonical ++ perCinema
 
   val ruleSet: TitleRuleSet = TitleRuleSet(all)
 }

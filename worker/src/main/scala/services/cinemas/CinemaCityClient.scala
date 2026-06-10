@@ -138,9 +138,13 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
         allFilms.get(filmId).map { info =>
           CinemaMovie(
             movie       = Movie(
+              // Title cleaned via the editable "cinema-city" rules; `info.name`
+              // (the pre-strip string) rides along as rawTitle so the merge key
+              // stays re-derivable when those rules change.
               CinemaCityClient.cleanTitle(info.name),
               info.runtimeMinutes,
-              info.releaseYear
+              info.releaseYear,
+              rawTitle = Some(info.name)
             ),
             cinema      = cinema,
             posterUrl   = info.posterLink,
@@ -169,14 +173,14 @@ object CinemaCityClient {
   /** Strip event/cycle decoration so a decorated screening collapses onto the
    *  same Movie — and enriches off the same clean title — as the regular run:
    *  "Ladies Night - X" (ladies' night), "X - powrót do kin" (re-release),
-   *  "Kolekcja Mamoru Hosody: X" (anime retrospective). Without it the
-   *  decorated string is its own row that TMDB/Filmweb can't resolve. Public
-   *  so the strip is unit-testable directly. */
+   *  "Kolekcja Mamoru Hosody: X" (anime retrospective).
+   *
+   *  The strip now lives in the editable rule set under the "cinema-city" key
+   *  (see TitleRuleDefaults); this delegates so the behaviour stays unit-testable
+   *  here and documents the chain's rule key. Production cleaning happens
+   *  centrally in `MovieCache.recordCinemaScrape`. */
   def cleanTitle(name: String): String =
-    name
-      .stripPrefix("Ladies Night - ")
-      .stripSuffix(" - powrót do kin")
-      .replaceFirst("^Kolekcja\\s+Mamoru\\s+Hosody:\\s*", "")
+    services.movies.TitleNormalizer.cinemaClean("cinema-city", name)
 
   /** Per-film metadata parsed from the public film page. Countries used to
    *  live in a `<p>Produkcja: …</p>` line; cast/director/synopsis come from

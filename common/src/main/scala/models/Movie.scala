@@ -20,5 +20,11 @@ case class Movie(
   // English-language docs). Used as a TMDB-search fallback for titles whose
   // Polish translation doesn't index well; absent for most films, where the
   // Polish title is the canonical entry point.
-  originalTitle:  Option[String]    = None
+  originalTitle:  Option[String]    = None,
+  // The verbatim upstream title before the client's per-cinema cleanup, when the
+  // client cleaned `title`. Carried so `recordCinemaScrape` can persist it as
+  // `SourceData.rawTitle` and the merge key stays re-derivable from it when the
+  // stripping rules change. None when the client did no cleanup (then `title` is
+  // already the raw string).
+  rawTitle:       Option[String]    = None
 )
