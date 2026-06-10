@@ -114,6 +114,49 @@ class StateSyncServiceTest {
         assertNull(client.lastPushed)
     }
 
+    /** Regression: once migration has run, a later launch must MIRROR the
+     *  server, not union. A film removed on another device (server now empty)
+     *  must not be resurrected from this device's stale local copy. The old
+     *  union-on-every-login made removals impossible. */
+    @Test
+    fun serverAuthoritativeAfterFirstSyncDropsStaleLocal() = runTest(UnconfinedTestDispatcher()) {
+        // Launch 1: migrate from server = {Film A}, flag flips on.
+        client.remoteState = UserSyncState(setOf("Film A"), emptySet())
+        startService()
+        login()
+        advanceUntilIdle()
+        assertEquals(setOf("Film A"), prefs.hiddenState.value)
+        assertTrue(prefs.isServerStateSynced())
+
+        // Another device removes Film A from the account.
+        client.remoteState = UserSyncState(emptySet(), emptySet())
+
+        // Launch 2: same persisted prefs (flag still set), fresh session restore
+        // (flow starts null, then the user) — the initial null must NOT clear
+        // the flag, and the now-empty server must win.
+        val userFlow2 = MutableStateFlow<UserProfile?>(null)
+        StateSyncService(prefs, userFlow2, client, backgroundScope).also { it.start() }
+        userFlow2.value = UserProfile(displayName = "Test", email = "test@test.com", provider = "google")
+        advanceUntilIdle()
+
+        assertEquals(emptySet<String>(), prefs.hiddenState.value)
+    }
+
+    /** A genuine logout re-arms migration so the next sign-in carries this
+     *  device's current local picks up again. */
+    @Test
+    fun logoutReArmsMigration() = runTest(UnconfinedTestDispatcher()) {
+        client.remoteState = UserSyncState(setOf("Film A"), emptySet())
+        startService()
+        login()
+        advanceUntilIdle()
+        assertTrue(prefs.isServerStateSynced())
+
+        userFlow.value = null // logout
+        advanceUntilIdle()
+        assertTrue(!prefs.isServerStateSynced())
+    }
+
     @Test
     fun localChangeAfterLoginIsPushed() = runTest(UnconfinedTestDispatcher()) {
         startService()
@@ -132,10 +175,13 @@ class StateSyncServiceTest {
 private class FakeSyncPrefs : SyncPrefs {
     val hiddenState = MutableStateFlow<Set<String>>(emptySet())
     val disabledState = MutableStateFlow<Set<String>>(emptySet())
+    private var synced = false
     override val hiddenFilms = hiddenState
     override val disabledCinemas = disabledState
     override suspend fun setHiddenFilms(films: Set<String>) { hiddenState.value = films }
     override suspend fun setDisabledCinemas(cinemas: Set<String>) { disabledState.value = cinemas }
+    override suspend fun isServerStateSynced(): Boolean = synced
+    override suspend fun setServerStateSynced(synced: Boolean) { this.synced = synced }
 }
 
 private class FakeUserStateClient : UserStateClient {

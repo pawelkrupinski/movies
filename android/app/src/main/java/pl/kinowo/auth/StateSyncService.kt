@@ -14,11 +14,15 @@ import pl.kinowo.data.SyncPrefs
  * Keeps per-device [SyncPrefs] in step with the server while signed in — the
  * Android counterpart of iOS `StateSyncService`.
  *
- * On login: pull the remote state, union it with local (so neither device
- * loses a hide / a disabled cinema), write the merged set back into prefs,
- * and push the union to the server. Thereafter every local change is pushed,
- * debounced 400 ms so a burst of toggles is one request. On logout the
- * observation stops; local prefs stay put.
+ * The FIRST sync after a login migrates this device's local picks up: union
+ * local with remote (so nothing set while signed-out is lost), write the union
+ * into prefs, push it, and set the `serverStateSynced` flag. EVERY sync after
+ * that treats the SERVER as the source of truth — local prefs are replaced
+ * with the remote sets, so a hide / disabled cinema removed elsewhere stays
+ * removed instead of being resurrected by a blind union on the next launch.
+ * Thereafter every local change is pushed, debounced 400 ms so a burst of
+ * toggles is one request. On logout the observation stops and the flag is
+ * cleared so the next sign-in migrates afresh.
  *
  * A failed pull leaves local prefs authoritative (no overwrite, no push) —
  * exactly the offline behaviour iOS has.
@@ -41,6 +45,11 @@ class StateSyncService(
                     loggedIn = true
                     onLogin()
                 } else {
+                    // Clear the migration flag only on a GENUINE logout, not the
+                    // initial null the flow holds before a session restores —
+                    // otherwise every cold start would re-run the first-login
+                    // union instead of treating the server as authoritative.
+                    if (loggedIn) prefs.setServerStateSynced(false)
                     loggedIn = false
                     syncJob?.cancel()
                     syncJob = null
@@ -62,13 +71,24 @@ class StateSyncService(
             val remote = client.fetchState()
             val localHidden = prefs.hiddenFilms.first()
             val localDisabled = prefs.disabledCinemas.first()
-            val mergedHidden = localHidden + remote.hiddenFilms
-            val mergedDisabled = localDisabled + remote.disabledCinemas
-            if (mergedHidden != localHidden) prefs.setHiddenFilms(mergedHidden)
-            if (mergedDisabled != localDisabled) prefs.setDisabledCinemas(mergedDisabled)
-            client.putState(UserSyncState(mergedHidden, mergedDisabled))
+            if (prefs.isServerStateSynced()) {
+                // Already migrated — the server is the source of truth. Mirror it
+                // so a hide / disabled cinema removed on another device (or this
+                // one, last session) stays gone instead of being unioned back.
+                if (remote.hiddenFilms != localHidden) prefs.setHiddenFilms(remote.hiddenFilms)
+                if (remote.disabledCinemas != localDisabled) prefs.setDisabledCinemas(remote.disabledCinemas)
+            } else {
+                // First sync after login — union local picks up so nothing set
+                // while signed-out is lost, push it, then flip the flag.
+                val mergedHidden = localHidden + remote.hiddenFilms
+                val mergedDisabled = localDisabled + remote.disabledCinemas
+                if (mergedHidden != localHidden) prefs.setHiddenFilms(mergedHidden)
+                if (mergedDisabled != localDisabled) prefs.setDisabledCinemas(mergedDisabled)
+                client.putState(UserSyncState(mergedHidden, mergedDisabled))
+                prefs.setServerStateSynced(true)
+            }
         } catch (_: Exception) {
-            // Network error — local state is authoritative; leave prefs alone.
+            // Network error — local state is authoritative; leave prefs + flag alone.
         }
     }
 

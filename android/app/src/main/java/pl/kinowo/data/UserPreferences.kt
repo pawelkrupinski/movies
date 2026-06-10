@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "kinowo_prefs")
@@ -22,6 +23,12 @@ interface SyncPrefs {
     val disabledCinemas: Flow<Set<String>>
     suspend fun setHiddenFilms(films: Set<String>)
     suspend fun setDisabledCinemas(cinemas: Set<String>)
+
+    /** True once [pl.kinowo.auth.StateSyncService] has done its one-time
+     *  local→server migration. After that the server is authoritative on every
+     *  launch (so removals stick); cleared on logout to re-arm migration. */
+    suspend fun isServerStateSynced(): Boolean
+    suspend fun setServerStateSynced(synced: Boolean)
 }
 
 /**
@@ -95,6 +102,13 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         context.dataStore.edit { prefs -> prefs[KEY_DISABLED] = cinemas }
     }
 
+    override suspend fun isServerStateSynced(): Boolean =
+        context.dataStore.data.map { it[KEY_SERVER_SYNCED] ?: false }.first()
+
+    override suspend fun setServerStateSynced(synced: Boolean) {
+        context.dataStore.edit { prefs -> prefs[KEY_SERVER_SYNCED] = synced }
+    }
+
     suspend fun toggleCinema(cinema: String, disabled: Boolean) = context.dataStore.edit { prefs ->
         val current = prefs[KEY_DISABLED] ?: emptySet()
         prefs[KEY_DISABLED] = if (disabled) current + cinema else current - cinema
@@ -123,6 +137,7 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         val KEY_CITY_SWITCH_PROMPT = stringPreferencesKey("citySwitchPromptKey")
         val KEY_SWIPED = booleanPreferencesKey("swipedScreens")
         val KEY_HINT_DATE = stringPreferencesKey("swipeHintShownDate")
+        val KEY_SERVER_SYNCED = booleanPreferencesKey("serverStateSynced")
         val KEY_POSTER_URLS = stringSetPreferencesKey("seenPosterUrls")
         val KEY_POSTER_PURGE_DATE = stringPreferencesKey("posterPurgeDate")
     }
