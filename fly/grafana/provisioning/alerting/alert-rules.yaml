@@ -237,11 +237,154 @@ groups:
                   reducer: { type: last, params: [] }
               refId: C
 
+      # ---- Disk fill PROJECTION (lead-time before disk-space-low fires) -----
+      # predict_linear on free blocks: at the current trend, will the volume hit
+      # 0 free within 7 days? This is the *ahead-of-time* warning the 80% rule
+      # above can't give — it catches a slow leak (oplog/journal growth, a
+      # runaway collection) days before it actually fills. Validated:
+      # predict_linear is supported on Fly's VictoriaMetrics backend. 6h lookback
+      # (not 24h) so a one-off volume *resize* ages out of the window within 6h;
+      # during that window the regression only ever projects MORE space, so it
+      # cannot false-fire. for:2h smooths WiredTiger checkpoint-burst variance —
+      # to project to 0 within 7d the volume must lose ~12MB/h sustained, which
+      # noise never holds. Steady state trends flat (oplog ring-buffers at its
+      # 990MB cap), so any sustained negative projection is a real leak.
+      - uid: kinowo-disk-fill-projected
+        title: Disk projected to fill within 7 days
+        condition: C
+        for: 2h
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.app }} volume {{ $labels.mount }} is on track to fill within 7 days'
+          description: 'predict_linear over the last 6h projects {{ $labels.app }} ({{ $labels.instance }}) mount {{ $labels.mount }} running OUT of free space within 7 days at the current growth rate — the early warning before kinowo-disk-space-low. Find what is growing (`du -sh /data/db/* | sort -rh` on the box) and extend the volume or prune before it crashes mongod.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'min by (app, instance, mount) (predict_linear(fly_instance_filesystem_blocks_avail{mount=~"/data/db|/var/lib/grafana"}[6h], 7*24*3600))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- Memory PSI pressure (earliest pre-OOM lead indicator) -----------
+      # Linux PSI "some" = % of wall-clock any task stalled waiting on memory. It
+      # rises BEFORE mem_available collapses and well before the OOM kill, so it
+      # leads the memory-pressure rule above (which watches the <8% avail floor).
+      # The 2026-06-06 cascade was an OOM; this is the earliest tap on that
+      # runway. Healthy idle boxes sit flat at 0, so a sustained avg60 > 5% is a
+      # real, building squeeze. Covers the SPOF mongo + the web app.
+      - uid: kinowo-memory-pressure-psi
+        title: Memory pressure building (PSI)
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.app }} under sustained memory pressure (PSI)'
+          description: 'fly_instance_memory_pressure_some (avg60) > 5% for 5m on {{ $labels.app }} ({{ $labels.instance }}) — tasks are stalling on memory allocation. This LEADS the mem-available collapse and the OOM kill that cascaded to a web outage on 2026-06-06. Check RSS/cache and consider a memory bump before it trips memory-pressure / OOMs.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max by (app, instance) (fly_instance_memory_pressure_some{app=~"kinowo|kinowo-mongo", pressure_duration="avg60"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [5] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
   - orgId: 1
     name: fly-serving
     folder: Fly Alerts
     interval: 1m
     rules:
+      # ---- Mongo down (the root cause of the web cascade) ------------------
+      # serving-down below watches kinowo (web) — but web only falls over BECAUSE
+      # mongo did (blocking boot dependency); both the 2026-06-06 OOM and the
+      # 2026-06-10 disk-full outages started at mongo. Alerting on mongo directly
+      # names the root cause instead of inferring it from a downstream web
+      # outage. Missing data IS the alarm (machine gone/wedged), as in
+      # serving-down. This is the rule that pages you the moment the DB drops.
+      - uid: kinowo-mongo-down
+        title: Mongo down
+        condition: C
+        for: 3m
+        noDataState: Alerting
+        execErrState: Alerting
+        labels:
+          severity: critical
+        annotations:
+          summary: 'kinowo-mongo is down or not reporting'
+          description: 'fly_instance_up{app="kinowo-mongo"} is 0 or absent for 3m — the database is unreachable, which blocks web boot and cascades to a full outage. Check `fly status -a kinowo-mongo` and the machine logs (OOM? disk full? FTDC SIGABRT?).'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max (fly_instance_up{app="kinowo-mongo"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [1] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
       # ---- HTTP 5xx rate ---------------------------------------------------
       - uid: kinowo-http-5xx-high
         title: HTTP 5xx rate high
