@@ -8,6 +8,8 @@ import android.webkit.WebView
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -64,12 +66,36 @@ class TrailerPlayerTest {
     }
 
     @Test
+    fun trailerDoesNotLoadUntilThePillIsTapped() {
+        val details = FilmDetails(
+            title = "Diuna",
+            trailerURLs = listOf("https://www.youtube.com/embed/abcdefghijk"),
+        )
+        compose.setContent { DetailScreen(film, details, onBack = {}) }
+        compose.waitForIdle()
+
+        // The trailer must NOT autoplay on open — no WebView (and so no playback)
+        // exists until the user taps the pill.
+        assertNull(
+            "trailer must not load until the Zwiastun pill is tapped",
+            findWebView(compose.activity.window.decorView),
+        )
+
+        compose.onNodeWithText("Zwiastun 1").performClick()
+        compose.waitForIdle()
+        requireNotNull(findWebView(compose.activity.window.decorView)) {
+            "tapping the pill must load the trailer WebView"
+        }
+    }
+
+    @Test
     fun trailerLoadsTheIframeUnderTheSiteOriginSoItPlays() {
         val details = FilmDetails(
             title = "Diuna",
             trailerURLs = listOf("https://www.youtube.com/embed/abcdefghijk"),
         )
         compose.setContent { DetailScreen(film, details, onBack = {}) }
+        compose.onNodeWithText("Zwiastun 1").performClick()
         compose.waitForIdle()
 
         val web = findWebView(compose.activity.window.decorView)
@@ -103,6 +129,7 @@ class TrailerPlayerTest {
             trailerURLs = listOf("https://www.youtube.com/embed/abcdefghijk"),
         )
         compose.setContent { DetailScreen(film, details, onBack = {}) }
+        compose.onNodeWithText("Zwiastun 1").performClick()
         compose.waitForIdle()
 
         val web = findWebView(compose.activity.window.decorView)

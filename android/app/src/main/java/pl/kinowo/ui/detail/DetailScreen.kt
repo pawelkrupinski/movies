@@ -39,7 +39,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -217,7 +216,10 @@ private fun MetaBlock(label: String, value: String?) {
 
 @Composable
 private fun TrailerSection(trailers: List<String>) {
-    var selected by remember(trailers) { mutableIntStateOf(0) }
+    // Null until a pill is tapped: the trailer must NOT autoplay when the film
+    // screen opens — it starts only on an explicit tap. (Tapping is also the user
+    // gesture that makes the embed's autoplay reliable.)
+    var selected by remember(trailers) { mutableStateOf<Int?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Zwiastuny", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -236,7 +238,7 @@ private fun TrailerSection(trailers: List<String>) {
                 )
             }
         }
-        TrailerPlayer(trailers[selected])
+        selected?.let { TrailerPlayer(trailers[it]) }
     }
 }
 
