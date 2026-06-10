@@ -28,16 +28,18 @@ class TopBarLayoutTest {
     }
 
     @Test
-    fun wideRowFillsEveryPill() {
-        // Landscape phones / tablets: every pill shares the row equally and
-        // reads as one evenly-spaced segmented control.
-        assertTrue(TopBarLayout.datePillFillsRow(wide = true))
+    fun wideRowFillsEveryPillIncludingWszystkie() {
+        // Landscape phones / tablets: all four pills share the row equally, so
+        // "Wszystkie" (Anytime) stretches to the same width as the others.
+        assertTrue(TopBarLayout.datePillFillsRow(isAnytime = true, wide = true))
+        assertTrue(TopBarLayout.datePillFillsRow(isAnytime = false, wide = true))
     }
 
     @Test
-    fun narrowRowKeepsEveryPillIntrinsic() {
-        // Portrait phones: no pill stretches — each takes its intrinsic width so
-        // a label can't be squeezed below its text and clip (Galaxy S24, 360dp).
-        assertFalse(TopBarLayout.datePillFillsRow(wide = false))
+    fun narrowRowFillsDatedPillsKeepsWszystkieIntrinsic() {
+        // Portrait phones: the three dated pills get weight and so fill the width
+        // left between 🎬 and Filtry, while "Wszystkie" keeps its intrinsic width.
+        assertTrue(TopBarLayout.datePillFillsRow(isAnytime = false, wide = false))
+        assertFalse(TopBarLayout.datePillFillsRow(isAnytime = true, wide = false))
     }
 }

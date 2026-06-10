@@ -26,14 +26,14 @@ object TopBarLayout {
      * four pills — including "Wszystkie" — get equal weight and read as one
      * evenly-spaced segmented control.
      *
-     * On narrow screens (portrait phones) NO pill stretches: each takes its
-     * intrinsic content width so the label can never be squeezed below the text
-     * it has to show. Forcing the three dated pills to share the leftover width
-     * via `weight` starved them below "Jutro" / "7 dni" at 14sp on a 360dp phone
-     * (Galaxy S24) — the weighted share landed under the text's intrinsic width
-     * and the labels clipped. Intrinsic-width pills (packed left, with the Filtry
-     * button pushed flush-right by a spacer) fit the row with room to spare. See
-     * DayPillFitTest.
+     * On narrow screens (portrait phones) the three short dated pills (Dziś /
+     * Jutro / 7 dni) get weight and "Wszystkie" keeps its intrinsic width. The
+     * dated pills therefore absorb ALL the width left between the 🎬 mark and the
+     * Filtry button — the pill row fills the navbar with no trailing slack —
+     * while "Wszystkie" stays exactly as wide as its long label needs. Their
+     * compact-screen padding (see DatePill) is tuned so the filled share still
+     * clears the labels at 14sp on a 360dp phone (Galaxy S24): they fill WITHOUT
+     * clipping. Guarded by DayPillFitTest.
      */
-    fun datePillFillsRow(wide: Boolean): Boolean = wide
+    fun datePillFillsRow(isAnytime: Boolean, wide: Boolean): Boolean = wide || !isAnytime
 }

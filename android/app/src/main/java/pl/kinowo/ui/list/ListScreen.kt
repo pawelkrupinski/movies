@@ -467,21 +467,18 @@ internal fun DateBar(
 ) {
     Row(
         Modifier.fillMaxWidth().padding(start = 10.dp, end = 4.dp, top = 8.dp),
-        // Narrow phones tighten the inter-item gap so the four intrinsic-width
-        // pills + 🎬 + Filtry fit the row without clipping (see DatePill).
+        // Narrow phones tighten the inter-item gap so the weighted dated pills get
+        // more of the row to fill, clearing their labels at 14sp (see DatePill).
         horizontalArrangement = Arrangement.spacedBy(if (wide) 6.dp else 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text("🎬", fontSize = 22.sp)
-        // The date pills spread to fill the row on wide screens; on narrow ones
-        // they keep their intrinsic width (see DatePill) and this spacer pushes
-        // the Filtry button flush to the right edge, where it sits on wide
-        // screens too once the pills have eaten the leftover width.
+        // The date pills always spread to fill the row; on wide screens
+        // the inline search field sits between them and Filtry, capped
+        // at a fixed width rather than eating the leftover space.
         DatePills(wide, highlighted = highlighted, onSelect = onSelect)
         if (wide) {
             InlineSearchField(value = search, onValueChange = onSearch)
-        } else {
-            Spacer(Modifier.weight(1f))
         }
         IconButton(onClick = onOpenFilters) {
             Icon(
@@ -496,17 +493,17 @@ internal fun DateBar(
 // The four date presets, laid out inline in the top bar (mirroring iOS
 // DatePillsRow). On wide screens all four pills share the row width equally
 // via `weight` — including "Wszystkie" — so they read as one evenly-spaced
-// segmented control. On narrow screens (portrait phones) every pill keeps its
-// intrinsic width instead, so a label can't be squeezed below its text and
-// clip; the pills pack left and DateBar's spacer pushes Filtry flush-right. See
-// TopBarLayout.datePillFillsRow.
+// segmented control. On narrow screens (portrait phones) only the three short
+// pills (Dziś / Jutro / 7 dni) get weight while "Wszystkie" keeps its intrinsic
+// width, so the dated pills fill all the width left between the 🎬 mark and the
+// Filtry icon with no trailing slack. See TopBarLayout.datePillFillsRow.
 // [highlighted] drives which pill reads as selected — it tracks vm.dateFilter at
 // rest but flips to the swipe-preview day mid-drag (see ListScreen.previewDay).
 // A TAP still sets vm.dateFilter directly, which becomes the new highlight.
 @Composable
 private fun RowScope.DatePills(wide: Boolean, highlighted: DateFilter, onSelect: (DateFilter) -> Unit) {
     for (preset in DateFilter.presets) {
-        val fills = TopBarLayout.datePillFillsRow(wide)
+        val fills = TopBarLayout.datePillFillsRow(preset == DateFilter.Anytime, wide)
         DatePill(
             label = preset.label,
             selected = highlighted == preset,
@@ -526,10 +523,12 @@ private fun DatePill(label: String, selected: Boolean, wide: Boolean, modifier: 
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
             ) { onClick() }
-            // Roomy 12dp inset on wide screens; narrow phones tighten to 8dp so
-            // the four intrinsic-width pills + 🎬 + Filtry fit a 360dp row (Galaxy
-            // S24) without the labels clipping. Guarded by DayPillFitTest.
-            .padding(horizontal = if (wide) 12.dp else 8.dp, vertical = 7.dp),
+            // Roomy 12dp inset on wide screens; narrow phones tighten to 6dp so
+            // the three weighted dated pills, after filling the leftover width
+            // between 🎬 and Filtry, still clear "Jutro" / "7 dni" at 14sp on a
+            // 360dp phone (Galaxy S24) instead of clipping. Guarded by
+            // DayPillFitTest.
+            .padding(horizontal = if (wide) 12.dp else 6.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
