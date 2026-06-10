@@ -26,12 +26,19 @@ import scala.util.control.NonFatal
  */
 class UptimeRecordingScraper(
   delegate: CinemaScraper,
-  monitor:  UptimeMonitor
+  monitor:  UptimeMonitor,
+  listener: ScrapeOutcomeListener = ScrapeOutcomeListener.NoOp
 ) extends CinemaScraper {
 
   val cinema: Cinema = delegate.cinema
 
   def scrapeHosts: Set[String] = delegate.scrapeHosts
+
+  // Forward the tick's outcome to the listener alongside the monitor stamp,
+  // defensively — a cross-cutting watcher must never drop a cinema from the cache.
+  private def notifyOutcome(outcome: ScrapeOutcome): Unit =
+    try listener.onOutcome(cinema, outcome)
+    catch { case NonFatal(_) => () }
 
   def fetch(): Seq[CinemaMovie] = {
     val t0 = System.currentTimeMillis()
@@ -40,13 +47,17 @@ class UptimeRecordingScraper(
       catch {
         case NonFatal(t) =>
           monitor.recordFailure(cinema.displayName, UptimeRecordingScraper.errorLabel(t))
+          notifyOutcome(ScrapeOutcome.Failure)
           throw t
       }
     val ms = System.currentTimeMillis() - t0
-    if (result.iterator.map(_.showtimes.size).sum == 0)
+    if (result.iterator.map(_.showtimes.size).sum == 0) {
       monitor.recordEmpty(cinema.displayName, ms)
-    else
+      notifyOutcome(ScrapeOutcome.Empty)
+    } else {
       monitor.recordSuccess(cinema.displayName, ms)
+      notifyOutcome(ScrapeOutcome.Success)
+    }
     result
   }
 }

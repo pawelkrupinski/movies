@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.Multikino
+import models.{Cinema, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.UptimeMonitor
@@ -71,5 +71,38 @@ class UptimeRecordingScraperSpec extends AnyFlatSpec with Matchers {
     bucket.failures  shouldBe 0
     bucket.errors    shouldBe empty
     bucket.status    shouldBe "green"
+  }
+
+  // ── Outcome forwarded to a ScrapeOutcomeListener (the Filmweb-drop watcher's hook) ──
+
+  private class RecordingListener extends ScrapeOutcomeListener {
+    val seen = scala.collection.mutable.ListBuffer.empty[(Cinema, ScrapeOutcome)]
+    def onOutcome(cinema: Cinema, outcome: ScrapeOutcome): Unit = { seen += ((cinema, outcome)); () }
+  }
+
+  it should "forward a Success outcome to the listener" in {
+    val l = new RecordingListener
+    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(OneMovie))), new UptimeMonitor(), l).fetch()
+    l.seen.toList shouldBe List(Multikino -> ScrapeOutcome.Success)
+  }
+
+  it should "forward an Empty outcome to the listener" in {
+    val l = new RecordingListener
+    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(Seq.empty))), new UptimeMonitor(), l).fetch()
+    l.seen.toList shouldBe List(Multikino -> ScrapeOutcome.Empty)
+  }
+
+  it should "forward a Failure outcome to the listener and still rethrow" in {
+    val l = new RecordingListener
+    val s = new UptimeRecordingScraper(ScriptedCinemaScraper(List(Left(new RuntimeException("down")))), new UptimeMonitor(), l)
+    intercept[RuntimeException] { s.fetch() }
+    l.seen.toList shouldBe List(Multikino -> ScrapeOutcome.Failure)
+  }
+
+  it should "not let a throwing listener break the scrape" in {
+    val boom = new ScrapeOutcomeListener {
+      def onOutcome(cinema: Cinema, outcome: ScrapeOutcome): Unit = throw new RuntimeException("listener boom")
+    }
+    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(OneMovie))), new UptimeMonitor(), boom).fetch() shouldBe OneMovie
   }
 }

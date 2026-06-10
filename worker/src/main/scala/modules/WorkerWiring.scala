@@ -3,7 +3,7 @@ package modules
 import clients.TmdbClient
 import models.{Cinema, City}
 import services.{MongoCachingDetailFetch, MongoConnection, ShowtimeCache, Stoppable, UptimeMonitor}
-import services.alerts.{FallbackAlert, TelegramNotifier}
+import services.alerts.{FallbackAlert, FilmwebDropAlerter, TelegramNotifier}
 import services.cinemas._
 import services.enrichment._
 import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
@@ -131,6 +131,26 @@ class WorkerWiring {
         c.displayName }
       .toSet
 
+  // Telegram alerter for the OTHER half of the Filmweb story: a venue whose sole
+  // source IS Filmweb (no own-site fallback possible) going empty/404 because
+  // Filmweb dropped it — a nudge to migrate it to an own-site scraper. Posts to
+  // the dedicated "Filmweb Drops Cinemas" channel; off unless its chat id is set,
+  // so CI / local without secrets raise no alerts. See reference_fallback_telegram_channel.
+  protected lazy val filmwebDropAlerter: Option[FilmwebDropAlerter] = for {
+    token  <- Env.get("TELEGRAM_BOT_TOKEN")
+    chatId <- Env.get("KINOWO_FILMWEB_DROP_TG_CHAT_ID").flatMap(s => scala.util.Try(s.toLong).toOption)
+  } yield {
+    val notifier = new TelegramNotifier(httoFetch, token, chatId,
+      Env.get("KINOWO_FILMWEB_DROP_TG_TOPIC_ID").flatMap(s => scala.util.Try(s.toLong).toOption))
+    new FilmwebDropAlerter(filmwebOnlyCinemas, notifier.send,
+      Env.positiveInt("KINOWO_FILMWEB_DROP_THRESHOLD", 3))
+  }
+
+  // The single drop-watcher shared across every UptimeRecordingScraper wrap (it
+  // self-filters to the Filmweb-only venues), or a no-op when unconfigured.
+  protected lazy val scrapeOutcomeListener: ScrapeOutcomeListener =
+    filmwebDropAlerter.getOrElse(ScrapeOutcomeListener.NoOp)
+
   lazy val cinemaScrapers: Seq[CinemaScraper] =
     City.all
       .filter(c => scrapeCities(c.slug))
@@ -146,7 +166,7 @@ class WorkerWiring {
             filmwebFallbackStore,
             onEvent = filmwebFallbackOnEvent)
         else
-          new UptimeRecordingScraper(retried, uptimeMonitor)
+          new UptimeRecordingScraper(retried, uptimeMonitor, scrapeOutcomeListener)
       }
 
   // ── Background concurrency budget ───────────────────────────────────────────
