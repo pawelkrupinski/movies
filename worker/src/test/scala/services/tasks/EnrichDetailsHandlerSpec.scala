@@ -67,7 +67,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     // A chain enricher: one shared group, detail written to the CinemaCityChain
     // network source, health under one global name.
     val enricher = new FakeDetailEnricher(CinemaCityPoznanPlaza, "cinema-city", Some(detail),
-      target = Some(CinemaCityChain), uptimeOverride = Some("Globalne: Cinema City"))
+      target = Some(CinemaCityChain), uptimeOverride = Some("Cinema City Enrichment"))
     val h        = new EnrichDetailsHandler(Map("cinema-city" -> enricher), cache, fresh, uptime)
     val task     = taskFor("cinema-city", cache, "Dune", enricher)
 
@@ -84,7 +84,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     record.synopsis shouldBe Some("Spice must flow")
     record.genres   shouldBe Seq("Sci-Fi")
     // Health recorded once under the global name, not per venue.
-    successes(uptime, "Globalne: Cinema City") shouldBe 1
+    successes(uptime, "Cinema City Enrichment") shouldBe 1
     uptime.services should not contain UptimeMonitor.enrichmentService(CinemaCityPoznanPlaza.displayName)
   }
 

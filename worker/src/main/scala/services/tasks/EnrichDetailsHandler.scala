@@ -73,7 +73,7 @@ class EnrichDetailsHandler(
         // Record enrichment health on /uptime: a resolved detail is a success, an
         // absent/failed fetch a failure (red/yellow). A 1:1 cinema records under
         // its own "<cinema>|enrichment" sub-row; a chain overrides this to a
-        // single network-level service (e.g. "Globalne: Cinema City").
+        // single network-level service (e.g. "Cinema City Enrichment").
         val service = enricher.enrichmentServiceOverride
           .getOrElse(UptimeMonitor.enrichmentService(enricher.cinema.displayName))
         enricher.fetchFilmDetail(task.payload.getOrElse(EnrichDetailsTasks.RefKey, "")) match {

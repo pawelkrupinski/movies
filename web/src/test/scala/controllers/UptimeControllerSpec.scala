@@ -47,11 +47,18 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   }
 
   // Cinema City fetches each film's detail once per network and records its
-  // health as a single "Globalne: Cinema City" entry — a standalone enrichment
+  // health as a single "Cinema City Enrichment" entry — a standalone enrichment
   // service, not a per-venue sub-row and not adrift in "Other".
-  it should "list a network-level Globalne: … enrichment as a standalone enrichment service" in {
-    val (_, services, other) = controller.groupRows(Set("Globalne: Cinema City", "Some Other Service"), fakeRow)
-    services.map(_.name) should contain("Globalne: Cinema City")
-    other.map(_.name)    should not contain "Globalne: Cinema City"
+  it should "list the network-level Cinema City Enrichment as a standalone enrichment service" in {
+    val (_, services, other) = controller.groupRows(Set("Cinema City Enrichment", "Some Other Service"), fakeRow)
+    services.map(_.name) should contain("Cinema City Enrichment")
+    other.map(_.name)    should not contain "Cinema City Enrichment"
+  }
+
+  // The chain-wide enrichment row leads the Global section, ahead of the
+  // external rating sources.
+  it should "render Cinema City Enrichment first among enrichment services" in {
+    val (_, services, _) = controller.groupRows(Set("Cinema City Enrichment", "TMDB", "IMDb"), fakeRow)
+    services.map(_.name).head shouldBe "Cinema City Enrichment"
   }
 }

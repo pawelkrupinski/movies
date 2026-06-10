@@ -68,7 +68,7 @@ object CinemaScraper {
  * single `CinemaCityChain` network source rather than each venue's own slot.
  * `MovieRecord`'s merged accessors are film-level, so one shared slot surfaces
  * the synopsis/cast/genres at every venue. Enrichment health reports once as
- * "Globalne: Cinema City" instead of one row per venue.
+ * "Cinema City Enrichment" instead of one row per venue.
  */
 class CinemaCityScraper(
   client:   CinemaCityClient,
@@ -80,6 +80,6 @@ class CinemaCityScraper(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(CinemaCityClient.BaseApiUrl)
   override val detailGroup: String = "cinema-city"
   override def detailTarget: Source = CinemaCityChain
-  override def enrichmentServiceOverride: Option[String] = Some("Globalne: Cinema City")
+  override def enrichmentServiceOverride: Option[String] = Some("Cinema City Enrichment")
   override def fetchFilmDetail(ref: String): Option[FilmDetail] = client.fetchFilmDetail(ref)
 }

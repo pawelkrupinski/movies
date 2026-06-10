@@ -21,10 +21,12 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using m
 
   // External enrichment sources plus network-level (chain-wide) detail health.
   // Cinema City fetches each film's detail once per network and records it here
-  // as one "Globalne: …" entry instead of one "<venue>|enrichment" sub-row per
-  // venue (see EnrichDetailsHandler / CinemaCityScraper.enrichmentServiceOverride).
+  // as one "Cinema City Enrichment" entry instead of one "<venue>|enrichment"
+  // sub-row per venue (see EnrichDetailsHandler /
+  // CinemaCityScraper.enrichmentServiceOverride). Order here is the render order
+  // of the Global section, so the chain-wide row leads the external sources.
   private val enrichmentNames = Seq(
-    "TMDB", "IMDb", "Filmweb", "Metacritic", "Rotten Tomatoes", "Globalne: Cinema City"
+    "Cinema City Enrichment", "TMDB", "IMDb", "Filmweb", "Metacritic", "Rotten Tomatoes"
   )
 
   // SSE batching: a poll cycle can flip one bucket per active service at once.

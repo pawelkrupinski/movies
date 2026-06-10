@@ -22,6 +22,6 @@ class CinemaCityScraperSpec extends AnyFlatSpec with Matchers {
     plaza.detailGroup shouldBe kinepolis.detailGroup            // one fetch per network, not per venue
     plaza.detailTarget shouldBe CinemaCityChain                 // detail written to the shared source
     kinepolis.detailTarget shouldBe CinemaCityChain
-    plaza.enrichmentServiceOverride shouldBe Some("Globalne: Cinema City")
+    plaza.enrichmentServiceOverride shouldBe Some("Cinema City Enrichment")
   }
 }
