@@ -109,7 +109,7 @@ class CinemaScraperCatalog(
     helios(HeliosNuxt.BlueCity),
     new MuranowClient(http, today, deferDetail = deferDetail),
     new Bilety24Client(http, "https://kinoluna.bilety24.pl", KinoLuna),
-    new Bilety24Client(http, "https://kinoelektronik.pl", KinoElektronik, "/"),
+    new Bilety24OrganizerClient(http, "https://www.bilety24.pl/kino/organizator/kino-elektronik-631", KinoElektronik),
     new IluzjonClient(http, today, deferDetail = deferDetail),
     new KinoGramClient(http),
     new KinoKulturaClient(http),
@@ -165,8 +165,8 @@ class CinemaScraperCatalog(
     helios(HeliosNuxt.Katowice),
     // Silesia Film's art-house trio, all Bilety24-hosted: listing at `/repertuar/`
     // linking per-film `/wydarzenie/?id=N` pages, so they reuse the shared Bilety24Client.
-    new Bilety24Client(http, "https://kinokosmos.bilety24.pl", KinoKosmos),
-    new Bilety24Client(http, "https://swiatowid-katowice.bilety24.pl", KinoSwiatowid),
+    new Bilety24OrganizerClient(http, "https://www.bilety24.pl/kino/organizator/kino-kosmos-1501", KinoKosmos),
+    new Bilety24OrganizerClient(http, "https://www.bilety24.pl/kino/organizator/kino-swiatowid-1503", KinoSwiatowid),
     new Bilety24Client(http, "https://kinoteatrrialto.bilety24.pl", KinoteatrRialto),
   )
 

@@ -1,7 +1,7 @@
 package clients.bilety24
 
 import clients.tools.FakeHttpFetch
-import models.{KinoElektronik, KinoLuna, Showtime}
+import models.{KinoLuna, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.Bilety24Client
@@ -40,23 +40,5 @@ class Bilety24ClientSpec extends AnyFlatSpec with Matchers {
     lunaRes.flatMap(_.showtimes).flatMap(_.bookingUrl).foreach { u =>
       u should startWith ("https://kinoluna.bilety24.pl/kup-bilety/")
     }
-  }
-
-  // ── Kino Elektronik ─────────────────────────────────────────────────────────
-  private val elek    = new Bilety24Client(new FakeHttpFetch("kino-elektronik"), "https://kinoelektronik.pl", KinoElektronik, "/")
-  private val elekRes = elek.fetch()
-  private val elekByT = elekRes.map(cm => cm.movie.title -> cm).toMap
-
-  "Bilety24Client (Elektronik)" should "assign Kino Elektronik to every entry" in {
-    elekRes should not be empty
-    elekRes.map(_.cinema).toSet shouldBe Set(KinoElektronik)
-  }
-
-  it should "parse runtime + the full-week schedule for a film" in {
-    val m = elekByT("Orły republiki")
-    m.movie.runtimeMinutes shouldBe Some(127)
-    m.showtimes.size       shouldBe 7
-    m.showtimes.head shouldBe
-      Showtime(LocalDateTime.of(2026, 6, 5, 18, 15), Some("https://kinoelektronik.pl/kup-bilety/?id=938420"), None, Nil)
   }
 }

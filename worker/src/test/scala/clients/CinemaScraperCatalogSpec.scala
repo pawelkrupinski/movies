@@ -88,7 +88,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val expected = Set(
       "kinomuranow.pl", "amok.gliwice.pl", "stacjafalenica.pl",   // bespoke per-cinema
       "www.multikino.pl", "www.cinema-city.pl", "restapi.helios.pl", "www.filmweb.pl", "www.novekino.pl", // shared chains
-      "kinoluna.bilety24.pl", "swiatowid-katowice.bilety24.pl",   // per-venue bilety24
+      "kinoluna.bilety24.pl", "www.bilety24.pl",   // legacy per-venue bilety24 subdomain + migrated organizer host
     )
     withClue(s"missing from catalog.scrapeHosts: ${(expected diff hosts).toSeq.sorted}") {
       (expected diff hosts) shouldBe empty

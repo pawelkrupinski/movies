@@ -86,7 +86,7 @@ object ProbeBurst {
     "swit"          -> (f => new SwitClient(f)),
     "nove-kino"     -> (f => new NoveKinoClient(f, "atlantic", KinoAtlantic)),
     "luna"          -> (f => new Bilety24Client(f, "https://kinoluna.bilety24.pl", KinoLuna)),
-    "elektronik"    -> (f => new Bilety24Client(f, "https://kinoelektronik.pl", KinoElektronik, "/")),
+    "elektronik"    -> (f => new Bilety24OrganizerClient(f, "https://www.bilety24.pl/kino/organizator/kino-elektronik-631", KinoElektronik)),
     "na-boku"       -> (f => new BokClient(f, "kino-na-boku", KinoNaBoku)),
     "glebocka"      -> (f => new BokClient(f, "kino-glebocka-66", KinoGlebocka66)),
     "kinogram"      -> (f => new KinoGramClient(f))
