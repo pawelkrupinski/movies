@@ -55,6 +55,12 @@ test.describe('mobile landscape layout', () => {
 
     const baseline = logoTabs.top;
     for (const [, box] of Object.entries({ search, date, filtry, auth })) {
+      // Skip empty containers (e.g. .navbar-auth when no OAuth providers are
+      // configured — the div exists in the DOM but has zero height and its
+      // getBoundingClientRect().top falls at the flex row's midpoint rather
+      // than at the top of any real control).  The 'navbar stays on one row'
+      // test already uses this same guard.
+      if (box.bottom === box.top) continue;
       expect(Math.abs(box.top - baseline)).toBeLessThan(12);
       expect(box.bottom - box.top).toBeGreaterThan(0);
     }
