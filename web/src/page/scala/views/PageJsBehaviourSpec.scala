@@ -380,20 +380,24 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // settle.
       Thread.sleep(100L)
       // beforeAll renders the corpus with `oauthProviders = Set.empty`,
-      // which leaves `<div class="navbar-auth">` empty (no Zaloguj-się
-      // pill). An empty flex item has zero size and its `getBoundingClientRect`
-      // reports a degenerate position that doesn't reflect production
-      // (where an OAuth provider is always configured and the pill is
-      // visible). Inject the prod-shaped child here so the layout
-      // assertions exercise the realistic anonymous-user navbar.
+      // which leaves `<div class="navbar-auth">` empty. An empty flex item
+      // has zero size and its `getBoundingClientRect` reports a degenerate
+      // position that doesn't reflect production. On mobile the only auth
+      // control the navbar shows is the LOGGED-IN avatar pill — the
+      // signed-out "Zaloguj" button is hidden below 576 px (it lives in the
+      // navbar on desktop only). So inject the avatar pill (mirroring the
+      // `Some(user)` branch of `_navbar`) to exercise the realistic
+      // logged-in mobile navbar; `.auth-name` hides at this width but the
+      // `.auth-menu` pill itself stays visible.
       page.eval(
         "(() => { const a = document.querySelector('.navbar-auth');" +
         "          if (a && !a.children.length) {" +
-        "            const btn = document.createElement('button');" +
-        "            btn.type = 'button';" +
-        "            btn.className = 'nav-tab nav-tab-login';" +
-        "            btn.textContent = 'Zaloguj';" +
-        "            a.appendChild(btn);" +
+        "            const pill = document.createElement('div');" +
+        "            pill.className = 'auth-menu';" +
+        "            pill.id = 'auth-menu';" +
+        "            pill.innerHTML = '<span class=\"auth-avatar-fallback\">A</span>" +
+        "<span class=\"auth-name\">Anonim</span>';" +
+        "            a.appendChild(pill);" +
         "          } })()"
       )
 
@@ -486,20 +490,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     s"the mobile navbar on $path" should "stay on one row with zero horizontal overflow at every common phone width" in {
       onPath(path) { page =>
         pinDeterministicFont(page)
-        // beforeAll renders the corpus with `oauthProviders = Set.empty`,
-        // which leaves `.navbar-auth` empty (no Zaloguj-się pill). Inject
-        // the prod-shaped child so the layout assertions exercise the
-        // realistic anonymous-user navbar.
-        page.eval(
-          "(() => { const a = document.querySelector('.navbar-auth');" +
-          "          if (a && !a.children.length) {" +
-          "            const btn = document.createElement('button');" +
-          "            btn.type = 'button';" +
-          "            btn.className = 'nav-tab nav-tab-login';" +
-          "            btn.textContent = 'Zaloguj';" +
-          "            a.appendChild(btn);" +
-          "          } })()"
-        )
+        // No auth pill is injected here on purpose: an anonymous visitor on
+        // a mobile viewport has an EMPTY `.navbar-auth` slot — the "Zaloguj"
+        // button is hidden below 576 px (it lives in the navbar on desktop
+        // only), so the realistic mobile-anonymous navbar carries no auth
+        // control. The empty zero-width slot is skipped in the row count
+        // below, exactly as in production. (The logged-in mobile case — an
+        // avatar pill in the slot — is covered by the "one row in that
+        // order" test above; the desktop sweep injects the Zaloguj button,
+        // which stays visible there.)
 
         // Snapshot the layout invariants once per viewport and assert
         // afterwards so a failure prints the full table of (width, rows,

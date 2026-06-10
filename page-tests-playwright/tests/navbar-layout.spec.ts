@@ -576,7 +576,11 @@ test.describe('narrow landscape (760×360)', () => {
   test('all visible navbar controls share the same height', async ({ page }) => {
     const heights = await measureHeights(page);
     const values = Object.values(heights);
-    expect(values.length).toBeGreaterThan(3);
+    // Logged-out mobile (this is a landscape arm) shows three control
+    // types — Filtry, day pills, search. The "Zaloguj" button is hidden
+    // on mobile, so don't require a fourth; match the >= 3 floor the
+    // portrait orientation-uniformity test uses.
+    expect(values.length).toBeGreaterThanOrEqual(3);
     const target = values[0];
     for (const [sel, h] of Object.entries(heights)) {
       expect(h, `${sel} height ${h} ≠ ${target}`).toBeCloseTo(target, 0);
@@ -709,7 +713,11 @@ test.describe('orientation flip: portrait → landscape', () => {
 
     const heights = await measureHeights(page);
     const values = Object.values(heights);
-    expect(values.length).toBeGreaterThan(3);
+    // Logged-out mobile (this is a landscape arm) shows three control
+    // types — Filtry, day pills, search. The "Zaloguj" button is hidden
+    // on mobile, so don't require a fourth; match the >= 3 floor the
+    // portrait orientation-uniformity test uses.
+    expect(values.length).toBeGreaterThanOrEqual(3);
     const target = values[0];
     for (const [sel, h] of Object.entries(heights)) {
       expect(h, `${sel}: ${h} ≠ ${target}`).toBeCloseTo(target, 0);

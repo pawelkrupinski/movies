@@ -731,6 +731,12 @@
          (max-height: 500px) and (orientation: landscape) {
     .nav-tab-debug { display: none; }
     .container-fluid { padding-top: .375rem !important; }
+    /* "Zaloguj" lives in the navbar on desktop only. On mobile (both
+       portrait and landscape) it's hidden here — the avatar pill still
+       surfaces in the navbar once logged in, so the only thing dropped
+       is the signed-out login button (its replacement entry point in the
+       Filtry panel, mirroring the iOS/Android apps, lands separately). */
+    .navbar .nav-tab-login { display: none; }
   }
 
   @@media (max-width: 575px) {
