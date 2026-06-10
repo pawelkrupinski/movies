@@ -32,57 +32,15 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
     tools.TextNormalization.deburr(rs.canonical(normalize(t)))
       .toLowerCase.replaceAll("[^\\p{L}\\p{N}]+", "")
 
-  // ── Frozen legacy implementation (verbatim from pre-rules TitleNormalizer) ──
+  // ── Frozen legacy implementation ──
+  // Global normalisation comes from the shared FrozenLegacyNormalizer; the
+  // per-cinema methods (verbatim from each client's pre-rules cleanTitle) live
+  // here since they're only needed by this spec.
   private object Legacy {
-    private val CyklPrefix        = """^Cykl\s+[„"][^„""]*[„""]?\s+[-–—]\s+""".r
-    private val SlashSuffix       = """\s+/\s+.+$""".r
-    private val AnniversarySuffix = """(?i)\s*[-–—|.]?\s*\d+(?:st|nd|rd|th)?\.?\s*(?:anniversary|rocznica)\s*$""".r
-    private val RestoredSuffix    = """(?i)\s*[-–—|.]?\s*\d+\s*k\s+(?:restored|remaster(?:ed)?)\s*$""".r
-    private val WersjaSuffix      = """(?i)\s*[-–—.]\s+wersja\s+\p{L}+\s*$""".r
-    private val PlusSuffix        = """\s+\+\s+\p{L}[^)]*$""".r
-    private val ProgrammePrefix   =
-      ("""(?i)^(?:Kino\s+bez\s+barier|""" +
-       """Pokaz\s+sensorycznie\s+przyjazny|""" +
-       """Filmow[ey]\s+Poran(?:ki|ek)(?:\s+[^:]+)?|""" +
-       """Zimowe\s+Poranki(?:\s+[^:]+)?|""" +
-       """Poranek\s+dla\s+dzieci|""" +
-       """Filmowy\s+Klub\s+Seniora|""" +
-       """Dyskusyjny\s+Klub\s+Filmowy|""" +
-       """Filmowe\s+spotkania\s+z\s+psychoanaliz[ąa]|""" +
-       """Cinema\s+Italia\s+Oggi|""" +
-       """Plenerowe\s+Pa[łl]acowe):\s+""").r
-    private val AccessibilityTag  = """(?i)\s*\(\s*AD\b[^)]*\)?\s*$""".r
-
-    def searchTitle(display: String): String = {
-      val a = CyklPrefix.replaceFirstIn(display, "")
-      val b = SlashSuffix.replaceFirstIn(a, "")
-      val d = AnniversarySuffix.replaceFirstIn(b, "")
-      val e = RestoredSuffix.replaceFirstIn(d, "")
-      WersjaSuffix.replaceFirstIn(e, "").trim
-    }
-    def apiQuery(display: String): String = {
-      val stripped  = ProgrammePrefix.replaceFirstIn(display, "")
-      val tagless   = AccessibilityTag.replaceFirstIn(stripped, "")
-      val eventless = PlusSuffix.replaceFirstIn(tagless, "")
-      searchTitle(eventless)
-    }
-    def programmePrefix(title: String): Option[String] =
-      ProgrammePrefix.findPrefixMatchOf(title).map(_.matched)
-
-    private val ArabicToRoman = Map(
-      "1" -> "I", "2" -> "II", "3" -> "III", "4" -> "IV", "5" -> "V",
-      "6" -> "VI", "7" -> "VII", "8" -> "VIII", "9" -> "IX", "10" -> "X",
-      "11" -> "XI", "12" -> "XII", "13" -> "XIII", "14" -> "XIV", "15" -> "XV",
-      "16" -> "XVI", "17" -> "XVII", "18" -> "XVIII", "19" -> "XIX", "20" -> "XX"
-    )
-    def normalize(title: String): String =
-      title.split(" ").map(w => ArabicToRoman.getOrElse(w, w)).mkString(" ")
-    private def canonical(t: String): String =
-      searchTitle(t).stripPrefix("Gwiezdne Wojny: ").replace(" & ", " i ")
-    def sanitize(title: String): String =
-      tools.TextNormalization.deburr(canonical(normalize(title)))
-        .toLowerCase
-        .replaceAll("[^\\p{L}\\p{N}]+", "")
+    def searchTitle(display: String): String     = FrozenLegacyNormalizer.searchTitle(display)
+    def apiQuery(display: String): String        = FrozenLegacyNormalizer.apiQuery(display)
+    def programmePrefix(t: String): Option[String] = FrozenLegacyNormalizer.programmePrefix(t)
+    def sanitize(title: String): String          = FrozenLegacyNormalizer.sanitize(title)
 
     // Per-cinema: Cinema City (verbatim from CinemaCityClient.cleanTitle).
     def cinemaCity(name: String): String =
