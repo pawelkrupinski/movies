@@ -1089,14 +1089,34 @@
   // THIS, not from the dropdown's already-moved index.
   let _appliedDay = null;
 
+  // The day at the HEAD of the user's intent: the day the latest key-press /
+  // pick is heading toward, which can sit ahead of `_appliedDay` while a slide
+  // is still in flight (or while follow-on steps are queued). A keyboard step
+  // advances from THIS, so a second arrow press stacked on an unfinished slide
+  // moves a further day instead of recomputing the same one. Resync'd to
+  // `_appliedDay` whenever the carousel finally settles with nothing queued.
+  let _headDay = null;
+
   // The Left/Right keys: step one day and slide there like a swipe. Clamps at
   // the ends (no wrap) — same reach the dropdown gives.
   function stepDate(dir) {
     const sel  = document.getElementById('date-filter');
     if (!sel) return;
-    const next = sel.selectedIndex + dir;
-    if (next < 0 || next >= sel.options.length) return;
-    const targetValue = sel.options[next].value;
+    const ring = dayRing();
+    if (ring.length === 0) return;
+    // Step from the day we're HEADING to (the in-flight / queued destination),
+    // not the day currently rendered — so a second arrow press fired before the
+    // first slide settles advances a further day rather than recomputing the
+    // same one (the press used to be dropped by the `_animating` guard). Falls
+    // back to the displayed day, then the dropdown value, when idle.
+    const base = _headDay   != null ? _headDay
+               : _appliedDay != null ? _appliedDay
+               : sel.value;
+    const from = ring.indexOf(base);
+    if (from < 0) return;
+    const next = from + dir;
+    if (next < 0 || next >= ring.length) return;   // clamp at the ends — no wrap
+    const targetValue = ring[next];
     // If a day pill currently holds focus (a prior mouse tap), carry that focus
     // to the destination pill before sliding. A keyboard step flips the browser's
     // focus-visible heuristic on, so leaving focus on the old pill paints its
@@ -1594,7 +1614,7 @@
 
   let _drag = null;
   let _animating = false;   // guards re-entrancy while a commit animation runs
-  let _dayHighlightTimer = null;   // pending mid-slide pill-highlight flip (keyboard/dropdown)
+  let _queuedDay = null;    // a day-step requested mid-slide → run as a follow-on slide on commit
 
   // Step the day dropdown by `dir` (+1 = next day, -1 = previous), WRAPPING
   // around its full option list, then re-render via the normal date-change path
@@ -1761,12 +1781,29 @@
   // set the dropdown, fire the normal date-change render, scroll to top (the
   // committed-change behaviour), then tear the clones down.
   function commitDay(targetValue) {
-    clearTimeout(_dayHighlightTimer);   // the slide landed; onDateChange syncs the pills below
     const sel = document.getElementById('date-filter');
-    if (sel) { sel.value = targetValue; onDateChange(); }
+    if (sel) { sel.value = targetValue; onDateChange(); }   // sets `_appliedDay = targetValue`, re-syncs pills
     window.scrollTo(0, 0);
     unmountNeighbors();
     _animating = false;
+    // A further day-step was requested mid-slide? Continue toward it now — one
+    // follow-on slide from the just-committed day to the newest requested day —
+    // so a rapid double-press advances twice instead of dropping the second
+    // press. `onDateChange` just reset the pill to the intermediate day, so
+    // re-flip it to the destination (synchronous → no flicker).
+    if (_queuedDay != null && _queuedDay !== _appliedDay) {
+      const next = _queuedDay;
+      _queuedDay = null;
+      highlightDayPill(next);
+      const ring = dayRing();
+      const from = ring.indexOf(_appliedDay);
+      const to   = ring.indexOf(next);
+      const dir  = (from < 0 || to < 0) ? 1 : (to >= from ? 1 : -1);
+      runSlide(next, dir);
+      return;
+    }
+    _queuedDay = null;
+    _headDay = _appliedDay;
   }
 
   // Animate the armed track to the dir side and commit `targetValue` when it
@@ -1797,6 +1834,22 @@
     setTimeout(finish, ms + 60);   // fallback if transitionend is missed
   }
 
+  // Mount the target day's column on the slide-in side and animate the armed
+  // track to it, committing the day when it settles. Reduced motion skips
+  // straight to the committed change. The shared tail of every directed slide
+  // (keyboard/dropdown entry AND the mid-slide queued continuation).
+  function runSlide(targetValue, dir) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      commitDay(targetValue);
+      return;
+    }
+    // Mount only the side we're sliding toward with the TARGET day's grid; the
+    // opposite flank is a spacer (we never reveal it on a directed slide).
+    const armed = dir > 0 ? armTrack(null, targetValue) : armTrack(targetValue, null);
+    if (!armed) { commitDay(targetValue); return; }
+    slideArmedTo(dir, targetValue, 0);
+  }
+
   // THE single entry point every day change funnels through. `targetValue` is a
   // `#date-filter` option value; `dir` (optional) forces a slide direction —
   // when omitted it's derived from the ring index delta between the CURRENTLY
@@ -1807,12 +1860,27 @@
   function animateToDay(targetValue, dir) {
     const sel = document.getElementById('date-filter');
     if (!sel) return;
-    if (targetValue === _appliedDay) {        // no-op: already showing this day
+    // Flip the day-pill highlight to the destination IMMEDIATELY, before the
+    // slide — a keyboard step or dropdown pick should land the highlight up
+    // front and let the grid animate to catch up, rather than holding the old
+    // day lit until partway through the travel (the old mid-slide timer). The
+    // finger-drag path keeps its own boundary-crossing preview.
+    highlightDayPill(targetValue);
+    _headDay = targetValue;
+    if (targetValue === _appliedDay && !_animating) {   // already showing, nothing in flight
       if (sel.value !== targetValue) { sel.value = targetValue; onDateChange(); }
+      _queuedDay = null;
       return;
     }
-    if (_animating) return;
     retireSwipeHint();   // any deliberate day change means they've got the gesture
+    if (_animating) {
+      // A slide is already running: don't drop this step. Remember the latest
+      // destination; the in-flight commit (`commitDay`) continues the slide on
+      // to it. Rapid presses collapse to "go to the newest day" in one
+      // follow-on slide.
+      _queuedDay = targetValue;
+      return;
+    }
     if (dir == null) {
       const ring = dayRing();
       const from = ring.indexOf(_appliedDay);
@@ -1822,26 +1890,7 @@
       const fwd = ((to - from) % n + n) % n;   // steps walking forward (right)
       dir = fwd <= n - fwd ? 1 : -1;           // shorter way round the ring
     }
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      commitDay(targetValue);
-      return;
-    }
-    // Mount only the side we're sliding toward with the TARGET day's grid; the
-    // opposite flank is a spacer (we never reveal it on a directed slide).
-    const armed = dir > 0 ? armTrack(null, targetValue) : armTrack(targetValue, null);
-    if (!armed) { commitDay(targetValue); return; }
-    slideArmedTo(dir, targetValue, 0);
-    // A finger drag flips the day-pill highlight to the destination as it crosses
-    // the commit boundary (COMMIT_FRACTION of the travel). This slide has no
-    // finger, so flip the highlight at the SAME fractional point of the auto-
-    // slide rather than waiting for it to land — keyboard/dropdown then reads the
-    // same as the gesture. (A pill TAP has already eager-highlighted in `pickDay`;
-    // this just re-affirms the same day.)
-    clearTimeout(_dayHighlightTimer);
-    _dayHighlightTimer = setTimeout(
-      () => highlightDayPill(targetValue),
-      Math.round(swipeAnimMs() * COMMIT_FRACTION)
-    );
+    runSlide(targetValue, dir);
   }
   window.animateToDay = animateToDay;
 

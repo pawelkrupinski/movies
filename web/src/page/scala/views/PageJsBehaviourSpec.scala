@@ -1543,32 +1543,56 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  // A keyboard/dropdown slide must flip the day-pill highlight at the SAME stage
-  // as a finger drag — at the commit boundary (COMMIT_FRACTION of the travel),
-  // mid-slide — not only when the slide lands. A drag flips the pill the moment
-  // the finger crosses 40% of the width; pressing an arrow key should feel the
-  // same rather than holding the old day lit until the animation finishes.
-  it should "flip the day-pill highlight mid-slide on a keyboard step, not only at commit" in {
+  // A keyboard step flips the day-pill highlight to the destination IMMEDIATELY,
+  // before the slide settles — the pill leads and the grid animates to catch up,
+  // rather than holding the old day lit until partway through the travel. (The
+  // finger-drag path keeps its own boundary-crossing preview, asserted below.)
+  it should "flip the day-pill highlight immediately on a keyboard step, before the slide settles" in {
     onPath("/") { page =>
       enableSlideAnimation(page)   // take the real slide, not the reduced-motion instant commit
       page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
       page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "today"
 
       page.eval("stepDate(1)")
-      // It does NOT flip instantly at slide start — the old day stays lit briefly.
-      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "today"
+      // The pill is ALREADY on the destination while the slide is still in flight
+      // (the track is armed, the grid hasn't committed yet).
+      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
+      page.evalString("document.querySelector('#day-pills .day-pill.active').dataset.day") shouldBe "tomorrow"
+      page.evalInt("document.querySelectorAll('.day-pill.active').length") shouldBe 1
 
-      // …then flips to the destination WHILE the slide is still in flight (the
-      // track is still armed), i.e. before the commit that lands it.
-      page.waitFor(
-        "document.getElementById('day-track').classList.contains('day-track--armed') && " +
-        "document.querySelector('#day-pills .day-pill.active').dataset.day === 'tomorrow'",
-        timeoutMs = 2000
-      )
-
-      // And it settles on the destination once the slide commits.
+      // And it stays on the destination once the slide commits.
       page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
       page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "tomorrow"
+    }
+  }
+
+  // Two arrow presses fired before the first slide can settle must BOTH register:
+  // the day advances twice, not once. The second press used to be swallowed by
+  // the in-flight `_animating` guard ("keyboard presses seem to be lost"); it is
+  // now queued and replayed as a follow-on slide on commit.
+  it should "honour a second keyboard step pressed mid-slide (two presses → two days)" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+
+      // The day two steps on, read from the option list so the assertion doesn't
+      // hard-code preset labels.
+      val twoStepsOn = page.evalString(
+        "(() => { const s = document.getElementById('date-filter');" +
+        "  return s.options[s.selectedIndex + 2].value; })()"
+      )
+
+      // Both presses before the first slide commits.
+      page.eval("stepDate(1); stepDate(1)")
+      // The pill jumps straight to the two-steps-on day right away.
+      page.evalString("document.querySelector('#day-pills .day-pill.active').dataset.day") shouldBe twoStepsOn
+
+      // Both slides run; the committed day is two steps on, not one.
+      page.waitFor(
+        s"document.getElementById('date-filter').value === ${jsString(twoStepsOn)}",
+        timeoutMs = 3000
+      )
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe twoStepsOn
     }
   }
 
