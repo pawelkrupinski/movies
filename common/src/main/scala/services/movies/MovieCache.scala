@@ -415,6 +415,11 @@ class CaffeineMovieCache(
         val effectiveYear = cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))
         val slot = SourceData(
           title          = Some(cm.movie.title),
+          // Verbatim upstream title, kept so the merge key is re-derivable when
+          // stripping rules change. Today the client has already cleaned
+          // `cm.movie.title`; once per-cinema cleaning moves to the rule engine
+          // this becomes the true pre-strip string.
+          rawTitle       = Some(cm.movie.title),
           originalTitle  = cm.movie.originalTitle,
           synopsis       = cm.synopsis.orElse(priorSlot.flatMap(_.synopsis)),
           // Normalise cast at the write boundary: Cinema City returns

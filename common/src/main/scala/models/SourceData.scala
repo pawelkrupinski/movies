@@ -18,6 +18,13 @@ package models
  */
 case class SourceData(
   title:          Option[String]  = None,
+  // The cinema's reported title BEFORE any per-cinema rule stripping — the
+  // verbatim upstream string. `title` above is the cleaned/display form; this
+  // keeps the original so a merge key can be re-derived from scratch when the
+  // stripping rules change (enabling backfill and surgical un-merge). Cinema
+  // slots only; `None` on Tmdb/Imdb slots and on rows scraped before this field
+  // existed (those re-populate on the next scrape).
+  rawTitle:       Option[String]  = None,
   originalTitle:  Option[String]  = None,
   synopsis:       Option[String]  = None,
   cast:           Seq[String]     = Seq.empty,

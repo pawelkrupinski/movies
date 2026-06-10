@@ -138,6 +138,7 @@ object MovieCodecs {
         }
       SourceData(
         title          = optStr("title"),
+        rawTitle       = optStr("rawTitle"),
         originalTitle  = optStr("originalTitle"),
         synopsis       = optStr("synopsis"),
         cast           = seqStr("cast"),

@@ -76,6 +76,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     val imdbSlot = SourceData(synopsis = Some("imdb synopsis"))
     val cinemaSlot = SourceData(
       title          = Some("Test PL"),
+      rawTitle       = Some("Kino bez barier: Test PL (AD)"),
       synopsis       = Some("cinema synopsis"),
       cast           = Seq("cast list"),
       director       = Seq("dir"),
@@ -96,6 +97,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     back.record.data(Tmdb)            shouldBe tmdbSlot
     back.record.data(Imdb)            shouldBe imdbSlot
     back.record.data(Helios)          shouldBe cinemaSlot
+    back.record.data(Helios).rawTitle shouldBe Some("Kino bez barier: Test PL (AD)")
     back.record.cinemaData(Helios).countries shouldBe Seq("Polska", "Francja")
   }
 
