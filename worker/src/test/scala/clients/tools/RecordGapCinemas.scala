@@ -67,5 +67,10 @@ object RecordGapCinemas {
     report("Metalowiec (Kraśnik)")(new Bilety24OrganizerClient(rec("kino-metalowiec"), s"$b24/centrum-kultury-i-promocji-w-krasniku-1529", KinoMetalowiec).fetch().size)
     report("Kino Sokolnia (Słupca)")(new Bilety24OrganizerClient(rec("kino-sokolnia"), s"$b24/miejski-dom-kultury-w-slupcy-1423", KinoSokolnia).fetch().size)
     report("Kino Krapkowice")(new Bilety24OrganizerClient(rec("kino-krapkowice"), s"$b24/krapkowicki-dom-kultury-1244", KinoKrapkowice).fetch().size)
+    // ── Wave 3: bespoke own-site parsers ──
+    report("Kino Aurum (Złotoryja)")(new KinoAurumClient(rec("kino-aurum"), KinoAurum).fetch().size)
+    report("Kino Sokół (Brzozów)")(new KinoSokolBrzozowClient(rec("kino-sokol-brzozow"), KinoSokolBrzozow).fetch().size)
+    report("Kino Karolinka (Lubliniec)")(new KinoKarolinkaClient(rec("kino-karolinka"), KinoKarolinka).fetch().size)
+    report("Kino Jedność (Sędziszów)")(new KinoJednoscClient(rec("kino-jednosc"), KinoJednosc).fetch().size)
   }
 }

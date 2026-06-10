@@ -1,0 +1,6630 @@
+{
+  "documents": [
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/09XCk1g7oEZTp5GlZXDW",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-06-01"
+        },
+        "film_id": {
+          "stringValue": "9ysL2hKO4jnJQ9gLHKLf"
+        },
+        "godzina": {
+          "stringValue": "17:30"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Drzewo magii"
+        }
+      },
+      "createTime": "2026-05-23T18:46:17.850802Z",
+      "updateTime": "2026-05-23T18:46:17.850802Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/0Iv5DK3dImFl83DeflyK",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Kurozając i świątynia Świstaka"
+        },
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "film_id": {
+          "stringValue": "Ft4qa9lzYRmoghncBRq1"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-25"
+        }
+      },
+      "createTime": "2026-05-11T15:40:25.646620Z",
+      "updateTime": "2026-05-15T17:30:58.333379Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/0njVoUiTjEDxcjjHbiZ8",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Tom i Jerry: Przygoda w muzeum"
+        },
+        "godzina": {
+          "stringValue": "15:30"
+        },
+        "film_id": {
+          "stringValue": "Gk5cSC4lIG5XtrtElROw"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-06-01"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        }
+      },
+      "createTime": "2026-05-23T18:49:41.862325Z",
+      "updateTime": "2026-05-23T18:49:41.862325Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/1DaMRjpeqKUFNGxY2dSU",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Dzień objawienia"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        },
+        "film_id": {
+          "stringValue": "9VeeN6H6d26IqqSMIAlA"
+        },
+        "data": {
+          "stringValue": "2026-06-15"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        }
+      },
+      "createTime": "2026-06-08T15:48:06.411404Z",
+      "updateTime": "2026-06-08T15:48:06.411404Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/1GNOMcb3LvbPcrpq0twV",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-06-07"
+        },
+        "film_id": {
+          "stringValue": "Gk5cSC4lIG5XtrtElROw"
+        },
+        "godzina": {
+          "stringValue": "15:30"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Tom i Jerry: Przygoda w muzeum"
+        }
+      },
+      "createTime": "2026-05-30T13:47:57.211733Z",
+      "updateTime": "2026-05-30T13:47:57.211733Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/1SQgAAZJtOTtKjSvpMdS",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Drugie życie"
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "film_id": {
+          "stringValue": "gMIyex7WOM4OigRUwXuu"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-06-12"
+        }
+      },
+      "createTime": "2026-06-08T15:45:38.804934Z",
+      "updateTime": "2026-06-08T15:45:38.804934Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/1U5h8D86DycTFok60dpP",
+      "fields": {
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-10"
+        },
+        "film_id": {
+          "stringValue": "3F7e5zT7qbkdPRvcf3ef"
+        },
+        "godzina": {
+          "stringValue": "19:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Diabeł ubiera się u Prady 2"
+        }
+      },
+      "createTime": "2026-05-09T15:04:14.539510Z",
+      "updateTime": "2026-05-09T15:04:14.539510Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/1ZcfLGZKH6ddRBsyWDzx",
+      "fields": {
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-05"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "9ysL2hKO4jnJQ9gLHKLf"
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "film_tytul": {
+          "stringValue": "Drzewo magii"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-30T13:48:31.215947Z",
+      "updateTime": "2026-05-30T13:48:31.215947Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/1Zpy8V461q3mIHs5Ia8G",
+      "fields": {
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-02"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "godzina": {
+          "stringValue": "16:30"
+        }
+      },
+      "createTime": "2026-05-23T18:44:51.735988Z",
+      "updateTime": "2026-05-23T18:44:51.735988Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/1mF0qu3LJqbo1cyCeiAq",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-12"
+        },
+        "film_id": {
+          "stringValue": "gYbRSjTq83Mdv6WtrIeA"
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Wolność po włosku"
+        }
+      },
+      "createTime": "2026-05-09T15:21:31.319996Z",
+      "updateTime": "2026-05-09T15:21:31.319996Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/2GZUUMgXfOAoNHIwMnCb",
+      "fields": {
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-24"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "eOPjUbplYSUhSdbLOmP3"
+        },
+        "godzina": {
+          "stringValue": "17:00"
+        },
+        "film_tytul": {
+          "stringValue": "Milcząca przyjaciółka"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-15T17:26:34.742919Z",
+      "updateTime": "2026-05-15T17:26:34.742919Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/3XnHjRBTCJBrmoqXycmm",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "godzina": {
+          "stringValue": "18:30"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-05-25"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        }
+      },
+      "createTime": "2026-05-15T17:29:22.776399Z",
+      "updateTime": "2026-05-15T17:29:22.776399Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/3ltZxspXqGKgVJCKPhah",
+      "fields": {
+        "film_id": {
+          "stringValue": "Gk5cSC4lIG5XtrtElROw"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-13"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_tytul": {
+          "stringValue": "Tom i Jerry: Przygoda w muzeum"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "15:00"
+        }
+      },
+      "createTime": "2026-06-08T15:44:42.523401Z",
+      "updateTime": "2026-06-08T15:44:42.523401Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/3mDNfO0lfmp56i8N2Rta",
+      "fields": {
+        "film_id": {
+          "stringValue": "9ysL2hKO4jnJQ9gLHKLf"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-06-09"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Drzewo magii"
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        }
+      },
+      "createTime": "2026-05-30T13:48:48.186115Z",
+      "updateTime": "2026-05-30T13:48:48.186115Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/47NfbvxlrHLkAZ3DqSk9",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-06-09"
+        },
+        "film_id": {
+          "stringValue": "Gk5cSC4lIG5XtrtElROw"
+        },
+        "godzina": {
+          "stringValue": "15:30"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Tom i Jerry: Przygoda w muzeum"
+        }
+      },
+      "createTime": "2026-05-30T13:48:08.057873Z",
+      "updateTime": "2026-05-30T13:48:08.057873Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/4kWb2R8yhONNLWxERPqS",
+      "fields": {
+        "godzina": {
+          "stringValue": "19:00"
+        },
+        "film_tytul": {
+          "stringValue": "Diabeł ubiera się u Prady 2"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-09"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "3F7e5zT7qbkdPRvcf3ef"
+        }
+      },
+      "createTime": "2026-05-09T15:03:40.626683Z",
+      "updateTime": "2026-05-09T15:03:40.626683Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/4xxLeuQkjReShnvxEqEY",
+      "fields": {
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Sprawiedliwość owiec"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-18"
+        },
+        "film_id": {
+          "stringValue": "TE8SLljmWMw4tnM79zPG"
+        }
+      },
+      "createTime": "2026-05-11T15:40:40.887672Z",
+      "updateTime": "2026-05-11T15:40:40.887672Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/5lK8LTGBKaQAB0glArqq",
+      "fields": {
+        "film_id": {
+          "stringValue": "xZz3eSgzEsYi0yEKsktJ"
+        },
+        "data": {
+          "stringValue": "2026-05-11"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_tytul": {
+          "stringValue": "Mortal Kombat II"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        }
+      },
+      "createTime": "2026-05-09T15:16:53.787602Z",
+      "updateTime": "2026-05-09T15:17:35.642820Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/7C1acNgxf7dcVXR0ISNZ",
+      "fields": {
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-16"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "3F7e5zT7qbkdPRvcf3ef"
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "film_tytul": {
+          "stringValue": "Diabeł ubiera się u Prady 2"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-11T15:01:16.954830Z",
+      "updateTime": "2026-05-11T15:01:16.954830Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/7b7Wu7LDYt7qrV8k4MpV",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Kurozając i świątynia Świstaka"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "film_id": {
+          "stringValue": "Ft4qa9lzYRmoghncBRq1"
+        },
+        "data": {
+          "stringValue": "2026-05-26"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        }
+      },
+      "createTime": "2026-05-18T17:52:07.093542Z",
+      "updateTime": "2026-05-18T17:58:44.461338Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/8CExmvLew2enSuOu9iju",
+      "fields": {
+        "data": {
+          "stringValue": "2026-05-16"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "xZz3eSgzEsYi0yEKsktJ"
+        },
+        "godzina": {
+          "stringValue": "18:00"
+        },
+        "film_tytul": {
+          "stringValue": "Mortal Kombat II"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-11T15:29:19.137950Z",
+      "updateTime": "2026-05-11T15:29:19.137950Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/8wJdFZ8ITPZlDqnDVTwb",
+      "fields": {
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "film_tytul": {
+          "stringValue": "Kurozając i świątynia Świstaka"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "data": {
+          "stringValue": "2026-05-19"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "Ft4qa9lzYRmoghncBRq1"
+        }
+      },
+      "createTime": "2026-05-11T15:42:33.910879Z",
+      "updateTime": "2026-05-11T15:42:33.910879Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/97CJZoC5YPpaCJMs8s15",
+      "fields": {
+        "film_id": {
+          "stringValue": "1UgRdV4GKxse1bk73l6C"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-23"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Obsesja"
+        },
+        "godzina": {
+          "stringValue": "19:30"
+        }
+      },
+      "createTime": "2026-05-15T17:25:23.526971Z",
+      "updateTime": "2026-05-15T17:25:23.526971Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/9HrMGybaaYvxmGQ6Roee",
+      "fields": {
+        "godzina": {
+          "stringValue": "18:00"
+        },
+        "film_tytul": {
+          "stringValue": "Straszny film"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-09"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "9gvi1uvPQv5UCLAw6XVR"
+        }
+      },
+      "createTime": "2026-05-30T13:53:57.632018Z",
+      "updateTime": "2026-05-30T13:53:57.632018Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/9I39OxYs2EGgTn3w62rX",
+      "fields": {
+        "film_id": {
+          "stringValue": "LvzMVwUb66UbbX6ffZcB"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-09"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_tytul": {
+          "stringValue": "Normal"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        }
+      },
+      "createTime": "2026-05-09T15:06:10.796529Z",
+      "updateTime": "2026-05-09T15:06:10.796529Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/ANX7ur0otlzLwsjtlXI4",
+      "fields": {
+        "film_id": {
+          "stringValue": "9gvi1uvPQv5UCLAw6XVR"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-06-05"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Straszny film"
+        },
+        "godzina": {
+          "stringValue": "18:00"
+        }
+      },
+      "createTime": "2026-05-30T13:52:46.367479Z",
+      "updateTime": "2026-05-30T13:52:46.367479Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/AnW2NTC3IOVcyJ1ejTzp",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "17:30"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-06-05"
+        },
+        "sala": {
+          "stringValue": "mala"
+        }
+      },
+      "createTime": "2026-05-30T13:50:54.777400Z",
+      "updateTime": "2026-05-30T13:50:54.777400Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/BHyVFnBbSjT9J6rXrTbQ",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-22"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "film_id": {
+          "stringValue": "1UgRdV4GKxse1bk73l6C"
+        },
+        "godzina": {
+          "stringValue": "19:30"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Obsesja"
+        }
+      },
+      "createTime": "2026-05-15T17:23:14.057968Z",
+      "updateTime": "2026-05-15T17:23:14.057968Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/BeIggjak8fKxsUgU9vC1",
+      "fields": {
+        "data": {
+          "stringValue": "2026-05-16"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "4WDcFfnC207Btl6bapKV"
+        },
+        "godzina": {
+          "stringValue": "19:00"
+        },
+        "film_tytul": {
+          "stringValue": "Iron Maiden: Burning Ambition"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-11T15:29:39.931868Z",
+      "updateTime": "2026-05-11T15:29:39.931868Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/CMFe2BFCtdKYBiMKsVPO",
+      "fields": {
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Kurozając i świątynia Świstaka"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-18"
+        },
+        "film_id": {
+          "stringValue": "Ft4qa9lzYRmoghncBRq1"
+        }
+      },
+      "createTime": "2026-05-15T17:27:37.974569Z",
+      "updateTime": "2026-05-15T17:27:37.974569Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/CQfuv8hDA9MhrWQSf9Gd",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-10"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "film_id": {
+          "stringValue": "TE8SLljmWMw4tnM79zPG"
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Sprawiedliwość owiec"
+        }
+      },
+      "createTime": "2026-05-09T15:14:24.755797Z",
+      "updateTime": "2026-05-09T15:14:24.755797Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/Cm5UbsnO2kmPVbdR1icS",
+      "fields": {
+        "godzina": {
+          "stringValue": "19:30"
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "data": {
+          "stringValue": "2026-06-07"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        }
+      },
+      "createTime": "2026-05-30T13:51:13.513930Z",
+      "updateTime": "2026-05-30T13:51:36.601875Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/DKWrR4woV5OBEBCgSpqm",
+      "fields": {
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-16"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "9VeeN6H6d26IqqSMIAlA"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        },
+        "film_tytul": {
+          "stringValue": "Dzień objawienia"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-06-08T15:48:17.956821Z",
+      "updateTime": "2026-06-08T15:48:17.956821Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/EcolaaqHMjkTvKQkS2m6",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Dzień objawienia"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "17:30"
+        },
+        "film_id": {
+          "stringValue": "9VeeN6H6d26IqqSMIAlA"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-15"
+        },
+        "sala": {
+          "stringValue": "duza"
+        }
+      },
+      "createTime": "2026-06-08T15:47:59.796135Z",
+      "updateTime": "2026-06-08T15:47:59.796135Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/EnLFGWVXLtlWCUbKSiNM",
+      "fields": {
+        "godzina": {
+          "stringValue": "20:00"
+        },
+        "film_tytul": {
+          "stringValue": "Obsesja"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-18"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "1UgRdV4GKxse1bk73l6C"
+        }
+      },
+      "createTime": "2026-05-11T15:42:01.506479Z",
+      "updateTime": "2026-05-11T15:42:10.893040Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/EqU0Gqab5ZqAW4umpg7O",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-31"
+        },
+        "film_id": {
+          "stringValue": "Gk5cSC4lIG5XtrtElROw"
+        },
+        "godzina": {
+          "stringValue": "15:30"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Tom i Jerry: Przygoda w muzeum"
+        }
+      },
+      "createTime": "2026-05-23T18:42:46.301644Z",
+      "updateTime": "2026-05-23T18:42:46.301644Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/EtF2kurpUEHoOhZFNT8J",
+      "fields": {
+        "data": {
+          "stringValue": "2026-06-02"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "godzina": {
+          "stringValue": "19:00"
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-23T18:44:59.637995Z",
+      "updateTime": "2026-05-23T18:44:59.637995Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/ExHmgEQjVsKeDdzUf7hh",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Polski"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Niesamowite przygody skarpetek 3. Ale kosmos!"
+        },
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "film_id": {
+          "stringValue": "DZtWRtDuxFdGhROdivHW"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-09"
+        }
+      },
+      "createTime": "2026-05-30T13:47:25.747381Z",
+      "updateTime": "2026-05-30T13:47:25.747381Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/FBfvcbHj27XK8MKTtuJ0",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "3D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "godzina": {
+          "stringValue": "17:30"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-05-29"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        }
+      },
+      "createTime": "2026-05-23T18:43:26.894426Z",
+      "updateTime": "2026-05-23T18:43:26.894426Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/FvYAheTH14WkVwasuHnb",
+      "fields": {
+        "film_id": {
+          "stringValue": "naYQdruUuQcxySkds3QF"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-30"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Zawodowcy"
+        },
+        "godzina": {
+          "stringValue": "19:30"
+        }
+      },
+      "createTime": "2026-05-23T18:46:58.152865Z",
+      "updateTime": "2026-05-23T18:46:58.152865Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/G65ffmQzNzMnJg8m9auf",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Straszny film"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        },
+        "film_id": {
+          "stringValue": "9gvi1uvPQv5UCLAw6XVR"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-06-06"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        }
+      },
+      "createTime": "2026-05-30T13:53:05.533124Z",
+      "updateTime": "2026-05-30T13:53:05.533124Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/HXCQ6Ea5vOHU33HN7KrJ",
+      "fields": {
+        "godzina": {
+          "stringValue": "20:00"
+        },
+        "film_tytul": {
+          "stringValue": "Dzień objawienia"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "data": {
+          "stringValue": "2026-06-14"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "9VeeN6H6d26IqqSMIAlA"
+        }
+      },
+      "createTime": "2026-06-08T15:47:51.061479Z",
+      "updateTime": "2026-06-08T15:47:51.061479Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/HebJ1A9l1C3ekmifGCUO",
+      "fields": {
+        "godzina": {
+          "stringValue": "18:00"
+        },
+        "film_tytul": {
+          "stringValue": "Wolność po włosku"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "data": {
+          "stringValue": "2026-05-11"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "gYbRSjTq83Mdv6WtrIeA"
+        }
+      },
+      "createTime": "2026-05-09T15:20:19.983861Z",
+      "updateTime": "2026-05-09T15:20:19.983861Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/HykjNWgp8eVHOkKCvsqy",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Wolność po włosku"
+        },
+        "godzina": {
+          "stringValue": "17:00"
+        },
+        "film_id": {
+          "stringValue": "gYbRSjTq83Mdv6WtrIeA"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-18"
+        }
+      },
+      "createTime": "2026-05-11T15:41:11.165322Z",
+      "updateTime": "2026-05-11T15:41:27.862493Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/IY2aNNYg28ypBbyPDo6W",
+      "fields": {
+        "film_id": {
+          "stringValue": "TE8SLljmWMw4tnM79zPG"
+        },
+        "data": {
+          "stringValue": "2026-05-09"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_tytul": {
+          "stringValue": "Sprawiedliwość owiec"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "15:00"
+        }
+      },
+      "createTime": "2026-05-09T15:05:23.149965Z",
+      "updateTime": "2026-05-09T15:05:23.149965Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/IZ2a7HVk8Ui3sXYTcOjX",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "19:00"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "data": {
+          "stringValue": "2026-06-01"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        }
+      },
+      "createTime": "2026-05-23T18:44:39.016529Z",
+      "updateTime": "2026-05-23T18:44:39.016529Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/IkiFiT7HjtACxBTWqfnG",
+      "fields": {
+        "film_id": {
+          "stringValue": "3F7e5zT7qbkdPRvcf3ef"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-19"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_tytul": {
+          "stringValue": "Diabeł ubiera się u Prady 2"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "18:00"
+        }
+      },
+      "createTime": "2026-05-11T15:43:47.646547Z",
+      "updateTime": "2026-05-11T15:43:47.646547Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/Iu0G4AmkC0rNh0YrdxtW",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Tom i Jerry: Przygoda w muzeum"
+        },
+        "godzina": {
+          "stringValue": "15:30"
+        },
+        "film_id": {
+          "stringValue": "Gk5cSC4lIG5XtrtElROw"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-06-14"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        }
+      },
+      "createTime": "2026-06-08T15:44:50.070052Z",
+      "updateTime": "2026-06-08T15:44:50.070052Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/Iwd4VBlrDdSmd6PtkxqX",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Obsesja"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "19:30"
+        },
+        "film_id": {
+          "stringValue": "1UgRdV4GKxse1bk73l6C"
+        },
+        "data": {
+          "stringValue": "2026-05-25"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        }
+      },
+      "createTime": "2026-05-15T17:31:39.819923Z",
+      "updateTime": "2026-05-15T17:31:39.819923Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/JEwYDcrwuxHTrzObR7qT",
+      "fields": {
+        "godzina": {
+          "stringValue": "19:40"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Tajny agent"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-06-16"
+        },
+        "film_id": {
+          "stringValue": "ITvUOmHkgj6twJlQ2GZW"
+        }
+      },
+      "createTime": "2026-06-08T15:49:24.643151Z",
+      "updateTime": "2026-06-08T15:49:24.643151Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/JPkKU4eUHJ4iAtc7fi0D",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-17"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "film_id": {
+          "stringValue": "Ft4qa9lzYRmoghncBRq1"
+        },
+        "godzina": {
+          "stringValue": "14:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Kurozając i świątynia Świstaka"
+        }
+      },
+      "createTime": "2026-05-11T15:36:37.268890Z",
+      "updateTime": "2026-05-11T15:36:37.268890Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/JdPkdHM3OcYJAH3rStcb",
+      "fields": {
+        "film_id": {
+          "stringValue": "1UgRdV4GKxse1bk73l6C"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-17"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Obsesja"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        }
+      },
+      "createTime": "2026-05-11T15:39:04.065452Z",
+      "updateTime": "2026-05-11T15:39:04.065452Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/KG1C8TGimMZfp5VvYzHf",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-19"
+        },
+        "film_id": {
+          "stringValue": "gYbRSjTq83Mdv6WtrIeA"
+        },
+        "godzina": {
+          "stringValue": "17:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Wolność po włosku"
+        }
+      },
+      "createTime": "2026-05-11T15:43:28.995249Z",
+      "updateTime": "2026-05-11T15:43:28.995249Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/KWOI5KXFaLUiluzNTP70",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Drugie życie"
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "film_id": {
+          "stringValue": "gMIyex7WOM4OigRUwXuu"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-06-14"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        }
+      },
+      "createTime": "2026-06-08T15:45:59.779404Z",
+      "updateTime": "2026-06-08T15:45:59.779404Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/LIzjWAEczt3wrjLCfdn9",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Polski"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Niesamowite przygody skarpetek 3. Ale kosmos!"
+        },
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "film_id": {
+          "stringValue": "DZtWRtDuxFdGhROdivHW"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-06-01"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        }
+      },
+      "createTime": "2026-05-23T18:36:10.623999Z",
+      "updateTime": "2026-05-23T18:36:32.202241Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/LXg4Qd4QDEqe75Hn9Kx4",
+      "fields": {
+        "data": {
+          "stringValue": "2026-06-02"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "Gk5cSC4lIG5XtrtElROw"
+        },
+        "godzina": {
+          "stringValue": "15:30"
+        },
+        "film_tytul": {
+          "stringValue": "Tom i Jerry: Przygoda w muzeum"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-23T18:43:00.793139Z",
+      "updateTime": "2026-05-23T18:43:00.793139Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/M4LBjScDJLb9zm1jlyKL",
+      "fields": {
+        "film_id": {
+          "stringValue": "eOPjUbplYSUhSdbLOmP3"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-26"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Milcząca przyjaciółka"
+        },
+        "godzina": {
+          "stringValue": "17:00"
+        }
+      },
+      "createTime": "2026-05-18T17:53:12.871059Z",
+      "updateTime": "2026-05-18T17:58:31.916044Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/MO7UwCma46o7bJkXHta9",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-16"
+        },
+        "film_id": {
+          "stringValue": "Ft4qa9lzYRmoghncBRq1"
+        },
+        "godzina": {
+          "stringValue": "14:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Kurozając i świątynia Świstaka"
+        }
+      },
+      "createTime": "2026-05-11T15:00:36.606047Z",
+      "updateTime": "2026-05-11T15:00:36.606047Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/MfCPc0FMLECqDwnodegT",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Obsesja"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        },
+        "film_id": {
+          "stringValue": "1UgRdV4GKxse1bk73l6C"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-05-19"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        }
+      },
+      "createTime": "2026-05-11T15:44:21.692697Z",
+      "updateTime": "2026-05-11T15:44:21.692697Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/Ni38XZ5TpCI9rsxJPtD5",
+      "fields": {
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-24"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        }
+      },
+      "createTime": "2026-05-15T17:26:18.433708Z",
+      "updateTime": "2026-05-15T17:26:18.433708Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/OfVqq0Y80zm35nGDrF01",
+      "fields": {
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-17"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "3F7e5zT7qbkdPRvcf3ef"
+        },
+        "godzina": {
+          "stringValue": "18:00"
+        },
+        "film_tytul": {
+          "stringValue": "Diabeł ubiera się u Prady 2"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-11T15:38:00.423340Z",
+      "updateTime": "2026-05-11T15:38:00.423340Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/Q7oEujEAj0LqoEVJbTYA",
+      "fields": {
+        "film_id": {
+          "stringValue": "naYQdruUuQcxySkds3QF"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-06-05"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Zawodowcy"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        }
+      },
+      "createTime": "2026-05-30T13:49:07.242067Z",
+      "updateTime": "2026-05-30T13:49:07.242067Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/QM8HWKas4HXg3fMLAaKy",
+      "fields": {
+        "film_id": {
+          "stringValue": "xZz3eSgzEsYi0yEKsktJ"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-17"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_tytul": {
+          "stringValue": "Mortal Kombat II"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        }
+      },
+      "createTime": "2026-05-11T15:37:16.097529Z",
+      "updateTime": "2026-05-11T15:37:16.097529Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/Qu61N9vOmCCSs7C4521n",
+      "fields": {
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-06-20"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "film_id": {
+          "stringValue": "SDkuk8lgbAogI6VH3oYp"
+        },
+        "godzina": {
+          "stringValue": "17:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "90. urodziny Pavarottiego"
+        }
+      },
+      "createTime": "2026-05-23T18:32:25.888315Z",
+      "updateTime": "2026-05-23T18:32:25.888315Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/R5ctZnjqkFSYvFR71XZ4",
+      "fields": {
+        "film_id": {
+          "stringValue": "9gvi1uvPQv5UCLAw6XVR"
+        },
+        "data": {
+          "stringValue": "2026-06-06"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_tytul": {
+          "stringValue": "Straszny film"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "18:00"
+        }
+      },
+      "createTime": "2026-05-30T13:53:01.757207Z",
+      "updateTime": "2026-05-30T13:53:01.757207Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/RN2ZPSqokfvdiQANJsGA",
+      "fields": {
+        "godzina": {
+          "stringValue": "18:30"
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-24"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        }
+      },
+      "createTime": "2026-05-15T17:26:51.733493Z",
+      "updateTime": "2026-05-15T17:26:51.733493Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/RcefTXnGTy6clVQltaQV",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "godzina": {
+          "stringValue": "17:30"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-06-06"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        }
+      },
+      "createTime": "2026-05-30T13:51:06.235054Z",
+      "updateTime": "2026-05-30T13:51:06.235054Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/Rqfb3LJ281NdEGga63SJ",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Zawodowcy"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "19:30"
+        },
+        "film_id": {
+          "stringValue": "naYQdruUuQcxySkds3QF"
+        },
+        "data": {
+          "stringValue": "2026-05-31"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        }
+      },
+      "createTime": "2026-05-23T18:47:06.105851Z",
+      "updateTime": "2026-05-23T18:47:06.105851Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/Rwj2VZt82cVxbAAAHVI8",
+      "fields": {
+        "godzina": {
+          "stringValue": "18:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Straszny film"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-06-14"
+        },
+        "film_id": {
+          "stringValue": "9gvi1uvPQv5UCLAw6XVR"
+        }
+      },
+      "createTime": "2026-06-08T15:50:25.659744Z",
+      "updateTime": "2026-06-08T15:50:25.659744Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/SLbtIwB0yVurmjZwIrcz",
+      "fields": {
+        "godzina": {
+          "stringValue": "19:40"
+        },
+        "film_tytul": {
+          "stringValue": "Tajny agent"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "data": {
+          "stringValue": "2026-06-12"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "ITvUOmHkgj6twJlQ2GZW"
+        }
+      },
+      "createTime": "2026-06-08T15:48:51.497967Z",
+      "updateTime": "2026-06-08T15:48:51.497967Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/SOJCRUlaQeafDdKYjTfI",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Tajny agent"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "film_id": {
+          "stringValue": "ITvUOmHkgj6twJlQ2GZW"
+        },
+        "data": {
+          "stringValue": "2026-06-15"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        }
+      },
+      "createTime": "2026-06-08T15:49:16.668945Z",
+      "updateTime": "2026-06-08T15:49:16.668945Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/U0mfmkN07prG3NmltFi6",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "3D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Billie Eilish – Hit Me Hard and Soft: The Tour"
+        },
+        "godzina": {
+          "stringValue": "17:00"
+        },
+        "film_id": {
+          "stringValue": "F09jmXcQNzfAbNCRyewl"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-15"
+        }
+      },
+      "createTime": "2026-05-11T14:13:14.420257Z",
+      "updateTime": "2026-05-11T14:14:06.115753Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/UrFzVhntAYWSCcGfPFb1",
+      "fields": {
+        "godzina": {
+          "stringValue": "18:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Mortal Kombat II"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-12"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "film_id": {
+          "stringValue": "xZz3eSgzEsYi0yEKsktJ"
+        }
+      },
+      "createTime": "2026-05-09T15:22:10.064790Z",
+      "updateTime": "2026-05-09T15:22:10.064790Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/V6XhVCfPtqhqriQXujkr",
+      "fields": {
+        "film_id": {
+          "stringValue": "DZtWRtDuxFdGhROdivHW"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-06-07"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Polski"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Niesamowite przygody skarpetek 3. Ale kosmos!"
+        },
+        "godzina": {
+          "stringValue": "15:00"
+        }
+      },
+      "createTime": "2026-05-30T13:47:10.872426Z",
+      "updateTime": "2026-05-30T13:47:10.872426Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/V8j3BVqoLBvIxsf4vNs1",
+      "fields": {
+        "godzina": {
+          "stringValue": "20:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Normal"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-12"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "film_id": {
+          "stringValue": "LvzMVwUb66UbbX6ffZcB"
+        }
+      },
+      "createTime": "2026-05-09T15:22:51.873014Z",
+      "updateTime": "2026-05-09T15:22:51.873014Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/VRuh3qa0cXjOL1umG4hY",
+      "fields": {
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-06-08"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "godzina": {
+          "stringValue": "17:30"
+        }
+      },
+      "createTime": "2026-05-30T13:52:00.613029Z",
+      "updateTime": "2026-05-30T13:52:00.613029Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/XBi63GVhK7cMu748ds0r",
+      "fields": {
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-05-30"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "godzina": {
+          "stringValue": "16:30"
+        }
+      },
+      "createTime": "2026-05-23T18:43:57.440104Z",
+      "updateTime": "2026-05-23T18:43:57.440104Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/XsEo4AcUBi382S5P46J4",
+      "fields": {
+        "godzina": {
+          "stringValue": "19:30"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Zawodowcy"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-06-01"
+        },
+        "film_id": {
+          "stringValue": "naYQdruUuQcxySkds3QF"
+        }
+      },
+      "createTime": "2026-05-23T18:47:13.464216Z",
+      "updateTime": "2026-05-23T18:47:13.464216Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/YNvAXGaHDNAf6tevwV4K",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Dzień objawienia"
+        },
+        "godzina": {
+          "stringValue": "19:00"
+        },
+        "film_id": {
+          "stringValue": "9VeeN6H6d26IqqSMIAlA"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-06-13"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        }
+      },
+      "createTime": "2026-06-08T15:46:52.894148Z",
+      "updateTime": "2026-06-08T15:46:52.894148Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/YQWD7PG2kz6mPJWOKwgx",
+      "fields": {
+        "film_id": {
+          "stringValue": "xZz3eSgzEsYi0yEKsktJ"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-18"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_tytul": {
+          "stringValue": "Mortal Kombat II"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "19:00"
+        }
+      },
+      "createTime": "2026-05-11T15:41:48.364024Z",
+      "updateTime": "2026-05-11T15:41:48.364024Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/YmUWviLWcDVlTCoSXOUa",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-23"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "film_id": {
+          "stringValue": "eOPjUbplYSUhSdbLOmP3"
+        },
+        "godzina": {
+          "stringValue": "17:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Milcząca przyjaciółka"
+        }
+      },
+      "createTime": "2026-05-15T17:24:30.505841Z",
+      "updateTime": "2026-05-15T17:24:30.505841Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/Z1hFosFYxmjh77NMBQAN",
+      "fields": {
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Polski"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Niesamowite przygody skarpetek 3. Ale kosmos!"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-30"
+        },
+        "film_id": {
+          "stringValue": "DZtWRtDuxFdGhROdivHW"
+        }
+      },
+      "createTime": "2026-05-23T18:35:46.373966Z",
+      "updateTime": "2026-05-23T18:35:46.373966Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/ZSfraNfO81QJMEWXTQGH",
+      "fields": {
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "film_tytul": {
+          "stringValue": "Sprawiedliwość owiec"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-12"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "TE8SLljmWMw4tnM79zPG"
+        }
+      },
+      "createTime": "2026-05-09T15:21:09.604298Z",
+      "updateTime": "2026-05-09T15:21:09.604298Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/ZYimD6CR5C0AqHBHvVM1",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-06-02"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "film_id": {
+          "stringValue": "9ysL2hKO4jnJQ9gLHKLf"
+        },
+        "godzina": {
+          "stringValue": "17:30"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Drzewo magii"
+        }
+      },
+      "createTime": "2026-05-23T18:46:27.572498Z",
+      "updateTime": "2026-05-23T18:46:27.572498Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/ZxcYjgzHl2WWaqnMIsgP",
+      "fields": {
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-29"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        }
+      },
+      "createTime": "2026-05-23T18:43:44.404758Z",
+      "updateTime": "2026-05-23T18:43:44.404758Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/akD6soKWLGSlvJwMTQr5",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Normal"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        },
+        "film_id": {
+          "stringValue": "LvzMVwUb66UbbX6ffZcB"
+        },
+        "data": {
+          "stringValue": "2026-05-10"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        }
+      },
+      "createTime": "2026-05-09T15:16:08.788493Z",
+      "updateTime": "2026-05-09T15:16:08.788493Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/b4pNYSEWJEabb2uj1mVE",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Premiera"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Mortal Kombat II"
+        },
+        "godzina": {
+          "stringValue": "18:00"
+        },
+        "film_id": {
+          "stringValue": "xZz3eSgzEsYi0yEKsktJ"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-09"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        }
+      },
+      "createTime": "2026-05-09T14:38:37.547153Z",
+      "updateTime": "2026-05-09T14:38:37.547153Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/b5n7ZNkhcXPl6X2bRtJY",
+      "fields": {
+        "film_id": {
+          "stringValue": "3F7e5zT7qbkdPRvcf3ef"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-05-12"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Diabeł ubiera się u Prady 2"
+        },
+        "godzina": {
+          "stringValue": "17:00"
+        }
+      },
+      "createTime": "2026-05-09T15:21:47.899396Z",
+      "updateTime": "2026-05-09T15:21:47.899396Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/bHVtAl1UEJBz7aw0xvxv",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-30"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "film_id": {
+          "stringValue": "9ysL2hKO4jnJQ9gLHKLf"
+        },
+        "godzina": {
+          "stringValue": "17:30"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Drzewo magii"
+        }
+      },
+      "createTime": "2026-05-23T18:46:02.403429Z",
+      "updateTime": "2026-05-23T18:46:02.403429Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/bpScpBKZU3g8Ynvz4t91",
+      "fields": {
+        "godzina": {
+          "stringValue": "17:30"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Drzewo magii"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-31"
+        },
+        "film_id": {
+          "stringValue": "9ysL2hKO4jnJQ9gLHKLf"
+        }
+      },
+      "createTime": "2026-05-23T18:46:08.814938Z",
+      "updateTime": "2026-05-23T18:46:08.814938Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/btPtWn39j4RNEBN6LFkc",
+      "fields": {
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "film_tytul": {
+          "stringValue": "Drzewo magii"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "data": {
+          "stringValue": "2026-06-06"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "9ysL2hKO4jnJQ9gLHKLf"
+        }
+      },
+      "createTime": "2026-05-30T13:48:35.257028Z",
+      "updateTime": "2026-05-30T13:48:35.257028Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/byHMgkxidFReCpYISNYv",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Obsesja"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        },
+        "film_id": {
+          "stringValue": "1UgRdV4GKxse1bk73l6C"
+        },
+        "data": {
+          "stringValue": "2026-05-16"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        }
+      },
+      "createTime": "2026-05-11T15:29:58.574872Z",
+      "updateTime": "2026-05-11T15:29:58.574872Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/cAgLjOjLDullZvBzApsf",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Tom i Jerry: Przygoda w muzeum"
+        },
+        "godzina": {
+          "stringValue": "15:30"
+        },
+        "film_id": {
+          "stringValue": "Gk5cSC4lIG5XtrtElROw"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-06-08"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        }
+      },
+      "createTime": "2026-05-30T13:48:03.927643Z",
+      "updateTime": "2026-05-30T13:48:03.927643Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/cIsXOmBeB4FG9Ts8l36e",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-25"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "film_id": {
+          "stringValue": "eOPjUbplYSUhSdbLOmP3"
+        },
+        "godzina": {
+          "stringValue": "17:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Milcząca przyjaciółka"
+        }
+      },
+      "createTime": "2026-05-15T17:28:56.724523Z",
+      "updateTime": "2026-05-15T17:29:26.423762Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/cMbB4tMRqeLUKrVEfcTU",
+      "fields": {
+        "film_id": {
+          "stringValue": "Gk5cSC4lIG5XtrtElROw"
+        },
+        "data": {
+          "stringValue": "2026-05-30"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_tytul": {
+          "stringValue": "Tom i Jerry: Przygoda w muzeum"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "15:30"
+        }
+      },
+      "createTime": "2026-05-23T18:42:18.535919Z",
+      "updateTime": "2026-05-23T18:42:30.873959Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/ciUGlipy2q5xIpheFZdz",
+      "fields": {
+        "film_id": {
+          "stringValue": "DZtWRtDuxFdGhROdivHW"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-05"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Polski"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Niesamowite przygody skarpetek 3. Ale kosmos!"
+        },
+        "godzina": {
+          "stringValue": "15:00"
+        }
+      },
+      "createTime": "2026-05-30T13:46:57.727030Z",
+      "updateTime": "2026-05-30T13:46:57.727030Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/dKH6B1FKFbDRGxIR8Mj9",
+      "fields": {
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Drzewo magii"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-06-08"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "film_id": {
+          "stringValue": "9ysL2hKO4jnJQ9gLHKLf"
+        }
+      },
+      "createTime": "2026-05-30T13:48:44.138187Z",
+      "updateTime": "2026-05-30T13:48:44.138187Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/dLwNJBSznZuGo2Mo3UJ9",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "godzina": {
+          "stringValue": "19:00"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-05-31"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        }
+      },
+      "createTime": "2026-05-23T18:44:17.935685Z",
+      "updateTime": "2026-05-23T18:44:17.935685Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/dhee9IcofPKnQEvmFFKw",
+      "fields": {
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-22"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "godzina": {
+          "stringValue": "18:30"
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Premiera"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-15T17:21:49.622878Z",
+      "updateTime": "2026-05-15T17:21:49.622878Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/drwAwuRU9KCU1LekKGfe",
+      "fields": {
+        "data": {
+          "stringValue": "2026-05-11"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "3F7e5zT7qbkdPRvcf3ef"
+        },
+        "godzina": {
+          "stringValue": "19:00"
+        },
+        "film_tytul": {
+          "stringValue": "Diabeł ubiera się u Prady 2"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-09T15:20:38.453023Z",
+      "updateTime": "2026-05-09T15:20:38.453023Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/e9mPcAItWHyd8793XLhs",
+      "fields": {
+        "godzina": {
+          "stringValue": "18:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Straszny film"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-07"
+        },
+        "film_id": {
+          "stringValue": "9gvi1uvPQv5UCLAw6XVR"
+        }
+      },
+      "createTime": "2026-05-30T13:53:18.371173Z",
+      "updateTime": "2026-05-30T13:53:18.371173Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/eEDblAopPP7k3YjLk0tZ",
+      "fields": {
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-15"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "1UgRdV4GKxse1bk73l6C"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        },
+        "film_tytul": {
+          "stringValue": "Obsesja"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Premiera"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-11T14:15:09.505119Z",
+      "updateTime": "2026-05-11T14:59:40.474417Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/ePtthf4xrrukX4CIrrBI",
+      "fields": {
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-06-05"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "Gk5cSC4lIG5XtrtElROw"
+        },
+        "godzina": {
+          "stringValue": "15:30"
+        },
+        "film_tytul": {
+          "stringValue": "Tom i Jerry: Przygoda w muzeum"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-30T13:47:49.965350Z",
+      "updateTime": "2026-05-30T13:47:49.965350Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/ec7LmY3sX04u2fyXk9Z0",
+      "fields": {
+        "film_id": {
+          "stringValue": "naYQdruUuQcxySkds3QF"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-06-06"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Zawodowcy"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        }
+      },
+      "createTime": "2026-05-30T13:49:11.847154Z",
+      "updateTime": "2026-05-30T13:49:11.847154Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/ej3oUACvs4GOxLIbofQN",
+      "fields": {
+        "data": {
+          "stringValue": "2026-06-15"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "Gk5cSC4lIG5XtrtElROw"
+        },
+        "godzina": {
+          "stringValue": "15:30"
+        },
+        "film_tytul": {
+          "stringValue": "Tom i Jerry: Przygoda w muzeum"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-06-08T15:45:00.558085Z",
+      "updateTime": "2026-06-08T15:45:00.558085Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/enP2XkwmMqFcQSEIwUvr",
+      "fields": {
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Polski"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Niesamowite przygody skarpetek 3. Ale kosmos!"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-06-08"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "film_id": {
+          "stringValue": "DZtWRtDuxFdGhROdivHW"
+        }
+      },
+      "createTime": "2026-05-30T13:47:21.261534Z",
+      "updateTime": "2026-05-30T13:47:21.261534Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/fH2iN04EPcHhZs4Uah2k",
+      "fields": {
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Kurozając i świątynia Świstaka"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-22"
+        },
+        "film_id": {
+          "stringValue": "Ft4qa9lzYRmoghncBRq1"
+        }
+      },
+      "createTime": "2026-05-15T17:20:25.472764Z",
+      "updateTime": "2026-05-15T17:20:25.472764Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/fXj4ufDpwdAg2v7k5O6b",
+      "fields": {
+        "film_id": {
+          "stringValue": "9VeeN6H6d26IqqSMIAlA"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-12"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_tytul": {
+          "stringValue": "Dzień objawienia"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "17:30"
+        }
+      },
+      "createTime": "2026-06-08T15:46:40.768866Z",
+      "updateTime": "2026-06-08T15:46:40.768866Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/fdY3d3wLoIbNzpUdB6Gh",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "3D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-05-23"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        }
+      },
+      "createTime": "2026-05-15T17:24:11.369540Z",
+      "updateTime": "2026-05-15T17:24:11.369540Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/gAFLgNfnLBER8uoHdP1b",
+      "fields": {
+        "film_id": {
+          "stringValue": "DZtWRtDuxFdGhROdivHW"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-29"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Polski"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Niesamowite przygody skarpetek 3. Ale kosmos!"
+        },
+        "godzina": {
+          "stringValue": "15:00"
+        }
+      },
+      "createTime": "2026-05-23T18:35:30.834047Z",
+      "updateTime": "2026-05-23T18:35:30.834047Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/gnLa9F6oeXfArOCCXfkL",
+      "fields": {
+        "godzina": {
+          "stringValue": "18:40"
+        },
+        "film_tytul": {
+          "stringValue": "Drugie życie"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-06-13"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "gMIyex7WOM4OigRUwXuu"
+        }
+      },
+      "createTime": "2026-06-08T15:45:49.989321Z",
+      "updateTime": "2026-06-08T15:45:49.989321Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/hn7kZegixevmEkpLmCGu",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "90. urodziny Pavarottiego"
+        },
+        "godzina": {
+          "stringValue": "17:00"
+        },
+        "film_id": {
+          "stringValue": "SDkuk8lgbAogI6VH3oYp"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-06-13"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        }
+      },
+      "createTime": "2026-05-23T18:32:19.350264Z",
+      "updateTime": "2026-05-23T18:32:19.350264Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/hwmeXMSQcmWtTyKW7Po9",
+      "fields": {
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Drugie życie"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-06-16"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "film_id": {
+          "stringValue": "gMIyex7WOM4OigRUwXuu"
+        }
+      },
+      "createTime": "2026-06-08T15:46:20.901855Z",
+      "updateTime": "2026-06-08T15:46:20.901855Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/iANtAygmoR4wsB2mjCf1",
+      "fields": {
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-06-08"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "film_id": {
+          "stringValue": "9gvi1uvPQv5UCLAw6XVR"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Straszny film"
+        }
+      },
+      "createTime": "2026-05-30T13:53:37.072731Z",
+      "updateTime": "2026-05-30T13:53:37.072731Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/iqUuPOWmtsI3bgcWkFVK",
+      "fields": {
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Sprawiedliwość owiec"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-05-16"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "film_id": {
+          "stringValue": "TE8SLljmWMw4tnM79zPG"
+        }
+      },
+      "createTime": "2026-05-11T15:00:59.709123Z",
+      "updateTime": "2026-05-11T15:00:59.709123Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/kWGZQaY5gTGwLYciUyBL",
+      "fields": {
+        "data": {
+          "stringValue": "2026-05-22"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "eOPjUbplYSUhSdbLOmP3"
+        },
+        "godzina": {
+          "stringValue": "17:00"
+        },
+        "film_tytul": {
+          "stringValue": "Milcząca przyjaciółka"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-15T17:21:16.731936Z",
+      "updateTime": "2026-05-15T17:22:34.856997Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/kyI5xRnG7we4JMCZ2laB",
+      "fields": {
+        "godzina": {
+          "stringValue": "19:00"
+        },
+        "film_tytul": {
+          "stringValue": "Iron Maiden: Burning Ambition"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "data": {
+          "stringValue": "2026-05-17"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "4WDcFfnC207Btl6bapKV"
+        }
+      },
+      "createTime": "2026-05-11T15:38:15.001814Z",
+      "updateTime": "2026-05-11T15:38:15.001814Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/lNpkuBcORcMIeEkZaXbi",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-26"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "godzina": {
+          "stringValue": "19:30"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        }
+      },
+      "createTime": "2026-05-18T17:58:17.950865Z",
+      "updateTime": "2026-05-18T17:58:28.913297Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/lS8eXG7I2XPmiGAThyTE",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "3D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Billie Eilish – Hit Me Hard and Soft: The Tour"
+        },
+        "godzina": {
+          "stringValue": "17:00"
+        },
+        "film_id": {
+          "stringValue": "F09jmXcQNzfAbNCRyewl"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-16"
+        }
+      },
+      "createTime": "2026-05-11T15:28:47.142478Z",
+      "updateTime": "2026-05-11T15:28:47.142478Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/lfZt7X9pNidYcZFnurwc",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "3D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Premiera"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Billie Eilish – Hit Me Hard and Soft: The Tour"
+        },
+        "godzina": {
+          "stringValue": "17:00"
+        },
+        "film_id": {
+          "stringValue": "F09jmXcQNzfAbNCRyewl"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-10"
+        }
+      },
+      "createTime": "2026-05-09T14:38:04.924264Z",
+      "updateTime": "2026-05-09T14:38:46.097617Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/lj8EWZJYFtJ4AwOtFMd4",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Diabeł ubiera się u Prady 2"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "18:00"
+        },
+        "film_id": {
+          "stringValue": "3F7e5zT7qbkdPRvcf3ef"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-18"
+        },
+        "sala": {
+          "stringValue": "duza"
+        }
+      },
+      "createTime": "2026-05-11T15:41:23.282046Z",
+      "updateTime": "2026-05-11T15:41:30.749513Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/ll9tzuBMEob3oqY9ZqsU",
+      "fields": {
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "film_tytul": {
+          "stringValue": "Drzewo magii"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-07"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "9ysL2hKO4jnJQ9gLHKLf"
+        }
+      },
+      "createTime": "2026-05-30T13:48:39.046965Z",
+      "updateTime": "2026-05-30T13:48:39.046965Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/m0vvwaeqK71QUdQUQHKW",
+      "fields": {
+        "film_id": {
+          "stringValue": "9ysL2hKO4jnJQ9gLHKLf"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-29"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Drzewo magii"
+        },
+        "godzina": {
+          "stringValue": "18:00"
+        }
+      },
+      "createTime": "2026-05-23T18:45:44.445297Z",
+      "updateTime": "2026-05-23T18:45:44.445297Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/m611L054nqunqoEL9ZaS",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Kurozając i świątynia Świstaka"
+        },
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "film_id": {
+          "stringValue": "Ft4qa9lzYRmoghncBRq1"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-24"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        }
+      },
+      "createTime": "2026-05-15T17:25:48.771901Z",
+      "updateTime": "2026-05-15T17:25:48.771901Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/m7FubRzhtg5zaC5JQHyz",
+      "fields": {
+        "data": {
+          "stringValue": "2026-06-13"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "ITvUOmHkgj6twJlQ2GZW"
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "film_tytul": {
+          "stringValue": "Tajny agent"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-06-08T15:48:59.925170Z",
+      "updateTime": "2026-06-08T15:48:59.925170Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/mXKAwnIgoHYnZ6KJtNop",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Straszny film"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "18:00"
+        },
+        "film_id": {
+          "stringValue": "9gvi1uvPQv5UCLAw6XVR"
+        },
+        "data": {
+          "stringValue": "2026-06-16"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        }
+      },
+      "createTime": "2026-06-08T15:50:42.715520Z",
+      "updateTime": "2026-06-08T15:50:42.715520Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/mbLs5PMfVxjdpPRfpwUB",
+      "fields": {
+        "film_id": {
+          "stringValue": "9gvi1uvPQv5UCLAw6XVR"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-09"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Straszny film"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        }
+      },
+      "createTime": "2026-05-30T13:54:01.795450Z",
+      "updateTime": "2026-05-30T13:54:01.795450Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/mqcnnlZLUP7WkQzPKxa9",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "19:00"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-30"
+        },
+        "sala": {
+          "stringValue": "duza"
+        }
+      },
+      "createTime": "2026-05-23T18:44:04.422724Z",
+      "updateTime": "2026-05-23T18:44:04.422724Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/nalmuHWkuIYCRbPEI20A",
+      "fields": {
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-25"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "3D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-15T17:28:00.338868Z",
+      "updateTime": "2026-05-15T17:28:00.338868Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/nl0LMSD8pCFPz0IyZ69S",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-06-08"
+        },
+        "film_id": {
+          "stringValue": "naYQdruUuQcxySkds3QF"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Zawodowcy"
+        }
+      },
+      "createTime": "2026-05-30T13:49:39.995070Z",
+      "updateTime": "2026-05-30T13:49:39.995070Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/ntew6lkJl44s2op3vlCW",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Tom i Jerry: Przygoda w muzeum"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "15:30"
+        },
+        "film_id": {
+          "stringValue": "Gk5cSC4lIG5XtrtElROw"
+        },
+        "data": {
+          "stringValue": "2026-06-06"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        }
+      },
+      "createTime": "2026-05-30T13:47:53.199778Z",
+      "updateTime": "2026-05-30T13:47:53.199778Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/o1ycaYTi4j3Ni1Hyv7lN",
+      "fields": {
+        "godzina": {
+          "stringValue": "18:40"
+        },
+        "film_tytul": {
+          "stringValue": "Drugie życie"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-06-15"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "gMIyex7WOM4OigRUwXuu"
+        }
+      },
+      "createTime": "2026-06-08T15:46:10.913001Z",
+      "updateTime": "2026-06-08T15:46:10.913001Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/oaFfm4KvUxrka8ip6zSq",
+      "fields": {
+        "godzina": {
+          "stringValue": "19:00"
+        },
+        "film_tytul": {
+          "stringValue": "Iron Maiden: Burning Ambition"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Premiera"
+              }
+            ]
+          }
+        },
+        "data": {
+          "stringValue": "2026-05-15"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "4WDcFfnC207Btl6bapKV"
+        }
+      },
+      "createTime": "2026-05-11T14:15:27.415601Z",
+      "updateTime": "2026-05-11T14:15:27.415601Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/pA4SttjTJF5MNlHCHGWa",
+      "fields": {
+        "film_id": {
+          "stringValue": "naYQdruUuQcxySkds3QF"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-29"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Zawodowcy"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        }
+      },
+      "createTime": "2026-05-23T18:46:47.251143Z",
+      "updateTime": "2026-05-23T18:46:47.251143Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/pnxzvhvHH2P9H8jCtznA",
+      "fields": {
+        "godzina": {
+          "stringValue": "19:40"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Tajny agent"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-06-14"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "film_id": {
+          "stringValue": "ITvUOmHkgj6twJlQ2GZW"
+        }
+      },
+      "createTime": "2026-06-08T15:49:08.101541Z",
+      "updateTime": "2026-06-08T15:49:08.101541Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/pxoHaPkEaw8H9a8EpWXa",
+      "fields": {
+        "film_id": {
+          "stringValue": "9VeeN6H6d26IqqSMIAlA"
+        },
+        "data": {
+          "stringValue": "2026-06-16"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_tytul": {
+          "stringValue": "Dzień objawienia"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "17:30"
+        }
+      },
+      "createTime": "2026-06-08T15:48:23.153817Z",
+      "updateTime": "2026-06-08T15:48:23.153817Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/qWprNahhFjGKUIjFxCKJ",
+      "fields": {
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Sprawiedliwość owiec"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-17"
+        },
+        "film_id": {
+          "stringValue": "TE8SLljmWMw4tnM79zPG"
+        }
+      },
+      "createTime": "2026-05-11T15:36:54.290905Z",
+      "updateTime": "2026-05-11T15:36:54.290905Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/qYEyxMqrVIXp9p1Po7tX",
+      "fields": {
+        "data": {
+          "stringValue": "2026-06-12"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "Gk5cSC4lIG5XtrtElROw"
+        },
+        "godzina": {
+          "stringValue": "15:30"
+        },
+        "film_tytul": {
+          "stringValue": "Tom i Jerry: Przygoda w muzeum"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-06-08T15:44:31.580374Z",
+      "updateTime": "2026-06-08T15:44:31.580374Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/qrh1st1b1gxaPuq7h3UB",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Sprawiedliwość owiec"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "film_id": {
+          "stringValue": "TE8SLljmWMw4tnM79zPG"
+        },
+        "data": {
+          "stringValue": "2026-05-19"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        }
+      },
+      "createTime": "2026-05-11T15:42:57.168161Z",
+      "updateTime": "2026-05-11T15:42:57.168161Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/r2W2aDsZyFftyruISrC0",
+      "fields": {
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-05"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "9gvi1uvPQv5UCLAw6XVR"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        },
+        "film_tytul": {
+          "stringValue": "Straszny film"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-30T13:52:53.270177Z",
+      "updateTime": "2026-05-30T13:52:53.270177Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/rSzE2bcnrfeweI3whNdh",
+      "fields": {
+        "data": {
+          "stringValue": "2026-05-09"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "3F7e5zT7qbkdPRvcf3ef"
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "film_tytul": {
+          "stringValue": "Diabeł ubiera się u Prady 2"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-09T15:04:44.858360Z",
+      "updateTime": "2026-05-09T15:04:44.858360Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/sAMjtkzPYq7H6SbK3ogj",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Niesamowite przygody skarpetek 3. Ale kosmos!"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Polski"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "film_id": {
+          "stringValue": "DZtWRtDuxFdGhROdivHW"
+        },
+        "data": {
+          "stringValue": "2026-06-02"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        }
+      },
+      "createTime": "2026-05-23T18:36:23.968980Z",
+      "updateTime": "2026-05-23T18:36:23.968980Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/sCzopCnBBa4CHTbIucjy",
+      "fields": {
+        "film_id": {
+          "stringValue": "9VeeN6H6d26IqqSMIAlA"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-06-12"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Dzień objawienia"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        }
+      },
+      "createTime": "2026-06-08T15:47:25.363517Z",
+      "updateTime": "2026-06-08T15:47:25.363517Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/sPblzVIHMIXmVc4d1Jzg",
+      "fields": {
+        "data": {
+          "stringValue": "2026-06-02"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "naYQdruUuQcxySkds3QF"
+        },
+        "godzina": {
+          "stringValue": "19:30"
+        },
+        "film_tytul": {
+          "stringValue": "Zawodowcy"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-23T18:47:17.808579Z",
+      "updateTime": "2026-05-23T18:47:17.808579Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/sYVxLwp6XDMMJJ11ZsYU",
+      "fields": {
+        "godzina": {
+          "stringValue": "19:00"
+        },
+        "film_tytul": {
+          "stringValue": "Mortal Kombat II"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "data": {
+          "stringValue": "2026-05-19"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "xZz3eSgzEsYi0yEKsktJ"
+        }
+      },
+      "createTime": "2026-05-11T15:44:11.005978Z",
+      "updateTime": "2026-05-11T15:44:11.005978Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/slFFxrQKsCmrd00NaQIE",
+      "fields": {
+        "film_id": {
+          "stringValue": "9gvi1uvPQv5UCLAw6XVR"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-07"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Straszny film"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        }
+      },
+      "createTime": "2026-05-30T13:53:23.280761Z",
+      "updateTime": "2026-05-30T13:53:23.280761Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/t6m8CoHOoEt05Q5p7BQQ",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "3D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Premiera"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Billie Eilish – Hit Me Hard and Soft: The Tour"
+        },
+        "godzina": {
+          "stringValue": "17:00"
+        },
+        "film_id": {
+          "stringValue": "F09jmXcQNzfAbNCRyewl"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-05-09"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        }
+      },
+      "createTime": "2026-05-09T14:37:37.702164Z",
+      "updateTime": "2026-05-09T14:38:43.198323Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/tFySWnGoTwyhd4XPXqx8",
+      "fields": {
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Mortal Kombat II"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-15"
+        },
+        "film_id": {
+          "stringValue": "xZz3eSgzEsYi0yEKsktJ"
+        }
+      },
+      "createTime": "2026-05-11T14:14:30.880038Z",
+      "updateTime": "2026-05-11T14:14:30.880038Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/tGbVbKznTMayHHX4mOvB",
+      "fields": {
+        "film_id": {
+          "stringValue": "Gk5cSC4lIG5XtrtElROw"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-29"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Tom i Jerry: Przygoda w muzeum"
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        }
+      },
+      "createTime": "2026-05-23T18:42:07.671084Z",
+      "updateTime": "2026-05-23T18:42:07.671084Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/ttszULVKIO1DIWy9E8xS",
+      "fields": {
+        "godzina": {
+          "stringValue": "20:40"
+        },
+        "film_tytul": {
+          "stringValue": "Straszny film"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-06-13"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "9gvi1uvPQv5UCLAw6XVR"
+        }
+      },
+      "createTime": "2026-06-08T15:50:16.077029Z",
+      "updateTime": "2026-06-08T15:50:16.077029Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/uIgxyp3sBsRJNPgA6cxH",
+      "fields": {
+        "godzina": {
+          "stringValue": "17:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "3D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Billie Eilish – Hit Me Hard and Soft: The Tour"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-05-17"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "film_id": {
+          "stringValue": "F09jmXcQNzfAbNCRyewl"
+        }
+      },
+      "createTime": "2026-05-11T15:37:35.104007Z",
+      "updateTime": "2026-05-11T15:37:35.104007Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/uKXNO6VpEuIMz7vxk9Yq",
+      "fields": {
+        "data": {
+          "stringValue": "2026-05-15"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "TE8SLljmWMw4tnM79zPG"
+        },
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "film_tytul": {
+          "stringValue": "Sprawiedliwość owiec"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-05-11T14:12:49.184514Z",
+      "updateTime": "2026-05-11T14:59:12.841107Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/v0ciDgS0Tucmmo9bFAFB",
+      "fields": {
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "film_tytul": {
+          "stringValue": "Sprawiedliwość owiec"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-11"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "TE8SLljmWMw4tnM79zPG"
+        }
+      },
+      "createTime": "2026-05-09T15:16:30.957144Z",
+      "updateTime": "2026-05-09T15:17:32.918197Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/vNwBFQECqGTrGSgGthmT",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Diabeł ubiera się u Prady 2"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "18:00"
+        },
+        "film_id": {
+          "stringValue": "3F7e5zT7qbkdPRvcf3ef"
+        },
+        "data": {
+          "stringValue": "2026-05-15"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        }
+      },
+      "createTime": "2026-05-11T14:14:49.024189Z",
+      "updateTime": "2026-05-11T14:52:22.733722Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/vOBCPnaxbWI1X8ZX3lyt",
+      "fields": {
+        "film_id": {
+          "stringValue": "3F7e5zT7qbkdPRvcf3ef"
+        },
+        "data": {
+          "stringValue": "2026-05-12"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_tytul": {
+          "stringValue": "Diabeł ubiera się u Prady 2"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "19:00"
+        }
+      },
+      "createTime": "2026-05-09T15:22:39.762683Z",
+      "updateTime": "2026-05-09T15:22:39.762683Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/vdXp51UZ2bmubptrIB4c",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Obsesja"
+        },
+        "godzina": {
+          "stringValue": "19:30"
+        },
+        "film_id": {
+          "stringValue": "1UgRdV4GKxse1bk73l6C"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-24"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        }
+      },
+      "createTime": "2026-05-15T17:27:09.858183Z",
+      "updateTime": "2026-05-15T17:27:09.858183Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/wTvEsci9osyzML38WxrL",
+      "fields": {
+        "godzina": {
+          "stringValue": "17:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Diabeł ubiera się u Prady 2"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-05-11"
+        },
+        "film_id": {
+          "stringValue": "3F7e5zT7qbkdPRvcf3ef"
+        }
+      },
+      "createTime": "2026-05-09T15:17:24.690543Z",
+      "updateTime": "2026-05-09T15:17:38.141005Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/wbc4Hp91f6ZJgmCVSPN0",
+      "fields": {
+        "godzina": {
+          "stringValue": "18:30"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-05-23"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        }
+      },
+      "createTime": "2026-05-15T17:24:51.573251Z",
+      "updateTime": "2026-05-15T17:24:51.573251Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/wka3x39MsLNZEePPVNoN",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "godzina": {
+          "stringValue": "19:30"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-06-09"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        }
+      },
+      "createTime": "2026-05-30T13:52:11.261472Z",
+      "updateTime": "2026-05-30T13:52:11.261472Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/wnBiPZhY6oeTaBhwrgTZ",
+      "fields": {
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Polski"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Niesamowite przygody skarpetek 3. Ale kosmos!"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-06"
+        },
+        "film_id": {
+          "stringValue": "DZtWRtDuxFdGhROdivHW"
+        }
+      },
+      "createTime": "2026-05-30T13:47:08.327118Z",
+      "updateTime": "2026-05-30T13:47:08.327118Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/x26wrOPqqqWr8jiUQJfh",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Zawodowcy"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "17:30"
+        },
+        "film_id": {
+          "stringValue": "naYQdruUuQcxySkds3QF"
+        },
+        "data": {
+          "stringValue": "2026-06-09"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        }
+      },
+      "createTime": "2026-05-30T13:50:13.023599Z",
+      "updateTime": "2026-05-30T13:50:13.023599Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/x4n0LT8qmlU25cyQegS3",
+      "fields": {
+        "data": {
+          "stringValue": "2026-06-12"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "film_id": {
+          "stringValue": "9gvi1uvPQv5UCLAw6XVR"
+        },
+        "godzina": {
+          "stringValue": "18:00"
+        },
+        "film_tytul": {
+          "stringValue": "Straszny film"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        }
+      },
+      "createTime": "2026-06-08T15:49:50.582257Z",
+      "updateTime": "2026-06-08T15:49:50.582257Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/x7RY4kpU8hFTvteJrbuV",
+      "fields": {
+        "godzina": {
+          "stringValue": "14:00"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Polski"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Niesamowite przygody skarpetek 3. Ale kosmos!"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-31"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "film_id": {
+          "stringValue": "DZtWRtDuxFdGhROdivHW"
+        }
+      },
+      "createTime": "2026-05-23T18:35:57.582936Z",
+      "updateTime": "2026-05-23T18:35:57.582936Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/xNWBrwWHPojCWNNjk2q0",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Normal"
+        },
+        "godzina": {
+          "stringValue": "20:00"
+        },
+        "film_id": {
+          "stringValue": "LvzMVwUb66UbbX6ffZcB"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-05-11"
+        }
+      },
+      "createTime": "2026-05-09T15:20:53.143086Z",
+      "updateTime": "2026-05-09T15:20:53.143086Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/xU1MF1GCm3JHva7ge4DN",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Mortal Kombat II"
+        },
+        "godzina": {
+          "stringValue": "18:00"
+        },
+        "film_id": {
+          "stringValue": "xZz3eSgzEsYi0yEKsktJ"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-10"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        }
+      },
+      "createTime": "2026-05-09T15:15:49.572510Z",
+      "updateTime": "2026-05-09T15:15:49.572510Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/xk00HyKaBQv061SK8kIc",
+      "fields": {
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-06-01"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "godzina": {
+          "stringValue": "16:30"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "3D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        }
+      },
+      "createTime": "2026-05-23T18:44:30.905589Z",
+      "updateTime": "2026-05-23T18:44:30.905589Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/y02MpZBnHH9EAc5wgz57",
+      "fields": {
+        "godzina": {
+          "stringValue": "18:00"
+        },
+        "film_tytul": {
+          "stringValue": "Straszny film"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "data": {
+          "stringValue": "2026-06-08"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "film_id": {
+          "stringValue": "9gvi1uvPQv5UCLAw6XVR"
+        }
+      },
+      "createTime": "2026-05-30T13:53:33.225331Z",
+      "updateTime": "2026-05-30T13:53:33.225331Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/yA5IIJVOjX2Tnf4wmmRs",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Kurozając i świątynia Świstaka"
+        },
+        "godzina": {
+          "stringValue": "15:00"
+        },
+        "film_id": {
+          "stringValue": "Ft4qa9lzYRmoghncBRq1"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-05-23"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        }
+      },
+      "createTime": "2026-05-15T17:23:45.624374Z",
+      "updateTime": "2026-05-15T17:23:45.624374Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/yYPI0vLdmX2vclwwdIFL",
+      "fields": {
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Straszny film"
+        },
+        "godzina": {
+          "stringValue": "20:40"
+        },
+        "film_id": {
+          "stringValue": "9gvi1uvPQv5UCLAw6XVR"
+        },
+        "sala": {
+          "stringValue": "mala"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "data": {
+          "stringValue": "2026-06-15"
+        }
+      },
+      "createTime": "2026-06-08T15:50:33.925405Z",
+      "updateTime": "2026-06-08T15:50:33.925405Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/yshNRkwf2BtHbKsdFUGd",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Dzień objawienia"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "17:30"
+        },
+        "film_id": {
+          "stringValue": "9VeeN6H6d26IqqSMIAlA"
+        },
+        "data": {
+          "stringValue": "2026-06-14"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        }
+      },
+      "createTime": "2026-06-08T15:47:02.862398Z",
+      "updateTime": "2026-06-08T15:47:02.862398Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/zCc10foAbhqWgNFLOzid",
+      "fields": {
+        "godzina": {
+          "stringValue": "15:30"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              },
+              {
+                "stringValue": "Promocja"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Tom i Jerry: Przygoda w muzeum"
+        },
+        "sala": {
+          "stringValue": "duza"
+        },
+        "data": {
+          "stringValue": "2026-06-16"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "film_id": {
+          "stringValue": "Gk5cSC4lIG5XtrtElROw"
+        }
+      },
+      "createTime": "2026-06-08T15:45:13.573250Z",
+      "updateTime": "2026-06-08T15:45:13.573250Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/zTcEasbNMR1ajLG95oW4",
+      "fields": {
+        "sala": {
+          "stringValue": "mala"
+        },
+        "data": {
+          "stringValue": "2026-06-07"
+        },
+        "miejsca_wolne": {
+          "integerValue": "60"
+        },
+        "film_id": {
+          "stringValue": "naYQdruUuQcxySkds3QF"
+        },
+        "godzina": {
+          "stringValue": "17:30"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Napisy"
+              }
+            ]
+          }
+        },
+        "film_tytul": {
+          "stringValue": "Zawodowcy"
+        }
+      },
+      "createTime": "2026-05-30T13:49:56.891373Z",
+      "updateTime": "2026-05-30T13:49:56.891373Z"
+    },
+    {
+      "name": "projects/kinoaurum-ebbf2/databases/(default)/documents/seanse/zy0y56Z7mLU9cxzDA4Ql",
+      "fields": {
+        "film_tytul": {
+          "stringValue": "Gwiezdne wojny: Mandalorian i Grogu"
+        },
+        "typ": {
+          "arrayValue": {
+            "values": [
+              {
+                "stringValue": "2D"
+              },
+              {
+                "stringValue": "Dubbing"
+              }
+            ]
+          }
+        },
+        "godzina": {
+          "stringValue": "16:00"
+        },
+        "film_id": {
+          "stringValue": "R794WHsBNiAc5KtLUle3"
+        },
+        "data": {
+          "stringValue": "2026-05-22"
+        },
+        "miejsca_wolne": {
+          "integerValue": "210"
+        },
+        "sala": {
+          "stringValue": "duza"
+        }
+      },
+      "createTime": "2026-05-22T12:49:03.327800Z",
+      "updateTime": "2026-05-22T12:49:03.327800Z"
+    }
+  ]
+}
