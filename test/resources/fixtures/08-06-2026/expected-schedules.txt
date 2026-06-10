@@ -1158,7 +1158,6 @@ cinemaScrapes:
   Cinema City Zielona Góra / Diabeł ubiera się u Prady 2 / 2026
   Cinema1 / Diabeł ubiera się u prady 2 / —
   Dolnośląskie Centrum Filmowe / Diabeł ubiera się u Prady 2 / 2026
-  Farys / Diabeł ubiera się u Prady 2 / 2026
   Gdyńskie Centrum Filmowe / Diabeł ubiera się u Prady 2 / —
   Helios Aleja Bielany / Diabeł ubiera się u Prady 2 / 2026
   Helios Alfa / Diabeł ubiera się u Prady 2 / 2026
@@ -1509,19 +1508,15 @@ cinemaScrapes:
   Helios Żory / Drzewo magii / 2026
   Janosik / Drzewo magii / 2026
   Kino Atlantic / Drzewo magii / 2026
-  Kino Aurum / Drzewo magii / 2026
   Kino Bajka / Drzewo magii / —
   Kino Bułgarska 19 / Drzewo magii / 2026
   Kino Centrum CSW Toruń / Drzewo magii / —
-  Kino Centrum Skarżysko-Kamienna / Drzewo magii / 2026
   Kino Charlie / Drzewo Magii / —
   Kino DK / Drzewo magii / 2026
   Kino Hel / Drzewo magii / 2026
   Kino Ignacy / Drzewo magii / 2026
   Kino Ikar / Drzewo magii / 2026
-  Kino Jedność / Drzewo magii / 2026
   Kino KDK / Drzewo magii / 2026
-  Kino Karolinka / Drzewo magii / 2026
   Kino Kika / DRZEWO MAGII / —
   Kino Lewart / Drzewo magii / 2026
   Kino MCSW Elektrownia / DRZEWO MAGII / —
@@ -1540,9 +1535,7 @@ cinemaScrapes:
   Kino Przedwiośnie / Drzewo magii / 2026
   Kino SCK / Drzewo magii / 2026
   Kino Scena Kultura / Drzewo magii / 2026
-  Kino Sokolnia / Drzewo magii / 2026
   Kino Sokół / Drzewo magii / 2026
-  Kino Sokół Brzozów / Drzewo magii / 2026
   Kino Tur / Drzewo magii / 2026
   Kino Twierdza / Drzewo magii / 2026
   Kino Wisła / Drzewo magii / 2026
@@ -1559,7 +1552,6 @@ cinemaScrapes:
   Multikino Rumia / Drzewo magii / 2026
   Multikino Świdnica / Drzewo magii / 2026
   Muza / Drzewo magii / 2026
-  Nowe Kino Warszawa / Drzewo magii / 2026
   OKF Iluzja / Drzewo magii / —
   Patria / Drzewo magii / 2026
   Piast / Drzewo magii / 2026
@@ -3080,14 +3072,12 @@ cinemaScrapes:
   Helios Outlet Park / Kurozając i Świątynia Świstaka / 2025
   Helios Rzeszów / Kurozając i Świątynia Świstaka / —
   Helios Żory / Kurozając i świątynia Świstaka / 2025
-  Kino CK / Kurozając i świątynia Świstaka / 2025
   Kino MCK / Kurozając i świątynia Świstaka / 2025
   Kino MOKiS / Kurozając i świątynia Świstaka / 2025
   Kino Na Biegunach / Kurozając i świątynia Świstaka / 2025
   Kino Promień / Kurozając i świątynia Świstaka / 2025
   Kino Przedwiośnie / Kurozając i świątynia Świstaka / 2026
   Kino SDK / Kurozając i świątynia Świstaka / 2025
-  Metalowiec / Kurozając i świątynia Świstaka / 2025
   Multikino Kłodzko / Kurozając i świątynia Świstaka / 2025
 showings:
   2026-06-08  Cinema City Poznań Plaza      10:00 Sala 4 2D/DUB
@@ -3472,7 +3462,6 @@ cinemaScrapes:
   Helios Łódź / Michael / 2026
   Helios Żory / Michael / 2026
   Kino Atlantic / Michael / 2026
-  Kino CK / Michael / 2026
   Kino Charlie / Michael / —
   Kino Nowe Horyzonty / Michael / 2026
   Kino Wisła / Michael / 2026
@@ -3975,10 +3964,8 @@ cinemaScrapes:
   Helios Łódź / Mortal Kombat II / 2025
   Janosik / Mortal Kombat II / 2026
   Kino Ignacy / Mortal Kombat II / 2026
-  Kino Krapkowice / Mortal Kombat II / 2026
   Kino MOKiS / Mortal Kombat II / 2026
   Kino Nawojka / Mortal Kombat II / 2026
-  Metalowiec / Mortal Kombat II / 2026
   Zacisze / Mortal Kombat II / 2026
 showings:
   2026-06-08  Cinema City Kinepolis         15:50 Sala 5 2D/NAP
@@ -4282,7 +4269,6 @@ cinemaScrapes:
   Bałtyk / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Cinema Lumiere / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Cinema1 / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Farys / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Gdyńskie Centrum Filmowe / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Helios Aleja Bielany / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Helios Alfa / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
@@ -4328,7 +4314,6 @@ cinemaScrapes:
   Jaworzyna / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   KINOkawiarnia Stacja Falenica / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Agrafka / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / —
-  Kino Aurum / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino Bajka / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Bułgarska 19 / Niesamowite przygody skarpetek 3. ale kosmos! / 2026
   Kino CK Lublin / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -6093,7 +6078,6 @@ cinemaScrapes:
   Kino Moskwa / POSŁANI / —
   Kino Promień / Posłani / 2026
   Kino Zdrój / Posłani / 2026
-  Metalowiec / Posłani / 2026
   Na Starówce / Posłani / 2026
   Przedwiośnie / Posłani / 2026
 showings:
@@ -6450,7 +6434,6 @@ cinemaScrapes:
   Kino Pałacowe / Pucio / 2026
   Kino Tur / Pucio / 2026
   Kozienicki Dom Kultury / Pucio / 2026
-  Metalowiec / Pucio / 2026
   Multikino Czechowice-Dziedzice / Pucio / 2026
   Multikino Świdnica / Pucio / 2026
   Służewski Dom Kultury / Pucio / —
@@ -6896,7 +6879,6 @@ cinemaScrapes:
   Helios Żory / Straszny film / 2026
   Janosik / Straszny film / 2026
   Jutrzenka / Straszny film / 2026
-  Kino Aurum / Straszny film / 2026
   Kino DK / Straszny film / 2026
   Kino Diana / Straszny film / 2026
   Kino Górnik / Straszny film / 2026
@@ -6912,7 +6894,6 @@ cinemaScrapes:
   Kino Planeta / Straszny film / 2026
   Kino Przedwiośnie / Straszny film / 2026
   Kino SCK / Straszny film / 2026
-  Kino Sokolnia / Straszny film / 2026
   Kino Sokół / Straszny film / 2026
   Kino Sokół Dąbrowa Tarnowska / Straszny film / 2026
   Kino Sokół Sokółka / Straszny film / 2026
@@ -6927,7 +6908,6 @@ cinemaScrapes:
   Multikino Kłodzko / Straszny film / 2026
   Multikino Rumia / Straszny film / 2026
   Multikino Świdnica / Straszny film / 2026
-  Nowe Kino Warszawa / Straszny film / 2026
   Piast / Straszny film / 2026
   Pionier / Straszny film / 2026
   Planet Cinema / Straszny film / 2026
@@ -7521,10 +7501,8 @@ cinemaScrapes:
   KINOkawiarnia Stacja Falenica / TOM I JERRY: PRZYGODA W MUZEUM / —
   Kino Astra / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Atlantic / Tom i Jerry: Przygoda w muzeum / 2025
-  Kino Aurum / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Bajka / Tom i Jerry: Przygoda w muzeum / —
   Kino Bajka Kluczbork / Tom i Jerry: Przygoda w muzeum / 2025
-  Kino Centrum Skarżysko-Kamienna / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Charlie / Tom i Jerry: Przygoda w muzeum / —
   Kino Cytadela / Tom i Jerry. Przygoda w muzeum / 2026
   Kino DK / Tom i Jerry: Przygoda w muzeum / 2025
@@ -7553,7 +7531,6 @@ cinemaScrapes:
   Kino SCK / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Scena Kultura / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Sokół / Tom i Jerry: Przygoda w muzeum / 2025
-  Kino Sokół Brzozów / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Sokół Dąbrowa Tarnowska / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Sokół Sokółka / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Twierdza / Tom i Jerry: Przygoda w muzeum / 2025
@@ -8263,8 +8240,6 @@ cinemaScrapes:
   Helios Łódź / Władcy wszechświata / 2026
   Helios Żory / Władcy Wszechświata / 2026
   Kino Centrum / Władcy Wszechświata / 2026
-  Kino Jedność / Władcy Wszechświata / 2026
-  Kino Karolinka / Władcy Wszechświata / 2026
   Kino MOK Centrum / Władcy Wszechświata / 2026
   Kino Na Biegunach / Władcy Wszechświata / 2026
   Kino ODEON / Władcy Wszechświata / 2026
@@ -8496,10 +8471,8 @@ cinemaScrapes:
   KINOkawiarnia Stacja Falenica / Zawodowcy / —
   Kino Apollo Wałbrzych / Zawodowcy / —
   Kino Atlantic / Zawodowcy / 2026
-  Kino Aurum / Zawodowcy / 2026
   Kino Awangarda 2 / Zawodowcy / 2026
   Kino Bajka Kluczbork / Zawodowcy / 2026
-  Kino Centrum Skarżysko-Kamienna / Zawodowcy / 2026
   Kino Głębocka 66 / Zawodowcy / —
   Kino Hel / Zawodowcy / 2026
   Kino Iluzjon / Zawodowcy / 2026
@@ -8525,7 +8498,6 @@ cinemaScrapes:
   Kino Rialto / Zawodowcy / 2026
   Kino SCK / Zawodowcy / 2026
   Kino Scena Kultura / Zawodowcy / 2026
-  Kino Sokolnia / Zawodowcy / 2026
   Kino Sokół / Zawodowcy / 2026
   Kino Stary Młyn / Zawodowcy / 2026
   Kino Tur / Zawodowcy / 2026
