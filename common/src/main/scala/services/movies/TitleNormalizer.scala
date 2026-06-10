@@ -1,6 +1,28 @@
 package services.movies
 
+import services.titlerules.{TitleRuleSet, TitleRuleDefaults}
+
 object TitleNormalizer {
+  // The active rule set drives every prefix/suffix/canonical strip below. It's
+  // swapped wholesale by the change-stream consumer when an admin edits a rule;
+  // seeded with the migrated defaults so behaviour is correct before Mongo loads
+  // and in tests that don't wire a rules store. `@volatile` makes the swap
+  // visible to scrape/enrich threads without locking the hot path.
+  @volatile private var active: TitleRuleSet = TitleRuleDefaults.ruleSet
+
+  /** Install a new rule set (called by the `titleRules` change-stream consumer). */
+  def installRules(rs: TitleRuleSet): Unit = active = rs
+
+  /** The currently-active rule set — read by the admin preview + backfill. */
+  def currentRules: TitleRuleSet = active
+
+  /** Restore the in-code defaults. Tests that mutate rules MUST call this in
+   *  teardown so they don't leak a rule set into the next spec. */
+  def resetToDefaults(): Unit = active = TitleRuleDefaults.ruleSet
+
+  /** Apply a cinema's per-cinema cleanup rules to a raw scraped title. */
+  def cinemaClean(cinemaId: String, raw: String): String = active.perCinema(cinemaId, raw)
+
   // "Mortal Kombat 2" and "Mortal Kombat II" should collapse.
   private val ArabicToRoman = Map(
     "1" -> "I", "2" -> "II", "3" -> "III", "4" -> "IV", "5" -> "V",
@@ -15,120 +37,42 @@ object TitleNormalizer {
 
   // ── Cinema-decoration stripping ────────────────────────────────────────────
   //
-  // Single set of patterns reused by:
-  //   - mergeKey / preferredDisplay  — so "Top Gun 40th Anniversary" and a
-  //     plain "Top Gun" listing collapse into one card.
-  //   - MovieService.searchTitle — so the TMDB/OMDb query is "Top Gun",
-  //     not "Top Gun 40th Anniversary" (the latter doesn't match anything).
-  //
-  // Patterns target decoration that cinemas apply to a base film title —
-  // anniversary rereleases, remasters, cycle screenings, slash postfixes,
-  // language-version suffixes (the `apiQuery`-only set below adds programme
-  // prefixes, accessibility tags, and "+ <event>" suffixes that mark a
-  // separate screening). Each is anchored so that a sequel ("Top Gun:
-  // Maverick", "Mortal Kombat II"), a real-titled film ("Rocznica"), or a
-  // synopsis-style line can't be hit.
-  private val CyklPrefix        = """^Cykl\s+[„"][^„""]*[„""]?\s+[-–—]\s+""".r
-  private val SlashSuffix       = """\s+/\s+.+$""".r
-  private val AnniversarySuffix = """(?i)\s*[-–—|.]?\s*\d+(?:st|nd|rd|th)?\.?\s*(?:anniversary|rocznica)\s*$""".r
-  private val RestoredSuffix    = """(?i)\s*[-–—|.]?\s*\d+\s*k\s+(?:restored|remaster(?:ed)?)\s*$""".r
-  private val WersjaSuffix      = """(?i)\s*[-–—.]\s+wersja\s+\p{L}+\s*$""".r
-  // A " + <event>" suffix marks a screening with an associated event — a
-  // producer/director Q&A, a meeting, a discussion ("Ojczyzna + spotkanie z
-  // producentką Ewą Puszczyńską"). The event differentiates the screening
-  // (its own showtimes), so it stays its OWN row/cache key — same treatment
-  // as a programme prefix — and the suffix is stripped only by `apiQuery` so
-  // the plain film and the event screening enrich off the same base title.
-  // Require the suffix to start with a letter so mathematical titles
-  // ("Orwell: 2 + 2 = 5") aren't truncated, and the `[^)]*` tail keeps the
-  // strip from crossing into a paren group — `(AD + CC + PJM)` is a
-  // Kino-bez-barier accessibility tag, handled by `AccessibilityTag` below.
-  private val PlusSuffix        = """\s+\+\s+\p{L}[^)]*$""".r
-  // Cinema programme prefixes — fixed-string labels cinemas prepend to a
-  // film title to indicate accessibility / sensory-friendly / themed /
-  // festival screenings. The colon-and-space delimiter is the giveaway.
-  // Listed explicitly rather than via a general `^[^:]+:\s+` because real
-  // titles routinely include colons ("Top Gun: Maverick", "Star Wars: A New
-  // Hope"). Kept in the display title and cache key (a programme screening is
-  // its own row); stripped only by `apiQuery` for upstream lookups. Add new
-  // programmes / festival banners here as cinemas introduce them.
-  // The kids-morning programme ships in several spellings — "Filmowe Poranki",
-  // singular "Filmowy Poranek", "Poranek dla dzieci", seasonal "Zimowe
-  // Poranki" — and often carries a series subtitle before the colon ("Filmowe
-  // Poranki - Miraculous: …", "Zimowe Poranki z Bobem Budowniczym: …"). The
-  // optional `\s+[^:]+` tail swallows that subtitle so the whole banner is
-  // stripped down to the film that follows the colon, for upstream lookups
-  // only — the display row keeps the banner (it's its own screening).
-  private val ProgrammePrefix   =
-    ("""(?i)^(?:Kino\s+bez\s+barier|""" +
-     """Pokaz\s+sensorycznie\s+przyjazny|""" +
-     """Filmow[ey]\s+Poran(?:ki|ek)(?:\s+[^:]+)?|""" +
-     """Zimowe\s+Poranki(?:\s+[^:]+)?|""" +
-     """Poranek\s+dla\s+dzieci|""" +
-     """Filmowy\s+Klub\s+Seniora|""" +
-     """Dyskusyjny\s+Klub\s+Filmowy|""" +
-     """Filmowe\s+spotkania\s+z\s+psychoanaliz[ąa]|""" +
-     """Cinema\s+Italia\s+Oggi|""" +
-     """Plenerowe\s+Pa[łl]acowe):\s+""").r
-  // Trailing accessibility tag — "(AD)", "(AD + CC)", "(AD + CC + PJM)" or
-  // a truncated variant where the closing paren got chopped during display
-  // clipping. AD = Audio Description, CC = Closed Captions, PJM = Polish
-  // Sign Language. Anchored on "(AD" so we don't strip random parens.
-  private val AccessibilityTag  = """(?i)\s*\(\s*AD\b[^)]*\)?\s*$""".r
+  // The patterns formerly hardcoded here now live in the active `TitleRuleSet`
+  // (seeded from `TitleRuleDefaults`, editable in Mongo via the admin page). The
+  // tiers are unchanged:
+  //   - `searchTitle` (GlobalStructural) — decoration in the merge key + display
+  //     grouping: "Top Gun 40th Anniversary" ≡ "Top Gun".
+  //   - `apiQuery` (Search tier on top of structural) — also strips programme
+  //     prefixes / accessibility tags / "+ <event>" suffixes for upstream
+  //     lookups, while the display row keeps them (a programme screening is its
+  //     own row).
+  //   - `canonical` (Canonical tier on top of structural) — cross-cinema
+  //     spelling unifications folded into the stable docId.
 
   /** Strip cinema decoration (anniversary, restored, Cykl prefix, slash
-   *  postfix, language-version suffix). Display titles intentionally keep
-   *  these — used for cache-key grouping and as the base form external-API
-   *  lookups build on (via `apiQuery`).
-   *
-   *  Decoration that marks a genuinely distinct screening — an
-   *  accessibility/programme prefix (Kino bez barier, Pokaz sensorycznie,
-   *  "(AD + CC + PJM)") or a "+ <event>" suffix (a producer Q&A, a meeting) —
-   *  is deliberately NOT stripped here so cache keys preserve the cinema's
-   *  distinction between a regular screening and a programme/event screening
-   *  of the same film (different filmUrls, different showtimes — must remain
-   *  separate rows). That stripping happens in `apiQuery` below, used only by
-   *  external resolvers (TMDB / Filmweb / MC / RT / IMDb) where we want
-   *  "Kino bez barier: Freak Show (AD)" to query as just "Freak Show".
-   */
-  def searchTitle(display: String): String = {
-    val a = CyklPrefix.replaceFirstIn(display, "")
-    val b = SlashSuffix.replaceFirstIn(a, "")
-    val d = AnniversarySuffix.replaceFirstIn(b, "")
-    val e = RestoredSuffix.replaceFirstIn(d, "")
-    WersjaSuffix.replaceFirstIn(e, "").trim
-  }
+   *  postfix, language-version suffix) via the GlobalStructural rules. Display
+   *  titles intentionally keep the programme/accessibility/event decoration —
+   *  that lives in the Search tier (`apiQuery`) so cache keys stay distinct. */
+  def searchTitle(display: String): String = active.structural(display)
 
-  /** Everything `searchTitle` strips PLUS the accessibility-programme
-   *  prefix, the trailing accessibility tag, and the "+ <event>" suffix.
-   *  Used by every external-API resolver so a row whose cinema-reported title
-   *  is "Kino bez barier: Freak Show (AD + CC + PJM)" or "Ojczyzna +
-   *  spotkanie z producentką Ewą Puszczyńską" queries upstream as just
-   *  "Freak Show" / "Ojczyzna" — same canonical film as the plain row, found
-   *  cleanly instead of via a director-walk fallback onto a different film by
-   *  the same director.
-   */
-  def apiQuery(display: String): String = {
-    val stripped  = ProgrammePrefix.replaceFirstIn(display, "")
-    val tagless   = AccessibilityTag.replaceFirstIn(stripped, "")
-    val eventless = PlusSuffix.replaceFirstIn(tagless, "")
-    searchTitle(eventless)
-  }
+  /** Everything `searchTitle` strips PLUS the programme prefix, trailing
+   *  accessibility tag, and "+ <event>" suffix (the Search-tier rules). Used by
+   *  every external-API resolver so "Kino bez barier: Freak Show (AD + CC + PJM)"
+   *  queries upstream as just "Freak Show". */
+  def apiQuery(display: String): String = active.search(display)
 
   /** When `title` opens with a recognised programme prefix (Kino bez barier,
    *  Filmowy Klub Seniora, …), return the matched prefix INCLUDING the trailing
    *  ": " delimiter, so a caller can split the prefix from the film title and
    *  case each half on its own. None when no programme prefix is present. */
-  def programmePrefix(title: String): Option[String] =
-    ProgrammePrefix.findPrefixMatchOf(title).map(_.matched)
+  def programmePrefix(title: String): Option[String] = active.programmePrefix(title)
 
   // Conditional cleanups for merging — applied only when another title in
   // `allTitles` reduces to the same canonical form. Builds on `searchTitle` so
   // anniversary/wersja variants merge with their base film, then adds the
   // cross-cinema spelling unifications (Gwiezdne Wojny prefix, " & " → " i ")
   // that aren't needed for enrichment lookups.
-  private def canonical(t: String): String =
-    searchTitle(t).stripPrefix("Gwiezdne Wojny: ").replace(" & ", " i ")
+  private def canonical(t: String): String = active.canonical(t)
 
   // Last-resort collapse for titles that share words + order but differ only
   // in punctuation/whitespace ("Top Gun Maverick" vs "Top Gun: Maverick").
