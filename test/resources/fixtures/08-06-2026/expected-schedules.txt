@@ -4004,10 +4004,10 @@ originalTitle:     Monterey Pop
 imdbRating:        7.9
 metascore:         77
 rottenTomatoes:    96
-filmwebRating:     7.87644
+filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/monterey-pop
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/monterey_pop
-filmwebUrl:        https://www.filmweb.pl/film/Monterey+Pop-1968-140039
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157446
 cinemaScrapes:
@@ -5087,10 +5087,10 @@ originalTitle:     Vie privée
 imdbRating:        6.0
 metascore:         67
 rottenTomatoes:    81
-filmwebRating:     5.67321
+filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/a-private-life
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/a_private_life_2025
-filmwebUrl:        https://www.filmweb.pl/film/Ostatnia+sesja+w+Pary%C5%BCu-2025-10063368
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/ostatnia-sesja-w-paryzu
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/ostatnia-sesja-w-paryzu

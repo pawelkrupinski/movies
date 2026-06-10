@@ -60,6 +60,13 @@ trait MovieCache {
 
   // ── Internal surface (services.* only) ───────────────────────────────────
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey
+  /** The key of the existing row whose normalised cleanTitle matches `key`'s,
+   *  regardless of year. A `MovieRecordCreated` event can carry a pre-
+   *  canonicalisation `(title, year)` that no longer addresses the row after
+   *  `recordCinemaScrape` promoted it to its canonical key — the TMDB stage
+   *  resolves through this so it always reads/writes the live row rather than
+   *  spawning a phantom at the stale key. None when no such row exists yet. */
+  private[services] def canonicalKeyFor(key: CacheKey): Option[CacheKey]
   private[services] def get(key: CacheKey): Option[MovieRecord]
   private[services] def isNegative(key: CacheKey): Boolean
   private[services] def put(key: CacheKey, e: MovieRecord): Unit
@@ -238,6 +245,14 @@ class CaffeineMovieCache(
    *  of the key, so the canonical never depends on write order. */
   private def canonicalRank(k: CacheKey): (Boolean, Int, String) =
     (k.year.isEmpty, k.year.getOrElse(Int.MaxValue), k.cleanTitle)
+
+  private[services] def canonicalKeyFor(key: CacheKey): Option[CacheKey] = {
+    import scala.jdk.CollectionConverters._
+    val target = TitleNormalizer.sanitize(key.cleanTitle)
+    positive.asMap().asScala.keysIterator
+      .filter(k => TitleNormalizer.sanitize(k.cleanTitle) == target)
+      .minByOption(canonicalRank)
+  }
 
   /** Collapse two same-tmdbId rows into one. The surviving key is chosen by
    *  `canonicalRank` (NOT arrival order), and the record is the union of every
@@ -424,7 +439,23 @@ class CaffeineMovieCache(
       // films don't contend.
       withTitleLock(displayTitle) {
         val primary = keyOf(displayTitle, cm.movie.releaseYear)
-        val key     = redirectToExistingVariant(primary).getOrElse(primary)
+        // Land the slot on the *canonical* key for this film, chosen by
+        // `canonicalRank` (NOT arrival order). When this cinema's primary key
+        // out-ranks the existing variant's key — a reported year where the row
+        // was created yearless, a lower year, or a casing that sorts first — we
+        // promote the whole row onto the better key before writing. Without
+        // this the row's stored `(cleanTitle, year)` was pinned by whichever
+        // cinema's scrape happened to create it first, so two scrape orders (or
+        // two machines' thread schedules) persisted the same film under
+        // different keys and could drop a slot. `displayTitle` (the rendered
+        // title) is unaffected — it's `preferredDisplay` over every spelling.
+        val key = redirectToExistingVariant(primary) match {
+          case Some(existingKey) =>
+            val canonical = Seq(primary, existingKey).minBy(canonicalRank)
+            if (canonical != existingKey) rekey(existingKey, canonical, identity)
+            canonical
+          case None => primary
+        }
         val existingOpt = Option(positive.getIfPresent(key))
         val existing    = existingOpt.getOrElse(MovieRecord())
         // Two-stage scrapers (today: Kino Muza) leave `cm.posterUrl` /

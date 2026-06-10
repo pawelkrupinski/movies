@@ -234,10 +234,16 @@ class MovieService(
   // MovieRecord, or None when TMDB has no match. Does NOT publish events —
   // callers decide.
   private def runTmdbStageSync(
-    key:               CacheKey,
+    rawKey:            CacheKey,
     originalTitleHint: Option[String] = None,
     directorHint:      Option[String] = None
-  ): Option[(CacheKey, MovieRecord)] =
+  ): Option[(CacheKey, MovieRecord)] = {
+    // The event may carry a `(title, year)` the row no longer lives under —
+    // `recordCinemaScrape` canonicalises a film's key as variants fold, so an
+    // early cinema's `MovieRecordCreated` can address a stale key. Resolve to
+    // the live row's key up front so the read / carry-forward / re-key below all
+    // act on the real row instead of spawning a phantom at the stale key.
+    val key = cache.canonicalKeyFor(rawKey).getOrElse(rawKey)
     resolveTmdb(key.cleanTitle, key.year, originalTitleHint, directorHint).map { case (hit, imdbId) =>
       // The slow HTTP fetch happens OUTSIDE the title lock so concurrent
       // cinema scrapes for the same title aren't blocked for its duration.
@@ -333,6 +339,7 @@ class MovieService(
         (targetKey, toWrite)
       }
     }
+  }
 
   // IMDb / Filmweb / Metacritic / Rotten Tomatoes refresh logic lives in the
   // dedicated *Ratings classes. `AppLoader` subscribes each one's
