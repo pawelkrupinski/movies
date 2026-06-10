@@ -239,7 +239,7 @@ private fun TrailerSection(trailers: List<String>) {
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun TrailerPlayer(embedUrl: String) {
-    val url = remember(embedUrl) { trailerEmbedUrl(embedUrl) }
+    val html = remember(embedUrl) { embedHtml(embedUrl) }
     AndroidView(
         modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(8.dp)),
         factory = { ctx ->
@@ -247,9 +247,9 @@ private fun TrailerPlayer(embedUrl: String) {
                 settings.javaScriptEnabled = true
                 settings.mediaPlaybackRequiresUserGesture = false
                 settings.domStorageEnabled = true
-                // An HTML5 video player still needs a chrome client to play in a
-                // WebView (and to hand off fullscreen) — without it the embed
-                // renders but tapping play does nothing.
+                // An HTML5 iframe player (YouTube/Vimeo) needs a chrome client to
+                // actually play video in a WebView (and to hand off fullscreen) —
+                // without it the embed renders but tapping play does nothing.
                 webChromeClient = WebChromeClient()
                 setBackgroundColor(android.graphics.Color.BLACK)
             }
@@ -258,25 +258,51 @@ private fun TrailerPlayer(embedUrl: String) {
         // actually changes, otherwise an in-progress trailer is reloaded from
         // scratch each time the flow-driven detail screen recomposes.
         update = { web ->
-            if (web.tag != url) {
-                web.tag = url
-                web.loadUrl(url)
+            if (web.tag != html) {
+                web.tag = html
+                web.loadDataWithBaseURL(TrailerEmbedBaseUrl, html, "text/html", "utf-8", null)
             }
         },
     )
 }
 
 /**
- * The provider embed URL ([services.movies.TrailerEmbed.embedUrlFor] shape from
- * the server — `youtube.com/embed/ID`, `player.vimeo.com/video/ID`) with inline
- * autoplay params appended so the trailer starts on open.
+ * The base origin the trailer iframe is loaded under. It MUST be a genuine
+ * third-party https origin — our own site, the same one the web template embeds
+ * trailers from — not `youtube.com` and not a synthetic/opaque origin.
  *
- * Loaded DIRECTLY via `WebView.loadUrl` (a real https navigation) rather than
- * wrapped in an `<iframe>` inside a `loadDataWithBaseURL` document: YouTube's
- * player won't start inside that synthetic-origin frame, so the old approach
- * rendered the embed but never played. Navigating straight to the embed page
- * gives the player a genuine youtube.com / vimeo.com origin.
+ * History: loading the embed as a top-level `WebView.loadUrl` navigation
+ * (`youtube.com/embed/ID`) renders the page but YouTube refuses to play — embed
+ * URLs are built for iframes, and a top-level load has no embedding referer.
+ * Wrapping it in an iframe under `baseURL = "https://www.youtube.com"` also
+ * failed: a fake same-origin youtube.com parent breaks the player's parent
+ * handshake, so it renders but the play button is dead. Using our real site
+ * origin makes Android present exactly the referer YouTube already allows
+ * playback for on the web — this matches the proven iOS fix
+ * (TrailerEmbedHTML + WKWebView under the same `kinowo.fly.dev` base).
  */
+internal const val TrailerEmbedBaseUrl = "https://kinowo.fly.dev"
+
+/**
+ * Minimal full-bleed iframe page for a provider embed URL
+ * ([services.movies.TrailerEmbed.embedUrlFor] shape from the server —
+ * `youtube.com/embed/ID`, `player.vimeo.com/video/ID`), with inline autoplay
+ * params appended so the trailer starts on open.
+ */
+internal fun embedHtml(embedUrl: String): String {
+    val src = trailerEmbedUrl(embedUrl).replace("&", "&amp;").replace("\"", "&quot;")
+    return """
+        <!DOCTYPE html><html><head>
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>*{margin:0;padding:0;overflow:hidden}body{background:#000}
+        iframe{width:100%;height:100%;position:absolute;top:0;left:0;border:0}</style>
+        </head><body>
+        <iframe src="$src" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+        </body></html>
+    """.trimIndent()
+}
+
+/** A provider embed URL with inline autoplay params appended (idempotent). */
 internal fun trailerEmbedUrl(embedUrl: String): String =
     if (embedUrl.contains("autoplay=")) embedUrl
     else embedUrl + (if (embedUrl.contains("?")) "&" else "?") + "autoplay=1&playsinline=1"
