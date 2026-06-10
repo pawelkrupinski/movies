@@ -1,15 +1,11 @@
 package pl.kinowo.ui.detail
 
-import android.app.Activity
-import android.graphics.Bitmap
 import android.graphics.Color
-import android.graphics.Rect
-import android.os.Handler
-import android.os.Looper
 import android.os.SystemClock
-import android.view.PixelCopy
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
@@ -17,53 +13,42 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import pl.kinowo.model.Film
-import pl.kinowo.model.FilmDetails
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.math.abs
 
 /**
- * On-device **behavioural** regression: the inline trailer must actually *play*.
+ * On-device proof that inline trailers actually PLAY — the layer the off-device
+ * [TrailerPlayerTest] (Robolectric) can't reach.
  *
- * This is the layer the off-device [TrailerPlayerTest] (Robolectric) cannot
- * reach. Robolectric's WebView is a shadow that loads nothing, so that test can
- * only pin the *mechanism* — that the player loads an iframe document under our
- * real origin via `loadDataWithBaseURL`, not a dead top-level `loadUrl`. Whether
- * a real YouTube video renders moving pixels can only be observed on a real
- * WebView with real network and a real video decoder — i.e. a connected phone.
+ * Why JavaScript and not pixels: PixelCopy / screencap read YouTube's video back
+ * as a blank surface (it renders on a hardware overlay), so pixel-motion sampling
+ * measures page chrome, not the film — it can't tell a playing trailer from an
+ * error screen. Instead we read playback state directly:
  *
- * How it observes "playing" without an API key or cross-origin access into the
- * YouTube iframe: it captures the trailer's pixels twice, a beat apart, with
- * [PixelCopy] (the one capture API that reads hardware/video surfaces from the
- * window — `captureToImage` returns black for an accelerated WebView). A playing
- * video makes consecutive frames differ; a static error page ("Video
- * unavailable", the failure mode of a top-level embed navigation) does not.
+ *  - [productionEmbedStrategyPlays] loads the embed exactly as production does —
+ *    an iframe under our real site origin via loadDataWithBaseURL — but wired
+ *    through the YouTube IFrame Player API, whose onStateChange/onError fire in
+ *    the parent doc (same-origin), so the player's true state is readable across
+ *    the cross-origin iframe boundary. Asserts it reaches PLAYING with no error.
+ *  - [topLevelNavigationIsRejected] is the negative control: the pre-fix approach
+ *    (a top-level loadUrl to the embed URL) returns YouTube Error 153 and never
+ *    plays. Without it, the positive test couldn't prove it catches the bug.
  *
- * - [trailerActuallyPlaysOnDevice] renders the real [DetailScreen] and asserts
- *   the trailer animates — the bug this guards is "renders but never plays".
- * - [topLevelEmbedNavigationStaysDead] is the discriminating negative control:
- *   it loads the same video the *old broken way* (top-level `loadUrl` to the
- *   embed URL) and asserts it does NOT animate. Without it, a test that always
- *   passed would be indistinguishable from one that actually catches the bug.
+ * Embed URLs are built for iframes; a top-level load has no embedding referer, so
+ * YouTube rejects it (Error 153). The fix — and the proven iOS approach — is to
+ * embed under our own origin, the referer YouTube already allows on the web.
  *
- * Run on a connected, unlocked, network-connected device/emulator:
- *   `./gradlew app:connectedDebugAndroidTest`
- * Not part of CI (no device layer there, and it needs live YouTube).
- *
- * The thresholds below ([MOTION_THRESHOLD] etc.) are deliberately conservative —
- * a playing video moves a large fraction of pixels, a still frame ~none — but
- * they are the one thing to re-check on the first real-device run, per the
- * project's "tune visuals on the device, don't guess" rule.
+ * Run on a connected, unlocked, online device:
+ *   `./gradlew app:connectedDebugAndroidTest \
+ *     -Pandroid.testInstrumentationRunnerArguments.class=pl.kinowo.ui.detail.TrailerPlaybackTest`
+ * Not in CI (needs a device + live YouTube). Uses a public, embeddable clip;
+ * swap [VIDEO_ID] if it ever goes private.
  */
 @RunWith(AndroidJUnit4::class)
 class TrailerPlaybackTest {
@@ -71,37 +56,47 @@ class TrailerPlaybackTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
-    private val film = Film(title = "Test Trailer", posterURL = "https://example.com/x.jpg")
-
     @Test
-    fun trailerActuallyPlaysOnDevice() {
-        val details = FilmDetails(title = film.title, trailerURLs = listOf(TRAILER_EMBED))
-        compose.setContent { DetailScreen(film, details, onBack = {}) }
-        // Bring the trailer into view so PixelCopy reads on-screen pixels.
-        compose.onNodeWithText("Zwiastuny").performScrollTo()
-        compose.waitForIdle()
+    fun productionEmbedStrategyPlays() {
+        val web = render { it.loadDataWithBaseURL(SITE_ORIGIN, iframeApiPage(), "text/html", "utf-8", null) }
 
-        val web = compose.runOnUiThread { findWebView(compose.activity.window.decorView) }
-        requireNotNull(web) { "trailer WebView never composed" }
-
-        val best = bestMotionWithin(web, MAX_WAIT_MS, stopAt = MOTION_THRESHOLD)
-        if (best < MOTION_THRESHOLD) {
-            fail(
-                "Trailer never played: best inter-frame motion ${"%.3f".format(best)} stayed " +
-                    "below $MOTION_THRESHOLD over ${MAX_WAIT_MS}ms. The embed rendered but the " +
-                    "video never moved — the player is dead (see the iframe-under-our-origin fix).",
-            )
+        // PlayerState: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued.
+        var state = -99
+        var error: String? = null
+        val deadline = SystemClock.uptimeMillis() + PLAY_WAIT_MS
+        while (SystemClock.uptimeMillis() < deadline) {
+            val report = evalJson(web, "window.report?report():'na|na'").split("|")
+            state = report.getOrNull(0)?.toIntOrNull() ?: state
+            error = report.getOrNull(1)?.takeIf { it != "null" && it != "na" } ?: error
+            Log.i(TAG, "embed state=$state error=$error")
+            if (state == STATE_PLAYING || error != null) break
+            SystemClock.sleep(1000)
         }
+        assertTrue("Embed reported error $error — the player was rejected", error == null)
+        assertEquals("Trailer never reached PLAYING (final state=$state)", STATE_PLAYING, state)
     }
 
     @Test
-    fun topLevelEmbedNavigationStaysDead() {
-        // The pre-fix mechanism: navigate the WebView straight to the embed URL.
-        // YouTube rejects this (embed URLs are built for iframes, a top-level load
-        // carries no embedding referer) and shows a static error — so the control
-        // must observe NO motion. If this ever starts animating, YouTube changed
-        // its behaviour and the discriminator (and the fix's rationale) needs a
-        // fresh look.
+    fun topLevelNavigationIsRejected() {
+        val web = render { it.loadUrl("$EMBED?autoplay=1&playsinline=1") }
+
+        // Same-origin youtube.com document: read the <video> clock and the error
+        // screen. A top-level embed load yields Error 153 and a clock stuck at 0.
+        SystemClock.sleep(REJECT_WAIT_MS)
+        val currentTime = evalJson(web, CURRENT_TIME_JS).toDoubleOrNull() ?: -1.0
+        val errorScreen = evalJson(web, "(''+!!document.querySelector('.ytp-error'))")
+        val body = evalJson(web, "document.body.innerText.replace(/\\s+/g,' ').slice(0,120)")
+        Log.i(TAG, "topLevel currentTime=$currentTime errorScreen=$errorScreen body=$body")
+
+        assertTrue(
+            "A top-level embed navigation unexpectedly played (currentTime=$currentTime, body=$body). " +
+                "If YouTube now allows this, the embed strategy can be revisited.",
+            currentTime <= 0.0,
+        )
+    }
+
+    /** Render a fresh full-screen WebView, force the screen on, apply [load]. */
+    private fun render(load: (WebView) -> Unit): WebView {
         compose.setContent {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
@@ -114,69 +109,64 @@ class TrailerPlaybackTest {
                         setBackgroundColor(Color.BLACK)
                     }
                 },
-                update = { it.loadUrl(TRAILER_TOP_LEVEL) },
+                update = { web -> if (web.tag == null) { web.tag = "x"; load(web) } },
             )
         }
+        compose.runOnUiThread {
+            // A WebView won't play video unless its surface is on-screen.
+            compose.activity.setTurnScreenOn(true)
+            compose.activity.setShowWhenLocked(true)
+            compose.activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
         compose.waitForIdle()
-
-        val web = compose.runOnUiThread { findWebView(compose.activity.window.decorView) }
-        requireNotNull(web) { "control WebView never composed" }
-
-        val best = bestMotionWithin(web, CONTROL_WAIT_MS, stopAt = null)
-        assertTrue(
-            "A top-level navigation to the embed URL animated (motion ${"%.3f".format(best)} ≥ " +
-                "$MOTION_THRESHOLD) — it was expected to stay a dead/static error frame. The test " +
-                "can no longer tell a working trailer from a broken one; revisit the embed fix.",
-            best < MOTION_THRESHOLD,
-        )
+        return compose.runOnUiThread { findWebView(compose.activity.window.decorView) }
+            ?: error("WebView never composed")
     }
 
     /**
-     * Captures the [web] view region twice, [FRAME_GAP_MS] apart, repeatedly until
-     * [maxWaitMs] elapses, returning the largest fraction of sampled pixels that
-     * changed between a pair. If [stopAt] is non-null, returns early once a pair
-     * reaches it (so a clearly-playing video doesn't burn the full budget).
+     * The production embedding strategy (iframe under our origin) wired through the
+     * IFrame Player API so its state is observable. [report] returns
+     * "<state>|<error>" — plain pipe-joined to dodge nested-JSON quote escaping.
      */
-    private fun bestMotionWithin(web: WebView, maxWaitMs: Long, stopAt: Double?): Double {
-        val deadline = SystemClock.uptimeMillis() + maxWaitMs
-        var best = 0.0
-        while (SystemClock.uptimeMillis() < deadline) {
-            val rect = compose.runOnUiThread { webViewWindowRect(web) }
-            if (rect.width() < 2 || rect.height() < 2) {
-                SystemClock.sleep(400)
-                continue
-            }
-            val first = capture(compose.activity, rect)
-            SystemClock.sleep(FRAME_GAP_MS)
-            val second = capture(compose.activity, rect)
-            best = maxOf(best, movingFraction(first, second, PIXEL_DELTA, SAMPLE_STEP))
-            if (stopAt != null && best >= stopAt) return best
-            SystemClock.sleep(SETTLE_GAP_MS)
-        }
-        return best
+    private fun iframeApiPage() = """
+        <!DOCTYPE html><html><head>
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>*{margin:0;padding:0}body{background:#000}#p{width:100%;height:100%}</style>
+        </head><body><div id="p"></div>
+        <script>
+          window.__s=-99; window.__e=null;
+          var t=document.createElement('script'); t.src='https://www.youtube.com/iframe_api';
+          document.head.appendChild(t);
+          function onYouTubeIframeAPIReady(){
+            new YT.Player('p',{videoId:'$VIDEO_ID',
+              playerVars:{autoplay:1,playsinline:1,mute:1,origin:'$SITE_ORIGIN'},
+              events:{onStateChange:function(e){window.__s=e.data;},
+                      onError:function(e){window.__e=e.data;}}});
+          }
+          window.report=function(){return window.__s+'|'+window.__e;};
+        </script></body></html>
+    """.trimIndent()
+
+    private fun evalJson(web: WebView, js: String): String {
+        val latch = CountDownLatch(1)
+        var result = "null"
+        compose.runOnUiThread { web.evaluateJavascript(js) { v -> result = v; latch.countDown() } }
+        latch.await(3, TimeUnit.SECONDS)
+        // evaluateJavascript returns a JSON literal: strip surrounding quotes and
+        // unescape the inner ones so callers see the raw string value.
+        return result.trim('"').replace("\\\"", "\"").replace("\\\\", "\\")
     }
 
     private companion object {
-        // Big Buck Bunny — a public, embeddable, motion-rich clip. The video only
-        // needs to be playable-when-embedded; swap the id if it ever goes private.
+        const val TAG = "TrailerExp"
+        const val SITE_ORIGIN = "https://kinowo.fly.dev"
         const val VIDEO_ID = "aqz-KE-bpKQ"
-        const val TRAILER_EMBED = "https://www.youtube.com/embed/$VIDEO_ID"
-        const val TRAILER_TOP_LEVEL = "https://www.youtube.com/embed/$VIDEO_ID?autoplay=1&playsinline=1"
-
-        /** Per-pixel channel-sum change that counts as "moved" (ignores AA noise). */
-        const val PIXEL_DELTA = 24
-
-        /** Sample every Nth pixel in both axes — enough signal, far cheaper. */
-        const val SAMPLE_STEP = 4
-
-        /** Fraction of sampled pixels that must move between a frame pair to call
-         *  it "playing". A still frame ≈ 0; a playing video moves a large share. */
-        const val MOTION_THRESHOLD = 0.06
-
-        const val FRAME_GAP_MS = 900L
-        const val SETTLE_GAP_MS = 400L
-        const val MAX_WAIT_MS = 30_000L
-        const val CONTROL_WAIT_MS = 12_000L
+        const val EMBED = "https://www.youtube.com/embed/$VIDEO_ID"
+        const val CURRENT_TIME_JS =
+            "(function(){var v=document.querySelector('video');return v?v.currentTime:-1;})()"
+        const val STATE_PLAYING = 1
+        const val PLAY_WAIT_MS = 18_000L
+        const val REJECT_WAIT_MS = 8_000L
     }
 }
 
@@ -184,54 +174,4 @@ private fun findWebView(view: View): WebView? = when (view) {
     is WebView -> view
     is ViewGroup -> (0 until view.childCount).firstNotNullOfOrNull { findWebView(view.getChildAt(it)) }
     else -> null
-}
-
-/** The view's bounds in its window — the source rect [PixelCopy] copies from. */
-private fun webViewWindowRect(web: WebView): Rect {
-    val loc = IntArray(2)
-    web.getLocationInWindow(loc)
-    return Rect(loc[0], loc[1], loc[0] + web.width, loc[1] + web.height)
-}
-
-/** Copies [rect] (window coordinates) out of the live window into a Bitmap. */
-private fun capture(activity: Activity, rect: Rect): Bitmap {
-    val bmp = Bitmap.createBitmap(rect.width(), rect.height(), Bitmap.Config.ARGB_8888)
-    val latch = CountDownLatch(1)
-    val result = AtomicInteger(PixelCopy.ERROR_UNKNOWN)
-    PixelCopy.request(
-        activity.window,
-        rect,
-        bmp,
-        { code -> result.set(code); latch.countDown() },
-        Handler(Looper.getMainLooper()),
-    )
-    check(latch.await(5, TimeUnit.SECONDS)) { "PixelCopy timed out" }
-    check(result.get() == PixelCopy.SUCCESS) { "PixelCopy failed with code ${result.get()}" }
-    return bmp
-}
-
-/**
- * Fraction of pixels (sampled every [step] in both axes) whose colour changed by
- * more than [pixelDelta] channel-sum between the two frames.
- */
-private fun movingFraction(a: Bitmap, b: Bitmap, pixelDelta: Int, step: Int): Double {
-    require(a.width == b.width && a.height == b.height) { "frame sizes differ" }
-    var changed = 0
-    var total = 0
-    var y = 0
-    while (y < a.height) {
-        var x = 0
-        while (x < a.width) {
-            total++
-            val pa = a.getPixel(x, y)
-            val pb = b.getPixel(x, y)
-            val delta = abs(Color.red(pa) - Color.red(pb)) +
-                abs(Color.green(pa) - Color.green(pb)) +
-                abs(Color.blue(pa) - Color.blue(pb))
-            if (delta > pixelDelta) changed++
-            x += step
-        }
-        y += step
-    }
-    return if (total == 0) 0.0 else changed.toDouble() / total
 }
