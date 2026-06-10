@@ -43,7 +43,8 @@ class WorkerWiring {
   // diagnostic like tools.FilmwebDiff can build the real scrapers without the
   // worker's write machinery). WorkerWiring supplies the seams it varies —
   // `httoFetch`, the Zyte-routed `multikinoFetch` / `biletynaFetch`, and Helios's REST date — and
-  // wraps each raw scraper in RetryingCinemaScraper for production ticks.
+  // wraps each raw scraper in RetryingCinemaScraper (retry) + UptimeRecordingScraper
+  // (record the outcome) for production ticks.
   lazy val multikinoFetch: HttpFetch = MultikinoClient.fetchFor(httoFetch)
   // biletyna.pl 403s our datacenter IP; route Kino Kameralne through Zyte.
   lazy val biletynaFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch)
@@ -87,8 +88,9 @@ class WorkerWiring {
     City.all
       .filter(c => scrapeCities(c.slug))
       .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
-      .map(s => new RetryingCinemaScraper(
-        s, uptimeMonitor, maxAttempts = math.min(s.maxFetchAttempts, scrapeAttemptCeiling)))
+      .map(s => new UptimeRecordingScraper(
+        new RetryingCinemaScraper(s, maxAttempts = math.min(s.maxFetchAttempts, scrapeAttemptCeiling)),
+        uptimeMonitor))
 
   // ── Background concurrency budget ───────────────────────────────────────────
   // Scrape + enrichment + the rating refreshers draw run permits from ONE shared

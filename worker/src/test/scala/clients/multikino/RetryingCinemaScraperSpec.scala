@@ -1,131 +1,45 @@
 package clients.multikino
 
-import models.{Cinema, CinemaMovie, Movie, Multikino, Showtime}
+import models.Multikino
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.UptimeMonitor
-import services.cinemas.{CinemaScraper, RetryingCinemaScraper}
+import services.cinemas.{RetryingCinemaScraper, ScriptedCinemaScraper}
+import services.cinemas.ScriptedCinemaScraper.OneMovie
 
-import java.time.LocalDateTime
 import scala.concurrent.duration._
 
+/**
+ * RetryingCinemaScraper is now retry-ONLY — recording the outcome moved to
+ * UptimeRecordingScraper (see UptimeRecordingScraperSpec). These specs cover the
+ * retry/backoff contract: happy path, recover-within-the-tick, and rethrow when
+ * every attempt is exhausted.
+ */
 class RetryingCinemaScraperSpec extends AnyFlatSpec with Matchers {
 
-  private val OneMovie: Seq[CinemaMovie] = Seq(
-    CinemaMovie(
-      movie     = Movie("X"),
-      cinema    = Multikino,
-      posterUrl = None,
-      filmUrl   = None,
-      synopsis  = None,
-      cast      = Seq.empty,
-      director  = Seq.empty,
-      showtimes = Seq(Showtime(LocalDateTime.now(), Some("https://book")))
-    )
-  )
-
-  // A movie the cinema page surfaced but with no showtimes — that's still zero
-  // screenings, same as an empty result.
-  private val NoShowtimes: Seq[CinemaMovie] = Seq(
-    CinemaMovie(
-      movie     = Movie("X"),
-      cinema    = Multikino,
-      posterUrl = None,
-      filmUrl   = None,
-      synopsis  = None,
-      cast      = Seq.empty,
-      director  = Seq.empty,
-      showtimes = Seq.empty
-    )
-  )
-
-  private def scriptedScraper(plan: List[Either[Throwable, Seq[CinemaMovie]]]): CinemaScraper = new CinemaScraper {
-    private var remaining = plan
-    val cinema: Cinema    = Multikino
-    def scrapeHosts: Set[String] = Set.empty
-    def fetch(): Seq[CinemaMovie] = remaining match {
-      case Right(v) :: rest => remaining = rest; v
-      case Left(t)  :: rest => remaining = rest; throw t
-      case Nil              => throw new IllegalStateException("scripted scraper exhausted")
-    }
-  }
-
   "RetryingCinemaScraper" should "delegate to the underlying scraper on the happy path" in {
-    val s = new RetryingCinemaScraper(scriptedScraper(List(Right(OneMovie))), new UptimeMonitor(), initialBackoff = 1.millis)
+    val s = new RetryingCinemaScraper(ScriptedCinemaScraper(List(Right(OneMovie))), initialBackoff = 1.millis)
     s.fetch() shouldBe OneMovie
   }
 
   it should "preserve the wrapped scraper's cinema identity (so list lookups still work)" in {
-    val s = new RetryingCinemaScraper(scriptedScraper(List(Right(OneMovie))), new UptimeMonitor(), initialBackoff = 1.millis)
+    val s = new RetryingCinemaScraper(ScriptedCinemaScraper(List(Right(OneMovie))), initialBackoff = 1.millis)
     s.cinema shouldBe Multikino
   }
 
   it should "retry on a transient failure and return the next success" in {
     val s = new RetryingCinemaScraper(
-      scriptedScraper(List(Left(new RuntimeException("blip")), Right(OneMovie))),
-      new UptimeMonitor(),
+      ScriptedCinemaScraper(List(Left(new RuntimeException("blip")), Right(OneMovie))),
       initialBackoff = 1.millis
     )
     s.fetch() shouldBe OneMovie
   }
 
-  it should "rethrow when every retry fails" in {
+  it should "rethrow the last exception when every retry fails" in {
     val s = new RetryingCinemaScraper(
-      scriptedScraper(List.fill(3)(Left(new RuntimeException("down")))),
-      new UptimeMonitor(),
+      ScriptedCinemaScraper(List.fill(3)(Left(new RuntimeException("down")))),
       maxAttempts    = 3,
       initialBackoff = 1.millis
     )
     intercept[RuntimeException] { s.fetch() }.getMessage shouldBe "down"
-  }
-
-  it should "record only a success (green, no yellow) when a retry recovers within the tick" in {
-    val monitor = new UptimeMonitor()
-    val s = new RetryingCinemaScraper(
-      scriptedScraper(List(Left(new RuntimeException("blip")), Right(OneMovie))),
-      monitor,
-      initialBackoff = 1.millis
-    )
-    s.fetch() shouldBe OneMovie
-    val bucket = monitor.history(Multikino.displayName).head
-    bucket.successes shouldBe 1
-    bucket.failures  shouldBe 0           // the recovered blip is noise, not an uptime failure
-    bucket.errors    shouldBe empty
-    bucket.status    shouldBe "green"
-  }
-
-  it should "record a single failure (red) only when every retry is exhausted" in {
-    val monitor = new UptimeMonitor()
-    val s = new RetryingCinemaScraper(
-      scriptedScraper(List.fill(3)(Left(new RuntimeException("down")))),
-      monitor,
-      maxAttempts    = 3,
-      initialBackoff = 1.millis
-    )
-    intercept[RuntimeException] { s.fetch() }
-    val bucket = monitor.history(Multikino.displayName).head
-    bucket.successes shouldBe 0
-    bucket.failures  shouldBe 1           // only the final, exhausted attempt — not all three
-    bucket.errors.head should include ("down")
-    bucket.status    shouldBe "red"
-  }
-
-  it should "record an empty (not a success) when the scrape returns no movies" in {
-    val monitor = new UptimeMonitor()
-    val s = new RetryingCinemaScraper(scriptedScraper(List(Right(Seq.empty))), monitor, initialBackoff = 1.millis)
-    s.fetch() shouldBe empty
-    val bucket = monitor.history(Multikino.displayName).head
-    bucket.successes shouldBe 0
-    bucket.zeroes    shouldBe 1
-    bucket.status    shouldBe "zero"
-  }
-
-  it should "record an empty when movies come back with zero showtimes" in {
-    val monitor = new UptimeMonitor()
-    val s = new RetryingCinemaScraper(scriptedScraper(List(Right(NoShowtimes))), monitor, initialBackoff = 1.millis)
-    s.fetch() shouldBe NoShowtimes
-    val bucket = monitor.history(Multikino.displayName).head
-    bucket.successes shouldBe 0
-    bucket.zeroes    shouldBe 1
   }
 }

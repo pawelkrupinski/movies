@@ -19,7 +19,7 @@ import java.net.URI
  * cinema scrape". `MonitoringHttpFetch` reads the union of every scraper's
  * `scrapeHosts` (via `CinemaScraperCatalog.scrapeHosts`) and suppresses
  * per-host uptime rows for them — the cinema's health is already tracked
- * under its `displayName` by `RetryingCinemaScraper`, so a second per-host row
+ * under its `displayName` by `UptimeRecordingScraper`, so a second per-host row
  * would be a duplicate that lands in the uptime page's "Other" bucket. Because
  * the method is abstract, a newly-added cinema client can't compile without
  * declaring its host(s), so a new cinema can never silently leak into "Other".

@@ -23,7 +23,8 @@ import scala.concurrent.duration._
  *   - `today`    — the date Helios bakes into its REST URLs.
  *
  * Returns RAW scrapers. `WorkerWiring` wraps each in a `RetryingCinemaScraper`
- * for production scrape ticks; a diagnostic uses them bare.
+ * (retry) + `UptimeRecordingScraper` (record the outcome) for production scrape
+ * ticks; a diagnostic uses them bare.
  */
 class CinemaScraperCatalog(
   http:    HttpFetch,
@@ -409,7 +410,7 @@ class CinemaScraperCatalog(
 
   /** Union of every cinema scraper's HTTP hosts. `MonitoringHttpFetch`
    *  suppresses per-host uptime rows for these — each cinema's health is
-   *  already tracked under its `displayName` by `RetryingCinemaScraper`, so a
+   *  already tracked under its `displayName` by `UptimeRecordingScraper`, so a
    *  per-host row would be a duplicate landing in the uptime page's "Other"
    *  bucket. Single source of truth: a new cinema's client declares its host
    *  (forced by the abstract `CinemaScraper.scrapeHosts`) and is suppressed

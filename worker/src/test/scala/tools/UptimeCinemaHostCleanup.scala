@@ -13,7 +13,7 @@ import scala.concurrent.duration._
  *  to leave in `uptimeBuckets`.
  *
  *  Background: `MonitoringHttpFetch` once recorded every cinema scrape twice —
- *  once under the cinema's `displayName` (via `RetryingCinemaScraper`) and again
+ *  once under the cinema's `displayName` (via `UptimeRecordingScraper`) and again
  *  under the request HOST (e.g. `kinomuranow.pl`). The host rows had no home on
  *  the uptime page's Cinemas/Enrichment sections, so they piled into "Other".
  *  Going forward those hosts are SUPPRESSED at the source (their union is

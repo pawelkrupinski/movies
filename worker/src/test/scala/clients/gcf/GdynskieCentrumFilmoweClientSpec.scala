@@ -5,7 +5,6 @@ import models.GdynskieCentrumFilmowe
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.UptimeMonitor
 import services.cinemas.{GdynskieCentrumFilmoweClient, RetryingCinemaScraper}
 import tools.GetOnlyHttpFetch
 
@@ -76,7 +75,6 @@ class GdynskieCentrumFilmoweClientSpec extends AnyFlatSpec with Matchers with Op
     flakyClient.maxFetchAttempts should be > failuresBeforeRecovery
     val scraper = new RetryingCinemaScraper(
       flakyClient,
-      new UptimeMonitor(),
       maxAttempts    = flakyClient.maxFetchAttempts,
       initialBackoff = 1.millis
     )

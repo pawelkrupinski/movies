@@ -11,7 +11,7 @@ import java.util.concurrent.CompletableFuture
  *  keyed by a service name derived from the request host (see `classify`).
  *
  *  `cinemaHosts` is the set of hosts that belong to a cinema scrape. They're
- *  SUPPRESSED here (recorded as `None`) because `RetryingCinemaScraper` already
+ *  SUPPRESSED here (recorded as `None`) because `UptimeRecordingScraper` already
  *  tracks each cinema's health under its `displayName`; a second per-host row
  *  would be a duplicate cluttering the uptime page's "Other" bucket. It's
  *  passed BY-NAME and memoised: the worker derives it from
