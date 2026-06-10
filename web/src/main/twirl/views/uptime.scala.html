@@ -22,10 +22,14 @@
       margin: 16px 0 6px;
     }
     .row { display: flex; align-items: center; margin-bottom: 4px; }
+    /* The name column is a FIXED-WIDTH flex track holding the label plus its
+       client-marker chip, so the bars start at the same x in every row no matter
+       the chip. The label flexes + ellipsises; the chip is pinned to the right. */
     .name {
-      width: 200px; flex-shrink: 0; color: #aaa; white-space: nowrap;
-      overflow: hidden; text-overflow: ellipsis; font-size: 12px;
+      width: 280px; flex-shrink: 0; color: #aaa; font-size: 12px;
+      display: flex; align-items: center; gap: 6px;
     }
+    .name-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
     .bars { display: flex; gap: 1px; overflow: hidden; }
     .latency {
       margin-left: 10px; flex-shrink: 0; color: #888; font-size: 11px;
@@ -49,7 +53,7 @@
     /* A cinema's deferred-detail enrichment health, subordinate to its scrape row:
        indented, muted, with shorter bars. Same colour classes as any bar. */
     .enrichment-row { margin-top: -1px; margin-bottom: 6px; margin-left: 18px; }
-    .enrichment-row .name { width: 182px; color: #6f6f6f; font-size: 11px; }
+    .enrichment-row .name { width: 262px; color: #6f6f6f; font-size: 11px; }
     .enrichment-row .bar { height: 16px; }
     .legend {
       display: flex; gap: 16px; margin-top: 32px; font-size: 11px; color: #666;
@@ -57,16 +61,13 @@
     .legend-item { display: flex; align-items: center; gap: 5px; }
     .legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
     .empty-msg { color: #444; font-size: 12px; margin: 12px 0; }
-    /* City label on a triage row (a row pulled out of its city group). */
-    .city-chip {
-      margin-left: 8px; flex-shrink: 0; color: #777; font-size: 10px;
-      text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
-    }
-    /* Per-row client marker chips. Shared platform client vs a bespoke one. */
-    .tags { display: flex; gap: 5px; margin-left: 8px; flex-shrink: 0; }
+    /* Client marker chip, pinned to the right edge of the name column (so it
+       never shifts the bars). Shared platform client names which one; bespoke
+       clients just read "Custom". */
+    .name .tag { margin-left: auto; }
     .tag {
-      font-size: 10px; padding: 1px 6px; border-radius: 3px; white-space: nowrap;
-      border: 1px solid transparent;
+      flex-shrink: 0; font-size: 10px; padding: 1px 6px; border-radius: 3px;
+      white-space: nowrap; border: 1px solid transparent;
     }
     .tag-shared { background: #16261d; color: #5fb98a; border-color: #234d3a; }
     .tag-custom { background: #2a2233; color: #b694d6; border-color: #43395a; }
@@ -243,22 +244,25 @@
 </body>
 </html>
 
-@*  One service row. `city` is set only in the leading triage sections (where a
-    row is shown out of its city group); the per-row `tags` render as marker
-    chips next to the name (a `"kind:label"` tag styles as tag-<kind>).  *@
+@*  One service row. The name column holds the label plus the client-marker chip
+    (a `"kind:label"` tag: shared chips name the client, bespoke ones read
+    "Custom"). `city` is set only in the leading triage sections — there the row
+    is shown out of its city group, so the city rides the name's hover title
+    rather than a visible chip.  *@
 @serviceRow(s: ServiceRow, city: Option[String]) = {
   <div class="row" data-service="@s.name">
-    <div class="name" title="@s.name">@s.name</div>
-    @city.map { c => <span class="city-chip">@c</span> }
-    @if(s.tags.nonEmpty) {
-      <div class="tags">
-        @for(t <- s.tags.toSeq.sorted) {
-          @defining(t.split(":", 2)) { parts =>
-            <span class="tag tag-@parts.head" title="@t">@parts.last</span>
+    <div class="name" title="@{s.name + city.map(" · " + _).getOrElse("")}">
+      <span class="name-label">@s.name</span>
+      @for(t <- s.tags.toSeq.sorted) {
+        @defining(t.split(":", 2)) { parts =>
+          @if(parts.head == "custom") {
+            <span class="tag tag-custom" title="@parts.last">Custom</span>
+          } else {
+            <span class="tag tag-shared" title="@parts.last">@parts.last.stripSuffix("Client").stripSuffix("Scraper")</span>
           }
         }
-      </div>
-    }
+      }
+    </div>
     <div class="bars">
       @for(b <- s.bars) {
         <div class="bar @b.status@if(b.fallback){ fallback}" data-ts="@b.bucketTs" data-info="@{Json.toJson(b)(BarData.writes).toString}"></div>

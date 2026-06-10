@@ -137,15 +137,27 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     cinemasByCity.flatMap(_._2).map(_.name) should not contain cinema
   }
 
-  "the rendered /uptime page" should "show the Failing section, the city chip, and the client-marker tag" in {
+  "the rendered /uptime page" should "show a bespoke client's marker as just \"Custom\", with the city on hover" in {
     val failing = Seq(FlaggedRow(
       ServiceRow("Kino Rialto", bars("red", "red", "red"), tags = Set("custom:RialtoClient")),
       Some("Poznań")))
     val html = views.html.uptime(failing, Nil, Nil, Nil, Nil).body
     html should include ("Failing — last 3 scrapes")
-    html should include ("Poznań")            // city chip
-    html should include ("tag-custom")        // marker styled by kind
-    html should include ("RialtoClient")      // marker label
+    html should include ("""title="Kino Rialto · Poznań"""")  // city rides the name's hover title
+    html should include ("tag-custom")                       // styled by kind
+    html should include (">Custom<")                         // bespoke clients read just "Custom"
+    html should include ("""title="RialtoClient"""")         // the actual class on hover
+    html should not include "city-chip"                      // city is no longer a visible chip
+  }
+
+  it should "name the client for a shared marker, stripping the Client/Scraper suffix" in {
+    val failing = Seq(FlaggedRow(
+      ServiceRow("Kino Tatry", bars("red", "red", "red"), tags = Set("shared:FilmwebShowtimesClient")),
+      None))
+    val html = views.html.uptime(failing, Nil, Nil, Nil, Nil).body
+    html should include ("tag-shared")
+    html should include (">FilmwebShowtimes<")                 // suffix dropped for the chip
+    html should include ("""title="FilmwebShowtimesClient"""") // full class on hover
   }
 
   "the /uptime/fallback page" should "list active fallbacks, recovered cinemas, and Filmweb-only-by-design venues" in {
