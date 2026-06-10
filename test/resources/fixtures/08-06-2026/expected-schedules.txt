@@ -1194,7 +1194,6 @@ cinemaScrapes:
   Kino Awangarda 2 / Diabeł ubiera się u Prady 2 / 2026
   Kino Echo / Diabeł ubiera się u Prady 2 / 2026
   Kino GCK / Diabeł ubiera się u Prady 2 / 2026
-  Kino Kosmos / Diabeł ubiera się u Prady 2 / —
   Kino Kępa / Diabeł ubiera się u Prady 2 / —
   Kino MOKiS / Diabeł ubiera się u Prady 2 / 2026
   Kino Moskwa / DIABEŁ UBIERA SIĘ U PRADY 2 / —
@@ -1724,7 +1723,6 @@ cinemaScrapes:
   Kino Bajka Kluczbork / Dzień objawienia / 2026
   Kino Iluzjon / Dzień objawienia / 2026
   Kino Kijów / Dzień objawienia / —
-  Kino Kosmos / Dzień objawienia / —
   Kino Kultura / Dzień objawienia / —
   Kino Lewart / Dzień objawienia / 2026
   Kino Lot / Dzień objawienia / —
@@ -1855,7 +1853,7 @@ runtimeMinutes:    71
 releaseYear:       2025
 countries:         USA, Polska
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/ERUPCJA_B1_PL-po-zmniejszeniu-200x288.jpg
-synopsis.length:   873
+synopsis.length:   845
 cast:              Lena Góra, Charli XCX, Will Madden, Jeremy O. Harris, Agata Trzebuchowska
 director:          Pete Ohs
 tmdbId:            1337592
@@ -1879,7 +1877,6 @@ cinemaScrapes:
   Kino Amok / Erupcja / —
   Kino Charlie / Erupcja / —
   Kino Kika / ERUPCJA / —
-  Kino Kosmos / Erupcja / —
   Kino Kreska / Erupcja / 2025
   Kino Kępa / Erupcja / —
   Kino Luna / Erupcja / —
@@ -1891,7 +1888,6 @@ cinemaScrapes:
   Kino Rejs / Erupcja / 2025
   Kino Spektrum / Erupcja / —
   Kino U-jazdowski / Erupcja / 2025
-  Kino Światowid / Erupcja / —
   Kinoteka / Erupcja / 2026
   Mikro Bronowice / Erupcja / —
   OKF Iluzja / Erupcja / —
@@ -2164,7 +2160,7 @@ runtimeMinutes:    70
 releaseYear:       1998
 countries:         Wielka Brytania, USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/FOLLOWING-5.jpg
-synopsis.length:   1464
+synopsis.length:   590
 cast:              Jeremy Theobald, Alex Haw, Lucy Russell, John Nolan, Dick Bradsell
 director:          Christopher Nolan
 tmdbId:            11660
@@ -2183,7 +2179,6 @@ cinemaScrapes:
   Kino Muranów / Following / 1998
   Kino Pałacowe / Following / 1998
   Kino Pionier 1907 / FOLLOWING / —
-  Kino Światowid / Following / —
 showings:
   2026-06-18  Kino Pałacowe                 20:15 Sala 1 - Kinowa
 
@@ -2513,7 +2508,6 @@ cinemaScrapes:
   Kino Nowe Horyzonty / K-popowe łowczynie demonów / 2025
   Kino Rialto / K-popowe łowczynie demonów / 2025
   Kino Roma / K-POPOWE ŁOWCZYNIE DEMONÓW / —
-  Kino Światowid / K-popowe łowczynie demonów / —
   Kinoteatr Rondo / K-popowe łowczynie demonów / 2025
   Kinoteka / K-popowe łowczynie demonów / 2026
   Nasze Kino / K-popowe łowczynie demonów / 2025
@@ -3505,7 +3499,7 @@ runtimeMinutes:    106
 releaseYear:       1976
 countries:         USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Mikey_i_Nicky-plakat.png
-synopsis.length:   1264
+synopsis.length:   1072
 cast:              Peter Falk, John Cassavetes, Ned Beatty, Sanford Meisner, William Hickey, David Pendleton
 director:          Elaine May
 tmdbId:            59143
@@ -3525,7 +3519,6 @@ cinemaScrapes:
   Gdyńskie Centrum Filmowe / Mikey i Nicky / —
   KINOMUZEUM / Mikey i Nicky / 1976
   Kino Iluzjon / Mikey i Nicky / 1976
-  Kino Kosmos / Mikey i Nicky / —
   Kino Muzeum / MIKEY I NICKY / —
   Kino Nowe Horyzonty / Mikey i Nicky / 1976
   Kino Paradox / Mikey i Nicky / —
@@ -3534,7 +3527,6 @@ cinemaScrapes:
   Kino Rialto / Mikey i nicky / 1976
   Kino Spektrum / Mikey i Nicky / —
   Kino U-jazdowski / Mikey i Nicky / 1976
-  Kino Światowid / Mikey i Nicky / —
   Kino Żak / Mikey i Nicky / —
   Kinoteka / Mikey i Nicky / 2026
 showings:
@@ -4368,7 +4360,6 @@ cinemaScrapes:
   Kino Wisła / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino na Boku / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino za Rogiem Cafe / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Kino Światowid / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kinomax / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kozienicki Dom Kultury / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Mikro Bronowice / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -4815,7 +4806,6 @@ cinemaScrapes:
   Kino Rialto / Ojczyzna / 2026
   Kino Roma / Ojczyzna / —
   Kino Sfinks / OJCZYZNA / —
-  Kino Światowid / Ojczyzna / —
   KinoGram / Ojczyzna / —
   Kinomax / Ojczyzna / 2026
 showings:
@@ -4907,7 +4897,6 @@ cinemaScrapes:
   Kino Iluzjon / Orły Republiki / 2025
   Kino Kijów / Orły Republiki / —
   Kino Kika / ORŁY REPUBLIKI / —
-  Kino Kosmos / Orły republiki / —
   Kino Kultura / Orły republiki / —
   Kino Lot / Orły Republiki / —
   Kino Luna / Orły Republiki / —
@@ -4925,7 +4914,6 @@ cinemaScrapes:
   Kino Praha / Orły republiki / —
   Kino Sfinks / ORŁY REPUBLIKI / —
   Kino Sokół / Orły Republiki / 2025
-  Kino Światowid / Orły republiki / —
   OKF Iluzja / Orły Republiki / —
   Teatr Ziemi Rybnickiej / Orły Republiki / 2025
 showings:
@@ -6569,7 +6557,6 @@ cinemaScrapes:
   Kino Muranów / Rozmowa / 1974
   Kino Pałacowe / Rozmowa / 1974
   Kino U-jazdowski / Rozmowa / 1974
-  Kino Światowid / Rozmowa / —
   Kinoteka / Rozmowa / 2026
 showings:
   2026-06-08  Kino Pałacowe                 20:00 Sala 1 - Kinowa
@@ -8513,7 +8500,6 @@ cinemaScrapes:
   Kino Awangarda 2 / Zawodowcy / 2026
   Kino Bajka Kluczbork / Zawodowcy / 2026
   Kino Centrum Skarżysko-Kamienna / Zawodowcy / 2026
-  Kino Elektronik / ZAWODOWCY / —
   Kino Głębocka 66 / Zawodowcy / —
   Kino Hel / Zawodowcy / 2026
   Kino Iluzjon / Zawodowcy / 2026
@@ -8656,7 +8642,6 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Znaki Pana Śliwki / 2025
   Kino Orzeł / Znaki Pana Śliwki / —
   Kino Spektrum / Znaki Pana Śliwki / —
-  Kino Światowid / Znaki Pana Śliwki / —
   Kinoteatr Rialto / Znaki Pana Śliwki / —
   Świt Zwoleń / Znaki Pana Śliwki / 2025
 showings:
@@ -8810,7 +8795,6 @@ cinemaScrapes:
   Kino Forum / Milcząca przyjaciółka / —
   Kino Kika / MILCZĄCA PRZYJACIÓŁKA / —
   Kino Kinematograf / Milcząca przyjaciółka / —
-  Kino Kosmos / Milcząca przyjaciółka / —
   Kino Kultura / Milcząca przyjaciółka / —
   Kino Luna / Milcząca przyjaciółka / —
   Kino Malta Charlie Monroe / Milcząca przyjaciółka / —
@@ -8828,7 +8812,6 @@ cinemaScrapes:
   Kino SCK / Milcząca przyjaciółka / 2025
   Kino Spektrum / Milcząca przyjaciółka / —
   Kino Wisła / Milcząca przyjaciółka / 2025
-  Kino Światowid / Milcząca przyjaciółka / —
   Kinoteatr Rialto / Milcząca przyjaciółka / —
   Muza / Milcząca przyjaciółka / 2025
   Na Starówce / Milcząca przyjaciółka / 2025
