@@ -3,6 +3,7 @@ package modules
 import clients.TmdbClient
 import models.{Cinema, City}
 import services.{MongoCachingDetailFetch, MongoConnection, ShowtimeCache, Stoppable, UptimeMonitor}
+import services.alerts.{FallbackAlert, TelegramNotifier}
 import services.cinemas._
 import services.enrichment._
 import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
@@ -106,9 +107,21 @@ class WorkerWiring {
   lazy val filmwebFallbackStore: FilmwebFallbackStore =
     new MongoFilmwebFallbackStore(mongoConnection.database)
 
-  // Fired on each ENTER / PROBE_FAILED / RECOVERED transition; overridden in the
-  // production main to post Telegram alerts. No-op by default.
-  protected def filmwebFallbackOnEvent: (FilmwebFallbackState, FallbackEvent) => Unit = (_, _) => ()
+  // Telegram alerter for fallback ENTER / RECOVERED events, wired only when the
+  // bot token + chat id are configured (absent in CI / local without secrets →
+  // no alerts). Posts to the dedicated "Fallback to Filmweb" topic when a topic
+  // id is set. See reference_fallback_telegram_channel.
+  protected lazy val fallbackTelegramNotifier: Option[TelegramNotifier] = for {
+    token  <- Env.get("TELEGRAM_BOT_TOKEN")
+    chatId <- Env.get("KINOWO_FALLBACK_TG_CHAT_ID").flatMap(s => scala.util.Try(s.toLong).toOption)
+  } yield new TelegramNotifier(httoFetch, token, chatId,
+    Env.get("KINOWO_FALLBACK_TG_TOPIC_ID").flatMap(s => scala.util.Try(s.toLong).toOption))
+
+  // Fired on each ENTER / PROBE_FAILED / RECOVERED transition; alerts on the
+  // page-worthy ones (FallbackAlert filters PROBE_FAILED out) when Telegram is
+  // configured.
+  protected def filmwebFallbackOnEvent: (FilmwebFallbackState, FallbackEvent) => Unit =
+    (state, event) => FallbackAlert.messageFor(state, event).foreach(msg => fallbackTelegramNotifier.foreach(_.send(msg)))
 
   // Cinemas whose ONLY scraper is a FilmwebShowtimesClient — served by Filmweb by
   // design, not as a fallback. Published to Mongo at start() for the status page.
