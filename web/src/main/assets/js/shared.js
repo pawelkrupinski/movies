@@ -1397,11 +1397,22 @@
   //
   // When the user is logged in, localStorage is still the in-page truth
   // (every read goes there for zero-latency) but every write also
-  // debounces a PUT to /api/me/state so the server stays in sync. The
-  // boot path does a one-time GET + union merge with whatever's in
-  // localStorage so the device's local favourites land on the account
-  // immediately ("migrate on page entry" semantics from the spec) and
-  // any state added on other devices appears here.
+  // debounces a PUT to /api/me/state so the server stays in sync.
+  //
+  // The boot reconcile is two-phase, gated by the `serverStateSynced` flag:
+  //
+  //   • FIRST reconcile after a login (flag unset): union local + server and
+  //     push the union, so anything the user set while anonymous is migrated
+  //     up to the account ("migrate on page entry"). Then set the flag.
+  //   • EVERY reconcile after that (flag set): the SERVER is the source of
+  //     truth — replace localStorage with the server's sets. This is what
+  //     makes a removal (un-hide a film / re-enable a cinema) STICK: a blind
+  //     union on every page load could only ever add, so it resurrected
+  //     anything you'd just removed on the next navigation.
+  //
+  // The flag is cleared whenever a page renders anonymous (logout / expired
+  // session), so the next login migrates this device's current picks afresh.
+  const SERVER_SYNCED_KEY = 'serverStateSynced';
 
   let _serverSyncTimer = 0;
   function scheduleServerSync() {
@@ -1413,10 +1424,14 @@
     _serverSyncTimer = setTimeout(pushStateToServer, 400);
   }
 
-  function pushStateToServer() {
+  function pushStateToServer(opts) {
+    _serverSyncTimer = 0;
     fetch('/api/me/state', {
       method:  'PUT',
       headers: { 'Content-Type': 'application/json' },
+      // `keepalive` lets the request outlive an unloading document so the
+      // pagehide flush below isn't dropped mid-navigation.
+      keepalive: !!(opts && opts.keepalive),
       body:    JSON.stringify({
         hiddenFilms:     getHidden(),
         disabledCinemas: getDisabledCinemas(),
@@ -1426,26 +1441,52 @@
     }).catch(() => { /* offline / 401 — localStorage still has the write */ });
   }
 
-  // Boot-time merge: pull server state, union with whatever's currently
-  // in localStorage, write the union back to BOTH layers. Runs once on
-  // every page load for logged-in users — cheap (one GET, one PUT, both
-  // tiny payloads), idempotent (a no-change union still sends the same
-  // payload; server-side last-write-wins is fine here), and exactly the
-  // behaviour the spec asked for.
+  // Flush a still-pending debounced sync synchronously as the page goes
+  // away. Without this, a toggle made <400ms before a navigation (clicking a
+  // film card right after hiding one) would never reach the server, and the
+  // next page — now server-authoritative — would overwrite it with the stale
+  // remote state. Runs on pagehide and on tab-hide (the reliable signals;
+  // beforeunload is unreliable on mobile).
+  function flushServerSync() {
+    if (!IS_LOGGED_IN || !_serverSyncTimer) return;
+    clearTimeout(_serverSyncTimer);
+    pushStateToServer({ keepalive: true });
+  }
+  window.addEventListener('pagehide', flushServerSync);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushServerSync();
+  });
+
   async function bootMergeFromServer() {
-    if (!IS_LOGGED_IN) return;
+    if (!IS_LOGGED_IN) {
+      // Anonymous (incl. just-logged-out): re-arm migration so the next
+      // login carries this device's current local picks up exactly once.
+      try { localStorage.removeItem(SERVER_SYNCED_KEY); } catch {}
+      return;
+    }
     try {
       const resp = await fetch('/api/me/state', { headers: { 'Accept': 'application/json' } });
       if (!resp.ok) return;
-      const remote = await resp.json();
-      const merge  = (local, srv) => [...new Set([...(local || []), ...(srv || [])])].sort();
+      const remote     = await resp.json();
+      const firstSync  = localStorage.getItem(SERVER_SYNCED_KEY) !== '1';
 
-      _lsSet('hiddenFilms',         merge(getHidden(),           remote.hiddenFilms));
-      _lsSet('disabledCinemas',     merge(getDisabledCinemas(),  remote.disabledCinemas));
-      _lsSet('selectedMovies',      merge(getSelectedMovies(),   remote.selectedMovies));
-      _lsSet('favouriteRooms',      merge(getFavouriteRooms(),   remote.favouriteRooms));
-
-      pushStateToServer();
+      if (firstSync) {
+        const union = (local, srv) => [...new Set([...(local || []), ...(srv || [])])].sort();
+        _lsSet('hiddenFilms',     union(getHidden(),          remote.hiddenFilms));
+        _lsSet('disabledCinemas', union(getDisabledCinemas(), remote.disabledCinemas));
+        _lsSet('selectedMovies',  union(getSelectedMovies(),  remote.selectedMovies));
+        _lsSet('favouriteRooms',  union(getFavouriteRooms(),  remote.favouriteRooms));
+        try { localStorage.setItem(SERVER_SYNCED_KEY, '1'); } catch {}
+        pushStateToServer();   // persist the migrated union
+      } else {
+        // Server authoritative — mirror it locally so removals propagate.
+        // `_lsSet` (not setHidden/…) avoids re-triggering a redundant push.
+        const fromServer = srv => (srv || []).slice().sort();
+        _lsSet('hiddenFilms',     fromServer(remote.hiddenFilms));
+        _lsSet('disabledCinemas', fromServer(remote.disabledCinemas));
+        _lsSet('selectedMovies',  fromServer(remote.selectedMovies));
+        _lsSet('favouriteRooms',  fromServer(remote.favouriteRooms));
+      }
       applyFilters();
     } catch (e) { /* network blew up — localStorage is still usable */ }
   }

@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import tools.{CdpPage, Chrome, FixtureTestWiring, TestHttpServer}
 
 import java.net.URLDecoder
-import java.time.LocalDateTime
+import java.time.{Instant, LocalDateTime}
 
 /**
  * JavaScript-behaviour regression for the rendered pages. Spins up a
@@ -88,6 +88,24 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         cinemas, pills, devMode = false,
         currentUser = anon, oauthProviders = noOauth
       ).body
+      // Logged-in render of the index so the inline config sets
+      // `IS_LOGGED_IN = true` and shared.js runs its server-sync boot path.
+      // Served at `/li`; the `/api/me/state` route below stands in for the
+      // real UserStateController. Lets the boot reconcile (first-login union
+      // vs. server-authoritative replace) be driven over CDP.
+      val testUser = models.User(
+        id = "tester@example.com", provider = "google", providerSub = "sub-1",
+        email = Some("tester@example.com"), displayName = Some("Tester"),
+        avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH
+      )
+      val loggedInHtml: String = views.html.repertoire(
+        schedules, cinemas, pills, devMode = false,
+        currentUser = Some(testUser), oauthProviders = noOauth
+      ).body
+      // Static server-side state: one hidden film. resp.json() parses the body
+      // regardless of content-type, so serving it via the HTML route map is fine.
+      val userStateJson =
+        """{"hiddenFilms":["Film A"],"disabledCinemas":[],"selectedMovies":[],"favouriteRooms":[]}"""
       // Pages are served under `/{city}/…` (production hard-cut). `onPath`
       // prepends the prefix, so strip it here, then match the in-city sub-path.
       def sub(p: String): String = p.stripPrefix(cityPrefix)
@@ -99,6 +117,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         case p if sub(p).startsWith("/film?title=") =>
           renderFilm(sub(p).stripPrefix("/film?title="))
         case p if { val s = sub(p); s == "/plan" || s.startsWith("/plan?") } => planHtml
+        case p if sub(p) == "/li"           => loggedInHtml
+        case p if p == "/api/me/state"      => userStateJson
         // The dev-only visual-tuning page — rendered with real fixture films
         // so its slider panel (and the ± step buttons) can be driven over CDP.
         case p if sub(p) == "/debug/tune" => views.html.tune(schedules.take(3)).body
@@ -120,6 +140,54 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       case Some(c) => c.openPage(server.baseUrl + cityPrefix + path)(body(_))
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
+
+  /** Open the logged-in index (`IS_LOGGED_IN = true`) in a fresh tab so the
+   *  shared.js server-sync boot path runs. */
+  private def onLoggedInIndex(body: CdpPage => Any): Unit =
+    chrome match {
+      case Some(c) => c.openPage(server.baseUrl + cityPrefix + "/li")(body(_))
+      case None    => cancel("Chrome not installed — skipping JS behaviour test")
+    }
+
+  // ── Server-state reconcile on boot (logged-in users) ─────────────────────
+  //
+  // Regression for "I un-hide a film / re-enable a cinema and it comes back on
+  // the next page load". The old boot did a blind union of localStorage with
+  // the server on EVERY page load, so a union could only ever add — removals
+  // were resurrected from the server's stale copy. The fix makes the server
+  // authoritative after the one-time first-login migration.
+
+  "server-state reconcile" should
+    "drop a local-only hidden film once synced (server is authoritative)" in {
+    onLoggedInIndex { page =>
+      // First boot migrated from server = ["Film A"] and set the synced flag.
+      page.waitFor("localStorage.getItem('serverStateSynced') === '1'")
+      // Mimic a device still carrying a stale local-only entry the server never
+      // had, with the sync flag already set. A blind union would keep "Film B"
+      // forever; an authoritative reconcile must drop it on the next load.
+      page.eval("_lsSet('hiddenFilms', ['Film A','Film B'])")
+      page.reload()
+      page.waitFor("getHidden().indexOf('Film B') === -1 && getHidden().indexOf('Film A') !== -1")
+      val hidden = page.evalString("JSON.stringify(getHidden())")
+      hidden should include ("Film A")
+      hidden should not include "Film B"
+    }
+  }
+
+  it should "union local picks with the server on the first reconcile after login" in {
+    onLoggedInIndex { page =>
+      page.waitFor("localStorage.getItem('serverStateSynced') === '1'")
+      // Re-arm migration as a fresh login would, plus an anonymous local pick.
+      page.eval("localStorage.removeItem('serverStateSynced')")
+      page.eval("_lsSet('hiddenFilms', ['Local Z'])")
+      page.reload()
+      page.waitFor(
+        "localStorage.getItem('serverStateSynced') === '1' && getHidden().indexOf('Local Z') !== -1")
+      val hidden = page.evalString("JSON.stringify(getHidden())")
+      hidden should include ("Film A")  // pulled from the server
+      hidden should include ("Local Z") // migrated up from this device
+    }
+  }
 
   // ── shared.js globals ────────────────────────────────────────────────────
 

@@ -5,9 +5,10 @@ import java.time.Instant
 /**
  * An authenticated user — created on first successful OAuth callback,
  * looked up on every subsequent request via the session cookie's
- * `userId` claim. `provider + providerSub` is the unique key from the
- * upstream identity provider; `id` is our own UUID, stable across email
- * changes / display-name edits / provider-side data shifts.
+ * `userId` claim. `id` is the user's lowercased email, so signing in with
+ * Google, Facebook, or Apple under the same email resolves to the same
+ * account row — and the same `UserState`. `provider + providerSub` records
+ * which upstream identity the most recent login came through.
  *
  * Optional fields (email / displayName / avatarUrl) are nullable because
  * provider consent flows let the user decline specific scopes — Facebook
