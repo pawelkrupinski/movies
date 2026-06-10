@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Repertuar Kino - Mteatr.Pl</title>
+    <meta name="keywords" content="Teatr Muzyczny, Mazowiecki Teatr Muzyczny, Księżniczka Czardasza, Koncert Noworoczny, Teatralne Nagrody Muzyczne, Jan Kiepura, Królewski Koncert, Dzień Kobiet, Thrill ME, Awantura w Molldurze, Zakochani w Operetce, Koń by też pisał wiersze gdyby dać mu st" >
+    <meta name="description" content="Witamy na stronie Mazowieckiego Teatru Muzycznego im. Jana Kiepury. Zapraszamy do zapoznania się z naszym repertuarem na nadchodzące miesiące.">
+    <meta name="author" content="InfraCOM">
+	<meta name="google-site-verification" content="hqYMK-IV-yYqMty-jGxliEpnT5YD-mGHWz2uyA2WbAo" />
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" type="image/x-icon" href="https://mteatr.pl/userfiles/files/favicon/favicon.png"/>
+
+    <!-- Fonts -->
+    <link href='https://fonts.googleapis.com/css?family=Montserrat:400,700' rel='stylesheet' type='text/css'>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" type="text/css" href="/vendors/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="/vendors/bootstrap/css/bootstrap-theme.min.css">
+
+    <!-- Fontawesome -->
+    <link rel="stylesheet" type="text/css" href="/vendors/font-awesome/css/font-awesome.min.css">
+
+    <!-- Animate -->
+    <link rel="stylesheet" type="text/css" href="/vendors/animate.css">
+
+	 <link href="/css/lightbox.css" rel="stylesheet">
+
+    <!-- Swiper -->
+    <link rel="stylesheet" type="text/css" href="/vendors/swiper/css/swiper.min.css">
+
+    <!-- Magnific-popup -->
+    <link rel="stylesheet" type="text/css" href="/vendors/magnific-popup/magnific-popup.css">
+
+    <!-- Base MasterSlider style sheet -->
+    <link rel="stylesheet" href="/vendors/masterslider/style/masterslider.css" />
+
+    <!-- Master Slider Skin -->
+    <link href="/vendors/masterslider/skins/default/style.css" rel='stylesheet' type='text/css'>
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+
+
+<meta property="og:type"               content="website" />
+<meta property="og:title"              content="Repertuar Kino - Mteatr.Pl" />
+<meta property="og:description"        content="Witamy na stronie Mazowieckiego Teatru Muzycznego im. Jana Kiepury. Zapraszamy do zapoznania się z naszym repertuarem na nadchodzące miesiące." />
+<meta property="og:image"              content="https://mteatr.pl/images/fb-www-tlo.jpg" />
+
+
+        <style>
+@import url('https://fonts.googleapis.com/css?family=Francois+One');
+</style>
+    <!-- Stylesheet -->
+    <link rel="stylesheet" type="text/css" href="/style.css?v=250829">
+	 <link rel="stylesheet" type="text/css" href="/mg.css?v=250717">
+	 <link rel="stylesheet" type="text/css" href="/mg2.css?v=260513">
+
+	 <link id="wcag" rel="stylesheet" type="text/css" href="/wcag.css">
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-109142386-3"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-109142386-3');
+</script>
+
+<!-- Facebook Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window,document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+ fbq('init', '337443307058980');
+fbq('track', 'PageView');
+</script>
+<noscript>
+ <img height="1" width="1"
+src="https://www.facebook.com/tr?id=337443307058980&ev=PageView
+&noscript=1"/>
+</noscript>
+<!-- End Facebook Pixel Code -->
+
+</head>
+
+<body class="music-content">
+
+    <div class="tana-loader">
+        <div class="loader-content">
+            <div class="loader-circle"></div>
+            <div class="loader-line-mask">
+                <div class="loader-line"></div>
+            </div>
+        </div>
+    </div>
+    <div class="wrapper">
+
+        <header id="header" class="header-blog header-music">
+            <div class="panel-header ">
+			<div id="skip"><a href="#to-main-page" title="Przejdź do głównej zawartości strony">Przejdź do głównej zawartości strony</a></div>
+                <div class="container">
+                    <div class="row">
+                        <div class="col-sm-2 col-xs-2">
+
+                            <div class="header-wrapper">
+
+                                <!-- image logo -->
+                                <div class="site-branding">
+                                    <a href="/" title="Mazowiecki Teatr Muzyczby im. Jana Kiepury" class="custom-logo-link" rel="home">
+                                        <img src="https://www.mteatr.pl/userfiles/files/logo/logo-gradient-www-b.png" border="0" alt="Mazowiecki Teatr Muzyczby im. Jana Kiepury" title="Logo Teatru">
+                                    </a>
+                                </div>
+                            </div>
+
+                        </div>
+
+
+
+
+								<div class="col-sm-10 col-xs-10">
+
+
+
+<div class="" style="float: right;">
+
+<div style="text-align: right">
+
+											<div class="social-icon">
+										  <ul>
+
+										  <li class="sicon"><a class="link-head" href="https://www.facebook.com/MTeatr" target="_blank" title="Facebook" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a></li>
+
+										  <li class="sicon"><a class="link-head" href="https://www.youtube.com/channel/UCCliQHDOzFlyWPZnNhYXPZQ" target="_blank" title="YouTube" aria-label="YouTube"><i class="fab fa-youtube"></i></a></li>
+										    <li class="sicon"><a class="link-head" href="https://www.instagram.com/mteatr/" target="_blank" title="Instagram" aria-label="Instagram"> <i class="fab fa-instagram"></i></a></li>
+
+										  
+                                          
+                                              <li class="tekst search"><form action="/pl/szukaj" method="GET"><input type="text" name="s" value="" placeholder="Wpisz frazę"><button type="submit" style="height: 34px; line-height: 34px; width: 30px; padding: 0; border-radius: 3px; border: 1px solid #767676; position: relative; top: 2px; left: -30px;" title="Wyszukaj"><i class="fa fa-search"></i></button></form></li>
+
+
+										  <li class="tekst kasa">KASA TEATRU: <strong style="font-size: 16px;">&nbsp;	<a class="link-head" href="tel:+48 795 127 921" title="Telefon do kasy teatru">+48 795 127 921</a></strong></li>
+										  <li class="sicon mazovia"><a href="https://mazovia.pl" target="_blank" title="Strona mazovia.pl"><img src="https://www.mteatr.pl/userfiles/files/nowe/mazowsze_logo.png" width="130" border="0" alt="Strona mazovia.pl" title="Strona mazovia.pl"></a></li>
+	 <li class="tekst-2"><div>Kontrast:	<div style="display: inline;" data-class="contrastBar">   	 <a class="link-head" href="#" data-class="contrast" data-val="1" title="Włącz oryginalny kontrast" >Oryginalny</a> <a href="#" data-class="contrast" data-val="2" class="mocny" title="Włącz mocny kontrast">Mocny</a></div></li>
+
+											</ul>
+
+
+								 </div>
+
+
+</div>
+</div>
+
+
+
+
+                        <div class="right-content burger" >
+
+
+
+<div class="col-md-12">
+
+<a href="https://butik.mteatr.pl" target="_blank" class="kup-bilet" title="Kup bilet"> <i class="fas fa-shopping-cart"></i>&nbsp;KUP BILET</a>
+<a href="javascript:;" class="burger-menu pm-right" title="Menu mobilne" aria-label="Menu mobilne"> <i class="fas fa-bars"></i></a></div>
+
+
+
+
+                                </div>
+
+
+
+                        </div>
+
+
+
+                    </div>
+                </div>
+            </div>
+
+		<div class="panel-header blok-menu tlo-menu-all" >
+				<div class="container">
+					<div class="col-md-10 col-sm-10">
+						<div class="row">
+						   <div class="header-wrapper">
+								<nav class="main-nav"><ul class="navigation"><li ><a href="https://www.mteatr.pl" title="Strona główna" aria-label="Strona główna"> <i class="fas fa-theater-masks"></i> </a></li><li ><a href="#" title="" aria-label=""> Teatr </a><ul ><li ><a href="/pl/ludzie" title="" aria-label=""> Zespół </a></li><li ><a href="/pl/wirtualny-spacer" title="" aria-label=""> Wirtualny spacer </a></li><li ><a href="/pl/historia" title="" aria-label=""> Historia </a></li><li ><a href="/pl/podkasty" title="" aria-label=""> Podkasty i audycje </a></li><li ><a href="/pl/inwestycje" title="" aria-label=""> Inwestycje </a></li><li ><a href="/pl/logo-teatru" title="" aria-label=""> Logo Teatru  </a></li><li ><a href="/pl/patroni-i-partnerzy" title="" aria-label=""> Patroni i Partnerzy </a></li><li ><a href="/pl/ogloszenia" title="" aria-label=""> Ogłoszenia / Praca </a></li></ul></li><li ><a href="#" title="" aria-label=""> Repertuar </a><ul ><li ><a href="/pl/repertuar" title="" aria-label=""> Repertuar </a></li><li ><a href="/pl/spektakle" title="" aria-label=""> Spektakle </a></li><li ><a href="/pl/wydarzenia-wyjazdowe" title="" aria-label=""> Wydarzenia wyjazdowe </a></li></ul></li><li ><a href="#" title="Kino Praha" aria-label="Kino Praha"> Kino Praha </a><ul ><li ><a href="/pl/repertuar-kino-praha" title="" aria-label=""> Repertuar Kino  </a></li><li ><a href="/pl/wajda-re-wizje" title="" aria-label=""> WAJDA: re-wizje </a></li></ul></li><li ><a href="/pl/aktualnosci" title="" aria-label=""> Aktualności </a></li><li ><a href="#" title="" aria-label=""> Projekty </a><ul ><li ><a href="/pl/kulturalna-szkola-na-mazowszu-2" title="" aria-label=""> Kulturalna szkoła na Mazowszu </a></li><li ><a href="/pl/program-wsparcie-osob-z-niepelnosprawnosciami-na-mazowszu" title="" aria-label=""> Program N </a></li><li ><a href="/pl/zywioly-mazowsza-25-swm" title="" aria-label=""> Żywioły Mazowsza | 25. SWM </a></li><li ><a href="/pl/25-lecie-swm-2024" title="" aria-label=""> 25-lecie SWM | 2024  </a></li><li ><a href="/pl/mazowieckie-koledowanie-2024-25-lat-mazowsze " title="" aria-label=""> Mazowieckie kolędowanie 2024 | 25-lecie Mazowsza  </a></li><li ><a href="/pl/jubileusz-25-lat-mazowsze " title="" aria-label=""> Jubileusz 25-lecia Samorządu Województwa Mazowieckiego </a></li><li ><a href="/pl/niezwykli-jak-jan-kiepura-25-lat-mazowsze " title="" aria-label=""> Niezwykli jak Jan Kiepura | 25-lecie Mazowsza  </a></li><li ><a href="/pl/niezwykli-jak-jan-kiepura-25-lat-mazowsze-II" title="" aria-label=""> Niezwykli jak Jan Kiepura | 25-lecie Mazowsza - relacje część druga </a></li><li ><a href="/pl/mazowieckie-koledowanie-25-lat-mazowsze " title="" aria-label=""> Mazowieckie kolędowanie | 25-lecie Mazowsza </a></li><li ><a href="/pl/x-dni-kultury-polskiej-w-wilnie-25M" title="" aria-label=""> X Dni Kultury Polskiej w Wilnie </a></li><li ><a href="/pl/koncerty-noworoczne" title="" aria-label=""> Koncerty Noworoczne </a></li><li ><a href="/pl/krolewskie-koncerty-w-dniu-kobiet" title="" aria-label=""> Królewskie Koncerty w Dniu Kobiet </a></li><li ><a href="/pl/teatralne-nagrody-muzyczne" title="" aria-label=""> Teatralne Nagrody Muzyczne </a></li><li ><a href="/pl/mazowsze-w-sercu-niepodleglej-menu" title="" aria-label=""> Mazowsze w sercu Niepodległej </a></li><li ><a href="/pl/wystawa-jan-kiepura-wielki-talent-to-fakt." title="" aria-label=""> Jan Kiepura. Wielka sława to fakt! </a></li><li ><a href="/pl/mistrzowie" title="" aria-label=""> Mistrzowie </a></li></ul></li><li ><a href="/pl/wynajem" title="" aria-label=""> Wynajem </a></li><li ><a href="/pl/kontakt" title="" aria-label=""> Kontakt </a><ul ><li ><a href="/pl/dane-teleadresowe" title="" aria-label=""> Dane teleadresowe </a></li><li ><a href="/pl/mapka" title="" aria-label=""> Mapka </a></li></ul></li><li ><a href="http://bip.mteatr.pl" title="" aria-label=""> BIP </a></li> </ul></nav>							</div>
+						</div>
+					</div>
+					<div class="col-md-2 col-sm-2">
+						<div class="row">
+							<div class="header-wrapper">
+								<a href="https://butik.mteatr.pl" target="_blank" class="kup-bilet" title="Kup bilet"> <i class="fas fa-shopping-cart"></i>&nbsp;KUP BILET</a>
+							</div>
+						</div>
+					</div>
+				</div>
+		</div>
+
+		<div class="panel-header blok-menu tlo-menu-all move-menu" >
+				<div class="container">
+					<div class="col-md-9 col-sm-10">
+						<div class="row">
+						   <div class="header-wrapper">
+								<nav class="main-nav"><ul class="navigation"><li ><a href="https://www.mteatr.pl" title="Strona główna" aria-label="Strona główna"> <i class="fas fa-theater-masks"></i> </a></li><li ><a href="#" title="" aria-label=""> Teatr </a><ul ><li ><a href="/pl/ludzie" title="" aria-label=""> Zespół </a></li><li ><a href="/pl/wirtualny-spacer" title="" aria-label=""> Wirtualny spacer </a></li><li ><a href="/pl/historia" title="" aria-label=""> Historia </a></li><li ><a href="/pl/podkasty" title="" aria-label=""> Podkasty i audycje </a></li><li ><a href="/pl/inwestycje" title="" aria-label=""> Inwestycje </a></li><li ><a href="/pl/logo-teatru" title="" aria-label=""> Logo Teatru  </a></li><li ><a href="/pl/patroni-i-partnerzy" title="" aria-label=""> Patroni i Partnerzy </a></li><li ><a href="/pl/ogloszenia" title="" aria-label=""> Ogłoszenia / Praca </a></li></ul></li><li ><a href="#" title="" aria-label=""> Repertuar </a><ul ><li ><a href="/pl/repertuar" title="" aria-label=""> Repertuar </a></li><li ><a href="/pl/spektakle" title="" aria-label=""> Spektakle </a></li><li ><a href="/pl/wydarzenia-wyjazdowe" title="" aria-label=""> Wydarzenia wyjazdowe </a></li></ul></li><li ><a href="#" title="Kino Praha" aria-label="Kino Praha"> Kino Praha </a><ul ><li ><a href="/pl/repertuar-kino-praha" title="" aria-label=""> Repertuar Kino  </a></li><li ><a href="/pl/wajda-re-wizje" title="" aria-label=""> WAJDA: re-wizje </a></li></ul></li><li ><a href="/pl/aktualnosci" title="" aria-label=""> Aktualności </a></li><li ><a href="#" title="" aria-label=""> Projekty </a><ul ><li ><a href="/pl/kulturalna-szkola-na-mazowszu-2" title="" aria-label=""> Kulturalna szkoła na Mazowszu </a></li><li ><a href="/pl/program-wsparcie-osob-z-niepelnosprawnosciami-na-mazowszu" title="" aria-label=""> Program N </a></li><li ><a href="/pl/zywioly-mazowsza-25-swm" title="" aria-label=""> Żywioły Mazowsza | 25. SWM </a></li><li ><a href="/pl/25-lecie-swm-2024" title="" aria-label=""> 25-lecie SWM | 2024  </a></li><li ><a href="/pl/mazowieckie-koledowanie-2024-25-lat-mazowsze " title="" aria-label=""> Mazowieckie kolędowanie 2024 | 25-lecie Mazowsza  </a></li><li ><a href="/pl/jubileusz-25-lat-mazowsze " title="" aria-label=""> Jubileusz 25-lecia Samorządu Województwa Mazowieckiego </a></li><li ><a href="/pl/niezwykli-jak-jan-kiepura-25-lat-mazowsze " title="" aria-label=""> Niezwykli jak Jan Kiepura | 25-lecie Mazowsza  </a></li><li ><a href="/pl/niezwykli-jak-jan-kiepura-25-lat-mazowsze-II" title="" aria-label=""> Niezwykli jak Jan Kiepura | 25-lecie Mazowsza - relacje część druga </a></li><li ><a href="/pl/mazowieckie-koledowanie-25-lat-mazowsze " title="" aria-label=""> Mazowieckie kolędowanie | 25-lecie Mazowsza </a></li><li ><a href="/pl/x-dni-kultury-polskiej-w-wilnie-25M" title="" aria-label=""> X Dni Kultury Polskiej w Wilnie </a></li><li ><a href="/pl/koncerty-noworoczne" title="" aria-label=""> Koncerty Noworoczne </a></li><li ><a href="/pl/krolewskie-koncerty-w-dniu-kobiet" title="" aria-label=""> Królewskie Koncerty w Dniu Kobiet </a></li><li ><a href="/pl/teatralne-nagrody-muzyczne" title="" aria-label=""> Teatralne Nagrody Muzyczne </a></li><li ><a href="/pl/mazowsze-w-sercu-niepodleglej-menu" title="" aria-label=""> Mazowsze w sercu Niepodległej </a></li><li ><a href="/pl/wystawa-jan-kiepura-wielki-talent-to-fakt." title="" aria-label=""> Jan Kiepura. Wielka sława to fakt! </a></li><li ><a href="/pl/mistrzowie" title="" aria-label=""> Mistrzowie </a></li></ul></li><li ><a href="/pl/wynajem" title="" aria-label=""> Wynajem </a></li><li ><a href="/pl/kontakt" title="" aria-label=""> Kontakt </a><ul ><li ><a href="/pl/dane-teleadresowe" title="" aria-label=""> Dane teleadresowe </a></li><li ><a href="/pl/mapka" title="" aria-label=""> Mapka </a></li></ul></li><li ><a href="http://bip.mteatr.pl" title="" aria-label=""> BIP </a></li> </ul></nav>							</div>
+						</div>
+					</div>
+					<div class="col-md-3 col-sm-2">
+						<div class="row">
+							<div class="header-wrapper">
+								<a href="https://butik.mteatr.pl" target="_blank" class="kup-bilet" title="Kup bilet"> <i class="fas fa-shopping-cart"></i>&nbsp;KUP BILET</a>
+							</div>
+						</div>
+					</div>
+				</div>
+		</div>
+
+		<div class="push-menu">
+                <div class="pm-overlay"></div>
+                <div class="pm-container">
+                    <div class="pm-wrap">
+                        <div style="position: relative; top: -30px; background: #fff; text-align: center;"><div>Kontrast:  <div style="display: inline;" data-class="contrastBar">      <a class="link-head" href="#" data-class="contrast" data-val="1" title="Włącz oryginalny kontrast">Oryginalny</a> <a href="#" data-class="contrast" data-val="2" class="mocny" title="Włącz mocny kontrast">Mocny</a></div></div></div>
+                        <a href="javascript:;" class="close-menu" title="Zamknij menu" aria-label="Zamknij menu"></a>
+
+                        <nav class="main-nav-menu"><ul class="navigation"><li ><a href="https://www.mteatr.pl" title="Strona główna" aria-label="Strona główna"> <i class="fas fa-theater-masks"></i> </a></li><li ><a href="#" title="" aria-label=""> Teatr </a><ul ><li ><a href="/pl/ludzie" title="" aria-label=""> Zespół </a></li><li ><a href="/pl/wirtualny-spacer" title="" aria-label=""> Wirtualny spacer </a></li><li ><a href="/pl/historia" title="" aria-label=""> Historia </a></li><li ><a href="/pl/podkasty" title="" aria-label=""> Podkasty i audycje </a></li><li ><a href="/pl/inwestycje" title="" aria-label=""> Inwestycje </a></li><li ><a href="/pl/logo-teatru" title="" aria-label=""> Logo Teatru  </a></li><li ><a href="/pl/patroni-i-partnerzy" title="" aria-label=""> Patroni i Partnerzy </a></li><li ><a href="/pl/ogloszenia" title="" aria-label=""> Ogłoszenia / Praca </a></li></ul></li><li ><a href="#" title="" aria-label=""> Repertuar </a><ul ><li ><a href="/pl/repertuar" title="" aria-label=""> Repertuar </a></li><li ><a href="/pl/spektakle" title="" aria-label=""> Spektakle </a></li><li ><a href="/pl/wydarzenia-wyjazdowe" title="" aria-label=""> Wydarzenia wyjazdowe </a></li></ul></li><li ><a href="#" title="Kino Praha" aria-label="Kino Praha"> Kino Praha </a><ul ><li ><a href="/pl/repertuar-kino-praha" title="" aria-label=""> Repertuar Kino  </a></li><li ><a href="/pl/wajda-re-wizje" title="" aria-label=""> WAJDA: re-wizje </a></li></ul></li><li ><a href="/pl/aktualnosci" title="" aria-label=""> Aktualności </a></li><li ><a href="#" title="" aria-label=""> Projekty </a><ul ><li ><a href="/pl/kulturalna-szkola-na-mazowszu-2" title="" aria-label=""> Kulturalna szkoła na Mazowszu </a></li><li ><a href="/pl/program-wsparcie-osob-z-niepelnosprawnosciami-na-mazowszu" title="" aria-label=""> Program N </a></li><li ><a href="/pl/zywioly-mazowsza-25-swm" title="" aria-label=""> Żywioły Mazowsza | 25. SWM </a></li><li ><a href="/pl/25-lecie-swm-2024" title="" aria-label=""> 25-lecie SWM | 2024  </a></li><li ><a href="/pl/mazowieckie-koledowanie-2024-25-lat-mazowsze " title="" aria-label=""> Mazowieckie kolędowanie 2024 | 25-lecie Mazowsza  </a></li><li ><a href="/pl/jubileusz-25-lat-mazowsze " title="" aria-label=""> Jubileusz 25-lecia Samorządu Województwa Mazowieckiego </a></li><li ><a href="/pl/niezwykli-jak-jan-kiepura-25-lat-mazowsze " title="" aria-label=""> Niezwykli jak Jan Kiepura | 25-lecie Mazowsza  </a></li><li ><a href="/pl/niezwykli-jak-jan-kiepura-25-lat-mazowsze-II" title="" aria-label=""> Niezwykli jak Jan Kiepura | 25-lecie Mazowsza - relacje część druga </a></li><li ><a href="/pl/mazowieckie-koledowanie-25-lat-mazowsze " title="" aria-label=""> Mazowieckie kolędowanie | 25-lecie Mazowsza </a></li><li ><a href="/pl/x-dni-kultury-polskiej-w-wilnie-25M" title="" aria-label=""> X Dni Kultury Polskiej w Wilnie </a></li><li ><a href="/pl/koncerty-noworoczne" title="" aria-label=""> Koncerty Noworoczne </a></li><li ><a href="/pl/krolewskie-koncerty-w-dniu-kobiet" title="" aria-label=""> Królewskie Koncerty w Dniu Kobiet </a></li><li ><a href="/pl/teatralne-nagrody-muzyczne" title="" aria-label=""> Teatralne Nagrody Muzyczne </a></li><li ><a href="/pl/mazowsze-w-sercu-niepodleglej-menu" title="" aria-label=""> Mazowsze w sercu Niepodległej </a></li><li ><a href="/pl/wystawa-jan-kiepura-wielki-talent-to-fakt." title="" aria-label=""> Jan Kiepura. Wielka sława to fakt! </a></li><li ><a href="/pl/mistrzowie" title="" aria-label=""> Mistrzowie </a></li></ul></li><li ><a href="/pl/wynajem" title="" aria-label=""> Wynajem </a></li><li ><a href="/pl/kontakt" title="" aria-label=""> Kontakt </a><ul ><li ><a href="/pl/dane-teleadresowe" title="" aria-label=""> Dane teleadresowe </a></li><li ><a href="/pl/mapka" title="" aria-label=""> Mapka </a></li></ul></li><li ><a href="http://bip.mteatr.pl" title="" aria-label=""> BIP </a></li> </ul></nav>
+                    </div>
+
+
+
+                </div>
+            </div>
+
+
+
+
+
+
+
+        </header><div class="fullwidth-section"></div>
+
+
+
+<main id="repertory-page">
+<section class="section-content single">
+
+        <div class="container">
+            <div class="row">
+
+				<a name="to-main-page"></a>
+
+                <!-- end .entry-details -->
+                
+
+
+		<div class="simple-tab-space">
+
+		<h1 class="block-title mt8" data-title="Repertuar">Kino Praha</h1><br><br><br><br>
+
+			<div class="tab-panel">
+								<div class="tab-content active">
+					
+
+		<div class="row"><div class="col-md-12 month-heading">Środa 10.06</div></div><div class="row row-has-5-columns2">
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/milczaca-1006-przyjaciolka" title="Zobacz szczegóły dla: Milcząca przyjaciółka, , 10 Cze 2026 / 15:30">
+									<div class="label">10 Cze 2026 / 15:30</div>
+									<div class="image" data-src="/uploads/thumbnail/milczaca_przyjaciolka.jpg" style="background-image: url(&quot;/uploads/thumbnail/milczaca_przyjaciolka.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Milcząca przyjaciółka">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Milcząca przyjaciółka</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/drugie-1006-zycie" title="Zobacz szczegóły dla: Drugie życie, , 10 Cze 2026 / 18:10">
+									<div class="label">10 Cze 2026 / 18:10</div>
+									<div class="image" data-src="/uploads/thumbnail/drugie_zycie.jpg" style="background-image: url(&quot;/uploads/thumbnail/drugie_zycie.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Drugie życie">
+											<div class="label special-1">przedpremiera</div>
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Drugie życie</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/orly-1006-republiki" title="Zobacz szczegóły dla: Orły republiki, , 10 Cze 2026 / 20:30">
+									<div class="label">10 Cze 2026 / 20:30</div>
+									<div class="image" data-src="/uploads/thumbnail/orly_republiki_2.jpg" style="background-image: url(&quot;/uploads/thumbnail/orly_republiki_2.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Orły republiki">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Orły republiki</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 </div><div class="row"><div class="col-md-12 month-heading">Czwartek 11.06</div></div><div class="row row-has-5-columns2">
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/milczaca-1106-przyjaciolka" title="Zobacz szczegóły dla: Milcząca przyjaciółka, , 11 Cze 2026 / 15:00">
+									<div class="label">11 Cze 2026 / 15:00</div>
+									<div class="image" data-src="/uploads/thumbnail/milczaca_przyjaciolka.jpg" style="background-image: url(&quot;/uploads/thumbnail/milczaca_przyjaciolka.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Milcząca przyjaciółka">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Milcząca przyjaciółka</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/11-06-kokuho" title="Zobacz szczegóły dla: Kokuho, , 11 Cze 2026 / 18:00">
+									<div class="label">11 Cze 2026 / 18:00</div>
+									<div class="image" data-src="/uploads/thumbnail/kokuho.jpg" style="background-image: url(&quot;/uploads/thumbnail/kokuho.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Kokuho">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Kokuho</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/orly-1106-republiki" title="Zobacz szczegóły dla: Orły republiki, , 11 Cze 2026 / 21:20">
+									<div class="label">11 Cze 2026 / 21:20</div>
+									<div class="image" data-src="/uploads/thumbnail/orly_republiki_2.jpg" style="background-image: url(&quot;/uploads/thumbnail/orly_republiki_2.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Orły republiki">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Orły republiki</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 </div><div class="row"><div class="col-md-12 month-heading">Piątek 12.06</div></div><div class="row row-has-5-columns2">
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/drugie-120626-zycie" title="Zobacz szczegóły dla: Drugie życie, , 12 Cze 2026 / 16:00">
+									<div class="label">12 Cze 2026 / 16:00</div>
+									<div class="image" data-src="/uploads/thumbnail/drugie_zycie.jpg" style="background-image: url(&quot;/uploads/thumbnail/drugie_zycie.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Drugie życie">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Drugie życie</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/sny-o-1206-sloniach" title="Zobacz szczegóły dla: Sny o słoniach, , 12 Cze 2026 / 18:20">
+									<div class="label">12 Cze 2026 / 18:20</div>
+									<div class="image" data-src="/uploads/thumbnail/sny_o_sloniach.jpg" style="background-image: url(&quot;/uploads/thumbnail/sny_o_sloniach.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Sny o słoniach">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Sny o słoniach</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/orly-1206-republiki" title="Zobacz szczegóły dla: Orły republiki, , 12 Cze 2026 / 20:15">
+									<div class="label">12 Cze 2026 / 20:15</div>
+									<div class="image" data-src="/uploads/thumbnail/orly_republiki_2.jpg" style="background-image: url(&quot;/uploads/thumbnail/orly_republiki_2.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Orły republiki">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Orły republiki</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 </div><div class="row"><div class="col-md-12 month-heading">Sobota 13.06</div></div><div class="row row-has-5-columns2">
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/niesamowite-przygody-1306-skarpetek" title="Zobacz szczegóły dla: Niesamowite przygody skarpetek 3. Ale kosmos!, , 13 Cze 2026 / 14:30">
+									<div class="label">13 Cze 2026 / 14:30</div>
+									<div class="image" data-src="/uploads/thumbnail/niesamowite_przygody_skarpetek_3.jpg" style="background-image: url(&quot;/uploads/thumbnail/niesamowite_przygody_skarpetek_3.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Niesamowite przygody skarpetek 3. Ale kosmos!">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Niesamowite przygody skarpetek 3. Ale kosmos!</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/orly-1306-republiki" title="Zobacz szczegóły dla: Orły republiki, , 13 Cze 2026 / 16:00">
+									<div class="label">13 Cze 2026 / 16:00</div>
+									<div class="image" data-src="/uploads/thumbnail/orly_republiki_2.jpg" style="background-image: url(&quot;/uploads/thumbnail/orly_republiki_2.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Orły republiki">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Orły republiki</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/drugie-130626-zycie" title="Zobacz szczegóły dla: Drugie życie, , 13 Cze 2026 / 18:30">
+									<div class="label">13 Cze 2026 / 18:30</div>
+									<div class="image" data-src="/uploads/thumbnail/drugie_zycie.jpg" style="background-image: url(&quot;/uploads/thumbnail/drugie_zycie.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Drugie życie">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Drugie życie</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/sny-o-1306-sloniach" title="Zobacz szczegóły dla: Sny o słoniach, , 13 Cze 2026 / 20:45">
+									<div class="label">13 Cze 2026 / 20:45</div>
+									<div class="image" data-src="/uploads/thumbnail/sny_o_sloniach.jpg" style="background-image: url(&quot;/uploads/thumbnail/sny_o_sloniach.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Sny o słoniach">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Sny o słoniach</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 </div><div class="row"><div class="col-md-12 month-heading">Niedziela 14.06</div></div><div class="row row-has-5-columns2">
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/niesamowite-przygody-1406-skarpetek" title="Zobacz szczegóły dla: Niesamowite przygody skarpetek 3. Ale kosmos!, , 14 Cze 2026 / 14:30">
+									<div class="label">14 Cze 2026 / 14:30</div>
+									<div class="image" data-src="/uploads/thumbnail/niesamowite_przygody_skarpetek_3.jpg" style="background-image: url(&quot;/uploads/thumbnail/niesamowite_przygody_skarpetek_3.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Niesamowite przygody skarpetek 3. Ale kosmos!">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Niesamowite przygody skarpetek 3. Ale kosmos!</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/sny-o-1406-sloniach" title="Zobacz szczegóły dla: Sny o słoniach, , 14 Cze 2026 / 16:00">
+									<div class="label">14 Cze 2026 / 16:00</div>
+									<div class="image" data-src="/uploads/thumbnail/sny_o_sloniach.jpg" style="background-image: url(&quot;/uploads/thumbnail/sny_o_sloniach.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Sny o słoniach">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Sny o słoniach</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/orly-1406-republiki" title="Zobacz szczegóły dla: Orły republiki, , 14 Cze 2026 / 18:00">
+									<div class="label">14 Cze 2026 / 18:00</div>
+									<div class="image" data-src="/uploads/thumbnail/orly_republiki_2.jpg" style="background-image: url(&quot;/uploads/thumbnail/orly_republiki_2.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Orły republiki">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Orły republiki</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/drugie-1406-zycie" title="Zobacz szczegóły dla: Drugie życie, , 14 Cze 2026 / 20:30">
+									<div class="label">14 Cze 2026 / 20:30</div>
+									<div class="image" data-src="/uploads/thumbnail/drugie_zycie.jpg" style="background-image: url(&quot;/uploads/thumbnail/drugie_zycie.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Drugie życie">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Drugie życie</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 </div><div class="row"><div class="col-md-12 month-heading">Środa 17.06</div></div><div class="row row-has-5-columns2">
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/drugie-1706-zycie" title="Zobacz szczegóły dla: Drugie życie, , 17 Cze 2026 / 16:00">
+									<div class="label">17 Cze 2026 / 16:00</div>
+									<div class="image" data-src="/uploads/thumbnail/drugie_zycie.jpg" style="background-image: url(&quot;/uploads/thumbnail/drugie_zycie.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Drugie życie">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Drugie życie</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/orly-1706-republiki" title="Zobacz szczegóły dla: Orły republiki, , 17 Cze 2026 / 18:20">
+									<div class="label">17 Cze 2026 / 18:20</div>
+									<div class="image" data-src="/uploads/thumbnail/orly_republiki_2.jpg" style="background-image: url(&quot;/uploads/thumbnail/orly_republiki_2.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Orły republiki">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Orły republiki</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/sny-o-1706-sloniach" title="Zobacz szczegóły dla: Sny o słoniach, , 17 Cze 2026 / 20:45">
+									<div class="label">17 Cze 2026 / 20:45</div>
+									<div class="image" data-src="/uploads/thumbnail/sny_o_sloniach.jpg" style="background-image: url(&quot;/uploads/thumbnail/sny_o_sloniach.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Sny o słoniach">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Sny o słoniach</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 </div><div class="row"><div class="col-md-12 month-heading">Czwartek 18.06</div></div><div class="row row-has-5-columns2">
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/sny-o-1806-sloniach" title="Zobacz szczegóły dla: Sny o słoniach, , 18 Cze 2026 / 16:00">
+									<div class="label">18 Cze 2026 / 16:00</div>
+									<div class="image" data-src="/uploads/thumbnail/sny_o_sloniach.jpg" style="background-image: url(&quot;/uploads/thumbnail/sny_o_sloniach.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Sny o słoniach">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Sny o słoniach</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/slodkie-zycie-la-dolce-vita" title="Zobacz szczegóły dla: Słodkie życie (La dolce vita), , 18 Cze 2026 / 18:00">
+									<div class="label">18 Cze 2026 / 18:00</div>
+									<div class="image" data-src="/uploads/thumbnail/la_dolce_vita.jpg" style="background-image: url(&quot;/uploads/thumbnail/la_dolce_vita.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Słodkie życie (La dolce vita)">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Słodkie życie (La dolce vita)</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 
+
+
+
+
+					<div class="col-xs-6 col-sm-4 col-md-15" >
+								<div class="post boxoffice-style color-2 link-down-4">
+									<a href="/pl/orly-1806-republiki" title="Zobacz szczegóły dla: Orły republiki, , 18 Cze 2026 / 21:10">
+									<div class="label">18 Cze 2026 / 21:10</div>
+									<div class="image" data-src="/uploads/thumbnail/orly_republiki_2.jpg" style="background-image: url(&quot;/uploads/thumbnail/orly_republiki_2.jpg&quot;);">
+										<img src="/images/2x3.png" alt="Orły republiki">
+											
+											<div class="entry-hover bigger-meta">
+												<div class="meta-holder"></div>
+											<!-- /.meta-holder -->
+											</div>
+											<!-- /.entry-hover -->
+									</div>
+
+
+									<div style="height: 60px;" class="box_tytul"><h2>Orły republiki</h2></div>
+									</a>
+								</div>
+								<!-- /.post -->
+							</div>
+
+
+
+
+
+				 </div>	</div></div></div>                <!-- end .col-md-7.entry-content -->
+                <p style="margin-bottom:11px"><span style="color:#ff0033;"><span style="font-size:16px;"><span style="font-family:Tahoma,Geneva,sans-serif;"><b>Drodzy Widzowie,<br />
+w dniach 18 maja&nbsp;- 9 czerwca&nbsp;2026 r. Kino&nbsp;Praha będzie nieczynne.<br />
+Za niedogodności - przepraszamy.&nbsp;</b></span></span></span></p>
+
+<p style="margin-bottom:11px">&nbsp;</p>
+
+<p style="margin-bottom:11px"><span style="font-size:18px;"><span style="font-family:Arial,Helvetica,sans-serif;"><a href="https://butik.mteatr.pl/rezerwacja/wydarzenie.html?idg=1"><span style="color:#c0392b;">KUP BILET TUTAJ</span></a></span></span></p>
+
+<p><span style="font-size:16px;"><span style="font-family:Arial,Helvetica,sans-serif;"><span style="background:white"><span style="line-height:115%"><b><span style="line-height:115%"><span style="color:black">CENY BILET&Oacute;W:<br />
+TANIA ŚRODA:</span>&nbsp;</span></b><span style="line-height:115%"><span style="color:black">BILET NORMALNY: <b>12 ZŁ,&nbsp;</b>BILET ULGOWY: <b>10 ZŁ</b></span></span><br />
+<b><span style="line-height:115%"><span style="color:black">CZWARTEK - NIEDZIELA: </span></span></b><span style="line-height:115%"><span style="color:black">BILET NORMALNY: <b>19 ZŁ,&nbsp;</b>BILET ULGOWY: <b>17 ZŁ,</b>&nbsp;BILET DLA DZIECKA (do 12 lat): <b>12 ZŁ</b></span></span></span></span></span></span></p>
+
+<p>&nbsp;</p>
+
+<p><br />
+<span style="font-family:Arial,Helvetica,sans-serif;"><span style="font-size:18px;">Projektor cyfrowy wsp&oacute;łfinansowany jest przez PISF</span></span></p>
+
+<p><a href="https://pisf.pl/" target="_blank" title="Przejdź do strony PISF"><img alt="" src="https://mteatr.pl/userfiles/images/kino/pisf-logo.jpg" style="width: 500px; height: 264px;" /></a></p>
+
+<p><span style="font-family:Arial,Helvetica,sans-serif;"><span style="font-size:18px;">Kino Praha przynależy do Sieci Kin Studyjnych&nbsp;</span></span></p>
+
+<p><a href="https://stowarzyszeniekinstudyjnych.pl/siec-kin/" target="_blank" title="Przejdź do strony Sieci Kin Studyjnych"><span style="font-family:Arial,Helvetica,sans-serif;"><span style="font-size:18px;"><img alt="" src="https://mteatr.pl/userfiles/images/kino/SiecKinStudyjnych_Logo_2_Wiersze_Black_RGB.png" style="width: 300px; height: 258px;" /></span></span></a><span style="font-family:Arial,Helvetica,sans-serif;"><span style="font-size:18px;"><a href="https://stowarzyszeniekinstudyjnych.pl/" target="_blank" title="Przejdź do strony Stowarzyszenia Kin Studyjnych"><img alt="" src="https://mteatr.pl/userfiles/images/kino/StowarzyszenieKinStudyjnych_Logo_2_Wiersze_Wer_02_Black_RGB.png" style="width: 350px; height: 221px;" /></a></span></span></p>
+
+
+            </div>
+            <!-- end .row -->
+        </div>
+        <!-- end .container -->
+
+
+
+
+                        <!-- end .container -->
+
+
+    </section>
+</main>
+
+ <footer id="footer" class="footer-entertainment">
+<div class="container">
+<div class="row">
+<div class="col-12 back-top"><button onclick="topFunction()" id="myBtn" title="Powrót na górę strony"><i class="fa fa-angle-double-up"></i></button></div>
+</div>
+</div>
+            <div class="sub-footer">
+                <div class="container">
+
+                    <div class="row footer-row mv1">
+                        <div class="col-sm-6 col-xs-12">
+                            <div class="widget">
+                                <div class="social-links">
+
+<a href="https://www.facebook.com/MTeatr/" target="_blank" title="Facebook" aria-label="Facebook">
+                            				<i class="fab fa-facebook"></i>
+				                        </a><a href="https://www.youtube.com/channel/UCCliQHDOzFlyWPZnNhYXPZQ" target="_blank" title="YouTube" aria-label="YouTube">
+                            				<i class="fab fa-youtube"></i>
+				                        </a><a href="https://www.instagram.com/mteatr/" target="_blank" title="Instagram" aria-label="Instagram">
+                            				<i class="fab fa-instagram"></i>
+				                        </a>                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="col-sm-6 col-xs-12">
+                            <div class="tt-el-info inline-style text-sm-center">
+							<p>MAZOWIECKI TEATR MUZYCZNY IM. JANA KIEPURY JEST JEDNOSTKĄ ORGANIZACYJNĄ SAMORZĄDU WOJEWÓDZTWA MAZOWIECKIEGO</p>
+                                <span style="text-align: center"><a href="https://mazovia.pl" target="_blank" title="Strona mazovia.pl"><img src="https://www.mteatr.pl/userfiles/files/logo-mazowsze-png.png" height="40" border="0" alt="Mazowsze" title="Logo Mazowsze"></a></span>
+
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="border-line"></div>
+						</div>
+                    </div>
+					<div class="row">
+                            <div class="col-md-7 col-sm-12 footer-list"><ul class="list-inline">
+
+  <li><a href="https://www.mteatr.pl" title="Strona główna" aria-label="Strona główna"><i class="fas fa-theater-masks"></i></a></li>
+
+
+
+
+			 	
+
+  <li><a href="/pl/aktualnosci" title="" aria-label="">Aktualności</a></li>
+
+
+
+
+			 	
+
+  <li><a href="/pl/wynajem" title="" aria-label="">Wynajem</a></li>
+
+
+
+
+			 	
+
+  <li><a href="/pl/polityka-prywatnosci-i-monitoring-wizyjny-2" title="" aria-label="">Polityka prywatności i monitoring wizyjny</a></li>
+
+
+
+
+			 	
+
+  <li><a href="/pl/kontakt" title="" aria-label="">Kontakt</a></li>
+
+
+
+
+			 	</ul></div>
+                            <div class="col-md-5 col-sm-12 copyright-text"><div class="">Copyright &copy; 2018 - 2026 Mazowiecki Teatr Muzyczny</div>
+							<!-- 	<div><button onclick="topFunction()" id="myBtn" title="Powrót na górę strony"><i class="fa fa-angle-double-up"></i></button></div> -->
+							</div>
+                    </div>
+
+                </div>
+            </div>
+    </footer>    </div>
+    <!-- end .wrapper -->
+
+
+    <!-- Include jQuery and Scripts -->
+    <script type="text/javascript" src="/js/jquery.min.js"></script>
+    <script type="text/javascript" src="/vendors/bootstrap/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="/vendors/jquery.waypoints.min.js"></script>
+    <script type="text/javascript" src="/vendors/isotope.pkgd.min.js"></script>
+    <script type="text/javascript" src="/vendors/typed.min.js"></script>
+    <script type="text/javascript" src="/vendors/theia-sticky-sidebar.js"></script>
+    <script type="text/javascript" src="/vendors/circles.min.js"></script>
+    <script type="text/javascript" src="/vendors/jquery.stellar.min.js"></script>
+    <script type="text/javascript" src="/vendors/jquery.parallax.columns.js"></script>
+    <script type="text/javascript" src="/vendors/svg-morpheus.js"></script>
+	 <script src="/js/lightbox.js"></script>
+
+    <!-- Swiper -->
+    <script type="text/javascript" src="/vendors/swiper/js/swiper.min.js"></script>
+
+    <!-- Magnific-popup -->
+    <script type="text/javascript" src="/vendors/magnific-popup/jquery.magnific-popup.js"></script>
+
+    <!-- Master Slider -->
+    <script src="/vendors/masterslider/jquery.easing.min.js"></script>
+    <script src="/vendors/masterslider/masterslider.min.js"></script>
+
+    <script src="/vendors/mediaelement/mediaelement-and-player.min.js"></script>
+    <script src="/vendors/jquery-ui-slider.min.js"></script>
+
+    <script type="text/javascript" src="/js/scripts.js?v=250528"></script>
+
+<script>
+function update() {
+  if ($(window).scrollTop() > 185) {
+    $('.move-menu').addClass('active');
+  } else {
+    $('.move-menu').removeClass('active');
+  }
+}
+setInterval(update, 1);
+</script>
+
+
+<script>
+//Get the button
+var mybutton = document.getElementById("myBtn");
+
+// When the user scrolls down 20px from the top of the document, show the button
+window.onscroll = function() {scrollFunction()};
+
+function scrollFunction() {
+  if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+    mybutton.style.display = "block";
+  } else {
+    mybutton.style.display = "none";
+  }
+}
+
+// When the user clicks on the button, scroll to the top of the document
+function topFunction() {
+  document.body.scrollTop = 0;
+  document.documentElement.scrollTop = 0;
+}
+</script>
+
+	 <script type="text/javascript">
+
+	  $(function() {
+    $('.scroll-down').click (function() {
+      $('html, body').animate({scrollTop: $('section.ok').offset().top }, 'slow');
+      return false;
+    });
+  });
+
+
+
+
+
+  (function(){
+    class CookieManager{
+        setCookie(name = null,value = null){
+            if(name != null && value != null){
+                document.cookie = name + "=" + value;
+            }
+            else{
+                console.error("[CookiesManager] Cookie name or value is undefined");
+            }
+        }
+
+        getCookie(name){
+            var cookies = document.cookie.split(";");
+            for(var i in cookies){
+                var cookieData = cookies[i].split("=");
+                cookieData[0] = cookieData[0].replace(' ','');
+                if(cookieData[0] == name){
+                    return cookieData[1];
+                }
+            }
+            return undefined;
+        }
+    }
+
+    var c = new CookieManager();
+
+    $('div[data-class=contrastBar] [data-class=size]').on("click",(e) => {
+        var target = $(e.target);
+        c.setCookie("contrastSize",target.attr("data-val"));
+    });
+
+    $('div[data-class=contrastBar] [data-class=contrast]').on("click",(e) => {
+        var target = $(e.target);
+        c.setCookie("contrastStyle",target.attr("data-val"));
+
+			if (target.attr("data-val") == 1) {
+			changeCSS('/wcag.css', 0)
+
+			}
+
+				if (target.attr("data-val") == 2) {
+			changeCSS('/kontrast.css', 0)
+
+			}
+
+    })
+})()
+
+
+
+	function changeCSS(cssFile, cssLinkIndex) {
+
+    var oldlink = document.getElementById("wcag");
+
+    var newlink = document.createElement("link");
+    newlink.setAttribute("rel", "stylesheet");
+	 newlink.setAttribute("id", "wcag");
+    newlink.setAttribute("type", "text/css");
+    newlink.setAttribute("href", cssFile);
+
+    document.getElementsByTagName("head").item(0).replaceChild(newlink, oldlink);
+}
+
+
+	 </script>
+
+
+</body>
+</html>

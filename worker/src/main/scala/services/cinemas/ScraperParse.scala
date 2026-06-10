@@ -22,6 +22,21 @@ private[cinemas] object ScraperParse {
     "lipca" -> 7, "sierpnia" -> 8, "września" -> 9, "października" -> 10, "listopada" -> 11, "grudnia" -> 12
   )
 
+  /** Polish three-letter month abbreviations as several cinema pages spell them
+    * ("10 Cze 2026", "5 paź"). Keyed lower-case; [[polishMonthAbbrev]] folds case
+    * so a page can capitalise them ("Cze") or not ("cze"). Shared so the
+    * hand-rolled scrapers (Kino Żak, the MSI portals, Kijów, Kinomuzeum, Praha)
+    * don't each carry their own copy of the same 12-entry map. */
+  private val PolishMonthAbbrevs: Map[String, Int] = Map(
+    "sty" -> 1, "lut" -> 2, "mar" -> 3, "kwi" -> 4, "maj" -> 5, "cze" -> 6,
+    "lip" -> 7, "sie" -> 8, "wrz" -> 9, "paź" -> 10, "lis" -> 11, "gru" -> 12
+  )
+
+  /** The month number for a Polish three-letter abbreviation, case-insensitively
+    * ("Cze"/"cze" → 6); `None` for anything not a known abbreviation. */
+  def polishMonthAbbrev(token: String): Option[Int] =
+    PolishMonthAbbrevs.get(token.trim.toLowerCase)
+
   /** The first `HH:mm` in `s` as a `LocalTime`, or `None` when there's no
     * match or the captured hour/minute is out of range. */
   def parseHHmm(s: String): Option[LocalTime] =

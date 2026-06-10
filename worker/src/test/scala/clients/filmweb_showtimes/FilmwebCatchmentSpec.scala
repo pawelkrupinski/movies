@@ -101,7 +101,6 @@ class FilmwebCatchmentSpec extends AnyFlatSpec with Matchers with OptionValues {
     (2130, KinoPlanetariumCentrumNaukiKopernik, LocalDate.of(2026, 6, 11)),
     (2171, KinoMaxKino, LocalDate.of(2026, 6, 7)),
     (2172, KinoNaBiegunach, LocalDate.of(2026, 6, 7)),
-    (2180, KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha, LocalDate.of(2026, 6, 10)),
     (2313, KinoCyfroweKino, LocalDate.of(2026, 6, 7)),
     (2315, KinoFarys, LocalDate.of(2026, 6, 7)),
     (2320, KinoBajkaKluczbork, LocalDate.of(2026, 6, 7)),

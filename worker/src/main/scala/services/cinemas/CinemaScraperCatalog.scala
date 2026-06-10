@@ -314,12 +314,14 @@ class CinemaScraperCatalog(
 
   /** Raw scrapers grouped by city slug — same slugs `City.slug` uses, so a
    *  caller can scope by city without re-spelling the membership. */
-  // Filmweb catchment cinemas (nearby towns), each by Filmweb internal cinema id.
-  // Merged into byCity below so every city's catchment is scraped without
-  // touching its hand-written scraper group.
+  // Catchment cinemas (nearby towns) and a few in-city venues that came in via a
+  // Filmweb sweep, each by Filmweb internal cinema id — except the handful that
+  // have since moved to their own site (Kino Spójnia, Kino Praha), which fed
+  // Filmweb too thinly. Merged into byCity below so every city's catchment is
+  // scraped without touching its hand-written scraper group.
   private val filmwebExtra: Map[String, Seq[CinemaScraper]] = Map(
     "wroclaw" -> Seq(new FilmwebShowtimesClient(http, 2328, KinoAstra, today = today), new FilmwebShowtimesClient(http, 1645, KinoDyskusyjnyKlubFilmowyPolitechnika, today = today)),
-    "warszawa" -> Seq(new FilmwebShowtimesClient(http, 2180, KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha, today = today), new FilmwebShowtimesClient(http, 2130, KinoPlanetariumCentrumNaukiKopernik, today = today)),
+    "warszawa" -> Seq(new PrahaClient(http, KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha), new FilmwebShowtimesClient(http, 2130, KinoPlanetariumCentrumNaukiKopernik, today = today)),
     "lodz" -> Seq(new KinoSpojniaClient(http, KinoSpojnia), new FilmwebShowtimesClient(http, 2443, KinoStaryMlyn, today = today)),
     "katowice" -> Seq(new FilmwebShowtimesClient(http, 388, CinemaCity, today = today), new FilmwebShowtimesClient(http, 352, KinoPatria, today = today)),
     "szczecin" -> Seq(new FilmwebShowtimesClient(http, 117, KinoKawiarnia, today = today), new FilmwebShowtimesClient(http, 2363, KinoPDK, today = today), new FilmwebShowtimesClient(http, 1941, KinoSCK, today = today)),

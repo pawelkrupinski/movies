@@ -1378,7 +1378,7 @@ cinemaScrapes:
   Kino Oskard / Drugie życie / —
   Kino Piast / Drugie życie / —
   Kino Pionier 1907 / Drugie życie / —
-  Kino Praha / Drugie życie / 2025
+  Kino Praha / Drugie życie / —
   Kino Przedwiośnie / Drugie życie / 2025
   Kino Rialto / Drugie życie / 2025
   Kino Sfinks / DRUGIE ŻYCIE / —
@@ -4361,6 +4361,7 @@ cinemaScrapes:
   Kino Paradox / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Pałacowe / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino Planeta / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
+  Kino Praha / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Przedwiośnie / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino SCK / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino Sokół / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
@@ -4921,7 +4922,7 @@ cinemaScrapes:
   Kino Oskard / Orły republiki / —
   Kino Piast / Orły Republiki / —
   Kino Pionier 1907 / ORŁY REPUBLIKI / —
-  Kino Praha / Orły Republiki / 2025
+  Kino Praha / Orły republiki / —
   Kino Sfinks / ORŁY REPUBLIKI / —
   Kino Sokół / Orły Republiki / 2025
   Kino Światowid / Orły republiki / —
@@ -6722,6 +6723,7 @@ cinemaScrapes:
   Kino Muranów / Sny o słoniach / 2025
   Kino Muzeum / SNY O SŁONIACH / —
   Kino Pionier 1907 / SNY O SŁONIACH / —
+  Kino Praha / Sny o słoniach / —
   Kino Sokół / Sny o słoniach / 2025
   Kino Spektrum / Sny o słoniach / —
   Kino U-jazdowski / Sny o słoniach / 2025
@@ -7546,7 +7548,6 @@ cinemaScrapes:
   Kino KDK / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Kalejdoskop / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Kawiarnia / Tom i Jerry: Przygoda w muzeum / 2025
-  Kino Kuźnica / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Lewart / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Luna / Tom i Jerry: Przygoda w muzeum / —
   Kino MOK / Tom i Jerry: Przygoda w muzeum / 2025
@@ -8795,7 +8796,6 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14492-milczaca-przyjacioka/
 cinemaScrapes:
   Cinema City Bonarka / Milcząca przyjaciółka / 2025
-  Cyfrowe Kino / Milcząca przyjaciółka / 2025
   Dolnośląskie Centrum Filmowe / Milcząca przyjaciółka / 2025
   Forum / Milcząca przyjaciółka / 2025
   Gdyńskie Centrum Filmowe / Milcząca przyjaciółka / —
@@ -8824,7 +8824,7 @@ cinemaScrapes:
   Kino Orzeł / Milcząca przyjaciółka / —
   Kino Pałacowe / Milcząca przyjaciółka / 2025
   Kino Pionier 1907 / MILCZĄCA PRZYJACIÓŁKA / —
-  Kino Praha / Milcząca przyjaciółka / 2025
+  Kino Praha / Milcząca przyjaciółka / —
   Kino SCK / Milcząca przyjaciółka / 2025
   Kino Spektrum / Milcząca przyjaciółka / —
   Kino Wisła / Milcząca przyjaciółka / 2025
