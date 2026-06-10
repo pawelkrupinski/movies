@@ -120,7 +120,17 @@ object TitleRuleDefaults {
       note = Some("Kino Pałacowe film-club prefix")),
     TitleRule("palacowe-wajda", PerCinema, Some("kino-palacowe"),
       """^WAJDA: re-wizje\. """, "", applyAll = false, order = 30,
-      note = Some("Kino Pałacowe Wajda retrospective prefix"))
+      note = Some("Kino Pałacowe Wajda retrospective prefix")),
+    // Kinematograf Łódź — director + release-year suffixes the museum appends.
+    TitleRule("kinematograf-rez", PerCinema, Some("kino-kinematograf"),
+      """,\s*reż\.\s*.+$""", "", applyAll = false, order = 10,
+      note = Some("Kinematograf ', reż. …' director suffix")),
+    TitleRule("kinematograf-director", PerCinema, Some("kino-kinematograf"),
+      """,\s+\p{Lu}\S+\s+\p{Lu}\S+$""", "", applyAll = false, order = 20,
+      note = Some("Kinematograf bare ', Firstname Lastname' director suffix")),
+    TitleRule("kinematograf-year", PerCinema, Some("kino-kinematograf"),
+      """\s*\(\d{4}\)\s*$""", "", applyAll = false, order = 30,
+      note = Some("Kinematograf trailing ' (YYYY)' suffix"))
   )
 
   val all: Seq[TitleRule] = structural ++ search ++ canonical ++ perCinema

@@ -110,6 +110,13 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
     // Per-cinema: Kino Pałacowe (verbatim from KinoPalacoweClient.cleanTitle).
     def kinoPalacowe(title: String): String =
       title.stripPrefix("Poranek dla dzieci: ").stripPrefix("DKF Zamek: ").stripPrefix("WAJDA: re-wizje. ")
+
+    // Per-cinema: Kinematograf Łódź (verbatim from KinematografLodzClient.cleanTitle).
+    def kinematograf(raw: String): String = {
+      val noRez = """,\s*reż\.\s*.+$""".r.replaceFirstIn(raw.trim, "").trim
+      val noDirector = """,\s+\p{Lu}\S+\s+\p{Lu}\S+$""".r.replaceFirstIn(noRez, "").trim
+      """\s*\(\d{4}\)\s*$""".r.replaceFirstIn(noDirector, "").trim
+    }
   }
 
   // Corpus exercising every pattern + plain titles that must NOT be touched.
@@ -237,6 +244,20 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
     kinoPalacoweCorpus.foreach { t =>
       withClue(s"perCinema('kino-palacowe', '$t'): ")(
         rs.perCinema("kino-palacowe", t) shouldBe Legacy.kinoPalacowe(t))
+    }
+  }
+
+  private val kinematografCorpus = Seq(
+    "Znaki Pana Śliwki (2025), reż. Urszula Morga, Bartosz Mikołajczyk",
+    "Zawieście czerwone latarnie (1991), Zhang Yimou",
+    "Klasyk w kinie: Rozmowa (1973)",
+    "Anora"  // untouched
+  )
+
+  "the kino-kinematograf per-cinema rules" should "match the frozen legacy KinematografLodzClient.cleanTitle" in {
+    kinematografCorpus.foreach { t =>
+      withClue(s"perCinema('kino-kinematograf', '$t'): ")(
+        rs.perCinema("kino-kinematograf", t) shouldBe Legacy.kinematograf(t))
     }
   }
 }

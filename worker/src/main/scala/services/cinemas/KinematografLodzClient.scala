@@ -60,27 +60,17 @@ object KinematografLodzClient {
 
   private val DateTimePat = """(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2})""".r
   private val DateFmt     = DateTimeFormatter.ofPattern("dd.MM.yyyy")
-  private val YearSuffix  = """\s*\(\d{4}\)\s*$""".r
 
-  /** Strips the `", reż. Director Name"` / `", Director Name"` director
-    * suffix and the trailing `" (YYYY)"` release-year suffix that the museum
-    * appends to the raw title attribute, leaving the bare title for TMDB to
-    * match. Examples:
-    *   "Znaki Pana Śliwki (2025), reż. Urszula Morga, Bartosz Mikołajczyk"
-    *     → "Znaki Pana Śliwki"
-    *   "Zawieście czerwone latarnie (1991), Zhang Yimou"
-    *     → "Zawieście czerwone latarnie"
+  /** Strips the `", reż. Director Name"` / `", Director Name"` director suffix
+    * and the trailing `" (YYYY)"` release-year suffix the museum appends to the
+    * raw title — now via the editable "kino-kinematograf" rules. Delegates so it
+    * stays unit-testable here. Examples:
+    *   "Znaki Pana Śliwki (2025), reż. Urszula Morga, …" → "Znaki Pana Śliwki"
+    *   "Zawieście czerwone latarnie (1991), Zhang Yimou" → "Zawieście czerwone latarnie"
     *   "Klasyk w kinie: Rozmowa (1973)" → "Klasyk w kinie: Rozmowa"
     */
-  private[cinemas] def cleanTitle(raw: String): String = {
-    // Strip ", reż. …" (everything from the last comma + "reż." onward).
-    val noRez = """,\s*reż\.\s*.+$""".r.replaceFirstIn(raw.trim, "").trim
-    // Strip a trailing ", Firstname Lastname" (one comma + exactly two capitalised words)
-    // to catch bare foreign director names not preceded by "reż.".
-    val noDirector = """,\s+\p{Lu}\S+\s+\p{Lu}\S+$""".r.replaceFirstIn(noRez, "").trim
-    // Strip the trailing " (YYYY)" release-year suffix.
-    YearSuffix.replaceFirstIn(noDirector, "").trim
-  }
+  private[cinemas] def cleanTitle(raw: String): String =
+    services.movies.TitleNormalizer.cinemaClean("kino-kinematograf", raw)
 
   private[cinemas] def parseHtml(html: String, today: LocalDate, cinema: Cinema): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(html)
@@ -117,7 +107,7 @@ object KinematografLodzClient {
       t  <- title
       dt <- dtFiltered
     } yield CinemaMovie(
-      movie     = Movie(title = t),
+      movie     = Movie(title = t, rawTitle = rawTitle),
       cinema    = cinema,
       posterUrl = poster,
       filmUrl   = filmUrl,
