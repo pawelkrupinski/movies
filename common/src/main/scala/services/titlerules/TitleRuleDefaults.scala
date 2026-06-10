@@ -100,7 +100,17 @@ object TitleRuleDefaults {
     // Kino Muza — "X | najlepsze z najgorszych" recurring-programme suffix.
     TitleRule("muza-najlepsze-z-najgorszych", PerCinema, Some("kino-muza"),
       """(?i)\s*\|\s*najlepsze\s+z\s+najgorszych\s*$""", "", applyAll = false, order = 10,
-      note = Some("Kino Muza 'najlepsze z najgorszych' programme suffix"))
+      note = Some("Kino Muza 'najlepsze z najgorszych' programme suffix")),
+    // Kino Alternatywy — drop "Okładka" prefix + typographic quotes, collapse ws.
+    TitleRule("alt-okladka", PerCinema, Some("kino-alternatywy"),
+      """(?i)^okładka\s*""", "", applyAll = false, order = 10,
+      note = Some("Kino Alternatywy 'Okładka' cover prefix")),
+    TitleRule("alt-quotes", PerCinema, Some("kino-alternatywy"),
+      """[„“”‟"]""", " ", applyAll = true, order = 20,
+      note = Some("Kino Alternatywy typographic quote marks → space")),
+    TitleRule("alt-collapse-ws", PerCinema, Some("kino-alternatywy"),
+      """\s+""", " ", applyAll = true, order = 30,
+      note = Some("Kino Alternatywy whitespace collapse"))
   )
 
   val all: Seq[TitleRule] = structural ++ search ++ canonical ++ perCinema

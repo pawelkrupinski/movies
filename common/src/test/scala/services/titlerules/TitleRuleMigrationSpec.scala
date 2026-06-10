@@ -99,6 +99,13 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
     // Per-cinema: Kino Muza (verbatim from KinoMuzaClient.cleanTitle, pre-rules).
     private val MuzaSeriesSuffix = """(?i)\s*\|\s*najlepsze\s+z\s+najgorszych\s*$""".r
     def kinoMuza(raw: String): String = MuzaSeriesSuffix.replaceFirstIn(raw, "").trim
+
+    // Per-cinema: Kino Alternatywy (verbatim from AlternatywyClient.cleanTitle).
+    def alternatywy(alt: String): String =
+      alt.replaceFirst("(?i)^okładka\\s*", "")
+        .replaceAll("[„“”‟\"]", " ")
+        .replaceAll("\\s+", " ")
+        .trim
   }
 
   // Corpus exercising every pattern + plain titles that must NOT be touched.
@@ -198,6 +205,20 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
     kinoMuzaCorpus.foreach { t =>
       withClue(s"perCinema('kino-muza', '$t'): ")(
         rs.perCinema("kino-muza", t) shouldBe Legacy.kinoMuza(t))
+    }
+  }
+
+  private val alternatywyCorpus = Seq(
+    "Okładka „Anora\"",
+    "Okładka Mufasa",
+    "„Flying Lion\"  Adam Święs Trio",
+    "Zwyczajny tytuł"  // untouched but for ws-collapse
+  )
+
+  "the kino-alternatywy per-cinema rules" should "match the frozen legacy AlternatywyClient.cleanTitle" in {
+    alternatywyCorpus.foreach { t =>
+      withClue(s"perCinema('kino-alternatywy', '$t'): ")(
+        rs.perCinema("kino-alternatywy", t) shouldBe Legacy.alternatywy(t))
     }
   }
 }

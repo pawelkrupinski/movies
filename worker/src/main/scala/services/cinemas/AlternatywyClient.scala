@@ -50,7 +50,7 @@ class AlternatywyClient(
         val showtimes = group.map(_.showtime).distinctBy(s => (s.dateTime, s.room)).sortBy(_.dateTime)
         if (title.isEmpty || showtimes.isEmpty) None
         else Some(CinemaMovie(
-          movie     = Movie(title),
+          movie     = Movie(title, rawTitle = group.map(_.rawTitle).headOption),
           cinema    = cinema,
           posterUrl = group.flatMap(_.posterUrl).headOption,
           filmUrl   = group.flatMap(_.filmUrl).headOption,
@@ -61,7 +61,7 @@ class AlternatywyClient(
         ))
       }
 
-  private case class Screening(title: String, showtime: Showtime, posterUrl: Option[String], filmUrl: Option[String])
+  private case class Screening(title: String, rawTitle: String, showtime: Showtime, posterUrl: Option[String], filmUrl: Option[String])
 
   /** Parse the repertoire page into auditorium screenings. */
   private def parseRepertoire(html: String): Seq[Screening] = {
@@ -83,7 +83,8 @@ class AlternatywyClient(
   private def screeningFrom(quad: Seq[String], img: Element): Option[Screening] = {
     val Seq(dayStr, monthStr, timeStr, roomStr) = quad
     if (!roomStr.toLowerCase.startsWith("sala:")) return None
-    val title = cleanTitle(img.attr("alt"))
+    val rawTitle = img.attr("alt")
+    val title    = cleanTitle(rawTitle)
     if (title.isEmpty) return None
     for {
       day        <- Try(dayStr.toInt).toOption
@@ -94,7 +95,7 @@ class AlternatywyClient(
       val room      = Some(roomStr.split(":", 2).last.trim).filter(_.nonEmpty)
       val posterUrl = Some(img.attr("data-src")).map(_.trim).filter(_.nonEmpty)
       val filmUrl   = img.parents().asScala.find(_.tagName == "a").map(_.attr("href")).filter(_.nonEmpty)
-      Screening(title, Showtime(dateTime, bookingUrl = None, room = room), posterUrl, filmUrl)
+      Screening(title, rawTitle, Showtime(dateTime, bookingUrl = None, room = room), posterUrl, filmUrl)
     }
   }
 
@@ -125,12 +126,10 @@ object AlternatywyClient {
   }
 
   /** Titles arrive in the image alt as `Okładka „Title"`, `Okładka Title`, or
-   *  with a trailing event subtitle (`„Flying Lion"  Adam Święs Trio`). Drop the
-   *  `Okładka` prefix and the typographic quote marks, then collapse whitespace.
-   *  Public so it can be unit-tested directly. */
+   *  with a trailing event subtitle (`„Flying Lion"  Adam Święs Trio`). The
+   *  `Okładka` / quotes / whitespace cleanup now lives in the editable
+   *  "kino-alternatywy" rules (see TitleRuleDefaults); this delegates so it stays
+   *  unit-testable here. */
   def cleanTitle(alt: String): String =
-    alt.replaceFirst("(?i)^okładka\\s*", "")
-       .replaceAll("[„“”‟\"]", " ") // „ " " ‟ and ASCII "
-       .replaceAll("\\s+", " ")
-       .trim
+    services.movies.TitleNormalizer.cinemaClean("kino-alternatywy", alt)
 }
