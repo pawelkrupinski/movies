@@ -5,9 +5,11 @@ import org.scalatest.matchers.should.Matchers
 
 /**
  * `MovieRecord.synopsis` — longest non-empty blurb across sources, with URL
- * tokens stripped. Cinema detail pages occasionally inline a "watch the
- * trailer" link inside the synopsis paragraph; Jsoup's `.text()` then folds
- * the bare URL into the blurb. Surfacing that raw URL reads badly AND — being
+ * tokens stripped. A cinema editor can paste a "watch on YouTube" link into
+ * the synopsis block of their detail page; the scraper's `.text` read then
+ * folds the bare URL into the blurb (confirmed in prod for Orły Republiki,
+ * whose Stacja Falenica synopsis — the longest of 19 sources — led with the
+ * distributor's YouTube link). Surfacing that raw URL reads badly AND — being
  * one unbreakable token — overflows the flex column on the film-detail page,
  * shoving the synopsis below the poster. Cleaning at this single read boundary
  * fixes the web detail page, the `/api/details` mobile payload and the social
@@ -18,8 +20,8 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
   "synopsis" should "strip a leading YouTube URL folded into the blurb" in {
     val rec = MovieRecord(
       data = Map[Source, SourceData](
-        KinoMuza -> SourceData(synopsis = Some(
-          "https://www.youtube.com/watch?v=ERysio3sHjw&embeds_referring_euri=https%3A%2F%2Fkinomuza.pl%2F " +
+        StacjaFalenica -> SourceData(synopsis = Some(
+          "https://www.youtube.com/watch?v=ERysio3sHjw&embeds_referring_euri=https%3A%2F%2Faurorafilms.pl%2F " +
             "Nowy film laureata Złotej Palmy George Fahmy to największa produkcja."))
       )
     )
@@ -27,12 +29,12 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "pick the longest blurb after URLs are stripped, not before" in {
-    // The Muza blurb is the longest only because of the prepended URL; once
+    // The Falenica blurb is the longest only because of the prepended URL; once
     // cleaned, the genuine TMDB synopsis is longer and should win.
     val rec = MovieRecord(
       data = Map[Source, SourceData](
-        KinoMuza -> SourceData(synopsis = Some("https://www.youtube.com/watch?v=ERysio3sHjw Krótki opis.")),
-        Tmdb     -> SourceData(synopsis = Some("Znacznie dłuższy i pełniejszy opis filmu bez żadnego linku."))
+        StacjaFalenica -> SourceData(synopsis = Some("https://www.youtube.com/watch?v=ERysio3sHjw Krótki opis.")),
+        Tmdb           -> SourceData(synopsis = Some("Znacznie dłuższy i pełniejszy opis filmu bez żadnego linku."))
       )
     )
     rec.synopsis shouldBe Some("Znacznie dłuższy i pełniejszy opis filmu bez żadnego linku.")
@@ -41,8 +43,8 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
   it should "drop a source whose synopsis is nothing but a URL" in {
     val rec = MovieRecord(
       data = Map[Source, SourceData](
-        KinoMuza -> SourceData(synopsis = Some("https://www.youtube.com/watch?v=ERysio3sHjw")),
-        Tmdb     -> SourceData(synopsis = Some("Prawdziwy opis."))
+        StacjaFalenica -> SourceData(synopsis = Some("https://www.youtube.com/watch?v=ERysio3sHjw")),
+        Tmdb           -> SourceData(synopsis = Some("Prawdziwy opis."))
       )
     )
     rec.synopsis shouldBe Some("Prawdziwy opis.")

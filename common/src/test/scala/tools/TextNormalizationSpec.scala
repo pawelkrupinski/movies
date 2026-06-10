@@ -82,11 +82,15 @@ class TextNormalizationSpec extends AnyFlatSpec with Matchers {
   // ── stripUrls ─────────────────────────────────────────────────────────────
 
   "stripUrls" should "drop a leading YouTube watch URL folded into a synopsis" in {
-    // Exact production shape: Kino Muza's detail page inlines a "watch the
-    // trailer" link inside the synopsis paragraph, so Jsoup's `.text()`
-    // prepends the bare URL to the blurb (Orły Republiki, /poznan/film).
+    // Exact production shape (confirmed in prod Mongo): KINOkawiarnia Stacja
+    // Falenica's detail page has the distributor's "watch on YouTube" link
+    // pasted into the synopsis block (`div.section.tresc`), so `FalenicaClient`'s
+    // `.text` read prepends the bare URL to the blurb. This was the longest
+    // synopsis across 19 cinemas, so longest-wins surfaced it on every city's
+    // film page (Orły Republiki). `embeds_referring_euri` points at the
+    // distributor site the editor copied the link from.
     val raw = "https://www.youtube.com/watch?v=ERysio3sHjw&source_ve_path=MjM4NTE&embeds_referring_euri=" +
-      "https%3A%2F%2Fkinomuza.pl%2F Nowy film laureata Złotej Palmy George Fahmy to największa produkcja."
+      "https%3A%2F%2Faurorafilms.pl%2F Nowy film laureata Złotej Palmy George Fahmy to największa produkcja."
     TextNormalization.stripUrls(raw) shouldBe
       "Nowy film laureata Złotej Palmy George Fahmy to największa produkcja."
   }
