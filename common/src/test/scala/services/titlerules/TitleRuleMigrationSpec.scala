@@ -95,6 +95,10 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
       filmTitle
         .replaceFirst("^Kino na obcasach:\\s*", "")
         .replaceFirst("^Kolekcja\\s+Mamoru\\s+Hosody:\\s*", "")
+
+    // Per-cinema: Kino Muza (verbatim from KinoMuzaClient.cleanTitle, pre-rules).
+    private val MuzaSeriesSuffix = """(?i)\s*\|\s*najlepsze\s+z\s+najgorszych\s*$""".r
+    def kinoMuza(raw: String): String = MuzaSeriesSuffix.replaceFirstIn(raw, "").trim
   }
 
   // Corpus exercising every pattern + plain titles that must NOT be touched.
@@ -181,6 +185,19 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
     multikinoCorpus.foreach { t =>
       withClue(s"perCinema('multikino', '$t'): ")(
         rs.perCinema("multikino", t) shouldBe Legacy.multikino(t))
+    }
+  }
+
+  private val kinoMuzaCorpus = Seq(
+    "Wszystko wszędzie naraz | najlepsze z najgorszych",
+    "The Room | NAJLEPSZE Z NAJGORSZYCH",
+    "Anora"  // untouched
+  )
+
+  "the kino-muza per-cinema rules" should "match the frozen legacy KinoMuzaClient.cleanTitle" in {
+    kinoMuzaCorpus.foreach { t =>
+      withClue(s"perCinema('kino-muza', '$t'): ")(
+        rs.perCinema("kino-muza", t) shouldBe Legacy.kinoMuza(t))
     }
   }
 }

@@ -96,7 +96,11 @@ object TitleRuleDefaults {
       note = Some("Multikino ladies' programme prefix")),
     TitleRule("mk-mamoru-hosody", PerCinema, Some("multikino"),
       """^Kolekcja\s+Mamoru\s+Hosody:\s*""", "", applyAll = false, order = 20,
-      note = Some("Multikino anime-retrospective prefix"))
+      note = Some("Multikino anime-retrospective prefix")),
+    // Kino Muza — "X | najlepsze z najgorszych" recurring-programme suffix.
+    TitleRule("muza-najlepsze-z-najgorszych", PerCinema, Some("kino-muza"),
+      """(?i)\s*\|\s*najlepsze\s+z\s+najgorszych\s*$""", "", applyAll = false, order = 10,
+      note = Some("Kino Muza 'najlepsze z najgorszych' programme suffix"))
   )
 
   val all: Seq[TitleRule] = structural ++ search ++ canonical ++ perCinema

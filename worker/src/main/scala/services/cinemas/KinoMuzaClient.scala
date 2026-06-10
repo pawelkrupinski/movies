@@ -85,20 +85,18 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
   private val RuntimePat = """(\d+)’""".r
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r
 
-  // Strip the "| najlepsze z najgorszych" series tag Muza appends to films
-  // featured in that recurring programme — same film, regular title in the
-  // rest of the corpus.
-  private val SeriesSuffix = """(?i)\s*\|\s*najlepsze\s+z\s+najgorszych\s*$""".r
-
+  // The "| najlepsze z najgorszych" series-tag strip now lives in the editable
+  // "kino-muza" rules (see TitleRuleDefaults).
   private def cleanTitle(raw: String): String =
-    SeriesSuffix.replaceFirstIn(raw, "").trim
+    services.movies.TitleNormalizer.cinemaClean("kino-muza", raw)
 
   private def parseHtml(html: String): Seq[CinemaMovie] = {
     val doc      = Jsoup.parse(html)
     val previews = doc.select("#movies .preview").asScala
 
     previews.flatMap { preview =>
-      val title    = Option(preview.selectFirst(".preview-title")).map(_.text().trim).map(cleanTitle).filter(_.nonEmpty)
+      val rawTitle = Option(preview.selectFirst(".preview-title")).map(_.text().trim).filter(_.nonEmpty)
+      val title    = rawTitle.map(cleanTitle).filter(_.nonEmpty)
       val filmUrl  = Option(preview.selectFirst("a[href*=/movie/]")).map(_.attr("href"))
       val infoHtml  = Option(preview.selectFirst(".f1-bold p")).map(_.html()).getOrElse("")
       val infoText  = Option(preview.selectFirst(".f1-bold p")).map(_.text()).getOrElse("")
@@ -146,7 +144,7 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
         }.toSeq.distinctBy(_.dateTime)
 
         CinemaMovie(
-          movie     = Movie(title, runtimeMinutes, releaseYear, countries = countries),
+          movie     = Movie(title, runtimeMinutes, releaseYear, countries = countries, rawTitle = rawTitle),
           cinema    = KinoMuza,
           // The listing page only carries a landscape-cropped thumbnail; the
           // higher-fidelity portrait poster lives on each film's detail page
