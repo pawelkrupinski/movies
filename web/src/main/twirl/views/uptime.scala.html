@@ -1,7 +1,7 @@
-@import controllers.{BarData, ServiceRow}
+@import controllers.{BarData, FlaggedRow, ServiceRow}
 @import play.api.libs.json.Json
 @import services.UptimeMonitor
-@(cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow])
+@(failing: Seq[FlaggedRow], zero: Seq[FlaggedRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow])
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -57,6 +57,21 @@
     .legend-item { display: flex; align-items: center; gap: 5px; }
     .legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
     .empty-msg { color: #444; font-size: 12px; margin: 12px 0; }
+    /* City label on a triage row (a row pulled out of its city group). */
+    .city-chip {
+      margin-left: 8px; flex-shrink: 0; color: #777; font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+    }
+    /* Per-row client marker chips. Shared platform client vs a bespoke one. */
+    .tags { display: flex; gap: 5px; margin-left: 8px; flex-shrink: 0; }
+    .tag {
+      font-size: 10px; padding: 1px 6px; border-radius: 3px; white-space: nowrap;
+      border: 1px solid transparent;
+    }
+    .tag-shared { background: #16261d; color: #5fb98a; border-color: #234d3a; }
+    .tag-custom { background: #2a2233; color: #b694d6; border-color: #43395a; }
+    .leading-fail h2 { color: #e74c3c; }
+    .leading-zero h2 { color: #c9c9c9; }
 
     #overlay {
       display: none; position: fixed; z-index: 100;
@@ -91,8 +106,22 @@
 <body>
   <h1>Service Uptime</h1>
 
-  @if(cinemasByCity.isEmpty && services.isEmpty && other.isEmpty) {
+  @if(failing.isEmpty && zero.isEmpty && cinemasByCity.isEmpty && services.isEmpty && other.isEmpty) {
     <p class="empty-msg">No data yet — bars will appear after the first scrape cycle.</p>
+  }
+
+  @if(failing.nonEmpty) {
+    <div class="leading-fail">
+      <h2>Failing — last 3 scrapes</h2>
+      @for(f <- failing) { @flaggedRow(f) }
+    </div>
+  }
+
+  @if(zero.nonEmpty) {
+    <div class="leading-zero">
+      <h2>No screenings — last 3 scrapes</h2>
+      @for(f <- zero) { @flaggedRow(f) }
+    </div>
   }
 
   @if(cinemasByCity.nonEmpty) {
@@ -100,7 +129,7 @@
     @for((city, rows) <- cinemasByCity) {
       <h3>@city</h3>
       @for(s <- rows) {
-        @serviceRow(s)
+        @serviceRow(s, None)
         @s.enrichment.map { e => @enrichmentRow(e) }
       }
     }
@@ -108,12 +137,12 @@
 
   @if(services.nonEmpty) {
     <h2>Enrichment Services</h2>
-    @for(s <- services) { @serviceRow(s) }
+    @for(s <- services) { @serviceRow(s, None) }
   }
 
   @if(other.nonEmpty) {
     <h2>Other</h2>
-    @for(s <- other) { @serviceRow(s) }
+    @for(s <- other) { @serviceRow(s, None) }
   }
 
   <div class="legend">
@@ -214,9 +243,22 @@
 </body>
 </html>
 
-@serviceRow(s: ServiceRow) = {
+@*  One service row. `city` is set only in the leading triage sections (where a
+    row is shown out of its city group); the per-row `tags` render as marker
+    chips next to the name (a `"kind:label"` tag styles as tag-<kind>).  *@
+@serviceRow(s: ServiceRow, city: Option[String]) = {
   <div class="row" data-service="@s.name">
     <div class="name" title="@s.name">@s.name</div>
+    @city.map { c => <span class="city-chip">@c</span> }
+    @if(s.tags.nonEmpty) {
+      <div class="tags">
+        @for(t <- s.tags.toSeq.sorted) {
+          @defining(t.split(":", 2)) { parts =>
+            <span class="tag tag-@parts.head" title="@t">@parts.last</span>
+          }
+        }
+      </div>
+    }
     <div class="bars">
       @for(b <- s.bars) {
         <div class="bar @b.status@if(b.fallback){ fallback}" data-ts="@b.bucketTs" data-info="@{Json.toJson(b)(BarData.writes).toString}"></div>
@@ -226,6 +268,13 @@
       @s.avg1hMs.map(_ + "ms").getOrElse("—") <span class="lat-total">/ @s.avgTotalMs.map(_ + "ms").getOrElse("—")</span>
     </div>
   </div>
+}
+
+@*  A triage row in the leading Failing / No-screenings sections: the service row
+    (tagged with its city) plus its enrichment sub-row, kept together.  *@
+@flaggedRow(f: FlaggedRow) = {
+  @serviceRow(f.row, f.city)
+  @f.row.enrichment.map { e => @enrichmentRow(e) }
 }
 
 @*  A cinema's deferred-detail enrichment sub-row. data-service keeps the full

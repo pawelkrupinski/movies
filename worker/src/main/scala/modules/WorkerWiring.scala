@@ -337,6 +337,12 @@ class WorkerWiring {
     // Publish the by-design Filmweb-only cinemas so the /uptime/fallback page can
     // list them (the catalog is worker-only; the web reads this from Mongo).
     filmwebFallbackStore.putFilmwebOnly(filmwebOnlyCinemas)
+    // Tag each cinema with its scraper-client marker (shared platform client vs a
+    // bespoke one) so the /uptime page can show it. Same rationale as above — the
+    // catalog is worker-only, so the marker rides the UptimeMonitor tag channel.
+    CinemaClientMarkers.markers(cinemaScraperCatalog.all).foreach {
+      case (cinema, tag) => uptimeMonitor.tagService(cinema, Set(tag))
+    }
     // The task worker runs whenever there's queue work: queue-driven scraping,
     // deferred detail, and/or queue-driven rating enrichment.
     if (queueScraping || deferDetail || queueEnrichment) taskWorker.start()

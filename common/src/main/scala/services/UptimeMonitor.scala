@@ -45,7 +45,17 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
   private val data = new ConcurrentHashMap[String, java.util.concurrent.ConcurrentSkipListMap[Long, Bucket]]()
   private val listeners = new java.util.concurrent.CopyOnWriteArrayList[BucketListener]()
 
+  // Per-SERVICE (per-row, not per-bucket) labels — a generic tag mechanism the
+  // /uptime page renders as chips next to a row. Static metadata, decoupled from
+  // the time-series buckets: the worker (which alone knows the scraper catalog)
+  // tags each cinema with its client kind via `tagService`; the serving app reads
+  // them through the same Mongo channel it polls the buckets on. See `tagColl`.
+  private val serviceTags = new ConcurrentHashMap[String, Set[String]]()
+
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection("uptimeBuckets"))
+  // Tags live in their own collection (no TTL — they're static config, unlike the
+  // 24h-expiring buckets), one doc per service keyed by `service`.
+  private val tagColl: Option[MongoCollection[Document]] = db.map(_.getCollection("uptimeServiceTags"))
 
   // Daemon scheduler running the flusher (always) + poller (serving app only);
   // null until init runs, or if Mongo is absent.
@@ -59,6 +69,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
     val t = new Thread(() => {
       ensureIndexes(c)
       hydrate(c)
+      tagColl.foreach(loadTags)
       // Schedule background work only AFTER hydrate: flushing absolute cumulative
       // state before the on-disk base is loaded would overwrite Mongo with just
       // this process's fresh increments.
@@ -69,6 +80,10 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
       exec.scheduleWithFixedDelay(() => Try(flush(c)), FlushIntervalMs, FlushIntervalMs, TimeUnit.MILLISECONDS)
       if (surfaceExternalWrites) {
         exec.scheduleWithFixedDelay(() => Try(poll(c)), PollIntervalMs, PollIntervalMs, TimeUnit.MILLISECONDS)
+        // Re-read the tiny tag collection on the same cadence so a cinema tagged by
+        // the worker after this app booted still surfaces (cheap full read — tags
+        // are ~one doc per cinema, not the 24h × N-service bucket history).
+        tagColl.foreach(tc => exec.scheduleWithFixedDelay(() => Try(loadTags(tc)), PollIntervalMs, PollIntervalMs, TimeUnit.MILLISECONDS))
         logger.info(s"UptimeMonitor: polling uptimeBuckets every ${PollIntervalMs / 1000}s for cross-process updates.")
       }
     }, "uptime-monitor-init")
@@ -189,6 +204,47 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
   }
 
   def services: Set[String] = data.keySet().asScala.toSet
+
+  // ── Per-service tags (generic per-row labels) ────────────────────────────────
+
+  /** Attach `tags` to `service`, replacing any existing set. Updates the
+   *  in-memory map and best-effort upserts the one tag doc for the service so
+   *  other processes (the serving app) pick it up. A no-op set is still written
+   *  (idempotent `$set`). Caller-supplied empty `tags` clears the row's tags. */
+  def tagService(service: String, tags: Set[String]): Unit = {
+    serviceTags.put(service, tags)
+    tagColl.foreach { c =>
+      Try {
+        c.updateOne(
+          Filters.eq("service", service),
+          Updates.combine(Updates.set("service", service), Updates.set("tags", tags.toList.asJava)),
+          new UpdateOptions().upsert(true)
+        ).subscribe(
+          (_: org.mongodb.scala.result.UpdateResult) => (),
+          (ex: Throwable) => logger.debug(s"Uptime tag write failed: ${ex.getMessage}")
+        )
+      }.recover { case ex => logger.debug(s"Uptime tag write failed: ${ex.getMessage}") }.getOrElse(())
+    }
+  }
+
+  /** Current per-service tags, for the page render. Returns the in-memory view,
+   *  populated from Mongo at boot + on each poll (serving app) or directly by
+   *  `tagService` (worker). */
+  def serviceTagsSnapshot(): Map[String, Set[String]] = serviceTags.asScala.toMap
+
+  /** Load all service tags from Mongo into the in-memory map. The collection is
+   *  small (one doc per tagged service), so an unfiltered read is cheap; `$set`
+   *  semantics make re-loading idempotent. */
+  private def loadTags(c: MongoCollection[Document]): Unit = Try {
+    val docs = Await.result(c.find().toFuture(), HydrateTimeout)
+    docs.foreach { doc =>
+      Option(doc.getString("service")).foreach { svc =>
+        val tags = Try(doc.getList("tags", classOf[String])).toOption.flatMap(Option(_))
+          .map(_.asScala.toSet).getOrElse(Set.empty[String])
+        if (tags.nonEmpty) serviceTags.put(svc, tags) else serviceTags.remove(svc)
+      }
+    }
+  }.recover { case ex => logger.debug(s"Uptime tag load failed: ${ex.getMessage}") }
 
   private def currentBucket(service: String): Bucket = {
     val ts = bucketTimestamp(System.currentTimeMillis())

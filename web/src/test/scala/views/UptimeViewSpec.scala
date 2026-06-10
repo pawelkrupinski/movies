@@ -18,7 +18,7 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
     "Warszawa" -> Seq(cinemaRow("Kino Muranów")),
   )
 
-  private val html = views.html.uptime(cinemasByCity, Seq.empty, Seq.empty).body
+  private val html = views.html.uptime(Seq.empty, Seq.empty, cinemasByCity, Seq.empty, Seq.empty).body
 
   "the uptime page" should "render a subheader for each city group" in {
     html should include ("<h3>Poznań</h3>")

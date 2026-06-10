@@ -30,6 +30,13 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   private val controller = new UptimeController(Helpers.stubControllerComponents(), new UptimeMonitor(), fallbackStore)
   private def fakeRow(n: String) = ServiceRow(n, Seq.empty)
 
+  /** A bar series, oldest→newest, from status keywords ("red"/"zero"/"green"/"empty"). */
+  private def bars(statuses: String*): Seq[BarData] =
+    statuses.zipWithIndex.map { case (s, i) => BarData(s"svc", i.toLong, "", "", "", s, 0, 0, 0, Seq.empty) }
+  /** A `row` lookup that returns a crafted bar series for named services, else an empty row. */
+  private def rowsFrom(crafted: Map[String, Seq[BarData]]): String => ServiceRow =
+    n => ServiceRow(n, crafted.getOrElse(n, Seq.empty))
+
   private def fallbackState(name: String, active: Boolean) = FilmwebFallbackState(
     cinema = name, active = active, filmwebCinemaId = Some(2180),
     since = Some(Instant.ofEpochMilli(1_700_000_000_000L)), lastReason = Some("RuntimeException: down"),
@@ -47,7 +54,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     val enrich = UptimeMonitor.enrichmentService(cinema)
     val active = Set(cinema, enrich, "Some Other Service")
 
-    val (cinemasByCity, _, other) = controller.groupRows(active, fakeRow)
+    val (_, _, cinemasByCity, _, other) = controller.groupRows(active, fakeRow)
 
     val row = cinemasByCity.flatMap(_._2).find(_.name == cinema).get
     row.enrichment.map(_.name) shouldBe Some(enrich)         // grouped under its cinema
@@ -56,7 +63,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   }
 
   it should "leave a cinema without an active enrichment service un-subrowed" in {
-    val (cinemasByCity, _, _) = controller.groupRows(Set(cinema), fakeRow)
+    val (_, _, cinemasByCity, _, _) = controller.groupRows(Set(cinema), fakeRow)
     cinemasByCity.flatMap(_._2).find(_.name == cinema).get.enrichment shouldBe None
   }
 
@@ -64,7 +71,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   // health as a single "Cinema City Enrichment" entry — a standalone enrichment
   // service, not a per-venue sub-row and not adrift in "Other".
   it should "list the network-level Cinema City Enrichment as a standalone enrichment service" in {
-    val (_, services, other) = controller.groupRows(Set("Cinema City Enrichment", "Some Other Service"), fakeRow)
+    val (_, _, _, services, other) = controller.groupRows(Set("Cinema City Enrichment", "Some Other Service"), fakeRow)
     services.map(_.name) should contain("Cinema City Enrichment")
     other.map(_.name)    should not contain "Cinema City Enrichment"
   }
@@ -72,8 +79,73 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   // The chain-wide enrichment row leads the Global section, ahead of the
   // external rating sources.
   it should "render Cinema City Enrichment first among enrichment services" in {
-    val (_, services, _) = controller.groupRows(Set("Cinema City Enrichment", "TMDB", "IMDb"), fakeRow)
+    val (_, _, _, services, _) = controller.groupRows(Set("Cinema City Enrichment", "TMDB", "IMDb"), fakeRow)
     services.map(_.name).head shouldBe "Cinema City Enrichment"
+  }
+
+  // ── Triage: failing / no-screenings lead, pulled out of the city group ───────
+  private val city = Cinema.byCity.head._1
+
+  "triage grouping" should "promote a cinema failing its last 3 scrapes into Failing, tagged with its city" in {
+    val row = rowsFrom(Map(cinema -> bars("green", "red", "red", "red")))
+    val (failing, zero, cinemasByCity, _, _) = controller.groupRows(Set(cinema), row)
+
+    failing.map(_.row.name) should contain(cinema)
+    failing.find(_.row.name == cinema).get.city shouldBe Some(city)
+    zero.map(_.row.name) should not contain cinema
+    cinemasByCity.flatMap(_._2).map(_.name) should not contain cinema   // removed from its city group
+  }
+
+  it should "promote a cinema returning no screenings into the No-screenings section" in {
+    val row = rowsFrom(Map(cinema -> bars("zero", "zero", "zero")))
+    val (failing, zero, cinemasByCity, _, _) = controller.groupRows(Set(cinema), row)
+    zero.map(_.row.name) should contain(cinema)
+    failing.map(_.row.name) should not contain cinema
+    cinemasByCity.flatMap(_._2).map(_.name) should not contain cinema
+  }
+
+  it should "keep a healthy cinema in its city group, out of triage" in {
+    val row = rowsFrom(Map(cinema -> bars("green", "green", "green")))
+    val (failing, zero, cinemasByCity, _, _) = controller.groupRows(Set(cinema), row)
+    failing shouldBe empty
+    zero shouldBe empty
+    cinemasByCity.flatMap(_._2).map(_.name) should contain(cinema)
+  }
+
+  it should "treat a lone red blip among greens as healthy (needs all of the last 3 red)" in {
+    val row = rowsFrom(Map(cinema -> bars("green", "green", "red")))
+    val (failing, _, cinemasByCity, _, _) = controller.groupRows(Set(cinema), row)
+    failing.map(_.row.name) should not contain cinema
+    cinemasByCity.flatMap(_._2).map(_.name) should contain(cinema)
+  }
+
+  it should "promote a failing enrichment service (no city) into Failing, not the enrichment section" in {
+    val row = rowsFrom(Map("TMDB" -> bars("red", "red", "red")))
+    val (failing, _, _, services, _) = controller.groupRows(Set("TMDB"), row)
+    failing.map(_.row.name) should contain("TMDB")
+    failing.find(_.row.name == "TMDB").get.city shouldBe None
+    services.map(_.name) should not contain "TMDB"
+  }
+
+  it should "promote a cinema whose enrichment sub-row is failing, keeping the pair together" in {
+    val enrich = UptimeMonitor.enrichmentService(cinema)
+    val row = rowsFrom(Map(cinema -> bars("green", "green", "green"), enrich -> bars("red", "red", "red")))
+    val (failing, _, cinemasByCity, _, _) = controller.groupRows(Set(cinema, enrich), row)
+
+    failing.map(_.row.name) should contain(cinema)
+    failing.find(_.row.name == cinema).get.row.enrichment.map(_.name) shouldBe Some(enrich)
+    cinemasByCity.flatMap(_._2).map(_.name) should not contain cinema
+  }
+
+  "the rendered /uptime page" should "show the Failing section, the city chip, and the client-marker tag" in {
+    val failing = Seq(FlaggedRow(
+      ServiceRow("Kino Rialto", bars("red", "red", "red"), tags = Set("custom:RialtoClient")),
+      Some("Poznań")))
+    val html = views.html.uptime(failing, Nil, Nil, Nil, Nil).body
+    html should include ("Failing — last 3 scrapes")
+    html should include ("Poznań")            // city chip
+    html should include ("tag-custom")        // marker styled by kind
+    html should include ("RialtoClient")      // marker label
   }
 
   "the /uptime/fallback page" should "list active fallbacks, recovered cinemas, and Filmweb-only-by-design venues" in {

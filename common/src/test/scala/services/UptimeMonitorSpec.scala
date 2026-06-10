@@ -256,6 +256,21 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     UptimeMonitor.BucketTtlSeconds shouldBe (24L * 60 * 60) + (15 * 60) // 87300s
   }
 
+  // Per-service tags are a generic per-row label channel (the /uptime client
+  // markers ride it). Without Mongo, tagService stores in memory and the snapshot
+  // reflects it; an empty set clears the row.
+  "service tags" should "round-trip per service in memory and be cleared by an empty set" in {
+    val monitor = new UptimeMonitor()
+    monitor.tagService("Kino Rialto", Set("custom:RialtoClient"))
+    monitor.tagService("Helios Posnania", Set("shared:HeliosClient"))
+
+    monitor.serviceTagsSnapshot()("Kino Rialto")    shouldBe Set("custom:RialtoClient")
+    monitor.serviceTagsSnapshot()("Helios Posnania") shouldBe Set("shared:HeliosClient")
+
+    monitor.tagService("Kino Rialto", Set.empty)
+    monitor.serviceTagsSnapshot()("Kino Rialto") shouldBe Set.empty
+  }
+
   "BucketSnapshot.status" should "be green when all succeed" in {
     UptimeMonitor.BucketSnapshot(0, successes = 5, failures = 0, zeroes = 0, Seq.empty).status shouldBe "green"
   }

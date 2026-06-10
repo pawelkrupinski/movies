@@ -38,6 +38,15 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor, filmweb
   private val BatchMaxSize     = 1024
   private val BatchWindow      = 250.millis
 
+  // Triage classification: a row is judged by its most recent activity. A cinema
+  // scrapes roughly every ~5 min (legacy) / ≤15 min (queue), so the last ≤3
+  // buckets that recorded anything ≈ "the last few scrapes".
+  private val RecentScrapes = 3
+  private sealed trait Health
+  private case object Failing extends Health
+  private case object Zero    extends Health
+  private case object Healthy extends Health
+
   private val warsawZone = ZoneId.of("Europe/Warsaw")
   private val timeFmt = DateTimeFormatter.ofPattern("HH:mm").withZone(warsawZone)
   private val dateFmt = DateTimeFormatter.ofPattern("d MMM").withZone(warsawZone)
@@ -69,32 +78,82 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor, filmweb
       }
     }
 
-    def row(n: String) = ServiceRow(n, barsFor(n), monitor.averageMs1h(n), monitor.averageMsTotal(n))
-    val (cinemasByCity, services, other) = groupRows(active, row)
-    Ok(views.html.uptime(cinemasByCity, services, other))
+    val tags = monitor.serviceTagsSnapshot()
+    def row(n: String) =
+      ServiceRow(n, barsFor(n), monitor.averageMs1h(n), monitor.averageMsTotal(n), tags = tags.getOrElse(n, Set.empty))
+    val (failing, zero, cinemasByCity, services, other) = groupRows(active, row)
+    Ok(views.html.uptime(failing, zero, cinemasByCity, services, other))
   }
 
-  /** Split the active services into the page's three sections. A cinema's
-   *  "<cinema>|enrichment" service (deferred-detail task health) is attached as
-   *  a sub-row of the cinema instead of floating in "Other". Package-private and
-   *  parameterised on `row` so the grouping is unit-testable without rendering or
-   *  a Materializer. */
+  /** Split the active services into the page's sections. Two triage sections lead:
+   *  rows that have been FAILING (every one of their last ≤3 active 15-min buckets
+   *  is fully red) and rows returning NO SCREENINGS (last ≤3 active buckets all
+   *  white) are pulled to the top — cinemas and enrichment services together, in a
+   *  flat list tagged with each row's city — so a glance shows what's broken now.
+   *  Everything healthy keeps its normal home: cinemas grouped by city, the
+   *  enrichment-service rows, then "Other". A cinema's "<cinema>|enrichment"
+   *  sub-row travels with it (and a failing sub-row promotes its cinema, keeping
+   *  cinema + enrichment together). Package-private and parameterised on `row` so
+   *  the grouping is unit-testable without rendering or a Materializer. */
   private[controllers] def groupRows(active: Set[String], row: String => ServiceRow)
-      : (Seq[(String, Seq[ServiceRow])], Seq[ServiceRow], Seq[ServiceRow]) = {
+      : (Seq[FlaggedRow], Seq[FlaggedRow], Seq[(String, Seq[ServiceRow])], Seq[ServiceRow], Seq[ServiceRow]) = {
     def cinemaRow(displayName: String): ServiceRow = {
       val enrichSvc = UptimeMonitor.enrichmentService(displayName)
       row(displayName).copy(enrichment = Option.when(active.contains(enrichSvc))(row(enrichSvc)))
     }
-    val cinemasByCity = Cinema.byCity.flatMap { case (city, venues) =>
-      val rows = venues.map(_.displayName).filter(active.contains).map(cinemaRow)
+
+    // Built once, in city order; reused for both the triage split and the
+    // by-city section so a cinema's row identity is stable.
+    val cinemaUnits: Seq[(String, ServiceRow)] = Cinema.byCity.flatMap { case (city, venues) =>
+      venues.map(_.displayName).filter(active.contains).map(dn => city -> cinemaRow(dn))
+    }
+    val serviceRows = enrichmentNames.filter(active.contains).map(row)
+    // Exclude the "<cinema>|enrichment" services — they render as cinema sub-rows.
+    val otherRows = (active -- cinemaNames.toSet -- enrichmentNames.toSet)
+      .filterNot(UptimeMonitor.isEnrichmentService).toSeq.sorted.map(row)
+
+    // Flat triage candidates, in the order cinemas → enrichment services → other,
+    // each carrying the city it belongs to (None for non-cinema rows).
+    val candidates: Seq[(ServiceRow, Option[String])] =
+      cinemaUnits.map { case (city, r) => r -> Some(city) } ++
+        serviceRows.map(_ -> None) ++ otherRows.map(_ -> None)
+    val failing = candidates.collect { case (r, c) if health(r) == Failing => FlaggedRow(r, c) }
+    val zero    = candidates.collect { case (r, c) if health(r) == Zero    => FlaggedRow(r, c) }
+
+    // The remainder (healthy / mixed) keeps its normal home.
+    val cinemasByCity = Cinema.byCity.flatMap { case (city, _) =>
+      val rows = cinemaUnits.collect { case (c, r) if c == city && health(r) == Healthy => r }
       Option.when(rows.nonEmpty)(city -> rows)
     }
-    val services = enrichmentNames.filter(active.contains).map(row)
-    // Exclude the "<cinema>|enrichment" services — they render as cinema sub-rows.
-    val other = (active -- cinemaNames.toSet -- enrichmentNames.toSet)
-      .filterNot(UptimeMonitor.isEnrichmentService).toSeq.sorted.map(row)
-    (cinemasByCity, services, other)
+    val services = serviceRows.filter(health(_) == Healthy)
+    val other    = otherRows.filter(health(_) == Healthy)
+    (failing, zero, cinemasByCity, services, other)
   }
+
+  /** Health of a row over its most recent activity: a cinema unit is the WORST of
+   *  its scrape row and its attached enrichment sub-row, so a failing enrichment
+   *  surfaces the cinema too (keeping the pair together). */
+  private def health(r: ServiceRow): Health =
+    worse(classify(r.bars), r.enrichment.map(e => classify(e.bars)).getOrElse(Healthy))
+
+  /** Classify a bar series by its last `RecentScrapes` buckets that recorded any
+   *  activity (ignoring untouched "empty" slots): all red ⇒ Failing, all white
+   *  ⇒ Zero, anything else (any success, or no activity at all) ⇒ Healthy. A lone
+   *  red blip among greens stays Healthy; a brand-new service that has only ever
+   *  failed is Failing from its first bucket. Yellow (partial failure) is NOT
+   *  failing. */
+  private def classify(bars: Seq[BarData]): Health = {
+    val recent = bars.iterator.map(_.status).filter(_ != "empty").toSeq.takeRight(RecentScrapes)
+    if (recent.isEmpty) Healthy
+    else if (recent.forall(_ == "red")) Failing
+    else if (recent.forall(_ == "zero")) Zero
+    else Healthy
+  }
+
+  private def worse(a: Health, b: Health): Health =
+    if (a == Failing || b == Failing) Failing
+    else if (a == Zero || b == Zero) Zero
+    else Healthy
 
   def stream: Action[AnyContent] = Action {
     Ok.chunked(eventSource()).as("text/event-stream")
@@ -215,5 +274,12 @@ case class ServiceRow(
   // The cinema's deferred-detail enrichment health, rendered as an indented
   // sub-row beneath the scrape bar. None for non-cinema rows / cinemas with no
   // deferred detail.
-  enrichment: Option[ServiceRow] = None
+  enrichment: Option[ServiceRow] = None,
+  // Generic per-row labels (UptimeMonitor service tags) rendered as chips next to
+  // the name — e.g. the cinema's scraper-client marker "shared:FilmwebShowtimesClient".
+  tags:       Set[String]        = Set.empty
 )
+
+/** A row promoted into the leading "Failing" / "No screenings" triage sections,
+ *  carrying the city it was pulled out of (None for non-cinema rows). */
+case class FlaggedRow(row: ServiceRow, city: Option[String])
