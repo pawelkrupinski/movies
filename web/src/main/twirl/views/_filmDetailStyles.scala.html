@@ -48,7 +48,13 @@
     .film-title .pill { font-weight: 400; }
     .film-original-title { font-size: 1rem; font-style: italic; color: #aaa; margin: -.35rem 0 .6rem; }
     .meta-label { font-size: .75rem; color: #888; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .15rem; margin-top: .9rem; }
-    .meta-value { font-size: .9rem; color: #ddd; }
+    /* `overflow-wrap: anywhere` so a long unbreakable token (a stray URL a
+       scraper folded into the blurb, a long hashtag) breaks mid-string
+       instead of setting a min-content width on the flex details column —
+       which, being wider than the row, would wrap the whole column below the
+       poster (the "synopsis under the poster" bug). `anywhere` (not
+       `break-word`) is the variant that actually shrinks intrinsic size. */
+    .meta-value { font-size: .9rem; color: #ddd; overflow-wrap: anywhere; }
     .meta-link { color: #aad4ff; text-decoration: none; }
     .meta-link:hover { color: #fff; text-decoration: underline; }
     .cinema-link {

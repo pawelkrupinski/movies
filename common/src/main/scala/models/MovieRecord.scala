@@ -172,9 +172,19 @@ case class MovieRecord(
     seen.toSeq
   }
 
-  /** Longest non-empty synopsis across all sources. */
+  /** Longest non-empty synopsis across all sources, with URL tokens stripped.
+   *  A cinema detail page that inlines a trailer link folds the bare URL into
+   *  the blurb (see `TextNormalization.stripUrls`); we clean every source's
+   *  text *before* the longest-wins comparison so a URL-padded blurb can't win
+   *  on length, and drop any source left empty (synopsis that was nothing but
+   *  a link). Cleaning here — the single read boundary `FilmSchedule.synopsis`
+   *  and `/api/details` both go through — fixes web + mobile at once without
+   *  re-scraping the stored value. */
   def synopsis: Option[String] =
-    data.values.flatMap(_.synopsis).toSeq.sortBy(-_.length).headOption
+    data.values.flatMap(_.synopsis)
+      .map(tools.TextNormalization.stripUrls)
+      .filter(_.nonEmpty)
+      .toSeq.sortBy(-_.length).headOption
 
   /** Longest non-empty cast list across all sources. */
   def cast: Seq[String] =

@@ -130,6 +130,35 @@ test.describe('/film detail page', () => {
     });
   }
 
+  test('a long unbreakable token in the synopsis keeps the details beside the poster', async ({ page }) => {
+    // Force a desktop-width viewport so the poster/details flex row is
+    // side-by-side (below 575px it stacks by design). Reproduces the reported
+    // "Orły Republiki synopsis renders under the poster" bug: a 300+ char
+    // URL-like run with no break opportunities used to set a min-content width
+    // on the `.col` details column wider than the whole row, wrapping it below
+    // the poster. `.meta-value { overflow-wrap: anywhere }` lets it break.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await gotoFirstFilm(page);
+
+    await page.evaluate(() => {
+      const col = document.querySelector('.film-row > .col');
+      const div = document.createElement('div');
+      div.className = 'meta-value';
+      div.id = 'injected-synopsis';
+      div.textContent = 'https://www.youtube.com/watch?v=' + 'A'.repeat(320);
+      col!.prepend(div);
+    });
+
+    const poster  = await page.locator('.film-row > .col-auto').boundingBox();
+    const details = await page.locator('.film-row > .col').boundingBox();
+    expect(poster).not.toBeNull();
+    expect(details).not.toBeNull();
+    // Side-by-side: the details column starts to the right of the poster. When
+    // the column wraps below (the bug) its x collapses back to the row's left
+    // edge, ≈ the poster's x, so this guard fails.
+    expect(details!.x).toBeGreaterThan(poster!.x + poster!.width - 1);
+  });
+
   test('detail page renders without a JS error', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));

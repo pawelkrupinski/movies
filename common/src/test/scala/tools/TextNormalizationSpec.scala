@@ -78,4 +78,43 @@ class TextNormalizationSpec extends AnyFlatSpec with Matchers {
   it should "decode HTML entities" in {
     TextNormalization.stripHtml("caf&eacute; &amp; bar") shouldBe "café & bar"
   }
+
+  // ── stripUrls ─────────────────────────────────────────────────────────────
+
+  "stripUrls" should "drop a leading YouTube watch URL folded into a synopsis" in {
+    // Exact production shape: Kino Muza's detail page inlines a "watch the
+    // trailer" link inside the synopsis paragraph, so Jsoup's `.text()`
+    // prepends the bare URL to the blurb (Orły Republiki, /poznan/film).
+    val raw = "https://www.youtube.com/watch?v=ERysio3sHjw&source_ve_path=MjM4NTE&embeds_referring_euri=" +
+      "https%3A%2F%2Fkinomuza.pl%2F Nowy film laureata Złotej Palmy George Fahmy to największa produkcja."
+    TextNormalization.stripUrls(raw) shouldBe
+      "Nowy film laureata Złotej Palmy George Fahmy to największa produkcja."
+  }
+
+  it should "drop a URL embedded mid-text and close the gap" in {
+    TextNormalization.stripUrls("Zwiastun: https://youtu.be/abc123 — świetny film.") shouldBe
+      "Zwiastun: — świetny film."
+  }
+
+  it should "drop a bare www. URL" in {
+    TextNormalization.stripUrls("Więcej na www.kinomuza.pl/orly już dziś.") shouldBe
+      "Więcej na już dziś."
+  }
+
+  it should "leave URL-free text unchanged" in {
+    TextNormalization.stripUrls("Nowy film laureata Złotej Palmy.") shouldBe
+      "Nowy film laureata Złotej Palmy."
+  }
+
+  it should "preserve paragraph breaks (\\n\\n) that the mobile apps render" in {
+    // Kino Muza joins `<p>` blocks with "\n\n"; iOS/Android render those as
+    // paragraph separators via /api/details, so the cleaner must not flatten
+    // them — only horizontal gaps left by a removed URL get collapsed.
+    val raw = "Pierwszy akapit. https://youtu.be/x\n\nDrugi akapit."
+    TextNormalization.stripUrls(raw) shouldBe "Pierwszy akapit.\n\nDrugi akapit."
+  }
+
+  it should "return empty when the text is nothing but a URL" in {
+    TextNormalization.stripUrls("https://www.youtube.com/watch?v=ERysio3sHjw") shouldBe ""
+  }
 }

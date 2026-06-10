@@ -78,6 +78,27 @@ object TextNormalization {
   def stripHtml(s: String): String =
     Jsoup.parse(s).text().replaceAll("\\s+", " ").trim
 
+  /**
+   * Strip URL tokens out of free text. Cinema detail pages occasionally
+   * inline a "watch the trailer" link inside the synopsis paragraph, so
+   * Jsoup's `.text()` folds the bare URL into the blurb — e.g. Kino Muza's
+   * "Orły Republiki" page yields
+   * `"https://www.youtube.com/watch?v=… Nowy film laureata…"`. A raw URL
+   * reads badly AND, being one unbreakable token, overflows the flex column
+   * on the film-detail page and shoves the synopsis below the poster.
+   *
+   * Removes every `http(s)://…` / `www.…` run up to the next whitespace, then
+   * tidies only the *horizontal* gap left behind. Paragraph breaks (`\n\n`,
+   * which Kino Muza uses to join `<p>` blocks and the iOS/Android apps render
+   * via `/api/details`) are deliberately preserved.
+   */
+  def stripUrls(s: String): String =
+    s.replaceAll("(?i)(?:https?://|www\\.)\\S+", " ")
+      .replaceAll("[ \\t\\x0B\\f\\r]+", " ")  // collapse horizontal runs, keep '\n'
+      .replaceAll(" ?\\n ?", "\n")            // drop spaces hugging a newline
+      .replaceAll("\\n{3,}", "\n\n")          // cap blank-line runs at one
+      .trim
+
   def dropTrailingPartialNameIfLong(s: String, threshold: Int = 230): String =
     if (s.length < threshold) s
     else s.lastIndexOf(',') match {
