@@ -335,6 +335,12 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
         val film = expLines.take(i + 1).reverseIterator.find(_.startsWith("=== ")).getOrElse("?")
         info(s"SNAPDIAG2 L$i film='$film' EXP=${if (i < expLines.length) expLines(i) else "<none>"} ACT=${if (i < actLines.length) actLines(i) else "<none>"}")
       }
+      info(s"SNAPDIAG2 realNow=${java.time.LocalDate.now(java.time.ZoneId.of("Europe/Warsaw"))} parsedFixture=${scala.util.Try(java.time.LocalDate.parse("08-06-2026", java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")))}")
+      schedules.find(_.movie.title == "Bez wyjścia").flatMap(_.enrichment).foreach { e =>
+        e.cinemaData.toSeq.sortBy(_._1.displayName).foreach { case (c, sd) =>
+          info(s"SNAPDIAG2 BezWyjscia ${c.displayName} dates=${sd.showtimes.map(_.dateTime.toLocalDate).distinct.sorted.mkString(",")}")
+        }
+      }
     }
     withClue(
       s"Whole-corpus snapshot mismatch. To regenerate after an intentional change:\n" +
