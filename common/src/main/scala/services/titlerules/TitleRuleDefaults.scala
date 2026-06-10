@@ -141,7 +141,14 @@ object TitleRuleDefaults {
       note = Some("BoK trailing ALL-CAPS promo tag")),
     TitleRule("bok-pipe-to-colon", PerCinema, Some("bok"),
       """\s*\|\s*""", ": ", applyAll = true, order = 30,
-      note = Some("BoK programme-banner '|' → ': '"))
+      note = Some("BoK programme-banner '|' → ': '")),
+    // Kino Apollo — kids'-day prefix + pre-premiere suffix.
+    TitleRule("apollo-dzien-dziecka", PerCinema, Some("kino-apollo"),
+      """^DZIEŃ DZIECKA W APOLLO - """, "", applyAll = false, order = 10,
+      note = Some("Kino Apollo Children's-Day prefix")),
+    TitleRule("apollo-przedpremierowy", PerCinema, Some("kino-apollo"),
+      """ - seans przedpremierowy$""", "", applyAll = false, order = 20,
+      note = Some("Kino Apollo pre-premiere suffix"))
   )
 
   val all: Seq[TitleRule] = structural ++ search ++ canonical ++ perCinema

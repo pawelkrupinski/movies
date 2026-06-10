@@ -261,7 +261,7 @@ class KinoApolloClient(http: HttpFetch, deferDetail: Boolean = false) extends Ci
         val cardEnd = sorted.lastOption.map(_.offset + 200).getOrElse(kupOcc.offset)
         val poster  = pickPoster(PosterPat.findAllIn(html.substring(timeOcc.offset, cardEnd)).toSeq)
         val detail  = details.find { case (o, _) => o > kupOcc.offset }.map(_._2)
-        ScreeningRow(url, dt, cleanTitle(title), poster, detail)
+        ScreeningRow(url, dt, cleanTitle(title), title, poster, detail)
       }
     }
 
@@ -271,7 +271,7 @@ class KinoApolloClient(http: HttpFetch, deferDetail: Boolean = false) extends Ci
       .map { case (title, rows) =>
         val sorted = rows.sortBy(_.dateTime)
         CinemaMovie(
-          movie     = Movie(title),
+          movie     = Movie(title, rawTitle = sorted.map(_.rawTitle).headOption),
           cinema    = KinoApollo,
           posterUrl = sorted.flatMap(_.posterUrl).headOption,
           filmUrl   = pickFilmUrl(sorted.flatMap(_.detailUrl)),
@@ -300,10 +300,11 @@ class KinoApolloClient(http: HttpFetch, deferDetail: Boolean = false) extends Ci
   // banner) screening collapses into the same Movie as the regular run. Without
   // this, those decorated rows can't be enriched — TMDB's title search returns
   // nothing for the decorated string and the row stays at tmdbId=None.
+  // The decoration strip now lives in the editable "kino-apollo" rules
+  // (TitleRuleDefaults); this delegates so the day-page dedup grouping still
+  // collapses decorated variants onto the bare film.
   def cleanTitle(title: String): String =
-    title
-      .stripPrefix("DZIEŃ DZIECKA W APOLLO - ")
-      .stripSuffix(" - seans przedpremierowy")
+    services.movies.TitleNormalizer.cinemaClean("kino-apollo", title)
 
   // WordPress generates many size variants for each poster (e.g.
   // `..._plakat-200x300.jpg`, `..._plakat-683x1024.jpg`, `..._plakat-scaled.jpg`,
@@ -329,6 +330,7 @@ class KinoApolloClient(http: HttpFetch, deferDetail: Boolean = false) extends Ci
     bookingUrl: String,
     dateTime:   LocalDateTime,
     title:      String,
+    rawTitle:   String,
     posterUrl:  Option[String],
     detailUrl:  Option[String]
   )

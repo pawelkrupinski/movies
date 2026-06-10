@@ -118,6 +118,10 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
       """\s*\(\d{4}\)\s*$""".r.replaceFirstIn(noDirector, "").trim
     }
 
+    // Per-cinema: Kino Apollo (verbatim from KinoApolloClient.cleanTitle).
+    def kinoApollo(title: String): String =
+      title.stripPrefix("DZIEŃ DZIECKA W APOLLO - ").stripSuffix(" - seans przedpremierowy")
+
     // Per-cinema: BoK (verbatim from BokClient.cleanTitle).
     private val BokPromoTag = """\s*\|\s*[A-ZĄĆĘŁŃÓŚŹŻ0-9 ]{3,}\s*$""".r
     def bok(raw: String): String = {
@@ -280,6 +284,19 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
     bokCorpus.foreach { t =>
       withClue(s"perCinema('bok', '$t'): ")(
         rs.perCinema("bok", t) shouldBe Legacy.bok(t))
+    }
+  }
+
+  private val kinoApolloCorpus = Seq(
+    "DZIEŃ DZIECKA W APOLLO - Pszczółka Maja",
+    "Diuna Cz. II - seans przedpremierowy",
+    "Anora"  // untouched
+  )
+
+  "the kino-apollo per-cinema rules" should "match the frozen legacy KinoApolloClient.cleanTitle" in {
+    kinoApolloCorpus.foreach { t =>
+      withClue(s"perCinema('kino-apollo', '$t'): ")(
+        rs.perCinema("kino-apollo", t) shouldBe Legacy.kinoApollo(t))
     }
   }
 }
