@@ -43,8 +43,11 @@ import pl.kinowo.ui.theme.KinowoTheme
  * NATIVE graphics gives real text metrics; `xhdpi` (density 2) so dp resolve.
  * Runs on the JVM via `./gradlew app:testDebugUnitTest` — no emulator.
  */
+// Pinned at the 360 dp baseline (sw360dp) so the viewport scale is exactly 1.0
+// and the tooltip renders at its baseline 24sp — the size this spec asserts.
+// The width-scaling of the tooltip on wider phones is covered by CardScalingTest.
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34], qualifiers = "xhdpi")
+@Config(sdk = [34], qualifiers = "sw360dp-xhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class RoomTooltipSizeTest {
 

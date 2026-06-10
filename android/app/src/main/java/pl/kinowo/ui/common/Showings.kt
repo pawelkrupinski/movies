@@ -144,7 +144,7 @@ fun Showings(
                 Text(
                     text = day.label.uppercase(),
                     color = TextSecondary,
-                    fontSize = 11.sp,
+                    fontSize = (11 * s).sp,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Column(
@@ -157,7 +157,7 @@ fun Showings(
                             Text(
                                 text = cg.cinema,
                                 color = CinemaBlue,
-                                fontSize = 12.sp,
+                                fontSize = (12 * s).sp,
                                 fontWeight = FontWeight.Medium,
                                 modifier = if (cg.cinemaURL != null) {
                                     Modifier.clickable { openUrl(context, cg.cinemaURL) }
@@ -190,7 +190,7 @@ fun Showings(
             Text(
                 text = "+$hidden ${seansForm(hidden)}",
                 color = TextSecondary,
-                fontSize = 11.sp,
+                fontSize = (11 * s).sp,
                 fontWeight = FontWeight.Medium,
             )
         }
@@ -208,6 +208,9 @@ fun Showings(
 private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (() -> Unit)?) {
     var holding by remember { mutableStateOf(false) }
     val style = LocalShowtimeChipStyle.current
+    // The room tooltip grows with the viewport in lockstep with the chip it pops
+    // from — same factor `Showings` scales `chipStyle` by. scale == 1f at 360 dp.
+    val s = ShowtimeChipMetrics.scale(layoutWidthDp())
     val base = Modifier
         // Outermost, so the tagged node's bounds include the padding (a tag
         // placed after .padding() would wrap only the inner text).
@@ -252,37 +255,40 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
             // FlowRow neighbours) sideways. A Popup is its own window — it never
             // resizes the pill, and with clipping disabled it floats free of the
             // card's rounded-Surface clip. It's anchored just above the pill.
-            val gapPx = with(LocalDensity.current) { RoomTooltipGap.roundToPx() }
+            val gapPx = with(LocalDensity.current) { (RoomTooltipGap * s).roundToPx() }
             Popup(
                 popupPositionProvider = remember(gapPx) { RoomTooltipPositionProvider(gapPx) },
                 properties = PopupProperties(focusable = false, clippingEnabled = false),
             ) {
-                RoomTooltip(room)
+                RoomTooltip(room, s)
             }
         }
     }
 }
 
-/** Gap between the tooltip's bottom edge and the pill's top — small so the
- *  bubble hugs the finger that popped it, but clear enough to stay readable. */
+/** Gap between the tooltip's bottom edge and the pill's top at the 360 dp
+ *  baseline — small so the bubble hugs the finger that popped it, but clear
+ *  enough to stay readable. Scaled by the viewport factor at the call site. */
 private val RoomTooltipGap = 20.dp
 
 @Composable
-private fun RoomTooltip(room: String) {
+private fun RoomTooltip(room: String, s: Float) {
     // The tooltip pops on a press-and-hold, so the thumb is parked right on the
     // pill. It's sized to stay legible around the finger — the 24sp text (1.5×
     // the pill) + padding carry it — without dominating the card; half the size
-    // of the original oversized bubble. Size pinned by RoomTooltipSizeTest.
+    // of the original oversized bubble. Every dimension scales with the viewport
+    // (factor `s`) so the bubble tracks the chip. Size pinned by RoomTooltipSizeTest.
+    val corner = RoundedCornerShape((6 * s).dp)
     Text(
         text = room,
         color = RoomTooltipText,
-        fontSize = 24.sp,
+        fontSize = (24 * s).sp,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(corner)
             .background(RoomTooltipBackground)
-            .border(1.dp, RoomTooltipBorder, RoundedCornerShape(6.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .border((1 * s).dp, RoomTooltipBorder, corner)
+            .padding(horizontal = (10 * s).dp, vertical = (6 * s).dp),
     )
 }
 

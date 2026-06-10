@@ -32,6 +32,7 @@ fun MetaPills(
     runtimeMinutes: Int?,
     releaseYear: Int?,
     genres: List<String> = emptyList(),
+    scale: Float = 1f,
     modifier: Modifier = Modifier,
 ) {
     val runtime = runtimeMinutes?.takeIf { it > 0 }?.let { formatRuntime(it) }
@@ -39,29 +40,29 @@ fun MetaPills(
     if (runtime == null && year == null && genres.isEmpty()) return
     FlowRow(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy((6 * scale).dp),
+        verticalArrangement = Arrangement.spacedBy((6 * scale).dp),
     ) {
         // Bottom-align so the larger plain-text year shares a bottom
         // edge with the smaller pills.
         val itemAlign = Modifier.align(Alignment.Bottom)
-        runtime?.let { Pill(it, itemAlign) }
-        year?.let { YearText(it, itemAlign) }
-        for (genre in genres) Pill(genre, itemAlign)
+        runtime?.let { Pill(it, scale, itemAlign) }
+        year?.let { YearText(it, scale, itemAlign) }
+        for (genre in genres) Pill(genre, scale, itemAlign)
     }
 }
 
 @Composable
-private fun Pill(label: String, modifier: Modifier = Modifier) {
+private fun Pill(label: String, scale: Float, modifier: Modifier = Modifier) {
     Text(
         label,
         color = Color(0xFFCCCCCC),
-        fontSize = 11.sp,
+        fontSize = (11 * scale).sp,
         fontWeight = FontWeight.Medium,
         modifier = modifier
             .clip(RoundedCornerShape(50))
             .background(CardElevated)
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+            .padding(horizontal = (8 * scale).dp, vertical = (3 * scale).dp),
     )
 }
 
@@ -72,13 +73,13 @@ private fun Pill(label: String, modifier: Modifier = Modifier) {
  * year's text bottom flush with the pilled text bottom.
  */
 @Composable
-private fun YearText(label: String, modifier: Modifier = Modifier) {
+private fun YearText(label: String, scale: Float, modifier: Modifier = Modifier) {
     Text(
         label,
         color = Color(0xFF888888),
-        fontSize = 13.sp,
+        fontSize = (13 * scale).sp,
         fontWeight = FontWeight.Medium,
-        modifier = modifier.padding(vertical = 3.dp),
+        modifier = modifier.padding(vertical = (3 * scale).dp),
     )
 }
 

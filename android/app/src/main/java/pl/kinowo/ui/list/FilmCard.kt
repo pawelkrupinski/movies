@@ -76,7 +76,7 @@ fun FilmCard(
     var menuExpanded by remember { mutableStateOf(false) }
     Surface(
         color = CardSurface,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape((12 * s).dp),
         // A tap anywhere opens the detail screen. Long-press is deliberately a
         // no-op at the card level: the share menu lives on the POSTER and the
         // room tooltip on each showtime CHIP (both below). A card-wide
@@ -118,9 +118,9 @@ fun FilmCard(
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(6.dp)
-                        .size(28.dp)
-                        .clip(RoundedCornerShape(14.dp))
+                        .padding((6 * s).dp)
+                        .size((28 * s).dp)
+                        .clip(RoundedCornerShape((14 * s).dp))
                         .background(Color.Black.copy(alpha = 0.45f))
                         .clickable(onClick = onHide),
                     contentAlignment = Alignment.Center,
@@ -129,15 +129,20 @@ fun FilmCard(
                         Icons.Filled.Close,
                         contentDescription = "Ukryj film",
                         tint = Color.White,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size((16 * s).dp),
                     )
                 }
             }
+            // Card content padding stays a fixed 12dp: the shared grid geometry
+            // (PosterGridMetrics.cardContentDp) subtracts exactly this to derive
+            // the showings-column width the two-per-row guarantee is proven
+            // against, so scaling it would silently shrink that column on wide
+            // phones. Everything INSIDE scales with the viewport instead.
             Column(Modifier.padding(12.dp)) {
                 Text(
                     text = film.title,
                     color = Color.White,
-                    fontSize = 14.sp,
+                    fontSize = (14 * s).sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -146,6 +151,7 @@ fun FilmCard(
                 MetaPills(
                     runtimeMinutes = film.runtimeMinutes,
                     releaseYear = film.releaseYear,
+                    scale = s,
                     modifier = Modifier.padding(top = spacing.titleToMeta * s),
                 )
                 if (!film.ratings.isEmpty) {
