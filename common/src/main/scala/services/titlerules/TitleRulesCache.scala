@@ -22,9 +22,10 @@ class TitleRulesCache(
   seedIfEmpty: Boolean = false,
   install: TitleRuleSet => Unit = TitleNormalizer.installRules,
   // Fired AFTER a reload that actually changed the rules (never on the first
-  // load). The worker hooks this to re-merge existing records; the web app
-  // leaves it a no-op (it's read-only and picks merges up via the movies stream).
-  onRulesChanged: () => Unit = () => ()
+  // load), with the (previous, current) effective rule lists. The worker hooks
+  // this to re-merge / un-merge / re-enrich existing records; the web app leaves
+  // it a no-op (it's read-only and picks changes up via the movies stream).
+  onRulesChanged: (Seq[TitleRule], Seq[TitleRule]) => Unit = (_, _) => ()
 ) extends Logging {
 
   private val scheduler          = DaemonExecutors.scheduler("title-rules-refresh")
@@ -46,11 +47,12 @@ class TitleRulesCache(
       else "TitleRulesCache: store empty — using in-code default rules.")
 
     val current = effective.toSet
-    val changed = lastRules.exists(_ != current)
+    val prev    = lastRules
     lastRules = Some(current)
-    if (changed) {
+    if (prev.exists(_ != current)) {
       logger.info("TitleRulesCache: rules changed — running the change hook.")
-      try onRulesChanged() catch { case ex: Throwable => logger.warn(s"onRulesChanged failed: ${ex.getMessage}") }
+      try onRulesChanged(prev.get.toSeq, current.toSeq)
+      catch { case ex: Throwable => logger.warn(s"onRulesChanged failed: ${ex.getMessage}") }
     }
   }
 

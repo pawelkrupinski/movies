@@ -2,7 +2,7 @@ package services.movies
 
 import models.{Cinema, MovieRecord, Source, SourceData}
 import play.api.Logging
-import services.titlerules.TitleRuleKey
+import services.titlerules.{TitleRuleKey, TitleRuleSet}
 
 /** Re-derives every row's merge key from its cinema slots' RAW titles under the
  *  currently-installed rules, then rebuilds the cache so rows group exactly as a
@@ -86,6 +86,25 @@ class NormalizationRebuilder(
     val result = RebuildResult(changed, merges.toSeq, splits)
     logger.info(s"NormalizationRebuilder: changed=$changed, merges=${result.merges.size}, splits=${result.splits.size}")
     result
+  }
+
+  /** Re-resolve the rows whose external-API query (`apiQuery`) changed between
+   *  `oldRules` and `newRules` — i.e. a Search-tier edit (programme prefix,
+   *  accessibility tag, "+ event" suffix). Search rules don't affect the merge
+   *  key, so `rebuild` leaves these rows alone; this re-enriches exactly the
+   *  rows whose upstream query string moved, by republishing them. The
+   *  enrichment query is `apiQuery(key.cleanTitle)` = `rules.search(cleanTitle)`,
+   *  so comparing that per row targets precisely the affected set. */
+  def reEnrichSearchChanges(oldRules: TitleRuleSet, newRules: TitleRuleSet,
+                            publish: (String, Option[Int]) => Unit): Int = {
+    var n = 0
+    cache.entries.foreach { case (key, _) =>
+      if (oldRules.search(key.cleanTitle) != newRules.search(key.cleanTitle)) {
+        publish(key.cleanTitle, key.year); n += 1
+      }
+    }
+    if (n > 0) logger.info(s"NormalizationRebuilder: re-enriched $n rows after a search-rule change.")
+    n
   }
 }
 

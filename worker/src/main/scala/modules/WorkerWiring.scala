@@ -11,7 +11,7 @@ import services.events.{EventBus, InProcessEventBus, MovieRecordCreated}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, NormalizationRebuilder, UnscreenedCleanup}
 import services.tasks.{DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, RatingEnqueuer, RatingHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker}
-import services.titlerules.{MongoTitleRulesRepo, TitleRulesCache, TitleRulesRepo}
+import services.titlerules.{MongoTitleRulesRepo, TitleRuleSet, TitleRulesCache, TitleRulesRepo}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
 /**
@@ -199,7 +199,15 @@ class WorkerWiring {
   lazy val titleRulesRepo: TitleRulesRepo = new MongoTitleRulesRepo(mongoConnection.database, fallbackToOwnInit = false)
   lazy val titleRulesCache: TitleRulesCache =
     new TitleRulesCache(titleRulesRepo, seedIfEmpty = true,
-      onRulesChanged = () => normalizationRebuilder.rebuild())
+      onRulesChanged = (oldRules, newRules) => {
+        // Merge-key changes (per-cinema / structural / canonical) → re-merge /
+        // un-merge existing rows.
+        normalizationRebuilder.rebuild()
+        // Search-tier changes → re-resolve the rows whose upstream query moved.
+        normalizationRebuilder.reEnrichSearchChanges(
+          TitleRuleSet(oldRules), TitleRuleSet(newRules),
+          (title, year) => eventBus.publish(MovieRecordCreated(title, year)))
+      })
 
   lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, backgroundBudget.ec("IMDb-stage"))
   lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient, eventBus, backgroundBudget.ec("imdb-id-resolver"))

@@ -3,6 +3,7 @@ package services.movies
 import models.{CinemaCityKinepolis, MovieRecord, Multikino, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.titlerules.{RuleScope, TitleRule, TitleRuleSet}
 
 /**
  * Drives the rebuilder against a cache seeded into a STALE state: a Cinema City
@@ -84,5 +85,29 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
     result.splits should have size 1
     result.splits.head.into should contain allOf ("Anora", "Other Film")
     splitOffs should contain ("Other Film")       // handed off for re-resolution
+  }
+
+  "reEnrichSearchChanges" should "re-resolve only rows whose apiQuery changed" in {
+    val cache = new CaffeineMovieCache(disabledRepo)
+    // Row keyed by its display title incl. the programme prefix (search-tier
+    // strips it; structural/key keeps it).
+    cache.put(cache.keyOf("Kino bez barier: Freak Show", None),
+      MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Kino bez barier: Freak Show")))))
+    cache.put(cache.keyOf("Plain Film", None),
+      MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Plain Film")))))
+
+    // Old set strips the programme prefix; new set drops that rule.
+    val progRule = TitleRule("search-prog", RuleScope.Search, None,
+      "(?i)^Kino bez barier: ", "", applyAll = false, order = 10)
+    val oldRules = TitleRuleSet(Seq(progRule))
+    val newRules = TitleRuleSet.empty
+
+    var reEnriched = List.empty[String]
+    val n = new NormalizationRebuilder(cache)
+      .reEnrichSearchChanges(oldRules, newRules, (t, _) => reEnriched ::= t)
+
+    n shouldBe 1                                   // only the programme-prefixed row
+    reEnriched should contain ("Kino bez barier: Freak Show")
+    reEnriched should not contain ("Plain Film")
   }
 }

@@ -54,7 +54,7 @@ class TitleRulesCacheSpec extends AnyFlatSpec with Matchers {
     val (install, _) = capturing()
     val repo = new InMemoryTitleRulesRepo()
     var fired = 0
-    val cache = new TitleRulesCache(repo, install = install, onRulesChanged = () => fired += 1)
+    val cache = new TitleRulesCache(repo, install = install, onRulesChanged = (_, _) => fired += 1)
 
     cache.reload()            // first load (defaults) — must NOT fire
     fired shouldBe 0
