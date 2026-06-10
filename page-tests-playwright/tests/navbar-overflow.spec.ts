@@ -3,14 +3,10 @@ import { waitForCards } from './helpers';
 
 // Layout-stress spec. The navbar holds (in some combination):
 //   logo · tabs · search · date · Filtry · auth-pill
-// and a maxed-out Filtry label can stretch to
-//   "Filtry (kina 9/10, 3D, NAP, IMAX, od 18:30)"
-// while a logged-in user can carry a 30-char display name. Two
-// truncation rules in `_sharedStyles.scala.html` are supposed to
-// keep this contained:
-//   1. `.auth-name` is capped at 11 ch with ellipsis;
-//   2. `#format-filter-btn` is capped at the parent `.navbar-filtry`
-//      width (40 % portrait / 30 % landscape) with ellipsis.
+// The Filtry control is a fixed-size icon button now, so it can't
+// itself overflow; the variable-width risk is the logged-in pill,
+// which can carry a 30-char display name. `.auth-name` is capped at
+// 11 ch with ellipsis in `_sharedStyles.scala.html` to keep it bounded.
 //
 // This spec exercises real-phone viewports — every iPhone / Pixel
 // resolution kinowo actually sees in prod — and checks both
@@ -19,10 +15,10 @@ import { waitForCards } from './helpers';
 //
 //   - The navbar's row count is bounded (≤ 2 in portrait, ≤ 2 in
 //     landscape with auth allowed to wrap).
-//   - No element extends past the viewport right edge.
-//   - The Filtry button and auth-name both clip with ellipsis
-//     (scrollWidth > clientWidth = "I tried to grow but the cap
-//     held").
+//   - No element extends past the viewport right edge (incl. the
+//     Filtry wrapper).
+//   - The auth-name clips with ellipsis (scrollWidth > clientWidth =
+//     "I tried to grow but the cap held").
 //
 // Adding a new phone = appending a row to `VIEWPORTS`. Adding a new
 // nav element = the row-count assertion will catch overflow without
@@ -90,7 +86,7 @@ const VIEWPORTS: Phone[] = [
 /// constrained, an explicit from-hour set, all but one cinema
 /// disabled in localStorage, plus a fake logged-in pill with a
 /// 30-character display name injected into `.navbar-auth`. Returns
-/// after the inline JS has refreshed the Filtry label.
+/// after the inline JS has refreshed the Filtry icon's active state.
 async function stressNavbar(page: Page): Promise<void> {
   await page.evaluate(() => {
     // Format axes: 3D + NAP + IMAX + from 18:30. `dispatchEvent`
@@ -268,41 +264,21 @@ async function assertAuthNameHiddenOrTruncated(page: Page): Promise<void> {
   ).toBeGreaterThan(1);
 }
 
-/// Asserts the Filtry button — when its text expands to the maxed-
-/// filter label "Filtry (3D, NAP, IMAX, od 18:30)" — both stays
-/// inside its parent's max-width cap (40 % portrait / 30 % landscape)
-/// AND, when natural text width exceeds that cap, ellipsises rather
-/// than overflowing. On wide enough viewports the natural width
-/// fits and no ellipsis is needed; that's fine.
+/// Asserts the Filtry control's wrapper stays inside the viewport.
+/// The button is a fixed-size icon now, so it can't grow a text label
+/// past its cap; the only failure mode left is the whole `.navbar-filtry`
+/// wrapper being pushed off the right edge by its siblings.
 async function assertFiltryButtonContained(page: Page, viewportWidth: number): Promise<void> {
   const probe = await page.evaluate(() => {
     const wrapper = document.querySelector('.navbar-filtry') as HTMLElement | null;
     const btn = document.getElementById('format-filter-btn') as HTMLElement | null;
     if (!wrapper || !btn) return null;
     const wr = wrapper.getBoundingClientRect();
-    return {
-      wrapperLeft: wr.left,
-      wrapperRight: wr.right,
-      wrapperWidth: wr.width,
-      btnScroll: btn.scrollWidth,
-      btnClient: btn.clientWidth,
-      btnText: btn.textContent ?? '',
-    };
+    return { wrapperRight: wr.right };
   });
   if (probe === null) return;
-  // The wrapper must sit inside the viewport.
   expect(
     probe.wrapperRight,
     `navbar-filtry wrapper extends past viewport ${viewportWidth} (right=${probe.wrapperRight})`,
   ).toBeLessThanOrEqual(viewportWidth + 1);
-  // When natural button text exceeds the rendered width, the
-  // overflow:hidden + text-overflow:ellipsis combo on
-  // `#format-filter-btn` must have kicked in. Allow 1 px sub-pixel
-  // slack on the equality so a perfectly fitted button doesn't
-  // mistakenly demand truncation.
-  if (probe.btnScroll > probe.btnClient + 1) {
-    // Sanity check: an ellipsised button must have non-zero
-    // painted width, otherwise the layout is broken.
-    expect(probe.btnClient, `Filtry button text "${probe.btnText}" was ellipsised but its client width is zero`).toBeGreaterThan(0);
-  }
 }

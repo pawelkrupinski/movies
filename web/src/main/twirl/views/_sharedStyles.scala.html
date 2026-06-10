@@ -199,6 +199,16 @@
      `box-sizing: border-box` so the row is uniform regardless of UA. */
   .refresh-btn { background: #3a3a6e; border: none; color: #aad4ff; white-space: nowrap; flex-shrink: 0; height: 35px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; }
   .refresh-btn:hover { background: #5a5a9e; color: #fff; }
+  /* Filtry trigger: a square, icon-only button (mirrors the mobile apps' funnel
+     control). The SVG inherits `currentColor`, so the icon rides the button's
+     own colour. `.filters-active` — toggled by `updateFormatBtn` whenever a
+     "Wyczyść"-clearable filter is set — flips to the filled accent capsule the
+     active day-pill uses (#aad4ff on #1a1a2e), so an applied filter reads at a
+     glance exactly like iOS's `.fill`/accent swap and Android's Brand tint. */
+  .filter-icon-btn { width: 35px; padding: 0; border-radius: 8px; }
+  .filter-icon { width: 22px; height: 22px; fill: currentColor; display: block; }
+  .filter-icon-btn.filters-active { background: #aad4ff; color: #1a1a2e; }
+  .filter-icon-btn.filters-active:hover { background: #c4e1ff; color: #1a1a2e; }
   /* Day-filter pills — the four presets as a pill row (mirrors the iOS/Android
      day chips). The active day is a filled accent capsule; the rest are
      transparent with accent text. The visually-hidden `#date-filter` `<select>`
@@ -792,15 +802,6 @@
       padding-left:  min(calc(.34 * var(--mobile-scale)), 1.3vw);
       padding-right: min(calc(.34 * var(--mobile-scale)), 1.3vw);
     }
-    #format-filter-btn {
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      /* `display: block` overrides the `inline-flex` from `.refresh-btn`
-         so the text-overflow-ellipsis kicks in (ellipsis needs a block-
-         level container with overflow:hidden and a constrained width). */
-      display: block;
-    }
 
     /* iOS Safari auto-zooms the viewport when focus lands on an
        input / select with font-size < 16 px. The bump keeps
@@ -909,12 +910,6 @@
     .navbar-date { align-items: center; flex-shrink: 0; min-width: 0; }
 
     .navbar-filtry { min-width: 0; flex-shrink: 0; }
-    #format-filter-btn {
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      display: block;
-    }
 
     .container-fluid {
       padding-left:  8px !important;

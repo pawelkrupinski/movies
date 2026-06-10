@@ -423,11 +423,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         filtryLeft should be < authLeft
       }
 
-      // Filtry button truncation — pile on every active filter the
-      // navbar can carry, watch the label balloon, and confirm the
-      // button STILL sits next to date on row 2 instead of being
-      // pushed onto a row of its own. Tests the `max-width: 50%` +
-      // `text-overflow: ellipsis` belt-and-braces on the button.
+      // Filtry icon is fixed-width — piling on every active filter the
+      // navbar can carry must NOT change its footprint (it's an icon, not
+      // a growing text label), so it stays next to date on its row instead
+      // of being pushed onto a row of its own.
       page.eval(
         "document.querySelector('input[name=\"format-dim\"][value=\"2D\"]').click(); " +
         "document.querySelector('input[name=\"format-lang\"][value=\"NAP\"]').click(); " +
@@ -441,21 +440,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       withClue(s"after filters: dateTop=$dateTop2 filtryTop=$filtryTop2") {
         math.abs(dateTop2 - filtryTop2) should be < 4.0
       }
-      // The button's max-width clamp + overflow + text-overflow
-      // guarantee a long label can't push the button off the row.
-      // Assert the three properties are computed as expected — this
-      // is the durable invariant; whether a particular label happens
-      // to overflow at a particular viewport width is incidental.
-      val truncationCss = page.evalString(
-        "(() => { const s = getComputedStyle(document.getElementById('format-filter-btn'));" +
-        "          return s.maxWidth + '|' + s.overflowX + '|' + s.textOverflow; })()"
-      )
-      val Array(maxW, overflowX, textOverflow) = truncationCss.split('|')
-      withClue(s"maxWidth=$maxW overflowX=$overflowX textOverflow=$textOverflow") {
-        maxW         should not be "none"
-        overflowX    shouldBe "hidden"
-        textOverflow shouldBe "ellipsis"
-      }
+      // …and the funnel lights (accent active state) once axes are set.
+      page.evalBool("document.getElementById('format-filter-btn').classList.contains('filters-active')") shouldBe true
 
       // Reset emulation so the next test starts at the default viewport.
       page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
@@ -1066,15 +1052,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  it should "reflect active axes in the Filtry button label" in {
+  // The Filtry trigger is an icon-only funnel; an active axis is signalled by
+  // the accent `.filters-active` class (the web counterpart of iOS's `.fill`
+  // swap and Android's Brand tint), not by text appended to a label.
+  it should "light the Filtry funnel (filters-active) when an axis is active" in {
     onPath("/") { page =>
       clearLocalStorage(page)
       pinDateFilterAnytime(page)
-      page.evalString("document.getElementById('format-filter-btn').textContent.trim()") shouldBe "Filtry"
+      page.evalBool("document.getElementById('format-filter-btn').classList.contains('filters-active')") shouldBe false
       page.eval("document.querySelector('input[name=\"format-dim\"][value=\"2D\"]').click()")
-      val label = page.evalString("document.getElementById('format-filter-btn').textContent.trim()")
-      label should not be "Filtry"
-      label should include ("2D")
+      page.evalBool("document.getElementById('format-filter-btn').classList.contains('filters-active')") shouldBe true
     }
   }
 
@@ -1972,9 +1959,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // … so the master checkbox is fully checked, not indeterminate …
       page.evalBool("document.getElementById('cinema-all').checked")       shouldBe true
       page.evalBool("document.getElementById('cinema-all').indeterminate") shouldBe false
-      // … and the Filtry label carries no "kina N/N" narrowing badge.
-      page.evalString("document.getElementById('format-filter-btn').textContent")
-        .toLowerCase should not include "kina"
+      // … and the funnel icon stays neutral — a foreign-city deselection is
+      // no narrowing of THIS city, so nothing "Wyczyść" would clear is set.
+      page.evalBool("document.getElementById('format-filter-btn').classList.contains('filters-active')") shouldBe false
 
       clearLocalStorage(page)
     }
@@ -1998,11 +1985,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       ) shouldBe true
       page.evalBool("document.getElementById('cinema-all').checked")       shouldBe false
       page.evalBool("document.getElementById('cinema-all').indeterminate") shouldBe true
-      // Count is scoped to this city: total − 1, NOT total − 2 (the foreign
-      // entry must not be counted).
-      val total = page.evalInt("ALL_CINEMAS.length")
-      page.evalString("document.getElementById('format-filter-btn').textContent") should
-        include(s"kina ${total - 1}/$total")
+      // An in-city deselection IS a filter "Wyczyść" clears, so the funnel
+      // lights (unlike the foreign-only case above, which leaves it neutral).
+      page.evalBool("document.getElementById('format-filter-btn').classList.contains('filters-active')") shouldBe true
 
       clearLocalStorage(page)
     }

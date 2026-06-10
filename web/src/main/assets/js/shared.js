@@ -127,30 +127,29 @@
   window.lockSearchZoom   = lockSearchZoom;
   window.unlockSearchZoom = unlockSearchZoom;
 
+  // True when any filter the Filtry panel exposes is narrowed away from its
+  // default — i.e. exactly the axes "Wyczyść" (`resetFormatFilter`) puts back.
+  // Drives the funnel icon's active state, the web counterpart of the iOS
+  // `filtersActive` flag (FiltersBar) and Android `vm.filtersActive`. Sort
+  // order is deliberately excluded: it reorders, it doesn't filter anything
+  // out, so the funnel staying neutral when you only re-sort is the honest cue.
+  function filtersActive() {
+    if (getFormatFilter().length > 0) return true;     // Wymiar / Wersja / IMAX
+    if (getFromMinutes() !== null)    return true;      // Od godziny
+    if (getSubmenuFilter('country')  !== null) return true;
+    if (getSubmenuFilter('genre')    !== null) return true;
+    if (getSubmenuFilter('director') !== null) return true;
+    if (getSubmenuFilter('cast')     !== null) return true;
+    if (getSubmenuFilter('room')     !== null) return true;
+    // Cinema picker (absent on /ulubione): any cinema in THIS city switched off.
+    if (document.getElementById('cinema-list') && disabledCinemasInCity().length > 0) return true;
+    return false;
+  }
+
   function updateFormatBtn() {
-    const parts = [...getFormatFilter()];
-    const fromMin = getFromMinutes();
-    if (fromMin !== null) {
-      const h = Math.floor(fromMin / 60), m = fromMin % 60;
-      parts.push('od ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'));
-    }
-    // Cinema filter lives in the Filtry panel; surface the selected-vs-total
-    // count in the button label so the navbar signals "you've narrowed the
-    // cinemas" at a glance. Gated on `#cinema-list` so pages without the picker
-    // (e.g. /ulubione) don't show a count.
-    if (document.getElementById('cinema-list')) {
-      const disabled = disabledCinemasInCity();
-      if (disabled.length > 0 && disabled.length < ALL_CINEMAS.length) {
-        parts.push('kina ' + (ALL_CINEMAS.length - disabled.length) + '/' + ALL_CINEMAS.length);
-      }
-    }
-    var sm = getSubmenuSummaries();
-    if (sm.country)  parts.push(sm.country);
-    if (sm.director) parts.push(sm.director);
-    if (sm.cast)     parts.push(sm.cast);
     const btn = document.getElementById('format-filter-btn');
     if (!btn) return;  // /ulubione: Filtry button not rendered.
-    btn.textContent = parts.length === 0 ? 'Filtry' : 'Filtry (' + parts.join(', ') + ')';
+    btn.classList.toggle('filters-active', filtersActive());
   }
 
   function onFormatChange() {
@@ -184,7 +183,7 @@
     document.getElementById('from-minute').value     = '0';
     var sortSel = document.getElementById('sort-by');
     if (sortSel) sortSel.value = 'earliest';
-    ['country', 'genre', 'director', 'cast'].forEach(function(key) {
+    ['country', 'genre', 'director', 'cast', 'room'].forEach(function(key) {
       var list = document.getElementById(key + '-list');
       if (list) {
         list.querySelectorAll('input[type="checkbox"]').forEach(function(cb) { cb.checked = true; });
@@ -194,6 +193,10 @@
       if (chevron) chevron.classList.remove('open');
       updateSubmenuCount(key);
     });
+    // Re-enable every cinema in this city — the picker lives in the same panel
+    // and counts as a filter (the funnel icon lights for it), so "Wyczyść"
+    // clears it too, matching the iOS/Android Wyczyść which resets disabledCinemas.
+    if (document.getElementById('cinema-list')) toggleAllCinemas(true);
     document.getElementById('format-panel').style.display = 'none';
     onFormatChange();
   }
@@ -241,26 +244,6 @@
     }
     var allCb = list.querySelector('.submenu-all');
     if (allCb) allCb.checked = unchecked === 0;
-  }
-
-  function getSubmenuSummaries() {
-    var result = {};
-    [['country', 'krajów'], ['genre', 'gat.'], ['director', 'reż.'], ['cast', 'aktorów'], ['room', 'sal']].forEach(function(pair) {
-      var key = pair[0], suffix = pair[1];
-      var filter = getSubmenuFilter(key);
-      if (filter !== null) {
-        // Room values are "Cinema|Room" composites — the cinema half is
-        // implied by the rest of the badge context, so a single-selection
-        // summary just shows the room label.
-        if (key === 'room' && filter.length === 1) {
-          var pipe = filter[0].indexOf('|');
-          result[key] = pipe >= 0 ? filter[0].substring(pipe + 1) : filter[0];
-        } else {
-          result[key] = filter.length === 1 ? filter[0] : filter.length + ' ' + suffix;
-        }
-      }
-    });
-    return result;
   }
 
   // Root for grid-wide DOM scans: the listing's `#view-root` when present,

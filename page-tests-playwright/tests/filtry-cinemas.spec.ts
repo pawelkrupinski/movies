@@ -75,6 +75,32 @@ test.describe('Filtry > Kina checkboxes', () => {
     expect(stored).toEqual([]);
   });
 
+  test('disabling a cinema lights the Filtry funnel; Wyczyść re-enables cinemas + clears it', async ({ page }) => {
+    const btn = page.locator('#format-filter-btn');
+    // Neutral funnel to start — nothing filtered yet.
+    await expect(btn).not.toHaveClass(/filters-active/);
+
+    // Disabling one cinema is a filter "Wyczyść" clears, so the funnel lights.
+    await page.evaluate(() => {
+      const cb = document.querySelector<HTMLInputElement>(
+        '#cinema-list .panel-label input[type="checkbox"]',
+      );
+      cb?.click();
+    });
+    await expect(btn).toHaveClass(/filters-active/);
+
+    // Wyczyść re-enables every cinema in this city (matching iOS/Android) and
+    // returns the funnel to neutral.
+    const beforeVisible = await visibleCinemaGroups(page);
+    await page.evaluate(() =>
+      (globalThis as { resetFormatFilter?: () => void }).resetFormatFilter?.(),
+    );
+    const stored = (await getLocalStorageJson<string[]>(page, 'disabledCinemas')) ?? [];
+    expect(stored).toEqual([]);
+    expect(await visibleCinemaGroups(page)).toBeGreaterThan(beforeVisible);
+    await expect(btn).not.toHaveClass(/filters-active/);
+  });
+
   test('Wszystkie kina master checkbox un-disables everything', async ({ page }) => {
     // Pre-seed every cinema as disabled. `ALL_CINEMAS` is a `const`
     // in `_sharedJsConfig`'s script — script-scoped, not on
