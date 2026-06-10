@@ -225,6 +225,29 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     canonical.cinemaData(Helios).releaseYear       shouldBe Some(1962)
   }
 
+  it should "pick the same canonical row regardless of which tmdbId-sharing key is written first" in {
+    // Two cinema-reported variants of one film that resolve to the same tmdbId
+    // but key differently — e.g. one cinema reports a release year, another
+    // (Ekobilet) reports none. Whichever `put` lands first currently becomes
+    // canonical, so the surviving (title, year) depends on enrichment-thread
+    // arrival order — non-deterministic across machines (this is the arm64-vs-
+    // amd64 whole-corpus snapshot drift). The canonical must be a pure function
+    // of the key set, not arrival order.
+    def canonicalKeyFor(writeOrder: Seq[Option[Int]]): (String, Option[Int]) = {
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+      writeOrder.foreach { year =>
+        cache.put(cache.keyOf("Milcząca przyjaciółka", year),
+          mkResolved(4497, cinemaSlots = Map(KinoPalacowe ->
+            SourceData(title = Some("Milcząca przyjaciółka"), releaseYear = year))))
+      }
+      val r = cache.snapshot().head
+      (r.title, r.year)
+    }
+    val yearFirst = canonicalKeyFor(Seq(Some(2025), None))
+    val noneFirst = canonicalKeyFor(Seq(None, Some(2025)))
+    yearFirst shouldBe noneFirst
+  }
+
   it should "delete the victim from Mongo when the source key already held a row" in {
     val repo  = new InMemoryMovieRepo()
     val cache = new CaffeineMovieCache(repo)

@@ -183,8 +183,8 @@ class CaffeineMovieCache(
     case Some(tid) =>
       tmdbLockFor(tid).synchronized {
         siblingKeyByTmdb(tid, excluding = key) match {
-          case Some(canonical) => foldOnto(canonical, key, e)
-          case None            => persist(key, e)
+          case Some(siblingKey) => foldDeterministically(key, e, siblingKey)
+          case None             => persist(key, e)
         }
       }
     case None =>
@@ -219,24 +219,50 @@ class CaffeineMovieCache(
   private def siblingKeyByTmdb(tid: Int, excluding: CacheKey): Option[CacheKey] = {
     import scala.jdk.CollectionConverters._
     val target = TitleNormalizer.sanitize(excluding.cleanTitle)
+    // `minByOption`, not `find`: a same-tmdbId row can have more than one
+    // sibling (year + yearless + a dub variant), and `asMap` iteration order
+    // is not stable across JVM builds / platforms. Pick the canonical-rank
+    // minimum so the chosen sibling — and therefore the fold result — is a
+    // pure function of the cache contents, not iteration order.
     positive.asMap().asScala.iterator
-      .find { case (k, v) =>
-        k != excluding &&
-        v.tmdbId.contains(tid) &&
-        TitleNormalizer.sanitize(k.cleanTitle) == target
-      }
-      .map(_._1)
+      .collect { case (k, v)
+        if k != excluding &&
+           v.tmdbId.contains(tid) &&
+           TitleNormalizer.sanitize(k.cleanTitle) == target => k }
+      .minByOption(canonicalRank)
   }
 
-  private def foldOnto(canonical: CacheKey, source: CacheKey, victim: MovieRecord): Unit = {
-    val current = Option(positive.getIfPresent(canonical)).getOrElse(victim)
-    val merged  = MovieRecordMerge.union(current, victim)
+  /** Total order picking the canonical (surviving) key among same-tmdbId,
+   *  same-normalised-title rows: prefer a row that carries a release year over
+   *  a yearless one, then the lower year, then the cleanTitle. A pure function
+   *  of the key, so the canonical never depends on write order. */
+  private def canonicalRank(k: CacheKey): (Boolean, Int, String) =
+    (k.year.isEmpty, k.year.getOrElse(Int.MaxValue), k.cleanTitle)
+
+  /** Collapse two same-tmdbId rows into one. The surviving key is chosen by
+   *  `canonicalRank` (NOT arrival order), and the record is the union of every
+   *  per-source slot — so no scraped data is lost whichever key wins, and the
+   *  displayed title/year/ratings are derived from that union at read time.
+   *  The stored result is therefore identical no matter which row was written
+   *  first; enrichment-thread arrival order (which varies across machines, and
+   *  used to flip the canonical here, drifting the whole-corpus snapshot
+   *  between arm64 dev boxes and amd64 CI) no longer matters. */
+  private def foldDeterministically(newKey: CacheKey, newRec: MovieRecord, siblingKey: CacheKey): Unit = {
+    val siblingRec = Option(positive.getIfPresent(siblingKey)).getOrElse(newRec)
+    val newWins    = Ordering[(Boolean, Int, String)].lt(canonicalRank(newKey), canonicalRank(siblingKey))
+    val canonical  = if (newWins) newKey else siblingKey
+    val victim     = if (newWins) siblingKey else newKey
+    // union(canonical, victim): per-source slots are unioned (no loss); the
+    // shared top-level enrichment fields are identical between same-tmdbId
+    // siblings, so the merged record doesn't depend on the union direction.
+    val merged = if (newWins) MovieRecordMerge.union(newRec, siblingRec)
+                 else         MovieRecordMerge.union(siblingRec, newRec)
     persist(canonical, merged)
-    if (source != canonical) {
-      positive.invalidate(source)
-      repo.delete(source.cleanTitle, source.year)
-      logger.info(s"Folded duplicate '${source.cleanTitle}' (${source.year.getOrElse("—")}) " +
-                  s"into '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}) — same tmdbId=${victim.tmdbId.get}.")
+    if (victim != canonical) {
+      positive.invalidate(victim)
+      repo.delete(victim.cleanTitle, victim.year)
+      logger.info(s"Folded duplicate '${victim.cleanTitle}' (${victim.year.getOrElse("—")}) " +
+                  s"into '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}) — same tmdbId=${newRec.tmdbId.get}.")
     }
   }
 
