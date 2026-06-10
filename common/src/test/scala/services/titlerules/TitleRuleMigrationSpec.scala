@@ -117,6 +117,14 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
       val noDirector = """,\s+\p{Lu}\S+\s+\p{Lu}\S+$""".r.replaceFirstIn(noRez, "").trim
       """\s*\(\d{4}\)\s*$""".r.replaceFirstIn(noDirector, "").trim
     }
+
+    // Per-cinema: BoK (verbatim from BokClient.cleanTitle).
+    private val BokPromoTag = """\s*\|\s*[A-ZĄĆĘŁŃÓŚŹŻ0-9 ]{3,}\s*$""".r
+    def bok(raw: String): String = {
+      val noNbsp  = raw.replace(' ', ' ').replaceAll("\\s+", " ").trim
+      val noPromo = BokPromoTag.replaceFirstIn(noNbsp, "")
+      noPromo.replaceAll("\\s*\\|\\s*", ": ").trim
+    }
   }
 
   // Corpus exercising every pattern + plain titles that must NOT be touched.
@@ -258,6 +266,20 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
     kinematografCorpus.foreach { t =>
       withClue(s"perCinema('kino-kinematograf', '$t'): ")(
         rs.perCinema("kino-kinematograf", t) shouldBe Legacy.kinematograf(t))
+    }
+  }
+
+  private val bokCorpus = Seq(
+    "Tajny agent | SENIORZY",                 // trailing ALL-CAPS promo → dropped
+    "Kino dla Seniora | Tajny agent",          // banner | film → "Banner: Film"
+    "Diuna Cz. II",                       // nbsp → space
+    "Anora"                                     // untouched
+  )
+
+  "the bok per-cinema rules" should "match the frozen legacy BokClient.cleanTitle" in {
+    bokCorpus.foreach { t =>
+      withClue(s"perCinema('bok', '$t'): ")(
+        rs.perCinema("bok", t) shouldBe Legacy.bok(t))
     }
   }
 }

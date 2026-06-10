@@ -89,16 +89,18 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
     Jsoup.parse(html).select("a.movie-list[href]").asScala.toSeq.flatMap { card =>
       val href  = card.attr("href")
       val slug  = href.stripPrefix(s"/$prefix/").stripPrefix("/")
-      val title = Option(card.selectFirst("div.fs-30.fw-black")).map(c => BokClient.cleanTitle(c.text)).filter(_.nonEmpty)
+      val rawTitle = Option(card.selectFirst("div.fs-30.fw-black")).map(_.text)
+      val title = rawTitle.map(BokClient.cleanTitle).filter(_.nonEmpty)
       val times = card.select("span.movieshow-list-movie-descr").asScala.toSeq
         .flatMap(s => ScraperParse.parseHHmm(s.text.trim))
       title.filter(_ => times.nonEmpty && slug.matches("[a-z0-9-]+"))
-        .map(t => DayShowing(slug, t, times.map(date.atTime)))
+        .map(t => DayShowing(slug, t, rawTitle.getOrElse(t), times.map(date.atTime)))
     }
   }
 
   private def buildMovie(slug: String, showings: Seq[DayShowing], detail: Option[Document]): Option[CinemaMovie] = {
-    val title = showings.map(_.title).headOption.filter(_.nonEmpty)
+    val title    = showings.map(_.title).headOption.filter(_.nonEmpty)
+    val rawTitle = showings.map(_.rawTitle).headOption
     // Biletyna booking links live on the detail page's `movieshow-list` blocks,
     // keyed by their date+time — match each day-page screening to its link.
     val bookingByTime: Map[LocalDateTime, String] = detail.toSeq.flatMap(detailBookings).toMap
@@ -112,7 +114,7 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
       val runtime   = detail.flatMap(d => metaRow(d, "czas trwania"))
         .flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt))
       CinemaMovie(
-        movie     = Movie(title = t, runtimeMinutes = runtime, releaseYear = None, countries = countries),
+        movie     = Movie(title = t, runtimeMinutes = runtime, releaseYear = None, countries = countries, rawTitle = rawTitle),
         cinema    = cinema,
         posterUrl = detail.flatMap(d => Option(d.selectFirst("div.item-image-thumb img[src]")).map(_.attr("src")).filter(_.nonEmpty)
                       .orElse(Option(d.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty))),
@@ -143,7 +145,7 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
     doc.select("div.meta-row").asScala.find(_.text.toLowerCase.contains(label))
       .flatMap(r => Option(r.selectFirst("div.body"))).map(_.text.trim).filter(_.nonEmpty)
 
-  private case class DayShowing(slug: String, title: String, dateTimes: Seq[LocalDateTime])
+  private case class DayShowing(slug: String, title: String, rawTitle: String, dateTimes: Seq[LocalDateTime])
 }
 
 object BokClient {
@@ -157,15 +159,12 @@ object BokClient {
   //    onto the bare banner.
   // Drop only the trailing promo tag; rewrite the remaining `|` separators to
   // a readable "Banner: Film" so the programme banner survives as a prefix.
-  private val PromoTag = """\s*\|\s*[A-ZĄĆĘŁŃÓŚŹŻ0-9 ]{3,}\s*$""".r
-
+  // This cleanup now lives in the editable "bok" rules (TitleRuleDefaults); both
+  // BoK venues share the "bok" key (see TitleRuleKey).
   /** Clean a BoK card/h2 title: drop the trailing ALL-CAPS promo tag, keep any
    *  recurring-programme banner, and normalise whitespace. */
-  def cleanTitle(raw: String): String = {
-    val noNbsp   = raw.replace(' ', ' ').replaceAll("\\s+", " ").trim
-    val noPromo  = PromoTag.replaceFirstIn(noNbsp, "")
-    noPromo.replaceAll("\\s*\\|\\s*", ": ").trim
-  }
+  def cleanTitle(raw: String): String =
+    services.movies.TitleNormalizer.cinemaClean("bok", raw)
 
   /** "05.06" (DD.MM, no year) → a date; year from `today`, rolling forward when
    *  the month is already behind us. */

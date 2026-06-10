@@ -16,10 +16,15 @@ object TitleRuleKey {
 
   def of(cinema: Cinema): String = of(cinema.displayName)
 
+  // Multi-venue platform clients whose venues don't share a display-name prefix
+  // but DO share one scraper (and thus one cleanup rule set).
+  private val bokVenues = Set("Kino na Boku", "Kino Głębocka 66")
+
   def of(displayName: String): String =
     if (displayName.startsWith("Cinema City")) "cinema-city"
     else if (displayName.startsWith("Helios")) "helios"
     else if (displayName.startsWith("Multikino")) "multikino"
+    else if (bokVenues.contains(displayName)) "bok"
     else slug(displayName)
 
   private def slug(s: String): String =

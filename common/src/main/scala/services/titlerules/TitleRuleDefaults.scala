@@ -130,7 +130,18 @@ object TitleRuleDefaults {
       note = Some("Kinematograf bare ', Firstname Lastname' director suffix")),
     TitleRule("kinematograf-year", PerCinema, Some("kino-kinematograf"),
       """\s*\(\d{4}\)\s*$""", "", applyAll = false, order = 30,
-      note = Some("Kinematograf trailing ' (YYYY)' suffix"))
+      note = Some("Kinematograf trailing ' (YYYY)' suffix")),
+    // BoK (both venues) — normalise nbsp+whitespace, drop a trailing ALL-CAPS
+    // promo tag, rewrite remaining "|" separators to ": ".
+    TitleRule("bok-ws", PerCinema, Some("bok"),
+      """[\s ]+""", " ", applyAll = true, order = 10,
+      note = Some("BoK whitespace + nbsp collapse")),
+    TitleRule("bok-promo", PerCinema, Some("bok"),
+      """\s*\|\s*[A-ZĄĆĘŁŃÓŚŹŻ0-9 ]{3,}\s*$""", "", applyAll = false, order = 20,
+      note = Some("BoK trailing ALL-CAPS promo tag")),
+    TitleRule("bok-pipe-to-colon", PerCinema, Some("bok"),
+      """\s*\|\s*""", ": ", applyAll = true, order = 30,
+      note = Some("BoK programme-banner '|' → ': '"))
   )
 
   val all: Seq[TitleRule] = structural ++ search ++ canonical ++ perCinema

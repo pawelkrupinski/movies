@@ -16,7 +16,11 @@ class TitleRuleKeySpec extends AnyFlatSpec with Matchers {
 
   it should "slug a standalone cinema's display name, deburring Polish letters" in {
     TitleRuleKey.of(KinoApollo)               shouldBe "kino-apollo"
-    TitleRuleKey.of("Kino Głębocka 66")       shouldBe "kino-glebocka-66"
     TitleRuleKey.of("Kino Pałacowe")          shouldBe "kino-palacowe"
+  }
+
+  it should "collapse both BoK venues onto one shared key" in {
+    TitleRuleKey.of("Kino na Boku")     shouldBe "bok"
+    TitleRuleKey.of("Kino Głębocka 66") shouldBe "bok"
   }
 }
