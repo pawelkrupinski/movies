@@ -35,4 +35,13 @@ RUN openssl rand -base64 756 > /etc/mongo-keyfile \
 # live connections is what OOM-killed the 512mb box on 2026-06-06. Pinning it
 # bounds steady-state RSS far under the (now 1gb) ceiling — the structural fix
 # for the OOM. The dataset is tiny (hundreds of docs), so 256mb of cache is ample.
-CMD ["mongod", "--ipv6", "--bind_ip_all", "--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile", "--wiredTigerCacheSizeGB", "0.25"]
+#
+# `--setParameter diagnosticDataCollectionDirectorySizeMB=300` bounds FTDC (full-
+# time diagnostic data capture) at 300mb. FTDC's inability to write its interim
+# temp file on a FULL /data/db is what SIGABRT-crashed mongod on 2026-06-10 (the
+# disk-full cascade). The default cap is 200mb; 300mb keeps a few extra days of
+# high-res server diagnostics for post-incident analysis — trivial on the 3gb
+# volume — while still being an explicit bound rather than relying on the default.
+# (Also set live via setParameter on 2026-06-10; this line makes it survive a
+# redeploy/restart.)
+CMD ["mongod", "--ipv6", "--bind_ip_all", "--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile", "--wiredTigerCacheSizeGB", "0.25", "--setParameter", "diagnosticDataCollectionDirectorySizeMB=300"]
