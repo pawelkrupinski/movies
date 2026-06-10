@@ -24,12 +24,22 @@
     .row { display: flex; align-items: center; margin-bottom: 4px; }
     /* The name column is a FIXED-WIDTH flex track holding the label plus its
        client-marker chip, so the bars start at the same x in every row no matter
-       the chip. The label flexes + ellipsises; the chip is pinned to the right. */
+       the chip. The label sizes to content so the chip sits right beside the name;
+       padding-right keeps the chip off the bars. */
     .name {
       width: 280px; flex-shrink: 0; color: #aaa; font-size: 12px;
-      display: flex; align-items: center; gap: 6px;
+      display: flex; align-items: center; gap: 6px; padding-right: 14px;
+      position: relative;
     }
     .name-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    /* Triage rows show their city in an instant tooltip on name hover (the row was
+       lifted out of its city group, so there's no <h3> above it). */
+    .name[data-city]:not([data-city=""]):hover::after {
+      content: attr(data-city); position: absolute; left: 0; top: 100%; z-index: 50;
+      margin-top: 3px; padding: 2px 8px; background: #1a1a1a; border: 1px solid #333;
+      border-radius: 4px; font-size: 11px; color: #ddd; white-space: nowrap;
+      pointer-events: none;
+    }
     .bars { display: flex; gap: 1px; overflow: hidden; }
     .latency {
       margin-left: 10px; flex-shrink: 0; color: #888; font-size: 11px;
@@ -61,10 +71,9 @@
     .legend-item { display: flex; align-items: center; gap: 5px; }
     .legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
     .empty-msg { color: #444; font-size: 12px; margin: 12px 0; }
-    /* Client marker chip, pinned to the right edge of the name column (so it
-       never shifts the bars). Shared platform client names which one; bespoke
-       clients just read "Custom". */
-    .name .tag { margin-left: auto; }
+    /* Client marker chip, sitting right next to the cinema name (the fixed-width
+       name column keeps the bars aligned regardless). Shared platform client names
+       which one; bespoke clients just read "Custom". */
     .tag {
       flex-shrink: 0; font-size: 10px; padding: 1px 6px; border-radius: 3px;
       white-space: nowrap; border: 1px solid transparent;
@@ -246,12 +255,12 @@
 
 @*  One service row. The name column holds the label plus the client-marker chip
     (a `"kind:label"` tag: shared chips name the client, bespoke ones read
-    "Custom"). `city` is set only in the leading triage sections — there the row
-    is shown out of its city group, so the city rides the name's hover title
-    rather than a visible chip.  *@
+    "Custom"). `city` is set only in the leading triage sections — there the row is
+    shown out of its city group, so the city pops in an instant tooltip on name
+    hover (`data-city` + the `.name:hover::after` rule).  *@
 @serviceRow(s: ServiceRow, city: Option[String]) = {
   <div class="row" data-service="@s.name">
-    <div class="name" title="@{s.name + city.map(" · " + _).getOrElse("")}">
+    <div class="name" title="@s.name" data-city="@city.getOrElse("")">
       <span class="name-label">@s.name</span>
       @for(t <- s.tags.toSeq.sorted) {
         @defining(t.split(":", 2)) { parts =>

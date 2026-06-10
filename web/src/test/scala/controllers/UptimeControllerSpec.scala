@@ -143,7 +143,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
       Some("Poznań")))
     val html = views.html.uptime(failing, Nil, Nil, Nil, Nil).body
     html should include ("Failing — last 3 scrapes")
-    html should include ("""title="Kino Rialto · Poznań"""")  // city rides the name's hover title
+    html should include ("""data-city="Poznań"""")           // city pops on name hover (instant tooltip)
     html should include ("tag-custom")                       // styled by kind
     html should include (">Custom<")                         // bespoke clients read just "Custom"
     html should include ("""title="RialtoClient"""")         // the actual class on hover
