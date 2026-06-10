@@ -109,19 +109,27 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
   def addListener(f: BucketListener): Unit = { listeners.add(f); () }
   def removeListener(f: BucketListener): Unit = { listeners.remove(f); () }
 
-  def recordSuccess(service: String): Unit = recordSuccess(service, None)
+  def recordSuccess(service: String): Unit = recordSuccess(service, None, fallback = false)
 
   /** Record a successful call along with how long it took, so the uptime page
    *  can show per-service average latency (1h + total). */
-  def recordSuccess(service: String, durationMs: Long): Unit = recordSuccess(service, Some(durationMs))
+  def recordSuccess(service: String, durationMs: Long): Unit = recordSuccess(service, Some(durationMs), fallback = false)
 
-  private def recordSuccess(service: String, durationMs: Option[Long]): Unit = {
+  /** Record a success that was served via the Filmweb fallback — the primary
+   *  scrape failed or came back empty, so the showtimes came from Filmweb. Counts
+   *  as a success (the user got data) but also marks the bucket `fallback`, so the
+   *  /uptime bar can show "served via Filmweb" rather than a plain green. */
+  def recordFallbackSuccess(service: String, durationMs: Long): Unit =
+    recordSuccess(service, Some(durationMs), fallback = true)
+
+  private def recordSuccess(service: String, durationMs: Option[Long], fallback: Boolean): Unit = {
     val bucket = currentBucket(service)
     bucket.successes.incrementAndGet()
     durationMs.foreach { ms =>
       bucket.durationSumMs.addAndGet(ms)
       bucket.durationCount.incrementAndGet()
     }
+    if (fallback) bucket.fallback.set(true)
     bucket.dirty.set(true)
     notifyListeners(service, bucket)
   }
@@ -176,7 +184,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
     val buckets = data.get(service)
     if (buckets == null) Seq.empty
     else buckets.values().asScala.toSeq.map(b =>
-      BucketSnapshot(b.timestamp, b.successes.get(), b.failures.get(), b.zeroes.get(), b.errors.asScala.toSeq)
+      BucketSnapshot(b.timestamp, b.successes.get(), b.failures.get(), b.zeroes.get(), b.errors.asScala.toSeq, b.fallback.get())
     )
   }
 
@@ -207,7 +215,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
           out += BucketWrite(service, b.timestamp,
             b.successes.get(), b.failures.get(), b.zeroes.get(),
             b.durationSumMs.get(), b.durationCount.get(),
-            b.errors.asScala.toList)
+            b.errors.asScala.toList, b.fallback.get())
       }
     }
     out.result()
@@ -233,7 +241,8 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
         Updates.set("zeroes", bw.zeroes),
         Updates.set("durationSumMs", bw.durationSumMs),
         Updates.set("durationCount", bw.durationCount),
-        Updates.set("errors", bw.errors.asJava)
+        Updates.set("errors", bw.errors.asJava),
+        Updates.set("fallback", bw.fallback)
       ),
       new UpdateOptions().upsert(true)
     ).subscribe(
@@ -279,7 +288,8 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
             doc.getInteger("zeroes", 0),
             Try(doc.get("durationSumMs").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L),
             doc.getInteger("durationCount", 0),
-            Try(doc.getList("errors", classOf[String])).toOption.fold(Seq.empty[String])(_.asScala.toSeq)
+            Try(doc.getList("errors", classOf[String])).toOption.fold(Seq.empty[String])(_.asScala.toSeq),
+            Try(doc.getBoolean("fallback", false)).getOrElse(false)
           )
       }
     }
@@ -287,7 +297,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
 
   private def notifyListeners(service: String, bucket: Bucket): Unit =
     if (!listeners.isEmpty) {
-      val snap = BucketSnapshot(bucket.timestamp, bucket.successes.get(), bucket.failures.get(), bucket.zeroes.get(), bucket.errors.asScala.toSeq)
+      val snap = BucketSnapshot(bucket.timestamp, bucket.successes.get(), bucket.failures.get(), bucket.zeroes.get(), bucket.errors.asScala.toSeq, bucket.fallback.get())
       listeners.forEach(f => Try(f(service, snap)))
     }
 
@@ -328,6 +338,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
         Try(doc.getList("errors", classOf[String])).toOption.foreach { errs =>
           errs.asScala.take(MaxErrorsPerBucket).foreach(bucket.errors.add)
         }
+        if (Try(doc.getBoolean("fallback", false)).getOrElse(false)) bucket.fallback.set(true)
         count += 1
       }
     }
@@ -344,7 +355,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
     service: String, bucketTs: Long,
     successes: Int, failures: Int, zeroes: Int,
     durationSumMs: Long, durationCount: Int,
-    errors: Seq[String]
+    errors: Seq[String], fallback: Boolean = false
   ): Unit = {
     val ts = bucketTimestamp(bucketTs)
     val buckets = data.computeIfAbsent(service, _ => new java.util.concurrent.ConcurrentSkipListMap[Long, Bucket]())
@@ -356,12 +367,14 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
       bucket.zeroes.get() != zeroes ||
       bucket.durationSumMs.get() != durationSumMs ||
       bucket.durationCount.get() != durationCount ||
-      bucket.errors.asScala.toSeq != cappedErrors
+      bucket.errors.asScala.toSeq != cappedErrors ||
+      bucket.fallback.get() != fallback
     bucket.successes.set(successes)
     bucket.failures.set(failures)
     bucket.zeroes.set(zeroes)
     bucket.durationSumMs.set(durationSumMs)
     bucket.durationCount.set(durationCount)
+    bucket.fallback.set(fallback)
     bucket.errors.clear()
     cappedErrors.foreach(bucket.errors.add)
     val cutoff = ts - MaxBuckets * BucketDurationMs
@@ -440,6 +453,11 @@ object UptimeMonitor {
     // Set by record*; cleared by the flusher. Coalesces a bucket's many records
     // into one Mongo write per flush interval.
     val dirty = new AtomicBoolean(false)
+    // Sticky within the slot: set when at least one call in this bucket was
+    // served via the Filmweb fallback (primary down / empty). The slot still
+    // counts as a success (the user got showtimes), so `status` stays green —
+    // this just lets the /uptime page mark the bar "served via Filmweb".
+    val fallback = new AtomicBoolean(false)
   }
 
   /** A bucket's cumulative counts captured for one flush. */
@@ -447,10 +465,10 @@ object UptimeMonitor {
     service: String, bucketTs: Long,
     successes: Int, failures: Int, zeroes: Int,
     durationSumMs: Long, durationCount: Int,
-    errors: List[String]
+    errors: List[String], fallback: Boolean = false
   )
 
-  case class BucketSnapshot(timestamp: Long, successes: Int, failures: Int, zeroes: Int, errors: Seq[String]) {
+  case class BucketSnapshot(timestamp: Long, successes: Int, failures: Int, zeroes: Int, errors: Seq[String], fallback: Boolean = false) {
     // Precedence: a failure dominates (red/yellow); a real success means green
     // even alongside a zero-result call in the same slot; only when every
     // non-failed call came back empty does the slot read "zero" (white). An

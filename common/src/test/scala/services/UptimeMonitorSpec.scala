@@ -295,4 +295,55 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     // The empty round-trip still timed, so its latency feeds the average.
     monitor.averageMsTotal("svc") shouldBe Some(42L)
   }
+
+  // A scrape the Filmweb fallback served counts as a success (the user got
+  // showtimes — green bar) but also marks the bucket `fallback`, so the /uptime
+  // page can flag the bar "served via Filmweb" instead of a plain green.
+  "recordFallbackSuccess" should "count as a success, mark the bucket fallback, and stay green" in {
+    val monitor = new UptimeMonitor()
+    monitor.recordFallbackSuccess("Kino Praha", 55L)
+    val bucket = monitor.history("Kino Praha").head
+    bucket.successes shouldBe 1
+    bucket.failures  shouldBe 0
+    bucket.fallback  shouldBe true
+    bucket.status    shouldBe "green"
+    monitor.averageMsTotal("Kino Praha") shouldBe Some(55L)
+  }
+
+  it should "carry the fallback flag into the flushed BucketWrite" in {
+    val monitor = new UptimeMonitor()
+    monitor.recordFallbackSuccess("Kino Praha", 30L)
+    val w = monitor.drainDirty().head
+    w.successes shouldBe 1
+    w.fallback  shouldBe true
+  }
+
+  it should "leave fallback false for an ordinary (non-fallback) success" in {
+    val monitor = new UptimeMonitor()
+    monitor.recordSuccess("TMDB", 10L)
+    monitor.history("TMDB").head.fallback shouldBe false
+    monitor.drainDirty().head.fallback    shouldBe false
+  }
+
+  // The web process learns a cinema is on Filmweb fallback only via the worker's
+  // bucket write it polls — so the flag must survive applyExternalUpdate, and a
+  // flip in the flag must be treated as a change so the /uptime SSE updates.
+  "an external bucket update" should "propagate the fallback flag and fire listeners when it flips" in {
+    val monitor = new UptimeMonitor()
+    var notifications = 0
+    monitor.addListener((_, _) => notifications += 1)
+    val ts = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+
+    monitor.applyExternalUpdate("Kino Praha", ts,
+      successes = 2, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty, fallback = true)
+    monitor.history("Kino Praha").head.fallback shouldBe true
+    notifications shouldBe 1
+
+    // Same counts, fallback flipped off (primary recovered) — the flag change
+    // alone must register as a change and fire.
+    monitor.applyExternalUpdate("Kino Praha", ts,
+      successes = 2, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty, fallback = false)
+    monitor.history("Kino Praha").head.fallback shouldBe false
+    notifications shouldBe 2
+  }
 }
