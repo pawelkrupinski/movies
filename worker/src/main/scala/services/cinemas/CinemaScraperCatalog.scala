@@ -196,9 +196,9 @@ class CinemaScraperCatalog(
     // residential egress in production, the fixture fake in tests. See
     // WorkerWiring.biletynaFetch / ZyteFallback.
     new BiletynaClient(bnFetch, "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe", KinoKameralne),
-    new KinoIkmClient(http, KinoIkm),
+    new KinoIkmClient(http, KinoIkm, today),
     new KinoMuzeumGdanskClient(http, KinoMuzeumGdansk),
-    new KinoZakClient(http, KinoZak),
+    new KinoZakClient(http, KinoZak, today),
     // KinoPort (CSW Łaźnia, Gdańsk) dropped its stable gcsw.pl/kino/ programme
     // alias in a 2026-06 site rebuild, so we read its seances off Filmweb's
     // listing for the venue (Gdańsk id 1735) like the other small cinemas.
@@ -257,7 +257,7 @@ class CinemaScraperCatalog(
   private val rzeszowScrapers: Seq[CinemaScraper] = Seq(
     helios(HeliosNuxt.Rzeszow),
     new MultikinoClient(mkFetch, "0028", MultikinoRzeszow),
-    new KinoZorzaClient(http, KinoZorza),
+    new KinoZorzaClient(http, KinoZorza, today),
     new KinoZaRogiemCafeClient(http, KinoZaRogiemCafe, today),
   )
 
