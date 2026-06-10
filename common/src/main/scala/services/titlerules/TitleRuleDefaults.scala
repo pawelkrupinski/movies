@@ -110,7 +110,17 @@ object TitleRuleDefaults {
       note = Some("Kino Alternatywy typographic quote marks → space")),
     TitleRule("alt-collapse-ws", PerCinema, Some("kino-alternatywy"),
       """\s+""", " ", applyAll = true, order = 30,
-      note = Some("Kino Alternatywy whitespace collapse"))
+      note = Some("Kino Alternatywy whitespace collapse")),
+    // Kino Pałacowe — cycle/programme prefixes.
+    TitleRule("palacowe-poranek", PerCinema, Some("kino-palacowe"),
+      """^Poranek dla dzieci: """, "", applyAll = false, order = 10,
+      note = Some("Kino Pałacowe kids-matinee prefix")),
+    TitleRule("palacowe-dkf-zamek", PerCinema, Some("kino-palacowe"),
+      """^DKF Zamek: """, "", applyAll = false, order = 20,
+      note = Some("Kino Pałacowe film-club prefix")),
+    TitleRule("palacowe-wajda", PerCinema, Some("kino-palacowe"),
+      """^WAJDA: re-wizje\. """, "", applyAll = false, order = 30,
+      note = Some("Kino Pałacowe Wajda retrospective prefix"))
   )
 
   val all: Seq[TitleRule] = structural ++ search ++ canonical ++ perCinema

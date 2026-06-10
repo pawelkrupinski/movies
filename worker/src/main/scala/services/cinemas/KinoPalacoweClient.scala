@@ -127,7 +127,7 @@ class KinoPalacoweClient(http: HttpFetch, deferDetail: Boolean = false) extends 
         val sorted = group.sortBy(_.dateTime)
         val first  = sorted.head
         CinemaMovie(
-          movie     = Movie(title = title),
+          movie     = Movie(title = title, rawTitle = Some(first.rawTitle)),
           cinema    = KinoPalacowe,
           posterUrl = first.posterUrl,
           filmUrl   = first.filmUrl,
@@ -186,6 +186,7 @@ class KinoPalacoweClient(http: HttpFetch, deferDetail: Boolean = false) extends 
 
   private case class ScreeningEntry(
     movieTitle:     String,
+    rawTitle:       String,
     dateTime:       LocalDateTime,
     posterUrl:      Option[String],
     filmUrl:        Option[String],
@@ -216,7 +217,8 @@ class KinoPalacoweClient(http: HttpFetch, deferDetail: Boolean = false) extends 
     if (filmUrl.isEmpty || ticketType != 2) None
     else {
       val rawTitle  = (entry \ "title").asOpt[String].getOrElse("")
-      val title     = KinoPalacoweClient.cleanTitle(rawTitle.split(" \\| ").head.trim)
+      val baseTitle = rawTitle.split(" \\| ").head.trim
+      val title     = KinoPalacoweClient.cleanTitle(baseTitle)
       val startDate = (entry \ "start_date").asOpt[String]
       val startTime = (entry \ "start_time").asOpt[String]
 
@@ -235,6 +237,7 @@ class KinoPalacoweClient(http: HttpFetch, deferDetail: Boolean = false) extends 
                         .orElse((entry \ "length").asOpt[Int])
         ScreeningEntry(
           movieTitle     = title,
+          rawTitle       = baseTitle,
           dateTime       = dateTime,
           posterUrl      = photoPath.map(path => if (path.startsWith("http")) path else s"$BaseUrl$path"),
           filmUrl        = filmUrl,
@@ -258,9 +261,6 @@ object KinoPalacoweClient {
    *  shape here so both cinemas' screenings land on one row, not two). Public
    *  so the strip is unit-testable directly. */
   def cleanTitle(title: String): String =
-    title
-      .stripPrefix("Poranek dla dzieci: ")
-      .stripPrefix("DKF Zamek: ")
-      .stripPrefix("WAJDA: re-wizje. ")
+    services.movies.TitleNormalizer.cinemaClean("kino-palacowe", title)
 }
 

@@ -106,6 +106,10 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
         .replaceAll("[„“”‟\"]", " ")
         .replaceAll("\\s+", " ")
         .trim
+
+    // Per-cinema: Kino Pałacowe (verbatim from KinoPalacoweClient.cleanTitle).
+    def kinoPalacowe(title: String): String =
+      title.stripPrefix("Poranek dla dzieci: ").stripPrefix("DKF Zamek: ").stripPrefix("WAJDA: re-wizje. ")
   }
 
   // Corpus exercising every pattern + plain titles that must NOT be touched.
@@ -219,6 +223,20 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
     alternatywyCorpus.foreach { t =>
       withClue(s"perCinema('kino-alternatywy', '$t'): ")(
         rs.perCinema("kino-alternatywy", t) shouldBe Legacy.alternatywy(t))
+    }
+  }
+
+  private val kinoPalacoweCorpus = Seq(
+    "Poranek dla dzieci: Pszczółka Maja",
+    "DKF Zamek: Stalker",
+    "WAJDA: re-wizje. Popiół i diament",
+    "Anora"  // untouched
+  )
+
+  "the kino-palacowe per-cinema rules" should "match the frozen legacy KinoPalacoweClient.cleanTitle" in {
+    kinoPalacoweCorpus.foreach { t =>
+      withClue(s"perCinema('kino-palacowe', '$t'): ")(
+        rs.perCinema("kino-palacowe", t) shouldBe Legacy.kinoPalacowe(t))
     }
   }
 }
