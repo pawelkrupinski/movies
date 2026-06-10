@@ -37,7 +37,7 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
     cache
   }
 
-  "rebuild" should "collapse the stale decorated row onto the plain one" in {
+  "rebuild" should "collapse the stale decorated row onto the plain one (merge)" in {
     val cache = staleCache()
     cache.entries should have size 2
 
@@ -48,7 +48,7 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
     merged.cinemaData.keySet shouldBe Set(CinemaCityKinepolis, Multikino)
     result.merges should have size 1
     result.merges.head.mergedTitles should contain allOf ("Anora", "Ladies Night - Anora")
-    result.rekeyed shouldBe 1
+    result.splits shouldBe empty
   }
 
   it should "be a no-op on an already-consistent cache" in {
@@ -56,7 +56,33 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
     new NormalizationRebuilder(cache).rebuild()        // first run collapses
     val second = new NormalizationRebuilder(cache).rebuild()
     second.merges shouldBe empty
-    second.rekeyed shouldBe 0
+    second.splits shouldBe empty
+    second.changed shouldBe 0
     cache.entries should have size 1
+  }
+
+  "rebuild" should "split a row whose cinema slots now map to different keys (un-merge)" in {
+    val cache = new CaffeineMovieCache(disabledRepo)
+    // A single row that bundles two genuinely different films (the state left
+    // behind after a too-broad rule that merged them is deleted), enriched.
+    val bundled = MovieRecord(
+      tmdbId = Some(111),
+      data   = Map[Source, SourceData](
+        CinemaCityKinepolis -> SourceData(title = Some("Anora"),      rawTitle = Some("Anora")),
+        Multikino           -> SourceData(title = Some("Other Film"), rawTitle = Some("Other Film"))))
+    cache.put(cache.keyOf("Anora", None), bundled)
+    cache.entries should have size 1
+
+    var splitOffs = List.empty[String]
+    val result = new NormalizationRebuilder(cache, onSplitOff = (title, _) => splitOffs ::= title).rebuild()
+
+    cache.entries should have size 2
+    val byTitle = cache.entries.map { case (k, r) => k.cleanTitle -> r }.toMap
+    byTitle.keySet shouldBe Set("Anora", "Other Film")
+    byTitle("Anora").tmdbId shouldBe Some(111)   // remnant keeps the enrichment
+    byTitle("Other Film").tmdbId shouldBe None    // split-off is fresh
+    result.splits should have size 1
+    result.splits.head.into should contain allOf ("Anora", "Other Film")
+    splitOffs should contain ("Other Film")       // handed off for re-resolution
   }
 }

@@ -7,7 +7,7 @@ import services.alerts.{FallbackAlert, FilmwebDropAlerter, TelegramNotifier}
 import services.cinemas._
 import services.enrichment._
 import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
-import services.events.{EventBus, InProcessEventBus}
+import services.events.{EventBus, InProcessEventBus, MovieRecordCreated}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, NormalizationRebuilder, UnscreenedCleanup}
 import services.tasks.{DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, RatingEnqueuer, RatingHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker}
@@ -194,7 +194,8 @@ class WorkerWiring {
   // defaults so behaviour is unchanged from the hardcoded baseline. When an edit
   // arrives over the change stream, re-merge existing records so the rule applies
   // retroactively, not just to future scrapes.
-  lazy val normalizationRebuilder = new NormalizationRebuilder(movieCache)
+  lazy val normalizationRebuilder = new NormalizationRebuilder(movieCache,
+    onSplitOff = (title, year) => eventBus.publish(MovieRecordCreated(title, year)))
   lazy val titleRulesRepo: TitleRulesRepo = new MongoTitleRulesRepo(mongoConnection.database, fallbackToOwnInit = false)
   lazy val titleRulesCache: TitleRulesCache =
     new TitleRulesCache(titleRulesRepo, seedIfEmpty = true,
