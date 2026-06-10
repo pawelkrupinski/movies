@@ -39,9 +39,11 @@ case class TitleRuleSet(rules: Seq[TitleRule]) {
   def canonical(t: String): String = fold(canonicalRules, structural(t))
 
   /** Per-cinema raw → clean cleanup (the old per-client `cleanTitle`). Unknown
-   *  cinema → identity. Trailing trim matches the legacy clients. */
+   *  cinema → identity. NO implicit trim — clients that trimmed carry an explicit
+   *  trim rule, since some legacy clients (Helios, Cinema City, …) deliberately
+   *  did NOT trim and preserved trailing whitespace. */
   def perCinema(cinemaId: String, raw: String): String =
-    fold(perCinemaRules.getOrElse(cinemaId, Nil), raw).trim
+    fold(perCinemaRules.getOrElse(cinemaId, Nil), raw)
 
   /** The programme-prefix banner at the start of `title`, including the trailing
    *  ": " delimiter, when one of the `tag = "programmePrefix"` Search rules

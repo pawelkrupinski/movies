@@ -153,7 +153,31 @@ object TitleRuleDefaults {
     // concern shared across the portal clients via ScraperParse.stripFormatTags.
   )
 
-  val all: Seq[TitleRule] = structural ++ search ++ canonical ++ perCinema
+  // Helios (chain) — ordered event/format suffix tags peeled off the end. Order
+  // matters (matches HeliosNuxt's foldLeft): the event-source tag is peeled so a
+  // preceding dubbing/napisy tag becomes the new suffix in the same pass. None of
+  // these contain regex metacharacters, so `<suffix>$` is a safe literal match.
+  private val heliosSuffixes = Seq(
+    " w Helios RePlay", " w Helios Anime", " w Helios na Scenie", " w HnS",
+    " - Salon Kultury Helios", " - KNTJ", " - KNT", " - Kino Kobiet",
+    " - Kino Konesera", " - seanse z konkursami HDD", " - Event projekt",
+    " - dubbing", " - Dubbing", " - napisy", " - NAP", " - DUB", " - AF")
+  private val heliosRules: Seq[TitleRule] = heliosSuffixes.zipWithIndex.map { case (sfx, i) =>
+    TitleRule(s"helios-suffix-${i + 1}", PerCinema, Some("helios"),
+      sfx + "$", "", applyAll = false, order = (i + 1) * 10,
+      note = Some(s"Helios '${sfx.trim}' tag"))
+  }
+
+  // Clients whose legacy cleanTitle ended with `.trim`. The others (Cinema City,
+  // Multikino, Kino Pałacowe, Kino Apollo, Helios) deliberately did NOT trim, so
+  // they get no trim rule and trailing whitespace is preserved as before.
+  private val trimmingCinemas = Seq("kino-muza", "kino-alternatywy", "kino-kinematograf", "bok")
+  private val trimRules: Seq[TitleRule] = trimmingCinemas.map { key =>
+    TitleRule(s"$key-trim", PerCinema, Some(key), """^\s+|\s+$""", "", applyAll = true, order = 1000,
+      note = Some("Trim leading/trailing whitespace"))
+  }
+
+  val all: Seq[TitleRule] = structural ++ search ++ canonical ++ perCinema ++ heliosRules ++ trimRules
 
   val ruleSet: TitleRuleSet = TitleRuleSet(all)
 }

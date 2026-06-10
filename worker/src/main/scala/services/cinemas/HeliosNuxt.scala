@@ -77,16 +77,11 @@ object HeliosNuxt {
   // into `Showtime.format` from each screening's `release`/`printRelease`, so
   // stripping it from the title loses nothing while letting the row enrich off
   // the clean film name and the dubbing/napisy variants collapse into one row.
-  // Order matters: the `- Event projekt` event-source tag is peeled first so a
-  // preceding `- dubbing`/`- napisy` becomes the new suffix in the same pass.
+  // The event/format suffix peeling now lives in the editable "helios" rules
+  // (TitleRuleDefaults, same order); this delegates so the Nuxt+REST dedup
+  // grouping/matching still collapses decorated variants onto the bare film.
   def cleanTitle(title: String): String =
-    Seq(" w Helios RePlay", " w Helios Anime", " w Helios na Scenie", " w HnS",
-        " - Salon Kultury Helios", " - KNTJ", " - KNT", " - Kino Kobiet",
-        " - Kino Konesera", " - seanse z konkursami HDD",
-        " - Event projekt",
-        " - dubbing", " - Dubbing", " - napisy", " - NAP", " - DUB",
-        " - AF")
-      .foldLeft(title)((t, suffix) => t.stripSuffix(suffix))
+    services.movies.TitleNormalizer.cinemaClean("helios", title)
 
   def buildMovies(html: String, cfg: HeliosCinema = Poznan): Seq[CinemaMovie] = {
     val parsed   = parseNuxtPage(html, cfg.baseUrl)
@@ -105,7 +100,8 @@ object HeliosNuxt {
         // prefer the /filmy/ URL — it points to the canonical movie page rather than a specific event.
         val urls   = movies.flatMap(_.filmUrl)
         CinemaMovie(
-          movie = Movie(title = title, runtimeMinutes = movie.runtimeMinutes, releaseYear = None),
+          movie = Movie(title = title, runtimeMinutes = movie.runtimeMinutes, releaseYear = None,
+            rawTitle = movies.map(_.title).headOption),
           cinema    = cfg.cinema,
           posterUrl = movies.flatMap(_.posterUrl).headOption,
           filmUrl   = urls.find(_.contains("/filmy/")).orElse(urls.headOption),

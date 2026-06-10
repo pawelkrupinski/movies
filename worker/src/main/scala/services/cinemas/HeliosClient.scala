@@ -246,7 +246,8 @@ class HeliosClient(
               runtimeMinutes = info.duration,
               releaseYear    = info.year,
               countries      = info.countries,
-              genres         = info.genres
+              genres         = info.genres,
+              rawTitle       = Some(info.title.getOrElse(movieId))
             ),
             cinema    = cfg.cinema,
             posterUrl = info.posterUrl,

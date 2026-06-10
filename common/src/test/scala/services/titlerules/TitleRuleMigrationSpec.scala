@@ -122,6 +122,14 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
     def kinoApollo(title: String): String =
       title.stripPrefix("DZIEŃ DZIECKA W APOLLO - ").stripSuffix(" - seans przedpremierowy")
 
+    // Per-cinema: Helios (verbatim foldLeft from HeliosNuxt.cleanTitle, pre-rules).
+    def helios(title: String): String =
+      Seq(" w Helios RePlay", " w Helios Anime", " w Helios na Scenie", " w HnS",
+          " - Salon Kultury Helios", " - KNTJ", " - KNT", " - Kino Kobiet",
+          " - Kino Konesera", " - seanse z konkursami HDD", " - Event projekt",
+          " - dubbing", " - Dubbing", " - napisy", " - NAP", " - DUB", " - AF")
+        .foldLeft(title)((t, suffix) => t.stripSuffix(suffix))
+
     // Per-cinema: BoK (verbatim from BokClient.cleanTitle).
     private val BokPromoTag = """\s*\|\s*[A-ZĄĆĘŁŃÓŚŹŻ0-9 ]{3,}\s*$""".r
     def bok(raw: String): String = {
@@ -297,6 +305,21 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
     kinoApolloCorpus.foreach { t =>
       withClue(s"perCinema('kino-apollo', '$t'): ")(
         rs.perCinema("kino-apollo", t) shouldBe Legacy.kinoApollo(t))
+    }
+  }
+
+  private val heliosCorpus = Seq(
+    "Anora w HnS",
+    "Diuna - napisy",
+    "Mufasa - dubbing - Event projekt",   // order-dependent double strip
+    "Diabeł - KNT",
+    "Top Gun: Maverick"                    // untouched
+  )
+
+  "the helios per-cinema rules" should "match the frozen legacy HeliosNuxt.cleanTitle" in {
+    heliosCorpus.foreach { t =>
+      withClue(s"perCinema('helios', '$t'): ")(
+        rs.perCinema("helios", t) shouldBe Legacy.helios(t))
     }
   }
 }
