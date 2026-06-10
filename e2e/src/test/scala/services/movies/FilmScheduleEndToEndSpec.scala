@@ -341,6 +341,14 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
           info(s"SNAPDIAG2 BezWyjscia ${c.displayName} dates=${sd.showtimes.map(_.dateTime.toLocalDate).distinct.sorted.mkString(",")}")
         }
       }
+      for (d <- Seq(java.time.LocalDate.of(2026, 6, 8), java.time.LocalDate.of(2026, 6, 11))) {
+        try {
+          val ek = new services.cinemas.EkobiletClient(wiring.httoFetch, "OPOLSKIELAMY", KinoMeduza, d)
+          val films = ek.fetch()
+          val bez = films.find(_.movie.title.toLowerCase.contains("wyj"))
+          info(s"SNAPDIAG2 EkobiletFetch($d): films=${films.size} Bez=${bez.map(f => f.showtimes.map(_.dateTime.toLocalDate).mkString(",")).getOrElse("ABSENT")}")
+        } catch { case t: Throwable => info(s"SNAPDIAG2 EkobiletFetch($d) threw: ${t.getClass.getName}: ${t.getMessage}") }
+      }
     }
     withClue(
       s"Whole-corpus snapshot mismatch. To regenerate after an intentional change:\n" +
