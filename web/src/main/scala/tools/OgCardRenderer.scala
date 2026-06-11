@@ -2,7 +2,7 @@ package tools
 
 import java.awt.geom.RoundRectangle2D
 import java.awt.image.BufferedImage
-import java.awt.{BasicStroke, Color, Font, GradientPaint, Graphics2D, RenderingHints}
+import java.awt.{Color, Font, GradientPaint, Graphics2D, RenderingHints}
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
 
@@ -32,18 +32,19 @@ object OgCardRenderer {
   val Width  = 1200
   val Height = 630
 
-  private val Margin  = 56
-  private val PosterH = Height - 2 * Margin          // 518
-  private val PosterW = (PosterH * 2) / 3            // 345 — a 2:3 poster slot
-  private val Gutter  = 56
-  private val PosterTextX = Margin + PosterW + Gutter // text column when a poster is shown
+  private val Margin  = 56                  // text inset from the top/right/bottom edges
+  // Full-bleed poster: flush to the left/top/bottom edges (no padding), spanning
+  // the whole card height, so it's as large as a 2:3 poster can be here.
+  private val PosterH = Height               // 630
+  private val PosterW = (Height * 2) / 3     // 420 — 2:3 at full height
+  private val Gutter  = 48
+  private val PosterTextX = PosterW + Gutter // text column when a poster is shown
 
   private val Bg        = new Color(0x14, 0x17, 0x1f)
   private val BgBottom  = new Color(0x09, 0x0a, 0x0f)
   private val TitleCol  = Color.WHITE
   private val SubCol    = new Color(0x9a, 0xa3, 0xb2)
   private val FooterCol = new Color(0x70, 0x78, 0x86)
-  private val PosterBorder = new Color(0xff, 0xff, 0xff, 36)
 
   // ── Rating badges — mirror the web `_ratingStyles` two-segment pills (a
   //    coloured brand label + a dark value segment), so a shared card looks
@@ -158,24 +159,19 @@ object OgCardRenderer {
     baos.toByteArray
   }
 
-  /** Cover-scale the poster into the 2:3 slot, clipped to a rounded rect with
-   *  a faint border — so off-2:3 sources fill the slot instead of letterboxing,
+  /** Cover-scale the poster to fill the full-bleed left column (flush to the
+   *  top/left/bottom edges, no padding or border), cropping the overflow —
    *  same intent as the on-page card's `object-fit: cover`. */
   private def drawPoster(g: Graphics2D, p: BufferedImage): Unit = {
-    val arc   = 22f
     val scale = math.max(PosterW.toDouble / p.getWidth, PosterH.toDouble / p.getHeight)
     val sw    = math.round(p.getWidth * scale).toInt
     val sh    = math.round(p.getHeight * scale).toInt
-    val dx    = Margin - (sw - PosterW) / 2
-    val dy    = Margin - (sh - PosterH) / 2
-    val slot  = new RoundRectangle2D.Float(Margin.toFloat, Margin.toFloat, PosterW.toFloat, PosterH.toFloat, arc, arc)
+    val dx    = -(sw - PosterW) / 2
+    val dy    = -(sh - PosterH) / 2
     val prev  = g.getClip
-    g.setClip(slot)
+    g.setClip(0, 0, PosterW, PosterH)
     g.drawImage(p, dx, dy, sw, sh, null)
     g.setClip(prev)
-    g.setColor(PosterBorder)
-    g.setStroke(new BasicStroke(2f))
-    g.draw(slot)
   }
 
   /** A row (wrapping to a second row if needed) of two-segment rating badges.
