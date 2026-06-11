@@ -11,16 +11,25 @@ import scala.util.Try
 
 /**
  * Generic client for cinemas ticketed through ekobilet.pl. The venue landing
- * `ekobilet.pl/<slug>` is server-rendered and lists each film as a
- * `div.event-card a[href]` (link to the film's detail page) with the title in a
- * sibling `p.overme`. The film detail page carries the dated screenings: one
- * `div.event-buy[data-href]` per slot, with `strong.primary-color` = "DD <pl-mon
- * abbrev>" (e.g. "10 cze") and a `span.fw-bold` = "HH:MM …". The year isn't in
- * the row, so it's inferred from `today` (next occurrence of that month/day).
+ * `ekobilet.pl/<slug>` is server-rendered but renders only the *currently
+ * selected* day's films (today) — so on a day the venue is dark it shows
+ * "Brak wydarzeń na dzisiaj" and zero `div.event-card`s. The date strip at the
+ * top lists every upcoming day, each `div.card-date[data-date="DD.MM.YYYY"]`;
+ * days that actually screen carry `available-color` (clickable), dark/past days
+ * carry `pointer-events-none`. Re-requesting the landing with `?date=YYYY-MM-DD`
+ * renders that day's `div.event-card a[href]` cards (title in a sibling
+ * `p.overme`), so we sweep every available day to discover the full repertoire
+ * rather than just today's.
  *
- * One instance per venue, captured by its `slug` + `cinema` (OCP). Two fetches:
- * the landing, then each film's detail page in parallel. Previously scraped from
- * Filmweb.
+ * The film detail page carries the dated screenings (all of them, not
+ * date-scoped): one `div.event-buy[data-href]` per slot, with
+ * `strong.primary-color` = "DD <pl-mon abbrev>" (e.g. "10 cze") and a
+ * `span.fw-bold` = "HH:MM …". The year isn't in the row, so it's inferred from
+ * `today` (next occurrence of that month/day).
+ *
+ * One instance per venue, captured by its `slug` + `cinema` (OCP). Fetches: the
+ * landing + one page per available day (to find every film), then each film's
+ * detail page once (deduped) in parallel. Previously scraped from Filmweb.
  */
 class EkobiletClient(
   http:   HttpFetch,
@@ -36,7 +45,19 @@ class EkobiletClient(
   override def sourceUrl: Option[String] = Some(s"$BaseUrl/$slug")
 
   def fetch(): Seq[CinemaMovie] = {
-    val films = parseLanding(http.get(s"$BaseUrl/$slug"))   // (title, detailUrl)
+    val landing = http.get(s"$BaseUrl/$slug")
+    val dates   = availableDates(landing)
+
+    // Each `?date=` page renders only that day's film cards, so sweep every
+    // upcoming day the strip marks as screening. The bare landing covers today.
+    val byDate = ParallelDetailFetch.keyed("ekobilet-day", dates, 1.minute)(
+      date => s"$BaseUrl/$slug?date=$date"
+    )(url => Try(http.get(url)).toOption.map(parseLanding))
+
+    // (cleaned title, detail-page URL) across today's landing + every dated
+    // listing, deduped by detail URL (a film recurs across days).
+    val films = (parseLanding(landing) ++ dates.flatMap(d => byDate.get(d).flatten.getOrElse(Nil)))
+      .distinctBy(_._2)
     val urls  = films.map(_._2).distinct
 
     val byUrl = ParallelDetailFetch("ekobilet", urls, 1.minute) { url =>
@@ -69,6 +90,21 @@ object EkobiletClient {
 
   // "10 cze" — day + abbreviated Polish month (shared map with the MSI scraper).
   private val RowDate = """(\d{1,2})\s+(\p{L}+)""".r
+
+  // "DD.MM.YYYY" — the date strip's `data-date` attribute.
+  private val PickerDate = """(\d{2})\.(\d{2})\.(\d{4})""".r
+
+  /** Upcoming days the venue actually screens on — the date-strip cards marked
+   *  `available-color` (clickable). Past/closed/eventless days carry
+   *  `pointer-events-none` instead. Returned as `yyyy-MM-dd` for the `?date=`
+   *  query, de-duplicated. */
+  private[cinemas] def availableDates(html: String): Seq[String] =
+    Jsoup.parse(html, BaseUrl).select("div.card-date.available-color[data-date]").asScala.toSeq.flatMap { el =>
+      el.attr("data-date") match {
+        case PickerDate(d, m, y) => Some(s"$y-$m-$d")
+        case _                   => None
+      }
+    }.distinct
 
   /** (cleaned title, detail-page URL) for each film card on the venue landing,
    *  de-duplicated (cards render twice for desktop/mobile). */

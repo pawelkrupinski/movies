@@ -1,7 +1,7 @@
 package clients.ekobilet
 
 import clients.tools.FakeHttpFetch
-import models.KinoMeduza
+import models.{KinoJaworzyna, KinoMeduza}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -35,5 +35,27 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "strip format tags from titles (no '2D napisy' suffix)" in {
     movies.map(_.movie.title).foreach(_.toLowerCase should not include "2d napisy")
+  }
+
+  /** Kino Jaworzyna captured on a day the venue was dark (11.06.2026): the bare
+   *  landing renders "Brak wydarzeń na dzisiaj" with zero `event-card`s, so the
+   *  films live only behind the date strip's `?date=` pages. Before the per-day
+   *  sweep this returned an empty list; now it recovers the full repertoire. */
+  private val jaworzyna =
+    new EkobiletClient(new FakeHttpFetch("ekobilet-jaworzyna"), "kino-jaworzyna", KinoJaworzyna,
+      today = LocalDate.of(2026, 6, 11)).fetch()
+
+  it should "sweep the date strip when today's landing is empty" in {
+    // The bare landing fixture is the live "Brak wydarzeń na dzisiaj" page with
+    // zero event-cards; before the date-strip sweep this returned an empty list.
+    jaworzyna should not be empty
+    jaworzyna.map(_.cinema).toSet shouldBe Set(KinoJaworzyna)
+    all(jaworzyna.map(_.showtimes)) should not be empty
+  }
+
+  it should "pin a future-day screening discovered only via the date strip" in {
+    val film = jaworzyna.find(_.movie.title == "Milczenie owiec").value
+    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 12, 18, 20))
+    film.showtimes.flatMap(_.bookingUrl).head should startWith("https://ekobilet.pl/")
   }
 }
