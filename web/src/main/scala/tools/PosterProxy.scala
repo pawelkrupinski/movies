@@ -84,16 +84,30 @@ object PosterProxy {
    *  Returns the original URL untouched when it's empty / null —
    *  callers shouldn't pass `None` in but the empty-string case can
    *  happen from `SourceData(posterUrl = Some(""))` corner cases. */
-  def proxy(url: String): String = {
-    if (url == null || url.isEmpty) return url
-    // weserv accepts the URL with or without the scheme prefix. Strip
-    // it so we don't double-encode `://` and so the proxy can pick
-    // the right scheme automatically (HTTPS when available, falling
-    // back to HTTP for HTTP-only origins like kinobulgarska19.pl).
+  def proxy(url: String): String =
+    weserv(url, TargetWidth, TargetHeight, "webp").getOrElse(url)
+
+  /** A poster URL sized + re-encoded for the server-side OG-card compositor
+   *  ([[OgCardService]]). Unlike [[proxy]] (webp, for the browser) this asks
+   *  weserv for JPEG, because `javax.imageio` can't decode webp — a webp body
+   *  would silently fail to read and drop the card to text-only. Targets a
+   *  higher resolution than the browser card since the poster renders at up to
+   *  ~520px tall on the 1200×630 card. SkipHosts (multikino) fall back to the
+   *  origin URL, which already serves a JPEG `imageio` reads fine. */
+  def posterForCard(url: String): String =
+    weserv(url, 440, 660, "jpg").getOrElse(url)
+
+  /** Build the weserv URL, or `None` for empty input / a [[SkipHosts]] origin
+   *  the caller should fetch directly. weserv accepts the URL with or without
+   *  the scheme prefix; stripping it avoids double-encoding `://` and lets the
+   *  proxy pick the scheme (HTTPS when available, HTTP for origins like
+   *  kinobulgarska19.pl). */
+  private def weserv(url: String, w: Int, h: Int, output: String): Option[String] = {
+    if (url == null || url.isEmpty) return None
     val stripped = url.replaceFirst("^https?://", "")
-    val host = stripped.takeWhile(_ != '/').toLowerCase
-    if (SkipHosts.contains(host)) return url
-    val encoded  = URLEncoder.encode(stripped, "UTF-8")
-    s"https://images.weserv.nl/?url=$encoded&w=$TargetWidth&h=$TargetHeight&fit=cover&a=attention&output=webp"
+    val host     = stripped.takeWhile(_ != '/').toLowerCase
+    if (SkipHosts.contains(host)) return None
+    val encoded = URLEncoder.encode(stripped, "UTF-8")
+    Some(s"https://images.weserv.nl/?url=$encoded&w=$w&h=$h&fit=cover&a=attention&output=$output")
   }
 }

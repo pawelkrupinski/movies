@@ -9,13 +9,15 @@ import java.time.{LocalDate, LocalDateTime}
 
 // The film page's Open Graph / Twitter-card metadata drives the link
 // preview WhatsApp / Messenger / Slack / Telegram / X render when the
-// /film URL is shared. Movie posters are 2:3 portrait, so the preview
-// must NOT force a 1.91:1 landscape crop (which lops off the poster's
-// top + bottom). This spec pins the tags that keep the whole poster
-// visible alongside the title + rating text.
+// /film URL is shared. og:image points at a server-rendered 1200×630
+// composite (full poster + title + ratings) so the preview UIs can't crop
+// the poster out and the ratings are always visible. This spec pins those
+// tags.
 class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
 
   private implicit val city: models.City = Poznan
+
+  private val ogImageUrl = "https://kinowo.fly.dev/poznan/film/og-image?title=Incepcja"
 
   private val sample: FilmSchedule =
     FilmSchedule(
@@ -31,29 +33,26 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
       enrichment     = Some(MovieRecord(imdbId = Some("tt1375666"), imdbRating = Some(8.8), rottenTomatoes = Some(87)))
     )
 
-  private def render(film: FilmSchedule): String =
+  private def render(film: FilmSchedule, imageUrl: String = ogImageUrl): String =
     views.html.film(film, "https://kinowo.fly.dev/poznan/film?title=Incepcja",
-      ogDescription = "IMDb 8.8 · RT 87% — synopsis", devMode = false).body
+      ogDescription = "IMDb 8.8 · RT 87% — synopsis", ogImageUrl = imageUrl, devMode = false).body
 
-  "the film preview" should "use the square `summary` twitter card, not the landscape `summary_large_image` (which crops the 2:3 poster)" in {
+  "the film preview" should "point og:image + twitter:image at the server-rendered composite card" in {
     val html = render(sample)
-    html should     include ("""<meta name="twitter:card"  content="summary">""")
-    html should not include "summary_large_image"
+    html should include (s"""<meta property="og:image"        content="$ogImageUrl">""")
+    html should include (s"""<meta name="twitter:image" content="$ogImageUrl">""")
   }
 
-  it should "declare the poster's portrait dimensions so scrapers lay it out whole instead of assuming landscape" in {
+  it should "declare the card as a 1200×630 PNG so previews render it large and uncropped" in {
     val html = render(sample)
-    html should include ("""<meta property="og:image:width"  content="480">""")
-    html should include ("""<meta property="og:image:height" content="720">""")
+    html should include ("""<meta property="og:image:type"   content="image/png">""")
+    html should include ("""<meta property="og:image:width"  content="1200">""")
+    html should include ("""<meta property="og:image:height" content="630">""")
   }
 
-  it should "point og:image and twitter:image at the proxied poster" in {
+  it should "use the large-image twitter card (the composite is already 1.91:1, so nothing is cropped)" in {
     val html = render(sample)
-    // Twirl HTML-escapes the `&` query-param separators in the attribute
-    // value, so the rendered tag carries `&amp;` where PosterProxy emits `&`.
-    val proxied = tools.PosterProxy.proxy("https://image.tmdb.org/t/p/original/incepcja.jpg").replace("&", "&amp;")
-    html should include (s"""<meta property="og:image"        content="$proxied">""")
-    html should include (s"""<meta name="twitter:image" content="$proxied">""")
+    html should include ("""<meta name="twitter:card"  content="summary_large_image">""")
   }
 
   it should "still carry the title in og:title and twitter:title" in {
@@ -62,9 +61,9 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
     html should include ("""<meta name="twitter:title" content="Incepcja">""")
   }
 
-  it should "omit og:image dimension tags when the film has no poster" in {
-    val html = render(sample.copy(posterUrl = None))
-    html should not include "og:image:width"
-    html should not include "og:image:height"
+  it should "omit the image tags entirely when no card URL is supplied" in {
+    val html = render(sample, imageUrl = "")
+    html should not include "og:image"
+    html should not include "twitter:image"
   }
 }

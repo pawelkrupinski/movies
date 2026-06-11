@@ -208,6 +208,7 @@ class MovieController( cc: ControllerComponents,
                        oauthProviders: Set[String],
                        environment: Mode,
                        responseCache: GzippedResponseCache,
+                       ogCardService: tools.OgCardService,
                      ) extends AbstractController(cc) with Logging {
 
   // Read the session's `userId` (set by `AuthController.callback`) and
@@ -426,9 +427,32 @@ class MovieController( cc: ControllerComponents,
           // X-Forwarded-* workaround (Play 3.0's `request.secure` ignores the
           // `trustedProxies` knob on this Fly setup) is in one place.
           val canonicalUrl = PageMeta.origin(request) + FilmHref(schedule.movie.title)
+          val ogImageUrl   = PageMeta.origin(request) + FilmHref.ogImage(schedule.movie.title)
           val user = currentUser(request)
-          Ok(views.html.film(schedule, canonicalUrl, MovieController.previewDescription(schedule), devMode, user, oauthProviders))
+          Ok(views.html.film(schedule, canonicalUrl, MovieController.previewDescription(schedule), ogImageUrl, devMode, user, oauthProviders))
             .withCookies(cityCookie(c))
+        case None => NotFound(s"Film not found: $title")
+      }
+    }
+  }
+
+  /** The 1200×630 Open Graph share card (PNG) for a film — what `og:image` /
+   *  `twitter:image` on the film page point at. Composited server-side
+   *  ([[tools.OgCardService]]) so the full poster + title + rating badges sit
+   *  inside one landscape image that the preview UIs can't crop the poster out
+   *  of. Cached a day at the edge (the card only changes when ratings / poster
+   *  do, and `OgCardService` memoises the bytes per those inputs). */
+  def ogImage(city: String, title: String): Action[AnyContent] = Action {
+    withCity(city) { c =>
+      movieControllerService.film(c, title) match {
+        case Some(schedule) =>
+          val bytes = ogCardService.card(
+            schedule.movie.title,
+            MovieController.cardSubtitle(schedule),
+            MovieController.ratingTokens(schedule),
+            schedule.posterUrl
+          )
+          Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=86400")
         case None => NotFound(s"Film not found: $title")
       }
     }
@@ -606,12 +630,7 @@ object MovieController {
    * the whole string may be empty for films with no enrichment + no
    * synopsis. */
   private[controllers] def previewDescription(film: FilmSchedule): String = {
-    val ratings = Seq(
-      film.enrichment.flatMap(_.imdbRating).map(r => f"IMDb $r%.1f"),
-      film.enrichment.flatMap(_.rottenTomatoes).map(s => s"RT $s%"),
-      film.enrichment.flatMap(_.metascore).map(s => s"Metacritic $s"),
-      film.enrichment.flatMap(_.filmwebRating).map(r => f"Filmweb $r%.1f")
-    ).flatten.mkString(" · ")
+    val ratings  = ratingTokens(film).mkString(" · ")
     val synopsis = film.synopsis.getOrElse("").trim
     val joined =
       if (ratings.nonEmpty && synopsis.nonEmpty) ratings + " — " + synopsis
@@ -621,4 +640,21 @@ object MovieController {
     // truncating; we add an ellipsis to make truncation visible.
     if (joined.length > 300) joined.take(297) + "…" else joined
   }
+
+  /** The rating summary as individual tokens ("IMDb 8.8", "RT 87%", …),
+   *  skipping sources that aren't set. Shared by the text `og:description`
+   *  ([[previewDescription]], joined with " · ") and the OG-card image
+   *  ([[tools.OgCardRenderer]], one pill per token). */
+  private[controllers] def ratingTokens(film: FilmSchedule): Seq[String] = Seq(
+    film.enrichment.flatMap(_.imdbRating).map(r => f"IMDb $r%.1f"),
+    film.enrichment.flatMap(_.rottenTomatoes).map(s => s"RT $s%"),
+    film.enrichment.flatMap(_.metascore).map(s => s"Metacritic $s"),
+    film.enrichment.flatMap(_.filmwebRating).map(r => f"Filmweb $r%.1f")
+  ).flatten
+
+  /** The "2026 · Dramat, Kryminał" line under the title on the OG card —
+   *  release year then genres, each part omitted when absent. */
+  private[controllers] def cardSubtitle(film: FilmSchedule): String =
+    (film.movie.releaseYear.map(_.toString).toSeq ++ Seq(film.movie.genres.mkString(", ")).filter(_.nonEmpty))
+      .mkString(" · ")
 }

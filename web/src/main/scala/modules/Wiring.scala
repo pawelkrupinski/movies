@@ -112,7 +112,10 @@ trait Wiring {
   // ── Controllers ───────────────────────────────────────────────────────────
   lazy val landingController = new LandingController(controllerComponents)
   lazy val gzippedResponseCache = new GzippedResponseCache
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, movieCache, userRepo, oauthProviders.keySet, environmentMode, gzippedResponseCache)
+  // Fetches + composites the per-film Open Graph share card; shares the
+  // monitored HTTP fetch so its poster pulls show up on /uptime too.
+  lazy val ogCardService    = new tools.OgCardService(httoFetch)
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, movieCache, userRepo, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService)
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
   // Read-only on the web side: the worker writes fallback state; the /uptime/fallback

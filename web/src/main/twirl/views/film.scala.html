@@ -1,7 +1,7 @@
 @import controllers.FilmSchedule
 @import controllers.BrowseHref
 @import services.movies.TrailerEmbed
-@(film: FilmSchedule, canonicalUrl: String, ogDescription: String, devMode: Boolean = false, currentUser: Option[models.User] = None, oauthProviders: Set[String] = Set.empty)(implicit city: models.City)
+@(film: FilmSchedule, canonicalUrl: String, ogDescription: String, ogImageUrl: String = "", devMode: Boolean = false, currentUser: Option[models.User] = None, oauthProviders: Set[String] = Set.empty)(implicit city: models.City)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -13,46 +13,34 @@
   @_analytics()
 
   @* Open Graph + Twitter Card metadata — drives WhatsApp / Messenger /
-     Slack / Telegram / Discord link previews. Preview UIs don't render
-     "pills"; the rating summary is text-prepended to the synopsis inside
-     og:description. og:image must be absolute (cinema posters already
-     are — they come from each cinema's CDN). *@
+     Slack / Telegram / Discord / X link previews. og:description still
+     carries the rating + synopsis text for UIs that show it; the visual
+     card itself is a server-rendered 1200×630 composite (see below). *@
   <meta property="og:title"       content="@film.movie.title">
   <meta property="og:type"        content="video.movie">
   <meta property="og:url"         content="@canonicalUrl">
   <meta property="og:site_name"   content="Repertuar kinowy @city.labels.nominative">
-  @* Route the poster through PosterProxy so HTTP-only origins (Kino
-     Bułgarska 19) become HTTPS — Facebook silently drops mixed-content
-     og:images, leaving the share preview imageless. The proxy also caps
-     megabyte-scale poster masters at 480×720, which keeps the scrape
-     fast and bounds the bytes a slow client downloads to render the
-     preview. The proxy always emits exactly 480×720, so the
-     og:image:width/height pair is accurate; declaring it tells scrapers
-     the image is 2:3 portrait up front, so Facebook / LinkedIn lay the
-     whole poster out instead of assuming a landscape banner. *@
-  @film.posterUrl match {
-    case Some(url) => {
-      <meta property="og:image"        content="@tools.PosterProxy.proxy(url)">
-      <meta property="og:image:width"  content="480">
-      <meta property="og:image:height" content="720">
-    }
-    case None      => {}
+  @* og:image is a server-composited 1200×630 card (MovieController.ogImage /
+     tools.OgCardRenderer): the full poster + title + rating badges baked into
+     one landscape image. Handing the raw 2:3 poster to og:image instead let
+     Messenger / Facebook crop it to their ~1.91:1 frame (lopping off the
+     poster top + bottom) and never surface the ratings; a 1.91:1 composite
+     makes that crop a no-op and keeps everything visible. summary_large_image
+     tells X to render it big. The card URL is absolute so every scraper can
+     fetch it. *@
+  @if(ogImageUrl.nonEmpty) {
+    <meta property="og:image"        content="@ogImageUrl">
+    <meta property="og:image:type"   content="image/png">
+    <meta property="og:image:width"  content="1200">
+    <meta property="og:image:height" content="630">
   }
   @if(ogDescription.nonEmpty) { <meta property="og:description" content="@ogDescription"> }
   @if(ogDescription.nonEmpty) { <meta name="description"        content="@ogDescription"> }
 
-  @* `summary`, not `summary_large_image`: the large-image card forces a
-     1.91:1 landscape frame, which crops a 2:3 movie poster down to a thin
-     horizontal band (the actors' midriffs). The square `summary` card
-     shows the poster as a thumbnail beside the title + rating text, so
-     far more of the poster survives. *@
-  <meta name="twitter:card"  content="summary">
+  <meta name="twitter:card"  content="summary_large_image">
   <meta name="twitter:title" content="@film.movie.title">
   @if(ogDescription.nonEmpty) { <meta name="twitter:description" content="@ogDescription"> }
-  @film.posterUrl match {
-    case Some(url) => { <meta name="twitter:image" content="@tools.PosterProxy.proxy(url)"> }
-    case None      => {}
-  }
+  @if(ogImageUrl.nonEmpty) { <meta name="twitter:image" content="@ogImageUrl"> }
 
   @_sharedStyles(devMode)
 @_filmDetailStyles(devMode)
