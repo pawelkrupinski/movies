@@ -21,6 +21,10 @@ class InMemoryReadModelRepo extends ReadModelReader with ReadModelWriter {
   val movieDeletes     = mutable.ListBuffer.empty[String]
   val screeningUpserts = mutable.ListBuffer.empty[CityScreening]
   val screeningDeletes = mutable.ListBuffer.empty[String]
+  // Combined, in-order log of every write — lets a test assert ordering across
+  // the two collections (e.g. movie-doc-before-its-screenings). Entries:
+  // "movie:<id>", "screening:<id>", "del-movie:<id>", "del-screening:<id>".
+  val writeOrder       = mutable.ListBuffer.empty[String]
 
   @volatile private var movieWatcher:     Option[(ResolvedMovie => Unit, String => Unit)]  = None
   @volatile private var screeningWatcher: Option[(CityScreening => Unit, String => Unit)]   = None
@@ -31,22 +35,22 @@ class InMemoryReadModelRepo extends ReadModelReader with ReadModelWriter {
   def findAllScreenings(): Seq[CityScreening]  = lock.synchronized(screeningsStore.values.toSeq)
 
   def upsertMovie(m: ResolvedMovie): Unit = {
-    lock.synchronized { moviesStore.put(m._id, m); movieUpserts += m }
+    lock.synchronized { moviesStore.put(m._id, m); movieUpserts += m; writeOrder += s"movie:${m._id}" }
     movieWatcher.foreach { case (onUpsert, _) => onUpsert(m) }
   }
 
   def deleteMovie(id: String): Unit = {
-    lock.synchronized { moviesStore.remove(id); movieDeletes += id }
+    lock.synchronized { moviesStore.remove(id); movieDeletes += id; writeOrder += s"del-movie:$id" }
     movieWatcher.foreach { case (_, onDelete) => onDelete(id) }
   }
 
   def upsertScreening(s: CityScreening): Unit = {
-    lock.synchronized { screeningsStore.put(s._id, s); screeningUpserts += s }
+    lock.synchronized { screeningsStore.put(s._id, s); screeningUpserts += s; writeOrder += s"screening:${s._id}" }
     screeningWatcher.foreach { case (onUpsert, _) => onUpsert(s) }
   }
 
   def deleteScreening(id: String): Unit = {
-    lock.synchronized { screeningsStore.remove(id); screeningDeletes += id }
+    lock.synchronized { screeningsStore.remove(id); screeningDeletes += id; writeOrder += s"del-screening:$id" }
     screeningWatcher.foreach { case (_, onDelete) => onDelete(id) }
   }
 
