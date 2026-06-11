@@ -74,7 +74,7 @@ jobs:
             # Every module's unit tests in one sbt run; `all` keeps going so a
             # failure in one module still runs the rest (testkit + e2e join the
             # existing job — no new GH job is added).
-            - run: sbt testUnit
+            - run: sbt -J-Xmx5g testUnit
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
@@ -96,7 +96,7 @@ jobs:
             # only linking + writing the dists costs anything. On a PR run
             # (branch-ci.yml) nothing downloads these; they just prove the
             # staged dist links, then expire after a day.
-            - run: sbt "web/stage" "worker/stage"
+            - run: sbt -J-Xmx5g "web/stage" "worker/stage"
 
             - uses: actions/upload-artifact@v4
               with:
@@ -192,7 +192,7 @@ jobs:
                   PORT_FILE=$(mktemp)
                   echo "PORT_FILE=$PORT_FILE" >> "$GITHUB_ENV"
 
-                  nohup sbt "web/PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
+                  nohup sbt -J-Xmx5g "web/PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
                   echo "SERVER_PID=$!" >> "$GITHUB_ENV"
 
                   # 600s ceiling: on a cold sbt-target cache the row recompiles
@@ -294,7 +294,7 @@ jobs:
                   PORT_FILE=$(mktemp)
                   echo "PORT_FILE=$PORT_FILE" >> "$GITHUB_ENV"
 
-                  nohup sbt "web/PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
+                  nohup sbt -J-Xmx5g "web/PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
                   echo "SERVER_PID=$!" >> "$GITHUB_ENV"
 
                   # 600s ceiling: on a cold sbt-target cache the row recompiles
@@ -376,7 +376,7 @@ jobs:
 
             # Both apps' integration suites in one run (web + worker now each have
             # an `it` config); `all` keeps going across them. Still one GH job.
-            - run: sbt itAll
+            - run: sbt -J-Xmx5g itAll
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}

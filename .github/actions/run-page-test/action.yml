@@ -100,7 +100,7 @@ runs:
       shell: bash
       run: |
         rm -f /tmp/kinowo-port.txt
-        sbt 'web/PageTest/runMain tools.FixtureServerMain /tmp/kinowo-port.txt' > /tmp/sbt-fixture.log 2>&1 &
+        sbt -J-Xmx5g 'web/PageTest/runMain tools.FixtureServerMain /tmp/kinowo-port.txt' > /tmp/sbt-fixture.log 2>&1 &
         echo "FIXTURE_PID=$!" >> $GITHUB_ENV
         # 600s ceiling: on a cold sbt-target cache the row recompiles every
         # module (now incl. the read-model sources + projection) before
@@ -127,7 +127,7 @@ runs:
       shell: bash
       env:
         CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
-      run: sbt web/PageTest/test
+      run: sbt -J-Xmx5g web/PageTest/test
 
     - name: Publish PageTest report
       if: always() && inputs.kind == 'chrome'
