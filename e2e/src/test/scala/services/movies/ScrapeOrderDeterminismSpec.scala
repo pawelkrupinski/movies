@@ -208,8 +208,9 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
    *  the rendered rows across every city. */
   private def replayCorpus(seed: Long): (Seq[StoredMovieRecord], Seq[FilmSchedule]) = {
     val rnd = new scala.util.Random(seed)
+    val jitter = new JitterHttpFetch(new FakeHttpFetch(Fixture), seed, MaxJitterMillis)
     val w = new FixtureTestWiring(Fixture) {
-      override lazy val httoFetch: HttpFetch = new JitterHttpFetch(new FakeHttpFetch(fixture), seed, MaxJitterMillis)
+      override lazy val httoFetch: HttpFetch = jitter
     }
     val created = mutable.ListBuffer.empty[MovieRecordCreated]
     rnd.shuffle(harvestByCinema).foreach { case (cinema, movies) =>
@@ -224,6 +225,14 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     }
     rnd.shuffle(created.toList).foreach(w.eventBus.publish)
     w.drainServices()
+    // The async drain above is the ONLY phase where fetch timing can change an
+    // outcome — it's where the concurrent enrichment pools complete in a
+    // perturbed order, which is exactly what the jitter exists to force. The
+    // following `converge()` re-enriches all ~950 films SERIALLY in a fixed
+    // sorted order (single-threaded, no concurrency to perturb), so its sleeps
+    // can't affect the result and only add wall-clock — multiplied by ~7 fetches
+    // per film × ~950 films × 3 replays. Switch the jitter off for it.
+    jitter.enabled = false
     w.converge()
     val record = w.movieRepo.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     val svc = new MovieControllerService(w.movieCache)
@@ -312,7 +321,12 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
  *  the same timing profile; the actual completion *order* still depends on the
  *  pools, which is exactly the nondeterminism under test. */
 private class JitterHttpFetch(delegate: HttpFetch, seed: Long, maxDelayMillis: Int) extends HttpFetch {
+  // Toggled off for serial, single-threaded re-enrichment phases (e.g.
+  // `converge()`), where a per-fetch sleep perturbs nothing and only burns
+  // wall-clock. Stays on through the concurrent scrape/drain where it matters.
+  @volatile var enabled: Boolean = true
   private def jitter(url: String): Unit = {
+    if (!enabled) return
     val h = (url.hashCode.toLong * 0x9E3779B97F4A7C15L) ^ seed
     val d = Math.floorMod(h, (maxDelayMillis + 1).toLong)
     if (d > 0) Thread.sleep(d)
