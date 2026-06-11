@@ -31,15 +31,34 @@ class OgCardService(http: HttpFetch) {
     // mkString / getOrElse) inside an interpolation block would close the
     // string early.
     val key = Seq(title, subtitle, ratings.mkString(""), posterUrl.getOrElse("")).mkString(" ")
-    cache.get(key, _ => OgCardRenderer.render(title, subtitle, ratings, loadPoster(posterUrl)))
+    Option(cache.getIfPresent(key)).getOrElse {
+      val poster = loadPoster(posterUrl)
+      val bytes  = OgCardRenderer.render(title, subtitle, ratings, poster)
+      // Only cache a *complete* card: one with no poster to show, or whose
+      // poster actually loaded. A transient poster-fetch failure must NOT be
+      // frozen for the cache's lifetime as a posterless card -- leave it
+      // uncached so the next share retries (origin/weserv will likely be warm
+      // by then). This was the bug behind text-only cards on first share.
+      if (posterUrl.forall(_.isEmpty) || poster.isDefined) cache.put(key, bytes)
+      bytes
+    }
   }
 
-  /** Fetch + decode the poster, or None when there's no poster URL, the fetch
-   *  fails, or the bytes aren't a format ImageIO can read -- every one of which
-   *  degrades to a clean text-only card rather than a 500. */
+  /** Fetch + decode the poster, or None when there's no poster URL or every
+   *  source fails / isn't an ImageIO-readable format -- which degrades to a
+   *  clean text-only card rather than a 500.
+   *
+   *  Tries the origin URL directly first: server-side we have no mixed-content
+   *  problem, and it dodges weserv's cold origin->resize->encode double-hop
+   *  (and any datacenter-IP throttling) that was leaving first-render cards
+   *  posterless. Falls back to the weserv JPEG, which also transcodes the rare
+   *  webp-only origin into something ImageIO can read. */
   private def loadPoster(posterUrl: Option[String]): Option[BufferedImage] =
     posterUrl.filter(_.nonEmpty).flatMap { url =>
-      try Option(ImageIO.read(new ByteArrayInputStream(http.getBytes(PosterProxy.posterForCard(url)))))
-      catch { case _: Throwable => None }
+      decode(url).orElse(decode(PosterProxy.posterForCard(url)))
     }
+
+  private def decode(url: String): Option[BufferedImage] =
+    try Option(ImageIO.read(new ByteArrayInputStream(http.getBytes(url))))
+    catch { case _: Throwable => None }
 }
