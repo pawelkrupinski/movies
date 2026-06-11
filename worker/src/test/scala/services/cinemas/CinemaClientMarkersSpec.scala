@@ -54,9 +54,10 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
   }
 
   "source URLs" should "link a Filmweb-backed venue to its public showtimes page by id" in {
-    // Kino Tatry is wired `new FilmwebShowtimesClient(http, 2305, …)`; the public
-    // showtimes page keys on that id.
-    sourceUrls("Kino Tatry") shouldBe "https://www.filmweb.pl/showtimes/-2305"
+    // Kino Tatry is wired `new FilmwebShowtimesClient(http, 2305, …)`; `/cinema/-<id>`
+    // 301s to the canonical rendered page (the bare `/showtimes/-<id>` SPA shell
+    // never resolves the cinema).
+    sourceUrls("Kino Tatry") shouldBe "https://www.filmweb.pl/cinema/-2305"
   }
 
   it should "link a Cinema City venue to its public venue page by externalCode" in {

@@ -2,7 +2,7 @@ package tools
 
 import java.awt.geom.RoundRectangle2D
 import java.awt.image.BufferedImage
-import java.awt.{BasicStroke, Color, Font, GradientPaint, Graphics2D, RenderingHints}
+import java.awt.{Color, Font, GradientPaint, Graphics2D, RenderingHints}
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
 
@@ -32,20 +32,59 @@ object OgCardRenderer {
   val Width  = 1200
   val Height = 630
 
-  private val Margin  = 56
-  private val PosterH = Height - 2 * Margin          // 518
-  private val PosterW = (PosterH * 2) / 3            // 345 — a 2:3 poster slot
-  private val Gutter  = 56
-  private val PosterTextX = Margin + PosterW + Gutter // text column when a poster is shown
+  private val Margin  = 56                  // text inset from the top/right/bottom edges
+  // Full-bleed poster: flush to the left/top/bottom edges (no padding), spanning
+  // the whole card height, so it's as large as a 2:3 poster can be here.
+  private val PosterH = Height               // 630
+  private val PosterW = (Height * 2) / 3     // 420 — 2:3 at full height
+  private val Gutter  = 48
+  private val PosterTextX = PosterW + Gutter // text column when a poster is shown
 
   private val Bg        = new Color(0x14, 0x17, 0x1f)
   private val BgBottom  = new Color(0x09, 0x0a, 0x0f)
   private val TitleCol  = Color.WHITE
   private val SubCol    = new Color(0x9a, 0xa3, 0xb2)
-  private val PillBg    = new Color(0x23, 0x28, 0x33)
-  private val PillText  = new Color(0xf0, 0xd9, 0x8a) // warm gold, matches the app's accent
   private val FooterCol = new Color(0x70, 0x78, 0x86)
-  private val PosterBorder = new Color(0xff, 0xff, 0xff, 36)
+
+  // ── Rating badges — mirror the web `_ratingStyles` two-segment pills (a
+  //    coloured brand label + a dark value segment), so a shared card looks
+  //    like the on-site/iOS/Android ratings. Hex values copied verbatim. ──
+  private def rgb(hex: Int) = new Color((hex >> 16) & 0xff, (hex >> 8) & 0xff, hex & 0xff)
+  private val ValueBg = rgb(0x2a2a3e) // the dark value-segment background shared by IMDb/RT/FW
+
+  /** One coloured segment of a rating badge. `bold` picks the label weight (700)
+   *  vs the value weight; `padX` mirrors the web label (.3rem) vs value (.35rem)
+   *  horizontal padding, scaled to the card's font. */
+  case class Seg(text: String, bg: Color, fg: Color, bold: Boolean, padX: Int)
+
+  /** A rating badge = one or two adjoining [[Seg]]s (Metacritic is value-only),
+   *  drawn as a single rounded pill with a square seam between segments. */
+  case class Badge(segs: Seq[Seg])
+
+  /** Build the rating badges in the web's order (IMDb, Metacritic, RT, FW) with
+   *  the exact `_ratingStyles` colours, skipping sources that aren't set. RT is
+   *  red-label "fresh" (≥60%) vs green-label "rotten", matching the site. */
+  def ratingBadges(imdb: Option[Double], metascore: Option[Int],
+                   rottenTomatoes: Option[Int], filmweb: Option[Double]): Seq[Badge] = {
+    val lp = 18 // label padX  (~.3rem at the card font)
+    val vp = 22 // value padX  (~.35rem)
+    Seq(
+      imdb.map(r => Badge(Seq(
+        Seg("IMDb", rgb(0xf5c518), Color.BLACK, bold = true, lp),
+        Seg(f"$r%.1f", ValueBg, rgb(0xf5c518), bold = false, vp)))),
+      metascore.map(m => Badge(Seq(
+        Seg(m.toString, rgb(0x66cc66), rgb(0x002200), bold = true, vp)))),
+      rottenTomatoes.map { rt =>
+        val fresh = rt >= 60
+        Badge(Seq(
+          Seg("RT", rgb(if (fresh) 0xfa320a else 0x1a8f1a), Color.WHITE, bold = true, lp),
+          Seg(s"$rt%", ValueBg, rgb(if (fresh) 0xff7c5a else 0x6cd06c), bold = false, vp)))
+      },
+      filmweb.map(r => Badge(Seq(
+        Seg("FW", rgb(0xff6c00), Color.WHITE, bold = true, lp),
+        Seg(f"$r%.1f", ValueBg, rgb(0xff9c4a), bold = false, vp))))
+    ).flatten
+  }
 
   private def loadFont(resource: String): Font = {
     val is = getClass.getResourceAsStream(resource)
@@ -59,10 +98,10 @@ object OgCardRenderer {
   private val regular = loadFont("/fonts/DejaVuSans.ttf")
   private val bold    = loadFont("/fonts/DejaVuSans-Bold.ttf")
 
-  /** Compose the card. `subtitle` is the year · genres line; `ratings` are
-   *  pre-formatted tokens ("IMDb 8.8", "RT 87%"); `poster` is the decoded
-   *  poster image or None (text-only card for films with no poster). */
-  def render(title: String, subtitle: String, ratings: Seq[String], poster: Option[BufferedImage]): Array[Byte] = {
+  /** Compose the card. `subtitle` is the year · genres line; `badges` are the
+   *  rating pills from [[ratingBadges]]; `poster` is the decoded poster image or
+   *  None (text-only card for films with no poster). */
+  def render(title: String, subtitle: String, badges: Seq[Badge], poster: Option[BufferedImage]): Array[Byte] = {
     val img = new BufferedImage(Width, Height, BufferedImage.TYPE_INT_RGB)
     val g   = img.createGraphics()
     try {
@@ -103,9 +142,9 @@ object OgCardRenderer {
         y += sfm.getDescent
       }
 
-      if (ratings.nonEmpty) {
+      if (badges.nonEmpty) {
         y += 36
-        drawPills(g, ratings, textLeft, y, textRight)
+        drawBadges(g, badges, textLeft, y, textRight)
       }
 
       g.setFont(regular.deriveFont(28f))
@@ -120,44 +159,57 @@ object OgCardRenderer {
     baos.toByteArray
   }
 
-  /** Cover-scale the poster into the 2:3 slot, clipped to a rounded rect with
-   *  a faint border — so off-2:3 sources fill the slot instead of letterboxing,
+  /** Cover-scale the poster to fill the full-bleed left column (flush to the
+   *  top/left/bottom edges, no padding or border), cropping the overflow —
    *  same intent as the on-page card's `object-fit: cover`. */
   private def drawPoster(g: Graphics2D, p: BufferedImage): Unit = {
-    val arc   = 22f
     val scale = math.max(PosterW.toDouble / p.getWidth, PosterH.toDouble / p.getHeight)
     val sw    = math.round(p.getWidth * scale).toInt
     val sh    = math.round(p.getHeight * scale).toInt
-    val dx    = Margin - (sw - PosterW) / 2
-    val dy    = Margin - (sh - PosterH) / 2
-    val slot  = new RoundRectangle2D.Float(Margin.toFloat, Margin.toFloat, PosterW.toFloat, PosterH.toFloat, arc, arc)
+    val dx    = -(sw - PosterW) / 2
+    val dy    = -(sh - PosterH) / 2
     val prev  = g.getClip
-    g.setClip(slot)
+    g.setClip(0, 0, PosterW, PosterH)
     g.drawImage(p, dx, dy, sw, sh, null)
     g.setClip(prev)
-    g.setColor(PosterBorder)
-    g.setStroke(new BasicStroke(2f))
-    g.draw(slot)
   }
 
-  /** A row (wrapping to a second row if needed) of rounded rating pills. */
-  private def drawPills(g: Graphics2D, pills: Seq[String], x0: Int, top: Int, xMax: Int): Unit = {
-    g.setFont(bold.deriveFont(30f))
-    val fm   = g.getFontMetrics
-    val padX = 22
-    val padY = 12
-    val gap  = 16
-    val arc  = 16f
-    val h    = fm.getHeight + padY * 2
-    var x    = x0
-    var y    = top
-    for (pill <- pills) {
-      val w = fm.stringWidth(pill) + padX * 2
-      if (x + w > xMax && x > x0) { x = x0; y += h + 14 }
-      g.setColor(PillBg)
-      g.fill(new RoundRectangle2D.Float(x.toFloat, y.toFloat, w.toFloat, h.toFloat, arc, arc))
-      g.setColor(PillText)
-      g.drawString(pill, x + padX, y + padY + fm.getAscent)
+  /** A row (wrapping to a second row if needed) of two-segment rating badges.
+   *  Each badge is filled segment-by-segment while clipped to its rounded outer
+   *  rect, so the outer corners are rounded (radius like the web's 3px, scaled)
+   *  and the label/value seam stays square — exactly the web pill. */
+  private def drawBadges(g: Graphics2D, badges: Seq[Badge], x0: Int, top: Int, xMax: Int): Unit = {
+    val fontSize = 30f
+    val labelFont = bold.deriveFont(fontSize)
+    val valueFont = regular.deriveFont(fontSize)
+    def fontFor(s: Seg)  = if (s.bold) labelFont else valueFont
+    val padY = 11
+    val gap  = 14
+    val arcD = 16f // corner diameter (radius ~8, ~web 3px scaled to this font)
+    // Uniform height across every badge, from the (taller) bold metrics.
+    val refFm = g.getFontMetrics(labelFont)
+    val h      = refFm.getAscent + refFm.getDescent + padY * 2
+    var x = x0
+    var y = top
+    for (b <- badges) {
+      val fms   = b.segs.map(s => g.getFontMetrics(fontFor(s)))
+      val segW  = b.segs.zip(fms).map { case (s, fm) => fm.stringWidth(s.text) + s.padX * 2 }
+      val w     = segW.sum
+      if (x + w > xMax && x > x0) { x = x0; y += h + 12 }
+      val outer = new RoundRectangle2D.Float(x.toFloat, y.toFloat, w.toFloat, h.toFloat, arcD, arcD)
+      val saved = g.getClip
+      g.setClip(outer) // rounds the outer corners; the per-segment fills keep a square seam
+      var sx = x
+      for (((s, fm), sw) <- b.segs.zip(fms).zip(segW)) {
+        g.setColor(s.bg)
+        g.fillRect(sx, y, sw, h)
+        g.setColor(s.fg)
+        g.setFont(fontFor(s))
+        val ty = y + (h - (fm.getAscent + fm.getDescent)) / 2 + fm.getAscent
+        g.drawString(s.text, sx + s.padX, ty)
+        sx += sw
+      }
+      g.setClip(saved)
       x += w + gap
     }
   }

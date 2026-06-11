@@ -22,8 +22,33 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   private def decode(bytes: Array[Byte]): BufferedImage =
     ImageIO.read(new ByteArrayInputStream(bytes))
 
+  // True if any pixel is within `tol` of `target` on every channel. Used to
+  // assert a rating badge's brand colour is actually painted. No poster in
+  // these cases, so a match can only come from the badge itself.
+  private def hasColourNear(img: BufferedImage, target: Color, tol: Int = 10): Boolean = {
+    var x = 0
+    while (x < img.getWidth) {
+      var y = 0
+      while (y < img.getHeight) {
+        val c = new Color(img.getRGB(x, y))
+        if (math.abs(c.getRed - target.getRed) <= tol &&
+            math.abs(c.getGreen - target.getGreen) <= tol &&
+            math.abs(c.getBlue - target.getBlue) <= tol) return true
+        y += 2
+      }
+      x += 2
+    }
+    false
+  }
+
+  private val ImdbGold = new Color(0xf5, 0xc5, 0x18)
+  private val MetaGreen = new Color(0x66, 0xcc, 0x66)
+  private val RtRed = new Color(0xfa, 0x32, 0x0a)
+  private val RtGreen = new Color(0x1a, 0x8f, 0x1a)
+  private val FwOrange = new Color(0xff, 0x6c, 0x00)
+
   "OgCardRenderer" should "produce a 1200×630 PNG" in {
-    val bytes = OgCardRenderer.render("Incepcja", "2010 · Sci-Fi", Seq("IMDb 8.8"), Some(solidPoster(Color.RED)))
+    val bytes = OgCardRenderer.render("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some(solidPoster(Color.RED)))
     val img   = decode(bytes)
     img should not be null
     img.getWidth  shouldBe 1200
@@ -31,7 +56,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "composite the poster into the left slot and keep a dark background on the right" in {
-    val img = decode(OgCardRenderer.render("Incepcja", "2010 · Sci-Fi", Seq("IMDb 8.8"), Some(solidPoster(Color.RED))))
+    val img = decode(OgCardRenderer.render("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some(solidPoster(Color.RED))))
 
     // Centre of the poster slot (slot is ~56..401 wide, full height) — must be
     // dominated by the poster's red, proving the poster was actually drawn.
@@ -48,7 +73,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "draw light title text against the dark panel (some bright pixels in the title band)" in {
-    val img = decode(OgCardRenderer.render("Incepcja", "2010 · Sci-Fi", Seq("IMDb 8.8"), Some(solidPoster(Color.RED))))
+    val img = decode(OgCardRenderer.render("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some(solidPoster(Color.RED))))
     // Scan the title band (right of the poster, near the top) for near-white
     // anti-aliased glyph pixels.
     var bright = 0
@@ -68,19 +93,45 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "render a text-only card (no exception, correct size) when there is no poster" in {
-    val img = decode(OgCardRenderer.render("Film bez plakatu", "2026 · Dramat", Seq("Filmweb 7.1"), None))
+    val img = decode(OgCardRenderer.render("Film bez plakatu", "2026 · Dramat", OgCardRenderer.ratingBadges(None, None, None, Some(7.1)), None))
     img.getWidth  shouldBe 1200
     img.getHeight shouldBe 630
   }
 
   it should "render Polish diacritics without throwing (bundled font has the glyphs)" in {
     noException should be thrownBy
-      OgCardRenderer.render("Zażółć gęślą jaźń: Śćmaśń", "2026 · Dramat, Kryminał", Seq("IMDb 7.4", "Filmweb 7.8"), Some(solidPoster(Color.BLUE)))
+      OgCardRenderer.render("Zażółć gęślą jaźń: Śćmaśń", "2026 · Dramat, Kryminał", OgCardRenderer.ratingBadges(Some(7.4), None, None, Some(7.8)), Some(solidPoster(Color.BLUE)))
   }
 
   it should "ellipsise an absurdly long title instead of overflowing" in {
     val longTitle = (1 to 60).map(_ => "Multiwersum").mkString(" ")
-    val img = decode(OgCardRenderer.render(longTitle, "", Seq("IMDb 8.6"), Some(solidPoster(Color.RED))))
+    val img = decode(OgCardRenderer.render(longTitle, "", OgCardRenderer.ratingBadges(Some(8.6), None, None, None), Some(solidPoster(Color.RED))))
     img.getWidth shouldBe 1200 // renders; the wrap/ellipsis logic kept it bounded
+  }
+
+  // ── Rating badge brand colours mirror the web `_ratingStyles` exactly ──────
+
+  it should "paint the IMDb badge label in its brand gold (#f5c518)" in {
+    val img = decode(OgCardRenderer.render("Film", "2026", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), None))
+    hasColourNear(img, ImdbGold) shouldBe true
+  }
+
+  it should "render Metacritic as a solid green pill (#66cc66)" in {
+    val img = decode(OgCardRenderer.render("Film", "2026", OgCardRenderer.ratingBadges(None, Some(77), None, None), None))
+    hasColourNear(img, MetaGreen) shouldBe true
+  }
+
+  it should "use a red RT label when fresh (≥60%) and a green one when rotten" in {
+    val fresh  = decode(OgCardRenderer.render("Film", "2026", OgCardRenderer.ratingBadges(None, None, Some(90), None), None))
+    val rotten = decode(OgCardRenderer.render("Film", "2026", OgCardRenderer.ratingBadges(None, None, Some(30), None), None))
+    hasColourNear(fresh,  RtRed)   shouldBe true
+    hasColourNear(fresh,  RtGreen) shouldBe false
+    hasColourNear(rotten, RtGreen) shouldBe true
+    hasColourNear(rotten, RtRed)   shouldBe false
+  }
+
+  it should "paint the Filmweb badge label in its brand orange (#ff6c00)" in {
+    val img = decode(OgCardRenderer.render("Film", "2026", OgCardRenderer.ratingBadges(None, None, None, Some(7.2)), None))
+    hasColourNear(img, FwOrange) shouldBe true
   }
 }

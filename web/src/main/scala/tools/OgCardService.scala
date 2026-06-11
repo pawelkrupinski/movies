@@ -18,22 +18,22 @@ import javax.imageio.ImageIO
  * poster, the key diverges and the stale card simply falls out of use; the TTL
  * + max-size only bound growth for inputs that never change.
  *
- * `http` is the same [[HttpFetch]] every client uses, injected at the
- * composition root, so tests drive a fake returning fixture bytes and never
- * touch the network.
+ * `posters` is injected at the composition root, so tests drive a fake
+ * returning fixture bytes and never touch the network.
  */
-class OgCardService(http: HttpFetch) {
+class OgCardService(posters: PosterFetch) {
   private val cache: Cache[String, Array[Byte]] =
     Caffeine.newBuilder().maximumSize(1000).expireAfterWrite(12, TimeUnit.HOURS).build()
 
-  def card(title: String, subtitle: String, ratings: Seq[String], posterUrl: Option[String]): Array[Byte] = {
+  def card(title: String, subtitle: String, badges: Seq[OgCardRenderer.Badge], posterUrl: Option[String]): Array[Byte] = {
     // Plain concatenation, not an s-interpolator: a nested double-quote (from
     // mkString / getOrElse) inside an interpolation block would close the
     // string early.
-    val key = Seq(title, subtitle, ratings.mkString(""), posterUrl.getOrElse("")).mkString(" ")
+    val ratingKey = badges.flatMap(_.segs.map(_.text)).mkString(",")
+    val key = Seq(title, subtitle, ratingKey, posterUrl.getOrElse("")).mkString(" ")
     Option(cache.getIfPresent(key)).getOrElse {
       val poster = loadPoster(posterUrl)
-      val bytes  = OgCardRenderer.render(title, subtitle, ratings, poster)
+      val bytes  = OgCardRenderer.render(title, subtitle, badges, poster)
       // Only cache a *complete* card: one with no poster to show, or whose
       // poster actually loaded. A transient poster-fetch failure must NOT be
       // frozen for the cache's lifetime as a posterless card -- leave it
@@ -48,17 +48,18 @@ class OgCardService(http: HttpFetch) {
    *  source fails / isn't an ImageIO-readable format -- which degrades to a
    *  clean text-only card rather than a 500.
    *
-   *  Tries the origin URL directly first: server-side we have no mixed-content
-   *  problem, and it dodges weserv's cold origin->resize->encode double-hop
-   *  (and any datacenter-IP throttling) that was leaving first-render cards
-   *  posterless. Falls back to the weserv JPEG, which also transcodes the rare
-   *  webp-only origin into something ImageIO can read. */
+   *  Fetches the origin URL directly ([[PosterFetch]] gives it the generous
+   *  connect budget slow cinema origins need, which the scraper's tight 5s
+   *  budget denied). Falls back to the weserv JPEG for the rare webp-only
+   *  origin ImageIO can't decode natively. */
   private def loadPoster(posterUrl: Option[String]): Option[BufferedImage] =
     posterUrl.filter(_.nonEmpty).flatMap { url =>
       decode(url).orElse(decode(PosterProxy.posterForCard(url)))
     }
 
   private def decode(url: String): Option[BufferedImage] =
-    try Option(ImageIO.read(new ByteArrayInputStream(http.getBytes(url))))
-    catch { case _: Throwable => None }
+    posters.bytes(url).flatMap { b =>
+      try Option(ImageIO.read(new ByteArrayInputStream(b)))
+      catch { case _: Throwable => None }
+    }
 }

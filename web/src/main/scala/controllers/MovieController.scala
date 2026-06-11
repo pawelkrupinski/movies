@@ -462,7 +462,7 @@ class MovieController( cc: ControllerComponents,
           val bytes = ogCardService.card(
             schedule.movie.title,
             MovieController.cardSubtitle(schedule),
-            MovieController.ratingTokens(schedule),
+            MovieController.cardRatingBadges(schedule),
             schedule.posterUrl
           )
           Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=86400")
@@ -670,10 +670,8 @@ object MovieController {
     if (joined.length > 300) joined.take(297) + "…" else joined
   }
 
-  /** The rating summary as individual tokens ("IMDb 8.8", "RT 87%", …),
-   *  skipping sources that aren't set. Shared by the text `og:description`
-   *  ([[previewDescription]], joined with " · ") and the OG-card image
-   *  ([[tools.OgCardRenderer]], one pill per token). */
+   *  skipping sources that aren't set. Feeds the text `og:description`
+   *  ([[previewDescription]], joined with " · "). */
   private[controllers] def ratingTokens(film: FilmSchedule): Seq[String] = {
     val r = film.resolved.ratings
     Seq(
@@ -683,6 +681,16 @@ object MovieController {
       r.filmweb.map(x => f"Filmweb $x%.1f")
     ).flatten
   }
+
+  /** The rating badges for the OG-card image — the same per-source brand-coloured
+   *  two-segment pills the web/iOS/Android render (see [[tools.OgCardRenderer.ratingBadges]]). */
+  private[controllers] def cardRatingBadges(film: FilmSchedule): Seq[tools.OgCardRenderer.Badge] =
+    tools.OgCardRenderer.ratingBadges(
+      imdb           = film.resolved.ratings.imdb,
+      metascore      = film.resolved.ratings.metascore,
+      rottenTomatoes = film.resolved.ratings.rottenTomatoes,
+      filmweb        = film.resolved.ratings.filmweb
+    )
 
   /** The "2026 · Dramat, Kryminał" line under the title on the OG card —
    *  release year then genres, each part omitted when absent. */

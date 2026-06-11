@@ -53,11 +53,13 @@ class FilmwebShowtimesClient(
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ApiBase)
 
-  // Filmweb's public showtimes page keys on the numeric cinema id; the slug
-  // segment is cosmetic, so `/showtimes/-<id>` resolves (and redirects to the
-  // canonical `/showtimes/<City>/<Name>-<id>`). Verified the API `cinemaId`
-  // equals this public-URL id for every venue this client serves.
-  override def sourceUrl: Option[String] = Some(s"https://www.filmweb.pl/showtimes/-$cinemaId")
+  // `/cinema/-<id>` 301-redirects to the canonical, fully-rendered showtimes
+  // page (`/showtimes/<City>/<Name>-<id>`); the id is load-bearing and the slug
+  // cosmetic. The bare `/showtimes/-<id>` form returns the SPA shell (HTTP 200)
+  // but its client router never resolves the cinema, so it shows an empty page —
+  // route through `/cinema/-<id>` and let Filmweb redirect. Verified the API
+  // `cinemaId` equals this public-URL id for every venue this client serves.
+  override def sourceUrl: Option[String] = Some(s"https://www.filmweb.pl/cinema/-$cinemaId")
 
   def fetch(): Seq[CinemaMovie] = {
     val dates = (0 to daysAhead).map(today.plusDays(_))
