@@ -34,6 +34,7 @@ class UjazdowskiClient(http: HttpFetch, deferDetail: Boolean = false) extends Ci
   private case class RawSlot(slug: String, title: String, dateTime: LocalDateTime, meta: Option[String], poster: Option[String])
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   // When deferDetail is on, fetch() returns BARE movies (showtimes + the
   // listing-meta fields: runtime/year/countries/director/poster + the film-page

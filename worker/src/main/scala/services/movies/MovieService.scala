@@ -255,7 +255,18 @@ class MovieService(
       // concurrent scrape to see no sibling and spawn a phantom row (the
       // "Straszny film" twins regression).
       cache.withTitleLock(key.cleanTitle) {
-        val existing = cache.get(key)
+        // Re-resolve the canonical key INSIDE the lock. `key` was captured
+        // before the slow `fullDetails` fetch above; a concurrent
+        // `recordCinemaScrape` may have rekeyed the row to a different-cased /
+        // different-separator canonical spelling in the meantime (e.g.
+        // "Nowa fala" → "Nowa Fala", "Monterey Pop | DKF" → "Monterey Pop_DKF").
+        // Writing under the now-stale `key` would resurrect a PHANTOM row at the
+        // old spelling — the order-dependent split that left a film under two
+        // titles run-to-run. `canonicalKeyFor` shares this row's sanitize (so
+        // the same title lock), and falls back to `key` only when no live row
+        // exists yet (the genuine first-resolve case).
+        val writeKey = cache.canonicalKeyFor(rawKey).getOrElse(key)
+        val existing = cache.get(writeKey)
         // Preserve the previously-known `imdbId` when TMDB resolved the same
         // film (same `tmdbId`) but momentarily dropped the cross-reference —
         // happens for very recent releases and occasional TMDB data hiccups.
@@ -319,8 +330,8 @@ class MovieService(
         // untouched — if a cinema reports a year we trust that as the row's
         // identity even when TMDB's year disagrees.
         val targetKey =
-          if (key.year.isEmpty && enr.releaseYear.isDefined) cache.keyOf(key.cleanTitle, enr.releaseYear)
-          else key
+          if (writeKey.year.isEmpty && enr.releaseYear.isDefined) cache.keyOf(writeKey.cleanTitle, enr.releaseYear)
+          else writeKey
         // When re-keying onto a DIFFERENT key that already holds a row (another
         // cinema scraped this film WITH a year before TMDB resolved the no-year
         // one), that target row carries its own cinema slots. `cache.put`
@@ -329,10 +340,10 @@ class MovieService(
         // when the no-year row's TMDB stage happened to run first). Union the
         // target's cinema data in, keeping this resolve's enrichment fields.
         val toWrite =
-          if (targetKey != key) {
-            logger.debug(s"TMDB stage: re-keying '${key.cleanTitle}' (— → ${enr.releaseYear.get}) — cinemas didn't supply a year.")
+          if (targetKey != writeKey) {
+            logger.debug(s"TMDB stage: re-keying '${writeKey.cleanTitle}' (— → ${enr.releaseYear.get}) — cinemas didn't supply a year.")
             val merged = cache.get(targetKey).map(t => MovieRecordMerge.union(enr, t)).getOrElse(enr)
-            cache.invalidate(key)
+            cache.invalidate(writeKey)
             merged
           } else enr
         cache.put(targetKey, toWrite)

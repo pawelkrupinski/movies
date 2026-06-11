@@ -45,4 +45,32 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
     cinemasHeaderIdx should be >= 0
     cinemasHeaderIdx should be < html.indexOf("<h3>Poznań</h3>")
   }
+
+  it should "link the cinema name to its source page when a url: tag is present" in {
+    val row = ServiceRow("DKF Rumcajs", Seq.empty,
+      tags = Set("shared:FilmwebShowtimesClient", "url:https://www.filmweb.pl/showtimes/-1714"))
+    val out = views.html.uptime(Seq.empty, Seq.empty, Seq("Częstochowa" -> Seq(row)), Seq.empty, Seq.empty).body
+    // The name becomes an anchor to the scraped source, opening in a new tab …
+    out should include ("""<a class="name-label" href="https://www.filmweb.pl/showtimes/-1714" target="_blank" rel="noopener noreferrer">DKF Rumcajs</a>""")
+    // … and the url: tag is consumed for the link, never rendered as a chip.
+    out should not include ("url:https://www.filmweb.pl/showtimes/-1714")
+    out should include ("tag-shared")
+  }
+
+  it should "render the name as plain text when no url: tag is present" in {
+    val row = ServiceRow("Multikino Stary Browar", Seq.empty, tags = Set("shared:MultikinoClient"))
+    val out = views.html.uptime(Seq.empty, Seq.empty, Seq("Poznań" -> Seq(row)), Seq.empty, Seq.empty).body
+    out should include ("""<span class="name-label">Multikino Stary Browar</span>""")
+    out should not include ("<a class=\"name-label\"")
+  }
+
+  it should "render a gold FtFW chip for a cinema currently in Filmweb fallback" in {
+    val row = ServiceRow("Kino Iluzjon", Seq.empty, tags = Set("custom:IluzjonClient", "fallback:FtFW"))
+    val out = views.html.uptime(Seq.empty, Seq.empty, Seq("Warszawa" -> Seq(row)), Seq.empty, Seq.empty).body
+    // The fallback tag gets its own dedicated chip class + "FtFW" label …
+    out should include ("tag-fallback")
+    out should include (">FtFW<")
+    // … rendered alongside, not instead of, the client marker.
+    out should include ("tag-custom")
+  }
 }

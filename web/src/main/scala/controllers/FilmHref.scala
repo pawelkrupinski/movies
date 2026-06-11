@@ -22,10 +22,20 @@ object FilmHref {
 
   @targetName("applyForCity")
   def apply(title: String, city: City): String =
-    // `URLEncoder.encode` is form-urlencoded (spaces → `+`). Browsers accept
-    // both in query strings, but some link-preview scrapers (Facebook's
-    // among them) flag `+` as "URL malformed" and refuse to follow. Swap to
-    // the RFC 3986 form (`%20`) so the canonical URL we emit as og:url and
-    // every `<a href>` in the app round-trips cleanly through every crawler.
-    s"/${city.slug}/film?title=${URLEncoder.encode(title, StandardCharsets.UTF_8).replace("+", "%20")}"
+    s"/${city.slug}/film?title=${encodeTitle(title)}"
+
+  /** The server-rendered Open Graph card image (1200×630 PNG) for a film,
+   *  emitted as `og:image` / `twitter:image`. Same city-scoped, `%20`-encoded
+   *  form as [[apply]] so Facebook's scraper follows it — only the path
+   *  segment differs. */
+  def ogImage(title: String)(implicit city: City): String =
+    s"/${city.slug}/film/og-image?title=${encodeTitle(title)}"
+
+  // `URLEncoder.encode` is form-urlencoded (spaces → `+`). Browsers accept
+  // both in query strings, but some link-preview scrapers (Facebook's among
+  // them) flag `+` as "URL malformed" and refuse to follow. Swap to the RFC
+  // 3986 form (`%20`) so the canonical URL we emit as og:url / og:image and
+  // every `<a href>` in the app round-trips cleanly through every crawler.
+  private def encodeTitle(title: String): String =
+    URLEncoder.encode(title, StandardCharsets.UTF_8).replace("+", "%20")
 }

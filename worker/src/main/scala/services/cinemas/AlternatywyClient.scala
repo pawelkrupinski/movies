@@ -41,6 +41,7 @@ class AlternatywyClient(
   val cinema: Cinema = KinoAlternatywy
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl)
+  override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
   def fetch(): Seq[CinemaMovie] =
     parseRepertoire(http.get(RepertoireUrl))

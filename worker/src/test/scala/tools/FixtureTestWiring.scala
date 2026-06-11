@@ -40,34 +40,29 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // breaking hermetic end-to-end specs (FilmScheduleEndToEndSpec).
   override lazy val biletynaFetch: HttpFetch = httoFetch
 
-  /** Mirror of `ShowtimeCache.refreshOne`, sequenced so a test doesn't race
-   *  the production scheduler. Catches per-scraper failures the same way
-   *  production does so one missing-fixture cinema can't take down the
-   *  whole tick. Shared across specs that exercise the fixture end-to-end. */
+  /** Record EVERY cinema first, THEN publish all the create events — load-bearing
+   *  for a deterministic single-pass snapshot, not arbitrary scaffolding.
+   *  Production publishes `MovieRecordCreated` INLINE as each cinema lands and
+   *  relies on MANY 5-min passes (+ the daily retry) to converge; in ONE pass,
+   *  inline publish lets the async enrichment pool mutate (rekey/resolve) a row
+   *  WHILE a later cinema is still merging into it, so even a single-threaded
+   *  scrape comes out order-dependent (the events-seen count wobbles run to run).
+   *  Recording all cinemas before publishing settles every row to its final
+   *  scraped shape first. The order-INDEPENDENCE this side-steps is proved
+   *  directly and exhaustively by `ScrapeOrderDeterminismSpec`, which shuffles
+   *  cinema + event order under a jittered fetch clock and asserts byte-identical
+   *  records and rows across the whole corpus. */
   def runOneScrapeTick(): Unit = {
-    // TWO phases, on purpose. Production publishes MovieRecordCreated inline as
-    // each cinema is recorded, so async enrichment for a film can start while a
-    // LATER cinema in the same tick is still merging into that same cache row —
-    // the enrichment write (e.g. TMDB cast) then races the scrape-merge,
-    // making whole-corpus snapshots (PageSnapshotSpec, FilmScheduleEndToEndSpec)
-    // non-deterministic. Tests don't need that interleaving: record EVERY
-    // cinema first so each row reaches its final scraped shape, THEN publish all
-    // the create events so enrichment runs against settled rows. Combined with
-    // tmdbMaxRetries=0 and the full cascade drain, this makes the rendered
-    // corpus deterministic run-to-run.
     val created = collection.mutable.ListBuffer.empty[MovieRecordCreated]
     cinemaScrapers.foreach { scraper =>
-      val cinema = scraper.cinema
       try {
-        val movies  = scraper.fetch()
-        val touched = movieCache.recordCinemaScrape(cinema, movies)
+        val touched = movieCache.recordCinemaScrape(scraper.cinema, scraper.fetch())
         touched.foreach { case (cm, key, isNew) =>
           if (isNew)
-            created += MovieRecordCreated(key.cleanTitle, key.year, cm.movie.originalTitle, if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None)
+            created += MovieRecordCreated(key.cleanTitle, key.year, cm.movie.originalTitle,
+              if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None)
         }
-      } catch {
-        case _: Exception => () // mirror ShowtimeCache.refreshOne's catch
-      }
+      } catch { case _: Exception => () }
     }
     created.foreach(eventBus.publish)
   }
@@ -88,5 +83,41 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     // deterministic and thread-free.
     readModelProjector.reconcile()
     webReadModel.reload()
+  }
+
+  /** Settle the cache to its deterministic steady state. The parallel scrape
+   *  (`showtimeCache.runOnce`) publishes enrichment INLINE as each cinema lands,
+   *  so a film's TMDB/ratings can resolve against a partially-merged row; in
+   *  production those rows settle over successive 5-min passes (+ the daily TMDB
+   *  retry). A single test pass can't wait for that, so re-run enrichment
+   *  synchronously against the now-settled rows — the same belt-and-braces sweep
+   *  the fixture recorder uses — making the snapshot a pure function of the
+   *  fixtures rather than of thread scheduling. Deterministic title order so the
+   *  sweep itself introduces no ordering of its own. */
+  def converge(): Unit = {
+    // 1. Collapse spelling/year variants a concurrent scrape/enrichment left
+    //    behind FIRST, so every row is under its canonical key BEFORE we
+    //    re-enrich. Otherwise the title-keyed enrichment (esp. Filmweb's fuzzy
+    //    title/director SEARCH) would run against an order-dependent spelling
+    //    and land an order-dependent result. See MovieCache.canonicalizeBySanitize.
+    movieCache.canonicalizeBySanitize()
+    // 2. Re-run enrichment synchronously against the now-canonical, settled rows
+    //    — the same belt-and-braces sweep the fixture recorder uses — so the
+    //    snapshot is a pure function of the fixtures, not of thread scheduling.
+    //    Deterministic title order so the sweep itself adds no ordering.
+    movieCache.snapshot()
+      .map(r => (r.title, r.year))
+      .sortBy { case (t, y) => (t, y.getOrElse(Int.MinValue)) }
+      .foreach { case (t, y) =>
+        // Swallow a missing-fixture throw the SAME way the async enrichment
+        // path does (MovieService logs "Giving up on TMDB …" and moves on):
+        // a row whose TMDB id has no recorded `external_ids` (NTLive theatre
+        // captures share id 203912, which has no IMDb cross-reference) would
+        // otherwise abort the whole sweep.
+        try fullySyncOne(t, y) catch { case _: Exception => () }
+      }
+    // 3. Re-collapse: the TMDB stage can rekey a no-year row onto a resolved
+    //    year, briefly re-introducing a spelling/year variant.
+    movieCache.canonicalizeBySanitize()
   }
 }

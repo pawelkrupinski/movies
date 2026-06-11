@@ -63,6 +63,7 @@ class MsiClient(
   import MsiClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
+  override def sourceUrl: Option[String] = Some(baseUrl)
 
   private val titleCleaner: String => String =
     titlePrefix.map(cleanTitleForVenue).getOrElse(cleanTitle)

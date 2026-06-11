@@ -42,6 +42,7 @@ class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
                              booking: Option[String], poster: Option[String], detailPath: String)
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
   // the per-film detail-page URL) and the detail is filled in later by an

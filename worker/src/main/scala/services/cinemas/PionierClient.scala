@@ -35,6 +35,7 @@ class PionierClient(http: tools.HttpFetch, override val cinema: Cinema = KinoPio
   import PionierClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(PageUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val doc   = Jsoup.parse(http.get(PageUrl))

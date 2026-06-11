@@ -29,6 +29,7 @@ class KinoJednoscClient(http: HttpFetch, override val cinema: Cinema = KinoJedno
   import KinoJednoscClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val films = parseListing(http.get(ListingUrl))

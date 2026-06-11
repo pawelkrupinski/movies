@@ -29,6 +29,7 @@ class SystemBiletowyClient(http: HttpFetch, baseUrl: String, override val cinema
     extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
+  override def sourceUrl: Option[String] = Some(baseUrl)
 
   def fetch(): Seq[CinemaMovie] =
     SystemBiletowyClient.parse(http.get(s"$baseUrl/index.php"), cinema, baseUrl)

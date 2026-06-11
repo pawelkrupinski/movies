@@ -77,7 +77,14 @@ trait TestWiring extends WorkerWiring {
     imdbRatings.refreshOneSync(title, year)
     rottenTomatoesRatings.refreshOneSync(title, year)
     metascoreRatings.refreshOneSync(title, year)
-    filmwebRatings.refreshOneSync(title, year)
+    // `auditOneSync`, not `refreshOneSync`: Filmweb resolves by a fuzzy
+    // title/director SEARCH, so the bus-driven async pass — which runs against a
+    // partially-merged row — can land (or miss) a different URL run-to-run.
+    // `refreshOneSync` would then take the cheap rating-only path and PRESERVE
+    // that order-dependent URL; the audit instead RE-resolves against the now
+    // settled row and overwrites/drops it, so Filmweb is a pure function of the
+    // final row like every IMDb-id-keyed source already is.
+    filmwebRatings.auditOneSync(title, year)
   }
 
   def quiesce(stoppables: Stoppable*): Unit =

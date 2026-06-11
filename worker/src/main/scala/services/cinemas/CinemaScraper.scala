@@ -53,6 +53,17 @@ trait CinemaScraper {
    *  doesn't model them venue-for-venue. Defaults to false — every ordinary
    *  single-venue scraper is fallback-eligible. */
   def chain: Boolean = false
+
+  /** A public, human-facing page for the venue we scrape — its own repertoire
+   *  page for a bespoke own-site client, the Filmweb showtimes page for a
+   *  Filmweb-backed venue, the chain's venue page for a multiplex. Surfaced on
+   *  /uptime as a link on the cinema name (via a `url:` UptimeMonitor tag) so a
+   *  white/red row is one click from its source — the exact "is this venue
+   *  really empty, or did we break?" check. `None` when no stable public URL is
+   *  known (e.g. an API-only source whose venue id maps to no public page).
+   *  Derive it from the same base URL the client already fetches with, so the
+   *  link and the scrape can't drift. */
+  def sourceUrl: Option[String] = None
 }
 
 object CinemaScraper {
@@ -86,6 +97,10 @@ class CinemaCityScraper(
 ) extends CinemaScraper with DetailEnricher {
   def fetch(): Seq[CinemaMovie] = client.fetch(cinemaId, cinema, deferDetail)
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(CinemaCityClient.BaseApiUrl)
+  // The numeric `cinemaId` is Cinema City's externalCode (e.g. 1078 = Poznań
+  // Plaza); the public venue page is `/kina/<slug>/<id>` where the id is
+  // load-bearing and the slug cosmetic, so any slug + the right id resolves.
+  override def sourceUrl: Option[String] = Some(s"https://www.cinema-city.pl/kina/cinema-city/$cinemaId")
   override val detailGroup: String = "cinema-city"
   override def detailTarget: Source = CinemaCityChain
   override def enrichmentServiceOverride: Option[String] = Some("Cinema City Enrichment")

@@ -40,6 +40,7 @@ class KinoAmokClient(
   import KinoAmokClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(RepertoireUrl)

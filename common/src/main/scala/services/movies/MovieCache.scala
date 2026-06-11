@@ -73,6 +73,8 @@ trait MovieCache {
   private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean
   private[services] def markMissing(key: CacheKey): Unit
   private[services] def clearNegatives(): Unit
+  private[services] def clearNegative(key: CacheKey): Unit
+  def canonicalizeBySanitize(): Unit
   private[services] def invalidate(key: CacheKey): Unit
   /** Run `body` under the per-normalised-title lock. Any read-modify-write
    *  across the cache's surface for keys sharing this `cleanTitle` must
@@ -254,6 +256,69 @@ class CaffeineMovieCache(
       .minByOption(canonicalRank)
   }
 
+  /** Collapse every set of rows that share a normalised cleanTitle into ONE row
+   *  under the canonical (min `canonicalRank`) key, unioning their records. A
+   *  concurrent scrape/enrichment can transiently split a film across two
+   *  spellings — a stale-keyed TMDB write seeds a phantom ("Nowa fala" beside
+   *  the canonical "Nowa Fala"), and once two same-sanitize rows exist
+   *  `redirectToExistingVariant` stops merging (it only redirects on a UNIQUE
+   *  match), so the split persists and which spelling a film ends under depends
+   *  on order. This re-asserts the invariant deterministically: a pure function
+   *  of the current row set, run after a pass settles. Rows with DIFFERENT
+   *  resolved tmdbIds are genuinely distinct films that merely share a
+   *  normalised form (a real cross-film collision) — those are left untouched. */
+  def canonicalizeBySanitize(): Unit = {
+    import scala.jdk.CollectionConverters._
+    positive.asMap().asScala.toSeq
+      .groupBy { case (k, _) => TitleNormalizer.sanitize(k.cleanTitle) }
+      .valuesIterator
+      .foreach { group =>
+        val distinctTmdb = group.flatMap(_._2.tmdbId).distinct
+        if (distinctTmdb.sizeIs > 1) () // genuine cross-film collision — leave alone
+        else {
+          // Every reported variant: each cinema slot's derived key (cleaned
+          // title + year) plus the rows' current keys.
+          val slotKeys = group.flatMap { case (_, e) => e.data.values.flatMap(d => d.title.map(t => keyOf(t, d.releaseYear))) }
+          val keys     = group.map(_._1)
+          val allKeys  = slotKeys ++ keys
+          // Choose the canonical key as a pure function of the variant SET, with
+          // SPELLING decoupled from YEAR:
+          //   - year:    the most informative — a present year beats a yearless
+          //     one (a film TMDB dated to 2026 keys at 2026), then the lowest.
+          //   - spelling: the min cleanTitle across ALL variants regardless of
+          //     year. Without decoupling, a yearless all-caps variant ("SAVAGE
+          //     HOUSE" reported with no year) can't win the spelling at the
+          //     resolved year — the only year-bearing spellings are the
+          //     enrichment title and the (order-dependent) surviving key — so
+          //     which casing stuck depended on scrape order.
+          val canonicalYear  = allKeys.iterator.map(_.year).minBy(y => (y.isEmpty, y.getOrElse(Int.MaxValue)))
+          // Prefer a normally-cased spelling over a SHOUTING one ("Savage House"
+          // over "SAVAGE HOUSE") — a cinema's all-caps styling shouldn't become
+          // the canonical display — then break ties by string order so it stays
+          // a pure function of the variant set.
+          def isAllCaps(t: String): Boolean = t.exists(_.isLetter) && t == t.toUpperCase(java.util.Locale.ROOT)
+          val canonicalTitle = allKeys.map(_.cleanTitle).minBy(t => (isAllCaps(t), t))
+          val canonical      = CacheKey(canonicalTitle, canonicalYear)
+          // Re-assert the canonical spelling whenever ANY variant differs from
+          // it. `CacheKey` equality is by NORMALISED title (sanitize) + year, so
+          // a case/separator variant compares EQUAL to the canonical even though
+          // its stored string differs — and `put` over an equal key keeps the
+          // original. And the cache (Caffeine, first-inserted key) can disagree
+          // with the repo (last-written title). So `invalidate` (remove) every
+          // key, then `put` under the canonical string, rewriting BOTH stores.
+          val needsFix = keys.sizeIs > 1 ||
+            allKeys.exists(k => k.cleanTitle != canonical.cleanTitle || k.year != canonical.year)
+          if (needsFix) {
+            withTitleLock(canonical.cleanTitle) {
+              val merged = group.sortBy { case (k, _) => canonicalRank(k) }.map(_._2).reduce(MovieRecordMerge.union)
+              keys.foreach(invalidate)
+              put(canonical, merged)
+            }
+          }
+        }
+      }
+  }
+
   /** Collapse two same-tmdbId rows into one. The surviving key is chosen by
    *  `canonicalRank` (NOT arrival order), and the record is the union of every
    *  per-source slot — so no scraped data is lost whichever key wins, and the
@@ -296,7 +361,17 @@ class CaffeineMovieCache(
    *  than a captured snapshot — so a listener that read the row, made a
    *  slow network call, and now wants to update one field doesn't clobber
    *  concurrent updates to other fields. */
-  private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean = {
+  private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean =
+    // Serialise under the per-title lock that `recordCinemaScrape` and `rekey`
+    // also hold. Caffeine's `computeIfPresent` is atomic for a single KEY, but
+    // a rating update racing a concurrent `rekey` (which invalidates the old
+    // key and re-puts under a new one) could land on a key being torn out from
+    // under it — the write silently lost. Sharing the title lock (reentrant;
+    // always acquired before Caffeine's compute lock, so the order stays
+    // title→Caffeine and can't deadlock) makes every read-modify-write on a
+    // row — scrape, rekey, rating — mutually exclusive. The slow rating HTTP
+    // fetch already happened in the caller; only the cache write is held here.
+    withTitleLock(key.cleanTitle) {
     // Capture both `before` and `after` inside the Caffeine compute lock so
     // the pair is atomic. The repo write below uses the pair to compute a
     // per-field diff — out-of-band Mongo edits to fields the updater didn't
@@ -333,6 +408,16 @@ class CaffeineMovieCache(
    *  previously-failed key one fresh shot. New misses re-populate the cache
    *  organically as they happen. */
   private[services] def clearNegatives(): Unit = negative.invalidateAll()
+
+  /** Drop a single key's "missing" verdict. Called when a fresh cinema slot
+   *  changes a row's resolution inputs (a new title/director the TMDB stage
+   *  hadn't seen), so a `markMissing` recorded against the older, partial row
+   *  can't block the re-resolve the new data warrants. Mirrors what the daily
+   *  `clearNegatives` retry does, but scoped to the one row that just grew —
+   *  the difference between a film resolving this pass vs. staying blank until
+   *  the next daily sweep, when its first scraped cinema happened to fire the
+   *  TMDB stage before later cinemas (with the verifying director) arrived. */
+  private[services] def clearNegative(key: CacheKey): Unit = negative.invalidate(key)
 
   /** Drop a row from positive cache + Mongo — used by the TMDB stage to clear
    *  a stale row before re-keying it under a corrected (title, year). */
@@ -458,12 +543,18 @@ class CaffeineMovieCache(
     val resolved: Seq[((CinemaMovie, CacheKey, Boolean), SourceData)] =
       deduped.sortBy(cm => (cleaned(cm), cm.movie.releaseYear.getOrElse(Int.MinValue))).map { cm =>
       val displayTitle = cleaned(cm)
-      // Lock per normalised title so a concurrent first-scrape from another
-      // cinema can't create a duplicate row at a different `(title, year)`
-      // key while we're between the redirect check and the put. Different
-      // films don't contend.
-      withTitleLock(displayTitle) {
-        val primary = keyOf(displayTitle, cm.movie.releaseYear)
+      val primary      = keyOf(displayTitle, cm.movie.releaseYear)
+      // Lock on the row's NORMALISED cleanTitle — the SAME key the TMDB stage
+      // and `rekey` acquire — not the raw display title. `searchTitle` (the
+      // cleanTitle derivation) can collapse a subtitle / programme-prefix /
+      // anniversary variant that `displayTitle` keeps, so locking on
+      // `displayTitle` put scrape-merge and the enrichment-stage rekey on
+      // DIFFERENT locks for the SAME row — they then raced into lost cinema
+      // slots under a concurrent (production-style) scrape. Locking on
+      // `primary.cleanTitle` serialises every read-modify-write on the row
+      // (scrape, rekey, TMDB put) against each other. Different films
+      // (different normalised cleanTitle) still don't contend.
+      withTitleLock(primary.cleanTitle) {
         // Land the slot on the *canonical* key for this film, chosen by
         // `canonicalRank` (NOT arrival order): when this cinema's primary key
         // out-ranks the existing variant's (a year where the row was created
@@ -565,6 +656,13 @@ class CaffeineMovieCache(
           case None =>
             put(key, existing.copy(data = existing.data + ((cinema: Source) -> slot)))
         }
+        // A brand-new cinema observation for this row changes what the TMDB
+        // stage has to work with (a new title/director the resolver hadn't
+        // seen). Drop any stale "missing" verdict so the `MovieRecordCreated`
+        // we're about to publish re-resolves against the grown row instead of
+        // being short-circuited by an earlier, partial-row failure — the race
+        // that left films blank under a concurrent (production-style) scrape.
+        if (isNew) clearNegative(key)
         ((cm, key, isNew), slot)
       }
     }
@@ -588,8 +686,18 @@ class CaffeineMovieCache(
       .filter { case (_, e) =>
         e.data.get(cinema).exists(slot => !touchedSlots.contains(slot))
       }
-      .foreach { case (k, e) =>
-        put(k, e.copy(data = e.data - cinema))
+      .map(_._1)
+      .toList
+      .foreach { k =>
+        // Remove the stale slot atomically under the per-title lock — NOT via a
+        // `put` of the snapshot `e` captured during iteration. Under a concurrent
+        // (production-style) parallel scrape, another cinema may have just added
+        // ITS slot to this same row between our read of `e` and the write; a
+        // stale `put` would clobber that sibling slot (the Cinema City venues
+        // dropping each other's slot run-to-run). `putIfPresent` reads the
+        // CURRENT row, drops only our cinema's slot, and is a no-op if a rekey
+        // moved the row out from under us.
+        putIfPresent(k, cur => cur.copy(data = cur.data - cinema))
       }
 
     // Publish CinemaMovieAdded for each row we just first-scraped onto. This

@@ -101,6 +101,7 @@ class KinoApolloClient(http: HttpFetch, deferDetail: Boolean = false) extends Ci
   private val GenrePat      = """(?i)Gatunek:\s*([^<|]+)""".r
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl, "https://bilety.kinoapollo.pl")
+  override def sourceUrl: Option[String] = Some(PageUrl)
 
   // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
   // the per-film detail-page URL) and the detail is filled in later by an

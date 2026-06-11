@@ -36,6 +36,7 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
   // the scrape tick; this `fetch()` is back to a single repertuar-page
   // request.
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl)
+  override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
   def fetch(): Seq[CinemaMovie] = parseHtml(http.get(RepertoireUrl))
 

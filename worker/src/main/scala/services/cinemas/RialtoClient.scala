@@ -59,6 +59,7 @@ class RialtoClient(http: HttpFetch, deferDetail: Boolean = false) extends Cinema
   )
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl, BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   // When deferDetail is on, fetch() returns BARE movies (showtimes + listing
   // metadata + the per-event detail-page URL) and genres/detail are filled in

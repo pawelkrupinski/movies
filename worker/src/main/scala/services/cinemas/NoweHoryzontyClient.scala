@@ -52,6 +52,7 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
     s"$BaseUrl/rep.json?dzien=${date.format(DayFmt)}&forwardback=$Forwardback"
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   // When deferDetail is on, fetch() returns BARE movies (showtimes + poster + the
   // per-film op.s detail URL) and the detail is filled later by an EnrichDetails

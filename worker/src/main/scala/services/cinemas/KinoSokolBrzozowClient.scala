@@ -28,6 +28,7 @@ class KinoSokolBrzozowClient(http: HttpFetch, override val cinema: Cinema = Kino
     extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoSokolBrzozowClient.RepertoireUrl)
+  override def sourceUrl: Option[String] = Some(KinoSokolBrzozowClient.BaseUrl)
 
   def fetch(): Seq[CinemaMovie] =
     KinoSokolBrzozowClient.parse(http.get(KinoSokolBrzozowClient.RepertoireUrl), cinema)

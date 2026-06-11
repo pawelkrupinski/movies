@@ -32,6 +32,10 @@
       position: relative;
     }
     .name-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    /* A cinema name linking to the page we scrape (own-site / Filmweb / chain
+       venue). Reads like the plain label until hover, then underlines. */
+    a.name-label { color: inherit; text-decoration: none; }
+    a.name-label:hover { color: #fff; text-decoration: underline; }
     /* Triage rows show their city in an instant tooltip on name hover (the row was
        lifted out of its city group, so there's no <h3> above it). */
     .name[data-city]:not([data-city=""]):hover::after {
@@ -80,6 +84,8 @@
     }
     .tag-shared { background: #16261d; color: #5fb98a; border-color: #234d3a; }
     .tag-custom { background: #2a2233; color: #b694d6; border-color: #43395a; }
+    /* FtFW = cinema currently on Filmweb fallback; gold to echo the bar's gold ring. */
+    .tag-fallback { background: #2b2410; color: #e0b341; border-color: #4d3f18; }
     .leading-fail h2 { color: #e74c3c; }
     .leading-zero h2 { color: #c9c9c9; }
 
@@ -261,11 +267,20 @@
 @serviceRow(s: ServiceRow, city: Option[String]) = {
   <div class="row" data-service="@s.name">
     <div class="name" title="@s.name" data-city="@city.getOrElse("")">
-      <span class="name-label">@s.name</span>
-      @for(t <- s.tags.toSeq.sorted) {
+      @(s.tags.find(_.startsWith("url:")).map(_.substring(4))) match {
+        case Some(url) => {
+          <a class="name-label" href="@url" target="_blank" rel="noopener noreferrer">@s.name</a>
+        }
+        case None => {
+          <span class="name-label">@s.name</span>
+        }
+      }
+      @for(t <- s.tags.toSeq.sorted if !t.startsWith("url:")) {
         @defining(t.split(":", 2)) { parts =>
           @if(parts.head == "custom") {
             <span class="tag tag-custom" title="@parts.last">Custom</span>
+          } else if(parts.head == "fallback") {
+            <span class="tag tag-fallback" title="Currently served via Filmweb fallback (own scraper down)">FtFW</span>
           } else {
             <span class="tag tag-shared" title="@parts.last">@parts.last.stripSuffix("Client").stripSuffix("Scraper")</span>
           }

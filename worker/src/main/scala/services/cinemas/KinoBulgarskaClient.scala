@@ -66,6 +66,7 @@ class KinoBulgarskaClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
     }.getOrElse((Seq.empty, Seq.empty, None, None))
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl)
+  override def sourceUrl: Option[String] = Some(PageUrl)
 
   // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
   // the per-film detail-page URL) and the detail is filled in later by an

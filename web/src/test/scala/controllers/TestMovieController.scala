@@ -26,6 +26,12 @@ object TestMovieController {
       oauthProviders         = Set.empty,
       environment            = mode,
       responseCache          = new GzippedResponseCache,
+      // No live HTTP: a poster fetch that returns nothing decodes to None, so
+      // the OG card falls back to text-only — fine for controller specs that
+      // don't assert on the card image itself.
+      ogCardService          = new tools.OgCardService(new tools.GetOnlyHttpFetch {
+        override def get(url: String): String = ""
+      }),
     )
     (ctrl, readModel)
   }

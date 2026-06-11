@@ -42,6 +42,7 @@ class KinoKijowClient(
   import KinoKijowClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val months = monthsToFetch(today)

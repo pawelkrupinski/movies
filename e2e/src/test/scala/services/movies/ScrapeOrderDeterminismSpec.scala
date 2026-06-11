@@ -80,7 +80,12 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
   // merge), Bez wyjścia (multi-cinema yearless/year mix).
   private val MustTest = Seq(
     "Tom i Jerry", "Zawodowcy", "Straszny film", "Mortal Kombat",
-    "Diabeł ubiera się u Prady", "Bez wyjścia"
+    "Diabeł ubiera się u Prady", "Bez wyjścia",
+    // Films that diverged run-to-run under the full parallel scrape while
+    // hardening the concurrent path — pinned so the (cheaper, single-film)
+    // order-shuffle spec reproduces the same discrepancy deterministically.
+    "Drzewo magii", "All You Need Is Kill", "Erupcja", "Sny o słoniach",
+    "Milcząca przyjaciółka"
   )
 
   /** A scraped film grouped across the cinemas that report it, keyed by the
@@ -184,6 +189,72 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // ── Whole-corpus variant ───────────────────────────────────────────────────
+  // The single-film replays above can't see a CROSS-film order dependence (a
+  // cinema's prune sweeping another film's slot, an enrichment rekey colliding
+  // across films, the convergence sweep). This variant feeds EVERY harvested
+  // film's slots into one cache, per cinema, in shuffled cinema order — the same
+  // disorder the real parallel `showtimeCache.runOnce` produces — and asserts
+  // the whole persisted corpus + rendered rows are identical across orders.
+  private val CorpusIterations = 3
+
+  /** The harvest re-grouped by CINEMA: every `CinemaMovie` a cinema reports
+   *  across all films, so a replay records each cinema once (all its films at
+   *  once) exactly as `recordCinemaScrape` is called in production. */
+  private lazy val harvestByCinema: Seq[(Cinema, Seq[CinemaMovie])] =
+    harvest.flatMap(_.byCinema.toSeq)
+      .groupBy(_._1).view.mapValues(_.flatMap(_._2)).toSeq
+
+  /** Replay the WHOLE corpus once: shuffled cinema arrival order, shuffled event
+   *  publish order, jittered enrichment timing, then drain + the deterministic
+   *  convergence sweep `bootStartup` runs. Returns the full persisted corpus and
+   *  the rendered rows across every city. */
+  private def replayCorpus(seed: Long): (Seq[StoredMovieRecord], Seq[FilmSchedule]) = {
+    val rnd = new scala.util.Random(seed)
+    val w = new FixtureTestWiring(Fixture) {
+      override lazy val httoFetch: HttpFetch = new JitterHttpFetch(new FakeHttpFetch(fixture), seed, MaxJitterMillis)
+    }
+    val created = mutable.ListBuffer.empty[MovieRecordCreated]
+    rnd.shuffle(harvestByCinema).foreach { case (cinema, movies) =>
+      val touched = w.movieCache.recordCinemaScrape(cinema, rnd.shuffle(movies))
+      touched.foreach { case (cm, key, isNew) =>
+        if (isNew)
+          created += MovieRecordCreated(
+            key.cleanTitle, key.year, cm.movie.originalTitle,
+            if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None
+          )
+      }
+    }
+    rnd.shuffle(created.toList).foreach(w.eventBus.publish)
+    w.drainServices()
+    w.converge()
+    val record = w.movieRepo.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+    val svc = new MovieControllerService(w.movieCache)
+    val rows = City.all.sortBy(_.slug).flatMap(c => svc.toSchedules(c, Now))
+    (record, rows)
+  }
+
+  "the whole-corpus scrape" should
+    "persist an identical record set + rendered rows regardless of cross-film scrape/enrichment order" in {
+    harvestByCinema should not be empty
+    val started = System.nanoTime()
+    val (record0, rows0) = replayCorpus(900000L)
+    val divergences = mutable.ListBuffer.empty[String]
+    (1 until CorpusIterations).foreach { i =>
+      val (recordI, rowsI) = replayCorpus(900000L + i)
+      if (recordI != record0) divergences += s"RECORD iter $i:\n${recordDiff(record0, recordI)}"
+      if (rowsI != rows0) {
+        val d = rows0.zipAll(rowsI, null, null).collect { case (x, y) if x != y => s"  0=${String.valueOf(x).take(600)}\n  i=${String.valueOf(y).take(600)}" }
+        divergences += s"ROW iter $i differs (${rows0.size} vs ${rowsI.size}):\n${d.take(2).mkString("\n")}"
+      }
+    }
+    val elapsedMs = (System.nanoTime() - started) / 1000000
+    info(s"$CorpusIterations whole-corpus replays (${record0.size} films) in ${elapsedMs}ms")
+    withClue(s"${divergences.size} divergence(s):\n${divergences.take(40).mkString("\n")}\n") {
+      divergences.toList shouldBe empty
+    }
+  }
+
   // Distinct, reproducible seed per (film, iteration) so a divergence replays.
   private def seed(movieIdx: Int, iter: Int): Long = movieIdx.toLong * 1000L + iter
 
@@ -233,7 +304,7 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
       val showings = s.showings.map { case (d, cs) =>
         s"$d:" + cs.map(c => s"${c.cinema.displayName}(${c.showtimes.size})").mkString(",")
       }.mkString(";")
-      s"${s.movie.title} | poster=${s.posterUrl} | cast=${s.cast.mkString(",")} | " +
+      s"${s.movie.title}/${s.movie.releaseYear} | poster=${s.posterUrl} | cast=${s.cast.mkString(",")} | " +
         s"dir=${s.director.mkString(",")} | $showings"
     }.mkString("\n")
 }

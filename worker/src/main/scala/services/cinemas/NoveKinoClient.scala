@@ -36,6 +36,7 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema,
                              poster: Option[String], countries: Seq[String], genres: Seq[String], format: List[String])
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(CinemaUrl)
 
   // When deferDetail is on, fetch() returns BARE movies (showtimes + listing
   // poster/countries/genres + the film.php detail URL) and the rest is filled

@@ -39,6 +39,7 @@ class KinoSfinksClient(http: HttpFetch, override val cinema: Cinema) extends Cin
   import KinoSfinksClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(PageUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val firstHtml = http.get(PageUrl)

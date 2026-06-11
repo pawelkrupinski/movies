@@ -35,6 +35,7 @@ class KinoKulturaClient(http: HttpFetch) extends CinemaScraper {
                              booking: String, poster: Option[String])
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl, "https://rezerwacja.kinokultura.pl")
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val main  = http.get(s"$BaseUrl/")

@@ -27,6 +27,7 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
   private case class Item(title: String, dateTime: LocalDateTime, detailUrl: String, poster: Option[String])
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val items = listingPages().flatMap(parseListPage)

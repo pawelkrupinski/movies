@@ -46,6 +46,7 @@ class McswElektrowniaCinemaClient(
   import McswElektrowniaCinemaClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     // Scrape today and the next 6 days in parallel.

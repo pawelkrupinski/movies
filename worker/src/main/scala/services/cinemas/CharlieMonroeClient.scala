@@ -26,6 +26,7 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
   private val AnchorTextPat    = """<a[^>]*>([^<]+)</a>""".r
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl)
+  override def sourceUrl: Option[String] = Some(PageUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val movies = parseHtml(http.get(PageUrl))

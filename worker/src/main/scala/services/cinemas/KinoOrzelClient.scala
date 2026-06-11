@@ -34,6 +34,7 @@ class KinoOrzelClient(http: HttpFetch, override val cinema: Cinema) extends Cine
   import KinoOrzelClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] =
     parse(http.get(ListingUrl), cinema)
