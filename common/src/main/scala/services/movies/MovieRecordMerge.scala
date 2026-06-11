@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{MovieRecord, Source, SourceData}
+import models.{MovieRecord, Showtime, Source, SourceData}
 
 /**
  * Pure merge primitive — combines a `victim` row's per-source data onto a
@@ -45,11 +45,38 @@ object MovieRecordMerge {
     (canonical.keySet ++ victim.keySet).iterator.map { src =>
       val mergedSlot = (canonical.get(src), victim.get(src)) match {
         case (Some(a), Some(b)) =>
-          a.copy(showtimes = (a.showtimes ++ b.showtimes).distinct.sortBy(_.dateTime))
+          a.copy(showtimes = dedupShowtimes(a.showtimes ++ b.showtimes))
         case (Some(a), None)    => a
         case (None,    Some(b)) => b
         case (None,    None)    => throw new MatchError(src)   // unreachable: src ∈ keys union
       }
       src -> mergedSlot
     }.toMap
+
+  /** Collapse `showtimes` to one entry per *physical* screening, time-sorted.
+   *
+   *  A screening's identity is `(dateTime, room, format)` — NOT the whole
+   *  `Showtime`. `bookingUrl` is a per-source ticket link, not part of what
+   *  makes two sessions the same; a plain `.distinct` keyed on the full case
+   *  class kept the same screening twice whenever two sources (e.g. Kino Nowe
+   *  Horyzonty surfacing one film under two `op.s?id=` event pages) reported
+   *  it with different booking links. That produced a phantom duplicate whose
+   *  surviving order flipped with scrape/merge order — the "screenings error".
+   *
+   *  Among entries sharing an identity, the representative is chosen by a pure
+   *  function of the data (the one carrying a `bookingUrl`, then the lowest URL
+   *  string) so the kept link — and therefore the rendered slot — is identical
+   *  whatever order the sources arrived in. */
+  def dedupShowtimes(showtimes: Seq[Showtime]): Seq[Showtime] = {
+    def identity(s: Showtime): (java.time.LocalDateTime, Option[String], List[String]) =
+      (s.dateTime, s.room, s.format)
+    def rank(s: Showtime): (Boolean, String) =
+      (s.bookingUrl.isEmpty, s.bookingUrl.getOrElse(""))
+    showtimes
+      .groupBy(identity)
+      .values
+      .map(_.minBy(rank))
+      .toSeq
+      .sortBy(_.dateTime)
+  }
 }
