@@ -32,6 +32,8 @@ class EkobiletClient(
   import EkobiletClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  // The venue's public landing page — the same URL fetch() reads its listing from.
+  override def sourceUrl: Option[String] = Some(s"$BaseUrl/$slug")
 
   def fetch(): Seq[CinemaMovie] = {
     val films = parseLanding(http.get(s"$BaseUrl/$slug"))   // (title, detailUrl)

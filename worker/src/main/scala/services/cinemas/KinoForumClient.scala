@@ -40,6 +40,7 @@ class KinoForumClient(
   override val cinema: Cinema = KinoForum
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(PageUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val doc   = Jsoup.parse(http.get(PageUrl))

@@ -35,6 +35,7 @@ class CytadelaClient(http: HttpFetch, deferDetail: Boolean = false) extends Cine
                              booking: Option[String], poster: Option[String])
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
   // the per-film detail-page URL) and the detail is filled in later by an

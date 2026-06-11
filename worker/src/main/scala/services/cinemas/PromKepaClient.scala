@@ -24,6 +24,7 @@ class PromKepaClient(http: HttpFetch) extends CinemaScraper {
   private val EventPat   = """/wydarzenie/([a-z0-9-]+)""".r
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val listing = http.get(ListingUrl)

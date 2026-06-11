@@ -30,6 +30,7 @@ class KinoParadoxClient(http: HttpFetch, override val cinema: Cinema) extends Ci
   import KinoParadoxClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val html  = http.get(RepertoireUrl)

@@ -39,6 +39,7 @@ class DcfClient(http: HttpFetch, deferDetail: Boolean = false) extends CinemaScr
   private case class RawSlot(dateTime: LocalDateTime, room: Option[String], bookingUrl: Option[String])
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl, EventBase)
+  override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
   // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
   // the per-film detail-page URL) and the detail is filled in later by an

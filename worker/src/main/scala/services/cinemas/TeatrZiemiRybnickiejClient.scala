@@ -38,6 +38,7 @@ class TeatrZiemiRybnickiejClient(http: HttpFetch) extends CinemaScraper {
   private val ListingUrl = s"$BaseUrl/wydarzenia?type%5B%5D=film&month=default"
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val detailUrls = parseListing(http.get(ListingUrl))

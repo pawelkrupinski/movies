@@ -40,6 +40,7 @@ class FalenicaClient(http: HttpFetch, deferDetail: Boolean = false) extends Cine
   private case class Film(slug: String, title: String, runtime: Option[Int], director: Seq[String], poster: Option[String])
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
   // the per-film detail-page URL, but without synopsis or trailerUrl) and the

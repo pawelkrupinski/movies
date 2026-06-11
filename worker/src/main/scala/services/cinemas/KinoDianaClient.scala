@@ -31,6 +31,7 @@ class KinoDianaClient(http: HttpFetch, override val cinema: Cinema = KinoDiana)
   import KinoDianaClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] =
     parseFeed(Try(http.get(FeedUrl)).getOrElse(""))

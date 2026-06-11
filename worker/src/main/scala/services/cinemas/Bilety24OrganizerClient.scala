@@ -32,6 +32,7 @@ class Bilety24OrganizerClient(http: HttpFetch, organizerUrl: String, override va
     extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(organizerUrl)
+  override def sourceUrl: Option[String] = Some(organizerUrl)
 
   def fetch(): Seq[CinemaMovie] =
     Bilety24OrganizerClient.parse(http.get(organizerUrl), cinema)

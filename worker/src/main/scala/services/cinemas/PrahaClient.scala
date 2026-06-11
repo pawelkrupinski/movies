@@ -36,6 +36,7 @@ class PrahaClient(http: HttpFetch,
     extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PrahaClient.BaseUrl)
+  override def sourceUrl: Option[String] = Some(PrahaClient.BaseUrl)
 
   def fetch(): Seq[CinemaMovie] =
     PrahaClient.parse(http.get(PrahaClient.RepertoireUrl), cinema)

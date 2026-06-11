@@ -38,6 +38,7 @@ class KinoZaRogiemCafeClient(
   import KinoZaRogiemCafeClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(RepertoireUrl)

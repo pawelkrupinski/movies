@@ -68,6 +68,17 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
     sourceUrls("Helios Posnania") shouldBe "https://helios.pl/poznan/kino-helios"
   }
 
+  it should "link a bespoke own-site venue to its own site URL constant" in {
+    // KinoPodBaranamiClient fetches from its `BaseUrl`.
+    sourceUrls("Kino Pod Baranami") shouldBe "https://kinopodbaranami.pl"
+  }
+
+  it should "link a Bilety24-platform venue to its bilety24 base URL" in {
+    // Kino Luna is wired `new Bilety24Client(http, "https://kinoluna.bilety24.pl", …)`,
+    // and the client surfaces that base URL as its public page.
+    sourceUrls("Kino Luna") shouldBe "https://kinoluna.bilety24.pl"
+  }
+
   it should "omit a venue whose scraper has no stable public page (Multikino is slug-only)" in {
     // MultikinoClient stores only the 4-digit id, which maps to no public URL.
     sourceUrls.get("Multikino Stary Browar") shouldBe None

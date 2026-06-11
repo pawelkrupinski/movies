@@ -41,6 +41,7 @@ class BiletynaClient(http: HttpFetch, pageUrl: String, override val cinema: Cine
     extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(pageUrl)
+  override def sourceUrl: Option[String] = Some(pageUrl)
 
   def fetch(): Seq[CinemaMovie] = BiletynaClient.parse(http.get(pageUrl), cinema)
 }

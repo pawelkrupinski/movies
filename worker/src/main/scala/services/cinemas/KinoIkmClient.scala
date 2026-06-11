@@ -40,6 +40,7 @@ class KinoIkmClient(
 ) extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoIkmClient.PageUrl)
+  override def sourceUrl: Option[String] = Some(KinoIkmClient.PageUrl)
 
   def fetch(): Seq[CinemaMovie] = parseHtml(http.get(KinoIkmClient.PageUrl))
 

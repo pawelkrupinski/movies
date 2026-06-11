@@ -48,6 +48,8 @@ class KinoZamekClient(
   import KinoZamekClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ListingBaseUrl, MsiBaseUrl)
+  // The castle's own kino listing page — films only, unlike the MSI portal.
+  override def sourceUrl: Option[String] = Some(ListingUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val filmSlugs = fetchFilmSlugs()

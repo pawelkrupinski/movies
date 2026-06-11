@@ -37,6 +37,7 @@ class GdynskieCentrumFilmoweClient(http: HttpFetch, override val cinema: Cinema)
   import GdynskieCentrumFilmoweClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceUrl: Option[String] = Some(BaseUrl)
 
   // gcf.org.pl's WordPress origin flaps: ~10–25% of requests come back HTTP 500,
   // independent of our request shape (headers, UA, IP — confirmed by an A/B probe

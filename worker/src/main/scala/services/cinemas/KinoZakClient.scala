@@ -37,6 +37,7 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
   import KinoZakClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ListingUrl)
+  override def sourceUrl: Option[String] = Some(ListingUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val cards = parseListing(http.get(ListingUrl))
