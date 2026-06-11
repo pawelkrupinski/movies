@@ -18,6 +18,10 @@ object CinemaClientMarkers {
   val SharedKind   = "shared"
   val CustomKind   = "custom"
   val FallbackKind = "fallback"
+  /** Tag carrying the venue's public source page (`url:<https…>`); the /uptime
+   *  page turns the cinema name into a link to it. Not a chip — the page reads
+   *  it for the `href` and skips it in the chip row. */
+  val UrlKind      = "url"
 
   /** Tag flagging a cinema currently served via the Filmweb fallback (its own
    *  scraper is down). Rendered as an "FtFW" (fell-to-Filmweb) chip on /uptime.
@@ -26,12 +30,15 @@ object CinemaClientMarkers {
    *  a bare `"fallback:FtFW"`. */
   val FilmwebFallbackTag = s"$FallbackKind:FtFW"
 
-  /** The full uptime-tag set for one cinema: its scraper-client marker (if any)
-   *  plus the FtFW tag while it's actively in Filmweb fallback. Kept here, beside
-   *  the marker format the two share, so both the boot reconcile and the per-event
-   *  retag in `WorkerWiring` compute the same set. */
-  def tagsFor(clientMarker: Option[String], inFallback: Boolean): Set[String] =
-    clientMarker.toSet ++ (if (inFallback) Set(FilmwebFallbackTag) else Set.empty[String])
+  /** The full uptime-tag set for one cinema: its scraper-client marker (if any),
+   *  its public source-page link (if any), plus the FtFW tag while it's actively
+   *  in Filmweb fallback. Kept here, beside the marker format they share, so both
+   *  the boot reconcile and the per-event retag in `WorkerWiring` compute the
+   *  same set. */
+  def tagsFor(clientMarker: Option[String], sourceUrl: Option[String], inFallback: Boolean): Set[String] =
+    clientMarker.toSet ++
+      sourceUrl.map(u => s"$UrlKind:$u") ++
+      (if (inFallback) Set(FilmwebFallbackTag) else Set.empty[String])
 
   /** The raw scraper's client class as the marker label. For the multi-venue
    *  chains this is the per-venue adapter (`CinemaCityScraper`); for everything
@@ -54,4 +61,15 @@ object CinemaClientMarkers {
       }
     }
   }
+
+  /** `cinema displayName -> public source-page URL`, for the cinemas whose
+   *  scraper reports a `sourceUrl`. A cinema with more than one scraper keeps
+   *  the first's URL (catalog order), mirroring `markers`. Cinemas whose scraper
+   *  has no public page are simply absent — the page renders their name plain. */
+  def sourceUrls(scrapers: Seq[CinemaScraper]): Map[String, String] =
+    scrapers.foldLeft(Map.empty[String, String]) { (acc, s) =>
+      val name = s.cinema.displayName
+      if (acc.contains(name)) acc
+      else s.sourceUrl.fold(acc)(url => acc + (name -> url))
+    }
 }

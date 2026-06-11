@@ -41,6 +41,10 @@ class HeliosClient(
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl, ApiBase, BookingBase)
 
+  // `cfg.baseUrl` (`helios.pl/<citySlug>/<cinemaSlug>`) is the venue's public
+  // repertoire page — the same URL the NUXT scrape fetches `/repertuar` from.
+  override def sourceUrl: Option[String] = Some(cfg.baseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val rest     = fetchRestData()
     val enriched = enrichFromRest(HeliosNuxt.buildMovies(http.get(PageUrl), cfg), rest)

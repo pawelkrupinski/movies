@@ -124,6 +124,12 @@ class WorkerWiring {
   protected lazy val clientMarkers: Map[String, String] =
     CinemaClientMarkers.markers(cinemaScraperCatalog.all)
 
+  // The per-cinema public source-page URL ("url:<https…>"), derived once from
+  // the catalog alongside the client marker so the /uptime page can link each
+  // cinema name to the page we scrape. Rides the same tag channel.
+  protected lazy val sourceUrls: Map[String, String] =
+    CinemaClientMarkers.sourceUrls(cinemaScraperCatalog.all)
+
   // Fired on each ENTER / PROBE_FAILED / RECOVERED transition: alerts on the
   // page-worthy ones (FallbackAlert filters PROBE_FAILED out) when Telegram is
   // configured, and (re)writes the cinema's /uptime tags so the FtFW chip appears
@@ -132,7 +138,7 @@ class WorkerWiring {
   protected def filmwebFallbackOnEvent: (FilmwebFallbackState, FallbackEvent) => Unit =
     (state, event) => {
       FallbackAlert.messageFor(state, event).foreach(msg => fallbackTelegramNotifier.foreach(_.send(msg)))
-      uptimeMonitor.tagService(state.cinema, CinemaClientMarkers.tagsFor(clientMarkers.get(state.cinema), state.active))
+      uptimeMonitor.tagService(state.cinema, CinemaClientMarkers.tagsFor(clientMarkers.get(state.cinema), sourceUrls.get(state.cinema), state.active))
     }
 
   // Cinemas whose ONLY scraper is a FilmwebShowtimesClient — served by Filmweb by
@@ -383,7 +389,7 @@ class WorkerWiring {
     // worker-only, so the tags ride the UptimeMonitor tag channel.
     clientMarkers.foreach { case (cinema, marker) =>
       val inFallback = filmwebFallbackStore.get(cinema).exists(_.active)
-      uptimeMonitor.tagService(cinema, CinemaClientMarkers.tagsFor(Some(marker), inFallback))
+      uptimeMonitor.tagService(cinema, CinemaClientMarkers.tagsFor(Some(marker), sourceUrls.get(cinema), inFallback))
     }
     // The task worker runs whenever there's queue work: queue-driven scraping,
     // deferred detail, and/or queue-driven rating enrichment.
