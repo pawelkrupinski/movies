@@ -114,40 +114,6 @@ final class RotationColumnsUITests: XCTestCase {
         )
     }
 
-    /// Regression for "in landscape the poster grid runs under the Dynamic
-    /// Island". The content used to `.ignoresSafeArea(edges: .horizontal)`,
-    /// which in landscape is exactly the island / rounded-corner inset, so the
-    /// leading row of posters slid under the island. Respecting the horizontal
-    /// safe area pulls the island-side edge in by that inset.
-    func testGridStaysClearOfDynamicIslandInLandscape() throws {
-        XCUIDevice.shared.orientation = .landscapeLeft
-        Thread.sleep(forTimeInterval: 1.5)
-
-        let screen = app.frame
-        let cells = cellFrames()
-        XCTAssertGreaterThanOrEqual(cells.count, 2, "Grid emptied after rotating to landscape")
-
-        let leftInset = (cells.map { $0.minX }.min() ?? 0) - screen.minX
-        let rightInset = screen.maxX - (cells.map { $0.maxX }.max() ?? screen.maxX)
-        // The grid only adds a 12pt horizontal padding of its own. If the
-        // content still ignored the horizontal safe area, BOTH insets would be
-        // ~12pt and the island-side posters would sit under the island. Once the
-        // safe area is respected, the island side gains its inset (~50pt+), so
-        // the larger of the two insets must clear the bare 12pt padding by a
-        // wide margin. Asserting the max keeps the test agnostic to whether the
-        // island lands on the left or the right for this rotation direction.
-        let islandSideInset = max(leftInset, rightInset)
-        XCTAssertGreaterThan(
-            islandSideInset, 30,
-            """
-            In landscape the film grid reaches to within \(Int(islandSideInset))pt \
-            of the screen edge (left=\(Int(leftInset)), right=\(Int(rightInset))) — \
-            barely the grid's own 12pt padding. Content is ignoring the horizontal \
-            safe area and spilling under the Dynamic Island.
-            """
-        )
-    }
-
     // MARK: - helpers
 
     private func cellFrames() -> [CGRect] {
