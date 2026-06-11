@@ -175,15 +175,20 @@ object TitleNormalizer {
       //                             sentence-cased duplicate. (All-caps
       //                             Cyrillic also loses on this axis since
       //                             Cyrillic ALL CAPS scores no `isLower`.)
-      //   4. earliest input       — deterministic tiebreaker.
+      //   4. the canonical string itself — a CONTENT-deterministic final
+      //      tiebreaker. The previous `-i` (earliest input) depended on the
+      //      order the cinema spellings arrived in, so when two spellings tied
+      //      on the axes above the displayed title flipped between scrape orders
+      //      — the whole-corpus snapshot flake. Keying off the string makes the
+      //      pick a pure function of the candidate set, independent of order.
       val canonicals = seq.map(canonical).distinct
       if (canonicals.size == 1) canonicals.headOption
-      else canonicals.zipWithIndex.maxByOption { case (c, i) =>
+      else canonicals.maxByOption { c =>
         val punct      = c.count(ch => !ch.isLetterOrDigit && !ch.isWhitespace)
         val latinScore = if (isLatinDominant(c)) 1 else 0
         val mixedCase  = if (c.exists(_.isUpper) && c.exists(_.isLower)) 1 else 0
-        (punct, latinScore, mixedCase, -i)
-      }.map(_._1)
+        (punct, latinScore, mixedCase, c)
+      }
     }
   }
 
