@@ -216,6 +216,29 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     preferredDisplay(Seq("Top Gun: Maverick", "Top Gun Maverick")) shouldBe Some("Top Gun: Maverick")
   }
 
+  it should "prefer the diacritic spelling over a scraper-flattened ASCII one" in {
+    // The old lexicographic tiebreak picked "Diabel" ('l' < 'ł'); the diacritic
+    // axis must keep the proper Polish letter.
+    preferredDisplay(Seq("Diabel", "Diabeł")) shouldBe Some("Diabeł")
+    preferredDisplay(Seq("Diabeł", "Diabel")) shouldBe Some("Diabeł")
+  }
+
+  it should "treat trailing junk as junk, not as richer punctuation" in {
+    // A stray trailing "." must not outrank the clean form via the punctuation
+    // axis — interior punctuation is what that axis rewards.
+    preferredDisplay(Seq("Werdykt.", "Werdykt")) shouldBe Some("Werdykt")
+  }
+
+  "wellFormedTitle" should "reject ALL-CAPS, double-space, and edge-junk titles" in {
+    import TitleNormalizer.wellFormedTitle
+    wellFormedTitle("Drzewo magii")             shouldBe true
+    wellFormedTitle("Diabeł ubiera się u Prady 2") shouldBe true
+    wellFormedTitle("ALL YOU NEED IS KILL")     shouldBe false  // all-caps
+    wellFormedTitle("Super Mario  Galaxy Film") shouldBe false  // double space
+    wellFormedTitle("Zaproszenie.")             shouldBe false  // trailing junk
+    wellFormedTitle("„Arco”")                   shouldBe false  // wrapping quotes
+  }
+
   // ── searchTitle vs apiQuery ───────────────────────────────────────────────
   //
   // searchTitle backs the cache key — it MUST keep accessibility-programme

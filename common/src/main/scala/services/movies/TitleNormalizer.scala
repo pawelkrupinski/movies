@@ -163,28 +163,56 @@ object TitleNormalizer {
     else {
       // After canonical (decoration stripping, & → i, Gwiezdne Wojny: removed),
       // a merged group typically reduces to a single canonical form — return
-      // it. If canonicals still differ, score each by:
-      //   1. richest punctuation — "Top Gun: Maverick" over "Top Gun Maverick"
-      //   2. Latin script         — Polish "Diabeł ubiera się u Prady 2" over
-      //                             Cyrillic "ДИЯВОЛ НОСИТЬ ПРАДА 2" when the
-      //                             same record collected both during a
-      //                             cross-script merge that pre-dated the
-      //                             cross-script-block rule.
-      //   3. mixed case           — proper "Top Gun: Maverick" beats all-caps
-      //                             "TOP GUN: MAVERICK" and a Rialto-style
-      //                             sentence-cased duplicate. (All-caps
-      //                             Cyrillic also loses on this axis since
-      //                             Cyrillic ALL CAPS scores no `isLower`.)
-      //   4. earliest input       — deterministic tiebreaker.
+      // it. If canonicals still differ, pick via `displayLadderKey` — a total,
+      // CONTENT-deterministic ordering (no input-index), so the displayed title
+      // never depends on the order the cinema spellings arrived in (the
+      // whole-corpus snapshot flake). Cross-script identity is already settled
+      // by the caller (`MovieRecord.displayTitle` picks the dominant `sanitize`
+      // key before calling here), so this ladder only ranks same-identity
+      // spellings of one film.
       val canonicals = seq.map(canonical).distinct
       if (canonicals.size == 1) canonicals.headOption
-      else canonicals.zipWithIndex.maxByOption { case (c, i) =>
-        val punct      = c.count(ch => !ch.isLetterOrDigit && !ch.isWhitespace)
-        val latinScore = if (isLatinDominant(c)) 1 else 0
-        val mixedCase  = if (c.exists(_.isUpper) && c.exists(_.isLower)) 1 else 0
-        (punct, latinScore, mixedCase, -i)
-      }.map(_._1)
+      else canonicals.sortBy(displayLadderKey).headOption
     }
+  }
+
+  // Deterministic preference ladder for same-identity title spellings. Pure
+  // function of the string — the pick never depends on scrape/merge order.
+  // Axes, best-first (the `-` makes "more is better" sort first under ascending
+  // `sortBy`):
+  //   1. richer punctuation — "Top Gun: Maverick" over "Top Gun Maverick"
+  //   2. diacritics present — "Diabeł" over a scraper-flattened "Diabel"
+  //   3. mixed case, not ALL-CAPS — "Top Gun" over "TOP GUN"
+  //   4. least leading/trailing junk — "Werdykt" over "Werdykt." / "„Arco”"
+  //   5. shorter — demoted below the quality axes so it can't strip the colon
+  //   6. the string itself — total, order-independent final fallback
+  private def displayLadderKey(c: String): (Int, Int, Int, Int, Int, String) = {
+    // Strip leading/trailing non-alphanumerics so a stray trailing "." or
+    // wrapping „quotes" count as junk (axis 4), NOT as richer interior
+    // punctuation (axis 1) — otherwise "Werdykt." would outrank "Werdykt".
+    val trimmed   = c.dropWhile(!_.isLetterOrDigit)
+                     .reverse.dropWhile(!_.isLetterOrDigit).reverse
+    val punct     = trimmed.count(ch => !ch.isLetterOrDigit && !ch.isWhitespace)
+    val diacritic = if (c.exists(ch => ch.isLetter && ch.toInt > 127)) 1 else 0
+    val mixedCase = if (c.exists(_.isUpper) && c.exists(_.isLower)) 1 else 0
+    val junk      = c.length - trimmed.length
+    (-punct, -diacritic, -mixedCase, junk, c.length, c)
+  }
+
+  /** Whether a title is clean enough to display verbatim. Used to gate the
+   *  TMDB-Polish-title preference in `MovieRecord.displayTitle`: TMDB's
+   *  crowd-sourced titles are usually the canonical form, but a minority are
+   *  malformed — ALL-CAPS ("ALL YOU NEED IS KILL"), double-spaced ("Super
+   *  Mario  Galaxy Film"), or carrying edge junk ("Zaproszenie."). When TMDB's
+   *  title fails this check we fall back to the cinema spelling ladder, which
+   *  has the well-formed form the cinemas advertise. */
+  def wellFormedTitle(t: String): Boolean = {
+    val letters       = t.filter(_.isLetter)
+    val notAllCaps    = letters.isEmpty || letters.exists(_.isLower)
+    val noDoubleSpace = !t.contains("  ")
+    val noEdgeJunk    = t.headOption.exists(_.isLetterOrDigit) &&
+                        t.lastOption.exists(_.isLetterOrDigit)
+    notAllCaps && noDoubleSpace && noEdgeJunk
   }
 
   /** True when most of `s`'s letters are in the Latin Unicode script.
