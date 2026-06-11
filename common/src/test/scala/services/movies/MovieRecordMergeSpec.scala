@@ -101,4 +101,42 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
 
     merged.cinemaData(Multikino).showtimes.size shouldBe 3
   }
+
+  // ── Order-dependent phantom screening (the "screenings error") ────────────
+  //
+  // Kino Nowe Horyzonty surfaces the SAME physical screening (Werdykt,
+  // 2026-06-11 12:00) under two `op.s?id=` film pages, so the two showtimes
+  // carry the SAME dateTime but DIFFERENT bookingUrls (per-event ticket
+  // links). The plain `.distinct` keyed on the whole Showtime treated them as
+  // two distinct sessions, so the union kept both — a phantom duplicate whose
+  // surviving order (and thus which booking link rendered first) flipped with
+  // scrape/merge order. A screening is identified by (dateTime, room, format);
+  // bookingUrl is a per-source link, not part of its identity.
+  private def withBooking(d: String, booking: String): Showtime =
+    Showtime(LocalDateTime.parse(d), bookingUrl = Some(booking))
+
+  it should "collapse a screening reported twice with different bookingUrls into one (order-independent)" in {
+    val early = at("2026-06-11T10:00")
+    // Same dateTime, two different per-event booking links.
+    val dupA  = withBooking("2026-06-11T12:00", "https://nh/bilet.s?eventId=194388")
+    val dupB  = withBooking("2026-06-11T12:00", "https://nh/bilet.s?eventId=193538")
+
+    def merge(first: Showtime, second: Showtime): Seq[Showtime] = {
+      val a = canonical.copy(data = canonical.data + ((Multikino: Source) -> slot("a.jpg", showtimes = Seq(early, first))))
+      val b = victim.copy(data    = victim.data    + ((Multikino: Source) -> slot("b.jpg", showtimes = Seq(second))))
+      MovieRecordMerge.union(a, b).cinemaData(Multikino).showtimes
+    }
+
+    val forward = merge(dupA, dupB)
+    val reverse = merge(dupB, dupA)
+
+    // The phantom duplicate is gone: one 10:00 + one 12:00.
+    forward.map(_.dateTime) shouldBe Seq(
+      LocalDateTime.parse("2026-06-11T10:00"),
+      LocalDateTime.parse("2026-06-11T12:00")
+    )
+    // And the result — including which bookingUrl survives — is identical
+    // regardless of merge order.
+    forward shouldBe reverse
+  }
 }
