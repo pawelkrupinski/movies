@@ -126,9 +126,16 @@ class WorkerWiring {
 
   // The per-cinema public source-page URL ("url:<https…>"), derived once from
   // the catalog alongside the client marker so the /uptime page can link each
-  // cinema name to the page we scrape. Rides the same tag channel.
-  protected lazy val sourceUrls: Map[String, String] =
-    CinemaClientMarkers.sourceUrls(cinemaScraperCatalog.all)
+  // cinema name to the page we scrape. Rides the same tag channel. Filmweb-backed
+  // venues are upgraded from their `/cinema/-<id>` fallback to the canonical,
+  // browser-renderable `/showtimes/<City>/<Name>-<id>` page, resolved once from
+  // Filmweb's /info at boot (city + name aren't in our model); tolerant, so a
+  // venue whose resolve fails keeps the fallback.
+  protected lazy val sourceUrls: Map[String, String] = {
+    val base           = CinemaClientMarkers.sourceUrls(cinemaScraperCatalog.all)
+    val filmwebClients = cinemaScraperCatalog.all.collect { case f: FilmwebShowtimesClient => f }
+    base ++ FilmwebShowtimesClient.resolveAll(filmwebClients)
+  }
 
   // Fired on each ENTER / PROBE_FAILED / RECOVERED transition: alerts on the
   // page-worthy ones (FallbackAlert filters PROBE_FAILED out) when Telegram is

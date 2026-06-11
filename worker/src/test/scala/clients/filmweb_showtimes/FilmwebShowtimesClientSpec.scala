@@ -1,7 +1,7 @@
 package clients.filmweb_showtimes
 
 import clients.tools.FakeHttpFetch
-import models.Multikino
+import models.{KinoTatry, Multikino}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -62,5 +62,36 @@ class FilmwebShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     val thirteen = spaceJam.showtimes.find(_.dateTime == LocalDateTime.of(2026, 6, 7, 13, 0)).value
     thirteen.format should contain("DUB")
     thirteen.bookingUrl.value should startWith("https://www.multikino.pl/rezerwacja-biletow/")
+  }
+
+  // ── /uptime source link ──────────────────────────────────────────────────
+  // The cinema name on /uptime links to Filmweb's canonical, browser-renderable
+  // showtimes page. Only the numeric id is in our model, so the city + name are
+  // resolved from `/cinema/<id>/info` at boot and slugged the way Filmweb does.
+
+  "canonicalSourceUrl" should "build Filmweb's exact canonical URL (encoded city/name + id)" in {
+    // Matches the live page byte-for-byte (ń→%C5%84, space→+).
+    FilmwebShowtimesClient.canonicalSourceUrl("Gdyńskie Centrum Filmowe", "Gdynia", 1904) shouldBe
+      "https://www.filmweb.pl/showtimes/Gdynia/Gdy%C5%84skie+Centrum+Filmowe-1904"
+  }
+
+  "resolveSourceUrl" should "resolve the canonical link from the venue's /info endpoint" in {
+    // Replays the recorded /api/v1/cinema/633/info ({name:"Multikino Stary Browar", city:"Poznań"}).
+    client.resolveSourceUrl().value shouldBe
+      "https://www.filmweb.pl/showtimes/Pozna%C5%84/Multikino+Stary+Browar-633"
+  }
+
+  it should "yield None (keeping the /cinema/-<id> fallback) when /info fails" in {
+    // cinemaId 4242 has no recorded /info fixture → the fetch throws → tolerant None.
+    val noInfo = new FilmwebShowtimesClient(http, 4242, KinoTatry, daysAhead = 0, today = captureDate)
+    noInfo.resolveSourceUrl() shouldBe None
+  }
+
+  "resolveAll" should "map each resolvable venue to its canonical link, dropping failures" in {
+    val ok   = new FilmwebShowtimesClient(http, 633, Multikino, daysAhead = 0, today = captureDate)
+    val fail = new FilmwebShowtimesClient(http, 4242, KinoTatry, daysAhead = 0, today = captureDate)
+    val urls = FilmwebShowtimesClient.resolveAll(Seq(ok, fail))
+    urls("Multikino Stary Browar") shouldBe "https://www.filmweb.pl/showtimes/Pozna%C5%84/Multikino+Stary+Browar-633"
+    urls.keySet should not contain "Kino Tatry"
   }
 }

@@ -2,10 +2,13 @@ package services.cinemas
 
 import models._
 import play.api.libs.json._
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{DaemonExecutors, HttpFetch, ParallelDetailFetch}
 
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.time.{LocalDate, ZoneId}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.util.Try
 
 /**
@@ -53,13 +56,29 @@ class FilmwebShowtimesClient(
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ApiBase)
 
-  // `/cinema/-<id>` 301-redirects to the canonical, fully-rendered showtimes
-  // page (`/showtimes/<City>/<Name>-<id>`); the id is load-bearing and the slug
-  // cosmetic. The bare `/showtimes/-<id>` form returns the SPA shell (HTTP 200)
-  // but its client router never resolves the cinema, so it shows an empty page —
-  // route through `/cinema/-<id>` and let Filmweb redirect. Verified the API
-  // `cinemaId` equals this public-URL id for every venue this client serves.
+  // The browser-renderable public page is the canonical
+  // `/showtimes/<City>/<Name>-<id>`, resolved at boot from `/info` by
+  // `resolveSourceUrl` (city + name aren't in our model). This pure value is the
+  // no-network FALLBACK used only when that resolution fails: `/cinema/-<id>`
+  // 301-redirects *toward* the canonical. (The bare `/showtimes/-<id>` form
+  // returns the SPA shell with HTTP 200 but its router never resolves the
+  // cinema, and `/cinema/-<id>` itself first hops to a `/showtimes/_/-<id>`
+  // shell that a browser may not follow through — hence the canonical is
+  // preferred and this is a fallback.)
   override def sourceUrl: Option[String] = Some(s"https://www.filmweb.pl/cinema/-$cinemaId")
+
+  /** Resolve this venue's canonical /uptime link
+   *  (`/showtimes/<City>/<Name>-<id>`) from Filmweb's `/cinema/<id>/info`, which
+   *  carries the exact city + name Filmweb slugs into that URL. Tolerant: any
+   *  failure (network, missing fields) yields `None` and the caller keeps the
+   *  `/cinema/-<id>` [[sourceUrl]] fallback. */
+  def resolveSourceUrl(): Option[String] =
+    Try(Json.parse(http.get(cinemaInfoUrl(cinemaId)))).toOption.flatMap { js =>
+      for {
+        name <- (js \ "name").asOpt[String].map(_.trim).filter(_.nonEmpty)
+        city <- (js \ "city").asOpt[String].map(_.trim).filter(_.nonEmpty)
+      } yield canonicalSourceUrl(name, city, cinemaId)
+    }
 
   def fetch(): Seq[CinemaMovie] = {
     val dates = (0 to daysAhead).map(today.plusDays(_))
@@ -143,9 +162,39 @@ class FilmwebShowtimesClient(
     }
 }
 
-object FilmwebShowtimesClient {
+object FilmwebShowtimesClient extends play.api.Logging {
   private val ApiBase     = "https://www.filmweb.pl/api/v1"
   private val PosterBase  = "https://fwcdn.pl/ppo"
+
+  def cinemaInfoUrl(cinemaId: Int): String = s"$ApiBase/cinema/$cinemaId/info"
+
+  /** Filmweb's canonical public showtimes URL for a venue. The id is the stable
+   *  key; the city + name segments are slugged the way Filmweb itself does —
+   *  percent-encoded UTF-8 with spaces as `+`, which `URLEncoder.encode`
+   *  reproduces exactly (verified against the live redirect target across many
+   *  venues, incl. Polish-character cities and multi-word names). */
+  def canonicalSourceUrl(name: String, city: String, cinemaId: Int): String = {
+    def enc(s: String): String = URLEncoder.encode(s, StandardCharsets.UTF_8)
+    s"https://www.filmweb.pl/showtimes/${enc(city)}/${enc(name)}-$cinemaId"
+  }
+
+  /** Resolve the canonical /uptime link for every given Filmweb venue, in
+   *  parallel and tolerant — a venue whose `/info` fails is simply absent (the
+   *  caller keeps its `/cinema/-<id>` fallback). Bounded concurrency keeps us
+   *  well under Filmweb's soft limits; a 60s overall cap stops a slow/down
+   *  Filmweb from stalling worker boot (the unresolved venues fall back). */
+  def resolveAll(clients: Seq[FilmwebShowtimesClient], maxConcurrent: Int = 5): Map[String, String] = {
+    if (clients.isEmpty) return Map.empty
+    val ec = DaemonExecutors.boundedEC("filmweb-source-urls", maxConcurrent)
+    try {
+      val futures = clients.map(c => Future(c.cinema.displayName -> c.resolveSourceUrl())(using ec))
+      val pairs   = Try(Await.result(Future.sequence(futures)(using implicitly, ec), 60.seconds))
+        .getOrElse { logger.warn("filmweb source-url resolve timed out; using fallbacks"); Seq.empty }
+      val resolved = pairs.collect { case (name, Some(url)) => name -> url }.toMap
+      logger.debug(s"filmweb source URLs: resolved ${resolved.size}/${clients.size} canonical links")
+      resolved
+    } finally ec.shutdown()
+  }
   private val HourPat     = """^(\d{1,2})\.(\d{2})$""".r
   private val DateParam   = """[?&]date=(\d{4}-\d{2}-\d{2})""".r
 

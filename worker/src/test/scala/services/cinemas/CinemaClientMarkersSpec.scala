@@ -53,10 +53,10 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "source URLs" should "link a Filmweb-backed venue to its public showtimes page by id" in {
-    // Kino Tatry is wired `new FilmwebShowtimesClient(http, 2305, …)`; `/cinema/-<id>`
-    // 301s to the canonical rendered page (the bare `/showtimes/-<id>` SPA shell
-    // never resolves the cinema).
+  "source URLs" should "give a Filmweb-backed venue its /cinema/-<id> fallback link" in {
+    // The PURE catalog map carries the no-network `/cinema/-<id>` fallback; the
+    // worker upgrades it to the canonical `/showtimes/<City>/<Name>-<id>` at boot
+    // (FilmwebShowtimesClient.resolveAll, covered in FilmwebShowtimesClientSpec).
     sourceUrls("Kino Tatry") shouldBe "https://www.filmweb.pl/cinema/-2305"
   }
 
