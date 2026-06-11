@@ -114,6 +114,43 @@ final class RotationColumnsUITests: XCTestCase {
         )
     }
 
+    /// Regression for "in landscape the film *detail* screen runs under the
+    /// Dynamic Island". FilmDetailView used to `.ignoresSafeArea(edges:
+    /// .horizontal)`, which in landscape is the island / rounded-corner inset,
+    /// so the header poster (and synopsis / showtimes) slid under the island.
+    /// Respecting the horizontal safe area pulls the leading content edge in by
+    /// that inset. The main grid screen is intentionally left full-width — only
+    /// the detail screen avoids the island.
+    func testFilmDetailStaysClearOfDynamicIslandInLandscape() throws {
+        // Open a film's detail screen — tap the poster region (top of the card),
+        // not the centre, so the tap lands on the NavigationLink rather than the
+        // card's rating / showtime sub-links (mirrors PosterFullScreenUITests).
+        firstFilmCard().coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18)).tap()
+        let poster = app.buttons[A11y.FilmDetail.poster]
+        XCTAssertTrue(poster.waitForExistence(timeout: 10),
+                      "Film detail never opened after tapping a card")
+
+        XCUIDevice.shared.orientation = .landscapeLeft
+        Thread.sleep(forTimeInterval: 1.5)
+        XCTAssertTrue(poster.waitForExistence(timeout: 5),
+                      "Detail poster vanished after rotating to landscape")
+
+        let leadingInset = poster.frame.minX - app.frame.minX
+        // The detail content only adds 16pt of its own horizontal padding. If it
+        // still ignored the horizontal safe area, the header poster would sit
+        // ~16pt from the screen edge — under the Dynamic Island in landscape.
+        // Respecting the safe area adds the landscape inset (~44pt+), so the
+        // poster's leading edge must clear the bare 16pt padding by a wide margin.
+        XCTAssertGreaterThan(
+            leadingInset, 35,
+            """
+            In landscape the detail poster sits \(Int(leadingInset))pt from the \
+            screen edge — barely the content's own 16pt padding. The detail screen \
+            is ignoring the horizontal safe area and spilling under the Dynamic Island.
+            """
+        )
+    }
+
     // MARK: - helpers
 
     private func cellFrames() -> [CGRect] {

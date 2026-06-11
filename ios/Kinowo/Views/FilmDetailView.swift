@@ -33,7 +33,15 @@ struct FilmDetailView: View {
             .padding(.bottom, 24)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .ignoresSafeArea(edges: [.bottom, .horizontal])
+        // Ignore only the BOTTOM safe area (content scrolls under the home
+        // indicator) — NOT horizontal. In landscape the horizontal inset is the
+        // Dynamic Island / rounded-corner region; ignoring it ran the poster,
+        // synopsis and showtimes under the island. Respecting it keeps the
+        // detail content clear of the island while the background below still
+        // bleeds edge-to-edge, so the leftover margin stays dark. No-op in
+        // portrait (horizontal inset is 0). Guarded by
+        // RotationColumnsUITests.testFilmDetailStaysClearOfDynamicIslandInLandscape.
+        .ignoresSafeArea(edges: .bottom)
         .background(Color(red: 0.067, green: 0.067, blue: 0.067).ignoresSafeArea())
         .fullScreenCover(isPresented: $showFullScreenPoster) {
             if let primary = film.posterURL {
