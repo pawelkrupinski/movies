@@ -195,11 +195,13 @@ jobs:
                   nohup sbt "web/PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
                   echo "SERVER_PID=$!" >> "$GITHUB_ENV"
 
-                  # 300s ceiling: a cold sbt-target cache recompiles every
-                  # module (~120s) before bootStartup, which itself grew with
-                  # the corpus (Kraków + Trójmiasto cinemas, several missing
-                  # fixtures → retry-with-backoff). 120s was timing out.
-                  for _ in $(seq 1 150); do
+                  # 600s ceiling: on a cold sbt-target cache the row recompiles
+                  # every module (now incl. the read-model sources + projection)
+                  # before bootStartup, and a cold full compile was racing the
+                  # old 300s boundary (the same job passed when it won the race,
+                  # timed out when it lost). A healthy boot still writes the port
+                  # in seconds and breaks early.
+                  for _ in $(seq 1 300); do
                       if [ -s "$PORT_FILE" ]; then break; fi
                       sleep 2
                   done
@@ -295,11 +297,13 @@ jobs:
                   nohup sbt "web/PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
                   echo "SERVER_PID=$!" >> "$GITHUB_ENV"
 
-                  # 300s ceiling: a cold sbt-target cache recompiles every
-                  # module (~120s) before bootStartup, which itself grew with
-                  # the corpus (Kraków + Trójmiasto cinemas, several missing
-                  # fixtures → retry-with-backoff). 120s was timing out.
-                  for _ in $(seq 1 150); do
+                  # 600s ceiling: on a cold sbt-target cache the row recompiles
+                  # every module (now incl. the read-model sources + projection)
+                  # before bootStartup, and a cold full compile was racing the
+                  # old 300s boundary (the same job passed when it won the race,
+                  # timed out when it lost). A healthy boot still writes the port
+                  # in seconds and breaks early.
+                  for _ in $(seq 1 300); do
                       if [ -s "$PORT_FILE" ]; then break; fi
                       sleep 2
                   done

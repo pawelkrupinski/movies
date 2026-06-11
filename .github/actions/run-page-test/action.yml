@@ -102,18 +102,17 @@ runs:
         rm -f /tmp/kinowo-port.txt
         sbt 'web/PageTest/runMain tools.FixtureServerMain /tmp/kinowo-port.txt' > /tmp/sbt-fixture.log 2>&1 &
         echo "FIXTURE_PID=$!" >> $GITHUB_ENV
-        # 300s ceiling: on a cold sbt-target cache the row recompiles every
-        # module (~120s) before bootStartup even begins, and bootStartup grew
-        # with the corpus (Kraków + Trójmiasto cinemas, several still missing
-        # fixtures → 3x retry-with-backoff each). 120s timed out before the
-        # server could bind. A healthy boot still writes the port in seconds
-        # and breaks early.
-        for _ in $(seq 1 150); do
+        # 600s ceiling: on a cold sbt-target cache the row recompiles every
+        # module (now incl. the read-model sources + projection) before
+        # bootStartup even begins. A cold full compile was racing the old 300s
+        # boundary; 600s gives ample headroom. A healthy boot still writes the
+        # port in seconds and breaks early.
+        for _ in $(seq 1 300); do
             [ -f /tmp/kinowo-port.txt ] && break
             sleep 2
         done
         if [ ! -f /tmp/kinowo-port.txt ]; then
-            echo "FixtureServerMain didn't write port within 300s; sbt log:"
+            echo "FixtureServerMain didn't write port within 600s; sbt log:"
             cat /tmp/sbt-fixture.log
             exit 1
         fi
