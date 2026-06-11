@@ -1,0 +1,102 @@
+package services.readmodel
+
+import models._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import services.movies.{StoredMovieRecord, TitleNormalizer}
+
+import java.time.LocalDateTime
+
+class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
+
+  private def at(d: String): Showtime = Showtime(LocalDateTime.parse(d), bookingUrl = Some("https://book"))
+
+  // Multikino (Poznań) + Helios Magnolia (Wrocław) both screen the film; TMDB
+  // contributes synopsis/genres/original title. Two cities, two cinemas.
+  private val record = MovieRecord(
+    imdbId        = Some("tt0111161"),
+    imdbRating    = Some(9.3),
+    metascore     = Some(82),
+    rottenTomatoes = Some(91),
+    filmwebRating = Some(8.9),
+    tmdbId        = Some(278),
+    data = Map[Source, SourceData](
+      Multikino -> SourceData(
+        title = Some("Skazani na Shawshank"), releaseYear = Some(1994),
+        posterUrl = Some("https://mk/poster.jpg"), filmUrl = Some("https://mk/film"),
+        showtimes = Seq(at("2026-06-12T20:00"), at("2026-06-12T17:30"))
+      ),
+      HeliosMagnolia -> SourceData(
+        title = Some("Skazani na Shawshank"), releaseYear = Some(1994),
+        posterUrl = Some("https://he/poster.jpg"), filmUrl = Some("https://he/film"),
+        showtimes = Seq(at("2026-06-13T19:00"))
+      ),
+      Tmdb -> SourceData(
+        originalTitle = Some("The Shawshank Redemption"),
+        synopsis = Some("Chronicle of life in a state penitentiary."),
+        genres = Seq("Dramat")
+      )
+    )
+  )
+
+  private val id     = s"${TitleNormalizer.sanitize("Skazani na Shawshank")}|1994"
+  private val stored = StoredMovieRecord.fromStorage(id, record)
+
+  private val (movie, screenings) = ReadModelProjection.project(stored)
+
+  "resolve" should "materialise merged metadata and carry no source data" in {
+    movie._id shouldBe s"${TitleNormalizer.sanitize("Skazani na Shawshank")}|1994"
+    movie.title shouldBe "Skazani na Shawshank"
+    movie.originalTitle shouldBe Some("The Shawshank Redemption")
+    movie.synopsis shouldBe Some("Chronicle of life in a state penitentiary.")
+    movie.genres shouldBe Seq("Dramat")
+    movie.releaseYear shouldBe Some(1994)
+    movie.posterUrl shouldBe Some("https://mk/poster.jpg")
+    movie.fallbackPosterUrls should contain("https://he/poster.jpg")
+    // No field on ResolvedMovie exposes the per-source `data` map — it's a flat
+    // projection by construction (compile-time guarantee; asserted on the
+    // resolved values above).
+  }
+
+  it should "resolve every rating with its click-through URL" in {
+    movie.ratings.imdb shouldBe Some(9.3)
+    movie.ratings.imdbUrl shouldBe Some("https://www.imdb.com/title/tt0111161/")
+    movie.ratings.metascore shouldBe Some(82)
+    movie.ratings.rottenTomatoes shouldBe Some(91)
+    movie.ratings.filmweb shouldBe Some(8.9)
+    movie.ratings.metacriticUrl should not be empty
+    movie.ratings.rottenTomatoesUrl should not be empty
+    movie.ratings.filmwebUrl should not be empty
+  }
+
+  "screenings" should "emit one doc per (city, cinema) keyed and indexed by city" in {
+    screenings should have size 2
+    val byCinema = screenings.map(s => s.cinema -> s).toMap
+
+    val mk = byCinema("Multikino Stary Browar")
+    mk.city shouldBe "poznan"
+    mk.filmId shouldBe movie._id
+    mk._id shouldBe s"${movie._id}|poznan|Multikino Stary Browar"
+    mk.filmUrl shouldBe Some("https://mk/film")
+    // All showtimes carried, sorted canonically (the doc is a function of the
+    // set, not scrape order).
+    mk.showtimes.map(_.dateTime) shouldBe Seq(
+      LocalDateTime.parse("2026-06-12T17:30"),
+      LocalDateTime.parse("2026-06-12T20:00")
+    )
+
+    val he = byCinema("Helios Magnolia Park")
+    he.city shouldBe "wroclaw"
+    he.showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.parse("2026-06-13T19:00"))
+  }
+
+  it should "drop cinema slots with no showtimes" in {
+    val noShows = record.copy(data = record.data + (Rialto -> SourceData(showtimes = Seq.empty)))
+    val s = ReadModelProjection.screenings(StoredMovieRecord.fromStorage(id, noShows))
+    s.map(_.cinema) should not contain "Kino Rialto"
+  }
+
+  it should "be deterministic — the same row projects to identical docs" in {
+    ReadModelProjection.project(stored) shouldBe (movie, screenings)
+  }
+}
