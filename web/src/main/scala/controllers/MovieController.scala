@@ -177,6 +177,12 @@ class MovieControllerService(
           e.cinemaData.toSeq
             .filter { case (cinema, _) => cityCinemas.contains(cinema) }
             .flatMap { case (cinema, slot) => slot.filmUrl.map(cinema -> _) }
+            // Sort by display name: `cinemaData` is a small immutable Map
+            // (Map1–4 for ≤4 cinemas) whose iteration is INSERTION order, so the
+            // raw `.toSeq` order varies with scrape/merge order — the records
+            // still compare equal (Map equality ignores order) but the rendered
+            // booking-link list wouldn't. A total order makes it reproducible.
+            .sortBy { case (cinema, _) => cinema.displayName }
         Some((earliest, FilmSchedule(
           movie = Movie(e.displayTitle(cleanTitle), e.runtimeMinutes, e.releaseYear, countries = e.countries, genres = e.genres),
           posterUrl = e.posterUrl,
