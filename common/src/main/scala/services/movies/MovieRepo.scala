@@ -21,6 +21,25 @@ import scala.util.Try
  *  named fields instead of destructuring an anonymous 3-tuple. */
 case class StoredMovieRecord(title: String, year: Option[Int], record: MovieRecord)
 
+object StoredMovieRecord {
+  /** Rebuild a stored row from its persisted `_id` and `MovieRecord`, deriving
+   *  the display `title` and `year` rather than reading pinned columns — used by
+   *  the Mongo codec (`MovieCodecs.toDomain`), whose BSON drops the `title`/
+   *  `year` fields. The `_id` is `sanitize(title)|year`: `sanitize` never emits
+   *  `|`, so the suffix is the year and the prefix is the cache key's sanitized
+   *  form. Every spelling in a row sanitizes to that prefix (the `CacheKey`
+   *  identity), so `displayTitle(prefix)` sanitizes back to it — the rebuilt key
+   *  recomputes to the same `_id`, no re-keying churn. (The in-memory repo keeps
+   *  the full record in memory and returns its title verbatim, so it needs no
+   *  recovery step; for realistic rows the two agree.) */
+  def fromStorage(id: String, record: MovieRecord): StoredMovieRecord = {
+    val sep      = id.lastIndexOf('|')
+    val idPrefix = if (sep >= 0) id.substring(0, sep) else id
+    val year     = if (sep >= 0) id.substring(sep + 1).toIntOption else None
+    StoredMovieRecord(record.displayTitle(idPrefix), year, record)
+  }
+}
+
 /**
  * Persistent store for `(title, year) → MovieRecord` records.
  *
@@ -173,10 +192,13 @@ class MongoMovieRepo(
     case None => Seq.empty
   }
 
-  /** Filters by `title` + `year` fields rather than by `_id`, so legacy docs
-   *  whose `_id` was computed with a prior `docId` formula still get caught
-   *  — `deleteOne` by `_id` would silently match nothing and the orphan
-   *  would survive every startup's merge. */
+  /** Deletes by `_id` (the current `docId` formula) OR by the legacy `title` +
+   *  `year` fields. Current docs no longer persist `title`/`year` (the `_id`
+   *  encodes both — see `StoredMovieDto`), so they're caught by the `_id`
+   *  branch. The legacy field branch still catches OLD-format docs whose `_id`
+   *  used a prior `docId` formula but which carry the `title`/`year` columns —
+   *  `_id`-only would silently miss those orphans and they'd survive every
+   *  startup's merge. */
   def delete(title: String, year: Option[Int]): Unit = coll.foreach { c =>
     val yearFilter = year match {
       case Some(y) => Filters.eq("year", y)
@@ -184,7 +206,10 @@ class MongoMovieRepo(
       // missing field in legacy docs; cover both.
       case None    => Filters.or(Filters.eq("year", BsonNull()), Filters.exists("year", false))
     }
-    val filter = Filters.and(Filters.eq("title", title), yearFilter)
+    val filter = Filters.or(
+      Filters.eq("_id", docId(title, year)),
+      Filters.and(Filters.eq("title", title), yearFilter)
+    )
     Try {
       val result = Await.result(c.deleteMany(filter).toFuture(), 10.seconds)
       if (result.getDeletedCount > 1)
@@ -197,7 +222,7 @@ class MongoMovieRepo(
 
   def upsert(title: String, year: Option[Int], e: MovieRecord): Unit = coll.foreach { c =>
     val id   = docId(title, year)
-    val dto  = StoredMovieDto.fromDomain(id, title, year, e, Instant.now())
+    val dto  = StoredMovieDto.fromDomain(id, e, Instant.now())
     val opts = new ReplaceOptions().upsert(true)
     Try {
       Await.result(c.replaceOne(Filters.eq("_id", id), dto, opts).toFuture(), 10.seconds)
@@ -228,7 +253,7 @@ class MongoMovieRepo(
         // keeps the precise field-level diff that preserves out-of-band edits.
         val matched =
           if (patch.data.keysIterator.exists(_.displayName.contains('.'))) {
-            val dto = StoredMovieDto.fromDomain(id, title, year, after, Instant.now())
+            val dto = StoredMovieDto.fromDomain(id, after, Instant.now())
             Await.result(c.replaceOne(Filters.eq("_id", id), dto, new ReplaceOptions().upsert(false)).toFuture(), 10.seconds)
               .getMatchedCount
           } else {

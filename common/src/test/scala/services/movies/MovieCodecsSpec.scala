@@ -43,11 +43,14 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
       metacriticUrl     = Some("https://www.metacritic.com/movie/test"),
       rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/test")
     )
-    val dto = StoredMovieDto.fromDomain("test|1900", "Test", Some(1900), record, Instant.parse("2026-05-17T10:00:00Z"))
+    val dto = StoredMovieDto.fromDomain("test|1900", record, Instant.parse("2026-05-17T10:00:00Z"))
 
     val decoded = roundTrip(dto)
     val back = StoredMovieDto.toDomain(decoded)
-    back.title         shouldBe "Test"
+    // title/year are derived, not stored: year from the _id, title from
+    // sourceData (here there are no cinema slots, so it falls back to the
+    // _id's sanitized prefix).
+    back.title         shouldBe "test"
     back.year          shouldBe Some(1900)
     back.record        shouldBe record
     decoded.updatedAt  shouldBe dto.updatedAt
@@ -55,7 +58,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
 
   it should "round-trip an all-None MovieRecord (sparse row)" in {
     val record = MovieRecord(imdbId = Some("tt0000002"))
-    val dto = StoredMovieDto.fromDomain("sparse|", "Sparse", None, record, Instant.parse("2026-05-17T10:00:00Z"))
+    val dto = StoredMovieDto.fromDomain("sparse|", record, Instant.parse("2026-05-17T10:00:00Z"))
 
     val back = StoredMovieDto.toDomain(roundTrip(dto))
     back.year                      shouldBe None
@@ -90,7 +93,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
       imdbId = Some("tt0000003"),
       data   = Map[Source, SourceData](Tmdb -> tmdbSlot, Imdb -> imdbSlot, Helios -> cinemaSlot)
     )
-    val dto = StoredMovieDto.fromDomain("mixed|2025", "Mixed", Some(2025), record, Instant.now())
+    val dto = StoredMovieDto.fromDomain("mixed|2025", record, Instant.now())
 
     val back = StoredMovieDto.toDomain(roundTrip(dto))
     back.record.data.keySet           shouldBe Set(Tmdb, Imdb, Helios)
@@ -108,7 +111,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     )
     val slot = SourceData(showtimes = showtimes)
     val record = MovieRecord(data = Map[Source, SourceData](Multikino -> slot))
-    val dto = StoredMovieDto.fromDomain("st|2026", "Showtime Test", Some(2026), record, Instant.now())
+    val dto = StoredMovieDto.fromDomain("st|2026", record, Instant.now())
 
     val back = StoredMovieDto.toDomain(roundTrip(dto))
     val decodedShowtimes = back.record.data(Multikino).showtimes
@@ -126,7 +129,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     val raw = new BsonDocument()
     val outerCodec = codec
     val tmdbSlot = SourceData(originalTitle = Some("Known"))
-    val dto = StoredMovieDto.fromDomain("k|2025", "Known", Some(2025),
+    val dto = StoredMovieDto.fromDomain("k|2025",
       MovieRecord(data = Map[Source, SourceData](Tmdb -> tmdbSlot)), Instant.now())
     outerCodec.encode(new BsonDocumentWriter(raw), dto, EncoderContext.builder().build())
 
@@ -138,5 +141,54 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     val decoded = outerCodec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build())
     val back = StoredMovieDto.toDomain(decoded)
     back.record.data.keySet shouldBe Set(Tmdb)
+  }
+
+  // ── Derived title/year (no longer stored) ─────────────────────────────────
+
+  it should "derive the display title from sourceData (dominant cinema form), not a stored field" in {
+    val id = s"${TitleNormalizer.sanitize("Drzewo magii")}|2026"
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> SourceData(title = Some("Drzewo Magii")),  // over-capitalised
+      Helios    -> SourceData(title = Some("Drzewo magii")),
+      Tmdb      -> SourceData(title = Some("Drzewo magii"))   // canonical casing
+    ))
+    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain(id, record, Instant.now())))
+    back.title shouldBe "Drzewo magii"
+    back.year  shouldBe Some(2026)
+  }
+
+  it should "recover year=None from an _id with an empty year suffix" in {
+    val id = s"${TitleNormalizer.sanitize("Some Event")}|"
+    val record = MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Some Event"))))
+    StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain(id, record, Instant.now()))).year shouldBe None
+  }
+
+  it should "derive a title that sanitizes back to the _id prefix (no re-keying churn)" in {
+    // The derived title must recompute to the SAME docId, or a later upsert
+    // would orphan the row under a new _id.
+    val id = s"${TitleNormalizer.sanitize("Top Gun: Maverick")}|2022"
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> SourceData(title = Some("Top Gun: Maverick")),
+      Helios    -> SourceData(title = Some("TOP GUN MAVERICK"))
+    ))
+    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain(id, record, Instant.now())))
+    back.title                           shouldBe "Top Gun: Maverick"  // ladder picks punct+mixed-case
+    TitleNormalizer.sanitize(back.title) shouldBe id.split('|').head
+  }
+
+  it should "ignore stale top-level title/year columns on a legacy doc (back-compat decode)" in {
+    // Existing prod docs still carry the now-dropped `title`/`year` columns.
+    // The codec must decode them without error, and `toDomain` must derive from
+    // sourceData + the _id, NOT trust the stale (order-dependent) columns.
+    val id = s"${TitleNormalizer.sanitize("Wonka")}|2023"
+    val record = MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Wonka"))))
+    val raw = new BsonDocument()
+    codec.encode(new BsonDocumentWriter(raw), StoredMovieDto.fromDomain(id, record, Instant.now()), EncoderContext.builder().build())
+    raw.put("title", new org.bson.BsonString("STALE PINNED TITLE"))
+    raw.put("year",  new org.bson.BsonInt32(1999))
+
+    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()))
+    back.title shouldBe "Wonka"     // from sourceData, not the stale column
+    back.year  shouldBe Some(2023)  // from the _id, not the stale column
   }
 }

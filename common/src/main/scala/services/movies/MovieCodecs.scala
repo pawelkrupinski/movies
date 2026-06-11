@@ -21,8 +21,6 @@ import java.time.{Instant, LocalDateTime, ZoneOffset}
  */
 case class StoredMovieDto(
   _id:               String,
-  title:             String,
-  year:              Option[Int],
   imdbId:            Option[String],
   imdbRating:        Option[Double],
   metascore:         Option[Int],
@@ -37,11 +35,15 @@ case class StoredMovieDto(
 )
 
 object StoredMovieDto {
-  def fromDomain(id: String, title: String, year: Option[Int], r: MovieRecord, updatedAt: Instant): StoredMovieDto =
+  // `title`/`year` are no longer persisted: the `_id` is `sanitize(title)|year`,
+  // so the year is recoverable from it, and the display title is derived from
+  // `sourceData` on read. Storing them was a second, order-dependent source of
+  // truth (the title was pinned to whichever scrape wrote the row first); see
+  // `toDomain`. The `id` still encodes both — the caller computes it via
+  // `MovieRepo.docId(title, year)` — so the cache key is unchanged.
+  def fromDomain(id: String, r: MovieRecord, updatedAt: Instant): StoredMovieDto =
     StoredMovieDto(
       _id               = id,
-      title             = title,
-      year              = year,
       imdbId            = r.imdbId,
       imdbRating        = r.imdbRating,
       metascore         = r.metascore,
@@ -55,10 +57,8 @@ object StoredMovieDto {
       updatedAt         = updatedAt
     )
 
-  def toDomain(dto: StoredMovieDto): StoredMovieRecord = StoredMovieRecord(
-    title  = dto.title,
-    year   = dto.year,
-    record = MovieRecord(
+  def toDomain(dto: StoredMovieDto): StoredMovieRecord = {
+    val record = MovieRecord(
       imdbId            = dto.imdbId,
       imdbRating        = dto.imdbRating,
       metascore         = dto.metascore,
@@ -70,7 +70,10 @@ object StoredMovieDto {
       rottenTomatoesUrl = dto.rottenTomatoesUrl,
       data              = dto.sourceData.flatMap { case (k, sd) => Source.byDisplayName.get(k).map(_ -> sd) }
     )
-  )
+    // title + year are derived from the `_id` + `sourceData`, not stored — see
+    // `StoredMovieRecord.fromStorage` (shared with the in-memory repo).
+    StoredMovieRecord.fromStorage(dto._id, record)
+  }
 }
 
 /**
