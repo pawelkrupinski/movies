@@ -410,6 +410,7 @@ cinemaScrapes:
   Kino Lewart / Backrooms. Bez wyjścia / —
   Kino MOK Centrum / BACKROOMS. BEZ WYJŚCIA / —
   Kino Na Biegunach / Backrooms. Bez wyjśćia / —
+  Kino ODEON / Backrooms. Bez wyjścia / —
   Kino PCKul / Backrooms. Bez wyjścia / —
   Kino Pałacowe / Backrooms. Bez wyjścia / 2026
   Kino Pionier 1907 / BACKROOMS. BEZ WYJŚCIA / —
@@ -815,6 +816,7 @@ cinemaScrapes:
   Helios Płock / Chłopiec na krańcach świata / —
   Helios Tczew / Chłopiec na krańcach świata / —
   Kino CK Lublin / Chłopiec na krańcach świata / —
+  Kino Diana / Chłopiec na krańcach świata / —
   Kino Muranów / Chłopiec na krańcach świata / 2025
   Kino Nowe Horyzonty / Chłopiec na krańcach świata / 2025
   Kino Pałacowe / Chłopiec na krańcach świata / 2025
@@ -1550,6 +1552,7 @@ cinemaScrapes:
   Kino Centrum CSW Toruń / Drzewo magii / —
   Kino Charlie / Drzewo Magii / —
   Kino DK / Drzewo magii / —
+  Kino Diana / Drzewo magii / —
   Kino Echo / Drzewo magii / —
   Kino Hel / DRZEWO MAGII / —
   Kino Ignacy / Drzewo magii / —
@@ -1568,7 +1571,7 @@ cinemaScrapes:
   Kino NCKF EC1 / Drzewo magii / —
   Kino Na Biegunach / Drzewo magii / —
   Kino Nowe Horyzonty / Drzewo magii / 2026
-  Kino ODEON / Drzewo magii / 2026
+  Kino ODEON / Drzewo magii / —
   Kino Oskard / Drzewo magii / —
   Kino PCA / Drzewo magii / —
   Kino PCKul / Drzewo magii / —
@@ -1767,6 +1770,7 @@ cinemaScrapes:
   Kino Moskwa / DZIEŃ OBJAWIENIA / —
   Kino Na Biegunach / Dzień objawienia / —
   Kino Nowe Horyzonty / Dzień Objawienia / 2025
+  Kino ODEON / Dzień objawienia / —
   Kino Oskard / Dzień Objawienia / —
   Kino PCA / Dzień objawienia / —
   Kino Piast / Dzień objawienia / —
@@ -4456,7 +4460,7 @@ cinemaScrapes:
   Kino NCKF EC1 / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Na Biegunach / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Nowe Horyzonty / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
-  Kino ODEON / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
+  Kino ODEON / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Oskard / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino PCA / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino PDK / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -4837,7 +4841,7 @@ cinemaScrapes:
   Kino Kolory / Obsesja / —
   Kino Na Biegunach / Obsesja / —
   Kino Nowe Horyzonty / Obsesja / 2025
-  Kino ODEON / Obsesja / 2025
+  Kino ODEON / Obsesja / —
   Kino Sokół / OBSESJA / —
   Kino Wawel / Obsesja / —
   Kinomax / Obsesja / —
@@ -5211,6 +5215,7 @@ cinemaScrapes:
   Helios Riviera / Pasażer / 2026
   Helios Sosnowiec / Pasażer / —
   Helios Łódź / Pasażer / 2026
+  Kino Diana / Pasażer / —
   Kino Narie / Pasażer / —
 showings:
   2026-06-08  Cinema City Kinepolis         21:40 Sala 3 2D/NAP
@@ -6584,6 +6589,7 @@ cinemaScrapes:
   Helios Starachowice / Pucio / 2026
   KINOkawiarnia Stacja Falenica / Pucio / —
   Kino Bułgarska 19 / Pucio / 2026
+  Kino Diana / Pucio / —
   Kino Kika / PUCIO / —
   Kino Nowe Horyzonty / Pucio / 2026
   Kino Pałacowe / Pucio / 2026
@@ -7043,7 +7049,7 @@ cinemaScrapes:
   Janosik / Straszny film / —
   Jutrzenka / Straszny film / —
   Kino DK / Straszny film / —
-  Kino Diana / Straszny film / 2026
+  Kino Diana / Straszny film / —
   Kino GCK / Straszny film / —
   Kino Górnik / Straszny film / —
   Kino Hel / STRASZNY FILM / —
@@ -7055,7 +7061,7 @@ cinemaScrapes:
   Kino MOKiS / Straszny film / —
   Kino Na Biegunach / Straszny film / —
   Kino Narie / Straszny film / —
-  Kino ODEON / Straszny film / 2026
+  Kino ODEON / Straszny film / —
   Kino PCKul / Straszny film / —
   Kino Planeta / Straszny film / —
   Kino Przedwiośnie / Straszny film / 2026
@@ -7248,7 +7254,7 @@ cinemaScrapes:
   Helios Łódź / Super Mario Galaxy Film / 2026
   Helios Żory / Super Mario Galaxy Film / 2026
   Kino Na Biegunach / Super mario galaxy film / —
-  Kino ODEON / Super Mario Galaxy Film / 2026
+  Kino ODEON / Super mario galaxy film / —
   Kino Sokół / SUPER MARIO GALAXY FILM / —
   Max Kino / Super Mario Galaxy Film / 2026
 showings:
@@ -7570,7 +7576,7 @@ showings:
 
 === Tom i jerry: przygoda w muzeum ===
 displayTitle:      Tom i jerry: przygoda w muzeum
-cinemaTitles:      TOM I JERRY : PRZYGODA W MUZEUM | TOM I JERRY: PRZYGODA W MUZEUM | TOM I JERRY:PRZYGODA W MUZEUM | Tom i Jerry. Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum | Tom i jerry: przygoda w muzeum
+cinemaTitles:      TOM I JERRY : PRZYGODA W MUZEUM | TOM I JERRY: PRZYGODA W MUZEUM | TOM I JERRY:PRZYGODA W MUZEUM | Tom i Jerry. Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum | Tom i jerry. Przygoda w muzeum | Tom i jerry: przygoda w muzeum
 runtimeMinutes:    100
 releaseYear:       2026
 countries:         USA, Chiny
@@ -7699,7 +7705,7 @@ cinemaScrapes:
   Kino Na Biegunach / Tom i jerry: przygoda w muzeum / —
   Kino Nawojka / Tom i Jerry: Przygoda w muzeum / —
   Kino Nowe Horyzonty / Tom i Jerry: Przygoda w muzeum / 2025
-  Kino ODEON / Tom i Jerry: Przygoda w muzeum / 2025
+  Kino ODEON / Tom i jerry. Przygoda w muzeum / —
   Kino Oskard / Tom i Jerry: Przygoda w muzeum / —
   Kino Planeta / Tom i jerry: przygoda w muzeum / —
   Kino Promień / Tom i Jerry: Przygoda w muzeum / 2025
@@ -7859,6 +7865,7 @@ cinemaScrapes:
   Kino MOK Centrum / TOY STORY 5 / —
   Kino MOKiS / Toy Story 5 / —
   Kino Na Biegunach / Toy story 5 / —
+  Kino ODEON / Toy story 5 / —
   Kino Oskard / Toy Story 5 / —
   Kino Przedwiośnie / Toy Story 5 / 2026
   Kino Roma / Toy Story 5 / —
@@ -8452,7 +8459,7 @@ cinemaScrapes:
   Kino Centrum / Władcy wszechświata / —
   Kino MOK Centrum / WŁADCY WSZECHŚWIATA / —
   Kino Na Biegunach / Władcy wszechświata / —
-  Kino ODEON / Władcy Wszechświata / 2026
+  Kino ODEON / Władcy wszechświata / —
   Kino PCKul / Władcy wszechświata / —
   Kino Sokół / WŁADCY WSZECHŚWIATA / —
   Kino Zachęta / Władcy Wszechświata / 2026
@@ -8679,6 +8686,7 @@ cinemaScrapes:
   Kino Awangarda 2 / Zawodowcy / 2026
   Kino Bajka Kluczbork / ZAWODOWCY / —
   Kino Centrum / ZAWODOWCY / —
+  Kino Diana / Zawodowcy / —
   Kino Echo / ZAWODOWCY / —
   Kino Goplana / Zawodowcy / —
   Kino Głębocka 66 / Zawodowcy / —
@@ -8698,7 +8706,7 @@ cinemaScrapes:
   Kino Moskwa / ZAWODOWCY / —
   Kino Na Biegunach / Zawodowcy / —
   Kino Nowe Horyzonty / Zawodowcy / —
-  Kino ODEON / Zawodowcy / 2026
+  Kino ODEON / Zawodowcy / —
   Kino Oskard / ZAWODOWCY / —
   Kino PDK / Zawodowcy / —
   Kino Pałacowe / Zawodowcy / 2026
@@ -8927,6 +8935,7 @@ cinemaScrapes:
   Kino Agrafka / CZŁOWIEK Z MARMURU / —
   Kino Amok / Człowiek z marmuru / —
   Kino Apollo / Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) / —
+  Kino Diana / Człowiek z marmuru / —
   Kino Fenomen (WDK) / „Człowiek z marmuru” / —
   Kino Goplana / Człowiek z marmuru / —
   Kino Kika / CZŁOWIEK Z MARMURU / —
