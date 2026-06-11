@@ -35,6 +35,14 @@ import scala.util.{Try, Using}
  *        b. We also bundle the `home pl DV TLS G2 R35 CA` intermediate itself as
  *           a trust anchor, so the common case needs no network at all. If the
  *           upstream rotates it, (a) still recovers. Belt and braces.
+ *   3. A cluster of cinema-ticketing hosts on nazwa.pl (`bilety.ck105.koszalin.pl`
+ *      / Kryterium, `bilety.dkkozienice.pl`, `bilety.switzwolen.pl`,
+ *      `bilety.mok.com.pl` / Chemik+Twierdza) serve leaf+intermediate chaining to
+ *      `Certum EC-384 CA` — a DIFFERENT Certum root (the ECC one) than the RSA
+ *      `Certum Trusted Root CA` of case (1). The JDK omits this root too, so all
+ *      of them died with the same PKIX error. The chain is complete (the servers
+ *      send the `nazwaSSL DV TLS G2 E29 CA` sub-CA), so we only need the root as a
+ *      trust anchor — one cert recovers every nazwa.pl venue at once.
  *
  * The extra roots are ADDED to the defaults, never a replacement: well-behaved
  * APIs (TMDB, IMDb, Filmweb, …) keep validating against the standard store. The
@@ -50,12 +58,14 @@ object TlsTrust extends Logging {
   System.setProperty("com.sun.security.enableAIAcaIssuers", "true")
 
   /** Classpath-absolute paths of PEM certs to add as trust anchors on top of the
-   *  default store: the Certum root the JDK omits, plus the artmuseum.pl leaf's
-   *  issuing intermediate (see point 2b above) so its broken chain validates
-   *  without a per-handshake AIA network fetch. */
+   *  default store: the two Certum roots the JDK omits (RSA `Certum Trusted Root
+   *  CA` for case 1, ECC `Certum EC-384 CA` for case 3), plus the artmuseum.pl
+   *  leaf's issuing intermediate (see point 2b above) so its broken chain
+   *  validates without a per-handshake AIA network fetch. */
   val BundledRootResources: Seq[String] = Seq(
     "/certs/certum-trusted-root-ca.pem",
-    "/certs/home-pl-dv-tls-g2-r35-ca.pem"
+    "/certs/home-pl-dv-tls-g2-r35-ca.pem",
+    "/certs/certum-ec-384-ca.pem"
   )
 
   /** The bundled extra roots, parsed. Empty if a resource is missing (logged). */

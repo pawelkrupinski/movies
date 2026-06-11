@@ -18,6 +18,12 @@ class TlsTrustSpec extends AnyFlatSpec with Matchers {
   private val HomePlIntermediateSha256 =
     "CA1A6E0BC3B1C2ED099D42D7030577578D13F63B4B9680A6BAA274DF17C9DE58"
 
+  // Published SHA-256 of Certum EC-384 CA — the ECC Certum root the JDK also
+  // omits, that nazwa.pl's `nazwaSSL DV TLS G2 E29 CA` sub-CA chains to (Kryterium
+  // Koszalin, Kozienice, Świt Zwoleń, Chemik/Twierdza). Pins the exact root.
+  private val CertumEc384Sha256 =
+    "6B328085625318AA50D173C98D8BDA09D57E27413D114CF787A0F5D06C030CF6"
+
   private def sha256(bytes: Array[Byte]): String =
     MessageDigest.getInstance("SHA-256").digest(bytes).map("%02X".format(_)).mkString
 
@@ -41,6 +47,15 @@ class TlsTrustSpec extends AnyFlatSpec with Matchers {
     // bundled root, so leaf -> intermediate -> root is a complete OFFLINE path.
     // verify() throws on a bad signature; passing proves the chain link holds.
     noException should be thrownBy intermediate.verify(root.getPublicKey)
+  }
+
+  it should "bundle the Certum EC-384 CA root so the nazwa.pl ticketing hosts validate" in {
+    val c = bySubject("Certum EC-384 CA")
+      .getOrElse(fail("Certum EC-384 CA not bundled"))
+    sha256(c.getEncoded) shouldBe CertumEc384Sha256
+    // It's a self-signed root: it verifies under its own public key. Proves we
+    // bundled the genuine anchor, not an intermediate masquerading as one.
+    noException should be thrownBy c.verify(c.getPublicKey)
   }
 
   it should "expose a trust manager that accepts the Certum root AND keeps the JDK defaults" in {
