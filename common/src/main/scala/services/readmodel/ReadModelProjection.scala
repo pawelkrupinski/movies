@@ -49,19 +49,26 @@ object ReadModelProjection {
       cast               = r.cast,
       synopsis           = r.synopsis,
       trailerUrls        = r.trailerUrls.flatMap(TrailerEmbed.embedUrlFor).distinct,
-      ratings            = ResolvedRatings(
-        imdb              = r.imdbRating,
-        imdbUrl           = r.imdbUrl,
-        metascore         = r.metascore,
-        metacriticUrl     = r.metacriticHref(title),
-        rottenTomatoes    = r.rottenTomatoes,
-        rottenTomatoesUrl = r.rottenTomatoesHref(title),
-        filmweb           = r.filmwebRating,
-        filmwebUrl        = r.filmwebHref(title)
-      ),
+      ratings            = ratingsFor(r, title),
       weightedRating     = r.weightedRating
     )
   }
+
+  /** Materialise a record's per-source ratings + their click-through URLs into
+   *  the flat [[ResolvedRatings]] the web renders. Shared by [[resolve]] and the
+   *  `/debug` table so both show identical rating links. `title` is the display
+   *  title the `*Href` fallbacks key off when a source supplies no direct URL. */
+  def ratingsFor(r: MovieRecord, title: String): ResolvedRatings =
+    ResolvedRatings(
+      imdb              = r.imdbRating,
+      imdbUrl           = r.imdbUrl,
+      metascore         = r.metascore,
+      metacriticUrl     = r.metacriticHref(title),
+      rottenTomatoes    = r.rottenTomatoes,
+      rottenTomatoesUrl = r.rottenTomatoesHref(title),
+      filmweb           = r.filmwebRating,
+      filmwebUrl        = r.filmwebHref(title)
+    )
 
   /** One `CityScreening` per (city, cinema) the film currently screens in.
    *  A cinema slot with no showtimes, or one that maps to no city, contributes

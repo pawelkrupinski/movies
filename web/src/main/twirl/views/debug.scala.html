@@ -1,5 +1,6 @@
 @import models.{Cinema, MovieRecord, Showtime, Source, SourceData}
 @import services.movies.StoredMovieRecord
+@import services.readmodel.ReadModelProjection
 @import controllers.FilmHref
 @import java.time.format.DateTimeFormatter
 @(rows: Seq[StoredMovieRecord])(implicit city: models.City)
@@ -158,7 +159,7 @@
             case None     => { <span class="miss">—</span> }
           }
         </td>
-        <td>@_ratingBadges(Some(e), title)</td>
+        <td>@_ratingBadges(Some(ReadModelProjection.ratingsFor(e, title)))</td>
         <td class="url-cell">
           @e.metacriticUrl.map { u => <a href="@u" target="_blank" rel="noopener" title="@u">MC</a> }
           @e.rottenTomatoesUrl.map { u => <a href="@u" target="_blank" rel="noopener" title="@u">RT</a> }

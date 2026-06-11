@@ -670,6 +670,7 @@ object MovieController {
     if (joined.length > 300) joined.take(297) + "…" else joined
   }
 
+  /** The rating summary as individual tokens ("IMDb 8.8", "RT 87%", …),
    *  skipping sources that aren't set. Feeds the text `og:description`
    *  ([[previewDescription]], joined with " · "). */
   private[controllers] def ratingTokens(film: FilmSchedule): Seq[String] = {
