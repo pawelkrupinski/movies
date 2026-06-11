@@ -63,8 +63,12 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
 
     repo.upsert(sentinelTitle, sentinelYear, toStore)
 
+    // Locate by imdbId, not title: the stored doc no longer carries a `title`
+    // column — `findAll` derives the display title from `sourceData`, and this
+    // record has no cinema slot so the derived title is the sanitized _id, not
+    // the raw sentinel. imdbId is the stable round-trip handle.
     val all   = repo.findAll()
-    val found = all.find(r => r.title == sentinelTitle && r.year == sentinelYear)
+    val found = all.find(r => r.record.imdbId.contains("tt0000001"))
     found should not be empty
     val e = found.get.record
     e.imdbId         shouldBe Some("tt0000001")
@@ -85,7 +89,7 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
       imdbId         = Some("tt0000002")
     )
     repo.upsert(title, None, toStore)
-    val found = repo.findAll().find(r => r.title == title && r.year.isEmpty)
+    val found = repo.findAll().find(r => r.record.imdbId.contains("tt0000002"))
     found should not be empty
     val e = found.get.record
     e.imdbId         shouldBe Some("tt0000002")
@@ -143,14 +147,16 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
   it should "persist a per-source slot whose cinema displayName contains a dot" in {
     val title  = "__integration-test-dotted-cinema__"
     val year   = Some(1902)
-    val before = MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Dotted"))))
+    val before = MovieRecord(
+      imdbId = Some("tt0000004"),
+      data   = Map[Source, SourceData](Multikino -> SourceData(title = Some("Dotted"))))
     repo.upsert(title, year, before) // create the row
     val after = before.copy(data = before.data +
       (HeliosOstrowWlkp -> SourceData(title = Some("Dotted"), synopsis = Some("from Ostrów"))))
 
     repo.updateIfPresent(title, year, before, after) shouldBe true
 
-    val found = repo.findAll().find(r => r.title == title && r.year == year)
+    val found = repo.findAll().find(r => r.record.imdbId.contains("tt0000004"))
     found should not be empty
     found.get.record.cinemaData.get(HeliosOstrowWlkp).flatMap(_.synopsis) shouldBe Some("from Ostrów")
   }
@@ -159,9 +165,10 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     val title = "__integration-test-sourcedata-no-country__"
     val slot  = SourceData()
     repo.upsert(title, None, MovieRecord(
-      data = Map[Source, SourceData](Multikino -> slot)
+      imdbId = Some("tt0000005"),
+      data   = Map[Source, SourceData](Multikino -> slot)
     ))
-    val found = repo.findAll().find(r => r.title == title && r.year.isEmpty)
+    val found = repo.findAll().find(r => r.record.imdbId.contains("tt0000005"))
     found should not be empty
     found.get.record.cinemaData(Multikino).countries shouldBe Seq.empty
     found.get.record.countries shouldBe Seq.empty

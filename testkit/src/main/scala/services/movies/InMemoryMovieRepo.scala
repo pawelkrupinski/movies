@@ -49,6 +49,12 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
 
   def enabled: Boolean = true
 
+  // This fake stores the full `StoredMovieRecord` and returns its title
+  // verbatim — it has no lossy BSON `_id` to recover from, unlike the Mongo
+  // repo, whose codec drops the `title`/`year` columns and re-derives them via
+  // `StoredMovieRecord.fromStorage`. For realistic rows (the record carries its
+  // title in a cinema slot) the two agree; the fake simply doesn't need the
+  // derivation step.
   def findAll(): Seq[StoredMovieRecord] = lock.synchronized { store.values.toSeq }
 
   def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
