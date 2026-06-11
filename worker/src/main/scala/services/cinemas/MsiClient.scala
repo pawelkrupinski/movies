@@ -51,12 +51,21 @@ class MsiClient(
   // The month-page route. Almost every venue serves it at `/MSI/mvc/pl`, but a
   // few VisualTicket installs expose the identical page under a different prefix
   // (e.g. Kino Planeta Brzesko at `/Rezerwacja/mvc/pl`); override for those.
-  mvcPath: String = "/MSI/mvc/pl"
+  mvcPath: String = "/MSI/mvc/pl",
+  // Some MSI portals host TWO cinemas on one site and disambiguate by prefixing
+  // every title with the venue name and a " - " separator ("Chemik - …",
+  // "TWIERDZA - …" on bilety.mok.com.pl). When set, this instance keeps only the
+  // titles carrying this prefix and strips it before cleaning — so the one
+  // shared portal yields a separate per-cinema feed (one MsiClient per venue).
+  titlePrefix: Option[String] = None
 ) extends CinemaScraper {
 
   import MsiClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
+
+  private val titleCleaner: String => String =
+    titlePrefix.map(cleanTitleForVenue).getOrElse(cleanTitle)
 
   def fetch(): Seq[CinemaMovie] = {
     val thisMonth = YearMonth.from(today)
@@ -66,7 +75,7 @@ class MsiClient(
       val url  = monthUrl(baseUrl, mvcPath, ym)
       val html = Try(http.get(url)).getOrElse("")
       if (html.isEmpty) Seq.empty
-      else MsiScraper.parseMonthWithYear(html, ym, baseUrl, cleanTitle)
+      else MsiScraper.parseMonthWithYear(html, ym, baseUrl, titleCleaner)
     }
 
     MsiScraper.toMovies(slots, cinema)
@@ -88,4 +97,15 @@ object MsiClient {
    *  it's a cross-client concern, not MSI-specific.) */
   private[cinemas] def cleanTitle(raw: String): String =
     ScraperParse.sentenceCase(ScraperParse.stripFormatTags(raw))
+
+  /** Title cleaner for one venue of a two-cinema MSI portal whose titles are
+   *  prefixed `<venue> - …` (e.g. "Chemik - Dzień objawienia"). Keeps only the
+   *  titles carrying this exact prefix (case-insensitive) and strips it before
+   *  the normal clean; returns `""` for the other venue's titles so the scraper
+   *  drops them. */
+  private[cinemas] def cleanTitleForVenue(venue: String)(raw: String): String = {
+    val sep = s"$venue - "
+    if (raw.regionMatches(true, 0, sep, 0, sep.length)) cleanTitle(raw.substring(sep.length))
+    else ""
+  }
 }

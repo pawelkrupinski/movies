@@ -772,7 +772,6 @@ cinemaScrapes:
   Kino Bułgarska 19 / Chronologia wody / 2025
   Kino Goplana / Chronologia wody / —
   Kino IKM / Chronologia wody / —
-  Kino Kryterium / Chronologia wody / 2025
   Kino Muza / Chronologia wody / 2025
   Kino NCKF EC1 / Chronologia wody / —
 showings:
@@ -816,7 +815,6 @@ cinemaScrapes:
   Helios Płock / Chłopiec na krańcach świata / —
   Helios Tczew / Chłopiec na krańcach świata / —
   Kino CK Lublin / Chłopiec na krańcach świata / —
-  Kino Kryterium / Chłopiec na krańcach świata / 2025
   Kino Muranów / Chłopiec na krańcach świata / 2025
   Kino Nowe Horyzonty / Chłopiec na krańcach świata / 2025
   Kino Pałacowe / Chłopiec na krańcach świata / 2025
@@ -1399,6 +1397,7 @@ cinemaScrapes:
   Kino Kika / DRUGIE ŻYCIE / —
   Kino Kinematograf / Drugie życie / —
   Kino Kolory / Drugie życie / —
+  Kino Kryterium / Drugie życie / —
   Kino Lot / Drugie życie / —
   Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
   Kino Mikro / Drugie życie / —
@@ -1577,7 +1576,7 @@ cinemaScrapes:
   Kino Przedwiośnie / Drzewo magii / 2026
   Kino Scena Kultura / Drzewo magii / 2026
   Kino Sokół / DRZEWO MAGII / —
-  Kino Twierdza / Drzewo magii / 2026
+  Kino Twierdza / Drzewo magii / —
   Kino Wawel / Drzewo magii / —
   Kino Wisła / Drzewo magii / 2026
   Kino Wisła Brzeszcze / Drzewo magii / —
@@ -1586,7 +1585,6 @@ cinemaScrapes:
   Kinomax / Drzewo magii / —
   Kinoteatr Rondo / Drzewo magii / —
   Klaps / Drzewo magii / —
-  Kozienicki Dom Kultury / Drzewo magii / 2026
   Max Kino / Drzewo magii / 2026
   Mikro Bronowice / Drzewo magii / —
   Muza / Drzewo magii / —
@@ -1595,7 +1593,6 @@ cinemaScrapes:
   Piast / DRZEWO MAGII / —
   Pionier / Drzewo magii / —
   Planet Cinema / Drzewo magii / 2026
-  Świt Zwoleń / Drzewo magii / 2026
 showings:
   2026-06-08  Cinema City Kinepolis         12:00 Sala 13 2D/DUB · 16:00 Sala 1 2D/DUB · 18:40 Sala 8 2D/DUB
   2026-06-08  Cinema City Poznań Plaza      09:30 Sala 6 2D/DUB · 11:50 Sala 1 2D/DUB · 16:40 Sala 1 2D/DUB
@@ -1668,7 +1665,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Baszta / Dzień objawienia / —
   Bałtyk / Dzień objawienia / —
-  Chemik / Dzień objawienia / 2026
+  Chemik / Dzień objawienia / —
   Cinema City Arkadia / Dzień objawienia / 2026
   Cinema City Bemowo / Dzień objawienia / 2026
   Cinema City Bielsko-Biała / Dzień objawienia / 2026
@@ -1785,12 +1782,12 @@ cinemaScrapes:
   Kinoteatr Rondo / Dzień objawienia / —
   Kinoteka / Dzień objawienia / 2026
   Klaps / Dzień Objawienia / —
-  Kozienicki Dom Kultury / Dzień objawienia / 2026
+  Kozienicki Dom Kultury / Dzień objawienia / —
   Muza / Dzień Objawienia / —
   Pionier / Dzień objawienia / —
   Przedwiośnie / Dzień Objawienia / —
   Teatr Elektryczny / Dzień objawienia / —
-  Świt Zwoleń / Dzień objawienia / 2026
+  Świt Zwoleń / Dzień objawienia / —
 showings:
   2026-06-10  Cinema City Kinepolis         12:10 Sala 14 2D/NAP · 14:10 Sala 12 2D/NAP · 15:20 Sala 14 2D/NAP · 17:20 Sala 12 2D/NAP · 18:30 Sala 14 2D/NAP · 20:30 Sala 12 2D/NAP · 21:40 Sala 14 2D/NAP
   2026-06-10  Cinema City Poznań Plaza      10:30 Sala 3 2D/NAP · 13:40 Sala 3 2D/NAP · 14:10 Sala IMAX IMAX/2D/NAP · 16:50 Sala 3 2D/NAP · 20:00 Sala 3 2D/NAP · 20:30 Sala IMAX IMAX/2D/NAP · 21:30 Sala 2 2D/NAP
@@ -2549,12 +2546,12 @@ cinemaScrapes:
   Kino PCKul / K-popowe łowczynie demonów / —
   Kino Rialto / K-popowe łowczynie demonów / 2025
   Kino Roma / K-POPOWE ŁOWCZYNIE DEMONÓW / —
+  Kino Twierdza / K-popowe łowczynie demonów / —
   Kino Śnieżka / K-popowe łowczynie demonów / —
   Kinoteatr Rondo / K-popowe łowczynie demonów / —
   Kinoteka / K-popowe łowczynie demonów / 2026
   Nasze Kino / Kpopowe łowczynie demonów / napisy karaoke - nasze kino / —
   Świt / K-popowe łowczynie demonów / —
-  Świt Zwoleń / K-popowe łowczynie demonów / 2025
 showings:
   2026-06-10  Cinema City Kinepolis         15:10 Sala 11 2D/NAP · 15:40 Sala 17 2D/NAP · 17:30 Sala 11 2D/NAP · 18:00 Sala 17 2D/NAP · 19:50 Sala 11 2D/NAP
   2026-06-10  Cinema City Poznań Plaza      15:40 Sala 6 2D/NAP · 18:00 Sala 6 2D/NAP
@@ -2571,7 +2568,7 @@ showings:
 
 === K-popowe Łowczynie Demonów: Karaoke ===
 displayTitle:      K-popowe Łowczynie Demonów: Karaoke
-cinemaTitles:      K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE | K-popowe Łowczynie Demonów: Karaoke | K-popowe łowczynie demonów: Karaoke
+cinemaTitles:      K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE | K-popowe Łowczynie Demonów: Karaoke | K-popowe łowczynie demonów: Karaoke | K-popowe łowczynie demonów: karaoke
 runtimeMinutes:    96
 releaseYear:       2025
 countries:         USA
@@ -2636,6 +2633,7 @@ cinemaScrapes:
   Kino Apollo / K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE / —
   Kino Paradox / K-popowe łowczynie demonów: Karaoke / —
   Kino Wisła / K-popowe Łowczynie Demonów: Karaoke / 2025
+  Świt Zwoleń / K-popowe łowczynie demonów: karaoke / —
 showings:
   2026-06-10  Helios Posnania               16:30 Sala 8 2D/NAP
   2026-06-10  Kino Apollo                   18:00
@@ -3071,6 +3069,7 @@ cinemaScrapes:
   Kino Sfinks / KUMOTRY / —
   Kino Spektrum / Kumotry / —
   Kino U-jazdowski / Kumotry / 2025
+  Kozienicki Dom Kultury / Kumotry / —
   OKF Iluzja / Kumotry / —
 showings:
   2026-06-12  Kino Pałacowe                 18:00 Sala 1 - Kinowa
@@ -4468,17 +4467,18 @@ cinemaScrapes:
   Kino Przedwiośnie / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino Sokół / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / —
   Kino Stary Młyn / Niesamowite przygody skarpetek 3. Ale kosmos! / —
+  Kino Twierdza / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Wisła / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino na Boku / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino za Rogiem Cafe / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kinomax / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Klaps / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Kozienicki Dom Kultury / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Mikro Bronowice / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Muza / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Piast / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS / —
   Planet Cinema / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Służewski Dom Kultury / Niesamowite przygody skarpetek 3. Ale kosmos! / —
+  Świt Zwoleń / Niesamowite przygody skarpetek 3. Ale kosmos! / —
 showings:
   2026-06-08  Helios Posnania               11:50 Sala 8 2D/DUB · 13:30 Sala 8 2D/DUB
   2026-06-09  Helios Posnania               11:50 Sala 8 2D/DUB · 13:30 Sala 8 2D/DUB
@@ -4843,7 +4843,6 @@ cinemaScrapes:
   Kinomax / Obsesja / —
   Kinoteka / Obsesja / 2026
   Max Kino / Obsesja / 2025
-  Świt Zwoleń / Obsesja / 2025
 showings:
   2026-06-08  Cinema City Kinepolis         14:25 Sala 13 2D/NAP · 16:50 Sala 13 2D/NAP · 17:10 Sala 4 2D/NAP · 19:20 Sala 13 2D/NAP · 19:45 Sala 4 2D/NAP · 21:10 Sala 8 2D/NAP · 21:30 Sala 16 2D/NAP
   2026-06-08  Cinema City Poznań Plaza      12:40 Sala 6 2D/NAP · 15:10 Sala 6 2D/NAP · 17:40 Sala 6 2D/NAP · 20:10 Sala 6 2D/NAP
@@ -4926,6 +4925,7 @@ cinemaScrapes:
   Kino Roma / Ojczyzna / —
   Kino Sfinks / OJCZYZNA / —
   Kino Stary Młyn / Ojczyzna / —
+  Kino Twierdza / Ojczyzna / —
   KinoGram / Ojczyzna / —
   Kinomax / Ojczyzna / —
   Świt / Ojczyzna / —
@@ -6589,7 +6589,6 @@ cinemaScrapes:
   Kino Pałacowe / Pucio / 2026
   Kino Sokół Dąbrowa Tarnowska / PUCIO / —
   Kino Tur / Pucio / —
-  Kozienicki Dom Kultury / Pucio / 2026
   Służewski Dom Kultury / Pucio / —
   Teatr Elektryczny / Pucio / —
 showings:
@@ -7062,7 +7061,7 @@ cinemaScrapes:
   Kino Przedwiośnie / Straszny film / 2026
   Kino Sokół / STRASZNY FILM / —
   Kino Sokół Dąbrowa Tarnowska / Straszny film / —
-  Kino Twierdza / Straszny film / 2026
+  Kino Twierdza / Straszny film / —
   Kino Zachęta / Straszny film / 2026
   Kino Śnieżka / Straszny film / —
   Kinomax / Straszny film / —
@@ -7369,6 +7368,7 @@ cinemaScrapes:
   Kino Kolory / Supergirl / —
   Kino PCKul / Supergirl / —
   Koneckie Centrum Kultury / Supergirl / —
+  Świt Zwoleń / Supergirl / —
 showings:
   2026-06-26  Cinema City Kinepolis         10:30 Sala 12 2D/NAP · 11:00 Sala 14 2D/DUB · 11:30 Sala 11 2D/DUB · 13:00 Sala 12 2D/NAP · 13:30 Sala 14 2D/DUB · 14:00 Sala 11 2D/DUB · 15:30 Sala 12 2D/NAP · 16:00 Sala 14 2D/NAP · 16:30 Sala 11 2D/DUB · 17:00 Sala 4 3D/DUB · 18:00 Sala 12 2D/NAP · 18:30 Sala 14 2D/NAP · 19:00 Sala 11 2D/DUB · 20:30 Sala 12 2D/NAP · 21:00 Sala 14 2D/NAP
   2026-06-26  Cinema City Poznań Plaza      10:00 Sala 3 2D/NAP · 10:30 Sala IMAX IMAX/2D/DUB · 11:00 Sala 5 2D/DUB · 12:30 Sala 3 2D/NAP · 13:00 Sala IMAX IMAX/2D/NAP · 13:30 Sala 5 2D/DUB · 15:00 Sala 3 2D/NAP · 15:30 Sala IMAX IMAX/2D/DUB · 16:00 Sala 5 2D/DUB · 16:30 Sala 1 3D/DUB · 17:30 Sala 3 2D/NAP · 18:00 Sala IMAX IMAX/2D/NAP · 18:30 Sala 5 2D/DUB · 19:00 Sala 1 2D/DUB · 20:00 Sala 3 2D/NAP · 20:30 Sala IMAX IMAX/2D/NAP · 22:30 Sala 3 2D/NAP
@@ -7596,7 +7596,7 @@ cinemaScrapes:
   Bajka / Tom i jerry: przygoda w muzeum / —
   Baszta / Tom i Jerry: Przygoda w muzeum / —
   Centrum / Tom i Jerry: Przygoda w muzeum / —
-  Chemik / Tom i Jerry: Przygoda w muzeum / 2025
+  Chemik / Tom i jerry: przygoda w muzeum / —
   Cinema City Arkadia / Tom i Jerry: Przygoda w muzeum / 2026
   Cinema City Bemowo / Tom i Jerry: Przygoda w muzeum / 2026
   Cinema City Bielsko-Biała / Tom i Jerry: Przygoda w muzeum / 2026
@@ -7708,7 +7708,7 @@ cinemaScrapes:
   Kino Scena Kultura / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Sokół / TOM I JERRY: PRZYGODA W MUZEUM / —
   Kino Sokół Dąbrowa Tarnowska / Tom i Jerry: Przygoda w muzeum / —
-  Kino Twierdza / Tom i Jerry: Przygoda w muzeum / 2025
+  Kino Twierdza / Tom i jerry: przygoda w muzeum / —
   Kino Wawel / Tom i Jerry: Przygoda w muzeum / —
   Kino Wisła / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Zachęta / Tom i Jerry: Przygoda w muzeum / 2025
@@ -7767,6 +7767,7 @@ cinemaScrapes:
   Bajka / Toy story 5 / —
   Bałtyk / Toy Story 5 / —
   Centrum / Toy Story 5 / —
+  Chemik / Toy story 5 / —
   Cinema City Arkadia / Toy Story 5 / 2026
   Cinema City Bemowo / Toy Story 5 / 2026
   Cinema City Bielsko-Biała / Toy Story 5 / 2026
@@ -7865,6 +7866,7 @@ cinemaScrapes:
   Kino Sokół Dąbrowa Tarnowska / Toy Story 5 / —
   Kino Stary Młyn / Toy Story 5 / —
   Kino Tur / Toy Story 5 / —
+  Kino Twierdza / Toy story 5 / —
   Kino Wawel / Toy Story 5 / —
   Kino Śnieżka / Toy story 5 / —
   Koneckie Centrum Kultury / Toy Story 5 / —
@@ -7872,6 +7874,7 @@ cinemaScrapes:
   Na Starówce / Toy story 5 / —
   Pionier / Toy Story 5 / —
   Teatr Elektryczny / Toy Story 5 / —
+  Świt Zwoleń / Toy story 5 / —
 showings:
   2026-06-17  Cinema City Kinepolis         13:00 Sala 12 2D/DUB · 13:30 Sala 14 2D/DUB · 14:00 Sala 10 2D/DUB · 15:30 Sala 12 2D/DUB · 16:00 Sala 14 2D/DUB · 16:30 Sala 10 2D/DUB · 17:00 Sala 2 2D/NAP · 18:00 Sala 12 2D/DUB · 19:00 Sala 10 2D/DUB · 20:30 Sala 12 2D/NAP
   2026-06-17  Cinema City Poznań Plaza      10:00 Sala IMAX IMAX/2D/DUB · 10:20 Sala 3 2D/DUB · 11:10 Sala 1 2D/DUB · 12:50 Sala 3 2D/DUB · 13:40 Sala 1 2D/DUB · 15:20 Sala 3 2D/DUB · 16:10 Sala 1 2D/DUB · 17:50 Sala 3 2D/DUB · 18:40 Sala 1 2D/DUB · 20:20 Sala 3 2D/NAP
@@ -8223,7 +8226,6 @@ cinemaScrapes:
   Kino Muza / Wolność po włosku / 2025
   Kino na Szekspirowskim / Wolność po włosku / —
   Kino Żak / Wolność po włosku / —
-  Świt Zwoleń / Wolność po włosku / 2025
 showings:
   2026-06-08  Kino Muza                     16:45 Sala 3
   2026-06-09  Kino Muza                     21:00 Sala 3
@@ -8708,7 +8710,7 @@ cinemaScrapes:
   Kino Sokół / ZAWODOWCY / —
   Kino Stary Młyn / ZAWODOWCY / —
   Kino Tur / Zawodowcy / —
-  Kino Twierdza / Zawodowcy / 2026
+  Kino Twierdza / Zawodowcy / —
   Kino Wawel / Zawodowcy / —
   Kino Wisła / Zawodowcy / 2026
   Kino Zdrój / Zawodowcy / —
@@ -8783,7 +8785,7 @@ showings:
 
 === Znaki Pana Śliwki ===
 displayTitle:      Znaki Pana Śliwki
-cinemaTitles:      ZNAKI PANA ŚLIWKI | Znaki Pana Śliwki
+cinemaTitles:      ZNAKI PANA ŚLIWKI | Znaki Pana Śliwki | Znaki pana śliwki
 runtimeMinutes:    72
 releaseYear:       2025
 countries:         Polska
@@ -8812,7 +8814,6 @@ cinemaScrapes:
   Kino IKM / Znaki Pana Śliwki / —
   Kino Kika / ZNAKI PANA ŚLIWKI / —
   Kino Kinematograf / Znaki Pana Śliwki / —
-  Kino Kryterium / Znaki Pana Śliwki / 2025
   Kino Kultura / Znaki Pana Śliwki / —
   Kino Malta Charlie Monroe / Znaki Pana Śliwki / —
   Kino Mikro / Znaki Pana Śliwki / —
@@ -8821,7 +8822,8 @@ cinemaScrapes:
   Kino Orzeł / Znaki Pana Śliwki / —
   Kino Spektrum / Znaki Pana Śliwki / —
   Kinoteatr Rialto / Znaki Pana Śliwki / —
-  Świt Zwoleń / Znaki Pana Śliwki / 2025
+  Kozienicki Dom Kultury / Znaki pana śliwki / —
+  Świt Zwoleń / Znaki pana śliwki / —
 showings:
   2026-06-08  Kino Muza                     17:45 Sala 1 · 21:15 Sala 3
   2026-06-09  Kino Malta Charlie Monroe     16:40 Sala Audrey
@@ -8921,7 +8923,6 @@ cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/cykl-wajda-re-wizje-czlowiek-z-marmuru-man-of-marble1977/
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/czlowiek-z-marmuru
 cinemaScrapes:
-  Chemik / Człowiek z marmuru / 1976
   Forum / CZŁOWIEK Z MARMURU / —
   Kino Agrafka / CZŁOWIEK Z MARMURU / —
   Kino Amok / Człowiek z marmuru / —

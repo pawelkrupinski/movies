@@ -83,4 +83,45 @@ class MsiClientSpec
     val film = movies.find(_.movie.title.toLowerCase.contains("drzewo magii")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 11, 13, 50))
   }
+
+  // bilety.mok.com.pl hosts two cinemas (Chemik + Twierdza) on one MSI portal,
+  // disambiguating by prefixing every title with "Chemik - " / "TWIERDZA - ".
+  // `titlePrefix` splits that one feed into a per-cinema scraper: each instance
+  // keeps only its own prefixed titles and strips the prefix. today=2026-06-08
+  // mirrors prod — the June page is empty, the July page carries the screenings.
+  private def mokKedzierzyn(cinema: Cinema, prefix: String) =
+    new MsiClient(new FakeHttpFetch("kino-mok-kedzierzyn"), "https://bilety.mok.com.pl",
+      cinema, today = LocalDate.of(2026, 6, 8), titlePrefix = Some(prefix)).fetch()
+
+  it should "split the shared MOK portal into Chemik's own feed via titlePrefix" in {
+    val movies = mokKedzierzyn(KinoChemik, "Chemik")
+    movies should not be empty
+    movies.map(_.cinema).toSet shouldBe Set(KinoChemik)
+    val titles = movies.map(_.movie.title.toLowerCase)
+    // A Chemik-only film is present; a Twierdza-only film ("Zawodowcy") is not.
+    titles.exists(_.contains("mandalorian and grogu")) shouldBe true
+    titles.exists(_.contains("zawodowcy")) shouldBe false
+    // The venue prefix is stripped from the cleaned titles.
+    all(movies.map(_.movie.title.toLowerCase)) should not include "chemik -"
+  }
+
+  it should "split the shared MOK portal into Twierdza's own feed via titlePrefix" in {
+    val movies = mokKedzierzyn(KinoTwierdza, "TWIERDZA")
+    movies should not be empty
+    movies.map(_.cinema).toSet shouldBe Set(KinoTwierdza)
+    val titles = movies.map(_.movie.title.toLowerCase)
+    // A Twierdza-only film is present; a Chemik-only film is not.
+    titles.exists(_.contains("zawodowcy")) shouldBe true
+    titles.exists(_.contains("mandalorian and grogu")) shouldBe false
+    all(movies.map(_.movie.title.toLowerCase)) should not include "twierdza -"
+  }
+
+  it should "give the two MOK venues overlapping films but distinct cinema tags" in {
+    // "Toy Story 5" screens at both halls — the split is by venue prefix, not by
+    // film, so the shared title must surface under BOTH cinemas, tagged apart.
+    val chemik   = mokKedzierzyn(KinoChemik, "Chemik")
+    val twierdza = mokKedzierzyn(KinoTwierdza, "TWIERDZA")
+    chemik.exists(_.movie.title.toLowerCase.contains("toy story 5")) shouldBe true
+    twierdza.exists(_.movie.title.toLowerCase.contains("toy story 5")) shouldBe true
+  }
 }
