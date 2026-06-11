@@ -80,6 +80,8 @@
     }
     .tag-shared { background: #16261d; color: #5fb98a; border-color: #234d3a; }
     .tag-custom { background: #2a2233; color: #b694d6; border-color: #43395a; }
+    /* FtFW = cinema currently on Filmweb fallback; gold to echo the bar's gold ring. */
+    .tag-fallback { background: #2b2410; color: #e0b341; border-color: #4d3f18; }
     .leading-fail h2 { color: #e74c3c; }
     .leading-zero h2 { color: #c9c9c9; }
 
@@ -266,6 +268,8 @@
         @defining(t.split(":", 2)) { parts =>
           @if(parts.head == "custom") {
             <span class="tag tag-custom" title="@parts.last">Custom</span>
+          } else if(parts.head == "fallback") {
+            <span class="tag tag-fallback" title="Currently served via Filmweb fallback (own scraper down)">FtFW</span>
           } else {
             <span class="tag tag-shared" title="@parts.last">@parts.last.stripSuffix("Client").stripSuffix("Scraper")</span>
           }

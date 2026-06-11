@@ -45,4 +45,14 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
     cinemasHeaderIdx should be >= 0
     cinemasHeaderIdx should be < html.indexOf("<h3>Poznań</h3>")
   }
+
+  it should "render a gold FtFW chip for a cinema currently in Filmweb fallback" in {
+    val row = ServiceRow("Kino Iluzjon", Seq.empty, tags = Set("custom:IluzjonClient", "fallback:FtFW"))
+    val out = views.html.uptime(Seq.empty, Seq.empty, Seq("Warszawa" -> Seq(row)), Seq.empty, Seq.empty).body
+    // The fallback tag gets its own dedicated chip class + "FtFW" label …
+    out should include ("tag-fallback")
+    out should include (">FtFW<")
+    // … rendered alongside, not instead of, the client marker.
+    out should include ("tag-custom")
+  }
 }

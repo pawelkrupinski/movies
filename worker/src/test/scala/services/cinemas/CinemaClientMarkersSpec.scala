@@ -51,4 +51,18 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
       withClue(s"$cinema -> $tag: ") { kind shouldBe expected }
     }
   }
+
+  "tagsFor" should "layer the FtFW tag on top of the client marker while in fallback" in {
+    CinemaClientMarkers.tagsFor(Some("shared:FilmwebShowtimesClient"), inFallback = true) shouldBe
+      Set("shared:FilmwebShowtimesClient", "fallback:FtFW")
+  }
+
+  it should "drop the FtFW tag once the cinema is no longer in fallback" in {
+    CinemaClientMarkers.tagsFor(Some("custom:RialtoClient"), inFallback = false) shouldBe
+      Set("custom:RialtoClient")
+  }
+
+  it should "yield the bare FtFW tag when there is no client marker" in {
+    CinemaClientMarkers.tagsFor(None, inFallback = true) shouldBe Set("fallback:FtFW")
+  }
 }

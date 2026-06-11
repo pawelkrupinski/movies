@@ -15,8 +15,23 @@ package services.cinemas
  * splits on the first `:` into a styled kind + label.
  */
 object CinemaClientMarkers {
-  val SharedKind = "shared"
-  val CustomKind = "custom"
+  val SharedKind   = "shared"
+  val CustomKind   = "custom"
+  val FallbackKind = "fallback"
+
+  /** Tag flagging a cinema currently served via the Filmweb fallback (its own
+   *  scraper is down). Rendered as an "FtFW" (fell-to-Filmweb) chip on /uptime.
+   *  The worker writes it on each fallback ENTER and clears it on RECOVER (and
+   *  reconciles already-active ones at boot); it has no client label, so it stays
+   *  a bare `"fallback:FtFW"`. */
+  val FilmwebFallbackTag = s"$FallbackKind:FtFW"
+
+  /** The full uptime-tag set for one cinema: its scraper-client marker (if any)
+   *  plus the FtFW tag while it's actively in Filmweb fallback. Kept here, beside
+   *  the marker format the two share, so both the boot reconcile and the per-event
+   *  retag in `WorkerWiring` compute the same set. */
+  def tagsFor(clientMarker: Option[String], inFallback: Boolean): Set[String] =
+    clientMarker.toSet ++ (if (inFallback) Set(FilmwebFallbackTag) else Set.empty[String])
 
   /** The raw scraper's client class as the marker label. For the multi-venue
    *  chains this is the per-venue adapter (`CinemaCityScraper`); for everything
