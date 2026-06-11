@@ -19,19 +19,18 @@ class OgCardServiceSpec extends AnyFlatSpec with Matchers {
     val baos = new ByteArrayOutputStream(); ImageIO.write(p, "jpg", baos); baos.toByteArray
   }
 
-  private class CountingFetch(payload: Array[Byte]) extends GetOnlyHttpFetch {
+  private class CountingFetch(payload: Array[Byte]) extends PosterFetch {
     val calls = new AtomicInteger(0)
-    override def get(url: String): String = ""
-    override def getBytes(url: String): Array[Byte] = { calls.incrementAndGet(); payload }
+    override def bytes(url: String): Option[Array[Byte]] = { calls.incrementAndGet(); Some(payload) }
   }
 
-  // Fails its first `failFirst` fetches, then serves the payload — models a
-  // poster origin that's cold/slow on first render but warm on a retry.
-  private class FlakyFetch(payload: Array[Byte], failFirst: Int) extends GetOnlyHttpFetch {
+  // Fails (returns None for) its first `failFirst` fetches, then serves the
+  // payload — models a poster origin that's cold/slow on first render but warm
+  // on a retry.
+  private class FlakyFetch(payload: Array[Byte], failFirst: Int) extends PosterFetch {
     val calls = new AtomicInteger(0)
-    override def get(url: String): String = ""
-    override def getBytes(url: String): Array[Byte] =
-      if (calls.incrementAndGet() <= failFirst) throw new RuntimeException("cold") else payload
+    override def bytes(url: String): Option[Array[Byte]] =
+      if (calls.incrementAndGet() <= failFirst) None else Some(payload)
   }
 
   private def dimensions(bytes: Array[Byte]): (Int, Int) = {
@@ -67,16 +66,13 @@ class OgCardServiceSpec extends AnyFlatSpec with Matchers {
     fetch.calls.get shouldBe 2
   }
 
-  it should "degrade to a text-only card (still 1200×630) when the poster fetch throws" in {
-    val fetch = new GetOnlyHttpFetch {
-      override def get(url: String): String = ""
-      override def getBytes(url: String): Array[Byte] = throw new RuntimeException("boom")
-    }
+  it should "degrade to a text-only card (still 1200×630) when the poster fetch fails" in {
+    val fetch: PosterFetch = (_: String) => None
     dimensions(new OgCardService(fetch).card("Incepcja", "2010 · Sci-Fi", Seq("IMDb 8.8"), Some("https://cdn/x.jpg"))) shouldBe (1200, 630)
   }
 
   it should "fall back to the weserv proxy when the origin URL itself fails to decode" in {
-    // First getBytes (origin) fails, second (weserv) succeeds -> poster loads.
+    // First fetch (origin) returns None, second (weserv) succeeds -> poster loads.
     val fetch = new FlakyFetch(jpeg, failFirst = 1)
     posterRed(new OgCardService(fetch).card("Incepcja", "2010 · Sci-Fi", Seq("IMDb 8.8"), Some("https://cdn/x.jpg"))) should be > 150
     fetch.calls.get shouldBe 2
