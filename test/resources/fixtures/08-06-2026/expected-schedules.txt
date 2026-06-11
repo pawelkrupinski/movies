@@ -644,8 +644,8 @@ showings:
   2026-06-13  Cinema City Kinepolis         15:30 Sala 6 2D/NAP
   2026-06-13  Cinema City Poznań Plaza      15:30 Sala 3 2D/NAP
 
-=== BTS World Tour ‘ARIRANG’ in Busan: Live Viewing ===
-displayTitle:      BTS World Tour ‘ARIRANG’ in Busan: Live Viewing
+=== BTS World Tour ‘Arirang’ in Busan: Live Viewing ===
+displayTitle:      BTS World Tour ‘Arirang’ in Busan: Live Viewing
 cinemaTitles:      BTS World Tour ‘ARIRANG’ in Busan: Live Viewing
 runtimeMinutes:    195
 releaseYear:       2026
@@ -1123,6 +1123,50 @@ cinemaScrapes:
   Kino Pałacowe / Cinema Italia Oggi: Wolność po włosku / 2025
 showings:
   2026-07-10  Kino Pałacowe                 20:15 Sala 1 - Kinowa
+
+=== Człowiek z marmuru ===
+displayTitle:      Człowiek z marmuru
+cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | „Człowiek z marmuru”
+runtimeMinutes:    153
+releaseYear:       1977
+countries:         Polska
+posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png
+synopsis.length:   1212
+cast:              Krystyna Janda, Jerzy Radziwiłowicz, Tadeusz Łomnicki, Jacek Łomnicki, Michał Tarkowski
+director:          Andrzej Wajda
+tmdbId:            224
+imdbId:            tt0075902
+originalTitle:     Człowiek z marmuru
+imdbRating:        7.6
+metascore:         —
+rottenTomatoes:    75
+filmwebRating:     7.6897
+metacriticUrl:     —
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/czlowiek_z_marmuru
+filmwebUrl:        https://www.filmweb.pl/film/Cz%C5%82owiek+z+marmuru-1976-1123
+cinemaFilmUrls:
+  Kino Apollo = https://kinoapollo.pl/kino/cykl-wajda-re-wizje-czlowiek-z-marmuru-man-of-marble1977/
+  Kino Malta Charlie Monroe = https://kinomalta.pl/movies/czlowiek-z-marmuru
+cinemaScrapes:
+  Forum / CZŁOWIEK Z MARMURU / —
+  Kino Agrafka / CZŁOWIEK Z MARMURU / —
+  Kino Amok / Człowiek z marmuru / —
+  Kino Apollo / Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) / —
+  Kino Diana / Człowiek z marmuru / —
+  Kino Fenomen (WDK) / „Człowiek z marmuru” / —
+  Kino Goplana / Człowiek z marmuru / —
+  Kino Kika / CZŁOWIEK Z MARMURU / —
+  Kino Kultura / Człowiek z marmuru / —
+  Kino MOK Centrum / CZŁOWIEK Z MARMURU / —
+  Kino Malta Charlie Monroe / Człowiek z marmuru / —
+  Kino Muranów / Człowiek z marmuru / 1977
+  Kino Pionier 1907 / Człowiek z marmuru / —
+  Kino nad Wartą / CZŁOWIEK Z MARMURU / —
+  Kino za Rogiem Cafe / Człowiek z marmuru / —
+  OKF Iluzja / CZŁOWIEK Z MARMURU / MAN OF MARBLE / —
+showings:
+  2026-06-14  Kino Apollo                   15:00
+  2026-06-30  Kino Malta Charlie Monroe     15:30 Sala Audrey
 
 === Diabeł ubiera się u Prady 2 ===
 displayTitle:      Diabeł ubiera się u Prady 2
@@ -1640,8 +1684,8 @@ cinemaScrapes:
 showings:
   2026-06-10  Kino Malta Charlie Monroe     18:20 Sala Charlie
 
-=== Dzień Objawienia ===
-displayTitle:      Dzień Objawienia
+=== Dzień objawienia ===
+displayTitle:      Dzień objawienia
 cinemaTitles:      DZIEŃ OBJAWIENIA | Dzień Objawienia | Dzień objawienia
 runtimeMinutes:    146
 releaseYear:       2026
@@ -2060,34 +2104,6 @@ cinemaScrapes:
 showings:
   2026-06-21  Helios Posnania               10:30 2D/DUB
 
-=== Filmowy Klub Seniora - Drugie życie ===
-displayTitle:      Filmowy Klub Seniora - Drugie życie
-cinemaTitles:      Filmowy Klub Seniora - Drugie życie | Filmowy klub seniora: Drugie życie
-runtimeMinutes:    116
-releaseYear:       2025
-countries:         Niemcy, Francja, Hiszpania, Belgia, Maroko
-posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/drugie-zycie-plakat-lq-1.jpg
-synopsis.length:   1351
-cast:              Carmen Maura, Marta Etura, Ahmed Boulane, Miguel Garcés, María Alfonsa Rosso
-director:          Maryam Touzani
-tmdbId:            1399462
-imdbId:            tt32429174
-originalTitle:     Calle Málaga
-imdbRating:        7.2
-metascore:         73
-rottenTomatoes:    98
-filmwebRating:     7.34511
-metacriticUrl:     https://www.metacritic.com/movie/calle-malaga
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/calle_malaga
-filmwebUrl:        https://www.filmweb.pl/film/Drugie+%C5%BCycie-2025-10088399
-cinemaFilmUrls:
-  Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157168
-cinemaScrapes:
-  Kino Rialto / Filmowy klub seniora: Drugie życie / 2025
-  Kinoteatr Rialto / Filmowy Klub Seniora - Drugie życie / —
-showings:
-  2026-06-16  Kino Rialto                   13:00 · 15:30
-
 === Filmowy klub seniora: 18 lecie - takie jest życie ===
 displayTitle:      Filmowy klub seniora: 18 lecie - takie jest życie
 cinemaTitles:      Filmowy klub seniora: 18 lecie - takie jest życie
@@ -2114,6 +2130,34 @@ cinemaScrapes:
   Kino Rialto / Filmowy klub seniora: 18 lecie - takie jest życie / 2025
 showings:
   2026-06-30  Kino Rialto                   13:00 · 15:30
+
+=== Filmowy klub seniora: Drugie życie ===
+displayTitle:      Filmowy klub seniora: Drugie życie
+cinemaTitles:      Filmowy Klub Seniora - Drugie życie | Filmowy klub seniora: Drugie życie
+runtimeMinutes:    116
+releaseYear:       2025
+countries:         Niemcy, Francja, Hiszpania, Belgia, Maroko
+posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/drugie-zycie-plakat-lq-1.jpg
+synopsis.length:   1351
+cast:              Carmen Maura, Marta Etura, Ahmed Boulane, Miguel Garcés, María Alfonsa Rosso
+director:          Maryam Touzani
+tmdbId:            1399462
+imdbId:            tt32429174
+originalTitle:     Calle Málaga
+imdbRating:        7.2
+metascore:         73
+rottenTomatoes:    98
+filmwebRating:     7.34511
+metacriticUrl:     https://www.metacritic.com/movie/calle-malaga
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/calle_malaga
+filmwebUrl:        https://www.filmweb.pl/film/Drugie+%C5%BCycie-2025-10088399
+cinemaFilmUrls:
+  Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157168
+cinemaScrapes:
+  Kino Rialto / Filmowy klub seniora: Drugie życie / 2025
+  Kinoteatr Rialto / Filmowy Klub Seniora - Drugie życie / —
+showings:
+  2026-06-16  Kino Rialto                   13:00 · 15:30
 
 === Filmowy klub seniora: Ojczyzna ===
 displayTitle:      Filmowy klub seniora: Ojczyzna
@@ -2169,8 +2213,8 @@ cinemaScrapes:
 showings:
   2026-06-09  Kino Rialto                   13:00 · 15:30
 
-=== Follemente. W tym szaleństwie jest metoda ===
-displayTitle:      Follemente. W tym szaleństwie jest metoda
+=== FolleMente. W tym szaleństwie jest metoda ===
+displayTitle:      FolleMente. W tym szaleństwie jest metoda
 cinemaTitles:      Cykl "Zawsze Ósmego" - Follemente. W tym szaleństwie jest metoda | Follemente. W tym szaleństwie jest metoda
 runtimeMinutes:    97
 releaseYear:       2025
@@ -3078,8 +3122,8 @@ cinemaScrapes:
 showings:
   2026-06-12  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
-=== Kurozając i świątynia świstaka ===
-displayTitle:      Kurozając i świątynia świstaka
+=== Kurozając i Świątynia Świstaka ===
+displayTitle:      Kurozając i Świątynia Świstaka
 cinemaTitles:      KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA | Kurozając i Świątynia Świstaka | Kurozając i świątynia Świstaka | Kurozając i świątynia świstaka
 runtimeMinutes:    88
 releaseYear:       2026
@@ -3313,8 +3357,8 @@ showings:
   2026-06-11  Cinema City Poznań Plaza      10:00 Sala 9 2D/DUB · 13:00 Sala 9 2D/DUB · 16:00 Sala 9 2D/NAP · 19:00 Sala 9 2D/NAP · 22:00 Sala 9 2D/NAP
   2026-06-11  Helios Posnania               11:20 Sala 5 - Dream 2D/DUB/ATMOS · 12:15 Sala 6 2D/NAP · 17:15 Sala 4 2D/DUB · 20:15 Sala 4 2D/NAP · 20:45 Sala 5 - Dream 2D/NAP/ATMOS
 
-=== Maraton horrorów ===
-displayTitle:      Maraton horrorów
+=== Maraton Horrorów ===
+displayTitle:      Maraton Horrorów
 cinemaTitles:      Maraton Horrorów | Maraton horrorów
 runtimeMinutes:    105
 releaseYear:       —
@@ -3729,6 +3773,82 @@ showings:
   2026-06-14  Kino Pałacowe                 18:00 Sala 1 - Kinowa
   2026-06-25  Kino Pałacowe                 20:00 Sala 1 - Kinowa
   2026-06-28  Helios Posnania               15:30 2D/NAP
+
+=== Milcząca przyjaciółka ===
+displayTitle:      Milcząca przyjaciółka
+cinemaTitles:      MILCZĄCA PRZYJACIÓŁKA | Milcząca przyjaciółka | „Milcząca przyjaciółka”
+runtimeMinutes:    145
+releaseYear:       2025
+countries:         Francja, Niemcy, Węgry, Chiny, Belgia
+posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Milcząca-przyjaciółka_plakat-PL_LQ.jpg
+synopsis.length:   1708
+cast:              Tony Leung, Luna Wedler, Enzo Brumm, Sylvester Groth, Martin Wuttke, Johannes Hegemann, Rainer Bock, Léa Seydoux
+director:          Ildikó Enyedi
+tmdbId:            1168719
+imdbId:            tt27811632
+originalTitle:     Stille Freundin
+imdbRating:        7.4
+metascore:         90
+rottenTomatoes:    95
+filmwebRating:     7.12075
+metacriticUrl:     https://www.metacritic.com/movie/silent-friend
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/silent_friend
+filmwebUrl:        https://www.filmweb.pl/film/Milcz%C4%85ca+przyjaci%C3%B3%C5%82ka-2025-10089999
+cinemaFilmUrls:
+  Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/milczaca-przyjaciolka
+  Kino Malta Charlie Monroe = https://kinomalta.pl/movies/milczaca-przyjaciolka
+  Kino Muza = https://www.kinomuza.pl/movie/milczaca-przyjaciolka/
+  Kino Pałacowe = http://kinopalacowe.pl/filmy/14492-milczaca-przyjacioka/
+cinemaScrapes:
+  Cinema City Bonarka / Milcząca przyjaciółka / 2025
+  Dolnośląskie Centrum Filmowe / Milcząca przyjaciółka / 2025
+  Gdyńskie Centrum Filmowe / Milcząca przyjaciółka / —
+  KINOMUZEUM / Milcząca przyjaciółka / 2025
+  Kino Agrafka / MILCZĄCA PRZYJACIÓŁKA / —
+  Kino Amok / Milcząca przyjaciółka / —
+  Kino Atlantic / Milcząca przyjaciółka / 2025
+  Kino Bajka / Milcząca przyjaciółka / —
+  Kino Bułgarska 19 / Milcząca przyjaciółka / 2025
+  Kino Fenomen (WDK) / „Milcząca przyjaciółka” / —
+  Kino Forum / Milcząca przyjaciółka / —
+  Kino Kika / MILCZĄCA PRZYJACIÓŁKA / —
+  Kino Kinematograf / Milcząca przyjaciółka / —
+  Kino Kultura / Milcząca przyjaciółka / —
+  Kino Luna / Milcząca przyjaciółka / —
+  Kino Malta Charlie Monroe / Milcząca przyjaciółka / —
+  Kino Meduza / Milcząca przyjaciółka / —
+  Kino Mikro / Milcząca przyjaciółka / —
+  Kino Muranów / Milcząca przyjaciółka / 2025
+  Kino Muza / Milcząca przyjaciółka / 2025
+  Kino Muzeum / MILCZĄCA PRZYJACIÓŁKA / —
+  Kino NCKF EC1 / Milcząca przyjaciółka / —
+  Kino Narie / Milcząca przyjaciółka / —
+  Kino Nowe Horyzonty / Milcząca przyjaciółka / 2025
+  Kino Orzeł / Milcząca przyjaciółka / —
+  Kino PDK / Milcząca przyjaciółka / —
+  Kino Pałacowe / Milcząca przyjaciółka / 2025
+  Kino Pionier 1907 / MILCZĄCA PRZYJACIÓŁKA / —
+  Kino Praha / Milcząca przyjaciółka / —
+  Kino Spektrum / Milcząca przyjaciółka / —
+  Kino Wisła / Milcząca przyjaciółka / 2025
+  Kinoteatr Rialto / Milcząca przyjaciółka / —
+  Patria / Milcząca przyjaciółka / 2025
+  Świt / Milcząca przyjaciółka / —
+showings:
+  2026-06-08  Kino Bułgarska 19             18:50 Sala Dzienniki Motocyklowe
+  2026-06-08  Kino Muza                     15:00 Sala 1
+  2026-06-08  Kino Pałacowe                 15:45 Sala 2 - Audiowizualna
+  2026-06-09  Kino Malta Charlie Monroe     18:00 Sala Audrey
+  2026-06-09  Kino Muza                     16:00 Sala 1
+  2026-06-09  Kino Pałacowe                 17:15 Sala 2 - Audiowizualna · 19:30 Sala 1 - Kinowa
+  2026-06-10  Kino Bułgarska 19             17:00 Sala Dzienniki Motocyklowe
+  2026-06-10  Kino Malta Charlie Monroe     18:00 Sala Marilyn
+  2026-06-10  Kino Muza                     17:45 Sala 1
+  2026-06-10  Kino Pałacowe                 20:00 Sala 2 - Audiowizualna
+  2026-06-11  Kino Bułgarska 19             19:40 Sala Dzienniki Motocyklowe
+  2026-06-11  Kino Malta Charlie Monroe     18:00 Sala Audrey
+  2026-06-11  Kino Muza                     14:30 Sala 1 · 18:15 Sala 2
+  2026-06-11  Kino Pałacowe                 15:00 Sala 1 - Kinowa · 19:30 Sala 2 - Audiowizualna
 
 === Minimaraton Superman i Supergirl ===
 displayTitle:      Minimaraton Superman i Supergirl
@@ -4366,8 +4486,8 @@ showings:
   2026-06-11  Cinema City Kinepolis         12:10 Sala 16 2D/DUB · 16:10 Sala 9 2D/DUB
   2026-06-11  Cinema City Poznań Plaza      10:50 Sala 2 2D/DUB · 12:30 Sala 2 2D/DUB
 
-=== Niesamowite przygody skarpetek 3. ale kosmos! ===
-displayTitle:      Niesamowite przygody skarpetek 3. ale kosmos!
+=== Niesamowite przygody skarpetek 3. Ale kosmos ===
+displayTitle:      Niesamowite przygody skarpetek 3. Ale kosmos
 cinemaTitles:      NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS ! | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! | Niesamowite przygody skarpetek 3. Ale kosmos | Niesamowite przygody skarpetek 3. Ale kosmos! | Niesamowite przygody skarpetek 3. ale kosmos!
 runtimeMinutes:    55
 releaseYear:       2026
@@ -4563,8 +4683,8 @@ showings:
   2026-06-20  Kino Pałacowe                 18:00 Sala 1 - Kinowa
   2026-08-04  Kino Muza                     18:15 Sala 1
 
-=== Nowa Fala ===
-displayTitle:      Nowa Fala
+=== Nowa fala ===
+displayTitle:      Nowa fala
 cinemaTitles:      Nowa Fala | Nowa fala
 runtimeMinutes:    105
 releaseYear:       2025
@@ -4742,8 +4862,8 @@ cinemaScrapes:
 showings:
   2026-06-11  Kino Muza                     19:00 Sala 1
 
-=== Obsesja. ===
-displayTitle:      Obsesja.
+=== Obsesja ===
+displayTitle:      Obsesja
 cinemaTitles:      OBSESJA | Obsesja | Obsesja.
 runtimeMinutes:    109
 releaseYear:       2026
@@ -6464,8 +6584,8 @@ cinemaScrapes:
 showings:
   2026-06-08  Kino Malta Charlie Monroe     20:15 Sala Marilyn
 
-=== Przekleństwa niewinności ===
-displayTitle:      Przekleństwa niewinności
+=== Przekleństwa Niewinności ===
+displayTitle:      Przekleństwa Niewinności
 cinemaTitles:      Przekleństwa niewinności
 runtimeMinutes:    97
 releaseYear:       1999
@@ -6630,8 +6750,8 @@ cinemaScrapes:
 showings:
   2026-06-08  Kino Malta Charlie Monroe     18:15 Sala Marilyn
 
-=== Romeria ===
-displayTitle:      Romeria
+=== Romería ===
+displayTitle:      Romería
 cinemaTitles:      Romeria | Romería
 runtimeMinutes:    115
 releaseYear:       2025
@@ -7574,8 +7694,8 @@ cinemaScrapes:
 showings:
   2026-06-11  Kino Bułgarska 19             19:50 Sala Thelma & Louise
 
-=== Tom i jerry: przygoda w muzeum ===
-displayTitle:      Tom i jerry: przygoda w muzeum
+=== Tom i Jerry. Przygoda w muzeum ===
+displayTitle:      Tom i Jerry. Przygoda w muzeum
 cinemaTitles:      TOM I JERRY : PRZYGODA W MUZEUM | TOM I JERRY: PRZYGODA W MUZEUM | TOM I JERRY:PRZYGODA W MUZEUM | Tom i Jerry. Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum | Tom i jerry. Przygoda w muzeum | Tom i jerry: przygoda w muzeum
 runtimeMinutes:    100
 releaseYear:       2026
@@ -8055,8 +8175,8 @@ showings:
   2026-06-15  Kino Pałacowe                 18:00 Sala 1 - Kinowa
   2026-07-28  Kino Muza                     20:30 Sala 1
 
-=== Werdykt. ===
-displayTitle:      Werdykt.
+=== Werdykt ===
+displayTitle:      Werdykt
 cinemaTitles:      Werdykt | Werdykt.
 runtimeMinutes:    89
 releaseYear:       2025
@@ -8357,8 +8477,8 @@ cinemaScrapes:
 showings:
   2026-06-24  Kino Muza                     20:00 Sala 1
 
-=== Władcy wszechświata ===
-displayTitle:      Władcy wszechświata
+=== Władcy Wszechświata ===
+displayTitle:      Władcy Wszechświata
 cinemaTitles:      WŁADCY WSZECHŚWIATA | Władcy Wszechświata | Władcy wszechświata
 runtimeMinutes:    141
 releaseYear:       2026
@@ -8906,123 +9026,3 @@ cinemaScrapes:
   Kinoteatr Rialto / Ścieżki życia / —
 showings:
   2026-06-18  Helios Posnania               17:00 2D/LEK
-
-=== „Człowiek z marmuru” ===
-displayTitle:      „Człowiek z marmuru”
-cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | „Człowiek z marmuru”
-runtimeMinutes:    153
-releaseYear:       1977
-countries:         Polska
-posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png
-synopsis.length:   1212
-cast:              Krystyna Janda, Jerzy Radziwiłowicz, Tadeusz Łomnicki, Jacek Łomnicki, Michał Tarkowski
-director:          Andrzej Wajda
-tmdbId:            224
-imdbId:            tt0075902
-originalTitle:     Człowiek z marmuru
-imdbRating:        7.6
-metascore:         —
-rottenTomatoes:    75
-filmwebRating:     7.6897
-metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/czlowiek_z_marmuru
-filmwebUrl:        https://www.filmweb.pl/film/Cz%C5%82owiek+z+marmuru-1976-1123
-cinemaFilmUrls:
-  Kino Apollo = https://kinoapollo.pl/kino/cykl-wajda-re-wizje-czlowiek-z-marmuru-man-of-marble1977/
-  Kino Malta Charlie Monroe = https://kinomalta.pl/movies/czlowiek-z-marmuru
-cinemaScrapes:
-  Forum / CZŁOWIEK Z MARMURU / —
-  Kino Agrafka / CZŁOWIEK Z MARMURU / —
-  Kino Amok / Człowiek z marmuru / —
-  Kino Apollo / Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) / —
-  Kino Diana / Człowiek z marmuru / —
-  Kino Fenomen (WDK) / „Człowiek z marmuru” / —
-  Kino Goplana / Człowiek z marmuru / —
-  Kino Kika / CZŁOWIEK Z MARMURU / —
-  Kino Kultura / Człowiek z marmuru / —
-  Kino MOK Centrum / CZŁOWIEK Z MARMURU / —
-  Kino Malta Charlie Monroe / Człowiek z marmuru / —
-  Kino Muranów / Człowiek z marmuru / 1977
-  Kino Pionier 1907 / Człowiek z marmuru / —
-  Kino nad Wartą / CZŁOWIEK Z MARMURU / —
-  Kino za Rogiem Cafe / Człowiek z marmuru / —
-  OKF Iluzja / CZŁOWIEK Z MARMURU / MAN OF MARBLE / —
-showings:
-  2026-06-14  Kino Apollo                   15:00
-  2026-06-30  Kino Malta Charlie Monroe     15:30 Sala Audrey
-
-=== „Milcząca przyjaciółka” ===
-displayTitle:      „Milcząca przyjaciółka”
-cinemaTitles:      MILCZĄCA PRZYJACIÓŁKA | Milcząca przyjaciółka | „Milcząca przyjaciółka”
-runtimeMinutes:    145
-releaseYear:       2025
-countries:         Francja, Niemcy, Węgry, Chiny, Belgia
-posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Milcząca-przyjaciółka_plakat-PL_LQ.jpg
-synopsis.length:   1708
-cast:              Tony Leung, Luna Wedler, Enzo Brumm, Sylvester Groth, Martin Wuttke, Johannes Hegemann, Rainer Bock, Léa Seydoux
-director:          Ildikó Enyedi
-tmdbId:            1168719
-imdbId:            tt27811632
-originalTitle:     Stille Freundin
-imdbRating:        7.4
-metascore:         90
-rottenTomatoes:    95
-filmwebRating:     7.12075
-metacriticUrl:     https://www.metacritic.com/movie/silent-friend
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/silent_friend
-filmwebUrl:        https://www.filmweb.pl/film/Milcz%C4%85ca+przyjaci%C3%B3%C5%82ka-2025-10089999
-cinemaFilmUrls:
-  Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/milczaca-przyjaciolka
-  Kino Malta Charlie Monroe = https://kinomalta.pl/movies/milczaca-przyjaciolka
-  Kino Muza = https://www.kinomuza.pl/movie/milczaca-przyjaciolka/
-  Kino Pałacowe = http://kinopalacowe.pl/filmy/14492-milczaca-przyjacioka/
-cinemaScrapes:
-  Cinema City Bonarka / Milcząca przyjaciółka / 2025
-  Dolnośląskie Centrum Filmowe / Milcząca przyjaciółka / 2025
-  Gdyńskie Centrum Filmowe / Milcząca przyjaciółka / —
-  KINOMUZEUM / Milcząca przyjaciółka / 2025
-  Kino Agrafka / MILCZĄCA PRZYJACIÓŁKA / —
-  Kino Amok / Milcząca przyjaciółka / —
-  Kino Atlantic / Milcząca przyjaciółka / 2025
-  Kino Bajka / Milcząca przyjaciółka / —
-  Kino Bułgarska 19 / Milcząca przyjaciółka / 2025
-  Kino Fenomen (WDK) / „Milcząca przyjaciółka” / —
-  Kino Forum / Milcząca przyjaciółka / —
-  Kino Kika / MILCZĄCA PRZYJACIÓŁKA / —
-  Kino Kinematograf / Milcząca przyjaciółka / —
-  Kino Kultura / Milcząca przyjaciółka / —
-  Kino Luna / Milcząca przyjaciółka / —
-  Kino Malta Charlie Monroe / Milcząca przyjaciółka / —
-  Kino Meduza / Milcząca przyjaciółka / —
-  Kino Mikro / Milcząca przyjaciółka / —
-  Kino Muranów / Milcząca przyjaciółka / 2025
-  Kino Muza / Milcząca przyjaciółka / 2025
-  Kino Muzeum / MILCZĄCA PRZYJACIÓŁKA / —
-  Kino NCKF EC1 / Milcząca przyjaciółka / —
-  Kino Narie / Milcząca przyjaciółka / —
-  Kino Nowe Horyzonty / Milcząca przyjaciółka / 2025
-  Kino Orzeł / Milcząca przyjaciółka / —
-  Kino PDK / Milcząca przyjaciółka / —
-  Kino Pałacowe / Milcząca przyjaciółka / 2025
-  Kino Pionier 1907 / MILCZĄCA PRZYJACIÓŁKA / —
-  Kino Praha / Milcząca przyjaciółka / —
-  Kino Spektrum / Milcząca przyjaciółka / —
-  Kino Wisła / Milcząca przyjaciółka / 2025
-  Kinoteatr Rialto / Milcząca przyjaciółka / —
-  Patria / Milcząca przyjaciółka / 2025
-  Świt / Milcząca przyjaciółka / —
-showings:
-  2026-06-08  Kino Bułgarska 19             18:50 Sala Dzienniki Motocyklowe
-  2026-06-08  Kino Muza                     15:00 Sala 1
-  2026-06-08  Kino Pałacowe                 15:45 Sala 2 - Audiowizualna
-  2026-06-09  Kino Malta Charlie Monroe     18:00 Sala Audrey
-  2026-06-09  Kino Muza                     16:00 Sala 1
-  2026-06-09  Kino Pałacowe                 17:15 Sala 2 - Audiowizualna · 19:30 Sala 1 - Kinowa
-  2026-06-10  Kino Bułgarska 19             17:00 Sala Dzienniki Motocyklowe
-  2026-06-10  Kino Malta Charlie Monroe     18:00 Sala Marilyn
-  2026-06-10  Kino Muza                     17:45 Sala 1
-  2026-06-10  Kino Pałacowe                 20:00 Sala 2 - Audiowizualna
-  2026-06-11  Kino Bułgarska 19             19:40 Sala Dzienniki Motocyklowe
-  2026-06-11  Kino Malta Charlie Monroe     18:00 Sala Audrey
-  2026-06-11  Kino Muza                     14:30 Sala 1 · 18:15 Sala 2
-  2026-06-11  Kino Pałacowe                 15:00 Sala 1 - Kinowa · 19:30 Sala 2 - Audiowizualna

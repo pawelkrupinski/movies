@@ -115,15 +115,37 @@ case class MovieRecord(
   private def prioritizedCinema: Seq[(Cinema, SourceData)] =
     cinemaData.toSeq.sortBy { case (c, _) => Source.priority.getOrElse(c, Int.MaxValue) }
 
-  /** Display title chosen across the cinema-reported variants plus the
-   *  record's `cleanTitle` anchor (which is the post-decoration-strip form
-   *  the cache keys the row by). Caller supplies cleanTitle because the
-   *  record itself doesn't carry it — that anchor only exists on the
-   *  surrounding CacheKey. Falls back to cleanTitle when there are no
-   *  variants yet (TMDB resolved with no cinema scrape yet). */
-  def displayTitle(cleanTitle: String): String =
-    services.movies.TitleNormalizer.preferredDisplay((cinemaTitles + cleanTitle).toSeq)
-      .getOrElse(cleanTitle)
+  /** Display title for the row, derived deterministically (no scrape-order
+   *  dependence) in three steps:
+   *
+   *   A. **Dominant clean form** — group the per-cinema reported titles (one
+   *      vote per cinema) by their `sanitize` key and take the key the most
+   *      cinemas agree on (ties → lexicographically-smallest key). This fixes
+   *      the row's *identity* and drops minority misspellings + cross-script
+   *      (e.g. Ukrainian-dub) variants, which carry a different key.
+   *   B. **TMDB Polish title** — if the `Tmdb` slot's title shares that clean
+   *      key (so TMDB resolved to the same film), display it: TMDB carries the
+   *      canonical casing / diacritics / punctuation. A TMDB title with a
+   *      *different* clean key (a mis-resolution) is ignored.
+   *   C. **Cinema ladder** — otherwise pick among the dominant-identity cinema
+   *      spellings via `preferredDisplay`'s deterministic ladder.
+   *
+   *  Caller supplies cleanTitle (the post-decoration-strip anchor the cache
+   *  keys the row by) because the record itself doesn't carry it; it's the
+   *  fallback when no cinema is scraping yet (TMDB-only row). */
+  def displayTitle(cleanTitle: String): String = {
+    import services.movies.TitleNormalizer.{sanitize, preferredDisplay, wellFormedTitle}
+    val perCinema = cinemaData.values.flatMap(_.title).toSeq
+    val votePool  = if (perCinema.nonEmpty) perCinema else Seq(cleanTitle)
+    val dominantKey =
+      votePool.groupBy(sanitize).toSeq.sortBy { case (k, ts) => (-ts.size, k) }.head._1
+    data.get(Tmdb).flatMap(_.title)
+      .filter(t => sanitize(t) == dominantKey && wellFormedTitle(t))
+      .getOrElse {
+        val variants = (perCinema :+ cleanTitle).filter(t => sanitize(t) == dominantKey)
+        preferredDisplay(variants).getOrElse(cleanTitle)
+      }
+  }
 
   /** TMDB-resolved original (production-language) title. None when TMDB
    *  hasn't filled this row yet. */
