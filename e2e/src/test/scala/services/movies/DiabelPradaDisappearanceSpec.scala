@@ -148,15 +148,22 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       // fixture showtime so every showtime is in the future — if the film
       // still vanishes from the schedule output, the bug is in the
       // read path itself, not in the data.
-      val ctrl = new MovieControllerService(cache)
+      // Project the cache into the read model and serve from it, as the web does.
+      val readModel = services.readmodel.TestReadModel.fromRecords(
+        cache.snapshot().map(r => (r.title, r.year, r.record)))
+      val ctrl = new MovieControllerService(readModel)
       val firstShowtime: java.time.LocalDateTime =
         cache.snapshot().filter(r => isPrada(r.record))
           .flatMap(_.record.cinemaData.values.flatMap(_.showtimes.map(_.dateTime)))
           .min
       val pinnedNow = firstShowtime.minusDays(1)
 
+      // The read model drops tmdbId/imdbId, so identify Prada via the cache and
+      // match the rendered rows by film id.
+      val pradaFilmIds = cache.snapshot().filter(r => isPrada(r.record))
+        .map(services.readmodel.ReadModelProjection.filmId).toSet
       val rendered = ctrl.toSchedules(Poznan, pinnedNow)
-      val pradaSchedules = rendered.filter(_.enrichment.exists(isPrada))
+      val pradaSchedules = rendered.filter(s => pradaFilmIds.contains(s.resolved._id))
 
       pradaSchedules.size shouldBe 1
       val schedule = pradaSchedules.head

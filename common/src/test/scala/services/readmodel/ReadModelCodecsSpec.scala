@@ -40,10 +40,11 @@ class ReadModelCodecsSpec extends AnyFlatSpec with Matchers {
       trailerUrls        = Seq("https://www.youtube.com/embed/abc"),
       ratings            = ResolvedRatings(
         imdb = Some(9.3), imdbUrl = Some("https://www.imdb.com/title/tt0111161/"),
-        metascore = Some(82), metacriticUrl = Some("https://mc"),
-        rottenTomatoes = Some(91), rottenTomatoesUrl = Some("https://rt"),
-        filmweb = Some(8.9), filmwebUrl = Some("https://fw")
-      )
+        metascore = Some(82), metacriticUrl = "https://mc",
+        rottenTomatoes = Some(91), rottenTomatoesUrl = "https://rt",
+        filmweb = Some(8.9), filmwebUrl = "https://fw"
+      ),
+      weightedRating     = 9.05
     )
     roundTrip(codec, movie) shouldBe movie
   }
@@ -55,7 +56,8 @@ class ReadModelCodecsSpec extends AnyFlatSpec with Matchers {
       fallbackPosterUrls = Seq.empty, runtimeMinutes = None, releaseYear = None,
       genres = Seq.empty, countries = Seq.empty, directors = Seq.empty, cast = Seq.empty,
       synopsis = None, trailerUrls = Seq.empty,
-      ratings = ResolvedRatings(None, None, None, None, None, None, None, None)
+      ratings = ResolvedRatings(None, None, None, "https://mc/search", None, "https://rt/search", None, "https://fw/search"),
+      weightedRating = 0.0
     )
     roundTrip(codec, movie) shouldBe movie
   }

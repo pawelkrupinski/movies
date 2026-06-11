@@ -1,6 +1,5 @@
 @import controllers.FilmSchedule
 @import controllers.BrowseHref
-@import services.movies.TrailerEmbed
 @(film: FilmSchedule)(implicit city: models.City)
 @*
   Per-film detail content — poster + title + meta blocks + trailers + the
@@ -20,7 +19,7 @@
                to try when the primary 404/403s — every non-primary
                poster we know about in source-priority order. Same
                inline `onerror` pattern as _movieCard. *@
-            @defining(film.enrichment.toSeq.flatMap(_.fallbackPosterUrls).map(tools.PosterProxy.proxy).mkString("|")) { fallbacks =>
+            @defining(film.resolved.fallbackPosterUrls.map(tools.PosterProxy.proxy).mkString("|")) { fallbacks =>
               <img src="@tools.PosterProxy.proxy(url)" alt="@film.movie.title" class="poster-img" data-original-src="@tools.PosterProxy.proxy(url)"@if(fallbacks.nonEmpty){ data-fallbacks="@fallbacks" data-original-fallbacks="@fallbacks"} onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
             }
             <div class="no-poster" style="display:none">Brak plakatu</div>
@@ -39,11 +38,11 @@
   <a href="@BrowseHref.genre(g)" class="pill genre" title="Filmy gatunku @g">@g</a>
 }</div>
 
-      @film.enrichment.flatMap(_.distinctOriginalTitle(film.movie.title)).map { ot =>
+      @film.resolved.originalTitle.map { ot =>
         <div class="film-original-title">@ot</div>
       }
 
-      @_ratingBadges(film.enrichment, film.movie.title)
+      @_ratingBadges(Some(film.resolved.ratings))
 
       @if(film.cinemaFilmUrls.nonEmpty) {
         <div style="margin-top: .5rem;">
@@ -90,7 +89,7 @@
          Lives inside the right-hand column alongside Opis / Reżyseria /
          Obsada so the meta-label heading lines up vertically with the
          others. *@
-      @defining(film.enrichment.toSeq.flatMap(_.trailerUrls).flatMap(TrailerEmbed.embedUrlFor).distinct) { embedUrls =>
+      @defining(film.resolved.trailerUrls) { embedUrls =>
         @if(embedUrls.nonEmpty) {
           <div class="meta-label">Zwiastuny</div>
           <div>

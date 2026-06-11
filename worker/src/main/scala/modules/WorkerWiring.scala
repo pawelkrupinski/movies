@@ -10,7 +10,7 @@ import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackSt
 import services.events.{EventBus, InProcessEventBus, MovieRecordCreated}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, MongoNormalizationReportRepo, NormalizationRebuilder, NormalizationReport, NormalizationReportRepo, UnscreenedCleanup}
-import services.readmodel.{MongoReadModelRepo, ReadModelProjector}
+import services.readmodel.{MongoReadModelRepo, ReadModelProjector, ReadModelReader, ReadModelWriter}
 import services.tasks.{DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, RatingEnqueuer, RatingHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker}
 import services.titlerules.{MongoTitleRulesRepo, TitleRuleSet, TitleRulesCache, TitleRulesRepo}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
@@ -195,7 +195,9 @@ class WorkerWiring {
   // The worker projects every `movies` write into the two read-model collections
   // the serving app consumes. One impl is both reader (boot-seed the diff state)
   // and writer (upsert/delete the derived docs).
-  lazy val readModelRepo = new MongoReadModelRepo(mongoConnection.database)
+  // Typed as the read+write intersection so test wirings can swap in
+  // `InMemoryReadModelRepo` (Mongo-free fixture replay).
+  lazy val readModelRepo: ReadModelReader & ReadModelWriter = new MongoReadModelRepo(mongoConnection.database)
   lazy val readModelProjector = new ReadModelProjector(movieRepo, readModelRepo, readModelRepo)
 
   // Title-stripping rules. The worker owns seeding: a fresh DB gets the migrated

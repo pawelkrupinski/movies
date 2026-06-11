@@ -1,29 +1,34 @@
-@import models.MovieRecord
-@(enrichment: Option[MovieRecord], fallbackTitle: String)
+@import models.ResolvedRatings
+@(ratings: Option[ResolvedRatings])
 @* No per-pill `onclick` — the /debug data-row's expand-on-click handler
    bails on clicks that originated inside an `<a>` or `<button>` (see
    the row-click setup in debug.scala.html). That made the inline
    `onclick="event.stopPropagation()"` we used to emit here pure noise
    on /, /kina, /ulubione, /film (none of those have click-to-expand
    parents) and equivalent-but-redundant on /debug. ~454 occurrences ×
-   37 bytes = ~17 KB raw off the / page. *@
-@enrichment.map { e =>
+   37 bytes = ~17 KB raw off the / page.
+
+   The click-through URLs are pre-resolved on the read-model doc, so this
+   partial renders them verbatim (no per-call href computation). Wrapped
+   in `Option` purely so the live pages — which always carry ratings —
+   emit byte-identical markup to before the read-model split. *@
+@ratings.map { e =>
   <div class="ratings">
-    @e.imdbRating.map { r =>
+    @e.imdb.map { r =>
       <a href="@e.imdbUrl" target="_blank" rel="noopener" class="rating-imdb" title="IMDb">
         <span class="rating-imdb-label">IMDb</span><span class="rating-imdb-value">@{f"$r%.1f"}</span>
       </a>
     }
     @e.metascore.map { m =>
-      <a href="@e.metacriticHref(fallbackTitle)" target="_blank" rel="noopener" class="rating-meta" title="Metacritic">@m</a>
+      <a href="@e.metacriticUrl" target="_blank" rel="noopener" class="rating-meta" title="Metacritic">@m</a>
     }
     @e.rottenTomatoes.map { rt =>
-      <a href="@e.rottenTomatoesHref(fallbackTitle)" target="_blank" rel="noopener" class="rating-rt @if(rt >= 60) {fresh} else {rotten}" title="Rotten Tomatoes">
+      <a href="@e.rottenTomatoesUrl" target="_blank" rel="noopener" class="rating-rt @if(rt >= 60) {fresh} else {rotten}" title="Rotten Tomatoes">
         <span class="rating-rt-label">RT</span><span class="rating-rt-value">@rt%</span>
       </a>
     }
-    @e.filmwebRating.map { r =>
-      <a href="@e.filmwebHref(fallbackTitle)" target="_blank" rel="noopener" class="rating-fw" title="Filmweb">
+    @e.filmweb.map { r =>
+      <a href="@e.filmwebUrl" target="_blank" rel="noopener" class="rating-fw" title="Filmweb">
         <span class="rating-fw-label">FW</span><span class="rating-fw-value">@{f"$r%.1f"}</span>
       </a>
     }

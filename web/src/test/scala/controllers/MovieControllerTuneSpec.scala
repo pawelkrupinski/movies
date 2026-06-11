@@ -47,11 +47,14 @@ class MovieControllerTuneSpec extends AnyFlatSpec with Matchers {
   "tuneSampleFilms" should "cover the pill/rating edge cases" in {
     val films = MovieController.tuneSampleFilms
 
-    // A card with no enrichment (no ratings row).
-    films.exists(_.enrichment.isEmpty) shouldBe true
+    // A card with no ratings at all (no ratings row content).
+    films.exists { f =>
+      val r = f.resolved.ratings
+      r.imdb.isEmpty && r.metascore.isEmpty && r.rottenTomatoes.isEmpty && r.filmweb.isEmpty
+    } shouldBe true
     // A rotten RT (below 60) and the widest values (10.0 / 100 / 100%).
-    films.flatMap(_.enrichment).flatMap(_.rottenTomatoes).min should be < 60
-    films.flatMap(_.enrichment).flatMap(_.imdbRating).max shouldBe 10.0
+    films.flatMap(_.resolved.ratings.rottenTomatoes).min should be < 60
+    films.flatMap(_.resolved.ratings.imdb).max shouldBe 10.0
     // A card whose single cinema has many showtimes (pills wrap several rows).
     val maxSlotsInOneCinema = films
       .flatMap(_.showings.flatMap(_._2))

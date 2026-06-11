@@ -5,7 +5,8 @@ import play.api.Logging
 import play.api.libs.json.{Json, Writes}
 import play.api.mvc._
 import play.api.Mode
-import services.movies.{MovieCache, StoredMovieRecord, TitleNormalizer, TrailerEmbed}
+import services.movies.{MovieRepo, TitleNormalizer}
+import services.readmodel.WebReadModel
 
 import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
@@ -44,14 +45,12 @@ object ApiFilmDetails {
 
   def from(fs: FilmSchedule): ApiFilmDetails = ApiFilmDetails(
     title         = fs.movie.title,
-    // Only the genuinely-distinct original title (English/production-language
-    // name when it differs from the Polish cinema title) — the redundancy
-    // check lives on MovieRecord so clients can render it unconditionally.
-    originalTitle = fs.enrichment.flatMap(_.distinctOriginalTitle(fs.movie.title)),
+    // The genuinely-distinct original title and the embed-ready trailer URLs are
+    // pre-resolved on the read-model doc (the redundancy check + URL transform
+    // ran at projection time), so clients render them unconditionally.
+    originalTitle = fs.resolved.originalTitle,
     synopsis      = fs.synopsis,
-    // Same source + transform the /film detail page uses (raw trailer URLs →
-    // embed URLs, deduped) so clients get a ready-to-embed Zwiastun set.
-    trailerURLs   = fs.enrichment.toSeq.flatMap(_.trailerUrls).flatMap(TrailerEmbed.embedUrlFor).distinct,
+    trailerURLs   = fs.resolved.trailerUrls,
   )
 
   def hasContent(d: ApiFilmDetails): Boolean =
@@ -68,24 +67,24 @@ object ApiFilm {
   private val TimeFmt = DateTimeFormatter.ofPattern("HH:mm")
 
   def from(fs: FilmSchedule): ApiFilm = {
-    val e = fs.enrichment
+    val r = fs.resolved
     val cinemaUrlMap = fs.cinemaFilmUrls.map { case (c, url) => c.displayName -> url }.toMap
     ApiFilm(
       title            = fs.movie.title,
       posterURL        = fs.posterUrl,
-      fallbackPosterURLs = e.map(_.fallbackPosterUrls).getOrElse(Seq.empty),
+      fallbackPosterURLs = r.fallbackPosterUrls,
       runtimeMinutes   = fs.movie.runtimeMinutes,
       releaseYear      = fs.movie.releaseYear,
       genres           = fs.movie.genres,
       ratings          = ApiRatings(
-        imdb              = e.flatMap(_.imdbRating),
-        imdbURL           = e.flatMap(_.imdbUrl),
-        metascore         = e.flatMap(_.metascore),
-        metacriticURL     = e.map(_.metacriticHref(fs.movie.title)),
-        rottenTomatoes    = e.flatMap(_.rottenTomatoes),
-        rottenTomatoesURL = e.map(_.rottenTomatoesHref(fs.movie.title)),
-        filmweb           = e.flatMap(_.filmwebRating),
-        filmwebURL        = e.map(_.filmwebHref(fs.movie.title))
+        imdb              = r.ratings.imdb,
+        imdbURL           = r.ratings.imdbUrl,
+        metascore         = r.ratings.metascore,
+        metacriticURL     = Some(r.ratings.metacriticUrl),
+        rottenTomatoes    = r.ratings.rottenTomatoes,
+        rottenTomatoesURL = Some(r.ratings.rottenTomatoesUrl),
+        filmweb           = r.ratings.filmweb,
+        filmwebURL        = Some(r.ratings.filmwebUrl)
       ),
       countries        = fs.movie.countries,
       directors        = fs.director,
@@ -122,71 +121,74 @@ case class FilmSchedule(
                          director: Seq[String],
                          cinemaFilmUrls: Seq[(Cinema, String)],
                          showings: Seq[(LocalDate, Seq[CinemaShowtimes])],
-                         enrichment: Option[MovieRecord] = None
+                         // The fully-resolved metadata doc this schedule was built from —
+                         // ratings, poster fallbacks, original title, trailers. Replaces the
+                         // old `Option[MovieRecord]`: the web no longer holds MovieRecords.
+                         resolved: ResolvedMovie
                        )
 
-class MovieControllerService(
-  cache: MovieCache
-) {
-  def debugData(): Seq[StoredMovieRecord] =
-    cache.snapshot().sortBy(_.title.toLowerCase)
+/**
+ * Builds the per-city [[FilmSchedule]] view from the denormalised read model:
+ * this city's [[CityScreening]] docs joined to their [[ResolvedMovie]]. The web
+ * never touches the `movies` collection or a MovieRecord — the merge already
+ * happened at projection time.
+ */
+class MovieControllerService(readModel: WebReadModel) {
 
   def toSchedules(city: City): Seq[FilmSchedule] =
     toSchedules(city, LocalDateTime.now(city.zoneId))
 
-  /** Overload with an injectable `now` so tests can pin the clock to a
-   * fixture's capture date and assert what the / page would render at that
-   * moment. Production callers should always use the city-only variant.
+  /** Overload with an injectable `now` so tests can pin the clock to a fixture's
+   * capture date. Scoped to `city`: `readModel.screeningsForCity` already
+   * returns only this city's cinemas' screenings, so a film playing only
+   * elsewhere drops out here.
    *
-   * Scoped to `city`: only this city's cinemas' showtimes count, so a film
-   * playing only in another city's cinemas drops out of this city's listing.
-   * The cache itself is global (one enriched row per film across all cities). */
+   * Ordering-tolerant join: a screening doc whose `ResolvedMovie` hasn't landed
+   * yet (the movie-before-screenings write order can still be observed in the
+   * reverse order over two independent change streams) simply contributes
+   * nothing until the movie doc arrives — no half-rendered card. */
   def toSchedules(city: City, now: LocalDateTime): Seq[FilmSchedule] = {
-    val cityCinemas = city.cinemaSet
-    cache.snapshot().flatMap { case StoredMovieRecord(cleanTitle, _, e) =>
-      // Flatten this city's cinemas' future showtimes for this film. Records
-      // with no future showings in this city drop out of its list view — they
-      // stay in storage per the "keep forever" policy.
-      val allShowtimes = e.cinemaData.toSeq
-        .filter { case (cinema, _) => cityCinemas.contains(cinema) }
-        .flatMap { case (cinema, slot) =>
-          slot.showtimes.iterator.filter(_.dateTime.isAfter(now.minusMinutes(30))).map(st => (cinema, st))
+    readModel.screeningsForCity(city.slug).groupBy(_.filmId).toSeq.flatMap { case (filmId, screenings) =>
+      readModel.movie(filmId).flatMap { resolved =>
+        // Flatten this city's future showtimes. A film with no future showing in
+        // this city drops out of its list view (its docs stay in the store).
+        val allShowtimes: Seq[(Cinema, Showtime)] = screenings.flatMap { sc =>
+          MovieControllerService.cinemaByName(sc.cinema).toSeq.flatMap { cinema =>
+            sc.showtimes.iterator.filter(_.dateTime.isAfter(now.minusMinutes(30))).map(st => (cinema, st))
+          }
         }
-      if (allShowtimes.isEmpty) None
-      else {
-        val earliest = allShowtimes.map(_._2.dateTime).min
-        val byDate: Seq[(LocalDate, Seq[CinemaShowtimes])] =
-          allShowtimes
-            .groupBy(_._2.dateTime.toLocalDate)
-            .toSeq.sortBy(_._1)
-            .map { case (date, slots) =>
-              val perCinema = slots
-                .groupBy(_._1)
-                // `displayName` is the tiebreaker: when two cinemas share a film
-                // at the same earliest showtime (common once a film merges across
-                // venues), ordering by time alone leaves their relative order to
-                // the upstream `Map` iteration order, which varies with scrape
-                // thread-merge timing — non-deterministic across JVM boots and the
-                // source of the "Kino Malta vs Kino Meduza" snapshot flake. The
-                // total order makes the rendered schedule reproducible.
-                .toSeq.sortBy { case (cinema, ss) => (ss.map(_._2.dateTime).min, cinema.displayName) }
-                .map { case (cinema, ss) => CinemaShowtimes(cinema, ss.map(_._2).sortBy(_.dateTime)) }
-              (date, perCinema)
-            }
-        val cinemaFilmUrls: Seq[(Cinema, String)] =
-          e.cinemaData.toSeq
-            .filter { case (cinema, _) => cityCinemas.contains(cinema) }
-            .flatMap { case (cinema, slot) => slot.filmUrl.map(cinema -> _) }
-        Some((earliest, FilmSchedule(
-          movie = Movie(e.displayTitle(cleanTitle), e.runtimeMinutes, e.releaseYear, countries = e.countries, genres = e.genres),
-          posterUrl = e.posterUrl,
-          synopsis = e.synopsis,
-          cast = e.cast,
-          director = e.director,
-          cinemaFilmUrls = cinemaFilmUrls,
-          showings = byDate,
-          enrichment = Some(e)
-        )))
+        if (allShowtimes.isEmpty) None
+        else {
+          val earliest = allShowtimes.map(_._2.dateTime).min
+          val byDate: Seq[(LocalDate, Seq[CinemaShowtimes])] =
+            allShowtimes
+              .groupBy(_._2.dateTime.toLocalDate)
+              .toSeq.sortBy(_._1)
+              .map { case (date, slots) =>
+                val perCinema = slots
+                  .groupBy(_._1)
+                  // `displayName` is the tiebreaker so two cinemas sharing a film at
+                  // the same earliest showtime render in a stable order (the
+                  // "Kino Malta vs Kino Meduza" snapshot-flake fix).
+                  .toSeq.sortBy { case (cinema, ss) => (ss.map(_._2.dateTime).min, cinema.displayName) }
+                  .map { case (cinema, ss) => CinemaShowtimes(cinema, ss.map(_._2).sortBy(_.dateTime)) }
+                (date, perCinema)
+              }
+          val cinemaFilmUrls: Seq[(Cinema, String)] =
+            screenings
+              .flatMap(sc => MovieControllerService.cinemaByName(sc.cinema).flatMap(c => sc.filmUrl.map(c -> _)))
+              .sortBy(_._1.displayName)
+          Some((earliest, FilmSchedule(
+            movie = Movie(resolved.title, resolved.runtimeMinutes, resolved.releaseYear, countries = resolved.countries, genres = resolved.genres),
+            posterUrl = resolved.posterUrl,
+            synopsis = resolved.synopsis,
+            cast = resolved.cast,
+            director = resolved.directors,
+            cinemaFilmUrls = cinemaFilmUrls,
+            showings = byDate,
+            resolved = resolved
+          )))
+        }
       }
     }.sortBy { case (earliest, fs) => (earliest, fs.movie.title) }.map(_._2)
   }
@@ -197,13 +199,21 @@ class MovieControllerService(
   }
 
   private def normalizeTitle(title: String): String = TitleNormalizer.normalize(title)
+}
 
-  def rehydrate(): Int = cache.rehydrate()
+object MovieControllerService {
+  /** displayName → Cinema (cinemas are `Source`s, so reuse the shared map). */
+  private def cinemaByName(name: String): Option[Cinema] =
+    Source.byDisplayName.get(name).collect { case c: Cinema => c }
 }
 
 class MovieController( cc: ControllerComponents,
                        movieControllerService: MovieControllerService,
-                       movieCache: MovieCache,
+                       readModel: WebReadModel,
+                       // Read-only, on-demand only: the /debug corpus dump. The web
+                       // never keeps this warm (no `movies` change stream) — it pulls
+                       // a fresh snapshot when the dev endpoint is hit.
+                       movieRepo: MovieRepo,
                        userRepo: services.users.UserRepo,
                        oauthProviders: Set[String],
                        environment: Mode,
@@ -251,7 +261,7 @@ class MovieController( cc: ControllerComponents,
    *  pages change when showtimes do, so we never want a stale copy served
    *  without a check. */
   private def conditionalGzipped(request: RequestHeader, contentType: String, vary: String, revalidate: Boolean)(body: => String): Result = {
-    val lastMod  = movieCache.lastModified.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
+    val lastMod  = readModel.lastModified.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
     val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
       .format(lastMod.atOffset(java.time.ZoneOffset.UTC))
     val validators: Seq[(String, String)] =
@@ -388,7 +398,10 @@ class MovieController( cc: ControllerComponents,
   def debug(city: String): Action[AnyContent] = Action {
     withCity(city) { implicit c =>
       devOnly {
-        Ok(views.html.debug(movieControllerService.debugData()))
+        // Dev-only corpus dump. Pulled on demand from Mongo (the web doesn't keep
+        // the `movies` model warm); shows the full source-data rows the read
+        // model is projected from.
+        Ok(views.html.debug(movieRepo.findAll().sortBy(_.title.toLowerCase)))
       }
     }
   }
@@ -434,13 +447,12 @@ class MovieController( cc: ControllerComponents,
     }
   }
 
-  /** Drop the in-memory positive cache and reload it from Mongo. Available in
-   * every mode (unlike the rest of the debug endpoints) so a fly.io instance
-   * whose cache drifted from Mongo can be reconciled without a redeploy.
-   * The negative cache (24h TTL TMDB-miss markers) is left alone. */
+  /** Reload the in-memory read-model caches from Mongo. Available in every mode
+   * (unlike the rest of the debug endpoints) so a fly.io instance whose caches
+   * drifted from the derived collections can be reconciled without a redeploy. */
   def rehydrate(city: String): Action[AnyContent] = Action {
     withCity(city) { _ =>
-      val count = movieControllerService.rehydrate()
+      val count = readModel.reload()
       Ok(s"rehydrated $count rows\n").as("text/plain; charset=utf-8")
     }
   }
@@ -492,28 +504,52 @@ object MovieController {
         format     = fmt
       )
 
-    def film(
-      title:      String,
-      genres:     Seq[String],
-      runtime:    Option[Int],
-      year:       Option[Int],
-      enrichment: Option[MovieRecord],
-      showings:   Seq[(LocalDate, Seq[CinemaShowtimes])]
-    ): FilmSchedule =
+    // Build a resolved-movie sample directly (the web no longer holds
+    // MovieRecords). Rating hrefs are placeholders — this page tunes layout, not
+    // links — and `weightedRating` uses the production formula so the grid's
+    // data-rating sort behaves as in prod.
+    def res(
+      title:     String,
+      genres:    Seq[String],
+      runtime:   Option[Int],
+      year:      Option[Int],
+      imdb:      Option[Double] = None,
+      metascore: Option[Int]    = None,
+      rt:        Option[Int]    = None,
+      filmweb:   Option[Double] = None
+    ): ResolvedMovie = {
+      val weighted = {
+        val ns = Seq(imdb, filmweb, metascore.map(_ / 10.0), rt.map(_ / 10.0)).flatten
+        if (ns.isEmpty) 0.0 else ns.sum / ns.size
+      }
+      ResolvedMovie(
+        _id = title, title = title, originalTitle = None, posterUrl = None, fallbackPosterUrls = Seq.empty,
+        runtimeMinutes = runtime, releaseYear = year, genres = genres, countries = Seq.empty,
+        directors = Seq.empty, cast = Seq.empty, synopsis = None, trailerUrls = Seq.empty,
+        ratings = ResolvedRatings(
+          imdb = imdb, imdbUrl = imdb.map(_ => "https://www.imdb.com/"),
+          metascore = metascore, metacriticUrl = "https://www.metacritic.com/",
+          rottenTomatoes = rt, rottenTomatoesUrl = "https://www.rottentomatoes.com/",
+          filmweb = filmweb, filmwebUrl = "https://www.filmweb.pl/"
+        ),
+        weightedRating = weighted
+      )
+    }
+
+    def film(resolved: ResolvedMovie, showings: Seq[(LocalDate, Seq[CinemaShowtimes])]): FilmSchedule =
       FilmSchedule(
-        movie          = Movie(title, runtimeMinutes = runtime, releaseYear = year, genres = genres),
-        posterUrl      = None,
-        synopsis       = None,
-        cast           = Seq.empty,
-        director       = Seq.empty,
+        movie          = Movie(resolved.title, runtimeMinutes = resolved.runtimeMinutes, releaseYear = resolved.releaseYear, genres = resolved.genres),
+        posterUrl      = resolved.posterUrl,
+        synopsis       = resolved.synopsis,
+        cast           = resolved.cast,
+        director       = resolved.directors,
         cinemaFilmUrls = Seq.empty,
         showings       = showings,
-        enrichment     = enrichment
+        resolved       = resolved
       )
 
     val rich = film(
-      "Incepcja", Seq("Sci-Fi", "Akcja"), Some(148), Some(2010),
-      Some(MovieRecord(imdbId = Some("tt1375666"), imdbRating = Some(8.8), metascore = Some(74), rottenTomatoes = Some(87), filmwebRating = Some(7.6))),
+      res("Incepcja", Seq("Sci-Fi", "Akcja"), Some(148), Some(2010), imdb = Some(8.8), metascore = Some(74), rt = Some(87), filmweb = Some(7.6)),
       Seq(
         base -> Seq(
           CinemaShowtimes(Multikino, Seq(slot(base, 17, 30, List("2D", "NAP")), slot(base, 20, 15, List("2D")))),
@@ -529,8 +565,7 @@ object MovieController {
     // none is stripped as "common" — the badges wrap to several rows and the
     // wide tokens (4DX, VOSE, ATMOS) stress the pill's max width.
     val manyTimes = film(
-      "Spider-Man: Poprzez multiwersum (wersja rozszerzona)", Seq("Animacja", "Akcja", "Przygodowy"), Some(140), Some(2023),
-      Some(MovieRecord(imdbId = Some("tt9362722"), imdbRating = Some(8.6), metascore = Some(86), rottenTomatoes = Some(95), filmwebRating = Some(7.9))),
+      res("Spider-Man: Poprzez multiwersum (wersja rozszerzona)", Seq("Animacja", "Akcja", "Przygodowy"), Some(140), Some(2023), imdb = Some(8.6), metascore = Some(86), rt = Some(95), filmweb = Some(7.9)),
       Seq(base -> Seq(CinemaShowtimes(CinemaCityKinepolis, Seq(
         slot(base, 10, 0,  List("2D", "DUB")),
         slot(base, 12, 30, List("3D", "DUB")),
@@ -544,38 +579,32 @@ object MovieController {
     )
 
     val rotten = film(
-      "Morbius", Seq("Akcja", "Horror"), Some(104), Some(2022),
-      Some(MovieRecord(imdbId = Some("tt5108870"), imdbRating = Some(4.3), metascore = Some(35), rottenTomatoes = Some(15), filmwebRating = Some(4.1))),
+      res("Morbius", Seq("Akcja", "Horror"), Some(104), Some(2022), imdb = Some(4.3), metascore = Some(35), rt = Some(15), filmweb = Some(4.1)),
       Seq(base -> Seq(CinemaShowtimes(Helios, Seq(slot(base, 19, 0, List("2D", "NAP"))))))
     )
 
     val extremes = film(
-      "Ojciec chrzestny", Seq("Dramat", "Kryminał"), Some(175), Some(1972),
-      Some(MovieRecord(imdbId = Some("tt0068646"), imdbRating = Some(10.0), metascore = Some(100), rottenTomatoes = Some(100), filmwebRating = Some(10.0))),
+      res("Ojciec chrzestny", Seq("Dramat", "Kryminał"), Some(175), Some(1972), imdb = Some(10.0), metascore = Some(100), rt = Some(100), filmweb = Some(10.0)),
       Seq(base -> Seq(CinemaShowtimes(KinoPalacowe, Seq(slot(base, 16, 45, List("2D", "NAP"))))))
     )
 
     val metaOnly = film(
-      "Aftersun", Seq("Dramat"), Some(102), Some(2022),
-      Some(MovieRecord(metascore = Some(95))),
+      res("Aftersun", Seq("Dramat"), Some(102), Some(2022), metascore = Some(95)),
       Seq(base -> Seq(CinemaShowtimes(KinoMuza, Seq(slot(base, 20, 30, List("NAP"))))))
     )
 
     val noRatings = film(
-      "Pokaz przedpremierowy: Niezatytułowany film", Seq("Dramat"), None, Some(2026),
-      None,
+      res("Pokaz przedpremierowy: Niezatytułowany film", Seq("Dramat"), None, Some(2026)),
       Seq(base -> Seq(CinemaShowtimes(Rialto, Seq(slot(base, 18, 15, List("NAP"))))))
     )
 
     val seniorClub = film(
-      "Kino Seniora: Niebo nad Berlinem", Seq("Dramat", "Fantasy"), Some(128), Some(1987),
-      Some(MovieRecord(imdbId = Some("tt0093191"), imdbRating = Some(8.0), filmwebRating = Some(7.8))),
+      res("Kino Seniora: Niebo nad Berlinem", Seq("Dramat", "Fantasy"), Some(128), Some(1987), imdb = Some(8.0), filmweb = Some(7.8)),
       Seq(base -> Seq(CinemaShowtimes(KinoApollo, Seq(slot(base, 12, 0, List("NAP"), booking = false)))))
     )
 
     val sparse = film(
-      "Cicha noc", Seq("Dramat"), Some(98), Some(2017),
-      Some(MovieRecord(filmwebRating = Some(7.1))),
+      res("Cicha noc", Seq("Dramat"), Some(98), Some(2017), filmweb = Some(7.1)),
       Seq(base -> Seq(CinemaShowtimes(KinoMuza, Seq(slot(base, 21, 0, List("2D"))))))
     )
 
@@ -606,11 +635,12 @@ object MovieController {
    * the whole string may be empty for films with no enrichment + no
    * synopsis. */
   private[controllers] def previewDescription(film: FilmSchedule): String = {
+    val r = film.resolved.ratings
     val ratings = Seq(
-      film.enrichment.flatMap(_.imdbRating).map(r => f"IMDb $r%.1f"),
-      film.enrichment.flatMap(_.rottenTomatoes).map(s => s"RT $s%"),
-      film.enrichment.flatMap(_.metascore).map(s => s"Metacritic $s"),
-      film.enrichment.flatMap(_.filmwebRating).map(r => f"Filmweb $r%.1f")
+      r.imdb.map(x => f"IMDb $x%.1f"),
+      r.rottenTomatoes.map(s => s"RT $s%"),
+      r.metascore.map(s => s"Metacritic $s"),
+      r.filmweb.map(x => f"Filmweb $x%.1f")
     ).flatten.mkString(" · ")
     val synopsis = film.synopsis.getOrElse("").trim
     val joined =

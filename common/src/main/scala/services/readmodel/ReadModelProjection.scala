@@ -53,12 +53,13 @@ object ReadModelProjection {
         imdb              = r.imdbRating,
         imdbUrl           = r.imdbUrl,
         metascore         = r.metascore,
-        metacriticUrl     = Some(r.metacriticHref(title)),
+        metacriticUrl     = r.metacriticHref(title),
         rottenTomatoes    = r.rottenTomatoes,
-        rottenTomatoesUrl = Some(r.rottenTomatoesHref(title)),
+        rottenTomatoesUrl = r.rottenTomatoesHref(title),
         filmweb           = r.filmwebRating,
-        filmwebUrl        = Some(r.filmwebHref(title))
-      )
+        filmwebUrl        = r.filmwebHref(title)
+      ),
+      weightedRating     = r.weightedRating
     )
   }
 

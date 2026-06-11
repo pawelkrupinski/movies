@@ -36,25 +36,29 @@ case class ResolvedMovie(
   // `TrailerEmbed.embedUrlFor` and deduped), so clients embed without further
   // transformation.
   trailerUrls:        Seq[String],
-  ratings:            ResolvedRatings
+  ratings:            ResolvedRatings,
+  // Equal-weight average of the present ratings on a 0–10 scale — the grid's
+  // "Ocena" sort key (rendered into the card's `data-rating`).
+  weightedRating:     Double
 ) {
   /** Readable alias for the Mongo `_id`. */
   def id: String = _id
 }
 
 /**
- * The four external ratings plus their resolved click-through URLs. The URLs
- * are always populated (each falls back to a search URL when we hold no direct
- * link), matching the `ApiRatings` shape the web emits; the numeric scores stay
- * optional.
+ * The four external ratings plus their resolved click-through URLs. The
+ * Metacritic / Rotten Tomatoes / Filmweb URLs are always populated (each falls
+ * back to a search URL when we hold no direct link), so they're plain strings;
+ * the IMDb URL is `None` until an IMDb id is known. Numeric scores stay
+ * optional. Mirrors the `ApiRatings` shape the web emits.
  */
 case class ResolvedRatings(
   imdb:              Option[Double],
   imdbUrl:           Option[String],
   metascore:         Option[Int],
-  metacriticUrl:     Option[String],
+  metacriticUrl:     String,
   rottenTomatoes:    Option[Int],
-  rottenTomatoesUrl: Option[String],
+  rottenTomatoesUrl: String,
   filmweb:           Option[Double],
-  filmwebUrl:        Option[String]
+  filmwebUrl:        String
 )

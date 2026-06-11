@@ -109,7 +109,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     val lastMod = header("Last-Modified", first).get
 
     Thread.sleep(1100)
-    cache.rehydrate()
+    cache.reload()
 
     val second = ctrl.apiRepertoire("poznan")(FakeRequest().withHeaders("If-Modified-Since" -> lastMod))
     status(second) shouldBe OK
@@ -152,7 +152,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     ctrl.apiRepertoire("poznan")(gzipReq("/poznan/api/repertoire"))
 
     Thread.sleep(1100)
-    cache.rehydrate()
+    cache.reload()
 
     val after = ctrl.apiRepertoire("poznan")(gzipReq("/poznan/api/repertoire"))
     status(after) shouldBe OK

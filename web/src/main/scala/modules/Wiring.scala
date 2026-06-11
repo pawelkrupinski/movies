@@ -5,9 +5,9 @@ import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
 import services.auth.{AppleTokenValidator, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, OauthProvider}
-import services.events.{EventBus, InProcessEventBus}
 import services.fallback.{FilmwebFallbackStore, MongoFilmwebFallbackStore}
-import services.movies.{CaffeineMovieCache, MongoMovieRepo, MongoNormalizationReportRepo, MovieRepo, NormalizationReportRepo}
+import services.movies.{MongoMovieRepo, MongoNormalizationReportRepo, MovieRepo, NormalizationReportRepo}
+import services.readmodel.{MongoReadModelRepo, ReadModelReader, WebReadModel}
 import services.tasks.{MongoTaskQueue, TaskQueue}
 import services.titlerules.{MongoTitleRulesRepo, TitleRulesCache, TitleRulesRepo}
 import services.users.{AccountDeletion, CachingUserRepo, CachingUserStateRepo, MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
@@ -32,12 +32,6 @@ trait Wiring {
   // wrapper records their latency on the same /uptime surface the worker feeds.
   lazy val httoFetch: HttpFetch = new MonitoringHttpFetch(new RealHttpFetch(), uptimeMonitor)
 
-  // ── Events ──────────────────────────────────────────────────────────────────
-  // The serving process has no enrichment subscribers; the bus exists only
-  // because MovieCache publishes through it. Upserts arriving via the change
-  // stream therefore fan out to nothing — a harmless no-op.
-  lazy val eventBus: EventBus = new InProcessEventBus()
-
   // ── Mongo ─────────────────────────────────────────────────────────────────
   // Single shared MongoClient + database. A missing/unreachable Mongo is a hard
   // boot failure everywhere except tests (opt back into silent-degrade with
@@ -52,12 +46,16 @@ trait Wiring {
   lazy val userRepo:      UserRepo      = new CachingUserRepo(new MongoUserRepo(mongoConnection.database, fallbackToOwnInit = false))
   lazy val userStateRepo: UserStateRepo = new CachingUserStateRepo(new MongoUserStateRepo(mongoConnection.database, fallbackToOwnInit = false))
 
-  // ── MovieRecord cache ───────────────────────────────────────────────────────
-  // Read-only here: hydrated from Mongo on boot and kept current by the change
-  // stream the worker's writes trigger. No write-through traffic originates in
-  // this process.
+  // ── Denormalised read model ──────────────────────────────────────────────────
+  // The serving app reads from the worker-maintained `web_movies` /
+  // `web_screenings` collections via `WebReadModel`, kept warm by their change
+  // streams. It deliberately does NOT watch `movies` — a showtime edit there
+  // now reaches the web as one small screening-doc delta, not a full-record
+  // re-push. `movieRepo` survives only for the on-demand /debug corpus dump and
+  // the admin rule-merge preview (a one-off `findAll`, no change stream).
   lazy val movieRepo: MovieRepo = new MongoMovieRepo(mongoConnection.database, fallbackToOwnInit = false)
-  lazy val movieCache: CaffeineMovieCache = new CaffeineMovieCache(movieRepo, eventBus)
+  lazy val readModelRepo: ReadModelReader = new MongoReadModelRepo(mongoConnection.database)
+  lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepo)
 
   // Title-stripping rules, shared with the worker via Mongo. The web app reads
   // and never seeds (the worker owns seeding); it watches the change stream so
@@ -68,9 +66,9 @@ trait Wiring {
   lazy val normalizationReportRepo: NormalizationReportRepo =
     new MongoNormalizationReportRepo(mongoConnection.database, fallbackToOwnInit = false)
 
-  // Reads come straight from the cache; enrichment happens in the worker
-  // process on its continuous pass.
-  lazy val movieControllerService = new MovieControllerService(movieCache)
+  // Reads come straight from the read model; enrichment + projection happen in
+  // the worker process.
+  lazy val movieControllerService = new MovieControllerService(webReadModel)
 
   // ── Task queue (read-only here) ─────────────────────────────────────────────
   // The worker owns the queue; this process only reads it for the /tasks monitor
@@ -112,7 +110,7 @@ trait Wiring {
   // ── Controllers ───────────────────────────────────────────────────────────
   lazy val landingController = new LandingController(controllerComponents)
   lazy val gzippedResponseCache = new GzippedResponseCache
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, movieCache, userRepo, oauthProviders.keySet, environmentMode, gzippedResponseCache)
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, movieRepo, userRepo, oauthProviders.keySet, environmentMode, gzippedResponseCache)
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
   // Read-only on the web side: the worker writes fallback state; the /uptime/fallback
@@ -131,25 +129,27 @@ trait Wiring {
   lazy val adminAllowlist: Set[String] =
     Env.get("ADMIN_ALLOWLIST").map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet).getOrElse(Set.empty)
   lazy val adminTitleRulesController =
-    new AdminTitleRulesController(controllerComponents, titleRulesRepo, movieCache, normalizationReportRepo, userRepo, adminAllowlist)
+    new AdminTitleRulesController(controllerComponents, titleRulesRepo, movieRepo, normalizationReportRepo, userRepo, adminAllowlist)
 
   // Start the data layer. Force the Mongo connection at boot (so connection
   // errors surface in the boot timeline, not mid-request), then start the cache
   // — hydrate from Mongo + open the change stream that keeps it warm.
   protected def start(): Unit = {
     mongoConnection.database
-    // Install rules before the cache hydrates so its keys are computed with the
-    // same normalisation the worker used to write them.
+    // Install rules (used by the admin rule-merge preview's normalisation).
     titleRulesCache.start()
-    movieCache.start()
+    // Hydrate the read model from the derived collections + open their change
+    // streams. (No `movies` watch — see the read-model wiring above.)
+    webReadModel.start()
   }
 
   protected def stop(): Unit = {
     uptimeMonitor.close()
-    movieCache.stop()
+    webReadModel.stop()
     titleRulesCache.stop()
     // Each repo's close() is a no-op when it borrowed its database from
     // `mongoConnection` — closing the shared MongoClient is owned here.
+    readModelRepo.close()
     movieRepo.close()
     titleRulesRepo.close()
     userRepo.close()

@@ -226,7 +226,7 @@
     <p class="help">Kliknij plakat, aby dodać film do planu. Tytuł otwiera stronę filmu. Filtry z paska nawigacji (kraj, reżyser, obsada, format, godzina, sale) zawężają listę.</p>
     <div id="plan-movies-row" class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6">
       @for(film <- data.films) {
-        @_planCard(film.movie, film.posterUrl, film.enrichment, film.director, film.cast)
+        @_planCard(film.movie, film.posterUrl, film.resolved, film.director, film.cast)
       }
     </div>
   </section>
