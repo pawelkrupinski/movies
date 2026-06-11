@@ -26,15 +26,27 @@
      og:images, leaving the share preview imageless. The proxy also caps
      megabyte-scale poster masters at 480×720, which keeps the scrape
      fast and bounds the bytes a slow client downloads to render the
-     preview. *@
+     preview. The proxy always emits exactly 480×720, so the
+     og:image:width/height pair is accurate; declaring it tells scrapers
+     the image is 2:3 portrait up front, so Facebook / LinkedIn lay the
+     whole poster out instead of assuming a landscape banner. *@
   @film.posterUrl match {
-    case Some(url) => { <meta property="og:image" content="@tools.PosterProxy.proxy(url)"> }
+    case Some(url) => {
+      <meta property="og:image"        content="@tools.PosterProxy.proxy(url)">
+      <meta property="og:image:width"  content="480">
+      <meta property="og:image:height" content="720">
+    }
     case None      => {}
   }
   @if(ogDescription.nonEmpty) { <meta property="og:description" content="@ogDescription"> }
   @if(ogDescription.nonEmpty) { <meta name="description"        content="@ogDescription"> }
 
-  <meta name="twitter:card"  content="summary_large_image">
+  @* `summary`, not `summary_large_image`: the large-image card forces a
+     1.91:1 landscape frame, which crops a 2:3 movie poster down to a thin
+     horizontal band (the actors' midriffs). The square `summary` card
+     shows the poster as a thumbnail beside the title + rating text, so
+     far more of the poster survives. *@
+  <meta name="twitter:card"  content="summary">
   <meta name="twitter:title" content="@film.movie.title">
   @if(ogDescription.nonEmpty) { <meta name="twitter:description" content="@ogDescription"> }
   @film.posterUrl match {
