@@ -25,14 +25,15 @@ class OgCardService(posters: PosterFetch) {
   private val cache: Cache[String, Array[Byte]] =
     Caffeine.newBuilder().maximumSize(1000).expireAfterWrite(12, TimeUnit.HOURS).build()
 
-  def card(title: String, subtitle: String, ratings: Seq[String], posterUrl: Option[String]): Array[Byte] = {
+  def card(title: String, subtitle: String, badges: Seq[OgCardRenderer.Badge], posterUrl: Option[String]): Array[Byte] = {
     // Plain concatenation, not an s-interpolator: a nested double-quote (from
     // mkString / getOrElse) inside an interpolation block would close the
     // string early.
-    val key = Seq(title, subtitle, ratings.mkString(""), posterUrl.getOrElse("")).mkString(" ")
+    val ratingKey = badges.flatMap(_.segs.map(_.text)).mkString(",")
+    val key = Seq(title, subtitle, ratingKey, posterUrl.getOrElse("")).mkString(" ")
     Option(cache.getIfPresent(key)).getOrElse {
       val poster = loadPoster(posterUrl)
-      val bytes  = OgCardRenderer.render(title, subtitle, ratings, poster)
+      val bytes  = OgCardRenderer.render(title, subtitle, badges, poster)
       // Only cache a *complete* card: one with no poster to show, or whose
       // poster actually loaded. A transient poster-fetch failure must NOT be
       // frozen for the cache's lifetime as a posterless card -- leave it

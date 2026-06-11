@@ -44,7 +44,7 @@ class OgCardServiceSpec extends AnyFlatSpec with Matchers {
 
   "OgCardService.card" should "build a 1200×630 PNG from the fetched poster" in {
     val fetch = new CountingFetch(jpeg)
-    val bytes = new OgCardService(fetch).card("Incepcja", "2010 · Sci-Fi", Seq("IMDb 8.8"), Some("https://cdn/x.jpg"))
+    val bytes = new OgCardService(fetch).card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
     dimensions(bytes) shouldBe (1200, 630)
     fetch.calls.get shouldBe 1
   }
@@ -52,8 +52,8 @@ class OgCardServiceSpec extends AnyFlatSpec with Matchers {
   it should "memoise per identical inputs — second call neither re-fetches nor re-renders" in {
     val fetch = new CountingFetch(jpeg)
     val svc   = new OgCardService(fetch)
-    val a = svc.card("Incepcja", "2010 · Sci-Fi", Seq("IMDb 8.8"), Some("https://cdn/x.jpg"))
-    val b = svc.card("Incepcja", "2010 · Sci-Fi", Seq("IMDb 8.8"), Some("https://cdn/x.jpg"))
+    val a = svc.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
+    val b = svc.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
     b should be theSameInstanceAs a
     fetch.calls.get shouldBe 1
   }
@@ -61,20 +61,20 @@ class OgCardServiceSpec extends AnyFlatSpec with Matchers {
   it should "re-render when an input changes (e.g. a refreshed rating)" in {
     val fetch = new CountingFetch(jpeg)
     val svc   = new OgCardService(fetch)
-    svc.card("Incepcja", "2010 · Sci-Fi", Seq("IMDb 8.8"), Some("https://cdn/x.jpg"))
-    svc.card("Incepcja", "2010 · Sci-Fi", Seq("IMDb 8.9"), Some("https://cdn/x.jpg"))
+    svc.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
+    svc.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.9), None, None, None), Some("https://cdn/x.jpg"))
     fetch.calls.get shouldBe 2
   }
 
   it should "degrade to a text-only card (still 1200×630) when the poster fetch fails" in {
     val fetch: PosterFetch = (_: String) => None
-    dimensions(new OgCardService(fetch).card("Incepcja", "2010 · Sci-Fi", Seq("IMDb 8.8"), Some("https://cdn/x.jpg"))) shouldBe (1200, 630)
+    dimensions(new OgCardService(fetch).card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))) shouldBe (1200, 630)
   }
 
   it should "fall back to the weserv proxy when the origin URL itself fails to decode" in {
     // First fetch (origin) returns None, second (weserv) succeeds -> poster loads.
     val fetch = new FlakyFetch(jpeg, failFirst = 1)
-    posterRed(new OgCardService(fetch).card("Incepcja", "2010 · Sci-Fi", Seq("IMDb 8.8"), Some("https://cdn/x.jpg"))) should be > 150
+    posterRed(new OgCardService(fetch).card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))) should be > 150
     fetch.calls.get shouldBe 2
   }
 
@@ -84,8 +84,8 @@ class OgCardServiceSpec extends AnyFlatSpec with Matchers {
     // the second card would be served from the cache and never re-fetch.
     val fetch  = new FlakyFetch(jpeg, failFirst = 2)
     val svc    = new OgCardService(fetch)
-    val first  = svc.card("Incepcja", "2010 · Sci-Fi", Seq("IMDb 8.8"), Some("https://cdn/x.jpg"))
-    val second = svc.card("Incepcja", "2010 · Sci-Fi", Seq("IMDb 8.8"), Some("https://cdn/x.jpg"))
+    val first  = svc.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
+    val second = svc.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
     posterRed(first)  should be < 60   // text-only fallback (dark slot)
     posterRed(second) should be > 150  // retry loaded the poster
     fetch.calls.get   should be > 2    // proves the second card re-fetched, not a cache hit
@@ -93,7 +93,7 @@ class OgCardServiceSpec extends AnyFlatSpec with Matchers {
 
   it should "not touch the network when the film has no poster" in {
     val fetch = new CountingFetch(jpeg)
-    new OgCardService(fetch).card("Film", "2026 · Dramat", Seq("Filmweb 7.1"), None)
+    new OgCardService(fetch).card("Film", "2026 · Dramat", OgCardRenderer.ratingBadges(None, None, None, Some(7.1)), None)
     fetch.calls.get shouldBe 0
   }
 }
