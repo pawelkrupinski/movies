@@ -77,10 +77,9 @@ class MovieService(
   // populate the cache and we don't race app boot.
   private val StartupDelaySeconds = 10L
   private val TmdbRetryHours      = 24L
-  // Cadence of the corpus settle. canonicalizeCorpus reads the full corpus
-  // (`repo.findAll()`) and only writes when it finds a variant to collapse, so
-  // the cost is one findAll per tick — a few-minute cadence is fine; tunable for
-  // prod load. Default 10 min.
+  // Cadence of the corpus settle. canonicalizeBySanitize is an in-memory O(N)
+  // cache scan that only writes when it finds a variant to collapse, so a
+  // few-minute cadence is cheap; tunable for prod load. Default 10 min.
   private val SettleIntervalSeconds = Env.positiveLong("KINOWO_CORPUS_SETTLE_SECONDS", 600L)
 
   // How many times we've retried each key after a transient failure. Cleared
@@ -115,20 +114,23 @@ class MovieService(
    *  spelling/year variants — most importantly a no-year row that a later TMDB
    *  resolve re-keyed onto a resolved year, leaving the original yearless,
    *  unresolved row stranded beside it (the "Dzień objawienia" duplicate). The
-   *  collapse logic lives in `MovieCache.canonicalizeCorpus`; this is the
+   *  collapse logic lives in `MovieCache.canonicalizeBySanitize`; this is the
    *  PRODUCTION caller of it.
    *
-   *  Corpus-scoped, NOT in-memory: the in-memory `canonicalizeBySanitize` only
-   *  sees rows currently in the cache, so a duplicate whose rows never re-entered
-   *  the cache after an incomplete boot hydrate stayed stranded in Mongo forever
-   *  (the live duplicate cards). `canonicalizeCorpus` reads `repo.findAll()`, so
-   *  it collapses the pair regardless of cache state.
+   *  Deliberately IN-MEMORY, not corpus-scoped: collapsing over `repo.findAll()`
+   *  re-keys rows by their re-derived display title, which runs DURING the
+   *  enrichment cascade and races in-flight Filmweb/TMDB writes — a non-
+   *  determinism the order guard (`ScrapeOrderDeterminismSpec`) catches. The
+   *  in-memory pass is a pure function of the cache, so it's order-independent.
+   *  Cache completeness (the reason a corpus pass was tried) is instead
+   *  guaranteed by the boot-hydrate retry, so a quiescent row is in the cache
+   *  for this pass to see.
    *
    *  For a long time the only caller was the fixture test harness's
    *  `converge()`, so the suite stayed green while prod never collapsed these —
    *  the duplicate lived forever in the live corpus. The harness now delegates
    *  to THIS method, so test and prod settle through one code path. */
-  def settle(): Unit = cache.canonicalizeCorpus()
+  def settle(): Unit = cache.canonicalizeBySanitize()
 
   /** Drain the queue so in-flight upserts hit Mongo before `MovieRepo`
    *  closes its client AND every TmdbResolved / ImdbIdMissing event the

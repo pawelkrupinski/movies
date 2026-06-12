@@ -61,36 +61,4 @@ class CorpusSettleSpec extends AnyFlatSpec with Matchers {
     rows.head.record.tmdbId shouldBe Some(1275779) // enrichment preserved
     rows.head.record.cinemaData.keySet shouldBe Set(Helios, Multikino) // both cinemas' slots unioned
   }
-
-  // The true root of the live stranded duplicates: a resolved film whose rows
-  // sit in Mongo but never re-entered the in-memory cache (boot hydrate raced a
-  // not-ready Mongo → empty findAll → cache stays empty; the change stream then
-  // only carries rows written afterwards). The in-memory `canonicalizeBySanitize`
-  // is blind to them, so the pair survives forever. `settle()` now collapses the
-  // whole persisted corpus (`canonicalizeCorpus`), so it sees and merges them
-  // regardless of cache state.
-  private def cd(cinema: models.Cinema): (Source, SourceData) =
-    (cinema: Source) -> SourceData(title = Some("Child of Dust"))
-
-  "MovieService.settle" should "collapse same-tmdbId variants that live only in the repo, not the cache" in {
-    val repo  = new InMemoryMovieRepo
-    val cache = new CaffeineMovieCache(repo)   // boots against an empty repo → empty cache
-
-    // Two resolved rows for one film written straight to the repo afterwards,
-    // standing in for rows a prior process persisted that this cache never loaded.
-    repo.upsert("Child of Dust", Some(2025),
-      MovieRecord(tmdbId = Some(1421597), data = Map(cd(Helios))))
-    repo.upsert("Child of Dust", Some(2026),
-      MovieRecord(tmdbId = Some(1421597), data = Map(cd(Multikino))))
-
-    // An in-memory pass is blind to repo-only rows …
-    cache.canonicalizeBySanitize()
-    repo.findAll() should have size 2
-
-    // … the corpus settle sees and merges them.
-    service(cache).settle()
-    val rows = repo.findAll()
-    withClue(s"expected ONE row, got ${rows.map(r => (r.title, r.year))}\n") { rows should have size 1 }
-    rows.head.record.cinemaData.keySet shouldBe Set(Helios, Multikino)
-  }
 }

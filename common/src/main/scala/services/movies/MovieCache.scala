@@ -89,9 +89,6 @@ trait MovieCache extends MovieCacheReader {
   private[services] def clearNegatives(): Unit
   private[services] def clearNegative(key: CacheKey): Unit
   def canonicalizeBySanitize(): Unit
-  /** Like [[canonicalizeBySanitize]] but over the whole persisted corpus, so it
-   *  collapses duplicates that never entered the in-memory cache. */
-  def canonicalizeCorpus(): Unit
   private[services] def invalidate(key: CacheKey): Unit
   /** Run `body` under the per-normalised-title lock. Any read-modify-write
    *  across the cache's surface for keys sharing this `cleanTitle` must
@@ -309,24 +306,6 @@ class CaffeineMovieCache(
   def canonicalizeBySanitize(): Unit = {
     import scala.jdk.CollectionConverters._
     canonicalizeGroups(positive.asMap().asScala.toSeq)
-  }
-
-  /** Same collapse as [[canonicalizeBySanitize]] but over the WHOLE persisted
-   *  corpus (`repo.findAll()`), not just the in-memory cache. A resolved film
-   *  whose duplicate rows never re-entered `positive` is invisible to the
-   *  in-memory pass: boot hydrate can race a not-ready Mongo (`findAll` empty →
-   *  early return) and the change stream only carries rows written AFTER it
-   *  started, so a quiescent row stays Mongo-only — and its duplicate then sits
-   *  there forever. Reading the corpus closes that gap (the DB-diff principle
-   *  the read-model reconcile uses): `invalidate` deletes the redundant Mongo
-   *  doc even for a key absent from `positive`, and `put` loads the surviving
-   *  canonical back into the cache. Costs a `findAll`, so it's a settle-cadence
-   *  backstop, not a per-write hook. */
-  def canonicalizeCorpus(): Unit = {
-    val rows = repo.findAll()
-    // Empty almost always means a transient Mongo failure (findAll swallows
-    // errors to Seq.empty); acting on it would be a no-op anyway, so skip.
-    if (rows.nonEmpty) canonicalizeGroups(rows.map(r => CacheKey(r.title, r.year) -> r.record))
   }
 
   private def canonicalizeGroups(pairs: Seq[(CacheKey, MovieRecord)]): Unit = {
