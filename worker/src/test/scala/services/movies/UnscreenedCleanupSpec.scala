@@ -36,7 +36,11 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     removed                                              shouldBe 1
     cache.get(cache.keyOf("With",    Some(2026)))        should not be empty
     cache.get(cache.keyOf("Without", Some(2025)))        shouldBe None
-    repo.deletes                                         should contain (("Without", Some(2025)))
+    // The repo re-derives the display title on read (as Mongo does); these
+    // title-less records collapse to their sanitized _id prefix, so the deleted
+    // row is recorded as "without". The cleanup deleting the unscreened row is
+    // what this pins.
+    repo.deletes                                         should contain (("without", Some(2025)))
   }
 
   it should "be idempotent — no-op when every row has at least one cinema slot" in {

@@ -39,7 +39,7 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
   @volatile private var upsertWatcher: Option[StoredMovieRecord => Unit] = None
   @volatile private var deleteWatcher: Option[String => Unit]            = None
   private def notifyWatcher(t: String, y: Option[Int], e: MovieRecord): Unit =
-    upsertWatcher.foreach(_(StoredMovieRecord(t, y, e)))
+    upsertWatcher.foreach(_(StoredMovieRecord.fromStorage(idOf(t, y), e)))
 
   override def watchChanges(
     onUpsert: StoredMovieRecord => Unit,
@@ -54,13 +54,18 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
 
   def enabled: Boolean = true
 
-  // This fake stores the full `StoredMovieRecord` and returns its title
-  // verbatim — it has no lossy BSON `_id` to recover from, unlike the Mongo
-  // repo, whose codec drops the `title`/`year` columns and re-derives them via
-  // `StoredMovieRecord.fromStorage`. For realistic rows (the record carries its
-  // title in a cinema slot) the two agree; the fake simply doesn't need the
-  // derivation step.
-  def findAll(): Seq[StoredMovieRecord] = lock.synchronized { store.values.toSeq }
+  // Re-derive `title`/`year` from the stored `_id` + record via
+  // `StoredMovieRecord.fromStorage` on read — EXACTLY as `MongoMovieRepo`'s
+  // codec does (Mongo persists only `_id` + `sourceData`, dropping the title/
+  // year columns). A faithful fake must do the same: returning the verbatim
+  // upsert title instead hid two real bugs — title `_id`-drift (a row whose
+  // display form moved away from its `_id`) and the `displayTitle`-based settle
+  // non-determinism — because the fake's title could never drift and was always
+  // deterministic where Mongo's re-derivation isn't. The fake differs from Mongo
+  // only at the infra boundary (a HashMap, not BSON), never in read semantics.
+  def findAll(): Seq[StoredMovieRecord] = lock.synchronized {
+    store.iterator.map { case (id, s) => StoredMovieRecord.fromStorage(id, s.record) }.toSeq
+  }
 
   def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
     store.put(idOf(t, y), StoredMovieRecord(t, y, e))

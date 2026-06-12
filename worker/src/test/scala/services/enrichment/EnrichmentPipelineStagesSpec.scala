@@ -1,7 +1,7 @@
 package services.enrichment
 
 import clients.TmdbClient
-import models.{MovieRecord, Source, SourceData, Tmdb}
+import models.{Multikino, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{DomainEvent, InProcessEventBus, MovieRecordCreated, TmdbResolved}
@@ -369,9 +369,12 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
 
   it should "schedule the TMDB stage for cached rows whose tmdbId is empty (legacy data)" in {
     // Seed a row that has imdbId but no tmdbId (legacy from before TMDB was
-    // always set). The daily retry should re-resolve it.
+    // always set). It carries its title in a cinema slot, as a scraped row
+    // does — the repo re-derives the display title from that on read (like
+    // Mongo), so the resolved event reports "Mortal Kombat II", not the bare id.
     val seed = MovieRecord(
-      imdbId = Some("tt-legacy")
+      imdbId = Some("tt-legacy"),
+      data   = Map[Source, SourceData](Multikino -> SourceData(title = Some("Mortal Kombat II")))
     )
     val repo  = new InMemoryMovieRepo(Seq(("Mortal Kombat II", Some(2026), seed)))
     val cache = new CaffeineMovieCache(repo)

@@ -12,10 +12,13 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     MovieRecord(imdbId = Some(imdbId), imdbRating = rating)
 
   "MovieCache" should "hydrate from the repo on construction" in {
-    val seed = Seq(("Drzewo Magii", Some(2024), mkEnrichment("tt1")))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo(seed))
+    // Carry the title in a cinema slot, as a scraped row does: the repo
+    // re-derives the display title from the record on read (like Mongo), so a
+    // title-less record would surface its sanitized _id prefix, not "Drzewo Magii".
+    val rec   = mkEnrichment("tt1").copy(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Drzewo Magii"))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(("Drzewo Magii", Some(2024), rec))))
 
-    cache.get(cache.keyOf("Drzewo Magii", Some(2024))) shouldBe Some(mkEnrichment("tt1"))
+    cache.get(cache.keyOf("Drzewo Magii", Some(2024))) shouldBe Some(rec)
     cache.snapshot().map(r => (r.title, r.year)) shouldBe Seq(("Drzewo Magii", Some(2024)))
   }
 
@@ -150,7 +153,23 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     repo.updateIfPresent("A", Some(2024), mkEnrichment("tt-a"), mkEnrichment("tt-a", rating = Some(8.0)))
     handle.get.close()
     repo.upsert("B", Some(2025), mkEnrichment("tt-b"))  // after close → not observed
-    seen.toList shouldBe List(("A", Some(2024), None), ("A", Some(2024), Some(8.0)))
+    // The repo re-derives the display title on read, as Mongo does — a record
+    // with no title slot collapses to its sanitized _id prefix ("a"). What this
+    // pins is that the watcher fires on each write until closed; title is incidental.
+    seen.toList shouldBe List(("a", Some(2024), None), ("a", Some(2024), Some(8.0)))
+  }
+
+  "InMemoryMovieRepo.findAll" should "re-derive title/year from the _id + record like Mongo, not return them verbatim" in {
+    // The fake must match `MongoMovieRepo`, which persists only `_id` +
+    // `sourceData` and re-derives the display title on read. Stored under an
+    // English title whose record displays as Polish (a real title `_id` drift):
+    // the read-back title MUST be the re-derived "Dziecko z pyłu", not the
+    // verbatim "Child of Dust". The verbatim behaviour previously hid title
+    // drift and the settle non-determinism from CI.
+    val repo = new InMemoryMovieRepo()
+    repo.upsert("Child of Dust", Some(2025),
+      MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Dziecko z pyłu")))))
+    repo.findAll().map(r => (r.title, r.year)) shouldBe Seq(("Dziecko z pyłu", Some(2025)))
   }
 
   it should "treat case + diacritics + whitespace differences as the same key" in {
@@ -506,7 +525,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
     // Mongo's audit-applied filmwebUrl=None MUST stay None — the cache
     // write only $set the field that changed (`filmwebRating`).
-    val mongoRow = repo.findAll().find(_.title == "Audit Race").get.record
+    val mongoRow = repo.findAll().head.record  // the only row (its title-less record re-derives to "audit race")
     mongoRow.filmwebUrl    shouldBe None
     mongoRow.filmwebRating shouldBe Some(7.5)
   }
