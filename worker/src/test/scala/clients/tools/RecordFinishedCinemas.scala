@@ -9,7 +9,7 @@ import scala.util.Try
 /**
  * Records the previously-skipped art-house cinemas that turned out to have a
  * scrapeable source after all: ADA Kino Studyjne (Warszawa, biletyna JSON-LD),
- * Gdyńskie Centrum Filmowe (Gdynia), Kino CSK Lublin (iKSORIS). Run:
+ * Gdyńskie Centrum Filmowe (Gdynia). Run:
  *   sbt 'worker/Test/runMain clients.tools.RecordFinishedCinemas'
  */
 object RecordFinishedCinemas {
@@ -23,6 +23,5 @@ object RecordFinishedCinemas {
     report("Kino Kameralne Cafe")(new BiletynaClient(rec("kino-kameralne"), "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe", KinoKameralne).fetch().size)
     report("Kino Pegaz (Wodzisław)")(new BiletynaClient(rec("kino-pegaz"), "https://biletyna.pl/Wodzislaw-Slaski/Wodzislawskie-Centrum-Kultury", KinoPegaz).fetch().size)
     report("Gdyńskie Centrum Filmowe")(new GdynskieCentrumFilmoweClient(rec("gcf"), GdynskieCentrumFilmowe).fetch().size)
-    report("Kino CSK Lublin")(new KinoCskClient(rec("kino-csk"), KinoCskLublin).fetch().size)
   }
 }

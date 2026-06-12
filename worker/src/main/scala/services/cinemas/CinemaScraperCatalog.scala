@@ -220,7 +220,6 @@ class CinemaScraperCatalog(
     new MultikinoClient(mkFetch, "0034", MultikinoLublin),
     new KinoBajkaClient(http, KinoBajka),
     new Bilety24Client(http, "https://ck-lublin.bilety24.pl", KinoCkLublin),
-    new KinoCskClient(http, KinoCskLublin),
     new FilmwebShowtimesClient(http, 109, KinoChatkaZaka, today = today),
   )
 

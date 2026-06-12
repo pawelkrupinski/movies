@@ -293,7 +293,6 @@ case object KinoRoma        extends Cinema("Kino Roma", "Roma")
 // ── More art-house / independents (previously-skipped, now implemented) ───────
 case object AdaKinoStudyjne      extends Cinema("ADA Kino Studyjne", "ADA")
 case object GdynskieCentrumFilmowe extends Cinema("Gdyńskie Centrum Filmowe", "GCF")
-case object KinoCskLublin        extends Cinema("Kino CSK Lublin", "CSK")
 
 // ── New mid-size cities — national-chain branches only (chains-first sweep) ────
 // Each city's independent/art-house screen, where one exists, lands later as a
@@ -631,7 +630,7 @@ object Cinema {
    *  Multikino in Galeria Olimp; no Helios in Lublin. Kino Bajka — the Centrum
    *  Kultury art-house on Radziszewskiego — is the local studyjne screen, wired
    *  separately as a bespoke scraper. */
-  val lublin: Seq[Cinema] = Seq(CinemaCityLublinFelicity, CinemaCityLublinPlaza, MultikinoLublin, KinoBajka, KinoCkLublin, KinoCskLublin, KinoChatkaZaka, KinoLewart, KinoMetalowiec)
+  val lublin: Seq[Cinema] = Seq(CinemaCityLublinFelicity, CinemaCityLublinPlaza, MultikinoLublin, KinoBajka, KinoCkLublin, KinoChatkaZaka, KinoLewart, KinoMetalowiec)
 
   val czestochowa: Seq[Cinema] = Seq(CinemaCityCzestochowaJurajska, CinemaCityCzestochowaWolnosc, OkfIluzja, KinoDKFRumcajs, KinoKarolinka, KinoMDK, KinoMOKCentrum, KinoZacisze)
 
