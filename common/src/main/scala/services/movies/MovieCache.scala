@@ -89,6 +89,9 @@ trait MovieCache extends MovieCacheReader {
   private[services] def clearNegatives(): Unit
   private[services] def clearNegative(key: CacheKey): Unit
   def canonicalizeBySanitize(): Unit
+  /** Like [[canonicalizeBySanitize]] but over the whole persisted corpus, so it
+   *  collapses duplicates that never entered the in-memory cache. */
+  def canonicalizeCorpus(): Unit
   private[services] def invalidate(key: CacheKey): Unit
   /** Run `body` under the per-normalised-title lock. Any read-modify-write
    *  across the cache's surface for keys sharing this `cleanTitle` must
@@ -120,7 +123,13 @@ trait MovieCache extends MovieCacheReader {
  */
 class CaffeineMovieCache(
   repo: MovieRepo,
-  bus:  EventBus = new InProcessEventBus()
+  bus:  EventBus = new InProcessEventBus(),
+  // Boot-hydrate retry — OFF by default (0 attempts) so tests and a genuine
+  // cold start pay nothing. Prod turns it on via the Fly env
+  // `KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS` so a not-ready Mongo at boot can't leave
+  // the cache empty (see `bootHydrate`).
+  bootHydrateMaxAttempts: Int  = Env.get("KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS").flatMap(_.toIntOption).getOrElse(0),
+  bootHydrateRetryMillis: Long = Env.positiveLong("KINOWO_BOOT_HYDRATE_RETRY_MS", 1000L)
 ) extends MovieCache with Stoppable with Logging {
 
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
@@ -162,7 +171,24 @@ class CaffeineMovieCache(
   // during `start()`, so the first HTTP request only lands after the initial
   // findAll has completed. Pages render against a fully-populated cache; no
   // first-request flicker, no scrape-vs-hydrate race.
-  rehydrate()
+  //
+  // RETRY an empty result (prod only): the worker boots alongside its Mongo, so
+  // an empty findAll at boot is almost always "Mongo not ready yet" (findAll
+  // swallows errors to Seq.empty). Without retry the cache starts empty and the
+  // change stream only ever delivers rows written AFTER boot — leaving every
+  // quiescent row (one not re-scraped since) Mongo-only and invisible to the
+  // in-memory fold / settle, so its duplicate sits stranded forever. Bounded, so
+  // a genuinely empty corpus still proceeds after the attempts. Default 0
+  // attempts = one plain hydrate (tests, cold start); prod sets the env.
+  bootHydrate()
+
+  private def bootHydrate(): Unit = {
+    var attempt = 0
+    while (rehydrate() == 0 && attempt < bootHydrateMaxAttempts) {
+      attempt += 1
+      Try(Thread.sleep(bootHydrateRetryMillis))
+    }
+  }
 
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey =
     CacheKey(TitleNormalizer.searchTitle(title), year)
@@ -282,7 +308,29 @@ class CaffeineMovieCache(
    *  normalised form (a real cross-film collision) — those are left untouched. */
   def canonicalizeBySanitize(): Unit = {
     import scala.jdk.CollectionConverters._
-    positive.asMap().asScala.toSeq
+    canonicalizeGroups(positive.asMap().asScala.toSeq)
+  }
+
+  /** Same collapse as [[canonicalizeBySanitize]] but over the WHOLE persisted
+   *  corpus (`repo.findAll()`), not just the in-memory cache. A resolved film
+   *  whose duplicate rows never re-entered `positive` is invisible to the
+   *  in-memory pass: boot hydrate can race a not-ready Mongo (`findAll` empty →
+   *  early return) and the change stream only carries rows written AFTER it
+   *  started, so a quiescent row stays Mongo-only — and its duplicate then sits
+   *  there forever. Reading the corpus closes that gap (the DB-diff principle
+   *  the read-model reconcile uses): `invalidate` deletes the redundant Mongo
+   *  doc even for a key absent from `positive`, and `put` loads the surviving
+   *  canonical back into the cache. Costs a `findAll`, so it's a settle-cadence
+   *  backstop, not a per-write hook. */
+  def canonicalizeCorpus(): Unit = {
+    val rows = repo.findAll()
+    // Empty almost always means a transient Mongo failure (findAll swallows
+    // errors to Seq.empty); acting on it would be a no-op anyway, so skip.
+    if (rows.nonEmpty) canonicalizeGroups(rows.map(r => CacheKey(r.title, r.year) -> r.record))
+  }
+
+  private def canonicalizeGroups(pairs: Seq[(CacheKey, MovieRecord)]): Unit = {
+    pairs
       .groupBy { case (k, _) => TitleNormalizer.sanitize(k.cleanTitle) }
       .valuesIterator
       .foreach { group =>

@@ -79,4 +79,32 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     cache.entries should have size 1
     cache.entries.head._2.cinemaData.keySet shouldBe Set(Multikino, CinemaCityKinepolis)
   }
+
+  // A repo whose first `findAll` is empty (Mongo not ready at boot) then returns
+  // the row. Without retry the boot hydrate gives up on the empty result and the
+  // cache starts empty — the row only ever arrives if it's later re-written
+  // (via the change stream), so a quiescent row stays Mongo-only and invisible
+  // to the in-memory fold/settle. With retry enabled, boot waits Mongo out.
+  private def flakeyRepo(row: StoredMovieRecord): MovieRepo = {
+    val calls = new java.util.concurrent.atomic.AtomicInteger(0)
+    new MovieRepo {
+      def enabled = true
+      def findAll() = if (calls.getAndIncrement() == 0) Seq.empty else Seq(row)
+      def delete(t: String, y: Option[Int]) = ()
+      def upsert(t: String, y: Option[Int], e: MovieRecord) = ()
+      def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord) = false
+      override def close() = ()
+    }
+  }
+
+  "boot hydrate" should "retry an empty findAll (Mongo not ready) so quiescent rows still load" in {
+    val cache = new CaffeineMovieCache(
+      flakeyRepo(base), bootHydrateMaxAttempts = 5, bootHydrateRetryMillis = 20)
+    cache.entries should have size 1   // boot retried past the empty first findAll
+  }
+
+  it should "give up after the configured attempts on a genuinely empty repo" in {
+    val cache = new CaffeineMovieCache(repoOf(), bootHydrateMaxAttempts = 3, bootHydrateRetryMillis = 5)
+    cache.entries should have size 0  // no rows, and it didn't hang
+  }
 }
