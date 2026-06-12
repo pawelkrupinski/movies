@@ -118,7 +118,7 @@ jobs:
             # Record the whole corpus. `RecordAllDataToFixture` is a `runMain` in
             # the WORKER module's TEST scope (it extends the test-only TestWiring,
             # which wires the full city catalogue with an InMemoryMovieRepo). It
-            # runs the real ShowtimeCache scrape + the full enrichment cascade
+            # runs the real cinema scrape + the full enrichment cascade
             # (TMDB → IMDb → Metacritic → RT → Filmweb) against live upstreams,
             # writing one fixture file per unique URL under
             # `test/resources/fixtures/<date>/`.

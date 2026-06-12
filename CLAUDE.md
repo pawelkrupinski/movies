@@ -520,7 +520,7 @@ Smells:
 In this codebase: `ImdbIdResolver` recovers a missing IMDb id;
 `ImdbRatings` refreshes the rating. Two reasons to change (suggestion
 endpoint vs GraphQL rating API) → two classes. `MovieCache`,
-`MovieService`, `ShowtimeCache` each change for reasons the others
+`MovieService`, `ScrapeReaper` each change for reasons the others
 don't care about.
 
 ### O — Open / Closed
@@ -544,7 +544,7 @@ Smells:
   new feature's own file.
 
 In this codebase: adding a cinema is a new `CinemaXClient` fitting the
-existing scrape contract — `ShowtimeCache` doesn't change. Adding a
+existing scrape contract — `ScrapeReaper` doesn't change. Adding a
 rating source is a new `*Ratings` class subscribing to the existing
 `TmdbResolved` / `ImdbIdMissing` bus events — bus, cache, and service
 don't change.

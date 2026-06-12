@@ -520,13 +520,13 @@ class CaffeineMovieCache(
    *  triple per input movie:
    *
    *    - `CacheKey` is the *canonical* key the slot actually landed on
-   *      (post-redirect). `ShowtimeCache` publishes `MovieRecordCreated`
+   *      (post-redirect). `CinemaScrapeRunner` publishes `MovieRecordCreated`
    *      against this so two cinemas reporting different `year` values for
    *      the same film land on a single TMDB-stage event, no phantom row.
    *    - `isNew` is true when the `(cinema, raw title, raw year)` tuple is
    *      landing on this row for the first time; false on repeat ticks.
-   *      `ShowtimeCache` skips the bus publish for `isNew == false` so
-   *      already-enriched rows don't churn event dispatches every 5 min.
+   *      `CinemaScrapeRunner` skips the bus publish for `isNew == false` so
+   *      already-enriched rows don't churn event dispatches every scrape.
    *
    *  Doesn't touch enrichment-side fields (imdbId, ratings, URLs, …) — the
    *  TMDB / IMDb / MC / RT / Filmweb stages own those and run independently.
@@ -752,10 +752,10 @@ class CaffeineMovieCache(
     // Publish CinemaMovieAdded for each row we just first-scraped onto. This
     // runs AFTER both the slot put and the prune step so a handler reading
     // the cache for `(title, year)` immediately sees the freshly-written
-    // slot — eliminating the race ShowtimeCache's caller-side publish would
-    // otherwise leave between persist and notify.
+    // slot — eliminating the race a caller-side publish would otherwise leave
+    // between persist and notify.
     //
-    // Gated on `isNew` (same gate as `ShowtimeCache`'s MovieRecordCreated)
+    // Gated on `isNew` (same gate as `CinemaScrapeRunner`'s MovieRecordCreated)
     // so steady-state ticks where the same cinema reports the same film
     // again don't refire — the periodic safety net in each detail-page
     // enricher picks up rows whose first event was missed.

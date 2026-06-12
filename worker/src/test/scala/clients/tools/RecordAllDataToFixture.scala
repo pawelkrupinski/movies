@@ -17,13 +17,14 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  *
  * Wait semantics — each step blocks until its outputs are fully on disk:
  *
- *   1. `showtimeCache.runOnce()` — submits every scraper to the fetch
- *      executor in parallel and joins on the resulting `Future`s.
- *      Returns only after every `scraper.fetch()` HTTP call has come
- *      back, `recordCinemaScrape` has folded the result into the cache,
- *      and `bus.publish(MovieRecordCreated(...))` has fired for each
- *      `isNew` slot. The bus listeners run synchronously and dispatch
- *      to the downstream worker pools before publish returns.
+ *   1. `scrapeAllOnce()` — submits every scraper to a bounded executor in
+ *      parallel and joins on the resulting `Future`s. Each runs the shared
+ *      `cinemaScrapeRunner` (fetch → `recordCinemaScrape` → publish), so it
+ *      returns only after every `scraper.fetch()` HTTP call has come back,
+ *      the result has been folded into the cache, and
+ *      `bus.publish(MovieRecordCreated(...))` has fired for each `isNew`
+ *      slot. The bus listeners run synchronously and dispatch to the
+ *      downstream worker pools before publish returns.
  *
  *   2. `drainServices()` — stops the cascade in producer→consumer
  *      order (`cascadeDrainOrder` on `Wiring`: `movieService` →
@@ -46,11 +47,11 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  *      boot, so fixtures for any "row with no current screenings" code
  *      path are captured.
  *
- *   4. `showtimeCache.stop()` / `unscreenedCleanup.stop()` /
- *      `movieRepo.close()` — close the remaining schedulers + Mongo
- *      client. The pool threads are daemon-flagged, so the JVM would
- *      exit cleanly without this, but if anyone ever flips a thread to
- *      non-daemon, the explicit shutdown keeps the recording correct.
+ *   4. `unscreenedCleanup.stop()` / `movieRepo.close()` — close the
+ *      remaining schedulers + Mongo client. The pool threads are
+ *      daemon-flagged, so the JVM would exit cleanly without this, but if
+ *      anyone ever flips a thread to non-daemon, the explicit shutdown
+ *      keeps the recording correct.
  */
 object RecordAllDataToFixture extends TestWiring {
   override lazy val movieRepo = new InMemoryMovieRepo()
@@ -63,11 +64,25 @@ object RecordAllDataToFixture extends TestWiring {
   override lazy val tmdbClient: clients.TmdbClient =
     new clients.TmdbClient(httoFetch, apiKey = sys.env.get("TMDB_API_KEY"))
 
+  /** Scrape every cinema once in parallel, blocking until all have settled.
+   *  Each scraper runs the shared `cinemaScrapeRunner` (record + publish), so
+   *  every `MovieRecordCreated` is published synchronously before this returns
+   *  and the caller can drain the downstream pools without racing the scrape. */
+  private def scrapeAllOnce(): Unit = {
+    val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("record-scrape", 8)
+    try Await.ready(
+      Future.sequence(cinemaScrapers.map(s =>
+        Future(scala.util.Try(cinemaScrapeRunner.run(s)))(using ec)))(using implicitly, ec),
+      Duration.Inf)
+    finally ec.shutdown()
+    ()
+  }
+
   def main(args: Array[String]): Unit = {
   // 1. Production-shape pass: every cinema scrape fires, every bus event
   //    cascades through the worker pools, the cascade drains in
   //    producer→consumer order.
-  showtimeCache.runOnce()
+  scrapeAllOnce()
   drainServices()
 
   // 2. Safety-net pass: synchronously force every cache row through the
@@ -137,7 +152,6 @@ object RecordAllDataToFixture extends TestWiring {
   unscreenedCleanup.removeUnscreened()
 
   // 4. Close remaining schedulers + Mongo.
-  showtimeCache.stop()
   unscreenedCleanup.stop()
   movieRepo.close()
   }

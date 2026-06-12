@@ -9,8 +9,9 @@ import java.net.URI
  * (`fetch`) that produces the films currently scheduled at that cinema, and
  * the set of HTTP hosts that scrape touches (`scrapeHosts`).
  *
- * Adding a new cinema is a new `CinemaScraper` instance wired in `AppLoader`
- * — `ShowtimeCache` doesn't change (CLAUDE.md OCP guidance). Per-cinema
+ * Adding a new cinema is a new `CinemaScraper` instance wired in
+ * `CinemaScraperCatalog` — the scrape scheduling (`ScrapeReaper`) doesn't
+ * change (CLAUDE.md OCP guidance). Per-cinema
  * clients implement this directly when they map 1:1 to a cinema; the
  * Cinema City client maps 1:N (Plaza + Kinepolis), so a thin
  * `CinemaCityScraper` wrapper captures the per-cinema parameters.

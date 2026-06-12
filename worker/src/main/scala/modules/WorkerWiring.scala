@@ -2,7 +2,7 @@ package modules
 
 import clients.TmdbClient
 import models.{Cinema, City}
-import services.{MongoCachingDetailFetch, MongoConnection, ShowtimeCache, Stoppable, UptimeMonitor}
+import services.{MongoCachingDetailFetch, MongoConnection, Stoppable, UptimeMonitor}
 import services.alerts.{FallbackAlert, FilmwebDropAlerter, TelegramNotifier}
 import services.cinemas._
 import services.enrichment._
@@ -63,9 +63,8 @@ class WorkerWiring {
 
   // When true, cinemas that implement DetailEnricher scrape BARE and their
   // per-film detail is fetched via EnrichDetails queue tasks (deduped per
-  // (group, film), multi-server-safe) instead of inline in fetch(). Independent
-  // of KINOWO_QUEUE_SCRAPING: detail enrichment is queue-based in either scrape
-  // mode. Off by default so prod is unchanged until cutover.
+  // (group, film), multi-server-safe) instead of inline in fetch(). Off by
+  // default so prod is unchanged until cutover.
   protected def deferDetail: Boolean =
     Env.get("KINOWO_DEFERRED_DETAIL").exists(v => v == "true" || v == "1")
 
@@ -263,35 +262,18 @@ class WorkerWiring {
   lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache)
   lazy val kinoMuzaSynopsisRefresher = new KinoMuzaSynopsisRefresher(movieCache, kinoMuzaClient, httoFetch)
 
-  // ── Showtime aggregation ──────────────────────────────────────────────────
-  // How many cinemas scrape in parallel — a slice of the shared backgroundBudget
-  // (see SharedExecutionBudget) so a cold-start scrape can't crowd out enrichment.
-  // Single source of truth: the test wiring's scrape spy reuses `showtimeFetchEc`
-  // rather than re-spelling this default.
-  def scrapeConcurrency: Int = Env.positiveInt("KINOWO_SCRAPE_CONCURRENCY", 4)
-  lazy val showtimeFetchEc = backgroundBudget.ec("showtime-fetch", scrapeConcurrency)
-
+  // ── Task queue (scrape scheduling) ──────────────────────────────────────────
   // Hold the first scrape back from boot so the cold-boot scrape burst doesn't
   // pile onto the cache hydrate and drain the shared-CPU credit balance to zero.
-  // Feeds BOTH scrape paths: ShowtimeCache (continuous-loop mode) and ScrapeReaper
-  // (queue mode — the one prod runs; its first tick enqueues every stale cinema,
-  // i.e. all of them on a cold boot, for the TaskWorker to drain at once).
+  // The ScrapeReaper's first tick enqueues every stale cinema (all of them on a
+  // cold boot) for the TaskWorker to drain at once.
   def initialScrapeDelaySeconds: Long = Env.positiveLong("KINOWO_SCRAPE_INITIAL_DELAY_SECONDS", 45L)
 
-  lazy val showtimeCache = new ShowtimeCache(
-    cinemaScrapers, eventBus, movieCache, showtimeFetchEc,
-    runner = Some(cinemaScrapeRunner), initialDelay = initialScrapeDelaySeconds.seconds
-  )
-
-  // ── Task queue (scrape scheduling) ──────────────────────────────────────────
-  // When enabled, cinema scraping is driven by a durable Mongo task queue instead
-  // of ShowtimeCache's continuous loop: a reaper enqueues each cinema at most once
-  // per 15-min freshness window, and the worker scrapes it (skipping if a
-  // concurrent run already refreshed it). This flag changes only the scrape
-  // *scheduling*; detail and rating enrichment are governed by KINOWO_DEFERRED_DETAIL
-  // and KINOWO_QUEUE_ENRICHMENT independently. Off by default until cut over.
-  protected def queueScraping: Boolean =
-    Env.get("KINOWO_QUEUE_SCRAPING").exists(v => v == "true" || v == "1")
+  // Cinema scraping is driven by a durable Mongo task queue: the ScrapeReaper
+  // enqueues each cinema at most once per freshness window, and the TaskWorker
+  // scrapes it (skipping if a concurrent run already refreshed it). Detail and
+  // rating enrichment are governed by KINOWO_DEFERRED_DETAIL and
+  // KINOWO_QUEUE_ENRICHMENT independently.
 
   // When enabled, rating refresh (IMDb/Filmweb/RT/Metacritic) runs as freshness-
   // gated queue tasks instead of the in-process bus-fetch + 4h cache walks — so
@@ -311,9 +293,9 @@ class WorkerWiring {
   lazy val detailEnrichers: Seq[DetailEnricher] =
     if (deferDetail) cinemaScraperCatalog.all.collect { case de: DetailEnricher => de } else Nil
 
-  // The shared scrape core: record + publish. Injected into BOTH ShowtimeCache
-  // and ScrapeCinemaHandler. Detail enqueue is no longer here — it's event-driven
-  // (DetailTaskEnqueuer off CinemaMovieAdded) plus the DetailReaper backstop.
+  // The shared scrape core: record + publish, injected into ScrapeCinemaHandler.
+  // Detail enqueue is no longer here — it's event-driven (DetailTaskEnqueuer off
+  // CinemaMovieAdded) plus the DetailReaper backstop.
   lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus)
 
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
@@ -450,12 +432,12 @@ class WorkerWiring {
       val inFallback = filmwebFallbackStore.get(cinema).exists(_.active)
       uptimeMonitor.tagService(cinema, CinemaClientMarkers.tagsFor(Some(marker), sourceUrls.get(cinema), inFallback))
     }
-    // The task worker runs whenever there's queue work: queue-driven scraping,
-    // deferred detail, and/or queue-driven rating enrichment.
-    if (queueScraping || deferDetail || queueEnrichment) { taskWorker.start(); workerHeartbeat.start() }
+    // The task worker drains all queue work: scraping, deferred detail, and/or
+    // queue-driven rating enrichment.
+    taskWorker.start(); workerHeartbeat.start()
     if (queueEnrichment) enrichmentReaper.start()
     if (deferDetail) detailReaper.start()
-    if (queueScraping) scrapeReaper.start() else showtimeCache.start()
+    scrapeReaper.start()
   }
 
   /** Event-cascade drain order, producer→consumer (see monolith comment). */
@@ -465,15 +447,13 @@ class WorkerWiring {
   )
 
   def stop(): Unit = {
-    if (queueScraping) scrapeReaper.stop() else showtimeCache.stop()
+    scrapeReaper.stop()
     if (queueEnrichment) enrichmentReaper.stop()
     if (deferDetail) detailReaper.stop()
-    if (queueScraping || deferDetail || queueEnrichment) {
-      workerHeartbeat.stop()
-      taskWorker.stop()
-      taskQueue.close()
-      freshnessStore.close()
-    }
+    workerHeartbeat.stop()
+    taskWorker.stop()
+    taskQueue.close()
+    freshnessStore.close()
     cascadeDrainOrder.foreach(_.stop())
     unscreenedCleanup.stop()
     kinoMuzaSynopsisRefresher.stop()

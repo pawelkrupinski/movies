@@ -25,14 +25,15 @@ import play.api.test.Helpers.stubControllerComponents
 class WebServingWiringSpec extends AnyFlatSpec with Matchers {
 
   // ── 1. Classpath boundary ────────────────────────────────────────────────
-  // These three classes ARE the scrape/enrich engine (`ShowtimeCache` drives
-  // the cinema scrape loop; `MovieService` owns the TMDB/IMDb worker pool;
-  // `FilmwebRatings` is one of the rating enrichers). They live in `worker`,
-  // not on `web`'s classpath — so resolving them by name must fail. A passing
-  // `Class.forName` would mean the engine had leaked back into the serving app.
+  // These three classes ARE the scrape/enrich engine (`ScrapeReaper` drives the
+  // queue-based cinema scrape scheduling; `MovieService` owns the TMDB/IMDb
+  // worker pool; `FilmwebRatings` is one of the rating enrichers). They live in
+  // `worker`, not on `web`'s classpath — so resolving them by name must fail. A
+  // passing `Class.forName` would mean the engine had leaked back into the
+  // serving app.
 
-  "The serving app's classpath" should "not contain the ShowtimeCache scrape loop" in {
-    an [ClassNotFoundException] should be thrownBy Class.forName("services.ShowtimeCache")
+  "The serving app's classpath" should "not contain the ScrapeReaper scrape scheduler" in {
+    an [ClassNotFoundException] should be thrownBy Class.forName("services.tasks.ScrapeReaper")
   }
 
   it should "not contain the MovieService enrichment worker pool" in {

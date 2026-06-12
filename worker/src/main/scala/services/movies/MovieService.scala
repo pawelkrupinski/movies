@@ -463,8 +463,7 @@ class MovieService(
    *  URL discovery; missing IMDb ids are recovered by the `ImdbIdMissing`
    *  event fired from the TMDB stage at first resolution. Fires once every
    *  `TmdbRetryHours`; also clears the negative cache so previously-failed
-   *  `(title, year)` lookups get one fresh shot via the next ShowtimeCache
-   *  refresh. */
+   *  `(title, year)` lookups get one fresh shot via the next cinema scrape. */
   def retryUnresolvedTmdb(): Unit = {
     cache.clearNegatives()
     // Pass each row's `data`-merged director + originalTitle as

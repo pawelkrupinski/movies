@@ -562,7 +562,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // recordCinemaScrape returns a `(CinemaMovie, CacheKey, isNew)` triple per
   // input. `isNew` is true the first time that exact `(cinema, raw title, raw
   // year)` tuple lands on a row; false on subsequent ticks that report the
-  // same combination. ShowtimeCache uses the flag to suppress redundant
+  // same combination. CinemaScrapeRunner uses the flag to suppress redundant
   // MovieRecordCreated events — every TMDB / IMDb / rating fetcher's listener
   // re-checks state on each event, so re-publishing for unchanged tuples
   // just churns dispatches. Any change (new cinema, new title spelling, year

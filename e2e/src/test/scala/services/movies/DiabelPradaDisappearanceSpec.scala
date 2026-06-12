@@ -213,8 +213,8 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   // `Wartość sentymentalna`, `Diabeł ubiera się u Prady 2`, …, all where two
   // cinemas reported the same film with different years (one with year=None,
   // one with year=Some(YYYY)). recordCinemaScrape's redirect already attached
-  // both cinemas' slots to a single row, but `ShowtimeCache.refreshOne`
-  // published a `MovieRecordCreated` event for the RAW (title, year) reported
+  // both cinemas' slots to a single row, but the scrape published
+  // a `MovieRecordCreated` event for the RAW (title, year) reported
   // by each cinema. The TMDB stage ran independently for each raw key, and
   // when the in-flight TMDB call for the first row hadn't completed yet,
   // `hasResolvedSiblingByTitle` returned false and the second TMDB call
@@ -224,7 +224,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   //
   // Fix: recordCinemaScrape returns the *canonical* CacheKey it actually
   // wrote each slot to (the redirect target when one applies, the raw key
-  // otherwise). ShowtimeCache publishes MovieRecordCreated using those
+  // otherwise). CinemaScrapeRunner publishes MovieRecordCreated using those
   // canonical keys, so both cinemas' bus events name the same key and the
   // TMDB stage runs exactly once. No phantom row, no startup merge.
 
@@ -262,7 +262,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
     val svc   = new MovieService(cache, bus, tmdbStub())
     bus.subscribe(svc.onMovieRecordCreated)
 
-    // Drive the same wiring `ShowtimeCache.refreshOne` does: publish a
+    // Drive the same flow `cinemaScrapeRunner.run` does: publish a
     // MovieRecordCreated for each canonical key returned by recordCinemaScrape.
     // The event's director hint is omitted here; `resolveTmdb` still verifies the
     // title hit against the director the row already carries (via `/credits`),

@@ -13,10 +13,10 @@ import scala.concurrent.duration._
  *
  * Use case: a structural change (e.g. the cleanTitle-strict tmdbId fold
  * gate) leaves existing rows in a shape the new code can't safely heal in
- * place. Rather than write a split-and-redistribute backfill,
- * `ShowtimeCache.start()` repopulates the cache from scratch on first
- * scrape (t=0s); the four `*Ratings` services + the IMDb id resolver
- * chain off the bus events and re-resolve every row.
+ * place. Rather than write a split-and-redistribute backfill, the worker's
+ * first scrape pass repopulates the cache from scratch; the four `*Ratings`
+ * services + the IMDb id resolver chain off the bus events and re-resolve
+ * every row.
  *
  * Output (per CLAUDE.md): row count BEFORE → 0 AFTER, plus a small sample
  * of titles being dropped so the run is auditable in the terminal.
@@ -57,7 +57,7 @@ object DropAllMovies {
       println(s"  Deleted: ${deleted.getDeletedCount} row(s)")
       println(s"  Remaining: ${Await.result(coll.countDocuments().toFuture(), 30.seconds)}")
       println()
-      println("Next app boot: ShowtimeCache's t=0 scrape repopulates the cache;")
+      println("Next app boot: the worker's first scrape repopulates the cache;")
       println("each new MovieRecordCreated event drives a fresh TMDB/IMDb/MC/RT/Filmweb")
       println("resolution. Expect ~5 minutes of in-flight rating discovery before")
       println("the cache reaches steady state.")

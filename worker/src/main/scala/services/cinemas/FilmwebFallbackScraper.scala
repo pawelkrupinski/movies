@@ -116,8 +116,8 @@ class FilmwebFallbackScraper(
 
   /** No fallback data to serve, so the cinema's real outcome stands — exactly as
    *  `UptimeRecordingScraper` would have recorded it. A throw is RE-RAISED (not
-   *  swallowed to empty) so `ShowtimeCache` / the scrape tick skips the cinema as
-   *  before; an empty result is returned as-is. */
+   *  swallowed to empty) so the scrape tick skips the cinema as before; an
+   *  empty result is returned as-is. */
   private def recordPrimaryOutcome(down: PrimaryOutcome): Seq[CinemaMovie] = down match {
     case PrimaryOutcome.Threw(t)          => monitor.recordFailure(service, UptimeRecordingScraper.errorLabel(t)); throw t
     case PrimaryOutcome.Empty(movies, ms) => monitor.recordEmpty(service, ms); movies

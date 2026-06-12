@@ -46,8 +46,9 @@ class AppLoader extends ApplicationLoader {
 /**
  * Single wiring class. Every dependency the app needs is constructed here as a
  * `lazy val` (so the order in the file doesn't matter — references resolve on
- * first use) and side-effecting components (`ShowtimeCache`, event
- * subscriptions) are forced at the bottom in the order they need to fire.
+ * first use) and side-effecting components (cache hydrate, change-stream
+ * watches, event subscriptions) are forced at the bottom in the order they
+ * need to fire.
  */
 class AppComponents(context: Context)
     extends BuiltInComponentsFromContext(context)

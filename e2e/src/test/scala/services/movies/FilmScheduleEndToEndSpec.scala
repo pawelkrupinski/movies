@@ -29,7 +29,7 @@ import scala.collection.mutable
  * and `FakeHttpFetch`.
  *
  * The flow:
- *   1. `runOneScrapeTick` — sequential mirror of `ShowtimeCache.refreshOne`,
+ *   1. `runOneScrapeTick` — sequential mirror of `cinemaScrapeRunner.run`,
  *      so the test doesn't race the production scheduler.
  *   2. `drainServices()` — drains the `cascadeDrainOrder` worker pools
  *      (MovieService → ImdbIdResolver → the four `*Ratings`) so every

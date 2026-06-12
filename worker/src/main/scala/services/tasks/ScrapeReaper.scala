@@ -18,10 +18,9 @@ import scala.util.{Failure, Try}
  * already waiting/working isn't queued twice; the handler re-checks freshness and
  * skips if a concurrent run already refreshed it.
  *
- * This replaces ShowtimeCache's continuous loop: instead of re-scraping every
- * cinema back-to-back, the worker scrapes a cinema at most once per 15 minutes,
- * and a failed scrape (which doesn't mark freshness) is naturally retried on the
- * next reaper tick.
+ * Instead of re-scraping every cinema back-to-back in a continuous loop, the
+ * worker scrapes a cinema at most once per 15 minutes, and a failed scrape
+ * (which doesn't mark freshness) is naturally retried on the next reaper tick.
  */
 class ScrapeReaper(
   scrapers:  Seq[CinemaScraper],

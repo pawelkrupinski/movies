@@ -14,11 +14,11 @@ import services.movies.{CacheKey, MovieCache}
  * event, with `DetailReaper` as the periodic refresh/retry backstop. The runner
  * itself no longer enqueues anything.
  *
- * Shared by both schedulers so the "what happens for one cinema" rule lives in
- * one place: the legacy continuous-loop `ShowtimeCache` and the queue-driven
- * `ScrapeCinemaHandler` both call this. It deliberately does NOT catch scrape
- * failures — each caller decides what a failure means (the loop logs and moves
- * on; the handler logs and lets the reaper retry).
+ * Shared so the "what happens for one cinema" rule lives in one place: the
+ * queue-driven `ScrapeCinemaHandler` calls this for each scrape task, and the
+ * fixture recorder calls it directly. It deliberately does NOT catch scrape
+ * failures — each caller decides what a failure means (the handler logs and
+ * lets the reaper retry).
  */
 class CinemaScrapeRunner(
   movieCache: MovieCache,

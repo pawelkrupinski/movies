@@ -9,7 +9,7 @@ import scala.concurrent.duration._
 
 /**
  *  One-shot: unset the `Cinema City Kinepolis` slot from every movie row
- *  in Mongo. The next `ShowtimeCache` tick refills with fresh, normalised
+ *  in Mongo. The next scrape tick refills with fresh, normalised
  *  showtimes from the now-fixed `CinemaCityClient`.
  *
  *  Reads `MONGODB_URI` / `MONGODB_DB` from env — source `.env.local`

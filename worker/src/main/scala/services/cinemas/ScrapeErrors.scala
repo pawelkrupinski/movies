@@ -5,8 +5,7 @@ import java.util.concurrent.TimeoutException
 
 /** Classifies scrape failures. Network/HTTP errors from external cinema sites
  *  are expected and not actionable, so callers log them at WARN (invisible to
- *  Sentry) rather than ERROR. Shared by the continuous-loop ShowtimeCache and
- *  the queue-driven ScrapeCinemaHandler. */
+ *  Sentry) rather than ERROR. Used by the queue-driven ScrapeCinemaHandler. */
 object ScrapeErrors {
   def isTransientHttpError(e: Throwable): Boolean = e match {
     case _: IOException      => true // timeouts, SSL, connection errors

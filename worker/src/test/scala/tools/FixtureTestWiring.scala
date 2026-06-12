@@ -82,9 +82,9 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     webReadModel.reload()
   }
 
-  /** Settle the cache to its deterministic steady state. The parallel scrape
-   *  (`showtimeCache.runOnce`) publishes enrichment INLINE as each cinema lands,
-   *  so a film's TMDB/ratings can resolve against a partially-merged row; in
+  /** Settle the cache to its deterministic steady state. The production scrape
+   *  (`cinemaScrapeRunner.run` per cinema) publishes enrichment INLINE as each
+   *  cinema lands, so a film's TMDB/ratings can resolve against a partially-merged row; in
    *  production those rows settle over successive 5-min passes (+ the daily TMDB
    *  retry). A single test pass can't wait for that, so re-run enrichment
    *  synchronously against the now-settled rows — the same belt-and-braces sweep

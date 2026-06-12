@@ -107,7 +107,7 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
       try {
         val touched = w.movieCache.recordCinemaScrape(scraper.cinema, scraper.fetch())
         touched.foreach { case (cm, key, _) => rows += ((key.cleanTitle, key.year, scraper.cinema, cm)) }
-      } catch { case _: Exception => () } // mirror ShowtimeCache.refreshOne / runOneScrapeTick
+      } catch { case _: Exception => () } // mirror cinemaScrapeRunner.run / runOneScrapeTick
     }
     rows.groupBy(_._1).toSeq.map { case (cleanTitle, rs) =>
       FilmGroup(cleanTitle, rs.head._2, rs.groupBy(_._3).view.mapValues(_.map(_._4).toSeq).toMap)
@@ -194,7 +194,7 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
   // cinema's prune sweeping another film's slot, an enrichment rekey colliding
   // across films, the convergence sweep). This variant feeds EVERY harvested
   // film's slots into one cache, per cinema, in shuffled cinema order — the same
-  // disorder the real parallel `showtimeCache.runOnce` produces — and asserts
+  // disorder the real parallel cinema scrape produces — and asserts
   // the whole persisted corpus + rendered rows are identical across orders.
   private val CorpusIterations = 3
 
