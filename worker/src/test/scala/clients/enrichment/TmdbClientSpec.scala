@@ -300,4 +300,57 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     val client = fakeClient(Map("query=Camper" -> yearScoped))
     client.search("Camper", Some(2025)).map(_.id) shouldBe Some(1192319)
   }
+
+  // ── directorsFor: original_name for native-script directors ──────────────
+  //
+  // Regression for "Tom i Jerry: Przygoda w muzeum" (tmdbId=1497970):
+  // Multikino reports director "张钢" (Chinese), TMDB stores name="Gang Zhang".
+  // Without original_name in the set, verifyByDirector always fails (no
+  // substring match between "gangzhang" and "张钢") → re-resolve fires every
+  // scrape cycle → CPU steal + rating cascade on every tick.
+
+  "directorsFor" should "include original_name so a native-script director name matches" in {
+    val creditsBody =
+      """{
+        |  "crew": [
+        |    {"job": "Director", "name": "Gang Zhang", "original_name": "张钢"},
+        |    {"job": "Producer", "name": "John Smith",  "original_name": "John Smith"}
+        |  ],
+        |  "cast": []
+        |}""".stripMargin
+    val client = fakeClient(Map("/movie/1497970/credits" -> creditsBody))
+    val dirs = client.directorsFor(1497970)
+    // Both the romanised name and the native-script original_name must be present
+    dirs should contain ("Gang Zhang")
+    dirs should contain ("张钢")
+    // Producers must be excluded
+    dirs should not contain "John Smith"
+  }
+
+  it should "still work when original_name equals name (no duplication concern)" in {
+    val creditsBody =
+      """{
+        |  "crew": [
+        |    {"job": "Director", "name": "Christopher Nolan", "original_name": "Christopher Nolan"}
+        |  ],
+        |  "cast": []
+        |}""".stripMargin
+    val client = fakeClient(Map("/movie/872585/credits" -> creditsBody))
+    val dirs = client.directorsFor(872585)
+    dirs should contain ("Christopher Nolan")
+    // Set deduplication means it appears exactly once
+    dirs.size shouldBe 1
+  }
+
+  it should "handle a director entry missing original_name gracefully" in {
+    val creditsBody =
+      """{
+        |  "crew": [
+        |    {"job": "Director", "name": "Akira Kurosawa"}
+        |  ],
+        |  "cast": []
+        |}""".stripMargin
+    val client = fakeClient(Map("/movie/99/credits" -> creditsBody))
+    client.directorsFor(99) shouldBe Set("Akira Kurosawa")
+  }
 }

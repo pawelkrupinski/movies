@@ -180,7 +180,12 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
       val body = http.get(s"$ApiBase/movie/$tmdbId/credits${apiKeyParam("?")}", auth)
       (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
         .filter(c => (c \ "job").asOpt[String].contains("Director"))
-        .flatMap(c => (c \ "name").asOpt[String])
+        .flatMap { c =>
+          // Include both the localised `name` and the native-script `original_name`
+          // so that cinemas reporting a director in their native script (e.g. "张钢"
+          // for a Chinese director TMDB lists as "Gang Zhang") still match.
+          Seq("name", "original_name").flatMap(f => (c \ f).asOpt[String])
+        }
         .filter(_.nonEmpty)
         .toSet
     }.getOrElse(Set.empty)
