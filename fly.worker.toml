@@ -15,6 +15,12 @@ primary_region = 'arn'
   # WorkerMain's JDK health server binds this port; the [checks] block below
   # probes it. No public router fronts it (no [http_service]).
   PORT = '9000'
+  # Retry the boot cache hydrate while Mongo comes up alongside the worker. An
+  # empty findAll at boot is "Mongo not ready", not "empty corpus"; without
+  # retry the cache starts empty and quiescent rows never load (only re-scraped
+  # ones arrive via the change stream), leaving same-film duplicates stranded
+  # and invisible to the in-memory collapse. 20 × 1s covers Mongo's cold start.
+  KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS = '20'
   # No KINOWO_SCRAPE_CITIES: the worker now scrapes EVERY modelled city by
   # default (ScrapeCities.allCities). The var still exists as a load-shedding
   # escape hatch — `fly secrets set KINOWO_SCRAPE_CITIES=poznan,wroclaw` NARROWS
