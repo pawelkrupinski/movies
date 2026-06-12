@@ -2,7 +2,7 @@ package controllers
 
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
-import services.tasks.{QueueSnapshot, TaskQueue, TaskSummary}
+import services.tasks.{EnqueueResult, EnrichTaskKeys, QueueSnapshot, TaskQueue, TaskSummary, TaskType}
 
 /**
  * Operational view of the durable task queue at `/tasks`. The page renders a
@@ -25,6 +25,35 @@ class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue:
   def data: Action[AnyContent] = adminAction {
     val snap = queue.monitor(ActiveLimit)
     Ok(snapshotJson(snap))
+  }
+
+  /** The corpus-wide refresh runs the `/tasks` page buttons trigger. Each maps a
+   *  short job slug → the bulk TaskType the worker's `BulkRefreshHandler`
+   *  consumes; the worker calls that source's existing `refreshAll` /
+   *  `retryUnresolvedTmdb`. */
+  private val BulkJobs: Map[String, TaskType] = Map(
+    "tmdb"       -> TaskType.RefreshAllTmdb,
+    "imdb"       -> TaskType.RefreshAllImdb,
+    "filmweb"    -> TaskType.RefreshAllFilmweb,
+    "metacritic" -> TaskType.RefreshAllMetacritic,
+    "rt"         -> TaskType.RefreshAllRt
+  )
+
+  /** Enqueue a corpus-wide refresh run. Idempotent: the constant per-type dedup
+   *  key means a second click while one is queued returns `duplicate` rather
+   *  than stacking a second run. The page's poll then surfaces the task. */
+  def run(job: String): Action[AnyContent] = adminAction {
+    BulkJobs.get(job) match {
+      case None => BadRequest(Json.obj("error" -> s"unknown job '$job'"))
+      case Some(taskType) =>
+        val result = queue.enqueue(taskType, EnrichTaskKeys.bulkDedup(taskType))
+        Ok(Json.obj(
+          "job"       -> job,
+          "taskType"  -> taskType.name,
+          "enqueued"  -> (result == EnqueueResult.Added),
+          "duplicate" -> (result == EnqueueResult.Duplicate)
+        ))
+    }
   }
 
   private def snapshotJson(snap: QueueSnapshot): JsObject = Json.obj(

@@ -94,4 +94,50 @@ class TasksControllerSpec extends AnyFlatSpec with Matchers {
     val gate = TestAdminAction(allow = Set("someone-else@example.com"))
     status(controller(new InMemoryTaskQueue, gate).data.apply(adminSession)) shouldBe FORBIDDEN
   }
+
+  // ── Run buttons: enqueue a corpus-wide refresh ───────────────────────────────
+  private def runJson(queue: InMemoryTaskQueue, job: String): JsObject = {
+    val result = controller(queue).run(job).apply(adminSession)
+    status(result) shouldBe OK
+    Json.parse(contentAsString(result)).as[JsObject]
+  }
+
+  "POST /tasks/run/:job" should "enqueue the matching bulk task for each known job" in {
+    val cases = Map(
+      "tmdb"       -> RefreshAllTmdb,
+      "imdb"       -> RefreshAllImdb,
+      "filmweb"    -> RefreshAllFilmweb,
+      "metacritic" -> RefreshAllMetacritic,
+      "rt"         -> RefreshAllRt
+    )
+    cases.foreach { case (job, expected) =>
+      val q    = new InMemoryTaskQueue
+      val json = runJson(q, job)
+      (json \ "enqueued").as[Boolean]  shouldBe true
+      (json \ "taskType").as[String]   shouldBe expected.name
+      // The task actually landed in the queue under its constant dedup key.
+      val active = q.monitor().active
+      active.map(_.taskType) shouldBe Seq(expected.name)
+    }
+  }
+
+  it should "report duplicate (not stack a second run) when one is already queued" in {
+    val q = new InMemoryTaskQueue
+    (runJson(q, "imdb") \ "enqueued").as[Boolean]  shouldBe true
+    val second = runJson(q, "imdb")
+    (second \ "enqueued").as[Boolean]  shouldBe false
+    (second \ "duplicate").as[Boolean] shouldBe true
+    q.monitor().active.size shouldBe 1
+  }
+
+  it should "400 an unknown job slug without enqueuing anything" in {
+    val q      = new InMemoryTaskQueue
+    val result = controller(q).run("bogus").apply(adminSession)
+    status(result) shouldBe BAD_REQUEST
+    q.monitor().active shouldBe empty
+  }
+
+  it should "401 an anonymous run request" in {
+    status(controller(new InMemoryTaskQueue).run("tmdb").apply(FakeRequest())) shouldBe UNAUTHORIZED
+  }
 }

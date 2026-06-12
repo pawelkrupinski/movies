@@ -79,6 +79,11 @@ POST    /uptime/img-event           controllers.UptimeController.imgEvent()
 # stream — cost scales with viewers-while-open, not queue churn.
 GET     /tasks                      controllers.TasksController.index()
 GET     /tasks/data                 controllers.TasksController.data()
+# Operator-triggered corpus-wide refresh runs (the page's buttons). nocsrf to
+# match the other admin POSTs; the AdminAction gate is the auth check. `job` is
+# one of tmdb|imdb|filmweb|metacritic|rt.
++ nocsrf
+POST    /tasks/run/:job             controllers.TasksController.run(job: String)
 
 # ── Legal ─────────────────────────────────────────────────────────────────────
 # Public privacy policy (Polish). Required by Meta/Facebook before the Login

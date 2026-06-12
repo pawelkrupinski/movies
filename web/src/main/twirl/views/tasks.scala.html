@@ -49,11 +49,31 @@
     .empty { color: #555; padding: 30px 10px; text-align: center; }
     .age-warn { color: #f0ad4e; }
     .age-bad  { color: #e07a6a; }
+
+    .runbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; }
+    .runbar-label { color: #777; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+    .runbtn {
+      font: 11px monospace; color: #cfe3d6; background: #14241a; border: 1px solid #245038;
+      border-radius: 6px; padding: 6px 11px; cursor: pointer;
+    }
+    .runbtn:hover { background: #1c3326; border-color: #2e6649; color: #fff; }
+    .runbtn:disabled { opacity: .5; cursor: default; }
+    .runstatus { color: #888; font-size: 11px; margin-left: 4px; }
   </style>
 </head>
 <body>
   <h1>Task queue</h1>
   <div class="sub" id="sub"><span class="dot"></span><span id="status">connecting…</span></div>
+
+  <div class="runbar">
+    <span class="runbar-label">Run</span>
+    <button class="runbtn" data-url="@routes.TasksController.run("tmdb")">TMDB re-enrich (all)</button>
+    <button class="runbtn" data-url="@routes.TasksController.run("imdb")">IMDb refresh</button>
+    <button class="runbtn" data-url="@routes.TasksController.run("filmweb")">Filmweb refresh</button>
+    <button class="runbtn" data-url="@routes.TasksController.run("metacritic")">Metacritic refresh</button>
+    <button class="runbtn" data-url="@routes.TasksController.run("rt")">Rotten Tomatoes refresh</button>
+    <span id="runstatus" class="runstatus"></span>
+  </div>
 
   <div class="counts" id="counts"></div>
 
@@ -170,6 +190,28 @@
     });
     // Tick ages locally between polls so the page feels live without extra requests.
     setInterval(function () { if (!document.hidden) render(); }, 1000);
+
+    // Run buttons: POST a corpus-wide refresh, report enqueued / already-running,
+    // then poll once so the new task shows up in the table immediately.
+    document.querySelectorAll(".runbtn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var label = btn.textContent;
+        var st = document.getElementById("runstatus");
+        btn.disabled = true;
+        st.textContent = "enqueuing " + label + "…";
+        fetch(btn.dataset.url, { method: "POST", headers: { "Accept": "application/json" } })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) st.textContent = label + " — error: " + (res.j.error || "HTTP error");
+            else if (res.j.duplicate) st.textContent = label + " — already running";
+            else st.textContent = label + " — enqueued ✓";
+            poll();
+          })
+          .catch(function (e) { st.textContent = label + " — error: " + e.message; })
+          .finally(function () { btn.disabled = false; });
+      });
+    });
+
     start();
   </script>
 </body>
