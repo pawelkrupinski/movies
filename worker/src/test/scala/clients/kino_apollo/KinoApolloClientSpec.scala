@@ -149,6 +149,14 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
     drzewo                       should contain ("https://bilety.kinoapollo.pl/event/view/id/662080")
   }
 
+  it should "strip ' - seans przedpremierowy' even with trailing words so it merges with the base film" in {
+    // Apollo decorates the pre-premiere screening with extra words after the
+    // tag ("Monterey Pop - seans przedpremierowy w rocznicę koncertu"); the
+    // exact-end rule missed it, leaving a duplicate row off the canonical
+    // "Monterey Pop" (which 5 other cinemas report). See the 08-06-2026 corpus.
+    client.cleanTitle("Monterey Pop - seans przedpremierowy w rocznicę koncertu") shouldBe "Monterey Pop"
+  }
+
   // ── Booking URLs ──────────────────────────────────────────────────────────
 
   it should "use bilety.kinoapollo.pl event URLs for every showtime" in {

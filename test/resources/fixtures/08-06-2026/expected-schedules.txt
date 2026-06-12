@@ -4119,8 +4119,8 @@ cinemaTitles:      MONTEREY POP | Monterey Pop | Monterey pop
 runtimeMinutes:    78
 releaseYear:       1968
 countries:         USA
-posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/monterey-pop-plakat.jpg
-synopsis.length:   1088
+posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/Monterey_Pop_plakat.jpg
+synopsis.length:   2869
 cast:              Scott McKenzie, Denny Doherty, Cass Elliot, John Phillips, Michelle Phillips
 director:          D.A. Pennebaker
 tmdbId:            42632
@@ -4134,42 +4134,18 @@ metacriticUrl:     https://www.metacritic.com/movie/monterey-pop
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/monterey_pop
 filmwebUrl:        —
 cinemaFilmUrls:
+  Kino Apollo = https://kinoapollo.pl/kino/monterey-pop-seans-przedpremierowy-w-rocznice-koncertu/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157446
 cinemaScrapes:
   Gdyńskie Centrum Filmowe / Monterey Pop / —
   KINOMUZEUM / Monterey Pop / 1967
   Kino 60 Krzeseł / Monterey Pop / —
+  Kino Apollo / Monterey Pop / —
   Kino Pionier 1907 / MONTEREY POP / —
   Kino Rialto / Monterey pop / 1968
 showings:
-  2026-06-16  Kino Rialto                   20:45
-
-=== Monterey Pop - seans przedpremierowy w rocznicę koncertu ===
-displayTitle:      Monterey Pop - seans przedpremierowy w rocznicę koncertu
-cinemaTitles:      Monterey Pop - seans przedpremierowy w rocznicę koncertu
-runtimeMinutes:    —
-releaseYear:       —
-countries:         —
-posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/Monterey_Pop_plakat.jpg
-synopsis.length:   2869
-cast:              —
-director:          —
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
-cinemaFilmUrls:
-  Kino Apollo = https://kinoapollo.pl/kino/monterey-pop-seans-przedpremierowy-w-rocznice-koncertu/
-cinemaScrapes:
-  Kino Apollo / Monterey Pop - seans przedpremierowy w rocznicę koncertu / —
-showings:
   2026-06-16  Kino Apollo                   19:30
+  2026-06-16  Kino Rialto                   20:45
 
 === Mortal Kombat II ===
 displayTitle:      Mortal Kombat II
