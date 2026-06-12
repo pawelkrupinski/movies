@@ -282,6 +282,64 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // ── Settle-pass ±1-year film-identity collapse ─────────────────────────────
+  // The harvested replays above can't construct the exact adjacency cases the
+  // settle pass's `canonicalizeBySanitize` sub-clustering must get right —
+  // distinct-tmdbId remakes sharing a title, a production-year cinema row one
+  // year off a TMDB-resolved sibling, an unbounded run of adjacent years. These
+  // build each scenario as a synthetic single-title corpus and assert the
+  // settled outcome is identical across EVERY insertion permutation — the same
+  // "force the disorder" guarantee, scoped to the partition logic. A wrong
+  // (order-dependent) partition would chain years differently per order, or fold
+  // two films together only when one spelling arrives first.
+
+  private def resolvedRow(title: String, cinema: Cinema, year: Int, tmdbId: Int): (CacheKey, MovieRecord) =
+    (CacheKey(TitleNormalizer.searchTitle(title), Some(year)),
+      MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
+        (Tmdb: Source)   -> SourceData(title = Some(title), releaseYear = Some(year)),
+        (cinema: Source) -> SourceData(title = Some(title), releaseYear = Some(year)))))
+
+  private def cinemaRow(title: String, cinema: Cinema, year: Option[Int]): (CacheKey, MovieRecord) =
+    (CacheKey(TitleNormalizer.searchTitle(title), year),
+      MovieRecord(data = Map[Source, SourceData](
+        (cinema: Source) -> SourceData(title = Some(title), releaseYear = year))))
+
+  /** Settle a synthetic corpus across EVERY insertion order and return the
+   *  distinct settled row-sets. Order-independence ⇒ exactly one. */
+  private def settledAcrossOrders(rows: Seq[(CacheKey, MovieRecord)]): Set[Set[(String, Option[Int])]] =
+    rows.permutations.map { ordered =>
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
+      ordered.foreach { case (k, e) => cache.put(k, e) }
+      cache.canonicalizeBySanitize()
+      cache.snapshot().map(r => (r.title, r.year)).toSet
+    }.toSet
+
+  "canonicalizeBySanitize" should "collapse a film's ±1-year variants identically regardless of order" in {
+    // One TMDB-resolved row (2026) + a production-year cinema row (2025) one year
+    // off → one row at TMDB's year, whatever order they arrive.
+    val outcomes = settledAcrossOrders(Seq(
+      resolvedRow("Erupcja", Helios,   2026, 555),
+      cinemaRow  ("Erupcja", KinoMuza, Some(2025))))
+    outcomes shouldBe Set(Set(("Erupcja", Some(2026))))
+  }
+
+  it should "keep distinct-tmdbId same-title remakes as two rows regardless of order" in {
+    val outcomes = settledAcrossOrders(Seq(
+      resolvedRow("Diuna", Helios,   1984, 100),
+      resolvedRow("Diuna", KinoMuza, 2021, 200)))
+    outcomes shouldBe Set(Set(("Diuna", Some(1984)), ("Diuna", Some(2021))))
+  }
+
+  it should "window a {2024,2025,2026} no-tmdbId run into the same two clusters regardless of order" in {
+    val outcomes = settledAcrossOrders(Seq(
+      cinemaRow("Festiwal", Helios,                Some(2024)),
+      cinemaRow("Festiwal", KinoMuza,              Some(2025)),
+      cinemaRow("Festiwal", CinemaCityPoznanPlaza, Some(2026))))
+    // Greedy from the lowest year: {2024,2025} then {2026}. NEVER one 3-year blob
+    // and NEVER {2025,2026} — both of which an order-dependent chain could give.
+    outcomes shouldBe Set(Set(("Festiwal", Some(2024)), ("Festiwal", Some(2026))))
+  }
+
   // Distinct, reproducible seed per (film, iteration) so a divergence replays.
   private def seed(movieIdx: Int, iter: Int): Long = movieIdx.toLong * 1000L + iter
 
