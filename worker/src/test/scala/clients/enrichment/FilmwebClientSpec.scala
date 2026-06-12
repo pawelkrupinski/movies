@@ -205,6 +205,26 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     client.pickBest(hits, "Belle", None, Set.empty).map(_.id) shouldBe Some(1)
   }
 
+  // ── pickBest: prefer film over serial ────────────────────────────────────────
+
+  it should "prefer a film over a same-title serial even when the serial's year is closer" in {
+    // The "Ziemia obiecana" shape: Filmweb has Wajda's FILM (1974) and a TV
+    // SERIES (1975). Querying at 1975 used to pick the year-closest serial; the
+    // cinema is screening the film, so the film must win.
+    val hits = Seq(
+      candidate(id = 1073,   title = "Ziemia obiecana", year = Some(1974), kind = "film"),
+      candidate(id = 105396, title = "Ziemia obiecana", year = Some(1975), kind = "serial")
+    )
+    client.pickBest(hits, "Ziemia obiecana", Some(1975), Set.empty).map(_.id) shouldBe Some(1073)
+  }
+
+  it should "still use a serial when it is the only match (legit children's serial)" in {
+    // Kicia Kocia / Basia / Pucio exist on Filmweb ONLY as a /serial/ — no film
+    // entry — so dropping serials would lose their rating; we keep them.
+    val hits = Seq(candidate(id = 10113677, title = "Kicia Kocia w podróży", year = Some(2026), kind = "serial"))
+    client.pickBest(hits, "Kicia Kocia w podróży", Some(2025), Set.empty).map(_.id) shouldBe Some(10113677)
+  }
+
   // ── pickBest: director verification ─────────────────────────────────────────
 
   it should "require director overlap when caller AND candidate both have directors" in {

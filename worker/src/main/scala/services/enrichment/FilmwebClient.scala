@@ -181,8 +181,14 @@ class FilmwebClient(http: HttpFetch) {
     if (candidates.isEmpty || query.trim.isEmpty) return None
     val titleAccepted = candidates.filter(c => matchesByTitle(c, query))
     val directorAccepted = titleAccepted.filter(c => matchesByDirector(c, directors))
+    // Prefer a `film` over a same-title `serial` BEFORE year-distance: a real
+    // film and a TV series share many titles ("Ziemia obiecana" — Wajda's 1974
+    // film + a 1975 series; "Beavis i Butt-Head"), and the year-closest hit was
+    // often the series. A cinema is screening the film, so the film wins when one
+    // clears the bar; a `serial` is still used when it's the only match (Polish
+    // children's shows — Kicia Kocia, Basia, Pucio — are filed only as serials).
     directorAccepted
-      .sortBy(c => year.flatMap(y => c.year.map(yy => math.abs(yy - y))).getOrElse(Int.MaxValue))
+      .sortBy(c => (c.kind != "film", year.flatMap(y => c.year.map(yy => math.abs(yy - y))).getOrElse(Int.MaxValue)))
       .headOption
   }
 
