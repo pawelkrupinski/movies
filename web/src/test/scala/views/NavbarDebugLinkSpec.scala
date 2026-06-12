@@ -33,7 +33,7 @@ class NavbarDebugLinkSpec extends AnyFlatSpec with Matchers {
 
   it should "render the Debug link with the `nav-tab-debug` class when devMode is true" in {
     val html = render(devMode = true)
-    html should include ("""href="/poznan/debug"""")
+    html should include ("""href="/debug"""")
     // The class lets the (max-width: 575px) / landscape CSS rules in
     // `_sharedStyles` hide the link on mobile viewports.
     html should include ("nav-tab-debug")

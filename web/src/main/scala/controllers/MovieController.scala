@@ -392,11 +392,13 @@ class MovieController( cc: ControllerComponents,
     }
   }
 
-  def debug(city: String): Action[AnyContent] = Action {
-    withCity(city) { implicit c =>
-      devOnly {
-        Ok(views.html.debug(movieControllerService.debugData()))
-      }
+  def debug(): Action[AnyContent] = Action {
+    devOnly {
+      // The debug table is the global corpus; the only thing the view needs a
+      // city for is the /film fallback link on a row with no live showtimes
+      // anywhere — give it the default city for that edge case.
+      implicit val c: City = City.all.head
+      Ok(views.html.debug(movieControllerService.debugData()))
     }
   }
 

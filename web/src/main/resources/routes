@@ -20,7 +20,10 @@ GET     /:city/api/repertoire       controllers.MovieController.apiRepertoire(ci
 GET     /:city/api/details          controllers.MovieController.apiDetails(city: String)
 
 # ── Debug ─────────────────────────────────────────────────────────────────────
-GET     /:city/debug                controllers.MovieController.debug(city: String)
+# Top-level, not city-scoped: the debug table is the *global* corpus (every
+# enriched row across all cities), so there's nothing per-city about it. Each
+# /film deep-link picks a city the film actually plays in.
+GET     /debug                      controllers.MovieController.debug()
 # Dev-only visual-tuning page: live sliders over the real movie card that drive
 # the CSS custom properties the production card styles read (vertical gaps,
 # showtime-pill + rating-pill font/padding/corner). Lets us eyeball spacing
