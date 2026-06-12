@@ -57,4 +57,43 @@ class FreshnessStoreSpec extends AnyFlatSpec with Matchers {
     FreshnessKind.all.map(_.label).distinct should have size FreshnessKind.all.size
     FreshnessKind.all.foreach(k => FreshnessKind.byLabel(k.label) shouldBe Some(k))
   }
+
+  "whenReady" should "be already complete for the in-memory store (nothing to hydrate)" in {
+    new InMemoryFreshnessStore().whenReady(CinemaScrape).isCompleted shouldBe true
+  }
+
+  // Fix 2: the scrape stamps load first and signal readiness BEFORE the rest of
+  // the (much larger) corpus hydrates, so the ScrapeReaper's gate opens off the
+  // small scrape query, not behind thousands of detail/rating stamps.
+  "MongoFreshnessStore.hydrateInPhases" should "signal scrape-ready after the scrape phase, while the rest is still loading" in {
+    import scala.concurrent.Promise
+    import java.util.concurrent.{CountDownLatch, TimeUnit}
+    val ready         = Promise[Unit]()
+    val restStarted   = new CountDownLatch(1)
+    val restMayFinish = new CountDownLatch(1)
+    @volatile var order = List.empty[String]
+    val t = new Thread(() => MongoFreshnessStore.hydrateInPhases(
+      loadScrape  = () => synchronized { order = order :+ "scrape" },
+      scrapeReady = ready,
+      loadRest    = () => { restStarted.countDown(); restMayFinish.await(2, TimeUnit.SECONDS); synchronized { order = order :+ "rest" } }
+    ))
+    t.setDaemon(true); t.start()
+    restStarted.await(2, TimeUnit.SECONDS) shouldBe true
+    ready.future.isCompleted shouldBe true // scrape-ready fired though rest is still blocked
+    restMayFinish.countDown()
+    t.join(2000)
+    order shouldBe List("scrape", "rest")
+  }
+
+  it should "still signal scrape-ready if the scrape phase fails, so the reaper never wedges" in {
+    import scala.concurrent.Promise
+    import scala.util.Try
+    val ready = Promise[Unit]()
+    Try(MongoFreshnessStore.hydrateInPhases(
+      loadScrape  = () => throw new RuntimeException("mongo down"),
+      scrapeReady = ready,
+      loadRest    = () => ()
+    ))
+    ready.future.isCompleted shouldBe true
+  }
 }

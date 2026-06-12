@@ -2,12 +2,13 @@ package services.freshness
 
 import com.mongodb.client.model.UpdateOptions
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
+import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.{Filters, Updates}
 import play.api.Logging
 
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -43,6 +44,14 @@ trait FreshnessStore {
         }
     }
 
+  /** Completes once the mirror holds every persisted stamp of `kind`, so
+   *  `isFresh(_, kind)` can't read a not-yet-loaded key as stale. A scheduler
+   *  awaits this before its first tick, so a slow boot hydrate doesn't make
+   *  every unit of work look stale and enqueue it all at once — the boot storm
+   *  (see [[services.tasks.ScrapeReaper]]). Stores with nothing to load
+   *  (in-memory, Mongo-less dev) are ready immediately. */
+  def whenReady(kind: FreshnessKind): Future[Unit] = Future.unit
+
   def close(): Unit = ()
 }
 
@@ -75,10 +84,24 @@ class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessSto
   private val coll: Option[MongoCollection[Document]] =
     db.map(_.getCollection("freshness").withWriteConcern(services.tasks.MongoTaskQueue.QueueWriteConcern))
 
-  coll.foreach { c =>
-    val t = new Thread(() => hydrate(c), "freshness-init")
-    t.setDaemon(true)
-    t.start()
+  // Signals that the scrape stamps are in the mirror. The ScrapeReaper awaits this
+  // before its first tick, so a cinema is never read as stale merely because the
+  // boot hydrate hasn't reached its stamp yet. Completed by the scrape phase of
+  // `hydrate`, or immediately when there's nothing to load (Mongo-less dev).
+  private val scrapeReady = Promise[Unit]()
+
+  coll match {
+    case Some(c) =>
+      val t = new Thread(() => hydrate(c), "freshness-init")
+      t.setDaemon(true)
+      t.start()
+    case None =>
+      scrapeReady.trySuccess(())
+  }
+
+  override def whenReady(kind: FreshnessKind): Future[Unit] = kind match {
+    case FreshnessKind.CinemaScrape => scrapeReady.future
+    case _                          => Future.unit
   }
 
   override def lastFetchedAt(key: String): Option[Instant] = Option(mirror.get(key))
@@ -106,8 +129,23 @@ class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessSto
     }
   }
 
-  private def hydrate(c: MongoCollection[Document]): Unit = Try {
-    val docs = Await.result(c.find().toFuture(), 10.seconds)
+  // Hydrate in two phases. The whole `freshness` collection is the ~300 scrape
+  // stamps plus thousands of detail/rating stamps (one per film per source), and
+  // a single-cursor read of all of it brushes a multi-second deadline as the
+  // corpus grows. The ScrapeReaper only needs the scrape stamps, so load THOSE
+  // first as a small filtered query and signal `scrapeReady` the moment they
+  // land; the rest hydrates afterwards, off the boot-storm critical path.
+  private def hydrate(c: MongoCollection[Document]): Unit = {
+    val scrapeLabel = FreshnessKind.CinemaScrape.label
+    MongoFreshnessStore.hydrateInPhases(
+      loadScrape  = () => hydrateInto(c, Filters.eq("kind", scrapeLabel), 15.seconds, "scrape"),
+      scrapeReady = scrapeReady,
+      loadRest    = () => hydrateInto(c, Filters.ne("kind", scrapeLabel), 60.seconds, "enrichment")
+    )
+  }
+
+  private def hydrateInto(c: MongoCollection[Document], filter: Bson, timeout: FiniteDuration, label: String): Unit = Try {
+    val docs = Await.result(c.find(filter).toFuture(), timeout)
     var count = 0
     docs.foreach { doc =>
       for {
@@ -115,6 +153,19 @@ class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessSto
         date <- Option(doc.getDate("lastFetchedAt"))
       } { mirror.put(key, Instant.ofEpochMilli(date.getTime)); count += 1 }
     }
-    if (count > 0) logger.info(s"Hydrated $count freshness stamp(s) from Mongo.")
-  }.recover { case ex => logger.warn(s"Freshness hydrate failed: ${ex.getMessage}") }
+    if (count > 0) logger.info(s"Hydrated $count $label freshness stamp(s) from Mongo.")
+  }.recover { case ex => logger.warn(s"Freshness $label hydrate failed: ${ex.getMessage}") }
+}
+
+object MongoFreshnessStore {
+  /** Boot hydrate in two phases: load the scrape stamps (`loadScrape`), then
+   *  signal `scrapeReady` so the [[services.tasks.ScrapeReaper]] can start, then
+   *  load the rest of the corpus (`loadRest`) off the critical path. The signal
+   *  and the rest phase run even if the scrape phase throws, so a hydrate failure
+   *  degrades to the old re-scrape-all behaviour rather than wedging the reaper
+   *  forever. Pulled out as a pure orchestration so the ordering is testable
+   *  without a live Mongo. */
+  def hydrateInPhases(loadScrape: () => Unit, scrapeReady: Promise[Unit], loadRest: () => Unit): Unit =
+    try loadScrape()
+    finally { scrapeReady.trySuccess(()); loadRest() }
 }

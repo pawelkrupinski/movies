@@ -7,8 +7,9 @@ import services.freshness.{FreshnessKind, FreshnessStore}
 import tools.DaemonExecutors
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.Try
+import scala.util.{Failure, Try}
 
 /**
  * Periodically enqueues a `ScrapeCinema` task for every cinema whose last
@@ -27,21 +28,37 @@ class ScrapeReaper(
   queue:     TaskQueue,
   freshness: FreshnessStore,
   interval:  FiniteDuration = 1.minute,
-  // Hold the first tick back from boot: on a cold worker every cinema is stale,
-  // so the first tick enqueues all ~300 at once and the TaskWorker drains them
-  // immediately — the queue-mode equivalent of ShowtimeCache's boot scrape burst.
-  // Firing that on a cold JVM, on top of the cache hydrate, is what drained the
-  // shared-CPU credit balance. Wiring injects a boot delay; defaults to 0 so the
+  // A small extra spacing before the (now post-hydrate) first tick, so it doesn't
+  // land on the same instant as the cache hydrate finishing. Defaults to 0 so the
   // tests that drive `tick()` directly are unaffected.
-  initialDelay: FiniteDuration = 0.seconds
+  initialDelay: FiniteDuration = 0.seconds,
+  // Cap on how long the first tick waits for the freshness mirror to load its
+  // scrape stamps. Past it we tick anyway — degrading to the old re-scrape-all
+  // behaviour — rather than never scraping if a hydrate wedges.
+  readyTimeout: FiniteDuration = 30.seconds
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("scrape-reaper")
 
   def start(): Unit = {
     if (scrapers.isEmpty) { logger.info("ScrapeReaper: no cinemas; not starting."); return }
+    // Defer onto the scheduler thread so we can block it on the freshness hydrate
+    // without holding up boot wiring; it then schedules the periodic ticks.
+    scheduler.execute(() => Try(awaitReadyThenStart()))
+    logger.info(s"ScrapeReaper started over ${scrapers.size} cinemas, first tick after freshness hydrate then ${initialDelay.toSeconds}s, every ${interval.toSeconds}s.")
+  }
+
+  // Block until the scrape freshness stamps are loaded (capped at `readyTimeout`),
+  // THEN begin the periodic ticks. Without this the first tick can read a
+  // not-yet-hydrated mirror, see every cinema as stale, and enqueue all ~300 at
+  // once — the boot storm that drained the shared-CPU credit balance.
+  private def awaitReadyThenStart(): Unit = {
+    Try(Await.ready(freshness.whenReady(FreshnessKind.CinemaScrape), readyTimeout)) match {
+      case Failure(_) =>
+        logger.warn(s"ScrapeReaper: freshness stamps not ready after ${readyTimeout.toSeconds}s; first tick may re-scrape every cinema.")
+      case _ => ()
+    }
     scheduler.scheduleWithFixedDelay(() => Try(tick()), initialDelay.toMillis, interval.toMillis, TimeUnit.MILLISECONDS)
-    logger.info(s"ScrapeReaper started over ${scrapers.size} cinemas, first tick in ${initialDelay.toSeconds}s, then every ${interval.toSeconds}s.")
   }
 
   /** Enqueue every stale cinema. Package-private so tests can drive it directly. */

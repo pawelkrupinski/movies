@@ -113,6 +113,38 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.stop()
   }
 
+  // Boot-storm guard: at a cold boot the freshness mirror hydrates asynchronously,
+  // so before it lands every cinema reads as stale. If the reaper ticked then, it
+  // would enqueue ALL of them — the 300-wide storm that drained the CPU credit
+  // balance. `start()` must hold the first tick until `whenReady(CinemaScrape)`
+  // signals the scrape stamps are loaded; by then they're fresh, so nothing
+  // enqueues. (Before the gate, the first tick fired at initialDelay=0 against the
+  // empty mirror and the first `shouldBe 0L` below would see both cinemas queued.)
+  it should "wait for the freshness mirror to hydrate before its first tick, so a slow boot doesn't re-scrape every cinema" in {
+    import scala.concurrent.duration._
+    import scala.concurrent.{Future, Promise}
+    val gate  = Promise[Unit]()
+    val fresh = new InMemoryFreshnessStore {
+      override def whenReady(kind: FreshnessKind): Future[Unit] =
+        if (kind == FreshnessKind.CinemaScrape) gate.future else super.whenReady(kind)
+    }
+    val scrapers = Seq(new FakeScraper(Multikino, movieAt(Multikino)),
+                       new FakeScraper(KinoApollo, movieAt(KinoApollo)))
+    val queue  = new InMemoryTaskQueue
+    val reaper = new ScrapeReaper(scrapers, queue, fresh, initialDelay = 0.seconds, readyTimeout = 5.seconds)
+    reaper.start()
+    Thread.sleep(150)
+    // Gate still closed → reaper is blocked, not yet ticking.
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
+    // Boot hydrate lands: stamps populate the mirror (fresh), then readiness fires.
+    scrapers.foreach(s => fresh.markFresh(ScrapeCinemaHandler.dedupKey(s.cinema), FreshnessKind.CinemaScrape))
+    gate.success(())
+    Thread.sleep(150)
+    // First tick ran post-hydrate and found every cinema fresh → no storm.
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
+    reaper.stop()
+  }
+
   // ── WorkerHeartbeat: queue-depth diagnostic ─────────────────────────────────
 
   "WorkerHeartbeat.statusLine" should "report the queue backlog depth" in {
