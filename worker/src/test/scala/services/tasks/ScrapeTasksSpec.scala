@@ -94,6 +94,25 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 2L
   }
 
+  // Boot-cost guard: on a cold worker every cinema is stale, so the first tick
+  // enqueues all of them at once for the TaskWorker to drain — the queue-mode
+  // boot scrape burst. `start()` must hold that first tick back by `initialDelay`
+  // so it doesn't pile onto the cold-JVM cache hydrate. (Before this change the
+  // initial delay was a hardcoded `0L`, so the tick fired immediately and the
+  // `shouldBe 0L` assertion below would fail.)
+  it should "hold the first tick until the initial delay elapses" in {
+    import scala.concurrent.duration._
+    val queue  = new InMemoryTaskQueue
+    val reaper = new ScrapeReaper(Seq(new FakeScraper(Multikino, movieAt(Multikino))),
+                                  queue, new InMemoryFreshnessStore, initialDelay = 300.millis)
+    reaper.start()
+    Thread.sleep(100)
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L // still within the delay
+    Thread.sleep(600)
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L // delay elapsed → first tick ran
+    reaper.stop()
+  }
+
   // ── Detail enqueue is event-driven, not done by the runner ──────────────────
 
   private def movieWithRef(c: Cinema, title: String = "Dune") = Seq(

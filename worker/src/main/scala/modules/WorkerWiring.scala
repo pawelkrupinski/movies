@@ -271,10 +271,11 @@ class WorkerWiring {
   def scrapeConcurrency: Int = Env.positiveInt("KINOWO_SCRAPE_CONCURRENCY", 4)
   lazy val showtimeFetchEc = backgroundBudget.ec("showtime-fetch", scrapeConcurrency)
 
-  // Hold the first scrape pass back from boot so the heaviest CPU work (the
-  // ~48-cinema parallel sweep) doesn't pile onto the cold-JVM cache hydrate +
-  // read-model reconcile and drain the shared-CPU credit balance to zero. See
-  // ShowtimeCache.initialDelay.
+  // Hold the first scrape back from boot so the cold-boot scrape burst doesn't
+  // pile onto the cache hydrate and drain the shared-CPU credit balance to zero.
+  // Feeds BOTH scrape paths: ShowtimeCache (continuous-loop mode) and ScrapeReaper
+  // (queue mode — the one prod runs; its first tick enqueues every stale cinema,
+  // i.e. all of them on a cold boot, for the TaskWorker to drain at once).
   def initialScrapeDelaySeconds: Long = Env.positiveLong("KINOWO_SCRAPE_INITIAL_DELAY_SECONDS", 45L)
 
   lazy val showtimeCache = new ShowtimeCache(
@@ -353,7 +354,8 @@ class WorkerWiring {
     taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler) ++ ratingHandlers,
     poolSize = workerPoolSize
   )
-  lazy val scrapeReaper = new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore)
+  lazy val scrapeReaper =
+    new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, initialDelay = initialScrapeDelaySeconds.seconds)
 
   // Subscribe BEFORE start() so the bus's first MovieRecordCreated events reach
   // the enrichment handlers. (See the original monolith comment block for the
