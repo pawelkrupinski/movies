@@ -11,7 +11,7 @@ import services.events.{EventBus, InProcessEventBus, MovieRecordCreated}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, MongoNormalizationReportRepo, NormalizationRebuilder, NormalizationReport, NormalizationReportRepo, UnscreenedCleanup}
 import services.readmodel.{MongoReadModelRepo, ReadModelProjector, ReadModelReader, ReadModelWriter}
-import services.tasks.{DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, RatingEnqueuer, RatingHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
+import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
 import services.titlerules.{MongoTitleRulesRepo, TitleRuleSet, TitleRulesCache, TitleRulesRepo}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
@@ -345,13 +345,28 @@ class WorkerWiring {
     ) else Nil
   lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore)
 
+  // Operator-triggered handlers — ALWAYS registered (not gated by
+  // queueEnrichment): the web `/tasks` buttons enqueue a corpus-wide refresh and
+  // the `/debug` row button enqueues a per-movie re-resolve, regardless of which
+  // enrichment mode the worker runs. The bulk handlers call each source's
+  // existing refreshAll / retryUnresolvedTmdb; ResolveTmdb forces one row and
+  // lets the event chain re-run the downstream ratings.
+  lazy val operatorHandlers: Seq[services.tasks.TaskHandler] = Seq(
+    new BulkRefreshHandler(TaskType.RefreshAllTmdb,       "TMDB",       () => movieService.retryUnresolvedTmdb()),
+    new BulkRefreshHandler(TaskType.RefreshAllImdb,       "IMDb",       () => imdbRatings.refreshAllNow()),
+    new BulkRefreshHandler(TaskType.RefreshAllFilmweb,    "Filmweb",    () => filmwebRatings.refreshAllNow()),
+    new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => metascoreRatings.refreshAllNow()),
+    new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => rottenTomatoesRatings.refreshAllNow()),
+    new ResolveTmdbHandler(movieService.reenrichTmdbSync)
+  )
+
   // A fixed pool of workers, each fetching and running ONE task at a time — so
   // the number of scrapes/enrichments in flight at once is hard-capped at the
   // pool size and a backlog can't peg the box. (Replaces the old single batch
   // poller that claimed up to 20 tasks per tick onto a shared-budget EC.)
   def workerPoolSize: Int = Env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4)
   lazy val taskWorker = new TaskWorker(
-    taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler) ++ ratingHandlers,
+    taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler) ++ ratingHandlers ++ operatorHandlers,
     poolSize = workerPoolSize
   )
   lazy val scrapeReaper =

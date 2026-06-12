@@ -4,8 +4,9 @@ import clients.TmdbClient
 import models.{Filmweb, Source, SourceData}
 import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 import services.movies.{CacheKey, MovieCache, MovieService}
-import tools.DaemonExecutors
+import tools.{BoundedParallel, DaemonExecutors}
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.ExecutionContextExecutorService
 import scala.util.{Failure, Success, Try}
 
@@ -179,6 +180,10 @@ class FilmwebRatings(
 
   // ── Periodic walk ──────────────────────────────────────────────────────────
 
+  // Filmweb soft-blocks a datacenter IP past a handful of concurrent requests
+  // (see CLAUDE.md), so cap its parallel walk lower than the other sources.
+  override protected def refreshConcurrency: Int = 5
+
   /** Walk every cached row and refresh its Filmweb data. Rows with a URL
    *  get the cheap rating-only refresh; rows without one get the expensive
    *  full-lookup. The latter group is small in practice — only films
@@ -189,40 +194,40 @@ class FilmwebRatings(
     val (withUrl, missingUrl) = snapshot.partition { case (_, e) => e.filmwebUrl.isDefined }
     logger.info(s"Filmweb refresh: starting tick over ${snapshot.size} cached row(s) " +
                 s"(${withUrl.size} with URL → rating-only, ${missingUrl.size} without → full lookup).")
-    var changed       = 0
-    var failed        = 0
-    var urlDiscovered = 0
+    val changed       = new AtomicInteger(0)
+    val failed        = new AtomicInteger(0)
+    val urlDiscovered = new AtomicInteger(0)
 
-    withUrl.foreach { case (key, enrichment) =>
+    BoundedParallel.foreach("Filmweb-refresh-rating", withUrl, refreshConcurrency) { case (key, enrichment) =>
       val url = enrichment.filmwebUrl.get
       Try(filmweb.ratingFor(url)) match {
         case Success(fresh) if fresh != enrichment.filmwebRating =>
           logger.debug(s"Filmweb refresh: ${key.cleanTitle} $url ${enrichment.filmwebRating.getOrElse("—")} → ${fresh.getOrElse("—")}")
           cache.putIfPresent(key, _.copy(filmwebRating = fresh))
-          changed += 1
+          changed.incrementAndGet()
         case Success(_) => ()
         case Failure(ex) =>
-          failed += 1
+          failed.incrementAndGet()
           logger.debug(s"Filmweb refresh: $url lookup failed: ${ex.getMessage}")
       }
     }
 
-    missingUrl.foreach { case (key, enrichment) =>
+    BoundedParallel.foreach("Filmweb-refresh-discover", missingUrl, refreshConcurrency) { case (key, enrichment) =>
       Try(resolveAndPersistUrl(key, enrichment)) match {
         case Success(_) =>
           // urlDiscovered: re-read the cache to see if the helper actually
           // stored a URL. Cheap (single Caffeine lookup) and avoids leaking
           // the resolved Option through the helper's API.
-          if (cache.get(key).exists(_.filmwebUrl.isDefined && !enrichment.filmwebUrl.isDefined)) urlDiscovered += 1
+          if (cache.get(key).exists(_.filmwebUrl.isDefined && !enrichment.filmwebUrl.isDefined)) urlDiscovered.incrementAndGet()
         case Failure(ex) =>
-          failed += 1
+          failed.incrementAndGet()
           logger.debug(s"Filmweb refresh: ${key.cleanTitle} full-lookup failed: ${ex.getMessage}")
       }
     }
 
     val took = System.currentTimeMillis() - startedAt
-    logger.info(s"Filmweb refresh: tick done in ${took}ms — $changed rating(s) changed, " +
-                s"$urlDiscovered URL(s) newly discovered, $failed failed.")
+    logger.info(s"Filmweb refresh: tick done in ${took}ms — ${changed.get} rating(s) changed, " +
+                s"${urlDiscovered.get} URL(s) newly discovered, ${failed.get} failed.")
   }
 
 }

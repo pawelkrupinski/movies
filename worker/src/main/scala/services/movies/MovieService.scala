@@ -465,13 +465,35 @@ class MovieService(
     val targets = cache.entries.collect { case (k, e) if e.tmdbId.isEmpty => (k, e) }
     logger.info(s"TMDB retry: cleared negatives + re-scheduling ${targets.size} row(s) with missing tmdbId.")
     targets.foreach { case (k, e) =>
-      val origHint = e.cinemaOriginalTitle
-      val dirHint  = if (e.director.nonEmpty) Some(e.director.mkString(", ")) else None
+      val (origHint, dirHint) = tmdbHints(e)
       if (pending.add(k)) {
         Future(try runTmdbStage(k, origHint, dirHint) finally pending.remove(k))(using ec)
         ()
       }
     }
+  }
+
+  /** The originalTitle + director hints `runTmdbStage` needs, derived from a
+   *  cached row the same way the daily retry and the per-movie re-enrich both
+   *  want them. */
+  private def tmdbHints(e: MovieRecord): (Option[String], Option[String]) =
+    (e.cinemaOriginalTitle, if (e.director.nonEmpty) Some(e.director.mkString(", ")) else None)
+
+  /** Force a TMDB re-resolution of ONE row by `(title, year)`, synchronously on
+   *  the caller's thread. Unlike `retryUnresolvedTmdb`, this re-resolves even a
+   *  row that already has a `tmdbId` — it's the operator's explicit "re-enrich
+   *  this film" action from `/debug`, where forcing is the whole point. The
+   *  shared `runTmdbStage` publishes `TmdbResolved` (or `ImdbIdMissing`) on
+   *  success, so every downstream rating refresher re-runs for the row off the
+   *  same event chain that drives first-time enrichment — that's the "then all
+   *  the other enrichments" hook, with no extra sequencing. */
+  def reenrichTmdbSync(title: String, year: Option[Int]): Unit = {
+    val key                 = cache.keyOf(title, year)
+    val (origHint, dirHint) = cache.get(key).map(tmdbHints).getOrElse((None, None))
+    if (pending.add(key)) {
+      try runTmdbStage(key, origHint, dirHint) finally pending.remove(key)
+    } else
+      logger.info(s"TMDB re-enrich: $title (${year.getOrElse("?")}) already in flight — skipping duplicate.")
   }
 
   // ── TMDB resolution ────────────────────────────────────────────────────────

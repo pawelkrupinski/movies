@@ -17,8 +17,19 @@ object TaskType {
   case object RtRating      extends TaskType { val name = "RtRating"      }
   case object McRating      extends TaskType { val name = "McRating"      }
 
+  // Operator-triggered, corpus-wide refresh runs (the `/tasks` page buttons).
+  // Each is a global singleton: a constant dedup key collapses repeat clicks
+  // while one is active, and the worker handler runs the corresponding existing
+  // `refreshAll` / `retryUnresolvedTmdb`.
+  case object RefreshAllTmdb       extends TaskType { val name = "RefreshAllTmdb"       }
+  case object RefreshAllImdb       extends TaskType { val name = "RefreshAllImdb"       }
+  case object RefreshAllFilmweb    extends TaskType { val name = "RefreshAllFilmweb"    }
+  case object RefreshAllMetacritic extends TaskType { val name = "RefreshAllMetacritic" }
+  case object RefreshAllRt         extends TaskType { val name = "RefreshAllRt"         }
+
   val all: Seq[TaskType] =
-    Seq(ScrapeCinema, EnrichDetails, ResolveTmdb, ResolveImdbId, ImdbRating, FilmwebRating, RtRating, McRating)
+    Seq(ScrapeCinema, EnrichDetails, ResolveTmdb, ResolveImdbId, ImdbRating, FilmwebRating, RtRating, McRating,
+        RefreshAllTmdb, RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt)
 
   def byName(s: String): Option[TaskType] = all.find(_.name == s)
 }

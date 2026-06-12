@@ -6,8 +6,11 @@ import clients.TmdbClient
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.InProcessEventBus
+import services.events.{InProcessEventBus, TmdbResolved}
 import tools.RoutingHttpFetch
+import tools.Eventually.eventually
+
+import scala.collection.mutable.ListBuffer
 
 /**
  * Tests for `MovieService.reEnrichSync`.
@@ -135,5 +138,25 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
 
     result.flatMap(_.imdbId) shouldBe Some("tt0088763")
+  }
+
+  // ── reenrichTmdbSync — the per-movie `/debug` button path ────────────────────
+  // Unlike `reEnrichSync` (silent — returns the record only), this forces a
+  // re-resolve AND publishes `TmdbResolved`, so the downstream rating refreshers
+  // re-run for the row off the existing event chain. That published event is the
+  // "followed by all the other enrichments" hook.
+
+  "reenrichTmdbSync" should "publish TmdbResolved with the resolved imdbId so downstream enrichments re-run" in {
+    val tmdbHttp = tmdbWithYearFallback()
+    val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
+    val bus      = new InProcessEventBus()
+    val cache    = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val svc      = new MovieService(cache, bus, tmdb)
+    val resolved = ListBuffer.empty[TmdbResolved]
+    bus.subscribe { case e: TmdbResolved => resolved += e }
+
+    svc.reenrichTmdbSync("Powrót do przyszłości", Some(2026))
+
+    eventually(resolved.map(_.imdbId).toList shouldBe List("tt0088763"))
   }
 }

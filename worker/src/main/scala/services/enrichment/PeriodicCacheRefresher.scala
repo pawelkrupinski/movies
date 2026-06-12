@@ -69,6 +69,17 @@ abstract class PeriodicCacheRefresher(
   /** Subclass hook: walk every cached row and apply per-row refresh. */
   private[services] def refreshAll(): Unit
 
+  /** Public entry point to run a full refresh now — the operator-triggered
+   *  `/tasks` button path (the worker's `BulkRefreshHandler` calls this). Wraps
+   *  the `private[services]` walk so callers outside the `services` package
+   *  (the `modules` composition root) can kick one off. */
+  def refreshAllNow(): Unit = refreshAll()
+
+  /** Per-source concurrency cap for the parallel `refreshAll` walk (see
+   *  [[tools.BoundedParallel]]). Default 8; override lower for an upstream that
+   *  soft-blocks under load (Filmweb). */
+  protected def refreshConcurrency: Int = 8
+
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   /** Schedule the periodic hourly refresh. Called from `AppLoader`. */

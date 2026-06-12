@@ -4,8 +4,9 @@ import models.{Imdb, Source, SourceData}
 import services.cinemas.CountryNames
 import services.movies.{CacheKey, MovieCache}
 import services.events.{DomainEvent, ImdbIdResolved, TmdbResolved}
-import tools.DaemonExecutors
+import tools.{BoundedParallel, DaemonExecutors}
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.ExecutionContextExecutorService
 import scala.util.{Failure, Try}
 
@@ -118,14 +119,14 @@ class ImdbRatings(
     val skipped   = snapshot.size - withImdb.size
     logger.info(s"IMDb refresh: starting tick over ${withImdb.size} cached row(s) with imdbId" +
                 (if (skipped > 0) s" (skipping $skipped without imdbId)." else "."))
-    var changed = 0
-    var failed  = 0
-    withImdb.foreach { case (key, enrichment, id) =>
+    val changed = new AtomicInteger(0)
+    val failed  = new AtomicInteger(0)
+    BoundedParallel.foreach("IMDb-refresh", withImdb, refreshConcurrency) { case (key, enrichment, id) =>
       val ratingResult  = Try(imdb.lookup(id))
       val detailsResult = Try(imdb.details(id))
       ratingResult match {
         case Failure(ex) =>
-          failed += 1
+          failed.incrementAndGet()
           logger.debug(s"IMDb refresh: $id lookup failed: ${ex.getMessage}")
         case _ => ()
       }
@@ -139,10 +140,10 @@ class ImdbRatings(
           imdbRating = ratingUpdate.orElse(current.imdbRating),
           data       = slotUpdate.map(s => current.data + ((Imdb: Source) -> s)).getOrElse(current.data)
         ))
-        changed += 1
+        changed.incrementAndGet()
       }
     }
     val took = System.currentTimeMillis() - startedAt
-    logger.info(s"IMDb refresh: tick done in ${took}ms — $changed changed, $failed failed, ${withImdb.size - changed - failed} unchanged.")
+    logger.info(s"IMDb refresh: tick done in ${took}ms — ${changed.get} changed, ${failed.get} failed, ${withImdb.size - changed.get - failed.get} unchanged.")
   }
 }

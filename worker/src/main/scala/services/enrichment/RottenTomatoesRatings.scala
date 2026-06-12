@@ -3,8 +3,9 @@ package services.enrichment
 import clients.TmdbClient
 import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 import services.movies.{CacheKey, MovieCache, MovieService}
-import tools.DaemonExecutors
+import tools.{BoundedParallel, DaemonExecutors}
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.ExecutionContextExecutorService
 import scala.util.{Failure, Success, Try}
 
@@ -120,33 +121,33 @@ class RottenTomatoesRatings(
     val (withUrl, missingUrl) = snapshot.partition { case (_, e) => e.rottenTomatoesUrl.isDefined }
     logger.info(s"RT refresh: starting tick over ${snapshot.size} cached row(s) " +
                 s"(${withUrl.size} with URL → score-only, ${missingUrl.size} without → URL discovery).")
-    var changed       = 0
-    var failed        = 0
-    var urlDiscovered = 0
+    val changed       = new AtomicInteger(0)
+    val failed        = new AtomicInteger(0)
+    val urlDiscovered = new AtomicInteger(0)
 
-    withUrl.foreach { case (key, enrichment) =>
+    BoundedParallel.foreach("RT-refresh-score", withUrl, refreshConcurrency) { case (key, enrichment) =>
       val url = enrichment.rottenTomatoesUrl.get
       Try(rt.scoreFor(url)) match {
         case Success(fresh) if fresh != enrichment.rottenTomatoes =>
           logger.debug(s"RT refresh: ${key.cleanTitle} $url ${enrichment.rottenTomatoes.getOrElse("—")} → ${fresh.getOrElse("—")}")
           cache.putIfPresent(key, _.copy(rottenTomatoes = fresh))
-          changed += 1
+          changed.incrementAndGet()
         case Success(_) => ()
         case Failure(ex) =>
-          failed += 1
+          failed.incrementAndGet()
           logger.debug(s"RT refresh: $url lookup failed: ${ex.getMessage}")
       }
     }
 
-    missingUrl.foreach { case (key, enrichment) =>
+    BoundedParallel.foreach("RT-refresh-discover", missingUrl, refreshConcurrency) { case (key, enrichment) =>
       resolveAndPersistUrl(key, enrichment).foreach { url =>
-        urlDiscovered += 1
+        urlDiscovered.incrementAndGet()
         cache.get(key).foreach(refreshScoreFromUrl(key, _, url))
       }
     }
 
     val took = System.currentTimeMillis() - startedAt
-    logger.info(s"RT refresh: tick done in ${took}ms — $changed score(s) changed, " +
-                s"$urlDiscovered URL(s) newly discovered, $failed failed.")
+    logger.info(s"RT refresh: tick done in ${took}ms — ${changed.get} score(s) changed, " +
+                s"${urlDiscovered.get} URL(s) newly discovered, ${failed.get} failed.")
   }
 }
