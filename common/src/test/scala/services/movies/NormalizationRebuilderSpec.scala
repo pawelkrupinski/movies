@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{CinemaCityKinepolis, MovieRecord, Multikino, Source, SourceData}
+import models.{CinemaCityChain, CinemaCityKinepolis, MovieRecord, Multikino, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.titlerules.{RuleScope, TitleRule, TitleRuleSet}
@@ -126,6 +126,50 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
     new NormalizationRebuilder(cache).rebuild()
 
     cache.entries.map(_._1.cleanTitle) shouldBe Seq("Real Film")
+  }
+
+  it should "not split a row over a titleless detail-only slot (CinemaCityChain)" in {
+    val cache = new CaffeineMovieCache(disabledRepo)
+    // The real shape behind the spurious "Michael ⟶ Michael" split: a healthy
+    // row whose Cinema City detail is shared per-network into a synthetic
+    // `CinemaCityChain` slot that carries enrichment but NO title/rawTitle.
+    // That titleless slot must stay on the row, not split it off.
+    val row = MovieRecord(
+      tmdbId = Some(333),
+      data   = Map[Source, SourceData](
+        CinemaCityKinepolis -> SourceData(title = Some("Michael"), rawTitle = Some("Michael")),
+        Multikino           -> SourceData(title = Some("Michael"), rawTitle = Some("Michael")),
+        CinemaCityChain     -> SourceData(title = None,            rawTitle = None, synopsis = Some("A film."))))
+    cache.put(cache.keyOf("Michael", Some(2026)), row)
+    cache.entries should have size 1
+
+    val result = new NormalizationRebuilder(cache).rebuild()
+
+    cache.entries should have size 1
+    cache.entries.head._2.cinemaData.keySet shouldBe Set(CinemaCityKinepolis, Multikino, CinemaCityChain)
+    result.splits shouldBe empty
+    result.merges shouldBe empty
+  }
+
+  it should "not split a row whose slots carry mixed per-slot release years" in {
+    val cache = new CaffeineMovieCache(disabledRepo)
+    // The real shape behind "Obsesja ⟶ Obsesja": one row, same title everywhere,
+    // but the cinemas disagree on the release year (some 2025, some 2026, some
+    // none). keyOfSlot must key every slot off the ROW's year, not the slot's,
+    // or the row shatters into one phantom per distinct year.
+    val row = MovieRecord(
+      tmdbId = Some(444),
+      data   = Map[Source, SourceData](
+        CinemaCityKinepolis -> SourceData(title = Some("Obsesja"), rawTitle = Some("Obsesja"), releaseYear = Some(2025)),
+        Multikino           -> SourceData(title = Some("Obsesja"), rawTitle = Some("Obsesja"), releaseYear = Some(2026)),
+        CinemaCityChain     -> SourceData(title = Some("Obsesja"), rawTitle = Some("Obsesja"), releaseYear = None)))
+    cache.put(cache.keyOf("Obsesja", Some(2025)), row)
+    cache.entries should have size 1
+
+    val result = new NormalizationRebuilder(cache).rebuild()
+
+    cache.entries should have size 1
+    result.splits shouldBe empty
   }
 
   "reEnrichSearchChanges" should "re-resolve only rows whose apiQuery changed" in {
