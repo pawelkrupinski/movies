@@ -1,5 +1,4 @@
-@(rules: Seq[services.titlerules.TitleRule])
-@import services.titlerules.RuleScope
+@(records: Seq[services.titlerules.TitleRuleRecord], cinemas: Seq[(String, String)])
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,123 +6,337 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Title rules — admin</title>
   <style>
-    body { font: 14px/1.4 system-ui, sans-serif; margin: 1.5rem; color: #1a1a1a; }
-    h1 { font-size: 1.3rem; } h2 { font-size: 1rem; margin-top: 1.5rem; color: #555; }
-    table { border-collapse: collapse; width: 100%; margin-bottom: .5rem; }
-    th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; vertical-align: top; }
-    th { background: #f6f6f6; font-weight: 600; }
-    input[type=text], input[type=number] { width: 100%; box-sizing: border-box; font: inherit; padding: 2px 4px; }
-    input.pattern { font-family: ui-monospace, monospace; }
-    .narrow { width: 5rem; } .check { text-align: center; }
-    button { font: inherit; padding: 3px 10px; cursor: pointer; }
-    .row-actions { white-space: nowrap; }
-    #preview { margin-top: 1rem; padding: .75rem 1rem; background: #f0f7ff; border: 1px solid #cfe2ff; border-radius: 6px; }
-    .merge { margin: .25rem 0; } .merge b { color: #0a58ca; }
-    .muted { color: #888; } .bad { color: #b00; }
+    :root {
+      --bg: #0d1117; --panel: #161b22; --panel2: #1c2330; --border: #30363d;
+      --text: #e6edf3; --muted: #8b949e; --accent: #4493f8; --accent-soft: #1f3b5e;
+      --bad: #f85149; --good: #3fb950; --last: #d29922;
+    }
+    * { box-sizing: border-box; }
+    body { font: 14px/1.45 system-ui, sans-serif; margin: 0; padding: 1.5rem;
+           background: var(--bg); color: var(--text); }
+    h1 { font-size: 1.3rem; margin: 0 0 .25rem; }
+    h2 { font-size: 1.05rem; margin: 0 0 .35rem; color: var(--text); }
+    a { color: var(--accent); }
+    .muted { color: var(--muted); }
+    .bad { color: var(--bad); }
+    .toolbar { margin: 1rem 0; display: flex; gap: .5rem; flex-wrap: wrap; }
+    button {
+      font: inherit; padding: 5px 12px; cursor: pointer; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--panel2); color: var(--text);
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent-soft); border-color: var(--accent); }
+    button.icon { padding: 2px 8px; }
+    section.scope { margin: 1.25rem 0; }
+    .desc { color: var(--muted); margin: .15rem 0 .6rem; max-width: 60rem; }
+    .card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+      padding: .75rem .85rem; margin-bottom: .9rem;
+    }
+    .card-head { display: flex; align-items: center; gap: .6rem; margin-bottom: .5rem; }
+    .card-head select, .card-head .scope-name { font: inherit; font-weight: 600; }
+    select { background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+             border-radius: 6px; padding: 4px 6px; }
+    .list-label { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em;
+                  color: var(--muted); margin: .55rem 0 .25rem; }
+    .list-label.last { color: var(--last); }
+    .rows { display: flex; flex-direction: column; gap: 4px; min-height: 8px;
+            border: 1px dashed transparent; border-radius: 6px; padding: 2px; }
+    .rows.last { border-color: var(--border); background: rgba(210,153,34,.05); }
+    .rows.dragover { border-color: var(--accent); background: rgba(68,147,248,.08); }
+    .row { display: grid; align-items: center; gap: 5px;
+           grid-template-columns: 18px 1.6fr 1.2fr 34px 34px 0.7fr 1fr 40px 26px; }
+    .row.dragging { opacity: .4; }
+    .handle { cursor: grab; color: var(--muted); text-align: center; user-select: none; }
+    input[type=text] { width: 100%; font: inherit; padding: 3px 5px; border-radius: 5px;
+      background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+    input.mono { font-family: ui-monospace, monospace; }
+    input.bad-pat { border-color: var(--bad); }
+    .check { text-align: center; }
+    .col-head { font-size: .72rem; color: var(--muted); text-transform: uppercase;
+                letter-spacing: .03em; }
+    .card-actions { margin-top: .55rem; display: flex; gap: .5rem; align-items: center; }
+    #preview, #report { margin-top: .4rem; padding: .7rem .9rem; background: var(--panel);
+      border: 1px solid var(--border); border-radius: 8px; }
+    .merge { margin: .2rem 0; } .merge b { color: var(--accent); }
+    .saved { color: var(--good); }
   </style>
 </head>
 <body>
   <h1>Title-stripping rules</h1>
-  <p class="muted">Edits save to Mongo and propagate to the worker + web via the change stream — they take effect on the next scrape and on the live display. The merge preview shows which rows would <b>newly merge</b> under the current draft.</p>
+  <p class="muted">Edits save to Mongo and propagate to the worker + web via the change stream — they take effect on the next scrape and on the live display. Drag the <span class="handle">⠿</span> handle to reorder; rules apply top-to-bottom, and the <b style="color:var(--last)">last</b> list always runs after the normal one within a scope.</p>
 
-  <p><button onclick="addRule()">+ Add rule</button>
-     <button onclick="runPreview()">Preview merges</button></p>
+  <div class="toolbar">
+    <button class="primary" onclick="runPreview()">Preview merges</button>
+  </div>
 
-  <div id="tables"></div>
+  <div id="scopes"></div>
+
+  <h2 style="margin-top:1.5rem">Merge preview</h2>
   <div id="preview"><span class="muted">Preview not run yet.</span></div>
 
-  <h2>Last backfill outcome</h2>
+  <h2 style="margin-top:1.25rem">Last backfill outcome</h2>
   <div id="report"><span class="muted">Loading…</span></div>
 
-  <script type="application/json" id="seed">@play.twirl.api.Html(
+  <script type="application/json" id="seed-records">@play.twirl.api.Html(
     play.api.libs.json.Json.stringify(play.api.libs.json.JsArray(
-      rules.map(controllers.AdminTitleRulesController.ruleToJson))))</script>
-  <script>
-    const SCOPES = ["PerCinema", "GlobalStructural", "Search", "Canonical"];
-    let rules = JSON.parse(document.getElementById("seed").textContent);
+      records.map(controllers.AdminTitleRulesController.recordToJson))))</script>
+  <script type="application/json" id="seed-cinemas">@play.twirl.api.Html(
+    play.api.libs.json.Json.stringify(play.api.libs.json.JsArray(
+      cinemas.map { case (k, label) => play.api.libs.json.Json.arr(k, label) })))</script>
 
+  <script>
+    "use strict";
+    const GLOBAL_SCOPES = [
+      { name: "GlobalStructural", title: "Global structural",
+        desc: "Decoration stripping applied to every cinema's searchTitle — Cykl prefixes, slash postfixes, anniversary / restored / 'wersja' suffixes. Affects the merge key and how rows group across cinemas." },
+      { name: "Search", title: "Search (API query only)",
+        desc: "Extra stripping applied only when querying external rating/metadata APIs — programme prefixes, accessibility tags, '+ <event>' suffixes. Does NOT affect the merge key, so the programme/event screening keeps its own row." },
+      { name: "Canonical", title: "Canonical",
+        desc: "Cross-cinema spelling unifications folded into the stable document id — e.g. stripping a 'Gwiezdne Wojny:' lead-in, ' & ' to ' i '." }
+    ];
+
+    let records = JSON.parse(document.getElementById("seed-records").textContent);
+    const cinemas = JSON.parse(document.getElementById("seed-cinemas").textContent);
+    records.forEach(r => { r._persisted = true; });
+
+    // ---- pure helpers (also exercised by the page test) ----
+    function moveItem(arr, from, to) {
+      if (from === to || from < 0 || from >= arr.length) return arr;
+      const clamped = Math.max(0, Math.min(to, arr.length - 1));
+      const [it] = arr.splice(from, 1);
+      arr.splice(clamped, 0, it);
+      return arr;
+    }
+    function toggleLast(rec, listName, idx) {
+      const from = listName === "rules" ? rec.rules : rec.lastRules;
+      const to   = listName === "rules" ? rec.lastRules : rec.rules;
+      if (idx < 0 || idx >= from.length) return rec;
+      to.push(from.splice(idx, 1)[0]);
+      return rec;
+    }
+    function blankRule() {
+      return { id: "", pattern: "", replacement: "", applyAll: false, enabled: true, tag: null, note: null };
+    }
+    // Flatten the records to the flat { scope, cinemaId, order, last, ... } rules
+    // the preview endpoint expects.
+    function flattenForPreview(recs) {
+      const out = [];
+      recs.forEach(rec => {
+        rec.rules.forEach((r, i)      => out.push(flat(rec, r, i, false)));
+        rec.lastRules.forEach((r, i)  => out.push(flat(rec, r, i, true)));
+      });
+      return out;
+    }
+    function flat(rec, r, order, last) {
+      return { id: r.id, scope: rec.scope, cinemaId: rec.cinemaId, pattern: r.pattern,
+               replacement: r.replacement, applyAll: r.applyAll, order, last,
+               enabled: r.enabled, tag: r.tag, note: r.note };
+    }
+    window.TitleRules = { moveItem, toggleLast, flattenForPreview };
+
+    // ---- DOM building ----
     function h(tag, attrs, children) {
       const e = document.createElement(tag);
-      for (const k in (attrs||{})) {
+      for (const k in (attrs || {})) {
         if (k === "value") e.value = attrs[k];
         else if (k === "checked") e.checked = attrs[k];
-        else e.setAttribute(k, attrs[k]);
+        else if (k === "disabled") { if (attrs[k]) e.disabled = true; }
+        else if (k.startsWith("on")) e[k] = attrs[k];
+        else if (attrs[k] != null) e.setAttribute(k, attrs[k]);
       }
-      (children||[]).forEach(c => e.appendChild(typeof c === "string" ? document.createTextNode(c) : c));
+      (children || []).forEach(c => c != null && e.appendChild(typeof c === "string" ? document.createTextNode(c) : c));
       return e;
     }
 
-    function render() {
-      const root = document.getElementById("tables");
-      root.innerHTML = "";
-      SCOPES.forEach(scope => {
-        const inScope = rules.filter(r => r.scope === scope);
-        const h2 = h("h2", {}, [scope + " (" + inScope.length + ")"]);
-        root.appendChild(h2);
-        const tbl = h("table");
-        tbl.appendChild(h("tr", {}, ["cinemaId","pattern","replacement","order","all","on","note",""].map(t => h("th",{},[t]))));
-        rules.forEach((r, i) => {
-          if (r.scope !== scope) return;
-          const row = h("tr");
-          row.dataset.idx = i;
-          const inp = (field, cls, type) => {
-            const e = h("input", {type: type||"text", value: r[field]==null?"":r[field]});
-            if (cls) e.className = cls;
-            e.oninput = () => { r[field] = (type==="number") ? (e.value===""?null:+e.value) : e.value; };
-            return e;
-          };
-          row.appendChild(h("td", {}, [inp("cinemaId")]));
-          row.appendChild(h("td", {}, [inp("pattern","pattern")]));
-          row.appendChild(h("td", {}, [inp("replacement","pattern")]));
-          row.appendChild(h("td", {class:"narrow"}, [inp("order",null,"number")]));
-          const all = h("input",{type:"checkbox",checked:r.applyAll}); all.onchange=()=>r.applyAll=all.checked;
-          const on  = h("input",{type:"checkbox",checked:r.enabled});  on.onchange =()=>r.enabled=on.checked;
-          row.appendChild(h("td",{class:"check"},[all]));
-          row.appendChild(h("td",{class:"check"},[on]));
-          row.appendChild(h("td", {}, [inp("note")]));
-          const save = h("button",{},["Save"]); save.onclick = () => saveRule(r);
-          const del  = h("button",{},["Delete"]); del.onclick = () => delRule(r, i);
-          row.appendChild(h("td",{class:"row-actions"},[save, del]));
-          tbl.appendChild(row);
-        });
-        root.appendChild(tbl);
-      });
+    let dragCtx = null; // { rec, listName, from }
+
+    function ruleRow(rec, listName, r, idx) {
+      const list = rec[listName];
+      const txt = (field, cls) => {
+        const e = h("input", { type: "text", value: r[field] == null ? "" : r[field] });
+        if (cls) e.className = cls;
+        if (field === "pattern" && !patternOk(r.pattern)) e.classList.add("bad-pat");
+        e.oninput = () => {
+          r[field] = e.value;
+          if (field === "pattern") e.classList.toggle("bad-pat", !patternOk(e.value));
+        };
+        return e;
+      };
+      const chk = (field) => {
+        const e = h("input", { type: "checkbox", checked: r[field] });
+        e.onchange = () => { r[field] = e.checked; };
+        return e;
+      };
+      const lastChk = h("input", { type: "checkbox", checked: listName === "lastRules" });
+      lastChk.onchange = () => { toggleLast(rec, listName, idx); render(); };
+
+      const row = h("div", { class: "row", draggable: "true" }, [
+        h("span", { class: "handle", title: "drag to reorder" }, ["⠿"]),
+        txt("pattern", "mono"),
+        txt("replacement", "mono"),
+        h("span", { class: "check" }, [chk("applyAll")]),
+        h("span", { class: "check" }, [chk("enabled")]),
+        txt("tag"),
+        txt("note"),
+        h("span", { class: "check", title: "apply after the normal rules" }, [lastChk]),
+        h("button", { class: "icon", title: "remove rule",
+          onclick: () => { list.splice(idx, 1); render(); } }, ["✕"])
+      ]);
+      row.ondragstart = (ev) => { dragCtx = { rec, listName, from: idx }; row.classList.add("dragging"); ev.dataTransfer.effectAllowed = "move"; };
+      row.ondragend   = () => { row.classList.remove("dragging"); };
+      row.ondragover  = (ev) => { if (sameList(rec, listName)) ev.preventDefault(); };
+      row.ondrop      = (ev) => {
+        ev.preventDefault();
+        if (!sameList(rec, listName)) { dragCtx = null; return; }
+        moveItem(list, dragCtx.from, idx);
+        dragCtx = null; render();
+      };
+      return row;
+    }
+    function sameList(rec, listName) { return dragCtx && dragCtx.rec === rec && dragCtx.listName === listName; }
+
+    function colHeads() {
+      return h("div", { class: "row" },
+        ["", "pattern", "replacement", "all", "on", "tag", "note", "last", ""]
+          .map(t => h("span", { class: "col-head" }, [t])));
     }
 
-    function addRule() {
-      rules.push({id:"", scope:"PerCinema", cinemaId:"", pattern:"", replacement:"", applyAll:false, order:100, enabled:true, tag:null, note:null});
+    function ruleListEl(rec, listName) {
+      const isLast = listName === "lastRules";
+      const wrap = h("div", { class: "rows" + (isLast ? " last" : "") });
+      rec[listName].forEach((r, i) => wrap.appendChild(ruleRow(rec, listName, r, i)));
+      // allow dropping onto the empty area / end of the list
+      wrap.ondragover = (ev) => { if (sameList(rec, listName)) { ev.preventDefault(); wrap.classList.add("dragover"); } };
+      wrap.ondragleave = () => wrap.classList.remove("dragover");
+      wrap.ondrop = (ev) => {
+        ev.preventDefault(); wrap.classList.remove("dragover");
+        if (!sameList(rec, listName)) { dragCtx = null; return; }
+        moveItem(rec[listName], dragCtx.from, rec[listName].length - 1);
+        dragCtx = null; render();
+      };
+      return wrap;
+    }
+
+    function card(rec) {
+      const c = h("div", { class: "card" });
+      const head = h("div", { class: "card-head" });
+      if (rec.scope === "PerCinema") {
+        const sel = h("select", { disabled: rec._persisted });
+        sel.appendChild(h("option", { value: "" }, ["— choose cinema —"]));
+        cinemas.forEach(([key, label]) => {
+          const o = h("option", { value: key }, [label]);
+          if (key === rec.cinemaId) o.selected = true;
+          sel.appendChild(o);
+        });
+        sel.onchange = () => { rec.cinemaId = sel.value || null; };
+        head.appendChild(sel);
+        head.appendChild(h("button", { class: "icon", title: "delete this cinema's record",
+          onclick: () => deleteRecord(rec) }, ["Delete"]));
+      } else {
+        head.appendChild(h("span", { class: "scope-name" }, [scopeTitle(rec.scope)]));
+      }
+      c.appendChild(head);
+
+      c.appendChild(h("div", { class: "list-label" }, ["Rules"]));
+      c.appendChild(colHeads());
+      c.appendChild(ruleListEl(rec, "rules"));
+      c.appendChild(h("div", { class: "list-label last" }, ["Last — applied after the rules above"]));
+      c.appendChild(ruleListEl(rec, "lastRules"));
+
+      const actions = h("div", { class: "card-actions" }, [
+        h("button", { onclick: () => { rec.rules.push(blankRule()); render(); } }, ["+ rule"]),
+        h("button", { class: "primary", onclick: () => saveRecord(rec) }, ["Save"]),
+        h("span", { class: "muted", id: "status-" + cssId(rec.id) }, [""])
+      ]);
+      c.appendChild(actions);
+      return c;
+    }
+
+    function scopeTitle(name) {
+      const g = GLOBAL_SCOPES.find(s => s.name === name);
+      return g ? g.title : name;
+    }
+
+    function findOrCreateGlobal(scopeName) {
+      let rec = records.find(r => r.scope === scopeName && !r.cinemaId);
+      if (!rec) { rec = { id: scopeName, scope: scopeName, cinemaId: null, rules: [], lastRules: [], _persisted: false }; records.push(rec); }
+      return rec;
+    }
+
+    function render() {
+      const root = document.getElementById("scopes");
+      root.innerHTML = "";
+      GLOBAL_SCOPES.forEach(s => {
+        const sec = h("section", { class: "scope" }, [
+          h("h2", {}, [s.title]),
+          h("p", { class: "desc" }, [s.desc])
+        ]);
+        sec.appendChild(card(findOrCreateGlobal(s.name)));
+        root.appendChild(sec);
+      });
+      // Per-cinema section
+      const sec = h("section", { class: "scope" }, [
+        h("h2", {}, ["Per cinema"]),
+        h("p", { class: "desc" }, ["Raw-title cleanup applied per cinema before a title becomes a display / merge title. Pick the cinema, then add its strip rules."])
+      ]);
+      records.filter(r => r.scope === "PerCinema")
+             .sort((a, b) => (a.cinemaId || "").localeCompare(b.cinemaId || ""))
+             .forEach(rec => sec.appendChild(card(rec)));
+      sec.appendChild(h("button", { onclick: addCinemaRecord }, ["+ Add cinema record"]));
+      root.appendChild(sec);
+    }
+
+    function addCinemaRecord() {
+      records.push({ id: "", scope: "PerCinema", cinemaId: null, rules: [blankRule()], lastRules: [], _persisted: false });
       render();
     }
 
-    async function saveRule(r) {
-      const res = await fetch("/admin/title-rules", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(r)});
-      const body = await res.json();
-      if (!res.ok) { alert("Save failed: " + (body.error||res.status)); return; }
-      r.id = body.id; render();
+    // ---- regex validity hint (server is authoritative) ----
+    function patternOk(p) {
+      if (p == null || p === "") return false;
+      try { new RegExp(p); return true; } catch (e) { return false; }
     }
 
-    async function delRule(r, i) {
-      if (r.id) {
-        const res = await fetch("/admin/title-rules/delete", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({id:r.id})});
-        if (!res.ok) { alert("Delete failed"); return; }
-      }
-      rules.splice(i, 1); render();
+    function cssId(s) { return (s || "new").replace(/[^a-z0-9_-]/gi, "_"); }
+
+    // ---- server I/O ----
+    async function saveRecord(rec) {
+      const status = document.getElementById("status-" + cssId(rec.id));
+      if (rec.scope === "PerCinema" && !rec.cinemaId) { if (status) { status.textContent = "pick a cinema first"; status.className = "bad"; } return; }
+      const payload = { id: rec.id, scope: rec.scope, cinemaId: rec.cinemaId, rules: rec.rules, lastRules: rec.lastRules };
+      const res = await fetch("/admin/title-rules", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const body = await res.json();
+      if (!res.ok) { if (status) { status.textContent = "save failed: " + (body.error || res.status); status.className = "bad"; } return; }
+      rec.id = body.id; rec._persisted = true;
+      render();
+      const s2 = document.getElementById("status-" + cssId(rec.id));
+      if (s2) { s2.textContent = "saved ✓"; s2.className = "saved"; }
+      setTimeout(loadReport, 4000);
+    }
+
+    async function deleteRecord(rec) {
+      if (!rec._persisted || !rec.id) { records = records.filter(r => r !== rec); render(); return; }
+      if (!confirm("Delete all rules for this record?")) return;
+      const res = await fetch("/admin/title-rules/delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: rec.id }) });
+      if (!res.ok) { alert("Delete failed"); return; }
+      records = records.filter(r => r !== rec); render();
     }
 
     async function runPreview() {
       const box = document.getElementById("preview");
       box.innerHTML = "<span class='muted'>Computing…</span>";
-      const res = await fetch("/admin/title-rules/preview", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({rules})});
+      const res = await fetch("/admin/title-rules/preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rules: flattenForPreview(records) }) });
       const body = await res.json();
-      if (!res.ok) { box.innerHTML = "<span class='bad'>" + (body.error||"preview failed") + "</span>"; return; }
+      if (!res.ok) { box.innerHTML = "<span class='bad'>" + (body.error || "preview failed") + "</span>"; return; }
       if (body.newMergeCount === 0) { box.innerHTML = "<span class='muted'>No new merges under this draft.</span>"; return; }
       const parts = ["<b>" + body.newMergeCount + " new merge(s)</b> vs the live rules:"];
       body.newMerges.forEach(g => {
-        parts.push("<div class='merge'>→ <b>" + esc(g.display) + (g.year? " ("+g.year+")":"") + "</b>: " + g.titles.map(esc).join("  +  ") + "</div>");
+        parts.push("<div class='merge'>→ <b>" + esc(g.display) + (g.year ? " (" + g.year + ")" : "") + "</b>: " + g.titles.map(esc).join("  +  ") + "</div>");
       });
       box.innerHTML = parts.join("");
     }
-    function esc(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+    function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 
     async function loadReport() {
       const box = document.getElementById("report");
@@ -132,17 +345,12 @@
         const r = await res.json();
         if (r.empty) { box.innerHTML = "<span class='muted'>No backfill has run yet.</span>"; return; }
         const parts = ["<div class='muted'>at " + new Date(r.atEpochMs).toLocaleString() + " — " + r.reEnriched + " row(s) re-enriched</div>"];
-        (r.merges||[]).forEach(m => parts.push("<div class='merge'>merged: " + esc(m) + "</div>"));
-        (r.splits||[]).forEach(s => parts.push("<div class='merge'>split: " + esc(s) + "</div>"));
-        if (!(r.merges||[]).length && !(r.splits||[]).length) parts.push("<span class='muted'>No merges or splits.</span>");
+        (r.merges || []).forEach(m => parts.push("<div class='merge'>merged: " + esc(m) + "</div>"));
+        (r.splits || []).forEach(s => parts.push("<div class='merge'>split: " + esc(s) + "</div>"));
+        if (!(r.merges || []).length && !(r.splits || []).length) parts.push("<span class='muted'>No merges or splits.</span>");
         box.innerHTML = parts.join("");
       } catch (e) { box.innerHTML = "<span class='muted'>Report unavailable.</span>"; }
     }
-
-    // Saving a rule triggers the worker backfill asynchronously; poll the report
-    // a few seconds later so the user sees the realized outcome.
-    const _save = saveRule;
-    saveRule = async (r) => { await _save(r); setTimeout(loadReport, 4000); };
 
     render();
     loadReport();

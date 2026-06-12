@@ -17,8 +17,8 @@ class TitleRulesCacheSpec extends AnyFlatSpec with Matchers {
 
   "reload" should "install the store's rules, replacing the defaults" in {
     val (install, last) = capturing()
-    val repo = new InMemoryTitleRulesRepo(Seq(
-      TitleRule("custom", RuleScope.GlobalStructural, None, " ZZZ$", "", applyAll = false, order = 10)))
+    val repo = new InMemoryTitleRulesRepo(TitleRuleRecord.fromRules(Seq(
+      TitleRule("custom", RuleScope.GlobalStructural, None, " ZZZ$", "", applyAll = false, order = 10))))
     new TitleRulesCache(repo, install = install).reload()
     last().structural("Film ZZZ") shouldBe "Film"
     // The default anniversary strip is absent under the custom-only set.
@@ -60,7 +60,8 @@ class TitleRulesCacheSpec extends AnyFlatSpec with Matchers {
     fired shouldBe 0
     cache.reload()            // unchanged — must NOT fire
     fired shouldBe 0
-    repo.upsert(TitleRule("new", RuleScope.Search, None, "x$", "", applyAll = false, order = 1))
+    repo.upsertRecord(TitleRuleRecord.fromRules(Seq(
+      TitleRule("new", RuleScope.Search, None, "x$", "", applyAll = false, order = 1))).head)
     cache.reload()            // changed — fires once
     fired shouldBe 1
     cache.reload()            // unchanged again — no further fire

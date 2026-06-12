@@ -25,6 +25,11 @@ case class TitleRule(
   applyAll:    Boolean,
   // Application order within a scope. Lower runs first; ties broken by id.
   order:       Int,
+  // When true, this rule runs AFTER every non-last rule of the same scope/cinema,
+  // regardless of `order` — `TitleRuleSet` sorts each tier by (last, order, id).
+  // Surfaced in the editor as a "last" checkbox / a separate ordered list per
+  // record. Lets a catch-all cleanup sit after the specific strips.
+  last:        Boolean        = false,
   enabled:     Boolean        = true,
   // Optional semantic label. The programme-prefix rule carries
   // tag = Some("programmePrefix") so `TitleNormalizer.programmePrefix` can find

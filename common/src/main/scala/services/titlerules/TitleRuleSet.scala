@@ -15,8 +15,12 @@ package services.titlerules
 case class TitleRuleSet(rules: Seq[TitleRule]) {
   import RuleScope._
 
+  // `last` rules fold after the non-last ones of the same scope/cinema:
+  // `false < true`, so the tuple sort puts them at the end of the tier.
+  private def ruleOrder(r: TitleRule): (Boolean, Int, String) = (r.last, r.order, r.id)
+
   private def tier(scope: RuleScope): Seq[TitleRule] =
-    rules.iterator.filter(_.scope == scope).toSeq.sortBy(r => (r.order, r.id))
+    rules.iterator.filter(_.scope == scope).toSeq.sortBy(ruleOrder)
 
   private val structuralRules = tier(GlobalStructural)
   private val searchRules     = tier(Search)
@@ -24,7 +28,7 @@ case class TitleRuleSet(rules: Seq[TitleRule]) {
   private val perCinemaRules: Map[String, Seq[TitleRule]] =
     rules.iterator.filter(_.scope == PerCinema).toSeq
       .groupBy(_.cinemaId.getOrElse(""))
-      .view.mapValues(_.sortBy(r => (r.order, r.id))).toMap
+      .view.mapValues(_.sortBy(ruleOrder)).toMap
 
   private def fold(rs: Seq[TitleRule], in: String): String = rs.foldLeft(in)((s, r) => r(s))
 

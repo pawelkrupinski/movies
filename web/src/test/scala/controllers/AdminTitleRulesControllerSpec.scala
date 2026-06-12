@@ -7,7 +7,7 @@ import play.api.libs.json.Json
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import services.movies.{InMemoryNormalizationReportRepo, MovieRepo, NormalizationReport, NormalizationRebuilder}
-import services.titlerules.{InMemoryTitleRulesRepo, RuleScope, TitleRule}
+import services.titlerules.{InMemoryTitleRulesRepo, RuleScope, TitleRule, TitleRuleRecord}
 import services.users.InMemoryUserRepo
 
 import java.time.Instant
@@ -64,32 +64,41 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     contentAsString(result) should include ("Title-stripping rules")
   }
 
-  "save" should "persist a valid rule and mint an id when blank" in {
+  "save" should "persist a per-cinema record under its cinema id, minting rule ids when blank" in {
     val repo = new InMemoryTitleRulesRepo()
     val body = Json.obj("scope" -> "PerCinema", "cinemaId" -> "cinema-city",
-      "pattern" -> "^Ladies Night - ", "replacement" -> "", "order" -> 10)
+      "rules" -> Json.arr(Json.obj("pattern" -> "^Ladies Night - ", "replacement" -> "")))
     val result = controller(repo).save().apply(jsonReq(session = true, body))
     status(result) shouldBe OK
+    repo.loadRecords().map(_.id) shouldBe Seq("cinema-city")     // non-composite id = cinema key
     val saved = repo.findAll()
     saved should have size 1
     saved.head.cinemaId shouldBe Some("cinema-city")
     saved.head.id should not be empty
   }
 
-  it should "reject an invalid regex" in {
-    val body = Json.obj("scope" -> "GlobalStructural", "pattern" -> "(unclosed")
+  it should "reject a record carrying an invalid regex" in {
+    val body = Json.obj("scope" -> "GlobalStructural",
+      "rules" -> Json.arr(Json.obj("pattern" -> "(unclosed")))
+    status(controller().save().apply(jsonReq(session = true, body))) shouldBe BAD_REQUEST
+  }
+
+  it should "reject a PerCinema record with no cinema" in {
+    val body = Json.obj("scope" -> "PerCinema",
+      "rules" -> Json.arr(Json.obj("pattern" -> "x")))
     status(controller().save().apply(jsonReq(session = true, body))) shouldBe BAD_REQUEST
   }
 
   it should "401 a save with no session" in {
-    val body = Json.obj("scope" -> "Search", "pattern" -> "x")
+    val body = Json.obj("scope" -> "Search", "rules" -> Json.arr(Json.obj("pattern" -> "x")))
     status(controller().save().apply(jsonReq(session = false, body))) shouldBe UNAUTHORIZED
   }
 
-  "delete" should "remove the rule by id" in {
-    val repo = new InMemoryTitleRulesRepo(Seq(
-      TitleRule("r1", RuleScope.Search, None, "x", "", applyAll = false, order = 1)))
-    val result = controller(repo).delete().apply(jsonReq(session = true, Json.obj("id" -> "r1")))
+  "delete" should "remove the record by id" in {
+    val repo = new InMemoryTitleRulesRepo(TitleRuleRecord.fromRules(Seq(
+      TitleRule("r1", RuleScope.Search, None, "x", "", applyAll = false, order = 1))))
+    repo.loadRecords().map(_.id) shouldBe Seq("Search")          // global record id = scope name
+    val result = controller(repo).delete().apply(jsonReq(session = true, Json.obj("id" -> "Search")))
     status(result) shouldBe OK
     repo.findAll() shouldBe empty
   }
@@ -120,9 +129,18 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     status(controller().report().apply(FakeRequest())) shouldBe UNAUTHORIZED
   }
 
-  "ruleFromJson / ruleToJson" should "round-trip" in {
-    val rule = TitleRule("id1", RuleScope.Search, None, "(?i)^Klub: ", "", applyAll = false,
-      order = 10, enabled = true, tag = Some("programmePrefix"), note = Some("n"))
-    AdminTitleRulesController.ruleFromJson(AdminTitleRulesController.ruleToJson(rule)) shouldBe Right(rule)
+  "recordFromJson / recordToJson" should "round-trip a record with normal + last rules" in {
+    val rec = TitleRuleRecord("cinema-city", RuleScope.PerCinema, Some("cinema-city"),
+      rules = Seq(TitleRule("r1", RuleScope.PerCinema, Some("cinema-city"), "^A ", "",
+        applyAll = false, order = 0, tag = Some("t"), note = Some("n"))),
+      lastRules = Seq(TitleRule("r2", RuleScope.PerCinema, Some("cinema-city"), "B$", "",
+        applyAll = true, order = 0, last = true)))
+    AdminTitleRulesController.recordFromJson(AdminTitleRulesController.recordToJson(rec)) shouldBe Right(rec)
+  }
+
+  "flatRuleFromJson" should "parse the flattened preview shape incl. last + order" in {
+    val js = Json.obj("id" -> "x", "scope" -> "Search", "pattern" -> "p$",
+      "order" -> 3, "last" -> true)
+    AdminTitleRulesController.flatRuleFromJson(js).map(r => (r.order, r.last)) shouldBe Right((3, true))
   }
 }

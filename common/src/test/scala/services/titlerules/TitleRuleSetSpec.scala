@@ -13,7 +13,7 @@ class TitleRuleSetSpec extends AnyFlatSpec with Matchers {
   private def rule(id: String, scope: RuleScope, pattern: String, repl: String,
                    applyAll: Boolean = false, order: Int = 10, enabled: Boolean = true,
                    cinemaId: Option[String] = None, tag: Option[String] = None) =
-    TitleRule(id, scope, cinemaId, pattern, repl, applyAll, order, enabled, tag)
+    TitleRule(id, scope, cinemaId, pattern, repl, applyAll, order, enabled = enabled, tag = tag)
 
   "perCinema" should "apply only the rules scoped to that cinema, in order, then trim" in {
     val rs = TitleRuleSet(Seq(

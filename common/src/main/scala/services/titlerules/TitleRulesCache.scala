@@ -58,8 +58,10 @@ class TitleRulesCache(
 
   def start(): Unit = {
     if (seedIfEmpty && repo.enabled && repo.findAll().isEmpty) {
-      logger.info(s"TitleRulesCache: seeding ${TitleRuleDefaults.all.size} default rules into empty store.")
-      TitleRuleDefaults.all.foreach(repo.upsert)
+      val records = TitleRuleRecord.fromRules(TitleRuleDefaults.all)
+      logger.info(s"TitleRulesCache: seeding ${TitleRuleDefaults.all.size} default rules " +
+        s"(${records.size} records) into empty store.")
+      records.foreach(repo.upsertRecord)
     }
     reload()
     watchHandle = repo.watchChanges(() => reload())

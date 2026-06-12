@@ -7,36 +7,51 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /** In-memory round-trip through `TitleRuleCodecs` — the storage-shape guardrail
- *  for `StoredTitleRule`, with no Mongo connection. */
+ *  for `StoredTitleRuleRecord` (and its nested `StoredRule`), with no Mongo
+ *  connection. */
 class StoredTitleRuleCodecSpec extends AnyFlatSpec with Matchers {
 
-  private val codec: Codec[StoredTitleRule] = TitleRuleCodecs.registry.get(classOf[StoredTitleRule])
+  private val codec: Codec[StoredTitleRuleRecord] =
+    TitleRuleCodecs.registry.get(classOf[StoredTitleRuleRecord])
 
-  private def roundTrip(s: StoredTitleRule): StoredTitleRule = {
+  private def roundTrip(s: StoredTitleRuleRecord): StoredTitleRuleRecord = {
     val out = new BsonDocument()
     codec.encode(new BsonDocumentWriter(out), s, EncoderContext.builder().build())
     codec.decode(new BsonDocumentReader(out), DecoderContext.builder().build())
   }
 
-  "StoredTitleRule" should "round-trip a Search rule with a tag and None note" in {
-    val r = StoredTitleRule.fromDomain(
-      TitleRule("search-prog", RuleScope.Search, None, "(?i)^Klub: ", "",
-        applyAll = false, order = 10, enabled = true, tag = Some("programmePrefix")))
-    val back = roundTrip(r)
-    back shouldBe r
-    StoredTitleRule.toDomain(back).map(_.scope) shouldBe Some(RuleScope.Search)
+  "StoredTitleRuleRecord" should "round-trip a global record with normal + last rules" in {
+    val stored = StoredTitleRuleRecord.fromDomain(
+      TitleRuleRecord("Search", RuleScope.Search, None,
+        rules     = Seq(TitleRule("prog", RuleScope.Search, None, "(?i)^Klub: ", "",
+          applyAll = false, order = 0, tag = Some("programmePrefix"))),
+        lastRules = Seq(TitleRule("tail", RuleScope.Search, None, "Z$", "",
+          applyAll = true, order = 0, last = true))))
+    val back = roundTrip(stored)
+    back shouldBe stored
+
+    val domain = StoredTitleRuleRecord.toDomain(back).value
+    domain.scope shouldBe RuleScope.Search
+    domain.rules.map(_.id) shouldBe Seq("prog")
+    domain.lastRules.map(r => (r.id, r.last)) shouldBe Seq(("tail", true))
   }
 
-  it should "round-trip a per-cinema rule carrying a cinemaId and a replacement" in {
-    val r = StoredTitleRule.fromDomain(
-      TitleRule("bok-pipe", RuleScope.PerCinema, Some("bok"), """\s*\|\s*""", ": ",
-        applyAll = true, order = 10, note = Some("pipe → colon")))
-    roundTrip(r) shouldBe r
+  it should "round-trip a per-cinema record carrying a cinemaId and a replacement" in {
+    val stored = StoredTitleRuleRecord.fromDomain(
+      TitleRuleRecord("bok", RuleScope.PerCinema, Some("bok"),
+        rules     = Seq(TitleRule("bok-pipe", RuleScope.PerCinema, Some("bok"), """\s*\|\s*""", ": ",
+          applyAll = true, order = 0, note = Some("pipe → colon"))),
+        lastRules = Nil))
+    roundTrip(stored) shouldBe stored
   }
 
   it should "decode an unknown scope to None rather than throwing" in {
-    StoredTitleRule.toDomain(
-      StoredTitleRule("z", "BogusScope", None, "x", "", applyAll = false, order = 0,
-        enabled = true, tag = None, note = None)) shouldBe None
+    StoredTitleRuleRecord.toDomain(
+      StoredTitleRuleRecord("z", "BogusScope", None, Nil, Nil)) shouldBe None
+  }
+
+  // helper: .value on an Option for a crisp failure message
+  private implicit class OptionValue[A](o: Option[A]) {
+    def value: A = o.getOrElse(fail("expected Some, got None"))
   }
 }

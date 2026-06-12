@@ -110,4 +110,31 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
     reEnriched should contain ("Kino bez barier: Freak Show")
     reEnriched should not contain ("Plain Film")
   }
+
+  it should "re-resolve when toggling a rule's `last` flag reorders the search tier" in {
+    val cache = new CaffeineMovieCache(disabledRepo)
+    val aabKey = cache.keyOf("aab", None)
+    cache.put(aabKey, MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("aab")))))
+    val zzzKey = cache.keyOf("zzz", None)
+    cache.put(zzzKey, MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("zzz")))))
+
+    // Two order-dependent search rules: strip "ab", strip "a". On "aab",
+    // [stripAb, stripA] → "" but [stripA, stripAb] → "b".
+    val stripAb = TitleRule("strip-ab", RuleScope.Search, None, "ab", "", applyAll = true, order = 0)
+    val stripA  = TitleRule("strip-a",  RuleScope.Search, None, "a",  "", applyAll = true, order = 1)
+    val before  = TitleRuleSet(Seq(stripAb, stripA))                  // tier order [stripAb, stripA]
+    val after   = TitleRuleSet(Seq(stripAb.copy(last = true), stripA)) // `last` sinks stripAb → [stripA, stripAb]
+
+    // The reorder genuinely changes the query for the "aab" row, not the "zzz" one.
+    before.search(aabKey.cleanTitle) should not be after.search(aabKey.cleanTitle)
+    before.search(zzzKey.cleanTitle) shouldBe after.search(zzzKey.cleanTitle)
+
+    var reEnriched = List.empty[String]
+    val n = new NormalizationRebuilder(cache)
+      .reEnrichSearchChanges(before, after, (t, _) => reEnriched ::= t)
+
+    n shouldBe 1
+    reEnriched should contain (aabKey.cleanTitle)
+    reEnriched should not contain (zzzKey.cleanTitle)
+  }
 }
