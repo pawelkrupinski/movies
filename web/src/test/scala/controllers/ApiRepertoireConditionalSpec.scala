@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import services.movies.CaffeineMovieCache
+import services.readmodel.WebReadModel
 
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
@@ -14,7 +14,7 @@ import java.util.zip.GZIPInputStream
 
 class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
-  private def buildController(): (MovieController, CaffeineMovieCache) = {
+  private def buildController(): (MovieController, WebReadModel) = {
     val now = LocalDateTime.now()
     val record = MovieRecord(
       imdbId = Some("tt999"),
@@ -109,7 +109,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     val lastMod = header("Last-Modified", first).get
 
     Thread.sleep(1100)
-    cache.rehydrate()
+    cache.reload()
 
     val second = ctrl.apiRepertoire("poznan")(FakeRequest().withHeaders("If-Modified-Since" -> lastMod))
     status(second) shouldBe OK
@@ -152,7 +152,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     ctrl.apiRepertoire("poznan")(gzipReq("/poznan/api/repertoire"))
 
     Thread.sleep(1100)
-    cache.rehydrate()
+    cache.reload()
 
     val after = ctrl.apiRepertoire("poznan")(gzipReq("/poznan/api/repertoire"))
     status(after) shouldBe OK

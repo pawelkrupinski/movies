@@ -3,10 +3,18 @@ package tools
 import clients.tools.FakeHttpFetch
 import services.events.MovieRecordCreated
 import services.movies.InMemoryMovieRepo
+import services.readmodel.{InMemoryReadModelRepo, ReadModelReader, ReadModelWriter, WebReadModel}
 
 class FixtureTestWiring(val fixture: String) extends TestWiring {
   override lazy val httoFetch: HttpFetch = new FakeHttpFetch(fixture)
   override lazy val movieRepo = new InMemoryMovieRepo()
+
+  // Mongo-free read model: the worker projects the scraped corpus into this
+  // in-memory store, and the web's `WebReadModel` serves from it — the same
+  // worker→read-model→web seam as production, minus Mongo. Specs build their
+  // `MovieControllerService` from `webReadModel` (not the raw cache).
+  override lazy val readModelRepo: ReadModelReader & ReadModelWriter = new InMemoryReadModelRepo()
+  lazy val webReadModel = new WebReadModel(readModelRepo)
 
   // Pin Helios's REST date to the fixture's capture day when the `fixture` dir
   // is named `dd-MM-yyyy` (e.g. "08-06-2026"). Helios bakes the date window into
@@ -69,6 +77,12 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     runOneScrapeTick()
     drainServices()
     unscreenedCleanup.removeUnscreened()
+    // Project the settled corpus into the read model and warm the web view, so
+    // a spec can serve via `webReadModel` exactly as the web app does. Done as a
+    // one-shot reconcile + reload (no change-stream/scheduler) to keep the test
+    // deterministic and thread-free.
+    readModelProjector.reconcile()
+    webReadModel.reload()
   }
 
   /** Settle the cache to its deterministic steady state. The parallel scrape

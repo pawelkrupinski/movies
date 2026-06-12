@@ -47,9 +47,9 @@ object FixtureServerMain {
     val wiring = new FixtureTestWiring("08-06-2026")
     wiring.bootStartup()
 
-    // The read transform is the web app's, built directly from the
-    // worker-populated cache (the seam the two apps share in production).
-    val svc = new controllers.MovieControllerService(wiring.movieCache)
+    // The read transform is the web app's, built from the read model the worker
+    // projected (the seam the two apps share in production).
+    val svc = new controllers.MovieControllerService(wiring.webReadModel)
 
     val anon    = Option.empty[models.User]
     // Render with a non-empty oauthProviders set so the Twirl

@@ -8,7 +8,7 @@ import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.mongodb.scala.bson.codecs.Macros
 
-import java.time.{Instant, LocalDateTime, ZoneOffset}
+import java.time.Instant
 
 /**
  * Storage-side mirror of a `movies` document — what mongo-scala-driver's
@@ -79,24 +79,15 @@ object StoredMovieDto {
 /**
  * BSON codec wiring for the Mongo-backed repo. The macros handle `SourceData`,
  * `Showtime`, and `StoredMovieDto` directly; only `LocalDateTime` needs a
- * hand-written codec (the driver doesn't ship a JSR-310 LocalDateTime codec
- * because LocalDateTime has no zone — we pick UTC, matching the prior
- * `MongoMovieRepo.encodeShowtime` shape so existing rows decode unchanged).
+ * hand-written codec — see `JavaTimeCodecs.localDateTime`, shared with the
+ * read-model collections.
  */
 object MovieCodecs {
-
-  private class LocalDateTimeCodec extends Codec[LocalDateTime] {
-    override def encode(w: BsonWriter, v: LocalDateTime, c: EncoderContext): Unit =
-      w.writeDateTime(v.toInstant(ZoneOffset.UTC).toEpochMilli)
-    override def decode(r: BsonReader, c: DecoderContext): LocalDateTime =
-      LocalDateTime.ofInstant(Instant.ofEpochMilli(r.readDateTime()), ZoneOffset.UTC)
-    override def getEncoderClass: Class[LocalDateTime] = classOf[LocalDateTime]
-  }
 
   private val macroSourceDataCodec: Codec[SourceData] =
     Macros.createCodecProviderIgnoreNone[SourceData]()
       .get(classOf[SourceData], fromRegistries(
-        fromCodecs(new LocalDateTimeCodec),
+        fromCodecs(JavaTimeCodecs.localDateTime),
         fromProviders(Macros.createCodecProviderIgnoreNone[Showtime]()),
         DEFAULT_CODEC_REGISTRY
       ))
@@ -135,7 +126,7 @@ object MovieCodecs {
             val stDoc = arr.get(i).asDocument()
             val stReader = new org.bson.BsonDocumentReader(stDoc)
             Macros.createCodecProviderIgnoreNone[Showtime]()
-              .get(classOf[Showtime], fromRegistries(fromCodecs(new LocalDateTimeCodec), DEFAULT_CODEC_REGISTRY))
+              .get(classOf[Showtime], fromRegistries(fromCodecs(JavaTimeCodecs.localDateTime), DEFAULT_CODEC_REGISTRY))
               .decode(stReader, c)
           }.toSeq
         }
@@ -165,7 +156,7 @@ object MovieCodecs {
   }
 
   val registry: CodecRegistry = fromRegistries(
-    fromCodecs(new LocalDateTimeCodec),
+    fromCodecs(JavaTimeCodecs.localDateTime),
     fromProviders(
       sourceDataProvider,
       Macros.createCodecProviderIgnoreNone[Showtime](),

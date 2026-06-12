@@ -1,7 +1,8 @@
 package views
 
 import controllers.{CinemaShowtimes, FilmSchedule}
-import models.{Helios, Movie, Showtime}
+import models.{Helios, Movie, MovieRecord, Showtime}
+import services.readmodel.TestReadModel
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -24,7 +25,8 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
       cast           = Seq.empty,
       director       = Seq.empty,
       cinemaFilmUrls = Nil,
-      showings       = Seq(LocalDate.of(2026, 5, 13) -> Seq(CinemaShowtimes(Helios, showtimes)))
+      showings       = Seq(LocalDate.of(2026, 5, 13) -> Seq(CinemaShowtimes(Helios, showtimes))),
+      resolved       = TestReadModel.resolved("Test movie", None, MovieRecord())
     )
 
   private val baseTime = LocalDateTime.of(2026, 5, 13, 18, 0)

@@ -85,11 +85,20 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     w.bootStartup()
     w
   }
-  // The web app's read transform, built directly from the worker-populated
-  // cache — this is the seam the two apps share in production (web reads what
-  // worker wrote), exercised here in one JVM against the in-memory cache.
+  // The web app's read transform, built from the read model the worker
+  // projected — the seam the two apps share in production (web serves the
+  // denormalised docs), exercised here in one JVM.
   private lazy val schedules: Seq[FilmSchedule] =
-    new MovieControllerService(wiring.movieCache).toSchedules(Poznan, now)
+    new MovieControllerService(wiring.webReadModel).toSchedules(Poznan, now)
+
+  // The rendered `FilmSchedule` carries the resolved metadata (what the user
+  // sees) but not the source-data provenance — `cinemaData`, `cinemaTitles`,
+  // tmdbId/imdbId live on the worker's `MovieRecord`. Join back to it by film
+  // id so this spec can still assert the full pipeline (worker merge + web
+  // render) end to end.
+  private lazy val recordByFilmId: Map[String, MovieRecord] =
+    wiring.movieCache.snapshot().map(r => services.readmodel.ReadModelProjection.filmId(r) -> r.record).toMap
+  private def recordFor(s: FilmSchedule): Option[MovieRecord] = recordByFilmId.get(s.resolved._id)
 
   "the full enrichment pipeline" should
     "keep the anchor film visible after a startup scrape + event drain + cleanup tick" in {
@@ -106,7 +115,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     //    recorded showtimes are "in the future" relative to the test clock;
     //    `schedules` is the shared, once-booted result.
     val anchorSchedules = schedules.filter(s =>
-      s.enrichment.exists(e => e.tmdbId.contains(AnchorTmdbId) || e.imdbId.contains(AnchorImdbId))
+      recordFor(s).exists(e => e.tmdbId.contains(AnchorTmdbId) || e.imdbId.contains(AnchorImdbId))
     )
 
     def cinemasIn(s: FilmSchedule): Set[Cinema] =
@@ -193,8 +202,9 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
         LocalDate.of(2026, 6, 10), LocalDate.of(2026, 6, 11)
       )
 
-      // Enrichment — every external service contributed.
-      val enrichment = regular.enrichment.getOrElse(fail("regular schedule missing enrichment"))
+      // Enrichment — every external service contributed. Read from the worker's
+      // MovieRecord (the read model drops source data + ids).
+      val enrichment = recordFor(regular).getOrElse(fail("regular schedule missing enrichment"))
       enrichment.tmdbId            shouldBe Some(AnchorTmdbId)
       enrichment.imdbId            shouldBe Some(AnchorImdbId)
       enrichment.originalTitle     shouldBe Some("In the Grey")
@@ -262,7 +272,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       // the cleanTitle-strict fold gate must keep them as two rows. If the dub
       // disappears the gate is over-aggressive; if it folds onto the regular
       // row, CC Plaza's regular slot would inflate by the dub's showtimes.
-      val dubSiblings = schedules.filter(_.enrichment.exists(_.tmdbId.contains(DubTmdbId)))
+      val dubSiblings = schedules.filter(s => recordFor(s).exists(_.tmdbId.contains(DubTmdbId)))
       withClue(s"dub siblings: ${dubSiblings.map(_.movie.title).mkString(" | ")}\n") {
         dubSiblings should have size 2
 
@@ -275,7 +285,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
 
         // Both rows inherit the same TMDB-resolved enrichment — only the
         // cinema-side data differs.
-        dubRegular.enrichment.flatMap(_.tmdbId) shouldBe Some(DubTmdbId)
+        recordFor(dubRegular).flatMap(_.tmdbId) shouldBe Some(DubTmdbId)
         dub.movie.title          shouldBe DubTitle
         dub.movie.runtimeMinutes shouldBe Some(94)
         dub.movie.releaseYear    shouldBe Some(2026)
@@ -289,7 +299,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
           .groupBy(_.cinema).view.mapValues(_.flatMap(_.showtimes).size).toMap
         dubByCinema shouldBe Map(CinemaCityPoznanPlaza -> 4)
 
-        val dubEnrichment = dub.enrichment.getOrElse(fail("dub schedule missing enrichment"))
+        val dubEnrichment = recordFor(dub).getOrElse(fail("dub schedule missing enrichment"))
         dubEnrichment.tmdbId shouldBe Some(DubTmdbId)
         // Many Cinema City branches across cities scrape the dub and fold onto
         // one CacheKey, so assert containment of the Poznań slot plus the
@@ -344,7 +354,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     schedules.sortBy(s => (s.movie.title.toLowerCase(Locale.ROOT), s.movie.releaseYear)).map(renderOne).mkString("\n\n")
 
   private def renderOne(s: FilmSchedule): String = {
-    val e = s.enrichment
+    val e = recordFor(s)
     val cinemaUrls = s.cinemaFilmUrls.sortBy(_._1.displayName)
       .map { case (c, u) => s"${c.displayName} = $u" }
     val scrapes = e.map(_.cinemaData.toSeq

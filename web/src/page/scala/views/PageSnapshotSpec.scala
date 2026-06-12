@@ -35,9 +35,9 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
     w.bootStartup()
     w
   }
-  // The web read transform, built from the worker-populated cache (the seam the
-  // two apps share in production — web reads what worker wrote).
-  private def svc = new controllers.MovieControllerService(wiring.movieCache)
+  // The web read transform, built from the worker-projected read model (the seam
+  // the two apps share in production — web reads what worker projected).
+  private def svc = new controllers.MovieControllerService(wiring.webReadModel)
 
   "the / page (repertoire view)" should "render the same HTML as the checked-in snapshot" in {
     val html = views.html.repertoire(

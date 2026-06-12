@@ -4,7 +4,8 @@ import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.MongoConnection
-import services.movies.InMemoryMovieRepo
+import services.movies.{InMemoryMovieRepo, StoredMovieRecord}
+import services.readmodel.{InMemoryReadModelRepo, ReadModelProjection, ReadModelReader}
 import play.api.test.Helpers.stubControllerComponents
 
 /**
@@ -54,6 +55,19 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
     override lazy val mongoConnection: MongoConnection =
       new MongoConnection(uri = None, dbName = "kinowo", required = false)
     override lazy val movieRepo = new InMemoryMovieRepo(seed)
+    // The serving read path is `webReadModel` over `readModelRepo` (the
+    // worker-populated web_movies / web_screenings). Seed that — projected
+    // through the real `ReadModelProjection`, exactly as the worker writes it —
+    // so boot's hydrate has the same single fill path production does.
+    override lazy val readModelRepo: ReadModelReader = {
+      val store = new InMemoryReadModelRepo()
+      seed.foreach { case (title, year, rec) =>
+        val stored = StoredMovieRecord(title, year, rec)
+        store.upsertMovie(ReadModelProjection.resolve(stored))
+        ReadModelProjection.screenings(stored).foreach(store.upsertScreening)
+      }
+      store
+    }
 
     val controllerComponents = stubControllerComponents()
     def environmentMode       = play.api.Mode.Test
@@ -71,9 +85,8 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
     val wiring = new TestWiring(Seq(("Drzewo Magii", Some(2024), seededRecord)))
     wiring.boot()
 
-    val snapshot = wiring.movieCache.snapshot()
-    snapshot.map(_.title)        should contain ("Drzewo Magii")
-    snapshot.map(_.record.tmdbId) should contain (Some(42))
+    val movies = wiring.webReadModel.allMovies()
+    movies.map(_.title) should contain ("Drzewo Magii")
   }
 
   it should "stay empty when the repo is empty — nothing scrapes to fill it" in {
@@ -83,6 +96,6 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
     val wiring = new TestWiring(Seq.empty)
     wiring.boot()
 
-    wiring.movieCache.snapshot() shouldBe empty
+    wiring.webReadModel.allMovies() shouldBe empty
   }
 }

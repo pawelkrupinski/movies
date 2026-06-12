@@ -3,7 +3,7 @@ package controllers
 import models.{Helios, KinoApollo, MovieRecord, Poznan, Rialto, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
+import services.readmodel.TestReadModel
 
 import java.time.LocalDateTime
 
@@ -33,9 +33,8 @@ class ScheduleOrderingSpec extends AnyFlatSpec with Matchers {
       KinoApollo -> slot(),
       Helios     -> slot(),
     ))
-    val cache = new CaffeineMovieCache(
-      new InMemoryMovieRepo(Seq(("Milcząca przyjaciółka", Some(2026), record))))
-    val svc = new MovieControllerService(cache)
+    val svc = new MovieControllerService(
+      TestReadModel.fromRecords(Seq(("Milcząca przyjaciółka", Some(2026), record))))
 
     val schedules = svc.toSchedules(Poznan, now)
     schedules should have size 1

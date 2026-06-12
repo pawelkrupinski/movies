@@ -1,6 +1,6 @@
-@import models.{MovieRecord, Movie}
+@import models.{ResolvedMovie, Movie}
 @import controllers.{FilmHref, BrowseHref}
-@(movie: Movie, posterUrl: Option[String], enrichment: Option[MovieRecord] = None)(showingsContent: Html)(implicit city: models.City)
+@(movie: Movie, posterUrl: Option[String], resolved: ResolvedMovie)(showingsContent: Html)(implicit city: models.City)
 <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -11,7 +11,7 @@
          (Cinema City after Multikino, then other cinemas, then TMDB,
          then IMDb). Shared with `_planCard` via `_moviePoster` so the
          retry chain stays in one place. *@
-      @_moviePoster(movie, posterUrl, enrichment)
+      @_moviePoster(movie, posterUrl, resolved.fallbackPosterUrls)
     </a>
   </div>
   <div class="card-body">
@@ -24,7 +24,7 @@
   <a href="@BrowseHref.genre(g)" class="pill genre" title="Filmy gatunku @g">@g</a>
 }
     </div>
-    @_ratingBadges(enrichment, movie.title)
+    @_ratingBadges(Some(resolved.ratings))
     @showingsContent
   </div>
 </div>

@@ -2,7 +2,7 @@ package controllers
 
 import play.api.libs.json._
 import play.api.mvc._
-import services.movies.{MovieCache, NormalizationReportRepo, RuleMergePreview, TitleNormalizer}
+import services.movies.{MovieRepo, NormalizationReportRepo, RuleMergePreview, TitleNormalizer}
 import services.titlerules.{RuleScope, TitleRule, TitleRuleSet, TitleRulesRepo}
 import services.users.UserRepo
 
@@ -19,7 +19,9 @@ import java.util.UUID
 class AdminTitleRulesController(
   cc:             ControllerComponents,
   titleRulesRepo: TitleRulesRepo,
-  movieCache:     MovieCache,
+  // On-demand corpus read only (the rule-merge preview). The web doesn't keep
+  // the `movies` model warm, so the preview pulls a fresh snapshot from Mongo.
+  movieRepo:      MovieRepo,
   reportRepo:     NormalizationReportRepo,
   userRepo:       UserRepo,
   adminAllowlist: Set[String]
@@ -99,7 +101,7 @@ class AdminTitleRulesController(
               case Some(err) => BadRequest(Json.obj("error" -> err))
               case None =>
                 val draft   = TitleRuleSet(parsed.collect { case Right(r) => r })
-                val entries = RuleMergePreview.entriesFrom(movieCache.snapshot())
+                val entries = RuleMergePreview.entriesFrom(movieRepo.findAll())
                 val merges  = RuleMergePreview.newMerges(TitleNormalizer.currentRules, draft, entries)
                 Ok(Json.obj(
                   "newMerges" -> merges.take(200).map(g => Json.obj(

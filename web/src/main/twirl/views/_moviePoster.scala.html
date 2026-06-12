@@ -1,12 +1,12 @@
-@import models.{Movie, MovieRecord}
-@(movie: Movie, posterUrl: Option[String], enrichment: Option[MovieRecord])
+@import models.Movie
+@(movie: Movie, posterUrl: Option[String], fallbackPosterUrls: Seq[String])
 @* Poster `<img>` + onerror fallback chain, factored out so both
    `_movieCard` (wraps it in an `<a>` → /film) and `_planCard` (no
    wrapper — clicks toggle selection) can share the same markup and
    keep the retry chain in one place. *@
 @posterUrl match {
   case Some(url) => {
-    @defining(enrichment.toSeq.flatMap(_.fallbackPosterUrls).map(tools.PosterProxy.proxy).mkString("|")) { fallbacks =>
+    @defining(fallbackPosterUrls.map(tools.PosterProxy.proxy).mkString("|")) { fallbacks =>
       <img src="@tools.PosterProxy.proxy(url)" alt="@movie.title" loading="lazy" data-original-src="@tools.PosterProxy.proxy(url)"@if(fallbacks.nonEmpty){ data-fallbacks="@fallbacks" data-original-fallbacks="@fallbacks"} onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
     }
     <div class="no-poster" style="display:none">Brak plakatu</div>

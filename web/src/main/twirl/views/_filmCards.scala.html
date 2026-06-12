@@ -1,8 +1,8 @@
 @import controllers.FilmSchedule
 @(films: Seq[FilmSchedule])(implicit city: models.City)
 @for(film <- films) {
-<div class="col" data-title="@film.movie.title" data-countries="@film.movie.countries.mkString("|")" data-rating="@{f"${film.enrichment.map(_.weightedRating).getOrElse(0.0)}%.3f"}"@if(film.movie.genres.nonEmpty){ data-genres="@film.movie.genres.mkString("|")"}@if(film.director.nonEmpty){ data-director="@film.director.mkString(", ")"}@if(film.cast.nonEmpty){ data-cast="@film.cast.mkString(", ")"}>
-  @_movieCard(film.movie, film.posterUrl, film.enrichment) {
+<div class="col" data-title="@film.movie.title" data-countries="@film.movie.countries.mkString("|")" data-rating="@{f"${film.resolved.weightedRating}%.3f"}"@if(film.movie.genres.nonEmpty){ data-genres="@film.movie.genres.mkString("|")"}@if(film.director.nonEmpty){ data-director="@film.director.mkString(", ")"}@if(film.cast.nonEmpty){ data-cast="@film.cast.mkString(", ")"}>
+  @_movieCard(film.movie, film.posterUrl, film.resolved) {
     @_filmShowings(film)
   }
 </div>

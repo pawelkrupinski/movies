@@ -53,8 +53,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     if (chrome.nonEmpty) {
       val wiring = new FixtureTestWiring("08-06-2026")
       wiring.bootStartup()
-      // Web read transform over the worker-populated cache (the shared seam).
-      val svc     = new controllers.MovieControllerService(wiring.movieCache)
+      // Web read transform over the worker-projected read model (the shared seam).
+      val svc     = new controllers.MovieControllerService(wiring.webReadModel)
       val anon    = Option.empty[models.User]
       val noOauth = Set.empty[String]
       val cinemas = city.cinemaDisplayNames

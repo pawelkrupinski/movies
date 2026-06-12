@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.movies.{CaffeineMovieCache, InMemoryNormalizationReportRepo, MovieRepo, NormalizationReport, NormalizationRebuilder}
+import services.movies.{InMemoryNormalizationReportRepo, MovieRepo, NormalizationReport, NormalizationRebuilder}
 import services.titlerules.{InMemoryTitleRulesRepo, RuleScope, TitleRule}
 import services.users.InMemoryUserRepo
 
@@ -19,7 +19,7 @@ import java.time.Instant
  */
 class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
 
-  // Disabled repo → empty corpus; the cache's snapshot() is empty.
+  // Disabled repo → empty corpus; the rule-merge preview's findAll() is empty.
   private val emptyRepo = new MovieRepo {
     def enabled = false
     def findAll() = Seq.empty
@@ -28,7 +28,6 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord) = false
     override def close() = ()
   }
-  private def cache = new CaffeineMovieCache(emptyRepo)
 
   // A user repo holding one admin (session id "admin1" → email "admin@example.com").
   private def adminUserRepo: InMemoryUserRepo = {
@@ -42,7 +41,7 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
                          allow: Set[String] = Set("admin@example.com"),
                          reports: InMemoryNormalizationReportRepo = new InMemoryNormalizationReportRepo(),
                          users: InMemoryUserRepo = adminUserRepo) =
-    new AdminTitleRulesController(Helpers.stubControllerComponents(), repo, cache, reports, users, allow)
+    new AdminTitleRulesController(Helpers.stubControllerComponents(), repo, emptyRepo, reports, users, allow)
 
   private val adminSession = FakeRequest().withSession("userId" -> "admin1")
 

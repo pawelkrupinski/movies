@@ -18,7 +18,7 @@ import java.util.zip.GZIPInputStream
  *  correctly. */
 class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
 
-  private def buildController(): (MovieController, services.movies.CaffeineMovieCache) = {
+  private def buildController(): (MovieController, services.readmodel.WebReadModel) = {
     val now = LocalDateTime.now()
     val record = MovieRecord(
       imdbId = Some("tt123"),
@@ -62,7 +62,7 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     ctrl.index("poznan")(gzipReq("/poznan/"))
 
     Thread.sleep(1100) // mtime is second-resolution; ensure the rehydrate advances it
-    cache.rehydrate()
+    cache.reload()
 
     val after = ctrl.index("poznan")(gzipReq("/poznan/"))
     status(after) shouldBe OK
@@ -105,7 +105,7 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     val lastMod = header("Last-Modified", ctrl.index("poznan")(gzipReq("/poznan/"))).get
 
     Thread.sleep(1100)
-    cache.rehydrate()
+    cache.reload()
 
     val after = ctrl.index("poznan")(gzipReq("/poznan/").withHeaders("If-Modified-Since" -> lastMod))
     status(after) shouldBe OK

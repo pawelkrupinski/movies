@@ -10,6 +10,7 @@ import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackSt
 import services.events.{EventBus, InProcessEventBus, MovieRecordCreated}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, MongoNormalizationReportRepo, NormalizationRebuilder, NormalizationReport, NormalizationReportRepo, UnscreenedCleanup}
+import services.readmodel.{MongoReadModelRepo, ReadModelProjector, ReadModelReader, ReadModelWriter}
 import services.tasks.{DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, RatingEnqueuer, RatingHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker}
 import services.titlerules.{MongoTitleRulesRepo, TitleRuleSet, TitleRulesCache, TitleRulesRepo}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
@@ -214,6 +215,15 @@ class WorkerWiring {
   lazy val movieRepo: MovieRepo = new MongoMovieRepo(mongoConnection.database, fallbackToOwnInit = false)
   lazy val movieCache: CaffeineMovieCache = new CaffeineMovieCache(movieRepo, eventBus)
 
+  // ── Denormalised read model (web_movies + web_screenings) ───────────────────
+  // The worker projects every `movies` write into the two read-model collections
+  // the serving app consumes. One impl is both reader (boot-seed the diff state)
+  // and writer (upsert/delete the derived docs).
+  // Typed as the read+write intersection so test wirings can swap in
+  // `InMemoryReadModelRepo` (Mongo-free fixture replay).
+  lazy val readModelRepo: ReadModelReader & ReadModelWriter = new MongoReadModelRepo(mongoConnection.database)
+  lazy val readModelProjector = new ReadModelProjector(movieRepo, readModelRepo, readModelRepo)
+
   // Title-stripping rules. The worker owns seeding: a fresh DB gets the migrated
   // defaults so behaviour is unchanged from the hardcoded baseline. When an edit
   // arrives over the change stream, re-merge existing records so the rule applies
@@ -374,6 +384,10 @@ class WorkerWiring {
     // are computed with the active rules from the very first tick.
     titleRulesCache.start()
     movieCache.start()
+    // Start the read-model projector after the cache so its boot reconcile reads
+    // a hydrated `movies` collection; it watches the change stream independently
+    // of the cache's own watch.
+    readModelProjector.start()
     movieService.start()
     // The *Ratings 4h cache walks run only in legacy mode; the EnrichmentReaper
     // replaces them when ratings are queue-driven. (refreshOneSync, which the
@@ -424,8 +438,10 @@ class WorkerWiring {
     cascadeDrainOrder.foreach(_.stop())
     unscreenedCleanup.stop()
     kinoMuzaSynopsisRefresher.stop()
+    readModelProjector.stop()
     movieCache.stop()
     titleRulesCache.stop()
+    readModelRepo.close()
     movieRepo.close()
     titleRulesRepo.close()
     mongoConnection.close()

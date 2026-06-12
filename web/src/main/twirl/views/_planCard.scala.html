@@ -1,6 +1,6 @@
-@import models.{Movie, MovieRecord}
+@import models.{Movie, ResolvedMovie}
 @import controllers.FilmHref
-@(movie: Movie, posterUrl: Option[String], enrichment: Option[MovieRecord], director: Seq[String], cast: Seq[String])(implicit city: models.City)
+@(movie: Movie, posterUrl: Option[String], resolved: ResolvedMovie, director: Seq[String], cast: Seq[String])(implicit city: models.City)
 @*
    Picker card on /plan. Same visual top as `_movieCard` (poster +
    title link + runtime/year pills + rating badges) but:
@@ -21,7 +21,7 @@
   <div class="plan-card" data-title="@movie.title">
     <div class="poster-wrap">
       <button type="button" class="hide-btn" title="Ukryj film">✕</button>
-      @_moviePoster(movie, posterUrl, enrichment)
+      @_moviePoster(movie, posterUrl, resolved.fallbackPosterUrls)
       <span class="plan-check" aria-hidden="true">✓</span>
     </div>
     <div class="card-body">
@@ -34,7 +34,7 @@
   <span class="pill genre">@g</span>
 }
       </div>
-      @_ratingBadges(enrichment, movie.title)
+      @_ratingBadges(Some(resolved.ratings))
     </div>
   </div>
 </div>
