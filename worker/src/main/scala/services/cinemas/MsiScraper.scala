@@ -47,7 +47,8 @@ private[cinemas] object MsiScraper {
 
   private val EventTimePat = """(\d{1,2})\s+(\w+)\s+(\d{2}):(\d{2})""".r
 
-  private[cinemas] case class RawSlot(title: String, rawTitle: String, dateTime: LocalDateTime, booking: Option[String])
+  private[cinemas] case class RawSlot(title: String, rawTitle: String, dateTime: LocalDateTime,
+                                      booking: Option[String], format: List[String])
 
   /**
    * Parse one MSI month page with full year context.  Returns one `RawSlot`
@@ -58,17 +59,19 @@ private[cinemas] object MsiScraper {
    *                   supply the year component missing from event-anchor text.
    * @param baseUrl    Base URL of the MSI host (used only with `attr("abs:href")`
    *                   expansion by Jsoup to produce absolute booking URLs).
-   * @param cleanTitle Per-cinema title normalisation function.
+   * @param cleanTitle Per-cinema title normalisation: returns the cleaned title
+   *                   plus the screening-format display tokens (2D/NAP/DUB/…)
+   *                   the MSI title buried in its text.
    */
   def parseMonthWithYear(html: String, yearMonth: YearMonth, baseUrl: String,
-                         cleanTitle: String => String): Seq[RawSlot] = {
+                         cleanTitle: String => (String, List[String])): Seq[RawSlot] = {
     val doc = Jsoup.parse(html, baseUrl)
     doc.select("div.movies-movie__single").asScala.toSeq.flatMap { movieDiv =>
       val rawTitle = Option(movieDiv.selectFirst("h2.movies-movie__single__title"))
         .map(_.attr("title").trim)
         .filter(_.nonEmpty)
         .getOrElse("")
-      val title = cleanTitle(rawTitle)
+      val (title, format) = cleanTitle(rawTitle)
       if (title.isEmpty) Seq.empty
       else {
         // Only the desktop showtime list — the mobile duplicate has no extra `d-none`
@@ -82,7 +85,7 @@ private[cinemas] object MsiScraper {
             val text    = a.text.trim
             val href    = a.attr("abs:href")
             val booking = if (href.nonEmpty) Some(href) else None
-            parseEventTime(text, yearMonth).map { dt => RawSlot(title, rawTitle, dt, booking) }
+            parseEventTime(text, yearMonth).map { dt => RawSlot(title, rawTitle, dt, booking, format) }
           }
         }
       }
@@ -112,7 +115,7 @@ private[cinemas] object MsiScraper {
       .toSeq
       .flatMap { case (title, group) =>
         val showtimes = group
-          .map(s => Showtime(s.dateTime, s.booking))
+          .map(s => Showtime(s.dateTime, s.booking, format = s.format))
           .distinctBy(s => (s.dateTime, s.bookingUrl))
           .sortBy(_.dateTime)
         if (showtimes.isEmpty) None

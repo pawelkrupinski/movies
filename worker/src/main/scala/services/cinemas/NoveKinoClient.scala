@@ -135,21 +135,18 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema,
 
 object NoveKinoClient {
 
-  private val FormatWord = Map(
-    "napisy" -> "NAP", "nap" -> "NAP", "dubbing" -> "DUB", "dub" -> "DUB", "dubb" -> "DUB",
-    "lektor" -> "LEK", "2d" -> "2D", "3d" -> "3D", "imax" -> "IMAX", "4dx" -> "4DX"
-  )
-
   /** Split a Nove Kino title into its clean form + format tokens. The site
    *  appends the presentation as a suffix ("Zawodowcy - napisy"); strip it only
    *  when the trailing segment is entirely format words, so real dash-bearing
-   *  titles ("Mission - Impossible") stay intact. */
+   *  titles ("Mission - Impossible") stay intact. Tokens map via the shared
+   *  [[ScraperParse.FormatToken]] vocabulary. */
   def parseTitle(raw: String): (String, List[String]) = {
     val i = raw.lastIndexOf(" - ")
     if (i <= 0) (raw, Nil)
     else {
       val tail = raw.substring(i + 3).trim.toLowerCase.split("\\s+").toList.filter(_.nonEmpty)
-      if (tail.nonEmpty && tail.forall(FormatWord.contains)) (raw.substring(0, i).trim, tail.flatMap(FormatWord.get).distinct)
+      if (tail.nonEmpty && tail.forall(ScraperParse.FormatToken.contains))
+        (raw.substring(0, i).trim, tail.flatMap(ScraperParse.FormatToken.get).distinct)
       else (raw, Nil)
     }
   }

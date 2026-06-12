@@ -65,7 +65,7 @@ class MsiClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
   override def sourceUrl: Option[String] = Some(baseUrl)
 
-  private val titleCleaner: String => String =
+  private val titleCleaner: String => (String, List[String]) =
     titlePrefix.map(cleanTitleForVenue).getOrElse(cleanTitle)
 
   def fetch(): Seq[CinemaMovie] = {
@@ -88,25 +88,29 @@ object MsiClient {
   def monthUrl(baseUrl: String, mvcPath: String, ym: YearMonth): String =
     s"$baseUrl$mvcPath?sort=Name&date=${ym.getYear}-${"%02d".format(ym.getMonthValue)}"
 
-  /** Strip the trailing format/version tag MSI appends and sentence-case the
-   *  result, so screening variants of one film merge. Examples:
-   *    "TOY STORY 5 (2D DUBBING)"   → "Toy story 5"
-   *    "STRASZNY FILM - NAPISY"     → "Straszny film"
-   *    "90. URODZINY PAVAROTTIEGO (2D NAPISY)" → "90. Urodziny pavarottiego"
-   *  (Tag stripping is shared with the other portal clients via
-   *  `ScraperParse.stripFormatTags` — not migrated to a per-cinema rule, since
-   *  it's a cross-client concern, not MSI-specific.) */
-  private[cinemas] def cleanTitle(raw: String): String =
-    ScraperParse.sentenceCase(ScraperParse.stripFormatTags(raw))
+  /** Strip the trailing format/version tag MSI buries in the title, sentence-case
+   *  the result (so screening variants of one film merge), AND surface the
+   *  version as `Showtime.format` display tokens — MSI is the only source that
+   *  hides the dub-vs-subtitles / 2D-vs-3D distinction in the title text, so the
+   *  cleaned title alone would lose it. Examples:
+   *    "TOY STORY 5 (2D DUBBING)"   → ("Toy story 5", List("2D","DUB"))
+   *    "STRASZNY FILM - NAPISY"     → ("Straszny film", List("NAP"))
+   *    "DZIEŃ OBJAWIENIA (2D NAPISY DOLBY ATMOS)" → ("Dzień objawienia", List("2D","NAP"))
+   *  (The strip+token extraction is shared with the other portal clients via
+   *  `ScraperParse.extractFormatTags` — a cross-client concern, not MSI-specific.) */
+  private[cinemas] def cleanTitle(raw: String): (String, List[String]) = {
+    val (stripped, tokens) = ScraperParse.extractFormatTags(raw)
+    (ScraperParse.sentenceCase(stripped), tokens)
+  }
 
   /** Title cleaner for one venue of a two-cinema MSI portal whose titles are
    *  prefixed `<venue> - …` (e.g. "Chemik - Dzień objawienia"). Keeps only the
    *  titles carrying this exact prefix (case-insensitive) and strips it before
-   *  the normal clean; returns `""` for the other venue's titles so the scraper
-   *  drops them. */
-  private[cinemas] def cleanTitleForVenue(venue: String)(raw: String): String = {
+   *  the normal clean; returns `("", Nil)` for the other venue's titles so the
+   *  scraper drops them. */
+  private[cinemas] def cleanTitleForVenue(venue: String)(raw: String): (String, List[String]) = {
     val sep = s"$venue - "
     if (raw.regionMatches(true, 0, sep, 0, sep.length)) cleanTitle(raw.substring(sep.length))
-    else ""
+    else ("", Nil)
   }
 }

@@ -82,6 +82,17 @@ private[cinemas] object ScraperParse {
     new String(chars)
   }
 
+  /** Lower-case format/version word → the display token it maps to, shared with
+   *  the cinema clients that surface a screening's version as a `Showtime.format`
+   *  badge. The token vocabulary is fixed across the app — 2D, 3D, IMAX, 4DX,
+   *  DUB (dubbing), NAP (subtitles/napisy), LEK (lektor) — so all sources agree.
+   *  Words droppable from a title but with no version meaning (premiera, dolby,
+   *  atmos, vod, …) are NOT here; they're stripped without yielding a token. */
+  val FormatToken: Map[String, String] = Map(
+    "napisy" -> "NAP", "nap" -> "NAP", "dubbing" -> "DUB", "dub" -> "DUB", "dubb" -> "DUB",
+    "lektor" -> "LEK", "2d" -> "2D", "3d" -> "3D", "imax" -> "IMAX", "4dx" -> "4DX"
+  )
+
   // Words that, alone, mark a trailing screening-format/version tag.
   private val FormatVersionWords = Set(
     "2d", "3d", "imax", "dolby", "atmos", "4dx", "dubbing", "napisy", "lektor",
@@ -92,8 +103,13 @@ private[cinemas] object ScraperParse {
   private val FormatParenTag   =
     """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|4DX|dubbing|napisy|lektor|pokaz)\b[^)]*)\)\s*$""".r
 
+  /** The bare lower-cased word of a title token (paren/bracket/punctuation
+   *  peeled), or `""` for an empty token. */
+  private def bareWord(tok: String): String =
+    tok.toLowerCase(Locale.ROOT).replaceAll("""[\[\]().,]""", "")
+
   private def isDroppableTag(tok: String): Boolean = {
-    val w = tok.toLowerCase(Locale.ROOT).replaceAll("""[\[\]().,]""", "")
+    val w = bareWord(tok)
     w.isEmpty || FormatSeparators.contains(w) || FormatVersionWords.contains(w)
   }
 
@@ -103,19 +119,54 @@ private[cinemas] object ScraperParse {
    *  merge. Removes trailing tokens that are pure separators or format/version
    *  words after peeling any bracket/paren tag, repeating until stable. A
    *  leading programme tag (e.g. "DKF -") is never trailing, so it survives. */
-  def stripFormatTags(raw: String): String = {
+  def stripFormatTags(raw: String): String = extractFormatTags(raw)._1
+
+  /** Like [[stripFormatTags]], but also returns the display [[FormatToken]]s
+   *  (2D, NAP, DUB, …) recognised among the stripped trailing tags, so a
+   *  scraper can surface the screening's version as a `Showtime.format` badge
+   *  while keeping the cleaned title byte-identical to `stripFormatTags`.
+   *  Tokens are de-duplicated, and ordered as they appeared left-to-right in
+   *  the original title (e.g. "(2D NAPISY)" → `List("2D", "NAP")`). Stripped
+   *  words with no version meaning (dolby, atmos, premiera, …) yield no token. */
+  def extractFormatTags(raw: String): (String, List[String]) = {
     var t    = raw.replaceAll("\\s+", " ").trim
     var prev = ""
+    val dropped = scala.collection.mutable.Set.empty[String]
     while (t != prev) {
       prev = t
+      // Tokens peeled inside a [..]/(..) tag also carry version meaning, so
+      // capture them before the regex deletes the whole tag.
+      FormatBracketTag.findFirstIn(t).foreach(captureTagWords(_, dropped))
       t = FormatBracketTag.replaceFirstIn(t, "").trim
+      FormatParenTag.findFirstIn(t).foreach(captureTagWords(_, dropped))
       t = FormatParenTag.replaceFirstIn(t, "").trim
       var toks = t.split(" ").filter(_.nonEmpty).toVector
-      while (toks.length > 1 && isDroppableTag(toks.last)) toks = toks.dropRight(1)
+      while (toks.length > 1 && isDroppableTag(toks.last)) {
+        captureTagWords(toks.last, dropped)
+        toks = toks.dropRight(1)
+      }
       t = toks.mkString(" ").trim
     }
-    t
+    // Order the display tokens by where their word first appears in the raw
+    // title (left-to-right), so "(2D NAPISY)" → List("2D","NAP") regardless of
+    // the right-to-left order the strip loop peeled them off.
+    val tokens = raw.toLowerCase(Locale.ROOT)
+      .split("""[\s\[\]().,/|:-]+""")
+      .iterator
+      .filter(dropped.contains)
+      .flatMap(FormatToken.get)
+      .distinct
+      .toList
+    (t, tokens)
   }
+
+  /** Record every [[FormatToken]]-bearing word found in `chunk` (a single token
+   *  or a whole `(...)`/`[...]` tag) into `out`. */
+  private def captureTagWords(chunk: String, out: scala.collection.mutable.Set[String]): Unit =
+    chunk.split("""[\s\[\]()]+""").iterator
+      .map(w => bareWord(w))
+      .filter(FormatToken.contains)
+      .foreach(out.add)
 
   private def precedingTokenEndsSentence(chars: Array[Char], dotIdx: Int): Boolean = {
     if (dotIdx == 0) return false

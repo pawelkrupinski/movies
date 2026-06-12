@@ -107,11 +107,12 @@ object KinoZamekClient {
   /**
    * Decode HTML entities and apply sentence case to the title.  For Zamek we
    * keep the full title (including original-language subtitle in parens) because
-   * those subtitles are part of the film identity, not format codes.
+   * those subtitles are part of the film identity, not format codes — so it
+   * never carries a buried format tag and emits no `Showtime.format` tokens.
    */
-  private[cinemas] def cleanTitle(raw: String): String = {
+  private[cinemas] def cleanTitle(raw: String): (String, List[String]) = {
     // Jsoup already decodes HTML entities in attribute values.
-    ScraperParse.sentenceCase(raw.trim)
+    (ScraperParse.sentenceCase(raw.trim), Nil)
   }
 
   /**

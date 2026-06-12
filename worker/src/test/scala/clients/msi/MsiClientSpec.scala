@@ -81,6 +81,17 @@ class MsiClientSpec
     found.movie.title should not include "(3D"
   }
 
+  it should "lift the MSI title's buried format/version into Showtime.format" in {
+    // Raw cinema1 title "BACKROOMS. BEZ WYJŚCIA (2D NAPISY)" — the cleaned title
+    // collapses the variants, while the version is recovered as format tokens.
+    val movies =
+      new MsiClient(new FakeHttpFetch("cinema1"), "https://bilety.cinemaone.pl",
+        Cinema1Gdansk, today = LocalDate.of(2026, 6, 7)).fetch()
+    val backrooms = movies.find(_.movie.title.startsWith("Backrooms")).value
+    backrooms.movie.title should not include "NAPISY"
+    all(backrooms.showtimes.map(_.format)) shouldBe List("2D", "NAP")
+  }
+
   it should "honour a non-default mvcPath (Kino Planeta serves the page at /Rezerwacja/mvc/pl)" in {
     val movies = new MsiClient(new FakeHttpFetch("kino-planeta"), "https://rezerwacja.planetabrzesko.pl",
       KinoPlaneta, today = LocalDate.of(2026, 6, 10), mvcPath = "/Rezerwacja/mvc/pl").fetch()

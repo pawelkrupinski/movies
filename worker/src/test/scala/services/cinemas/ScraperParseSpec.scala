@@ -63,6 +63,42 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.ddField(doc, "gatunek") shouldBe None // no such dt
   }
 
+  "extractFormatTags" should "split a parenthesised format tag into clean title + display tokens" in {
+    ScraperParse.extractFormatTags("Film (2D NAPISY)")  shouldBe (("Film", List("2D", "NAP")))
+    ScraperParse.extractFormatTags("Film (2D DUBBING)") shouldBe (("Film", List("2D", "DUB")))
+    ScraperParse.extractFormatTags("Film (3D)")         shouldBe (("Film", List("3D")))
+  }
+
+  it should "handle a separator-suffix tag (` / 2D dubbing`, ` - napisy`)" in {
+    ScraperParse.extractFormatTags("Straszny film / 2D dubbing") shouldBe (("Straszny film", List("2D", "DUB")))
+    ScraperParse.extractFormatTags("Straszny film - napisy")     shouldBe (("Straszny film", List("NAP")))
+    ScraperParse.extractFormatTags("Film lektor")                shouldBe (("Film", List("LEK")))
+  }
+
+  it should "strip non-version words (dolby, atmos) without emitting a token for them" in {
+    ScraperParse.extractFormatTags("Dzień objawienia (2D NAPISY DOLBY ATMOS)") shouldBe
+      (("Dzień objawienia", List("2D", "NAP")))
+  }
+
+  it should "return (title, Nil) for a title with no format tag" in {
+    ScraperParse.extractFormatTags("Mavka. Prawdziwy mit") shouldBe (("Mavka. Prawdziwy mit", Nil))
+  }
+
+  it should "not mangle a real dash/colon title" in {
+    ScraperParse.extractFormatTags("Tom i Jerry: Przygoda w muzeum") shouldBe
+      (("Tom i Jerry: Przygoda w muzeum", Nil))
+  }
+
+  it should "agree byte-for-byte with stripFormatTags on the cleaned title" in {
+    val inputs = Seq(
+      "Film (2D NAPISY)", "Straszny film / 2D dubbing", "Straszny film - napisy",
+      "Dzień objawienia (2D NAPISY DOLBY ATMOS)", "Mavka. Prawdziwy mit",
+      "Tom i Jerry: Przygoda w muzeum", "Toy story 5 (2D DUBBING DOLBY ATMOS)",
+      "Film [2D napisy]", "DKF - Some film"
+    )
+    inputs.foreach(in => ScraperParse.extractFormatTags(in)._1 shouldBe ScraperParse.stripFormatTags(in))
+  }
+
   "canonicalTrailer" should "canonicalise YouTube embed / watch / youtu.be to the watch form" in {
     ScraperParse.canonicalTrailer("https://www.youtube.com/embed/AYq1ljpbNfA?feature=oembed") shouldBe
       Some("https://www.youtube.com/watch?v=AYq1ljpbNfA")
