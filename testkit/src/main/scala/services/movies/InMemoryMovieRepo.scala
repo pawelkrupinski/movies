@@ -34,15 +34,20 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
   private val lock = new AnyRef
 
   // Stand-in for Mongo's change stream: any write (in-process or simulated
-  // out-of-band) notifies the registered watcher, just like a real change
-  // stream fires for every persisted edit.
-  @volatile private var watcher: Option[StoredMovieRecord => Unit] = None
+  // out-of-band) notifies the registered watchers, just like a real change
+  // stream fires for every persisted edit — upserts AND deletes.
+  @volatile private var upsertWatcher: Option[StoredMovieRecord => Unit] = None
+  @volatile private var deleteWatcher: Option[String => Unit]            = None
   private def notifyWatcher(t: String, y: Option[Int], e: MovieRecord): Unit =
-    watcher.foreach(_(StoredMovieRecord(t, y, e)))
+    upsertWatcher.foreach(_(StoredMovieRecord(t, y, e)))
 
-  override def watchUpserts(onUpsert: StoredMovieRecord => Unit): Option[AutoCloseable] = {
-    watcher = Some(onUpsert)
-    Some(new AutoCloseable { override def close(): Unit = watcher = None })
+  override def watchChanges(
+    onUpsert: StoredMovieRecord => Unit,
+    onDelete: String => Unit
+  ): Option[AutoCloseable] = {
+    upsertWatcher = Some(onUpsert)
+    deleteWatcher = Some(onDelete)
+    Some(new AutoCloseable { override def close(): Unit = { upsertWatcher = None; deleteWatcher = None } })
   }
 
   seed.foreach { case (t, y, e) => store.put(idOf(t, y), StoredMovieRecord(t, y, e)) }
@@ -82,8 +87,10 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
   }
 
   def delete(t: String, y: Option[Int]): Unit = lock.synchronized {
-    store.remove(idOf(t, y))
+    val id = idOf(t, y)
+    store.remove(id)
     deletes.append((t, y))
+    deleteWatcher.foreach(_(id))
   }
 
   def close(): Unit = ()
@@ -100,6 +107,5 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
     }
   }
 
-  private def idOf(t: String, y: Option[Int]): String =
-    s"${TitleNormalizer.sanitize(t)}|${y.map(_.toString).getOrElse("")}"
+  private def idOf(t: String, y: Option[Int]): String = StoredMovieRecord.idFor(t, y)
 }

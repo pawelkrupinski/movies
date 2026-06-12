@@ -83,6 +83,36 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     e.rottenTomatoesUrl shouldBe Some("https://www.rottentomatoes.com/m/integration_test")
   }
 
+  // The /debug live view needs the change stream to surface DELETEs (a merge
+  // removes the losing row), not just upserts. A delete carries no post-image,
+  // so the impl reads its `documentKey._id` — exercised here against a real
+  // replica set (Atlas), the one place this path is reachable.
+  it should "surface an out-of-band upsert AND delete (by _id) on the change stream" in {
+    import java.util.concurrent.{CountDownLatch, TimeUnit}
+    import services.movies.StoredMovieRecord
+
+    val title = "__integration-test-changestream__"
+    val year  = Some(1901)
+    val id    = StoredMovieRecord.idFor(title, year)
+    val gotUpsert = new CountDownLatch(1)
+    val gotDelete = new CountDownLatch(1)
+
+    val handle = repo.watchChanges(
+      onUpsert = r   => if (StoredMovieRecord.idOf(r) == id) gotUpsert.countDown(),
+      onDelete = did => if (did == id) gotDelete.countDown()
+    )
+    handle should not be empty // a replica set is required; Atlas is one
+
+    try {
+      Thread.sleep(1500) // let the stream establish before the writes
+      repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000099")))
+      gotUpsert.await(15, TimeUnit.SECONDS) shouldBe true
+
+      repo.delete(title, year)
+      gotDelete.await(15, TimeUnit.SECONDS) shouldBe true
+    } finally handle.foreach(_.close())
+  }
+
   it should "handle Enrichments with all-None optional fields" in {
     val title = "__integration-test-sparse__"
     val toStore = MovieRecord(

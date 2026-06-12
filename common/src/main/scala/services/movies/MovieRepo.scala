@@ -22,6 +22,16 @@ import scala.util.Try
 case class StoredMovieRecord(title: String, year: Option[Int], record: MovieRecord)
 
 object StoredMovieRecord {
+  /** The Mongo `_id` for a `(title, year)` row: `sanitize(title)|year`. The one
+   *  formula the repo keys rows by — exposed so the change stream and the
+   *  /debug live view can key DOM rows on the same id the store does. Matches
+   *  the in-memory `CacheKey` normalization (case/diacritic-folded). */
+  def idFor(title: String, year: Option[Int]): String =
+    s"${TitleNormalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
+
+  /** The `_id` of a stored row. */
+  def idOf(row: StoredMovieRecord): String = idFor(row.title, row.year)
+
   /** Rebuild a stored row from its persisted `_id` and `MovieRecord`, deriving
    *  the display `title` and `year` rather than reading pinned columns — used by
    *  the Mongo codec (`MovieCodecs.toDomain`), whose BSON drops the `title`/
@@ -86,7 +96,18 @@ trait MovieRepo {
    *  store that can't stream (disabled, or a standalone Mongo with no change
    *  streams) may return `None` and the caller simply relies on that backstop.
    *  The returned handle stops watching. Default: not supported. */
-  def watchUpserts(onUpsert: StoredMovieRecord => Unit): Option[AutoCloseable] = None
+  def watchUpserts(onUpsert: StoredMovieRecord => Unit): Option[AutoCloseable] =
+    watchChanges(onUpsert, _ => ())
+
+  /** Like [[watchUpserts]] but also surfaces out-of-band DELETEs (by `_id`), so
+   *  a consumer that must reflect row *removal* sees it — the /debug live view,
+   *  where a merge deletes the losing row and the row must disappear. `onDelete`
+   *  gets the raw `_id` (`sanitize(title)|year`, the [[StoredMovieRecord.idFor]]
+   *  form). Default: not supported (returns None), same as [[watchUpserts]]. */
+  def watchChanges(
+    onUpsert: StoredMovieRecord => Unit,
+    onDelete: String => Unit
+  ): Option[AutoCloseable] = None
 
   /** Release any underlying resources. No-op when nothing to release. */
   def close(): Unit
@@ -299,23 +320,38 @@ class MongoMovieRepo(
     Updates.combine(atoms.toSeq*)
   }
 
-  /** Open a MongoDB change stream and route each inserted / updated / replaced
-   *  doc to `onUpsert`. `UPDATE_LOOKUP` makes update events carry the full
-   *  post-image (not just the delta), so we always hand the cache a complete
-   *  row. Delete events have no `fullDocument` and are skipped — the periodic
-   *  backstop rehydrate reconciles those. The mongo driver auto-resumes the
-   *  stream across transient blips; a terminal error just logs and leaves the
-   *  backstop in charge. Requires a replica set (a single-node RS counts); on a
-   *  standalone Mongo the stream errors out and we fall back to the backstop. */
-  override def watchUpserts(onUpsert: StoredMovieRecord => Unit): Option[AutoCloseable] = coll.map { c =>
+  /** Open a MongoDB change stream and route each change to `onUpsert` /
+   *  `onDelete`. `UPDATE_LOOKUP` makes insert/update/replace events carry the
+   *  full post-image (not just the delta), so we always hand a complete row to
+   *  `onUpsert`. A DELETE has no `fullDocument`, so we surface its `documentKey._id`
+   *  to `onDelete` instead (what the cache's periodic backstop used to be the
+   *  only path for, and what the /debug live view needs so a merged-away row
+   *  disappears). The driver auto-resumes across transient blips; a terminal
+   *  error just logs. Requires a replica set (a single-node RS counts); on a
+   *  standalone Mongo the stream errors out and the caller falls back to its
+   *  backstop. */
+  override def watchChanges(
+    onUpsert: StoredMovieRecord => Unit,
+    onDelete: String => Unit
+  ): Option[AutoCloseable] = coll.map { c =>
     val subRef = new AtomicReference[Subscription]()
     c.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
       .subscribe(new Observer[ChangeStreamDocument[StoredMovieDto]] {
         override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
         override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit =
-          Option(change.getFullDocument).foreach { dto =>
-            try onUpsert(StoredMovieDto.toDomain(dto))
-            catch { case ex: Throwable => logger.warn(s"MovieRepo change-stream apply failed: ${ex.getMessage}") }
+          Option(change.getFullDocument) match {
+            case Some(dto) =>
+              try onUpsert(StoredMovieDto.toDomain(dto))
+              catch { case ex: Throwable => logger.warn(s"MovieRepo change-stream apply failed: ${ex.getMessage}") }
+            case None =>
+              // No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't
+              // back-fill). Surface its _id so the consumer can drop the row.
+              Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
+                .map(v => if (v.isString) v.asString.getValue else v.toString)
+                .foreach { id =>
+                  try onDelete(id)
+                  catch { case ex: Throwable => logger.warn(s"MovieRepo change-stream delete apply failed: ${ex.getMessage}") }
+                }
           }
         override def onError(e: Throwable): Unit =
           logger.warn(s"MovieRepo change stream ended (${e.getMessage}) — relying on the periodic backstop rehydrate.")
@@ -365,5 +401,5 @@ class MongoMovieRepo(
   // their own row, and only one can be updated per hourly refresh tick (the
   // tick walks the deduplicated Caffeine cache).
   private def docId(title: String, year: Option[Int]): String =
-    s"${TitleNormalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
+    StoredMovieRecord.idFor(title, year)
 }

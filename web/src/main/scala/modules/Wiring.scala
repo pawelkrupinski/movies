@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{AdminAction, AdminTitleRulesController, AuthController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController}
+import controllers.{AdminAction, AdminTitleRulesController, AuthController, DebugStreamController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
@@ -131,6 +131,10 @@ trait Wiring {
   lazy val filmwebFallbackStore: FilmwebFallbackStore = new MongoFilmwebFallbackStore(mongoConnection.database)
   lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, filmwebFallbackStore)(using materializer)
   lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue)
+  // Dev-only SSE feed for the /debug live view; reuses the same on-demand
+  // movieRepo + cinema-source-URL snapshot the /debug page renders from.
+  lazy val debugStreamController = new DebugStreamController(controllerComponents, movieRepo, environmentMode,
+    () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()))(using materializer)
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepo, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
   lazy val accountDeletion   = new AccountDeletion(userRepo, userStateRepo)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepo, accountDeletion)

@@ -29,9 +29,18 @@ class DebugViewFilmLinkSpec extends AnyFlatSpec with Matchers {
     html should not include """href="/poznan/film?title=Belle""""
   }
 
-  it should "not render a re-enrich button or fetch (the feature was removed)" in {
+  it should "render a per-row re-enrich button posting the row's ResolveTmdb enqueue" in {
     val html = views.html.debug(Seq(wroclawOnly)).body
-    html should not include "reenrich"
-    html should not include "↻"
+    html should include ("class=\"reenrich\"")
+    // The button targets the dev-only reenrich endpoint with this row's identity.
+    // (The reverse route's `&` is HTML-escaped to `&amp;` in the attribute; the
+    // browser un-escapes it when the JS reads dataset.url, so assert the path +
+    // first param only.)
+    html should include ("/debug/reenrich?title=Belle")
+  }
+
+  it should "key each row by its Mongo _id so the live change stream can patch it" in {
+    val html = views.html.debug(Seq(wroclawOnly)).body
+    html should include ("""data-id="belle|2021"""")
   }
 }

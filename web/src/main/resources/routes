@@ -29,6 +29,10 @@ GET     /debug                      controllers.MovieController.debug()
 # prod like the rest of /debug; nocsrf, posted by the page's fetch.
 + nocsrf
 POST    /debug/reenrich             controllers.MovieController.reenrich(title: String, year: Option[Int])
+# Dev-only SSE feed of `movies` change-stream events so the /debug table live-
+# updates (merged rows vanish, new films appear). 404 in prod — the stream is
+# only ever opened in dev, never watching the worker's collection 24/7.
+GET     /debug/stream               controllers.DebugStreamController.stream()
 # Dev-only visual-tuning page: live sliders over the real movie card that drive
 # the CSS custom properties the production card styles read (vertical gaps,
 # showtime-pill + rating-pill font/padding/corner). Lets us eyeball spacing
