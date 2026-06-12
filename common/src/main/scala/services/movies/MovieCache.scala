@@ -28,19 +28,15 @@ private[services] case class CacheKey(cleanTitle: String, year: Option[Int]) {
 }
 
 /**
- * In-memory enrichment store with write-through to the underlying `MovieRepo`.
+ * Read surface of the enrichment store — pure reads, no side effects.
  *
- * Per CLAUDE.md DIP guidance: consumers depend on this trait, not the concrete
- * implementation. `CaffeineMovieCache` is the production implementation;
- * tests can swap in any other implementation if they ever need to.
+ * Split out (ISP) so consumers that only resolve a `CacheKey` or walk the rows
+ * (the reapers/enqueuers) depend on just this, and are compile-time barred from
+ * mutating the cache. `MovieCache` adds the mutating surface; `CaffeineMovieCache`
+ * implements both. Per CLAUDE.md DIP guidance, consumers depend on these traits,
+ * not the concrete implementation.
  */
-trait MovieCache {
-  // ── Public read surface (controllers, ShowtimeCache) ─────────────────────
-
-  /** Apply one cinema's fresh scrape to the cache. Returns one
-   *  `(CinemaMovie, CacheKey, isNew)` triple per input movie. */
-  def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey, Boolean)]
-
+trait MovieCacheReader {
   /** True when some existing cache row's cleanTitle normalises to the same
    *  form as `rawTitle` AND has been TMDB-resolved (tmdbId set). */
   def hasResolvedSiblingByTitle(rawTitle: String): Boolean
@@ -51,14 +47,7 @@ trait MovieCache {
   /** Wall-clock instant of the most recent data mutation. */
   def lastModified: java.time.Instant
 
-  /** Reload the positive cache from the repo: drop every in-memory positive
-   *  entry, then `repo.findAll()` and put each row. Returns the number of
-   *  rows loaded. Leaves the negative cache (24h-TTL TMDB miss markers)
-   *  alone — negatives aren't persisted in Mongo, so they're orthogonal to
-   *  this reload. Used at construction and by the admin rehydrate endpoint. */
-  def rehydrate(): Int
-
-  // ── Internal surface (services.* only) ───────────────────────────────────
+  // ── Internal read surface (services.* only) ──────────────────────────────
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey
   /** The key of the existing row whose normalised cleanTitle matches `key`'s,
    *  regardless of year. An event can carry a pre-canonicalisation `(title,
@@ -69,6 +58,31 @@ trait MovieCache {
   private[services] def canonicalKeyFor(key: CacheKey): Option[CacheKey]
   private[services] def get(key: CacheKey): Option[MovieRecord]
   private[services] def isNegative(key: CacheKey): Boolean
+  private[services] def entries: Seq[(CacheKey, MovieRecord)]
+}
+
+/**
+ * In-memory enrichment store with write-through to the underlying `MovieRepo`.
+ * Adds the mutating surface on top of `MovieCacheReader`.
+ *
+ * Per CLAUDE.md DIP guidance: consumers depend on this trait (or the narrower
+ * `MovieCacheReader`), not the concrete implementation. `CaffeineMovieCache` is
+ * the production implementation; tests can swap in any other implementation if
+ * they ever need to.
+ */
+trait MovieCache extends MovieCacheReader {
+  /** Apply one cinema's fresh scrape to the cache. Returns one
+   *  `(CinemaMovie, CacheKey, isNew)` triple per input movie. */
+  def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey, Boolean)]
+
+  /** Reload the positive cache from the repo: drop every in-memory positive
+   *  entry, then `repo.findAll()` and put each row. Returns the number of
+   *  rows loaded. Leaves the negative cache (24h-TTL TMDB miss markers)
+   *  alone — negatives aren't persisted in Mongo, so they're orthogonal to
+   *  this reload. Used at construction and by the admin rehydrate endpoint. */
+  def rehydrate(): Int
+
+  // ── Internal write surface (services.* only) ─────────────────────────────
   private[services] def put(key: CacheKey, e: MovieRecord): Unit
   private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean
   private[services] def markMissing(key: CacheKey): Unit
@@ -86,7 +100,6 @@ trait MovieCache {
    *  the record to write at `newKey` — so a concurrent cinema-slot write
    *  that landed before `update` runs is visible to it. */
   private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord): Unit
-  private[services] def entries: Seq[(CacheKey, MovieRecord)]
 }
 
 /**

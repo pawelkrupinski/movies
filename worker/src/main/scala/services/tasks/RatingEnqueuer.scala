@@ -2,7 +2,7 @@ package services.tasks
 
 import services.events.{DomainEvent, ImdbIdMissing, ImdbIdResolved, TmdbResolved}
 import services.freshness.FreshnessKind
-import services.movies.MovieCache
+import services.movies.MovieCacheReader
 
 /**
  * Bus subscribers that ENQUEUE rating tasks instead of fetching inline — the
@@ -13,9 +13,9 @@ import services.movies.MovieCache
  * so this is safe to fire on every event across every server.
  *
  * Lives in `services.tasks` (not the `modules` composition root) so it can build
- * the per-film `CacheKey` via `MovieCache.keyOf` (package-private to `services`).
+ * the per-film `CacheKey` via `MovieCacheReader.keyOf` (package-private to `services`).
  */
-class RatingEnqueuer(cache: MovieCache, queue: TaskQueue) {
+class RatingEnqueuer(cache: MovieCacheReader, queue: TaskQueue) {
 
   // imdbId now known → fetch the IMDb rating.
   val onTmdbResolved: PartialFunction[DomainEvent, Unit] = {

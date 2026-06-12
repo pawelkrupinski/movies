@@ -4,7 +4,7 @@ import play.api.Logging
 import services.Stoppable
 import services.cinemas.DetailEnricher
 import services.freshness.FreshnessStore
-import services.movies.MovieCache
+import services.movies.MovieCacheReader
 import tools.DaemonExecutors
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
@@ -27,7 +27,7 @@ import scala.util.Try
  */
 class DetailReaper(
   enrichers: Seq[DetailEnricher],
-  cache:     MovieCache,
+  cache:     MovieCacheReader,
   queue:     TaskQueue,
   freshness: FreshnessStore,
   interval:  FiniteDuration = 15.minutes

@@ -4,7 +4,7 @@ import models.MovieRecord
 import play.api.Logging
 import services.Stoppable
 import services.freshness.{FreshnessKind, FreshnessStore}
-import services.movies.MovieCache
+import services.movies.MovieCacheReader
 import tools.DaemonExecutors
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
@@ -21,7 +21,7 @@ import scala.util.Try
  * A sweep only enqueues rows the source can actually act on (IMDb needs an
  * imdbId; the others need a resolved tmdbId), matching the old walks' scope.
  */
-class EnrichmentReaper(cache: MovieCache, queue: TaskQueue, freshness: FreshnessStore) extends Stoppable with Logging {
+class EnrichmentReaper(cache: MovieCacheReader, queue: TaskQueue, freshness: FreshnessStore) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("enrichment-reaper")
 

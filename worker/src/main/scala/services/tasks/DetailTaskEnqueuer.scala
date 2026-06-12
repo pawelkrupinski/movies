@@ -3,7 +3,7 @@ package services.tasks
 import services.cinemas.DetailEnricher
 import services.events.{CinemaMovieAdded, DomainEvent}
 import services.freshness.FreshnessStore
-import services.movies.MovieCache
+import services.movies.MovieCacheReader
 
 /**
  * One per deferred cinema ("one handler per movie client"): on the first
@@ -19,7 +19,7 @@ import services.movies.MovieCache
  */
 class DetailTaskEnqueuer(
   enricher:  DetailEnricher,
-  cache:     MovieCache,
+  cache:     MovieCacheReader,
   queue:     TaskQueue,
   freshness: FreshnessStore
 ) {
