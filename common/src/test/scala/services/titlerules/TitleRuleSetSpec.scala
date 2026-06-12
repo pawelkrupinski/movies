@@ -26,6 +26,23 @@ class TitleRuleSetSpec extends AnyFlatSpec with Matchers {
     rs.perCinema("unknown", "Untouched Title") shouldBe "Untouched Title"
   }
 
+  // Kino Wybrzeże appends its venue name to every listing, splitting a film off
+  // its canonical row ("Dzień objawienia-kino wybrzeże" sanitises to a different
+  // key than "Dzień objawienia"). The seeded `wybrzeze-venue-suffix` rule strips
+  // it. Runs against the REAL default rule set so the seed itself is covered.
+  "the default Kino Wybrzeże rule" should "strip the trailing venue name so the film keys to its canonical row" in {
+    val rs = TitleRuleDefaults.ruleSet
+    rs.perCinema("wybrzeze", "Dzień objawienia-kino wybrzeże") shouldBe "Dzień objawienia"
+    // The all-caps raw form: suffix stripped, casing left to canonicalizeBySanitize.
+    rs.perCinema("wybrzeze", "DZIEŃ OBJAWIENIA-KINO WYBRZEŻE") shouldBe "DZIEŃ OBJAWIENIA"
+    // Both now sanitise to the SAME key as the bare title — so they merge.
+    def key(t: String): String = services.movies.TitleNormalizer.sanitize(t)
+    key(rs.perCinema("wybrzeze", "Dzień objawienia-kino wybrzeże")) shouldBe key("Dzień objawienia")
+    key(rs.perCinema("wybrzeze", "DZIEŃ OBJAWIENIA-KINO WYBRZEŻE")) shouldBe key("Dzień objawienia")
+    // A title without the suffix is untouched.
+    rs.perCinema("wybrzeze", "Inny film") shouldBe "Inny film"
+  }
+
   "a disabled rule" should "be a no-op" in {
     val rs = TitleRuleSet(Seq(rule("x", GlobalStructural, "^Strip ", "", enabled = false)))
     rs.structural("Strip Me") shouldBe "Strip Me"

@@ -148,7 +148,16 @@ object TitleRuleDefaults {
       note = Some("Kino Apollo Children's-Day prefix")),
     TitleRule("apollo-przedpremierowy", PerCinema, Some("kino-apollo"),
       """ - seans przedpremierowy$""", "", applyAll = false, order = 20,
-      note = Some("Kino Apollo pre-premiere suffix"))
+      note = Some("Kino Apollo pre-premiere suffix")),
+    // Kino Wybrzeże (Kołobrzeg) appends its own venue name to every listing
+    // ("Dzień objawienia-kino wybrzeże" / all-caps in the raw), which sanitises
+    // to a different key and splits the film off its canonical row. Strip the
+    // trailing "-kino wybrzeże" (any case) so it keys like every other cinema.
+    // `(?iu)` not `(?i)`: Unicode case folding so the all-caps raw "…WYBRZEŻE"
+    // folds (plain `(?i)` is ASCII-only and won't match Ż↔ż).
+    TitleRule("wybrzeze-venue-suffix", PerCinema, Some("wybrzeze"),
+      """(?iu)\s*-\s*kino\s+wybrzeże\s*$""", "", applyAll = false, order = 10,
+      note = Some("Kino Wybrzeże trailing venue-name suffix"))
     // MSI format-tag stripping is NOT a per-cinema rule: it's a cross-client
     // concern shared across the portal clients via ScraperParse.stripFormatTags.
   )
