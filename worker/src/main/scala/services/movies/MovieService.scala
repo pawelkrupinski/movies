@@ -160,29 +160,59 @@ class MovieService(
     originalTitle: Option[String] = None,
     director:      Option[String] = None
   ): Unit = {
-    if (cache.get(key).exists(_.tmdbId.isDefined)) return  // already resolved
-    // Negative cache: short-circuit known misses — but ONLY when this event
-    // brings no new resolution signal. A later scrape that carries a director
-    // (Helios/Multikino) or originalTitle (the cinema's English title field)
-    // the prior attempt didn't have is worth retrying: `directorWalk` runs
-    // off the director hint, and a TMDB title search by originalTitle can
-    // hit where the Polish title missed. Without this carve-out, a row
-    // where the first-scraping cinema reports no director (CinemaCity,
-    // Charlie Monroe) stays trapped at tmdbId=None for the full 24h
-    // negative TTL — the Kurozając class of regression.
-    if (cache.isNegative(key) && originalTitle.isEmpty && director.isEmpty) return
-    // A sibling row already knows this raw cinema title (via cinemaTitles)
-    // AND has a tmdbId. `recordCinemaScrape`'s redirect has already
-    // attached this cinema's slot to that sibling, so running TMDB again
-    // would just create a phantom row at the `(title, year)` key that
-    // nothing would clean up — wasted TMDB call plus a stale year-
-    // divergent row sitting in Mongo forever.
-    if (cache.hasResolvedSiblingByTitle(key.cleanTitle)) return
+    val existing = cache.get(key)
+    existing.flatMap(_.tmdbId) match {
+      case Some(currentId) =>
+        // Already resolved — but a director-less first scrape can land the WRONG
+        // same-title film (a query with no director picks TMDB's most-popular
+        // hit). The director is the only signal we can check a resolution
+        // against, so a re-scrape that brings none keeps the current id (no TMDB
+        // call). When THIS event carries a director, RE-VERIFY: if none of the
+        // row's reported directors appear in the current tmdbId's credits, the
+        // resolution is contradicted → re-resolve (the title search +
+        // `directorWalk` will land the right film). When it still verifies, keep
+        // it — that keep makes the stage idempotent: a correctly-resolved row
+        // never re-resolves, so re-running it on every director-bearing change
+        // can't churn TMDB or loop on the stage's own writes.
+        if (director.isEmpty) return
+        val dirs = reportedDirectors(existing, director)
+        if (dirs.isEmpty ||
+            verifyByDirector(Some(TmdbClient.SearchResult(currentId, "", None, None, 0.0)), Some(dirs)).isDefined)
+          return
+        logger.info(s"TMDB re-resolve: '${key.cleanTitle}' (${key.year.getOrElse("?")}) tmdbId=$currentId " +
+                    s"no longer matches the reported director(s) [$dirs] — re-resolving.")
+      case None =>
+        // Negative cache: short-circuit known misses — but ONLY when this event
+        // brings no new resolution signal. A later scrape that carries a director
+        // (Helios/Multikino) or originalTitle (the cinema's English title field)
+        // the prior attempt didn't have is worth retrying: `directorWalk` runs
+        // off the director hint, and a TMDB title search by originalTitle can
+        // hit where the Polish title missed. Without this carve-out, a row
+        // where the first-scraping cinema reports no director (CinemaCity,
+        // Charlie Monroe) stays trapped at tmdbId=None for the full 24h
+        // negative TTL — the Kurozając class of regression.
+        if (cache.isNegative(key) && originalTitle.isEmpty && director.isEmpty) return
+        // A sibling row already knows this raw cinema title (via cinemaTitles)
+        // AND has a tmdbId. `recordCinemaScrape`'s redirect has already
+        // attached this cinema's slot to that sibling, so running TMDB again
+        // would just create a phantom row at the `(title, year)` key that
+        // nothing would clean up — wasted TMDB call plus a stale year-
+        // divergent row sitting in Mongo forever.
+        if (cache.hasResolvedSiblingByTitle(key.cleanTitle)) return
+    }
     if (pending.add(key)) {
       Future(try runTmdbStage(key, originalTitle, director) finally pending.remove(key))(using ec)
       ()
     }
   }
+
+  /** The directors reported for a row — every cinema slot's plus the triggering
+   *  event's — normalised the same way `resolveTmdb` derives its hint, as one
+   *  comma-joined, de-duplicated, sorted string (empty when none). Sorted so the
+   *  re-verification is a pure function of the row's state, not arrival order. */
+  private def reportedDirectors(existing: Option[MovieRecord], eventDirector: Option[String]): String =
+    (eventDirector.toSeq.flatMap(_.split(",")) ++ existing.map(_.data.values.flatMap(_.director).toSeq).getOrElse(Nil))
+      .map(_.trim).filter(_.nonEmpty).distinct.sorted.mkString(",")
 
   // Async wrapper around runTmdbStageSync: handles retry policy + event publish.
   // Two events:
