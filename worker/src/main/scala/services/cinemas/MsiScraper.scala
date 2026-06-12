@@ -20,9 +20,10 @@ import scala.util.Try
  *   - `div.movies-movie__single` — one block per film variant (one film may
  *     appear in multiple variants if the same title screens in several formats
  *     or under slightly different version titles).
- *   - `h2.movies-movie__single__title[title]` — raw title attribute (may
+ *   - `.movies-movie__single__title[title]` — raw title attribute (may
  *     include a format suffix like `(2D NAPISY)` or an original-language
- *     subtitle in parens).
+ *     subtitle in parens). The heading tag varies by portal theme (`h2` on
+ *     most, `h3` on RCK Kołobrzeg), so it's matched by class, not tag.
  *   - `div.movies-movie__single__options.d-none ul.movies-movie__single__options__hours a[href]`
  *     — each anchor's text is `DD mmm HH:MM` (abbreviated Polish months),
  *     and the href is the booking link.
@@ -67,7 +68,7 @@ private[cinemas] object MsiScraper {
                          cleanTitle: String => (String, List[String])): Seq[RawSlot] = {
     val doc = Jsoup.parse(html, baseUrl)
     doc.select("div.movies-movie__single").asScala.toSeq.flatMap { movieDiv =>
-      val rawTitle = Option(movieDiv.selectFirst("h2.movies-movie__single__title"))
+      val rawTitle = Option(movieDiv.selectFirst(".movies-movie__single__title"))
         .map(_.attr("title").trim)
         .filter(_.nonEmpty)
         .getOrElse("")

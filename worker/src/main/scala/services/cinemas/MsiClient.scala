@@ -57,7 +57,14 @@ class MsiClient(
   // "TWIERDZA - …" on bilety.mok.com.pl). When set, this instance keeps only the
   // titles carrying this prefix and strips it before cleaning — so the one
   // shared portal yields a separate per-cinema feed (one MsiClient per venue).
-  titlePrefix: Option[String] = None
+  titlePrefix: Option[String] = None,
+  // A few single-venue portals append a constant venue label as a SUFFIX instead
+  // ("BACKROOMS BEZ WYJŚCIA NAPISY-KINO WYBRZEŻE", "DRUGIE ŻYCIE-KINO WYBRZEŻE" on
+  // bilety.rck.kolobrzeg.pl). When set, the trailing `-<suffix>` is stripped
+  // before cleaning — which also re-exposes any format word the suffix had
+  // buried (the bare `NAPISY`/`DUBBING` then becomes trailing and the normal
+  // format extractor catches it).
+  titleSuffix: Option[String] = None
 ) extends CinemaScraper {
 
   import MsiClient._
@@ -66,7 +73,9 @@ class MsiClient(
   override def sourceUrl: Option[String] = Some(baseUrl)
 
   private val titleCleaner: String => (String, List[String]) =
-    titlePrefix.map(cleanTitleForVenue).getOrElse(cleanTitle)
+    titlePrefix.map(cleanTitleForVenue)
+      .orElse(titleSuffix.map(cleanTitleStripSuffix))
+      .getOrElse(cleanTitle)
 
   def fetch(): Seq[CinemaMovie] = {
     val thisMonth = YearMonth.from(today)
@@ -112,5 +121,15 @@ object MsiClient {
     val sep = s"$venue - "
     if (raw.regionMatches(true, 0, sep, 0, sep.length)) cleanTitle(raw.substring(sep.length))
     else ("", Nil)
+  }
+
+  /** Title cleaner for a single-venue portal that appends a constant venue label
+   *  as a trailing `-<venue>` (e.g. "DRUGIE ŻYCIE-KINO WYBRZEŻE", with or without
+   *  spaces around the dash). Strips that suffix first, then runs the normal
+   *  clean — so a format word the suffix had buried (e.g. "…NAPISY-KINO WYBRZEŻE")
+   *  becomes trailing and `extractFormatTags` recovers it as a version token. */
+  private[cinemas] def cleanTitleStripSuffix(venue: String)(raw: String): (String, List[String]) = {
+    val pat = s"""(?iu)\\s*[-–—]\\s*${java.util.regex.Pattern.quote(venue)}\\s*$$"""
+    cleanTitle(raw.replaceAll(pat, "").trim)
   }
 }

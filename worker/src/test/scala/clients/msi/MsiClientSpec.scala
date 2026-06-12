@@ -92,6 +92,28 @@ class MsiClientSpec
     all(backrooms.showtimes.map(_.format)) shouldBe List("2D", "NAP")
   }
 
+  // RCK Kołobrzeg (Kino Wybrzeże) runs the same MSI portal but with two quirks
+  // that silently zeroed the venue: the title heading is `h3`, not `h2`, and a
+  // constant `-KINO WYBRZEŻE` venue label is appended to every title — with the
+  // screening's format word (NAPISY/DUBBING) buried just before it. Before the
+  // tag-agnostic title selector + `titleSuffix` strip, every poll returned an
+  // empty list (white on /uptime) even though the portal carries a full month.
+  it should "scrape RCK Kołobrzeg (h3 titles + a trailing venue-label suffix)" in {
+    val movies = new MsiClient(new FakeHttpFetch("kino-wybrzeze"), "https://bilety.rck.kolobrzeg.pl",
+      KinoWybrzeze, today = LocalDate.of(2026, 6, 12), titleSuffix = Some("KINO WYBRZEŻE")).fetch()
+    movies should not be empty
+    movies.map(_.cinema).toSet shouldBe Set(KinoWybrzeze)
+    // The "-KINO WYBRZEŻE" suffix is stripped from every cleaned title.
+    all(movies.map(_.movie.title.toLowerCase)) should not include "wybrzeże"
+    // A concrete dubbed screening, with its buried format word recovered.
+    val toyStory = movies.find(_.movie.title.toLowerCase.contains("toy story 5")).value
+    toyStory.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 20, 15, 0))
+    toyStory.showtimes.map(_.format).head shouldBe List("DUB")
+    // A subtitled screening keeps its NAP token.
+    val zawodowcy = movies.find(_.movie.title.toLowerCase == "zawodowcy").value
+    zawodowcy.showtimes.map(_.format).head shouldBe List("NAP")
+  }
+
   it should "honour a non-default mvcPath (Kino Planeta serves the page at /Rezerwacja/mvc/pl)" in {
     val movies = new MsiClient(new FakeHttpFetch("kino-planeta"), "https://rezerwacja.planetabrzesko.pl",
       KinoPlaneta, today = LocalDate.of(2026, 6, 10), mvcPath = "/Rezerwacja/mvc/pl").fetch()

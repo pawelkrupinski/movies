@@ -71,7 +71,13 @@ private[cinemas] object ScraperParse {
    */
   def sentenceCase(title: String): String = {
     if (title.isEmpty) return title
-    val chars = title.toLowerCase(Locale.ROOT).toCharArray
+    // A sequel number glued to the next word by a missing space ("3.ALE KOSMOS"
+    // on RCK Kołobrzeg) is a source typo — restore the space so the word
+    // capitalises and the cleaned title converges with the cinemas that spell it
+    // "3. Ale kosmos" (otherwise the glued variant pollutes the display-title
+    // election). A digit-dot-digit decimal ("2.0") is untouched.
+    val deglued = title.replaceAll("""(\d)\.(\p{L})""", "$1. $2")
+    val chars = deglued.toLowerCase(Locale.ROOT).toCharArray
     chars(0) = chars(0).toUpper
     var i = 0
     while (i + 2 < chars.length) {

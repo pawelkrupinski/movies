@@ -301,7 +301,7 @@ showings:
 
 === Backrooms. Bez wyjścia ===
 displayTitle:      Backrooms. Bez wyjścia
-cinemaTitles:      BACKROOMS. BEZ WYJŚCIA | Backrooms. Bez wyjścia | Backrooms. Bez wyjśćia
+cinemaTitles:      BACKROOMS. BEZ WYJŚCIA | Backrooms bez wyjścia | Backrooms. Bez wyjścia | Backrooms. Bez wyjśćia
 runtimeMinutes:    111
 releaseYear:       2026
 countries:         USA, Kanada
@@ -422,6 +422,7 @@ cinemaScrapes:
   Kino Wawel / Backrooms. Bez wyjścia / —
   Kinoteka / Backrooms. Bez wyjścia / 2026
   Koneckie Centrum Kultury / Backrooms. Bez wyjścia / —
+  Wybrzeże / Backrooms bez wyjścia / —
 showings:
   2026-06-19  Cinema City Kinepolis         12:30 Sala 13 2D/NAP · 15:00 Sala 13 2D/NAP · 16:00 Sala 14 2D/NAP · 17:30 Sala 13 2D/NAP · 18:30 Sala 14 2D/NAP · 20:00 Sala 13 2D/NAP · 21:00 Sala 14 2D/NAP · 22:30 Sala 13 2D/NAP
   2026-06-19  Cinema City Poznań Plaza      14:30 Sala 8 2D/NAP · 17:00 Sala 8 2D/NAP · 19:30 Sala 8 2D/NAP · 22:00 Sala 8 2D/NAP
@@ -3345,6 +3346,7 @@ cinemaScrapes:
   Klaps / Mandalorian i Grogu / —
   Koneckie Centrum Kultury / Mandalorian i Grogu / —
   Muza / Mandalorian i Grogu / —
+  Wybrzeże / Mandalorian i grogu / —
 showings:
   2026-06-08  Cinema City Kinepolis         12:20 Sala 17 2D/DUB · 13:40 Sala 12 2D/DUB · 15:20 Sala 17 2D/NAP · 15:50 Sala 8 2D/DUB · 16:40 Sala 12 2D/DUB · 17:20 Sala 7 2D/NAP · 18:15 Sala 17 2D/NAP · 19:30 Sala 12 2D/NAP · 20:20 Sala 7 2D/NAP · 21:15 Sala 17 2D/NAP
   2026-06-08  Cinema City Poznań Plaza      10:00 Sala 9 2D/DUB · 11:30 Sala IMAX IMAX/3D/DUB · 13:00 Sala 9 2D/DUB · 16:00 Sala 9 2D/NAP · 16:20 Sala 3 2D/DUB · 17:30 Sala IMAX IMAX/3D/NAP · 19:00 Sala 9 2D/NAP · 22:00 Sala 9 2D/NAP
@@ -4009,6 +4011,7 @@ cinemaScrapes:
   Helios Żory / Minionki i straszydła / —
   Kino Goplana / Minionki i straszydła / —
   Kino MOK Centrum / MINIONKI I STRASZYDŁA / —
+  Wybrzeże / Minionki i straszydła / —
 showings:
   2026-06-26  Cinema City Kinepolis         10:10 Sala 13 2D/DUB · 11:30 Sala 17 2D/DUB · 12:20 Sala 13 2D/DUB · 13:40 Sala 17 2D/DUB · 14:30 Sala 13 2D/DUB · 15:50 Sala 17 2D/DUB · 16:40 Sala 13 2D/DUB · 18:50 Sala 13 2D/DUB
   2026-06-26  Cinema City Poznań Plaza      10:30 Sala 6 2D/DUB · 11:30 Sala 7 2D/DUB · 12:40 Sala 6 2D/DUB · 13:40 Sala 7 2D/DUB · 14:50 Sala 6 2D/DUB · 15:50 Sala 7 2D/DUB · 17:00 Sala 6 2D/DUB · 19:10 Sala 6 2D/DUB
@@ -4580,6 +4583,7 @@ cinemaScrapes:
   Piast / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS / —
   Planet Cinema / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Służewski Dom Kultury / Niesamowite przygody skarpetek 3. Ale kosmos! / —
+  Wybrzeże / Niesamowite przygody skarpetek 3. Ale kosmos / —
   Świt Zwoleń / Niesamowite przygody skarpetek 3. Ale kosmos! / —
 showings:
   2026-06-08  Helios Posnania               11:50 Sala 8 2D/DUB · 13:30 Sala 8 2D/DUB
@@ -7829,6 +7833,7 @@ cinemaScrapes:
   Pionier / Tom i Jerry: Przygoda w muzeum / —
   Planet Cinema / Tom i Jerry: Przygoda w muzeum / 2025
   Regis / Tom i Jerry: Przygoda w muzeum / 2025
+  Wybrzeże / Tom i jerry: przygoda w muzeum / —
 showings:
   2026-06-08  Cinema City Kinepolis         12:50 Sala 15 2D/DUB · 17:40 Sala 9 2D/DUB
   2026-06-08  Cinema City Poznań Plaza      12:10 Sala 4 2D/DUB · 14:40 Sala 4 2D/DUB · 17:10 Sala 4 2D/DUB
@@ -7979,6 +7984,7 @@ cinemaScrapes:
   Na Starówce / Toy story 5 / —
   Pionier / Toy Story 5 / —
   Teatr Elektryczny / Toy Story 5 / —
+  Wybrzeże / Toy story 5 / —
   Świt Zwoleń / Toy story 5 / —
 showings:
   2026-06-17  Cinema City Kinepolis         13:00 Sala 12 2D/DUB · 13:30 Sala 14 2D/DUB · 14:00 Sala 10 2D/DUB · 15:30 Sala 12 2D/DUB · 16:00 Sala 14 2D/DUB · 16:30 Sala 10 2D/DUB · 17:00 Sala 2 2D/NAP · 18:00 Sala 12 2D/DUB · 19:00 Sala 10 2D/DUB · 20:30 Sala 12 2D/NAP
@@ -8837,6 +8843,7 @@ cinemaScrapes:
   Planet Cinema / Zawodowcy / 2026
   Teatr Elektryczny / Zawodowcy / —
   Teatr Ziemi Rybnickiej / Zawodowcy / 2025
+  Wybrzeże / Zawodowcy / —
 showings:
   2026-06-08  Cinema City Kinepolis         16:20 Sala 16 2D/NAP · 18:40 Sala 5 2D/NAP · 21:00 Sala 5 2D/NAP
   2026-06-08  Cinema City Poznań Plaza      19:10 Sala 1 2D/NAP · 21:30 Sala 1 2D/NAP
