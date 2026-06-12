@@ -34,14 +34,25 @@ class NormalizationRebuilder(
 
   private case class Frag(key: CacheKey, rec: MovieRecord, from: CacheKey, fresh: Boolean)
 
-  private def keyOfSlot(cinema: Cinema, slot: SourceData, year: Option[Int]): CacheKey = {
-    val raw = slot.rawTitle.orElse(slot.title).getOrElse("")
-    cache.keyOf(TitleNormalizer.cinemaClean(TitleRuleKey.of(cinema), raw), year)
+  /** Re-derive a slot's merge key from its verbatim `rawTitle` under the current
+   *  rules. A slot whose raw cleans to a BLANK key (a scraper that stored an
+   *  empty/whitespace raw, or a per-cinema rule that strips the whole title)
+   *  must never spawn its own row: try the already-clean `title` next, and if
+   *  that's blank too, keep the slot on the record's existing key. Otherwise the
+   *  blank keys of unrelated rows collapse into phantom empty-titled rows (one
+   *  per distinct year) and every contributing row reports a spurious split. */
+  private def keyOfSlot(cinema: Cinema, slot: SourceData, oldKey: CacheKey): CacheKey = {
+    def keyFrom(raw: String): CacheKey =
+      cache.keyOf(TitleNormalizer.cinemaClean(TitleRuleKey.of(cinema), raw), oldKey.year)
+    (slot.rawTitle.iterator ++ slot.title.iterator)
+      .map(keyFrom)
+      .find(k => TitleNormalizer.sanitize(k.cleanTitle).nonEmpty)
+      .getOrElse(oldKey)
   }
 
   private def fragmentsOf(oldKey: CacheKey, rec: MovieRecord): Seq[Frag] = {
     val byKey: Map[CacheKey, Seq[(Cinema, SourceData)]] =
-      rec.cinemaData.toSeq.groupBy { case (cinema, slot) => keyOfSlot(cinema, slot, oldKey.year) }
+      rec.cinemaData.toSeq.groupBy { case (cinema, slot) => keyOfSlot(cinema, slot, oldKey) }
     if (byKey.sizeIs <= 1) {
       Seq(Frag(byKey.keys.headOption.getOrElse(oldKey), rec, oldKey, fresh = false))
     } else {

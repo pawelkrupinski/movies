@@ -87,6 +87,32 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
     splitOffs should contain ("Other Film")       // handed off for re-resolution
   }
 
+  it should "not spawn a phantom empty-titled row from a slot whose rawTitle cleans to empty" in {
+    val cache = new CaffeineMovieCache(disabledRepo)
+    // A healthy row whose two cinemas both screen "Dobry chłopiec", but one
+    // slot's verbatim rawTitle is blank (e.g. a scraper that stored an empty
+    // raw string, or a rule that strips it to nothing). The blank raw must NOT
+    // re-key onto an empty merge key — the slot stays on the real row.
+    val row = MovieRecord(
+      tmdbId = Some(222),
+      data   = Map[Source, SourceData](
+        CinemaCityKinepolis -> SourceData(title = Some("Dobry chłopiec"), rawTitle = Some("Dobry chłopiec")),
+        Multikino           -> SourceData(title = Some("Dobry chłopiec"), rawTitle = Some(""))))
+    cache.put(cache.keyOf("Dobry chłopiec", None), row)
+    cache.entries should have size 1
+
+    var splitOffs = List.empty[String]
+    val result = new NormalizationRebuilder(cache, onSplitOff = (title, _) => splitOffs ::= title).rebuild()
+
+    // One row, no empty-titled phantom, both cinemas retained, no spurious split.
+    cache.entries should have size 1
+    cache.entries.map(_._1.cleanTitle).foreach(_.trim should not be empty)
+    cache.entries.head._2.cinemaData.keySet shouldBe Set(CinemaCityKinepolis, Multikino)
+    result.merges shouldBe empty
+    result.splits shouldBe empty
+    splitOffs shouldBe empty
+  }
+
   "reEnrichSearchChanges" should "re-resolve only rows whose apiQuery changed" in {
     val cache = new CaffeineMovieCache(disabledRepo)
     // Row keyed by its display title incl. the programme prefix (search-tier
