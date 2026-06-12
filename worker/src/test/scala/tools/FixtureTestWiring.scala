@@ -1,6 +1,7 @@
 package tools
 
 import clients.tools.FakeHttpFetch
+import services.cinemas.CinemaScrapeRunner
 import services.events.MovieRecordCreated
 import services.movies.InMemoryMovieRepo
 import services.readmodel.{InMemoryReadModelRepo, ReadModelReader, ReadModelWriter, WebReadModel}
@@ -57,11 +58,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     cinemaScrapers.foreach { scraper =>
       try {
         val touched = movieCache.recordCinemaScrape(scraper.cinema, scraper.fetch())
-        touched.foreach { case (cm, key, isNew) =>
-          if (isNew)
-            created += MovieRecordCreated(key.cleanTitle, key.year, cm.movie.originalTitle,
-              if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None)
-        }
+        created ++= CinemaScrapeRunner.eventsFor(touched)
       } catch { case _: Exception => () }
     }
     created.foreach(eventBus.publish)
@@ -99,8 +96,10 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     //    behind FIRST, so every row is under its canonical key BEFORE we
     //    re-enrich. Otherwise the title-keyed enrichment (esp. Filmweb's fuzzy
     //    title/director SEARCH) would run against an order-dependent spelling
-    //    and land an order-dependent result. See MovieCache.canonicalizeBySanitize.
-    movieCache.canonicalizeBySanitize()
+    //    and land an order-dependent result. `movieService.settle()` is the SAME
+    //    canonicalisation the worker now runs on a timer — so this harness
+    //    exercises the production settle path, not a test-only copy of it.
+    movieService.settle()
     // 2. Re-run enrichment synchronously against the now-canonical, settled rows
     //    — the same belt-and-braces sweep the fixture recorder uses — so the
     //    snapshot is a pure function of the fixtures, not of thread scheduling.
@@ -117,7 +116,8 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
         try fullySyncOne(t, y) catch { case _: Exception => () }
       }
     // 3. Re-collapse: the TMDB stage can rekey a no-year row onto a resolved
-    //    year, briefly re-introducing a spelling/year variant.
-    movieCache.canonicalizeBySanitize()
+    //    year, briefly re-introducing a spelling/year variant — exactly the
+    //    "Dzień objawienia" shape the worker's periodic settle exists to fix.
+    movieService.settle()
   }
 }

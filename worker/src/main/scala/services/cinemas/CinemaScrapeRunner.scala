@@ -29,16 +29,26 @@ class CinemaScrapeRunner(
     val cinema: Cinema = scraper.cinema
     val t0     = System.currentTimeMillis()
     val movies = scraper.fetch()
-    val touched     = movieCache.recordCinemaScrape(cinema, movies)
-    val publishable = touched.count(_._3)
-    val elapsed     = System.currentTimeMillis() - t0
-    logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${elapsed}ms ($publishable new)")
-    touched.foreach { case (cm, key, isNew) =>
-      if (isNew)
-        bus.publish(MovieRecordCreated(
-          key.cleanTitle, key.year, cm.movie.originalTitle,
-          if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None))
-    }
+    val touched = movieCache.recordCinemaScrape(cinema, movies)
+    val events  = CinemaScrapeRunner.eventsFor(touched)
+    val elapsed = System.currentTimeMillis() - t0
+    logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${elapsed}ms (${events.size} new)")
+    events.foreach(bus.publish)
     touched
   }
+}
+
+object CinemaScrapeRunner {
+  /** The `MovieRecordCreated` events a scrape's `touched` rows imply — one per
+   *  genuinely-new `(cinema, title, year)`. A pure function so the two publish
+   *  sites can't drift in how they derive an event from a slot: the prod runner
+   *  publishes these inline as each cinema lands; the fixture harness's
+   *  `runOneScrapeTick` defers them until every cinema is recorded (a
+   *  deterministic single-pass settle). Both build the event the same way. */
+  def eventsFor(touched: Seq[(CinemaMovie, CacheKey, Boolean)]): Seq[MovieRecordCreated] =
+    touched.collect { case (cm, key, true) =>
+      MovieRecordCreated(
+        key.cleanTitle, key.year, cm.movie.originalTitle,
+        if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None)
+    }
 }

@@ -5,7 +5,7 @@ import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieRecordCreated, TmdbResolved}
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, Env}
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import models.{MovieRecord, Source, SourceData, Tmdb}
@@ -67,10 +67,20 @@ class MovieService(
   // lives in `ImdbRatings`.
   private val tmdbRetryScheduler = DaemonExecutors.scheduler("tmdb-retry")
 
+  // Periodic-tick scheduler for `settle()` — re-asserting the cache's
+  // one-row-per-film invariant (see `settle`). Separate from the daily TMDB
+  // retry: collapsing a no-year row onto its resolved-year sibling shouldn't
+  // wait a full day.
+  private val settleScheduler = DaemonExecutors.scheduler("corpus-settle")
+
   // First run fires shortly after startup so Mongo hydration has time to
   // populate the cache and we don't race app boot.
   private val StartupDelaySeconds = 10L
   private val TmdbRetryHours      = 24L
+  // Cadence of the corpus settle. canonicalizeBySanitize is an in-memory O(N)
+  // cache scan that only writes when it actually finds a variant to collapse,
+  // so a few-minute cadence is cheap; tunable for prod load. Default 10 min.
+  private val SettleIntervalSeconds = Env.positiveLong("KINOWO_CORPUS_SETTLE_SECONDS", 600L)
 
   // How many times we've retried each key after a transient failure. Cleared
   // on success / non-transient miss. Caps a runaway loop for a key that
@@ -91,7 +101,27 @@ class MovieService(
       },
       StartupDelaySeconds, tmdbInterval, TimeUnit.SECONDS
     )
+    logger.info(s"Corpus settle scheduled every ${SettleIntervalSeconds}s (first run in ${StartupDelaySeconds}s).")
+    settleScheduler.scheduleAtFixedRate(
+      () => Try(settle()).recover {
+        case ex => logger.warn(s"Corpus settle tick failed: ${ex.getMessage}")
+      },
+      StartupDelaySeconds, SettleIntervalSeconds, TimeUnit.SECONDS
+    )
   }
+
+  /** Re-assert the cache's one-row-per-film invariant: collapse same-title
+   *  spelling/year variants — most importantly a no-year row that a later TMDB
+   *  resolve re-keyed onto a resolved year, leaving the original yearless,
+   *  unresolved row stranded beside it (the "Dzień objawienia" duplicate). The
+   *  collapse logic lives in `MovieCache.canonicalizeBySanitize`; this is the
+   *  PRODUCTION caller of it.
+   *
+   *  For a long time the only caller was the fixture test harness's
+   *  `converge()`, so the suite stayed green while prod never collapsed these —
+   *  the duplicate lived forever in the live corpus. The harness now delegates
+   *  to THIS method, so test and prod settle through one code path. */
+  def settle(): Unit = cache.canonicalizeBySanitize()
 
   /** Drain the queue so in-flight upserts hit Mongo before `MovieRepo`
    *  closes its client AND every TmdbResolved / ImdbIdMissing event the
@@ -111,6 +141,7 @@ class MovieService(
     ec.shutdown()
     retryScheduler.shutdown()
     tmdbRetryScheduler.shutdown()
+    settleScheduler.shutdown()
     while (!ec.isTerminated) ec.awaitTermination(1, TimeUnit.HOURS)
   }
 
