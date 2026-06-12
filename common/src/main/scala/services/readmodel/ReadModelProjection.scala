@@ -22,11 +22,18 @@ import services.movies.{StoredMovieRecord, TitleNormalizer, TrailerEmbed}
  */
 object ReadModelProjection {
 
-  /** The film identity — identical to the source `movies` `_id`
-   *  (`sanitize(title)|year`, matching `MongoMovieRepo.docId`), so screening
-   *  docs join back to their `ResolvedMovie` by it. */
+  /** The film identity — `sanitize(title)|year`, where `year` is the film's
+   *  RESOLVED (TMDB-authoritative) year, the same notion the served
+   *  `releaseYear` uses. Keying on the resolved year — NOT the source `_id`'s
+   *  raw cinema-reported year, which a scrape pins before enrichment and which
+   *  disagrees venue-to-venue — means a film maps to ONE stable read-model id
+   *  even while the source holds it under several raw-year keys (the worker
+   *  cache churns same-tmdbId year variants faster than `settle` collapses
+   *  them). So the same physical film never splits into two cards: source rows
+   *  `kumotry|2025` and `kumotry|2026` both project to `kumotry|2026`, and their
+   *  screenings (whose `_id` embeds this id) collapse onto the one film. */
   def filmId(stored: StoredMovieRecord): String =
-    s"${TitleNormalizer.sanitize(stored.title)}|${stored.year.map(_.toString).getOrElse("")}"
+    s"${TitleNormalizer.sanitize(stored.title)}|${stored.record.resolvedYear.map(_.toString).getOrElse("")}"
 
   /** Materialise the merged metadata view. `stored.title` is the cache-key
    *  anchor (`StoredMovieRecord.fromStorage` derives it from the `_id`); we

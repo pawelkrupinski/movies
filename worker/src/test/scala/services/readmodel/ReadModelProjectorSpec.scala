@@ -97,4 +97,43 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.movieDeletes     should contain(fid)
     rm.screeningDeletes should contain(s"$fid|poznan|Multikino Stary Browar")
   }
+
+  // The change stream drops deletes, so a film re-keyed by `settle` (old `_id`
+  // deleted, new one written) leaves the old read-model docs behind. They're
+  // pruned only by `reconcile`. The trap: a worker that *wrote* the stale doc
+  // restarts before pruning it — its successor's in-memory `lastMovie` never
+  // knew the doc, so a `lastMovie`-based prune can't see it and the duplicate
+  // card persists forever. `reconcile` must therefore diff the *actual read
+  // model* against the live source, not this process's memory.
+  "reconcile after a restart" should "prune a stale film a prior process left in the read model" in {
+    val repo = new InMemoryMovieRepo()
+    val rm   = new InMemoryReadModelRepo()
+    def yearKey(y: Int) = s"${TitleNormalizer.sanitize("Foo")}|$y"
+    // A film whose reported year was 2025 when an earlier projector ran.
+    def recYear(y: Int) =
+      MovieRecord(data = Map[Source, SourceData](Multikino ->
+        SourceData(title = Some("Foo"), releaseYear = Some(y),
+          filmUrl = Some("https://mk/foo"), showtimes = Seq(at("2026-06-12T20:00")))))
+
+    val p1 = new ReadModelProjector(repo, rm, rm)
+    repo.upsert("Foo", Some(2025), recYear(2025))
+    p1.reconcile()
+    rm.findAllMovies().map(_._id) should contain(yearKey(2025))
+    p1.stop()  // the worker dies, taking its in-memory state with it
+
+    // `settle` re-keys the source row onto the (now resolved) year — old gone,
+    // new live.
+    repo.delete("Foo", Some(2025))
+    repo.upsert("Foo", Some(2026), recYear(2026))
+
+    // A fresh projector boots with an empty `lastMovie` and reconciles.
+    val p2 = new ReadModelProjector(repo, rm, rm)
+    rm.movieDeletes.clear(); rm.screeningDeletes.clear()
+    p2.reconcile()
+
+    rm.findAllMovies().map(_._id)                  should contain only yearKey(2026)
+    rm.findAllScreenings().map(_.filmId).distinct  should contain only yearKey(2026)
+    rm.movieDeletes should contain(yearKey(2025))
+    p2.stop()
+  }
 }

@@ -89,13 +89,33 @@ class ReadModelProjector(
   }
 
   /** Re-project every source row (the diff keeps it cheap — only genuinely
-   *  changed docs are written) and prune derived films whose source row is
-   *  gone. */
+   *  changed docs are written) and prune derived docs whose source film is gone.
+   *
+   *  Self-healing: the prune diffs the ACTUAL read model (`reader.findAll*`)
+   *  against the live source, NOT this process's in-memory `lastMovie`. The
+   *  change stream delivers no deletes, so a film the worker re-keyed — a scrape
+   *  pins a raw cinema year, enrichment resolves a different TMDB year, `settle`
+   *  folds same-tmdbId variants — leaves its old `web_movies`/`web_screenings`
+   *  docs behind. Those orphans may have been written by a PRIOR worker process
+   *  and so were never in this process's `lastMovie`; a memory-based prune can't
+   *  see them, which is how a re-key across a restart leaked a duplicate card
+   *  permanently. Reading the read model's own ids closes that gap.
+   *
+   *  A row that fails to project must not abort the prune (the prune is what
+   *  removes the duplicates), so each projection is guarded individually. */
   def reconcile(): Unit = lock.synchronized {
     val rows    = movieRepo.findAll()
     val liveIds = rows.iterator.map(ReadModelProjection.filmId).toSet
-    rows.foreach(project)
-    (lastMovie.keySet.toSet -- liveIds).foreach(deleteFilm)
+    rows.foreach { row =>
+      try project(row)
+      catch { case ex: Throwable =>
+        logger.warn(s"read-model reconcile: a row failed to project, continuing: ${ex.getMessage}") }
+    }
+    reader.findAllMovies().iterator.map(_._id).filterNot(liveIds).foreach(deleteFilm)
+    reader.findAllScreenings().iterator.filterNot(s => liveIds(s.filmId)).foreach { s =>
+      writer.deleteScreening(s._id)
+      lastScreenings.updateWith(s.filmId)(_.map(_ - s._id).filter(_.nonEmpty))
+    }
   }
 
   def start(): Unit = if (enabled) {
