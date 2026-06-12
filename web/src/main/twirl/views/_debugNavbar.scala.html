@@ -1,5 +1,7 @@
-@()(implicit city: models.City)
+@(active: String = "")(implicit city: models.City)
 <nav class="debug-nav">
+  <a href="/debug"           class="@if(active == "corpus"){is-active}">Korpus</a>
+  <a href="/debug/readmodel" class="@if(active == "readmodel"){is-active}">Read cache</a>
   <a href="/@city.slug/"     class="debug-nav-out">Filmy ↗</a>
 </nav>
 <style>
@@ -9,6 +11,7 @@
     padding: .25rem .7rem; border-radius: 3px; text-decoration: none;
   }
   .debug-nav a:hover { background: #252540; color: #ccc; }
+  .debug-nav a.is-active { color: #aad4ff; background: #252540; border-color: #3a3a6e; }
   .debug-nav a.debug-nav-out { color: #66aadd; }
   .debug-nav a.debug-nav-out:hover { color: #aad4ff; }
 </style>

@@ -24,6 +24,10 @@ GET     /:city/api/details          controllers.MovieController.apiDetails(city:
 # enriched row across all cities), so there's nothing per-city about it. Each
 # /film deep-link picks a city the film actually plays in.
 GET     /debug                      controllers.MovieController.debug()
+# Dev-only: dumps what the web is actually serving from — the warm read cache
+# (`web_movies` + `web_screenings`), not the source `movies` corpus /debug shows.
+# 404 in prod like the rest of /debug.
+GET     /debug/readmodel            controllers.MovieController.debugReadModel()
 # Dev-only: the /debug row "re-enrich" button enqueues a per-movie ResolveTmdb
 # task (worker re-resolves TMDB, then the event chain re-runs the rest). 404 in
 # prod like the rest of /debug; nocsrf, posted by the page's fetch.

@@ -43,6 +43,22 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe NOT_FOUND
   }
 
+  "GET /debug/readmodel" should "dump the warm read cache in dev mode" in {
+    val result = buildController(Mode.Dev).debugReadModel().apply(FakeRequest(GET, "/debug/readmodel"))
+
+    status(result) shouldBe OK
+    val html = contentAsString(result)
+    html should include("Read cache")
+    // Reflects what the web serves from — the read cache's resolved movies.
+    html should include("Belle")
+    html should include("Incepcja")
+  }
+
+  it should "404 in production like the rest of /debug" in {
+    val result = buildController(Mode.Prod).debugReadModel().apply(FakeRequest(GET, "/debug/readmodel"))
+    status(result) shouldBe NOT_FOUND
+  }
+
   // Unlike the other /debug pages, rehydrate runs in every mode (it reconciles a
   // live prod instance's caches) and mutates state — so it's gated by the admin
   // allowlist instead of left open, even in prod.

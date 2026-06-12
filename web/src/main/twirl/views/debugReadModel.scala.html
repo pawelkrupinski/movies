@@ -1,0 +1,176 @@
+@import models.{CityScreening, ResolvedMovie}
+@(movies: Seq[ResolvedMovie], screeningsByFilm: Map[String, Seq[CityScreening]], lastModified: java.time.Instant)(implicit city: models.City)
+@*
+ * Dev-only dump of the warm read cache (`WebReadModel`) the web actually serves
+ * from: the in-memory `web_movies` (ResolvedMovie) + `web_screenings`
+ * (CityScreening) views. Unlike `/debug`, which pulls the source `movies`
+ * corpus from Mongo on demand, this reflects exactly what a live request would
+ * resolve against — so a film present in the corpus but missing here is a
+ * read-model projection / change-stream gap, not a scrape gap.
+ *@
+@screeningCount = @{ screeningsByFilm.values.map(_.size).sum }
+@showtimeCount  = @{ screeningsByFilm.values.flatten.map(_.showtimes.size).sum }
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Read cache</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font: 12px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 1rem; margin: 0; }
+    h1 { font-size: 14px; color: #aad4ff; margin: 0 0 .5rem; }
+    .summary { color: #666; margin-bottom: .5rem; font-size: 11px; }
+    .summary b { color: #aad4ff; font-weight: normal; }
+    .summary .warn { color: #d9a441; }
+    input[type=search] {
+      background: #1a1a2e; border: 1px solid #3a3a6e; color: #eee;
+      padding: .2rem .5rem; border-radius: 4px; font: 12px monospace;
+      width: 320px; margin-bottom: .5rem;
+    }
+    table { border-collapse: collapse; width: 100%; font-size: 11px; }
+    th, td { padding: .35rem .5rem; border-bottom: 1px solid #1a1a2e; vertical-align: middle; text-align: left; white-space: nowrap; }
+    thead th {
+      background: #1a1a2e; color: #aad4ff;
+      position: sticky; top: 0; z-index: 1;
+    }
+    tbody tr.data { cursor: pointer; }
+    tbody tr.data:hover { background: #111120; }
+    tbody tr.data.expanded { background: #1a1a30; }
+    .title { max-width: 36ch; overflow: hidden; text-overflow: ellipsis; }
+    .orig  { color: #99b; max-width: 24ch; overflow: hidden; text-overflow: ellipsis; font-style: italic; }
+    .year  { color: #888; text-align: right; font-variant-numeric: tabular-nums; }
+    .id    { color: #669fcc; font-size: 10px; max-width: 28ch; overflow: hidden; text-overflow: ellipsis; }
+    .num   { text-align: right; font-variant-numeric: tabular-nums; }
+    .num.zero { color: #6a3a3a; }
+    .meta-cell { color: #99b; max-width: 30ch; overflow: hidden; text-overflow: ellipsis; }
+    .miss  { color: #444; }
+    a { color: #669fcc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .ratings { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
+    .hidden { display: none !important; }
+
+    /* Expanded screenings row */
+    tr.details > td { background: #0a0a18; padding: .6rem 1rem 1rem; white-space: normal; }
+    .no-screenings { color: #6a3a3a; }
+    .screenings { display: grid; gap: .4rem; margin-top: .2rem; }
+    .screening {
+      border: 1px solid #1a1a2e; border-radius: 3px;
+      padding: .35rem .6rem; background: #0d0d18;
+    }
+    .screening-head {
+      display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap;
+      color: #aad4ff; margin-bottom: .25rem;
+    }
+    .screening-head .cinema { font-weight: bold; }
+    .screening-head .city { color: #888; font-size: 10px; }
+    .screening-head .count { color: #888; font-size: 10px; }
+    .showtimes { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .showtime {
+      background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 3px;
+      padding: 0 .4rem; color: #ccc; font-variant-numeric: tabular-nums;
+    }
+    .showtime .fmt { color: #669fcc; font-size: 9px; margin-left: .2rem; }
+    .sid { color: #555; font-size: 10px; margin-top: .3rem; word-break: break-all; }
+  </style>
+  @_ratingStyles()
+</head>
+<body>
+
+@_debugNavbar("readmodel")
+<h1>Read cache</h1>
+<div class="summary">
+  <b>@movies.size</b> movies · <b>@screeningCount</b> screenings · <b>@showtimeCount</b> showtimes ·
+  cache mtime <b>@lastModified.toString</b> ·
+  click a row for its screenings · filter is case-insensitive
+  @if(movies.isEmpty){<span class="warn"> · read cache is EMPTY — boot hydrate may still be running or the read model has no docs</span>}
+</div>
+
+<input type="search" id="q" placeholder="Filter by title, original, id…" oninput="filterRows(this.value)">
+
+<table id="t">
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Original</th>
+      <th>Year</th>
+      <th>Genres / Directors</th>
+      <th>Ratings</th>
+      <th>Screenings</th>
+      <th>Showtimes</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for(m <- movies) {
+      @defining(screeningsByFilm.getOrElse(m._id, Seq.empty)) { sc =>
+        @defining(sc.map(_.showtimes.size).sum) { showtimes =>
+          <tr class="data" data-row-id="@m._id"
+              data-haystack="@(s"${m.title} ${m.originalTitle.getOrElse("")} ${m._id}".toLowerCase)">
+            <td class="title">@m.title</td>
+            <td class="orig">@m.originalTitle.getOrElse("")</td>
+            <td class="year">@m.releaseYear.map(_.toString).getOrElse("")</td>
+            <td class="meta-cell">@{(m.genres ++ m.directors).mkString(", ")}</td>
+            <td>@_ratingBadges(Some(m.ratings))</td>
+            <td class="num @if(sc.isEmpty){zero}">@sc.size</td>
+            <td class="num @if(showtimes == 0){zero}">@showtimes</td>
+          </tr>
+          <tr class="details hidden" data-row-id="@m._id">
+            <td colspan="7">
+              @if(sc.isEmpty) {
+                <div class="no-screenings">No screenings in the read cache for this film (id @m._id).</div>
+              } else {
+                <div class="screenings">
+                  @for(s <- sc.sortBy(x => (x.city, x.cinema))) {
+                    <div class="screening">
+                      <div class="screening-head">
+                        <span class="cinema">@s.cinema</span>
+                        <span class="city">@s.city</span>
+                        <span class="count">@s.showtimes.size showtimes</span>
+                        @s.filmUrl.map { u => <a href="@u" target="_blank" rel="noopener">link ↗</a> }
+                      </div>
+                      <div class="showtimes">
+                        @for(t <- s.showtimes.sortBy(_.dateTime)) {
+                          <span class="showtime">@t.dateTime.toString.replace("T", " ")@if(t.format.nonEmpty){<span class="fmt">@t.format.mkString("/")</span>}</span>
+                        }
+                      </div>
+                      <div class="sid">@s._id</div>
+                    </div>
+                  }
+                </div>
+              }
+            </td>
+          </tr>
+        }
+      }
+    }
+  </tbody>
+</table>
+
+<script>
+  function filterRows(q) {
+    const lq = q.trim().toLowerCase();
+    document.querySelectorAll('#t tbody tr.data').forEach(tr => {
+      const hit = lq.length === 0 || tr.dataset.haystack.includes(lq);
+      tr.classList.toggle('hidden', !hit);
+      const details = document.querySelector('#t tbody tr.details[data-row-id="' + (window.CSS && CSS.escape ? CSS.escape(tr.dataset.rowId) : tr.dataset.rowId) + '"]');
+      if (details) {
+        details.classList.toggle('hidden', !hit || !tr.classList.contains('expanded'));
+        if (!hit) tr.classList.remove('expanded');
+      }
+    });
+  }
+
+  document.querySelectorAll('#t tbody tr.data').forEach(tr => {
+    tr.addEventListener('click', (e) => {
+      if (e.target.closest('a')) return;
+      const sel = window.CSS && CSS.escape ? CSS.escape(tr.dataset.rowId) : tr.dataset.rowId;
+      const details = document.querySelector('#t tbody tr.details[data-row-id="' + sel + '"]');
+      if (!details) return;
+      const expanded = tr.classList.toggle('expanded');
+      details.classList.toggle('hidden', !expanded);
+    });
+  });
+
+  document.getElementById('q').focus();
+</script>
+</body>
+</html>

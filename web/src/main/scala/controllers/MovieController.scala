@@ -421,6 +421,19 @@ class MovieController( cc: ControllerComponents,
     }
   }
 
+  /** Dev-only: dump the warm read cache the web actually serves from — the
+   *  `WebReadModel`'s in-memory `web_movies` + `web_screenings` views — so you
+   *  can see exactly what a request would resolve against (vs `/debug`, which
+   *  pulls the source `movies` corpus from Mongo on demand). */
+  def debugReadModel(): Action[AnyContent] = Action {
+    devOnly {
+      implicit val c: City = City.all.head
+      val movies     = readModel.allMovies().sortBy(_.title.toLowerCase)
+      val screenings = readModel.allScreenings().groupBy(_.filmId)
+      Ok(views.html.debugReadModel(movies, screenings, readModel.lastModified))
+    }
+  }
+
   /** Dev-only: force a TMDB re-enrich of one film from the /debug row button.
    *  Enqueues a `ResolveTmdb` task the worker's `ResolveTmdbHandler` consumes;
    *  that re-resolves the row and publishes `TmdbResolved`, so every downstream
