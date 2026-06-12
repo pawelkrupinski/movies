@@ -1,12 +1,10 @@
 package services.enrichment
 
 import clients.TmdbClient
-import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 import services.movies.{CacheKey, MovieCache, MovieService}
-import tools.{BoundedParallel, DaemonExecutors}
+import tools.BoundedParallel
 
 import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.ExecutionContextExecutorService
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -15,7 +13,8 @@ import scala.util.{Failure, Success, Try}
  *     `englishTitle` fallback for non-English films).
  *   - `metascore` scrape from the resolved URL.
  *
- * Shared lifecycle + worker plumbing lives in [[PeriodicCacheRefresher]].
+ * Shared entry points live in [[CacheRefresher]]; the queue drives refresh
+ * (`RatingHandler` per row, the operator-triggered `refreshAll` for the bulk).
  *
  * URL resolution needs TMDB data (release year, English title) that the
  * MovieRecord row alone doesn't carry — we hit `tmdb.details(tmdbId)` lazily
@@ -25,33 +24,8 @@ import scala.util.{Failure, Success, Try}
 class MetascoreRatings(
   cache:      MovieCache,
   tmdb:       TmdbClient,
-  metacritic: MetacriticClient,
-  ec:         ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("Metascore-stage")
-) extends PeriodicCacheRefresher(
-  name                = "Metascore",
-  // Third of the four rating walks. Runs every 4h, offset 2h past IMDb so
-  // each refresher gets its own hour of the 4h cycle (see ImdbRatings).
-  startupDelaySeconds = 10800L,
-  refreshHours        = 4L,
-  cache               = cache,
-  ec                  = ec
-) {
-
-  // ── Event listeners ────────────────────────────────────────────────────────
-
-  /** Bus listener: discover the MC URL (if missing) and refresh the metascore
-   *  as soon as the TMDB stage produces a row. */
-  val onTmdbResolved: PartialFunction[DomainEvent, Unit] = {
-    case TmdbResolved(title, year, _) => schedule(cache.keyOf(title, year))
-  }
-
-  /** Sibling listener: fire on `ImdbIdMissing` too. The TMDB stage publishes
-   *  this when TMDB resolved the film but had no IMDb cross-reference yet
-   *  (common for very recent Polish releases). The MC URL + metascore don't
-   *  depend on the IMDb id, so we want to refresh on either signal. */
-  val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
-    case ImdbIdMissing(title, year, _) => schedule(cache.keyOf(title, year))
-  }
+  metacritic: MetacriticClient
+) extends CacheRefresher(cache) {
 
   // ── Per-row work ───────────────────────────────────────────────────────────
 
@@ -60,7 +34,7 @@ class MetascoreRatings(
   //   - URL missing       → expensive: probe MC slug variants (with TMDB
   //     details for English title + year disambiguation), write the URL,
   //     then scrape the metascore.
-  // Per-row failures are swallowed; the next periodic tick tries again.
+  // Per-row failures are swallowed; the next refresh tries again.
   protected def refreshOne(key: CacheKey): Unit =
     cache.get(key).foreach { e =>
       val urlOpt = e.metacriticUrl.orElse(resolveAndPersistUrl(key, e))
@@ -117,7 +91,7 @@ class MetascoreRatings(
       case _ => ()
     }
 
-  // ── Periodic walk ──────────────────────────────────────────────────────────
+  // ── Full-corpus walk ───────────────────────────────────────────────────────
 
   /** Walk every cached row. Rows with a `metacriticUrl` get a cheap score
    *  refresh; rows without one get the full URL-discovery probe (and then a

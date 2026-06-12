@@ -5,13 +5,11 @@ import clients.TmdbClient
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{InProcessEventBus, MovieRecordCreated, TmdbResolved}
 import tools.{GetOnlyHttpFetch, HttpFetch, RealHttpFetch}
-import tools.Eventually.eventually
 
 /**
  * Tests for `RottenTomatoesRatings` — the RT-score equivalent of `ImdbRatings`.
- * Covers per-row refresh, the bus listener, and the periodic walk.
+ * Covers per-row refresh and the full-corpus walk.
  *
  * Score-page HTML is the trimmed real-RT fixture we use for the client tests
  * (JSON-LD aggregateRating block). We inline a tiny variant per scenario to
@@ -146,32 +144,6 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     noException should be thrownBy ratings.refreshAll()
     cache.get(cache.keyOf("A", None)).flatMap(_.rottenTomatoes) shouldBe Some(85)
     cache.get(cache.keyOf("B", None)).flatMap(_.rottenTomatoes) shouldBe None
-  }
-
-  // ── Event listener ──────────────────────────────────────────────────────────
-
-  "onTmdbResolved" should "trigger an RT refresh for the resolved row when subscribed on the bus" in {
-    val bus = new InProcessEventBus()
-    val url = "https://www.rottentomatoes.com/m/foo"
-    val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), mkEnrichment(Some(url), score = Some(50)))))
-    val cache = new CaffeineMovieCache(repo)
-    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), rtClient(Map(url -> pageWithScore(74))))
-    bus.subscribe(ratings.onTmdbResolved)
-
-    bus.publish(TmdbResolved("Foo", Some(2024), "tt1"))
-
-    eventually(cache.get(cache.keyOf("Foo", Some(2024))).flatMap(_.rottenTomatoes) shouldBe Some(74))
-  }
-
-  it should "ignore events of other types (PartialFunction.applyOrElse)" in {
-    val bus   = new InProcessEventBus()
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
-    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), new RottenTomatoesClient(http = new GetOnlyHttpFetch {
-      def get(u: String): String = throw new RuntimeException("should not be called")
-    }))
-    bus.subscribe(ratings.onTmdbResolved)
-
-    noException should be thrownBy bus.publish(MovieRecordCreated("Anything", None))
   }
 
 }

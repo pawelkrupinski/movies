@@ -73,6 +73,10 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   def bootStartup(): Unit = {
     runOneScrapeTick()
     drainServices()
+    // Ratings are queue tasks in production (drained by the TaskWorker). The
+    // harness doesn't run the worker, so refresh them synchronously here — the
+    // TMDB + IMDb-id cascade has already settled in drainServices.
+    enrichRatingsSync()
     unscreenedCleanup.removeUnscreened()
     // Project the settled corpus into the read model and warm the web view, so
     // a spec can serve via `webReadModel` exactly as the web app does. Done as a

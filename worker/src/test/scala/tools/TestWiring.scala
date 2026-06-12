@@ -4,6 +4,8 @@ import clients.TmdbClient
 import models.Cinema
 import modules.WorkerWiring
 import services.{MongoConnection, Stoppable}
+import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
+import services.tasks.{InMemoryTaskQueue, TaskQueue}
 
 /** Test seam over the worker's [[WorkerWiring]] composition root: pins a
  *  disabled Mongo, a stub TMDB key, and the full city catalogue so fixture
@@ -29,6 +31,14 @@ trait TestWiring extends WorkerWiring {
   // wiring deterministic regardless of the local environment.
   override lazy val mongoConnection: MongoConnection =
     new MongoConnection(uri = None, dbName = "kinowo", required = false)
+
+  // In-memory task queue + freshness store so the queue-driven wiring boots
+  // without Mongo: the bus enqueuers (ratingEnqueuer, and the detail enqueuers
+  // when deferred detail is on) write here harmlessly. The harness never runs
+  // the TaskWorker — it drives enrichment synchronously (see `enrichRatingsSync`
+  // / `converge`) — so these stay drained.
+  override lazy val taskQueue: TaskQueue = new InMemoryTaskQueue
+  override lazy val freshnessStore: FreshnessStore = new InMemoryFreshnessStore
 
   // No Filmweb fallback in tests: pin the id map empty so fixture replay never
   // resolves (one GET per Filmweb city) or fetches Filmweb live. Eligible scrapers
@@ -86,6 +96,30 @@ trait TestWiring extends WorkerWiring {
     // final row like every IMDb-id-keyed source already is.
     filmwebRatings.auditOneSync(title, year)
   }
+
+  /** Synchronously refresh all four ratings for every TMDB-resolved row — the
+   *  same per-row `refreshOneSync` the queue's `RatingHandler` runs per task,
+   *  applied to the whole corpus in a deterministic title order. Production
+   *  enqueues a rating task only off `TmdbResolved` / `ImdbIdMissing` — i.e.
+   *  only for rows TMDB matched (a `tmdbId`); rows with no TMDB match get no
+   *  rating enrichment. We mirror that gate here, so a row Filmweb could find by
+   *  title but TMDB couldn't isn't enriched in the harness when it wouldn't be
+   *  in prod. Production drains these as queue tasks on the `TaskWorker`; the
+   *  harness doesn't run the worker, so it drives the same refresh inline (after
+   *  the async TMDB + IMDb-id cascade has settled in `drainServices`). */
+  def enrichRatingsSync(): Unit =
+    movieCache.snapshot()
+      .filter(_.record.tmdbId.isDefined)
+      .map(r => (r.title, r.year))
+      .sortBy { case (t, y) => (t, y.getOrElse(Int.MinValue)) }
+      .foreach { case (t, y) =>
+        try {
+          imdbRatings.refreshOneSync(t, y)
+          rottenTomatoesRatings.refreshOneSync(t, y)
+          metascoreRatings.refreshOneSync(t, y)
+          filmwebRatings.refreshOneSync(t, y)
+        } catch { case _: Exception => () }
+      }
 
   def quiesce(stoppables: Stoppable*): Unit =
     stoppables.foreach(_.stop())

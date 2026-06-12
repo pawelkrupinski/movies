@@ -438,29 +438,26 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     resolved shouldBe empty
   }
 
-  // ── onTmdbResolved triggers IMDb stage ─────────────────────────────────────
+  // ── IMDb stage fills the rating for a resolved row ──────────────────────────
 
-  "onTmdbResolved" should "fetch IMDb rating for the resolved row" in {
+  "imdbRatings.refreshOneSync" should "fetch the IMDb rating for a resolved row" in {
     // Seed a row that already has TMDB data but no IMDb rating yet — simulate
-    // the state right after the TMDB stage writes.
+    // the state right after the TMDB stage writes. In production the queue's
+    // RatingHandler runs this per row once TmdbResolved enqueues the task.
     val seed = MovieRecord(
       imdbId = Some("tt17490712"),
       tmdbId = Some(931285),
       data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II")))
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(("Mortal Kombat II", Some(2026), seed))))
-    val bus   = new InProcessEventBus()
 
-    // This test exercises the IMDb stage listener — wire it directly without
-    // MovieService, since the TMDB stage doesn't fire here.
     val imdb        = new ImdbClient(http = new RoutingHttpFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
     val imdbRatings = new ImdbRatings(cache, imdb)
-    bus.subscribe(imdbRatings.onTmdbResolved)
 
-    bus.publish(TmdbResolved("Mortal Kombat II", Some(2026), "tt17490712"))
+    imdbRatings.refreshOneSync("Mortal Kombat II", Some(2026))
 
     val key = cache.keyOf("Mortal Kombat II", Some(2026))
-    eventually(cache.get(key).flatMap(_.imdbRating) shouldBe Some(7.0))
+    cache.get(key).flatMap(_.imdbRating) shouldBe Some(7.0)
   }
 
 }

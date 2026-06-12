@@ -3,56 +3,26 @@ package services.enrichment
 import models.{Imdb, Source, SourceData}
 import services.cinemas.CountryNames
 import services.movies.{CacheKey, MovieCache}
-import services.events.{DomainEvent, ImdbIdResolved, TmdbResolved}
-import tools.{BoundedParallel, DaemonExecutors}
+import tools.BoundedParallel
 
 import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.ExecutionContextExecutorService
 import scala.util.{Failure, Try}
 
 /**
  * IMDb rating maintenance — the IMDb side of the `*Ratings` pattern.
  *
- * Two responsibilities:
- *   1. **Per-row refresh**: when a row's TMDB stage publishes `TmdbResolved`
- *      (or `ImdbIdResolver` recovers an id via `ImdbIdResolved`), fetch the
- *      current rating and write it back. Wire on the bus from `AppLoader`.
- *   2. **Periodic walk**: refresh every cached row hourly so live ratings
- *      stay close to imdb.com.
+ * Two refresh paths (both driven by the queue):
+ *   1. **Per-row refresh** (`refreshOne`): the `RatingHandler` runs this for
+ *      one row once its TMDB stage has produced an `imdbId`.
+ *   2. **Full-corpus refresh** (`refreshAll`): the operator-triggered bulk
+ *      refresh, and the safety-net the `EnrichmentReaper` enqueues.
  *
- * Shared lifecycle + worker plumbing lives in [[PeriodicCacheRefresher]].
+ * Shared entry points live in [[CacheRefresher]].
  */
 class ImdbRatings(
   cache: MovieCache,
-  imdb:  ImdbClient,
-  ec:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("IMDb-stage")
-) extends PeriodicCacheRefresher(
-      name                = "IMDb",
-      // First of the four rating walks. The four refreshers each run every 4h,
-      // staggered 1h apart (IMDb @1h, RT @2h, Metascore @3h, Filmweb @4h) so
-      // only one walks the cache per hour — ratings barely move hour-to-hour,
-      // so spreading the load is free and keeps any single tick from pegging
-      // the shared budget. Nothing runs in the first hour, by which point Mongo
-      // hydration has long since populated the cache.
-      startupDelaySeconds = 3600L,
-      refreshHours        = 4L,
-      cache               = cache,
-      ec                  = ec
-    ) {
-
-  // ── Event listeners ────────────────────────────────────────────────────────
-
-  /** Bus listener: fetch the IMDb rating as soon as the TMDB stage produces an
-   *  `imdbId`. */
-  val onTmdbResolved: PartialFunction[DomainEvent, Unit] = {
-    case TmdbResolved(title, year, _) => schedule(cache.keyOf(title, year))
-  }
-
-  /** Bus listener: `ImdbIdResolver` recovered the id for a TMDB-only row;
-   *  fetch the rating now that we have it. */
-  val onImdbIdResolved: PartialFunction[DomainEvent, Unit] = {
-    case ImdbIdResolved(title, year, _) => schedule(cache.keyOf(title, year))
-  }
+  imdb:  ImdbClient
+) extends CacheRefresher(cache) {
 
   // ── Per-row work ───────────────────────────────────────────────────────────
 
@@ -106,7 +76,7 @@ class ImdbRatings(
     if (hasContent) Some(slot) else None
   }
 
-  // ── Periodic walk ──────────────────────────────────────────────────────────
+  // ── Full-corpus walk ───────────────────────────────────────────────────────
 
   /** Walk every cached row with an `imdbId`, refreshing its rating + the
    *  SourceData(Imdb) slot. Skips rows without an `imdbId` (TMDB resolved

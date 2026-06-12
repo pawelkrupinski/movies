@@ -2,68 +2,39 @@ package services.enrichment
 
 import clients.TmdbClient
 import models.{Filmweb, Source, SourceData}
-import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 import services.movies.{CacheKey, MovieCache, MovieService}
-import tools.{BoundedParallel, DaemonExecutors}
+import tools.BoundedParallel
 
 import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.ExecutionContextExecutorService
 import scala.util.{Failure, Success, Try}
 
 /**
  * Filmweb data maintenance — the Filmweb counterpart of `ImdbRatings`,
  * `RottenTomatoesRatings`, and `MetascoreRatings`.
  *
- * Two responsibilities:
- *   1. **Per-row refresh**: when the TMDB stage publishes `TmdbResolved` or
- *      `ImdbIdMissing`, fetch Filmweb data for that row.
- *   2. **Periodic walk**: refresh every cached row hourly. For rows that
- *      already have a `filmwebUrl`, the walk does the cheap rating-only
- *      lookup (one HTTP); for rows without a URL it does the full
- *      `filmweb.lookup` (search + info + optionally preview + rating).
+ * Two refresh paths (both driven by the queue):
+ *   1. **Per-row refresh** (`refreshOne`): the `RatingHandler` fetches Filmweb
+ *      data for one resolved row.
+ *   2. **Full-corpus refresh** (`refreshAll`): the operator-triggered bulk
+ *      refresh. For rows that already have a `filmwebUrl`, the walk does the
+ *      cheap rating-only lookup (one HTTP); for rows without a URL it does the
+ *      full `filmweb.lookup` (search + info + optionally preview + rating).
  *
  * URL resolution needs TMDB data (English / original title, director credits)
  * that the MovieRecord row alone may not carry — we hit `tmdb.details` and
  * `tmdb.directorsFor` lazily for rows that need URL discovery, and never for
  * rows whose canonical Filmweb URL is already stored.
  *
- * Shared lifecycle + worker plumbing lives in [[PeriodicCacheRefresher]].
+ * Shared entry points live in [[CacheRefresher]].
  *
  * Filmweb has tighter rate limits than the other services (CLAUDE.md notes
- * "5 workers comfortable, more risks soft-blocks"); we stay at 3 here since
- * the per-row work is heavier (potentially search + info + preview + rating).
+ * "5 workers comfortable, more risks soft-blocks"); we cap its walk at 5.
  */
 class FilmwebRatings(
   cache:   MovieCache,
   tmdb:    TmdbClient,
-  filmweb: FilmwebClient,
-  ec:      ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("Filmweb-stage")
-) extends PeriodicCacheRefresher(
-      name                = "Filmweb",
-      // Last of the four rating walks. Runs every 4h, offset 3h past IMDb so
-      // each refresher gets its own hour of the 4h cycle (see ImdbRatings).
-      startupDelaySeconds = 14400L,
-      refreshHours        = 4L,
-      cache               = cache,
-      ec                  = ec
-    ) {
-
-  // ── Event listeners ────────────────────────────────────────────────────────
-
-  /** Bus listener: fetch Filmweb data as soon as the TMDB stage publishes a
-   *  `TmdbResolved` for this `(title, year)`. */
-  val onTmdbResolved: PartialFunction[DomainEvent, Unit] = {
-    case TmdbResolved(title, year, _) => schedule(cache.keyOf(title, year))
-  }
-
-  /** Sibling listener: fire on `ImdbIdMissing` too. TMDB resolves some recent
-   *  Polish films without an IMDb cross-reference yet (`imdb_id: null`); the
-   *  TMDB stage publishes `ImdbIdMissing` for those instead of `TmdbResolved`.
-   *  Filmweb data doesn't depend on the IMDb id — we look up the film by
-   *  title/year — so we want to refresh on either event. */
-  val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
-    case ImdbIdMissing(title, year, _) => schedule(cache.keyOf(title, year))
-  }
+  filmweb: FilmwebClient
+) extends CacheRefresher(cache) {
 
   /** Audit-and-fix the stored `filmwebUrl` for `(title, year)` against the
    *  tightened `FilmwebClient.lookup`. Re-resolves regardless of whether a
@@ -122,7 +93,7 @@ class FilmwebRatings(
   //     derived fallback title + director set (search → /info per candidate
   //     → /preview per candidate when verifying directors → rating).
   // Per-row failures are swallowed (network blip, Filmweb soft-block); the
-  // next periodic tick tries again.
+  // next refresh tries again.
   protected def refreshOne(key: CacheKey): Unit =
     cache.get(key).foreach { e =>
       e.filmwebUrl match {
@@ -178,7 +149,7 @@ class FilmwebRatings(
     Try(filmweb.lookup(linkTitle, key.year, fallback, directors)).toOption.flatten
   }
 
-  // ── Periodic walk ──────────────────────────────────────────────────────────
+  // ── Full-corpus walk ───────────────────────────────────────────────────────
 
   // Filmweb soft-blocks a datacenter IP past a handful of concurrent requests
   // (see CLAUDE.md), so cap its parallel walk lower than the other sources.

@@ -5,13 +5,11 @@ import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{ImdbIdResolved, InProcessEventBus, MovieRecordCreated, TmdbResolved}
-import tools.{Eventually, HttpFetch}
-import Eventually.eventually
+import tools.HttpFetch
 
 /**
  * Tests for `ImdbRatings` — the extracted IMDb-stage class. Covers the
- * per-row refresh, the bus listener, and the periodic walk.
+ * per-row refresh and the full-corpus walk.
  */
 class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
@@ -116,48 +114,6 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("A", None)).flatMap(_.imdbRating) shouldBe Some(7.4)
     cache.get(cache.keyOf("B", None)).flatMap(_.imdbRating) shouldBe Some(6.0)
     cache.get(cache.keyOf("C", None)).flatMap(_.imdbRating) shouldBe Some(8.1)
-  }
-
-  // ── Event listener ──────────────────────────────────────────────────────────
-
-  "onTmdbResolved" should "trigger an IMDb refresh for the resolved row when subscribed on the bus" in {
-    val bus   = new InProcessEventBus()
-    val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
-    val cache = new CaffeineMovieCache(repo)
-    val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
-    bus.subscribe(ratings.onTmdbResolved)
-
-    bus.publish(TmdbResolved("Foo", Some(2024), "tt1"))
-
-    // Schedule is async — give the worker pool a beat.
-    eventually(cache.get(cache.keyOf("Foo", Some(2024))).flatMap(_.imdbRating) shouldBe Some(7.4))
-  }
-
-  it should "ignore events of other types (PartialFunction.applyOrElse)" in {
-    val bus   = new InProcessEventBus()
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
-    // Stub throws if hit — the test asserts it never is.
-    val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
-      def get(url: String): String = throw new RuntimeException("should not be called")
-      override def post(url: String, body: String, contentType: String): String = get(url)
-    }))
-    bus.subscribe(ratings.onTmdbResolved)
-
-    noException should be thrownBy bus.publish(MovieRecordCreated("Anything", None))
-  }
-
-  // ── onImdbIdResolved — rating refresh once ImdbIdResolver finds the id ────
-
-  "onImdbIdResolved" should "refresh the rating for the resolved row" in {
-    val bus = new InProcessEventBus()
-    val resolved = mkEnrichment("tt12345", rating = None)
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(("Resolved", Some(2025), resolved))))
-    val ratings = new ImdbRatings(cache, imdbStub(Map("tt12345" -> 8.4)))
-    bus.subscribe(ratings.onImdbIdResolved)
-
-    bus.publish(ImdbIdResolved("Resolved", Some(2025), "tt12345"))
-
-    eventually(cache.get(cache.keyOf("Resolved", Some(2025))).flatMap(_.imdbRating) shouldBe Some(8.4))
   }
 
 }

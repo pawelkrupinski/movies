@@ -5,9 +5,7 @@ import clients.TmdbClient
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{InProcessEventBus, MovieRecordCreated, TmdbResolved}
 import tools.{GetOnlyHttpFetch, RealHttpFetch}
-import tools.Eventually.eventually
 
 /**
  * Tests for `MetascoreRatings` — mirrors `ImdbRatingsSpec` but for the
@@ -197,33 +195,6 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val row = cache.get(cache.keyOf("Harry Potter i Kamień filozoficzny", Some(2001))).get
     row.metacriticUrl shouldBe Some(sorcerers)
     row.metascore     shouldBe Some(64)
-  }
-
-  // ── Event listener ──────────────────────────────────────────────────────────
-
-  "onTmdbResolved" should "trigger a metascore refresh for the resolved row when subscribed on the bus" in {
-    val bus   = new InProcessEventBus()
-    val repo  = new InMemoryMovieRepo(Seq(
-      ("Foo", Some(2024), mkEnrichment("tt1", mcUrl = Some(Url), metascore = None))
-    ))
-    val cache = new CaffeineMovieCache(repo)
-    val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), mcStub(Map(Url -> Some(85))))
-    bus.subscribe(rates.onTmdbResolved)
-
-    bus.publish(TmdbResolved("Foo", Some(2024), "tt1"))
-
-    eventually(cache.get(cache.keyOf("Foo", Some(2024))).flatMap(_.metascore) shouldBe Some(85))
-  }
-
-  it should "ignore events of other types (PartialFunction.applyOrElse)" in {
-    val bus   = new InProcessEventBus()
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
-    val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String = throw new RuntimeException("should not be called")
-    }))
-    bus.subscribe(rates.onTmdbResolved)
-
-    noException should be thrownBy bus.publish(MovieRecordCreated("Anything", None))
   }
 
 }

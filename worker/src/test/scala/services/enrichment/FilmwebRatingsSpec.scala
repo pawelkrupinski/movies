@@ -5,9 +5,7 @@ import clients.TmdbClient
 import models.{MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{InProcessEventBus, MovieRecordCreated, TmdbResolved}
 import tools.{GetOnlyHttpFetch, RealHttpFetch, RoutingHttpFetch}
-import tools.Eventually.eventually
 
 /**
  * Tests for `FilmwebRatings` — the extracted Filmweb stage. Mirrors the
@@ -304,31 +302,6 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val after = cache.get(cache.keyOf("Foo", Some(2024))).get
     after.filmwebUrl    shouldBe Some(rightUrl)
     after.filmwebRating shouldBe Some(7.0)
-  }
-
-  // ── Event listener ──────────────────────────────────────────────────────────
-
-  "onTmdbResolved" should "trigger a per-row refresh when subscribed on the bus" in {
-    val bus   = new InProcessEventBus()
-    val url   = "https://www.filmweb.pl/film/Foo-99"
-    val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", filmwebUrl = Some(url)))))
-    val cache = new CaffeineMovieCache(repo)
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map("/film/99/rating" -> """{"rate":7.4,"count":1}""")))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
-    bus.subscribe(ratings.onTmdbResolved)
-
-    bus.publish(TmdbResolved("Foo", Some(2024), "tt1"))
-
-    eventually(cache.get(cache.keyOf("Foo", Some(2024))).flatMap(_.filmwebRating) shouldBe Some(7.4))
-  }
-
-  it should "ignore events of other types (PartialFunction.applyOrElse)" in {
-    val bus   = new InProcessEventBus()
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
-    val ratings = new FilmwebRatings(cache, disabledTmdb, new FilmwebClient(RoutingHttpFetch.dead("should not be called")))
-    bus.subscribe(ratings.onTmdbResolved)
-
-    noException should be thrownBy bus.publish(MovieRecordCreated("Anything", None))
   }
 
 }
