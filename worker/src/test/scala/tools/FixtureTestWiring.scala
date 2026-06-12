@@ -83,6 +83,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     // TMDB + IMDb-id cascade has already settled in drainServices.
     enrichRatingsSync()
     unscreenedCleanup.removeUnscreened()
+    concludeEnrichment()
     // Project the settled corpus into the read model and warm the web view, so
     // a spec can serve via `webReadModel` exactly as the web app does. Done as a
     // one-shot reconcile + reload (no change-stream/scheduler) to keep the test
@@ -90,6 +91,20 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     readModelProjector.reconcile()
     webReadModel.reload()
   }
+
+  /** In production every row's TMDB enrichment eventually concludes — the
+   *  boot/daily retry sweep resolves it or records a definitive no-match — and
+   *  only a concluded row is published by the projector. A one-shot fixture run
+   *  can't wait for that and has no TMDB fixture for every film, so mark any row
+   *  still un-concluded as a no-match here: the same end state the sweep reaches,
+   *  so the read model reflects the settled corpus, not a transient
+   *  mid-enrichment snapshot. These films were already `tmdbId`-less in the
+   *  fixtures, so only their visibility changes, not their rendered data. */
+  private def concludeEnrichment(): Unit =
+    movieRepo.findAll().foreach { sr =>
+      if (!sr.record.tmdbConcluded)
+        movieRepo.upsert(sr.title, sr.year, sr.record.copy(tmdbNoMatch = true))
+    }
 
   /** Settle the cache to its deterministic steady state. The production scrape
    *  (`cinemaScrapeRunner.run` per cinema) publishes enrichment INLINE as each
