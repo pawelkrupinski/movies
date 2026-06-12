@@ -30,7 +30,10 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     if (chrome.nonEmpty) {
       val records = Seq(
         TitleRuleRecord("GlobalStructural", RuleScope.GlobalStructural, None,
-          rules = Seq(rule("g1", "ab"), rule("g2", "a")), lastRules = Nil),
+          // g3 is a real Java/Scala pattern (inline `(?i)` flag) that JS's RegExp
+          // rejects; gBad is genuinely malformed. The editor must red gBad, not g3.
+          rules = Seq(rule("g1", "ab"), rule("g2", "a"),
+            rule("g3", "(?i)^Klub: "), rule("gBad", "(oops")), lastRules = Nil),
         TitleRuleRecord("cinema-city", RuleScope.PerCinema, Some("cinema-city"),
           rules = Seq(rule("c1", "^X ")), lastRules = Seq(rule("c2", "Y$"))))
       val cinemas = Seq("cinema-city" -> "Cinema City", "kino-muza" -> "Kino Muza")
@@ -70,6 +73,18 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
       ) shouldBe true
     }
   }
+
+  it should "not red a valid Java `(?i)` pattern, but still red a genuinely malformed one" in {
+    onEditor { page =>
+      def isRed(value: String): Boolean = page.evalBool(
+        s"[...document.querySelectorAll('input.mono')].find(i => i.value === ${jsLit(value)})" +
+          ".classList.contains('bad-pat')")
+      withClue("a `(?i)…` Java regex must NOT be flagged invalid: ") { isRed("(?i)^Klub: ") shouldBe false }
+      withClue("a malformed regex must still be flagged invalid: ")   { isRed("(oops")       shouldBe true  }
+    }
+  }
+
+  private def jsLit(s: String): String = "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
   "window.TitleRules.moveBetween" should "reorder within one list (the same-list drag decision)" in {
     onEditor { page =>

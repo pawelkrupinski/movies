@@ -290,9 +290,20 @@
     }
 
     // ---- regex validity hint (server is authoritative) ----
+    // Patterns are Java/Scala regex. The one construct JS's RegExp rejects that
+    // our rules actually use is the inline-flag group `(?i)` (Java accepts it as
+    // a prefix, JS throws "Invalid group"), so translate standalone inline-flag
+    // groups to JS flags before testing — otherwise every `(?i)…` rule would
+    // show a false "invalid" red even though the server compiles it fine.
     function patternOk(p) {
       if (p == null || p === "") return false;
-      try { new RegExp(p); return true; } catch (e) { return false; }
+      let flags = "";
+      const body = p.replace(/\(\?([a-zA-Z]+)\)/g, (m, f) => {
+        if (/[^imsxU]/.test(f)) return m;      // not a pure flag group (a real capture) — leave it
+        for (const ch of f) if ("ims".indexOf(ch) >= 0 && flags.indexOf(ch) < 0) flags += ch;
+        return "";                             // i/m/s mapped to JS flags; x/U have no JS equivalent
+      });
+      try { new RegExp(body, flags); return true; } catch (e) { return false; }
     }
 
     function cssId(s) { return (s || "new").replace(/[^a-z0-9_-]/gi, "_"); }
