@@ -308,7 +308,11 @@ class CaffeineMovieCache(
           //     resolved year — the only year-bearing spellings are the
           //     enrichment title and the (order-dependent) surviving key — so
           //     which casing stuck depended on scrape order.
-          val canonicalYear  = group.iterator.flatMap { case (_, e) => e.tmdbYear }.nextOption()
+          // `minOption` (not `.iterator…nextOption`): a pure function of the
+          // group, independent of the cache's (non-deterministic) map iteration
+          // order. Resolved rows of one film share a tmdbId hence a tmdbYear, so
+          // min just picks that shared year; the determinism guard requires this.
+          val canonicalYear  = group.flatMap { case (_, e) => e.tmdbYear }.minOption
             .orElse(allKeys.iterator.map(_.year).minBy(y => (y.isEmpty, y.getOrElse(Int.MaxValue))))
           // Prefer a normally-cased spelling over a SHOUTING one ("Savage House"
           // over "SAVAGE HOUSE") — a cinema's all-caps styling shouldn't become

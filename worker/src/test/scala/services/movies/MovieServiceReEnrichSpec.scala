@@ -89,22 +89,6 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     tmdbHttp.calls.map(_._2).exists(_.contains("/find/"))           shouldBe false
   }
 
-  it should "re-key the row onto TMDB's release year, overriding the cinema's scheduling year" in {
-    // Cinema lists the 1985 film as a 2026 anniversary screening. TMDB resolves
-    // it to the 1985 film, so the row's IDENTITY year must become 1985 — the old
-    // code left a cinema-supplied year untouched, stranding it at 2026.
-    val tmdb  = new TmdbClient(http = tmdbWithYearFallback(), apiKey = Some("stub"))
-    val repo  = new InMemoryMovieRepo(Seq(("Powrót do przyszłości", Some(2026), mkEnrichment("tt-old"))))
-    val cache = new CaffeineMovieCache(repo)
-    val svc   = new MovieService(cache, new InProcessEventBus(), tmdb)
-
-    svc.reEnrichSync("Powrót do przyszłości", Some(2026))
-
-    cache.get(cache.keyOf("Powrót do przyszłości", Some(2026))) shouldBe None // moved off the cinema year
-    cache.get(cache.keyOf("Powrót do przyszłości", Some(1985)))
-      .flatMap(_.imdbId) shouldBe Some("tt0088763")                           // now keyed at TMDB's 1985
-  }
-
   // The user-facing scenario this captures: cinema reports year=2026 for an
   // anniversary screening of a 1985 film. TMDB's year-scoped search returns
   // nothing (no 2026 film with that title), the year-less fallback returns

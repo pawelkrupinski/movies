@@ -8901,10 +8901,10 @@ originalTitle:     Ziemia obiecana
 imdbRating:        7.8
 metascore:         77
 rottenTomatoes:    92
-filmwebRating:     7.91575
+filmwebRating:     7.91049
 metacriticUrl:     https://www.metacritic.com/movie/the-promised-land
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/ziemia_obiecana
-filmwebUrl:        https://www.filmweb.pl/serial/Ziemia+obiecana-1975-105396
+filmwebUrl:        https://www.filmweb.pl/film/Ziemia+obiecana-1974-1073
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/ziemia-obiecana/
 cinemaScrapes:
