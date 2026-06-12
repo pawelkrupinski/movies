@@ -343,7 +343,9 @@ class WorkerWiring {
       new RatingHandler(TaskType.RtRating,      FreshnessKind.RtRating,      freshnessStore, rottenTomatoesRatings.refreshOneSync),
       new RatingHandler(TaskType.McRating,      FreshnessKind.McRating,      freshnessStore, metascoreRatings.refreshOneSync)
     ) else Nil
-  lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore)
+  lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
+    bootSweepDelaySeconds = Env.positiveLong("KINOWO_ENRICHMENT_BOOT_SWEEP_DELAY_SECONDS",
+      EnrichmentReaper.DefaultBootSweepDelaySeconds))
 
   // Operator-triggered handlers — ALWAYS registered (not gated by
   // queueEnrichment): the web `/tasks` buttons enqueue a corpus-wide refresh and

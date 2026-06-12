@@ -1,8 +1,10 @@
 package services.tasks
 
 import models.{CinemaMovie, KinoApollo, Movie, Showtime}
+import org.scalatest.concurrent.Eventually
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.time.{Millis, Seconds, Span}
 import services.events.{ImdbIdMissing, ImdbIdResolved, TmdbResolved}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
@@ -10,7 +12,7 @@ import services.events.InProcessEventBus
 
 import java.time.LocalDateTime
 
-class RatingTasksSpec extends AnyFlatSpec with Matchers {
+class RatingTasksSpec extends AnyFlatSpec with Matchers with Eventually {
 
   // ── RatingHandler ─────────────────────────────────────────────────────────
 
@@ -89,5 +91,23 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     val queue = new InMemoryTaskQueue
     seedRow(cache, "Bare")(identity)
     new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore).sweepOnce() shouldBe 0
+  }
+
+  it should "kick a boot backfill sweep on start(), not wait for the staggered first periodic fire" in {
+    // The periodic sweeps first fire at +1h..+4h; an in-memory scheduler resets
+    // that clock on every restart, so a sub-hourly-churning worker never reaches
+    // them and hydrated-but-unenriched rows stay un-queued. The boot sweep fixes
+    // that — with a 0s boot delay it must enqueue the eligible row right away,
+    // well inside this short window (the periodic sweeps can't fire here).
+    val cache  = newCache()
+    val queue  = new InMemoryTaskQueue
+    seedRow(cache, "Resolved")(_.copy(imdbId = Some("tt1"), tmdbId = Some(2)))
+    val reaper = new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, bootSweepDelaySeconds = 0L)
+    try {
+      reaper.start()
+      eventually(timeout(Span(3, Seconds)), interval(Span(20, Millis))) {
+        queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 4L
+      }
+    } finally reaper.stop()
   }
 }
