@@ -122,7 +122,7 @@ trait Wiring {
   lazy val adminAllowlist: Set[String] =
     Env.get("ADMIN_ALLOWLIST").map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet).getOrElse(Set.empty)
   lazy val adminAction = new AdminAction(controllerComponents.parsers.anyContent, userRepo, adminAllowlist)(using controllerComponents.executionContext)
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, movieRepo, userRepo, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService,
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, movieRepo, taskQueue, userRepo, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()))
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)

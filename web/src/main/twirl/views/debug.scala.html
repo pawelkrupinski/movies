@@ -49,6 +49,13 @@
     .url-cell a:hover { background: #252540; color: #ccc; text-decoration: none; }
     .ratings { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
     .hidden { display: none !important; }
+    .actions { text-align: center; }
+    .reenrich {
+      font: 12px monospace; color: #cfe3d6; background: #14241a; border: 1px solid #245038;
+      border-radius: 4px; padding: 1px 7px; cursor: pointer; line-height: 1.3;
+    }
+    .reenrich:hover { background: #1c3326; border-color: #2e6649; color: #fff; }
+    .reenrich:disabled { opacity: .5; cursor: default; }
 
     /* Expanded details row */
     tr.details > td { background: #0a0a18; padding: .6rem 1rem 1rem; white-space: normal; }
@@ -124,6 +131,7 @@
       <th data-key="tmdb"  data-type="num">TMDB id</th>
       <th data-key="imdbR" data-type="num">Ratings</th>
       <th data-key="urls"  data-type="str">Stored URLs</th>
+      <th>↻</th>
     </tr>
   </thead>
   <tbody>
@@ -175,9 +183,16 @@
             <a href="@u" target="_blank" rel="noopener" title="@u">T@{idx + 1}</a>
           }
         </td>
+        @* Force a TMDB re-enrich of this row (then the event chain re-runs the
+           other enrichments). stopPropagation in the handler keeps the click
+           from toggling the details row. *@
+        <td class="actions">
+          <button type="button" class="reenrich" data-url="@routes.MovieController.reenrich(title, year)"
+                  title="Re-enrich TMDB, then ratings">↻</button>
+        </td>
       </tr>
       <tr class="details hidden" data-row-id="r@idx">
-        <td colspan="7">@debugDetails(title, year, e, cinemaUrls)</td>
+        <td colspan="8">@debugDetails(title, year, e, cinemaUrls)</td>
       </tr>
       }
       }
@@ -217,6 +232,20 @@
       if (!details) return;
       const expanded = tr.classList.toggle('expanded');
       details.classList.toggle('hidden', !expanded);
+    });
+  });
+
+  // Re-enrich button: POST the row's ResolveTmdb enqueue. stopPropagation so
+  // the click doesn't toggle the details row underneath it.
+  document.querySelectorAll('#t .reenrich').forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      btn.disabled = true;
+      fetch(btn.dataset.url, { method: 'POST', headers: { 'Accept': 'application/json' } })
+        .then(r => r.json())
+        .then(j => { btn.textContent = j.duplicate ? '⏳' : '✓'; })
+        .catch(() => { btn.textContent = '✗'; })
+        .finally(() => setTimeout(() => { btn.disabled = false; btn.textContent = '↻'; }, 2000));
     });
   });
 

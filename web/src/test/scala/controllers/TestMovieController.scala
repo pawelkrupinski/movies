@@ -4,6 +4,7 @@ import play.api.Mode
 import play.api.test.Helpers
 import services.movies.InMemoryMovieRepo
 import services.readmodel.{TestReadModel, WebReadModel}
+import services.tasks.{InMemoryTaskQueue, TaskQueue}
 
 /** Shared builder for a fully-wired [[MovieController]] backed by an in-memory
  *  read model and no live HTTP — the seam every controller spec needs. Pass the
@@ -16,6 +17,7 @@ object TestMovieController {
     mode: Mode = Mode.Test,
     cinemaSourceUrls: Map[String, String] = Map.empty,
     adminAction: AdminAction = TestAdminAction(),
+    taskQueue: TaskQueue = new InMemoryTaskQueue,
   ): (MovieController, WebReadModel) = {
     val readModel = TestReadModel.fromRecords(records)
     val ctrl  = new MovieController(
@@ -24,6 +26,7 @@ object TestMovieController {
       readModel              = readModel,
       // On-demand corpus dump only (dev /debug); holds the same rows.
       movieRepo              = new InMemoryMovieRepo(records),
+      taskQueue              = taskQueue,
       userRepo               = new services.users.InMemoryUserRepo,
       adminAction            = adminAction,
       oauthProviders         = Set.empty,

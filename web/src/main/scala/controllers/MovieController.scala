@@ -214,6 +214,9 @@ class MovieController( cc: ControllerComponents,
                        // never keeps this warm (no `movies` change stream) — it pulls
                        // a fresh snapshot when the dev endpoint is hit.
                        movieRepo: MovieRepo,
+                       // Enqueue target for the dev-only /debug row "re-enrich"
+                       // button — the same durable queue the worker drains.
+                       taskQueue: services.tasks.TaskQueue,
                        userRepo: services.users.UserRepo,
                        // Gate for the state-mutating /…/debug/rehydrate trigger
                        // (the other /debug pages are dev-only; rehydrate runs in
@@ -415,6 +418,32 @@ class MovieController( cc: ControllerComponents,
       // warm, so the corpus dump reads the source rows the read model is
       // projected from directly.
       Ok(views.html.debug(movieRepo.findAll().sortBy(_.title.toLowerCase), cinemaSourceUrls()))
+    }
+  }
+
+  /** Dev-only: force a TMDB re-enrich of one film from the /debug row button.
+   *  Enqueues a `ResolveTmdb` task the worker's `ResolveTmdbHandler` consumes;
+   *  that re-resolves the row and publishes `TmdbResolved`, so every downstream
+   *  rating refresher re-runs off the existing event chain — the "followed by
+   *  all the other enrichments" hook. Idempotent per (title, year): a repeat
+   *  click while one is queued returns `duplicate`. Returns JSON for the page's
+   *  fetch. */
+  def reenrich(title: String, year: Option[Int]): Action[AnyContent] = Action {
+    devOnly {
+      if (title.isEmpty) BadRequest(play.api.libs.json.Json.obj("error" -> "missing title"))
+      else {
+        val result = taskQueue.enqueue(
+          services.tasks.TaskType.ResolveTmdb,
+          services.tasks.EnrichTaskKeys.resolveTmdbDedup(title, year),
+          services.tasks.EnrichTaskKeys.moviePayload(title, year)
+        )
+        Ok(play.api.libs.json.Json.obj(
+          "title"     -> title,
+          "year"      -> year,
+          "enqueued"  -> (result == services.tasks.EnqueueResult.Added),
+          "duplicate" -> (result == services.tasks.EnqueueResult.Duplicate)
+        ))
+      }
     }
   }
 

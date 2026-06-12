@@ -4,8 +4,10 @@ import models.{CinemaCityWroclavia, MovieRecord, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.Mode
+import play.api.libs.json.Json
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
+import services.tasks.{EnrichTaskKeys, InMemoryTaskQueue, TaskType}
 
 /**
  * `/debug` is the dev-only global-corpus table. It used to be city-scoped
@@ -64,5 +66,44 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
       rehydrateReq.withSession("userId" -> TestAdminAction.AdminUserId))
     status(result) shouldBe OK
     contentAsString(result) should include("rehydrated")
+  }
+
+  // ── Per-row re-enrich button (dev-only) ──────────────────────────────────────
+  private val reenrichReq = FakeRequest(POST, "/debug/reenrich")
+
+  "POST /debug/reenrich" should "enqueue a ResolveTmdb task with the row's title + year in dev" in {
+    val q    = new InMemoryTaskQueue
+    val ctrl = TestMovieController.build(records, Mode.Dev, taskQueue = q)._1
+
+    val result = ctrl.reenrich("Belle", Some(2021)).apply(reenrichReq)
+    status(result) shouldBe OK
+    (Json.parse(contentAsString(result)) \ "enqueued").as[Boolean] shouldBe true
+
+    val active = q.monitor().active
+    active.map(_.taskType) shouldBe Seq(TaskType.ResolveTmdb.name)
+    active.head.dedupKey shouldBe EnrichTaskKeys.resolveTmdbDedup("Belle", Some(2021))
+  }
+
+  it should "report duplicate on a second enqueue for the same film" in {
+    val q    = new InMemoryTaskQueue
+    val ctrl = TestMovieController.build(records, Mode.Dev, taskQueue = q)._1
+    ctrl.reenrich("Belle", Some(2021)).apply(reenrichReq)
+    val second = ctrl.reenrich("Belle", Some(2021)).apply(reenrichReq)
+    (Json.parse(contentAsString(second)) \ "duplicate").as[Boolean] shouldBe true
+    q.monitor().active.size shouldBe 1
+  }
+
+  it should "400 a request with no title (and enqueue nothing)" in {
+    val q    = new InMemoryTaskQueue
+    val ctrl = TestMovieController.build(records, Mode.Dev, taskQueue = q)._1
+    status(ctrl.reenrich("", None).apply(reenrichReq)) shouldBe BAD_REQUEST
+    q.monitor().active shouldBe empty
+  }
+
+  it should "404 in production (no enqueue) like the rest of /debug" in {
+    val q    = new InMemoryTaskQueue
+    val ctrl = TestMovieController.build(records, Mode.Prod, taskQueue = q)._1
+    status(ctrl.reenrich("Belle", Some(2021)).apply(reenrichReq)) shouldBe NOT_FOUND
+    q.monitor().active shouldBe empty
   }
 }
