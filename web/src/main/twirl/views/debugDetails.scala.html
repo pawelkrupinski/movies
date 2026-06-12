@@ -66,12 +66,11 @@
   @e.data.get(source).map { (slot: SourceData) =>
     <div class="cinema">
       <div class="cinema-head">
-        @* Cinema name links to its public source page — the same href /uptime
-           shows — when known; plain text otherwise (TMDB/IMDB slots). *@
-        @_serviceNameLink(label, sourceUrl, "cinema-name-link")
-        @slot.filmUrl.map { u =>
-          <a href="@u" target="_blank" rel="noopener" onclick="event.stopPropagation()">page ↗</a>
-        }
+        @* The cinema name IS the link: to its public source page — the same href
+           /uptime shows — when known, else to this slot's own scraped page
+           (`filmUrl`, e.g. the TMDB/IMDB page). Plain text only when neither
+           exists. No separate "page ↗" chip — the name carries it. *@
+        @_serviceNameLink(label, sourceUrl.orElse(slot.filmUrl), "cinema-name-link")
       </div>
       <div class="cinema-meta">
         @slot.title.map { t          => <span>title: <em>@t</em></span> }
