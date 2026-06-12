@@ -296,15 +296,20 @@ class CaffeineMovieCache(
           val allKeys  = slotKeys ++ keys
           // Choose the canonical key as a pure function of the variant SET, with
           // SPELLING decoupled from YEAR:
-          //   - year:    the most informative — a present year beats a yearless
-          //     one (a film TMDB dated to 2026 keys at 2026), then the lowest.
+          //   - year:    TMDB's resolved year is authoritative when the group is
+          //     resolved — it overrides cinema-reported years, which often carry
+          //     the production year and disagree (the "Dzień objawienia" 2025 vs
+          //     2026 split). Only when nothing in the group is TMDB-resolved do we
+          //     fall back to the variant keys: a present year beats yearless, then
+          //     the lowest.
           //   - spelling: the min cleanTitle across ALL variants regardless of
           //     year. Without decoupling, a yearless all-caps variant ("SAVAGE
           //     HOUSE" reported with no year) can't win the spelling at the
           //     resolved year — the only year-bearing spellings are the
           //     enrichment title and the (order-dependent) surviving key — so
           //     which casing stuck depended on scrape order.
-          val canonicalYear  = allKeys.iterator.map(_.year).minBy(y => (y.isEmpty, y.getOrElse(Int.MaxValue)))
+          val canonicalYear  = group.iterator.flatMap { case (_, e) => e.tmdbYear }.nextOption()
+            .orElse(allKeys.iterator.map(_.year).minBy(y => (y.isEmpty, y.getOrElse(Int.MaxValue))))
           // Prefer a normally-cased spelling over a SHOUTING one ("Savage House"
           // over "SAVAGE HOUSE") — a cinema's all-caps styling shouldn't become
           // the canonical display — then break ties by string order so it stays

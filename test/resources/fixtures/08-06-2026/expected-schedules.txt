@@ -109,7 +109,7 @@ showings:
 displayTitle:      All You Need Is Kill
 cinemaTitles:      All You Need Is Kill
 runtimeMinutes:    83
-releaseYear:       2025
+releaseYear:       2026
 countries:         Japonia
 posterUrl:         https://img.helios.pl/pliki/film/all-you-need-is-killl/all-you-need-is-killl-plakat-386.jpg
 synopsis.length:   732
@@ -237,7 +237,7 @@ showings:
 displayTitle:      Babystar
 cinemaTitles:      Babystar
 runtimeMinutes:    98
-releaseYear:       2025
+releaseYear:       2026
 countries:         Niemcy
 posterUrl:         https://movies.helios.pl/images/plakatbabystar.jpg
 synopsis.length:   288
@@ -783,7 +783,7 @@ showings:
 displayTitle:      Chłopiec na krańcach świata
 cinemaTitles:      Chłopiec na krańcach świata
 runtimeMinutes:    88
-releaseYear:       2025
+releaseYear:       2026
 countries:         Polska, Hiszpania, Turcja, Kanada
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Chopiec_na_krancach_swiata_PLAKAT_teaser.jpg
 synopsis.length:   934
@@ -966,7 +966,7 @@ showings:
 displayTitle:      Cinema Italia Oggi: O czym sobie nie mówimy
 cinemaTitles:      Cinema Italia Oggi: O czym sobie nie mówimy
 runtimeMinutes:    115
-releaseYear:       2025
+releaseYear:       2026
 countries:         Włochy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/doc_16208_0.jpg
 synopsis.length:   291
@@ -1020,7 +1020,7 @@ showings:
 displayTitle:      Cinema Italia Oggi: Razem czy osobno
 cinemaTitles:      Cinema Italia Oggi: Razem czy osobno
 runtimeMinutes:    108
-releaseYear:       2025
+releaseYear:       2026
 countries:         Włochy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1758713670913.jpg
 synopsis.length:   794
@@ -1932,7 +1932,7 @@ showings:
 displayTitle:      Erupcja
 cinemaTitles:      ERUPCJA | Erupcja
 runtimeMinutes:    71
-releaseYear:       2025
+releaseYear:       2026
 countries:         USA, Polska
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/ERUPCJA_B1_PL-po-zmniejszeniu-200x288.jpg
 synopsis.length:   845
@@ -2247,7 +2247,7 @@ showings:
 displayTitle:      Following
 cinemaTitles:      FOLLOWING | Following
 runtimeMinutes:    70
-releaseYear:       1998
+releaseYear:       1999
 countries:         Wielka Brytania, USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/FOLLOWING-5.jpg
 synopsis.length:   590
@@ -3054,7 +3054,7 @@ showings:
 displayTitle:      Kronika wypadków miłosnych
 cinemaTitles:      Kronika wypadków miłosnych
 runtimeMinutes:    114
-releaseYear:       1985
+releaseYear:       1986
 countries:         Polska
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/story9x16-450x800.png
 synopsis.length:   1541
@@ -3085,7 +3085,7 @@ showings:
 displayTitle:      Kumotry
 cinemaTitles:      KUMOTRY | Kumotry
 runtimeMinutes:    70
-releaseYear:       2025
+releaseYear:       2026
 countries:         Polska, Niemcy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/KUMOTRY_plakat_filmweb.jpg
 synopsis.length:   930
@@ -3233,7 +3233,7 @@ showings:
 displayTitle:      Mandalorian i grogu
 cinemaTitles:      Gwiezdne Wojny: Mandalorian i Grogu | MANDALORIAN I GROGU | Mandalorian & Grogu | Mandalorian i Grogu | Mandalorian i grogu | Mandalorian i grogu
 runtimeMinutes:    132
-releaseYear:       2025
+releaseYear:       2026
 countries:         USA
 posterUrl:         https://movies.helios.pl/images/MANDALORIANIGROGUnowyplakat.jpg
 synopsis.length:   698
@@ -3780,7 +3780,7 @@ showings:
 displayTitle:      Milcząca przyjaciółka
 cinemaTitles:      MILCZĄCA PRZYJACIÓŁKA | Milcząca przyjaciółka | „Milcząca przyjaciółka”
 runtimeMinutes:    145
-releaseYear:       2025
+releaseYear:       2026
 countries:         Francja, Niemcy, Węgry, Chiny, Belgia
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Milcząca-przyjaciółka_plakat-PL_LQ.jpg
 synopsis.length:   1708
@@ -6066,7 +6066,7 @@ showings:
 displayTitle:      Plenerowe Pałacowe: Ścieżki życia
 cinemaTitles:      Plenerowe Pałacowe: Ścieżki życia
 runtimeMinutes:    116
-releaseYear:       2024
+releaseYear:       2025
 countries:         Wielka Brytania
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Sciezki_zycia_plakat_PL_LQ_LkAS5b5.jpg
 synopsis.length:   403
@@ -6590,7 +6590,7 @@ showings:
 displayTitle:      Przekleństwa Niewinności
 cinemaTitles:      Przekleństwa niewinności
 runtimeMinutes:    97
-releaseYear:       1999
+releaseYear:       2000
 countries:         USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/grafika_Przeklenstwa_niewinnosci.png
 synopsis.length:   473
@@ -6954,7 +6954,7 @@ showings:
 displayTitle:      Sny o słoniach
 cinemaTitles:      SNY O SŁONIACH | Sny o słoniach
 runtimeMinutes:    98
-releaseYear:       2025
+releaseYear:       2026
 countries:         USA
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/snyosloniach.jpeg
 synopsis.length:   708
@@ -8392,7 +8392,7 @@ showings:
 displayTitle:      Wszystko na sprzedaż
 cinemaTitles:      Wszystko na sprzedaż
 runtimeMinutes:    94
-releaseYear:       1968
+releaseYear:       1969
 countries:         Polska
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/story9x16-450x800.png
 synopsis.length:   1493
@@ -8889,7 +8889,7 @@ showings:
 displayTitle:      Ziemia obiecana
 cinemaTitles:      Ziemia obiecana
 runtimeMinutes:    179
-releaseYear:       1974
+releaseYear:       1975
 countries:         Polska
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/story9x16-450x800.png
 synopsis.length:   1676
@@ -8901,10 +8901,10 @@ originalTitle:     Ziemia obiecana
 imdbRating:        7.8
 metascore:         77
 rottenTomatoes:    92
-filmwebRating:     7.91049
+filmwebRating:     7.91575
 metacriticUrl:     https://www.metacritic.com/movie/the-promised-land
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/ziemia_obiecana
-filmwebUrl:        https://www.filmweb.pl/film/Ziemia+obiecana-1974-1073
+filmwebUrl:        https://www.filmweb.pl/serial/Ziemia+obiecana-1975-105396
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/ziemia-obiecana/
 cinemaScrapes:
@@ -8917,7 +8917,7 @@ showings:
 displayTitle:      Znaki Pana Śliwki
 cinemaTitles:      ZNAKI PANA ŚLIWKI | Znaki Pana Śliwki | Znaki pana śliwki
 runtimeMinutes:    72
-releaseYear:       2025
+releaseYear:       2026
 countries:         Polska
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/ZNAKI-PANA-SLIWKI-POSTER-jpg-po-zmniejszeniu-200x288.jpg
 synopsis.length:   3647
@@ -8966,7 +8966,7 @@ showings:
 displayTitle:      Ścieżki życia
 cinemaTitles:      Ścieżki życia
 runtimeMinutes:    116
-releaseYear:       2024
+releaseYear:       2025
 countries:         Wielka Brytania
 posterUrl:         https://img.helios.pl/pliki/film/sciezki-zycia/sciezki-zycia-plakat-23717.jpg
 synopsis.length:   657

@@ -189,7 +189,11 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     bus.publish(MovieRecordCreated("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some(2026), originalTitle = Some("Possession"), director = None))
     svc.stop()
 
-    val row = cache.get(cache.keyOf("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some(2026)))
+    // "Possession" is a 1981 film shown in a 2026 retrospective: the cinema's
+    // 2026 is the screening year, TMDB's 1981 the real release. The row re-keys
+    // onto TMDB's year, so it's no longer at the cinema-reported 2026.
+    cache.get(cache.keyOf("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some(2026))) shouldBe None
+    val row = cache.get(cache.keyOf("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some(1981)))
     row.flatMap(_.tmdbId) shouldBe Some(21484)
     row.flatMap(_.imdbId) shouldBe Some("tt0082933")
   }

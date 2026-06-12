@@ -382,17 +382,20 @@ class MovieService(
           rottenTomatoesUrl = existing.flatMap(_.rottenTomatoesUrl),
           data              = carriedData + ((Tmdb: Source) -> tmdbSlot)
         )
-        // Re-key the row by its resolved year when the cinema didn't supply
-        // one and TMDB did. The cache + Mongo are keyed by `(cleanTitle,
-        // year)`; without this, a no-year scrape that TMDB later attaches a
-        // year to stays pinned at `(title, None)` while the debug page,
-        // controller, and downstream consumers all see `(title, Some(YYYY))`
-        // via the resolved accessor. Cinema-supplied years are left
-        // untouched — if a cinema reports a year we trust that as the row's
-        // identity even when TMDB's year disagrees.
-        val targetKey =
-          if (writeKey.year.isEmpty && enr.releaseYear.isDefined) cache.keyOf(writeKey.cleanTitle, enr.releaseYear)
-          else writeKey
+        // Re-key the row onto TMDB's release year — the authoritative identity
+        // year. TMDB's theatrical year WINS over a cinema-reported one: cinemas
+        // often list the production year, and two cinemas disagreeing (2025 vs
+        // 2026) used to split a resolved film across two year-keys. So whenever
+        // TMDB gives a year that differs from the current key, move the row onto
+        // it. When TMDB has no year (very recent festival items), keep the old
+        // behaviour — fill a yearless row from the cinema-reported year.
+        val targetKey = enr.tmdbYear match {
+          case Some(ty) if !writeKey.year.contains(ty) => cache.keyOf(writeKey.cleanTitle, Some(ty))
+          case Some(_)                                 => writeKey
+          case None =>
+            if (writeKey.year.isEmpty && enr.releaseYear.isDefined) cache.keyOf(writeKey.cleanTitle, enr.releaseYear)
+            else writeKey
+        }
         // When re-keying onto a DIFFERENT key that already holds a row (another
         // cinema scraped this film WITH a year before TMDB resolved the no-year
         // one), that target row carries its own cinema slots. `cache.put`
@@ -402,7 +405,7 @@ class MovieService(
         // target's cinema data in, keeping this resolve's enrichment fields.
         val toWrite =
           if (targetKey != writeKey) {
-            logger.debug(s"TMDB stage: re-keying '${writeKey.cleanTitle}' (— → ${enr.releaseYear.get}) — cinemas didn't supply a year.")
+            logger.debug(s"TMDB stage: re-keying '${writeKey.cleanTitle}' (${writeKey.year.map(_.toString).getOrElse("—")} → ${targetKey.year.map(_.toString).getOrElse("—")}) onto TMDB's year.")
             val merged = cache.get(targetKey).map(t => MovieRecordMerge.union(enr, t)).getOrElse(enr)
             cache.invalidate(writeKey)
             merged

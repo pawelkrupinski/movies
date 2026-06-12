@@ -42,7 +42,7 @@ object ReadModelProjection {
       posterUrl          = r.posterUrl,
       fallbackPosterUrls = r.fallbackPosterUrls,
       runtimeMinutes     = r.runtimeMinutes,
-      releaseYear        = r.releaseYear,
+      releaseYear        = r.resolvedYear,   // TMDB's year is authoritative for display, as for the key
       genres             = r.genres,
       countries          = r.countries,
       directors          = r.director,

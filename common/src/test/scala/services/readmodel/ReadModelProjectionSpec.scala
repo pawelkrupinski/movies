@@ -99,4 +99,14 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
   it should "be deterministic — the same row projects to identical docs" in {
     ReadModelProjection.project(stored) shouldBe (movie, screenings)
   }
+
+  it should "display TMDB's release year, overriding a cinema-reported one" in {
+    // Cinemas report the production year (2025); TMDB has the theatrical year
+    // (2026). The served year must be TMDB's.
+    val rec = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino -> SourceData(title = Some("X"), releaseYear = Some(2025)),
+      Tmdb      -> SourceData(title = Some("X"), releaseYear = Some(2026))))
+    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|2026", rec))
+    m.releaseYear shouldBe Some(2026)
+  }
 }

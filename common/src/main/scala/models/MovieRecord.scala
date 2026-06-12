@@ -230,6 +230,17 @@ case class MovieRecord(
   def releaseYear: Option[Int] =
     prioritized.iterator.flatMap(_._2.releaseYear).nextOption()
 
+  /** TMDB's release year specifically — the authoritative theatrical year for a
+   *  resolved film, regardless of what cinemas report (they frequently list the
+   *  production year). `None` until the row is TMDB-resolved. */
+  def tmdbYear: Option[Int] = data.get(Tmdb).flatMap(_.releaseYear)
+
+  /** The year used for the row's IDENTITY (cache / Mongo key) and DISPLAY: TMDB's
+   *  when resolved, else the priority-merged cinema-reported year. TMDB wins so
+   *  cinemas disagreeing on production vs theatrical year can't split a resolved
+   *  film across two year-keys (the "Dzień objawienia" 2025-vs-2026 split). */
+  def resolvedYear: Option[Int] = tmdbYear.orElse(releaseYear)
+
   /** Polish-language genre names — first non-empty list in genre-priority
    *  order: TMDB → Filmweb → cinema slots (in their normal priority order).
    *  Unlike `countries`, we don't union across sources because each source
