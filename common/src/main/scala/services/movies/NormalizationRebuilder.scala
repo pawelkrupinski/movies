@@ -4,8 +4,9 @@ import models.{Cinema, MovieRecord, Source, SourceData}
 import play.api.Logging
 import services.titlerules.{TitleRuleKey, TitleRuleSet}
 
-/** Re-derives every row's merge key from its cinema slots' RAW titles under the
- *  currently-installed rules, then rebuilds the cache so rows group exactly as a
+/** Re-derives every row's merge key from its cinema slots' cleaned titles under
+ *  the currently-installed rules (see `keyOfSlot` — the same `cinemaClean(title)`
+ *  a fresh scrape keys by), then rebuilds the cache so rows group exactly as a
  *  fresh scrape would. This is the apply side of a rule change: after the change
  *  stream installs an edited rule set, the worker runs this so EXISTING records
  *  re-merge (a rule was added) AND un-merge (a rule was removed), not just
@@ -34,17 +35,19 @@ class NormalizationRebuilder(
 
   private case class Frag(key: CacheKey, rec: MovieRecord, from: CacheKey, fresh: Boolean)
 
-  /** Re-derive a slot's merge key from its verbatim `rawTitle` under the current
-   *  rules. A slot whose raw cleans to a BLANK key (a scraper that stored an
-   *  empty/whitespace raw, or a per-cinema rule that strips the whole title)
-   *  must never spawn its own row: try the already-clean `title` next, and if
-   *  that's blank too, keep the slot on the record's existing key. Otherwise the
-   *  blank keys of unrelated rows collapse into phantom empty-titled rows (one
-   *  per distinct year) and every contributing row reports a spurious split. */
+  /** Re-derive a slot's merge key the SAME way a fresh scrape does:
+   *  `keyOf(cinemaClean(slot.title))`. `recordCinemaScrape` keys a slot by its
+   *  CLEANED title (`SourceData.title` = `cinemaClean(client title)`), NOT by the
+   *  verbatim `rawTitle`. Some clients strip format/language decoration ("DUB",
+   *  "2D DUBBING", "2D NAPISY") in their own parsing — that lives in `title`, not
+   *  in any title-rule — so re-keying off `rawTitle` re-introduces it and
+   *  fragments rows a fresh scrape keeps merged. Prefer `title`; fall back to
+   *  `rawTitle`, then to the row's own key (a blank or titleless slot must never
+   *  spawn its own empty-keyed row). */
   private def keyOfSlot(cinema: Cinema, slot: SourceData, oldKey: CacheKey): CacheKey = {
     def keyFrom(raw: String): CacheKey =
       cache.keyOf(TitleNormalizer.cinemaClean(TitleRuleKey.of(cinema), raw), oldKey.year)
-    (slot.rawTitle.iterator ++ slot.title.iterator)
+    (slot.title.iterator ++ slot.rawTitle.iterator)
       .map(keyFrom)
       .find(k => TitleNormalizer.sanitize(k.cleanTitle).nonEmpty)
       .getOrElse(oldKey)

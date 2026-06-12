@@ -172,6 +172,29 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
     result.splits shouldBe empty
   }
 
+  it should "not split a row when only rawTitle keeps a client-stripped decoration (DUB/2D DUBBING)" in {
+    val cache = new CaffeineMovieCache(disabledRepo)
+    // The Władcy Wszechświata shape: the cinema CLIENT strips a format/language
+    // tag ("DUB", "2D DUBBING") into a clean `title`, but `rawTitle` keeps it.
+    // keyOfSlot must key off the cleaned title (as a fresh scrape does), not the
+    // raw — else the row fragments into one phantom per decoration every backfill.
+    val row = MovieRecord(
+      tmdbId = Some(555),
+      data   = Map[Source, SourceData](
+        Multikino           -> SourceData(title = Some("Władcy wszechświata"), rawTitle = Some("Władcy wszechświata")),
+        CinemaCityKinepolis -> SourceData(title = Some("Władcy wszechświata"), rawTitle = Some("WŁADCY WSZECHŚWIATA 2D DUBBING")),
+        CinemaCityChain     -> SourceData(title = Some("Władcy wszechświata"), rawTitle = Some("WŁADCY WSZECHŚWIATA DUB"))))
+    cache.put(cache.keyOf("Władcy wszechświata", Some(2026)), row)
+    cache.entries should have size 1
+
+    val result = new NormalizationRebuilder(cache).rebuild()
+
+    cache.entries should have size 1
+    cache.entries.head._2.cinemaData.keySet shouldBe Set(Multikino, CinemaCityKinepolis, CinemaCityChain)
+    result.splits shouldBe empty
+    result.merges shouldBe empty
+  }
+
   "reEnrichSearchChanges" should "re-resolve only rows whose apiQuery changed" in {
     val cache = new CaffeineMovieCache(disabledRepo)
     // Row keyed by its display title incl. the programme prefix (search-tier
