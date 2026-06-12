@@ -838,6 +838,17 @@ class CaffeineMovieCache(
     positive.asMap().keySet().asScala.toSeq
       .filterNot(byKey.keySet.contains)
       .foreach(positive.invalidate)
+    // The raw `positive.put` above bypasses the `put` identity-fold, so same-film
+    // rows that different cinemas reported under different years (`Kumotry|2025`
+    // + `Kumotry|2026`, both resolved to one tmdbId) land as separate entries.
+    // Collapse them right here on every load — at boot and on the 30-s sync tick.
+    // The periodic `settle` is supposed to, but the worker's restart loop keeps
+    // resetting its cadence, so duplicates persist for hours, each independently
+    // re-enriched (double rating runs) and projected as a second card. Folding on
+    // hydrate (which demonstrably runs) makes convergence independent of settle.
+    // No-op on an already-canonical corpus — it only writes when a group needs
+    // collapsing.
+    if (rows.nonEmpty) canonicalizeBySanitize()
     val tPopulateMs = (System.nanoTime() - tPostFetch) / 1000000
     if (rows.nonEmpty)
       logger.info(s"Hydrated ${rows.size} enrichment(s) from Mongo — findAll=${tFindAllMs}ms populate=${tPopulateMs}ms.")

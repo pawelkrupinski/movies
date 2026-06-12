@@ -60,4 +60,23 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
       cache.entries should have size 2
     }
   }
+
+  // The live duplicate-card / double-rating-run bug at its source: different
+  // cinemas report ONE film under different years, both already TMDB-resolved to
+  // the same id. They land under distinct `CacheKey`s, so rehydrate's raw put
+  // can't fold them (the `put` identity gate is bypassed on hydrate). They'd then
+  // sit duplicated — each independently enriched — until the periodic `settle`,
+  // which the worker's restart loop keeps resetting. rehydrate must collapse them
+  // on load so the duplicate never reaches the read model or the rating pipeline.
+  private def resolvedRow(year: Int, cinema: Source): StoredMovieRecord =
+    StoredMovieRecord("Kumotry", Some(year),
+      MovieRecord(tmdbId = Some(777), data = Map[Source, SourceData](
+        cinema -> SourceData(title = Some("Kumotry"), rawTitle = Some("Kumotry"), releaseYear = Some(year)))))
+
+  "rehydrate" should "collapse two same-tmdbId rows that differ only by year, on load" in {
+    val cache = new CaffeineMovieCache(repoOf(
+      resolvedRow(2025, Multikino), resolvedRow(2026, CinemaCityKinepolis)))
+    cache.entries should have size 1
+    cache.entries.head._2.cinemaData.keySet shouldBe Set(Multikino, CinemaCityKinepolis)
+  }
 }
