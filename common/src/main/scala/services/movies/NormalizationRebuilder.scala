@@ -71,10 +71,17 @@ class NormalizationRebuilder(
   def rebuild(): RebuildResult = {
     val records = cache.entries
     val frags   = records.flatMap { case (k, r) => fragmentsOf(k, r) }
+      // An empty merge key is never a real film row. `keyOfSlot` keeps live
+      // blank-raw slots on their record's key, but a row whose key ITSELF
+      // sanitises to empty (a pre-existing phantom from an all-blank slot) has
+      // no valid home — drop it so the rebuild prunes the junk instead of
+      // re-persisting it.
+      .filter(f => TitleNormalizer.sanitize(f.key.cleanTitle).nonEmpty)
     val byKey   = frags.groupBy(_.key)
 
     var changed = 0
-    // Keys that no longer host any fragment (a merge victim, or a fully-moved row).
+    // Keys that no longer host any fragment (a merge victim, a fully-moved row,
+    // or an empty-keyed phantom dropped above).
     (records.map(_._1).toSet -- byKey.keySet).foreach { k => cache.invalidate(k); changed += 1 }
 
     val merges = scala.collection.mutable.ListBuffer.empty[MergeEvent]

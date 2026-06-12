@@ -113,6 +113,21 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
     splitOffs shouldBe empty
   }
 
+  it should "prune a pre-existing empty-titled phantom row (all-blank slot)" in {
+    val cache = new CaffeineMovieCache(disabledRepo)
+    // The junk left behind by the old bug: a row keyed by the empty string,
+    // holding a slot with no usable title at all. The rebuild must drop it.
+    cache.put(CacheKey("", Some(1999)),
+      MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = None, rawTitle = Some("")))))
+    cache.put(cache.keyOf("Real Film", None),
+      MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Real Film"), rawTitle = Some("Real Film")))))
+    cache.entries should have size 2
+
+    new NormalizationRebuilder(cache).rebuild()
+
+    cache.entries.map(_._1.cleanTitle) shouldBe Seq("Real Film")
+  }
+
   "reEnrichSearchChanges" should "re-resolve only rows whose apiQuery changed" in {
     val cache = new CaffeineMovieCache(disabledRepo)
     // Row keyed by its display title incl. the programme prefix (search-tier
