@@ -33,7 +33,15 @@ class ShowtimeCache(
   // so the loop uses the same wired runner as the queue path — incl. detail-task
   // enqueue when deferred detail is enabled. Defaults to a bare runner for
   // tests/scripts that construct ShowtimeCache directly.
-  runner:      Option[CinemaScrapeRunner] = None
+  runner:      Option[CinemaScrapeRunner] = None,
+  // Delay before the FIRST pass after `start()`. On a fresh worker the first
+  // scrape sweep (~48 cinemas in parallel) is the heaviest CPU work it does, and
+  // firing it at boot piled it on top of the cache hydrate + read-model reconcile
+  // on a cold, un-JIT-warmed JVM — draining the shared-CPU credit balance to zero
+  // (82% steal). Holding the first pass back lets the boot work finish and the JIT
+  // warm first. Defaults short so tests/scripts behave ~as before; `Wiring` injects
+  // a longer boot delay.
+  initialDelay: FiniteDuration = 30.seconds
 ) extends Stoppable with Logging {
 
   private val scrapeRunner: CinemaScrapeRunner = runner.getOrElse(new CinemaScrapeRunner(movieCache, bus))
@@ -57,10 +65,11 @@ class ShowtimeCache(
     logger.info(s"Starting — commit ${Option(System.getenv("COMMIT_SHA")).getOrElse("unknown")}")
     if (scrapers.isEmpty) return
     logger.info(s"Scrape: continuous passes over ${scrapers.size} cinemas, " +
+                s"first pass in ${initialDelay.toSeconds}s, " +
                 s"${InterPassDelay.toSeconds}s between passes (next starts when the last finishes).")
     scheduler.scheduleWithFixedDelay(
       () => runPass(),
-      0L, InterPassDelay.toMillis, TimeUnit.MILLISECONDS
+      initialDelay.toMillis, InterPassDelay.toMillis, TimeUnit.MILLISECONDS
     )
   }
 

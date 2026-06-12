@@ -71,6 +71,21 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.screeningDeletes should contain(s"$fid|poznan|Multikino Stary Browar")
   }
 
+  // Boot-cost guard: the full reconcile is a `findAll()` + project-every-row scan.
+  // Running it synchronously at `start()` stacked a second full scan onto the cache
+  // hydrate + first scrape on a cold JVM (the boot CPU-credit drain). `start()` now
+  // seeds state + installs the watch but defers the reconcile to the first scheduled
+  // tick — so no source row is projected synchronously. (Before, the boot reconcile
+  // projected "Foo" at start(), making movieUpserts size 1 and failing this.)
+  "start" should "not reconcile synchronously (defer the full scan off the boot path)" in {
+    val (projector, repo, rm) = fixture()
+    repo.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.start()
+    rm.movieUpserts     shouldBe empty
+    rm.screeningUpserts shouldBe empty
+    projector.stop()
+  }
+
   "reconcile" should "prune derived docs whose source film vanished" in {
     val (projector, repo, rm) = fixture()
     repo.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))

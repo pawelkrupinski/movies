@@ -48,6 +48,13 @@ class ReadModelProjector(
 
   private val scheduler        = DaemonExecutors.scheduler("read-model-projector")
   private val ReconcileSeconds = Env.positiveLong("KINOWO_READMODEL_RECONCILE_SECONDS", 1800L)
+  // The boot reconcile is a full `movieRepo.findAll()` + project-every-row scan.
+  // Running it synchronously at `start()` stacked a second full scan onto the
+  // cache hydrate and the first scrape on a cold JVM (the boot CPU-credit drain).
+  // Defer it to the first scheduled tick this many seconds in — short, NOT the
+  // full ReconcileSeconds, so stale-prune latency stays seconds not 30 min.
+  private val ReconcileBootDelaySeconds =
+    Env.positiveLong("KINOWO_READMODEL_RECONCILE_BOOT_DELAY_SECONDS", 60L)
   @volatile private var watchHandle: Option[AutoCloseable] = None
 
   def enabled: Boolean = writer.enabled && movieRepo.enabled
@@ -100,12 +107,17 @@ class ReadModelProjector(
         lastScreenings.update(fid, ss.map(s => s._id -> s).toMap)
       }
     }
-    reconcile()
+    // The change-stream watch covers live changes from now on; the seeded state
+    // above means incremental writes are no-ops for already-correct docs. The
+    // full reconcile (which additionally prunes derived docs whose source row
+    // vanished while the worker was down) is deferred to the first scheduled tick
+    // so it doesn't compete with boot hydrate + the first scrape.
     watchHandle = movieRepo.watchUpserts(onMovieUpsert)
     scheduler.scheduleAtFixedRate(
       () => Try(reconcile()).recover { case ex => logger.warn(s"read-model reconcile tick failed: ${ex.getMessage}") },
-      ReconcileSeconds, ReconcileSeconds, TimeUnit.SECONDS)
-    logger.info(s"ReadModelProjector started; reconcile every ${ReconcileSeconds}s; " +
+      ReconcileBootDelaySeconds, ReconcileSeconds, TimeUnit.SECONDS)
+    logger.info(s"ReadModelProjector started; first reconcile in ${ReconcileBootDelaySeconds}s, " +
+      s"then every ${ReconcileSeconds}s; " +
       s"change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — reconcile only"}.")
   } else logger.info("ReadModelProjector disabled (read model or movies repo not enabled).")
 

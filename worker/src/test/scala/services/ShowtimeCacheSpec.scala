@@ -88,4 +88,29 @@ class ShowtimeCacheSpec extends AnyFlatSpec with Matchers {
     val sc = new ShowtimeCache(Seq(slow), null, null, passTimeout = 100.millis)
     noException should be thrownBy sc.runPass()
   }
+
+  // Boot-cost guard: the first scrape pass must not fire at boot. On a fresh
+  // worker, firing the ~48-cinema sweep immediately piled it onto the cold-JVM
+  // cache hydrate + read-model reconcile and drained the CPU-credit balance to
+  // zero (82% steal). `start()` must hold the first pass back by `initialDelay`.
+  // (Before this change the initial delay was a hardcoded `0L`, so the pass ran
+  // right away and the `count shouldBe 0` assertion below would fail.)
+  "start" should "hold the first pass until the initial delay elapses" in {
+    import scala.concurrent.duration._
+    val count = new java.util.concurrent.atomic.AtomicInteger(0)
+    val scraper = new services.cinemas.CinemaScraper {
+      val cinema = models.KinoApollo
+      def scrapeHosts: Set[String] = Set.empty
+      // Count the invocation, then bail transiently so the pass settles without
+      // touching the (null) runner/cache — we only care that the pass ran.
+      def fetch() = { count.incrementAndGet(); throw new java.io.IOException("probe") }
+    }
+    val sc = new ShowtimeCache(Seq(scraper), null, null, initialDelay = 300.millis)
+    sc.start()
+    Thread.sleep(100)
+    count.get shouldBe 0          // still within the initial delay → no pass yet
+    Thread.sleep(600)
+    count.get should be >= 1      // delay elapsed → first pass ran
+    sc.stop()
+  }
 }

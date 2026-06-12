@@ -15,6 +15,8 @@ import services.tasks.{DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, E
 import services.titlerules.{MongoTitleRulesRepo, TitleRuleSet, TitleRulesCache, TitleRulesRepo}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
+import scala.concurrent.duration.DurationLong
+
 /**
  * Write composition root: cinema scraping + the enrichment cascade. Runs as its
  * own process (`WorkerMain`), writing through MovieCache to Mongo; the serving
@@ -269,8 +271,15 @@ class WorkerWiring {
   def scrapeConcurrency: Int = Env.positiveInt("KINOWO_SCRAPE_CONCURRENCY", 4)
   lazy val showtimeFetchEc = backgroundBudget.ec("showtime-fetch", scrapeConcurrency)
 
+  // Hold the first scrape pass back from boot so the heaviest CPU work (the
+  // ~48-cinema parallel sweep) doesn't pile onto the cold-JVM cache hydrate +
+  // read-model reconcile and drain the shared-CPU credit balance to zero. See
+  // ShowtimeCache.initialDelay.
+  def initialScrapeDelaySeconds: Long = Env.positiveLong("KINOWO_SCRAPE_INITIAL_DELAY_SECONDS", 45L)
+
   lazy val showtimeCache = new ShowtimeCache(
-    cinemaScrapers, eventBus, movieCache, showtimeFetchEc, runner = Some(cinemaScrapeRunner)
+    cinemaScrapers, eventBus, movieCache, showtimeFetchEc,
+    runner = Some(cinemaScrapeRunner), initialDelay = initialScrapeDelaySeconds.seconds
   )
 
   // ── Task queue (scrape scheduling) ──────────────────────────────────────────
@@ -383,10 +392,16 @@ class WorkerWiring {
     // Seed + install title rules before the cache hydrates so scrape/merge keys
     // are computed with the active rules from the very first tick.
     titleRulesCache.start()
+    // Boot ordering, tuned to not drain the shared-CPU credit balance on a cold
+    // JVM: the cache hydrate (synchronous findAll — the first scrape tick needs a
+    // populated cache for sibling/redirect checks) and the projector's state seed
+    // run at boot, but the two heaviest jobs are deferred off the boot window —
+    // the first scrape pass (KINOWO_SCRAPE_INITIAL_DELAY_SECONDS) and the
+    // projector's full reconcile (KINOWO_READMODEL_RECONCILE_BOOT_DELAY_SECONDS).
     movieCache.start()
-    // Start the read-model projector after the cache so its boot reconcile reads
-    // a hydrated `movies` collection; it watches the change stream independently
-    // of the cache's own watch.
+    // Start the read-model projector after the cache so its state seed (and the
+    // first deferred reconcile) read a hydrated `movies` collection; it watches the
+    // change stream independently of the cache's own watch.
     readModelProjector.start()
     movieService.start()
     // The *Ratings 4h cache walks run only in legacy mode; the EnrichmentReaper
