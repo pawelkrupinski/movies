@@ -38,6 +38,19 @@ object MovieRecordMerge {
   def union(canonical: MovieRecord, victim: MovieRecord): MovieRecord =
     canonical.copy(data = mergeData(canonical.data, victim.data))
 
+  /** Fold a set of rows of the SAME film into one. The enriched row (the first
+   *  carrying a `tmdbId`) is the canonical, so its single-source enrichment
+   *  fields survive; every other row's per-source `data` is unioned onto it.
+   *  Used wherever several stored rows resolve to one merge key at once — the
+   *  cache's `rehydrate` (a late merge-key rule makes two docs collide) and the
+   *  rule-change `NormalizationRebuilder` — so both agree on the canonical pick
+   *  and the union order. `records` must be non-empty. */
+  def unionAll(records: Seq[MovieRecord]): MovieRecord = {
+    require(records.nonEmpty, "MovieRecordMerge.unionAll: no records")
+    val canonical = records.find(_.tmdbId.isDefined).getOrElse(records.head)
+    records.filterNot(_ eq canonical).foldLeft(canonical)(union)
+  }
+
   private def mergeData(
     canonical: Map[Source, SourceData],
     victim:    Map[Source, SourceData]

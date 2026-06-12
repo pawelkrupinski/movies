@@ -816,10 +816,18 @@ class CaffeineMovieCache(
                   "Pages will render with no films until the next successful tick.")
     }
     val tPostFetch = System.nanoTime()
-    val nextKeys = rows.iterator.map(r => CacheKey(r.title, r.year)).toSet
-    rows.foreach(r => positive.put(CacheKey(r.title, r.year), r.record))
+    // Group by key BEFORE putting: a merge-key rule added after these docs were
+    // written (a new GlobalStructural strip) makes two stored titles collide on
+    // `CacheKey`, and a bare `put`-per-row is last-write-wins — it would silently
+    // drop one doc's showtimes until the next scrape. Union the colliding rows
+    // instead, so the cache is lossless the moment the rule lands (the orphaned
+    // Mongo `_id` is reconciled by a later scrape / the reaper).
+    val byKey: Map[CacheKey, MovieRecord] =
+      rows.groupBy(r => CacheKey(r.title, r.year))
+        .map { case (k, rs) => k -> MovieRecordMerge.unionAll(rs.map(_.record)) }
+    byKey.foreach { case (k, rec) => positive.put(k, rec) }
     positive.asMap().keySet().asScala.toSeq
-      .filterNot(nextKeys.contains)
+      .filterNot(byKey.keySet.contains)
       .foreach(positive.invalidate)
     val tPopulateMs = (System.nanoTime() - tPostFetch) / 1000000
     if (rows.nonEmpty)

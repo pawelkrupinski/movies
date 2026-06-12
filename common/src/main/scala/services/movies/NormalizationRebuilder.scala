@@ -86,9 +86,7 @@ class NormalizationRebuilder(
 
     val merges = scala.collection.mutable.ListBuffer.empty[MergeEvent]
     byKey.foreach { case (key, fs) =>
-      val recs      = fs.map(_.rec)
-      val canonical = recs.find(_.tmdbId.isDefined).getOrElse(recs.head)
-      val merged    = recs.filterNot(_ eq canonical).foldLeft(canonical)(MovieRecordMerge.union)
+      val merged = MovieRecordMerge.unionAll(fs.map(_.rec))
       if (!cache.get(key).contains(merged)) { cache.put(key, merged); changed += 1 }
       if (fs.map(_.from).distinct.sizeIs > 1)
         merges += MergeEvent(merged.displayTitle(key.cleanTitle), key.year,
