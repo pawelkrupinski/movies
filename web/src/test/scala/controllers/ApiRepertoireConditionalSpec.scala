@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import services.movies.CaffeineMovieCache
+import services.readmodel.WebReadModel
 
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
@@ -14,7 +14,7 @@ import java.util.zip.GZIPInputStream
 
 class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
-  private def buildController(): (MovieController, CaffeineMovieCache) = {
+  private def buildController(): (MovieController, WebReadModel) = {
     val now = LocalDateTime.now()
     val record = MovieRecord(
       imdbId = Some("tt999"),

@@ -18,7 +18,7 @@ import java.util.zip.GZIPInputStream
  *  correctly. */
 class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
 
-  private def buildController(): (MovieController, services.movies.CaffeineMovieCache) = {
+  private def buildController(): (MovieController, services.readmodel.WebReadModel) = {
     val now = LocalDateTime.now()
     val record = MovieRecord(
       imdbId = Some("tt123"),

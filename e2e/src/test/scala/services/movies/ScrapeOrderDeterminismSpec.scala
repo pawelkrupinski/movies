@@ -229,7 +229,12 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     w.drainServices()
     w.converge()
     val record = w.movieRepo.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
-    val svc = new MovieControllerService(w.movieCache)
+    // Project the converged corpus into the read model and warm it — the same
+    // reconcile + reload the worker runs at boot — so we render through the
+    // web's read seam (webReadModel), not the raw worker cache.
+    w.readModelProjector.reconcile()
+    w.webReadModel.reload()
+    val svc = new MovieControllerService(w.webReadModel)
     val rows = City.all.sortBy(_.slug).flatMap(c => svc.toSchedules(c, Now))
     (record, rows)
   }

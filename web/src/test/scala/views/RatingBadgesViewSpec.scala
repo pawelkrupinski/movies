@@ -1,6 +1,7 @@
 package views
 
 import models.MovieRecord
+import services.readmodel.TestReadModel
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -13,23 +14,23 @@ import org.scalatest.matchers.should.Matchers
 class RatingBadgesViewSpec extends AnyFlatSpec with Matchers {
 
   "_ratingBadges" should "render a whole-number IMDb score with one decimal" in {
-    val rendered = views.html._ratingBadges(Some(MovieRecord(imdbRating = Some(7.0))), "Some Film").body
+    val rendered = views.html._ratingBadges(Some(TestReadModel.ratings("Some Film", MovieRecord(imdbRating = Some(7.0))))).body
     rendered should include ("rating-imdb-value\">7.0<")
   }
 
   it should "render a whole-number Filmweb score with one decimal" in {
-    val rendered = views.html._ratingBadges(Some(MovieRecord(filmwebRating = Some(7.0))), "Some Film").body
+    val rendered = views.html._ratingBadges(Some(TestReadModel.ratings("Some Film", MovieRecord(filmwebRating = Some(7.0))))).body
     rendered should include ("rating-fw-value\">7.0<")
   }
 
   it should "render a fractional score verbatim to one decimal" in {
-    val rendered = views.html._ratingBadges(Some(MovieRecord(imdbRating = Some(7.7))), "Some Film").body
+    val rendered = views.html._ratingBadges(Some(TestReadModel.ratings("Some Film", MovieRecord(imdbRating = Some(7.7))))).body
     rendered should include ("rating-imdb-value\">7.7<")
   }
 
   it should "round a raw rating to one decimal, keeping the tenths place" in {
     // A real filmweb value rounds to 7.0 and must still show the ".0".
-    val rendered = views.html._ratingBadges(Some(MovieRecord(filmwebRating = Some(6.97571))), "Some Film").body
+    val rendered = views.html._ratingBadges(Some(TestReadModel.ratings("Some Film", MovieRecord(filmwebRating = Some(6.97571))))).body
     rendered should include ("rating-fw-value\">7.0<")
   }
 }

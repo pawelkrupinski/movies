@@ -1,6 +1,7 @@
 package controllers
 
 import models._
+import services.readmodel.TestReadModel
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -26,7 +27,8 @@ class PlanControllerSpec extends AnyFlatSpec with Matchers {
       cast      = Seq.empty,
       director  = Seq.empty,
       cinemaFilmUrls = Seq.empty,
-      showings  = Seq((date, Seq(CinemaShowtimes(cinema, showtimes))))
+      showings  = Seq((date, Seq(CinemaShowtimes(cinema, showtimes)))),
+      resolved  = TestReadModel.resolved(title, None, MovieRecord())
     )
   }
 
