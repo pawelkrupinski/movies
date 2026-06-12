@@ -484,6 +484,20 @@ object UptimeMonitor {
 
   def bucketTimestamp(epochMs: Long): Long = epochMs - (epochMs % BucketDurationMs)
 
+  // The venue's public source-page URL travels as a `"url:<https…>"` service
+  // tag (written by the worker's `CinemaClientMarkers`). Both /uptime and /debug
+  // turn a cinema name into a link to it, so the parse lives here — one prefix,
+  // one extractor — rather than re-spelt at each render site.
+  val UrlTagPrefix: String = "url:"
+  def urlFromTags(tags: Set[String]): Option[String] =
+    tags.find(_.startsWith(UrlTagPrefix)).map(_.drop(UrlTagPrefix.length))
+
+  /** `service name -> public source-page URL` for every tagged service carrying
+   *  a `url:` tag, derived from a `serviceTagsSnapshot()`. The cinema pages look
+   *  the URL up by `cinema.displayName`. */
+  def cinemaUrls(tagsSnapshot: Map[String, Set[String]]): Map[String, String] =
+    tagsSnapshot.flatMap { case (name, tags) => urlFromTags(tags).map(name -> _) }
+
   // Per-cinema detail-enrichment health is recorded under a synthetic
   // "<cinema displayName>|enrichment" service, distinct from the scrape service
   // (the bare cinema name). The `/uptime` page parses the suffix to render the

@@ -267,15 +267,8 @@
 @serviceRow(s: ServiceRow, city: Option[String]) = {
   <div class="row" data-service="@s.name">
     <div class="name" title="@s.name" data-city="@city.getOrElse("")">
-      @(s.tags.find(_.startsWith("url:")).map(_.substring(4))) match {
-        case Some(url) => {
-          <a class="name-label" href="@url" target="_blank" rel="noopener noreferrer">@s.name</a>
-        }
-        case None => {
-          <span class="name-label">@s.name</span>
-        }
-      }
-      @for(t <- s.tags.toSeq.sorted if !t.startsWith("url:")) {
+      @_serviceNameLink(s.name, s.url, "name-label")
+      @for(t <- s.tags.toSeq.sorted if !t.startsWith(UptimeMonitor.UrlTagPrefix)) {
         @defining(t.split(":", 2)) { parts =>
           @if(parts.head == "custom") {
             <span class="tag tag-custom" title="@parts.last">Custom</span>

@@ -1,5 +1,7 @@
 package services.cinemas
 
+import services.UptimeMonitor
+
 /**
  * Derives, for every cinema, a marker describing the scraper client behind it:
  * whether that client is REUSED across several cinemas (a shared platform client
@@ -18,11 +20,6 @@ object CinemaClientMarkers {
   val SharedKind   = "shared"
   val CustomKind   = "custom"
   val FallbackKind = "fallback"
-  /** Tag carrying the venue's public source page (`url:<https…>`); the /uptime
-   *  page turns the cinema name into a link to it. Not a chip — the page reads
-   *  it for the `href` and skips it in the chip row. */
-  val UrlKind      = "url"
-
   /** Tag flagging a cinema currently served via the Filmweb fallback (its own
    *  scraper is down). Rendered as an "FtFW" (fell-to-Filmweb) chip on /uptime.
    *  The worker writes it on each fallback ENTER and clears it on RECOVER (and
@@ -37,7 +34,11 @@ object CinemaClientMarkers {
    *  same set. */
   def tagsFor(clientMarker: Option[String], sourceUrl: Option[String], inFallback: Boolean): Set[String] =
     clientMarker.toSet ++
-      sourceUrl.map(u => s"$UrlKind:$u") ++
+      // The venue's public source page (`url:<https…>`); the /uptime + /debug
+      // pages turn the cinema name into a link to it. Not a chip — the page
+      // reads it for the `href` and skips it in the chip row. Prefix shared
+      // with the reader via `UptimeMonitor.UrlTagPrefix`.
+      sourceUrl.map(u => UptimeMonitor.UrlTagPrefix + u) ++
       (if (inFallback) Set(FilmwebFallbackTag) else Set.empty[String])
 
   /** The raw scraper's client class as the marker label. For the multi-venue

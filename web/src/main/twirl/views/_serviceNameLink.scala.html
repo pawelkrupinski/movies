@@ -1,0 +1,8 @@
+@*  A service/cinema name rendered as a link to its public source page when one
+    is known (the `url:` UptimeMonitor tag), else plain text. Shared by /uptime
+    (the service rows) and /debug (the per-cinema source slots) so both turn a
+    name into the same href the same way. `cssClass` lets each page style it. *@
+@(name: String, url: Option[String], cssClass: String)@url match {
+  case Some(u) => {<a class="@cssClass" href="@u" target="_blank" rel="noopener noreferrer">@name</a>}
+  case None    => {<span class="@cssClass">@name</span>}
+}

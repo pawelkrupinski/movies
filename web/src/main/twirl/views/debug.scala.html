@@ -3,7 +3,7 @@
 @import services.readmodel.ReadModelProjection
 @import controllers.FilmHref
 @import java.time.format.DateTimeFormatter
-@(rows: Seq[StoredMovieRecord])(implicit city: models.City)
+@(rows: Seq[StoredMovieRecord], cinemaUrls: Map[String, String] = Map.empty)(implicit city: models.City)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -77,6 +77,10 @@
       color: #aad4ff; font-weight: bold; margin-bottom: .3rem;
     }
     .cinema-head a { color: #66aadd; font-weight: normal; font-size: 10px; }
+    /* The cinema name itself is a link to its public page (same href /uptime
+       shows) — keep it looking like the heading, just underline on hover. */
+    .cinema-head a.cinema-name-link { color: inherit; font-weight: inherit; font-size: inherit; }
+    .cinema-head a.cinema-name-link:hover { color: #fff; text-decoration: underline; }
     .cinema-meta { color: #888; font-size: 10px; margin-bottom: .35rem; }
     .cinema-meta span { margin-right: .8rem; }
     .cinema-synopsis {
@@ -174,7 +178,7 @@
         </td>
       </tr>
       <tr class="details hidden" data-row-id="r@idx">
-        <td colspan="7">@debugDetails(title, year, e)</td>
+        <td colspan="7">@debugDetails(title, year, e, cinemaUrls)</td>
       </tr>
       }
       }

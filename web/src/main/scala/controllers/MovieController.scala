@@ -219,6 +219,11 @@ class MovieController( cc: ControllerComponents,
                        environment: Mode,
                        responseCache: GzippedResponseCache,
                        ogCardService: tools.OgCardService,
+                       // `cinema displayName -> public source-page URL`, the same
+                       // links /uptime shows, sourced from the UptimeMonitor tag
+                       // snapshot. Evaluated per request so it tracks live retags;
+                       // used only by the /debug table to link cinema names.
+                       cinemaSourceUrls: () => Map[String, String] = () => Map.empty,
                      ) extends AbstractController(cc) with Logging {
 
   // Read the session's `userId` (set by `AuthController.callback`) and
@@ -405,7 +410,7 @@ class MovieController( cc: ControllerComponents,
       // Pulled on demand from Mongo: the web doesn't keep the `movies` model
       // warm, so the corpus dump reads the source rows the read model is
       // projected from directly.
-      Ok(views.html.debug(movieRepo.findAll().sortBy(_.title.toLowerCase)))
+      Ok(views.html.debug(movieRepo.findAll().sortBy(_.title.toLowerCase), cinemaSourceUrls()))
     }
   }
 

@@ -14,6 +14,7 @@ object TestMovieController {
   def build(
     records: Seq[(String, Option[Int], models.MovieRecord)],
     mode: Mode = Mode.Test,
+    cinemaSourceUrls: Map[String, String] = Map.empty,
   ): (MovieController, WebReadModel) = {
     val readModel = TestReadModel.fromRecords(records)
     val ctrl  = new MovieController(
@@ -30,6 +31,7 @@ object TestMovieController {
       // the OG card falls back to text-only — fine for controller specs that
       // don't assert on the card image itself.
       ogCardService          = new tools.OgCardService((_: String) => None),
+      cinemaSourceUrls       = () => cinemaSourceUrls,
     )
     (ctrl, readModel)
   }

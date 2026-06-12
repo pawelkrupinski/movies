@@ -278,7 +278,11 @@ case class ServiceRow(
   // Generic per-row labels (UptimeMonitor service tags) rendered as chips next to
   // the name — e.g. the cinema's scraper-client marker "shared:FilmwebShowtimesClient".
   tags:       Set[String]        = Set.empty
-)
+) {
+  /** The venue's public source-page URL, parsed out of the `url:` tag — the
+   *  href the name links to. Same extractor /debug uses (one source of truth). */
+  def url: Option[String] = UptimeMonitor.urlFromTags(tags)
+}
 
 /** A row promoted into the leading "Failing" / "No screenings" triage sections,
  *  carrying the city it was pulled out of (None for non-cinema rows). */

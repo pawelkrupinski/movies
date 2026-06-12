@@ -114,7 +114,8 @@ trait Wiring {
   // fetch (not the scraper's httoFetch) so slow cinema origins get a generous
   // connect budget instead of the fan-out's tight 5s.
   lazy val ogCardService    = new tools.OgCardService(new tools.HttpPosterFetch)
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, movieRepo, userRepo, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService)
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, movieRepo, userRepo, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService,
+    cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()))
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
   // Read-only on the web side: the worker writes fallback state; the /uptime/fallback

@@ -1,6 +1,6 @@
 @import models.{Cinema, MovieRecord, Showtime, Source, SourceData, Tmdb, Imdb}
 @import java.time.format.DateTimeFormatter
-@(title: String, year: Option[Int], e: MovieRecord)
+@(title: String, year: Option[Int], e: MovieRecord, cinemaUrls: Map[String, String] = Map.empty)
 @dtFmt = @{DateTimeFormatter.ofPattern("HH:mm")}
 @dateFmt = @{DateTimeFormatter.ofPattern("MM-dd")}
 
@@ -62,11 +62,13 @@
      prioritised by the resolver), then TMDB, then IMDb. Each slot shows the
      raw per-source contribution so you can see which source fed which
      resolved value above. --*@
-@perSourceSlot(label: String, source: Source) = {
+@perSourceSlot(label: String, source: Source, sourceUrl: Option[String] = None) = {
   @e.data.get(source).map { (slot: SourceData) =>
     <div class="cinema">
       <div class="cinema-head">
-        <span>@label</span>
+        @* Cinema name links to its public source page — the same href /uptime
+           shows — when known; plain text otherwise (TMDB/IMDB slots). *@
+        @_serviceNameLink(label, sourceUrl, "cinema-name-link")
         @slot.filmUrl.map { u =>
           <a href="@u" target="_blank" rel="noopener" onclick="event.stopPropagation()">page ↗</a>
         }
@@ -112,7 +114,10 @@
 } else {
   <div class="cinemas">
     @for(cinema <- Cinema.all) {
-      @perSourceSlot(Cinema.cityOf(cinema).fold(cinema.displayName)(city => s"${cinema.displayName} · $city"), cinema)
+      @perSourceSlot(
+        Cinema.cityOf(cinema).fold(cinema.displayName)(city => s"${cinema.displayName} · $city"),
+        cinema,
+        cinemaUrls.get(cinema.displayName))
     }
     @perSourceSlot("TMDB", Tmdb)
     @perSourceSlot("IMDB", Imdb)
