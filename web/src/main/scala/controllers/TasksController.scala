@@ -12,17 +12,17 @@ import services.tasks.{QueueSnapshot, TaskQueue, TaskSummary}
  * stream was rejected for the same reason `/uptime` dropped one — it would push
  * every task transition 24/7 even with nobody watching.
  */
-class TasksController(cc: ControllerComponents, queue: TaskQueue) extends AbstractController(cc) {
+class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue: TaskQueue) extends AbstractController(cc) {
 
   /** Cap on the live rows returned per poll — enough to see the head of a
    *  backed-up queue without an unbounded scan. */
   private val ActiveLimit = 300
 
-  def index: Action[AnyContent] = Action {
+  def index: Action[AnyContent] = adminAction {
     Ok(views.html.tasks())
   }
 
-  def data: Action[AnyContent] = Action {
+  def data: Action[AnyContent] = adminAction {
     val snap = queue.monitor(ActiveLimit)
     Ok(snapshotJson(snap))
   }

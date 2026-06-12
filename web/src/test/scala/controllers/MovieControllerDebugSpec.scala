@@ -40,4 +40,29 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     val result = buildController(Mode.Prod).debug().apply(FakeRequest(GET, "/debug"))
     status(result) shouldBe NOT_FOUND
   }
+
+  // Unlike the other /debug pages, rehydrate runs in every mode (it reconciles a
+  // live prod instance's caches) and mutates state — so it's gated by the admin
+  // allowlist instead of left open, even in prod.
+  private val rehydrateReq = FakeRequest(POST, "/wroclaw/debug/rehydrate")
+
+  "POST /…/debug/rehydrate" should "401 an anonymous request" in {
+    val ctrl = TestMovieController.build(records, Mode.Prod)._1
+    status(ctrl.rehydrate("wroclaw").apply(rehydrateReq)) shouldBe UNAUTHORIZED
+  }
+
+  it should "403 a logged-in user not on the allowlist" in {
+    val ctrl = TestMovieController.build(records, Mode.Prod,
+      adminAction = TestAdminAction(allow = Set("someone-else@example.com")))._1
+    status(ctrl.rehydrate("wroclaw").apply(
+      rehydrateReq.withSession("userId" -> TestAdminAction.AdminUserId))) shouldBe FORBIDDEN
+  }
+
+  it should "reload the caches for an allowlisted admin" in {
+    val ctrl = TestMovieController.build(records, Mode.Prod)._1
+    val result = ctrl.rehydrate("wroclaw").apply(
+      rehydrateReq.withSession("userId" -> TestAdminAction.AdminUserId))
+    status(result) shouldBe OK
+    contentAsString(result) should include("rehydrated")
+  }
 }

@@ -22,17 +22,19 @@ class TasksControllerSpec extends AnyFlatSpec with Matchers {
 
   private val t0 = Instant.parse("2026-06-07T12:00:00Z")
 
-  private def controller(queue: InMemoryTaskQueue) =
-    new TasksController(Helpers.stubControllerComponents(), queue)
+  private def controller(queue: InMemoryTaskQueue, gate: AdminAction = TestAdminAction()) =
+    new TasksController(Helpers.stubControllerComponents(), gate, queue)
+
+  private val adminSession = FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
 
   private def dataJson(queue: InMemoryTaskQueue): JsObject = {
-    val result = controller(queue).data.apply(FakeRequest())
+    val result = controller(queue).data.apply(adminSession)
     contentType(result) shouldBe Some("application/json")
     Json.parse(contentAsString(result)).as[JsObject]
   }
 
   "GET /tasks" should "render the monitor page shell" in {
-    val result = controller(new InMemoryTaskQueue).index.apply(FakeRequest())
+    val result = controller(new InMemoryTaskQueue).index.apply(adminSession)
     status(result) shouldBe OK
     contentAsString(result) should include ("Task queue")
     contentAsString(result) should include ("/tasks/data") // the page polls this
@@ -79,5 +81,17 @@ class TasksControllerSpec extends AnyFlatSpec with Matchers {
     val json = dataJson(new InMemoryTaskQueue)
     (json \ "active").as[JsArray].value shouldBe empty
     (json \ "shown").as[Int] shouldBe 0
+  }
+
+  // ── Auth gate: /tasks is an operational page, closed like /uptime and the
+  //    title-rules editor (login session + ADMIN_ALLOWLIST). ──────────────────
+  "the /tasks gate" should "401 an anonymous request to the page and the data feed" in {
+    status(controller(new InMemoryTaskQueue).index.apply(FakeRequest())) shouldBe UNAUTHORIZED
+    status(controller(new InMemoryTaskQueue).data.apply(FakeRequest())) shouldBe UNAUTHORIZED
+  }
+
+  it should "403 a logged-in user whose email is not on the allowlist" in {
+    val gate = TestAdminAction(allow = Set("someone-else@example.com"))
+    status(controller(new InMemoryTaskQueue, gate).data.apply(adminSession)) shouldBe FORBIDDEN
   }
 }

@@ -27,7 +27,8 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   override def afterAll(): Unit = Await.result(sys.terminate(), 10.seconds)
 
   private val fallbackStore = new InMemoryFilmwebFallbackStore
-  private val controller = new UptimeController(Helpers.stubControllerComponents(), new UptimeMonitor(), fallbackStore)
+  private val controller = new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), new UptimeMonitor(), fallbackStore)
+  private val adminSession = FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
   private def fakeRow(n: String) = ServiceRow(n, Seq.empty)
 
   /** A bar series, oldest→newest, from status keywords ("red"/"zero"/"green"/"empty"). */
@@ -165,7 +166,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     fallbackStore.put(fallbackState("Kino Iluzjon", active = false))
     fallbackStore.putFilmwebOnly(Set("Kino Astra"))
 
-    val result = controller.fallback()(FakeRequest())
+    val result = controller.fallback()(adminSession)
     status(result) shouldBe OK
     val html = contentAsString(result)
     html should include ("Currently on fallback (1)")
@@ -174,5 +175,25 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     html should include ("Kino Iluzjon")       // recovered (inactive, has history)
     html should include ("Kino Astra")         // Filmweb-only by design
     html should include ("RuntimeException: down")  // the active row's reason rendered
+  }
+
+  // ── Auth gate: /uptime is an operational page, closed like the title-rules
+  //    editor (login session + ADMIN_ALLOWLIST). ───────────────────────────────
+  "the /uptime gate" should "401 an anonymous request" in {
+    status(controller.index(FakeRequest())) shouldBe UNAUTHORIZED
+  }
+
+  it should "403 a logged-in user whose email is not on the allowlist" in {
+    val outsider = new UptimeController(Helpers.stubControllerComponents(),
+      TestAdminAction(allow = Set("someone-else@example.com")), new UptimeMonitor(), fallbackStore)
+    status(outsider.index(adminSession)) shouldBe FORBIDDEN
+  }
+
+  it should "render /uptime for an allowlisted admin" in {
+    status(controller.index(adminSession)) shouldBe OK
+  }
+
+  it should "gate /uptime/fallback the same way" in {
+    status(controller.fallback()(FakeRequest())) shouldBe UNAUTHORIZED
   }
 }

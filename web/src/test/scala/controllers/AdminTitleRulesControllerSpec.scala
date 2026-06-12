@@ -29,21 +29,12 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     override def close() = ()
   }
 
-  // A user repo holding one admin (session id "admin1" → email "admin@example.com").
-  private def adminUserRepo: InMemoryUserRepo = {
-    val r = new InMemoryUserRepo
-    r.upsert(User("admin1", "google", "sub-admin", Some("admin@example.com"),
-      Some("Admin"), None, Instant.EPOCH, Instant.EPOCH))
-    r
-  }
-
   private def controller(repo: InMemoryTitleRulesRepo = new InMemoryTitleRulesRepo(),
-                         allow: Set[String] = Set("admin@example.com"),
                          reports: InMemoryNormalizationReportRepo = new InMemoryNormalizationReportRepo(),
-                         users: InMemoryUserRepo = adminUserRepo) =
-    new AdminTitleRulesController(Helpers.stubControllerComponents(), repo, emptyRepo, reports, users, allow)
+                         gate: AdminAction = TestAdminAction()) =
+    new AdminTitleRulesController(Helpers.stubControllerComponents(), gate, repo, emptyRepo, reports)
 
-  private val adminSession = FakeRequest().withSession("userId" -> "admin1")
+  private val adminSession = FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
 
   private def jsonReq(session: Boolean, body: play.api.libs.json.JsValue) = {
     val base = if (session) adminSession else FakeRequest()
@@ -59,7 +50,7 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     users.upsert(User("rando1", "google", "sub-rando", Some("rando@example.com"),
       None, None, Instant.EPOCH, Instant.EPOCH))
     val req = FakeRequest().withSession("userId" -> "rando1")
-    status(controller(users = users).index().apply(req)) shouldBe FORBIDDEN
+    status(controller(gate = TestAdminAction(users = users)).index().apply(req)) shouldBe FORBIDDEN
   }
 
   it should "403 when the session user id can't be resolved" in {

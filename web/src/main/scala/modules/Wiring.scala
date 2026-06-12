@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{AdminTitleRulesController, AuthController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController}
+import controllers.{AdminAction, AdminTitleRulesController, AuthController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
@@ -114,27 +114,31 @@ trait Wiring {
   // fetch (not the scraper's httoFetch) so slow cinema origins get a generous
   // connect budget instead of the fan-out's tight 5s.
   lazy val ogCardService    = new tools.OgCardService(new tools.HttpPosterFetch)
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, movieRepo, userRepo, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService,
+  // Comma-separated allowlist of admin EMAILS permitted to reach the operational
+  // pages (title-rules editor, /uptime, /tasks) and the rehydrate trigger. Empty
+  // (unset) → nobody is authorised, so those pages are closed by default. The
+  // shared AdminAction gate resolves the session's user UUID and checks its email
+  // against this set.
+  lazy val adminAllowlist: Set[String] =
+    Env.get("ADMIN_ALLOWLIST").map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet).getOrElse(Set.empty)
+  lazy val adminAction = new AdminAction(controllerComponents.parsers.anyContent, userRepo, adminAllowlist)(using controllerComponents.executionContext)
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, movieRepo, userRepo, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()))
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
   // Read-only on the web side: the worker writes fallback state; the /uptime/fallback
   // page reads it (hydrated from Mongo at boot).
   lazy val filmwebFallbackStore: FilmwebFallbackStore = new MongoFilmwebFallbackStore(mongoConnection.database)
-  lazy val uptimeController = new UptimeController(controllerComponents, uptimeMonitor, filmwebFallbackStore)(using materializer)
-  lazy val tasksController  = new TasksController(controllerComponents, taskQueue)
+  lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, filmwebFallbackStore)(using materializer)
+  lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue)
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepo, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
   lazy val accountDeletion   = new AccountDeletion(userRepo, userStateRepo)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepo, accountDeletion)
   lazy val legalController   = new LegalController(controllerComponents)
   lazy val facebookDataDeletionController =
     new FacebookDataDeletionController(controllerComponents, Env.get("FACEBOOK_APP_SECRET"), userRepo, accountDeletion)
-  // Comma-separated allowlist of admin EMAILS permitted to edit title rules.
-  // Empty (unset) → nobody is authorised, so the editor is closed by default.
-  lazy val adminAllowlist: Set[String] =
-    Env.get("ADMIN_ALLOWLIST").map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet).getOrElse(Set.empty)
   lazy val adminTitleRulesController =
-    new AdminTitleRulesController(controllerComponents, titleRulesRepo, movieRepo, normalizationReportRepo, userRepo, adminAllowlist)
+    new AdminTitleRulesController(controllerComponents, adminAction, titleRulesRepo, movieRepo, normalizationReportRepo)
 
   // Start the data layer. Force the Mongo connection at boot (so connection
   // errors surface in the boot timeline, not mid-request), then start the cache

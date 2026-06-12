@@ -15,6 +15,7 @@ object TestMovieController {
     records: Seq[(String, Option[Int], models.MovieRecord)],
     mode: Mode = Mode.Test,
     cinemaSourceUrls: Map[String, String] = Map.empty,
+    adminAction: AdminAction = TestAdminAction(),
   ): (MovieController, WebReadModel) = {
     val readModel = TestReadModel.fromRecords(records)
     val ctrl  = new MovieController(
@@ -24,6 +25,7 @@ object TestMovieController {
       // On-demand corpus dump only (dev /debug); holds the same rows.
       movieRepo              = new InMemoryMovieRepo(records),
       userRepo               = new services.users.InMemoryUserRepo,
+      adminAction            = adminAction,
       oauthProviders         = Set.empty,
       environment            = mode,
       responseCache          = new GzippedResponseCache,

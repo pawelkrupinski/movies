@@ -215,6 +215,10 @@ class MovieController( cc: ControllerComponents,
                        // a fresh snapshot when the dev endpoint is hit.
                        movieRepo: MovieRepo,
                        userRepo: services.users.UserRepo,
+                       // Gate for the state-mutating /…/debug/rehydrate trigger
+                       // (the other /debug pages are dev-only; rehydrate runs in
+                       // every mode, so it needs the admin gate instead).
+                       adminAction: AdminAction,
                        oauthProviders: Set[String],
                        environment: Mode,
                        responseCache: GzippedResponseCache,
@@ -479,9 +483,11 @@ class MovieController( cc: ControllerComponents,
   }
 
   /** Reload the in-memory read-model caches from Mongo. Available in every mode
-   * (unlike the rest of the debug endpoints) so a fly.io instance whose caches
-   * drifted from the derived collections can be reconciled without a redeploy. */
-  def rehydrate(city: String): Action[AnyContent] = Action {
+   * (unlike the rest of the debug endpoints, which are dev-only) so a fly.io
+   * instance whose caches drifted from the derived collections can be reconciled
+   * without a redeploy — but since it runs in prod and mutates state, it's gated
+   * by [[AdminAction]] (login session + ADMIN_ALLOWLIST) rather than left open. */
+  def rehydrate(city: String): Action[AnyContent] = adminAction {
     withCity(city) { _ =>
       val count = readModel.reload()
       Ok(s"rehydrated $count rows\n").as("text/plain; charset=utf-8")

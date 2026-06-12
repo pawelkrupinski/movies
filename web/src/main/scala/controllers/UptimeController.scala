@@ -14,7 +14,7 @@ import java.time.format.DateTimeFormatter
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor, filmwebFallback: FilmwebFallbackStore)(using mat: Materializer) extends AbstractController(cc) {
+class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeMonitor, filmwebFallback: FilmwebFallbackStore)(using mat: Materializer) extends AbstractController(cc) {
 
   // Derived from the cinema model so every wired scraper groups under the
   // "Cinemas" header automatically — no edit needed when a cinema is added.
@@ -62,7 +62,7 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor, filmweb
       status, successes, failures, zeroes, errors, fallback)
   }
 
-  def index: Action[AnyContent] = Action {
+  def index: Action[AnyContent] = adminAction {
     val now = System.currentTimeMillis()
     val currentBucket = bucketTimestamp(now)
     val slots = (0 until MaxBuckets).reverse.map(i => currentBucket - i * BucketDurationMs)
@@ -155,7 +155,7 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor, filmweb
     else if (a == Zero || b == Zero) Zero
     else Healthy
 
-  def stream: Action[AnyContent] = Action {
+  def stream: Action[AnyContent] = adminAction {
     Ok.chunked(eventSource()).as("text/event-stream")
   }
 
@@ -190,7 +190,7 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor, filmweb
    *  uptime page sees per-host image-fetch reliability (the
    *  `images.weserv.nl` proxy that fronts every cinema poster, the
    *  origin CDNs we link directly, etc.). */
-  def imgEvent: Action[JsValue] = Action(parse.json) { req =>
+  def imgEvent: Action[JsValue] = adminAction(parse.json) { req =>
     val events = (req.body \ "events").asOpt[Seq[JsObject]].getOrElse(Seq.empty)
     events.foreach { e =>
       val host    = (e \ "host").asOpt[String].getOrElse("unknown")
@@ -208,7 +208,7 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor, filmweb
   /** Status page for the Filmweb fallback: cinemas CURRENTLY served by Filmweb
    *  because their own scraper is down/empty, cinemas that RECENTLY RECOVERED, and
    *  cinemas that are Filmweb-only BY DESIGN (their only scraper is Filmweb). */
-  def fallback: Action[AnyContent] = Action {
+  def fallback: Action[AnyContent] = adminAction {
     val all         = filmwebFallback.findAll()
     val onFallback  = all.filter(_.active).sortBy(_.cinema).map(fallbackRow)
     val recovered   = all.filterNot(_.active).filter(_.history.nonEmpty).sortBy(_.cinema).map(fallbackRow)
