@@ -139,6 +139,21 @@ object MongoConnection {
       required,
       parseProbeTimeout(Env.get("MONGODB_PROBE_TIMEOUT_SECONDS")))
 
+  /** Build from an explicit URI rather than `MONGODB_URI` — for a second
+   *  connection alongside the primary one. The web wiring uses it for the
+   *  local `/debug` read-mirror (`MONGODB_MOVIES_MIRROR_URI`): a separate
+   *  MongoClient pointed at a local Mongo that's kept synced from prod, so the
+   *  full-corpus `movies` read is a LAN hop instead of the prod tunnel. Shares
+   *  `fromEnv`'s db-name + probe-timeout resolution; `required` is the caller's
+   *  to decide (the mirror is a soft optimisation, so the caller passes
+   *  `false` and degrades to the primary connection when it's absent). */
+  def fromUri(uri: String, required: Boolean): MongoConnection =
+    new MongoConnection(
+      Some(uri),
+      Env.get("MONGODB_DB").getOrElse("kinowo"),
+      required,
+      parseProbeTimeout(Env.get("MONGODB_PROBE_TIMEOUT_SECONDS")))
+
   /** Driver settings for a connection string, defaulting wire compression to
    *  zlib. The wire payload is uncompressed BSON regardless of WiredTiger's
    *  on-disk snappy, so on a slow link transfer bytes dominate query time —

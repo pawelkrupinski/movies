@@ -47,6 +47,24 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     conn.close()
   }
 
+  // fromUri builds a SECOND connection from an explicit URI (the /debug local
+  // read-mirror, MONGODB_MOVIES_MIRROR_URI) rather than MONGODB_URI. Wiring
+  // builds it with required = false so a bad/unreachable mirror degrades to the
+  // prod connection (database None → fall back) instead of blocking boot — only
+  // /debug needs it.
+  "MongoConnection.fromUri with required = false" should "disable (database None) on an unusable URI instead of throwing" in {
+    val conn = MongoConnection.fromUri(MalformedUri, required = false)
+    conn.database shouldBe None
+    conn.close()
+  }
+
+  "MongoConnection.fromUri with required = true" should "throw on an unusable URI" in {
+    val ex = intercept[IllegalStateException] {
+      MongoConnection.fromUri(MalformedUri, required = true)
+    }
+    ex.getMessage should include ("required")
+  }
+
   // Wire compression: the payload over the wire is uncompressed BSON, so on a
   // slow link (the local flyctl tunnel, or the prod boot hydrate) transfer
   // bytes dominate. We default to zlib — built into the JDK, no extra

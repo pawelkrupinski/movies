@@ -53,7 +53,27 @@ trait Wiring {
   // now reaches the web as one small screening-doc delta, not a full-record
   // re-push. `movieRepo` survives only for the on-demand /debug corpus dump and
   // the admin rule-merge preview (a one-off `findAll`, no change stream).
-  lazy val movieRepo: MovieRepo = new MongoMovieRepo(mongoConnection.database, fallbackToOwnInit = false)
+  //
+  // Local read-mirror: `/debug`'s `movieRepo.findAll()` is a full `movies`
+  // scan. Run locally it goes over the prod `flyctl` tunnel, where 1200+ full
+  // docs take 30–60s and intermittently hit findAll's 60s timeout (→ an empty
+  // /debug table). When `MONGODB_MOVIES_MIRROR_URI` points at a local Mongo
+  // kept synced from prod by `scripts/local-mirror/mirror.sh`, movieRepo reads
+  // that LAN mirror (~100ms) instead. movieRepo is read-only in this process
+  // (the worker owns `movies` writes), and the task queue stays on the prod
+  // connection below, so /debug re-enrich still works end-to-end: ↻ → prod
+  // worker → prod `movies` → tailer → local mirror → /debug SSE. Unset (prod +
+  // default dev) → reuse the shared prod connection, behaviour identical;
+  // set-but-unreachable → fall back to prod rather than block boot, since only
+  // /debug needs it.
+  lazy val movieMirrorConnection: MongoConnection =
+    Env.get("MONGODB_MOVIES_MIRROR_URI") match {
+      case Some(uri) =>
+        val mirror = MongoConnection.fromUri(uri, required = false)
+        if (mirror.database.isDefined) mirror else { mirror.close(); mongoConnection }
+      case None => mongoConnection
+    }
+  lazy val movieRepo: MovieRepo = new MongoMovieRepo(movieMirrorConnection.database, fallbackToOwnInit = false)
   lazy val readModelRepo: ReadModelReader = new MongoReadModelRepo(mongoConnection.database)
   lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepo)
 
@@ -167,6 +187,9 @@ trait Wiring {
     titleRulesRepo.close()
     userRepo.close()
     userStateRepo.close()
+    // The /debug read-mirror owns its own MongoClient when distinct from the
+    // shared prod connection (i.e. MONGODB_MOVIES_MIRROR_URI was set + reachable).
+    if (movieMirrorConnection ne mongoConnection) movieMirrorConnection.close()
     mongoConnection.close()
   }
 }
