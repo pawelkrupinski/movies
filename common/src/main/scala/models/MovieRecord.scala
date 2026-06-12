@@ -37,6 +37,15 @@ case class MovieRecord(
   metacriticUrl:     Option[String]   = None,
   rottenTomatoesUrl: Option[String]   = None,
 
+  // ── Enrichment-conclusion markers (persisted) ─────────────────────────────
+  // Gate read-model projection: a row is published only once its enrichment
+  // has *concluded* — cinema detail done (where deferred) AND TMDB reached a
+  // definitive answer (a hit, i.e. `tmdbId` set, or `tmdbNoMatch`). A purely
+  // transient TMDB failure leaves both false, so the row stays held back and
+  // keeps retrying. See `readyToProject`.
+  tmdbNoMatch:       Boolean          = false,
+  detailPending:     Boolean          = false,
+
   // Per-source data from the most recent refresh. Cinemas contribute on
   // every scrape tick (their slot gets replaced wholesale, and dropped if
   // the film leaves their listings); `Tmdb`/`Imdb` slots come from the
@@ -240,6 +249,21 @@ case class MovieRecord(
    *  cinemas disagreeing on production vs theatrical year can't split a resolved
    *  film across two year-keys (the "Dzień objawienia" 2025-vs-2026 split). */
   def resolvedYear: Option[Int] = tmdbYear.orElse(releaseYear)
+
+  /** TMDB enrichment has concluded — a hit (`tmdbId` set) or a definitive
+   *  no-match (`tmdbNoMatch`). A purely transient failure leaves both false, so
+   *  the row stays held back (`readyToProject` false) and keeps retrying. */
+  def tmdbConcluded: Boolean = tmdbId.isDefined || tmdbNoMatch
+
+  /** Cinema detail enrichment is done — true unless a deferred detail fetch is
+   *  still outstanding. Inline / no-detail cinemas never set `detailPending`,
+   *  so this is trivially true for them. */
+  def detailDone: Boolean = !detailPending
+
+  /** Ready to publish to the read model: cinema detail concluded AND TMDB
+   *  concluded. Holding un-ready rows back is what keeps the pre-enrichment
+   *  yearless orphan (`sanitize(title)|`) from ever reaching `web_movies`. */
+  def readyToProject: Boolean = detailDone && tmdbConcluded
 
   /** Polish-language genre names — first non-empty list in genre-priority
    *  order: TMDB → Filmweb → cinema slots (in their normal priority order).
