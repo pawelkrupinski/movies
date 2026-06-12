@@ -45,7 +45,7 @@
     .rows.last { border-color: var(--border); background: rgba(210,153,34,.05); }
     .rows.dragover { border-color: var(--accent); background: rgba(68,147,248,.08); }
     .row { display: grid; align-items: center; gap: 5px;
-           grid-template-columns: 18px 1.6fr 1.2fr 34px 34px 0.7fr 1fr 40px 26px; }
+           grid-template-columns: 18px 1.6fr 1.2fr 34px 34px 0.7fr 1fr 26px; }
     .row.dragging { opacity: .4; }
     .handle { cursor: grab; color: var(--muted); text-align: center; user-select: none; }
     input[type=text] { width: 100%; font: inherit; padding: 3px 5px; border-radius: 5px;
@@ -64,7 +64,7 @@
 </head>
 <body>
   <h1>Title-stripping rules</h1>
-  <p class="muted">Edits save to Mongo and propagate to the worker + web via the change stream — they take effect on the next scrape and on the live display. Drag the <span class="handle">⠿</span> handle to reorder; rules apply top-to-bottom, and the <b style="color:var(--last)">last</b> list always runs after the normal one within a scope.</p>
+  <p class="muted">Edits save to Mongo and propagate to the worker + web via the change stream — they take effect on the next scrape and on the live display. Drag the <span class="handle">⠿</span> handle to reorder, or drag a rule <b>between</b> the Rules and <b style="color:var(--last)">Last</b> lists; rules apply top-to-bottom, and the Last list always runs after the normal one within a scope.</p>
 
   <div class="toolbar">
     <button class="primary" onclick="runPreview()">Preview merges</button>
@@ -101,18 +101,15 @@
     records.forEach(r => { r._persisted = true; });
 
     // ---- pure helpers (also exercised by the page test) ----
-    function moveItem(arr, from, to) {
-      if (from === to || from < 0 || from >= arr.length) return arr;
-      const clamped = Math.max(0, Math.min(to, arr.length - 1));
-      const [it] = arr.splice(from, 1);
-      arr.splice(clamped, 0, it);
-      return arr;
-    }
-    function toggleLast(rec, listName, idx) {
-      const from = listName === "rules" ? rec.rules : rec.lastRules;
-      const to   = listName === "rules" ? rec.lastRules : rec.rules;
-      if (idx < 0 || idx >= from.length) return rec;
-      to.push(from.splice(idx, 1)[0]);
+    // Move a rule within or BETWEEN a record's two lists. Drag is the only way
+    // to mark a rule "last": drop it into the Last list. Same-list drops reorder;
+    // cross-list drops move it (and `flattenForPreview` re-stamps `last`).
+    function moveBetween(rec, fromList, fromIdx, toList, toIdx) {
+      const src = rec[fromList], dst = rec[toList];
+      if (fromIdx < 0 || fromIdx >= src.length) return rec;
+      const [it] = src.splice(fromIdx, 1);
+      const at = Math.max(0, Math.min(toIdx, dst.length));
+      dst.splice(at, 0, it);
       return rec;
     }
     function blankRule() {
@@ -133,7 +130,7 @@
                replacement: r.replacement, applyAll: r.applyAll, order, last,
                enabled: r.enabled, tag: r.tag, note: r.note };
     }
-    window.TitleRules = { moveItem, toggleLast, flattenForPreview };
+    window.TitleRules = { moveBetween, flattenForPreview };
 
     // ---- DOM building ----
     function h(tag, attrs, children) {
@@ -168,37 +165,36 @@
         e.onchange = () => { r[field] = e.checked; };
         return e;
       };
-      const lastChk = h("input", { type: "checkbox", checked: listName === "lastRules" });
-      lastChk.onchange = () => { toggleLast(rec, listName, idx); render(); };
-
       const row = h("div", { class: "row", draggable: "true" }, [
-        h("span", { class: "handle", title: "drag to reorder" }, ["⠿"]),
+        h("span", { class: "handle", title: "drag to reorder, or into the Last list" }, ["⠿"]),
         txt("pattern", "mono"),
         txt("replacement", "mono"),
         h("span", { class: "check" }, [chk("applyAll")]),
         h("span", { class: "check" }, [chk("enabled")]),
         txt("tag"),
         txt("note"),
-        h("span", { class: "check", title: "apply after the normal rules" }, [lastChk]),
         h("button", { class: "icon", title: "remove rule",
           onclick: () => { list.splice(idx, 1); render(); } }, ["✕"])
       ]);
       row.ondragstart = (ev) => { dragCtx = { rec, listName, from: idx }; row.classList.add("dragging"); ev.dataTransfer.effectAllowed = "move"; };
       row.ondragend   = () => { row.classList.remove("dragging"); };
-      row.ondragover  = (ev) => { if (sameList(rec, listName)) ev.preventDefault(); };
+      row.ondragover  = (ev) => { if (sameRec(rec)) ev.preventDefault(); };
+      // Drop ONTO a row: move the dragged rule (from either list) to this row's
+      // position in this row's list. stopPropagation so the list-container drop
+      // below doesn't also fire and double-move.
       row.ondrop      = (ev) => {
-        ev.preventDefault();
-        if (!sameList(rec, listName)) { dragCtx = null; return; }
-        moveItem(list, dragCtx.from, idx);
+        ev.preventDefault(); ev.stopPropagation();
+        if (!sameRec(rec)) { dragCtx = null; return; }
+        moveBetween(rec, dragCtx.listName, dragCtx.from, listName, idx);
         dragCtx = null; render();
       };
       return row;
     }
-    function sameList(rec, listName) { return dragCtx && dragCtx.rec === rec && dragCtx.listName === listName; }
+    function sameRec(rec) { return dragCtx && dragCtx.rec === rec; }
 
     function colHeads() {
       return h("div", { class: "row" },
-        ["", "pattern", "replacement", "all", "on", "tag", "note", "last", ""]
+        ["", "pattern", "replacement", "all", "on", "tag", "note", ""]
           .map(t => h("span", { class: "col-head" }, [t])));
     }
 
@@ -206,13 +202,14 @@
       const isLast = listName === "lastRules";
       const wrap = h("div", { class: "rows" + (isLast ? " last" : "") });
       rec[listName].forEach((r, i) => wrap.appendChild(ruleRow(rec, listName, r, i)));
-      // allow dropping onto the empty area / end of the list
-      wrap.ondragover = (ev) => { if (sameList(rec, listName)) { ev.preventDefault(); wrap.classList.add("dragover"); } };
+      // Drop onto the empty area / end of the list — appends the dragged rule to
+      // the end of THIS list (the only way to fill an empty Last list).
+      wrap.ondragover = (ev) => { if (sameRec(rec)) { ev.preventDefault(); wrap.classList.add("dragover"); } };
       wrap.ondragleave = () => wrap.classList.remove("dragover");
       wrap.ondrop = (ev) => {
         ev.preventDefault(); wrap.classList.remove("dragover");
-        if (!sameList(rec, listName)) { dragCtx = null; return; }
-        moveItem(rec[listName], dragCtx.from, rec[listName].length - 1);
+        if (!sameRec(rec)) { dragCtx = null; return; }
+        moveBetween(rec, dragCtx.listName, dragCtx.from, listName, rec[listName].length);
         dragCtx = null; render();
       };
       return wrap;

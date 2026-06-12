@@ -71,22 +71,23 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     }
   }
 
-  "window.TitleRules.moveItem" should "reorder an array (the drag-reorder decision)" in {
+  "window.TitleRules.moveBetween" should "reorder within one list (the same-list drag decision)" in {
     onEditor { page =>
-      page.evalString("JSON.stringify(window.TitleRules.moveItem(['a','b','c'], 0, 2))") shouldBe
-        """["b","c","a"]"""
-      page.evalString("JSON.stringify(window.TitleRules.moveItem(['a','b','c'], 2, 0))") shouldBe
-        """["c","a","b"]"""
+      val res = page.evalString(
+        """(() => { const rec = { rules: [{id:'a'},{id:'b'},{id:'c'}], lastRules: [] };
+          |  window.TitleRules.moveBetween(rec, 'rules', 0, 'rules', 2);
+          |  return JSON.stringify(rec.rules.map(x => x.id)); })()""".stripMargin)
+      res shouldBe """["b","c","a"]"""
     }
   }
 
-  "window.TitleRules.toggleLast" should "move a rule between the rules and lastRules lists" in {
+  it should "move a rule across to the Last list (the cross-list drag that replaces the checkbox)" in {
     onEditor { page =>
       val res = page.evalString(
-        """(() => { const rec = { rules: [{id:'x'}], lastRules: [] };
-          |  window.TitleRules.toggleLast(rec, 'rules', 0);
-          |  return JSON.stringify([rec.rules.length, rec.lastRules.length, rec.lastRules[0].id]); })()""".stripMargin)
-      res shouldBe """[0,1,"x"]"""
+        """(() => { const rec = { rules: [{id:'x'},{id:'y'}], lastRules: [] };
+          |  window.TitleRules.moveBetween(rec, 'rules', 0, 'lastRules', rec.lastRules.length);
+          |  return JSON.stringify([rec.rules.map(r=>r.id), rec.lastRules.map(r=>r.id)]); })()""".stripMargin)
+      res shouldBe """[["y"],["x"]]"""
     }
   }
 
