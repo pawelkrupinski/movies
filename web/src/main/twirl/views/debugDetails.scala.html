@@ -1,4 +1,5 @@
 @import models.{Cinema, MovieRecord, Showtime, Source, SourceData, Tmdb, Imdb}
+@import services.movies.TitleNormalizer
 @import java.time.format.DateTimeFormatter
 @(title: String, year: Option[Int], e: MovieRecord, cinemaUrls: Map[String, String] = Map.empty)
 @dtFmt = @{DateTimeFormatter.ofPattern("HH:mm")}
@@ -6,6 +7,12 @@
 
 @*-- Top-level record info that the main table row doesn't already show. --*@
 <dl class="detail-grid">
+  @* The cache-key identity: sanitize(title) plus year — also the Mongo `_id`
+     (`sanitize(title)|year`). Every cinema spelling of a film normalises to
+     this, so it's what tells you whether two rows are the same entry. *@
+  <dt>cacheKey</dt>
+  <dd>@TitleNormalizer.sanitize(title)@year.map("|" + _).getOrElse("")</dd>
+
   <dt>displayTitle</dt>
   <dd>@e.displayTitle(title)</dd>
 
