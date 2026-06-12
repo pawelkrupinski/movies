@@ -145,6 +145,53 @@ groups:
                   reducer: { type: last, params: [] }
               refId: C
 
+      # ---- Worker CPU starvation (sustained throttle, NOT the chronic low balance) -
+      # The worker runs credit-starved by design, so the credit-balance alert above
+      # excludes it (it would false-fire constantly). But sustained THROTTLE — actual
+      # CPU denial, ~0 in normal low-balance operation — means the worker can't keep
+      # up: a cold-boot scrape/enrich backlog, a heavy pass, or repeated reboots are
+      # pinning it at baseline long enough to fall behind. 15m window so the expected
+      # ~90s reboot blip (post boot-stagger fix) doesn't page; the 2026-06-12 episode
+      # was 28m of >75% steal with throttle pinned high — this would have caught it.
+      - uid: kinowo-worker-cpu-starved
+        title: Worker CPU starved (sustained throttle)
+        condition: C
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: 'kinowo-worker is CPU-throttled for 15m+ (falling behind)'
+          description: 'rate(fly_instance_cpu_throttle{app="kinowo-worker"}) > 0.2 (throttled >20% of wall-clock) for 15m — the worker is starved past its baseline. Likely a cold-boot scrape/enrich backlog, a heavy pass, or repeated reboots. Check recent worker deploys/restarts and the queue depth (web queue-monitor page); if it recurs without a deploy, the fix is a bigger [[vm]] (more shared-CPU credit), not scheduling. Short reboot blips (~90s) are expected and sit below this 15m window.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max by (app, instance) (rate(fly_instance_cpu_throttle{app="kinowo-worker"}[5m]))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.2] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
       # ---- Memory pressure (pre-OOM, the Mongo-cascade precursor) -----------
       - uid: kinowo-memory-pressure
         title: Memory pressure (pre-OOM)

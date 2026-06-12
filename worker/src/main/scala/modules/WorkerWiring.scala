@@ -11,7 +11,7 @@ import services.events.{EventBus, InProcessEventBus, MovieRecordCreated}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, MongoNormalizationReportRepo, NormalizationRebuilder, NormalizationReport, NormalizationReportRepo, UnscreenedCleanup}
 import services.readmodel.{MongoReadModelRepo, ReadModelProjector, ReadModelReader, ReadModelWriter}
-import services.tasks.{DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, RatingEnqueuer, RatingHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker}
+import services.tasks.{DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, RatingEnqueuer, RatingHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
 import services.titlerules.{MongoTitleRulesRepo, TitleRuleSet, TitleRulesCache, TitleRulesRepo}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
@@ -356,6 +356,10 @@ class WorkerWiring {
   )
   lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, initialDelay = initialScrapeDelaySeconds.seconds)
+  // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
+  // with the scrape/enrich backlog that drove it (the diagnostic that was missing
+  // when the 2026-06-12 worker-steal episode had to be reconstructed from metrics).
+  lazy val workerHeartbeat = new WorkerHeartbeat(taskQueue)
 
   // Subscribe BEFORE start() so the bus's first MovieRecordCreated events reach
   // the enrichment handlers. (See the original monolith comment block for the
@@ -431,7 +435,7 @@ class WorkerWiring {
     }
     // The task worker runs whenever there's queue work: queue-driven scraping,
     // deferred detail, and/or queue-driven rating enrichment.
-    if (queueScraping || deferDetail || queueEnrichment) taskWorker.start()
+    if (queueScraping || deferDetail || queueEnrichment) { taskWorker.start(); workerHeartbeat.start() }
     if (queueEnrichment) enrichmentReaper.start()
     if (deferDetail) detailReaper.start()
     if (queueScraping) scrapeReaper.start() else showtimeCache.start()
@@ -448,6 +452,7 @@ class WorkerWiring {
     if (queueEnrichment) enrichmentReaper.stop()
     if (deferDetail) detailReaper.stop()
     if (queueScraping || deferDetail || queueEnrichment) {
+      workerHeartbeat.stop()
       taskWorker.stop()
       taskQueue.close()
       freshnessStore.close()

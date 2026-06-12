@@ -113,6 +113,17 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.stop()
   }
 
+  // ── WorkerHeartbeat: queue-depth diagnostic ─────────────────────────────────
+
+  "WorkerHeartbeat.statusLine" should "report the queue backlog depth" in {
+    val queue = new InMemoryTaskQueue
+    queue.enqueue(TaskType.ScrapeCinema, "a")
+    queue.enqueue(TaskType.ScrapeCinema, "b")
+    val line = new WorkerHeartbeat(queue).statusLine()
+    line should include ("waiting=2")
+    line should include ("backlog=2")
+  }
+
   // ── Detail enqueue is event-driven, not done by the runner ──────────────────
 
   private def movieWithRef(c: Cinema, title: String = "Dune") = Seq(
