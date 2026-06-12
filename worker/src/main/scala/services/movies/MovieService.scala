@@ -285,6 +285,13 @@ class MovieService(
             bus.publish(ImdbIdMissing(finalKey.cleanTitle, finalKey.year, searchTitle))
         }
       case Success(None)    =>
+        // Definitive no-match: TMDB searched and genuinely found nothing. Persist
+        // it so the row is `tmdbConcluded` (→ released to the read model as a
+        // standalone card) and that readiness survives a restart — the in-memory
+        // negative cache below only throttles re-querying for an hour. The daily
+        // `retryUnresolvedTmdb` sweep still re-checks the row later, in case TMDB
+        // eventually indexes the film.
+        cache.putIfPresent(key, _.copy(tmdbNoMatch = true))
         cache.markMissing(key)
         retryAttempts.remove(key)
       case Failure(ex)      =>
@@ -389,6 +396,10 @@ class MovieService(
           tmdbId            = Some(hit.id),
           metacriticUrl     = existing.flatMap(_.metacriticUrl),
           rottenTomatoesUrl = existing.flatMap(_.rottenTomatoesUrl),
+          // A resolve clears any prior `tmdbNoMatch` (the default `false` here);
+          // carry a pending deferred-detail fetch forward so resolving TMDB
+          // first doesn't prematurely mark the row detail-done.
+          detailPending     = existing.exists(_.detailPending),
           data              = carriedData + ((Tmdb: Source) -> tmdbSlot)
         )
         // Re-key a YEARLESS row onto its resolved year (TMDB's preferred) so a
@@ -434,15 +445,16 @@ class MovieService(
 
   // ── Retry policy for TMDB transient failures ──────────────────────────────
 
+  // Transient failures (rate limit / network blip) retry FOREVER — a row is only
+  // ever released by a *definitive* answer (a hit, or a persisted `tmdbNoMatch`),
+  // never by us giving up. The first `MaxRetries` attempts back off exponentially
+  // (30s, 60s, …); beyond that we keep rescheduling at the 30-min ceiling
+  // indefinitely. `scheduleTmdbStage` self-terminates the loop once the row
+  // resolves or leaves the cache, so this can't spin on a dead key.
   private def scheduleTmdbRetry(key: CacheKey, cause: Throwable): Unit = {
     val attempt = retryAttempts.merge(key, 1: Integer, (a: Integer, b: Integer) => a + b)
-    if (attempt > MaxRetries) {
-      logger.warn(s"Giving up on TMDB ${key.cleanTitle} (${key.year.getOrElse("?")}) after $attempt attempts: ${cause.getMessage}")
-      retryAttempts.remove(key)
-      cache.markMissing(key)  // Stop hammering it for an hour.
-      return
-    }
-    val delaySeconds = math.min(30L * 60, 30L * (1L << (attempt - 1)))
+    val shift   = math.min(attempt - 1, MaxRetries)
+    val delaySeconds = math.min(30L * 60, 30L * (1L << shift))
     logger.warn(s"TMDB stage failed for ${key.cleanTitle} (${key.year.getOrElse("?")}) on attempt $attempt: ${cause.getMessage}; retrying in ${delaySeconds}s")
     retryScheduler.schedule(new Runnable {
       def run(): Unit = scheduleTmdbStage(key)

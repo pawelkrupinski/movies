@@ -91,6 +91,35 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     cache.isNegative(cache.keyOf("Unknown Title", None)) shouldBe true
   }
 
+  it should "persist tmdbNoMatch on a definitive no-match so the held-back row becomes ready to project" in {
+    val emptyTmdb = new TmdbClient(
+      http = new RoutingHttpFetch(Map("/search/movie" -> """{"results":[]}""")),
+      apiKey = Some("stub")
+    )
+    // An already-scraped (cinema-side) row TMDB will fail to match — the real
+    // flow always has the row present before the stage runs.
+    val repo = new InMemoryMovieRepo(Seq(
+      ("Some Local Premiere", Some(2026),
+        MovieRecord(data = Map[Source, SourceData](
+          Multikino -> SourceData(title = Some("Some Local Premiere"), releaseYear = Some(2026)))))
+    ))
+    val cache = new CaffeineMovieCache(repo)
+    val svc   = new MovieService(cache, new InProcessEventBus(), emptyTmdb)
+    val key   = cache.keyOf("Some Local Premiere", Some(2026))
+    // Not yet concluded (no tmdbId, no no-match) → held back from the read model.
+    cache.get(key).map(_.readyToProject) shouldBe Some(false)
+
+    svc.onMovieRecordCreated(MovieRecordCreated("Some Local Premiere", Some(2026)))
+
+    // A definitive no-match persists `tmdbNoMatch`, concluding the row so it is
+    // released to the read model as a standalone card.
+    eventually {
+      val row = cache.get(key)
+      row.map(_.tmdbNoMatch)    shouldBe Some(true)
+      row.map(_.readyToProject) shouldBe Some(true)
+    }
+  }
+
   it should "NOT publish TmdbResolved when reEnrichSync runs (sync path is event-free so listeners don't race)" in {
     // Sync callers (scripts via reEnrichSync) drive each stage explicitly on
     // the calling thread; if reEnrichSync also fired bus events, every
