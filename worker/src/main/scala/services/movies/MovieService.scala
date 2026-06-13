@@ -366,10 +366,11 @@ class MovieService(
     // the live row's key up front so the read / carry-forward / re-key below all
     // act on the real row instead of spawning a phantom at the stale key.
     val key = cache.canonicalKeyFor(rawKey).getOrElse(rawKey)
-    resolveTmdb(key.cleanTitle, key.year, originalTitleHint, directorHint).map { case (hit, imdbId) =>
-      // The slow HTTP fetch happens OUTSIDE the title lock so concurrent
-      // cinema scrapes for the same title aren't blocked for its duration.
-      val detailsOpt = tmdb.fullDetails(hit.id)
+    // The slow HTTP (search + full-details fetch) happens OUTSIDE the title lock
+    // via the cache-free `lookupTmdb`, so concurrent cinema scrapes for the same
+    // title aren't blocked for its duration. The cache read → carry-forward →
+    // re-key → settle all happen under the lock below.
+    lookupTmdb(key.cleanTitle, key.year, originalTitleHint, directorHint).map { case (hit, imdbId, detailsOpt) =>
       // Read → modify → write under the per-title lock so a cinema scrape's
       // freshly-written slot, landing just before this thread enters the
       // critical section, is visible to the carry-forward below — and so
@@ -378,75 +379,16 @@ class MovieService(
       // "Straszny film" twins regression).
       cache.withTitleLock(key.cleanTitle) {
         // Re-resolve the canonical key INSIDE the lock. `key` was captured
-        // before the slow `fullDetails` fetch above; a concurrent
-        // `recordCinemaScrape` may have rekeyed the row to a different-cased /
-        // different-separator canonical spelling in the meantime (e.g.
-        // "Nowa fala" → "Nowa Fala", "Monterey Pop | DKF" → "Monterey Pop_DKF").
-        // Writing under the now-stale `key` would resurrect a PHANTOM row at the
-        // old spelling — the order-dependent split that left a film under two
-        // titles run-to-run. `canonicalKeyFor` shares this row's sanitize (so
-        // the same title lock), and falls back to `key` only when no live row
-        // exists yet (the genuine first-resolve case).
+        // before the slow lookup above; a concurrent `recordCinemaScrape` may
+        // have rekeyed the row to a different-cased / different-separator
+        // canonical spelling in the meantime (e.g. "Nowa fala" → "Nowa Fala",
+        // "Monterey Pop | DKF" → "Monterey Pop_DKF"). Writing under the now-stale
+        // `key` would resurrect a PHANTOM row at the old spelling — the
+        // order-dependent split that left a film under two titles run-to-run.
+        // `canonicalKeyFor` shares this row's sanitize (so the same title lock),
+        // and falls back to `key` only when no live row exists yet (first resolve).
         val writeKey = cache.canonicalKeyFor(rawKey).getOrElse(key)
-        val existing = cache.get(writeKey)
-        // Preserve the previously-known `imdbId` when TMDB resolved the same
-        // film (same `tmdbId`) but momentarily dropped the cross-reference —
-        // happens for very recent releases and occasional TMDB data hiccups.
-        // When TMDB resolves to a DIFFERENT `tmdbId` we accept the new film's
-        // imdbId (even if None) so a stale id can't leak across a correction.
-        val preserveImdbId = existing.exists(_.tmdbId.contains(hit.id))
-        val resolvedImdbId = imdbId.orElse(if (preserveImdbId) existing.flatMap(_.imdbId) else None)
-        // Carry the cinema-side fields forward — `recordCinemaScrape` may have
-        // just landed a slot on this row, and the TMDB stage doesn't own
-        // cinema data. Without this, a fresh resolve wipes every cinema's
-        // slot and the row drops out of `toSchedules` until the next scrape
-        // tick repopulates it.
-        val carriedData = existing.map(_.data).getOrElse(Map.empty[Source, SourceData])
-        // Fetch the full TMDB record in a single round-trip so the SourceData
-        // (Tmdb) slot carries the Polish synopsis, director, cast, runtime,
-        // year, countries and poster — not just the search-hit-shape fields.
-        // On a fetch failure we fall back to the search-hit-shape so the row
-        // at least keeps title + originalTitle + year going forward.
-        val existingTmdbSlot = carriedData.getOrElse(Tmdb, SourceData())
-        val tmdbSlot = detailsOpt match {
-          case Some(d) => SourceData(
-            title          = d.title.orElse(Some(hit.title).filter(_.nonEmpty)).orElse(existingTmdbSlot.title),
-            originalTitle  = d.originalTitle.orElse(hit.originalTitle).orElse(existingTmdbSlot.originalTitle),
-            synopsis       = d.synopsis.orElse(existingTmdbSlot.synopsis),
-            cast           = if (d.cast.nonEmpty) d.cast else existingTmdbSlot.cast,
-            director       = if (d.director.nonEmpty) d.director else existingTmdbSlot.director,
-            runtimeMinutes = d.runtimeMinutes.orElse(existingTmdbSlot.runtimeMinutes),
-            releaseYear    = d.releaseYear.orElse(hit.releaseYear).orElse(existingTmdbSlot.releaseYear),
-            // Canonicalise TMDB's English country names ("United States of
-            // America" → "USA") so the merged-record dedup operates on the
-            // same strings cinemas already write.
-            countries      = if (d.countries.nonEmpty) d.countries.map(CountryNames.canonical).distinct
-                             else existingTmdbSlot.countries,
-            genres         = if (d.genres.nonEmpty) d.genres else existingTmdbSlot.genres,
-            posterUrl      = d.posterUrl.orElse(existingTmdbSlot.posterUrl)
-          )
-          case None => existingTmdbSlot.copy(
-            title         = Some(hit.title).filter(_.nonEmpty).orElse(existingTmdbSlot.title),
-            originalTitle = hit.originalTitle.orElse(existingTmdbSlot.originalTitle),
-            releaseYear   = hit.releaseYear.orElse(existingTmdbSlot.releaseYear)
-          )
-        }
-        val enr = MovieRecord(
-          imdbId            = resolvedImdbId,
-          imdbRating        = existing.flatMap(_.imdbRating),
-          metascore         = existing.flatMap(_.metascore),
-          filmwebUrl        = existing.flatMap(_.filmwebUrl),
-          filmwebRating     = existing.flatMap(_.filmwebRating),
-          rottenTomatoes    = existing.flatMap(_.rottenTomatoes),
-          tmdbId            = Some(hit.id),
-          metacriticUrl     = existing.flatMap(_.metacriticUrl),
-          rottenTomatoesUrl = existing.flatMap(_.rottenTomatoesUrl),
-          // A resolve clears any prior `tmdbNoMatch` (the default `false` here);
-          // carry a pending deferred-detail fetch forward so resolving TMDB
-          // first doesn't prematurely mark the row detail-done.
-          detailPending     = existing.exists(_.detailPending),
-          data              = carriedData + ((Tmdb: Source) -> tmdbSlot)
-        )
+        val enr      = buildResolvedRecord(hit, imdbId, detailsOpt, cache.get(writeKey).getOrElse(MovieRecord()))
         // Settle this film at conclusion: write the resolved record AND fold any
         // yearless+idless sibling a concurrent scrape stranded (the "Dzień
         // objawienia" Multikino row) onto it in ONE merged write — so the row's
@@ -461,6 +403,88 @@ class MovieService(
         (finalKey, cache.get(finalKey).getOrElse(enr))
       }
     }
+  }
+
+  /** Cache-free TMDB lookup: search for `(cleanTitle, year)` and, on a hit, also
+   *  fetch the full details. Returns the search hit, its IMDb cross-reference (if
+   *  any), and the full-details payload (if the fetch succeeded). None = a
+   *  definitive no-match; a thrown exception = a transient failure the caller
+   *  retries. Both the movies path (`runTmdbStageSync`) and the staging promoter
+   *  run this same lookup. */
+  private def lookupTmdb(
+    cleanTitle:        String,
+    year:              Option[Int],
+    originalTitleHint: Option[String],
+    directorHint:      Option[String]
+  ): Option[(TmdbClient.SearchResult, Option[String], Option[TmdbClient.FullDetails])] =
+    resolveTmdb(cleanTitle, year, originalTitleHint, directorHint).map { case (hit, imdbId) =>
+      (hit, imdbId, tmdb.fullDetails(hit.id))
+    }
+
+  /** Build the resolved `MovieRecord` from a TMDB hit + the row's `existing`
+   *  record — pure (no cache, no lock), so the movies path (then `settleResolved`)
+   *  and the staging promoter (then `stagingRepo.upsert`) share ONE definition of
+   *  how a resolution writes the TMDB-side fields + `Tmdb` slot while carrying the
+   *  cinema-side data and score fields forward. */
+  private def buildResolvedRecord(
+    hit:        TmdbClient.SearchResult,
+    imdbId:     Option[String],
+    detailsOpt: Option[TmdbClient.FullDetails],
+    existing:   MovieRecord
+  ): MovieRecord = {
+    // Preserve the previously-known `imdbId` when TMDB resolved the same film
+    // (same `tmdbId`) but momentarily dropped the cross-reference — happens for
+    // very recent releases and occasional TMDB data hiccups. A DIFFERENT tmdbId
+    // accepts the new film's imdbId (even None) so a stale id can't leak across.
+    val preserveImdbId = existing.tmdbId.contains(hit.id)
+    val resolvedImdbId = imdbId.orElse(if (preserveImdbId) existing.imdbId else None)
+    // Carry the cinema-side fields forward — the TMDB stage doesn't own cinema
+    // data; without this a fresh resolve would wipe every cinema's slot.
+    val carriedData      = existing.data
+    // Fetch the full TMDB record in a single round-trip so the SourceData (Tmdb)
+    // slot carries the Polish synopsis, director, cast, runtime, year, countries
+    // and poster — not just the search-hit-shape fields. On a fetch failure fall
+    // back to the search-hit shape so the row at least keeps title + year.
+    val existingTmdbSlot = carriedData.getOrElse(Tmdb, SourceData())
+    val tmdbSlot = detailsOpt match {
+      case Some(d) => SourceData(
+        title          = d.title.orElse(Some(hit.title).filter(_.nonEmpty)).orElse(existingTmdbSlot.title),
+        originalTitle  = d.originalTitle.orElse(hit.originalTitle).orElse(existingTmdbSlot.originalTitle),
+        synopsis       = d.synopsis.orElse(existingTmdbSlot.synopsis),
+        cast           = if (d.cast.nonEmpty) d.cast else existingTmdbSlot.cast,
+        director       = if (d.director.nonEmpty) d.director else existingTmdbSlot.director,
+        runtimeMinutes = d.runtimeMinutes.orElse(existingTmdbSlot.runtimeMinutes),
+        releaseYear    = d.releaseYear.orElse(hit.releaseYear).orElse(existingTmdbSlot.releaseYear),
+        // Canonicalise TMDB's English country names ("United States of America" →
+        // "USA") so the merged-record dedup operates on the same strings cinemas
+        // already write.
+        countries      = if (d.countries.nonEmpty) d.countries.map(CountryNames.canonical).distinct
+                         else existingTmdbSlot.countries,
+        genres         = if (d.genres.nonEmpty) d.genres else existingTmdbSlot.genres,
+        posterUrl      = d.posterUrl.orElse(existingTmdbSlot.posterUrl)
+      )
+      case None => existingTmdbSlot.copy(
+        title         = Some(hit.title).filter(_.nonEmpty).orElse(existingTmdbSlot.title),
+        originalTitle = hit.originalTitle.orElse(existingTmdbSlot.originalTitle),
+        releaseYear   = hit.releaseYear.orElse(existingTmdbSlot.releaseYear)
+      )
+    }
+    MovieRecord(
+      imdbId            = resolvedImdbId,
+      imdbRating        = existing.imdbRating,
+      metascore         = existing.metascore,
+      filmwebUrl        = existing.filmwebUrl,
+      filmwebRating     = existing.filmwebRating,
+      rottenTomatoes    = existing.rottenTomatoes,
+      tmdbId            = Some(hit.id),
+      metacriticUrl     = existing.metacriticUrl,
+      rottenTomatoesUrl = existing.rottenTomatoesUrl,
+      // A resolve clears any prior `tmdbNoMatch` (default `false` here); carry a
+      // pending deferred-detail fetch forward so resolving TMDB first doesn't
+      // prematurely mark the row detail-done.
+      detailPending     = existing.detailPending,
+      data              = carriedData + ((Tmdb: Source) -> tmdbSlot)
+    )
   }
 
   // IMDb / Filmweb / Metacritic / Rotten Tomatoes refresh logic lives in the

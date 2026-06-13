@@ -298,11 +298,11 @@ class CaffeineMovieCache(
   }
 
   /** Total order picking the canonical (surviving) key among same-tmdbId,
-   *  same-normalised-title rows: prefer a row that carries a release year over
-   *  a yearless one, then the lower year, then the cleanTitle. A pure function
-   *  of the key, so the canonical never depends on write order. */
+   *  same-normalised-title rows — see `FilmCanonicalizer.canonicalRank` for the
+   *  rule. Delegates so there is ONE definition shared with the pure
+   *  canonicaliser. */
   private def canonicalRank(k: CacheKey): (Boolean, Int, String) =
-    (k.year.isEmpty, k.year.getOrElse(Int.MaxValue), k.cleanTitle)
+    FilmCanonicalizer.canonicalRank(k)
 
   private[services] def canonicalKeyFor(key: CacheKey): Option[CacheKey] = {
     import scala.jdk.CollectionConverters._
@@ -433,53 +433,28 @@ class CaffeineMovieCache(
     clusters.map(_.rows).filter(_.nonEmpty)
   }
 
-  /** Year a cluster collapses to — TMDB's resolved year if any member carries
-   *  one (all resolved members of a cluster share a tmdbId hence a tmdbYear),
-   *  else the lowest present key/slot year, else yearless. */
-  private def clusterYear(cluster: Seq[(CacheKey, MovieRecord)]): Option[Int] =
-    cluster.flatMap { case (_, e) => e.tmdbYear }.minOption.orElse {
-      val present = (cluster.iterator.map(_._1.year) ++
-                     cluster.iterator.flatMap { case (_, e) => e.data.values.iterator.map(_.releaseYear) }).flatten.toSeq
-      if (present.isEmpty) None else Some(present.min)
-    }
-
   /** Collapse ONE cluster (rows that are the same film) to a single canonical
-   *  row, unioning their records. Spelling is decoupled from year:
-   *    - year:    TMDB's resolved year is authoritative (it overrides
-   *      cinema-reported years, which often carry the production year and
-   *      disagree — the "Dzień objawienia" 2025 vs 2026 split); only an
-   *      all-unresolved cluster falls back to the lowest present year.
-   *    - spelling: the min cleanTitle across ALL variants regardless of year, so
-   *      a yearless all-caps variant ("SAVAGE HOUSE") can't win the spelling
-   *      just because it's the only one at the resolved year.
+   *  row, unioning their records. The `(canonical, merged)` DECISION — which
+   *  year, which spelling, which merged record — lives in the pure
+   *  `FilmCanonicalizer.canonical`; this method owns only the cache MUTATION.
+   *
    *  `CacheKey` equality is by NORMALISED title + year, so a case/separator
    *  variant compares EQUAL to the canonical even though its stored string
    *  differs (and the Caffeine-side first-inserted key can disagree with the
    *  repo's last-written title). So `invalidate` every key, then `put` under the
    *  canonical string, rewriting BOTH stores — but only when something differs. */
   private def collapseCluster(cluster: Seq[(CacheKey, MovieRecord)]): Unit = {
-    // Every reported variant: each cinema slot's derived key (cleaned title +
-    // year) plus the rows' current keys.
+    val (canonical, merged) = FilmCanonicalizer.canonical(cluster)
+    val keys = cluster.map(_._1)
+    // Every reported variant — each cinema slot's derived key plus the rows'
+    // current keys — drives the "anything to fix?" guard (same set the
+    // canonicaliser folds over).
     val slotKeys = cluster.flatMap { case (_, e) => e.data.values.flatMap(d => d.title.map(t => keyOf(t, d.releaseYear))) }
-    val keys     = cluster.map(_._1)
     val allKeys  = slotKeys ++ keys
-    val canonicalYear = clusterYear(cluster)
-    // Prefer a normally-cased spelling over a SHOUTING one ("Savage House" over
-    // "SAVAGE HOUSE"), then break ties by string order — a pure function of the
-    // variant set.
-    def isAllCaps(t: String): Boolean = t.exists(_.isLetter) && t == t.toUpperCase(java.util.Locale.ROOT)
-    val canonicalTitle = allKeys.map(_.cleanTitle).minBy(t => (isAllCaps(t), t))
-    val canonical      = CacheKey(canonicalTitle, canonicalYear)
     val needsFix = keys.sizeIs > 1 ||
       allKeys.exists(k => k.cleanTitle != canonical.cleanTitle || k.year != canonical.year)
     if (needsFix) {
       withTitleLock(canonical.cleanTitle) {
-        // `unionAll`, not `reduce(union)`: it picks the tmdbId-bearing row as the
-        // union base, so a lower-canonicalRank UNRESOLVED ±1 sibling (e.g. the
-        // production-year 2025 row attached to a TMDB-2026 resolved cluster)
-        // can't clobber the resolved row's tmdbId/imdbId/ratings. Order
-        // independent for the per-source `data` (it's a keyed merge).
-        val merged = MovieRecordMerge.unionAll(cluster.sortBy { case (k, _) => canonicalRank(k) }.map(_._2))
         keys.foreach(invalidate)
         put(canonical, merged)
       }
