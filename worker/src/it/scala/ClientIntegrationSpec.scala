@@ -4,7 +4,7 @@ import models._
 import org.scalatest.ParallelTestExecution
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.CinemaScraper
+import services.cinemas.{CinemaScraper, KinoPalacoweClient}
 import tools.TestWiring
 
 /**
@@ -46,10 +46,27 @@ class ClientIntegrationSpec
 
   "Multikino"                should "fetch films" in requireRuntime(Multikino)
   "Kino Malta Charlie Monroe" should "fetch films" in requireRuntime(CharlieMonroe)
-  // Pałacowe scrapes BARE (KINOWO_DEFERRED_DETAIL removal): runtime/director/year
-  // come from `fetchFilmDetail`, not the listing `fetch()`, so the smoke checks
-  // only base shape here — runtime is asserted in the detail unit spec.
-  "Kino Pałacowe"            should "fetch films" in requireNoRuntime(KinoPalacowe)
+  // Pałacowe scrapes BARE: the listing exposes runtime for only a handful of
+  // films (JSON `duration`, or the `lead` prose for accessibility screenings);
+  // ~90% carry it ONLY on the detail page. Production fills it via the deferred
+  // EnrichDetails task, so assert the FINAL enriched result the way prod serves
+  // it — `fetch()` then `fetchFilmDetail` per film — and require EVERY film to end
+  // up with a runtime. (Uses the production client directly: the wired scraper is
+  // wrapped by FilmwebFallbackScraper, which doesn't expose the detail fetch.)
+  "Kino Pałacowe" should "expose a runtime for every film after detail enrichment" in {
+    val client = new KinoPalacoweClient(wiring.httoFetch)
+    RetryWithBackoff() {
+      val films = client.fetch()
+      withClue("Kino Pałacowe (after detail): ") {
+        assertBaseShape(films)
+        films.foreach { cm =>
+          val runtime = cm.movie.runtimeMinutes
+            .orElse(cm.filmUrl.flatMap(u => client.fetchFilmDetail(u).flatMap(_.runtimeMinutes)))
+          withClue(s"${cm.movie.title} (${cm.filmUrl.getOrElse("?")}): ") { runtime should not be empty }
+        }
+      }
+    }
+  }
   "Helios Posnania"          should "fetch films" in requireRuntime(Helios)
   "Cinema City Plaza"        should "fetch films" in runtimeOptional(CinemaCityPoznanPlaza)
   "Cinema City Kinepolis"    should "fetch films" in runtimeOptional(CinemaCityKinepolis)

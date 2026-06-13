@@ -5,6 +5,7 @@ import models.{KinoPalacowe, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{FilmDetail, KinoPalacoweClient}
+import tools.RoutingHttpFetch
 
 import java.time.LocalDateTime
 
@@ -53,6 +54,23 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
     runtimes("Głos z księżyca")             shouldBe Some(121)
     runtimes("Osiem i pół")                 shouldBe Some(138)
     runtimes("Słodkie życie")               shouldBe Some(176)
+  }
+
+  // The bare fetch() must already carry a runtime so a deferred-detail cinema's
+  // listing isn't runtime-less: take the JSON `duration` when present, else parse
+  // the `lead` prose ("Czas trwania: …") — accessibility screenings omit duration.
+  it should "carry runtime on the bare fetch(), from JSON duration or the lead prose" in {
+    val json =
+      """{"next":false,"results":[{"subsections":[{"entries":[
+        |  {"url":"/filmy/1-z-czasem","ticket_type":2,"title":"Z czasem",
+        |   "start_date":"2026-06-16","start_time":"18:00","duration":120,"lead":"Krótki opis."},
+        |  {"url":"/filmy/2-bez-duration","ticket_type":2,"title":"Bez duration",
+        |   "start_date":"2026-06-16","start_time":"11:00",
+        |   "lead":"Film. Czas trwania: 1 godzina i 56 minut. Kraj produkcji: Polska."}
+        |]}]}]}""".stripMargin
+    val movies = new KinoPalacoweClient(new RoutingHttpFetch(Map("calendar" -> json))).fetch()
+    movies.size                               shouldBe 2
+    movies.flatMap(_.movie.runtimeMinutes).toSet shouldBe Set(120, 116)  // 120 from `duration`; 116 = 1h56 from prose
   }
 
   // ── Director / country / year (parsed from "reż. … COUNTRY YEAR, NN'" meta line) ──

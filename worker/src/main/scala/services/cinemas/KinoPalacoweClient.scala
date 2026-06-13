@@ -43,6 +43,21 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper with DetailEnric
   // they're title-cased to match the genres TMDB / Filmweb / Apollo contribute.
   private val GenrePat = """(?i)Gatunek:?\s+([^.<|]+)""".r
 
+  // Runtime stated in prose in the listing `lead`, used when the JSON carries no
+  // numeric `duration` (e.g. "Kino bez barier" accessibility screenings):
+  //   "Czas trwania: 1 godzina i 56 minut"  → 116
+  //   "Czas trwania: 95 minut"              → 95
+  // Polish word-forms (godzina/godziny/godzin, minuta/minuty/minut) covered by
+  // the `\w*` suffix; either part may be absent.
+  private val ProseDurationPat =
+    """(?i)Czas trwania:\s*(?:(\d+)\s*godzin\w*)?\s*(?:i\s*)?(?:(\d+)\s*minut\w*)?""".r
+  private def runtimeFromProse(text: String): Option[Int] =
+    ProseDurationPat.findFirstMatchIn(text).flatMap { m =>
+      val hours = Option(m.group(1)).flatMap(s => Try(s.toInt).toOption).getOrElse(0)
+      val mins  = Option(m.group(2)).flatMap(s => Try(s.toInt).toOption).getOrElse(0)
+      Some(hours * 60 + mins).filter(n => n >= 30 && n <= 300)
+    }
+
   private case class FilmMeta(
     director:    Seq[String],
     countries:   Seq[String],
@@ -120,7 +135,7 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper with DetailEnric
         val sorted = group.sortBy(_.dateTime)
         val first  = sorted.head
         CinemaMovie(
-          movie     = Movie(title = title, rawTitle = Some(first.rawTitle)),
+          movie     = Movie(title = title, runtimeMinutes = first.runtimeMinutes, rawTitle = Some(first.rawTitle)),
           cinema    = KinoPalacowe,
           posterUrl = first.posterUrl,
           filmUrl   = first.filmUrl,
@@ -216,9 +231,11 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper with DetailEnric
                           .filter(_.nonEmpty)
                           .orElse((entry \ "photo" \ "image").asOpt[String].filter(_.nonEmpty))
         val room = (entry \ "category").asOpt[String].filter(_.nonEmpty)
+        val lead = (entry \ "lead").asOpt[String].map(tools.TextNormalization.stripHtml).filter(_.nonEmpty)
         val runtime = (entry \ "duration").asOpt[Int]
                         .orElse((entry \ "runtime").asOpt[Int])
                         .orElse((entry \ "length").asOpt[Int])
+                        .orElse(lead.flatMap(runtimeFromProse))
         ScreeningEntry(
           movieTitle     = title,
           rawTitle       = baseTitle,
@@ -228,7 +245,7 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper with DetailEnric
           bookingUrl     = (entry \ "ticket_url").asOpt[String].filter(_.nonEmpty),
           room           = room,
           runtimeMinutes = runtime,
-          synopsis       = (entry \ "lead").asOpt[String].map(tools.TextNormalization.stripHtml).filter(_.nonEmpty)
+          synopsis       = lead
         )
       }
     }
