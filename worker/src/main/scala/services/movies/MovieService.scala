@@ -312,8 +312,16 @@ class MovieService(
     else Try(runTmdbStageSync(key, origHint, dirHint)) match {
       case Success(Some((finalKey, movieRecord))) => publishTmdbOutcome(finalKey, movieRecord); true
       case Success(None) =>
-        cache.putIfPresent(key, _.copy(tmdbNoMatch = true))
         cache.markMissing(key)
+        // Conclude as a definitive miss AND fold a stranded yearless+idless
+        // sibling onto the now-concluded row in one write (same rationale as the
+        // hit path), instead of leaving it held back from the read model until
+        // the periodic settle.
+        val liveKey = cache.canonicalKeyFor(key).getOrElse(key)
+        cache.get(liveKey) match {
+          case Some(rec) => cache.settleResolved(liveKey, rec.copy(tmdbNoMatch = true))
+          case None      => cache.putIfPresent(liveKey, _.copy(tmdbNoMatch = true))
+        }
         true
       case Failure(ex) =>
         logger.warn(s"TMDB resolve failed for '${key.cleanTitle}' (${key.year.getOrElse("?")}): ${ex.getMessage}; will retry.")
@@ -439,35 +447,18 @@ class MovieService(
           detailPending     = existing.exists(_.detailPending),
           data              = carriedData + ((Tmdb: Source) -> tmdbSlot)
         )
-        // Re-key a YEARLESS row onto its resolved year (TMDB's preferred) so a
-        // no-year scrape that TMDB later dates doesn't stay pinned at (title,
-        // None). We deliberately do NOT re-key a row that already carries a year
-        // here: moving a cinema-keyed row onto a different TMDB year in the async
-        // resolve path races `recordCinemaScrape`'s `canonicalRank` consolidation
-        // (which prefers the lowest year) and makes the persisted key
-        // order-dependent. The cinema-year → TMDB-year migration is owned by the
-        // periodic `settle()` (`canonicalizeBySanitize`) instead — off the
-        // determinism-critical scrape/enrich path, run as a pure function of the
-        // settled corpus.
-        val targetKey =
-          if (writeKey.year.isEmpty && enr.resolvedYear.isDefined) cache.keyOf(writeKey.cleanTitle, enr.resolvedYear)
-          else writeKey
-        // When re-keying onto a DIFFERENT key that already holds a row (another
-        // cinema scraped this film WITH a year before TMDB resolved the no-year
-        // one), that target row carries its own cinema slots. `cache.put`
-        // overwrites, so without merging here the target's showtimes are wiped —
-        // an order-dependent data loss (whole films vanished from the listing
-        // when the no-year row's TMDB stage happened to run first). Union the
-        // target's cinema data in, keeping this resolve's enrichment fields.
-        val toWrite =
-          if (targetKey != writeKey) {
-            logger.debug(s"TMDB stage: re-keying no-year '${writeKey.cleanTitle}' (— → ${targetKey.year.map(_.toString).getOrElse("—")}) onto its resolved year.")
-            val merged = cache.get(targetKey).map(t => MovieRecordMerge.union(enr, t)).getOrElse(enr)
-            cache.invalidate(writeKey)
-            merged
-          } else enr
-        cache.put(targetKey, toWrite)
-        (targetKey, toWrite)
+        // Settle this film at conclusion: write the resolved record AND fold any
+        // yearless+idless sibling a concurrent scrape stranded (the "Dzień
+        // objawienia" Multikino row) onto it in ONE merged write — so the row's
+        // first `readyToProject` upsert already carries every cinema and the read
+        // model is copied to `web_movies` only after the settle, never showing
+        // the single-cinema split that made the card flicker. Also subsumes the
+        // prior narrow re-key of a yearless row onto its resolved TMDB year.
+        // `settleResolved` stays on the resolved row's own key and folds only the
+        // unambiguous rule-(4) strays, so it's order-independent (the broader
+        // ±1-year / remake clustering is owned by the periodic settle).
+        val finalKey = cache.settleResolved(writeKey, enr)
+        (finalKey, cache.get(finalKey).getOrElse(enr))
       }
     }
   }

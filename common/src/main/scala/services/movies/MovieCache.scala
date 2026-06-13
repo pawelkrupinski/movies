@@ -89,6 +89,17 @@ trait MovieCache extends MovieCacheReader {
   private[services] def clearNegatives(): Unit
   private[services] def clearNegative(key: CacheKey): Unit
   def canonicalizeBySanitize(): Unit
+  /** Conclusion-time scoped settle: the just-resolved record `resolved` is the
+   *  new state of the row at `oldKey`. Write it (re-keyed onto its TMDB year if
+   *  `oldKey` was yearless) AND fold any YEARLESS + IDLESS same-title stray onto
+   *  it in ONE write — the unambiguous `clusterByFilm` rule-(4) rows a concurrent
+   *  scrape can strand beside the resolved one. The single write means the
+   *  resolved row's first `readyToProject` upsert already carries every cinema,
+   *  so the read model is never shown a partial, single-cinema split. The broader
+   *  ±1-year / distinct-tmdbId clustering needs the FULL corpus and so stays in
+   *  `canonicalizeBySanitize` (order-independent); this stays on the resolved
+   *  row's own key for the same reason. Returns that key. */
+  private[services] def settleResolved(oldKey: CacheKey, resolved: MovieRecord): CacheKey
   private[services] def invalidate(key: CacheKey): Unit
   /** Run `body` under the per-normalised-title lock. Any read-modify-write
    *  across the cache's surface for keys sharing this `cleanTitle` must
@@ -475,6 +486,65 @@ class CaffeineMovieCache(
     }
   }
 
+  def settleResolved(oldKey: CacheKey, resolved: MovieRecord): CacheKey =
+    withTitleLock(oldKey.cleanTitle) {
+      import scala.jdk.CollectionConverters._
+      // TMDB's resolved year re-keys a YEARLESS row onto it; a row that already
+      // carries a year keeps its key — re-keying a yeared row across the async
+      // resolve races `canonicalRank` (the periodic settle owns that migration).
+      val target =
+        if (oldKey.year.isEmpty && resolved.resolvedYear.isDefined)
+          keyOf(oldKey.cleanTitle, resolved.resolvedYear)
+        else oldKey
+      // Fold any prior occupant of `target` into the resolved record up front so
+      // re-keying onto an occupied year can't drop its cinema slots.
+      val priorTarget = if (target != oldKey) Option(positive.getIfPresent(target)) else None
+      val base        = priorTarget.fold(resolved)(t => MovieRecordMerge.union(resolved, t))
+      val norm        = TitleNormalizer.sanitize(oldKey.cleanTitle)
+      // Fold ONLY the YEARLESS + IDLESS same-title strays onto the resolved row.
+      // These are exactly `clusterByFilm`'s rule (4) rows: with no year and no
+      // tmdbId they can belong to no OTHER film in the group, so attaching them
+      // here is unambiguous and order-independent — a concurrent scrape that
+      // stranded the Multikino "Dzień objawienia" in its own (title, None) row is
+      // healed the moment Helios resolves, instead of waiting for the periodic
+      // settle. ±1-year and distinct-tmdbId clustering is deliberately NOT done
+      // here: that depends on the FULL corpus (which variants have arrived), so
+      // doing it on a partial corpus at resolve time is order-dependent — it
+      // stays in `canonicalizeBySanitize`, a pure function of the settled corpus
+      // (the `ScrapeOrderDeterminismSpec` guard). We also land on the resolved
+      // row's OWN key, not a recomputed canonical spelling, for the same reason.
+      val strays = positive.asMap().asScala.toSeq.filter { case (k, e) =>
+        k != oldKey && k != target && k.year.isEmpty && e.tmdbId.isEmpty &&
+        TitleNormalizer.sanitize(k.cleanTitle) == norm
+      }
+      // ONE write carrying every cinema (the resolved row's first
+      // `readyToProject` upsert is already complete), so the read model is
+      // projected to `web_movies` only after this settle — never the single-
+      // cinema (Helios-only) split that made the card flicker.
+      val merged = strays.foldLeft(base) { case (acc, (_, e)) => MovieRecordMerge.union(acc, e) }
+      (strays.map(_._1) :+ oldKey).distinct.filterNot(_ == target).foreach(invalidate)
+      put(target, merged)
+      target
+    }
+
+  /** The canonical key of an already TMDB-concluded row this scrape matches —
+   *  same normalised title, and the same year when the scrape carries one (else
+   *  title alone). A later scrape of a known film lands its slot straight on the
+   *  resolved/concluded row, so the enrichment + TMDB trigger is skipped
+   *  (`CinemaScrapeRunner.classify` short-circuits on `tmdbConcluded`) and no
+   *  held-back yearless variant is spawned beside it. None when no concluded
+   *  match exists. */
+  private def concludedKeyFor(primary: CacheKey): Option[CacheKey] = {
+    import scala.jdk.CollectionConverters._
+    val norm = TitleNormalizer.sanitize(primary.cleanTitle)
+    positive.asMap().asScala.iterator
+      .collect { case (k, e) if e.tmdbConcluded &&
+        TitleNormalizer.sanitize(k.cleanTitle) == norm &&
+        (primary.year.isEmpty || k.year == primary.year) => k }
+      .toSeq
+      .minByOption(canonicalRank)
+  }
+
   /** Collapse two same-tmdbId rows into one. The surviving key is chosen by
    *  `canonicalRank` (NOT arrival order), and the record is the union of every
    *  per-source slot — so no scraped data is lost whichever key wins, and the
@@ -715,12 +785,18 @@ class CaffeineMovieCache(
         // year)` a pure function of the reported variants — so every stage
         // addresses the film by the same deterministic key and no slot or
         // rating write lands on a stale key. Display title is unaffected.
-        val key = redirectToExistingVariant(primary) match {
-          case Some(existingKey) =>
-            val canonical = Seq(primary, existingKey).minBy(canonicalRank)
-            if (canonical != existingKey) rekey(existingKey, canonical, identity)
-            canonical
-          case None => primary
+        // A scrape of an already-concluded film lands straight on the resolved
+        // row (by title + optional year) — so a re-scrape can't spawn a held-back
+        // yearless variant beside it, and `classify` skips re-enrichment. Falls
+        // back to the unique-match redirect for not-yet-concluded films.
+        val key = concludedKeyFor(primary).getOrElse {
+          redirectToExistingVariant(primary) match {
+            case Some(existingKey) =>
+              val canonical = Seq(primary, existingKey).minBy(canonicalRank)
+              if (canonical != existingKey) rekey(existingKey, canonical, identity)
+              canonical
+            case None => primary
+          }
         }
         val existingOpt = Option(positive.getIfPresent(key))
         val existing    = existingOpt.getOrElse(MovieRecord())
