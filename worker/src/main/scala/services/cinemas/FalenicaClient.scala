@@ -40,8 +40,12 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
+    // A WordPress `__trashed-N` slug isn't necessarily dead: the venue trashes
+    // the editorial post but the film keeps live "Dostępne terminy" (Romeria,
+    // Znaki Pana Śliwki did, with future showtimes). Don't exclude by slug —
+    // the `showtimes.isEmpty` drop below already removes genuinely-dead pages.
     val films = Jsoup.parse(http.get(ListingUrl)).select("article.filmy").asScala.toSeq.flatMap(parseListItem)
-      .filterNot(_.slug.contains("__trashed")).distinctBy(_.slug)
+      .distinctBy(_.slug)
 
     val pages = ParallelDetailFetch.keyed("falenica-details", films.map(_.slug), 1.minute)(s => s"$BaseUrl/filmy/$s/") { url =>
       Try(http.get(url)).toOption.map(Jsoup.parse)

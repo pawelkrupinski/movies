@@ -14,25 +14,36 @@ class FalenicaClientSpec extends AnyFlatSpec with Matchers {
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
-  "FalenicaClient.fetch" should "return 26 films and 58 showtimes" in {
-    results.size shouldBe 26
-    results.flatMap(_.showtimes).size shouldBe 58
+  "FalenicaClient.fetch" should "return 20 films and 44 showtimes" in {
+    results.size shouldBe 20
+    results.flatMap(_.showtimes).size shouldBe 44
   }
 
   it should "assign Stacja Falenica to every entry" in {
     results.map(_.cinema).toSet shouldBe Set(StacjaFalenica)
   }
 
+  // Regression for the `__trashed` over-filter: the venue trashes the WordPress
+  // post but keeps live showtimes. These two films carry `/filmy/__trashed-9/`
+  // and `/filmy/__trashed-10/` slugs yet have real "Dostępne terminy"; the old
+  // slug filter dropped them entirely.
+  it should "include films whose WordPress slug is __trashed but still have showtimes" in {
+    val romeria = byTitle("Romeria")
+    romeria.movie.runtimeMinutes shouldBe Some(114)
+    romeria.showtimes.head shouldBe
+      Showtime(LocalDateTime.of(2026, 6, 14, 20, 0), Some("https://ksf.systembiletowy.pl/index.php/repertoire.html?id=33447"), None, Nil)
+    byTitle("Znaki Pana Śliwki").showtimes.size shouldBe 3
+  }
+
   it should "read runtime off the listing and showtimes off the detail page" in {
-    val m = byTitle("Łowca jeleni")
-    m.movie.runtimeMinutes shouldBe Some(182)
-    m.showtimes.head shouldBe
-      Showtime(LocalDateTime.of(2026, 6, 10, 19, 45), Some("https://ksf.systembiletowy.pl/index.php/repertoire.html?id=33335"), None, Nil)
+    val m = byTitle("Sny o słoniach")
+    m.movie.runtimeMinutes shouldBe Some(98)
+    m.showtimes should not be empty
   }
 
   it should "read the YouTube trailer off the detail page's WordPress video block" in {
-    val detail = client.fetchFilmDetail(byTitle("Łowca jeleni").filmUrl.getOrElse(fail("no filmUrl for Łowca jeleni")))
-      .getOrElse(fail("no detail for Łowca jeleni"))
-    detail.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=_08Qy34w2T4")
+    val detail = client.fetchFilmDetail(byTitle("Sny o słoniach").filmUrl.getOrElse(fail("no filmUrl for Sny o słoniach")))
+      .getOrElse(fail("no detail for Sny o słoniach"))
+    detail.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=_n9ODqV3A5Q")
   }
 }

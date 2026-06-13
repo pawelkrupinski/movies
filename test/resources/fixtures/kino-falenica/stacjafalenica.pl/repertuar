@@ -25,9 +25,8 @@
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.bundle.min.js" integrity="sha384-b5kHyXgcpbZJO/tY9Ul7kGkf1S0CWuKcCD38l8YkeH8z8QjE0GmW1gYU5S9FOnJ0" crossorigin="anonymous"></script>
 
 	<meta name='robots' content='index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' />
-	<style>img:is([sizes="auto" i], [sizes^="auto," i]) { contain-intrinsic-size: 3000px 1500px }</style>
-	
-	<!-- This site is optimized with the Yoast SEO plugin v27.5 - https://yoast.com/product/yoast-seo-wordpress/ -->
+
+	<!-- This site is optimized with the Yoast SEO plugin v27.8 - https://yoast.com/product/yoast-seo-wordpress/ -->
 	<link rel="canonical" href="https://stacjafalenica.pl/repertuar/" />
 	<meta property="og:locale" content="pl_PL" />
 	<meta property="og:type" content="article" />
@@ -45,15 +44,14 @@
 	<!-- / Yoast SEO plugin. -->
 
 
-<script type="text/javascript">
-/* <![CDATA[ */
-window._wpemojiSettings = {"baseUrl":"https:\/\/s.w.org\/images\/core\/emoji\/16.0.1\/72x72\/","ext":".png","svgUrl":"https:\/\/s.w.org\/images\/core\/emoji\/16.0.1\/svg\/","svgExt":".svg","source":{"concatemoji":"https:\/\/stacjafalenica.pl\/wp-includes\/js\/wp-emoji-release.min.js?ver=6.8.5"}};
-/*! This file is auto-generated */
-!function(s,n){var o,i,e;function c(e){try{var t={supportTests:e,timestamp:(new Date).valueOf()};sessionStorage.setItem(o,JSON.stringify(t))}catch(e){}}function p(e,t,n){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);var t=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data),a=(e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(n,0,0),new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data));return t.every(function(e,t){return e===a[t]})}function u(e,t){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);for(var n=e.getImageData(16,16,1,1),a=0;a<n.data.length;a++)if(0!==n.data[a])return!1;return!0}function f(e,t,n,a){switch(t){case"flag":return n(e,"\ud83c\udff3\ufe0f\u200d\u26a7\ufe0f","\ud83c\udff3\ufe0f\u200b\u26a7\ufe0f")?!1:!n(e,"\ud83c\udde8\ud83c\uddf6","\ud83c\udde8\u200b\ud83c\uddf6")&&!n(e,"\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67\udb40\udc7f","\ud83c\udff4\u200b\udb40\udc67\u200b\udb40\udc62\u200b\udb40\udc65\u200b\udb40\udc6e\u200b\udb40\udc67\u200b\udb40\udc7f");case"emoji":return!a(e,"\ud83e\udedf")}return!1}function g(e,t,n,a){var r="undefined"!=typeof WorkerGlobalScope&&self instanceof WorkerGlobalScope?new OffscreenCanvas(300,150):s.createElement("canvas"),o=r.getContext("2d",{willReadFrequently:!0}),i=(o.textBaseline="top",o.font="600 32px Arial",{});return e.forEach(function(e){i[e]=t(o,e,n,a)}),i}function t(e){var t=s.createElement("script");t.src=e,t.defer=!0,s.head.appendChild(t)}"undefined"!=typeof Promise&&(o="wpEmojiSettingsSupports",i=["flag","emoji"],n.supports={everything:!0,everythingExceptFlag:!0},e=new Promise(function(e){s.addEventListener("DOMContentLoaded",e,{once:!0})}),new Promise(function(t){var n=function(){try{var e=JSON.parse(sessionStorage.getItem(o));if("object"==typeof e&&"number"==typeof e.timestamp&&(new Date).valueOf()<e.timestamp+604800&&"object"==typeof e.supportTests)return e.supportTests}catch(e){}return null}();if(!n){if("undefined"!=typeof Worker&&"undefined"!=typeof OffscreenCanvas&&"undefined"!=typeof URL&&URL.createObjectURL&&"undefined"!=typeof Blob)try{var e="postMessage("+g.toString()+"("+[JSON.stringify(i),f.toString(),p.toString(),u.toString()].join(",")+"));",a=new Blob([e],{type:"text/javascript"}),r=new Worker(URL.createObjectURL(a),{name:"wpTestEmojiSupports"});return void(r.onmessage=function(e){c(n=e.data),r.terminate(),t(n)})}catch(e){}c(n=g(i,f,p,u))}t(n)}).then(function(e){for(var t in e)n.supports[t]=e[t],n.supports.everything=n.supports.everything&&n.supports[t],"flag"!==t&&(n.supports.everythingExceptFlag=n.supports.everythingExceptFlag&&n.supports[t]);n.supports.everythingExceptFlag=n.supports.everythingExceptFlag&&!n.supports.flag,n.DOMReady=!1,n.readyCallback=function(){n.DOMReady=!0}}).then(function(){return e}).then(function(){var e;n.supports.everything||(n.readyCallback(),(e=n.source||{}).concatemoji?t(e.concatemoji):e.wpemoji&&e.twemoji&&(t(e.twemoji),t(e.wpemoji)))}))}((window,document),window._wpemojiSettings);
-/* ]]> */
-</script>
+<link rel="alternate" title="oEmbed (JSON)" type="application/json+oembed" href="https://stacjafalenica.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fstacjafalenica.pl%2Frepertuar%2F" />
+<link rel="alternate" title="oEmbed (XML)" type="text/xml+oembed" href="https://stacjafalenica.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fstacjafalenica.pl%2Frepertuar%2F&#038;format=xml" />
 		
-	<style id='wp-emoji-styles-inline-css' type='text/css'>
+	<style id="wp-img-auto-sizes-contain-inline-css">
+img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
+/*# sourceURL=wp-img-auto-sizes-contain-inline-css */
+</style>
+<style id="wp-emoji-styles-inline-css">
 
 	img.wp-smiley, img.emoji {
 		display: inline !important;
@@ -66,45 +64,48 @@ window._wpemojiSettings = {"baseUrl":"https:\/\/s.w.org\/images\/core\/emoji\/16
 		background: none !important;
 		padding: 0 !important;
 	}
+/*# sourceURL=wp-emoji-styles-inline-css */
 </style>
-<link rel='stylesheet' id='wp-block-library-css' href='https://stacjafalenica.pl/wp-includes/css/dist/block-library/style.min.css?ver=6.8.5' type='text/css' media='all' />
-<style id='classic-theme-styles-inline-css' type='text/css'>
+<style id="wp-block-library-inline-css">
+:root{--wp-block-synced-color:#7a00df;--wp-block-synced-color--rgb:122,0,223;--wp-bound-block-color:var(--wp-block-synced-color);--wp-editor-canvas-background:#ddd;--wp-admin-theme-color:#007cba;--wp-admin-theme-color--rgb:0,124,186;--wp-admin-theme-color-darker-10:#006ba1;--wp-admin-theme-color-darker-10--rgb:0,107,160.5;--wp-admin-theme-color-darker-20:#005a87;--wp-admin-theme-color-darker-20--rgb:0,90,135;--wp-admin-border-width-focus:2px}@media (min-resolution:192dpi){:root{--wp-admin-border-width-focus:1.5px}}.wp-element-button{cursor:pointer}:root .has-very-light-gray-background-color{background-color:#eee}:root .has-very-dark-gray-background-color{background-color:#313131}:root .has-very-light-gray-color{color:#eee}:root .has-very-dark-gray-color{color:#313131}:root .has-vivid-green-cyan-to-vivid-cyan-blue-gradient-background{background:linear-gradient(135deg,#00d084,#0693e3)}:root .has-purple-crush-gradient-background{background:linear-gradient(135deg,#34e2e4,#4721fb 50%,#ab1dfe)}:root .has-hazy-dawn-gradient-background{background:linear-gradient(135deg,#faaca8,#dad0ec)}:root .has-subdued-olive-gradient-background{background:linear-gradient(135deg,#fafae1,#67a671)}:root .has-atomic-cream-gradient-background{background:linear-gradient(135deg,#fdd79a,#004a59)}:root .has-nightshade-gradient-background{background:linear-gradient(135deg,#330968,#31cdcf)}:root .has-midnight-gradient-background{background:linear-gradient(135deg,#020381,#2874fc)}:root{--wp--preset--font-size--normal:16px;--wp--preset--font-size--huge:42px}.has-regular-font-size{font-size:1em}.has-larger-font-size{font-size:2.625em}.has-normal-font-size{font-size:var(--wp--preset--font-size--normal)}.has-huge-font-size{font-size:var(--wp--preset--font-size--huge)}:root .has-text-align-center{text-align:center}:root .has-text-align-left{text-align:left}:root .has-text-align-right{text-align:right}.has-fit-text{white-space:nowrap!important}#end-resizable-editor-section{display:none}.aligncenter{clear:both}.items-justified-left{justify-content:flex-start}.items-justified-center{justify-content:center}.items-justified-right{justify-content:flex-end}.items-justified-space-between{justify-content:space-between}.screen-reader-text{word-wrap:normal!important;border:0;clip-path:inset(50%);height:1px;margin:-1px;overflow:hidden;padding:0;position:absolute;width:1px}.screen-reader-text:focus{background-color:#ddd;clip-path:none;color:#444;display:block;font-size:1em;height:auto;left:5px;line-height:normal;padding:15px 23px 14px;text-decoration:none;top:5px;width:auto;z-index:100000}html :where(.has-border-color){border-style:solid}html :where([style*=border-color]){border-style:solid}html :where([style*=border-top-color]){border-top-style:solid}html :where([style*=border-right-color]){border-right-style:solid}html :where([style*=border-bottom-color]){border-bottom-style:solid}html :where([style*=border-left-color]){border-left-style:solid}html :where([style*=border-width]){border-style:solid}html :where([style*=border-top-width]){border-top-style:solid}html :where([style*=border-right-width]){border-right-style:solid}html :where([style*=border-bottom-width]){border-bottom-style:solid}html :where([style*=border-left-width]){border-left-style:solid}html :where(img[class*=wp-image-]){height:auto;max-width:100%}:where(figure){margin:0 0 1em}html :where(.is-position-sticky){--wp-admin--admin-bar--position-offset:var(--wp-admin--admin-bar--height,0px)}@media screen and (max-width:600px){html :where(.is-position-sticky){--wp-admin--admin-bar--position-offset:0px}}
+
+/*# sourceURL=/wp-includes/css/dist/block-library/common.min.css */
+</style>
+<style id="classic-theme-styles-inline-css">
 /*! This file is auto-generated */
 .wp-block-button__link{color:#fff;background-color:#32373c;border-radius:9999px;box-shadow:none;text-decoration:none;padding:calc(.667em + 2px) calc(1.333em + 2px);font-size:1.125em}.wp-block-file__button{background:#32373c;color:#fff;text-decoration:none}
+/*# sourceURL=/wp-includes/css/classic-themes.min.css */
 </style>
-<style id='global-styles-inline-css' type='text/css'>
-:root{--wp--preset--aspect-ratio--square: 1;--wp--preset--aspect-ratio--4-3: 4/3;--wp--preset--aspect-ratio--3-4: 3/4;--wp--preset--aspect-ratio--3-2: 3/2;--wp--preset--aspect-ratio--2-3: 2/3;--wp--preset--aspect-ratio--16-9: 16/9;--wp--preset--aspect-ratio--9-16: 9/16;--wp--preset--color--black: #000000;--wp--preset--color--cyan-bluish-gray: #abb8c3;--wp--preset--color--white: #ffffff;--wp--preset--color--pale-pink: #f78da7;--wp--preset--color--vivid-red: #cf2e2e;--wp--preset--color--luminous-vivid-orange: #ff6900;--wp--preset--color--luminous-vivid-amber: #fcb900;--wp--preset--color--light-green-cyan: #7bdcb5;--wp--preset--color--vivid-green-cyan: #00d084;--wp--preset--color--pale-cyan-blue: #8ed1fc;--wp--preset--color--vivid-cyan-blue: #0693e3;--wp--preset--color--vivid-purple: #9b51e0;--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple: linear-gradient(135deg,rgba(6,147,227,1) 0%,rgb(155,81,224) 100%);--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan: linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%);--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange: linear-gradient(135deg,rgba(252,185,0,1) 0%,rgba(255,105,0,1) 100%);--wp--preset--gradient--luminous-vivid-orange-to-vivid-red: linear-gradient(135deg,rgba(255,105,0,1) 0%,rgb(207,46,46) 100%);--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray: linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%);--wp--preset--gradient--cool-to-warm-spectrum: linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%);--wp--preset--gradient--blush-light-purple: linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%);--wp--preset--gradient--blush-bordeaux: linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%);--wp--preset--gradient--luminous-dusk: linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%);--wp--preset--gradient--pale-ocean: linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%);--wp--preset--gradient--electric-grass: linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%);--wp--preset--gradient--midnight: linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%);--wp--preset--font-size--small: 13px;--wp--preset--font-size--medium: 20px;--wp--preset--font-size--large: 36px;--wp--preset--font-size--x-large: 42px;--wp--preset--spacing--20: 0.44rem;--wp--preset--spacing--30: 0.67rem;--wp--preset--spacing--40: 1rem;--wp--preset--spacing--50: 1.5rem;--wp--preset--spacing--60: 2.25rem;--wp--preset--spacing--70: 3.38rem;--wp--preset--spacing--80: 5.06rem;--wp--preset--shadow--natural: 6px 6px 9px rgba(0, 0, 0, 0.2);--wp--preset--shadow--deep: 12px 12px 50px rgba(0, 0, 0, 0.4);--wp--preset--shadow--sharp: 6px 6px 0px rgba(0, 0, 0, 0.2);--wp--preset--shadow--outlined: 6px 6px 0px -3px rgba(255, 255, 255, 1), 6px 6px rgba(0, 0, 0, 1);--wp--preset--shadow--crisp: 6px 6px 0px rgba(0, 0, 0, 1);}:where(.is-layout-flex){gap: 0.5em;}:where(.is-layout-grid){gap: 0.5em;}body .is-layout-flex{display: flex;}.is-layout-flex{flex-wrap: wrap;align-items: center;}.is-layout-flex > :is(*, div){margin: 0;}body .is-layout-grid{display: grid;}.is-layout-grid > :is(*, div){margin: 0;}:where(.wp-block-columns.is-layout-flex){gap: 2em;}:where(.wp-block-columns.is-layout-grid){gap: 2em;}:where(.wp-block-post-template.is-layout-flex){gap: 1.25em;}:where(.wp-block-post-template.is-layout-grid){gap: 1.25em;}.has-black-color{color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-color{color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-color{color: var(--wp--preset--color--white) !important;}.has-pale-pink-color{color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-color{color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-color{color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-color{color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-color{color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-color{color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-color{color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-color{color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-color{color: var(--wp--preset--color--vivid-purple) !important;}.has-black-background-color{background-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-background-color{background-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-background-color{background-color: var(--wp--preset--color--white) !important;}.has-pale-pink-background-color{background-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-background-color{background-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-background-color{background-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-background-color{background-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-background-color{background-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-background-color{background-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-background-color{background-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-background-color{background-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-background-color{background-color: var(--wp--preset--color--vivid-purple) !important;}.has-black-border-color{border-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-border-color{border-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-border-color{border-color: var(--wp--preset--color--white) !important;}.has-pale-pink-border-color{border-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-border-color{border-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-border-color{border-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-border-color{border-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-border-color{border-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-border-color{border-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-border-color{border-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-border-color{border-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-border-color{border-color: var(--wp--preset--color--vivid-purple) !important;}.has-vivid-cyan-blue-to-vivid-purple-gradient-background{background: var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple) !important;}.has-light-green-cyan-to-vivid-green-cyan-gradient-background{background: var(--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan) !important;}.has-luminous-vivid-amber-to-luminous-vivid-orange-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange) !important;}.has-luminous-vivid-orange-to-vivid-red-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-orange-to-vivid-red) !important;}.has-very-light-gray-to-cyan-bluish-gray-gradient-background{background: var(--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray) !important;}.has-cool-to-warm-spectrum-gradient-background{background: var(--wp--preset--gradient--cool-to-warm-spectrum) !important;}.has-blush-light-purple-gradient-background{background: var(--wp--preset--gradient--blush-light-purple) !important;}.has-blush-bordeaux-gradient-background{background: var(--wp--preset--gradient--blush-bordeaux) !important;}.has-luminous-dusk-gradient-background{background: var(--wp--preset--gradient--luminous-dusk) !important;}.has-pale-ocean-gradient-background{background: var(--wp--preset--gradient--pale-ocean) !important;}.has-electric-grass-gradient-background{background: var(--wp--preset--gradient--electric-grass) !important;}.has-midnight-gradient-background{background: var(--wp--preset--gradient--midnight) !important;}.has-small-font-size{font-size: var(--wp--preset--font-size--small) !important;}.has-medium-font-size{font-size: var(--wp--preset--font-size--medium) !important;}.has-large-font-size{font-size: var(--wp--preset--font-size--large) !important;}.has-x-large-font-size{font-size: var(--wp--preset--font-size--x-large) !important;}
-:where(.wp-block-post-template.is-layout-flex){gap: 1.25em;}:where(.wp-block-post-template.is-layout-grid){gap: 1.25em;}
-:where(.wp-block-columns.is-layout-flex){gap: 2em;}:where(.wp-block-columns.is-layout-grid){gap: 2em;}
-:root :where(.wp-block-pullquote){font-size: 1.5em;line-height: 1.6;}
+
+<style id="global-styles-inline-css">
+:root{--wp--preset--aspect-ratio--square: 1;--wp--preset--aspect-ratio--4-3: 4/3;--wp--preset--aspect-ratio--3-4: 3/4;--wp--preset--aspect-ratio--3-2: 3/2;--wp--preset--aspect-ratio--2-3: 2/3;--wp--preset--aspect-ratio--16-9: 16/9;--wp--preset--aspect-ratio--9-16: 9/16;--wp--preset--color--black: #000000;--wp--preset--color--cyan-bluish-gray: #abb8c3;--wp--preset--color--white: #ffffff;--wp--preset--color--pale-pink: #f78da7;--wp--preset--color--vivid-red: #cf2e2e;--wp--preset--color--luminous-vivid-orange: #ff6900;--wp--preset--color--luminous-vivid-amber: #fcb900;--wp--preset--color--light-green-cyan: #7bdcb5;--wp--preset--color--vivid-green-cyan: #00d084;--wp--preset--color--pale-cyan-blue: #8ed1fc;--wp--preset--color--vivid-cyan-blue: #0693e3;--wp--preset--color--vivid-purple: #9b51e0;--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple: linear-gradient(135deg,rgb(6,147,227) 0%,rgb(155,81,224) 100%);--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan: linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%);--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange: linear-gradient(135deg,rgb(252,185,0) 0%,rgb(255,105,0) 100%);--wp--preset--gradient--luminous-vivid-orange-to-vivid-red: linear-gradient(135deg,rgb(255,105,0) 0%,rgb(207,46,46) 100%);--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray: linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%);--wp--preset--gradient--cool-to-warm-spectrum: linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%);--wp--preset--gradient--blush-light-purple: linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%);--wp--preset--gradient--blush-bordeaux: linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%);--wp--preset--gradient--luminous-dusk: linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%);--wp--preset--gradient--pale-ocean: linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%);--wp--preset--gradient--electric-grass: linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%);--wp--preset--gradient--midnight: linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%);--wp--preset--font-size--small: 13px;--wp--preset--font-size--medium: 20px;--wp--preset--font-size--large: 36px;--wp--preset--font-size--x-large: 42px;--wp--preset--spacing--20: 0.44rem;--wp--preset--spacing--30: 0.67rem;--wp--preset--spacing--40: 1rem;--wp--preset--spacing--50: 1.5rem;--wp--preset--spacing--60: 2.25rem;--wp--preset--spacing--70: 3.38rem;--wp--preset--spacing--80: 5.06rem;--wp--preset--shadow--natural: 6px 6px 9px rgba(0, 0, 0, 0.2);--wp--preset--shadow--deep: 12px 12px 50px rgba(0, 0, 0, 0.4);--wp--preset--shadow--sharp: 6px 6px 0px rgba(0, 0, 0, 0.2);--wp--preset--shadow--outlined: 6px 6px 0px -3px rgb(255, 255, 255), 6px 6px rgb(0, 0, 0);--wp--preset--shadow--crisp: 6px 6px 0px rgb(0, 0, 0);}:where(body) { margin: 0; }:where(.is-layout-flex){gap: 0.5em;}:where(.is-layout-grid){gap: 0.5em;}body .is-layout-flex{display: flex;}.is-layout-flex{flex-wrap: wrap;align-items: center;}.is-layout-flex > :is(*, div){margin: 0;}body .is-layout-grid{display: grid;}.is-layout-grid > :is(*, div){margin: 0;}body{padding-top: 0px;padding-right: 0px;padding-bottom: 0px;padding-left: 0px;}:root :where(.wp-element-button, .wp-block-button__link){background-color: #32373c;border-width: 0;color: #fff;font-family: inherit;font-size: inherit;font-style: inherit;font-weight: inherit;letter-spacing: inherit;line-height: inherit;padding-top: calc(0.667em + 2px);padding-right: calc(1.333em + 2px);padding-bottom: calc(0.667em + 2px);padding-left: calc(1.333em + 2px);text-decoration: none;text-transform: inherit;}.has-black-color{color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-color{color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-color{color: var(--wp--preset--color--white) !important;}.has-pale-pink-color{color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-color{color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-color{color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-color{color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-color{color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-color{color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-color{color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-color{color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-color{color: var(--wp--preset--color--vivid-purple) !important;}.has-black-background-color{background-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-background-color{background-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-background-color{background-color: var(--wp--preset--color--white) !important;}.has-pale-pink-background-color{background-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-background-color{background-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-background-color{background-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-background-color{background-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-background-color{background-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-background-color{background-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-background-color{background-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-background-color{background-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-background-color{background-color: var(--wp--preset--color--vivid-purple) !important;}.has-black-border-color{border-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-border-color{border-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-border-color{border-color: var(--wp--preset--color--white) !important;}.has-pale-pink-border-color{border-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-border-color{border-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-border-color{border-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-border-color{border-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-border-color{border-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-border-color{border-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-border-color{border-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-border-color{border-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-border-color{border-color: var(--wp--preset--color--vivid-purple) !important;}.has-vivid-cyan-blue-to-vivid-purple-gradient-background{background: var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple) !important;}.has-light-green-cyan-to-vivid-green-cyan-gradient-background{background: var(--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan) !important;}.has-luminous-vivid-amber-to-luminous-vivid-orange-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange) !important;}.has-luminous-vivid-orange-to-vivid-red-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-orange-to-vivid-red) !important;}.has-very-light-gray-to-cyan-bluish-gray-gradient-background{background: var(--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray) !important;}.has-cool-to-warm-spectrum-gradient-background{background: var(--wp--preset--gradient--cool-to-warm-spectrum) !important;}.has-blush-light-purple-gradient-background{background: var(--wp--preset--gradient--blush-light-purple) !important;}.has-blush-bordeaux-gradient-background{background: var(--wp--preset--gradient--blush-bordeaux) !important;}.has-luminous-dusk-gradient-background{background: var(--wp--preset--gradient--luminous-dusk) !important;}.has-pale-ocean-gradient-background{background: var(--wp--preset--gradient--pale-ocean) !important;}.has-electric-grass-gradient-background{background: var(--wp--preset--gradient--electric-grass) !important;}.has-midnight-gradient-background{background: var(--wp--preset--gradient--midnight) !important;}.has-small-font-size{font-size: var(--wp--preset--font-size--small) !important;}.has-medium-font-size{font-size: var(--wp--preset--font-size--medium) !important;}.has-large-font-size{font-size: var(--wp--preset--font-size--large) !important;}.has-x-large-font-size{font-size: var(--wp--preset--font-size--x-large) !important;}
+/*# sourceURL=global-styles-inline-css */
 </style>
-<link rel='stylesheet' id='contact-form-7-css' href='https://stacjafalenica.pl/wp-content/plugins/contact-form-7/includes/css/styles.css?ver=6.1.5' type='text/css' media='all' />
-<link rel='stylesheet' id='cookie-notice-front-css' href='https://stacjafalenica.pl/wp-content/plugins/cookie-notice/css/front.min.css?ver=3.0.2' type='text/css' media='all' />
-<link rel='stylesheet' id='video_popup_main_style-css' href='https://stacjafalenica.pl/wp-content/plugins/video-popup/assets/css/videoPopup.css?ver=2.0.4' type='text/css' media='all' />
-<link rel='stylesheet' id='ivory-search-styles-css' href='https://stacjafalenica.pl/wp-content/plugins/add-search-to-menu/public/css/ivory-search.min.css?ver=5.5.14' type='text/css' media='all' />
-<link rel='stylesheet' id='default_page-css' href='https://stacjafalenica.pl/wp-content/themes/falenica2/assets/css/style.css?ver=1.0.0' type='text/css' media='all' />
-<link rel='stylesheet' id='slb_core-css' href='https://stacjafalenica.pl/wp-content/plugins/simple-lightbox/client/css/app.css?ver=2.9.4' type='text/css' media='all' />
-<link rel='stylesheet' id='wp-paginate-css' href='https://stacjafalenica.pl/wp-content/plugins/wp-paginate/css/wp-paginate.css?ver=2.2.4' type='text/css' media='screen' />
-<script type="text/javascript" id="cookie-notice-front-js-before">
-/* <![CDATA[ */
-var cnArgs = {"ajaxUrl":"https:\/\/stacjafalenica.pl\/wp-admin\/admin-ajax.php","nonce":"b6281985e3","hideEffect":"fade","position":"bottom","onScroll":false,"onScrollOffset":100,"onClick":false,"cookieName":"cookie_notice_accepted","cookieTime":2592000,"cookieTimeRejected":2592000,"globalCookie":false,"redirection":false,"cache":false,"revokeCookies":false,"revokeCookiesOpt":"automatic"};
-/* ]]> */
+
+<link rel='stylesheet' id='contact-form-7-css' href='https://stacjafalenica.pl/wp-content/plugins/contact-form-7/includes/css/styles.css?ver=6.1.6' media='all' />
+<link rel='stylesheet' id='cookie-notice-front-css' href='https://stacjafalenica.pl/wp-content/plugins/cookie-notice/css/front.min.css?ver=3.1.1' media='all' />
+<link rel='stylesheet' id='video_popup_main_style-css' href='https://stacjafalenica.pl/wp-content/plugins/video-popup/assets/css/videoPopup.css?ver=2.0.4' media='all' />
+<link rel='stylesheet' id='ivory-search-styles-css' href='https://stacjafalenica.pl/wp-content/plugins/add-search-to-menu/public/css/ivory-search.min.css?ver=5.5.15' media='all' />
+<link rel='stylesheet' id='default_page-css' href='https://stacjafalenica.pl/wp-content/themes/falenica2/assets/css/style.css?ver=1.0.0' media='all' />
+<link rel='stylesheet' id='slb_core-css' href='https://stacjafalenica.pl/wp-content/plugins/simple-lightbox/client/css/app.css?ver=2.9.5' media='all' />
+<link rel='stylesheet' id='wp-paginate-css' href='https://stacjafalenica.pl/wp-content/plugins/wp-paginate/css/wp-paginate.css?ver=2.2.6' media='screen' />
+<script id="cookie-notice-front-js-before">
+var cnArgs = {"ajaxUrl":"https:\/\/stacjafalenica.pl\/wp-admin\/admin-ajax.php","nonce":"16439ff093","hideEffect":"fade","position":"bottom","onScroll":false,"onScrollOffset":100,"onClick":false,"cookieName":"cookie_notice_accepted","cookieTime":2592000,"cookieTimeRejected":2592000,"globalCookie":false,"redirection":false,"cache":false,"revokeCookies":false,"revokeCookiesOpt":"automatic"};
+
+//# sourceURL=cookie-notice-front-js-before
 </script>
-<script type="text/javascript" src="https://stacjafalenica.pl/wp-content/plugins/cookie-notice/js/front.min.js?ver=3.0.2" id="cookie-notice-front-js"></script>
-<script type="text/javascript" src="https://stacjafalenica.pl/wp-includes/js/jquery/jquery.min.js?ver=3.7.1" id="jquery-core-js"></script>
-<script type="text/javascript" src="https://stacjafalenica.pl/wp-includes/js/jquery/jquery-migrate.min.js?ver=3.4.1" id="jquery-migrate-js"></script>
-<script type="text/javascript" id="video_popup_main_modal-js-extra">
-/* <![CDATA[ */
+<script id="cookie-notice-front-js" src="https://stacjafalenica.pl/wp-content/plugins/cookie-notice/js/front.min.js?ver=3.1.1"></script>
+<script id="jquery-core-js" src="https://stacjafalenica.pl/wp-includes/js/jquery/jquery.min.js?ver=3.7.1"></script>
+<script id="jquery-migrate-js" src="https://stacjafalenica.pl/wp-includes/js/jquery/jquery-migrate.min.js?ver=3.4.1"></script>
+<script id="video_popup_main_modal-js-extra">
 var theVideoPopupGeneralOptions = {"wrap_close":"false","no_cookie":"false","debug":"0"};
-/* ]]> */
+//# sourceURL=video_popup_main_modal-js-extra
 </script>
-<script type="text/javascript" src="https://stacjafalenica.pl/wp-content/plugins/video-popup/assets/js/videoPopup.js?ver=2.0.4" id="video_popup_main_modal-js"></script>
+<script id="video_popup_main_modal-js" src="https://stacjafalenica.pl/wp-content/plugins/video-popup/assets/js/videoPopup.js?ver=2.0.4"></script>
 <link rel="https://api.w.org/" href="https://stacjafalenica.pl/wp-json/" /><link rel="alternate" title="JSON" type="application/json" href="https://stacjafalenica.pl/wp-json/wp/v2/pages/36079" /><link rel="EditURI" type="application/rsd+xml" title="RSD" href="https://stacjafalenica.pl/xmlrpc.php?rsd" />
 
 <link rel='shortlink' href='https://stacjafalenica.pl/?p=36079' />
-<link rel="alternate" title="oEmbed (JSON)" type="application/json+oembed" href="https://stacjafalenica.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fstacjafalenica.pl%2Frepertuar%2F" />
-<link rel="alternate" title="oEmbed (XML)" type="text/xml+oembed" href="https://stacjafalenica.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fstacjafalenica.pl%2Frepertuar%2F&#038;format=xml" />
-<script type="text/javascript" src="https://stacjafalenica.pl/wp-includes/js/tw-sack.min.js?ver=1.6.1" id="sack-js"></script>
+<script id="sack-js" src="https://stacjafalenica.pl/wp-includes/js/tw-sack.min.js?ver=1.6.1"></script>
 	<script type="text/javascript">
 		//<![CDATA[
 				function alo_em_pubblic_form ()
@@ -146,7 +147,7 @@ var theVideoPopupGeneralOptions = {"wrap_close":"false","no_cookie":"false","deb
 				}
 			}
 			alo_em_sack.setVar( "alo_em_form_lists", lists );
-			alo_em_sack.setVar( "alo_em_nonce", '2cb4934e05' );
+			alo_em_sack.setVar( "alo_em_nonce", '48ec111007' );
 			alo_em_sack.runAJAX();
 
 			return true;
@@ -154,15 +155,16 @@ var theVideoPopupGeneralOptions = {"wrap_close":"false","no_cookie":"false","deb
 		}
 				//]]>
 	</script>
-	<style type="text/css">.recentcomments a{display:inline !important;padding:0 !important;margin:0 !important;}</style><link rel="icon" href="https://stacjafalenica.pl/wp-content/uploads/2019/07/cropped-favicon-3-32x32.png" sizes="32x32" />
+	<style>.recentcomments a{display:inline !important;padding:0 !important;margin:0 !important;}</style><link rel="icon" href="https://stacjafalenica.pl/wp-content/uploads/2019/07/cropped-favicon-3-32x32.png" sizes="32x32" />
 <link rel="icon" href="https://stacjafalenica.pl/wp-content/uploads/2019/07/cropped-favicon-3-192x192.png" sizes="192x192" />
 <link rel="apple-touch-icon" href="https://stacjafalenica.pl/wp-content/uploads/2019/07/cropped-favicon-3-180x180.png" />
 <meta name="msapplication-TileImage" content="https://stacjafalenica.pl/wp-content/uploads/2019/07/cropped-favicon-3-270x270.png" />
-		<style type="text/css" id="wp-custom-css">
-			.ml-form-embedContainer .ml-form-embedWrapper {
+<style id="wp-custom-css">
+.ml-form-embedContainer .ml-form-embedWrapper {
         background-color: rgba(1,1,1,0)!important;
-              }		</style>
-		<style type="text/css" media="screen">.is-menu path.search-icon-path { fill: #ffffff;}body .popup-search-close:after, body .search-close:after { border-color: #ffffff;}body .popup-search-close:before, body .search-close:before { border-color: #ffffff;}</style>			<style type="text/css">
+              }
+</style>
+<style type="text/css" media="screen">.is-menu path.search-icon-path { fill: #ffffff;}body .popup-search-close:after, body .search-close:after { border-color: #ffffff;}body .popup-search-close:before, body .search-close:before { border-color: #ffffff;}</style>			<style type="text/css">
 					.is-form-id-35948 .is-search-submit:focus,
 			.is-form-id-35948 .is-search-submit:hover,
 			.is-form-id-35948 .is-search-submit,
@@ -257,6 +259,31 @@ var theVideoPopupGeneralOptions = {"wrap_close":"false","no_cookie":"false","deb
 						
 						<div class="col-sm-3">
 							<div class="repe-box post-hover">
+								<article id="post-48468" class="group grid-item post-48468 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
+									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/05/Block-5-8-500x430.jpg);" >
+																				<div class="repe_inner">
+											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/blok-5/" rel="bookmark" title="Blok 5">Blok 5</a></h2>
+											<div class="row">
+												<div class="col-sm-12">
+													<div class="repe_czas">80 minut | reż. Klemen Dvornik</div>
+												</div>
+											</div>
+											<div class="row">
+												<div class="col-sm-12">
+													<div class="repe_opis">
+													<a href="https://stacjafalenica.pl/filmy/blok-5/" rel="bookmark" title="Blok 5">Kiedy lokalnemu parkowi grozi likwidacja, 12-letnia Alma musi połączyć siły ze skaterami z sąsiedztwa. Czy wspólnie uda im się pokrzyżować plany...</a>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</article>
+							</div>
+						</div>
+
+						
+						<div class="col-sm-3">
+							<div class="repe-box post-hover">
 								<article id="post-39809" class="group grid-item post-39809 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
 									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2025/08/caravaggio-slider-500x430.jpg);" >
 																				<div class="repe_inner">
@@ -307,19 +334,19 @@ var theVideoPopupGeneralOptions = {"wrap_close":"false","no_cookie":"false","deb
 						
 						<div class="col-sm-3">
 							<div class="repe-box post-hover">
-								<article id="post-48340" class="group grid-item post-48340 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
-									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/05/TMFT_SG_0015356-500x430.jpg);" >
+								<article id="post-48437" class="group grid-item post-48437 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
+									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/05/DRUGIE-ZYCIE_01-500x430.jpg);" >
 																				<div class="repe_inner">
-											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/__trashed-8/" rel="bookmark" title="Drzewo magii">Drzewo magii</a></h2>
+											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/drugie-zycie/" rel="bookmark" title="Drugie życie">Drugie życie</a></h2>
 											<div class="row">
 												<div class="col-sm-12">
-													<div class="repe_czas">110 minut | reż. Ben Gregor</div>
+													<div class="repe_czas">116 minut | reż. Maryam Touzani</div>
 												</div>
 											</div>
 											<div class="row">
 												<div class="col-sm-12">
 													<div class="repe_opis">
-													<a href="https://stacjafalenica.pl/filmy/__trashed-8/" rel="bookmark" title="Drzewo magii">Polly, Tim i trójka dzieci przeprowadzają się na angielską prowincję – bez Wi-Fi i gadżetów. Podczas wypraw po okolicy dzieci odkrywają niezwykłe...</a>
+													<a href="https://stacjafalenica.pl/filmy/drugie-zycie/" rel="bookmark" title="Drugie życie">Nigdy nie jest za późno, by zacząć od nowa. María Ángeles od 40 lat mieszka w słonecznym apartamencie w marokańskim Tangerze. Gdy zostaje zmuszona do...</a>
 													</div>
 												</div>
 											</div>
@@ -332,44 +359,19 @@ var theVideoPopupGeneralOptions = {"wrap_close":"false","no_cookie":"false","deb
 						
 						<div class="col-sm-3">
 							<div class="repe-box post-hover">
-								<article id="post-48606" class="group grid-item post-48606 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
-									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/05/image-15-500x373.png);" >
+								<article id="post-48714" class="group grid-item post-48714 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
+									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/06/Erupcja-foto3-500x430.jpg);" >
 																				<div class="repe_inner">
-											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/jak-bert-to-wszystko-ogarnie/" rel="bookmark" title="Jak Bert to wszystko ogarnie?">Jak Bert to wszystko ogarnie?</a></h2>
+											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/erupcja/" rel="bookmark" title="Erupcja">Erupcja</a></h2>
 											<div class="row">
 												<div class="col-sm-12">
-													<div class="repe_czas">83 minuty | reż. Manuel Concha</div>
+													<div class="repe_czas">71 minut | reż. Pete Ohs</div>
 												</div>
 											</div>
 											<div class="row">
 												<div class="col-sm-12">
 													<div class="repe_opis">
-													<a href="https://stacjafalenica.pl/filmy/jak-bert-to-wszystko-ogarnie/" rel="bookmark" title="Jak Bert to wszystko ogarnie?">Bert jest nastolatkiem i wraz ze swym najlepszym przyjacielem Ake rozpoczyna staż w restauracji. To także czas jego pierwszego zakochania się w dziewczynie...</a>
-													</div>
-												</div>
-											</div>
-										</div>
-									</div>
-								</article>
-							</div>
-						</div>
-
-						
-						<div class="col-sm-3">
-							<div class="repe-box post-hover">
-								<article id="post-48475" class="group grid-item post-48475 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
-									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/05/Jutro-bede-odwazny-5-500x430.jpeg);" >
-																				<div class="repe_inner">
-											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/jutro-bede-odwazny-2/" rel="bookmark" title="Jutro będę odważny">Jutro będę odważny</a></h2>
-											<div class="row">
-												<div class="col-sm-12">
-													<div class="repe_czas">80 minut | reż. Bernd Sahling</div>
-												</div>
-											</div>
-											<div class="row">
-												<div class="col-sm-12">
-													<div class="repe_opis">
-													<a href="https://stacjafalenica.pl/filmy/jutro-bede-odwazny-2/" rel="bookmark" title="Jutro będę odważny">12-letni Karl nigdy by się nie spodziewał, że poczuje coś do Lei, wysokiej koleżanki z klasy. Bardzo chciałby wyznać jej swoje uczucia, jednak boi się,...</a>
+													<a href="https://stacjafalenica.pl/filmy/erupcja/" rel="bookmark" title="Erupcja">Upalne warszawskie lato, spotkanie po latach i chemia, której nie da się zignorować. Bethany (Charli xcx) przyjeżdża do Polski z chłopakiem – i wpada...</a>
 													</div>
 												</div>
 											</div>
@@ -407,56 +409,6 @@ var theVideoPopupGeneralOptions = {"wrap_close":"false","no_cookie":"false","deb
 						
 						<div class="col-sm-3">
 							<div class="repe-box post-hover">
-								<article id="post-41817" class="group grid-item post-41817 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
-									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2025/12/5555x2362-CAP034-RESTORED-VERSION-2018-500x430.jpg);" >
-																				<div class="repe_inner">
-											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/lowca-jeleni/" rel="bookmark" title="Łowca jeleni">Łowca jeleni</a></h2>
-											<div class="row">
-												<div class="col-sm-12">
-													<div class="repe_czas">182 minuty | reż. Michael Cimino</div>
-												</div>
-											</div>
-											<div class="row">
-												<div class="col-sm-12">
-													<div class="repe_opis">
-													<a href="https://stacjafalenica.pl/filmy/lowca-jeleni/" rel="bookmark" title="Łowca jeleni">„Łowca jeleni” Michaela Cimino to jeden z najważniejszych i wywołujących najbardziej żarliwe dyskusje tytułów w dziejach kina. Laureat pięciu...</a>
-													</div>
-												</div>
-											</div>
-										</div>
-									</div>
-								</article>
-							</div>
-						</div>
-
-						
-						<div class="col-sm-3">
-							<div class="repe-box post-hover">
-								<article id="post-48175" class="group grid-item post-48175 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
-									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/04/Fotos-na-strone-4-1024x554-1-500x430.jpg);" >
-																				<div class="repe_inner">
-											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/maryja-matka-papieza/" rel="bookmark" title="Maryja. Matka Papieża">Maryja. Matka Papieża</a></h2>
-											<div class="row">
-												<div class="col-sm-12">
-													<div class="repe_czas">90 minut | reż. Jan Sobierajski</div>
-												</div>
-											</div>
-											<div class="row">
-												<div class="col-sm-12">
-													<div class="repe_opis">
-													<a href="https://stacjafalenica.pl/filmy/maryja-matka-papieza/" rel="bookmark" title="Maryja. Matka Papieża">Maryja. Matka Papieża to pierwszy film, który odsłania mistyczną więź między św. Janem Pawłem II a Matką Bożą. To opowieść o relacji, która...</a>
-													</div>
-												</div>
-											</div>
-										</div>
-									</div>
-								</article>
-							</div>
-						</div>
-
-						
-						<div class="col-sm-3">
-							<div class="repe-box post-hover">
 								<article id="post-48634" class="group grid-item post-48634 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
 									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/06/Mikey-i-Nicky-fotosy1a-500x430.jpg);" >
 																				<div class="repe_inner">
@@ -482,19 +434,19 @@ var theVideoPopupGeneralOptions = {"wrap_close":"false","no_cookie":"false","deb
 						
 						<div class="col-sm-3">
 							<div class="repe-box post-hover">
-								<article id="post-48610" class="group grid-item post-48610 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
-									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/05/mira-e1779789435367-500x430.jpg);" >
+								<article id="post-43778" class="group grid-item post-43778 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
+									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/02/df066d79-52e4-4d65-b1d6-0d78d41c698e_1800x1200-500x430.webp);" >
 																				<div class="repe_inner">
-											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/mira/" rel="bookmark" title="Mira">Mira</a></h2>
+											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/milosc-ktora-zostaje/" rel="bookmark" title="Miłość, która zostaje">Miłość, która zostaje</a></h2>
 											<div class="row">
 												<div class="col-sm-12">
-													<div class="repe_czas">85 minut | reż. Marie Limkilde</div>
+													<div class="repe_czas">109 minut | reż. Hlynur Pálmason</div>
 												</div>
 											</div>
 											<div class="row">
 												<div class="col-sm-12">
 													<div class="repe_opis">
-													<a href="https://stacjafalenica.pl/filmy/mira/" rel="bookmark" title="Mira">Mira to pogodna 12-latka. Uwielbia tworzyć małe dzieła sztuki z plastiku z recyklingu. Cały wolny czas spędza beztrosko z dwójką swych przyjaciół....</a>
+													<a href="https://stacjafalenica.pl/filmy/milosc-ktora-zostaje/" rel="bookmark" title="Miłość, która zostaje">Nowy film Hlynura Pálmasona (Zimowi bracia, 17. NH, Biały, biały dzień 19. NH, Godland 22. NH) zadebiutował w pozakonkursowej sekcji Cannes Premiere....</a>
 													</div>
 												</div>
 											</div>
@@ -532,31 +484,6 @@ var theVideoPopupGeneralOptions = {"wrap_close":"false","no_cookie":"false","deb
 						
 						<div class="col-sm-3">
 							<div class="repe-box post-hover">
-								<article id="post-48481" class="group grid-item post-48481 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
-									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/05/image-8-500x430.png);" >
-																				<div class="repe_inner">
-											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/mlode-matki/" rel="bookmark" title="Młode matki">Młode matki</a></h2>
-											<div class="row">
-												<div class="col-sm-12">
-													<div class="repe_czas">104 minuty | reż. Jean-Pierre, Luc Dardenne</div>
-												</div>
-											</div>
-											<div class="row">
-												<div class="col-sm-12">
-													<div class="repe_opis">
-													<a href="https://stacjafalenica.pl/filmy/mlode-matki/" rel="bookmark" title="Młode matki">„Młode matki” to kolejna pełna humanizmu i empatii opowieść belgijskich braci o tych, którzy zwykle nie mają głosu. Surowy realizm łączy się tu z...</a>
-													</div>
-												</div>
-											</div>
-										</div>
-									</div>
-								</article>
-							</div>
-						</div>
-
-						
-						<div class="col-sm-3">
-							<div class="repe-box post-hover">
 								<article id="post-44194" class="group grid-item post-44194 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
 									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/02/SacreCoeur01004153-768x415-1-500x415.jpg);" >
 																				<div class="repe_inner">
@@ -582,19 +509,19 @@ var theVideoPopupGeneralOptions = {"wrap_close":"false","no_cookie":"false","deb
 						
 						<div class="col-sm-3">
 							<div class="repe-box post-hover">
-								<article id="post-43116" class="group grid-item post-43116 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
-									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/02/niedziele_film_03-1290x860-1-500x430.jpeg);" >
+								<article id="post-48491" class="group grid-item post-48491 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
+									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/05/mumbo-jumbo.avif);" >
 																				<div class="repe_inner">
-											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/niedziele/" rel="bookmark" title="Niedziele">Niedziele</a></h2>
+											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/niesamowita-historia-mumbo-jumbo/" rel="bookmark" title="Niesamowita historia Mumbo Jumbo">Niesamowita historia Mumbo Jumbo</a></h2>
 											<div class="row">
 												<div class="col-sm-12">
-													<div class="repe_czas">115 minut | reż. Alauda Ruiz de Azúa</div>
+													<div class="repe_czas">80 minut | reż. Karsten Kiilerich</div>
 												</div>
 											</div>
 											<div class="row">
 												<div class="col-sm-12">
 													<div class="repe_opis">
-													<a href="https://stacjafalenica.pl/filmy/niedziele/" rel="bookmark" title="Niedziele">Niedziele to delikatna i mądra opowieść o dojrzewaniu, poszukiwaniu własnej tożsamości i odwadze, by pozostać wiernym sobie nawet wtedy, gdy najbliżsi...</a>
+													<a href="https://stacjafalenica.pl/filmy/niesamowita-historia-mumbo-jumbo/" rel="bookmark" title="Niesamowita historia Mumbo Jumbo">Malutki Mumbo Jumbo magicznie urósł do gigantycznych rozmiarów. Teraz musi wyruszyć w niebezpieczną podróż, aby odnaleźć Babę Jagę, która ma moce...</a>
 													</div>
 												</div>
 											</div>
@@ -657,31 +584,6 @@ var theVideoPopupGeneralOptions = {"wrap_close":"false","no_cookie":"false","deb
 						
 						<div class="col-sm-3">
 							<div class="repe-box post-hover">
-								<article id="post-48377" class="group grid-item post-48377 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
-									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/05/1200-500x430.webp);" >
-																				<div class="repe_inner">
-											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/ostatnia-wieczerza/" rel="bookmark" title="Ostatnia wieczerza">Ostatnia wieczerza</a></h2>
-											<div class="row">
-												<div class="col-sm-12">
-													<div class="repe_czas">114 minut | reż. Mauro Borrelli</div>
-												</div>
-											</div>
-											<div class="row">
-												<div class="col-sm-12">
-													<div class="repe_opis">
-													<a href="https://stacjafalenica.pl/filmy/ostatnia-wieczerza/" rel="bookmark" title="Ostatnia wieczerza">Film ukazuje Ostatnią Wieczerzę jako moment przełomowy, intymny, pełen emocji i ukrytych napięć, w którym każde spojrzenie i każde słowo ma...</a>
-													</div>
-												</div>
-											</div>
-										</div>
-									</div>
-								</article>
-							</div>
-						</div>
-
-						
-						<div class="col-sm-3">
-							<div class="repe-box post-hover">
 								<article id="post-43097" class="group grid-item post-43097 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
 									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/01/02-5-500x430.webp);" >
 																				<div class="repe_inner">
@@ -707,46 +609,19 @@ var theVideoPopupGeneralOptions = {"wrap_close":"false","no_cookie":"false","deb
 						
 						<div class="col-sm-3">
 							<div class="repe-box post-hover">
-								<article id="post-48644" class="group grid-item post-48644 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
-									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/06/Podziemny-krag-fot.-1-500x430.jpg);" >
+								<article id="post-43085" class="group grid-item post-43085 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
+									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/01/PARTIR_UN_JOUR_4K_16BITS_REC709_02050607-scaled-1-500x430.jpg);" >
 																				<div class="repe_inner">
-											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/fight-club/" rel="bookmark" title="Podziemny Krąg &#8222;Fight Club&#8221;">Podziemny Krąg &#8222;Fight Club&#8221;</a></h2>
+											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/przepis-na-szczescie/" rel="bookmark" title="Przepis na szczęście">Przepis na szczęście</a></h2>
 											<div class="row">
 												<div class="col-sm-12">
-													<div class="repe_czas">139 minut | reż. David Fincher</div>
+													<div class="repe_czas">94 minuty | reż. Amélie Bonnin</div>
 												</div>
 											</div>
 											<div class="row">
 												<div class="col-sm-12">
 													<div class="repe_opis">
-													<a href="https://stacjafalenica.pl/filmy/fight-club/" rel="bookmark" title="Podziemny Krąg &#8222;Fight Club&#8221;">Kultowy „Podziemny krąg” („Fight Club”) wraca do kin po ponad 25 latach od premiery!
-
-Ten prowokacyjny dramat, z udziałem Brada Pitta i Edwarda...</a>
-													</div>
-												</div>
-											</div>
-										</div>
-									</div>
-								</article>
-							</div>
-						</div>
-
-						
-						<div class="col-sm-3">
-							<div class="repe-box post-hover">
-								<article id="post-48486" class="group grid-item post-48486 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
-									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/05/image-10-e1779363594692-500x430.png);" >
-																				<div class="repe_inner">
-											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/poslani/" rel="bookmark" title="Posłani">Posłani</a></h2>
-											<div class="row">
-												<div class="col-sm-12">
-													<div class="repe_czas">85 minut | reż. Dariusz Walusiak </div>
-												</div>
-											</div>
-											<div class="row">
-												<div class="col-sm-12">
-													<div class="repe_opis">
-													<a href="https://stacjafalenica.pl/filmy/poslani/" rel="bookmark" title="Posłani">„Posłani" to dokumentalny film o wierze działającej w życiu zwykłych ludzi. W centrum opowieści Michał Ulewański przemierza niemal 650 kilometrów...</a>
+													<a href="https://stacjafalenica.pl/filmy/przepis-na-szczescie/" rel="bookmark" title="Przepis na szczęście">„Przepis na szczęście” to oryginalne połączenie kina kulinarnego oraz filmu muzycznego z ciepłym, rodzinnym komediodramatem. W roli głównej...</a>
 													</div>
 												</div>
 											</div>
@@ -822,6 +697,56 @@ Ten prowokacyjny dramat, z udziałem Brada Pitta i Edwarda...</a>
 												<div class="col-sm-12">
 													<div class="repe_opis">
 													<a href="https://stacjafalenica.pl/filmy/sciezki-zycia-lektor/" rel="bookmark" title="Ścieżki życia &#8211; LEKTOR">„Ścieżki życia” to inspirowana prawdziwymi wydarzeniami poruszająca i pełna nadziei opowieść o dojrzałej miłości, która okazuje się silniejsza...</a>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</article>
+							</div>
+						</div>
+
+						
+						<div class="col-sm-3">
+							<div class="repe-box post-hover">
+								<article id="post-39794" class="group grid-item post-39794 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
+									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2025/08/sirat-glowny-500x430.jpg);" >
+																				<div class="repe_inner">
+											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/sirat/" rel="bookmark" title="Sirât">Sirât</a></h2>
+											<div class="row">
+												<div class="col-sm-12">
+													<div class="repe_czas">120 minut | reż. Oliver Laxe</div>
+												</div>
+											</div>
+											<div class="row">
+												<div class="col-sm-12">
+													<div class="repe_opis">
+													<a href="https://stacjafalenica.pl/filmy/sirat/" rel="bookmark" title="Sirât">Najbardziej wystrzałowy film tegorocznego festiwalu w Cannes, gdzie zasłużenie otrzymał Nagrodę Jury. Ojciec (świetny Sergi López) rozpaczliwie szuka...</a>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</article>
+							</div>
+						</div>
+
+						
+						<div class="col-sm-3">
+							<div class="repe-box post-hover">
+								<article id="post-48721" class="group grid-item post-48721 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
+									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/06/image-1-500x430.webp);" >
+																				<div class="repe_inner">
+											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/sny-o-sloniach/" rel="bookmark" title="Sny o słoniach">Sny o słoniach</a></h2>
+											<div class="row">
+												<div class="col-sm-12">
+													<div class="repe_czas">98 minut | reż. Werner Herzog</div>
+												</div>
+											</div>
+											<div class="row">
+												<div class="col-sm-12">
+													<div class="repe_opis">
+													<a href="https://stacjafalenica.pl/filmy/sny-o-sloniach/" rel="bookmark" title="Sny o słoniach">Szaleni naukowcy i podróżnicy to ulubieni bohaterowie filmów legendarnego reżysera Wernera Herzoga. Dr Steve Boyes obsesyjnie tropi olbrzymie słonie...</a>
 													</div>
 												</div>
 											</div>
@@ -923,31 +848,6 @@ planuje misję ratunkową, ale nieudolni Arnie i...</a>
 												<div class="col-sm-12">
 													<div class="repe_opis">
 													<a href="https://stacjafalenica.pl/filmy/wysokie-i-niskie-tony-projekcja-z-wystepem-choru-vilni/" rel="bookmark" title="Wysokie i niskie tony">Trzeci film w reżyserskim dorobku Emmanuela Courcola to wzruszająca opowieść o tożsamości, rodzinie, pasji. Zdecydowanie wysoki ton nadają filmowi...</a>
-													</div>
-												</div>
-											</div>
-										</div>
-									</div>
-								</article>
-							</div>
-						</div>
-
-						
-						<div class="col-sm-3">
-							<div class="repe-box post-hover">
-								<article id="post-48562" class="group grid-item post-48562 filmy type-filmy status-publish format-standard has-post-thumbnail hentry">
-									<div class="repe_outer"   style="background-image: url(https://stacjafalenica.pl/wp-content/uploads/2026/05/image-13-500x430.png);" >
-																				<div class="repe_inner">
-											<h2 class="post-title entry-title repe_title"><a href="https://stacjafalenica.pl/filmy/zawodowcy/" rel="bookmark" title="Zawodowcy">Zawodowcy</a></h2>
-											<div class="row">
-												<div class="col-sm-12">
-													<div class="repe_czas">98 minut | reż. Guy Ritchie</div>
-												</div>
-											</div>
-											<div class="row">
-												<div class="col-sm-12">
-													<div class="repe_opis">
-													<a href="https://stacjafalenica.pl/filmy/zawodowcy/" rel="bookmark" title="Zawodowcy">Eve specjalizuje się w rozwiązywaniu spraw, których inni nie podejmują. Gdy nowojorscy inwestorzy zlecają jej odzyskanie długu od miliardera kryjącego...</a>
 													</div>
 												</div>
 											</div>
@@ -1063,56 +963,59 @@ planuje misję ratunkową, ale nieudolni Arnie i...</a>
 
 	</div>
 	<script src="https://stacjafalenica.pl/wp-content/themes/falenica2/assets/src/js/aos.js"></script>
-		<script src="https://stacjafalenica.pl/wp-content/themes/falenica2/assets/src/js/script.js?ver=1780663533"></script>
+		<script src="https://stacjafalenica.pl/wp-content/themes/falenica2/assets/src/js/script.js?ver=1781340476"></script>
 
 	<script type="speculationrules">
-{"prefetch":[{"source":"document","where":{"and":[{"href_matches":"\/*"},{"not":{"href_matches":["\/wp-*.php","\/wp-admin\/*","\/wp-content\/uploads\/*","\/wp-content\/*","\/wp-content\/plugins\/*","\/wp-content\/themes\/falenica2\/*","\/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
+{"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":["/wp-*.php","/wp-admin/*","/wp-content/uploads/*","/wp-content/*","/wp-content/plugins/*","/wp-content/themes/falenica2/*","/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
 </script>
-<script type="text/javascript" src="https://stacjafalenica.pl/wp-includes/js/dist/hooks.min.js?ver=4d63a3d491d11ffd8ac6" id="wp-hooks-js"></script>
-<script type="text/javascript" src="https://stacjafalenica.pl/wp-includes/js/dist/i18n.min.js?ver=5e580eb46a90c2b997e6" id="wp-i18n-js"></script>
-<script type="text/javascript" id="wp-i18n-js-after">
-/* <![CDATA[ */
+<script id="wp-hooks-js" src="https://stacjafalenica.pl/wp-includes/js/dist/hooks.min.js?ver=7496969728ca0f95732d"></script>
+<script id="wp-i18n-js" src="https://stacjafalenica.pl/wp-includes/js/dist/i18n.min.js?ver=781d11515ad3d91786ec"></script>
+<script id="wp-i18n-js-after">
 wp.i18n.setLocaleData( { 'text direction\u0004ltr': [ 'ltr' ] } );
-/* ]]> */
+//# sourceURL=wp-i18n-js-after
 </script>
-<script type="text/javascript" src="https://stacjafalenica.pl/wp-content/plugins/contact-form-7/includes/swv/js/index.js?ver=6.1.5" id="swv-js"></script>
-<script type="text/javascript" id="contact-form-7-js-translations">
-/* <![CDATA[ */
+<script id="swv-js" src="https://stacjafalenica.pl/wp-content/plugins/contact-form-7/includes/swv/js/index.js?ver=6.1.6"></script>
+<script id="contact-form-7-js-translations">
 ( function( domain, translations ) {
 	var localeData = translations.locale_data[ domain ] || translations.locale_data.messages;
 	localeData[""].domain = domain;
 	wp.i18n.setLocaleData( localeData, domain );
 } )( "contact-form-7", {"translation-revision-date":"2025-12-11 12:03:49+0000","generator":"GlotPress\/4.0.3","domain":"messages","locale_data":{"messages":{"":{"domain":"messages","plural-forms":"nplurals=3; plural=(n == 1) ? 0 : ((n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? 1 : 2);","lang":"pl"},"This contact form is placed in the wrong place.":["Ten formularz kontaktowy zosta\u0142 umieszczony w niew\u0142a\u015bciwym miejscu."],"Error:":["B\u0142\u0105d:"]}},"comment":{"reference":"includes\/js\/index.js"}} );
-/* ]]> */
+//# sourceURL=contact-form-7-js-translations
 </script>
-<script type="text/javascript" id="contact-form-7-js-before">
-/* <![CDATA[ */
+<script id="contact-form-7-js-before">
 var wpcf7 = {
     "api": {
         "root": "https:\/\/stacjafalenica.pl\/wp-json\/",
         "namespace": "contact-form-7\/v1"
     }
 };
-/* ]]> */
+//# sourceURL=contact-form-7-js-before
 </script>
-<script type="text/javascript" src="https://stacjafalenica.pl/wp-content/plugins/contact-form-7/includes/js/index.js?ver=6.1.5" id="contact-form-7-js"></script>
-<script type="text/javascript" id="page-scroll-to-id-plugin-script-js-extra">
-/* <![CDATA[ */
+<script id="contact-form-7-js" src="https://stacjafalenica.pl/wp-content/plugins/contact-form-7/includes/js/index.js?ver=6.1.6"></script>
+<script id="page-scroll-to-id-plugin-script-js-extra">
 var mPS2id_params = {"instances":{"mPS2id_instance_0":{"selector":"a[href*='#']:not([href='#'])","autoSelectorMenuLinks":"true","excludeSelector":"a[href^='#tab-'], a[href^='#tabs-'], a[data-toggle]:not([data-toggle='tooltip']), a[data-slide], a[data-vc-tabs], a[data-vc-accordion]","scrollSpeed":800,"autoScrollSpeed":"true","scrollEasing":"easeInOutQuint","scrollingEasing":"easeOutQuint","forceScrollEasing":"false","pageEndSmoothScroll":"true","stopScrollOnUserAction":"false","autoCorrectScroll":"false","autoCorrectScrollExtend":"false","layout":"vertical","offset":0,"dummyOffset":"false","highlightSelector":"","clickedClass":"mPS2id-clicked","targetClass":"mPS2id-target","highlightClass":"mPS2id-highlight","forceSingleHighlight":"false","keepHighlightUntilNext":"false","highlightByNextTarget":"false","appendHash":"false","scrollToHash":"true","scrollToHashForAll":"true","scrollToHashDelay":0,"scrollToHashUseElementData":"true","scrollToHashRemoveUrlHash":"false","disablePluginBelow":0,"adminDisplayWidgetsId":"true","adminTinyMCEbuttons":"true","unbindUnrelatedClickEvents":"false","unbindUnrelatedClickEventsSelector":"","normalizeAnchorPointTargets":"false","encodeLinks":"false"}},"total_instances":"1","shortcode_class":"_ps2id"};
-/* ]]> */
+//# sourceURL=page-scroll-to-id-plugin-script-js-extra
 </script>
-<script type="text/javascript" src="https://stacjafalenica.pl/wp-content/plugins/page-scroll-to-id/js/page-scroll-to-id.min.js?ver=1.7.9" id="page-scroll-to-id-plugin-script-js"></script>
-<script type="text/javascript" src="https://stacjafalenica.pl/wp-content/themes/falenica2/assets/js/bootstrap.js?ver=1.0.0" id="bootstrap_page_scirpt-js"></script>
-<script type="text/javascript" src="https://stacjafalenica.pl/wp-content/themes/falenica2/assets/js/bundle-min.js?ver=1.0.0" id="default_page_scirpt-js"></script>
-<script type="text/javascript" id="ivory-search-scripts-js-extra">
-/* <![CDATA[ */
+<script id="page-scroll-to-id-plugin-script-js" src="https://stacjafalenica.pl/wp-content/plugins/page-scroll-to-id/js/page-scroll-to-id.min.js?ver=1.7.9"></script>
+<script id="bootstrap_page_scirpt-js" src="https://stacjafalenica.pl/wp-content/themes/falenica2/assets/js/bootstrap.js?ver=1.0.0"></script>
+<script id="default_page_scirpt-js" src="https://stacjafalenica.pl/wp-content/themes/falenica2/assets/js/bundle-min.js?ver=1.0.0"></script>
+<script id="ivory-search-scripts-js-extra">
 var IvorySearchVars = {"is_analytics_enabled":"1"};
-/* ]]> */
+//# sourceURL=ivory-search-scripts-js-extra
 </script>
-<script type="text/javascript" src="https://stacjafalenica.pl/wp-content/plugins/add-search-to-menu/public/js/ivory-search.min.js?ver=5.5.14" id="ivory-search-scripts-js"></script>
+<script id="ivory-search-scripts-js" src="https://stacjafalenica.pl/wp-content/plugins/add-search-to-menu/public/js/ivory-search.min.js?ver=5.5.15"></script>
+<script id="wp-emoji-settings" type="application/json">
+{"baseUrl":"https://s.w.org/images/core/emoji/17.0.2/72x72/","ext":".png","svgUrl":"https://s.w.org/images/core/emoji/17.0.2/svg/","svgExt":".svg","source":{"concatemoji":"https://stacjafalenica.pl/wp-includes/js/wp-emoji-release.min.js?ver=7.0"}}
+</script>
+<script type="module">
+/*! This file is auto-generated */
+const a=JSON.parse(document.getElementById("wp-emoji-settings").textContent),o=(window._wpemojiSettings=a,"wpEmojiSettingsSupports"),s=["flag","emoji"];function i(e){try{var t={supportTests:e,timestamp:(new Date).valueOf()};sessionStorage.setItem(o,JSON.stringify(t))}catch(e){}}function c(e,t,n){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);t=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data);e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(n,0,0);const a=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data);return t.every((e,t)=>e===a[t])}function p(e,t){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);var n=e.getImageData(16,16,1,1);for(let e=0;e<n.data.length;e++)if(0!==n.data[e])return!1;return!0}function u(e,t,n,a){switch(t){case"flag":return n(e,"\ud83c\udff3\ufe0f\u200d\u26a7\ufe0f","\ud83c\udff3\ufe0f\u200b\u26a7\ufe0f")?!1:!n(e,"\ud83c\udde8\ud83c\uddf6","\ud83c\udde8\u200b\ud83c\uddf6")&&!n(e,"\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67\udb40\udc7f","\ud83c\udff4\u200b\udb40\udc67\u200b\udb40\udc62\u200b\udb40\udc65\u200b\udb40\udc6e\u200b\udb40\udc67\u200b\udb40\udc7f");case"emoji":return!a(e,"\ud83e\u1fac8")}return!1}function f(e,t,n,a){let r;const o=(r="undefined"!=typeof WorkerGlobalScope&&self instanceof WorkerGlobalScope?new OffscreenCanvas(300,150):document.createElement("canvas")).getContext("2d",{willReadFrequently:!0}),s=(o.textBaseline="top",o.font="600 32px Arial",{});return e.forEach(e=>{s[e]=t(o,e,n,a)}),s}function r(e){var t=document.createElement("script");t.src=e,t.defer=!0,document.head.appendChild(t)}a.supports={everything:!0,everythingExceptFlag:!0},new Promise(t=>{let n=function(){try{var e=JSON.parse(sessionStorage.getItem(o));if("object"==typeof e&&"number"==typeof e.timestamp&&(new Date).valueOf()<e.timestamp+604800&&"object"==typeof e.supportTests)return e.supportTests}catch(e){}return null}();if(!n){if("undefined"!=typeof Worker&&"undefined"!=typeof OffscreenCanvas&&"undefined"!=typeof URL&&URL.createObjectURL&&"undefined"!=typeof Blob)try{var e="postMessage("+f.toString()+"("+[JSON.stringify(s),u.toString(),c.toString(),p.toString()].join(",")+"));",a=new Blob([e],{type:"text/javascript"});const r=new Worker(URL.createObjectURL(a),{name:"wpTestEmojiSupports"});return void(r.onmessage=e=>{i(n=e.data),r.terminate(),t(n)})}catch(e){}i(n=f(s,u,c,p))}t(n)}).then(e=>{for(const n in e)a.supports[n]=e[n],a.supports.everything=a.supports.everything&&a.supports[n],"flag"!==n&&(a.supports.everythingExceptFlag=a.supports.everythingExceptFlag&&a.supports[n]);var t;a.supports.everythingExceptFlag=a.supports.everythingExceptFlag&&!a.supports.flag,a.supports.everything||((t=a.source||{}).concatemoji?r(t.concatemoji):t.wpemoji&&t.twemoji&&(r(t.twemoji),r(t.wpemoji)))});
+//# sourceURL=https://stacjafalenica.pl/wp-includes/js/wp-emoji-loader.min.js
+</script>
 <script type="text/javascript" id="slb_context">/* <![CDATA[ */if ( !!window.jQuery ) {(function($){$(document).ready(function(){if ( !!window.SLB ) { {$.extend(SLB, {"context":["public","user_guest"]});} }})})(jQuery);}/* ]]> */</script>
 
-		<!-- Compliance by Hu-manity.co plugin v3.0.2 https://hu-manity.co/ -->
+		<!-- Compliance by Hu-manity.co plugin v3.1.1 https://hu-manity.co/ -->
 		<div id="cookie-notice" role="dialog" class="cookie-notice-hidden cookie-revoke-hidden cn-position-bottom" aria-label="Compliance by Hu-manity.co" style="background-color: rgba(0,76,61,1);"><div class="cookie-notice-container" style="color: #fff"><span id="cn-notice-text" class="cn-text-container">Ta strona korzysta z ciasteczek, aby świadczyć usługi na najwyższym poziomie. Dalsze korzystanie ze strony oznacza, że zgadzasz się na ich użycie.</span><span id="cn-notice-buttons" class="cn-buttons-container"><button id="cn-accept-cookie" data-cookie-set="accept" class="cn-set-cookie cn-button cn-button-custom cookie_but" aria-label="Zgoda">Zgoda</button><button data-link-url="https://stacjafalenica.pl/polityka-prywatnosci/" data-link-target="_blank" id="cn-more-info" class="cn-more-info cn-button cn-button-custom cookie_but" aria-label="Polityka prywatności">Polityka prywatności</button></span><button type="button" id="cn-close-notice" data-cookie-set="accept" class="cn-close-icon" aria-label="Nie wyrażam zgody"></button></div>
 			
 		</div>
