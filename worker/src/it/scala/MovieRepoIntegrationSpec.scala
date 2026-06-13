@@ -279,4 +279,30 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
       after shouldBe 0
     } finally client.close()
   }
+
+  // Regression: the delete filter `$or(_id, title+year)` used to COLLSCAN the
+  // entire `movies` collection on every delete — the `(title, year)` branch was
+  // unindexed, so Mongo scanned all ~1100 docs (~400ms, max ~6s under load) just
+  // to evaluate it, the single largest source of `movies` read-lock time on the
+  // self-hosted box. `MongoMovieRepo` now creates a `(title, year)` index at
+  // init, so the branch is a 1-key IXSCAN and the whole `$or` is an index union.
+  // Fails before the index (winning plan is a COLLSCAN); passes after.
+  it should "resolve the delete filter by index, not a collection scan" in {
+    import services.movies.StoredMovieRecord
+    repo.enabled shouldBe true // force lazy init → ensureIndexes() runs
+
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val coll   = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+      .getCollection[org.mongodb.scala.bson.collection.immutable.Document]("movies")
+    try {
+      val title  = "__integration-test-delete-plan__"
+      val year   = Some(2099)
+      val filter = Filters.or(
+        Filters.eq("_id", StoredMovieRecord.idFor(title, year)),
+        Filters.and(Filters.eq("title", title), Filters.eq("year", 2099)))
+      val plan = Await.result(coll.find(filter).explain().toFuture(), 10.seconds).toJson()
+      plan        should include ("title_1_year_1")
+      plan should not include ("COLLSCAN")
+    } finally client.close()
+  }
 }

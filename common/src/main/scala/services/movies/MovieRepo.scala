@@ -4,7 +4,7 @@ import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.MovieRecord
 import org.mongodb.scala.bson.{BsonDateTime, BsonNull}
-import org.mongodb.scala.model.{Filters, Updates}
+import org.mongodb.scala.model.{Filters, IndexOptions, Indexes, Updates}
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import org.bson.conversions.Bson
 import play.api.Logging
@@ -161,7 +161,9 @@ class MongoMovieRepo(
     sharedDb match {
       case Some(db) =>
         val withRegistry = db.withCodecRegistry(MovieCodecs.registry)
-        (None, Some(withRegistry.getCollection[StoredMovieDto]("movies")))
+        val coll         = withRegistry.getCollection[StoredMovieDto]("movies")
+        ensureIndexes(coll)
+        (None, Some(coll))
       case None if fallbackToOwnInit => init()
       case None                      => (None, None)
     }
@@ -365,6 +367,27 @@ class MongoMovieRepo(
 
   def close(): Unit = clientOpt.foreach(_.close())
 
+  /** Index `(title, year)` so [[delete]]'s `$or(_id, title+year)` filter resolves
+   *  by index union instead of a full collection scan. The stored docs no longer
+   *  carry `title`/`year` columns (the 2026-06-11 derived-title migration dropped
+   *  them), so for current rows the second `$or` branch matches nothing — but
+   *  without this index Mongo still COLLSCANs the whole collection to prove that
+   *  on every delete (~400ms / ~1100 docs examined per delete; the single largest
+   *  source of `movies` read-lock time in prod). With the index the branch is a
+   *  1-key IXSCAN. The index stays cheap (currently all-null entries, ~24KB) and
+   *  still catches any legacy stale-`_id` doc that DOES carry the columns — the
+   *  delete-by-(title,year) safety net the change-stream regression depends on.
+   *  Idempotent + best-effort: a re-create is a no-op, a failure only logs. */
+  private def ensureIndexes(coll: MongoCollection[StoredMovieDto]): Unit =
+    Try {
+      Await.result(
+        coll.createIndex(Indexes.ascending("title", "year"), new IndexOptions().background(true)).toFuture(),
+        10.seconds)
+      ()
+    }.recover {
+      case ex: Throwable => logger.warn(s"movies (title, year) index creation failed: ${ex.getMessage}")
+    }
+
   private def init(): (Option[MongoClient], Option[MongoCollection[StoredMovieDto]]) =
     Env.get("MONGODB_URI") match {
       case None =>
@@ -379,6 +402,7 @@ class MongoMovieRepo(
           // Touch the collection to surface connectivity errors at startup,
           // not on the first read after the app is "up".
           Await.result(coll.countDocuments().toFuture(), 10.seconds)
+          ensureIndexes(coll)
           logger.info(s"MongoMovieRepo connected to $dbName.movies")
           (client, coll)
         }.recover {
