@@ -76,7 +76,19 @@ class NoweHoryzontyClientSpec extends AnyFlatSpec with Matchers {
       )
   }
 
-  it should "carry posters from the listing's inline background-image" in {
-    byTitle("Obsesja").posterUrl.getOrElse("") should startWith("https://www.kinonh.pl/")
+  // The listing `span.ilustr` background-image is a gallery still
+  // (`glw_…_mini.jpg`), not the film poster — so we deliberately emit no
+  // listing poster and let detail enrichment supply the real `div.plakat`
+  // poster (`plak1at_…`), which the merge would otherwise never override.
+  it should "not carry the listing still as a poster" in {
+    byTitle("Obsesja").posterUrl shouldBe None
+  }
+
+  // Regression: Kumotry's listing still (`glw_1330805_1.13.jpg_mini.jpg`) was
+  // displayed instead of its actual poster (`plak1at_8241740.8.jpg_x_standa`),
+  // which lives only on the op.s detail page.
+  it should "take the poster from the op.s detail page, not the listing still" in {
+    detailFor("Kumotry").posterUrl shouldBe
+      Some("https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/POKAZY_SPECJALNE/KUMOTRY__SPOTKANIE_Z_REZYSERKA/plak1at_8241740.8.jpg_x_standa.jpg")
   }
 }

@@ -2,7 +2,6 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
 import play.api.libs.json.Json
 import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
@@ -45,7 +44,7 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
   private val WindowDays  = 7
   private val FilmIdPat   = """op\.s\?id=(\d+)""".r
 
-  private case class RawSlot(filmId: String, title: String, poster: Option[String], eventId: String,
+  private case class RawSlot(filmId: String, title: String, eventId: String,
                              dateTime: LocalDateTime, bookingUrl: String)
 
   private def dayUrl(date: LocalDate): String =
@@ -68,10 +67,15 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
       val showtimes  = group.distinctBy(_.eventId).sortBy(_.dateTime)
                          .map(s => Showtime(s.dateTime, Some(s.bookingUrl), None, Nil))
       if (showtimes.isEmpty) None
+      // No listing poster on purpose: the `span.ilustr` background-image is a
+      // gallery still (`glw_…_mini.jpg`), not the film poster. We leave it None
+      // so detail enrichment supplies the real `div.plakat` poster — the merge
+      // (`slot.posterUrl.orElse(detail)`) keeps any listing value, so emitting
+      // the still here would permanently shadow the correct poster.
       else Some(CinemaMovie(
         movie     = Movie(title = primary.title),
         cinema    = cinema,
-        posterUrl = group.flatMap(_.poster).headOption,
+        posterUrl = None,
         filmUrl   = Some(s"$BaseUrl/op.s?id=$filmId"),
         synopsis  = None,
         cast      = Seq.empty,
@@ -119,17 +123,10 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
         for {
           eventId <- NoweHoryzontyClient.EventIdPat.findFirstMatchIn(href).map(_.group(1))
           time    <- ScraperParse.parseHHmm(slot.text.trim)
-        } yield RawSlot(filmId, title, posterOf(card), eventId, date.atTime(time),
+        } yield RawSlot(filmId, title, eventId, date.atTime(time),
                         if (href.startsWith("http")) href else s"$BaseUrl/$href")
       }).getOrElse(Seq.empty)
     }
-
-  /** The poster lives in an inline `<style>` block inside `span.ilustr`
-   *  (`background-image: url(...)`), not a `style=` attribute. */
-  private def posterOf(card: Element): Option[String] =
-    Option(card.selectFirst("span.ilustr")).map(_.html)
-      .flatMap(ScraperParse.cssUrl)
-      .map(u => if (u.startsWith("http")) u else s"$BaseUrl/${u.stripPrefix("/")}")
 }
 
 object NoweHoryzontyClient {
