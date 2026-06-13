@@ -31,12 +31,6 @@ class CinemaScraperCatalog(
   mkFetch: HttpFetch,
   bnFetch: HttpFetch,
   today:   LocalDate,
-  // When true, cinemas that implement DetailEnricher return BARE movies from
-  // fetch() and their per-film detail is fetched later via EnrichDetails tasks.
-  // Required (no default) because the secondary diagnostic ctor below already
-  // carries defaults, and Scala allows only one overloaded ctor to do so; the
-  // secondary passes false (inline detail).
-  deferDetail: Boolean,
   // Builds the per-chain detail-page cache (Helios / Cinema City). The worker
   // injects a Mongo-backed cache so chain detail is deduped across servers; the
   // diagnostic ctor + tests default to the in-process CachingDetailFetch.
@@ -50,7 +44,7 @@ class CinemaScraperCatalog(
    *  `WorkerWiring` uses the primary ctor to inject its (possibly
    *  fixture-overridden) `multikinoFetch` / `biletynaFetch`. */
   def this(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) =
-    this(http, MultikinoClient.fetchFor(http), ZyteFallback.fetchFor(http), today, false,
+    this(http, MultikinoClient.fetchFor(http), ZyteFallback.fetchFor(http), today,
       (h, ttl) => new CachingDetailFetch(h, ttl))
 
   // Per-film detail bodies are static between passes and IDENTICAL across a
@@ -66,22 +60,22 @@ class CinemaScraperCatalog(
 
   // Shared per-source helper clients the scrapers below reuse.
   val cinemaCityClient: CinemaCityClient = new CinemaCityClient(http, Some(cinemaCityDetailHttp))
-  // One per Cinema City venue, threading the catalogue's deferDetail through.
+  // One per Cinema City venue.
   private def cinemaCity(cinemaId: String, cinema: Cinema): CinemaCityScraper =
-    new CinemaCityScraper(cinemaCityClient, cinemaId, cinema, deferDetail)
+    new CinemaCityScraper(cinemaCityClient, cinemaId, cinema)
   val kinoMuzaClient:   KinoMuzaClient   = new KinoMuzaClient(http, today)
 
   private val poznanScrapers: Seq[CinemaScraper] = Seq(
     new MultikinoClient(mkFetch),
     new CharlieMonroeClient(http),
-    new KinoPalacoweClient(http, deferDetail),
+    new KinoPalacoweClient(http),
     helios(HeliosNuxt.Poznan),
     cinemaCity("1078", CinemaCityPoznanPlaza),
     cinemaCity("1081", CinemaCityKinepolis),
     kinoMuzaClient,
-    new KinoBulgarskaClient(http, today, deferDetail = deferDetail),
-    new KinoApolloClient(http, deferDetail),
-    new RialtoClient(http, deferDetail),
+    new KinoBulgarskaClient(http, today),
+    new KinoApolloClient(http),
+    new RialtoClient(http),
   )
 
   private val wroclawScrapers: Seq[CinemaScraper] = Seq(
@@ -90,8 +84,8 @@ class CinemaScraperCatalog(
     new MultikinoClient(mkFetch, "0010", MultikinoPasazGrunwaldzki),
     helios(HeliosNuxt.Magnolia),
     helios(HeliosNuxt.AlejaBielany),
-    new NoweHoryzontyClient(http, today, deferDetail = deferDetail),
-    new DcfClient(http, deferDetail),
+    new NoweHoryzontyClient(http, today),
+    new DcfClient(http),
   )
 
   private val warszawaScrapers: Seq[CinemaScraper] = Seq(
@@ -108,25 +102,25 @@ class CinemaScraperCatalog(
     new MultikinoClient(mkFetch, "0024", MultikinoTargowek),
     new MultikinoClient(mkFetch, "0025", MultikinoWolaPark),
     helios(HeliosNuxt.BlueCity),
-    new MuranowClient(http, today, deferDetail = deferDetail),
+    new MuranowClient(http, today),
     new Bilety24Client(http, "https://kinoluna.bilety24.pl", KinoLuna),
     new Bilety24OrganizerClient(http, "https://www.bilety24.pl/kino/organizator/kino-elektronik-631", KinoElektronik),
-    new IluzjonClient(http, today, deferDetail = deferDetail),
+    new IluzjonClient(http, today),
     new KinoGramClient(http),
     new KinoKulturaClient(http),
-    new AmondoClient(http, deferDetail),
+    new AmondoClient(http),
     new BokClient(http, "kino-na-boku", KinoNaBoku, today),
     new BokClient(http, "kino-glebocka-66", KinoGlebocka66, today),
-    new KinomuzeumClient(http, today, deferDetail = deferDetail),
+    new KinomuzeumClient(http, today),
     new SwitClient(http),
     new PromKepaClient(http),
-    new FalenicaClient(http, deferDetail),
+    new FalenicaClient(http),
     new SdkClient(http),
-    new NoveKinoClient(http, "atlantic", KinoAtlantic, deferDetail),
-    new KinotekaClient(http, deferDetail),
-    new UjazdowskiClient(http, deferDetail),
-    new CytadelaClient(http, deferDetail),
-    new NoveKinoClient(http, "wisla", KinoWisla, deferDetail),
+    new NoveKinoClient(http, "atlantic", KinoAtlantic),
+    new KinotekaClient(http),
+    new UjazdowskiClient(http),
+    new CytadelaClient(http),
+    new NoveKinoClient(http, "wisla", KinoWisla),
     // biletyna.pl 403s our datacenter IP (Cloudflare waiting-room), so route
     // through `bnFetch` — Zyte's residential egress in prod, the fixture fake
     // in tests. Same seam as Kino Kameralne below.
@@ -290,7 +284,7 @@ class CinemaScraperCatalog(
   private val tarnowScrapers       = Seq(new MultikinoClient(mkFetch, "0050", MultikinoTarnow), new FilmwebShowtimesClient(http, 438, KinoMillenium, today = today))
   private val wloclawekScrapers    = Seq(new MultikinoClient(mkFetch, "0008", MultikinoWloclawek))
   private val legnicaScrapers      = Seq(helios(HeliosNuxt.Legnica), new Bilety24Client(http, "https://kino-piast.bilety24.pl", KinoPiast))
-  private val plockScrapers        = Seq(helios(HeliosNuxt.Plock), new NoveKinoClient(http, "przedwiosnie", KinoPrzedwiosnie, deferDetail))
+  private val plockScrapers        = Seq(helios(HeliosNuxt.Plock), new NoveKinoClient(http, "przedwiosnie", KinoPrzedwiosnie))
   private val bytomScrapers        = Seq(cinemaCity("1092", CinemaCityBytom))
   private val dabrowaGorniczaScrapers = Seq(helios(HeliosNuxt.DabrowaGornicza), new FilmwebShowtimesClient(http, 1140, KinoKadr, today = today))
   private val nowySaczScrapers     = Seq(helios(HeliosNuxt.NowySacz), new Bilety24OrganizerClient(http, "https://www.bilety24.pl/kino/organizator/malopolskie-centrum-kultury-sokol-w-nowym-saczu-1225", KinoSokol))

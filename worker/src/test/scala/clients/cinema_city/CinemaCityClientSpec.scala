@@ -4,14 +4,23 @@ import clients.tools.FakeHttpFetch
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.CinemaCityClient
+import services.cinemas.{CinemaCityClient, FilmDetail}
+import org.scalatest.OptionValues._
 
 import java.time.LocalDateTime
 
 class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
 
-  private val kinepolis   = new CinemaCityClient(new FakeHttpFetch("cinema-city-kinepolis")).fetch("1081", CinemaCityKinepolis)
+  private val kinepolisClient = new CinemaCityClient(new FakeHttpFetch("cinema-city-kinepolis"))
+  private val kinepolis   = kinepolisClient.fetch("1081", CinemaCityKinepolis)
   private val byKinepolis = kinepolis.map(cm => cm.movie.title -> cm).toMap
+
+  /** The per-film detail (countries/cast/director/synopsis/genres/trailer) is
+   *  deferred out of `fetch()` and fetched from the film page by
+   *  `fetchFilmDetail(filmUrl)`. None when the film's detail-page fixture isn't
+   *  captured — the prod behaviour when a detail fetch fails. */
+  private def detailFor(title: String): Option[FilmDetail] =
+    byKinepolis(title).filmUrl.flatMap(kinepolisClient.fetchFilmDetail)
 
   private val plaza   = new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza")).fetch("1078", CinemaCityPoznanPlaza)
   private val byPlaza = plaza.map(cm => cm.movie.title -> cm).toMap
@@ -148,12 +157,11 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
   // fixture isn't present or the line isn't there.
 
   it should "parse the countries from the per-film details page when available" in {
-    val countries = kinepolis.map(m => m.movie.title -> m.movie.countries).toMap
-    countries("Kurozając i świątynia świstaka") shouldBe Seq("Belgia", "Francja", "USA")
-    countries("Diabeł ubiera się u Prady 2")    shouldBe Seq("USA")
-    // Films whose details-page fixture isn't captured fall back to an empty
-    // list, which is the right behaviour in prod when a fetch fails too.
-    countries("Mortal Kombat II")               shouldBe Seq.empty
+    detailFor("Kurozając i świątynia świstaka").map(_.countries) shouldBe Some(Seq("Belgia", "Francja", "USA"))
+    detailFor("Diabeł ubiera się u Prady 2").map(_.countries)    shouldBe Some(Seq("USA"))
+    // Films whose details-page fixture isn't captured yield no detail at all —
+    // the right behaviour in prod when a detail fetch fails.
+    detailFor("Mortal Kombat II")                               shouldBe None
   }
 
   // ─── Kinepolis: synopsis / cast / director (from filmDetails JS blob) ─────
@@ -164,15 +172,12 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
   // same fetch that supplies countries.
 
   it should "parse director / cast / synopsis from the per-film details page" in {
-    val byTitle = kinepolis.map(m => m.movie.title -> m).toMap
-    val prada   = byTitle("Diabeł ubiera się u Prady 2")
+    val prada = detailFor("Diabeł ubiera się u Prady 2").value
     prada.director shouldBe Seq("David Frankel")
     prada.cast     shouldBe Seq("Meryl Streep", "Anne Hathaway", "Emily Blunt", "Stanley Tucci")
     prada.synopsis.exists(_.startsWith("Wśród wielu niesamowitych filmów")) shouldBe true
-    // Detail-page fixture absent → these fields stay None.
-    byTitle("Mortal Kombat II").director shouldBe empty
-    byTitle("Mortal Kombat II").cast     shouldBe empty
-    byTitle("Mortal Kombat II").synopsis shouldBe None
+    // Detail-page fixture absent → no detail at all.
+    detailFor("Mortal Kombat II") shouldBe None
   }
 
   // CC's `var filmDetails = {…}` JSON carries a `videoLink` field with the
@@ -187,19 +192,17 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
   // `["comedy","drama"]`.
 
   it should "translate English genre tokens from categoriesAttributes to Polish" in {
-    val byTitle = kinepolis.map(m => m.movie.title -> m).toMap
-    byTitle("Diabeł ubiera się u Prady 2").movie.genres shouldBe Seq("Komedia", "Dramat")
-    // Detail-page fixture absent ⇒ genres stay empty (no English bleed-through).
-    byTitle("Mortal Kombat II").movie.genres shouldBe empty
+    detailFor("Diabeł ubiera się u Prady 2").map(_.genres) shouldBe Some(Seq("Komedia", "Dramat"))
+    // Detail-page fixture absent ⇒ no detail (no English bleed-through).
+    detailFor("Mortal Kombat II") shouldBe None
   }
 
   it should "parse trailerUrl from the per-film details page's videoLink" in {
-    val byTitle = kinepolis.map(m => m.movie.title -> m).toMap
-    byTitle("Diabeł ubiera się u Prady 2").trailerUrl shouldBe
+    detailFor("Diabeł ubiera się u Prady 2").flatMap(_.trailerUrl) shouldBe
       Some("https://www.youtube.com/watch?v=aavScEADaDc")
-    byTitle("Kurozając i świątynia świstaka").trailerUrl shouldBe
+    detailFor("Kurozając i świątynia świstaka").flatMap(_.trailerUrl) shouldBe
       Some("https://www.youtube.com/watch?v=0vkZBpvqh88")
-    byTitle("Mortal Kombat II").trailerUrl shouldBe None
+    detailFor("Mortal Kombat II").flatMap(_.trailerUrl) shouldBe None
   }
 
   // ─── Kinepolis: poster URLs ───────────────────────────────────────────────

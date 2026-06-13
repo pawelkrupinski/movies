@@ -4,7 +4,7 @@ import clients.tools.FakeHttpFetch
 import models.{KinoAtlantic, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.NoveKinoClient
+import services.cinemas.{FilmDetail, NoveKinoClient}
 
 import java.time.LocalDateTime
 
@@ -13,6 +13,11 @@ class NoveKinoClientSpec extends AnyFlatSpec with Matchers {
   private val client  = new NoveKinoClient(new FakeHttpFetch("kino-atlantic"), "atlantic", KinoAtlantic)
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
+
+  private def detailFor(title: String): FilmDetail =
+    client.fetchFilmDetail(
+      byTitle(title).filmUrl.getOrElse(fail(s"no filmUrl for $title"))
+    ).getOrElse(fail(s"no detail for $title"))
 
   "NoveKinoClient.fetch" should "walk the per-day pages and return 29 films / 142 showtimes" in {
     results.size shouldBe 29
@@ -37,9 +42,9 @@ class NoveKinoClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "read the cast list and the YouTube trailer off the film detail page" in {
-    val m = byTitle("Diabeł ubiera się u Prady 2")
-    m.cast       shouldBe Seq("Meryl Streep", "Emily Blunt", "Anne Hathaway", "Stanley Tucci")
-    m.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=CdoTYdt4GQE")
+    val d = detailFor("Diabeł ubiera się u Prady 2")
+    d.cast       shouldBe Seq("Meryl Streep", "Emily Blunt", "Anne Hathaway", "Stanley Tucci")
+    d.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=CdoTYdt4GQE")
   }
 
   "NoveKinoClient.parseTitle" should "split format suffixes but leave dash-bearing titles intact" in {

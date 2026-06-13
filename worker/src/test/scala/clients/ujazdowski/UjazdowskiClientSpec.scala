@@ -34,7 +34,12 @@ class UjazdowskiClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "read the bracketed original title off a foreign film, and none off a Polish one" in {
-    byTitle("Zawieście czerwone latarnie").movie.originalTitle shouldBe Some("Da hong deng long gao gao gua")
-    byTitle("Erupcja").movie.originalTitle                    shouldBe None
+    val foreignDetail = client.fetchFilmDetail(byTitle("Zawieście czerwone latarnie").filmUrl.getOrElse(fail("no filmUrl for Zawieście czerwone latarnie")))
+      .getOrElse(fail("no detail for Zawieście czerwone latarnie"))
+    foreignDetail.originalTitle shouldBe Some("Da hong deng long gao gao gua")
+
+    val polishDetail = client.fetchFilmDetail(byTitle("Erupcja").filmUrl.getOrElse(fail("no filmUrl for Erupcja")))
+      .getOrElse(fail("no detail for Erupcja"))
+    polishDetail.originalTitle shouldBe None
   }
 }

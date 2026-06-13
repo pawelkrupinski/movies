@@ -29,7 +29,7 @@ import scala.util.Try
  * countries / genres / director / synopsis. `today` is injected so the day
  * window (and thus the fixture replay) is deterministic.
  */
-class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")), deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
+class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper with DetailEnricher {
 
   // Static op.s detail pages cached across passes; day blobs keep the live http.
   private val detailHttp = new CachingDetailFetch(http)
@@ -54,13 +54,7 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  // When deferDetail is on, fetch() returns BARE movies (showtimes + poster + the
-  // per-film op.s detail URL) and the detail is filled later by an EnrichDetails
-  // task via `fetchFilmDetail`; off (default), it enriches inline as before.
-  def fetch(): Seq[CinemaMovie] = {
-    val bare = fetchBare()
-    if (deferDetail) bare else enrichInline(bare)
-  }
+  def fetch(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
     val days     = (0 until WindowDays).map(today.plusDays(_)).toList
@@ -84,17 +78,6 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
         director  = Seq.empty,
         showtimes = showtimes
       ))
-    }
-  }
-
-  // Inline path: fetch each film's detail in parallel through the same
-  // `fetchFilmDetail` the deferred path uses, then merge non-destructively.
-  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
-    val urls = movies.flatMap(_.filmUrl).distinct
-    if (urls.isEmpty) movies
-    else {
-      val metas = ParallelDetailFetch("nowe-horyzonty-details", urls, 1.minute)(u => fetchFilmDetail(u))
-      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
     }
   }
 

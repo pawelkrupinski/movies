@@ -2,11 +2,10 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, LocalTime}
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -34,7 +33,7 @@ import scala.util.Try
  *   6. "Czytaj opis" link — `<a href="kinoapollo.pl/kino/<slug>/">` → detail page
  *   7. Poster     — `<img>` to a WordPress media URL
  */
-class KinoApolloClient(http: HttpFetch, deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
+class KinoApolloClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
 
   // Static film detail pages cached across passes; the repertoire listing keeps
   // the live `http` since its showtimes change every pass.
@@ -103,23 +102,7 @@ class KinoApolloClient(http: HttpFetch, deferDetail: Boolean = false) extends Ci
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl, "https://bilety.kinoapollo.pl")
   override def sourceUrl: Option[String] = Some(PageUrl)
 
-  // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
-  // the per-film detail-page URL) and the detail is filled in later by an
-  // EnrichDetails task via `fetchFilmDetail` — so a scrape pass doesn't block on
-  // N detail-page round-trips. When off (default), it enriches inline as before.
-  def fetch(): Seq[CinemaMovie] = {
-    val bare = parseHtml(http.get(PageUrl))
-    if (deferDetail) bare else enrichInline(bare)
-  }
-
-  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
-    val urls = movies.flatMap(_.filmUrl).distinct
-    if (urls.isEmpty) movies
-    else {
-      val metas = ParallelDetailFetch("kino-apollo-details", urls, 1.minute)(u => fetchFilmDetail(u))
-      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
-    }
-  }
+  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(PageUrl))
 
   override val detailGroup: String = "kino-apollo"
 

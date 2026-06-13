@@ -5,7 +5,9 @@ import models.Cinema
 import modules.WorkerWiring
 import services.{MongoConnection, Stoppable}
 import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
-import services.tasks.{InMemoryTaskQueue, TaskQueue}
+import services.tasks.{InMemoryTaskQueue, TaskQueue, TaskType}
+
+import scala.concurrent.duration._
 
 /** Test seam over the worker's [[WorkerWiring]] composition root: pins a
  *  disabled Mongo, a stub TMDB key, and the full city catalogue so fixture
@@ -120,6 +122,28 @@ trait TestWiring extends WorkerWiring {
           filmwebRatings.refreshOneSync(t, y)
         } catch { case _: Exception => () }
       }
+
+  /** Apply deferred per-film detail to the bare-scraped rows, the way the
+   *  production TaskWorker does — but synchronously, in one pass. First
+   *  `detailReaper.tick()` enqueues a detail task per (deferred cinema, CURRENT
+   *  film) keyed off each row's present CacheKey (robust to a film re-keyed by a
+   *  later cinema in the same tick, which the CinemaMovieAdded-driven enqueue
+   *  can't follow — prod's reaper fixes that across ticks). Then drain every
+   *  EnrichDetails task through the real `EnrichDetailsHandler` (fetch the detail
+   *  page + merge into the slot). Called right after the bare scrape and BEFORE
+   *  TMDB resolution, so a detail-page director/originalTitle/year is on the row
+   *  when the TMDB stage runs (the pre-deferral inline path had it in fetch()). */
+  def enrichDetailsSync(): Unit = {
+    detailReaper.tick()
+    val workerId = "detail-sync"
+    Iterator.continually(taskQueue.claim(workerId, 5.minutes))
+      .takeWhile(_.isDefined).flatten
+      .foreach { task =>
+        if (task.taskType == TaskType.EnrichDetails)
+          try enrichDetailsHandler.handle(task) catch { case _: Exception => () }
+        taskQueue.complete(task.id, workerId)
+      }
+  }
 
   def quiesce(stoppables: Stoppable*): Unit =
     stoppables.foreach(_.stop())

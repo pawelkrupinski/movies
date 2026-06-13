@@ -224,12 +224,14 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
   // stays None (the parallel fetch swallows the FileNotFoundException).
 
   it should "extract YouTube trailers from per-film detail pages" in {
-    byTitle("Chronologia wody").trailerUrl shouldBe Some("https://www.youtube.com/watch?v=H-ok8moY5QA")
-    byTitle("Miłość w czasach apokalipsy").trailerUrl shouldBe Some("https://www.youtube.com/watch?v=QCxhy4UO5pc")
+    client.fetchFilmDetail(byTitle("Chronologia wody").filmUrl.getOrElse(fail("no filmUrl for Chronologia wody")))
+      .getOrElse(fail("no detail for Chronologia wody")).trailerUrl shouldBe Some("https://www.youtube.com/watch?v=H-ok8moY5QA")
+    client.fetchFilmDetail(byTitle("Miłość w czasach apokalipsy").filmUrl.getOrElse(fail("no filmUrl for Miłość w czasach apokalipsy")))
+      .getOrElse(fail("no detail for Miłość w czasach apokalipsy")).trailerUrl shouldBe Some("https://www.youtube.com/watch?v=QCxhy4UO5pc")
   }
 
   it should "leave trailerUrl None when the detail page is unavailable" in {
-    // Maryja. matka papieża has no detail-page fixture → trailerUrl stays None.
-    byTitle("Maryja. matka papieża").trailerUrl shouldBe None
+    // Maryja. matka papieża has no detail-page fixture → fetchFilmDetail returns None.
+    client.fetchFilmDetail(byTitle("Maryja. matka papieża").filmUrl.getOrElse(fail("no filmUrl for Maryja. matka papieża"))) shouldBe None
   }
 }

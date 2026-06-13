@@ -55,18 +55,11 @@ class WorkerWiring {
   // biletyna.pl 403s our datacenter IP; route Kino Kameralne through Zyte.
   lazy val biletynaFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch)
   lazy val cinemaScraperCatalog = new CinemaScraperCatalog(
-    httoFetch, multikinoFetch, biletynaFetch, heliosToday, deferDetail,
+    httoFetch, multikinoFetch, biletynaFetch, heliosToday,
     // Mongo-backed chain detail cache so Helios / Cinema City detail is deduped
     // across worker servers, not just within one process.
     (h, ttl) => new MongoCachingDetailFetch(h, mongoConnection.database, ttl))
   def kinoMuzaClient: KinoMuzaClient = cinemaScraperCatalog.kinoMuzaClient
-
-  // When true, cinemas that implement DetailEnricher scrape BARE and their
-  // per-film detail is fetched via EnrichDetails queue tasks (deduped per
-  // (group, film), multi-server-safe) instead of inline in fetch(). Off by
-  // default so prod is unchanged until cutover.
-  protected def deferDetail: Boolean =
-    Env.get("KINOWO_DEFERRED_DETAIL").exists(v => v == "true" || v == "1")
 
   // Scrape every modelled city by default; KINOWO_SCRAPE_CITIES (comma-separated
   // slugs) only NARROWS the set, e.g. to shed load if the worker throttles/OOMs.
@@ -285,12 +278,12 @@ class WorkerWiring {
   lazy val taskQueue: TaskQueue = new MongoTaskQueue(mongoConnection.database)
   lazy val freshnessStore: FreshnessStore = new MongoFreshnessStore(mongoConnection.database)
 
-  // Cinemas that defer their per-film detail (implement DetailEnricher), wired
-  // only when deferDetail is on — otherwise empty, so no enqueuers/reaper run and
-  // clients enrich inline. Indexed by detailGroup for the handler (task → fetch);
-  // the per-cinema enqueuers and reaper iterate the list directly.
+  // Cinemas that defer their per-film detail (implement DetailEnricher) scrape
+  // BARE; their detail is filled via EnrichDetails queue tasks. Indexed by
+  // detailGroup for the handler (task → fetch); the per-cinema enqueuers and
+  // reaper iterate the list directly.
   lazy val detailEnrichers: Seq[DetailEnricher] =
-    if (deferDetail) cinemaScraperCatalog.all.collect { case de: DetailEnricher => de } else Nil
+    cinemaScraperCatalog.all.collect { case de: DetailEnricher => de }
 
   // The shared scrape core: record + publish, injected into ScrapeCinemaHandler.
   // Detail enqueue is no longer here — it's event-driven (DetailTaskEnqueuer off
@@ -307,7 +300,6 @@ class WorkerWiring {
   // Detail enqueue is event-driven: one enqueuer per deferred cinema fires the
   // first detail fetch off CinemaMovieAdded; the reaper is the periodic
   // refresh/retry backstop (CinemaMovieAdded fires only on first appearance).
-  // Both empty/no-op when !deferDetail, since detailEnrichers is then Nil.
   lazy val detailEnqueuers: Seq[DetailTaskEnqueuer] =
     detailEnrichers.map(de => new DetailTaskEnqueuer(de, movieCache, taskQueue, freshnessStore))
   lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore)
@@ -369,7 +361,7 @@ class WorkerWiring {
   eventBus.subscribe(movieService.onMovieRecordCreated)
   eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
   eventBus.subscribe(kinoMuzaSynopsisRefresher.onCinemaMovieAdded)
-  // One detail enqueuer per deferred cinema (empty when !deferDetail).
+  // One detail enqueuer per deferred-detail cinema.
   detailEnqueuers.foreach(e => eventBus.subscribe(e.onCinemaMovieAdded))
   // Rating subscribers ENQUEUE tasks; RatingHandlers + EnrichmentReaper fetch.
   eventBus.subscribe(ratingEnqueuer.onTmdbResolved)
@@ -410,11 +402,11 @@ class WorkerWiring {
       val inFallback = filmwebFallbackStore.get(cinema).exists(_.active)
       uptimeMonitor.tagService(cinema, CinemaClientMarkers.tagsFor(Some(marker), sourceUrls.get(cinema), inFallback))
     }
-    // The task worker drains all queue work: scraping, deferred detail, and/or
+    // The task worker drains all queue work: scraping, deferred detail, and
     // queue-driven rating enrichment.
     taskWorker.start(); workerHeartbeat.start()
     enrichmentReaper.start()
-    if (deferDetail) detailReaper.start()
+    detailReaper.start()
     scrapeReaper.start()
   }
 
@@ -426,7 +418,7 @@ class WorkerWiring {
   def stop(): Unit = {
     scrapeReaper.stop()
     enrichmentReaper.stop()
-    if (deferDetail) detailReaper.stop()
+    detailReaper.stop()
     workerHeartbeat.stop()
     taskWorker.stop()
     taskQueue.close()

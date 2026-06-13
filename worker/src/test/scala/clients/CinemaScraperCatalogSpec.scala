@@ -31,7 +31,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   private def catalogWithBiletyna(fixtureDir: String): CinemaScraperCatalog =
     new CinemaScraperCatalog(
       http, mkFetch = http, bnFetch = new FakeHttpFetch(fixtureDir), today = LocalDate.of(2026, 6, 6),
-      deferDetail = false, chainDetailCache = (h, ttl) => new CachingDetailFetch(h, ttl)
+      chainDetailCache = (h, ttl) => new CachingDetailFetch(h, ttl)
     )
 
   "CinemaScraperCatalog" should "route Kino Kameralne through the injected biletyna seam, not the shared http" in {

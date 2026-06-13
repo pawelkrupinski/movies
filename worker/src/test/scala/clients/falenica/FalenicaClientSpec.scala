@@ -31,6 +31,8 @@ class FalenicaClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "read the YouTube trailer off the detail page's WordPress video block" in {
-    byTitle("Łowca jeleni").trailerUrl shouldBe Some("https://www.youtube.com/watch?v=_08Qy34w2T4")
+    val detail = client.fetchFilmDetail(byTitle("Łowca jeleni").filmUrl.getOrElse(fail("no filmUrl for Łowca jeleni")))
+      .getOrElse(fail("no detail for Łowca jeleni"))
+    detail.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=_08Qy34w2T4")
   }
 }

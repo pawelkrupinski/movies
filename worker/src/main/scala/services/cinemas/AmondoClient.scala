@@ -3,10 +3,9 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch}
 
 import java.time.LocalDateTime
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -16,7 +15,7 @@ import scala.util.Try
  * per-screening room+time, poster and booking link. The `/movies/<slug>` detail
  * page adds director, production countries, year and the full synopsis.
  */
-class AmondoClient(http: HttpFetch, deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
+class AmondoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
 
   // Static detail pages cached across passes; the repertoire page keeps the
   // live `http` since its showtimes change every pass.
@@ -34,14 +33,7 @@ class AmondoClient(http: HttpFetch, deferDetail: Boolean = false) extends Cinema
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
-  // the per-film detail-page URL) and the detail is filled in later by an
-  // EnrichDetails task via `fetchFilmDetail` — so a scrape pass doesn't block on
-  // N detail-page round-trips. When off (default), it enriches inline as before.
-  def fetch(): Seq[CinemaMovie] = {
-    val bare = fetchBare()
-    if (deferDetail) bare else enrichInline(bare)
-  }
+  def fetch(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(http.get(RepertoireUrl))
@@ -67,18 +59,6 @@ class AmondoClient(http: HttpFetch, deferDetail: Boolean = false) extends Cinema
         director  = Seq.empty,
         showtimes = showtimes
       ))
-    }
-  }
-
-  // Inline path: fetch each film's detail in parallel through the same
-  // `fetchFilmDetail` the deferred path uses, then merge non-destructively. One
-  // detail code path for both modes.
-  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
-    val urls = movies.flatMap(_.filmUrl).distinct
-    if (urls.isEmpty) movies
-    else {
-      val metas = ParallelDetailFetch("amondo-details", urls, 1.minute)(u => fetchFilmDetail(u))
-      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
     }
   }
 

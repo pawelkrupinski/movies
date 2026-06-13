@@ -18,25 +18,12 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
   private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
   private val FarFuture  = "2027-01-01"
 
-  // When deferDetail is on, return BARE movies (showtimes + listing fields + the
-  // per-film detail-page URL as filmUrl); the per-venue CinemaCityScraper enqueues
-  // an EnrichDetails task that calls `fetchFilmDetail` for countries/genres/
-  // synopsis/cast/director/trailer. When off, enrich inline.
-  def fetch(cinemaId: String, cinema: Cinema, deferDetail: Boolean = false): Seq[CinemaMovie] = {
-    val bare = fetchBare(cinemaId, cinema)
-    if (deferDetail) bare else enrichInline(bare)
-  }
-
-  // Inline path: fetch each film's detail page in parallel through the same
-  // `fetchFilmDetail` the deferred path uses, then merge non-destructively.
-  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
-    val urls = movies.flatMap(_.filmUrl).distinct
-    if (urls.isEmpty) movies
-    else {
-      val metas = ParallelDetailFetch("cinema-city-details", urls, 1.minute)(u => fetchFilmDetail(u))
-      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
-    }
-  }
+  // Returns BARE movies (showtimes + listing fields + the per-film detail-page
+  // URL as filmUrl); the per-venue CinemaCityScraper enqueues an EnrichDetails
+  // task that calls `fetchFilmDetail` for countries/genres/synopsis/cast/
+  // director/trailer.
+  def fetch(cinemaId: String, cinema: Cinema): Seq[CinemaMovie] =
+    fetchBare(cinemaId, cinema)
 
   /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
    *  movie's film-page URL (Cinema City's `link`). Goes through the shared

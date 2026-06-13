@@ -9,7 +9,7 @@ import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-class RialtoClient(http: HttpFetch, deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
+class RialtoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
 
   // Static event/detail pages cached across passes; the repertoire listing keeps
   // the live `http` since its showtimes change every pass.
@@ -61,20 +61,7 @@ class RialtoClient(http: HttpFetch, deferDetail: Boolean = false) extends Cinema
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl, BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  // When deferDetail is on, fetch() returns BARE movies (showtimes + listing
-  // metadata + the per-event detail-page URL) and genres/detail are filled in
-  // later by an EnrichDetails task via `fetchFilmDetail` — so a scrape pass
-  // doesn't block on N detail-page round-trips for enrichment. When off
-  // (default), it enriches inline as before.
-  //
-  // NOTE: Rialto showtimes are ONLY available on the event detail page (not
-  // the repertoire listing), so event pages are always fetched inline for
-  // showtimes regardless of deferDetail. The deferral skips a second
-  // `fetchFilmDetail` pass on top of that first fetch.
-  def fetch(): Seq[CinemaMovie] = {
-    val bare = fetchBare()
-    if (deferDetail) bare else enrichInline(bare)
-  }
+  def fetch(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
     val filmEntries = parseRepertoire(http.get(RepertoireUrl))
@@ -105,18 +92,6 @@ class RialtoClient(http: HttpFetch, deferDetail: Boolean = false) extends Cinema
         ))
       }
       .toSeq
-  }
-
-  // Inline path: fetch each film's detail in parallel through the same
-  // `fetchFilmDetail` the deferred path uses, then merge non-destructively.
-  // One detail code path for both modes.
-  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
-    val urls = movies.flatMap(_.filmUrl).distinct
-    if (urls.isEmpty) movies
-    else {
-      val metas = ParallelDetailFetch("rialto-details", urls, 1.minute)(u => fetchFilmDetail(u))
-      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
-    }
   }
 
   override val detailGroup: String = "rialto"

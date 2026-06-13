@@ -4,7 +4,7 @@ import clients.tools.FakeHttpFetch
 import models.{KinoPalacowe, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoPalacoweClient
+import services.cinemas.{FilmDetail, KinoPalacoweClient}
 
 import java.time.LocalDateTime
 
@@ -13,6 +13,10 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   private val client  = new KinoPalacoweClient(new FakeHttpFetch("kino-palacowe"))
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
+
+  private def detailFor(title: String): FilmDetail =
+    client.fetchFilmDetail(byTitle(title).filmUrl.getOrElse(fail(s"no filmUrl for $title")))
+      .getOrElse(fail(s"no detail for $title"))
 
   // ── Totals ────────────────────────────────────────────────────────────────
 
@@ -43,7 +47,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   // ── Runtime (all movies) ──────────────────────────────────────────────────
 
   it should "return correct runtime for every movie" in {
-    val runtimes = results.map(m => m.movie.title -> m.movie.runtimeMinutes).toMap
+    val runtimes = results.map(m => m.movie.title -> detailFor(m.movie.title).runtimeMinutes).toMap
     runtimes("Chłopiec na krańcach świata") shouldBe Some(88)
     runtimes("Giulietta i duchy")           shouldBe Some(139)
     runtimes("Głos z księżyca")             shouldBe Some(121)
@@ -54,7 +58,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   // ── Director / country / year (parsed from "reż. … COUNTRY YEAR, NN'" meta line) ──
 
   it should "extract director from each film page's meta line" in {
-    val directors = results.map(m => m.movie.title -> m.director).toMap
+    val directors = results.map(m => m.movie.title -> detailFor(m.movie.title).director).toMap
     // Multiple co-directors before the country are captured together.
     directors("Chłopiec na krańcach świata") shouldBe Seq("Grzegorz Wacławek", "Marta Szymańska")
     directors("Giulietta i duchy")           shouldBe Seq("Federico Fellini")
@@ -64,7 +68,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "extract countries (one or many) from each film page" in {
-    val countries = results.map(m => m.movie.title -> m.movie.countries).toMap
+    val countries = results.map(m => m.movie.title -> detailFor(m.movie.title).countries).toMap
     countries("Chłopiec na krańcach świata") shouldBe Seq("Polska")
     countries("Giulietta i duchy")           shouldBe Seq("Włochy", "Francja")
     countries("Głos z księżyca")             shouldBe Seq("Włochy")
@@ -73,7 +77,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "extract release year from each film page" in {
-    val years = results.map(m => m.movie.title -> m.movie.releaseYear).toMap
+    val years = results.map(m => m.movie.title -> detailFor(m.movie.title).releaseYear).toMap
     years("Chłopiec na krańcach świata") shouldBe Some(2025)
     years("Giulietta i duchy")           shouldBe Some(1965)
     years("Głos z księżyca")             shouldBe Some(1990)
@@ -108,6 +112,8 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   it should "extract a non-empty synopsis for every movie" in {
     results.foreach { cm =>
       withClue(s"${cm.movie.title}: ") {
+        // KinoPałacowe exposes the lead text in the listing JSON (synopsis field
+        // on the bare CinemaMovie), so synopsis is available without a detail fetch.
         cm.synopsis should not be empty
       }
     }
@@ -157,15 +163,15 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   // don't.
 
   it should "extract a canonical youtube watch URL from the film page" in {
-    byTitle("Chłopiec na krańcach świata").trailerUrl shouldBe
+    detailFor("Chłopiec na krańcach świata").trailerUrl shouldBe
       Some("https://www.youtube.com/watch?v=MNwsZzIFF3s")
   }
 
   it should "leave trailerUrl None when the film page has no trailer anchor" in {
-    byTitle("Słodkie życie").trailerUrl   shouldBe None
-    byTitle("Osiem i pół").trailerUrl     shouldBe None
-    byTitle("Giulietta i duchy").trailerUrl shouldBe None
-    byTitle("Głos z księżyca").trailerUrl shouldBe None
+    detailFor("Słodkie życie").trailerUrl   shouldBe None
+    detailFor("Osiem i pół").trailerUrl     shouldBe None
+    detailFor("Giulietta i duchy").trailerUrl shouldBe None
+    detailFor("Głos z księżyca").trailerUrl shouldBe None
   }
 
   // ── cleanTitle: strip cycle decoration ────────────────────────────────────

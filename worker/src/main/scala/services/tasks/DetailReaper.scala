@@ -41,9 +41,11 @@ class DetailReaper(
     logger.info(s"DetailReaper started over ${enrichers.size} deferred cinema(s), every ${interval.toMinutes}min.")
   }
 
-  /** Enqueue every stale `(deferred-cinema, film)` detail. Package-private so
-   *  tests can drive it directly. Returns how many tasks were enqueued. */
-  private[tasks] def tick(): Int = {
+  /** Enqueue every stale `(deferred-cinema, film)` detail, keyed off the row's
+   *  CURRENT CacheKey (so it's robust to a row that was re-keyed since its
+   *  `CinemaMovieAdded` fired). Public so tests / the fixture harness can drive
+   *  one pass directly. Returns how many tasks were enqueued. */
+  def tick(): Int = {
     var enqueued = 0
     cache.entries.foreach { case (key, record) =>
       enrichers.foreach { e =>

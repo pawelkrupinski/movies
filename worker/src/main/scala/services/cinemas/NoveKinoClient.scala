@@ -18,7 +18,7 @@ import scala.util.Try
  * (runtime isn't published anywhere — TMDB supplies it). Parameterised by the
  * cinema's URL slug so one client serves any Nove Kino venue.
  */
-class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema, deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
+class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema) extends CinemaScraper with DetailEnricher {
 
   // Static film.php detail pages cached across passes; listing pages stay live.
   private val detailHttp = new CachingDetailFetch(http)
@@ -38,13 +38,7 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema,
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(CinemaUrl)
 
-  // When deferDetail is on, fetch() returns BARE movies (showtimes + listing
-  // poster/countries/genres + the film.php detail URL) and the rest is filled
-  // later by an EnrichDetails task via `fetchFilmDetail`; off, it enriches inline.
-  def fetch(): Seq[CinemaMovie] = {
-    val bare = fetchBare()
-    if (deferDetail) bare else enrichInline(bare)
-  }
+  def fetch(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
     val today = http.get(s"$CinemaUrl/repertuar.php")
@@ -79,17 +73,6 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema,
         showtimes = showtimes,
         trailerUrl = None
       ))
-    }
-  }
-
-  // Inline path: fetch each film's detail in parallel through the same
-  // `fetchFilmDetail` the deferred path uses, then merge non-destructively.
-  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
-    val urls = movies.flatMap(_.filmUrl).distinct
-    if (urls.isEmpty) movies
-    else {
-      val metas = ParallelDetailFetch("nove-kino-details", urls, 1.minute)(u => fetchFilmDetail(u))
-      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
     }
   }
 

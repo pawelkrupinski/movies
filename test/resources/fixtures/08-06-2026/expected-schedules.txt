@@ -22,6 +22,7 @@ cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/90-urodziny-pavarottiego-koncert-gwiazd-z-arena-di-verona/8131s2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/90-urodziny-pavarottiego-koncert-gwiazd-z-arena-di-verona/8131s2r
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / 90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona / 2025
   Cinema City Bemowo / 90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona / 2025
   Cinema City Bielsko-Biała / 90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona / 2025
@@ -211,6 +212,7 @@ filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/audiencja-national-theatre-live-2026/8213s2r
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Audiencja - National Theatre Live 2026 / 2026
   Cinema City Bemowo / Audiencja - National Theatre Live 2026 / 2026
   Cinema City Bonarka / Audiencja - National Theatre Live 2026 / 2026
@@ -325,6 +327,7 @@ cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/backrooms-bez-wyjscia-4460
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14599-backrooms-bez-wyjscia/
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Backrooms. Bez wyjścia / 2026
   Cinema City Bemowo / Backrooms. Bez wyjścia / 2026
   Cinema City Bielsko-Biała / Backrooms. Bez wyjścia / 2026
@@ -583,6 +586,7 @@ cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/bts-world-tour-arirang-in-busan-live/8240o2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/bts-world-tour-arirang-in-busan-live/8240o2r
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
   Cinema City Bielsko-Biała / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
   Cinema City Bonarka / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE / 2026
@@ -626,6 +630,7 @@ cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/bts-world-tour-arirang-in-busan-live-viewing-encore/8240o2r1
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/bts-world-tour-arirang-in-busan-live-viewing-encore/8240o2r1
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
   Cinema City Bielsko-Biała / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
   Cinema City Bonarka / BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) / 2026
@@ -804,6 +809,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14435-poranek-dla-dzieci-chopiec-na-krancach-swiata/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157449
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Chłopiec na krańcach świata / 2025
   Cinema City Bytom / Chłopiec na krańcach świata / 2025
   Cinema City Mokotów / Chłopiec na krańcach świata / 2025
@@ -889,19 +895,19 @@ runtimeMinutes:    90
 releaseYear:       2025
 countries:         Włochy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1750696947049.jpg
-synopsis.length:   247
-cast:              Marco Fiore, Aurora Quattrocchi, Martina Ziami, Camille Dugay Comencini, Concetta Ingrassia
+synopsis.length:   119
+cast:              —
 director:          Margherita Spampinato
-tmdbId:            1510325
-imdbId:            tt36454256
-originalTitle:     Gioia mia
-imdbRating:        7.1
-metascore:         71
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
 rottenTomatoes:    —
-filmwebRating:     7.23333
-metacriticUrl:     https://www.metacritic.com/movie/sweetheart
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/sweetheart_2025
-filmwebUrl:        https://www.filmweb.pl/film/Gioia+mia-2025-10091480
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14626-cinema-italia-oggi-kochanie/
 cinemaScrapes:
@@ -917,18 +923,18 @@ releaseYear:       2025
 countries:         Włochy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1717409506831_3i23FXB.jpg
 synopsis.length:   118
-cast:              Pilar Fogliati, Adriano Giannini, Andrea Carpenzano, Valeria Golino, Selene Caramazza
+cast:              —
 director:          Ludovica Rampoldi
-tmdbId:            1299382
-imdbId:            tt32528560
-originalTitle:     Breve storia d'amore
-imdbRating:        6.4
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     7.08571
+filmwebRating:     —
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/breve_storia_damore
-filmwebUrl:        https://www.filmweb.pl/film/Kr%C3%B3tka+historia+o+mi%C5%82o%C5%9Bci-2025-10096692
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14632-cinema-italia-oggi-krotka-historia-miosci/
 cinemaScrapes:
@@ -943,19 +949,19 @@ runtimeMinutes:    98
 releaseYear:       2025
 countries:         Włochy, Niemcy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1744641462242.jpg
-synopsis.length:   407
-cast:              Filippo Scotti, Sergio Romano, Pierpaolo Capovilla, Roberto Citran, Andrea Pennacchi
+synopsis.length:   116
+cast:              —
 director:          Francesco Sossai
-tmdbId:            1462322
-imdbId:            tt36491632
-originalTitle:     Le città di pianura
-imdbRating:        7.1
-metascore:         70
-rottenTomatoes:    90
-filmwebRating:     6.7069
-metacriticUrl:     https://www.metacritic.com/movie/the-last-one-for-the-road
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/le_citta_di_pianura
-filmwebUrl:        https://www.filmweb.pl/film/Le+citt%C3%A0+di+pianura-2025-10078609
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14625-cinema-italia-oggi-miasta-na-rowninie/
 cinemaScrapes:
@@ -1079,18 +1085,18 @@ releaseYear:       2025
 countries:         Włochy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1746483878552.jpg
 synopsis.length:   119
-cast:              Pierfrancesco Favino, Tiziano Menichelli, Giovanni Ludeno, Dora Romano, Valentina Bellè
+cast:              —
 director:          Andrea Di Stefano
-tmdbId:            1143973
-imdbId:            tt5179884
-originalTitle:     Il maestro
-imdbRating:        6.7
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     7.0
-metacriticUrl:     https://www.metacritic.com/movie/my-tennis-maestro
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/il_maestro_2014
-filmwebUrl:        https://www.filmweb.pl/film/Il+maestro-2025-10088454
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14627-cinema-italia-oggi-trener-tenisa/
 cinemaScrapes:
@@ -1194,6 +1200,7 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/diabel-ubiera-sie-u-prady-2/7795s2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/diabel-ubiera-sie-u-prady-2-4401
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Diabeł ubiera się u Prady 2 / 2026
   Cinema City Bemowo / Diabeł ubiera się u Prady 2 / 2026
   Cinema City Bielsko-Biała / Diabeł ubiera się u Prady 2 / 2026
@@ -1320,6 +1327,7 @@ cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/drama
   Kino Muza = https://www.kinomuza.pl/movie/drama/
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Drama / 2026
   Cinema City Bonarka / Drama / 2026
   Cinema City Promenada / Drama / 2026
@@ -1374,6 +1382,7 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/drugie-zycie/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157167
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Drugie życie / 2025
   Cinema City Bonarka / Drugie życie / 2025
   Cinema City Bydgoszcz / Drugie życie / 2025
@@ -1513,6 +1522,7 @@ cinemaScrapes:
   Bałtyk / Drzewo magii / —
   Centrum / Drzewo magii / —
   Centrum 3D / Drzewo magii / 2026
+  Cinema City / — / —
   Cinema City Arkadia / Drzewo magii / 2025
   Cinema City Bemowo / Drzewo magii / 2025
   Cinema City Bielsko-Biała / Drzewo magii / 2025
@@ -1715,6 +1725,7 @@ cinemaScrapes:
   Baszta / Dzień objawienia / —
   Bałtyk / Dzień objawienia / —
   Chemik / Dzień objawienia / —
+  Cinema City / — / —
   Cinema City Arkadia / Dzień objawienia / 2026
   Cinema City Bemowo / Dzień objawienia / 2026
   Cinema City Bielsko-Biała / Dzień objawienia / 2026
@@ -1885,6 +1896,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Dzie%C5%84+objawienia-2026-100607
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/dzien-objawienia-ukrainski-dubbing/7913s2r1
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Bonarka / Dzień objawienia ukraiński dubbing / 2026
   Cinema City Bydgoszcz / Dzień objawienia ukraiński dubbing / 2026
   Cinema City Janki / Dzień objawienia ukraiński dubbing / 2026
@@ -1925,6 +1937,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Dzikie+z+natury+3D-2011-604524
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/dzikie-z-natury/5838
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Poznań Plaza / Dzikie z natury / 2011
 showings:
   2026-06-08  Cinema City Poznań Plaza      09:30 Sala IMAX IMAX/3D/DUB
@@ -1954,6 +1967,7 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/erupcja/
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14494-erupcja/
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Erupcja / —
   Cinema City Wroclavia / Erupcja / —
   KINOMUZEUM / Erupcja / 2025
@@ -2503,6 +2517,7 @@ cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/john-williams-a-tribute/8132o2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/john-williams-a-tribute/8132o2r
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / John Williams - A Tribute / 2026
   Cinema City Bemowo / John Williams - A Tribute / 2026
   Cinema City Bielsko-Biała / John Williams - A Tribute / 2026
@@ -2533,7 +2548,7 @@ displayTitle:      K-popowe łowczynie demonów
 cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-Popowe Łowczynie Demonów | K-popowe łowczynie demonów | Kpopowe łowczynie demonów / napisy karaoke - nasze kino
 runtimeMinutes:    96
 releaseYear:       2025
-countries:         USA, Kanada
+countries:         USA, Kanada, Canada
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7704D2R.jpg
 synopsis.length:   444
 cast:              Arden Cho, May Hong, Ji-young Yoo, Ahn Hyo-seop, 김윤진
@@ -2553,6 +2568,7 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/k-popowe-lowczynie-demonow/7704d2r
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157357
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / K-popowe łowczynie demonów / 2025
   Cinema City Bemowo / K-popowe łowczynie demonów / 2025
   Cinema City Bielsko-Biała / K-popowe łowczynie demonów / 2025
@@ -2716,6 +2732,7 @@ filmwebUrl:        https://www.filmweb.pl/serial/Kicia+Kocia+w+podr%C3%B3%C5%BCy
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/13758-poranek-dla-dzieci-kicia-kocia-w-podrozy/
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Ruda Śląska / Kicia Kocia w podróży / 2026
   Cinema City Rybnik / Kicia Kocia w podróży / 2026
   Helios Jelenia Góra / Kicia Kocia w podróży / 2025
@@ -2816,19 +2833,19 @@ runtimeMinutes:    75
 releaseYear:       2026
 countries:         Polska
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_post_063_05FcHgm.jpg
-synopsis.length:   389
-cast:              Jan Sałasiński, Izabella Dudziak, Anita Poddębniak, Adam Szyszkowski, Andrzej Konopka
+synopsis.length:   114
+cast:              —
 director:          Łukasz Ronduda, Filip Pawlak
-tmdbId:            1396045
+tmdbId:            —
 imdbId:            —
-originalTitle:     Powiedz mi, co czujesz
+originalTitle:     —
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     5.98058
+filmwebRating:     —
 metacriticUrl:     —
 rottenTomatoesUrl: —
-filmwebUrl:        https://www.filmweb.pl/film/Powiedz+mi%2C+co+czujesz-2026-10065024
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14482-kino-bez-barier-freak-show-ad-cc-pjm/
 cinemaScrapes:
@@ -2870,19 +2887,19 @@ runtimeMinutes:    93
 releaseYear:       2025
 countries:         Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_piesni_lasu.jpg
-synopsis.length:   777
-cast:              Vincent Munier, Michel Munier, Simon Munier
+synopsis.length:   110
+cast:              —
 director:          Vincent Munier
-tmdbId:            1309373
-imdbId:            tt32368068
-originalTitle:     Le Chant des forêts
-imdbRating:        7.9
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     8.2235
+filmwebRating:     —
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/whispers_in_the_woods
-filmwebUrl:        https://www.filmweb.pl/film/Pie%C5%9Bni+lasu-2025-10111381
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14486-kino-bez-barier-piesni-lasu-ad-cc-pjm/
 cinemaScrapes:
@@ -2975,6 +2992,7 @@ cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/kosmiczny-mecz/8141d2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/kosmiczny-mecz/8141d2r
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Kosmiczny mecz / 1996
   Cinema City Bemowo / Kosmiczny mecz / 1996
   Cinema City Bielsko-Biała / Kosmiczny mecz / 1996
@@ -3130,7 +3148,7 @@ displayTitle:      Kurozając i Świątynia Świstaka
 cinemaTitles:      KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA | Kurozając i Świątynia Świstaka | Kurozając i świątynia Świstaka | Kurozając i świątynia świstaka
 runtimeMinutes:    88
 releaseYear:       2026
-countries:         Belgia, Francja, USA
+countries:         Francja, Belgia, USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7921D2R.jpg
 synopsis.length:   526
 cast:              Karol Jankiewicz, Martyna Byczkowska, Artur Barciś, Krystian Embradora, Igor Pawłowski
@@ -3150,6 +3168,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Bałtyk / Kurozając i Świątynia Świstaka / —
   Centrum / Kurozając i świątynia Świstaka / —
+  Cinema City / — / —
   Cinema City Arkadia / Kurozając i świątynia świstaka / 2026
   Cinema City Bemowo / Kurozając i świątynia świstaka / 2026
   Cinema City Bielsko-Biała / Kurozając i świątynia świstaka / 2026
@@ -3256,6 +3275,7 @@ cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/mandalorian-grogu-4347
 cinemaScrapes:
   Centrum / Mandalorian i Grogu / —
+  Cinema City / — / —
   Cinema City Arkadia / Gwiezdne Wojny: Mandalorian i Grogu / 2026
   Cinema City Bemowo / Gwiezdne Wojny: Mandalorian i Grogu / 2026
   Cinema City Bielsko-Biała / Gwiezdne Wojny: Mandalorian i Grogu / 2026
@@ -3386,6 +3406,7 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/maraton-horrorow/8253s2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Maraton Horrorów / —
   Cinema City Bemowo / Maraton Horrorów / —
   Cinema City Bielsko-Biała / Maraton Horrorów / —
@@ -3538,6 +3559,7 @@ cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/michael-4308
 cinemaScrapes:
   Centrum 3D Przemyśl / Michael / 2026
+  Cinema City / — / —
   Cinema City Arkadia / Michael / 2026
   Cinema City Bemowo / Michael / 2026
   Cinema City Bielsko-Biała / Michael / 2026
@@ -3645,10 +3667,10 @@ originalTitle:     Mikey and Nicky
 imdbRating:        7.3
 metascore:         81
 rottenTomatoes:    88
-filmwebRating:     7.1572
+filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/mikey-and-nicky
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/mikey_and_nicky
-filmwebUrl:        https://www.filmweb.pl/film/Mikey+i+Nicky-1976-105722
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14242-spoilermaster-tour-mikey-i-nicky/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157442
@@ -3697,6 +3719,7 @@ cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/milczenie-owiec-w-helios-replay-2612
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14538-milczenie-owiec/
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Milczenie owiec / 1991
   Cinema City Bielsko-Biała / Milczenie owiec / 1991
   Cinema City Bonarka / Milczenie owiec / 1991
@@ -3804,6 +3827,7 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/milczaca-przyjaciolka/
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14492-milczaca-przyjacioka/
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Bonarka / Milcząca przyjaciółka / 2025
   Dolnośląskie Centrum Filmowe / Milcząca przyjaciółka / 2025
   Gdyńskie Centrum Filmowe / Milcząca przyjaciółka / —
@@ -3878,6 +3902,7 @@ cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/minimaraton-superman-i-supergirl/8205s2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/minimaraton-superman-i-supergirl/8205s2r
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Minimaraton Superman i Supergirl / —
   Cinema City Bemowo / Minimaraton Superman i Supergirl / —
   Cinema City Bielsko-Biała / Minimaraton Superman i Supergirl / —
@@ -3935,6 +3960,7 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/minionki-i-straszydla/8023d2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/minionki-i-straszydla-4421
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Minionki i straszydła / 2026
   Cinema City Bemowo / Minionki i straszydła / 2026
   Cinema City Bielsko-Biała / Minionki i straszydła / 2026
@@ -4061,6 +4087,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Minionki+i+straszyd%C5%82a-2026-1
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/minionki-i-straszydla-ukrainski-dubbing/8023d2r1
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Minionki i straszydła ukraiński dubbing / 2026
   Cinema City Bonarka / Minionki i straszydła ukraiński dubbing / 2026
   Cinema City Bydgoszcz / Minionki i straszydła ukraiński dubbing / 2026
@@ -4132,10 +4159,10 @@ originalTitle:     Monterey Pop
 imdbRating:        7.9
 metascore:         77
 rottenTomatoes:    96
-filmwebRating:     —
+filmwebRating:     7.87644
 metacriticUrl:     https://www.metacritic.com/movie/monterey-pop
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/monterey_pop
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Monterey+Pop-1968-140039
 cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/monterey-pop-seans-przedpremierowy-w-rocznice-koncertu/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157446
@@ -4158,8 +4185,8 @@ releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7478S2R.jpg
 synopsis.length:   420
-cast:              Karl Urban, Adeline Rudolph, Lewis Tan, Jessica Mcnamee, Josh Lawson, Tadanobu Asano, Mehcad Brooks, Ludi Lin, Damon Herriman, Tati Gabrielle, Martyn Ford, Chin Han, Joe Taslim, Hiroyuki Sanada, Desmond Chiam, Ana Thu Nguyen, Max Huang
-director:          Simon Mcquoid
+cast:              KARL URBAN, ADELINE RUDOLPH, LEWIS TAN, JESSICA MCNAMEE, JOSH LAWSON, TADANOBU ASANO, MEHCAD BROOKS, LUDI LIN, DAMON HERRIMAN, TATI GABRIELLE, MARTYN FORD, CHIN HAN, JOE TASLIM, HIROYUKI SANADA, DESMOND CHIAM, ANA THU NGUYEN, MAX HUANG
+director:          Simon McQuoid
 tmdbId:            931285
 imdbId:            tt17490712
 originalTitle:     Mortal Kombat II
@@ -4173,6 +4200,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Mortal+Kombat+II-2026-10007434
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/mortal-kombat-ii/7478s2r
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Mortal Kombat II / 2026
   Cinema City Bemowo / Mortal Kombat II / 2026
   Cinema City Bonarka / Mortal Kombat II / 2026
@@ -4277,6 +4305,7 @@ cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/ladies-night-narodziny-gwiazdy/3026s2r1
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/ladies-night-narodziny-gwiazdy/3026s2r1
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Narodziny gwiazdy / 2018
   Cinema City Bielsko-Biała / Narodziny gwiazdy / 2018
   Cinema City Bonarka / Narodziny gwiazdy / 2018
@@ -4324,6 +4353,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Nie+martw+si%C4%99%2C+nic+mi+nie+
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/nie-martw-sie-nic-mi-nie-jest/7216d2r
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Poznań Plaza / Nie martw się, nic mi nie jest / 2024
   Janosik / Nie martw się, nic mi nie jest / —
 showings:
@@ -4352,6 +4382,7 @@ filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/niebezpieczne-zwiazki-national-theatre-live-2026/8212s2r
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Niebezpieczne związki - National Theatre Live 2026 / 2026
   Cinema City Bemowo / Niebezpieczne związki - National Theatre Live 2026 / 2026
   Cinema City Bonarka / Niebezpieczne związki - National Theatre Live 2026 / 2026
@@ -4425,6 +4456,7 @@ cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/niesamowite-przygody-skarpetek-3-ale-ko/8188d2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/niesamowite-przygody-skarpetek-3-ale-ko/8188d2r
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Niesamowite przygody skarpetek 3. Ale ko / 2026
   Cinema City Bemowo / Niesamowite przygody skarpetek 3. Ale ko / 2026
   Cinema City Bielsko-Biała / Niesamowite przygody skarpetek 3. Ale ko / 2026
@@ -4619,6 +4651,7 @@ filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/niezwykly-chlopak/8191d2r
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Poznań Plaza / Niezwykły chłopak / 2026
   Helios Alfa / Niezwykły chłopak / 2025
   Helios Bielsko-Biała / Niezwykły chłopak / —
@@ -4759,6 +4792,7 @@ cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/o-dziewczynie-skaczacej-przez-czas-w-helios-anime-2443
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14416-dkf-zamek-o-dziewczynie-skaczacej-przez-czas/
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / O dziewczynie skaczącej przez czas / 2006
   Cinema City Bielsko-Biała / O dziewczynie skaczącej przez czas / 2006
   Cinema City Bonarka / O dziewczynie skaczącej przez czas / 2006
@@ -4869,6 +4903,7 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/obsesja/8134s2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/obsesja-4463
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Obsesja / 2025
   Cinema City Bemowo / Obsesja / 2025
   Cinema City Bielsko-Biała / Obsesja / 2025
@@ -4988,6 +5023,7 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/ojczyzna/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157098
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Ojczyzna / 2026
   Cinema City Bonarka / Ojczyzna / 2026
   Cinema City Czerwona Droga / Ojczyzna / 2026
@@ -5270,6 +5306,7 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/pasazer/8070s2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/pasazer-4527
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Pasażer / 2026
   Cinema City Bemowo / Pasażer / 2026
   Cinema City Bielsko-Biała / Pasażer / 2026
@@ -5433,7 +5470,7 @@ countries:         Polska
 posterUrl:         https://img.helios.pl/pliki/film/piep-zyc-mickiewicza-3/piep-zyc-mickiewicza-3-plakat-22608.jpeg
 synopsis.length:   656
 cast:              Hugo Tarres, Wiktoria Koprowska, Igor Pawłowski, Krystian Embradora, Karol Rot, Ada Grodzka, Aldona Jankowska, Dawid Ogrodnik
-director:          Sara Bustamante-Drozdek
+director:          Sara Bustamente-Drozdek
 tmdbId:            1483055
 imdbId:            tt39747930
 originalTitle:     Piep*zyć Mickiewicza 3
@@ -5447,6 +5484,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Piep*zy%C4%87+Mickiewicza+3-2026-
 cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/piep-zyc-mickiewicza-3-knt-2381
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Bydgoszcz / Piep*zyć Mickiewicza 3 / 2026
   Helios Bielsko-Biała / Piep*zyć Mickiewicza 3 / —
   Helios Gorzów Wielkopolski / Piep*zyć Mickiewicza 3 / —
@@ -5480,6 +5518,7 @@ filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/playboy-zachodniego-swiata-national-theatre-live-2026/8211s2r
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Playboy zachodniego świata - National Theatre Live 2026 / 2026
   Cinema City Bemowo / Playboy zachodniego świata - National Theatre Live 2026 / 2026
   Cinema City Bonarka / Playboy zachodniego świata - National Theatre Live 2026 / 2026
@@ -5968,18 +6007,18 @@ runtimeMinutes:    115
 releaseYear:       2025
 countries:         Francja, Hiszpania
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Sirat-FB-1080x1080-plakat_OOYdBVY.jpg
-synopsis.length:   376
-cast:              Sergi López, Bruno Núñez, Stefania Gadda, Joshua Liam Henderson, Richard Bellamy
+synopsis.length:   116
+cast:              —
 director:          Oliver Laxe
-tmdbId:            1151272
-imdbId:            tt32298285
-originalTitle:     Sirāt
-imdbRating:        7.0
-metascore:         84
-rottenTomatoes:    90
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
 filmwebRating:     —
-metacriticUrl:     https://www.metacritic.com/movie/sirat
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/sirat
+metacriticUrl:     —
+rottenTomatoesUrl: —
 filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14611-plenerowe-paacowe-sirat/
@@ -6128,6 +6167,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Centrum / Podziemny krąg / —
   Centrum 3D / Podziemny krąg / 1999
+  Cinema City / — / —
   Cinema City Arkadia / Podziemny krąg / 1999
   Cinema City Bemowo / Podziemny krąg / 1999
   Cinema City Bielsko-Biała / Podziemny krąg / 1999
@@ -6500,7 +6540,7 @@ countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7449S2R.jpg
 synopsis.length:   688
 cast:              Ryan Gosling, Sandra Hüller, James Ortiz, Lionel Boyce, Milana Vayntrub
-director:          Phil Lord, Christopher Miller
+director:          Christopher Miller, Phil Lord
 tmdbId:            687163
 imdbId:            tt12042730
 originalTitle:     Project Hail Mary
@@ -6514,6 +6554,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Projekt+Hail+Mary-2026-10047841
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/projekt-hail-mary/7449s2r
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Projekt Hail Mary / 2026
   Cinema City Bonarka / Projekt Hail Mary / 2026
   Cinema City Czerwona Droga / Projekt Hail Mary / 2026
@@ -6676,6 +6717,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14039-poranek-dla-dzieci-pucio/
 cinemaScrapes:
   Bałtyk / Pucio / —
+  Cinema City / — / —
   Cinema City Bonarka / Pucio / 2026
   Cinema City Czerwona Droga / Pucio / 2026
   Cinema City Galeria Północna / Pucio / 2026
@@ -6978,7 +7020,7 @@ displayTitle:      Sprawiedliwość owiec
 cinemaTitles:      SPRAWIEDLIWOŚĆ OWIEC | Sprawiedliwość owiec
 runtimeMinutes:    109
 releaseYear:       2026
-countries:         Irlandia, Wielka Brytania, Niemcy, USA
+countries:         Irlandia, Niemcy, USA, Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7956D2R.jpg
 synopsis.length:   812
 cast:              Nicholas Galitzine, Molly Gordon, Julia Louis-Dreyfus, Bryan Cranston, Chris O’Dowd, Regina Hall, Patrick Stewart, Hong Chau, Emma Thompson, Tosin Cole, Kobna Holdbrook-Smith, Conleth Hill i Mandeep Dhillon
@@ -6998,6 +7040,7 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/sprawiedliwosc-owiec/7956d2r
 cinemaScrapes:
   Centrum 3D Przemyśl / Sprawiedliwość owiec / 2026
+  Cinema City / — / —
   Cinema City Arkadia / Sprawiedliwość owiec / 2026
   Cinema City Bemowo / Sprawiedliwość owiec / 2026
   Cinema City Bielsko-Biała / Sprawiedliwość owiec / 2026
@@ -7073,6 +7116,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Baszta / Straszny film / —
   Bałtyk / Straszny film / —
+  Cinema City / — / —
   Cinema City Arkadia / Straszny film / 2026
   Cinema City Bemowo / Straszny film / 2026
   Cinema City Bielsko-Biała / Straszny film / 2026
@@ -7218,6 +7262,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Straszny+film-2026-10084281
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/straszny-film-ukrainski-dubbing/8117s2r1
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Bonarka / Straszny film ukraiński dubbing / 2026
   Cinema City Bydgoszcz / Straszny film ukraiński dubbing / 2026
   Cinema City Janki / Straszny film ukraiński dubbing / 2026
@@ -7286,6 +7331,7 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/super-mario-galaxy-film/7999d2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/super-mario-galaxy-film-4310
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Super Mario Galaxy Film / 2026
   Cinema City Bemowo / Super Mario Galaxy Film / 2026
   Cinema City Bielsko-Biała / Super Mario Galaxy Film / 2026
@@ -7399,6 +7445,7 @@ cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/supergirl-4342
 cinemaScrapes:
   Bałtyk / Supergirl / —
+  Cinema City / — / —
   Cinema City Arkadia / Supergirl / 2026
   Cinema City Bemowo / Supergirl / 2026
   Cinema City Bielsko-Biała / Supergirl / 2026
@@ -7609,6 +7656,7 @@ cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/the-amazing-digital-circus-the-last-act/8150o2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/the-amazing-digital-circus-the-last-act/8150o2r
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / The Amazing Digital Circus: The Last Act / 2026
   Cinema City Bemowo / The Amazing Digital Circus: The Last Act / 2026
   Cinema City Bielsko-Biała / The Amazing Digital Circus: The Last Act / 2026
@@ -7705,6 +7753,7 @@ cinemaScrapes:
   Baszta / Tom i Jerry: Przygoda w muzeum / —
   Centrum / Tom i Jerry: Przygoda w muzeum / —
   Chemik / Tom i jerry: przygoda w muzeum / —
+  Cinema City / — / —
   Cinema City Arkadia / Tom i Jerry: Przygoda w muzeum / 2026
   Cinema City Bemowo / Tom i Jerry: Przygoda w muzeum / 2026
   Cinema City Bielsko-Biała / Tom i Jerry: Przygoda w muzeum / 2026
@@ -7853,7 +7902,7 @@ displayTitle:      Toy Story 5
 cinemaTitles:      TOY STORY 5 | Toy Story 5 | Toy story 5
 runtimeMinutes:    102
 releaseYear:       2026
-countries:         USA, Japonia
+countries:         Japonia, USA
 posterUrl:         https://img.helios.pl/pliki/film/toy-story-5/toy-story-5-plakat-191.jpg
 synopsis.length:   380
 cast:              Tom Hanks, Tim Allen, Blake Clark, Joan Cusack, Ernie Hudson, Tony Hale
@@ -7877,6 +7926,7 @@ cinemaScrapes:
   Bałtyk / Toy Story 5 / —
   Centrum / Toy Story 5 / —
   Chemik / Toy story 5 / —
+  Cinema City / — / —
   Cinema City Arkadia / Toy Story 5 / 2026
   Cinema City Bemowo / Toy Story 5 / 2026
   Cinema City Bielsko-Biała / Toy Story 5 / 2026
@@ -8026,6 +8076,7 @@ filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/toy-story-5-ukrainski-dubbing/7784d2r1
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Toy Story 5 ukraiński dubbing / 2026
   Cinema City Bonarka / Toy Story 5 ukraiński dubbing / 2026
   Cinema City Bydgoszcz / Toy Story 5 ukraiński dubbing / 2026
@@ -8066,6 +8117,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Nowa+fala-2025-10053131
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/unlimited-show-nowa-fala/7678s2r
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / UNLIMITED SHOW - Nowa Fala / 2025
   Cinema City Bielsko-Biała / UNLIMITED SHOW - Nowa Fala / 2025
   Cinema City Bonarka / UNLIMITED SHOW - Nowa Fala / 2025
@@ -8186,6 +8238,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14499-werdykt/
 cinemaScrapes:
   Centrum / Werdykt / —
+  Cinema City / — / —
   Cinema City Arkadia / Werdykt / 2025
   Cinema City Bonarka / Werdykt / 2025
   Cinema City Kazimierz / Werdykt / 2025
@@ -8486,6 +8539,7 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/wladcy-wszechswiata/7992s2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/wladcy-wszechswiata-4464
 cinemaScrapes:
+  Cinema City / — / —
   Cinema City Arkadia / Władcy Wszechświata / 2026
   Cinema City Bemowo / Władcy Wszechświata / 2026
   Cinema City Bielsko-Biała / Władcy Wszechświata / 2026
@@ -8707,6 +8761,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Centrum / Zawodowcy / —
   Centrum 3D / Zawodowcy / 2026
+  Cinema City / — / —
   Cinema City Arkadia / Zawodowcy / 2025
   Cinema City Bemowo / Zawodowcy / 2025
   Cinema City Bielsko-Biała / Zawodowcy / 2025

@@ -93,10 +93,9 @@ object CinemaScraper {
 class CinemaCityScraper(
   client:   CinemaCityClient,
   cinemaId: String,
-  val cinema: Cinema,
-  deferDetail: Boolean = false
+  val cinema: Cinema
 ) extends CinemaScraper with DetailEnricher {
-  def fetch(): Seq[CinemaMovie] = client.fetch(cinemaId, cinema, deferDetail)
+  def fetch(): Seq[CinemaMovie] = client.fetch(cinemaId, cinema)
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(CinemaCityClient.BaseApiUrl)
   // The numeric `cinemaId` is Cinema City's externalCode (e.g. 1078 = Poznań
   // Plaza); the public venue page is `/kina/<slug>/<id>` where the id is

@@ -11,10 +11,10 @@ import java.time.LocalDateTime
 class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
 
   private val fake    = new FakeHttpFetch("kino-apollo")
-  // Deferred-detail ON: fetch() returns BARE movies (showtimes + poster +
-  // filmUrl); detail is fetched separately via fetchFilmDetail. The structural
-  // assertions below run on these bare results.
-  private val client  = new KinoApolloClient(fake, deferDetail = true)
+  // fetch() returns BARE movies (showtimes + poster + filmUrl); detail is
+  // fetched separately via fetchFilmDetail. The structural assertions below run
+  // on these bare results.
+  private val client  = new KinoApolloClient(fake)
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
@@ -297,12 +297,4 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
     detailOf(niewinniTitle).flatMap(_.trailerUrl)       shouldBe Some("https://www.youtube.com/watch?v=RYlitj4DpgE")
   }
 
-  // The legacy inline path (deferDetail off, the current default) still enriches
-  // movies during fetch() by chasing each film's detail page.
-  "KinoApolloClient.fetch with deferDetail off" should "enrich movies inline from detail pages" in {
-    val enriched = new KinoApolloClient(fake).fetch().map(cm => cm.movie.title -> cm).toMap
-    enriched("Znaki Pana Śliwki").movie.runtimeMinutes shouldBe Some(72)
-    enriched("Drzewo Magii").director                  shouldBe Seq("Ben Gregor")
-    enriched("Drzewo Magii").synopsis.exists(_.startsWith("Polly i Tim")) shouldBe true
-  }
 }

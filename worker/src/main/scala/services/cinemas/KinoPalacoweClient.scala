@@ -3,13 +3,12 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import play.api.libs.json._
-import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch}
 
 import java.time.LocalDateTime
-import scala.concurrent.duration._
 import scala.util.Try
 
-class KinoPalacoweClient(http: HttpFetch, deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
+class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
 
   val cinema: Cinema = KinoPalacowe
   private val BaseUrl = "https://kinopalacowe.pl"
@@ -111,14 +110,7 @@ class KinoPalacoweClient(http: HttpFetch, deferDetail: Boolean = false) extends 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
-  // the per-film detail-page URL) and the detail is filled in later by an
-  // EnrichDetails task via `fetchFilmDetail` — so a scrape pass doesn't block on
-  // N detail-page round-trips. When off (default), it enriches inline as before.
-  def fetch(): Seq[CinemaMovie] = {
-    val bare = parseBare(fetchAllEntries())
-    if (deferDetail) bare else enrichInline(bare)
-  }
+  def fetch(): Seq[CinemaMovie] = parseBare(fetchAllEntries())
 
   private def parseBare(entries: Seq[ScreeningEntry]): Seq[CinemaMovie] =
     entries
@@ -139,15 +131,6 @@ class KinoPalacoweClient(http: HttpFetch, deferDetail: Boolean = false) extends 
           trailerUrl = None
         )
       }
-
-  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
-    val urls = movies.flatMap(_.filmUrl).distinct
-    if (urls.isEmpty) movies
-    else {
-      val metas = ParallelDetailFetch("kino-palacowe-meta", urls, 2.minutes)(u => fetchFilmDetail(u))
-      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
-    }
-  }
 
   override val detailGroup: String = "kino-palacowe"
 

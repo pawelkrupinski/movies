@@ -4,7 +4,7 @@ import clients.tools.FakeHttpFetch
 import models.{DolnoslaskieCentrumFilmowe, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.DcfClient
+import services.cinemas.{DcfClient, FilmDetail}
 
 import java.time.LocalDateTime
 
@@ -13,6 +13,11 @@ class DcfClientSpec extends AnyFlatSpec with Matchers {
   private val client  = new DcfClient(new FakeHttpFetch("dcf"))
   private val results  = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
+
+  private def detailFor(title: String): FilmDetail =
+    client.fetchFilmDetail(
+      byTitle.getOrElse(title, fail(s"no movie for '$title'")).filmUrl.getOrElse(fail(s"no filmUrl for '$title'"))
+    ).getOrElse(fail(s"fetchFilmDetail returned None for '$title'"))
 
   "DcfClient.fetch" should "return 32 films grouped by cleaned title" in {
     results.size shouldBe 32
@@ -47,15 +52,16 @@ class DcfClientSpec extends AnyFlatSpec with Matchers {
 
   it should "enrich metadata from the Bilety24 event page" in {
     val m = byTitle("Obsesja")
-    m.movie.runtimeMinutes shouldBe Some(127)
-    m.movie.releaseYear    shouldBe Some(2025)
-    m.movie.countries      shouldBe Seq("USA")
-    m.movie.genres         shouldBe Seq("Horror")
-    m.director             shouldBe Seq("Curry Barker")
-    m.posterUrl            shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/obsesja-plakat-net.jpg")
-    m.filmUrl              shouldBe Some("https://dcf.bilety24.pl/wydarzenie/?id=157574")
-    m.synopsis.getOrElse("").length should be > 50
-    m.trailerUrl           shouldBe Some("https://www.youtube.com/watch?v=C-h48bml6k0")
+    val d = detailFor("Obsesja")
+    d.runtimeMinutes shouldBe Some(127)
+    d.releaseYear    shouldBe Some(2025)
+    d.countries      shouldBe Seq("USA")
+    d.genres         shouldBe Seq("Horror")
+    d.director       shouldBe Seq("Curry Barker")
+    m.posterUrl      shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/obsesja-plakat-net.jpg")
+    m.filmUrl        shouldBe Some("https://dcf.bilety24.pl/wydarzenie/?id=157574")
+    d.synopsis.getOrElse("").length should be > 50
+    d.trailerUrl     shouldBe Some("https://www.youtube.com/watch?v=C-h48bml6k0")
   }
 
   it should "return the first Obsesja showtime fully specified" in {

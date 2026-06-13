@@ -79,10 +79,12 @@ object RecordAllDataToFixture extends TestWiring {
   }
 
   def main(args: Array[String]): Unit = {
-  // 1. Production-shape pass: every cinema scrape fires, every bus event
-  //    cascades through the worker pools, the cascade drains in
-  //    producer→consumer order.
+  // 1. Production-shape pass: every cinema scrape fires (bare), the enqueued
+  //    EnrichDetails tasks are drained so each film's detail page is fetched +
+  //    recorded, then every bus event cascades through the worker pools and the
+  //    cascade drains in producer→consumer order.
   scrapeAllOnce()
+  enrichDetailsSync()
   drainServices()
 
   // 2. Safety-net pass: synchronously force every cache row through the

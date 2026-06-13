@@ -4,7 +4,7 @@ import clients.tools.FakeHttpFetch
 import models.{Kinomuzeum, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinomuzeumClient
+import services.cinemas.{FilmDetail, KinomuzeumClient}
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -14,6 +14,11 @@ class KinomuzeumClientSpec extends AnyFlatSpec with Matchers {
   private val client  = new KinomuzeumClient(new FakeHttpFetch("kinomuzeum"), today)
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
+
+  private def detailFor(title: String): FilmDetail =
+    client.fetchFilmDetail(
+      byTitle(title).filmUrl.getOrElse(fail(s"no filmUrl for $title"))
+    ).getOrElse(fail(s"no detail for $title"))
 
   "KinomuzeumClient.fetch" should "return 16 films and 38 showtimes" in {
     results.size shouldBe 16
@@ -28,14 +33,18 @@ class KinomuzeumClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Ojczyzna").showtimes.size shouldBe 7
   }
 
-  it should "enrich runtime / year / countries / director from the detail page" in {
+  it should "carry the film page URL and listing poster on the bare fetch result" in {
     val m = byTitle("Milcząca przyjaciółka")
-    m.movie.runtimeMinutes shouldBe Some(147)
-    m.movie.releaseYear    shouldBe Some(2025)
-    m.movie.countries      shouldBe Seq("Niemcy", "Francja", "Węgry")
-    m.director             shouldBe Seq("Ildiko Enyedi")
     m.filmUrl              shouldBe Some("https://artmuseum.pl/wydarzenia/milczaca-przyjaciolka-1")
     m.posterUrl.getOrElse("") should startWith ("https://api-sf.artmuseum.pl")
+  }
+
+  it should "enrich runtime / year / countries / director from the detail page" in {
+    val d = detailFor("Milcząca przyjaciółka")
+    d.runtimeMinutes shouldBe Some(147)
+    d.releaseYear    shouldBe Some(2025)
+    d.countries      shouldBe Seq("Niemcy", "Francja", "Węgry")
+    d.director       shouldBe Seq("Ildiko Enyedi")
   }
 
   it should "resolve section-header dates and build sklep booking URLs" in {

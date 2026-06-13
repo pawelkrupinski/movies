@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.{Cinema, CinemaMovie, Source, SourceData}
+import models.{Cinema, Source, SourceData}
 
 /**
  * The per-film detail fields a cinema fetches *separately* from its listing —
@@ -23,16 +23,11 @@ case class FilmDetail(
   posterUrl:      Option[String] = None,
   trailerUrl:     Option[String] = None
 ) {
-  // Both merges treat the LISTING/bare values as authoritative and let the
-  // detail only FILL GAPS (a present listing value is never replaced by a detail
-  // one). For every field except poster the bare movie is empty, so this is
-  // identical to "detail fills it in"; for poster it preserves the cinema's own
-  // listing poster (which several clients prefer over the detail-page poster) —
-  // matching the pre-split per-client merges.
-
   /** Fill gaps in an existing cinema `SourceData` slot from these detail fields,
-   *  preserving the slot's showtimes/title/filmUrl. Used by the deferred (queue)
-   *  path. */
+   *  preserving the slot's showtimes/title/filmUrl. Treats the listing/bare
+   *  values as authoritative — a present listing value is never replaced by a
+   *  detail one; for poster it preserves the cinema's own listing poster (which
+   *  several clients prefer over the detail-page poster). */
   def mergeInto(slot: SourceData): SourceData = slot.copy(
     synopsis       = slot.synopsis.orElse(synopsis),
     cast           = if (slot.cast.nonEmpty) slot.cast else cast,
@@ -44,24 +39,6 @@ case class FilmDetail(
     genres         = if (slot.genres.nonEmpty) slot.genres else genres,
     posterUrl      = slot.posterUrl.orElse(posterUrl),
     trailerUrl     = slot.trailerUrl.orElse(trailerUrl)
-  )
-
-  /** Fill gaps in a bare `CinemaMovie` from these detail fields. Used by the
-   *  inline path so every client's "merge detail onto the movie" rule lives here
-   *  rather than being re-spelled per client. */
-  def applyTo(cm: CinemaMovie): CinemaMovie = cm.copy(
-    movie = cm.movie.copy(
-      runtimeMinutes = cm.movie.runtimeMinutes.orElse(runtimeMinutes),
-      releaseYear    = cm.movie.releaseYear.orElse(releaseYear),
-      originalTitle  = cm.movie.originalTitle.orElse(originalTitle),
-      countries      = if (cm.movie.countries.nonEmpty) cm.movie.countries else countries,
-      genres         = if (cm.movie.genres.nonEmpty) cm.movie.genres else genres
-    ),
-    synopsis   = cm.synopsis.orElse(synopsis),
-    cast       = if (cm.cast.nonEmpty) cm.cast else cast,
-    director   = if (cm.director.nonEmpty) cm.director else director,
-    posterUrl  = cm.posterUrl.orElse(posterUrl),
-    trailerUrl = cm.trailerUrl.orElse(trailerUrl)
   )
 }
 

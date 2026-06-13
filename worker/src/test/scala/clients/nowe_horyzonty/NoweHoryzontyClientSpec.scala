@@ -4,7 +4,7 @@ import clients.tools.FakeHttpFetch
 import models.{KinoNoweHoryzonty, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.NoweHoryzontyClient
+import services.cinemas.{FilmDetail, NoweHoryzontyClient}
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -17,6 +17,10 @@ class NoweHoryzontyClientSpec extends AnyFlatSpec with Matchers {
   private val client  = new NoweHoryzontyClient(new FakeHttpFetch("nowe-horyzonty"), today)
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
+
+  private def detailFor(title: String): FilmDetail =
+    client.fetchFilmDetail(byTitle(title).filmUrl.getOrElse(fail(s"no filmUrl for $title")))
+      .getOrElse(fail(s"no detail for $title"))
 
   // Regression guard for the under-scrape bug: scraping `program.s` returned
   // only ~1 slot per film (~14 live), whole films missing. The arthouse runs
@@ -45,21 +49,22 @@ class NoweHoryzontyClientSpec extends AnyFlatSpec with Matchers {
 
   it should "enrich metadata from the op.s detail page" in {
     val m = byTitle("Obsesja")
-    m.movie.runtimeMinutes shouldBe Some(108)
-    m.movie.releaseYear    shouldBe Some(2025)
-    m.movie.originalTitle  shouldBe Some("Obsession")
-    m.movie.countries      shouldBe Seq("USA")
-    m.movie.genres         shouldBe Seq("Horror")
-    m.director             shouldBe Seq("Curry Barker")
-    m.filmUrl              shouldBe Some("https://www.kinonh.pl/op.s?id=22588")
-    m.synopsis.getOrElse("").length should be > 30
+    m.filmUrl shouldBe Some("https://www.kinonh.pl/op.s?id=22588")
+    val d = detailFor("Obsesja")
+    d.runtimeMinutes shouldBe Some(108)
+    d.releaseYear    shouldBe Some(2025)
+    d.originalTitle  shouldBe Some("Obsession")
+    d.countries      shouldBe Seq("USA")
+    d.genres         shouldBe Seq("Horror")
+    d.director       shouldBe Seq("Curry Barker")
+    d.synopsis.getOrElse("").length should be > 30
   }
 
   it should "parse a multi-genre film and keep its original title" in {
-    val m = byTitle("Diabeł ubiera się u Prady 2")
-    m.movie.originalTitle shouldBe Some("The Devil Wears Prada 2")
-    m.movie.genres        shouldBe Seq("Komedia", "Dramat")
-    m.movie.countries     shouldBe Seq("USA")
+    val d = detailFor("Diabeł ubiera się u Prady 2")
+    d.originalTitle shouldBe Some("The Devil Wears Prada 2")
+    d.genres        shouldBe Seq("Komedia", "Dramat")
+    d.countries     shouldBe Seq("USA")
   }
 
   it should "build booking URLs from the day's eventId, dated by the requested day" in {

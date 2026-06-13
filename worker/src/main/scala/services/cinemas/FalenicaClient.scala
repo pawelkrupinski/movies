@@ -19,12 +19,9 @@ import scala.util.Try
  * Two-phase fetch: the repertoire listing yields one entry per film with title,
  * runtime, director, poster, and the per-film detail-page URL stored in
  * `filmUrl`. The detail page is fetched per film for showtimes (always) and
- * for synopsis + trailerUrl (inline only). When `deferDetail` is true,
- * `fetch()` returns bare movies (showtimes populated, synopsis/trailerUrl
- * absent) and the detail is filled in later by an `EnrichDetails` task via
- * `fetchFilmDetail` — so a scrape pass doesn't block on extra per-film fetches.
+ * for synopsis + trailerUrl (via `fetchFilmDetail`).
  */
-class FalenicaClient(http: HttpFetch, deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
+class FalenicaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
 
   // Static film detail pages cached across passes; the repertoire listing keeps
   // the live `http` since its showtimes change every pass.
@@ -42,10 +39,6 @@ class FalenicaClient(http: HttpFetch, deferDetail: Boolean = false) extends Cine
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
-  // the per-film detail-page URL, but without synopsis or trailerUrl) and the
-  // enrichment fields are filled in later by an EnrichDetails task via
-  // `fetchFilmDetail`. When off (default), it enriches inline as before.
   def fetch(): Seq[CinemaMovie] = {
     val films = Jsoup.parse(http.get(ListingUrl)).select("article.filmy").asScala.toSeq.flatMap(parseListItem)
       .filterNot(_.slug.contains("__trashed")).distinctBy(_.slug)
@@ -54,7 +47,7 @@ class FalenicaClient(http: HttpFetch, deferDetail: Boolean = false) extends Cine
       Try(http.get(url)).toOption.map(Jsoup.parse)
     }
 
-    val bare = films.flatMap { f =>
+    films.flatMap { f =>
       val detail    = pages.getOrElse(f.slug, None)
       val showtimes = detail.toSeq.flatMap(parseShowtimes).distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
       if (showtimes.isEmpty) None
@@ -69,16 +62,6 @@ class FalenicaClient(http: HttpFetch, deferDetail: Boolean = false) extends Cine
         showtimes = showtimes,
         trailerUrl = None
       ))
-    }
-    if (deferDetail) bare else enrichInline(bare)
-  }
-
-  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
-    val urls = movies.flatMap(_.filmUrl).distinct
-    if (urls.isEmpty) movies
-    else {
-      val metas = ParallelDetailFetch("falenica-enrichment", urls, 1.minute)(u => fetchFilmDetail(u))
-      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
     }
   }
 

@@ -4,7 +4,7 @@ import clients.tools.FakeHttpFetch
 import models.{KinoIluzjon, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.IluzjonClient
+import services.cinemas.{FilmDetail, IluzjonClient}
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -14,6 +14,11 @@ class IluzjonClientSpec extends AnyFlatSpec with Matchers {
   private val client  = new IluzjonClient(new FakeHttpFetch("iluzjon"), today)
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
+
+  private def detailFor(title: String): FilmDetail =
+    client.fetchFilmDetail(
+      byTitle(title).filmUrl.getOrElse(fail(s"no filmUrl for $title"))
+    ).getOrElse(fail(s"no detail for $title"))
 
   "IluzjonClient.fetch" should "return 29 films and 54 showtimes" in {
     results.size shouldBe 29
@@ -32,18 +37,20 @@ class IluzjonClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "enrich runtime / year / countries / director from the detail page" in {
-    val m = byTitle("Zawieście czerwone latarnie")
-    m.movie.runtimeMinutes shouldBe Some(125)
-    m.movie.releaseYear    shouldBe Some(1991)
-    m.movie.countries      shouldBe Seq("Chiny", "Hongkong", "Tajwan")
-    m.posterUrl            shouldBe Some("https://www.iluzjon.fn.org.pl/public/covers/movie-7815.jpg")
-    m.synopsis.getOrElse("").length should be > 20
+    val d = detailFor("Zawieście czerwone latarnie")
+    d.runtimeMinutes shouldBe Some(125)
+    d.releaseYear    shouldBe Some(1991)
+    d.countries      shouldBe Seq("Chiny", "Hongkong", "Tajwan")
+    // posterUrl is a LISTING field (the repertoire card's `covers/` image); the
+    // detail page carries a different `cache/` poster, so assert the bare movie.
+    byTitle("Zawieście czerwone latarnie").posterUrl shouldBe Some("https://www.iluzjon.fn.org.pl/public/covers/movie-7815.jpg")
+    d.synopsis.getOrElse("").length should be > 20
   }
 
   it should "read cast and original title from the detail page" in {
-    val m = byTitle("Zawieście czerwone latarnie")
-    m.cast                shouldBe Seq("Gong Li", "Saifei He", "Jingwu Ma", "Cuifen Cao")
-    m.movie.originalTitle shouldBe Some("Da hong deng long gao gao gua")
+    val d = detailFor("Zawieście czerwone latarnie")
+    d.cast          shouldBe Seq("Gong Li", "Saifei He", "Jingwu Ma", "Cuifen Cao")
+    d.originalTitle shouldBe Some("Da hong deng long gao gao gua")
   }
 
   it should "carry the auditorium and a Filmoteka booking URL on each showtime" in {

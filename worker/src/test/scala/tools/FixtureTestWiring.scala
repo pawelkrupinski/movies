@@ -61,6 +61,11 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
         created ++= CinemaScrapeRunner.eventsFor(touched)
       } catch { case _: Exception => () }
     }
+    // Cinemas that defer detail scrape BARE; fill each row's per-film detail via
+    // the EnrichDetails queue tasks NOW — before the MovieRecordCreated publish
+    // below starts the TMDB stage — so a detail-page director/originalTitle/year
+    // is present when TMDB resolves (the pre-deferral inline path had it already).
+    enrichDetailsSync()
     created.foreach(eventBus.publish)
   }
 

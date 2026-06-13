@@ -4,7 +4,7 @@ import clients.tools.FakeHttpFetch
 import models.{Kinoteka, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinotekaClient
+import services.cinemas.{FilmDetail, KinotekaClient}
 
 import java.time.LocalDateTime
 
@@ -13,6 +13,11 @@ class KinotekaClientSpec extends AnyFlatSpec with Matchers {
   private val client  = new KinotekaClient(new FakeHttpFetch("kinoteka"))
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
+
+  private def detailFor(title: String): FilmDetail =
+    client.fetchFilmDetail(
+      byTitle(title).filmUrl.getOrElse(fail(s"no filmUrl for $title"))
+    ).getOrElse(fail(s"no detail for $title"))
 
   "KinotekaClient.fetch" should "walk the date nav and return 82 films / 268 showtimes" in {
     results.size shouldBe 82
@@ -23,22 +28,26 @@ class KinotekaClientSpec extends AnyFlatSpec with Matchers {
     results.map(_.cinema).toSet shouldBe Set(Kinoteka)
   }
 
-  it should "merge a film across days and enrich from its detail page" in {
+  it should "merge a film across days and carry listing fields on the bare fetch result" in {
     val m = byTitle("Zawodowcy")
     m.showtimes.size       shouldBe 28
-    m.movie.runtimeMinutes shouldBe Some(100)
-    m.movie.releaseYear    shouldBe Some(2026)
-    m.movie.countries      shouldBe Seq("USA", "Wielka Brytania")
     m.movie.genres         shouldBe Seq("Akcja", "Dramat")
-    m.movie.originalTitle  shouldBe Some("In the Grey")
     m.filmUrl              shouldBe Some("https://kinoteka.pl/film/zawodowcy/")
     byTitle("Diabeł ubiera się u Prady 2").showtimes.size shouldBe 21
   }
 
+  it should "enrich runtime / year / countries / original title from the detail page" in {
+    val d = detailFor("Zawodowcy")
+    d.runtimeMinutes shouldBe Some(100)
+    d.releaseYear    shouldBe Some(2026)
+    d.countries      shouldBe Seq("USA", "Wielka Brytania")
+    d.originalTitle  shouldBe Some("In the Grey")
+  }
+
   it should "read the cast list and the YouTube trailer off the detail page" in {
-    val m = byTitle("Zawodowcy")
-    m.cast       shouldBe Seq("Henry Cavill", "Rosamund Pike", "Jake Gyllenhaal")
-    m.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=AYq1ljpbNfA")
+    val d = detailFor("Zawodowcy")
+    d.cast       shouldBe Seq("Henry Cavill", "Rosamund Pike", "Jake Gyllenhaal")
+    d.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=AYq1ljpbNfA")
   }
 
   it should "carry the screening booking URL with absolute date" in {

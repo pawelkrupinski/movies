@@ -17,7 +17,7 @@ import scala.util.Try
  * The per-film page adds the synopsis. The date comes from the `ut`, so the
  * replay is deterministic. Booking is the film page (no stable deep-link).
  */
-class UjazdowskiClient(http: HttpFetch, deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
+class UjazdowskiClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
 
   // Static film pages cached across passes; the listing/day pages stay live.
   private val detailHttp = new CachingDetailFetch(http)
@@ -36,14 +36,7 @@ class UjazdowskiClient(http: HttpFetch, deferDetail: Boolean = false) extends Ci
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  // When deferDetail is on, fetch() returns BARE movies (showtimes + the
-  // listing-meta fields: runtime/year/countries/director/poster + the film-page
-  // URL); the synopsis + original title are filled later by an EnrichDetails task
-  // via `fetchFilmDetail`. Off, it enriches inline.
-  def fetch(): Seq[CinemaMovie] = {
-    val bare = fetchBare()
-    if (deferDetail) bare else enrichInline(bare)
-  }
+  def fetch(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
     val main = http.get(ListingUrl)
@@ -77,17 +70,6 @@ class UjazdowskiClient(http: HttpFetch, deferDetail: Boolean = false) extends Ci
           showtimes = showtimes
         ))
       }
-    }
-  }
-
-  // Inline path: fetch each film's detail in parallel through the same
-  // `fetchFilmDetail` the deferred path uses, then merge non-destructively.
-  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
-    val urls = movies.flatMap(_.filmUrl).distinct
-    if (urls.isEmpty) movies
-    else {
-      val metas = ParallelDetailFetch("ujazdowski-details", urls, 1.minute)(u => fetchFilmDetail(u))
-      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
     }
   }
 
