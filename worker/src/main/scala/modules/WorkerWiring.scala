@@ -7,15 +7,17 @@ import services.alerts.{FallbackAlert, FilmwebDropAlerter, TelegramNotifier}
 import services.cinemas._
 import services.enrichment._
 import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
-import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete}
+import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete, StagingFilmEnriched}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, MongoNormalizationReportRepo, NormalizationRebuilder, NormalizationReport, NormalizationReportRepo, UnscreenedCleanup}
 import services.readmodel.{MongoReadModelRepo, ReadModelProjector, ReadModelReader, ReadModelWriter}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
+import services.staging.{MongoStagingFolder, MongoStagingRepo, StagingFolder, StagingPromoter, StagingRepo}
 import services.titlerules.{MongoTitleRulesRepo, TitleRuleSet, TitleRulesCache, TitleRulesRepo}
-import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
+import tools.{DaemonExecutors, Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.DurationLong
 
 /**
@@ -28,7 +30,7 @@ import scala.concurrent.duration.DurationLong
  * This is the scrape/enrich half of what used to be the monolith's single
  * `Wiring`; the serving half now lives in the web app's `modules.Wiring`.
  */
-class WorkerWiring {
+class WorkerWiring extends play.api.Logging {
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database)
   // `cinemaScraperCatalog.scrapeHosts` is passed BY-NAME (the catalog fetches
   // through this very `httoFetch`, so eager evaluation would cycle). It's forced
@@ -207,7 +209,15 @@ class WorkerWiring {
 
   // ── MovieRecord cache (write-through) ───────────────────────────────────────
   lazy val movieRepo: MovieRepo = new MongoMovieRepo(mongoConnection.database, fallbackToOwnInit = false)
-  lazy val movieCache: CaffeineMovieCache = new CaffeineMovieCache(movieRepo, eventBus)
+
+  // Staging-ingest: when enabled, a genuinely-new film incubates in
+  // `pending_movies` (resolve-then-fold) instead of landing straight in
+  // `movies`. Off by default — `movieCache.staging = None` means every scrape
+  // lands in `movies` exactly as before, so this is a no-op until the flag flips.
+  lazy val stagingIngestEnabled: Boolean = Env.get("KINOWO_STAGING_INGEST").exists(v => v == "true" || v == "1")
+  lazy val stagingRepo: StagingRepo = new MongoStagingRepo(mongoConnection.database)
+  lazy val movieCache: CaffeineMovieCache =
+    new CaffeineMovieCache(movieRepo, eventBus, staging = if (stagingIngestEnabled) Some(stagingRepo) else None)
 
   // ── Denormalised read model (web_movies + web_screenings) ───────────────────
   // The worker projects every `movies` write into the two read-model collections
@@ -330,6 +340,21 @@ class WorkerWiring {
   lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
     runStore = scheduledRunStore)
 
+  // ── Staging incubation (resolve-then-fold) ──────────────────────────────────
+  // The promoter walks `pending_movies` each tick: detail-enrich (reusing the
+  // same DetailEnrichers), then TMDB-resolve via the cache-free
+  // `resolveStagingRecord`; on conclusion it publishes `StagingFilmEnriched`. The
+  // transactional folder (replica-set Mongo) merges the concluded film into
+  // `movies` and deletes its staging rows. Only scheduled/subscribed when the
+  // flag is on (below) — otherwise these are dormant.
+  lazy val stagingFolder: StagingFolder = new MongoStagingFolder(mongoConnection)
+  lazy val stagingPromoter = new StagingPromoter(
+    stagingRepo, detailEnrichers, movieService.resolveStagingRecord,
+    onConcluded = row => eventBus.publish(StagingFilmEnriched(row.title, row.year)))
+  private val stagingPromoterScheduler = DaemonExecutors.scheduler("staging-promoter")
+  private val StagingPromoterInitialDelay = Env.positiveLong("KINOWO_STAGING_PROMOTE_INITIAL_SECONDS", 30L)
+  private val StagingPromoterInterval     = Env.positiveLong("KINOWO_STAGING_PROMOTE_SECONDS", 120L)
+
   // Rating refresh as queue tasks. The handlers reuse each *Ratings class's
   // per-row refreshOneSync; the enqueuer turns the resolution bus events into
   // rating tasks; the reaper is the periodic (staggered 4h) backstop.
@@ -393,6 +418,10 @@ class WorkerWiring {
   eventBus.subscribe(ratingEnqueuer.onTmdbResolved)
   eventBus.subscribe(ratingEnqueuer.onImdbIdResolved)
   eventBus.subscribe(ratingEnqueuer.onImdbIdMissing)
+  // A concluded newcomer folds into `movies` (transactionally) the moment the
+  // promoter publishes — only wired when staging ingest is on.
+  if (stagingIngestEnabled)
+    eventBus.subscribe { case StagingFilmEnriched(title, year) => stagingFolder.foldFilm(title, year) }
 
   def start(): Unit = {
     // Force Mongo at boot so connection errors surface in the boot timeline.
@@ -433,6 +462,15 @@ class WorkerWiring {
     enrichmentReaper.start()
     detailReaper.start()
     scrapeReaper.start()
+    if (stagingIngestEnabled) {
+      logger.info(s"Staging ingest ENABLED — incubating newcomers in pending_movies " +
+        s"(promote every ${StagingPromoterInterval}s, first in ${StagingPromoterInitialDelay}s).")
+      stagingPromoterScheduler.scheduleAtFixedRate(
+        () => scala.util.Try(stagingPromoter.runOnce()).recover {
+          case e => logger.warn(s"Staging promoter tick failed: ${e.getMessage}")
+        },
+        StagingPromoterInitialDelay, StagingPromoterInterval, TimeUnit.SECONDS)
+    }
   }
 
   /** Event-cascade drain order, producer→consumer (see monolith comment). Only
@@ -441,6 +479,7 @@ class WorkerWiring {
   def cascadeDrainOrder: Seq[Stoppable] = Seq(movieService, imdbIdResolver)
 
   def stop(): Unit = {
+    stagingPromoterScheduler.shutdown()
     scrapeReaper.stop()
     enrichmentReaper.stop()
     detailReaper.stop()
