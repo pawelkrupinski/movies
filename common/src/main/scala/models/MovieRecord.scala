@@ -260,10 +260,19 @@ case class MovieRecord(
    *  so this is trivially true for them. */
   def detailDone: Boolean = !detailPending
 
-  /** Ready to publish to the read model: cinema detail concluded AND TMDB
-   *  concluded. Holding un-ready rows back is what keeps the pre-enrichment
-   *  yearless orphan (`sanitize(title)|`) from ever reaching `web_movies`. */
-  def readyToProject: Boolean = detailDone && tmdbConcluded
+  /** Ready to publish to the read model. TMDB must have concluded (a hit, or a
+   *  definitive `tmdbNoMatch`) — holding un-concluded rows back is what keeps the
+   *  pre-enrichment yearless orphan (`sanitize(title)|`) out of `web_movies`.
+   *
+   *  Cinema detail (`detailPending`) only gates a row that has NO TMDB data: a
+   *  `tmdbNoMatch` row's poster/synopsis can come only from the cinema detail
+   *  page, so it waits for that. A TMDB-resolved row already carries TMDB's
+   *  poster/synopsis/ratings and its showtimes come from the listing tick, so a
+   *  still-pending — or permanently failing — cinema detail must NOT hold it
+   *  back; otherwise one flaky detail page hides an otherwise-complete film from
+   *  every cinema (the "Dzień objawienia" disappearance). The detail, when it
+   *  lands, just adds cinema-specific extras. */
+  def readyToProject: Boolean = tmdbConcluded && (tmdbId.isDefined || detailDone)
 
   /** Polish-language genre names — first non-empty list in genre-priority
    *  order: TMDB → Filmweb → cinema slots (in their normal priority order).

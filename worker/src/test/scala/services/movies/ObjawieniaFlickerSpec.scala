@@ -128,6 +128,38 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
     resolved.tmdbId shouldBe Some(1275779)
   }
 
+  // The "held resolved row" bug: a film is fully TMDB-resolved (tmdbId +
+  // ratings + TMDB poster/synopsis) and carries its showtimes from the listing
+  // tick, but ONE deferred cinema's detail-page fetch never concludes, so
+  // `detailPending` stays true forever. Gating projection on detail completion
+  // then hides an otherwise-complete film from EVERY cinema indefinitely — the
+  // "Dzień objawienia" disappearance. A TMDB-resolved row must project even
+  // while a cinema detail is still outstanding; the detail only adds
+  // cinema-specific extras the resolved row doesn't need to be displayable.
+  "a TMDB-resolved row with a still-pending cinema detail" should "project anyway, not be held back" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
+    cache.put(cache.keyOf(Title, Some(2026)),
+      MovieRecord(tmdbId = Some(1275779), imdbId = Some("tt15047880"),
+        detailPending = true, data = Map(slot(Helios, Some(2026)))))
+
+    projectedCinemas(cache) shouldBe Set(Helios)
+  }
+
+  // Negative control: with no TMDB data at all, the cinema detail IS the only
+  // source of a poster/synopsis, so a not-yet-concluded detail keeps the row
+  // held — and a pre-enrichment orphan (neither tmdbId nor tmdbNoMatch) stays
+  // out of the read model. The resolved-row relaxation above must not weaken
+  // either case.
+  "an unresolved row with a pending detail" should "stay held back until detail concludes" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
+    cache.put(cache.keyOf(Title, Some(2026)),
+      MovieRecord(tmdbNoMatch = true, detailPending = true, data = Map(slot(Helios, Some(2026)))))
+    projectedCinemas(cache) shouldBe empty
+
+    cache.put(cache.keyOf(Title, None), MovieRecord(data = Map(slot(Multikino, None))))
+    projectedCinemas(cache) shouldBe empty
+  }
+
   // ── PART A: conclusion settles the film's group in one merged write ─────────
 
   "a TMDB HIT" should "fold a stranded yearless sibling onto the resolved row at conclusion" in {
