@@ -78,6 +78,18 @@ trait StagingRepo {
   def close(): Unit = ()
 }
 
+object StagingRepo {
+  /** A disabled, empty no-op `StagingRepo` — the default for callers that don't
+   *  wire staging (e.g. the web `/debug` controller in tests, or any non-staging
+   *  build). `findAll` is empty and writes are dropped. */
+  val empty: StagingRepo = new StagingRepo {
+    def enabled: Boolean = false
+    def findAll(): Seq[StagingRecord] = Seq.empty
+    def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = ()
+    def delete(cinema: Source, title: String, year: Option[Int]): Unit = ()
+  }
+}
+
 /**
  * MongoDB-backed `StagingRepo` over the `pending_movies` collection. Reuses the
  * `movies` storage shape (`StoredMovieDto` + `MovieCodecs.registry`) — a staging

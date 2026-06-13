@@ -231,6 +231,10 @@ class MovieController( cc: ControllerComponents,
                        // snapshot. Evaluated per request so it tracks live retags;
                        // used only by the /debug table to link cinema names.
                        cinemaSourceUrls: () => Map[String, String] = () => Map.empty,
+                       // Read-only, on-demand: the /debug "pending enrichment" section
+                       // lists the per-cinema newcomer rows incubating in
+                       // `pending_movies`. Empty no-op when staging isn't wired.
+                       stagingRepo: services.staging.StagingRepo = services.staging.StagingRepo.empty,
                      ) extends AbstractController(cc) with Logging {
 
   // Read the session's `userId` (set by `AuthController.callback`) and
@@ -417,7 +421,10 @@ class MovieController( cc: ControllerComponents,
       // Pulled on demand from Mongo: the web doesn't keep the `movies` model
       // warm, so the corpus dump reads the source rows the read model is
       // projected from directly.
-      Ok(views.html.debug(movieRepo.findAll().sortBy(_.title.toLowerCase), cinemaSourceUrls()))
+      Ok(views.html.debug(
+        movieRepo.findAll().sortBy(_.title.toLowerCase),
+        cinemaSourceUrls(),
+        stagingRepo.findAll().sortBy(r => (r.title.toLowerCase, r.cinema.displayName))))
     }
   }
 

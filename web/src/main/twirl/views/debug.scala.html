@@ -1,5 +1,5 @@
 @import services.movies.StoredMovieRecord
-@(rows: Seq[StoredMovieRecord], cinemaUrls: Map[String, String] = Map.empty)(implicit city: models.City)
+@(rows: Seq[StoredMovieRecord], cinemaUrls: Map[String, String] = Map.empty, staging: Seq[services.staging.StagingRecord] = Seq.empty)(implicit city: models.City)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -137,6 +137,27 @@
 <body>
 
 @_debugNavbar("corpus")
+@if(staging.nonEmpty) {
+  <h1>Pending enrichment (staging) · @staging.size</h1>
+  <div class="summary">Newcomer films incubating in <code>pending_movies</code> — one row per cinema|title|year. They graduate into the corpus below once TMDB concludes, then disappear from here.</div>
+  <table id="staging-t">
+    <thead>
+      <tr><th>Cinema</th><th>Title</th><th>Year</th><th>TMDB</th><th>IMDb</th><th>Detail pending</th></tr>
+    </thead>
+    <tbody>
+    @for(r <- staging) {
+      <tr class="data" data-row-id="@{r.cinema.displayName}|@{r.title}|@{r.year.map(_.toString).getOrElse("")}">
+        <td>@r.cinema.displayName</td>
+        <td class="title">@r.title</td>
+        <td>@r.year.map(_.toString).getOrElse("—")</td>
+        <td>@r.record.tmdbId.map(_.toString).getOrElse(if(r.record.tmdbNoMatch) "no-match" else "—")</td>
+        <td>@r.record.imdbId.getOrElse("—")</td>
+        <td>@if(r.record.detailPending) { yes } else { — }</td>
+      </tr>
+    }
+    </tbody>
+  </table>
+}
 <h1>Debug</h1>
 <div class="summary">@rows.size total · click a row to expand · click headers to sort · filter is case-insensitive</div>
 

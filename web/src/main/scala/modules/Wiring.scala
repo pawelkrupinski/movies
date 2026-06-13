@@ -143,7 +143,8 @@ trait Wiring {
     Env.get("ADMIN_ALLOWLIST").map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet).getOrElse(Set.empty)
   lazy val adminAction = new AdminAction(controllerComponents.parsers.anyContent, userRepo, adminAllowlist)(using controllerComponents.executionContext)
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, movieRepo, taskQueue, userRepo, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService,
-    cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()))
+    cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),
+    stagingRepo = new services.staging.MongoStagingRepo(mongoConnection.database))
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
   // Read-only on the web side: the worker writes fallback state; the /uptime/fallback
