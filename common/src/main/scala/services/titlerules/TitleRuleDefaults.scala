@@ -50,19 +50,45 @@ object TitleRuleDefaults {
     """Dyskusyjny\s+Klub\s+Filmowy|""" +
     """Filmowe\s+spotkania\s+z\s+psychoanaliz[ąa]|""" +
     """Cinema\s+Italia\s+Oggi|""" +
+    """Klub\s+DLR|""" +
     """Plenerowe\s+Pa[łl]acowe):\s+"""
 
   private val search: Seq[TitleRule] = Seq(
     TitleRule("search-programme-prefix", Search, None,
       ProgrammePrefixPattern, "", applyAll = false, order = 10,
       tag = Some("programmePrefix"),
-      note = Some("Cinema programme banners (Kino bez barier, DKF, Filmowe Poranki…)")),
+      note = Some("Cinema programme banners (Kino bez barier, DKF, Filmowe Poranki, Klub DLR…)")),
     TitleRule("search-accessibility-tag", Search, None,
       """(?i)\s*\(\s*AD\b[^)]*\)?\s*$""", "", applyAll = false, order = 20,
       note = Some("Trailing accessibility tag: (AD), (AD + CC + PJM)")),
     TitleRule("search-plus-event-suffix", Search, None,
       """\s+\+\s+\p{L}[^)]*$""", "", applyAll = false, order = 30,
-      note = Some("'+ <event>' suffix: '+ spotkanie z producentką'"))
+      note = Some("'+ <event>' suffix: '+ spotkanie z producentką'")),
+    // Pipe-delimited festival/cycle banners where the FILM sits AFTER the pipe:
+    // "WTF Fest | Crash". Search-only, so the festival row stays separate but
+    // enriches off the bare film. (Kinoteka.)
+    TitleRule("search-pipe-festival-prefix", Search, None,
+      """(?i)^WTF\s+Fest\s*\|\s*""", "", applyAll = false, order = 40,
+      note = Some("'WTF Fest | <film>' festival banner (film after the pipe)")),
+    // Pipe-delimited cycle banners where the FILM sits BEFORE the pipe:
+    // "Ból i blask | 6 razy Pedro", "Lawrence z Arabii | Kino cyrkularne EXTRA".
+    TitleRule("search-pipe-festival-suffix", Search, None,
+      """(?i)\s*\|\s*(?:6\s+razy\s+Pedro|Kino\s+cyrkularne)\b.*$""", "", applyAll = false, order = 50,
+      note = Some("'<film> | 6 razy Pedro / Kino cyrkularne …' cycle banner (film before the pipe)")),
+    // Federico Fellini retrospective, run by ~12 cinemas in inconsistent shapes —
+    // a global search strip so every variant enriches off the bare film while the
+    // decorated screening keeps its own row. Prefix form: "Federico Fellini: ciao
+    // a tutti! - <film>", "Federico Fellini: <FILM>", "…tutti!: <film>".
+    TitleRule("search-fellini-prefix", Search, None,
+      """(?i)^Federico\s+Fellini\s*:\s*(?:ciao\s+a?\s*tutti\s*!?)?\s*[:\-–—]?\s*""", "",
+      applyAll = false, order = 60,
+      note = Some("'Federico Fellini: ciao a tutti! …' retrospective prefix")),
+    // Suffix form: "<film> | FEDERICO FELLINI: ciao a tutti!",
+    // "<FILM> – przegląd FEDERICO FELLINI: ciao a tutti!".
+    TitleRule("search-fellini-suffix", Search, None,
+      """(?i)\s*(?:\|\s*|[–—-]\s*przegl[ąa]d\s+)Federico\s+Fellini\b.*$""", "",
+      applyAll = false, order = 70,
+      note = Some("'… | FEDERICO FELLINI …' / '… – przegląd FEDERICO FELLINI …' retrospective suffix"))
   )
 
   // ── canonical tier — cross-cinema spelling unifications (sanitize) ─────────

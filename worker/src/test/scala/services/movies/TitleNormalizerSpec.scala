@@ -388,4 +388,51 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     // the event screening shares the plain film's tmdbId / ratings / URLs.
     apiQuery("Ojczyzna + spotkanie z producentką Ewą Puszczyńską") shouldBe "Ojczyzna"
   }
+
+  // ── Festival / cycle banners (Kinoteka, Kino Atlantic) ────────────────────
+  //
+  // These programme decorations kept the screening permanently TMDB-unresolved
+  // on /debug because the decorated string was queried verbatim. They're SEARCH
+  // tier (apiQuery only): the decorated row stays separate (searchTitle keeps
+  // it) but enriches off the bare film. Real strings captured from the corpus.
+
+  it should "strip the 'Klub DLR:' programme prefix (Kino Atlantic)" in {
+    apiQuery("Klub DLR: Aquarius")   shouldBe "Aquarius"
+    searchTitle("Klub DLR: Aquarius") shouldBe "Klub DLR: Aquarius"
+  }
+
+  it should "strip a 'WTF Fest | <film>' banner — film after the pipe (Kinoteka)" in {
+    apiQuery("WTF Fest | Crash")       shouldBe "Crash"
+    apiQuery("WTF Fest | Setki bobrów") shouldBe "Setki bobrów"
+    searchTitle("WTF Fest | Crash")     shouldBe "WTF Fest | Crash"
+  }
+
+  it should "strip a '<film> | 6 razy Pedro / Kino cyrkularne …' cycle banner — film before the pipe (Kinoteka)" in {
+    apiQuery("Ból i blask | 6 razy Pedro")                          shouldBe "Ból i blask"
+    apiQuery("Matki równoległe | 6 razy Pedro")                     shouldBe "Matki równoległe"
+    apiQuery("Lawrence z Arabii | Kino cyrkularne EXTRA")           shouldBe "Lawrence z Arabii"
+    apiQuery("Arszenik i stare koronki | Kino cyrkularne – klasyka filmowa") shouldBe "Arszenik i stare koronki"
+    searchTitle("Ból i blask | 6 razy Pedro")                       shouldBe "Ból i blask | 6 razy Pedro"
+  }
+
+  it should "strip the 'Federico Fellini: ciao a tutti!' retrospective in its prefix shapes (~12 cinemas)" in {
+    apiQuery("Federico Fellini: ciao a tutti! – Osiem i pół")            shouldBe "Osiem i pół"
+    apiQuery("FEDERICO FELLINI: ciao a tutti!: Wałkonie")               shouldBe "Wałkonie"
+    apiQuery("FEDERICO FELLINI: ciao a tutti! - Giulietta i duchy (1965)") shouldBe "Giulietta i duchy (1965)"
+    apiQuery("Federico Fellini: GIULIETTA I DUCHY")                     shouldBe "GIULIETTA I DUCHY"
+  }
+
+  it should "strip the 'Federico Fellini' retrospective in its suffix shapes" in {
+    apiQuery("Noce Cabirii (1957) | FEDERICO FELLINI: ciao a tutti!") shouldBe "Noce Cabirii (1957)"
+    apiQuery("Słodkie życie | FEDERICO FELLINI: ciao a tutti!")       shouldBe "Słodkie życie"
+    apiQuery("WAŁKONIE – przegląd FEDERICO FELLINI: ciao a tutti!")   shouldBe "WAŁKONIE"
+    searchTitle("Słodkie życie | FEDERICO FELLINI: ciao a tutti!")    shouldBe "Słodkie życie | FEDERICO FELLINI: ciao a tutti!"
+  }
+
+  it should "NOT over-strip ordinary titles that merely share a word with a banner" in {
+    apiQuery("Pedro Páramo")       shouldBe "Pedro Páramo"   // no '| 6 razy Pedro'
+    apiQuery("Crash")              shouldBe "Crash"          // no 'WTF Fest |' prefix
+    apiQuery("Aquarius")           shouldBe "Aquarius"       // no 'Klub DLR:' prefix
+    apiQuery("Osiem i pół")        shouldBe "Osiem i pół"    // no Fellini banner
+  }
 }

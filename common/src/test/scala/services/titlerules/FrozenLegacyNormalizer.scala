@@ -28,8 +28,13 @@ object FrozenLegacyNormalizer {
      """Dyskusyjny\s+Klub\s+Filmowy|""" +
      """Filmowe\s+spotkania\s+z\s+psychoanaliz[ąa]|""" +
      """Cinema\s+Italia\s+Oggi|""" +
+     """Klub\s+DLR|""" +
      """Plenerowe\s+Pa[łl]acowe):\s+""").r
   private val AccessibilityTag  = """(?i)\s*\(\s*AD\b[^)]*\)?\s*$""".r
+  private val WtfFestPrefix      = """(?i)^WTF\s+Fest\s*\|\s*""".r
+  private val PipeFestivalSuffix = """(?i)\s*\|\s*(?:6\s+razy\s+Pedro|Kino\s+cyrkularne)\b.*$""".r
+  private val FelliniPrefix      = """(?i)^Federico\s+Fellini\s*:\s*(?:ciao\s+a?\s*tutti\s*!?)?\s*[:\-–—]?\s*""".r
+  private val FelliniSuffix      = """(?i)\s*(?:\|\s*|[–—-]\s*przegl[ąa]d\s+)Federico\s+Fellini\b.*$""".r
 
   def searchTitle(display: String): String = {
     val a = CyklPrefix.replaceFirstIn(display, "")
@@ -42,7 +47,11 @@ object FrozenLegacyNormalizer {
     val stripped  = ProgrammePrefix.replaceFirstIn(display, "")
     val tagless   = AccessibilityTag.replaceFirstIn(stripped, "")
     val eventless = PlusSuffix.replaceFirstIn(tagless, "")
-    searchTitle(eventless)
+    val wtf       = WtfFestPrefix.replaceFirstIn(eventless, "")
+    val pipefest  = PipeFestivalSuffix.replaceFirstIn(wtf, "")
+    val fellPre   = FelliniPrefix.replaceFirstIn(pipefest, "")
+    val fellSuf   = FelliniSuffix.replaceFirstIn(fellPre, "")
+    searchTitle(fellSuf)
   }
   def programmePrefix(title: String): Option[String] =
     ProgrammePrefix.findPrefixMatchOf(title).map(_.matched)
