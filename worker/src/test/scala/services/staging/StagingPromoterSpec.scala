@@ -4,6 +4,7 @@ import models.{Cinema, Helios, Multikino, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{DetailEnricher, FilmDetail}
+import services.movies.MovieService
 
 class StagingPromoterSpec extends AnyFlatSpec with Matchers {
 
@@ -34,6 +35,7 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
         resolveSawDirector = rec.data.get(Helios).exists(_.director.contains("Jane Doe"))
         Some(rec.copy(tmdbId = Some(1275779)))
       },
+      recoverImdbId = (_, _) => None,
       onConcluded = concluded += _)
 
     promoter.promote(row) shouldBe true
@@ -49,6 +51,7 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
     val concluded = scala.collection.mutable.ListBuffer.empty[StagingRecord]
     val promoter = new StagingPromoter(repo, Seq(enricher),
       resolveStaging = (_, _, rec) => Some(rec.copy(tmdbNoMatch = true)),
+      recoverImdbId = (_, _) => None,
       onConcluded = concluded += _)
 
     promoter.promote(row) shouldBe true
@@ -62,6 +65,7 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
     var resolveCalled = false
     val promoter = new StagingPromoter(repo, Seq(enricher),
       resolveStaging = (_, _, _) => { resolveCalled = true; None },
+      recoverImdbId = (_, _) => None,
       onConcluded = _ => ())
 
     promoter.promote(row) shouldBe false
@@ -75,6 +79,7 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
     val concluded = scala.collection.mutable.ListBuffer.empty[StagingRecord]
     val promoter = new StagingPromoter(repo, Seq(enricher),
       resolveStaging = (_, _, _) => None, // transient
+      recoverImdbId = (_, _) => None,
       onConcluded = concluded += _)
 
     promoter.promote(row) shouldBe false
@@ -86,9 +91,43 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
     val concluded = scala.collection.mutable.ListBuffer.empty[StagingRecord]
     val promoter = new StagingPromoter(repo, Seq.empty, // Multikino isn't a DetailEnricher
       resolveStaging = (_, _, rec) => Some(rec.copy(tmdbId = Some(42))),
+      recoverImdbId = (_, _) => None,
       onConcluded = concluded += _)
 
     promoter.promote(row) shouldBe true
     concluded should have size 1
+  }
+
+  it should "recover a missing imdbId inline when TMDB resolved but shipped no cross-reference" in {
+    // A recent Polish film: TMDB hit (tmdbId set) but no imdb cross-reference, so
+    // the resolved record has imdbId empty. The direct path recovers it via the
+    // async `ImdbIdMissing` chain; staging rows never enter the cache, so the
+    // promoter must recover the id INLINE before folding (else the merged movies
+    // row — and its IMDb/RT/Metacritic ratings — would be permanently id-less).
+    val (repo, row) = seeded(Helios, "Pucio", Some(2026))
+    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
+    var searchedFor = Option.empty[String]
+    val promoter = new StagingPromoter(repo, Seq(enricher),
+      resolveStaging = (_, _, rec) => Some(rec.copy(tmdbId = Some(1645035))), // hit, but imdbId empty
+      recoverImdbId = (search, _) => { searchedFor = Some(search); Some("tt42003604") },
+      onConcluded = _ => ())
+
+    promoter.promote(row) shouldBe true
+    searchedFor shouldBe Some(MovieService.apiQuery("Pucio"))   // searched the (api-query'd) title
+    repo.findAll().head.record.imdbId shouldBe Some("tt42003604")
+  }
+
+  it should "not call the imdbId recovery when TMDB already shipped a cross-reference" in {
+    val (repo, row) = seeded(Helios, "HasImdb", Some(2026))
+    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
+    var recoverCalled = false
+    val promoter = new StagingPromoter(repo, Seq(enricher),
+      resolveStaging = (_, _, rec) => Some(rec.copy(tmdbId = Some(7), imdbId = Some("tt0000007"))),
+      recoverImdbId = (_, _) => { recoverCalled = true; None },
+      onConcluded = _ => ())
+
+    promoter.promote(row) shouldBe true
+    recoverCalled shouldBe false
+    repo.findAll().head.record.imdbId shouldBe Some("tt0000007")
   }
 }

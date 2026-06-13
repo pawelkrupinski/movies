@@ -59,6 +59,15 @@ class ImdbIdResolver(
   def resolveSync(title: String, year: Option[Int], searchTitle: String): Unit =
     resolve(title, year, searchTitle, publishEvent = false)
 
+  /** Cache-free id lookup: query IMDb's suggestion endpoint for `searchTitle`
+   *  and return the id, or None on no match / a transient failure. Used by the
+   *  staging promoter to recover a missing imdbId INLINE — a staging row isn't in
+   *  the cache, so the event-driven `onImdbIdMissing` (which reads + `putIfPresent`s
+   *  the cache) can't reach it; recovering here folds the row already carrying the
+   *  id, the same end state the direct path's `ImdbIdMissing` chain produces. */
+  def findIdFor(searchTitle: String, year: Option[Int]): Option[String] =
+    Try(imdb.findId(searchTitle, year)).toOption.flatten
+
   private def resolve(
     title:        String,
     year:         Option[Int],

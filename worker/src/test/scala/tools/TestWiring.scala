@@ -90,6 +90,14 @@ trait TestWiring extends WorkerWiring {
   override lazy val movieService =
     new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.ec("enrichment-worker"))
 
+  // Staging repo/folder are Mongo-backed in prod; pin in-memory here — TestWiring's
+  // Mongo is disabled, so the inherited MongoStagingRepo would silently drop the
+  // diverted newcomers and MongoStagingFolder couldn't open a transaction. The
+  // fixture wiring drives promote+fold explicitly (see FixtureTestWiring.drainStaging).
+  override lazy val stagingRepo: services.staging.StagingRepo = new services.staging.InMemoryStagingRepo()
+  override lazy val stagingFolder: services.staging.StagingFolder =
+    new services.staging.InMemoryStagingFolder(stagingRepo, movieRepo)
+
   // Don't retry cinema scrapes in fixture replay: a missing fixture is permanent,
   // so backoff per fixture-less cinema just multiplies fixture-server boot time
   // (FixtureServerMain scrapes the whole 40+-city catalogue; the retry churn was

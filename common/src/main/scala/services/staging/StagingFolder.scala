@@ -11,9 +11,12 @@ import services.movies.{MovieRepo, TitleNormalizer}
  * write can't be lost), `InMemoryStagingFolder` under a lock (tests / no-Mongo).
  */
 trait StagingFolder {
-  /** Fold every staging row sharing this film's `sanitize(title)` into `movies`.
-   *  Keyed by the cleaned title (the concluded row's), so all per-cinema + ±1
-   *  variants are gathered. No-op when no staging rows match (already folded). */
+  /** Fold the `(sanitize(title), year)` VARIANT's per-cinema staging rows into a
+   *  single `movies` row at that year, then delete them. Scoped to ONE year (not
+   *  the whole sanitize group) so the production-year and release-year variants
+   *  each land as their own `movies` row — the existing `canonicalizeBySanitize`
+   *  ±1 settle then merges them deterministically, exactly as for the direct
+   *  path. No-op when no staging rows match (already folded). */
   def foldFilm(cleanTitle: String, year: Option[Int]): Unit
 }
 
@@ -29,9 +32,9 @@ class InMemoryStagingFolder(stagingRepo: StagingRepo, movieRepo: MovieRepo) exte
 
   def foldFilm(cleanTitle: String, year: Option[Int]): Unit = lock.synchronized {
     val key         = TitleNormalizer.sanitize(cleanTitle)
-    val stagingRows = stagingRepo.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key)
+    val stagingRows = stagingRepo.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key && r.year == year)
     if (stagingRows.nonEmpty) {
-      val moviesRows = movieRepo.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key)
+      val moviesRows = movieRepo.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key && r.year == year)
       val plan       = StagingFold.plan(stagingRows, moviesRows)
       plan.moviesUpserts.foreach { case (k, rec) => movieRepo.upsert(k.cleanTitle, k.year, rec) }
       plan.moviesDeletes.foreach(k => movieRepo.delete(k.cleanTitle, k.year))

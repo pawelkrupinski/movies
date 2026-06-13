@@ -138,12 +138,12 @@ class CaffeineMovieCache(
   // the cache empty (see `bootHydrate`).
   bootHydrateMaxAttempts: Int  = Env.get("KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS").flatMap(_.toIntOption).getOrElse(0),
   bootHydrateRetryMillis: Long = Env.positiveLong("KINOWO_BOOT_HYDRATE_RETRY_MS", 1000L),
-  // When set, a genuinely-NEW film (one whose `sanitize(title)` group isn't
-  // already in `movies`) is diverted to this staging sink — one row per
-  // `cinema|title|year` — to incubate until TMDB concludes, instead of landing
-  // in the merged `movies` cache. Known films keep the direct path. None (the
-  // default) = no diversion, every scrape lands in `movies` as before. Wired
-  // `Some(...)` only behind `KINOWO_STAGING_INGEST`.
+  // A genuinely-NEW film (one whose `sanitize(title)` group isn't already in
+  // `movies`) is diverted to this staging sink — one row per `cinema|title|year`
+  // — to incubate until TMDB concludes, instead of landing in the merged
+  // `movies` cache; known films keep the direct path. The worker wires this
+  // `Some(stagingRepo)`. `None` (the default, used by unit tests that exercise the
+  // cache directly) disables diversion — every scrape lands in `movies`.
   staging: Option[services.staging.StagingRepo] = None
 ) extends MovieCache with Stoppable with Logging {
 

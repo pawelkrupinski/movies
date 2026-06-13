@@ -341,7 +341,7 @@ class MovieService(
    *  the fold, not on the per-cinema staging rows. */
   def resolveStagingRecord(cleanTitle: String, year: Option[Int], existing: MovieRecord): Option[MovieRecord] = {
     val (origHint, dirHint) = tmdbHints(existing)
-    Try(lookupTmdb(cleanTitle, year, origHint, dirHint)) match {
+    Try(lookupTmdb(cleanTitle, year, existing, origHint, dirHint)) match {
       case Success(Some((hit, imdbId, detailsOpt))) => Some(buildResolvedRecord(hit, imdbId, detailsOpt, existing))
       case Success(None)                            => Some(existing.copy(tmdbNoMatch = true))
       case Failure(ex) =>
@@ -391,7 +391,11 @@ class MovieService(
     // via the cache-free `lookupTmdb`, so concurrent cinema scrapes for the same
     // title aren't blocked for its duration. The cache read → carry-forward →
     // re-key → settle all happen under the lock below.
-    lookupTmdb(key.cleanTitle, key.year, originalTitleHint, directorHint).map { case (hit, imdbId, detailsOpt) =>
+    // Mine candidates from the live cache row (same read `resolveTmdb` did
+    // internally before `row` was passed in) — outside the lock, like the slow
+    // lookup it feeds.
+    val candidateRow = cache.get(cache.keyOf(key.cleanTitle, key.year)).getOrElse(MovieRecord())
+    lookupTmdb(key.cleanTitle, key.year, candidateRow, originalTitleHint, directorHint).map { case (hit, imdbId, detailsOpt) =>
       // Read → modify → write under the per-title lock so a cinema scrape's
       // freshly-written slot, landing just before this thread enters the
       // critical section, is visible to the carry-forward below — and so
@@ -435,10 +439,11 @@ class MovieService(
   private def lookupTmdb(
     cleanTitle:        String,
     year:              Option[Int],
+    row:               MovieRecord,
     originalTitleHint: Option[String],
     directorHint:      Option[String]
   ): Option[(TmdbClient.SearchResult, Option[String], Option[TmdbClient.FullDetails])] =
-    resolveTmdb(cleanTitle, year, originalTitleHint, directorHint).map { case (hit, imdbId) =>
+    resolveTmdb(cleanTitle, year, row, originalTitleHint, directorHint).map { case (hit, imdbId) =>
       (hit, imdbId, tmdb.fullDetails(hit.id))
     }
 
@@ -599,6 +604,7 @@ class MovieService(
   private def resolveTmdb(
     title:         String,
     year:          Option[Int],
+    row:           MovieRecord,
     originalTitle: Option[String] = None,
     director:      Option[String] = None
   ): Option[(TmdbClient.SearchResult, Option[String])] = {
@@ -616,9 +622,14 @@ class MovieService(
     // onto a same-title different film). `apiQuery` additionally strips the
     // accessibility-programme decoration ("Kino bez barier: Freak Show (AD)" →
     // "Freak Show") before hitting TMDB.
-    val rowRecord  = cache.get(cache.keyOf(title, year))
-    val cinemaTitles  = rowRecord.map(_.cinemaTitles).getOrElse(Set.empty[String])
-    val slotOriginals = rowRecord.map(_.data.values.flatMap(_.originalTitle).toSet).getOrElse(Set.empty[String])
+    // `row` carries the cinema slots to mine for candidates. On the movies path
+    // it's the live cache row; on the cache-free staging path it's the union of
+    // the film's per-cinema staging rows (`resolveStagingRecord`'s `existing`).
+    // Both therefore build the SAME candidate set — without it the staging row,
+    // absent from the cache, collapsed to its single title and missed films the
+    // direct path resolved via a cinema-reported / original title.
+    val cinemaTitles  = row.cinemaTitles
+    val slotOriginals = row.data.values.flatMap(_.originalTitle).toSet
     // Sorted so the candidate order — hence which query resolves first when
     // several map to the same film — is independent of the (Set) iteration
     // order, which varied run-to-run.
@@ -637,7 +648,7 @@ class MovieService(
     // own slots (sorted) makes the resolution a deterministic function of the
     // row's state — every event computes the same outcome, so the race is moot.
     val rowDirectors = (director.toSeq.flatMap(_.split(",")) ++
-      rowRecord.map(_.data.values.flatMap(_.director).toSeq).getOrElse(Nil))
+      row.data.values.flatMap(_.director).toSeq)
       .map(_.trim).filter(_.nonEmpty).distinct.sorted
     val searchHit = candidates.iterator
       .flatMap(q => verifyByDirector(tmdb.search(q, year), Some(rowDirectors.mkString(",")).filter(_.nonEmpty)))

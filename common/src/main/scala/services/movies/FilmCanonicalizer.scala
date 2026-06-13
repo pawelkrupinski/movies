@@ -140,9 +140,15 @@ object FilmCanonicalizer {
    *  can't clobber the resolved row's tmdbId/imdbId/ratings. Order independent
    *  for the per-source `data` (it's a keyed merge). */
   def canonical(cluster: Seq[(CacheKey, MovieRecord)]): (CacheKey, MovieRecord) = {
-    // Every reported variant: each cinema slot's derived key (cleaned title +
-    // year) plus the rows' current keys.
-    val slotKeys = cluster.flatMap { case (_, e) => e.data.values.flatMap(d => d.title.map(t => CacheKey(t, d.releaseYear))) }
+    // Every reported variant: each CINEMA slot's derived title plus the rows'
+    // current keys. Enrichment-source slots (Tmdb/Imdb/Filmweb) are excluded on
+    // purpose: a row's identity spelling must come from what CINEMAS call it, not
+    // from TMDB's title for the base film — otherwise a decorated variant (a dub
+    // "Straszny film ukraiński dubbing", a programme "Kino Dostępne: …") whose
+    // Tmdb slot carries the bare base title ("Straszny film") would canonicalise
+    // to that base title and collapse onto the base row. Cinema titles keep the
+    // variant distinct; `displayTitle` still derives a nice label separately.
+    val slotKeys = cluster.flatMap { case (_, e) => e.cinemaData.values.flatMap(d => d.title.map(t => CacheKey(t, d.releaseYear))) }
     val keys     = cluster.map(_._1)
     val allKeys  = slotKeys ++ keys
     val canonicalYear = clusterYear(cluster)

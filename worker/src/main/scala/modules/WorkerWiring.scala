@@ -210,14 +210,13 @@ class WorkerWiring extends play.api.Logging {
   // ── MovieRecord cache (write-through) ───────────────────────────────────────
   lazy val movieRepo: MovieRepo = new MongoMovieRepo(mongoConnection.database, fallbackToOwnInit = false)
 
-  // Staging-ingest: when enabled, a genuinely-new film incubates in
-  // `pending_movies` (resolve-then-fold) instead of landing straight in
-  // `movies`. Off by default — `movieCache.staging = None` means every scrape
-  // lands in `movies` exactly as before, so this is a no-op until the flag flips.
-  lazy val stagingIngestEnabled: Boolean = Env.get("KINOWO_STAGING_INGEST").exists(v => v == "true" || v == "1")
+  // Staging-ingest: a genuinely-new film incubates in `pending_movies`
+  // (resolve-then-fold) instead of landing straight in `movies`; a film already
+  // known to `movies` keeps the direct path. The `staging` sink is wired into the
+  // cache, the promoter scheduled and the fold subscribed (below) unconditionally.
   lazy val stagingRepo: StagingRepo = new MongoStagingRepo(mongoConnection.database)
   lazy val movieCache: CaffeineMovieCache =
-    new CaffeineMovieCache(movieRepo, eventBus, staging = if (stagingIngestEnabled) Some(stagingRepo) else None)
+    new CaffeineMovieCache(movieRepo, eventBus, staging = Some(stagingRepo))
 
   // ── Denormalised read model (web_movies + web_screenings) ───────────────────
   // The worker projects every `movies` write into the two read-model collections
@@ -349,7 +348,7 @@ class WorkerWiring extends play.api.Logging {
   // flag is on (below) — otherwise these are dormant.
   lazy val stagingFolder: StagingFolder = new MongoStagingFolder(mongoConnection)
   lazy val stagingPromoter = new StagingPromoter(
-    stagingRepo, detailEnrichers, movieService.resolveStagingRecord,
+    stagingRepo, detailEnrichers, movieService.resolveStagingRecord, imdbIdResolver.findIdFor,
     onConcluded = row => eventBus.publish(StagingFilmEnriched(row.title, row.year)))
   private val stagingPromoterScheduler = DaemonExecutors.scheduler("staging-promoter")
   private val StagingPromoterInitialDelay = Env.positiveLong("KINOWO_STAGING_PROMOTE_INITIAL_SECONDS", 30L)
@@ -419,9 +418,8 @@ class WorkerWiring extends play.api.Logging {
   eventBus.subscribe(ratingEnqueuer.onImdbIdResolved)
   eventBus.subscribe(ratingEnqueuer.onImdbIdMissing)
   // A concluded newcomer folds into `movies` (transactionally) the moment the
-  // promoter publishes — only wired when staging ingest is on.
-  if (stagingIngestEnabled)
-    eventBus.subscribe { case StagingFilmEnriched(title, year) => stagingFolder.foldFilm(title, year) }
+  // promoter publishes.
+  eventBus.subscribe { case StagingFilmEnriched(title, year) => stagingFolder.foldFilm(title, year) }
 
   def start(): Unit = {
     // Force Mongo at boot so connection errors surface in the boot timeline.
@@ -462,15 +460,13 @@ class WorkerWiring extends play.api.Logging {
     enrichmentReaper.start()
     detailReaper.start()
     scrapeReaper.start()
-    if (stagingIngestEnabled) {
-      logger.info(s"Staging ingest ENABLED — incubating newcomers in pending_movies " +
-        s"(promote every ${StagingPromoterInterval}s, first in ${StagingPromoterInitialDelay}s).")
-      stagingPromoterScheduler.scheduleAtFixedRate(
-        () => scala.util.Try(stagingPromoter.runOnce()).recover {
-          case e => logger.warn(s"Staging promoter tick failed: ${e.getMessage}")
-        },
-        StagingPromoterInitialDelay, StagingPromoterInterval, TimeUnit.SECONDS)
-    }
+    logger.info(s"Staging promoter scheduled — incubating newcomers in pending_movies " +
+      s"(every ${StagingPromoterInterval}s, first in ${StagingPromoterInitialDelay}s).")
+    stagingPromoterScheduler.scheduleAtFixedRate(
+      () => scala.util.Try(stagingPromoter.runOnce()).recover {
+        case e => logger.warn(s"Staging promoter tick failed: ${e.getMessage}")
+      },
+      StagingPromoterInitialDelay, StagingPromoterInterval, TimeUnit.SECONDS)
   }
 
   /** Event-cascade drain order, producer→consumer (see monolith comment). Only

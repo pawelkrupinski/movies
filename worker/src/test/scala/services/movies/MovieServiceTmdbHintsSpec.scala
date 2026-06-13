@@ -192,4 +192,34 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     row.flatMap(_.tmdbId) shouldBe Some(21484)
     row.flatMap(_.imdbId) shouldBe Some("tt0082933")
   }
+
+  // ── Staging path: candidates come from the PASSED row, not the cache ──────────
+  // `resolveStagingRecord` runs on a `pending_movies` row that is NOT in the
+  // MovieCache, so `resolveTmdb` can no longer mine its search candidates from
+  // `cache.get(...)`. It must mine them from the `existing` record handed in. The
+  // bug this guards (the real "Orły republiki" miss): the bare key title didn't
+  // match TMDB, only a cinema-reported title did — and with the candidates sourced
+  // from an empty cache, that cinema title never became a query, so the 5-cinema
+  // variant resolved to a no-match while the corpus-wide direct path resolved it.
+  "resolveStagingRecord" should "mine search candidates from the passed row's cinema titles (cache-free)" in {
+    val repo  = new InMemoryMovieRepo()
+    val cache = new CaffeineMovieCache(repo)
+    val tmdb  = new TmdbClient(http = new StubFetch(Map(
+      // The bare staging title finds nothing; the cinema-reported title does.
+      "query=Backrooms"           -> """{"results":[{"id":1083381,"title":"Backrooms","original_title":"Backrooms","release_date":"2026-01-01","popularity":9.0}]}""",
+      "/search/movie"             -> """{"results":[]}""",
+      "/movie/1083381/external_ids" -> """{"id":1083381,"imdb_id":"tt9999999"}"""
+    )), apiKey = Some("stub"))
+    val svc = new MovieService(cache, new InProcessEventBus(), tmdb)
+
+    // The staging row's key title ("Premiera") misses TMDB; only the Helios slot's
+    // reported title ("Backrooms") matches. The row is NOT written to the cache.
+    val existing = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Backrooms"))))
+    val resolved = svc.resolveStagingRecord("Premiera", Some(2026), existing)
+
+    resolved.flatMap(_.tmdbId) shouldBe Some(1083381)
+    resolved.flatMap(_.imdbId) shouldBe Some("tt9999999")
+    cache.get(cache.keyOf("Premiera", Some(2026))) shouldBe None // never touched the cache
+  }
 }

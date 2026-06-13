@@ -317,10 +317,10 @@ originalTitle:     Backrooms
 imdbRating:        7.1
 metascore:         77
 rottenTomatoes:    88
-filmwebRating:     6.20427
+filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/backrooms
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/backrooms
-filmwebUrl:        https://www.filmweb.pl/film/Backrooms.+Bez+wyj%C5%9Bcia-2026-10099388
+filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/backrooms-bez-wyjscia/8114s2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/backrooms-bez-wyjscia/8114s2r
@@ -1228,10 +1228,10 @@ originalTitle:     Człowiek z marmuru
 imdbRating:        7.6
 metascore:         —
 rottenTomatoes:    75
-filmwebRating:     —
+filmwebRating:     7.6897
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/czlowiek_z_marmuru
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Cz%C5%82owiek+z+marmuru-1976-1123
 cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/czlowiek-z-marmuru
 cinemaScrapes:
@@ -1583,10 +1583,10 @@ originalTitle:     The Magic Faraway Tree
 imdbRating:        6.4
 metascore:         —
 rottenTomatoes:    91
-filmwebRating:     5.84615
+filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/the-magic-faraway-tree
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_magic_faraway_tree
-filmwebUrl:        https://www.filmweb.pl/film/Drzewo+magii-2026-10104409
+filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r
@@ -3710,10 +3710,10 @@ originalTitle:     Mikey and Nicky
 imdbRating:        7.3
 metascore:         81
 rottenTomatoes:    88
-filmwebRating:     —
+filmwebRating:     7.1572
 metacriticUrl:     https://www.metacritic.com/movie/mikey-and-nicky
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/mikey_and_nicky
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Mikey+i+Nicky-1976-105722
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14242-spoilermaster-tour-mikey-i-nicky/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157442
@@ -4201,10 +4201,10 @@ originalTitle:     Monterey Pop
 imdbRating:        7.9
 metascore:         77
 rottenTomatoes:    96
-filmwebRating:     7.87644
+filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/monterey-pop
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/monterey_pop
-filmwebUrl:        https://www.filmweb.pl/film/Monterey+Pop-1968-140039
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/monterey-pop-seans-przedpremierowy-w-rocznice-koncertu/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157446
@@ -5139,10 +5139,10 @@ originalTitle:     نسور الجمهورية
 imdbRating:        6.6
 metascore:         67
 rottenTomatoes:    75
-filmwebRating:     6.57466
+filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/eagles-of-the-republic
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/eagles_of_the_republic
-filmwebUrl:        https://www.filmweb.pl/film/Or%C5%82y+Republiki-2025-10078590
+filmwebUrl:        —
 cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/orly-republiki-kino-konesera-2626
   Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/orly-republiki
@@ -5271,10 +5271,10 @@ originalTitle:     Vie privée
 imdbRating:        6.0
 metascore:         67
 rottenTomatoes:    81
-filmwebRating:     —
+filmwebRating:     5.67321
 metacriticUrl:     https://www.metacritic.com/movie/a-private-life
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/a_private_life_2025
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Ostatnia+sesja+w+Pary%C5%BCu-2025-10063368
 cinemaFilmUrls:
   Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/ostatnia-sesja-w-paryzu
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/ostatnia-sesja-w-paryzu
@@ -8572,10 +8572,10 @@ originalTitle:     Masters of the Universe
 imdbRating:        7.2
 metascore:         35
 rottenTomatoes:    66
-filmwebRating:     6.62884
+filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/masters-of-the-universe
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/masters_of_the_universe_2026
-filmwebUrl:        https://www.filmweb.pl/film/W%C5%82adcy+Wszech%C5%9Bwiata-2026-176583
+filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/wladcy-wszechswiata/7992s2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/wladcy-wszechswiata/7992s2r
@@ -8728,10 +8728,10 @@ originalTitle:     大红灯笼高高挂
 imdbRating:        8.1
 metascore:         —
 rottenTomatoes:    97
-filmwebRating:     7.83787
+filmwebRating:     —
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/raise_the_red_lantern_1991
-filmwebUrl:        https://www.filmweb.pl/film/Zawie%C5%9Bcie+czerwone+latarnie-1991-31273
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/zawiescie-czerwone-latarnie
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/zawiescie-czerwone-latarnie

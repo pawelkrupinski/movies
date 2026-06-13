@@ -63,7 +63,7 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
     while (!settled) {
       attempt += 1
       session.startTransaction()
-      Try(foldOnce(session, movies, staging, sanitize)) match {
+      Try(foldOnce(session, movies, staging, sanitize, year)) match {
         case Success(_) =>
           await(publisherToFuture(session.commitTransaction())); settled = true
         case Failure(e: MongoException)
@@ -78,20 +78,24 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
     }
   }
 
-  /** One transaction body: read the film's staging + movies rows, compute the
-   *  plan, and apply the upserts/deletes — all on `session`. */
+  /** One transaction body: read the `(sanitize, year)` VARIANT's staging + movies
+   *  rows, compute the plan, and apply the upserts/deletes — all on `session`.
+   *  Scoped to one year so each variant folds to its own `movies` row and the
+   *  periodic ±1 settle merges them (see `StagingFolder.foldFilm`). */
   private def foldOnce(
     session:  ClientSession,
     movies:   MongoCollection[StoredMovieDto],
     staging:  MongoCollection[StoredMovieDto],
-    sanitize: String
+    sanitize: String,
+    year:     Option[Int]
   ): Unit = {
-    // Staging `_id` = cinema|sanitize|year — match the middle segment.
-    val stagingRows = await(staging.find(session, Filters.regex("_id", s"^[^|]+\\|$sanitize\\|")).toFuture())
+    val yearStr = year.map(_.toString).getOrElse("")
+    // Staging `_id` = cinema|sanitize|year — match middle + exact year (anchored).
+    val stagingRows = await(staging.find(session, Filters.regex("_id", s"^[^|]+\\|$sanitize\\|$yearStr$$")).toFuture())
       .flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record))
     if (stagingRows.nonEmpty) {
-      // Movies `_id` = sanitize|year — match the prefix.
-      val moviesRows = await(movies.find(session, Filters.regex("_id", s"^$sanitize\\|")).toFuture())
+      // Movies `_id` = sanitize|year — match exact (sanitize, year).
+      val moviesRows = await(movies.find(session, Filters.regex("_id", s"^$sanitize\\|$yearStr$$")).toFuture())
         .map(StoredMovieDto.toDomain)
       val plan = StagingFold.plan(stagingRows, moviesRows)
       plan.moviesUpserts.foreach { case (k, rec) =>

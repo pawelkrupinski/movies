@@ -101,7 +101,12 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
    *  normalisation/redirect rules). This is the only place we pay the
    *  full-corpus parse cost. */
   private lazy val harvest: Seq[FilmGroup] = {
-    val w = new FixtureTestWiring(Fixture)
+    // Enumeration only — take the DIRECT path (staging = None) so
+    // `recordCinemaScrape` returns every film's canonical key. With staging on it
+    // would divert newcomers and return nothing to harvest from.
+    val w = new FixtureTestWiring(Fixture) {
+      override lazy val movieCache = new CaffeineMovieCache(movieRepo, eventBus, staging = None)
+    }
     val rows = mutable.ListBuffer.empty[(String, Option[Int], Cinema, CinemaMovie)]
     w.cinemaScrapers.foreach { scraper =>
       try {
@@ -152,6 +157,9 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     }
     rnd.shuffle(created.toList).foreach(w.eventBus.publish)
     w.drainServices()
+    // Newcomers were diverted to staging by recordCinemaScrape; promote + fold
+    // them into `movies` (the prod scheduler's job) before reading the corpus.
+    w.drainStaging()
 
     val record = w.movieRepo.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     // Project the settled corpus into the read model and serve from it, exactly

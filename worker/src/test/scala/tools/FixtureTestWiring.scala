@@ -81,6 +81,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   def bootStartup(): Unit = {
     runOneScrapeTick()
     drainServices()
+    drainStaging()
     // Ratings are queue tasks in production (drained by the TaskWorker). The
     // harness doesn't run the worker, so refresh them synchronously here — the
     // TMDB + IMDb-id cascade has already settled in drainServices.
@@ -129,6 +130,10 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     //    canonicalisation the worker now runs on a timer — so this harness
     //    exercises the production settle path, not a test-only copy of it.
     movieService.settle()
+    // 1b. Graduate newcomers out of staging into `movies` (resolve-then-fold),
+    //     the same pipeline the worker's promoter scheduler runs in prod, before
+    //     the re-enrich sweep so the merged corpus is complete.
+    drainStaging()
     // 2. Re-run enrichment synchronously against the now-canonical, settled rows.
     //    Production's `retryUnresolvedTmdb` sweeps rows in arbitrary map order,
     //    so `reorder` SHUFFLES this sweep — a cross-film re-enrich/settle order
@@ -147,6 +152,40 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     // 3. Re-collapse: the TMDB stage can rekey a no-year row onto a resolved
     //    year, briefly re-introducing a spelling/year variant — exactly the
     //    "Dzień objawienia" shape the worker's periodic settle exists to fix.
+    movieService.settle()
+  }
+
+  /** Drive the staging incubation the worker's promoter scheduler runs in prod:
+   *  promote each `pending_movies` row (detail-enrich then TMDB-resolve); a
+   *  concluded row auto-folds into `movies` via the `StagingFilmEnriched`
+   *  subscription. Loop until no further fold, then FORCE-fold any leftover
+   *  (TMDB-fixture-less) rows — `concludeEnrichment` then marks those still-
+   *  unresolved `movies` rows `tmdbNoMatch`, the same end state a no-fixture film
+   *  reaches on the direct route. The harness has no `movies` change stream, so
+   *  finally rehydrate the cache from the repo (prod's stream does this), which
+   *  also re-settles the freshly-folded rows. */
+  def drainStaging(): Unit = {
+    var folded = true
+    while (folded) {
+      val before = stagingRepo.findAll().size
+      if (before == 0) folded = false
+      else {
+        try stagingPromoter.runOnce() catch { case _: Exception => () }
+        folded = stagingRepo.findAll().size < before
+      }
+    }
+    stagingRepo.findAll().map(r => (r.title, r.year)).distinct.foreach { case (t, y) =>
+      try stagingFolder.foldFilm(t, y) catch { case _: Exception => () }
+    }
+    movieCache.rehydrate()
+    // Settle the freshly-folded rows the way prod's PERIODIC settle does once the
+    // change stream catches the fold up: the fold keeps each variant's OWN year
+    // (so the CC ±1 split lands two rows), and `canonicalizeBySanitize` then
+    // collapses them AND re-keys the resolved cluster to its TMDB year — exactly
+    // what the direct path's `settleResolved` does inline at resolution. Without
+    // this the folded row keeps its lower cinema-reported key year, which only
+    // shows up downstream as a different Filmweb year-tie-break (a film resolving
+    // to a different / no Filmweb entry).
     movieService.settle()
   }
 }
