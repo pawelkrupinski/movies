@@ -329,6 +329,27 @@ class MovieService(
     }
   }
 
+  /** Resolve a STAGING row's TMDB state — CACHE-FREE (the staging promoter owns
+   *  the write to `pending_movies`, and the `movies` merge/settle is deferred to
+   *  the fold). Reuses the exact `lookupTmdb` + `buildResolvedRecord` the movies
+   *  path runs, with hints derived from the row's own slots. Returns:
+   *    - `Some(enriched)` on a HIT — `existing` + tmdbId + Tmdb slot;
+   *    - `Some(existing.copy(tmdbNoMatch = true))` on a DEFINITIVE MISS;
+   *      (both conclude the row → ready to fold into `movies`)
+   *    - `None` on a TRANSIENT failure — leave the row for the promoter to retry.
+   *  Publishes no events: rating enrichment runs on the merged `movies` row after
+   *  the fold, not on the per-cinema staging rows. */
+  def resolveStagingRecord(cleanTitle: String, year: Option[Int], existing: MovieRecord): Option[MovieRecord] = {
+    val (origHint, dirHint) = tmdbHints(existing)
+    Try(lookupTmdb(cleanTitle, year, origHint, dirHint)) match {
+      case Success(Some((hit, imdbId, detailsOpt))) => Some(buildResolvedRecord(hit, imdbId, detailsOpt, existing))
+      case Success(None)                            => Some(existing.copy(tmdbNoMatch = true))
+      case Failure(ex) =>
+        logger.warn(s"Staging TMDB resolve failed for '$cleanTitle' (${year.getOrElse("?")}): ${ex.getMessage}; will retry.")
+        None
+    }
+  }
+
   // Publish the post-resolution event so the rating refreshers re-run for the
   // row off the existing event chain.
   private def publishTmdbOutcome(finalKey: CacheKey, movieRecord: MovieRecord): Unit =
