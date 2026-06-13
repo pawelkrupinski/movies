@@ -1,13 +1,13 @@
 package clients.tools
 
-import tools.HttpFetch
+import tools.{Env, HttpFetch}
 
 import java.net.URI
 import java.nio.file.{Files, Path, Paths}
 import java.util.concurrent.CompletableFuture
 
 class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
-  val fixtureRoot = "test/resources/fixtures/" + fixtureDir
+  val fixtureRoot = FakeHttpFetch.rootFor(fixtureDir)
 
   override def get(url: String): String = new String(readBytes(url, body = None), "UTF-8")
 
@@ -126,4 +126,20 @@ class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
       """{"page":1,"results":[],"total_pages":1,"total_results":0}""".getBytes("UTF-8")
     else throw new java.io.FileNotFoundException(
       s"No fixture file for $url — tried:\n  ${candidates.mkString("\n  ")}")
+}
+
+object FakeHttpFetch {
+  /** Fixture root for a dir: `test/resources/fixtures/<dir>` relative to the CWD
+   *  (the repo root for sbt test/runMain), OR `<KINOWO_FIXTURE_ROOT>/<dir>` when
+   *  that env/sysprop is set — so a process whose CWD is NOT the repo root (a
+   *  forked `bgRunMain`, e.g. `sbt localStack`'s worker) can still find the
+   *  corpus. Default (unset) is unchanged, so existing callers are unaffected. */
+  def rootFor(fixtureDir: String): String = rootFor(fixtureDir, Env.get("KINOWO_FIXTURE_ROOT"))
+
+  /** Pure form, for testing without touching the global env. */
+  def rootFor(fixtureDir: String, base: Option[String]): String =
+    base.filter(_.nonEmpty) match {
+      case Some(b) => s"$b/$fixtureDir"
+      case None    => "test/resources/fixtures/" + fixtureDir
+    }
 }
