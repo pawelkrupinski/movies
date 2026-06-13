@@ -317,10 +317,10 @@ originalTitle:     Backrooms
 imdbRating:        7.1
 metascore:         77
 rottenTomatoes:    88
-filmwebRating:     —
+filmwebRating:     6.38312
 metacriticUrl:     https://www.metacritic.com/movie/backrooms
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/backrooms
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Backrooms.+Bez+wyj%C5%9Bcia-2026-10099388
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/backrooms-bez-wyjscia/8114s2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/backrooms-bez-wyjscia/8114s2r
@@ -1583,10 +1583,10 @@ originalTitle:     The Magic Faraway Tree
 imdbRating:        6.4
 metascore:         —
 rottenTomatoes:    91
-filmwebRating:     —
+filmwebRating:     5.81796
 metacriticUrl:     https://www.metacritic.com/movie/the-magic-faraway-tree
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_magic_faraway_tree
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Drzewo+magii-2026-10104409
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r
@@ -4201,10 +4201,10 @@ originalTitle:     Monterey Pop
 imdbRating:        7.9
 metascore:         77
 rottenTomatoes:    96
-filmwebRating:     —
+filmwebRating:     7.87521
 metacriticUrl:     https://www.metacritic.com/movie/monterey-pop
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/monterey_pop
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Monterey+Pop-1968-140039
 cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/monterey-pop-seans-przedpremierowy-w-rocznice-koncertu/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157446
@@ -5139,10 +5139,10 @@ originalTitle:     نسور الجمهورية
 imdbRating:        6.6
 metascore:         67
 rottenTomatoes:    75
-filmwebRating:     —
+filmwebRating:     6.61776
 metacriticUrl:     https://www.metacritic.com/movie/eagles-of-the-republic
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/eagles_of_the_republic
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Or%C5%82y+Republiki-2025-10078590
 cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/orly-republiki-kino-konesera-2626
   Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/orly-republiki
@@ -8572,10 +8572,10 @@ originalTitle:     Masters of the Universe
 imdbRating:        7.2
 metascore:         35
 rottenTomatoes:    66
-filmwebRating:     —
+filmwebRating:     6.62175
 metacriticUrl:     https://www.metacritic.com/movie/masters-of-the-universe
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/masters_of_the_universe_2026
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/W%C5%82adcy+Wszech%C5%9Bwiata-2026-176583
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/wladcy-wszechswiata/7992s2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/wladcy-wszechswiata/7992s2r
@@ -8728,10 +8728,10 @@ originalTitle:     大红灯笼高高挂
 imdbRating:        8.1
 metascore:         —
 rottenTomatoes:    97
-filmwebRating:     —
+filmwebRating:     7.83988
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/raise_the_red_lantern_1991
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Zawie%C5%9Bcie+czerwone+latarnie-1991-31273
 cinemaFilmUrls:
   Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/zawiescie-czerwone-latarnie
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/zawiescie-czerwone-latarnie
