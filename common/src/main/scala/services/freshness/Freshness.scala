@@ -1,5 +1,7 @@
 package services.freshness
 
+import tools.Env
+
 import scala.concurrent.duration._
 
 /** The kinds of network-touching work whose recency we track so a scheduler can
@@ -33,14 +35,19 @@ object FreshnessKind {
  * Values match the cadence the worker ran before the queue existed: the four
  * rating sources were re-fetched on a 4h periodic walk, so their TTL is 4h —
  * the difference is that the walk is now *gated* (a row refreshed inside the
- * window is skipped instead of re-fetched unconditionally). Scrape (15min) and
- * detail enrichment (6h) are new freshness windows the queue introduces.
+ * window is skipped instead of re-fetched unconditionally). Detail enrichment
+ * (6h) and the cinema scrape window are new freshness windows the queue
+ * introduces. The scrape TTL is the dominant lever on the worker's Mongo write
+ * rate (each pass that finds a real change writes through to `movies` and
+ * cascades to the read model), so it's tunable via `KINOWO_SCRAPE_FRESHNESS_MINUTES`
+ * and defaults to 30min — long enough to keep the shared-CPU Mongo within its
+ * CPU-credit budget, short enough that showtimes stay current.
  */
 object Freshness {
   import FreshnessKind._
 
   def ttlFor(kind: FreshnessKind): Option[FiniteDuration] = kind match {
-    case CinemaScrape  => Some(15.minutes)
+    case CinemaScrape  => Some(Env.positiveLong("KINOWO_SCRAPE_FRESHNESS_MINUTES", 30L).minutes)
     case DetailEnrich  => Some(6.hours)
     case ImdbRating    => Some(4.hours)
     case FilmwebRating => Some(4.hours)

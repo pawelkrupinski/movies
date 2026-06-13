@@ -7,16 +7,16 @@ app = 'kinowo-worker'
 # Same region as `kinowo` + the self-hosted Mongo (`fly/mongo`) so writes run
 # on Fly's private network at ~1 ms RTT instead of a cross-region hop.
 primary_region = 'arn'
-# Runs as TWO machines (set out-of-band: `fly scale count 2 -a kinowo-worker`;
-# `flyctl deploy` preserves the count and rolls both). They are COMPETING
-# CONSUMERS, not shards: each drains the shared Mongo task queue, whose claim is
-# an atomic `findOneAndUpdate` (Waiting→WorkedOn + workerId + lease), so no task
-# runs twice and a dead worker's in-flight tasks are reclaimed via
-# `reapExpiredLeases`. The always-on singletons (read-model projector, cleanup,
-# rule rebuild, the reapers) run on both — all idempotent / enqueue-deduped, so
-# safe, just some doubled work. Per-film detail (incl. KinoMuza) is the one HTTP
-# fetch that MUST not double up; it rides the deduped `EnrichDetails` task, so
-# exactly one worker fetches each page.
+# Runs as ONE machine (scale set out-of-band: `fly scale count N -a kinowo-worker`;
+# `flyctl deploy` preserves the count and rolls all). Scaled back from 2 to 1 on
+# 2026-06-13: a 2nd competing-consumer doubled the worker's *write burst* onto the
+# shared-cpu-1x Mongo (boot re-scrape + projection cascade) and pushed it into
+# sustained CPU-credit throttling — while NOT increasing useful throughput, since
+# Mongo (not the worker) is the bottleneck. The competing-consumer design still
+# supports N machines (each drains the shared Mongo task queue via an atomic
+# `findOneAndUpdate` claim — Waiting→WorkedOn + workerId + lease — so no task runs
+# twice; the always-on singletons run on each, idempotent/enqueue-deduped). Scale
+# back up only once Mongo has CPU-credit headroom (see KINOWO_SCRAPE_FRESHNESS_MINUTES).
 
 [build]
   dockerfile = 'Dockerfile'
@@ -31,6 +31,15 @@ primary_region = 'arn'
   # ones arrive via the change stream), leaving same-film duplicates stranded
   # and invisible to the in-memory collapse. 20 × 1s covers Mongo's cold start.
   KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS = '20'
+  # Caps in-flight scrape/enrich tasks (default 4). Held at 2 to bound the peak
+  # concurrent write burst onto the shared-cpu-1x Mongo — the worker's write rate,
+  # not its CPU, is the constraint. Pairs with the 30min scrape freshness TTL below.
+  KINOWO_WORKER_POOL_SIZE = '2'
+  # Cinema-scrape freshness window. Raised from the 15min code default to 30min to
+  # ~halve the re-scrape pass rate (each pass that finds a real change writes through
+  # to `movies` + cascades to the read model) so the worker's write load stays within
+  # Mongo's CPU-credit budget. Lower it again once Mongo has headroom / more CPU.
+  KINOWO_SCRAPE_FRESHNESS_MINUTES = '30'
   # No KINOWO_SCRAPE_CITIES: the worker now scrapes EVERY modelled city by
   # default (ScrapeCities.allCities). The var still exists as a load-shedding
   # escape hatch — `fly secrets set KINOWO_SCRAPE_CITIES=poznan,wroclaw` NARROWS
