@@ -4,71 +4,71 @@
   <div class="row">
     <div class="col-xs-8 col-md-9">
       <div class="fs-54 mb-20">
-        01<i class="finterp">&#8212;</i>07<i class="finterp">/</i>06<i class="finterp">/</i>2026      </div>
+        08<i class="finterp">&#8212;</i>14<i class="finterp">/</i>06<i class="finterp">/</i>2026      </div>
     </div>
     <div class="col-xs-4 col-md-3 text-right">
       <div class="calendar-week-nav-pewv-next">
-  <a href="/kino/repertuar?ut=1779660000" class="btn btn-link no-underline" data-ajax="/kino/repertuar/week.ajax?ut=1779660000" data-filters="false">
+  <a href="/kino/repertuar?ut=1780264800" class="btn btn-link no-underline" data-ajax="/kino/repertuar/week.ajax?ut=1780264800" data-filters="false">
     <span class="sr-only">Poprzedni tydzień</span>
     <svg class="i-xl" style="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 39"><path d="M207.754 157.139 209.046 158.431 191.174 176.302 209.046 194.174 207.754 195.465 188.591 176.302z" transform="translate(-188 -157)"/></svg>  </a>
-  <a href="/kino/repertuar?ut=1780869600" class="btn btn-link no-underline" data-ajax="/kino/repertuar/week.ajax?ut=1780869600" data-filters="false">
+  <a href="/kino/repertuar?ut=1781474400" class="btn btn-link no-underline" data-ajax="/kino/repertuar/week.ajax?ut=1781474400" data-filters="false">
     <span class="sr-only">Następny tydzień</span>
     <svg class="i-xl" style="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 39"><path d="M246.487 157.14 265.65 176.302 246.487 195.466 245.196 194.174 263.066 176.302 245.196 158.431z" transform="translate(-245 -157)"/></svg>  </a>
 </div>    </div>
   </div>  <div class="sep-top pt-10 pb-30">
     <ul class="calendar-week-nav-menu list-unstyled list-inline fs-15 mb-0">
       <li>
-      <a href="/kino/repertuar?ut=1780264800" data-ajax="/kino/repertuar/week.ajax?ut=1780264800" class="cal-nav-day d-block no-underline ">
+      <a href="/kino/repertuar?ut=1780869600" data-ajax="/kino/repertuar/week.ajax?ut=1780869600" class="cal-nav-day d-block no-underline ">
         <span class="d-block">
-          01<i class="finterp">/</i>06        </span>
+          08<i class="finterp">/</i>06        </span>
         <span>
           <i class="finterp">(</i>Poniedziałek<i class="finterp">)</i>        </span>
       </a>
     </li>
       <li>
-      <a href="/kino/repertuar?ut=1780351200" data-ajax="/kino/repertuar/week.ajax?ut=1780351200" class="cal-nav-day d-block no-underline ">
+      <a href="/kino/repertuar?ut=1780956000" data-ajax="/kino/repertuar/week.ajax?ut=1780956000" class="cal-nav-day d-block no-underline ">
         <span class="d-block">
-          02<i class="finterp">/</i>06        </span>
+          09<i class="finterp">/</i>06        </span>
         <span>
           <i class="finterp">(</i>Wtorek<i class="finterp">)</i>        </span>
       </a>
     </li>
       <li>
-      <a href="/kino/repertuar?ut=1780437600" data-ajax="/kino/repertuar/week.ajax?ut=1780437600" class="cal-nav-day d-block no-underline ">
+      <a href="/kino/repertuar?ut=1781042400" data-ajax="/kino/repertuar/week.ajax?ut=1781042400" class="cal-nav-day d-block no-underline ">
         <span class="d-block">
-          03<i class="finterp">/</i>06        </span>
+          10<i class="finterp">/</i>06        </span>
         <span>
           <i class="finterp">(</i>Środa<i class="finterp">)</i>        </span>
       </a>
     </li>
       <li>
-      <a href="/kino/repertuar?ut=1780524000" data-ajax="/kino/repertuar/week.ajax?ut=1780524000" class="cal-nav-day d-block no-underline ">
+      <a href="/kino/repertuar?ut=1781128800" data-ajax="/kino/repertuar/week.ajax?ut=1781128800" class="cal-nav-day d-block no-underline active">
         <span class="d-block">
-          04<i class="finterp">/</i>06        </span>
+          11<i class="finterp">/</i>06        </span>
         <span>
           <i class="finterp">(</i>Czwartek<i class="finterp">)</i>        </span>
       </a>
     </li>
       <li>
-      <a href="/kino/repertuar?ut=1780610400" data-ajax="/kino/repertuar/week.ajax?ut=1780610400" class="cal-nav-day d-block no-underline active">
+      <a href="/kino/repertuar?ut=1781215200" data-ajax="/kino/repertuar/week.ajax?ut=1781215200" class="cal-nav-day d-block no-underline ">
         <span class="d-block">
-          05<i class="finterp">/</i>06        </span>
+          12<i class="finterp">/</i>06        </span>
         <span>
           <i class="finterp">(</i>Piątek<i class="finterp">)</i>        </span>
       </a>
     </li>
       <li>
-      <a href="/kino/repertuar?ut=1780696800" data-ajax="/kino/repertuar/week.ajax?ut=1780696800" class="cal-nav-day d-block no-underline ">
+      <a href="/kino/repertuar?ut=1781301600" data-ajax="/kino/repertuar/week.ajax?ut=1781301600" class="cal-nav-day d-block no-underline ">
         <span class="d-block">
-          06<i class="finterp">/</i>06        </span>
+          13<i class="finterp">/</i>06        </span>
         <span>
           <i class="finterp">(</i>Sobota<i class="finterp">)</i>        </span>
       </a>
     </li>
       <li>
-      <a href="/kino/repertuar?ut=1780783200" data-ajax="/kino/repertuar/week.ajax?ut=1780783200" class="cal-nav-day d-block no-underline ">
+      <a href="/kino/repertuar?ut=1781388000" data-ajax="/kino/repertuar/week.ajax?ut=1781388000" class="cal-nav-day d-block no-underline ">
         <span class="d-block">
-          07<i class="finterp">/</i>06        </span>
+          14<i class="finterp">/</i>06        </span>
         <span>
           <i class="finterp">(</i>Niedziela<i class="finterp">)</i>        </span>
       </a>
@@ -101,26 +101,26 @@
       </div>
 </a>    </div>
         <div class="col-md-4 col-sm-4 nth-in-row-2">
-      <a href="/kino/repertuar/zawiescie-czerwone-latarnie" class="event-list-day-box d-block h-img-scale mb-50">
+      <a href="/kino/repertuar/l-ange" class="event-list-day-box d-block h-img-scale mb-50">
   <div class="img-wrapper r-image-8-5 mb-10">
     <div class="item-image-thumb item-image-md">
   <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_1400x900.jpg"  data-min-width="1200" />
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_1200x800.jpg"  data-min-width="992" />
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_1000x700.jpg"  data-min-width="768" />
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_800x800.jpg"  data-min-width="576" />
-  <img src="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg" alt="" title="" style="" />
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/06/lange_1600_auto_1400x900.jpg"  data-min-width="1200" />
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/06/lange_1600_auto_1200x800.jpg"  data-min-width="992" />
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/06/lange_1600_auto_1000x700.jpg"  data-min-width="768" />
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/06/lange_1600_auto_800x800.jpg"  data-min-width="576" />
+  <img src="/upload/thumb/2026/06/lange_1600_auto_600x900.jpg" srcset="/upload/thumb/2026/06/lange_1600_auto_600x900.jpg" alt="" title="" style="" />
 </picture></div>  </div>
       <div class="hours fs-16">
       20<i class="finterp">:</i>00    </div>
       <div class="category fs-16 mb--3">
-    film  </div>
+    pokaz specjalny  </div>
     <div class="fs-16 pl-1">
     <div class="title fs-30 mb--3 max-w">
-      <em>Zawieście czerwone latarnie</em>    </div>
+      <em>L'Ange</em>    </div>
           <div class="fs-30 pl-1">
         <div class="fs-20 max-w">
-          <i class="finterp">[</i><em>Da hong deng long gao gao gua</em><i class="finterp">]</i><i class="finterp">,</i> reż<i class="finterp">.</i> Yimou Zhang<i class="finterp">,</i> Chiny<i class="finterp">/</i> Hongkong<i class="finterp">/</i> Tajwan 1991<i class="finterp">,</i> 125'        </div>
+          reż<i class="finterp">.</i>&nbsp;Patrick Bokanowski<i class="finterp">,</i> Francja 1982<i class="finterp">,</i> 66'        </div>
       </div>
       </div>
 </a>    </div>

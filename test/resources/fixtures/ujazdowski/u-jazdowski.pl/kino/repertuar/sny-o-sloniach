@@ -3,10 +3,14 @@
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 	<meta charset="utf-8" />
-	<title>Młode matki – Centrum Sztuki Współczesnej Zamek Ujazdowski</title>
-	<meta name="description" content="Język
+	<title>Sny o&nbsp;słoniach – Centrum Sztuki Współczesnej Zamek Ujazdowski</title>
+	<meta name="description" content="Pokaz przedpremierowy
 
-   francuski
+   09/06 (wtorek) o 20:30
+
+     Język
+
+   angielski
 
    napisy polskie
 
@@ -37,9 +41,9 @@
    ulgowy — 20 zł
 
    z kartą widza  — 15 zł" />
-	<link rel="alternate" hreflang="pl" href="https://u-jazdowski.pl/kino/repertuar/mlode-matki"/>
-	<link rel="alternate" hreflang="en" href="https://u-jazdowski.pl/en/kino/repertuar/young-mothers-"/>
-	<link rel="alternate" hreflang="ua" href="https://u-jazdowski.pl/ua/-7782/-----/mlode-matki"/>
+	<link rel="alternate" hreflang="pl" href="https://u-jazdowski.pl/kino/repertuar/sny-o-sloniach"/>
+	<link rel="alternate" hreflang="en" href="https://u-jazdowski.pl/en/kino/repertuar"/>
+	<link rel="alternate" hreflang="ua" href="https://u-jazdowski.pl/ua/-7782/-----"/>
 	<meta name="google-site-verification" content="yi2jF07HCvcGvMGKavx9GzhvOAEynT0uJv7jgUjTakA" />
  
 	<link type="text/plain" rel="author" href="/humans.txt"/>
@@ -94,10 +98,14 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/local/images/favicons/favicon-32x32.png?v=2.1.8">
 <link rel="icon" type="image/png" sizes="16x16" href="/local/images/favicons/favicon-16x16.png?v=2.1.8">
 <link rel="manifest" href="/local/images/favicons/site.webmanifest?v=2.1.8">	<!-- Schema.org markup for Google+ -->
-	<meta itemprop="name" content="Młode matki – Centrum Sztuki Współczesnej Zamek Ujazdowski">
-	<meta itemprop="description" content="Język
+	<meta itemprop="name" content="Sny o&nbsp;słoniach – Centrum Sztuki Współczesnej Zamek Ujazdowski">
+	<meta itemprop="description" content="Pokaz przedpremierowy
 
-   francuski
+   09/06 (wtorek) o 20:30
+
+     Język
+
+   angielski
 
    napisy polskie
 
@@ -109,18 +117,18 @@
 
    normalny — 16 zł
 
-   ulgowy — 14 zł
-
-   z kartą widza  — 12 zł
-
-     Od wtorku do piątku:">
-	 <meta itemprop="image" content="https://u-jazdowski.pl/upload/thumb/2026/04/young-mothers-still-2_auto_640x640.jpg">
+   ulgowy — 14 zł">
+	 <meta itemprop="image" content="https://u-jazdowski.pl/upload/thumb/2026/05/image-1_auto_640x640.jpg">
 	<!-- Twitter Card data -->
 	<meta name="twitter:card" content="summary_large_image">
-	<meta name="twitter:title" content="Młode matki – Centrum Sztuki Współczesnej Zamek Ujazdowski">
-	<meta name="twitter:description" content="Język
+	<meta name="twitter:title" content="Sny o&nbsp;słoniach – Centrum Sztuki Współczesnej Zamek Ujazdowski">
+	<meta name="twitter:description" content="Pokaz przedpremierowy
 
-   francuski
+   09/06 (wtorek) o 20:30
+
+     Język
+
+   angielski
 
    napisy polskie
 
@@ -132,19 +140,19 @@
 
    normalny — 16 zł
 
-   ulgowy — 14 zł
-
-   z kartą widza  — 12 zł
-
-     Od wtorku do piątku:">
+   ulgowy — 14 zł">
 	<!-- Twitter Summary card images must be at least 120x120px -->
-	<meta name="twitter:image" content="https://u-jazdowski.pl/upload/thumb/2026/04/young-mothers-still-2_auto_640x640.jpg">	<!-- Open Graph data -->
-	<meta property="og:title" content="Młode matki – Centrum Sztuki Współczesnej Zamek Ujazdowski" />
+	<meta name="twitter:image" content="https://u-jazdowski.pl/upload/thumb/2026/05/image-1_auto_640x640.jpg">	<!-- Open Graph data -->
+	<meta property="og:title" content="Sny o&nbsp;słoniach – Centrum Sztuki Współczesnej Zamek Ujazdowski" />
 	<meta property="og:type" content="article" />
-	<meta property="og:url" content="https://u-jazdowski.pl/kino/repertuar/mlode-matki" />
-	<meta property="og:image" content="https://u-jazdowski.pl/upload/thumb/2026/04/young-mothers-still-2_auto_640x640.jpg" />	<meta property="og:description" content="Język
+	<meta property="og:url" content="https://u-jazdowski.pl/kino/repertuar/sny-o-sloniach" />
+	<meta property="og:image" content="https://u-jazdowski.pl/upload/thumb/2026/05/image-1_auto_640x640.jpg" />	<meta property="og:description" content="Pokaz przedpremierowy
 
-   francuski
+   09/06 (wtorek) o 20:30
+
+     Język
+
+   angielski
 
    napisy polskie
 
@@ -156,11 +164,7 @@
 
    normalny — 16 zł
 
-   ulgowy — 14 zł
-
-   z kartą widza  — 12 zł
-
-     Od wtorku do piątku:" /> 
+   ulgowy — 14 zł" /> 
 	<meta property="og:site_name" content="– Centrum Sztuki Współczesnej Zamek Ujazdowski" />
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 </head>
@@ -169,7 +173,7 @@
     <a href="#" id="as-focus-1" class="no-as">
   Przejdź do sekcji  <span></span>
 </a>    <h1 class="sr-only">
-      Młode matki – Centrum Sztuki Współczesnej Zamek Ujazdowski    </h1>
+      Sny o&nbsp;słoniach – Centrum Sztuki Współczesnej Zamek Ujazdowski    </h1>
 		<div id="main-menu" class="cf" tabindex="-1" aria-hidden="true">
   <div class="main-menu-wrapper bg-secondary fr">
     <button id="main-menu-close" class="btn-close btn btn-link hover-icon-style">
@@ -235,7 +239,7 @@
   </button>
   <ul class="dropdown-menu text-center">
         
-      <a href="/en/kino/repertuar/young-mothers-" class="dropdown-item">
+      <a href="/en/kino/repertuar/" class="dropdown-item">
         <span class="flex-center" aria-hidden="true">
           en        </span>
         <span class="sr-only">
@@ -243,7 +247,7 @@
         </span>
       </a>
         
-      <a href="/ua/-7782/-----/mlode-matki" class="dropdown-item">
+      <a href="/ua/-7782/-----/" class="dropdown-item">
         <span class="flex-center" aria-hidden="true">
           ua        </span>
         <span class="sr-only">
@@ -303,7 +307,7 @@
                                     <a href="/kino/repertuar">
                 Repertuar              </a> <span> <i class="finterp">/</i> </span>
                                 <span class="active">
-            Młode matki          </span>
+            Sny o&nbsp;słoniach          </span>
         </div>
         <div class="col-sm-3">
           <div class="item-breadcrumbs-right text-right">
@@ -321,28 +325,28 @@
   <div class="event-content-header">
         <div class="category fs-16 mb--3">film</div>
     <div class="mb-30 fs-16 pl-1">
-    <h2 class="attr-value-title title-attr fs-54 mt-0 mb--3"><em>Młode matki</em></h2>          <div class="fs-54 pl-1">
+    <h2 class="attr-value-title title-attr fs-54 mt-0 mb--3"><em>Sny o&nbsp;słoniach</em></h2>          <div class="fs-54 pl-1">
         <div class="fs-20 max-w">
-          <i class="finterp">[</i><em>Jeunes mères</em><i class="finterp">]</i><i class="finterp">,</i> reż<i class="finterp">.</i> Jean<i class="finterp">-</i>Pierre &amp; Luc Dardenne<i class="finterp">,</i> Belgia<i class="finterp">/</i> Francja 2025<i class="finterp">,</i> 105'        </div>
+          <i class="finterp">[</i><em>Ghosts Elephants</em><i class="finterp">]</i><i class="finterp">,</i> reż<i class="finterp">.</i> Werner Herzog<i class="finterp">,</i> USA 2025<i class="finterp">,</i> 98'        </div>
       </div>
       </div>
   <div class="item-gallery-carousel mb-30">
-  <div id="carousel-537940076" class="image-carousel carousel vertical slide" data-ride="carousel" data-interval="0">
+  <div id="carousel-740974253" class="image-carousel carousel vertical slide" data-ride="carousel" data-interval="0">
     <div class="carousel-inner" role="listbox">
               <div class="item active">
-          <a href="/upload/thumb/2026/04/young-mothers-still-2_auto_1400x800.jpg" class="r-image-8-5 d-block" data-gallery="#blueimp-gallery-537940076" title="&lt;ul&gt; &lt;li&gt; &lt;p&gt;Język&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;francuski&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;napisy polskie&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;&amp;nbsp;&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;Bilety&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;Tani poniedziałek&lt;i class=&quot;finterp&quot;&gt;:&lt;/i&gt;&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;normalny&amp;nbsp;&lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 16&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;ulgowy&amp;nbsp;&lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 14 zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;z kartą widza&amp;nbsp; &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 12 zł&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;Od wtorku do&amp;nbsp;piątku&lt;i class=&quot;finterp&quot;&gt;:&lt;/i&gt;&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;normalny &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 20&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;ulgowy &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 18&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;z kartą widza&amp;nbsp; &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 14&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;Sobota i&amp;nbsp;niedziela&lt;i class=&quot;finterp&quot;&gt;:&lt;/i&gt;&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;normalny &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 22&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;ulgowy &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 20&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;z kartą widza&amp;nbsp; &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 15&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;/ul&gt; ">
+          <a href="/upload/thumb/2026/05/image-1_auto_1400x800.jpg" class="r-image-8-5 d-block" data-gallery="#blueimp-gallery-740974253" title="&lt;ul&gt; &lt;li&gt; &lt;p&gt;Pokaz przedpremierowy&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;09&lt;i class=&quot;finterp&quot;&gt;/&lt;/i&gt;06&amp;nbsp;&lt;i class=&quot;finterp&quot;&gt;(&lt;/i&gt;wtorek&lt;i class=&quot;finterp&quot;&gt;)&lt;/i&gt; o&amp;nbsp;20&lt;i class=&quot;finterp&quot;&gt;:&lt;/i&gt;30&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;Język&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;angielski&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;napisy polskie&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;&amp;nbsp;&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;Bilety&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;Tani poniedziałek&lt;i class=&quot;finterp&quot;&gt;:&lt;/i&gt;&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;normalny&amp;nbsp;&lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 16&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;ulgowy&amp;nbsp;&lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 14 zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;z kartą widza&amp;nbsp; &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 12 zł&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;Od wtorku do&amp;nbsp;piątku&lt;i class=&quot;finterp&quot;&gt;:&lt;/i&gt;&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;normalny &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 20&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;ulgowy &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 18&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;z kartą widza&amp;nbsp; &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 14&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;Sobota i&amp;nbsp;niedziela&lt;i class=&quot;finterp&quot;&gt;:&lt;/i&gt;&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;normalny &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 22&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;ulgowy &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 20&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;z kartą widza&amp;nbsp; &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 15&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;/ul&gt; ">
             <div class="item-image-lg">
   <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/04/young-mothers-still-2_auto_1800x900.jpg"  data-min-width="1200" />
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/04/young-mothers-still-2_auto_1600x800.jpg"  data-min-width="992" />
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/04/young-mothers-still-2_auto_1400x700.jpg"  data-min-width="768" />
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/04/young-mothers-still-2_auto_900x800.jpg"  data-min-width="576" />
-  <img src="/upload/thumb/2026/04/young-mothers-still-2_auto_800x900.jpg" srcset="/upload/thumb/2026/04/young-mothers-still-2_auto_800x900.jpg" alt="Młode matki" title="" style="" />
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/image-1_auto_1800x900.jpg"  data-min-width="1200" />
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/image-1_auto_1600x800.jpg"  data-min-width="992" />
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/image-1_auto_1400x700.jpg"  data-min-width="768" />
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/image-1_auto_900x800.jpg"  data-min-width="576" />
+  <img src="/upload/thumb/2026/05/image-1_auto_800x900.jpg" srcset="/upload/thumb/2026/05/image-1_auto_800x900.jpg" alt="Sny o&amp;nbsp;słoniach" title="" style="" />
 </picture></div>          </a>
         </div>
           </div>
       </div>
-  <div id="blueimp-gallery-537940076" class="blueimp-gallery" data-use-bootstrap-modal="false">
+  <div id="blueimp-gallery-740974253" class="blueimp-gallery" data-use-bootstrap-modal="false">
   <div class="slides"></div>
   <header class="title"></header>
   <div class="controls">
@@ -360,10 +364,10 @@
     <div id="main-tab-content" class="tab-content pt-20 pb-60 ajax-swap as-animate">
     <div class="event-tab-content">
   <div class="body body-lh max-w">
-    <ul> <li class="Normalny1" style="text-align: justify;">Akcja nowego filmu braci Dardenne rozgrywa się w&nbsp;domu opieki dla młodych matek w&nbsp;belgijskim Liège<i class="finterp">.</i> Poznajemy pięć nastolatek <i class="finterp">–</i> Julie<i class="finterp">,</i> Jessicę<i class="finterp">,</i> Perlę<i class="finterp">,</i> Naïmę i&nbsp;Ariane <i class="finterp">–</i> zmuszonych do&nbsp;tego<i class="finterp">,</i> by zmierzyć się z&nbsp;trudami wczesnego macierzyństwa<i class="finterp">.</i> Każda z&nbsp;dziewczyn<i class="finterp">,</i> których los do&nbsp;tej pory nie oszczędzał<i class="finterp">,</i> ma inną historię<i class="finterp">.</i> <ul> <li class="Normalny1" style="text-align: justify;">Julie<i class="finterp">,</i> mająca w&nbsp;przeszłości problemy z&nbsp;nałogami<i class="finterp">,</i> próbuje zacząć wszystko od&nbsp;nowa<i class="finterp">.</i> Jessica i&nbsp;Perla<i class="finterp">,</i> poza wychowawcami oraz pracownikami ośrodka<i class="finterp">,</i> nie mogą liczyć na&nbsp;żadne wsparcie<i class="finterp">.</i> Pierwszą z&nbsp;dziewczyn po urodzeniu porzuciła matka<i class="finterp">,</i> z&nbsp;którą po latach chciałaby się pojednać<i class="finterp">,</i> druga zmaga się z&nbsp;obojętnością ze&nbsp;strony siostry oraz partnera<i class="finterp">.</i> Naïma marzy<i class="finterp">,</i> by w&nbsp;końcu znaleźć stabilizację i&nbsp;bezpieczeństwo<i class="finterp">.</i> Z&nbsp;kolei piętnastoletnia Ariane<i class="finterp">,</i> chcąc skończyć szkołę<i class="finterp">,</i> myśli o&nbsp;tym<i class="finterp">,</i> by oddać dziecko do&nbsp;rodziny zastępczej<i class="finterp">,</i> wbrew woli swojej matki<i class="finterp">.</i> Młode bohaterki zmagają się nie tylko z&nbsp;trudami codzienności pełnej nowych obowiązków<i class="finterp">,</i> ale również z&nbsp;traumami z&nbsp;przeszłości<i class="finterp">,</i> które noszą w&nbsp;sobie<i class="finterp">.</i> Dom opieki wydaje się być jedynym miejscem<i class="finterp">,</i> gdzie czują się rozumiane i&nbsp;zaopiekowane<i class="finterp">.</i>&nbsp;&nbsp;</li> </ul> </li> <li class="Normalny1" style="text-align: justify;"><em>Młode matki&nbsp;</em>to kolejna pełna humanizmu i&nbsp;empatii opowieść belgijskich braci o&nbsp;tych<i class="finterp">,</i> którzy zwykle nie mają głosu<i class="finterp">.</i> Surowy realizm łączy się tu z&nbsp;nutą nadziei związaną z&nbsp;wartościami takimi jak solidarność czy wsparcie<i class="finterp">.</i> Film<i class="finterp">,</i> oparty na&nbsp;obserwacjach z&nbsp;autentycznego ośrodka pomocy<i class="finterp">,</i> obrazuje ich walkę o&nbsp;lepszą przyszłość dla siebie i&nbsp;swoich dzieci<i class="finterp">.</i>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</li> </ul>       </div>
+    <ul> <li>Szaleni naukowcy i&nbsp;podróżnicy to ulubieni bohaterowie filmów Wernera Herzoga<i class="finterp">.</i> Tym razem reżyser skupia się na&nbsp;poszukiwaniu olbrzymich słoni<i class="finterp">-</i>duchów<i class="finterp">,</i> których daleki krewniak został wystawiony w&nbsp;Muzeum Historii Naturalnej w&nbsp;Waszyngtonie<i class="finterp">.</i> <ul> <li>Dr Steve Boyes tropi ukrywające się przed człowiekiem stado&nbsp;w Angoli<i class="finterp">,</i> na&nbsp;niezamieszkałych terenach wielkości Anglii<i class="finterp">,</i> które tubylcy nazywają końcem świata<i class="finterp">.</i> Herzog dokumentuje obsesje<i class="finterp">,</i> marzenia i&nbsp;pracę wyobraźni swojego bohatera<i class="finterp">,</i> zadając pytanie<i class="finterp">,</i> czy nie lepiej<i class="finterp">,</i> aby te słonie pozostały poza ludzkim zasięgiem i&nbsp;funkcjonowały jako tytułowe duchy<i class="finterp">?</i> Czy przywódca plemienia<i class="finterp">,</i> dający zgodę na&nbsp;poszukiwania<i class="finterp">,</i> ma rację<i class="finterp">,</i> mówiąc<i class="finterp">,</i> że los słoni jest bezpośrednio związany z&nbsp;losem ludzi<i class="finterp">?</i></li> </ul> </li> </ul> <p>&nbsp;</p>       </div>
   <div class="video-list mt-20 mb-20 body">
   <div class="video-youtube embed-responsive embed-responsive-16by9">
-  <iframe width="853" height="480" src="//www.youtube.com/embed/svZLcrIarHw?rel=0&amp;showinfo=0" frameborder="0" allowfullscreen  class="diable-on-hide"></iframe>
+  <iframe width="853" height="480" src="//www.youtube.com/embed/_n9ODqV3A5Q?rel=0&amp;showinfo=0" frameborder="0" allowfullscreen  class="diable-on-hide"></iframe>
 </div>
   
   </div></div>
@@ -371,8 +375,16 @@
 </div>  </div>      </div>
       <div class="col-sm-4 col-md-3 col-md-offset-1 p-sticky">
         <div class="event-main-sidebar pt-10 pb-30">
-    <div class="attr-value-info event-info body fs-15 max-w mb-10"><ul> <li> <p>Język</p> <ul> <li> <p>francuski</p> </li> <li> <p>napisy polskie</p> </li> <li> <p>&nbsp;</p> </li> </ul> </li> <li> <p>Bilety</p> <ul> <li> <p>Tani poniedziałek<i class="finterp">:</i></p> <ul> <li> <p>normalny&nbsp;<i class="finterp">—</i> 16&nbsp;zł</p> </li> <li> <p>ulgowy&nbsp;<i class="finterp">—</i> 14 zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 12 zł</p> </li> </ul> </li> <li> <p>Od wtorku do&nbsp;piątku<i class="finterp">:</i></p> <ul> <li> <p>normalny <i class="finterp">—</i> 20&nbsp;zł</p> </li> <li> <p>ulgowy <i class="finterp">—</i> 18&nbsp;zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 14&nbsp;zł</p> </li> </ul> </li> <li> <p>Sobota i&nbsp;niedziela<i class="finterp">:</i></p> <ul> <li> <p>normalny <i class="finterp">—</i> 22&nbsp;zł</p> </li> <li> <p>ulgowy <i class="finterp">—</i> 20&nbsp;zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 15&nbsp;zł</p> </li> </ul> </li> </ul> </li> </ul> </div>  <div class="event-sidebar-hours body fs-15 pt-10 border-top mb-10">
-  <a data-toggle="collapse" href="#archive-dates-collapse" aria-expanded="false" class="more-dates btn btn-link">archiwum<i class="u-arrow-font" aria-hidden="true">&rarr;</i></a><div id="archive-dates-collapse" class="collapse"><div class="collapse-inner pt-10"><div>22<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>15</div></div><div>23<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>14<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>24<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>16<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>25<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>15</div></div><div>26<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>16<i class="finterp"><i class="finterp">:</i></i>45</div></div><div>27<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>15</div></div><div>28<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>17<i class="finterp"><i class="finterp">:</i></i>45</div></div><div>30<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>14<i class="finterp"><i class="finterp">:</i></i>45</div></div><div>31<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>16<i class="finterp"><i class="finterp">:</i></i>15</div></div></div></div></div>    <div class="event-sidebar-space pt-15 pb-15 border-top text-center">
+  <div class="reservation-btn-wrapper text-center">
+      <a href="#" class="btn btn-arrow btn-primary btn-lg block strong mb-30" data-toggle="modal" data-target="#tickets-modal-740974253">
+      <div class="flex-center">
+        <span>
+          Kup bilet        </span>
+        <svg class="i-md ms-2" style="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 18"><path d="M161.37562,311.840747 C161.85182,311.364557 161.85182,310.592567 161.37562,310.116417 L153.61632,302.357112 C153.14022,301.880963 152.36822,301.880963 151.89202,302.357112 C151.41592,302.833257 151.41592,303.605247 151.89202,304.081397 L158.78922,310.978557 L151.89202,317.875747 C151.41592,318.351847 151.41592,319.123847 151.89202,319.600047 C152.36822,320.076147 153.14022,320.076147 153.61632,319.600047 L161.37562,311.840747 Z M128,312.197847 L160.51352,312.197847 L160.51352,309.759297 L128,309.759297 L128,312.197847 Z" transform="translate(-128 -302)"/></svg>      </div>
+    </a>
+  </div>
+  <div class="attr-value-info event-info body fs-15 max-w mb-10"><ul> <li> <p>Pokaz przedpremierowy</p> <ul> <li> <p>09<i class="finterp">/</i>06&nbsp;<i class="finterp">(</i>wtorek<i class="finterp">)</i> o&nbsp;20<i class="finterp">:</i>30</p> </li> </ul> </li> <li> <p>Język</p> <ul> <li> <p>angielski</p> </li> <li> <p>napisy polskie</p> </li> <li> <p>&nbsp;</p> </li> </ul> </li> <li> <p>Bilety</p> <ul> <li> <p>Tani poniedziałek<i class="finterp">:</i></p> <ul> <li> <p>normalny&nbsp;<i class="finterp">—</i> 16&nbsp;zł</p> </li> <li> <p>ulgowy&nbsp;<i class="finterp">—</i> 14 zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 12 zł</p> </li> </ul> </li> <li> <p>Od wtorku do&nbsp;piątku<i class="finterp">:</i></p> <ul> <li> <p>normalny <i class="finterp">—</i> 20&nbsp;zł</p> </li> <li> <p>ulgowy <i class="finterp">—</i> 18&nbsp;zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 14&nbsp;zł</p> </li> </ul> </li> <li> <p>Sobota i&nbsp;niedziela<i class="finterp">:</i></p> <ul> <li> <p>normalny <i class="finterp">—</i> 22&nbsp;zł</p> </li> <li> <p>ulgowy <i class="finterp">—</i> 20&nbsp;zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 15&nbsp;zł</p> </li> </ul> </li> </ul> </li> </ul> </div>  <div class="event-sidebar-hours body fs-15 pt-10 border-top mb-10">
+  <div>13<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>45</div></div><div>14<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>00</div></div><div>21<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>00</div></div><div>22<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>15</div></div><div>24<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>00</div></div><div>26<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>17<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>27<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>00</div></div><div>30<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>00</div></div><a data-toggle="collapse" href="#archive-dates-collapse" aria-expanded="false" class="more-dates btn btn-link">archiwum<i class="u-arrow-font" aria-hidden="true">&rarr;</i></a><div id="archive-dates-collapse" class="collapse"><div class="collapse-inner pt-10"><div>09<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>12<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>45</div></div></div></div></div>    <div class="event-sidebar-space pt-15 pb-15 border-top text-center">
   <div class="space-list">
   <a href="" class="btn btn-link i-24" data-toggle="modal" data-target="#s-modal-36840252">
     <svg class="i-16" style="" viewBox="0 0 63 63" xmlns="http://www.w3.org/2000/svg"><path d="M61.926,0.555132456 C61.362,-0.010867544 60.455,-0.166867544 59.727,0.193132456 L1.061,29.4011325 C0.407,29.7251325 0,30.3801325 0,31.1111325 C0,31.2681325 0.018,31.4151325 0.049,31.5381325 C0.246,32.4021325 1.004,33.0121325 1.893,33.0211325 L29.225,33.2551325 L29.463,60.5851325 C29.469,61.4721325 30.078,62.2301325 30.947,62.4301325 C31.086,62.4611325 31.226,62.4771325 31.369,62.4771325 C32.098,62.4771325 32.754,62.0721325 33.08,61.4181325 L62.287,2.75013246 C62.648,2.01713246 62.504,1.13513246 61.926,0.555132456 Z M56.33,6.14713246 L33.211,52.5951325 L33.023,31.3451325 C33.013,30.3121325 32.164,29.4651325 31.13,29.4551325 L9.886,29.2701325 L56.33,6.14713246 Z" /></svg>    Kino  </a>
@@ -381,7 +393,7 @@
 </div></div>    <div class="event-sidebar-share meta pt-15 pb-15 border-top">
   <div class="row">      
         <div class="col-xs-12 pt-5">
-      <a href="" class="btn btn-link btn-no-label i-22 inline-block" data-toggle="modal" data-target="#share-537940076">
+      <a href="" class="btn btn-link btn-no-label i-22 inline-block" data-toggle="modal" data-target="#share-740974253">
         <span class="sr-only">Podziel się</span>
         <svg class="c-brand" style="" viewBox="0 0 69 73" xmlns="http://www.w3.org/2000/svg"><path d="M55.604,47.018 C52.202,47.018 49.006,48.34 46.607,50.74 C46.136,51.211 45.692,51.736 45.283,52.306 L25.73,40.437 C26.187,39.108 26.418,37.731 26.418,36.334 C26.418,34.938 26.188,33.563 25.73,32.234 L45.286,20.457 C47.682,23.792 51.485,25.761 55.603,25.761 C62.619,25.761 68.327,20.053 68.327,13.036 C68.328,9.643 67.004,6.449 64.598,4.043 C62.192,1.637 58.997,0.312 55.604,0.312 C48.588,0.312 42.88,6.02 42.88,13.036 C42.88,14.367 43.094,15.689 43.517,16.975 L23.918,28.778 C21.517,25.528 17.746,23.609 13.692,23.609 C6.676,23.609 0.968,29.317 0.968,36.333 C0.968,43.349 6.676,49.057 13.692,49.057 C17.744,49.057 21.512,47.139 23.915,43.89 L43.513,55.785 C43.091,57.072 42.878,58.398 42.878,59.735 C42.878,63.135 44.202,66.33 46.606,68.732 C49.005,71.132 52.201,72.454 55.603,72.454 C59.005,72.454 62.201,71.132 64.6,68.732 C67.003,66.328 68.328,63.132 68.328,59.735 C68.328,56.336 67.004,53.14 64.6,50.737 C62.2,48.339 59.006,47.018 55.604,47.018 Z M64.433,59.737 C64.433,62.096 63.514,64.313 61.846,65.981 C60.182,67.646 57.964,68.563 55.603,68.563 C53.243,68.563 51.025,67.646 49.361,65.981 C47.693,64.314 46.775,62.096 46.775,59.737 C46.775,57.378 47.693,55.16 49.361,53.493 C51.026,51.829 53.243,50.912 55.604,50.912 C57.965,50.912 60.183,51.829 61.848,53.493 C63.515,55.161 64.433,57.378 64.433,59.737 Z M13.694,45.164 C8.825,45.164 4.864,41.203 4.864,36.334 C4.864,31.465 8.824,27.504 13.694,27.504 C18.562,27.504 22.523,31.465 22.523,36.334 C22.523,41.203 18.562,45.164 13.694,45.164 Z M55.604,4.208 C60.473,4.208 64.434,8.169 64.434,13.037 C64.434,17.906 60.473,21.867 55.604,21.867 C50.736,21.867 46.7749998,17.906 46.7749998,13.037 C46.774,8.169 50.735,4.208 55.604,4.208 Z"/></svg>      </a>
       <a href="" class="btn btn-link btn-no-label i-22 inline-block print-me">
@@ -390,7 +402,7 @@
     </div>
   </div>
 </div>  <div class="event-sidebar-poster poster-wrapper text-center mb-20">
-  <img src="/upload/thumb/2026/04/plakat_mlode-matki_auto_800x800.jpg" alt="Młode matki" />
+  <img src="/upload/thumb/2026/05/sny-o-sloniach_plakat_net_auto_800x800.jpg" alt="Sny o słoniach" />
 </div>
 </div>
       </div>
@@ -410,79 +422,77 @@
   <div class="list-wrapper">
     <div class="items-grid items-num-3">
   <div class="row ">    <div class="col-md-4 col-sm-4 nth-in-row-1">
-      <a href="/kino/repertuar/erupcja" class="event-list-day-box d-block h-img-scale mb-50">
+      <a href="/edukacja/szkola-metod-artystycznych-open-call/-szkola-metod-artystycznych-1-645307669" class="event-list-day-box d-block h-img-scale mb-50">
   <div class="img-wrapper r-image-8-5 mb-10">
     <div class="item-image-thumb item-image-md">
   <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_1400x900.png"  data-min-width="1200" />
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_1200x800.png"  data-min-width="992" />
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_1000x700.png"  data-min-width="768" />
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_800x800.png"  data-min-width="576" />
-  <img src="/upload/thumb/2026/04/erupcja_feb09_03_auto_600x900.png" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_600x900.png" alt="" title="" style="" />
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/06/zdj00008_auto_1800x900_auto_1400x900.jpg"  data-min-width="1200" />
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/06/zdj00008_auto_1800x900_auto_1200x800.jpg"  data-min-width="992" />
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/06/zdj00008_auto_1800x900_auto_1000x700.jpg"  data-min-width="768" />
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/06/zdj00008_auto_1800x900_auto_800x800.jpg"  data-min-width="576" />
+  <img src="/upload/thumb/2026/06/zdj00008_auto_1800x900_auto_600x900.jpg" srcset="/upload/thumb/2026/06/zdj00008_auto_1800x900_auto_600x900.jpg" alt="" title="" style="" />
 </picture></div>  </div>
       <div class="hours fs-16">
-      18<i class="finterp">:</i>30    </div>
+      10<i class="finterp">:</i>00    </div>
       <div class="category fs-16 mb--3">
-    film  </div>
+    program edukacyjny  </div>
     <div class="fs-16 pl-1">
     <div class="title fs-30 mb--3 max-w">
-      <em>Erupcja</em>    </div>
+      <i class="finterp">{</i>Szkoła Metod Artystycznych<i class="finterp">}</i> #2    </div>
           <div class="fs-30 pl-1">
         <div class="fs-20 max-w">
-          reż<i class="finterp">.</i> Pete Ohs<i class="finterp">,</i> Polska<i class="finterp">/</i> USA 2025<i class="finterp">,</i> 71'        </div>
+          Projekt artystyczno<em><i class="finterp">-</i></em>badawczy        </div>
       </div>
       </div>
 </a>    </div>
         <div class="col-md-4 col-sm-4 nth-in-row-2">
-      <a href="/kino/repertuar/zawiescie-czerwone-latarnie" class="event-list-day-box d-block h-img-scale mb-50">
+      <a href="/kino/repertuar/drugie-zycie" class="event-list-day-box d-block h-img-scale mb-50">
   <div class="img-wrapper r-image-8-5 mb-10">
     <div class="item-image-thumb item-image-md">
   <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_1400x900.jpg"  data-min-width="1200" />
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_1200x800.jpg"  data-min-width="992" />
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_1000x700.jpg"  data-min-width="768" />
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_800x800.jpg"  data-min-width="576" />
-  <img src="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg" alt="" title="" style="" />
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/drugie-zycie_01_auto_1400x900.jpg"  data-min-width="1200" />
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/drugie-zycie_01_auto_1200x800.jpg"  data-min-width="992" />
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/drugie-zycie_01_auto_1000x700.jpg"  data-min-width="768" />
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/drugie-zycie_01_auto_800x800.jpg"  data-min-width="576" />
+  <img src="/upload/thumb/2026/05/drugie-zycie_01_auto_600x900.jpg" srcset="/upload/thumb/2026/05/drugie-zycie_01_auto_600x900.jpg" alt="" title="" style="" />
 </picture></div>  </div>
       <div class="hours fs-16">
-      20<i class="finterp">:</i>00    </div>
+      15<i class="finterp">:</i>00    </div>
       <div class="category fs-16 mb--3">
     film  </div>
     <div class="fs-16 pl-1">
     <div class="title fs-30 mb--3 max-w">
-      <em>Zawieście czerwone latarnie</em>    </div>
+      <em>Drugie życie</em>    </div>
           <div class="fs-30 pl-1">
         <div class="fs-20 max-w">
-          <i class="finterp">[</i><em>Da hong deng long gao gao gua</em><i class="finterp">]</i><i class="finterp">,</i> reż<i class="finterp">.</i> Yimou Zhang<i class="finterp">,</i> Chiny<i class="finterp">/</i> Hongkong<i class="finterp">/</i> Tajwan 1991<i class="finterp">,</i> 125'        </div>
+          <i class="finterp">[</i><em>Calle Málaga</em><i class="finterp">]</i><i class="finterp">,</i> reż<i class="finterp">.</i> Maryam Touzani<i class="finterp">,</i> Belgia<i class="finterp">/</i> Francja<i class="finterp">/</i> Hiszpania<i class="finterp">/</i> Niemcy<i class="finterp">/</i> Maroko 2025<i class="finterp">,</i> 116'        </div>
       </div>
       </div>
 </a>    </div>
         <div class="col-md-4 col-sm-4 nth-in-row-3">
-      <a href="/program/koncerty/trzy-przestrzenie-pod-ziemia-/druga-interwencja-trzy-przestrzenie-pod-ziemia" class="event-list-day-box d-block h-img-scale mb-50">
+      <a href="/program/wystawy/nie-woda-nie-ziemia/oprowadzankie-kuratorskie-po-wystawie-nie-woda-nie-ziemia-280257852" class="event-list-day-box d-block h-img-scale mb-50">
   <div class="img-wrapper r-image-8-5 mb-10">
     <div class="item-image-thumb item-image-md">
   <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2025/11/thumbnail_1_basement_auto_1400x900.jpg"  data-min-width="1200" />
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2025/11/thumbnail_1_basement_auto_1200x800.jpg"  data-min-width="992" />
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2025/11/thumbnail_1_basement_auto_1000x700.jpg"  data-min-width="768" />
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2025/11/thumbnail_1_basement_auto_800x800.jpg"  data-min-width="576" />
-  <img src="/upload/thumb/2025/11/thumbnail_1_basement_auto_600x900.jpg" srcset="/upload/thumb/2025/11/thumbnail_1_basement_auto_600x900.jpg" alt="" title="" style="" />
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/csw_nie_woda_nie_ziemia_wernisaz_fot_-marta-ankiersztejn-58_auto_1400x900.jpg"  data-min-width="1200" />
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/csw_nie_woda_nie_ziemia_wernisaz_fot_-marta-ankiersztejn-58_auto_1200x800.jpg"  data-min-width="992" />
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/csw_nie_woda_nie_ziemia_wernisaz_fot_-marta-ankiersztejn-58_auto_1000x700.jpg"  data-min-width="768" />
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/csw_nie_woda_nie_ziemia_wernisaz_fot_-marta-ankiersztejn-58_auto_800x800.jpg"  data-min-width="576" />
+  <img src="/upload/thumb/2026/05/csw_nie_woda_nie_ziemia_wernisaz_fot_-marta-ankiersztejn-58_auto_600x900.jpg" srcset="/upload/thumb/2026/05/csw_nie_woda_nie_ziemia_wernisaz_fot_-marta-ankiersztejn-58_auto_600x900.jpg" alt="" title="" style="" />
 </picture></div>  </div>
+      <div class="hours fs-16">
+      17<i class="finterp">:</i>00    </div>
       <div class="category fs-16 mb--3">
-    interwencja dźwiękowa  </div>
+    oprowadzanie kuratorskie  </div>
     <div class="fs-16 pl-1">
     <div class="title fs-30 mb--3 max-w">
-      <em>Trzy przestrzenie pod ziemią</em>    </div>
-          <div class="fs-30 pl-1">
-        <div class="fs-20 max-w">
-          Druga interwencja        </div>
-      </div>
+      Oprowadzanie po wystawie <em>Nie woda nie ziemia</em>    </div>
       </div>
 </a>    </div>
     </div></div>
   </div>
 </div>      </div>
-  <div class="u-modal modal fade" id="share-537940076" tabindex="-1" role="dialog">
+  <div class="u-modal modal fade" id="share-740974253" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-body text-center">
@@ -491,10 +501,10 @@
         <div class="share-wrapper pt-50 pb-50">
           <div class="table">
             <span class="h4 regular tcell">Udostępnij</span>
-            <a href="https://twitter.com/home?status=M%C5%82ode+matki https://u-jazdowski.pl/kino/repertuar/mlode-matki" class="share-btn btn btn-link tcell" target="_blank">
+            <a href="https://twitter.com/home?status=Sny+o+s%C5%82oniach https://u-jazdowski.pl/kino/repertuar/sny-o-sloniach" class="share-btn btn btn-link tcell" target="_blank">
               <span class="sr-only"><span lang="en">Twitter</span></span>
               <svg class="i-30 c-brand" style="" viewBox="0 0 1200 1227" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z"/></svg>            </a>
-            <a href="https://www.facebook.com/sharer/sharer.php?u=https://u-jazdowski.pl/kino/repertuar/mlode-matki" class="share-btn btn btn-link tcell" target="_blank">
+            <a href="https://www.facebook.com/sharer/sharer.php?u=https://u-jazdowski.pl/kino/repertuar/sny-o-sloniach" class="share-btn btn btn-link tcell" target="_blank">
               <span class="sr-only"><span lang="en">Facebook</span></span>
               <svg class="i-40 c-brand" style="" xmlns="http://www.w3.org/2000/svg" viewBox="-25.312 -11.207 80 80" overflow="visible" xml:space="preserve"><path d="M20.072,11.148c0.581-0.512,1.225-0.771,1.916-0.771h6.971V0h-9.522c-3.38,0-5.97,0.518-7.763,1.548	c-1.8,1.034-3.093,2.203-3.891,3.505c-0.807,1.306-1.256,2.55-1.362,3.739c-0.1,1.187-0.149,1.962-0.149,2.321v7.94H0v9.76h6.271	v28.775h12.859V28.815h8.63c0.154-0.905,0.312-1.887,0.467-2.946l0.387-3.136c0.129-1.188,0.241-2.416,0.344-3.68H19.2v-6.457	C19.2,12.146,19.497,11.659,20.072,11.148z"/></svg>            </a>
           </div>
@@ -522,7 +532,52 @@
 </div>      </div>
     </div>
   </div>
-</div></div>
+</div><div id="tickets-modal-740974253" class="event-tickets-modal modal fade" tabindex="-1" role="dialog" aria-labelledby="modal-title-740974253">
+  <div class="u-modal modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-body">
+        <button type="button" class="close hover-icon-style" data-dismiss="modal" aria-label="Close">
+          <svg class="i-sm" style="" viewBox="0 0 19 18" xmlns="http://www.w3.org/2000/svg"><path transform="rotate(45 1019.786 -1139.474)" d="M1119.2 398 1119.2 388.628 1128 388.628 1128 385.372 1119.2 385.372 1119.2 376 1115.8 376 1115.8 385.372 1107 385.372 1107 388.628 1115.8 388.628 1115.8 398z"/></svg>        </button>
+        <div class="tickets-modal-content pt-20 pb-40">
+          <div class="h4">
+            <div class="h4 max-w" id="modal-title-740974253">
+              <em>Sny o&nbsp;słoniach</em>            </div>
+            <div class="body">
+              <form class="form-inline">
+                <div class="form-group">
+                  <label class="">Wybierz termin </label>&nbsp; 
+                  <select class="form-control" id="tickets-select" data-target="#ticket-actions" data-url="/kino/repertuar/sny-o-sloniach/vs_buttons.ajax">
+                    <option></option>
+                                          <option value="12431">
+                        13<i class="finterp">/</i>06<i class="finterp">/</i>2026                        18:45                      </option>  
+                                          <option value="12435">
+                        14<i class="finterp">/</i>06<i class="finterp">/</i>2026                        20:00                      </option>  
+                                          <option value="12452">
+                        21<i class="finterp">/</i>06<i class="finterp">/</i>2026                        18:00                      </option>  
+                                          <option value="12454">
+                        22<i class="finterp">/</i>06<i class="finterp">/</i>2026                        18:15                      </option>  
+                                          <option value="12457">
+                        24<i class="finterp">/</i>06<i class="finterp">/</i>2026                        18:00                      </option>  
+                                          <option value="12461">
+                        26<i class="finterp">/</i>06<i class="finterp">/</i>2026                        17:30                      </option>  
+                                          <option value="12464">
+                        27<i class="finterp">/</i>06<i class="finterp">/</i>2026                        18:00                      </option>  
+                                          <option value="12465">
+                        30<i class="finterp">/</i>06<i class="finterp">/</i>2026                        18:00                      </option>  
+                                      </select>
+                  &nbsp; &nbsp; &nbsp;
+                  <div id="ticket-actions" class="inline-block">
+                  </div>                      
+                </div>
+              </form>                
+            </div>            
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
 </div>				</main>	
 					
 					<footer>

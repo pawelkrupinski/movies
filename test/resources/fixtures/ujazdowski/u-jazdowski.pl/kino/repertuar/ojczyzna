@@ -3,10 +3,10 @@
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 	<meta charset="utf-8" />
-	<title>Erupcja – Centrum Sztuki Współczesnej Zamek Ujazdowski</title>
+	<title>Ojczyzna – Centrum Sztuki Współczesnej Zamek Ujazdowski</title>
 	<meta name="description" content="Język
 
-   angielski, polski
+   niemiecki
 
    napisy polskie
 
@@ -37,9 +37,9 @@
    ulgowy — 20 zł
 
    z kartą widza  — 15 zł" />
-	<link rel="alternate" hreflang="pl" href="https://u-jazdowski.pl/kino/repertuar/erupcja"/>
-	<link rel="alternate" hreflang="en" href="https://u-jazdowski.pl/en/kino/repertuar/erupcja"/>
-	<link rel="alternate" hreflang="ua" href="https://u-jazdowski.pl/ua/-7782/-----/erupcja"/>
+	<link rel="alternate" hreflang="pl" href="https://u-jazdowski.pl/kino/repertuar/ojczyzna"/>
+	<link rel="alternate" hreflang="en" href="https://u-jazdowski.pl/en/kino/repertuar"/>
+	<link rel="alternate" hreflang="ua" href="https://u-jazdowski.pl/ua/-7782/-----"/>
 	<meta name="google-site-verification" content="yi2jF07HCvcGvMGKavx9GzhvOAEynT0uJv7jgUjTakA" />
  
 	<link type="text/plain" rel="author" href="/humans.txt"/>
@@ -94,10 +94,10 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/local/images/favicons/favicon-32x32.png?v=2.1.8">
 <link rel="icon" type="image/png" sizes="16x16" href="/local/images/favicons/favicon-16x16.png?v=2.1.8">
 <link rel="manifest" href="/local/images/favicons/site.webmanifest?v=2.1.8">	<!-- Schema.org markup for Google+ -->
-	<meta itemprop="name" content="Erupcja – Centrum Sztuki Współczesnej Zamek Ujazdowski">
+	<meta itemprop="name" content="Ojczyzna – Centrum Sztuki Współczesnej Zamek Ujazdowski">
 	<meta itemprop="description" content="Język
 
-   angielski, polski
+   niemiecki
 
    napisy polskie
 
@@ -113,14 +113,14 @@
 
    z kartą widza  — 12 zł
 
-     Od wtorku do">
-	 <meta itemprop="image" content="https://u-jazdowski.pl/upload/thumb/2026/04/erupcja_feb09_03_auto_640x640.png">
+     Od wtorku do piątku:">
+	 <meta itemprop="image" content="https://u-jazdowski.pl/upload/thumb/2026/05/fatherland_still_1_agatagrzybowska-1024x768_auto_640x640.jpg">
 	<!-- Twitter Card data -->
 	<meta name="twitter:card" content="summary_large_image">
-	<meta name="twitter:title" content="Erupcja – Centrum Sztuki Współczesnej Zamek Ujazdowski">
+	<meta name="twitter:title" content="Ojczyzna – Centrum Sztuki Współczesnej Zamek Ujazdowski">
 	<meta name="twitter:description" content="Język
 
-   angielski, polski
+   niemiecki
 
    napisy polskie
 
@@ -136,15 +136,15 @@
 
    z kartą widza  — 12 zł
 
-     Od wtorku do">
+     Od wtorku do piątku:">
 	<!-- Twitter Summary card images must be at least 120x120px -->
-	<meta name="twitter:image" content="https://u-jazdowski.pl/upload/thumb/2026/04/erupcja_feb09_03_auto_640x640.png">	<!-- Open Graph data -->
-	<meta property="og:title" content="Erupcja – Centrum Sztuki Współczesnej Zamek Ujazdowski" />
+	<meta name="twitter:image" content="https://u-jazdowski.pl/upload/thumb/2026/05/fatherland_still_1_agatagrzybowska-1024x768_auto_640x640.jpg">	<!-- Open Graph data -->
+	<meta property="og:title" content="Ojczyzna – Centrum Sztuki Współczesnej Zamek Ujazdowski" />
 	<meta property="og:type" content="article" />
-	<meta property="og:url" content="https://u-jazdowski.pl/kino/repertuar/erupcja" />
-	<meta property="og:image" content="https://u-jazdowski.pl/upload/thumb/2026/04/erupcja_feb09_03_auto_640x640.png" />	<meta property="og:description" content="Język
+	<meta property="og:url" content="https://u-jazdowski.pl/kino/repertuar/ojczyzna" />
+	<meta property="og:image" content="https://u-jazdowski.pl/upload/thumb/2026/05/fatherland_still_1_agatagrzybowska-1024x768_auto_640x640.jpg" />	<meta property="og:description" content="Język
 
-   angielski, polski
+   niemiecki
 
    napisy polskie
 
@@ -160,7 +160,7 @@
 
    z kartą widza  — 12 zł
 
-     Od wtorku do" /> 
+     Od wtorku do piątku:" /> 
 	<meta property="og:site_name" content="– Centrum Sztuki Współczesnej Zamek Ujazdowski" />
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 </head>
@@ -169,7 +169,7 @@
     <a href="#" id="as-focus-1" class="no-as">
   Przejdź do sekcji  <span></span>
 </a>    <h1 class="sr-only">
-      Erupcja – Centrum Sztuki Współczesnej Zamek Ujazdowski    </h1>
+      Ojczyzna – Centrum Sztuki Współczesnej Zamek Ujazdowski    </h1>
 		<div id="main-menu" class="cf" tabindex="-1" aria-hidden="true">
   <div class="main-menu-wrapper bg-secondary fr">
     <button id="main-menu-close" class="btn-close btn btn-link hover-icon-style">
@@ -235,7 +235,7 @@
   </button>
   <ul class="dropdown-menu text-center">
         
-      <a href="/en/kino/repertuar/erupcja" class="dropdown-item">
+      <a href="/en/kino/repertuar/" class="dropdown-item">
         <span class="flex-center" aria-hidden="true">
           en        </span>
         <span class="sr-only">
@@ -243,7 +243,7 @@
         </span>
       </a>
         
-      <a href="/ua/-7782/-----/erupcja" class="dropdown-item">
+      <a href="/ua/-7782/-----/" class="dropdown-item">
         <span class="flex-center" aria-hidden="true">
           ua        </span>
         <span class="sr-only">
@@ -303,7 +303,7 @@
                                     <a href="/kino/repertuar">
                 Repertuar              </a> <span> <i class="finterp">/</i> </span>
                                 <span class="active">
-            Erupcja          </span>
+            Ojczyzna          </span>
         </div>
         <div class="col-sm-3">
           <div class="item-breadcrumbs-right text-right">
@@ -321,28 +321,28 @@
   <div class="event-content-header">
         <div class="category fs-16 mb--3">film</div>
     <div class="mb-30 fs-16 pl-1">
-    <h2 class="attr-value-title title-attr fs-54 mt-0 mb--3"><em>Erupcja</em></h2>          <div class="fs-54 pl-1">
+    <h2 class="attr-value-title title-attr fs-54 mt-0 mb--3"><em>Ojczyzna</em></h2>          <div class="fs-54 pl-1">
         <div class="fs-20 max-w">
-          reż<i class="finterp">.</i> Pete Ohs<i class="finterp">,</i> Polska<i class="finterp">/</i> USA 2025<i class="finterp">,</i> 71'        </div>
+          <i class="finterp">[</i><em>Fatherland</em><i class="finterp">]</i><i class="finterp">,</i> reż<i class="finterp">.</i> Paweł Pawlikowski<i class="finterp">,</i> Francja<i class="finterp">/</i> Niemcy<i class="finterp">/</i> Polska<i class="finterp">/</i> Włochy 2026<i class="finterp">,</i> 88'        </div>
       </div>
       </div>
   <div class="item-gallery-carousel mb-30">
-  <div id="carousel-34956532" class="image-carousel carousel vertical slide" data-ride="carousel" data-interval="0">
+  <div id="carousel-202594567" class="image-carousel carousel vertical slide" data-ride="carousel" data-interval="0">
     <div class="carousel-inner" role="listbox">
               <div class="item active">
-          <a href="/upload/thumb/2026/04/erupcja_feb09_03_auto_1400x800.png" class="r-image-8-5 d-block" data-gallery="#blueimp-gallery-34956532" title="&lt;ul&gt; &lt;li&gt; &lt;p&gt;Język&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;angielski&lt;i class=&quot;finterp&quot;&gt;,&lt;/i&gt; polski&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;napisy polskie&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;&amp;nbsp;&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;Bilety&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;Tani poniedziałek&lt;i class=&quot;finterp&quot;&gt;:&lt;/i&gt;&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;normalny&amp;nbsp;&lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 16&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;ulgowy&amp;nbsp;&lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 14 zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;z kartą widza&amp;nbsp; &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 12 zł&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;Od wtorku do&amp;nbsp;piątku&lt;i class=&quot;finterp&quot;&gt;:&lt;/i&gt;&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;normalny &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 20&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;ulgowy &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 18&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;z kartą widza&amp;nbsp; &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 14&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;Sobota i&amp;nbsp;niedziela&lt;i class=&quot;finterp&quot;&gt;:&lt;/i&gt;&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;normalny &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 22&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;ulgowy &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 20&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;z kartą widza&amp;nbsp; &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 15&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;/ul&gt; ">
+          <a href="/upload/thumb/2026/05/fatherland_still_1_agatagrzybowska-1024x768_auto_1400x800.jpg" class="r-image-8-5 d-block" data-gallery="#blueimp-gallery-202594567" title="&lt;ul&gt; &lt;li&gt; &lt;p&gt;Język&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;niemiecki&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;napisy polskie&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;&amp;nbsp;&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;Bilety&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;Tani poniedziałek&lt;i class=&quot;finterp&quot;&gt;:&lt;/i&gt;&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;normalny&amp;nbsp;&lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 16&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;ulgowy&amp;nbsp;&lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 14 zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;z kartą widza&amp;nbsp; &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 12 zł&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;Od wtorku do&amp;nbsp;piątku&lt;i class=&quot;finterp&quot;&gt;:&lt;/i&gt;&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;normalny &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 20&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;ulgowy &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 18&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;z kartą widza&amp;nbsp; &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 14&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;Sobota i&amp;nbsp;niedziela&lt;i class=&quot;finterp&quot;&gt;:&lt;/i&gt;&lt;/p&gt; &lt;ul&gt; &lt;li&gt; &lt;p&gt;normalny &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 22&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;ulgowy &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 20&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;li&gt; &lt;p&gt;z kartą widza&amp;nbsp; &lt;i class=&quot;finterp&quot;&gt;—&lt;/i&gt; 15&amp;nbsp;zł&lt;/p&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;/ul&gt; &lt;/li&gt; &lt;/ul&gt; ">
             <div class="item-image-lg">
   <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_1800x900.png"  data-min-width="1200" />
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_1600x800.png"  data-min-width="992" />
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_1400x700.png"  data-min-width="768" />
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_900x800.png"  data-min-width="576" />
-  <img src="/upload/thumb/2026/04/erupcja_feb09_03_auto_800x900.png" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_800x900.png" alt="Erupcja" title="" style="" />
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/fatherland_still_1_agatagrzybowska-1024x768_auto_1800x900.jpg"  data-min-width="1200" />
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/fatherland_still_1_agatagrzybowska-1024x768_auto_1600x800.jpg"  data-min-width="992" />
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/fatherland_still_1_agatagrzybowska-1024x768_auto_1400x700.jpg"  data-min-width="768" />
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/fatherland_still_1_agatagrzybowska-1024x768_auto_900x800.jpg"  data-min-width="576" />
+  <img src="/upload/thumb/2026/05/fatherland_still_1_agatagrzybowska-1024x768_auto_800x900.jpg" srcset="/upload/thumb/2026/05/fatherland_still_1_agatagrzybowska-1024x768_auto_800x900.jpg" alt="Ojczyzna" title="" style="" />
 </picture></div>          </a>
         </div>
           </div>
       </div>
-  <div id="blueimp-gallery-34956532" class="blueimp-gallery" data-use-bootstrap-modal="false">
+  <div id="blueimp-gallery-202594567" class="blueimp-gallery" data-use-bootstrap-modal="false">
   <div class="slides"></div>
   <header class="title"></header>
   <div class="controls">
@@ -360,10 +360,10 @@
     <div id="main-tab-content" class="tab-content pt-20 pb-60 ajax-swap as-animate">
     <div class="event-tab-content">
   <div class="body body-lh max-w">
-    <ul> <li>Jest upalne warszawskie lato<i class="finterp">.</i> Bethany <i class="finterp">(</i>Charli xcx<i class="finterp">)</i> przyjeżdża do&nbsp;Polski na&nbsp;romantyczny wyjazd z&nbsp;chłopakiem<i class="finterp">.</i> Kiedy spotyka Nel <i class="finterp">(</i>Lena Góra<i class="finterp">)</i><i class="finterp">,</i> przyjaciółkę sprzed lat<i class="finterp">,</i> wybucha między nimi niewypowiedziana chemia<i class="finterp">.</i> Tęsknota za beztroską prowadzi je ulicami otulonego słońcem miasta <i class="finterp">–</i> jak najdalej od&nbsp;miejsca<i class="finterp">,</i> w&nbsp;którym będą musiały podjąć decyzje ważące na&nbsp;reszcie ich dorosłego życia<i class="finterp">.</i> <ul> <li><em>Erupcja</em>&nbsp;to intymna i&nbsp;szalona opowieść o&nbsp;spotkaniu<i class="finterp">,</i> które zmienia wszystko<i class="finterp">,</i> a&nbsp;jednocześnie filmowy list miłosny do&nbsp;Polski<i class="finterp">.</i> Reżyser Pete Ohs portretuje Warszawę jako miasto twórczej energii i&nbsp;wolności<i class="finterp">.</i> W&nbsp;roli Bethany występuje światowa gwiazda Charli xcx<i class="finterp">,</i> która wnosi do&nbsp;filmu swoją charakterystyczną wrażliwość i&nbsp;ekranową charyzmę<i class="finterp">.</i> Partneruje jej Lena Góra <i class="finterp">–</i> jedna z&nbsp;najważniejszych aktorek młodego pokolenia<i class="finterp">,</i> współtwórczyni projektu i&nbsp;emocjonalne serce <em>Erupcji</em><i class="finterp">.</i></li> </ul> </li> </ul>       </div>
+    <p><em>Ojczyzna</em> to najnowszy<i class="finterp">,</i> długo wyczekiwany film laureata Oscara<i class="finterp">,</i> Pawła Pawlikowskiego<i class="finterp">,</i> twórcy <em>Idy</em>&nbsp;i <em>Zimnej wojny</em><i class="finterp">,</i>&nbsp;zdobywca nagrody za reżyserię na&nbsp;tegorocznym 79<i class="finterp">.</i> Międzynarodowym Festiwalu Filmowym w&nbsp;Cannes<i class="finterp">.</i></p> <p>W swoim najnowszym dziele<i class="finterp">,</i> podobnie jak w&nbsp;<em>Idzie</em>&nbsp;i <em>Zimnej wojnie</em><i class="finterp">,</i> reżyser podejmuje tematy tożsamości<i class="finterp">,</i> winy<i class="finterp">,</i> rodziny i&nbsp;miłości na&nbsp;tle chaosu i&nbsp;moralnego zagubienia powojennej Europy<i class="finterp">.</i>&nbsp;W rolach głównych zobaczymy nominowaną do&nbsp;Oscara Sandrę Hüller <i class="finterp">(</i><em>Strefa interesów</em><i class="finterp">,</i> <em>Anatomia upadku</em><i class="finterp">)</i> i&nbsp;Hannsa Zischlera <i class="finterp">(</i><em>Monachium</em><i class="finterp">)</i><i class="finterp">.</i></p> <p><em>Ojczyzna</em>&nbsp;opowiada o&nbsp;relacji między Thomasem Mannem <i class="finterp">(</i>Hanns Zischler<i class="finterp">)</i><i class="finterp">,</i> laureatem Nagrody Nobla w&nbsp;dziedzinie literatury<i class="finterp">,</i> a&nbsp;jego córką Eriką <i class="finterp">(</i>Sandra Hüller<i class="finterp">)</i> <i class="finterp">–</i> aktorką i&nbsp;pisarką<i class="finterp">.</i> Akcja rozgrywa się w&nbsp;szczytowym okresie zimnej wojny<i class="finterp">.</i> Ojciec i&nbsp;córka wyruszają w&nbsp;trudną<i class="finterp">,</i> pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy <i class="finterp">–</i> z&nbsp;Frankfurtu pod kontrolą amerykańską do&nbsp;Weimaru pod wpływem sowieckim<i class="finterp">.</i> Po raz pierwszy od&nbsp;zakończenia wojny Mann wraca do&nbsp;swojej ojczyzny<i class="finterp">,</i> po tym jak podjął wcześniej trudną decyzję o&nbsp;emigracji do&nbsp;Stanów Zjednoczonych<i class="finterp">.</i>&nbsp;</p>       </div>
   <div class="video-list mt-20 mb-20 body">
   <div class="video-youtube embed-responsive embed-responsive-16by9">
-  <iframe width="853" height="480" src="//www.youtube.com/embed/Sd74D6wV7SQ?rel=0&amp;showinfo=0" frameborder="0" allowfullscreen  class="diable-on-hide"></iframe>
+  <iframe width="853" height="480" src="//www.youtube.com/embed/Ny7JujsNhNc?rel=0&amp;showinfo=0" frameborder="0" allowfullscreen  class="diable-on-hide"></iframe>
 </div>
   
   </div></div>
@@ -372,15 +372,15 @@
       <div class="col-sm-4 col-md-3 col-md-offset-1 p-sticky">
         <div class="event-main-sidebar pt-10 pb-30">
   <div class="reservation-btn-wrapper text-center">
-      <a href="#" class="btn btn-arrow btn-primary btn-lg block strong mb-30" data-toggle="modal" data-target="#tickets-modal-34956532">
+      <a href="#" class="btn btn-arrow btn-primary btn-lg block strong mb-30" data-toggle="modal" data-target="#tickets-modal-202594567">
       <div class="flex-center">
         <span>
           Kup bilet        </span>
         <svg class="i-md ms-2" style="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 18"><path d="M161.37562,311.840747 C161.85182,311.364557 161.85182,310.592567 161.37562,310.116417 L153.61632,302.357112 C153.14022,301.880963 152.36822,301.880963 151.89202,302.357112 C151.41592,302.833257 151.41592,303.605247 151.89202,304.081397 L158.78922,310.978557 L151.89202,317.875747 C151.41592,318.351847 151.41592,319.123847 151.89202,319.600047 C152.36822,320.076147 153.14022,320.076147 153.61632,319.600047 L161.37562,311.840747 Z M128,312.197847 L160.51352,312.197847 L160.51352,309.759297 L128,309.759297 L128,312.197847 Z" transform="translate(-128 -302)"/></svg>      </div>
     </a>
   </div>
-  <div class="attr-value-info event-info body fs-15 max-w mb-10"><ul> <li> <p>Język</p> <ul> <li> <p>angielski<i class="finterp">,</i> polski</p> </li> <li> <p>napisy polskie</p> </li> <li> <p>&nbsp;</p> </li> </ul> </li> <li> <p>Bilety</p> <ul> <li> <p>Tani poniedziałek<i class="finterp">:</i></p> <ul> <li> <p>normalny&nbsp;<i class="finterp">—</i> 16&nbsp;zł</p> </li> <li> <p>ulgowy&nbsp;<i class="finterp">—</i> 14 zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 12 zł</p> </li> </ul> </li> <li> <p>Od wtorku do&nbsp;piątku<i class="finterp">:</i></p> <ul> <li> <p>normalny <i class="finterp">—</i> 20&nbsp;zł</p> </li> <li> <p>ulgowy <i class="finterp">—</i> 18&nbsp;zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 14&nbsp;zł</p> </li> </ul> </li> <li> <p>Sobota i&nbsp;niedziela<i class="finterp">:</i></p> <ul> <li> <p>normalny <i class="finterp">—</i> 22&nbsp;zł</p> </li> <li> <p>ulgowy <i class="finterp">—</i> 20&nbsp;zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 15&nbsp;zł</p> </li> </ul> </li> </ul> </li> </ul> </div>  <div class="event-sidebar-hours body fs-15 pt-10 border-top mb-10">
-  <div>13<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>45</div></div><a data-toggle="collapse" href="#archive-dates-collapse" aria-expanded="false" class="more-dates btn btn-link">archiwum<i class="u-arrow-font" aria-hidden="true">&rarr;</i></a><div id="archive-dates-collapse" class="collapse"><div class="collapse-inner pt-10"><div>03<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>08<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>09<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>15</div></div><div>12<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>15<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>17<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>00</div></div><div>22<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>23<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>24<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>25<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>27<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>29<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>30<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>31<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>03<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>45</div></div><div>07<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>13<i class="finterp"><i class="finterp">:</i></i>45</div></div><div>11<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>30</div></div></div></div></div>    <div class="event-sidebar-space pt-15 pb-15 border-top text-center">
+  <div class="attr-value-info event-info body fs-15 max-w mb-10"><ul> <li> <p>Język</p> <ul> <li> <p>niemiecki</p> </li> <li> <p>napisy polskie</p> </li> <li> <p>&nbsp;</p> </li> </ul> </li> <li> <p>Bilety</p> <ul> <li> <p>Tani poniedziałek<i class="finterp">:</i></p> <ul> <li> <p>normalny&nbsp;<i class="finterp">—</i> 16&nbsp;zł</p> </li> <li> <p>ulgowy&nbsp;<i class="finterp">—</i> 14 zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 12 zł</p> </li> </ul> </li> <li> <p>Od wtorku do&nbsp;piątku<i class="finterp">:</i></p> <ul> <li> <p>normalny <i class="finterp">—</i> 20&nbsp;zł</p> </li> <li> <p>ulgowy <i class="finterp">—</i> 18&nbsp;zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 14&nbsp;zł</p> </li> </ul> </li> <li> <p>Sobota i&nbsp;niedziela<i class="finterp">:</i></p> <ul> <li> <p>normalny <i class="finterp">—</i> 22&nbsp;zł</p> </li> <li> <p>ulgowy <i class="finterp">—</i> 20&nbsp;zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 15&nbsp;zł</p> </li> </ul> </li> </ul> </li> </ul> </div>  <div class="event-sidebar-hours body fs-15 pt-10 border-top mb-10">
+  <div>19<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>20<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>17<i class="finterp"><i class="finterp">:</i></i>00</div></div><div>21<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>00</div></div><div>22<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>15</div></div><div>23<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>17<i class="finterp"><i class="finterp">:</i></i>30</div></div><div>24<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>00</div></div><div>25<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>18<i class="finterp"><i class="finterp">:</i></i>00</div></div><div>28<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>15</div></div></div>    <div class="event-sidebar-space pt-15 pb-15 border-top text-center">
   <div class="space-list">
   <a href="" class="btn btn-link i-24" data-toggle="modal" data-target="#s-modal-36840252">
     <svg class="i-16" style="" viewBox="0 0 63 63" xmlns="http://www.w3.org/2000/svg"><path d="M61.926,0.555132456 C61.362,-0.010867544 60.455,-0.166867544 59.727,0.193132456 L1.061,29.4011325 C0.407,29.7251325 0,30.3801325 0,31.1111325 C0,31.2681325 0.018,31.4151325 0.049,31.5381325 C0.246,32.4021325 1.004,33.0121325 1.893,33.0211325 L29.225,33.2551325 L29.463,60.5851325 C29.469,61.4721325 30.078,62.2301325 30.947,62.4301325 C31.086,62.4611325 31.226,62.4771325 31.369,62.4771325 C32.098,62.4771325 32.754,62.0721325 33.08,61.4181325 L62.287,2.75013246 C62.648,2.01713246 62.504,1.13513246 61.926,0.555132456 Z M56.33,6.14713246 L33.211,52.5951325 L33.023,31.3451325 C33.013,30.3121325 32.164,29.4651325 31.13,29.4551325 L9.886,29.2701325 L56.33,6.14713246 Z" /></svg>    Kino  </a>
@@ -389,7 +389,7 @@
 </div></div>    <div class="event-sidebar-share meta pt-15 pb-15 border-top">
   <div class="row">      
         <div class="col-xs-12 pt-5">
-      <a href="" class="btn btn-link btn-no-label i-22 inline-block" data-toggle="modal" data-target="#share-34956532">
+      <a href="" class="btn btn-link btn-no-label i-22 inline-block" data-toggle="modal" data-target="#share-202594567">
         <span class="sr-only">Podziel się</span>
         <svg class="c-brand" style="" viewBox="0 0 69 73" xmlns="http://www.w3.org/2000/svg"><path d="M55.604,47.018 C52.202,47.018 49.006,48.34 46.607,50.74 C46.136,51.211 45.692,51.736 45.283,52.306 L25.73,40.437 C26.187,39.108 26.418,37.731 26.418,36.334 C26.418,34.938 26.188,33.563 25.73,32.234 L45.286,20.457 C47.682,23.792 51.485,25.761 55.603,25.761 C62.619,25.761 68.327,20.053 68.327,13.036 C68.328,9.643 67.004,6.449 64.598,4.043 C62.192,1.637 58.997,0.312 55.604,0.312 C48.588,0.312 42.88,6.02 42.88,13.036 C42.88,14.367 43.094,15.689 43.517,16.975 L23.918,28.778 C21.517,25.528 17.746,23.609 13.692,23.609 C6.676,23.609 0.968,29.317 0.968,36.333 C0.968,43.349 6.676,49.057 13.692,49.057 C17.744,49.057 21.512,47.139 23.915,43.89 L43.513,55.785 C43.091,57.072 42.878,58.398 42.878,59.735 C42.878,63.135 44.202,66.33 46.606,68.732 C49.005,71.132 52.201,72.454 55.603,72.454 C59.005,72.454 62.201,71.132 64.6,68.732 C67.003,66.328 68.328,63.132 68.328,59.735 C68.328,56.336 67.004,53.14 64.6,50.737 C62.2,48.339 59.006,47.018 55.604,47.018 Z M64.433,59.737 C64.433,62.096 63.514,64.313 61.846,65.981 C60.182,67.646 57.964,68.563 55.603,68.563 C53.243,68.563 51.025,67.646 49.361,65.981 C47.693,64.314 46.775,62.096 46.775,59.737 C46.775,57.378 47.693,55.16 49.361,53.493 C51.026,51.829 53.243,50.912 55.604,50.912 C57.965,50.912 60.183,51.829 61.848,53.493 C63.515,55.161 64.433,57.378 64.433,59.737 Z M13.694,45.164 C8.825,45.164 4.864,41.203 4.864,36.334 C4.864,31.465 8.824,27.504 13.694,27.504 C18.562,27.504 22.523,31.465 22.523,36.334 C22.523,41.203 18.562,45.164 13.694,45.164 Z M55.604,4.208 C60.473,4.208 64.434,8.169 64.434,13.037 C64.434,17.906 60.473,21.867 55.604,21.867 C50.736,21.867 46.7749998,17.906 46.7749998,13.037 C46.774,8.169 50.735,4.208 55.604,4.208 Z"/></svg>      </a>
       <a href="" class="btn btn-link btn-no-label i-22 inline-block print-me">
@@ -398,7 +398,7 @@
     </div>
   </div>
 </div>  <div class="event-sidebar-poster poster-wrapper text-center mb-20">
-  <img src="/upload/thumb/2026/04/erupcja_b1_pl_auto_800x800.jpg" alt="Erupcja" />
+  <img src="/upload/thumb/2026/06/plakat-bez-logotyp-w_auto_800x800.jpg" alt="Ojczyzna" />
 </div>
 </div>
       </div>
@@ -488,7 +488,7 @@
     </div></div>
   </div>
 </div>      </div>
-  <div class="u-modal modal fade" id="share-34956532" tabindex="-1" role="dialog">
+  <div class="u-modal modal fade" id="share-202594567" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-body text-center">
@@ -497,10 +497,10 @@
         <div class="share-wrapper pt-50 pb-50">
           <div class="table">
             <span class="h4 regular tcell">Udostępnij</span>
-            <a href="https://twitter.com/home?status=Erupcja https://u-jazdowski.pl/kino/repertuar/erupcja" class="share-btn btn btn-link tcell" target="_blank">
+            <a href="https://twitter.com/home?status=Ojczyzna https://u-jazdowski.pl/kino/repertuar/ojczyzna" class="share-btn btn btn-link tcell" target="_blank">
               <span class="sr-only"><span lang="en">Twitter</span></span>
               <svg class="i-30 c-brand" style="" viewBox="0 0 1200 1227" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z"/></svg>            </a>
-            <a href="https://www.facebook.com/sharer/sharer.php?u=https://u-jazdowski.pl/kino/repertuar/erupcja" class="share-btn btn btn-link tcell" target="_blank">
+            <a href="https://www.facebook.com/sharer/sharer.php?u=https://u-jazdowski.pl/kino/repertuar/ojczyzna" class="share-btn btn btn-link tcell" target="_blank">
               <span class="sr-only"><span lang="en">Facebook</span></span>
               <svg class="i-40 c-brand" style="" xmlns="http://www.w3.org/2000/svg" viewBox="-25.312 -11.207 80 80" overflow="visible" xml:space="preserve"><path d="M20.072,11.148c0.581-0.512,1.225-0.771,1.916-0.771h6.971V0h-9.522c-3.38,0-5.97,0.518-7.763,1.548	c-1.8,1.034-3.093,2.203-3.891,3.505c-0.807,1.306-1.256,2.55-1.362,3.739c-0.1,1.187-0.149,1.962-0.149,2.321v7.94H0v9.76h6.271	v28.775h12.859V28.815h8.63c0.154-0.905,0.312-1.887,0.467-2.946l0.387-3.136c0.129-1.188,0.241-2.416,0.344-3.68H19.2v-6.457	C19.2,12.146,19.497,11.659,20.072,11.148z"/></svg>            </a>
           </div>
@@ -528,7 +528,7 @@
 </div>      </div>
     </div>
   </div>
-</div><div id="tickets-modal-34956532" class="event-tickets-modal modal fade" tabindex="-1" role="dialog" aria-labelledby="modal-title-34956532">
+</div><div id="tickets-modal-202594567" class="event-tickets-modal modal fade" tabindex="-1" role="dialog" aria-labelledby="modal-title-202594567">
   <div class="u-modal modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <div class="modal-body">
@@ -536,16 +536,30 @@
           <svg class="i-sm" style="" viewBox="0 0 19 18" xmlns="http://www.w3.org/2000/svg"><path transform="rotate(45 1019.786 -1139.474)" d="M1119.2 398 1119.2 388.628 1128 388.628 1128 385.372 1119.2 385.372 1119.2 376 1115.8 376 1115.8 385.372 1107 385.372 1107 388.628 1115.8 388.628 1115.8 398z"/></svg>        </button>
         <div class="tickets-modal-content pt-20 pb-40">
           <div class="h4">
-            <div class="h4 max-w" id="modal-title-34956532">
-              <em>Erupcja</em>            </div>
+            <div class="h4 max-w" id="modal-title-202594567">
+              <em>Ojczyzna</em>            </div>
             <div class="body">
               <form class="form-inline">
                 <div class="form-group">
                   <label class="">Wybierz termin </label>&nbsp; 
-                  <select class="form-control" id="tickets-select" data-target="#ticket-actions" data-url="/kino/repertuar/erupcja/vs_buttons.ajax">
+                  <select class="form-control" id="tickets-select" data-target="#ticket-actions" data-url="/kino/repertuar/ojczyzna/vs_buttons.ajax">
                     <option></option>
-                                          <option value="12432">
-                        13<i class="finterp">/</i>06<i class="finterp">/</i>2026                        20:45                      </option>  
+                                          <option value="12448">
+                        19<i class="finterp">/</i>06<i class="finterp">/</i>2026                        20:30                      </option>  
+                                          <option value="12451">
+                        20<i class="finterp">/</i>06<i class="finterp">/</i>2026                        17:00                      </option>  
+                                          <option value="12453">
+                        21<i class="finterp">/</i>06<i class="finterp">/</i>2026                        20:00                      </option>  
+                                          <option value="12455">
+                        22<i class="finterp">/</i>06<i class="finterp">/</i>2026                        20:15                      </option>  
+                                          <option value="12456">
+                        23<i class="finterp">/</i>06<i class="finterp">/</i>2026                        17:30                      </option>  
+                                          <option value="12458">
+                        24<i class="finterp">/</i>06<i class="finterp">/</i>2026                        20:00                      </option>  
+                                          <option value="12459">
+                        25<i class="finterp">/</i>06<i class="finterp">/</i>2026                        18:00                      </option>  
+                                          <option value="12478">
+                        28<i class="finterp">/</i>06<i class="finterp">/</i>2026                        20:15                      </option>  
                                       </select>
                   &nbsp; &nbsp; &nbsp;
                   <div id="ticket-actions" class="inline-block">

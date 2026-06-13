@@ -4,7 +4,7 @@ import models._
 import org.jsoup.Jsoup
 import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
-import java.time.{Instant, LocalDateTime, ZoneId}
+import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -16,8 +16,16 @@ import scala.util.Try
  * director/country/year/runtime meta line, poster) linking to the film page.
  * The per-film page adds the synopsis. The date comes from the `ut`, so the
  * replay is deterministic. Booking is the film page (no stable deep-link).
+ *
+ * The nav only enumerates a short rolling window (it stopped one day after
+ * "today" while `week.ajax` already served a full week ahead), so advance days
+ * were silently dropped. We union the nav `ut`s with a computed
+ * today..today+6 window so the forward week is always fetched.
  */
-class UjazdowskiClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
+class UjazdowskiClient(
+  http:  HttpFetch,
+  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+) extends CinemaScraper with DetailEnricher {
 
   // Static film pages cached across passes; the listing/day pages stay live.
   private val detailHttp = new CachingDetailFetch(http)
@@ -39,8 +47,13 @@ class UjazdowskiClient(http: HttpFetch) extends CinemaScraper with DetailEnriche
   def fetch(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
-    val main = http.get(ListingUrl)
-    val uts  = UtPat.findAllMatchIn(main).map(_.group(1)).toSeq.distinct
+    val main    = http.get(ListingUrl)
+    val navUts  = UtPat.findAllMatchIn(main).map(_.group(1)).toSeq
+    // `ut` is the day's midnight-Warsaw epoch (DST-aware). Add the forward
+    // window the nav omits; missing days just 404 → no slots.
+    val windowUts = (0 until UjazdowskiClient.WindowDays)
+      .map(i => today.plusDays(i.toLong).atStartOfDay(WarsawZone).toEpochSecond.toString)
+    val uts = (navUts ++ windowUts).distinct
 
     val dayPages = ParallelDetailFetch.keyed("ujazdowski-days", uts, 1.minute, maxConcurrent = 1)(ut => s"$ListingUrl/week.ajax?ut=$ut") { url =>
       Try(http.get(url)).toOption
@@ -101,6 +114,10 @@ class UjazdowskiClient(http: HttpFetch) extends CinemaScraper with DetailEnriche
 }
 
 object UjazdowskiClient {
+
+  // Today + the next 6 days — the standard one-week window other per-day clients
+  // use; `week.ajax` serves data this far out even when the nav doesn't list it.
+  private val WindowDays = 7
 
   // "[Original Title], reż. Director, Country1/ Country2 YEAR, RUNTIME'"
   private val MetaPat = """reż\.\s*(.+?),\s*(.+?)\s+((?:19|20)\d{2}),\s*(\d+)['’]""".r

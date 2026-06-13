@@ -381,16 +381,8 @@
 </div>  </div>      </div>
       <div class="col-sm-4 col-md-3 col-md-offset-1 p-sticky">
         <div class="event-main-sidebar pt-10 pb-30">
-  <div class="reservation-btn-wrapper text-center">
-      <a href="#" class="btn btn-arrow btn-primary btn-lg block strong mb-30" data-toggle="modal" data-target="#tickets-modal-174627830">
-      <div class="flex-center">
-        <span>
-          Kup bilet        </span>
-        <svg class="i-md ms-2" style="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 18"><path d="M161.37562,311.840747 C161.85182,311.364557 161.85182,310.592567 161.37562,310.116417 L153.61632,302.357112 C153.14022,301.880963 152.36822,301.880963 151.89202,302.357112 C151.41592,302.833257 151.41592,303.605247 151.89202,304.081397 L158.78922,310.978557 L151.89202,317.875747 C151.41592,318.351847 151.41592,319.123847 151.89202,319.600047 C152.36822,320.076147 153.14022,320.076147 153.61632,319.600047 L161.37562,311.840747 Z M128,312.197847 L160.51352,312.197847 L160.51352,309.759297 L128,309.759297 L128,312.197847 Z" transform="translate(-128 -302)"/></svg>      </div>
-    </a>
-  </div>
-  <div class="attr-value-info event-info body fs-15 max-w mb-10"><ul> <li> <p>Wersja odrestaurowana 4K</p> </li> <li> <p>&nbsp;</p> </li> <li> <p>Język</p> <ul> <li> <p>mandaryński</p> </li> <li> <p>napisy polskie</p> </li> <li> <p>&nbsp;</p> </li> </ul> </li> <li> <p>Bilety</p> <ul> <li> <p>Tani poniedziałek<i class="finterp">:</i></p> <ul> <li> <p>normalny&nbsp;<i class="finterp">—</i> 16&nbsp;zł</p> </li> <li> <p>ulgowy&nbsp;<i class="finterp">—</i> 14 zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 12 zł</p> </li> </ul> </li> <li> <p>Od wtorku do&nbsp;piątku<i class="finterp">:</i></p> <ul> <li> <p>normalny <i class="finterp">—</i> 20&nbsp;zł</p> </li> <li> <p>ulgowy <i class="finterp">—</i> 18&nbsp;zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 14&nbsp;zł</p> </li> </ul> </li> <li> <p>Sobota i&nbsp;niedziela<i class="finterp">:</i></p> <ul> <li> <p>normalny <i class="finterp">—</i> 22&nbsp;zł</p> </li> <li> <p>ulgowy <i class="finterp">—</i> 20&nbsp;zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 15&nbsp;zł</p> </li> </ul> </li> </ul> </li> </ul> </div>  <div class="event-sidebar-hours body fs-15 pt-10 border-top mb-10">
-  <div>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>00</div></div><div>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>16<i class="finterp"><i class="finterp">:</i></i>15</div></div><div>07<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>15<i class="finterp"><i class="finterp">:</i></i>15</div></div><div>08<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>00</div></div><div>10<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>17<i class="finterp"><i class="finterp">:</i></i>30</div></div><a data-toggle="collapse" href="#archive-dates-collapse" aria-expanded="false" class="more-dates btn btn-link">archiwum<i class="u-arrow-font" aria-hidden="true">&rarr;</i></a><div id="archive-dates-collapse" class="collapse"><div class="collapse-inner pt-10"><div>01<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>17<i class="finterp"><i class="finterp">:</i></i>45</div></div></div></div></div>    <div class="event-sidebar-space pt-15 pb-15 border-top text-center">
+    <div class="attr-value-info event-info body fs-15 max-w mb-10"><ul> <li> <p>Wersja odrestaurowana 4K</p> </li> <li> <p>&nbsp;</p> </li> <li> <p>Język</p> <ul> <li> <p>mandaryński</p> </li> <li> <p>napisy polskie</p> </li> <li> <p>&nbsp;</p> </li> </ul> </li> <li> <p>Bilety</p> <ul> <li> <p>Tani poniedziałek<i class="finterp">:</i></p> <ul> <li> <p>normalny&nbsp;<i class="finterp">—</i> 16&nbsp;zł</p> </li> <li> <p>ulgowy&nbsp;<i class="finterp">—</i> 14 zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 12 zł</p> </li> </ul> </li> <li> <p>Od wtorku do&nbsp;piątku<i class="finterp">:</i></p> <ul> <li> <p>normalny <i class="finterp">—</i> 20&nbsp;zł</p> </li> <li> <p>ulgowy <i class="finterp">—</i> 18&nbsp;zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 14&nbsp;zł</p> </li> </ul> </li> <li> <p>Sobota i&nbsp;niedziela<i class="finterp">:</i></p> <ul> <li> <p>normalny <i class="finterp">—</i> 22&nbsp;zł</p> </li> <li> <p>ulgowy <i class="finterp">—</i> 20&nbsp;zł</p> </li> <li> <p>z kartą widza&nbsp; <i class="finterp">—</i> 15&nbsp;zł</p> </li> </ul> </li> </ul> </li> </ul> </div>  <div class="event-sidebar-hours body fs-15 pt-10 border-top mb-10">
+  <a data-toggle="collapse" href="#archive-dates-collapse" aria-expanded="false" class="more-dates btn btn-link">archiwum<i class="u-arrow-font" aria-hidden="true">&rarr;</i></a><div id="archive-dates-collapse" class="collapse"><div class="collapse-inner pt-10"><div>01<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>17<i class="finterp"><i class="finterp">:</i></i>45</div></div><div>05<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>00</div></div><div>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>16<i class="finterp"><i class="finterp">:</i></i>15</div></div><div>07<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>15<i class="finterp"><i class="finterp">:</i></i>15</div></div><div>08<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>20<i class="finterp"><i class="finterp">:</i></i>00</div></div><div>10<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>06<i class="finterp"><i class="finterp"><i class="finterp">/</i></i></i>2026<div>17<i class="finterp"><i class="finterp">:</i></i>30</div></div></div></div></div>    <div class="event-sidebar-space pt-15 pb-15 border-top text-center">
   <div class="space-list">
   <a href="" class="btn btn-link i-24" data-toggle="modal" data-target="#s-modal-36840252">
     <svg class="i-16" style="" viewBox="0 0 63 63" xmlns="http://www.w3.org/2000/svg"><path d="M61.926,0.555132456 C61.362,-0.010867544 60.455,-0.166867544 59.727,0.193132456 L1.061,29.4011325 C0.407,29.7251325 0,30.3801325 0,31.1111325 C0,31.2681325 0.018,31.4151325 0.049,31.5381325 C0.246,32.4021325 1.004,33.0121325 1.893,33.0211325 L29.225,33.2551325 L29.463,60.5851325 C29.469,61.4721325 30.078,62.2301325 30.947,62.4301325 C31.086,62.4611325 31.226,62.4771325 31.369,62.4771325 C32.098,62.4771325 32.754,62.0721325 33.08,61.4181325 L62.287,2.75013246 C62.648,2.01713246 62.504,1.13513246 61.926,0.555132456 Z M56.33,6.14713246 L33.211,52.5951325 L33.023,31.3451325 C33.013,30.3121325 32.164,29.4651325 31.13,29.4551325 L9.886,29.2701325 L56.33,6.14713246 Z" /></svg>    Kino  </a>
@@ -428,73 +420,71 @@
   <div class="list-wrapper">
     <div class="items-grid items-num-3">
   <div class="row ">    <div class="col-md-4 col-sm-4 nth-in-row-1">
-      <a href="/kino/repertuar/erupcja" class="event-list-day-box d-block h-img-scale mb-50">
+      <a href="/edukacja/szkola-metod-artystycznych-open-call/-szkola-metod-artystycznych-1-645307669" class="event-list-day-box d-block h-img-scale mb-50">
   <div class="img-wrapper r-image-8-5 mb-10">
     <div class="item-image-thumb item-image-md">
   <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_1400x900.png"  data-min-width="1200" />
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_1200x800.png"  data-min-width="992" />
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_1000x700.png"  data-min-width="768" />
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_800x800.png"  data-min-width="576" />
-  <img src="/upload/thumb/2026/04/erupcja_feb09_03_auto_600x900.png" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_600x900.png" alt="" title="" style="" />
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/06/zdj00008_auto_1800x900_auto_1400x900.jpg"  data-min-width="1200" />
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/06/zdj00008_auto_1800x900_auto_1200x800.jpg"  data-min-width="992" />
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/06/zdj00008_auto_1800x900_auto_1000x700.jpg"  data-min-width="768" />
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/06/zdj00008_auto_1800x900_auto_800x800.jpg"  data-min-width="576" />
+  <img src="/upload/thumb/2026/06/zdj00008_auto_1800x900_auto_600x900.jpg" srcset="/upload/thumb/2026/06/zdj00008_auto_1800x900_auto_600x900.jpg" alt="" title="" style="" />
 </picture></div>  </div>
       <div class="hours fs-16">
-      18<i class="finterp">:</i>30    </div>
+      10<i class="finterp">:</i>00    </div>
       <div class="category fs-16 mb--3">
-    film  </div>
+    program edukacyjny  </div>
     <div class="fs-16 pl-1">
     <div class="title fs-30 mb--3 max-w">
-      <em>Erupcja</em>    </div>
+      <i class="finterp">{</i>Szkoła Metod Artystycznych<i class="finterp">}</i> #2    </div>
           <div class="fs-30 pl-1">
         <div class="fs-20 max-w">
-          reż<i class="finterp">.</i> Pete Ohs<i class="finterp">,</i> Polska<i class="finterp">/</i> USA 2025<i class="finterp">,</i> 71'        </div>
+          Projekt artystyczno<em><i class="finterp">-</i></em>badawczy        </div>
       </div>
       </div>
 </a>    </div>
         <div class="col-md-4 col-sm-4 nth-in-row-2">
-      <a href="/kino/repertuar/zawiescie-czerwone-latarnie" class="event-list-day-box d-block h-img-scale mb-50">
+      <a href="/kino/repertuar/drugie-zycie" class="event-list-day-box d-block h-img-scale mb-50">
   <div class="img-wrapper r-image-8-5 mb-10">
     <div class="item-image-thumb item-image-md">
   <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_1400x900.jpg"  data-min-width="1200" />
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_1200x800.jpg"  data-min-width="992" />
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_1000x700.jpg"  data-min-width="768" />
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_800x800.jpg"  data-min-width="576" />
-  <img src="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg" alt="" title="" style="" />
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/drugie-zycie_01_auto_1400x900.jpg"  data-min-width="1200" />
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/drugie-zycie_01_auto_1200x800.jpg"  data-min-width="992" />
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/drugie-zycie_01_auto_1000x700.jpg"  data-min-width="768" />
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/drugie-zycie_01_auto_800x800.jpg"  data-min-width="576" />
+  <img src="/upload/thumb/2026/05/drugie-zycie_01_auto_600x900.jpg" srcset="/upload/thumb/2026/05/drugie-zycie_01_auto_600x900.jpg" alt="" title="" style="" />
 </picture></div>  </div>
       <div class="hours fs-16">
-      20<i class="finterp">:</i>00    </div>
+      15<i class="finterp">:</i>00    </div>
       <div class="category fs-16 mb--3">
     film  </div>
     <div class="fs-16 pl-1">
     <div class="title fs-30 mb--3 max-w">
-      <em>Zawieście czerwone latarnie</em>    </div>
+      <em>Drugie życie</em>    </div>
           <div class="fs-30 pl-1">
         <div class="fs-20 max-w">
-          <i class="finterp">[</i><em>Da hong deng long gao gao gua</em><i class="finterp">]</i><i class="finterp">,</i> reż<i class="finterp">.</i> Yimou Zhang<i class="finterp">,</i> Chiny<i class="finterp">/</i> Hongkong<i class="finterp">/</i> Tajwan 1991<i class="finterp">,</i> 125'        </div>
+          <i class="finterp">[</i><em>Calle Málaga</em><i class="finterp">]</i><i class="finterp">,</i> reż<i class="finterp">.</i> Maryam Touzani<i class="finterp">,</i> Belgia<i class="finterp">/</i> Francja<i class="finterp">/</i> Hiszpania<i class="finterp">/</i> Niemcy<i class="finterp">/</i> Maroko 2025<i class="finterp">,</i> 116'        </div>
       </div>
       </div>
 </a>    </div>
         <div class="col-md-4 col-sm-4 nth-in-row-3">
-      <a href="/program/koncerty/trzy-przestrzenie-pod-ziemia-/druga-interwencja-trzy-przestrzenie-pod-ziemia" class="event-list-day-box d-block h-img-scale mb-50">
+      <a href="/program/wystawy/nie-woda-nie-ziemia/oprowadzankie-kuratorskie-po-wystawie-nie-woda-nie-ziemia-280257852" class="event-list-day-box d-block h-img-scale mb-50">
   <div class="img-wrapper r-image-8-5 mb-10">
     <div class="item-image-thumb item-image-md">
   <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2025/11/thumbnail_1_basement_auto_1400x900.jpg"  data-min-width="1200" />
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2025/11/thumbnail_1_basement_auto_1200x800.jpg"  data-min-width="992" />
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2025/11/thumbnail_1_basement_auto_1000x700.jpg"  data-min-width="768" />
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2025/11/thumbnail_1_basement_auto_800x800.jpg"  data-min-width="576" />
-  <img src="/upload/thumb/2025/11/thumbnail_1_basement_auto_600x900.jpg" srcset="/upload/thumb/2025/11/thumbnail_1_basement_auto_600x900.jpg" alt="" title="" style="" />
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/csw_nie_woda_nie_ziemia_wernisaz_fot_-marta-ankiersztejn-58_auto_1400x900.jpg"  data-min-width="1200" />
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/csw_nie_woda_nie_ziemia_wernisaz_fot_-marta-ankiersztejn-58_auto_1200x800.jpg"  data-min-width="992" />
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/csw_nie_woda_nie_ziemia_wernisaz_fot_-marta-ankiersztejn-58_auto_1000x700.jpg"  data-min-width="768" />
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/csw_nie_woda_nie_ziemia_wernisaz_fot_-marta-ankiersztejn-58_auto_800x800.jpg"  data-min-width="576" />
+  <img src="/upload/thumb/2026/05/csw_nie_woda_nie_ziemia_wernisaz_fot_-marta-ankiersztejn-58_auto_600x900.jpg" srcset="/upload/thumb/2026/05/csw_nie_woda_nie_ziemia_wernisaz_fot_-marta-ankiersztejn-58_auto_600x900.jpg" alt="" title="" style="" />
 </picture></div>  </div>
+      <div class="hours fs-16">
+      17<i class="finterp">:</i>00    </div>
       <div class="category fs-16 mb--3">
-    interwencja dźwiękowa  </div>
+    oprowadzanie kuratorskie  </div>
     <div class="fs-16 pl-1">
     <div class="title fs-30 mb--3 max-w">
-      <em>Trzy przestrzenie pod ziemią</em>    </div>
-          <div class="fs-30 pl-1">
-        <div class="fs-20 max-w">
-          Druga interwencja        </div>
-      </div>
+      Oprowadzanie po wystawie <em>Nie woda nie ziemia</em>    </div>
       </div>
 </a>    </div>
     </div></div>
@@ -540,46 +530,7 @@
 </div>      </div>
     </div>
   </div>
-</div><div id="tickets-modal-174627830" class="event-tickets-modal modal fade" tabindex="-1" role="dialog" aria-labelledby="modal-title-174627830">
-  <div class="u-modal modal-dialog modal-lg" role="document">
-    <div class="modal-content">
-      <div class="modal-body">
-        <button type="button" class="close hover-icon-style" data-dismiss="modal" aria-label="Close">
-          <svg class="i-sm" style="" viewBox="0 0 19 18" xmlns="http://www.w3.org/2000/svg"><path transform="rotate(45 1019.786 -1139.474)" d="M1119.2 398 1119.2 388.628 1128 388.628 1128 385.372 1119.2 385.372 1119.2 376 1115.8 376 1115.8 385.372 1107 385.372 1107 388.628 1115.8 388.628 1115.8 398z"/></svg>        </button>
-        <div class="tickets-modal-content pt-20 pb-40">
-          <div class="h4">
-            <div class="h4 max-w" id="modal-title-174627830">
-              <em>Zawieście czerwone latarnie</em>            </div>
-            <div class="body">
-              <form class="form-inline">
-                <div class="form-group">
-                  <label class="">Wybierz termin </label>&nbsp; 
-                  <select class="form-control" id="tickets-select" data-target="#ticket-actions" data-url="/kino/repertuar/zawiescie-czerwone-latarnie/vs_buttons.ajax">
-                    <option></option>
-                                          <option value="12410">
-                        05<i class="finterp">/</i>06<i class="finterp">/</i>2026                        20:00                      </option>  
-                                          <option value="12412">
-                        06<i class="finterp">/</i>06<i class="finterp">/</i>2026                        16:15                      </option>  
-                                          <option value="12416">
-                        07<i class="finterp">/</i>06<i class="finterp">/</i>2026                        15:15                      </option>  
-                                          <option value="12420">
-                        08<i class="finterp">/</i>06<i class="finterp">/</i>2026                        20:00                      </option>  
-                                          <option value="12423">
-                        10<i class="finterp">/</i>06<i class="finterp">/</i>2026                        17:30                      </option>  
-                                      </select>
-                  &nbsp; &nbsp; &nbsp;
-                  <div id="ticket-actions" class="inline-block">
-                  </div>                      
-                </div>
-              </form>                
-            </div>            
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-</div>
+</div></div>
 </div>				</main>	
 					
 					<footer>

@@ -118,7 +118,7 @@ class CinemaScraperCatalog(
     new SdkClient(http),
     new NoveKinoClient(http, "atlantic", KinoAtlantic),
     new KinotekaClient(http),
-    new UjazdowskiClient(http),
+    new UjazdowskiClient(http, today),
     new CytadelaClient(http),
     new NoveKinoClient(http, "wisla", KinoWisla),
     // biletyna.pl 403s our datacenter IP (Cloudflare waiting-room), so route
