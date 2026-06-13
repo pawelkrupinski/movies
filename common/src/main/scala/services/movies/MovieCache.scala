@@ -137,7 +137,14 @@ class CaffeineMovieCache(
   // `KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS` so a not-ready Mongo at boot can't leave
   // the cache empty (see `bootHydrate`).
   bootHydrateMaxAttempts: Int  = Env.get("KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS").flatMap(_.toIntOption).getOrElse(0),
-  bootHydrateRetryMillis: Long = Env.positiveLong("KINOWO_BOOT_HYDRATE_RETRY_MS", 1000L)
+  bootHydrateRetryMillis: Long = Env.positiveLong("KINOWO_BOOT_HYDRATE_RETRY_MS", 1000L),
+  // When set, a genuinely-NEW film (one whose `sanitize(title)` group isn't
+  // already in `movies`) is diverted to this staging sink — one row per
+  // `cinema|title|year` — to incubate until TMDB concludes, instead of landing
+  // in the merged `movies` cache. Known films keep the direct path. None (the
+  // default) = no diversion, every scrape lands in `movies` as before. Wired
+  // `Some(...)` only behind `KINOWO_STAGING_INGEST`.
+  staging: Option[services.staging.StagingRepo] = None
 ) extends MovieCache with Stoppable with Logging {
 
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
@@ -751,10 +758,30 @@ class CaffeineMovieCache(
           }
         }
 
+    import scala.jdk.CollectionConverters._
+    // When `staging` is wired, divert a genuinely-NEW film (its `sanitize(title)`
+    // group is absent from `movies`) to the staging sink to incubate; a film
+    // already known to `movies` keeps the direct path. Snapshot the known
+    // sanitized titles once (diversion never adds to `movies`, so the set is
+    // stable across this tick) and this cinema's existing staging rows (for the
+    // prior-slot carry-forward + the staging prune below).
+    val knownSanitized: Set[String] =
+      if (staging.isEmpty) Set.empty
+      else positive.asMap().asScala.keysIterator.map(k => TitleNormalizer.sanitize(k.cleanTitle)).toSet
+    val priorStagingRows: Map[String, services.staging.StagingRecord] =
+      staging.fold(Map.empty[String, services.staging.StagingRecord]) {
+        _.findAll().iterator.collect { case r if r.cinema == cinema => TitleNormalizer.sanitize(r.title) -> r }.toMap
+      }
+    val divertedSanitized = scala.collection.mutable.Set.empty[String]
+
     val resolved: Seq[((CinemaMovie, CacheKey, Boolean), SourceData)] =
-      deduped.sortBy(cm => (cleaned(cm), cm.movie.releaseYear.getOrElse(Int.MinValue))).map { cm =>
+      deduped.sortBy(cm => (cleaned(cm), cm.movie.releaseYear.getOrElse(Int.MinValue))).flatMap { cm =>
       val displayTitle = cleaned(cm)
       val primary      = keyOf(displayTitle, cm.movie.releaseYear)
+      val norm         = TitleNormalizer.sanitize(displayTitle)
+      // A newcomer: `staging` is wired and this film's sanitize group isn't in
+      // `movies` yet. (Same-tick spelling variants already collapsed in `deduped`.)
+      val divert       = staging.isDefined && !knownSanitized(norm)
       // Lock on the row's NORMALISED cleanTitle — `withTitleLock` keys by
       // `sanitize`, the SAME normalised key the TMDB stage and `rekey` acquire.
       // Serialises every read-modify-write on the row (scrape, rekey, TMDB put)
@@ -762,139 +789,73 @@ class CaffeineMovieCache(
       // into lost cinema slots. Different films (different normalised cleanTitle)
       // still don't contend.
       withTitleLock(primary.cleanTitle) {
-        // Land the slot on the *canonical* key for this film, chosen by
-        // `canonicalRank` (NOT arrival order): when this cinema's primary key
-        // out-ranks the existing variant's (a year where the row was created
-        // yearless, a lower year, or a casing that sorts first), promote the
-        // whole row onto it before writing. Keeps the stored `(cleanTitle,
-        // year)` a pure function of the reported variants — so every stage
-        // addresses the film by the same deterministic key and no slot or
-        // rating write lands on a stale key. Display title is unaffected.
-        // A scrape of an already-concluded film lands straight on the resolved
-        // row (by title + optional year) — so a re-scrape can't spawn a held-back
-        // yearless variant beside it, and `classify` skips re-enrichment. Falls
-        // back to the unique-match redirect for not-yet-concluded films.
-        val key = concludedKeyFor(primary).getOrElse {
-          redirectToExistingVariant(primary) match {
-            case Some(existingKey) =>
-              val canonical = Seq(primary, existingKey).minBy(canonicalRank)
-              if (canonical != existingKey) rekey(existingKey, canonical, identity)
-              canonical
-            case None => primary
+        if (divert) {
+          // NEWCOMER → staging. Build the slot off this cinema's PRIOR staging
+          // slot (preserves two-stage detail fields + the year fallback), write
+          // one `cinema|title|year` row, and DON'T touch `movies` — it stays held
+          // out of the read model until it resolves and folds in (the promoter +
+          // folder own that). Excluded from `resolved`, so no movies-side
+          // prune/publish fires for it.
+          val priorSlot     = priorStagingRows.get(norm).flatMap(_.record.data.get(cinema))
+          val effectiveYear = cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))
+          val slot          = buildCinemaSlot(cm, displayTitle, priorSlot, effectiveYear)
+          staging.get.upsert(cinema, displayTitle, cm.movie.releaseYear, MovieRecord(data = Map((cinema: Source) -> slot)))
+          divertedSanitized += norm
+          None
+        } else {
+          // Land the slot on the *canonical* key for this film, chosen by
+          // `canonicalRank` (NOT arrival order): when this cinema's primary key
+          // out-ranks the existing variant's (a year where the row was created
+          // yearless, a lower year, or a casing that sorts first), promote the
+          // whole row onto it before writing. Keeps the stored `(cleanTitle,
+          // year)` a pure function of the reported variants. A scrape of an
+          // already-concluded film lands straight on the resolved row; falls back
+          // to the unique-match redirect for not-yet-concluded films.
+          val key = concludedKeyFor(primary).getOrElse {
+            redirectToExistingVariant(primary) match {
+              case Some(existingKey) =>
+                val canonical = Seq(primary, existingKey).minBy(canonicalRank)
+                if (canonical != existingKey) rekey(existingKey, canonical, identity)
+                canonical
+              case None => primary
+            }
           }
+          val existingOpt   = Option(positive.getIfPresent(key))
+          val existing      = existingOpt.getOrElse(MovieRecord())
+          val priorSlot     = existing.data.get(cinema)
+          val effectiveYear = cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))
+          val slot          = buildCinemaSlot(cm, displayTitle, priorSlot, effectiveYear)
+          // `isNew` controls whether to publish `MovieDetailsComplete`. Dedup
+          // against the prior slot for this cinema so the same `(title, year)`
+          // reported tick after tick doesn't churn downstream listeners.
+          val isNew = !priorSlot.exists(s => s.title.contains(displayTitle) && s.releaseYear == effectiveYear)
+          // Existing rows go through `putIfPresent` (a `$set`-diff that preserves
+          // out-of-band edits); first-time scrapes `put` (keeps the tmdbId
+          // identity gate live).
+          existingOpt match {
+            case Some(_) =>
+              putIfPresent(key, current => current.copy(data = current.data + ((cinema: Source) -> slot)))
+            case None =>
+              put(key, existing.copy(data = existing.data + ((cinema: Source) -> slot)))
+          }
+          // A brand-new cinema observation grows what the TMDB stage can work
+          // with; drop any stale "missing" verdict so the imminent publish
+          // re-resolves against the grown row.
+          if (isNew) clearNegative(key)
+          Some(((cm, key, isNew), slot))
         }
-        val existingOpt = Option(positive.getIfPresent(key))
-        val existing    = existingOpt.getOrElse(MovieRecord())
-        // Two-stage scrapers (today: Kino Muza) leave `cm.posterUrl` /
-        // `cm.synopsis` / `cm.trailerUrl` as `None` from the 5-min listing
-        // tick — the detail-page refresher owns those three fields. The
-        // listing tick mustn't undo that. Rule: the cinema's freshly-
-        // scraped value wins when it's `Some`; when the cinema reports
-        // `None`, preserve whatever's on the existing slot. Single-stage
-        // cinemas (Multikino, Helios, CC, Apollo, …) ship `Some` every
-        // tick, so this is a no-op for them — they keep their authoritative
-        // per-tick refresh.
-        val priorSlot = existing.data.get(cinema)
-        // A cinema's freshly-scraped year wins when it reports one; when this
-        // tick reports None, preserve the year we already had. Helios sources
-        // `releaseYear` solely from a best-effort REST lookup with no fallback
-        // (its NUXT listing carries no year), so a transiently-absent REST body
-        // makes the year oscillate Some(year)↔None across passes. Without this
-        // fallback that drop would (a) wipe the year from the merged view and
-        // (b) flip `isNew` to true every pass — the recurring "(N new)" on
-        // Helios. mergeDuplicateFilms collapses same-pass duplicate spellings,
-        // but it can't see a year that flakes only on a *later* pass; this
-        // fallback covers that orthogonal case. Treat a dropped year as data
-        // loss, not a correction; a genuine year change (None→Some, or one Some
-        // to another) still flows.
-        val effectiveYear = cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))
-        val slot = SourceData(
-          title          = Some(displayTitle),
-          // Verbatim upstream title, kept so the merge key is re-derivable when
-          // the per-cinema rules change (backfill / un-merge). A rule-driven
-          // client carries the pre-strip string in `movie.rawTitle`; clients that
-          // did no cleanup leave it None and `title` is already raw.
-          rawTitle       = cm.movie.rawTitle.orElse(Some(cm.movie.title)),
-          originalTitle  = cm.movie.originalTitle,
-          synopsis       = cm.synopsis.orElse(priorSlot.flatMap(_.synopsis)),
-          // Normalise cast at the write boundary: Cinema City returns
-          // ALL CAPS comma-lists hard-capped at ~232 chars (the trailing
-          // name is sliced mid-word by the upstream JSON field). Drop
-          // the truncated tail first, then Title-Case the result.
-          // Applied here rather than per-cinema so any future source
-          // that ships ALL CAPS or truncates inherits the fix.
-          cast           = cm.cast.map(TextNormalization.titleCaseIfAllCaps),
-          director       = cm.director.map(TextNormalization.titleCaseIfAllCaps),
-          // Some cinema feeds surface runtime as a raw integer that lands as
-          // 0 when the upstream field is empty (CC's `length`, Multikino's
-          // `runningTime`) or when a parser regex matches "0 min" in
-          // unrelated text. Squash to None so a real reading from another
-          // cinema isn't outranked by a phantom zero in the merged view.
-          runtimeMinutes = cm.movie.runtimeMinutes.filter(_ > 0),
-          releaseYear    = effectiveYear,
-          // Fold every spelling/alias into a single canonical name per
-          // CountryNames — "Stany Zjednoczone" / "USA" / "U.S.A." all
-          // become "USA", "UK" / "Wielka Brytania" both become
-          // "Wielka Brytania". Stored data is canonical so the merged
-          // MovieRecord.countries union/dedup operates on consistent
-          // strings.
-          countries      = cm.movie.countries.map(CountryNames.canonical).distinct,
-          genres         = cm.movie.genres,
-          posterUrl      = cm.posterUrl.orElse(priorSlot.flatMap(_.posterUrl)),
-          filmUrl        = cm.filmUrl,
-          trailerUrl     = cm.trailerUrl.orElse(priorSlot.flatMap(_.trailerUrl)),
-          showtimes      = cm.showtimes
-        )
-        // `isNew` controls whether to publish `MovieDetailsComplete` to the bus.
-        // We dedup against the prior slot for this cinema — the same `(title,
-        // year)` reported tick after tick suppresses the event so downstream
-        // listeners don't churn. A pruned-then-re-listed scrape will re-emit
-        // (no prior slot to compare against), which is harmless since the
-        // listeners early-exit on already-resolved rows.
-        val isNew = !priorSlot.exists(s =>
-          s.title.contains(displayTitle) && s.releaseYear == effectiveYear
-        )
-        // For existing rows, route through `putIfPresent` so the Mongo write
-        // is a `$set`-diff against the (before, after) pair. The diff only
-        // touches the cinema slot we just rewrote; any out-of-band edit to a
-        // different field of the same record (FilmwebUrlAudit, a per-row
-        // backfill, a manual Mongo update) survives — the running cache's
-        // stale view of that field is irrelevant because the diff doesn't
-        // surface it. For first-time scrapes the row doesn't exist yet, so
-        // a full `put` is the right call (also keeps the `tmdbId` identity
-        // gate live for the only case it can fire).
-        existingOpt match {
-          case Some(_) =>
-            putIfPresent(key, current => current.copy(data = current.data + ((cinema: Source) -> slot)))
-          case None =>
-            put(key, existing.copy(data = existing.data + ((cinema: Source) -> slot)))
-        }
-        // A brand-new cinema observation for this row changes what the TMDB
-        // stage has to work with (a new title/director the resolver hadn't
-        // seen). Drop any stale "missing" verdict so the `MovieDetailsComplete`
-        // we're about to publish re-resolves against the grown row instead of
-        // being short-circuited by an earlier, partial-row failure — the race
-        // that left films blank under a concurrent (production-style) scrape.
-        if (isNew) clearNegative(key)
-        ((cm, key, isNew), slot)
       }
     }
 
-    // Prune: any cache entry that previously had this cinema's slot but
+    // Prune (movies): any cache entry that previously had this cinema's slot but
     // wasn't touched this tick → drop the slot. The record itself stays.
     //
-    // Identify "touched" by the slot's `SourceData` reference rather than
-    // by cache key. The prune runs OUTSIDE the per-title lock, so between
-    // the per-movie write block above and this iteration a concurrent
-    // `cache.rekey` (typically from a TMDB-stage re-key for another
-    // film's cinema-event-triggered resolution) can move the row from
-    // its original key to a year-keyed sibling — carrying our just-
-    // written slot along. A key-based `touched` set would miss the
-    // moved row and erroneously prune our slot off it. Slot-identity
-    // tracking works because `cache.rekey` preserves the SourceData
-    // reference verbatim through the move.
+    // Identify "touched" by the slot's `SourceData` reference rather than by
+    // cache key. The prune runs OUTSIDE the per-title lock, so a concurrent
+    // `cache.rekey` can move a row to a year-keyed sibling — carrying our just-
+    // written slot along. Slot-identity tracking survives that move because
+    // `cache.rekey` preserves the SourceData reference verbatim.
     val touchedSlots: Set[SourceData] = resolved.iterator.map(_._2).toSet
-    import scala.jdk.CollectionConverters._
     positive.asMap().asScala.iterator
       .filter { case (_, e) =>
         e.data.get(cinema).exists(slot => !touchedSlots.contains(slot))
@@ -902,33 +863,67 @@ class CaffeineMovieCache(
       .map(_._1)
       .toList
       .foreach { k =>
-        // Remove the stale slot atomically under the per-title lock — NOT via a
-        // `put` of the snapshot `e` captured during iteration. Under a concurrent
-        // (production-style) parallel scrape, another cinema may have just added
-        // ITS slot to this same row between our read of `e` and the write; a
-        // stale `put` would clobber that sibling slot (the Cinema City venues
-        // dropping each other's slot run-to-run). `putIfPresent` reads the
-        // CURRENT row, drops only our cinema's slot, and is a no-op if a rekey
-        // moved the row out from under us.
+        // Drop only our cinema's slot, under the per-title lock, via
+        // `putIfPresent` so a concurrent sibling-slot write isn't clobbered.
         putIfPresent(k, cur => cur.copy(data = cur.data - cinema))
       }
 
-    // Publish CinemaMovieAdded for each row we just first-scraped onto. This
-    // runs AFTER both the slot put and the prune step so a handler reading
-    // the cache for `(title, year)` immediately sees the freshly-written
-    // slot — eliminating the race a caller-side publish would otherwise leave
-    // between persist and notify.
-    //
-    // Gated on `isNew` (same gate as `CinemaScrapeRunner`'s MovieDetailsComplete)
-    // so steady-state ticks where the same cinema reports the same film
-    // again don't refire — the periodic safety net in each detail-page
-    // enricher picks up rows whose first event was missed.
+    // Prune (staging): drop this cinema's staging rows it no longer lists this
+    // tick — the staging analogue of the movies prune. A row that graduated to
+    // `movies` was deleted by the folder (so it's absent from `priorStagingRows`);
+    // one that simply stopped screening is removed here.
+    staging.foreach { s =>
+      (priorStagingRows.keySet -- divertedSanitized).foreach { stale =>
+        val row = priorStagingRows(stale)
+        s.delete(cinema, row.title, row.year)
+      }
+    }
+
+    // Publish CinemaMovieAdded for each `movies` row we just first-scraped onto,
+    // AFTER the slot put + prune so a handler reading the cache immediately sees
+    // the freshly-written slot. Gated on `isNew`. Diverted newcomers don't fire
+    // this — their enrichment is driven by the staging promoter.
     resolved.foreach { case ((cm, key, isNew), _) =>
       if (isNew) bus.publish(CinemaMovieAdded(cinema, key.cleanTitle, key.year, cm.filmUrl))
     }
 
     resolved.map(_._1)
   }
+
+  /** Build one cinema's `SourceData` slot for a scraped film — shared by the
+   *  `movies` write and the staging divert so both apply the same rules:
+   *    - two-stage detail preservation: a deferred cinema (e.g. Kino Muza) ships
+   *      `posterUrl`/`synopsis`/`trailerUrl` as None on the listing tick — keep
+   *      whatever the detail refresher already wrote (`priorSlot` carry-forward);
+   *    - year fallback (`effectiveYear`): keep the prior year when a tick drops it
+   *      (Helios' REST year flakes), treating a dropped year as loss not a change;
+   *    - cast/director Title-Cased when ALL CAPS (Cinema City), runtime-zero
+   *      squashed to None, and country names canonicalised. */
+  private def buildCinemaSlot(
+    cm:            CinemaMovie,
+    displayTitle:  String,
+    priorSlot:     Option[SourceData],
+    effectiveYear: Option[Int]
+  ): SourceData =
+    SourceData(
+      title          = Some(displayTitle),
+      // Verbatim upstream title, kept so the merge key is re-derivable when the
+      // per-cinema rules change. A rule-driven client carries the pre-strip
+      // string in `movie.rawTitle`; others leave it None and `title` is raw.
+      rawTitle       = cm.movie.rawTitle.orElse(Some(cm.movie.title)),
+      originalTitle  = cm.movie.originalTitle,
+      synopsis       = cm.synopsis.orElse(priorSlot.flatMap(_.synopsis)),
+      cast           = cm.cast.map(TextNormalization.titleCaseIfAllCaps),
+      director       = cm.director.map(TextNormalization.titleCaseIfAllCaps),
+      runtimeMinutes = cm.movie.runtimeMinutes.filter(_ > 0),
+      releaseYear    = effectiveYear,
+      countries      = cm.movie.countries.map(CountryNames.canonical).distinct,
+      genres         = cm.movie.genres,
+      posterUrl      = cm.posterUrl.orElse(priorSlot.flatMap(_.posterUrl)),
+      filmUrl        = cm.filmUrl,
+      trailerUrl     = cm.trailerUrl.orElse(priorSlot.flatMap(_.trailerUrl)),
+      showtimes      = cm.showtimes
+    )
 
   /** If `primary` doesn't currently exist in the cache, look for an existing
    *  row that already knows `primary.cleanTitle` (via its `cinemaTitles`
