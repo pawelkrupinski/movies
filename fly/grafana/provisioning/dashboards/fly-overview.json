@@ -4,7 +4,7 @@
   "tags": ["fly", "kinowo"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "1m",
   "time": { "from": "now-6h", "to": "now" },
   "annotations": {
@@ -31,11 +31,29 @@
   "templating": { "list": [] },
   "panels": [
     {
+      "id": 9,
+      "title": "Mongo CPU load — %core (busy = work it does; steal = host throttling). Watch step-ups against Deploys.",
+      "description": "kinowo-mongo is shared-cpu-1x, so 100 = one full core. 'busy' is the work Mongo does (user+system+io); 'steal' is CPU the host withheld because demand crossed the shared-CPU credit — near-zero historically, it only appears when busy saturates the core. A step-up that lines up with a purple Deploy marker means that release added Mongo load.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "custom": { "drawStyle": "line", "fillOpacity": 15 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "steal" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } } ] }
+        ]
+      },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(fly_instance_cpu{app=\"kinowo-mongo\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "busy (user+system+io)" },
+        { "refId": "B", "expr": "sum(rate(fly_instance_cpu{app=\"kinowo-mongo\",mode=\"steal\"}[5m]))", "legendFormat": "steal" }
+      ]
+    },
+    {
       "id": 1,
       "title": "CPU credit balance (serving apps — alarm < 500)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
       "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "min by (app) (fly_instance_cpu_balance)", "legendFormat": "{{app}}" }
@@ -46,7 +64,7 @@
       "title": "CPU throttled (rate, fraction of wall-clock)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "max by (app) (rate(fly_instance_cpu_throttle[5m]))", "legendFormat": "{{app}}" }
@@ -57,7 +75,7 @@
       "title": "CPU steal %",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{mode=\"steal\"}[5m])) / sum by (app) (rate(fly_instance_cpu[5m]))", "legendFormat": "{{app}}" }
@@ -68,7 +86,7 @@
       "title": "Memory available % (alarm < 8%)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "min by (app) (fly_instance_memory_mem_available / fly_instance_memory_mem_total)", "legendFormat": "{{app}}" }
@@ -79,7 +97,7 @@
       "title": "HTTP latency — web (s)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 25 },
       "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "histogram_quantile(0.99, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo\"}[5m])))", "legendFormat": "p99" },
@@ -93,7 +111,7 @@
       "title": "HTTP latency — grafana (s)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 25 },
       "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "histogram_quantile(0.99, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo-grafana\"}[5m])))", "legendFormat": "p99" },
@@ -107,7 +125,7 @@
       "title": "Instance up",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 24 },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 33 },
       "fieldConfig": { "defaults": { "min": 0, "max": 1, "custom": { "drawStyle": "line", "fillOpacity": 20, "lineInterpolation": "stepAfter" } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "max by (app) (fly_instance_up)", "legendFormat": "{{app}}" }
