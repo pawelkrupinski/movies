@@ -141,7 +141,8 @@ object MongoFilmwebFallbackStore {
     Updates.set("lastPrimaryProbeAt", s.lastPrimaryProbeAt.map(date).orNull),
     Updates.set("nextPrimaryProbeAt", s.nextPrimaryProbeAt.map(date).orNull),
     Updates.set("updatedAt", date(s.updatedAt)),
-    Updates.set("history", s.history.map(eventToString).asJava)
+    Updates.set("history", s.history.map(eventToString).asJava),
+    Updates.set("alerted", s.alerted)
   )
 
   private[fallback] def fromDoc(doc: Document): Option[FilmwebFallbackState] =
@@ -158,7 +159,8 @@ object MongoFilmwebFallbackStore {
         nextPrimaryProbeAt  = instant("nextPrimaryProbeAt"),
         updatedAt           = instant("updatedAt").getOrElse(Instant.EPOCH),
         history             = Try(doc.getList("history", classOf[String])).toOption.flatMap(Option(_))
-                                .fold(List.empty[FallbackEvent])(_.asScala.toList.flatMap(eventFromString))
+                                .fold(List.empty[FallbackEvent])(_.asScala.toList.flatMap(eventFromString)),
+        alerted             = Try(doc.getBoolean("alerted", false)).getOrElse(false)
       )
     }
 }

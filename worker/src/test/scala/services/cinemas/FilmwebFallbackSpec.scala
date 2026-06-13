@@ -4,6 +4,7 @@ import models.{Cinema, CinemaMovie, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.UptimeMonitor
+import services.alerts.FallbackAlert
 import services.cinemas.ScriptedCinemaScraper.{NoShowtimes, OneMovie}
 import services.fallback.{FallbackEvent, FilmwebFallbackState, InMemoryFilmwebFallbackStore}
 
@@ -37,15 +38,18 @@ class FilmwebFallbackSpec extends AnyFlatSpec with Matchers {
     val store   = new InMemoryFilmwebFallbackStore
     val primary = new FakeScraper(primaryPlan)
     var clock: Instant = Instant.parse("2026-06-10T08:00:00Z")
-    val events = collection.mutable.ListBuffer.empty[(String, FallbackEvent)]
+    val events = collection.mutable.ListBuffer.empty[(FilmwebFallbackState, FallbackEvent)]
     val scraper = new FilmwebFallbackScraper(
       primary, () => filmweb, () => Some(2180), monitor, store,
       now = () => clock, baseBackoff = base, maxBackoff = 60.minutes,
-      onEvent = (s, e) => events += ((s.cinema, e))
+      onEvent = (s, e) => events += ((s, e))
     )
     def bucket = monitor.history(Service).head
     def state  = store.get(Service)
     def advance(d: FiniteDuration): Unit = clock = clock.plusMillis(d.toMillis)
+    /** The Telegram pages that would actually go out — what each onEvent resolves
+     *  to via FallbackAlert (gated on `alerted`), in fire order. */
+    def alerts: Seq[String] = events.toList.flatMap { case (s, e) => FallbackAlert.messageFor(s, e) }
   }
 
   private def filmwebWith(movies: Seq[CinemaMovie]) = ScriptedCinemaScraper(List.fill(99)(Right(movies)))
@@ -70,6 +74,8 @@ class FilmwebFallbackSpec extends AnyFlatSpec with Matchers {
     h.state.flatMap(_.filmwebCinemaId) shouldBe Some(2180)
     h.state.map(_.consecutiveFailures) shouldBe Some(1)
     h.events.map(_._2.event) shouldBe List(FallbackEvent.Enter)
+    h.state.map(_.alerted) shouldBe Some(false)  // entered, but not yet paged
+    h.alerts shouldBe empty                       // a fresh fall-back does NOT page immediately
   }
 
   it should "fall back when the primary returns zero screenings but Filmweb has data" in {
@@ -137,5 +143,42 @@ class FilmwebFallbackSpec extends AnyFlatSpec with Matchers {
     val secondNext = h.state.flatMap(_.nextPrimaryProbeAt).get
     java.time.Duration.between(h.clock, secondNext).toMinutes shouldBe 20L
     secondNext.isAfter(firstNext) shouldBe true
+  }
+
+  it should "NOT page when a cinema falls back and recovers within the alert window" in {
+    val h = new Harness(Seq(Left(boom), Right(OneMovie)), Some(filmwebWith(OneMovie)))
+    h.scraper.fetch()              // ENTER
+    h.advance(11.minutes)          // well under the 3h alert window
+    h.scraper.fetch() shouldBe OneMovie   // primary back → RECOVERED
+    h.events.map(_._2.event) shouldBe List(FallbackEvent.Enter, FallbackEvent.Recovered)
+    h.alerts shouldBe empty        // neither the ENTER nor the RECOVERED ever paged
+  }
+
+  it should "page ENTER once a cinema has been on fallback longer than the alert window" in {
+    val h = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)))   // primary stays down
+    h.scraper.fetch()              // ENTER, no page
+    h.alerts shouldBe empty
+    h.advance(3.hours + 1.minute)
+    h.scraper.fetch()              // re-probe: still down AND now past 3h → page ENTER
+    h.state.map(_.alerted) shouldBe Some(true)
+    h.alerts should have size 1
+    h.alerts.head should include ("serving via Filmweb fallback")
+    // Subsequent failed re-probes do NOT re-page — alerted once per spell.
+    h.advance(1.hour)
+    h.scraper.fetch()
+    h.alerts should have size 1
+  }
+
+  it should "page RECOVERED only when the primary returns AFTER the alert window (i.e. it had paged ENTER)" in {
+    val h = new Harness(Seq(Left(boom), Left(boom), Right(OneMovie)), Some(filmwebWith(OneMovie)))
+    h.scraper.fetch()              // ENTER
+    h.advance(3.hours + 1.minute)
+    h.scraper.fetch()              // re-probe still down, past 3h → page ENTER
+    h.advance(1.hour)              // past the extended backoff
+    h.scraper.fetch() shouldBe OneMovie   // primary back → RECOVERED (and we had paged ENTER)
+    h.state.map(_.active) shouldBe Some(false)
+    h.alerts should have size 2
+    h.alerts.head  should include ("serving via Filmweb fallback")
+    h.alerts.last  should include ("recovered")
   }
 }

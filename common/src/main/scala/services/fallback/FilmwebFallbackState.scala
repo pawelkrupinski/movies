@@ -38,7 +38,8 @@ case class FilmwebFallbackState(
   lastPrimaryProbeAt:  Option[Instant],
   nextPrimaryProbeAt:  Option[Instant],   // before this, serve Filmweb without re-probing the primary
   updatedAt:           Instant,
-  history:             List[FallbackEvent]
+  history:             List[FallbackEvent],
+  alerted:             Boolean = false    // ENTER page sent for the CURRENT spell — gates the (delayed) page and its recovery page
 )
 
 object FilmwebFallbackState {
