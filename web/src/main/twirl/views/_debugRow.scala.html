@@ -25,7 +25,17 @@
     data-imdb="@imdbId"
     data-tmdb="@e.tmdbId.map(_.toString).getOrElse("")"
     data-imdbR="@e.imdbRating.map(_.toString).getOrElse("")"
-    data-urls="@{Seq(e.metacriticUrl, e.rottenTomatoesUrl, e.filmwebUrl).flatten.mkString(" ")}">
+    data-urls="@{Seq(e.metacriticUrl, e.rottenTomatoesUrl, e.filmwebUrl).flatten.mkString(" ")}"
+    @* Pending-work flags the top "Pending" sections derive their membership
+       from. `unenriched`: a cinema detail-page enrichment is still outstanding
+       for this row (`detailPending`). `tmdb-unresolved`: TMDB hasn't reached a
+       definitive answer yet — no id AND not a concluded no-match (a no-match is
+       "done", not pending). `queue-year` is the *identity* year the enrichment
+       task dedup keys use (`row.year`), which can differ from the displayed
+       `releaseYear`; the JS matches queue tasks on title + this year. *@
+    data-unenriched="@e.detailPending"
+    data-tmdb-unresolved="@{e.tmdbId.isEmpty && !e.tmdbNoMatch}"
+    data-queue-year="@year.map(_.toString).getOrElse("")">
   @* The debug table is the global corpus, but /film is city-scoped — link
      into a city the film actually plays in, not this page's own city
      (which would 404 for any out-of-city row). Falls back to the page

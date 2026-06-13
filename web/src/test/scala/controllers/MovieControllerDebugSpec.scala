@@ -43,6 +43,72 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe NOT_FOUND
   }
 
+  // The top-of-page "pending work" sections derive their membership client-side
+  // from per-row data-* flags the change stream keeps live, so the server only
+  // emits the flags + the (initially empty) section scaffolding. Assert the
+  // flags resolve correctly per row: a detail-pending row is `unenriched`; a row
+  // with no TMDB id that isn't a concluded no-match is `tmdb-unresolved`; a
+  // no-match row is neither (it's done, not pending).
+  private val flagRecords = Seq(
+    ("Pending",    Some(2024), MovieRecord(detailPending = true, tmdbId = Some(1),
+                                 data = Map(CinemaCityWroclavia -> SourceData(title = Some("Pending"))))),
+    ("Unresolved", Some(2023), MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some("Unresolved"))))),
+    ("NoMatch",    Some(2022), MovieRecord(tmdbNoMatch = true,
+                                 data = Map(CinemaCityWroclavia -> SourceData(title = Some("NoMatch"))))),
+  )
+
+  /** The value of `attr` on the `<tr class="data">` whose `data-title` is `title`.
+   *  Scoped to that one opening tag (`.*?>` stops at the first `>`). */
+  private def rowAttr(html: String, title: String, attr: String): Option[String] = {
+    val row = ("(?s)data-title=\"" + java.util.regex.Pattern.quote(title) + "\".*?>").r.findFirstIn(html)
+    row.flatMap((attr + "=\"([^\"]*)\"").r.findFirstMatchIn(_).map(_.group(1)))
+  }
+
+  "GET /debug" should "carry per-row pending flags and the two section shells" in {
+    val html = contentAsString(
+      TestMovieController.build(flagRecords, Mode.Dev)._1.debug().apply(FakeRequest(GET, "/debug")))
+
+    // Both section shells present (JS fills the lists).
+    html should include ("""data-flag="unenriched"""")
+    html should include ("""data-flag="tmdbUnresolved"""")
+
+    // detailPending → unenriched; the others have run their detail step.
+    rowAttr(html, "Pending",    "data-unenriched") shouldBe Some("true")
+    rowAttr(html, "Unresolved", "data-unenriched") shouldBe Some("false")
+
+    // No id and not a no-match → tmdb-unresolved; a resolved id or a concluded
+    // no-match → not.
+    rowAttr(html, "Unresolved", "data-tmdb-unresolved") shouldBe Some("true")
+    rowAttr(html, "Pending",    "data-tmdb-unresolved") shouldBe Some("false")
+    rowAttr(html, "NoMatch",    "data-tmdb-unresolved") shouldBe Some("false")
+
+    // The identity year the queue dedup keys match on rides along.
+    rowAttr(html, "Pending", "data-queue-year") shouldBe Some("2024")
+  }
+
+  // ── /debug/queue snapshot the pending sections poll for queue places ─────────
+  "GET /debug/queue" should "return the active tasks oldest-first in dev" in {
+    val q  = new InMemoryTaskQueue
+    val t0 = java.time.Instant.parse("2026-06-13T10:00:00Z")
+    q.enqueue(TaskType.EnrichDetails, "detail|cc|Belle|2021", submittedAt = t0)
+    q.enqueue(TaskType.ResolveTmdb, EnrichTaskKeys.resolveTmdbDedup("Incepcja", Some(2010)),
+      submittedAt = t0.plusSeconds(1))
+    val ctrl = TestMovieController.build(records, Mode.Dev, taskQueue = q)._1
+
+    val result = ctrl.debugQueue().apply(FakeRequest(GET, "/debug/queue"))
+    status(result) shouldBe OK
+    val active = (Json.parse(contentAsString(result)) \ "active").as[Seq[play.api.libs.json.JsValue]]
+    active.map(j => (j \ "taskType").as[String]) shouldBe Seq("EnrichDetails", "ResolveTmdb")
+    active.map(j => (j \ "dedupKey").as[String]) shouldBe
+      Seq("detail|cc|Belle|2021", EnrichTaskKeys.resolveTmdbDedup("Incepcja", Some(2010)))
+    active.foreach(j => (j \ "state").as[String] shouldBe "waiting")
+  }
+
+  it should "404 in production like the rest of /debug" in {
+    val ctrl = TestMovieController.build(records, Mode.Prod, taskQueue = new InMemoryTaskQueue)._1
+    status(ctrl.debugQueue().apply(FakeRequest(GET, "/debug/queue"))) shouldBe NOT_FOUND
+  }
+
   "GET /debug/readmodel" should "dump the warm read cache in dev mode" in {
     val result = buildController(Mode.Dev).debugReadModel().apply(FakeRequest(GET, "/debug/readmodel"))
 

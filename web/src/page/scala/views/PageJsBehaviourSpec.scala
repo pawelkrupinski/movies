@@ -1,9 +1,10 @@
 package views
 
-import models.Poznan
+import models.{MovieRecord, Poznan}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.movies.StoredMovieRecord
 import tools.{CdpPage, Chrome, FixtureTestWiring, TestHttpServer}
 
 import java.net.URLDecoder
@@ -106,23 +107,52 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // regardless of content-type, so serving it via the HTML route map is fine.
       val userStateJson =
         """{"hiddenFilms":["Film A"],"disabledCinemas":[],"selectedMovies":[],"favouriteRooms":[]}"""
+
+      // The global-corpus /debug page (not city-scoped). A spread of enrichment
+      // states so the top "pending work" sections have something in each:
+      //   • detailPending          → "Unenriched"
+      //   • no TMDB id, no no-match → "TMDB-unresolved"
+      //   • a resolved/no-match row → in neither.
+      val debugRows = Seq(
+        StoredMovieRecord("Pending Film",    Some(2024), MovieRecord(detailPending = true, tmdbId = Some(1))),
+        StoredMovieRecord("Lonely Pending",  Some(2025), MovieRecord(detailPending = true, tmdbId = Some(2))),
+        StoredMovieRecord("Unresolved Film", Some(2023), MovieRecord()),
+        StoredMovieRecord("Done Film",       Some(2022), MovieRecord(tmdbId = Some(7))),
+      )
+      val debugHtml: String = views.html.debug(debugRows, Map.empty[String, String]).body
+      // The queue snapshot the page polls (/debug/queue). Pending Film holds an
+      // EnrichDetails task at waiting place #1; Unresolved Film a ResolveTmdb at
+      // place #2; Lonely Pending has none. The dedup keys mirror the real ones
+      // (EnrichDetails: detail|<group>|<title>|<year>; ResolveTmdb: resolve-tmdb|…).
+      val debugQueueJson =
+        """{"active":[
+          {"taskType":"EnrichDetails","dedupKey":"detail|grp|Pending Film|2024","state":"waiting"},
+          {"taskType":"ResolveTmdb","dedupKey":"resolve-tmdb|Unresolved Film|2023","state":"waiting"}
+        ]}"""
+
       // Pages are served under `/{city}/…` (production hard-cut). `onPath`
       // prepends the prefix, so strip it here, then match the in-city sub-path.
       def sub(p: String): String = p.stripPrefix(cityPrefix)
-      server = new TestHttpServer({
-        // `/{city}/` accepts arbitrary query strings (e.g. `?date=tomorrow`)
-        // — the real Play routes do too, and the day-selector ↔ URL tests
-        // need to boot the page with the param already in `location.search`.
-        case p if { val s = sub(p); s == "/" || s.startsWith("/?") }     => indexHtml
-        case p if sub(p).startsWith("/film?title=") =>
-          renderFilm(sub(p).stripPrefix("/film?title="))
-        case p if { val s = sub(p); s == "/plan" || s.startsWith("/plan?") } => planHtml
-        case p if sub(p) == "/li"           => loggedInHtml
-        case p if p == "/api/me/state"      => userStateJson
-        // The dev-only visual-tuning page — rendered with real fixture films
-        // so its slider panel (and the ± step buttons) can be driven over CDP.
-        case p if sub(p) == "/debug/tune" => views.html.tune(schedules.take(3)).body
-      })
+      server = new TestHttpServer(
+        {
+          // `/{city}/` accepts arbitrary query strings (e.g. `?date=tomorrow`)
+          // — the real Play routes do too, and the day-selector ↔ URL tests
+          // need to boot the page with the param already in `location.search`.
+          case p if { val s = sub(p); s == "/" || s.startsWith("/?") }     => indexHtml
+          case p if sub(p).startsWith("/film?title=") =>
+            renderFilm(sub(p).stripPrefix("/film?title="))
+          case p if { val s = sub(p); s == "/plan" || s.startsWith("/plan?") } => planHtml
+          case p if sub(p) == "/li"           => loggedInHtml
+          case p if p == "/api/me/state"      => userStateJson
+          // The dev-only visual-tuning page — rendered with real fixture films
+          // so its slider panel (and the ± step buttons) can be driven over CDP.
+          case p if sub(p) == "/debug/tune" => views.html.tune(schedules.take(3)).body
+          // The global-corpus /debug page (no city prefix).
+          case "/debug" => debugHtml
+        },
+        // /debug/queue is JSON the page fetches and parses; served as such.
+        jsonRoutes = { case "/debug/queue" => debugQueueJson }
+      )
     }
   }
 
@@ -138,6 +168,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // `path` is an in-city sub-path ("/", "/film?title=…"); pages
       // live under `/{city}/…`, so prepend the city prefix.
       case Some(c) => c.openPage(server.baseUrl + cityPrefix + path)(body(_))
+      case None    => cancel("Chrome not installed — skipping JS behaviour test")
+    }
+
+  /** Open the global-corpus `/debug` page (not city-scoped). */
+  private def onDebug(body: CdpPage => Any): Unit =
+    chrome match {
+      case Some(c) => c.openPage(server.baseUrl + "/debug")(body(_))
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
 
@@ -2620,6 +2657,54 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool("matchMedia('(pointer: coarse)').matches"),
       "expected a coarse pointer after touch emulation — swipe handlers are gated on it"
     )
+  }
+
+  // ── /debug pending-work sections ───────────────────────────────────────────
+  //
+  // The top of /debug shows two JS-built lists derived from the table's per-row
+  // data-* flags (so they ride the same change stream the table does):
+  // "Unenriched" (a cinema detail enrichment hasn't run) then "TMDB-unresolved"
+  // (no TMDB id, not a concluded no-match). Each entry is annotated with its
+  // place in the durable task queue, polled from /debug/queue.
+
+  "the /debug pending sections" should "list each film under the right heading" in {
+    onDebug { page =>
+      // Unenriched = the two detailPending rows; TMDB-unresolved = the id-less row.
+      page.waitFor("""document.querySelector('.pending-sec[data-flag="unenriched"] .cnt').textContent === '2'""")
+      page.evalString(
+        """document.querySelector('.pending-sec[data-flag="tmdbUnresolved"] .cnt').textContent""") shouldBe "1"
+
+      val unenriched = page.evalString(
+        """Array.from(document.querySelectorAll('.pending-sec[data-flag="unenriched"] .pl-title')).map(e=>e.textContent).join('|')""")
+      unenriched should include ("Pending Film")
+      unenriched should include ("Lonely Pending")
+      unenriched should not include "Done Film" // resolved + detail done → in neither
+
+      val tmdb = page.evalString(
+        """Array.from(document.querySelectorAll('.pending-sec[data-flag="tmdbUnresolved"] .pl-title')).map(e=>e.textContent).join('|')""")
+      tmdb should include ("Unresolved Film")
+    }
+  }
+
+  it should "annotate each entry with its place in the task queue" in {
+    onDebug { page =>
+      // The badge text for the entry whose title starts with `t` in section `flag`.
+      def badge(flag: String, t: String): String = page.evalString(
+        s"""(function(){var ls=document.querySelectorAll('.pending-sec[data-flag="$flag"] .pending-list li');
+           |for(var i=0;i<ls.length;i++){var e=ls[i].querySelector('.pl-title');
+           |if(e&&e.textContent.indexOf('$t')===0)return ls[i].querySelector('.badge').textContent;}return '';})()""".stripMargin)
+
+      // Wait for the /debug/queue poll to land and paint the places.
+      page.waitFor(
+        """(function(){var ls=document.querySelectorAll('.pending-sec[data-flag="unenriched"] .pending-list li');
+          |for(var i=0;i<ls.length;i++){var e=ls[i].querySelector('.pl-title');
+          |if(e&&e.textContent.indexOf('Pending Film')===0)return ls[i].querySelector('.badge').textContent==='#1';}
+          |return false;})()""".stripMargin)
+
+      badge("unenriched", "Pending Film")        shouldBe "#1"  // EnrichDetails, waiting place 1
+      badge("tmdbUnresolved", "Unresolved Film") shouldBe "#2"  // ResolveTmdb, waiting place 2
+      badge("unenriched", "Lonely Pending")      shouldBe "no task"
+    }
   }
 
   /** Dispatch a synthetic touch `PointerEvent` of `kind` at (`x`,`y`) on the

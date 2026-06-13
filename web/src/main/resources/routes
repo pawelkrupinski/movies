@@ -37,6 +37,10 @@ POST    /debug/reenrich             controllers.MovieController.reenrich(title: 
 # updates (merged rows vanish, new films appear). 404 in prod — the stream is
 # only ever opened in dev, never watching the worker's collection 24/7.
 GET     /debug/stream               controllers.DebugStreamController.stream()
+# Dev-only JSON snapshot of the durable task queue's active tasks (oldest-first),
+# so the /debug "pending work" sections can show whether a movie already has an
+# enrichment task and its place in the queue. 404 in prod like the rest of /debug.
+GET     /debug/queue                controllers.MovieController.debugQueue()
 # Dev-only visual-tuning page: live sliders over the real movie card that drive
 # the CSS custom properties the production card styles read (vertical gaps,
 # showtime-pill + rating-pill font/padding/corner). Lets us eyeball spacing

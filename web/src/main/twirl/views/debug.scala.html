@@ -106,6 +106,27 @@
     .showtime .format { color: #669fcc; font-size: 9px; margin-left: .2rem; }
     .showtime a { color: #ccc; }
     .showtime a:hover { color: #aad4ff; text-decoration: none; }
+
+    /* Pending-work sections (top of page) */
+    #pending { margin-bottom: 1rem; display: grid; gap: .7rem; }
+    .pending-sec h2 { font-size: 12px; color: #ffd479; margin: 0 0 .3rem; font-weight: normal; }
+    .pending-sec h2 .cnt {
+      color: #fff; background: #3a2f14; border: 1px solid #5a4a1e;
+      border-radius: 3px; padding: 0 .35rem; font-variant-numeric: tabular-nums;
+    }
+    .pending-sec h2 .hint { color: #666; font-size: 10px; }
+    .pending-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .3rem; }
+    .pending-list li {
+      background: #14140f; border: 1px solid #2a2a1e; border-radius: 3px;
+      padding: 1px .45rem; display: flex; gap: .4rem; align-items: center;
+    }
+    .pending-list .pl-title { color: #cfd6e3; cursor: pointer; }
+    .pending-list .pl-title:hover { color: #fff; text-decoration: underline; }
+    .pending-list .badge { font-size: 10px; border-radius: 3px; padding: 0 .3rem; font-variant-numeric: tabular-nums; }
+    .badge.q-none { color: #555; }
+    .badge.q-wait { color: #aad4ff; background: #16263a; border: 1px solid #244a6e; }
+    .badge.q-run  { color: #cfe3d6; background: #14241a; border: 1px solid #245038; }
+    .pending-empty { color: #444; font-size: 10px; border: none; background: none; padding: 1px 0; }
   </style>
   @_ratingStyles()
 </head>
@@ -116,6 +137,21 @@
 <div class="summary">@rows.size total · click a row to expand · click headers to sort · filter is case-insensitive</div>
 
 <input type="search" id="q" placeholder="Filter by title, original, IMDb id…" oninput="filterRows(this.value)">
+
+@* Pending-work sections. Both lists are filled by JS from the main table's rows
+   (so they update live off the same change stream), each entry annotated with
+   whether the worker already has an enrichment task for it and its place in the
+   queue (polled from /debug/queue). Unenriched first, then TMDB-unresolved. *@
+<div id="pending">
+  <section class="pending-sec" data-flag="unenriched">
+    <h2>Unenriched <span class="cnt">0</span> <span class="hint">— a cinema detail-page enrichment hasn't run yet for this film</span></h2>
+    <ul class="pending-list"></ul>
+  </section>
+  <section class="pending-sec" data-flag="tmdbUnresolved">
+    <h2>TMDB-unresolved <span class="cnt">0</span> <span class="hint">— no TMDB id yet (excludes concluded no-match)</span></h2>
+    <ul class="pending-list"></ul>
+  </section>
+</div>
 
 <table id="t">
   <thead>
@@ -225,6 +261,103 @@
 
   document.getElementById('q').focus();
 
+  // ── Pending-work sections (top of page) ────────────────────────────────────
+  // Two derived views over the same rows the change stream keeps live:
+  //   • Unenriched      — rows whose cinema detail enrichment hasn't run yet.
+  //   • TMDB-unresolved — rows with no TMDB id and not a concluded no-match.
+  // Membership is read straight off each row's data-* flags, so it updates for
+  // free whenever the change stream upserts/deletes a row (rebuildPending runs
+  // after applyUpsert/applyDelete). For each entry we show whether the worker
+  // already holds an enrichment task and its place in the queue, refreshed by
+  // polling /debug/queue.
+  let queueActive = []; // [{taskType, dedupKey, state}] — oldest-first, waiting + worked_on mixed
+
+  // Place every WAITING task's dedupKey at its 1-based spot in the global queue.
+  // The worker leases the oldest waiting task first regardless of type, so a
+  // task's place is its index among waiting tasks (the snapshot is oldest-first).
+  function waitingPlaces() {
+    const m = new Map();
+    let i = 0;
+    queueActive.forEach(t => {
+      if (t.state === 'waiting') { i++; if (!m.has(t.dedupKey)) m.set(t.dedupKey, i); }
+    });
+    return m;
+  }
+
+  // The dedup keys the web/worker build (EnrichTaskKeys + EnrichDetailsHandler):
+  //   ResolveTmdb  : resolve-tmdb|<title>|<year>
+  //   EnrichDetails: detail|<group>|<title>|<year>  (one per cinema detail group)
+  function tmdbKey(title, year)      { return 'resolve-tmdb|' + title + '|' + year; }
+  function detailSuffix(title, year) { return '|' + title + '|' + year; }
+
+  function badgeFor(matches, places) {
+    if (!matches.length) return { cls: 'q-none', text: 'no task' };
+    if (matches.some(t => t.state === 'worked_on')) return { cls: 'q-run', text: '▶ running' };
+    const ps = matches.map(t => places.get(t.dedupKey)).filter(p => p != null);
+    if (!ps.length) return { cls: 'q-wait', text: 'queued' };
+    const best = Math.min.apply(null, ps);
+    return { cls: 'q-wait', text: '#' + best + (matches.length > 1 ? ' ·' + matches.length : '') };
+  }
+
+  function rebuildPending() {
+    const places = waitingPlaces();
+    document.querySelectorAll('#pending .pending-sec').forEach(sec => {
+      const flag = sec.dataset.flag; // 'unenriched' | 'tmdbUnresolved'
+      const rows = Array.from(document.querySelectorAll('#t tbody tr.data'))
+        .filter(tr => tr.dataset[flag] === 'true');
+      const ul = sec.querySelector('.pending-list');
+      ul.textContent = '';
+      rows.forEach(tr => {
+        const title = tr.dataset.title || '';
+        const year  = tr.dataset.queueYear || '';
+        const matches = flag === 'tmdbUnresolved'
+          ? queueActive.filter(t => t.taskType === 'ResolveTmdb' && t.dedupKey === tmdbKey(title, year))
+          : queueActive.filter(t => t.taskType === 'EnrichDetails' && t.dedupKey.endsWith(detailSuffix(title, year)));
+        const b = badgeFor(matches, places);
+        const li = document.createElement('li');
+        li.dataset.id = tr.dataset.id;
+        const t = document.createElement('span');
+        t.className = 'pl-title';
+        t.textContent = title + (year ? ' (' + year + ')' : '');
+        t.addEventListener('click', () => revealRow(tr.dataset.id));
+        const badge = document.createElement('span');
+        badge.className = 'badge ' + b.cls;
+        badge.textContent = b.text;
+        li.append(t, badge);
+        ul.appendChild(li);
+      });
+      sec.querySelector('.cnt').textContent = rows.length;
+      if (!rows.length) {
+        const empty = document.createElement('li');
+        empty.className = 'pending-empty';
+        empty.textContent = '—';
+        ul.appendChild(empty);
+      }
+    });
+  }
+
+  // Expand + scroll to the matching main-table row when a pending chip is clicked.
+  function revealRow(id) {
+    const esc = window.CSS && CSS.escape ? CSS.escape(id) : id;
+    const tr = document.querySelector('#t tbody tr.data[data-id="' + esc + '"]');
+    if (!tr) return;
+    const details = document.querySelector('#t tbody tr.details[data-row-id="' + esc + '"]');
+    tr.classList.remove('hidden');
+    tr.classList.add('expanded');
+    if (details) details.classList.remove('hidden');
+    tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function pollQueue() {
+    fetch("@routes.MovieController.debugQueue()", { headers: { 'Accept': 'application/json' } })
+      .then(r => r.json())
+      .then(j => { queueActive = Array.isArray(j.active) ? j.active : []; rebuildPending(); })
+      .catch(() => {});
+  }
+  rebuildPending();
+  pollQueue();
+  setInterval(pollQueue, 2500);
+
   // ── Live updates via the Mongo change stream (dev-only SSE) ────────────────
   // The worker mutates the `movies` collection out of band — merges DELETE the
   // losing row, a new film INSERTs a row, an enrichment UPDATEs one. The stream
@@ -236,6 +369,7 @@
 
   function applyDelete(id) {
     rowsFor(id).forEach(el => el.remove());
+    rebuildPending(); // a merged-away row leaves the pending sections too
   }
 
   function applyUpsert(id, html) {
@@ -260,6 +394,7 @@
     }
     wireRow(fresh[0]);
     filterRows(document.getElementById('q').value); // keep the new row in sync with the active filter
+    rebuildPending(); // an enrichment may have moved this row in/out of a pending section
   }
 
   try {

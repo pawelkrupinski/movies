@@ -421,6 +421,28 @@ class MovieController( cc: ControllerComponents,
     }
   }
 
+  /** Dev-only: the active tasks in the durable queue (oldest-first), so the
+   *  /debug "pending work" sections can show, per movie, whether an enrichment
+   *  task already exists and its place in the queue. The page polls this; it's a
+   *  bounded, index-backed `monitor` read (the same one `/tasks/data` serves),
+   *  so the cost scales with viewers-while-open, not queue churn. Only the
+   *  fields the page matches on are shipped — type, dedup key, state; submission
+   *  order is already encoded by the oldest-first list position. */
+  def debugQueue(): Action[AnyContent] = Action {
+    devOnly {
+      val snap = taskQueue.monitor(MovieController.DebugQueueActiveLimit)
+      Ok(play.api.libs.json.Json.obj(
+        "active" -> snap.active.map { t =>
+          play.api.libs.json.Json.obj(
+            "taskType" -> t.taskType,
+            "dedupKey" -> t.dedupKey,
+            "state"    -> t.state
+          )
+        }
+      ))
+    }
+  }
+
   /** Dev-only: dump the warm read cache the web actually serves from — the
    *  `WebReadModel`'s in-memory `web_movies` + `web_screenings` views — so you
    *  can see exactly what a request would resolve against (vs `/debug`, which
@@ -548,6 +570,11 @@ class MovieController( cc: ControllerComponents,
 }
 
 object MovieController {
+
+  /** Cap on the active tasks `/debug/queue` returns per poll — high enough to
+   *  cover a backed-up enrichment queue so a pending movie's place is still
+   *  resolvable, without an unbounded scan. */
+  private val DebugQueueActiveLimit = 1000
 
   /** Deterministic sample cards for the `/debug/tune` page — built in process
    *  so the tuning page renders the real `_movieCard` partial without depending
