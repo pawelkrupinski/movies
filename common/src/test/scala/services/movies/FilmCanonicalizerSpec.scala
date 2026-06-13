@@ -80,4 +80,25 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
 
     canonicalKey.year shouldBe None
   }
+
+  it should "keep a decorated variant's own spelling, not the base title its Tmdb slot carries" in {
+    // A dubbed variant resolved to the base film's tmdbId, so its Tmdb slot
+    // title is the BARE base "Straszny film" — a DIFFERENT sanitize. Canonicalising
+    // to that cross-sanitize title would re-key the dub onto the base and collapse
+    // it; the slot title must be ignored because it doesn't match the variant.
+    val cluster = Seq(
+      key("Straszny film ukraiński dubbing", Some(2026)) -> MovieRecord(
+        tmdbId = Some(12345),
+        data = Map[Source, SourceData](
+          Tmdb   -> SourceData(title = Some("Straszny film"), releaseYear = Some(2026)),
+          Helios -> SourceData(title = Some("Straszny film ukraiński dubbing"), releaseYear = Some(2026))))
+    )
+
+    val (canonicalKey, _) = FilmCanonicalizer.canonical(cluster)
+
+    // The dub keeps its own spelling; it does NOT collapse onto the base "Straszny film".
+    TitleNormalizer.sanitize(canonicalKey.cleanTitle) shouldBe
+      TitleNormalizer.sanitize("Straszny film ukraiński dubbing")
+    canonicalKey.cleanTitle should include ("dubbing")
+  }
 }
