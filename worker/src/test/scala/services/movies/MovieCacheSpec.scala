@@ -1132,7 +1132,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.snapshot().size shouldBe 3
   }
 
-  // `hasResolvedSiblingByTitle` is what `scheduleTmdbStage` consults to skip
+  // `hasResolvedSiblingByTitle` is what `needsTmdbResolution` consults to skip
   // a phantom TMDB call when a sibling row already resolved the same film.
   "hasResolvedSiblingByTitle" should "return true when a resolved row's cleanTitle normalises to the same form" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())

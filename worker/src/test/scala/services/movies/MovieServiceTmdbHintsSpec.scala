@@ -15,18 +15,17 @@ import tools.GetOnlyHttpFetch
  * `cache.markMissing(key)` poisons the negative cache. The next cinema
  * (Helios, Multikino) DOES report a director — but two paths drop that hint:
  *
- *   1. `scheduleTmdbStage` early-returns on `isNegative`, never letting the
- *      new hint reach `runTmdbStage`.
- *   2. The daily `retryUnresolvedTmdb` walks unresolved rows but runs
- *      `runTmdbStage(k)` blind — the row's accumulated cinemaShowings.director
- *      is ignored.
+ *   1. `needsTmdbResolution` early-returns on `isNegative`, never dispatching
+ *      the new hint to `resolveTmdbOnce`.
+ *   2. The daily `retryUnresolvedTmdb` walks unresolved rows but dispatches
+ *      them blind — the row's accumulated cinemaShowings.director is ignored.
  *
  * Both paths trap the row at tmdbId=None for up to 24h. The fixes:
  *
  *   1. Skip the negative-cache short-circuit when a fresh `director` or
  *      `originalTitle` hint is present.
  *   2. Pull `director` + `cinemaOriginalTitle` from the existing row and pass
- *      them to `runTmdbStage` during the retry.
+ *      them to `resolveTmdbOnce` during the retry.
  *
  * Both specs use the real `directorWalk` chain end-to-end (search returns
  * nothing → `findPerson` → `personDirectorCredits` → `imdbId`) against a
@@ -76,7 +75,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
 
   // ── Fix 1 — bus path: new director hint must bypass the negative cache ────
 
-  "scheduleTmdbStage" should "bypass the isNegative short-circuit when a fresh director hint arrives" in {
+  "needsTmdbResolution (bus path)" should "bypass the isNegative short-circuit when a fresh director hint arrives" in {
     val repo  = new InMemoryMovieRepo()
     val cache = new CaffeineMovieCache(repo)
     val bus   = new InProcessEventBus()
@@ -93,7 +92,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     // hint the prior attempt never had. With the bug this is dropped on the
     // isNegative early-return; with the fix `directorWalk` resolves it.
     bus.publish(MovieDetailsComplete(Title, Year, originalTitle = None, director = Some(Director)))
-    svc.stop()  // drains the worker pool — sync wait for runTmdbStage to land
+    svc.stop()  // drains the inline ec pool — sync wait for resolveTmdbOnce to land
 
     val row = cache.get(key)
     row.flatMap(_.tmdbId) shouldBe Some(TmdbId)

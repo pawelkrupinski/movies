@@ -470,7 +470,9 @@ class MovieController( cc: ControllerComponents,
         val result = taskQueue.enqueue(
           services.tasks.TaskType.ResolveTmdb,
           services.tasks.EnrichTaskKeys.resolveTmdbDedup(title, year),
-          services.tasks.EnrichTaskKeys.moviePayload(title, year)
+          // `force` so the operator's explicit re-enrich re-resolves even an
+          // already-resolved row (the normal flow's guard would otherwise skip it).
+          services.tasks.EnrichTaskKeys.resolveTmdbPayload(title, year, force = true)
         )
         Ok(play.api.libs.json.Json.obj(
           "title"     -> title,

@@ -11,7 +11,7 @@ import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, MongoNormalizationReportRepo, NormalizationRebuilder, NormalizationReport, NormalizationReportRepo, UnscreenedCleanup}
 import services.readmodel.{MongoReadModelRepo, ReadModelProjector, ReadModelReader, ReadModelWriter}
-import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
+import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
 import services.titlerules.{MongoTitleRulesRepo, TitleRuleSet, TitleRulesCache, TitleRulesRepo}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
@@ -250,11 +250,19 @@ class WorkerWiring {
   lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient)
   lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient)
   lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient)
-  // How many times the TMDB stage retries a transient failure. Overridden to 0
-  // by the fixture-replay test wiring (see TestWiring) so permanent fixture
-  // misses don't churn the cascade.
-  def tmdbMaxRetries: Int = 6
-  lazy val movieService = new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.ec("enrichment-worker"), maxRetries = tmdbMaxRetries)
+  // Single-movie TMDB resolution is dispatched as a `ResolveTmdb` worker task:
+  // drained by the TaskWorker, retried (`Reschedule`) + deduped by the queue,
+  // and shown with a live queue place on `/debug`. `taskQueue` is a lazy val
+  // declared below; the closure defers reading it, so there's no init cycle.
+  lazy val movieService = new MovieService(
+    movieCache, eventBus, tmdbClient, backgroundBudget.ec("enrichment-worker"),
+    enqueueResolveTmdb = Some((title, year, originalTitle, director) => {
+      taskQueue.enqueue(
+        TaskType.ResolveTmdb,
+        EnrichTaskKeys.resolveTmdbDedup(title, year),
+        EnrichTaskKeys.resolveTmdbPayload(title, year, director, originalTitle))
+      ()
+    }))
   lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache)
   lazy val kinoMuzaSynopsisRefresher = new KinoMuzaSynopsisRefresher(movieCache, kinoMuzaClient, httoFetch)
 
@@ -335,7 +343,7 @@ class WorkerWiring {
     new BulkRefreshHandler(TaskType.RefreshAllFilmweb,    "Filmweb",    () => filmwebRatings.refreshAllNow()),
     new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => metascoreRatings.refreshAllNow()),
     new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => rottenTomatoesRatings.refreshAllNow()),
-    new ResolveTmdbHandler(movieService.reenrichTmdbSync)
+    new ResolveTmdbHandler(movieService.resolveTmdbOnce)
   )
 
   // A fixed pool of workers, each fetching and running ONE task at a time — so

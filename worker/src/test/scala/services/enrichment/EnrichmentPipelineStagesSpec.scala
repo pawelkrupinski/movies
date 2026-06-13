@@ -62,8 +62,9 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     val cache       = new CaffeineMovieCache(new InMemoryMovieRepo())
     val svc   = new MovieService(cache, bus, tmdbStub())
 
-    // The async path goes through `MovieDetailsComplete` → scheduleTmdbStage →
-    // worker pool → runTmdbStage, which publishes the event on success.
+    // The async path goes through `MovieDetailsComplete` → needsTmdbResolution →
+    // dispatchResolve → ec pool → resolveTmdbOnce, which publishes the event on
+    // success (this spec has no enqueue wired, so dispatch runs inline).
     svc.onMovieDetailsComplete(MovieDetailsComplete("Mortal Kombat II", Some(2026)))
 
     eventually(seen.toSeq shouldBe Seq(TmdbResolved("Mortal Kombat II", Some(2026), "tt17490712")))
@@ -320,7 +321,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     bus.publish(MovieDetailsComplete("Niedźwiedzica", Some(2026), None, Some("Asgeir Helgestad")))
 
     // Wait on the event, not just the cache row: runTmdbStageSync writes the
-    // resolved row (cache.put) BEFORE runTmdbStage publishes ImdbIdMissing, so
+    // resolved row (cache.put) BEFORE resolveTmdbOnce publishes ImdbIdMissing, so
     // asserting missing.size outside `eventually` races that publish.
     eventually {
       val e = cache.get(cache.keyOf("Niedźwiedzica", Some(2026)))

@@ -8,34 +8,42 @@ import scala.collection.mutable.ListBuffer
 class ResolveTmdbHandlerSpec extends AnyFlatSpec with Matchers {
   import HandlerOutcome._
 
-  private def handlerRecording(into: ListBuffer[(String, Option[Int])]) =
-    new ResolveTmdbHandler((title, year) => { into += ((title, year)); () })
+  private type ResolveCall = (String, Option[Int], Option[String], Option[String], Boolean)
 
-  "ResolveTmdbHandler" should "force a re-resolve with the task's title + year and return Done" in {
-    val calls = ListBuffer.empty[(String, Option[Int])]
-    val h     = handlerRecording(calls)
+  /** A handler whose resolve records its args and returns `concluded` (true =
+   *  definitive → Done; false = transient failure → Reschedule). */
+  private def handlerReturning(concluded: Boolean, into: ListBuffer[ResolveCall]) =
+    new ResolveTmdbHandler((title, year, orig, dir, force) => {
+      into += ((title, year, orig, dir, force)); concluded
+    })
+
+  "ResolveTmdbHandler" should "resolve with the task's title/year/hints/force and return Done when concluded" in {
+    val calls = ListBuffer.empty[ResolveCall]
+    val h     = handlerReturning(concluded = true, calls)
     val task  = Task("id", TaskType.ResolveTmdb,
       EnrichTaskKeys.resolveTmdbDedup("Dune", Some(2024)),
-      EnrichTaskKeys.moviePayload("Dune", Some(2024)), attempts = 1)
+      EnrichTaskKeys.resolveTmdbPayload("Dune", Some(2024),
+        director = Some("Denis Villeneuve"), originalTitle = Some("Dune: Part Two"), force = true),
+      attempts = 1)
 
     h.handle(task) shouldBe Done
-    calls.toList shouldBe List(("Dune", Some(2024)))
+    calls.toList shouldBe List(("Dune", Some(2024), Some("Dune: Part Two"), Some("Denis Villeneuve"), true))
   }
 
-  it should "pass through a yearless film" in {
-    val calls = ListBuffer.empty[(String, Option[Int])]
-    val h     = handlerRecording(calls)
+  it should "Reschedule (transient failure) when the resolve does not conclude" in {
+    val calls = ListBuffer.empty[ResolveCall]
+    val h     = handlerReturning(concluded = false, calls)
     val task  = Task("id", TaskType.ResolveTmdb,
       EnrichTaskKeys.resolveTmdbDedup("Untitled", None),
-      EnrichTaskKeys.moviePayload("Untitled", None), attempts = 1)
+      EnrichTaskKeys.resolveTmdbPayload("Untitled", None), attempts = 2)
 
-    h.handle(task) shouldBe Done
-    calls.toList shouldBe List(("Untitled", None))
+    h.handle(task) shouldBe a[Reschedule]
+    calls.toList shouldBe List(("Untitled", None, None, None, false))
   }
 
-  it should "drop (Done, no re-resolve) a task with no title payload" in {
-    val calls = ListBuffer.empty[(String, Option[Int])]
-    val h     = handlerRecording(calls)
+  it should "drop (Done, no resolve) a task with no title payload" in {
+    val calls = ListBuffer.empty[ResolveCall]
+    val h     = handlerReturning(concluded = true, calls)
     val task  = Task("id", TaskType.ResolveTmdb, "resolve-tmdb|", Map.empty, attempts = 1)
 
     h.handle(task) shouldBe Done

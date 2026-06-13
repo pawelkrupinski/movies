@@ -6,6 +6,7 @@ import modules.WorkerWiring
 import services.{MongoConnection, Stoppable}
 import services.events.{DomainEvent, EventBus}
 import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
+import services.movies.MovieService
 import services.tasks.{EnrichDetailsHandler, InMemoryTaskQueue, TaskQueue, TaskType}
 
 import scala.concurrent.duration._
@@ -76,12 +77,18 @@ trait TestWiring extends WorkerWiring {
   // `RecordingHttpFetch.stableQueryFingerprint`), so any non-empty string works.
   override lazy val tmdbClient: TmdbClient = new TmdbClient(httoFetch, apiKey = Some("test-api-key"))
 
-  // No TMDB retries in fixture replay: a missing fixture is a permanent miss,
-  // not a transient, so retrying it 6× (with 30s+ backoff) only slows the suite
-  // and churns the cascade — the churn is what makes the drain drop in-flight
-  // enrichment and renders nondeterministic. Failing once and giving up lets the
-  // cascade settle quickly and identically every run.
-  override def tmdbMaxRetries: Int = 0
+  // Resolve TMDB INLINE in fixture replay. Production dispatches single-movie
+  // resolution as a `ResolveTmdb` task (drained by the TaskWorker), but the
+  // harness never runs the worker — it drives enrichment synchronously
+  // (`drainServices` / `converge`) and relies on `taskQueue` staying drained.
+  // Overriding the production `enqueueResolveTmdb` seam back to None makes a
+  // `MovieDetailsComplete` resolve on the `ec` pool exactly as before, so the
+  // determinism + snapshot harness is unchanged. The shared `resolveTmdbOnce`
+  // is the same work either way; the enqueue seam is covered by the unit +
+  // WorkerWiring specs. A missing fixture is a permanent miss (the inline path
+  // drops a transient failure without retrying — no cascade churn).
+  override lazy val movieService =
+    new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.ec("enrichment-worker"))
 
   // Don't retry cinema scrapes in fixture replay: a missing fixture is permanent,
   // so backoff per fixture-less cinema just multiplies fixture-server boot time

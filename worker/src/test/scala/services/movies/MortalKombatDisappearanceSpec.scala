@@ -166,7 +166,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
       // Subsequent cinemas follow the production flow: recordCinemaScrape
       // first (redirect folds the slot into the existing sibling row),
       // then publish the MovieDetailsComplete `CinemaScrapeRunner` would publish. The
-      // bus listener's `scheduleTmdbStage` must short-circuit via
+      // bus listener's `needsTmdbResolution` must short-circuit via
       // `hasResolvedSiblingByTitle` (normalize-match) so no phantom row
       // is created at the raw (title, year) key.
       bus.subscribe(svc.onMovieDetailsComplete)

@@ -11,7 +11,7 @@ import tools.GetOnlyHttpFetch
  * FAILING regression: a film mis-resolved against a director-less first scrape
  * is never corrected when the real director arrives later.
  *
- * `scheduleTmdbStage` early-returns on its "already resolved" guard the moment
+ * `needsTmdbResolution` early-returns on its "already resolved" guard the moment
  * ANY tmdbId is set — even a wrong one — and the daily `retryUnresolvedTmdb`
  * only revisits rows with tmdbId=None. So a partial-row mis-resolution is
  * permanent: the later, richer director hint is dropped.

@@ -30,7 +30,7 @@ class CorpusSettleSpec extends AnyFlatSpec with Matchers {
   }
 
   private def service(cache: MovieCache): MovieService =
-    new MovieService(cache, new InProcessEventBus, new TmdbClient(NoNetwork, apiKey = None), maxRetries = 0)
+    new MovieService(cache, new InProcessEventBus, new TmdbClient(NoNetwork, apiKey = None))
 
   private def slot(cinema: models.Cinema): (Source, SourceData) =
     (cinema: Source) -> SourceData(title = Some("Dzień objawienia"))

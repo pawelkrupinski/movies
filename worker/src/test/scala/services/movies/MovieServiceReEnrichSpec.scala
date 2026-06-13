@@ -140,13 +140,14 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     result.flatMap(_.imdbId) shouldBe Some("tt0088763")
   }
 
-  // ── reenrichTmdbSync — the per-movie `/debug` button path ────────────────────
+  // ── resolveTmdbOnce(force = true) — the per-movie `/debug` button path ────────
   // Unlike `reEnrichSync` (silent — returns the record only), this forces a
   // re-resolve AND publishes `TmdbResolved`, so the downstream rating refreshers
   // re-run for the row off the existing event chain. That published event is the
-  // "followed by all the other enrichments" hook.
+  // "followed by all the other enrichments" hook. It's the work the worker's
+  // `ResolveTmdbHandler` runs for an operator re-enrich task.
 
-  "reenrichTmdbSync" should "publish TmdbResolved with the resolved imdbId so downstream enrichments re-run" in {
+  "resolveTmdbOnce(force = true)" should "publish TmdbResolved with the resolved imdbId and return true (concluded)" in {
     val tmdbHttp = tmdbWithYearFallback()
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val bus      = new InProcessEventBus()
@@ -155,7 +156,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val resolved = ListBuffer.empty[TmdbResolved]
     bus.subscribe { case e: TmdbResolved => resolved += e }
 
-    svc.reenrichTmdbSync("Powrót do przyszłości", Some(2026))
+    svc.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, force = true) shouldBe true
 
     eventually(resolved.map(_.imdbId).toList shouldBe List("tt0088763"))
   }

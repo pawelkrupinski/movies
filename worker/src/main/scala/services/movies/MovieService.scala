@@ -42,26 +42,25 @@ class MovieService(
   // refreshers and can't peg the box on the hourly walk. See
   // `SharedExecutionBudget`.
   ec:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("enrichment-worker"),
-  // How many times a TMDB stage is retried (with backoff) after a transient
-  // failure. Production keeps the default; fixture-replay tests set 0 so a
-  // permanently-missing fixture isn't retried 6× — that retry churn both slows
-  // the suite (backoff waits) and widens the window in which the cascade drain
-  // drops in-flight enrichment, making whole-corpus renders nondeterministic.
-  maxRetries: Int = 6
+  // How a needed single-movie TMDB resolution is DISPATCHED. Production injects
+  // an enqueue of a `ResolveTmdb` task: the worker pool drains it, the task
+  // queue retries (`Reschedule`) + dedups it, and `/debug` shows its queue
+  // place — single-movie resolution is a first-class worker task, not a hidden
+  // side-effect of the bus event. Left `None`, the stage resolves INLINE on the
+  // `ec` pool (unit specs, scripts, Mongo-less dev). Either way the resolution
+  // WORK is the shared `resolveTmdbOnce`; only this dispatch seam differs.
+  enqueueResolveTmdb: Option[(String, Option[Int], Option[String], Option[String]) => Unit] = None
 ) extends Stoppable with Logging {
 
-  // Active or queued TMDB-stage lookups, so we don't dispatch the same key
-  // twice. (The IMDb stage doesn't dedup — it's idempotent and cheap.)
+  // Active or queued INLINE TMDB-stage lookups, so the inline-default dispatch
+  // doesn't run the same key twice concurrently. (Production dedups via the task
+  // queue's per-dedupKey idempotency instead.) The IMDb stage doesn't dedup —
+  // it's idempotent and cheap.
   private val pending = ConcurrentHashMap.newKeySet[CacheKey]()
 
   // EC notes: each lookup is mostly network wait; virtual threads make per-task
   // concurrency free, and TMDB's published rate limit (~50 req/s) is enforced
   // at the HTTP layer (back off on 429/503) rather than at the thread count.
-
-  // Separate scheduler for delayed retries — it just hands a Runnable back to
-  // the worker pool when the timer fires, so we don't tie up a worker thread
-  // sleeping. Daemon so it doesn't keep the JVM alive.
-  private val retryScheduler = DaemonExecutors.scheduler("enrichment-retry-scheduler")
 
   // Daily-tick scheduler for `retryUnresolvedTmdb`. The hourly IMDb refresh
   // lives in `ImdbRatings`.
@@ -81,12 +80,6 @@ class MovieService(
   // cache scan that only writes when it finds a variant to collapse, so a
   // few-minute cadence is cheap; tunable for prod load. Default 10 min.
   private val SettleIntervalSeconds = Env.positiveLong("KINOWO_CORPUS_SETTLE_SECONDS", 600L)
-
-  // How many times we've retried each key after a transient failure. Cleared
-  // on success / non-transient miss. Caps a runaway loop for a key that
-  // perpetually fails some non-cacheable way.
-  private val retryAttempts = new ConcurrentHashMap[CacheKey, Integer]()
-  private val MaxRetries    = maxRetries
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -132,23 +125,20 @@ class MovieService(
    *  to THIS method, so test and prod settle through one code path. */
   def settle(): Unit = cache.canonicalizeBySanitize()
 
-  /** Drain the queue so in-flight upserts hit Mongo before `MovieRepo`
-   *  closes its client AND every TmdbResolved / ImdbIdMissing event the
-   *  in-flight tasks would publish has fired (downstream listeners
-   *  dispatch synchronously on this worker's thread). The caller
-   *  (`AppLoader`) registers this hook so Play runs the repo's close
-   *  strictly *after* this returns.
+  /** Drain the INLINE enrichment pool (`ec`) so any in-flight inline TMDB
+   *  resolution finishes — its upserts hit Mongo and its TmdbResolved /
+   *  ImdbIdMissing events fire (downstream listeners dispatch synchronously on
+   *  this thread) — before `MovieRepo` closes its client. The caller
+   *  (`AppLoader`) registers this hook so the repo's close runs strictly after.
    *
-   *  Waits for the whole queue to drain, not a fixed 15-s window — a
-   *  fixed cap was returning before TMDB lookups against real upstreams
-   *  finished, so downstream `*Ratings` pools got drained while
-   *  `runTmdbStage` was still queueing tasks against them. Play's
-   *  lifecycle still has its own deadline, so production is unaffected
-   *  in the happy path; the bound is "every task runs to completion or
-   *  the JVM is force-killed by the lifecycle". */
+   *  In production single-movie resolution runs as a `ResolveTmdb` worker task,
+   *  not on this pool, so the TaskWorker's own lifecycle owns its drain (and a
+   *  task interrupted mid-resolve is simply re-claimed next boot); this pool is
+   *  the inline-default path (Mongo-less dev, scripts). Waits for the whole pool
+   *  to drain rather than a fixed window — a fixed cap returned before lookups
+   *  against real upstreams finished. */
   def stop(): Unit = {
     ec.shutdown()
-    retryScheduler.shutdown()
     tmdbRetryScheduler.shutdown()
     settleScheduler.shutdown()
     while (!ec.isTerminated) ec.awaitTermination(1, TimeUnit.HOURS)
@@ -164,7 +154,8 @@ class MovieService(
    *  the TMDB stage can use as a secondary search title — see `resolveTmdb`. */
   val onMovieDetailsComplete: PartialFunction[DomainEvent, Unit] = {
     case MovieDetailsComplete(title, year, originalTitle, director) =>
-      scheduleTmdbStage(cache.keyOf(title, year), originalTitle, director)
+      if (needsTmdbResolution(cache.keyOf(title, year), originalTitle, director))
+        dispatchResolve(title, year, originalTitle, director)
   }
 
   // ── Public read + manual re-enrich ────────────────────────────────────────
@@ -195,11 +186,17 @@ class MovieService(
 
   // ── TMDB stage ─────────────────────────────────────────────────────────────
 
-  private def scheduleTmdbStage(
+  /** The cheap in-memory guard: does the TMDB stage have real work for this row?
+   *  Run BEFORE dispatch so we never enqueue (or inline-run) a no-op task — a
+   *  resolved row shouldn't carry a phantom queue place on `/debug`, and the
+   *  normal flow must not re-resolve a settled row (that can flip it to a
+   *  more-popular same-title hit). The handler re-checks this too, so a row
+   *  resolved between enqueue and execution is skipped. */
+  private def needsTmdbResolution(
     key:           CacheKey,
-    originalTitle: Option[String] = None,
-    director:      Option[String] = None
-  ): Unit = {
+    originalTitle: Option[String],
+    director:      Option[String]
+  ): Boolean = {
     val existing = cache.get(key)
     existing.flatMap(_.tmdbId) match {
       case Some(currentId) =>
@@ -214,13 +211,18 @@ class MovieService(
         // it — that keep makes the stage idempotent: a correctly-resolved row
         // never re-resolves, so re-running it on every director-bearing change
         // can't churn TMDB or loop on the stage's own writes.
-        if (director.isEmpty) return
-        val dirs = reportedDirectors(existing, director)
-        if (dirs.isEmpty ||
-            verifyByDirector(Some(TmdbClient.SearchResult(currentId, "", None, None, 0.0)), Some(dirs)).isDefined)
-          return
-        logger.info(s"TMDB re-resolve: '${key.cleanTitle}' (${key.year.getOrElse("?")}) tmdbId=$currentId " +
-                    s"no longer matches the reported director(s) [$dirs] — re-resolving.")
+        if (director.isEmpty) false
+        else {
+          val dirs = reportedDirectors(existing, director)
+          if (dirs.isEmpty ||
+              verifyByDirector(Some(TmdbClient.SearchResult(currentId, "", None, None, 0.0)), Some(dirs)).isDefined)
+            false
+          else {
+            logger.info(s"TMDB re-resolve: '${key.cleanTitle}' (${key.year.getOrElse("?")}) tmdbId=$currentId " +
+                        s"no longer matches the reported director(s) [$dirs] — re-resolving.")
+            true
+          }
+        }
       case None =>
         // Negative cache: short-circuit known misses — but ONLY when this event
         // brings no new resolution signal. A later scrape that carries a director
@@ -231,19 +233,36 @@ class MovieService(
         // where the first-scraping cinema reports no director (CinemaCity,
         // Charlie Monroe) stays trapped at tmdbId=None for the full 24h
         // negative TTL — the Kurozając class of regression.
-        if (cache.isNegative(key) && originalTitle.isEmpty && director.isEmpty) return
+        if (cache.isNegative(key) && originalTitle.isEmpty && director.isEmpty) false
         // A sibling row already knows this raw cinema title (via cinemaTitles)
         // AND has a tmdbId. `recordCinemaScrape`'s redirect has already
         // attached this cinema's slot to that sibling, so running TMDB again
         // would just create a phantom row at the `(title, year)` key that
         // nothing would clean up — wasted TMDB call plus a stale year-
         // divergent row sitting in Mongo forever.
-        if (cache.hasResolvedSiblingByTitle(key.cleanTitle)) return
+        else if (cache.hasResolvedSiblingByTitle(key.cleanTitle)) false
+        else true
     }
-    if (pending.add(key)) {
-      Future(try runTmdbStage(key, originalTitle, director) finally pending.remove(key))(using ec)
-      ()
-    }
+  }
+
+  /** Dispatch a needed single-movie TMDB resolution. Production enqueues a
+   *  `ResolveTmdb` task (worker-pool drained, retried, deduped, shown on
+   *  `/debug`); the inline default runs it on the `ec` pool, deduped by the
+   *  in-memory `pending` set (the task queue's job in production). */
+  private def dispatchResolve(
+    title:         String,
+    year:          Option[Int],
+    originalTitle: Option[String],
+    director:      Option[String]
+  ): Unit = enqueueResolveTmdb match {
+    case Some(enqueue) => enqueue(title, year, originalTitle, director)
+    case None =>
+      val key = cache.keyOf(title, year)
+      if (pending.add(key)) {
+        Future(try { resolveTmdbOnce(title, year, originalTitle, director, force = false); () }
+               finally pending.remove(key))(using ec)
+        ()
+      }
   }
 
   /** The directors reported for a row — every cinema slot's plus the triggering
@@ -254,51 +273,69 @@ class MovieService(
     (eventDirector.toSeq.flatMap(_.split(",")) ++ existing.map(_.data.values.flatMap(_.director).toSeq).getOrElse(Nil))
       .map(_.trim).filter(_.nonEmpty).distinct.sorted.mkString(",")
 
-  // Async wrapper around runTmdbStageSync: handles retry policy + event publish.
-  // Two events:
-  //   - `TmdbResolved`    when TMDB had an IMDb id — drives the IMDb rating
-  //                       and RT score listeners.
-  //   - `ImdbIdMissing`   when TMDB resolved the film but had no IMDb cross-
-  //                       reference — `ImdbRatings` falls back to IMDb's
-  //                       suggestion endpoint to find the id (e.g. very recent
-  //                       theatrical releases TMDB hasn't been told about yet).
-  private def runTmdbStage(
-    key:               CacheKey,
-    originalTitleHint: Option[String] = None,
-    directorHint:      Option[String] = None
-  ): Unit =
-    Try(runTmdbStageSync(key, originalTitleHint, directorHint)) match {
-      case Success(Some((finalKey, movieRecord))) =>
-        retryAttempts.remove(key)
-        movieRecord.imdbId match {
-          case Some(id) =>
-            bus.publish(TmdbResolved(finalKey.cleanTitle, finalKey.year, id))
-            logger.debug(s"TMDB stage: ${finalKey.cleanTitle} (${finalKey.year.getOrElse("?")}) → $id")
-          case None =>
-            // IMDb's suggestion endpoint sees the cleaned-up form when TMDB
-            // didn't ship an originalTitle, so accessibility-decorated rows
-            // ("Kino bez barier: Freak Show (AD)") query IMDb as just
-            // "Freak Show". TMDB's originalTitle, when present, is already
-            // canonical and doesn't need stripping.
-            val searchTitle = movieRecord.originalTitle.getOrElse(MovieService.apiQuery(finalKey.cleanTitle))
-            logger.debug(s"TMDB stage: ${finalKey.cleanTitle} (${finalKey.year.getOrElse("?")}) → tmdbId=${movieRecord.tmdbId.getOrElse("—")} (no IMDb cross-reference yet); publishing ImdbIdMissing(search='$searchTitle')")
-            bus.publish(ImdbIdMissing(finalKey.cleanTitle, finalKey.year, searchTitle))
-        }
-      case Success(None)    =>
-        // Definitive no-match: TMDB searched and genuinely found nothing. Persist
-        // it so the row is `tmdbConcluded` (→ released to the read model as a
-        // standalone card) and that readiness survives a restart — the in-memory
-        // negative cache below only throttles re-querying for an hour. The daily
-        // `retryUnresolvedTmdb` sweep still re-checks the row later, in case TMDB
-        // eventually indexes the film.
+  /** Resolve ONE film's TMDB id, synchronously on the calling thread, and bring
+   *  the row to a definitive TMDB state. This is the shared work both dispatch
+   *  seams run — the worker's `ResolveTmdb` task handler in production, the
+   *  inline `ec` pool otherwise.
+   *
+   *    - HIT: `runTmdbStageSync` writes the TMDB-side fields, then we publish
+   *      `TmdbResolved` (TMDB had an IMDb id → drives the IMDb rating + RT
+   *      listeners) or `ImdbIdMissing` (resolved but no IMDb cross-reference →
+   *      `ImdbRatings` falls back to IMDb's suggestion endpoint). Returns true.
+   *    - DEFINITIVE MISS: persist `tmdbNoMatch` so the row is `tmdbConcluded`
+   *      (→ released to the read model) and that survives a restart. The daily
+   *      `retryUnresolvedTmdb` sweep still re-checks it later. Returns true.
+   *    - TRANSIENT FAILURE (rate-limit / network blip): returns FALSE without
+   *      poisoning the negative cache, so the caller retries — the worker task
+   *      returns `Reschedule`; the inline default drops it and the next
+   *      scrape / daily sweep re-dispatches.
+   *
+   *  `force` skips the `needsTmdbResolution` guard — the operator `/debug`
+   *  re-enrich button forces a re-resolve even of an already-resolved row
+   *  (forcing is the whole point); the normal flow never forces. */
+  def resolveTmdbOnce(
+    title:         String,
+    year:          Option[Int],
+    originalTitle: Option[String],
+    director:      Option[String],
+    force:         Boolean
+  ): Boolean = {
+    val key = cache.keyOf(title, year)
+    // Fall back to the cached row's accumulated hints when the caller brings
+    // none — the operator `/debug` re-enrich enqueues only (title, year), so
+    // without this its `directorWalk` would never fire (the inline operator
+    // path used to derive the same hints from the row directly).
+    val (cachedOrig, cachedDir) = cache.get(key).map(tmdbHints).getOrElse((None, None))
+    val origHint = originalTitle.orElse(cachedOrig)
+    val dirHint  = director.orElse(cachedDir)
+    if (!force && !needsTmdbResolution(key, origHint, dirHint)) true
+    else Try(runTmdbStageSync(key, origHint, dirHint)) match {
+      case Success(Some((finalKey, movieRecord))) => publishTmdbOutcome(finalKey, movieRecord); true
+      case Success(None) =>
         cache.putIfPresent(key, _.copy(tmdbNoMatch = true))
         cache.markMissing(key)
-        retryAttempts.remove(key)
-      case Failure(ex)      =>
-        // Transient failure (rate limit / network blip). Don't poison the
-        // negative cache — schedule a delayed retry so the title gets enriched
-        // automatically once the upstream recovers.
-        scheduleTmdbRetry(key, ex)
+        true
+      case Failure(ex) =>
+        logger.warn(s"TMDB resolve failed for '${key.cleanTitle}' (${key.year.getOrElse("?")}): ${ex.getMessage}; will retry.")
+        false
+    }
+  }
+
+  // Publish the post-resolution event so the rating refreshers re-run for the
+  // row off the existing event chain.
+  private def publishTmdbOutcome(finalKey: CacheKey, movieRecord: MovieRecord): Unit =
+    movieRecord.imdbId match {
+      case Some(id) =>
+        bus.publish(TmdbResolved(finalKey.cleanTitle, finalKey.year, id))
+        logger.debug(s"TMDB stage: ${finalKey.cleanTitle} (${finalKey.year.getOrElse("?")}) → $id")
+      case None =>
+        // IMDb's suggestion endpoint sees the cleaned-up form when TMDB didn't
+        // ship an originalTitle, so accessibility-decorated rows ("Kino bez
+        // barier: Freak Show (AD)") query IMDb as just "Freak Show". TMDB's
+        // originalTitle, when present, is already canonical and needs no stripping.
+        val searchTitle = movieRecord.originalTitle.getOrElse(MovieService.apiQuery(finalKey.cleanTitle))
+        logger.debug(s"TMDB stage: ${finalKey.cleanTitle} (${finalKey.year.getOrElse("?")}) → tmdbId=${movieRecord.tmdbId.getOrElse("—")} (no IMDb cross-reference yet); publishing ImdbIdMissing(search='$searchTitle')")
+        bus.publish(ImdbIdMissing(finalKey.cleanTitle, finalKey.year, searchTitle))
     }
 
   // Synchronous core. Resolves TMDB; on a hit, writes a row carrying ONLY the
@@ -443,23 +480,13 @@ class MovieService(
   // fields chain `*Ratings.refreshOneSync(title, year)` themselves so the
   // worker pool stays uninvolved (see `scripts/EnrichmentBackfill`).
 
-  // ── Retry policy for TMDB transient failures ──────────────────────────────
-
-  // Transient failures (rate limit / network blip) retry FOREVER — a row is only
-  // ever released by a *definitive* answer (a hit, or a persisted `tmdbNoMatch`),
-  // never by us giving up. The first `MaxRetries` attempts back off exponentially
-  // (30s, 60s, …); beyond that we keep rescheduling at the 30-min ceiling
-  // indefinitely. `scheduleTmdbStage` self-terminates the loop once the row
-  // resolves or leaves the cache, so this can't spin on a dead key.
-  private def scheduleTmdbRetry(key: CacheKey, cause: Throwable): Unit = {
-    val attempt = retryAttempts.merge(key, 1: Integer, (a: Integer, b: Integer) => a + b)
-    val shift   = math.min(attempt - 1, MaxRetries)
-    val delaySeconds = math.min(30L * 60, 30L * (1L << shift))
-    logger.warn(s"TMDB stage failed for ${key.cleanTitle} (${key.year.getOrElse("?")}) on attempt $attempt: ${cause.getMessage}; retrying in ${delaySeconds}s")
-    retryScheduler.schedule(new Runnable {
-      def run(): Unit = scheduleTmdbStage(key)
-    }, delaySeconds, TimeUnit.SECONDS)
-  }
+  // Transient TMDB failures (rate limit / network blip) retry FOREVER — a row is
+  // only ever released by a *definitive* answer (a hit, or a persisted
+  // `tmdbNoMatch`), never by giving up. In production that retry is the task
+  // queue's: `ResolveTmdbHandler` returns `Reschedule` on a transient failure,
+  // and the queue re-claims the task (with backoff) until it concludes. The
+  // inline default just drops a transient failure; the next scrape or the daily
+  // `retryUnresolvedTmdb` sweep re-dispatches.
 
   // ── Scheduled loop ────────────────────────────────────────────────────────
   // The hourly IMDb refresh lives in `ImdbRatings.refreshAll`.
@@ -489,38 +516,19 @@ class MovieService(
     // (→ TMDB) once their detail lands, and `DetailReaper` keeps that detail
     // enqueued — so this sweep only re-tries genuinely-stalled, detail-complete rows.
     val targets = cache.entries.collect { case (k, e) if e.tmdbId.isEmpty && !e.detailPending => (k, e) }
-    logger.info(s"TMDB retry: cleared negatives + re-scheduling ${targets.size} row(s) with missing tmdbId.")
+    logger.info(s"TMDB retry: cleared negatives + re-dispatching ${targets.size} row(s) with missing tmdbId.")
     targets.foreach { case (k, e) =>
       val (origHint, dirHint) = tmdbHints(e)
-      if (pending.add(k)) {
-        Future(try runTmdbStage(k, origHint, dirHint) finally pending.remove(k))(using ec)
-        ()
-      }
+      dispatchResolve(k.cleanTitle, k.year, origHint, dirHint)
     }
   }
 
-  /** The originalTitle + director hints `runTmdbStage` needs, derived from a
-   *  cached row the same way the daily retry and the per-movie re-enrich both
-   *  want them. */
+  /** The originalTitle + director hints the TMDB resolution needs, derived from
+   *  a cached row — used by the daily retry sweep and as the fallback hints in
+   *  `resolveTmdbOnce` when the dispatch carried none (the operator re-enrich). */
   private def tmdbHints(e: MovieRecord): (Option[String], Option[String]) =
     (e.cinemaOriginalTitle, if (e.director.nonEmpty) Some(e.director.mkString(", ")) else None)
 
-  /** Force a TMDB re-resolution of ONE row by `(title, year)`, synchronously on
-   *  the caller's thread. Unlike `retryUnresolvedTmdb`, this re-resolves even a
-   *  row that already has a `tmdbId` — it's the operator's explicit "re-enrich
-   *  this film" action from `/debug`, where forcing is the whole point. The
-   *  shared `runTmdbStage` publishes `TmdbResolved` (or `ImdbIdMissing`) on
-   *  success, so every downstream rating refresher re-runs for the row off the
-   *  same event chain that drives first-time enrichment — that's the "then all
-   *  the other enrichments" hook, with no extra sequencing. */
-  def reenrichTmdbSync(title: String, year: Option[Int]): Unit = {
-    val key                 = cache.keyOf(title, year)
-    val (origHint, dirHint) = cache.get(key).map(tmdbHints).getOrElse((None, None))
-    if (pending.add(key)) {
-      try runTmdbStage(key, origHint, dirHint) finally pending.remove(key)
-    } else
-      logger.info(s"TMDB re-enrich: $title (${year.getOrElse("?")}) already in flight — skipping duplicate.")
-  }
 
   // ── TMDB resolution ────────────────────────────────────────────────────────
 
