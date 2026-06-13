@@ -264,12 +264,50 @@ lazy val localStack = Command.command("localStack") { state =>
   val uri        = sys.env.getOrElse("KINOWO_LOCAL_MONGO_URI", "mongodb://127.0.0.1:27018")
   val db         = sys.env.getOrElse("KINOWO_LOCAL_MONGO_DB", "kinowo_local")
   val fixtureDir = sys.env.getOrElse("KINOWO_FIXTURE_DIR", "today")
+  ensureLocalMongo(state, uri)
   // The worker fork can't see these JVM props; LocalFixtureWorkerMain re-forces
   // the SAME defaults itself, so both land on the same db.
   System.setProperty("MONGODB_URI", uri)
   System.setProperty("MONGODB_DB", db)
   state.log.info(s"[localStack] worker replays fixtures/$fixtureDir, web hits the internet — both on Mongo $uri db=$db")
   "worker/Test/bgRunMain modules.LocalFixtureWorkerMain" :: "web/run" :: state
+}
+
+/** Make sure a Mongo is listening for the local stack. For a LOCAL uri whose
+ *  port is closed, start a single-node-replica-set docker mongo (replica set so
+ *  web's change streams deliver live, not just the 30-min reload backstop) and
+ *  wait for it. Never touches a remote/custom uri; degrades to a clear hint if
+ *  docker is absent. */
+def ensureLocalMongo(state: State, uri: String): Unit = {
+  val log = state.log
+  val (host, port) = """mongodb://([^:/]+):(\d+)""".r.findFirstMatchIn(uri)
+    .map(m => (m.group(1), m.group(2).toInt)).getOrElse(("127.0.0.1", 27018))
+  val isLocal = host == "127.0.0.1" || host == "localhost"
+  def portOpen: Boolean =
+    try { val s = new java.net.Socket(); s.connect(new java.net.InetSocketAddress(host, port), 500); s.close(); true }
+    catch { case _: Throwable => false }
+  if (!isLocal || portOpen) return
+  def sh(cmd: String): Int = scala.sys.process.Process(Seq("sh", "-c", cmd)).!(scala.sys.process.ProcessLogger(_ => ()))
+  val haveDocker = sh("command -v docker >/dev/null 2>&1") == 0
+  if (!haveDocker) {
+    log.warn(s"[localStack] no Mongo on $host:$port and docker not found. Start one yourself: " +
+      s"docker run -d -p $port:27017 --name kinowo-local-mongo mongo --replSet rs0  &&  " +
+      s"docker exec kinowo-local-mongo mongosh --quiet --eval 'rs.initiate()'")
+    return
+  }
+  val name = "kinowo-local-mongo"
+  log.info(s"[localStack] no Mongo on $host:$port — starting docker '$name'…")
+  val exists = scala.sys.process.Process(Seq("sh", "-c", s"docker ps -aq -f name=^$name$$")).!!.trim.nonEmpty
+  if (exists) sh(s"docker start $name")
+  else sh(s"docker run -d -p $port:27017 --name $name mongo --replSet rs0")
+  var waited = 0
+  while (!portOpen && waited < 40) { Thread.sleep(1000); waited += 1 }
+  // Idempotent: a fresh container needs rs.initiate(); a restarted one already
+  // has it (try/catch swallows "already initialized").
+  sh(s"docker exec $name mongosh --quiet --eval 'try { rs.initiate() } catch (e) {}'")
+  Thread.sleep(2000) // let the single node elect itself primary before web connects
+  if (portOpen) log.info(s"[localStack] local mongo ready on $host:$port")
+  else log.warn(s"[localStack] mongo didn't come up on $host:$port — check 'docker logs $name'")
 }
 
 // One sbt invocation, every module's unit tests, no fail-fast: `all` runs each
