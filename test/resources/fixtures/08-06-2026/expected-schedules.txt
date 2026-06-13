@@ -2698,7 +2698,7 @@ cinemaScrapes:
   Helios Łódź / K-popowe Łowczynie Demonów: Karaoke / —
   Helios Żory / K-popowe Łowczynie Demonów: Karaoke / —
   Kino Apollo / K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE / —
-  Kino Paradox / K-popowe łowczynie demonów: Karaoke / —
+  Kino Paradox / K-popowe łowczynie demonów: Karaoke / 2025
   Kino Wisła / K-popowe Łowczynie Demonów: Karaoke / 2025
   Świt Zwoleń / K-popowe łowczynie demonów: karaoke / —
 showings:
@@ -3131,7 +3131,7 @@ cinemaScrapes:
   Kino Iluzjon / Kumotry / 2025
   Kino Mikro / Kumotry / —
   Kino Nowe Horyzonty / Kumotry / 2025
-  Kino Paradox / Kumotry / —
+  Kino Paradox / Kumotry / 2026
   Kino Pałacowe / Kumotry / 2025
   Kino Pionier 1907 / KUMOTRY / —
   Kino Pod Baranami / Kumotry / —
@@ -3681,7 +3681,7 @@ cinemaScrapes:
   Kino KDK / Mikey i Nicky / —
   Kino Muzeum / MIKEY I NICKY / —
   Kino Nowe Horyzonty / Mikey i Nicky / 1976
-  Kino Paradox / Mikey i Nicky / —
+  Kino Paradox / Mikey i Nicky / 1976
   Kino Pałacowe / Mikey i Nicky / 1976
   Kino Pod Baranami / Mikey i Nicky / —
   Kino Rialto / Mikey i nicky / 1976
@@ -4597,7 +4597,7 @@ cinemaScrapes:
   Kino Oskard / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino PCA / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino PDK / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Kino Paradox / Niesamowite przygody skarpetek 3. Ale kosmos! / —
+  Kino Paradox / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino Pałacowe / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino Planeta / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Praha / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -5059,7 +5059,7 @@ cinemaScrapes:
   Kino Orzeł / Ojczyzna / —
   Kino Oskard / Ojczyzna / —
   Kino PDK / Ojczyzna / —
-  Kino Paradox / Ojczyzna / —
+  Kino Paradox / Ojczyzna / 2026
   Kino Piast / Ojczyzna / —
   Kino Pionier 1907 / OJCZYZNA / —
   Kino Pod Baranami / Ojczyzna / —
@@ -8715,7 +8715,7 @@ cinemaScrapes:
   Kino Muza / Zawieście czerwone latarnie / 1991
   Kino Muzeum / ZAWIEŚCIE CZERWONE LATARNIE / —
   Kino Nowe Horyzonty / Zawieście czerwone latarnie / 1991
-  Kino Paradox / Zawieście czerwone latarnie / —
+  Kino Paradox / Zawieście czerwone latarnie / 1991
   Kino Pałacowe / Zawieście czerwone latarnie / 1991
   Kino Rialto / Zawieście czerwone latarnie / 1991
   Kino SDK / Zawieście czerwone latarnie / 1991

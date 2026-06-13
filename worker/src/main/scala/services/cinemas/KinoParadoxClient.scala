@@ -42,15 +42,17 @@ class KinoParadoxClient(http: HttpFetch, override val cinema: Cinema) extends Ci
         .map(s => Showtime(s.dateTime, s.bookingUrl))
         .distinctBy(s => (s.dateTime, s.bookingUrl))
         .sortBy(_.dateTime)
+      val directors = group.map(_.directors).find(_.nonEmpty).getOrElse(Seq.empty)
+      val year      = group.flatMap(_.year).headOption
       if (showtimes.isEmpty) None
       else Some(CinemaMovie(
-        movie     = Movie(title),
+        movie     = Movie(title, releaseYear = year),
         cinema    = cinema,
         posterUrl = None,
         filmUrl   = filmUrl,
         synopsis  = None,
         cast      = Seq.empty,
-        director  = Seq.empty,
+        director  = directors,
         showtimes = showtimes
       ))
     }.sortBy(_.movie.title)
@@ -63,13 +65,29 @@ object KinoParadoxClient {
   val RepertoireUrl = s"$BaseUrl/repertuar/"
 
   private val DateFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+  private val YearPat = """\b(?:19|20)\d{2}\b""".r
 
   private[cinemas] case class RawSlot(
     title:      String,
     filmUrl:    Option[String],
     dateTime:   LocalDateTime,
-    bookingUrl: Option[String]
+    bookingUrl: Option[String],
+    directors:  Seq[String],
+    year:       Option[Int]
   )
+
+  /** The `div.item-director` line is slash-delimited:
+   *  `reż. <dirs> / <countries> / <year> / <runtime>’`. Each part is optional —
+   *  some films carry no `reż.` prefix and some no year — so pick the director
+   *  part by its marker and the year by the only 4-digit token. */
+  private[cinemas] def parseMeta(itemDirector: String): (Seq[String], Option[Int]) = {
+    val parts = itemDirector.split("/").iterator.map(_.trim).filter(_.nonEmpty).toSeq
+    val directors = parts.find(_.toLowerCase.startsWith("reż"))
+      .map(_.replaceFirst("(?i)^reż\\.?\\s*", "").split(",").map(_.trim).filter(_.nonEmpty).toSeq)
+      .getOrElse(Seq.empty)
+    val year = parts.iterator.flatMap(p => YearPat.findFirstIn(p)).map(_.toInt).nextOption()
+    (directors, year)
+  }
 
   private[cinemas] def parseDoc(html: String): Seq[RawSlot] = {
     val doc = Jsoup.parse(html)
@@ -89,11 +107,14 @@ object KinoParadoxClient {
         .map(_.attr("href").trim).filter(_.nonEmpty)
         .map(h => if (h.startsWith("http")) h else s"$BaseUrl$h")
 
+      val (directors, year) = Option(row.selectFirst("div.item-director"))
+        .map(e => parseMeta(e.text.trim)).getOrElse((Seq.empty, None))
+
       for {
         d <- date
         t <- time
         n <- title
-      } yield RawSlot(n, filmUrl, LocalDateTime.of(d, t), bookingUrl)
+      } yield RawSlot(n, filmUrl, LocalDateTime.of(d, t), bookingUrl, directors, year)
     }
   }
 }

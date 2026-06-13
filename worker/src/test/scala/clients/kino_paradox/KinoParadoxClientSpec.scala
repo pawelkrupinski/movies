@@ -35,4 +35,21 @@ class KinoParadoxClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     zawies.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 18, 0))
     zawies.showtimes.flatMap(_.bookingUrl).head should include("bilety.kinoparadox.pl")
   }
+
+  // `div.item-director` is "reż. <dirs> / <countries> / <year> / <runtime>’".
+  it should "parse the director and production year from item-director" in {
+    val zawies = client.fetch().find(_.movie.title == "Zawieście czerwone latarnie").value
+    zawies.director shouldBe Seq("Yimou Zhang")
+    zawies.movie.releaseYear shouldBe Some(1991)
+  }
+
+  it should "parse multiple directors and skip the country / runtime slashes" in {
+    val bum = client.fetch().find(_.movie.title == "Bum!").value
+    bum.director shouldBe Seq("Marta Selecka", "Andra Doršs")
+    bum.movie.releaseYear shouldBe Some(2024)
+  }
+
+  it should "never read a country name as a director" in {
+    client.fetch().flatMap(_.director).filter(services.cinemas.CountryNames.isPolish) shouldBe empty
+  }
 }
