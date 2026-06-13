@@ -4,8 +4,10 @@ import play.api.Logging
 import services.Stoppable
 import services.cinemas.CinemaScraper
 import services.freshness.{FreshnessKind, FreshnessStore}
+import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
 import tools.DaemonExecutors
 
+import java.time.Clock
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -21,6 +23,10 @@ import scala.util.{Failure, Try}
  * Instead of re-scraping every cinema back-to-back in a continuous loop, the
  * worker scrapes a cinema at most once per 15 minutes, and a failed scrape
  * (which doesn't mark freshness) is naturally retried on the next reaper tick.
+ *
+ * On a multi-machine worker each tick is gated by a cluster-wide occurrence
+ * claim ([[ScheduledRunStore]]) keyed by the tick's minute, so a given minute's
+ * stale-cinema enqueue runs on one machine, rotating — not on every machine.
  */
 class ScrapeReaper(
   scrapers:  Seq[CinemaScraper],
@@ -34,7 +40,9 @@ class ScrapeReaper(
   // Cap on how long the first tick waits for the freshness mirror to load its
   // scrape stamps. Past it we tick anyway — degrading to the old re-scrape-all
   // behaviour — rather than never scraping if a hydrate wedges.
-  readyTimeout: FiniteDuration = 30.seconds
+  readyTimeout: FiniteDuration = 30.seconds,
+  runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
+  clock:    Clock = Clock.systemUTC()
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("scrape-reaper")
@@ -57,10 +65,19 @@ class ScrapeReaper(
         logger.warn(s"ScrapeReaper: freshness stamps not ready after ${readyTimeout.toSeconds}s; first tick may re-scrape every cinema.")
       case _ => ()
     }
-    scheduler.scheduleWithFixedDelay(() => Try(tick()), initialDelay.toMillis, interval.toMillis, TimeUnit.MILLISECONDS)
+    scheduler.scheduleWithFixedDelay(() => Try(tickIfClaimed()), initialDelay.toMillis, interval.toMillis, TimeUnit.MILLISECONDS)
   }
 
-  /** Enqueue every stale cinema. Package-private so tests can drive it directly. */
+  /** Tick only if this machine wins the current minute's occurrence claim —
+   *  otherwise another machine is enqueuing this window's stale cinemas, so
+   *  skip. Returns the number enqueued (0 when the claim was lost). */
+  private[tasks] def tickIfClaimed(): Int = {
+    val key = OccurrenceKey.at("scrape", clock.millis(), interval, 0.seconds)
+    if (runStore.claim(key)) tick() else 0
+  }
+
+  /** Enqueue every stale cinema. Package-private so tests can drive it directly —
+   *  bypasses the occurrence claim. */
   private[tasks] def tick(): Int = {
     var enqueued = 0
     scrapers.foreach { s =>

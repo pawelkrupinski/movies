@@ -7,6 +7,7 @@ import services.cinemas.FakeDetailEnricher
 import services.events.{DomainEvent, EventBus, InProcessEventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
+import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
 
 import java.time.LocalDateTime
 
@@ -57,6 +58,20 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     val r = reaper(cache, queue, fresh)
     r.tick() shouldBe 1
     r.tick() shouldBe 0 // already waiting → unique index rejects the duplicate
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
+  }
+
+  "DetailReaper.tickIfClaimed" should "not enqueue when another machine has claimed the occurrence" in {
+    val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    new DetailReaper(Seq(enricher), cacheWith(Some("http://ref")), queue, fresh, new InProcessEventBus(),
+      runStore = NeverClaimScheduledRunStore).tickIfClaimed() shouldBe 0
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
+  }
+
+  it should "tick when it wins the occurrence claim" in {
+    val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    new DetailReaper(Seq(enricher), cacheWith(Some("http://ref")), queue, fresh, new InProcessEventBus(),
+      runStore = new InMemoryScheduledRunStore).tickIfClaimed() shouldBe 1
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 

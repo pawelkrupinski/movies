@@ -5,9 +5,12 @@ import play.api.Logging
 import services.Stoppable
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.MovieCacheReader
+import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
 import tools.DaemonExecutors
 
+import java.time.Clock
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+import scala.concurrent.duration._
 import scala.util.Try
 
 /**
@@ -32,15 +35,26 @@ import scala.util.Try
  * retry ~10s after every boot. Freshness gating (Mongo-persisted) dedups the
  * overlap with the periodic sweeps and keeps the boot sweep churn-safe across
  * rapid restarts — a row attempted inside the 4h window isn't re-queued.
+ *
+ * With the worker running on more than one machine, each source's sweep is
+ * gated by a cluster-wide occurrence claim ([[ScheduledRunStore]]): the sweep's
+ * 4h window (keyed by source + boundary) is claimed by whichever machine fires
+ * first in it, and the others skip — so a window's walk runs on one machine,
+ * rotating, rather than on every machine. The boot sweep and the periodic fire
+ * share the same per-source claim, so they also dedup each other.
  */
 class EnrichmentReaper(
   cache:                MovieCacheReader,
   queue:                TaskQueue,
   freshness:            FreshnessStore,
-  bootSweepDelaySeconds: Long = EnrichmentReaper.DefaultBootSweepDelaySeconds
+  bootSweepDelaySeconds: Long = EnrichmentReaper.DefaultBootSweepDelaySeconds,
+  runStore:             ScheduledRunStore = AlwaysClaimScheduledRunStore,
+  clock:                Clock = Clock.systemUTC()
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("enrichment-reaper")
+
+  private val SweepPeriod: FiniteDuration = 4.hours
 
   private case class Sweep(taskType: TaskType, kind: FreshnessKind, eligible: MovieRecord => Boolean, offsetHours: Long)
 
@@ -56,18 +70,30 @@ class EnrichmentReaper(
     // unenriched rows get queued without waiting for the uptime-gated first
     // periodic fire below (which a frequently-restarting worker never reaches).
     scheduler.schedule(
-      (() => Try(sweepOnce())): Runnable, bootSweepDelaySeconds, TimeUnit.SECONDS)
+      (() => Try(bootSweepClaimed())): Runnable, bootSweepDelaySeconds, TimeUnit.SECONDS)
     sweeps.foreach { s =>
       scheduler.scheduleAtFixedRate(
-        () => Try(sweep(s)), s.offsetHours * 3600, 4 * 3600, TimeUnit.SECONDS)
+        () => Try(sweepIfClaimed(s)), s.offsetHours * 3600, 4 * 3600, TimeUnit.SECONDS)
     }
     logger.info(s"EnrichmentReaper started: boot sweep in ${bootSweepDelaySeconds}s, " +
                 s"then ${sweeps.size} rating sweeps every 4h, staggered hourly.")
   }
 
   /** Run every source's sweep once. Package-private so tests can drive the
-   *  reaper synchronously. Returns total tasks enqueued. */
+   *  reaper synchronously — bypasses the occurrence claim (single-caller). */
   private[tasks] def sweepOnce(): Int = sweeps.map(sweep).sum
+
+  /** The claim-gated boot backfill: try to claim each source's current window
+   *  and sweep the ones this machine wins. Package-private for tests. */
+  private[tasks] def bootSweepClaimed(): Int = sweeps.map(sweepIfClaimed).sum
+
+  /** Sweep one source only if this machine wins its current 4h occurrence —
+   *  otherwise another machine is handling this window, so skip. Returns the
+   *  number of tasks enqueued (0 when the claim was lost). */
+  private def sweepIfClaimed(s: Sweep): Int = {
+    val key = OccurrenceKey.at(s"enrich-${s.kind.label}", clock.millis(), SweepPeriod, s.offsetHours.hours)
+    if (runStore.claim(key)) sweep(s) else 0
+  }
 
   /** Enqueue every eligible, non-fresh row for one source. Returns how many
    *  tasks were enqueued. */

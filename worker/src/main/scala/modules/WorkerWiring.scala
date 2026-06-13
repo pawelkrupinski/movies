@@ -11,6 +11,7 @@ import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, MongoNormalizationReportRepo, NormalizationRebuilder, NormalizationReport, NormalizationReportRepo, UnscreenedCleanup}
 import services.readmodel.{MongoReadModelRepo, ReadModelProjector, ReadModelReader, ReadModelWriter}
+import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
 import services.titlerules.{MongoTitleRulesRepo, TitleRuleSet, TitleRulesCache, TitleRulesRepo}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
@@ -284,6 +285,14 @@ class WorkerWiring {
   lazy val taskQueue: TaskQueue = new MongoTaskQueue(mongoConnection.database)
   lazy val freshnessStore: FreshnessStore = new MongoFreshnessStore(mongoConnection.database)
 
+  // Cluster-wide occurrence claims gate the reapers' recurring ticks so each
+  // scheduled occurrence runs on ONE machine (rotating), not on every machine.
+  // Absent Mongo (local dev opt-out) → always-claim, i.e. run unlocked.
+  lazy val scheduledRunStore: ScheduledRunStore =
+    mongoConnection.database
+      .map(db => new MongoScheduledRunStore(db.getCollection[org.mongodb.scala.bson.collection.immutable.Document]("scheduled_runs")))
+      .getOrElse(AlwaysClaimScheduledRunStore)
+
   // Cinemas that defer their per-film detail (implement DetailEnricher) scrape
   // BARE; their detail is filled via EnrichDetails queue tasks. Indexed by
   // detailGroup for the handler (task → fetch); the per-cinema enqueuers and
@@ -318,7 +327,8 @@ class WorkerWiring {
   // refresh/retry backstop (CinemaMovieAdded fires only on first appearance).
   lazy val detailEnqueuers: Seq[DetailTaskEnqueuer] =
     detailEnrichers.map(de => new DetailTaskEnqueuer(de, movieCache, taskQueue, freshnessStore))
-  lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus)
+  lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
+    runStore = scheduledRunStore)
 
   // Rating refresh as queue tasks. The handlers reuse each *Ratings class's
   // per-row refreshOneSync; the enqueuer turns the resolution bus events into
@@ -332,7 +342,8 @@ class WorkerWiring {
   )
   lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
     bootSweepDelaySeconds = Env.positiveLong("KINOWO_ENRICHMENT_BOOT_SWEEP_DELAY_SECONDS",
-      EnrichmentReaper.DefaultBootSweepDelaySeconds))
+      EnrichmentReaper.DefaultBootSweepDelaySeconds),
+    runStore = scheduledRunStore)
 
   // Operator-triggered handlers — ALWAYS registered (not gated by
   // queueEnrichment): the web `/tasks` buttons enqueue a corpus-wide refresh and
@@ -359,7 +370,8 @@ class WorkerWiring {
     poolSize = workerPoolSize
   )
   lazy val scrapeReaper =
-    new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, initialDelay = initialScrapeDelaySeconds.seconds)
+    new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, initialDelay = initialScrapeDelaySeconds.seconds,
+      runStore = scheduledRunStore)
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing
   // when the 2026-06-12 worker-steal episode had to be reconstructed from metrics).

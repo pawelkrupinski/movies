@@ -67,7 +67,7 @@ class MongoLock(coll: MongoCollection[Document]) extends Lock with Logging {
       Await.result(coll.updateOne(filter, update, new UpdateOptions().upsert(true)).toFuture(), 10.seconds)
       true
     }.recover {
-      case ex: MongoWriteException if Option(ex.getError).exists(_.getCode == 11000) =>
+      case ex: MongoWriteException if services.MongoErrors.isDuplicateKey(ex) =>
         // Duplicate-key on upsert — another holder owns this lock.
         false
       case ex: Throwable =>

@@ -105,7 +105,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         val res = Await.result(c.updateOne(filter, onInsert, new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(), 10.seconds)
         if (res.getUpsertedId != null) EnqueueResult.Added else EnqueueResult.Duplicate
       }.recover {
-        case ex: MongoWriteException if Option(ex.getError).exists(_.getCode == 11000) => EnqueueResult.Duplicate
+        case ex: MongoWriteException if services.MongoErrors.isDuplicateKey(ex) => EnqueueResult.Duplicate
         case ex: Throwable =>
           logger.warn(s"TaskQueue.enqueue($dedupKey) failed: ${ex.getMessage}")
           EnqueueResult.Duplicate

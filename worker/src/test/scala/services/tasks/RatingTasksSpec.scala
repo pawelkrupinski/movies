@@ -9,6 +9,7 @@ import services.events.{ImdbIdMissing, ImdbIdResolved, TmdbResolved}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
 import services.events.InProcessEventBus
+import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
 
 import java.time.LocalDateTime
 
@@ -91,6 +92,26 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers with Eventually {
     val queue = new InMemoryTaskQueue
     seedRow(cache, "Bare")(identity)
     new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore).sweepOnce() shouldBe 0
+  }
+
+  it should "skip the boot sweep when another machine has claimed every occurrence" in {
+    val cache  = newCache()
+    val queue  = new InMemoryTaskQueue
+    seedRow(cache, "Resolved")(_.copy(imdbId = Some("tt1"), tmdbId = Some(2)))
+    val reaper = new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore,
+      runStore = NeverClaimScheduledRunStore)
+    reaper.bootSweepClaimed() shouldBe 0
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
+  }
+
+  it should "sweep every source on the boot sweep when it wins the claims" in {
+    val cache  = newCache()
+    val queue  = new InMemoryTaskQueue
+    seedRow(cache, "Resolved")(_.copy(imdbId = Some("tt1"), tmdbId = Some(2)))
+    val reaper = new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore,
+      runStore = new InMemoryScheduledRunStore)
+    reaper.bootSweepClaimed() shouldBe 4
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 4L
   }
 
   it should "kick a boot backfill sweep on start(), not wait for the staggered first periodic fire" in {

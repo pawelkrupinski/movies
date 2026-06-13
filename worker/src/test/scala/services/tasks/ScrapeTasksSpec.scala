@@ -7,6 +7,7 @@ import services.cinemas.{CinemaScrapeRunner, CinemaScraper, FakeDetailEnricher}
 import services.events.InProcessEventBus
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
+import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
 
 import java.time.LocalDateTime
 
@@ -93,6 +94,24 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val reaper   = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore)
     reaper.tick() shouldBe 2
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 2L
+  }
+
+  it should "not enqueue when another machine has claimed this minute's occurrence" in {
+    val scraper = new FakeScraper(Multikino, movieAt(Multikino))
+    val queue   = new InMemoryTaskQueue
+    val reaper  = new ScrapeReaper(Seq(scraper), queue, new InMemoryFreshnessStore,
+      runStore = NeverClaimScheduledRunStore)
+    reaper.tickIfClaimed() shouldBe 0
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
+  }
+
+  it should "enqueue stale cinemas when it wins this minute's occurrence claim" in {
+    val scraper = new FakeScraper(Multikino, movieAt(Multikino))
+    val queue   = new InMemoryTaskQueue
+    val reaper  = new ScrapeReaper(Seq(scraper), queue, new InMemoryFreshnessStore,
+      runStore = new InMemoryScheduledRunStore)
+    reaper.tickIfClaimed() shouldBe 1
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 
   // Boot-cost guard: on a cold worker every cinema is stale, so the first tick

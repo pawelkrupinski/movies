@@ -7,8 +7,10 @@ import services.cinemas.DetailEnricher
 import services.events.{EventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.{CacheKey, MovieCache}
+import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
 import tools.DaemonExecutors
 
+import java.time.Clock
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
 import scala.util.Try
@@ -44,15 +46,26 @@ class DetailReaper(
   queue:     TaskQueue,
   freshness: FreshnessStore,
   bus:       EventBus,
-  interval:  FiniteDuration = 15.minutes
+  interval:  FiniteDuration = 15.minutes,
+  runStore:  ScheduledRunStore = AlwaysClaimScheduledRunStore,
+  clock:     Clock = Clock.systemUTC()
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("detail-reaper")
 
   def start(): Unit = {
     if (enrichers.isEmpty) { logger.info("DetailReaper: no deferred cinemas; not starting."); return }
-    scheduler.scheduleWithFixedDelay(() => Try { tick(); reapStuckPending() }, interval.toMillis, interval.toMillis, TimeUnit.MILLISECONDS)
+    scheduler.scheduleWithFixedDelay(() => Try(tickIfClaimed()), interval.toMillis, interval.toMillis, TimeUnit.MILLISECONDS)
     logger.info(s"DetailReaper started over ${enrichers.size} deferred cinema(s), every ${interval.toMinutes}min.")
+  }
+
+  /** Run the detail tick + stuck-pending release only if this machine wins the
+   *  current window's occurrence claim — otherwise another machine is handling
+   *  this window, so skip. Returns the number of detail tasks enqueued (0 when
+   *  the claim was lost). Package-private so tests can drive it directly. */
+  private[tasks] def tickIfClaimed(): Int = {
+    val key = OccurrenceKey.at("detail", clock.millis(), interval, 0.seconds)
+    if (runStore.claim(key)) { val n = tick(); reapStuckPending(); n } else 0
   }
 
   /** Enqueue every stale `(deferred-cinema, film)` detail, keyed off the row's
