@@ -234,15 +234,14 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     w.enrichDetailsSync()
     rnd.shuffle(created.toList).foreach(w.eventBus.publish)
     w.drainServices()
-    // The async drain above is the ONLY phase where fetch timing can change an
-    // outcome — it's where the concurrent enrichment pools complete in a
-    // perturbed order, which is exactly what the jitter exists to force. The
-    // following `converge()` re-enriches all ~950 films SERIALLY in a fixed
-    // sorted order (single-threaded, no concurrency to perturb), so its sleeps
-    // can't affect the result and only add wall-clock — multiplied by ~7 fetches
-    // per film × ~950 films × 3 replays. Switch the jitter off for it.
+    // The async drain above is where the concurrent enrichment pools complete in
+    // a perturbed order (what the jitter forces). The following `converge()`
+    // re-enriches all ~950 films SERIALLY, but in a SHUFFLED order (seeded by
+    // this replay) — mirroring prod's arbitrary `retryUnresolvedTmdb` sweep, so a
+    // cross-film re-enrich/settle order can't change the result. Single-threaded,
+    // so the per-fetch jitter only burns wall-clock here — switch it off.
     jitter.enabled = false
-    w.converge()
+    w.converge(Some(rnd))
     val record = w.movieRepo.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     // Project the converged corpus into the read model and warm it — the same
     // reconcile + reload the worker runs at boot — so we render through the
