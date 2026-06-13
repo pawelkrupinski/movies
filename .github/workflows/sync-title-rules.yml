@@ -68,8 +68,10 @@ jobs:
             # (`gh-actions-ro`, `read` on `kinowo`) pointed at 127.0.0.1:27017.
             - name: Dump prod title rules to code
               env:
-                  # A read-only Fly token (no deploy/write rights) scoped to just
-                  # opening the proxy; flyctl reads it from FLY_API_TOKEN.
+                  # An app-scoped Fly deploy token for kinowo-mongo ONLY (it can't
+                  # touch web/worker/grafana) — the least-privilege token that can
+                  # still open the proxy (a read-only token can't create the
+                  # WireGuard peer). flyctl reads it from FLY_API_TOKEN.
                   FLY_API_TOKEN: ${{ secrets.FLY_TUNNEL_TOKEN }}
                   MONGODB_URI:   ${{ secrets.MONGODB_RO_URI }}
                   MONGODB_DB:    kinowo
