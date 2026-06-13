@@ -1147,10 +1147,10 @@ originalTitle:     Człowiek z marmuru
 imdbRating:        7.6
 metascore:         —
 rottenTomatoes:    75
-filmwebRating:     7.6897
+filmwebRating:     —
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/czlowiek_z_marmuru
-filmwebUrl:        https://www.filmweb.pl/film/Cz%C5%82owiek+z+marmuru-1976-1123
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/cykl-wajda-re-wizje-czlowiek-z-marmuru-man-of-marble1977/
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/czlowiek-z-marmuru
@@ -3687,7 +3687,7 @@ cinemaScrapes:
   Kino Rialto / Mikey i nicky / 1976
   Kino Spektrum / Mikey i Nicky / —
   Kino U-jazdowski / Mikey i Nicky / 1976
-  Kino Żak / Mikey i Nicky / —
+  Kino Żak / Mikey i Nicky / 1976
   Kinoteka / Mikey i Nicky / 2026
 showings:
   2026-06-08  Kino Pałacowe                 18:00 Sala 1 - Kinowa
@@ -6809,7 +6809,7 @@ cinemaScrapes:
   Kino Muza / Romería / 2025
   Kino Orzeł / Romeria / —
   Kino Spektrum / Romería / —
-  Kino Żak / Romería / —
+  Kino Żak / Romería / 2025
   Przedwiośnie / Romería / —
 showings:
   2026-06-08  Kino Bułgarska 19             19:00 Sala Thelma & Louise
@@ -8389,7 +8389,7 @@ cinemaScrapes:
   Kino Muranów / Wolność po włosku / 2025
   Kino Muza / Wolność po włosku / 2025
   Kino na Szekspirowskim / Wolność po włosku / —
-  Kino Żak / Wolność po włosku / —
+  Kino Żak / Wolność po włosku / 2025
 showings:
   2026-06-08  Kino Muza                     16:45 Sala 3
   2026-06-09  Kino Muza                     21:00 Sala 3
@@ -8510,7 +8510,7 @@ cinemaScrapes:
   Dolnośląskie Centrum Filmowe / Wędrówka na północ / 2025
   Kino Muza / Wędrówka na północ / 2025
   Kino Nowe Horyzonty / Wędrówka na północ / 2025
-  Kino Żak / Wędrówka na północ / —
+  Kino Żak / Wędrówka na północ / 2025
 showings:
   2026-06-24  Kino Muza                     20:00 Sala 1
 
@@ -8720,7 +8720,7 @@ cinemaScrapes:
   Kino Rialto / Zawieście czerwone latarnie / 1991
   Kino SDK / Zawieście czerwone latarnie / 1991
   Kino U-jazdowski / Zawieście czerwone latarnie / 1991
-  Kino Żak / Zawieście czerwone latarnie / —
+  Kino Żak / Zawieście czerwone latarnie / 1991
   Kinoteka / Zawieście czerwone latarnie / 2026
 showings:
   2026-06-09  Kino Malta Charlie Monroe     16:45 Sala Charlie

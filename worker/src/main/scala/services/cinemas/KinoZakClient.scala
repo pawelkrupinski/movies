@@ -36,6 +36,11 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
 
   import KinoZakClient._
 
+  /** What a detail page contributes: the authoritative Seans schedule plus the
+   *  director(s) and production year read off the `reż. …` credits line. */
+  private case class Detail(seans: Seq[Segment], director: Seq[String], year: Option[Int])
+  private object Detail { val empty = Detail(Seq.empty, Seq.empty, None) }
+
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ListingUrl)
   override def sourceUrl: Option[String] = Some(ListingUrl)
 
@@ -44,20 +49,22 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
 
     // Multi-day cards have no listing hour — fetch their detail pages and read
     // the Seans block for the real times. Single cards are already complete.
+    // The same detail HTML also carries the `reż. …` credits line, so we read
+    // the director and production year out of it in that one fetch.
     val detailUrls = cards.filter(_.listingTimes.isEmpty).map(_.detailUrl).distinct
-    val seansByUrl =
-      if (detailUrls.isEmpty) Map.empty[String, Seq[Segment]]
+    val detailByUrl =
+      if (detailUrls.isEmpty) Map.empty[String, Detail]
       else ParallelDetailFetch.keyed("kino-zak-details", detailUrls, 1.minute)(identity) { url =>
-        Try(http.get(url)).toOption.map(parseSeans).getOrElse(Seq.empty)
+        Try(http.get(url)).toOption.map(parseDetail).getOrElse(Detail.empty)
       }
 
     cards.flatMap { c =>
+      val detail = detailByUrl.getOrElse(c.detailUrl, Detail.empty)
       val showtimes =
         if (c.listingTimes.nonEmpty)
           c.listingTimes.flatMap(t => slotsFor(Seq(c.day -> c.month), t))
         else
-          seansByUrl.getOrElse(c.detailUrl, Seq.empty)
-            .flatMap(seg => slotsFor(seg.days.map(d => d -> seg.month), seg.time))
+          detail.seans.flatMap(seg => slotsFor(seg.days.map(d => d -> seg.month), seg.time))
 
       val sorted = showtimes
         .map(dt => Showtime(dt, Some(c.detailUrl)))
@@ -66,13 +73,13 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
 
       if (sorted.isEmpty) None
       else Some(CinemaMovie(
-        movie     = Movie(c.title),
+        movie     = Movie(c.title, releaseYear = detail.year),
         cinema    = cinema,
         posterUrl = c.poster,
         filmUrl   = Some(c.detailUrl),
         synopsis  = None,
         cast      = Seq.empty,
-        director  = Seq.empty,
+        director  = detail.director,
         showtimes = sorted
       ))
     }.sortBy(_.movie.title)
@@ -115,22 +122,26 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
       } yield Card(absolute(href), t, poster, d, m, hours)
     }
 
-  // ── Detail (Seans block) ──────────────────────────────────────────────────
+  // ── Detail page (Seans block + credits) ────────────────────────────────────
 
   /** One schedule line off a detail page: a day (or day-range) at one time.
    *  e.g. "5-7 czerwca o 18:00" → Segment(Seq(5,6,7), 6, 18:00). */
   private case class Segment(days: Seq[Int], month: Int, time: LocalTime)
 
-  private def parseSeans(html: String): Seq[Segment] = {
+  private def parseDetail(html: String): Detail = {
     val doc = Jsoup.parse(html)
     val block = doc.select("h3").asScala
       .find(h => SeansHeading.contains(h.text.trim))
       .flatMap(h => Option(h.parent))
-    block.toSeq.flatMap { el =>
+    val seans = block.toSeq.flatMap { el =>
       // The block holds one or more lines separated by <br>; jsoup's
       // wholeText keeps the line breaks the <br>s introduce.
       el.wholeText.split("\n").map(_.trim).filter(_.nonEmpty).toSeq.flatMap(parseSeansLine)
     }
+    // `text()` decodes the `&nbsp;` after "reż." to a plain space, so the
+    // credits parser sees "reż. <name>" regardless of the source entity.
+    val (director, year) = parseCredits(doc.text())
+    Detail(seans, director, year)
   }
 
   /** "13 – 16 lipca o 17:45" / "24 lipca o 20:00" → a Segment, or None. */
@@ -165,4 +176,25 @@ object KinoZakClient {
   private def absolute(url: String): String =
     if (url.startsWith("http")) url
     else "https://klubzak.com.pl" + (if (url.startsWith("/")) url else "/" + url)
+
+  /** Director(s) after the literal "reż.", up to the first en-dash, comma, or
+   *  the literal "obsada" — so "reż. Carla Simón – obsada: …" yields just
+   *  ["Carla Simón"]. Co-directors before that delimiter split on a comma. */
+  private val DirectorAfterRez =
+    """reż\.\s*([^–,]+?)(?=\s*(?:–|,|obsada|$))""".r
+  /** A standalone four-digit production year (1900s/2000s). */
+  private val ProductionYear = """(?<!\d)((?:19|20)\d{2})(?!\d)""".r
+
+  /** Pull the director list and production year out of a detail page's plain
+   *  text (the `reż. <name> – … – <year> – … min.` credits line). Pure so it's
+   *  unit-testable without HTML. */
+  private[cinemas] def parseCredits(text: String): (Seq[String], Option[Int]) =
+    DirectorAfterRez.findFirstMatchIn(text) match {
+      case None => (Seq.empty, None)
+      case Some(m) =>
+        val director = m.group(1).split(",").map(_.trim).filter(_.nonEmpty).toSeq
+        // The year is the first standalone 19xx/20xx token AFTER the director.
+        val year = ProductionYear.findFirstMatchIn(text.substring(m.end)).map(_.group(1).toInt)
+        (director, year)
+    }
 }

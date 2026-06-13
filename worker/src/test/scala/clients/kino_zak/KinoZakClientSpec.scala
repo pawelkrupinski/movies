@@ -50,4 +50,32 @@ class KinoZakClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     times should contain(LocalDateTime.of(2026, 6, 9, 20, 0))
     times should have size 5
   }
+
+  // ── Director + production year off the detail page ──────────────────────────
+  // Both live on the per-film detail pages the client already fetches for
+  // multi-day runs (the `reż. <name> – … – <year> – … min.` credits line).
+  // Single-screening films never fetch a detail page, so they carry neither.
+
+  it should "read the director and production year off the detail page" in {
+    val wolnosc = movies.find(_.movie.title == "Wolność po włosku").value
+    wolnosc.director shouldBe Seq("Mario Martone")
+    wolnosc.movie.releaseYear shouldBe Some(2025)
+
+    val romeria = movies.find(_.movie.title == "Romería").value
+    romeria.director shouldBe Seq("Carla Simón")
+    romeria.movie.releaseYear shouldBe Some(2025)
+
+    val latarnie = movies.find(_.movie.title == "Zawieście czerwone latarnie").value
+    latarnie.director shouldBe Seq("Zhang Yimou")
+    latarnie.movie.releaseYear shouldBe Some(1991)
+  }
+
+  it should "never let a parsed director carry a digit or the word obsada" in {
+    val directors = movies.flatMap(_.director)
+    directors should not be empty
+    directors.foreach { name =>
+      name.toLowerCase should not include "obsada"
+      name should fullyMatch regex """\D+"""
+    }
+  }
 }
