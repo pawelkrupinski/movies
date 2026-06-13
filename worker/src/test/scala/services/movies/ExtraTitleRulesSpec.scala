@@ -68,7 +68,18 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Drugie życie | przedpremierowo"   -> "Drugie życie",
     "Przedpremiera | Ojczyzna"         -> "Ojczyzna",
     "PRZEDPREMIERA: Wielki łuk"        -> "Wielki łuk",
-    "Młode matki *AD"                  -> "Młode matki"
+    "Młode matki *AD"                  -> "Młode matki",
+    // Festival / retrospective banners (Kinoteka + the Fellini cycle), real
+    // corpus strings. Display row kept (searchTitle), query stripped to the film.
+    "WTF Fest | Crash"                                          -> "Crash",
+    "WTF Fest | Setki bobrów"                                   -> "Setki bobrów",
+    "Ból i blask | 6 razy Pedro"                                -> "Ból i blask",
+    "Lawrence z Arabii | Kino cyrkularne EXTRA"                 -> "Lawrence z Arabii",
+    "Federico Fellini: ciao a tutti! – Osiem i pół"             -> "Osiem i pół",
+    "FEDERICO FELLINI: ciao a tutti!: Wałkonie"                 -> "Wałkonie",
+    "Federico Fellini: GIULIETTA I DUCHY"                       -> "GIULIETTA I DUCHY",
+    "Noce Cabirii (1957) | FEDERICO FELLINI: ciao a tutti!"     -> "Noce Cabirii (1957)",
+    "WAŁKONIE – przegląd FEDERICO FELLINI: ciao a tutti!"       -> "WAŁKONIE"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
