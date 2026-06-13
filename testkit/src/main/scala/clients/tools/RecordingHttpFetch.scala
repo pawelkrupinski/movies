@@ -1,6 +1,6 @@
 package clients.tools
 
-import tools.{HttpFetch, RealHttpFetch}
+import tools.HttpFetch
 
 import java.io.File
 import java.net.URI
@@ -18,18 +18,25 @@ import java.nio.file.Files
  *  fixture tree, so we key the POST file by the URL plus a body hash;
  *  in practice the GraphQL endpoint's POST body uniquely identifies
  *  the imdbId, so one file per id is what we want.
+ *
+ *  The delegate is any `HttpFetch`, not just `RealHttpFetch`: a
+ *  Zyte-routed chain (`MultikinoClient.fetchFor` / `ZyteFallback.fetchFor`)
+ *  is an `HttpFetch` whose Zyte leg fetches through its own client, bypassing
+ *  the recorder when recording sits *inside* the chain as the direct fallback.
+ *  Wrapping the whole chain instead records the response keyed by the request
+ *  (target) URL regardless of which leg served it. See `RecorderZyteCaptureSpec`.
  */
-class RecordingHttpFetch(fixtureDir: String, realFetch: RealHttpFetch) extends HttpFetch {
+class RecordingHttpFetch(fixtureDir: String, delegate: HttpFetch) extends HttpFetch {
   val fixtureRoot = "test/resources/fixtures/" + fixtureDir
 
   override def get(url: String): String = {
-    val content = realFetch.get(url)
+    val content = delegate.get(url)
     write(fileFor(url), content)
     content
   }
 
   override def post(url: String, body: String, contentType: String): String = {
-    val content = realFetch.post(url, body, contentType)
+    val content = delegate.post(url, body, contentType)
     write(fileFor(url, Some(body)), content)
     content
   }

@@ -109,9 +109,10 @@ jobs:
                   echo "capture_date=$TODAY" >> "$GITHUB_OUTPUT"
 
                   # Rewrite the recorder's hard-coded capture-date literal (the
-                  # dd-MM-yyyy string handed to RecordingHttpFetch) to today.
+                  # `val captureDate = "dd-MM-yyyy"` every RecordingHttpFetch
+                  # keys its fixture tree off) to today.
                   sed -i -E \
-                      "/RecordingHttpFetch/ s#[0-9]{2}-[0-9]{2}-[0-9]{4}#${TODAY}#" \
+                      "/val captureDate/ s#[0-9]{2}-[0-9]{2}-[0-9]{4}#${TODAY}#" \
                       worker/src/test/scala/clients/tools/RecordAllDataToFixture.scala
 
                   sbt "worker/Test/runMain clients.tools.RecordAllDataToFixture"

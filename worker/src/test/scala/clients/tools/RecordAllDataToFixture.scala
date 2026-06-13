@@ -1,7 +1,8 @@
 package clients.tools
 
+import services.cinemas.{MultikinoClient, ZyteFallback}
 import services.movies.InMemoryMovieRepo
-import tools.{DaemonExecutors, RealHttpFetch, TestWiring}
+import tools.{DaemonExecutors, HttpFetch, RealHttpFetch, TestWiring}
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
@@ -11,7 +12,7 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  * One-shot fixture recorder. Runs the full production pipeline once
  * against real upstream APIs; every HTTP response flows through
  * `RecordingHttpFetch`, which writes a fixture file under
- * `test/resources/fixtures/16-05-2026/` per unique URL. After this
+ * `test/resources/fixtures/$captureDate/` per unique URL. After this
  * exits, the fixture tree contains every byte every client would fetch
  * in normal operation, captured deterministically.
  *
@@ -54,8 +55,31 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  *      keeps the recording correct.
  */
 object RecordAllDataToFixture extends TestWiring {
+  // The fixture dir name = the capture date. The CI refresh job (and the daily
+  // country-fixture artifact job) `sed`-rewrite this one literal to the run
+  // date; every RecordingHttpFetch below keys its tree off it.
+  val captureDate = "08-06-2026"
+
   override lazy val movieRepo = new InMemoryMovieRepo()
-  override lazy val httoFetch = new RecordingHttpFetch("08-06-2026", new RealHttpFetch())
+  override lazy val httoFetch = new RecordingHttpFetch(captureDate, new RealHttpFetch())
+
+  // Multikino and Kino Kameralne (biletyna) sit behind a WAF that blocks our
+  // datacenter IP, so production routes them through a Zyte-primary → direct
+  // chain (`MultikinoClient.fetchFor` / `ZyteFallback.fetchFor`). The Zyte leg
+  // fetches through its OWN HttpClient, so when recording is the chain's inner
+  // `direct` fallback (the production wiring), a Zyte-served response bypasses
+  // the recorder entirely — the scrape succeeds but nothing lands on disk, and
+  // the corpus silently lacks every `www.multikino.pl` / biletyna fixture.
+  //
+  // Fix: build the production chain over a plain RealHttpFetch and wrap the
+  // WHOLE chain in recording, so the response is captured keyed by the target
+  // URL no matter which leg (Zyte or direct) served it. Guarded by
+  // `RecorderZyteCaptureSpec`.
+  override lazy val multikinoFetch: HttpFetch =
+    new RecordingHttpFetch(captureDate, MultikinoClient.fetchFor(new RealHttpFetch()))
+  override lazy val biletynaFetch: HttpFetch =
+    new RecordingHttpFetch(captureDate, ZyteFallback.fetchFor(new RealHttpFetch()))
+
   // TestWiring stubs the TMDB key to "test-api-key" (fine for replay, where the
   // fixture filename strips api_key). But RECORDING fires the real request, so
   // it needs the real key from the environment — otherwise every TMDB search
