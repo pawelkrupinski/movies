@@ -23,7 +23,8 @@ class InMemoryTaskQueue extends TaskQueue {
     submittedAt:    Instant,
     attempts:       Int,
     workerId:       Option[String],
-    leaseExpiresAt: Option[Instant]
+    leaseExpiresAt: Option[Instant],
+    nextEligibleAt: Option[Instant] = None
   )
 
   private val rows = scala.collection.mutable.LinkedHashMap.empty[String, Row]
@@ -53,7 +54,7 @@ class InMemoryTaskQueue extends TaskQueue {
 
   override def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task] = lock.synchronized {
     rows.values
-      .filter(_.state == TaskState.Waiting)
+      .filter(r => r.state == TaskState.Waiting && !r.nextEligibleAt.exists(_.isAfter(now)))
       .toSeq
       .sortBy(_.submittedAt)
       .headOption
@@ -76,10 +77,12 @@ class InMemoryTaskQueue extends TaskQueue {
     }
   }
 
-  override def release(id: String, workerId: String, error: Option[String]): Unit = lock.synchronized {
+  override def release(id: String, workerId: String, error: Option[String],
+                       notBefore: Option[Instant]): Unit = lock.synchronized {
     rows.get(id).foreach { r =>
       if (r.state == TaskState.WorkedOn && r.workerId.contains(workerId))
-        rows.put(id, r.copy(state = TaskState.Waiting, workerId = None, leaseExpiresAt = None))
+        rows.put(id, r.copy(state = TaskState.Waiting, workerId = None,
+          leaseExpiresAt = None, nextEligibleAt = notBefore))
     }
   }
 

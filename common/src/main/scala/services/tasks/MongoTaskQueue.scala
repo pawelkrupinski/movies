@@ -124,8 +124,15 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       val opts = FindOneAndUpdateOptions()
         .sort(Indexes.ascending("submittedAt"))
         .returnDocument(ReturnDocument.AFTER)
+      // Eligible = waiting AND not held back by a backoff window still in the
+      // future (a task never released with `notBefore` has no `nextEligibleAt`).
+      val eligible = Filters.and(
+        Filters.eq("state", TaskState.Waiting),
+        Filters.or(
+          Filters.exists("nextEligibleAt", false),
+          Filters.lte("nextEligibleAt", new java.util.Date(now.toEpochMilli))))
       Try {
-        Await.result(c.findOneAndUpdate(Filters.eq("state", TaskState.Waiting), update, opts).headOption(), 10.seconds)
+        Await.result(c.findOneAndUpdate(eligible, update, opts).headOption(), 10.seconds)
           .map(toTask)
       }.recover {
         case ex: Throwable =>
@@ -147,12 +154,18 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       .recover { case ex => logger.warn(s"TaskQueue.complete($id) failed: ${ex.getMessage}") }
   }
 
-  override def release(id: String, workerId: String, error: Option[String]): Unit = coll.foreach { c =>
+  override def release(id: String, workerId: String, error: Option[String],
+                       notBefore: Option[Instant]): Unit = coll.foreach { c =>
     val filter = Filters.and(Filters.eq("_id", id), Filters.eq("state", TaskState.WorkedOn), Filters.eq("workerId", workerId))
+    // Set the backoff window, or clear a stale one when releasing without it, so
+    // a no-handler hand-off (notBefore = None) is immediately claimable again.
+    val eligibility = notBefore.fold(Updates.unset("nextEligibleAt"))(t =>
+      Updates.set("nextEligibleAt", new java.util.Date(t.toEpochMilli)))
     val base = Updates.combine(
       Updates.set("state", TaskState.Waiting),
       Updates.unset("workerId"),
-      Updates.unset("leaseExpiresAt")
+      Updates.unset("leaseExpiresAt"),
+      eligibility
     )
     val update = error.fold(base)(e => Updates.combine(base, Updates.set("lastError", e)))
     Try(Await.result(c.updateOne(filter, update).toFuture(), 10.seconds))

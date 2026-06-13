@@ -96,8 +96,10 @@ trait TaskQueue {
     submittedAt: Instant             = Instant.now()
   ): EnqueueResult
 
-  /** Atomically lease the oldest waiting task to `workerId` for `lease`, or None
-   *  when nothing is waiting. */
+  /** Atomically lease the oldest *eligible* waiting task to `workerId` for
+   *  `lease`, or None when nothing is waiting. A task released with a future
+   *  `notBefore` (transient-failure backoff) is skipped until `now` reaches it,
+   *  so a perpetually-failing task can't hot-loop ahead of newer work. */
   def claim(workerId: String, lease: FiniteDuration, now: Instant = Instant.now()): Option[Task]
 
   /** Mark a worked-on task done (tombstone). No-op unless `workerId` still holds
@@ -106,8 +108,11 @@ trait TaskQueue {
   def complete(id: String, workerId: String): Unit
 
   /** Return a worked-on task to waiting (retry). Same ownership guard as
-   *  [[complete]]. */
-  def release(id: String, workerId: String, error: Option[String] = None): Unit
+   *  [[complete]]. `notBefore`, when set, holds the task back from `claim` until
+   *  that instant — the transient-failure backoff (see [[TaskWorker]]); `None`
+   *  makes it immediately claimable again (e.g. a no-handler hand-off). */
+  def release(id: String, workerId: String, error: Option[String] = None,
+              notBefore: Option[Instant] = None): Unit
 
   /** Return every worked-on task whose lease has expired to waiting. Returns how
    *  many were reaped. */

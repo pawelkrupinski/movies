@@ -48,6 +48,26 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     q.countByState().getOrElse(TaskState.Deleted, 0L) shouldBe 0L
   }
 
+  it should "hold a Rescheduled task back from immediate re-claim (per-task backoff)" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
+    val w = worker(q, Seq(new RecordingHandler(ImdbRating, HandlerOutcome.Reschedule(Some("later")))))
+    w.claimAndRun("w0") shouldBe PollResult.Returned
+    // The worker released it with a backoff window (~5s for the first failure),
+    // so an immediate re-claim at "now" finds nothing eligible…
+    q.claim("w1", 1.minute) shouldBe None
+    // …but it's still a Waiting task, claimable once the window has passed.
+    q.claim("w1", 1.minute, Instant.now().plusSeconds(10)).map(_.dedupKey) shouldBe Some("imdb|x")
+  }
+
+  "TaskWorker.retryBackoffFor" should "ramp exponentially from 5s and cap at 30 minutes" in {
+    TaskWorker.retryBackoffFor(1)   shouldBe 5.seconds
+    TaskWorker.retryBackoffFor(2)   shouldBe 10.seconds
+    TaskWorker.retryBackoffFor(3)   shouldBe 20.seconds
+    TaskWorker.retryBackoffFor(10)  shouldBe 30.minutes  // capped
+    TaskWorker.retryBackoffFor(100) shouldBe 30.minutes  // stays capped, no shift overflow
+  }
+
   it should "return a task to waiting when the handler throws" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)

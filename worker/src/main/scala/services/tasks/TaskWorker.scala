@@ -5,6 +5,7 @@ import tools.DaemonExecutors
 import play.api.Logging
 
 import java.net.InetAddress
+import java.time.Instant
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
@@ -150,20 +151,28 @@ class TaskWorker(
 
   private def runHandler(task: Task, workerId: String): PollResult = byType.get(task.taskType) match {
     case None =>
-      // No handler wired (e.g. mid-deploy) — return it so a node that has the
-      // handler can take it rather than tombstoning unfinished work.
+      // No handler wired (e.g. mid-deploy) — return it immediately (no backoff)
+      // so a node that has the handler can take it rather than tombstoning
+      // unfinished work.
       queue.release(task.id, workerId, Some(s"no handler for ${task.taskType.name}"))
       PollResult.Returned
     case Some(h) =>
       Try(h.handle(task)) match {
         case Success(Done) | Success(Skipped) => queue.complete(task.id, workerId); PollResult.Completed
-        case Success(Reschedule(err))         => queue.release(task.id, workerId, err); PollResult.Returned
+        case Success(Reschedule(err)) =>
+          queue.release(task.id, workerId, err, Some(backoffUntil(task.attempts)))
+          PollResult.Returned
         case Failure(ex) =>
           logger.warn(s"Task ${task.taskType.name}/${task.dedupKey} failed: ${ex.getMessage}")
-          queue.release(task.id, workerId, Some(ex.getMessage))
+          queue.release(task.id, workerId, Some(ex.getMessage), Some(backoffUntil(task.attempts)))
           PollResult.Returned
       }
   }
+
+  // When this attempt failed transiently, hold the task back from re-claim until
+  // its exponential backoff elapses (see `TaskWorker.retryBackoffFor`).
+  private def backoffUntil(attempts: Int): Instant =
+    Instant.now().plusMillis(retryBackoffFor(attempts).toMillis)
 
   override def stop(): Unit = {
     running.set(false)
@@ -176,6 +185,18 @@ class TaskWorker(
 }
 
 object TaskWorker {
+  /** Exponential backoff a transiently-failing task is held back before re-claim:
+   *  5s, 10s, 20s, 40s, … doubling per attempt, capped at 30 min. Keyed on
+   *  `attempts` (incremented on each claim, so the first failure ⇒ attempts=1 ⇒
+   *  5s). This is the per-task version of what the inline `scheduleTmdbRetry`
+   *  used to do for TMDB — now applied to every task type, so a rate-limited
+   *  upstream isn't hammered at the pool's tight `retryBackoff` cadence. */
+  private[tasks] def retryBackoffFor(attempts: Int): scala.concurrent.duration.FiniteDuration = {
+    import scala.concurrent.duration._
+    val shift  = math.min(math.max(attempts - 1, 0), 20)
+    math.min(30.minutes.toMillis, 5000L * (1L << shift)).millis
+  }
+
   /** Why a worker slot's last claim ended — drives whether it backs off. */
   private[tasks] sealed trait PollResult
   private[tasks] object PollResult {

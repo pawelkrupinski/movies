@@ -64,6 +64,34 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
     again.attempts shouldBe 2 // claimed twice
   }
 
+  it should "hold a task back from claim until its notBefore backoff elapses" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)
+    val task = q.claim("w1", 1.minute, t0).get
+    q.release(task.id, "w1", Some("transient"), notBefore = Some(t0.plusSeconds(30)))
+    q.claim("w1", 1.minute, t0.plusSeconds(10)) shouldBe None                                   // still backed off
+    q.claim("w1", 1.minute, t0.plusSeconds(30)).map(_.dedupKey) shouldBe Some("scrape|x")       // window elapsed
+  }
+
+  it should "not let a backed-off task block a newer, eligible one" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ScrapeCinema, "scrape|old", submittedAt = t0)                                      // oldest
+    val old = q.claim("w1", 1.minute, t0).get
+    q.release(old.id, "w1", Some("transient"), notBefore = Some(t0.plusSeconds(60)))            // held back
+    q.enqueue(ScrapeCinema, "scrape|new", submittedAt = t0.plusSeconds(5))
+    q.claim("w1", 1.minute, t0.plusSeconds(10)).map(_.dedupKey) shouldBe Some("scrape|new")     // skips the backed-off old one
+  }
+
+  it should "clear a stale backoff window when re-released without one (immediately claimable)" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)
+    val t1 = q.claim("w1", 1.minute, t0).get
+    q.release(t1.id, "w1", Some("transient"), notBefore = Some(t0.plusSeconds(300)))
+    val t2 = q.claim("w1", 1.minute, t0.plusSeconds(300)).get
+    q.release(t2.id, "w1", None, notBefore = None)                                               // no-handler-style release
+    q.claim("w1", 1.minute, t0.plusSeconds(301)).map(_.dedupKey) shouldBe Some("scrape|x")
+  }
+
   "reapExpiredLeases" should "return expired worked-on tasks to waiting and guard against a late complete" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)
