@@ -1,5 +1,6 @@
 package services.movies
 
+import com.mongodb.WriteConcern
 import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.MovieRecord
@@ -161,7 +162,12 @@ class MongoMovieRepo(
     sharedDb match {
       case Some(db) =>
         val withRegistry = db.withCodecRegistry(MovieCodecs.registry)
-        val coll         = withRegistry.getCollection[StoredMovieDto]("movies")
+        // Relaxed write concern (w:1, j:false): `movies` is re-scraped continuously,
+        // so a write lost to a crash is recovered by the next scrape pass. Skipping
+        // the journal sync cuts per-write cost on the shared-CPU Mongo — the worker's
+        // write rate is what throttles it. Same trade `MongoTaskQueue` already makes.
+        val coll = withRegistry.getCollection[StoredMovieDto]("movies")
+          .withWriteConcern(WriteConcern.W1.withJournal(false))
         ensureIndexes(coll)
         (None, Some(coll))
       case None if fallbackToOwnInit => init()
@@ -171,6 +177,9 @@ class MongoMovieRepo(
   private def coll:      Option[MongoCollection[StoredMovieDto]] = initResult._2
 
   def enabled: Boolean = coll.isDefined
+
+  /** Test seam: the write concern configured on the `movies` collection. */
+  def collectionWriteConcern: Option[WriteConcern] = coll.map(_.writeConcern)
 
   /** Boot-time + periodic full reload: a single `find()` over the whole
    *  collection. The earlier discover-then-fan-out (project the `_id`s, split
@@ -407,7 +416,9 @@ class MongoMovieRepo(
           val dbName  = Env.get("MONGODB_DB").getOrElse("kinowo")
           val client  = MongoClient(uri)
           val db      = client.getDatabase(dbName).withCodecRegistry(MovieCodecs.registry)
+          // Relaxed write concern — see the sharedDb path above.
           val coll    = db.getCollection[StoredMovieDto]("movies")
+            .withWriteConcern(WriteConcern.W1.withJournal(false))
           // Touch the collection to surface connectivity errors at startup,
           // not on the first read after the app is "up".
           Await.result(coll.countDocuments().toFuture(), 10.seconds)

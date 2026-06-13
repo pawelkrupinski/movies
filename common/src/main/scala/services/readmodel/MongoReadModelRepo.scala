@@ -1,5 +1,6 @@
 package services.readmodel
 
+import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument, OperationType}
 import models.{CityScreening, ResolvedMovie}
@@ -28,10 +29,15 @@ import scala.util.Try
  */
 class MongoReadModelRepo(sharedDb: Option[MongoDatabase]) extends ReadModelReader with ReadModelWriter with Logging {
 
+  // Relaxed write concern (w:1, j:false): the read model is a pure projection of
+  // `movies` — every doc is re-derived by the projector's reconcile, so a write
+  // lost to a crash is self-healing. Skipping the journal sync cuts per-write cost
+  // on the shared-CPU Mongo, which the worker's projection cascade was saturating.
+  private val RelaxedWrites = WriteConcern.W1.withJournal(false)
   private val movies: Option[MongoCollection[ResolvedMovie]] =
-    sharedDb.map(_.withCodecRegistry(ReadModelCodecs.registry).getCollection[ResolvedMovie]("web_movies"))
+    sharedDb.map(_.withCodecRegistry(ReadModelCodecs.registry).getCollection[ResolvedMovie]("web_movies").withWriteConcern(RelaxedWrites))
   private val screenings: Option[MongoCollection[CityScreening]] =
-    sharedDb.map(_.withCodecRegistry(ReadModelCodecs.registry).getCollection[CityScreening]("web_screenings"))
+    sharedDb.map(_.withCodecRegistry(ReadModelCodecs.registry).getCollection[CityScreening]("web_screenings").withWriteConcern(RelaxedWrites))
 
   // Best-effort index creation. The web's per-city read filters on `city`; the
   // projector's per-film prune filters on `filmId`. Idempotent — re-creating an
@@ -44,6 +50,9 @@ class MongoReadModelRepo(sharedDb: Option[MongoDatabase]) extends ReadModelReade
   }
 
   def enabled: Boolean = movies.isDefined
+
+  /** Test seam: the write concern configured on the derived collections. */
+  def collectionWriteConcerns: Seq[WriteConcern] = Seq(movies, screenings).flatten.map(_.writeConcern)
 
   // ── Reads ─────────────────────────────────────────────────────────────────
 
