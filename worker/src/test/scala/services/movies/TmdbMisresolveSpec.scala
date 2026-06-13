@@ -4,7 +4,7 @@ import clients.TmdbClient
 import models.{CinemaCityPoznanPlaza, Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{InProcessEventBus, MovieRecordCreated}
+import services.events.{InProcessEventBus, MovieDetailsComplete}
 import tools.GetOnlyHttpFetch
 
 /**
@@ -92,10 +92,10 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     cache.putIfPresent(key, r =>
       r.copy(data = r.data + (Helios -> SourceData(title = Some(Title), director = Seq(Director)))))
 
-    // 3. Helios's MovieRecordCreated fires — the hint that would fix the row.
+    // 3. Helios's MovieDetailsComplete fires — the hint that would fix the row.
     //    The async TMDB stage runs on `svc`'s pool; `svc.stop()` drains it.
-    bus.subscribe(svc.onMovieRecordCreated)
-    bus.publish(MovieRecordCreated(Title, Year, originalTitle = None, director = Some(Director)))
+    bus.subscribe(svc.onMovieDetailsComplete)
+    bus.publish(MovieDetailsComplete(Title, Year, originalTitle = None, director = Some(Director)))
     svc.stop()
 
     // The row SHOULD now point at Itay Gordon's "The Visitor" — but the

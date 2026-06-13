@@ -563,7 +563,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // input. `isNew` is true the first time that exact `(cinema, raw title, raw
   // year)` tuple lands on a row; false on subsequent ticks that report the
   // same combination. CinemaScrapeRunner uses the flag to suppress redundant
-  // MovieRecordCreated events — every TMDB / IMDb / rating fetcher's listener
+  // MovieDetailsComplete events — every TMDB / IMDb / rating fetcher's listener
   // re-checks state on each event, so re-publishing for unchanged tuples
   // just churns dispatches. Any change (new cinema, new title spelling, year
   // correction) still flips `isNew` back to true so genuine new context can
@@ -616,7 +616,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // None). That lookup is flaky — when the screening's REST body is briefly
   // absent the year comes back None, then reappears next pass. A naive isNew
   // would treat each Some(year)↔None flip as a fresh tuple and refire
-  // MovieRecordCreated every single pass (the recurring "(N new)" on Helios).
+  // MovieDetailsComplete every single pass (the recurring "(N new)" on Helios).
   // A tick that DROPS a previously-known year is data loss, not a correction:
   // keep the year and stay quiet. The within-pass dedup (mergeDuplicateFilms)
   // is orthogonal — it can't see a year that flakes only on a later pass.

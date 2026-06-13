@@ -27,7 +27,7 @@ class NormalizationRebuilder(
   cache: MovieCache,
   // Called with the (cleanTitle, year) of each split-off / newly-unenriched row
   // so the worker can re-resolve its TMDB id + ratings (typically by publishing
-  // MovieRecordCreated). No-op by default (tests, web). Exposes primitives, not
+  // MovieDetailsComplete). No-op by default (tests, web). Exposes primitives, not
   // the package-private CacheKey, so the composition root can wire it.
   onSplitOff: (String, Option[Int]) => Unit = (_, _) => ()
 ) extends Logging {

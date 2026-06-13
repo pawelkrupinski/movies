@@ -7,7 +7,7 @@ import services.alerts.{FallbackAlert, FilmwebDropAlerter, TelegramNotifier}
 import services.cinemas._
 import services.enrichment._
 import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
-import services.events.{EventBus, InProcessEventBus, MovieRecordCreated}
+import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, MongoNormalizationReportRepo, NormalizationRebuilder, NormalizationReport, NormalizationReportRepo, UnscreenedCleanup}
 import services.readmodel.{MongoReadModelRepo, ReadModelProjector, ReadModelReader, ReadModelWriter}
@@ -223,7 +223,7 @@ class WorkerWiring {
   // arrives over the change stream, re-merge existing records so the rule applies
   // retroactively, not just to future scrapes.
   lazy val normalizationRebuilder = new NormalizationRebuilder(movieCache,
-    onSplitOff = (title, year) => eventBus.publish(MovieRecordCreated(title, year)))
+    onSplitOff = (title, year) => eventBus.publish(MovieDetailsComplete(title, year)))
   lazy val normalizationReportRepo: NormalizationReportRepo =
     new MongoNormalizationReportRepo(mongoConnection.database, fallbackToOwnInit = false)
   lazy val titleRulesRepo: TitleRulesRepo = new MongoTitleRulesRepo(mongoConnection.database, fallbackToOwnInit = false)
@@ -236,7 +236,7 @@ class WorkerWiring {
         // Search-tier changes → re-resolve the rows whose upstream query moved.
         val reEnriched = normalizationRebuilder.reEnrichSearchChanges(
           TitleRuleSet(oldRules), TitleRuleSet(newRules),
-          (title, year) => eventBus.publish(MovieRecordCreated(title, year)))
+          (title, year) => eventBus.publish(MovieDetailsComplete(title, year)))
         // Publish the realized outcome so the admin editor can show what happened.
         normalizationReportRepo.writeLatest(
           NormalizationReport.render(result, reEnriched, System.currentTimeMillis()))
@@ -349,16 +349,16 @@ class WorkerWiring {
   // when the 2026-06-12 worker-steal episode had to be reconstructed from metrics).
   lazy val workerHeartbeat = new WorkerHeartbeat(taskQueue)
 
-  // Subscribe BEFORE start() so the bus's first MovieRecordCreated events reach
+  // Subscribe BEFORE start() so the bus's first MovieDetailsComplete events reach
   // the enrichment handlers. (See the original monolith comment block for the
   // full event-cascade rationale — the wiring is unchanged.)
-  //   MovieRecordCreated → movieService           (TMDB stage)
+  //   MovieDetailsComplete → movieService           (TMDB stage)
   //   TmdbResolved       → ratingEnqueuer          (enqueue IMDb/RT/MC/Filmweb)
   //   ImdbIdMissing      → imdbIdResolver + ratingEnqueuer (TMDB-only hits)
   //   ImdbIdResolved     → ratingEnqueuer          (enqueue IMDb)
   //   CinemaMovieAdded   → kinoMuzaSynopsisRefresher
   // Resolution stays inline (one-shot per scraped row).
-  eventBus.subscribe(movieService.onMovieRecordCreated)
+  eventBus.subscribe(movieService.onMovieDetailsComplete)
   eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
   eventBus.subscribe(kinoMuzaSynopsisRefresher.onCinemaMovieAdded)
   // One detail enqueuer per deferred-detail cinema.

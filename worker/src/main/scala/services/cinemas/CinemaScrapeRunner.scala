@@ -2,12 +2,12 @@ package services.cinemas
 
 import models.{Cinema, CinemaMovie}
 import play.api.Logging
-import services.events.{EventBus, MovieRecordCreated}
+import services.events.{EventBus, MovieDetailsComplete}
 import services.movies.{CacheKey, MovieCache}
 
 /**
  * The per-cinema scrape core: fetch a cinema's current listings, write them
- * through `MovieCache`, and publish a `MovieRecordCreated` for each genuinely
+ * through `MovieCache`, and publish a `MovieDetailsComplete` for each genuinely
  * new (cinema, title, year). `recordCinemaScrape` additionally publishes a
  * `CinemaMovieAdded` per new film, which is what drives deferred per-film detail
  * — a `DetailTaskEnqueuer` per cinema enqueues the `EnrichDetails` task off that
@@ -39,15 +39,15 @@ class CinemaScrapeRunner(
 }
 
 object CinemaScrapeRunner {
-  /** The `MovieRecordCreated` events a scrape's `touched` rows imply — one per
+  /** The `MovieDetailsComplete` events a scrape's `touched` rows imply — one per
    *  genuinely-new `(cinema, title, year)`. A pure function so the two publish
    *  sites can't drift in how they derive an event from a slot: the prod runner
    *  publishes these inline as each cinema lands; the fixture harness's
    *  `runOneScrapeTick` defers them until every cinema is recorded (a
    *  deterministic single-pass settle). Both build the event the same way. */
-  def eventsFor(touched: Seq[(CinemaMovie, CacheKey, Boolean)]): Seq[MovieRecordCreated] =
+  def eventsFor(touched: Seq[(CinemaMovie, CacheKey, Boolean)]): Seq[MovieDetailsComplete] =
     touched.collect { case (cm, key, true) =>
-      MovieRecordCreated(
+      MovieDetailsComplete(
         key.cleanTitle, key.year, cm.movie.originalTitle,
         if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None)
     }

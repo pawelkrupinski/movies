@@ -4,7 +4,7 @@ import clients.TmdbClient
 import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{InProcessEventBus, MovieRecordCreated}
+import services.events.{InProcessEventBus, MovieDetailsComplete}
 import tools.GetOnlyHttpFetch
 
 /**
@@ -81,7 +81,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repo)
     val bus   = new InProcessEventBus()
     val svc   = new MovieService(cache, bus, kurozajacTmdb())
-    bus.subscribe(svc.onMovieRecordCreated)
+    bus.subscribe(svc.onMovieDetailsComplete)
 
     val key = cache.keyOf(Title, Year)
     // Simulate the state a CC-first scrape leaves behind: cache says we've
@@ -92,7 +92,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     // Helios-style event: same canonical key, but now carrying a director
     // hint the prior attempt never had. With the bug this is dropped on the
     // isNegative early-return; with the fix `directorWalk` resolves it.
-    bus.publish(MovieRecordCreated(Title, Year, originalTitle = None, director = Some(Director)))
+    bus.publish(MovieDetailsComplete(Title, Year, originalTitle = None, director = Some(Director)))
     svc.stop()  // drains the worker pool — sync wait for runTmdbStage to land
 
     val row = cache.get(key)
@@ -113,14 +113,14 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
         throw new RuntimeException(s"TMDB should not be called: $url")
     }, apiKey = Some("stub"))
     val svc   = new MovieService(cache, bus, tmdb)
-    bus.subscribe(svc.onMovieRecordCreated)
+    bus.subscribe(svc.onMovieDetailsComplete)
 
     val key = cache.keyOf(Title, Year)
     cache.markMissing(key)
 
     // No director, no originalTitle — re-publish under the same conditions
     // that produced the miss. Must short-circuit, NOT hammer TMDB.
-    noException should be thrownBy bus.publish(MovieRecordCreated(Title, Year, None, None))
+    noException should be thrownBy bus.publish(MovieDetailsComplete(Title, Year, None, None))
     svc.stop()
   }
 
@@ -184,9 +184,9 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
       "/movie/21484/external_ids" -> """{"id":21484,"imdb_id":"tt0082933"}"""
     )), apiKey = Some("stub"))
     val svc = new MovieService(cache, bus, tmdb)
-    bus.subscribe(svc.onMovieRecordCreated)
+    bus.subscribe(svc.onMovieDetailsComplete)
 
-    bus.publish(MovieRecordCreated("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some(2026), originalTitle = Some("Possession"), director = None))
+    bus.publish(MovieDetailsComplete("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some(2026), originalTitle = Some("Possession"), director = None))
     svc.stop()
 
     val row = cache.get(cache.keyOf("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some(2026)))

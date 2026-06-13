@@ -33,7 +33,7 @@ sealed trait DomainEvent
  *
  *  Both optional fields default to None so existing tests and cinemas
  *  without the field stay unchanged. */
-case class MovieRecordCreated(
+case class MovieDetailsComplete(
   title:         String,
   year:          Option[Int],
   originalTitle: Option[String] = None,
@@ -43,7 +43,7 @@ case class MovieRecordCreated(
 /** A *new* `(cinema, title, year)` tuple was just persisted to the cache (and
  *  written through to Mongo) by `recordCinemaScrape`. Fires only on the
  *  *first* observation of that tuple on the row — repeat ticks for the same
- *  combination are suppressed (same `isNew` gate as `MovieRecordCreated`).
+ *  combination are suppressed (same `isNew` gate as `MovieDetailsComplete`).
  *  Published from inside `MovieCache.recordCinemaScrape` so the slot's
  *  visibility and the event are atomic: any handler reading the cache for
  *  the just-published tuple sees the newly-written slot.

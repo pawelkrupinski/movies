@@ -4,7 +4,7 @@ import clients.TmdbClient
 import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
-import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieRecordCreated, TmdbResolved}
+import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete, TmdbResolved}
 import tools.{DaemonExecutors, Env}
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -17,7 +17,7 @@ import scala.util.{Failure, Success, Try}
  *
  *   - **TMDB stage** resolves `(title, year)` → tmdbId + imdbId + originalTitle,
  *     plus Filmweb + Metacritic + Rotten Tomatoes URLs (all of which key off
- *     TMDB's `originalTitle`). Triggered by `MovieRecordCreated`, and re-run once a day
+ *     TMDB's `originalTitle`). Triggered by `MovieDetailsComplete`, and re-run once a day
  *     for cached rows whose `tmdbId` is still empty. Publishes `TmdbResolved`
  *     on success so the IMDb stage can fetch the rating asynchronously without
  *     blocking the TMDB lookup.
@@ -162,15 +162,15 @@ class MovieService(
    *
    *  Captures the cinema-provided `originalTitle` (when present) as a hint
    *  the TMDB stage can use as a secondary search title — see `resolveTmdb`. */
-  val onMovieRecordCreated: PartialFunction[DomainEvent, Unit] = {
-    case MovieRecordCreated(title, year, originalTitle, director) =>
+  val onMovieDetailsComplete: PartialFunction[DomainEvent, Unit] = {
+    case MovieDetailsComplete(title, year, originalTitle, director) =>
       scheduleTmdbStage(cache.keyOf(title, year), originalTitle, director)
   }
 
   // ── Public read + manual re-enrich ────────────────────────────────────────
 
   /** Pure cache lookup — never blocks, never schedules. Misses return None;
-   *  the next `MovieRecordCreated` event re-triggers a background fetch. */
+   *  the next `MovieDetailsComplete` event re-triggers a background fetch. */
   def get(title: String, year: Option[Int]): Option[MovieRecord] =
     cache.get(cache.keyOf(title, year))
 
@@ -317,7 +317,7 @@ class MovieService(
   ): Option[(CacheKey, MovieRecord)] = {
     // The event may carry a `(title, year)` the row no longer lives under —
     // `recordCinemaScrape` canonicalises a film's key as variants fold, so an
-    // early cinema's `MovieRecordCreated` can address a stale key. Resolve to
+    // early cinema's `MovieDetailsComplete` can address a stale key. Resolve to
     // the live row's key up front so the read / carry-forward / re-key below all
     // act on the real row instead of spawning a phantom at the stale key.
     val key = cache.canonicalKeyFor(rawKey).getOrElse(rawKey)
@@ -580,7 +580,7 @@ class MovieService(
       .map(MovieService.apiQuery).filter(_.nonEmpty).distinct
     // Director hints drawn from the WHOLE merged row, not just the one cinema
     // event that happened to trigger this stage. Every cinema fires its own
-    // `MovieRecordCreated`, so the triggering event's director varied with
+    // `MovieDetailsComplete`, so the triggering event's director varied with
     // arrival order (Helios/Multikino report a director, CinemaCity/Charlie
     // Monroe don't) — and a director-bearing trigger that failed verification
     // poisoned the negative cache (`markMissing`) before a director-less trigger

@@ -6,7 +6,7 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{CinemaCityClient, HeliosClient, MultikinoClient}
-import services.events.{InProcessEventBus, MovieRecordCreated}
+import services.events.{InProcessEventBus, MovieDetailsComplete}
 import tools.RoutingHttpFetch
 
 /**
@@ -116,7 +116,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
     val originalKey = cache.keyOf("Mortal Kombat 2", None)
     cache.get(originalKey).get.cinemaData.keySet shouldBe Set(Multikino)
 
-    // Same code path the MovieRecordCreated-driven async wrapper invokes — bypasses
+    // Same code path the MovieDetailsComplete-driven async wrapper invokes — bypasses
     // the worker pool for a deterministic single-thread reproduction.
     svc.reEnrichSync("Mortal Kombat 2", None)
 
@@ -165,14 +165,14 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
 
       // Subsequent cinemas follow the production flow: recordCinemaScrape
       // first (redirect folds the slot into the existing sibling row),
-      // then publish the MovieRecordCreated `CinemaScrapeRunner` would publish. The
+      // then publish the MovieDetailsComplete `CinemaScrapeRunner` would publish. The
       // bus listener's `scheduleTmdbStage` must short-circuit via
       // `hasResolvedSiblingByTitle` (normalize-match) so no phantom row
       // is created at the raw (title, year) key.
-      bus.subscribe(svc.onMovieRecordCreated)
+      bus.subscribe(svc.onMovieDetailsComplete)
       for (s <- ordering.tail) {
         cache.recordCinemaScrape(s.cinema, Seq(s.cm))
-        bus.publish(MovieRecordCreated(s.title, s.year, s.cm.movie.originalTitle, if (s.cm.director.nonEmpty) Some(s.cm.director.mkString(", ")) else None))
+        bus.publish(MovieDetailsComplete(s.title, s.year, s.cm.movie.originalTitle, if (s.cm.director.nonEmpty) Some(s.cm.director.mkString(", ")) else None))
       }
 
       def isMk2(e: MovieRecord): Boolean =

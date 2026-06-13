@@ -22,7 +22,7 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  *      `cinemaScrapeRunner` (fetch → `recordCinemaScrape` → publish), so it
  *      returns only after every `scraper.fetch()` HTTP call has come back,
  *      the result has been folded into the cache, and
- *      `bus.publish(MovieRecordCreated(...))` has fired for each `isNew`
+ *      `bus.publish(MovieDetailsComplete(...))` has fired for each `isNew`
  *      slot. The bus listeners run synchronously and dispatch to the
  *      downstream worker pools before publish returns.
  *
@@ -66,7 +66,7 @@ object RecordAllDataToFixture extends TestWiring {
 
   /** Scrape every cinema once in parallel, blocking until all have settled.
    *  Each scraper runs the shared `cinemaScrapeRunner` (record + publish), so
-   *  every `MovieRecordCreated` is published synchronously before this returns
+   *  every `MovieDetailsComplete` is published synchronously before this returns
    *  and the caller can drain the downstream pools without racing the scrape. */
   private def scrapeAllOnce(): Unit = {
     val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("record-scrape", 8)

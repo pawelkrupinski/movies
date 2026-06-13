@@ -10,22 +10,22 @@ class EventBusSpec extends AnyFlatSpec with Matchers {
 
   "EventBus.publish" should "invoke a subscriber whose PartialFunction matches the event" in {
     val bus  = new InProcessEventBus
-    val seen = mutable.ListBuffer.empty[MovieRecordCreated]
-    bus.subscribe { case e: MovieRecordCreated => seen.append(e) }
+    val seen = mutable.ListBuffer.empty[MovieDetailsComplete]
+    bus.subscribe { case e: MovieDetailsComplete => seen.append(e) }
 
-    bus.publish(MovieRecordCreated("Drzewo Magii", Some(2024)))
+    bus.publish(MovieDetailsComplete("Drzewo Magii", Some(2024)))
 
-    seen.toList shouldBe List(MovieRecordCreated("Drzewo Magii", Some(2024)))
+    seen.toList shouldBe List(MovieDetailsComplete("Drzewo Magii", Some(2024)))
   }
 
   it should "deliver to every subscriber when multiple are registered" in {
     val bus    = new InProcessEventBus
     val counts = (0 until 3).map(_ => new AtomicInteger(0))
     counts.foreach { c =>
-      bus.subscribe { case _: MovieRecordCreated => c.incrementAndGet(); () }
+      bus.subscribe { case _: MovieDetailsComplete => c.incrementAndGet(); () }
     }
 
-    bus.publish(MovieRecordCreated("X", None))
+    bus.publish(MovieDetailsComplete("X", None))
 
     counts.map(_.get) shouldBe Seq(1, 1, 1)
   }
@@ -36,25 +36,25 @@ class EventBusSpec extends AnyFlatSpec with Matchers {
   // explicit `case _ => ()` fallback required.
   it should "silently skip events the subscriber's PartialFunction doesn't match (applyOrElse)" in {
     val bus  = new InProcessEventBus
-    val seen = mutable.ListBuffer.empty[MovieRecordCreated]
+    val seen = mutable.ListBuffer.empty[MovieDetailsComplete]
     // Subscriber only cares about events whose title starts with "Keep:".
-    bus.subscribe { case e @ MovieRecordCreated(t, _, _, _) if t.startsWith("Keep:") => seen.append(e) }
+    bus.subscribe { case e @ MovieDetailsComplete(t, _, _, _) if t.startsWith("Keep:") => seen.append(e) }
 
-    bus.publish(MovieRecordCreated("Skip me", None))
-    bus.publish(MovieRecordCreated("Keep: this one", Some(2025)))
-    bus.publish(MovieRecordCreated("Skip me too", None))
+    bus.publish(MovieDetailsComplete("Skip me", None))
+    bus.publish(MovieDetailsComplete("Keep: this one", Some(2025)))
+    bus.publish(MovieDetailsComplete("Skip me too", None))
 
-    seen.toList shouldBe List(MovieRecordCreated("Keep: this one", Some(2025)))
+    seen.toList shouldBe List(MovieDetailsComplete("Keep: this one", Some(2025)))
   }
 
   it should "isolate handler exceptions so one bad subscriber can't break the bus" in {
     val bus  = new InProcessEventBus
     val seen = mutable.ListBuffer.empty[String]
-    bus.subscribe { case MovieRecordCreated(t, _, _, _) => throw new RuntimeException(s"boom on $t") }
-    bus.subscribe { case MovieRecordCreated(t, _, _, _) => seen.append(t) }
+    bus.subscribe { case MovieDetailsComplete(t, _, _, _) => throw new RuntimeException(s"boom on $t") }
+    bus.subscribe { case MovieDetailsComplete(t, _, _, _) => seen.append(t) }
 
-    bus.publish(MovieRecordCreated("First", None))
-    bus.publish(MovieRecordCreated("Second", None))
+    bus.publish(MovieDetailsComplete("First", None))
+    bus.publish(MovieDetailsComplete("Second", None))
 
     // Both events reached the second subscriber even though the first one
     // throws on every event.
@@ -65,15 +65,15 @@ class EventBusSpec extends AnyFlatSpec with Matchers {
     val bus  = new InProcessEventBus
     val seen = mutable.ListBuffer.empty[String]
     val handleWithYear: PartialFunction[DomainEvent, Unit] = {
-      case MovieRecordCreated(t, Some(y), _, _) => seen.append(s"with-year:$t/$y")
+      case MovieDetailsComplete(t, Some(y), _, _) => seen.append(s"with-year:$t/$y")
     }
     val handleNoYear: PartialFunction[DomainEvent, Unit] = {
-      case MovieRecordCreated(t, None, _, _) => seen.append(s"no-year:$t")
+      case MovieDetailsComplete(t, None, _, _) => seen.append(s"no-year:$t")
     }
     bus.subscribe(handleWithYear orElse handleNoYear)
 
-    bus.publish(MovieRecordCreated("A", Some(2024)))
-    bus.publish(MovieRecordCreated("B", None))
+    bus.publish(MovieDetailsComplete("A", Some(2024)))
+    bus.publish(MovieDetailsComplete("B", None))
 
     seen.toList should contain theSameElementsInOrderAs Seq("with-year:A/2024", "no-year:B")
   }

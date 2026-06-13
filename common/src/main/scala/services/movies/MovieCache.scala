@@ -618,7 +618,7 @@ class CaffeineMovieCache(
    *  triple per input movie:
    *
    *    - `CacheKey` is the *canonical* key the slot actually landed on
-   *      (post-redirect). `CinemaScrapeRunner` publishes `MovieRecordCreated`
+   *      (post-redirect). `CinemaScrapeRunner` publishes `MovieDetailsComplete`
    *      against this so two cinemas reporting different `year` values for
    *      the same film land on a single TMDB-stage event, no phantom row.
    *    - `isNew` is true when the `(cinema, raw title, raw year)` tuple is
@@ -779,7 +779,7 @@ class CaffeineMovieCache(
           trailerUrl     = cm.trailerUrl.orElse(priorSlot.flatMap(_.trailerUrl)),
           showtimes      = cm.showtimes
         )
-        // `isNew` controls whether to publish `MovieRecordCreated` to the bus.
+        // `isNew` controls whether to publish `MovieDetailsComplete` to the bus.
         // We dedup against the prior slot for this cinema — the same `(title,
         // year)` reported tick after tick suppresses the event so downstream
         // listeners don't churn. A pruned-then-re-listed scrape will re-emit
@@ -805,7 +805,7 @@ class CaffeineMovieCache(
         }
         // A brand-new cinema observation for this row changes what the TMDB
         // stage has to work with (a new title/director the resolver hadn't
-        // seen). Drop any stale "missing" verdict so the `MovieRecordCreated`
+        // seen). Drop any stale "missing" verdict so the `MovieDetailsComplete`
         // we're about to publish re-resolves against the grown row instead of
         // being short-circuited by an earlier, partial-row failure — the race
         // that left films blank under a concurrent (production-style) scrape.
@@ -853,7 +853,7 @@ class CaffeineMovieCache(
     // slot — eliminating the race a caller-side publish would otherwise leave
     // between persist and notify.
     //
-    // Gated on `isNew` (same gate as `CinemaScrapeRunner`'s MovieRecordCreated)
+    // Gated on `isNew` (same gate as `CinemaScrapeRunner`'s MovieDetailsComplete)
     // so steady-state ticks where the same cinema reports the same film
     // again don't refire — the periodic safety net in each detail-page
     // enricher picks up rows whose first event was missed.

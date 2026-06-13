@@ -2,7 +2,7 @@ package tools
 
 import clients.tools.FakeHttpFetch
 import services.cinemas.CinemaScrapeRunner
-import services.events.MovieRecordCreated
+import services.events.MovieDetailsComplete
 import services.movies.InMemoryMovieRepo
 import services.readmodel.{InMemoryReadModelRepo, ReadModelReader, ReadModelWriter, WebReadModel}
 
@@ -43,7 +43,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
 
   /** Record EVERY cinema first, THEN publish all the create events — load-bearing
    *  for a deterministic single-pass snapshot, not arbitrary scaffolding.
-   *  Production publishes `MovieRecordCreated` INLINE as each cinema lands and
+   *  Production publishes `MovieDetailsComplete` INLINE as each cinema lands and
    *  relies on MANY 5-min passes (+ the daily retry) to converge; in ONE pass,
    *  inline publish lets the async enrichment pool mutate (rekey/resolve) a row
    *  WHILE a later cinema is still merging into it, so even a single-threaded
@@ -54,7 +54,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
    *  cinema + event order under a jittered fetch clock and asserts byte-identical
    *  records and rows across the whole corpus. */
   def runOneScrapeTick(): Unit = {
-    val created = collection.mutable.ListBuffer.empty[MovieRecordCreated]
+    val created = collection.mutable.ListBuffer.empty[MovieDetailsComplete]
     cinemaScrapers.foreach { scraper =>
       try {
         val touched = movieCache.recordCinemaScrape(scraper.cinema, scraper.fetch())
@@ -62,7 +62,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
       } catch { case _: Exception => () }
     }
     // Cinemas that defer detail scrape BARE; fill each row's per-film detail via
-    // the EnrichDetails queue tasks NOW — before the MovieRecordCreated publish
+    // the EnrichDetails queue tasks NOW — before the MovieDetailsComplete publish
     // below starts the TMDB stage — so a detail-page director/originalTitle/year
     // is present when TMDB resolves (the pre-deferral inline path had it already).
     enrichDetailsSync()
