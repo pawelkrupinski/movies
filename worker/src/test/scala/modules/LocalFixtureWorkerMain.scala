@@ -1,11 +1,13 @@
 package modules
 
 import clients.tools.FakeHttpFetch
+import services.tasks.{DetailReaper, ScrapeReaper}
 import tools.{Env, HttpFetch}
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.CountDownLatch
+import scala.concurrent.duration._
 
 /**
  * Local dev entry point behind `sbt localStack`. Runs the REAL worker pipeline
@@ -84,6 +86,20 @@ class FixtureWorkerWiring(fixtureDir: String) extends WorkerWiring {
 
   // A missing fixture is a permanent local miss — one attempt, no retry storm.
   override protected def scrapeAttemptCeiling: Int = 1
+
+  // The corpus is STATIC, so re-scraping it on the production 1-min cadence only
+  // re-triggers the same fuzzy-resolution misses — a film whose director-walk
+  // resolves to a TMDB id whose `external_ids` the recorder never captured fails
+  // unretryably and the production loop "retries forever". Populate the read
+  // model once at boot, then idle: push the scrape + detail reapers out to a day
+  // so they don't re-enqueue the static fixtures. (Web still serves; a fresh
+  // corpus is a localStack restart away.)
+  override lazy val scrapeReaper =
+    new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore,
+      interval = 24.hours, initialDelay = initialScrapeDelaySeconds.seconds, runStore = scheduledRunStore)
+  override lazy val detailReaper =
+    new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
+      interval = 24.hours, runStore = scheduledRunStore)
 
   // Helios bakes the scrape day into its REST URLs, so pin it to the captured
   // day or every Helios fixture misses. Prefer <dir>/CAPTURE_DATE (written by
