@@ -89,7 +89,7 @@
     "use strict";
     const GLOBAL_SCOPES = [
       { name: "GlobalStructural", title: "Global structural",
-        desc: "Decoration stripping applied to every cinema's searchTitle — Cykl prefixes, slash postfixes, anniversary / restored / 'wersja' suffixes. Affects the merge key and how rows group across cinemas." },
+        desc: "Decoration stripping for EXTERNAL LOOKUPS only — Cykl prefixes, slash postfixes, anniversary / restored / 'wersja' suffixes. Strips these so the TMDB/Filmweb search hits the base film, but does NOT affect the merge key: a decoration edition keys by its own form and stays its own row." },
       { name: "Search", title: "Search (API query only)",
         desc: "Extra stripping applied only when querying external rating/metadata APIs — programme prefixes, accessibility tags, '+ <event>' suffixes. Does NOT affect the merge key, so the programme/event screening keeps its own row." },
       { name: "Canonical", title: "Canonical",

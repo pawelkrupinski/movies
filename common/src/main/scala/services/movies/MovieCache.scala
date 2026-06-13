@@ -187,8 +187,17 @@ class CaffeineMovieCache(
     }
   }
 
+  // Key by the title's OWN form — the same input the display vote
+  // (`MovieRecord.displayTitle`) sanitizes — so a record's identity always
+  // matches what it shows, and two listings are merged only when they resolve
+  // to the same title key on their own. `CacheKey.normalized` still applies
+  // `sanitize` (= `normalize` Arabic→Roman + `canonical` & → i / "Gwiezdne
+  // Wojny:" + deburr), so the GLOBAL canonical folds stay in the key; only the
+  // GlobalStructural decoration strip (anniversary / "- wersja X" / slash
+  // suffix / Cykl prefix / restored) is left out — that tier now only feeds
+  // `apiQuery` for external lookups, not identity.
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey =
-    CacheKey(TitleNormalizer.searchTitle(title), year)
+    CacheKey(title, year)
 
   private[services] def get(key: CacheKey): Option[MovieRecord] =
     Option(positive.getIfPresent(key))
@@ -691,16 +700,12 @@ class CaffeineMovieCache(
       deduped.sortBy(cm => (cleaned(cm), cm.movie.releaseYear.getOrElse(Int.MinValue))).map { cm =>
       val displayTitle = cleaned(cm)
       val primary      = keyOf(displayTitle, cm.movie.releaseYear)
-      // Lock on the row's NORMALISED cleanTitle — the SAME key the TMDB stage
-      // and `rekey` acquire — not the raw display title. `searchTitle` (the
-      // cleanTitle derivation) can collapse a subtitle / programme-prefix /
-      // anniversary variant that `displayTitle` keeps, so locking on
-      // `displayTitle` put scrape-merge and the enrichment-stage rekey on
-      // DIFFERENT locks for the SAME row — they then raced into lost cinema
-      // slots under a concurrent (production-style) scrape. Locking on
-      // `primary.cleanTitle` serialises every read-modify-write on the row
-      // (scrape, rekey, TMDB put) against each other. Different films
-      // (different normalised cleanTitle) still don't contend.
+      // Lock on the row's NORMALISED cleanTitle — `withTitleLock` keys by
+      // `sanitize`, the SAME normalised key the TMDB stage and `rekey` acquire.
+      // Serialises every read-modify-write on the row (scrape, rekey, TMDB put)
+      // against each other so a concurrent (production-style) scrape can't race
+      // into lost cinema slots. Different films (different normalised cleanTitle)
+      // still don't contend.
       withTitleLock(primary.cleanTitle) {
         // Land the slot on the *canonical* key for this film, chosen by
         // `canonicalRank` (NOT arrival order): when this cinema's primary key

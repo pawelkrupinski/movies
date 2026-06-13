@@ -52,26 +52,28 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     mergeKey("Gwiezdne Wojny: Solo", titles) shouldBe "gwiezdne wojny: solo"
   }
 
-  // ── Pre-existing Arabic→Roman behaviour still applies ─────────────────────
+  // ── Decoration is NOT part of identity ────────────────────────────────────
 
-  // The decoration patterns now live in TitleNormalizer (formerly only in
-  // MovieService.searchTitle) and feed into `canonical`, so anniversary
-  // and wersja variants collapse with their base film for merging.
+  // The structural decoration strip (anniversary / "- wersja X" / restored /
+  // Cykl / slash) feeds the external-lookup tiers (searchTitle / apiQuery) but
+  // NOT `canonical`. So a decoration edition keys by its OWN form and stays a
+  // SEPARATE row from the base film — the same rule the cache enforces via
+  // keyOf → sanitize. (`searchTitle` itself still strips these — see below.)
 
-  it should "merge 'Top Gun 40th Anniversary' with 'Top Gun' via the decoration-stripped canonical" in {
+  it should "NOT merge 'Top Gun 40th Anniversary' with 'Top Gun' (decoration keys on its own)" in {
     val titles = Seq("Top Gun 40th Anniversary", "Top Gun")
-    mergeKey("Top Gun 40th Anniversary", titles) shouldBe mergeKey("Top Gun", titles)
+    mergeKey("Top Gun 40th Anniversary", titles) should not be mergeKey("Top Gun", titles)
   }
 
-  it should "merge a Polish 'Rocznica' variant with the base film" in {
+  it should "NOT merge a Polish 'Rocznica' variant with the base film" in {
     val titles = Seq("Top gun | 40 rocznica", "Top Gun")
-    mergeKey("Top gun | 40 rocznica", titles) shouldBe mergeKey("Top Gun", titles)
+    mergeKey("Top gun | 40 rocznica", titles) should not be mergeKey("Top Gun", titles)
   }
 
-  it should "merge 'Wersja zremasterowana' with the base film" in {
+  it should "NOT merge 'Wersja zremasterowana' with the base film" in {
     val titles = Seq("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana",
                      "Żywot Briana Grupy Monty Pythona")
-    mergeKey(titles.head, titles) shouldBe mergeKey(titles.last, titles)
+    mergeKey(titles.head, titles) should not be mergeKey(titles.last, titles)
   }
 
   it should "leave the anniversary title untouched when no base film is in the corpus" in {

@@ -5,12 +5,17 @@ package services.titlerules
  *  pre-compiled regexes. `TitleNormalizer` holds one of these in a swappable
  *  `@volatile` slot, replaced wholesale when the change stream reports an edit.
  *
- *  The tier composition mirrors the legacy `TitleNormalizer` exactly:
+ *  Tier composition:
  *  {{{
- *    searchTitle(t) = structural(t)                  // global decoration + trim
- *    apiQuery(t)    = structural(searchRules(t))      // + programme/access/event strips
- *    canonical(t)   = canonicalRules(structural(t))   // + Gwiezdne Wojny / & → i
+ *    searchTitle(t) = structural(t)              // global decoration strip + trim — EXTERNAL LOOKUPS ONLY
+ *    apiQuery(t)    = structural(searchRules(t)) // + programme/access/event strips — external lookups
+ *    canonical(t)   = canonicalRules(t.trim)     // Gwiezdne Wojny / & → i — IDENTITY + display
  *  }}}
+ *  `canonical` deliberately does NOT apply `structural`: identity (`sanitize`)
+ *  and display key a title by its OWN form, so a decoration edition
+ *  ("Top Gun / 40th Anniversary") stays a separate row from the base film
+ *  rather than folding into it. The structural decoration strip survives only
+ *  for the upstream-lookup tiers (`searchTitle` / `apiQuery`).
  */
 case class TitleRuleSet(rules: Seq[TitleRule]) {
   import RuleScope._
@@ -38,9 +43,14 @@ case class TitleRuleSet(rules: Seq[TitleRule]) {
   /** `apiQuery` tier — the search-only strips, then the structural chain. */
   def search(t: String): String = structural(fold(searchRules, t))
 
-  /** `canonical` fold used by `sanitize` / `preferredDisplay` — structural,
-   *  then the cross-cinema spelling unifications. */
-  def canonical(t: String): String = fold(canonicalRules, structural(t))
+  /** `canonical` fold used by `sanitize` / `preferredDisplay` — the
+   *  cross-cinema spelling unifications (Gwiezdne Wojny prefix, & → i) over the
+   *  trimmed title. Does NOT apply `structural`: decoration (anniversary /
+   *  "- wersja X" / slash / Cykl / restored) is NOT part of a film's identity or
+   *  displayed title — it only matters for external lookups (`searchTitle` /
+   *  `apiQuery`). So two listings merge only when they resolve to the same key
+   *  on their own. */
+  def canonical(t: String): String = fold(canonicalRules, t.trim)
 
   /** Per-cinema raw → clean cleanup (the old per-client `cleanTitle`). Unknown
    *  cinema → identity. NO implicit trim — clients that trimmed carry an explicit

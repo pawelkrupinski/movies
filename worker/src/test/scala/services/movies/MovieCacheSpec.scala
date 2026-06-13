@@ -183,6 +183,29 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Drzewo Magii",   Some(2025))) shouldBe None
   }
 
+  // The merge key is derived from the title's OWN form — the same input the
+  // display vote (MovieRecord.displayTitle) sanitizes — NOT from the
+  // searchTitle/GlobalStructural-stripped form. So a decoration edition
+  // ("Top Gun / 40th Anniversary", "Avatar - wersja polska") resolves to a
+  // DIFFERENT key than the base film and stays its own card: a record is never
+  // merged with something that would resolve to a different title key on its
+  // own. Decoration stripping still happens for external lookups (apiQuery),
+  // just not for identity.
+  it should "key a decoration edition separately from the base film (no searchTitle in the merge key)" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    cache.keyOf("Top Gun / 40th Anniversary", Some(2025)) should not be cache.keyOf("Top Gun",  Some(2025))
+    cache.keyOf("Avatar - wersja polska",     Some(2025)) should not be cache.keyOf("Avatar",   Some(2025))
+  }
+
+  // ...but the GLOBAL canonical folds stay IN the key: Arabic↔Roman numerals
+  // and " & "↔" i " still collapse, so the same film spelt differently across
+  // cinemas keeps one identity. (`sanitize` applies `normalize` + `canonical`.)
+  it should "still collapse global canonical folds (Roman numerals, & → i) into one key" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    cache.keyOf("Mortal Kombat 2", Some(2026)) shouldBe cache.keyOf("Mortal Kombat II", Some(2026))
+    cache.keyOf("Pizza & Pasta",   Some(2026)) shouldBe cache.keyOf("Pizza i Pasta",    Some(2026))
+  }
+
   "put" should "write through to the repo (cache + Mongo stay in lockstep)" in {
     val repo  = new InMemoryMovieRepo()
     val cache = new CaffeineMovieCache(repo)

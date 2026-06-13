@@ -41,20 +41,23 @@ object TitleNormalizer {
   //
   // The patterns formerly hardcoded here now live in the active `TitleRuleSet`
   // (seeded from `TitleRuleDefaults`, editable in Mongo via the admin page). The
-  // tiers are unchanged:
-  //   - `searchTitle` (GlobalStructural) — decoration in the merge key + display
-  //     grouping: "Top Gun 40th Anniversary" ≡ "Top Gun".
+  // tiers:
+  //   - `searchTitle` (GlobalStructural) — decoration stripping for EXTERNAL
+  //     LOOKUPS ONLY: "Top Gun 40th Anniversary" → "Top Gun" for the TMDB search.
+  //     It does NOT feed the merge key (see `sanitize` / `canonical`), so a
+  //     decoration edition keys by its own form and stays a separate row.
   //   - `apiQuery` (Search tier on top of structural) — also strips programme
   //     prefixes / accessibility tags / "+ <event>" suffixes for upstream
   //     lookups, while the display row keeps them (a programme screening is its
   //     own row).
-  //   - `canonical` (Canonical tier on top of structural) — cross-cinema
-  //     spelling unifications folded into the stable docId.
+  //   - `canonical` (Canonical tier — NO structural) — cross-cinema spelling
+  //     unifications (Gwiezdne Wojny / & → i) folded into the stable docId.
 
   /** Strip cinema decoration (anniversary, restored, Cykl prefix, slash
-   *  postfix, language-version suffix) via the GlobalStructural rules. Display
-   *  titles intentionally keep the programme/accessibility/event decoration —
-   *  that lives in the Search tier (`apiQuery`) so cache keys stay distinct. */
+   *  postfix, language-version suffix) via the GlobalStructural rules — for
+   *  external-API lookups only. Identity (`sanitize`) does NOT apply these, so a
+   *  decoration edition keys by its own form and stays its own card; this just
+   *  finds the base film upstream. */
   def searchTitle(display: String): String = active.structural(display)
 
   /** Everything `searchTitle` strips PLUS the programme prefix, trailing
@@ -69,11 +72,11 @@ object TitleNormalizer {
    *  case each half on its own. None when no programme prefix is present. */
   def programmePrefix(title: String): Option[String] = active.programmePrefix(title)
 
-  // Conditional cleanups for merging — applied only when another title in
-  // `allTitles` reduces to the same canonical form. Builds on `searchTitle` so
-  // anniversary/wersja variants merge with their base film, then adds the
-  // cross-cinema spelling unifications (Gwiezdne Wojny prefix, " & " → " i ")
-  // that aren't needed for enrichment lookups.
+  // Cross-cinema spelling unifications (Gwiezdne Wojny prefix, " & " → " i ")
+  // over the trimmed title. Does NOT apply `searchTitle`/structural: decoration
+  // (anniversary / wersja / slash / Cykl / restored) is NOT part of identity, so
+  // a decoration edition keys by its own form and is NOT merged with the base
+  // film. Used by `sanitize` (the docId) and `preferredDisplay`.
   private def canonical(t: String): String = active.canonical(t)
 
   // Last-resort collapse for titles that share words + order but differ only
@@ -94,8 +97,10 @@ object TitleNormalizer {
    *  form. Used as the persistent docId in `MovieRepo`/`MovieCache`
    *  so the cache key is stable across refresh ticks and write sites: every
    *  cinema-reported variant of the same film (Arabic/Roman, colon-or-not,
-   *  &/i, anniversary suffix, "Gwiezdne Wojny:" prefix) lands on the same
-   *  key without needing to see its sibling in the current corpus.
+   *  &/i, "Gwiezdne Wojny:" prefix) lands on the same key without needing to
+   *  see its sibling in the current corpus. Decoration (anniversary / wersja /
+   *  slash / Cykl / restored) is deliberately NOT collapsed here — a decoration
+   *  edition is a distinct identity and keeps its own key + card.
    *
    *  Unicode-aware on the strip step — preserves Cyrillic / Greek / CJK
    *  letters so non-Latin titles keep a non-empty key. Polish `ł` is folded

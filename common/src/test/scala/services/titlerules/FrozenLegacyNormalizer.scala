@@ -1,12 +1,15 @@
 package services.titlerules
 
 /**
- * A FROZEN copy of the pre-rules `TitleNormalizer` global normalisation (the
- * exact regex chains as they were before titles became rule-driven). Both the
- * curated `TitleRuleMigrationSpec` and the prod-driven `ProdTitlesNormalizationSpec`
- * assert the default rule set reproduces this byte-for-byte. DO NOT change these
- * to alter behaviour — change the seed rules in `TitleRuleDefaults`; this is only
- * the baseline to diff against.
+ * A reference copy of the `TitleNormalizer` global normalisation chains. Both
+ * the curated `TitleRuleMigrationSpec` and the prod-driven
+ * `ProdTitlesNormalizationSpec` assert the default rule set reproduces this
+ * byte-for-byte. It mirrors the ENGINE's tier composition, so it tracks
+ * deliberate tier changes: `canonical` here drops `searchTitle` because the
+ * structural decoration strip no longer feeds identity (it's external-lookup
+ * only — see `TitleRuleSet`). To change normalisation BEHAVIOUR, edit the seed
+ * rules in `TitleRuleDefaults`; to change the tier COMPOSITION, edit both the
+ * engine (`TitleRuleSet`) and this reference in lockstep.
  */
 object FrozenLegacyNormalizer {
   private val CyklPrefix        = """^Cykl\s+[„"][^„""]*[„""]?\s+[-–—]\s+""".r
@@ -51,8 +54,12 @@ object FrozenLegacyNormalizer {
     "16" -> "XVI", "17" -> "XVII", "18" -> "XVIII", "19" -> "XIX", "20" -> "XX")
   def normalize(title: String): String =
     title.split(" ").map(w => ArabicToRoman.getOrElse(w, w)).mkString(" ")
+  // Identity canonical: the cross-cinema spelling unifications over the trimmed
+  // title — NO `searchTitle`/structural decoration strip (that tier is now
+  // external-lookup-only, see TitleRuleSet). Decoration editions key by their
+  // own form and stay separate rows.
   private def canonical(t: String): String =
-    searchTitle(t).stripPrefix("Gwiezdne Wojny: ").replace(" & ", " i ")
+    t.trim.stripPrefix("Gwiezdne Wojny: ").replace(" & ", " i ")
   def sanitize(title: String): String =
     tools.TextNormalization.deburr(canonical(normalize(title)))
       .toLowerCase

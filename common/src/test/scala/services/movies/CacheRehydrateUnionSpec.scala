@@ -5,14 +5,16 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.titlerules.{RuleScope, TitleRule, TitleRuleDefaults, TitleRuleSet}
 
-/** Pins the fix for the late-added-merge-rule data-loss bug: when a
- *  GlobalStructural strip is added AFTER two docs were written under distinct
- *  keys, they now collide on `CacheKey` (equality is `sanitize`, which runs that
- *  tier). `rehydrate` must UNION the colliding rows, not last-write-wins drop one
- *  — otherwise a hydration silently loses one doc's showtimes until the next
- *  scrape (and on the read-only web app, the row briefly serves half its
- *  cinemas). Reproduces prod: seed two distinct rows under the defaults, install
- *  a `/Kino Cafe` strip so they collide, then hydrate. */
+/** Pins the fix for the late-added-merge-rule data-loss bug: when a merge-key
+ *  rule (a Canonical-tier unification — NOT a GlobalStructural decoration strip,
+ *  which no longer feeds the key) is added AFTER two docs were written under
+ *  distinct keys, they now collide on `CacheKey` (equality is `sanitize`, which
+ *  runs the canonical tier). `rehydrate` must UNION the colliding rows, not
+ *  last-write-wins drop one — otherwise a hydration silently loses one doc's
+ *  showtimes until the next scrape (and on the read-only web app, the row
+ *  briefly serves half its cinemas). Reproduces prod: seed two distinct rows
+ *  under the defaults, install a `/Kino Cafe` canonical unification so they
+ *  collide, then hydrate. */
 class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
 
   private def repoOf(rows: StoredMovieRecord*): MovieRepo = new MovieRepo {
@@ -38,9 +40,10 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
   private val decorated = row("Takie jest życie/Kino Cafe", CinemaCityKinepolis)
   private val base      = row("Takie jest życie",           Multikino)
 
-  // GlobalStructural strip that didn't exist when the rows were written; under it
-  // both titles sanitise to the same key.
-  private val kinoCafeRule = TitleRule("test-kino-cafe", RuleScope.GlobalStructural, None,
+  // Canonical-tier unification that didn't exist when the rows were written;
+  // under it both titles sanitise to the same key. (A GlobalStructural strip
+  // would NOT collide them — that tier feeds external lookups, not the key.)
+  private val kinoCafeRule = TitleRule("test-kino-cafe", RuleScope.Canonical, None,
     """(?i)\s*/\s*Kino\s+Cafe\s*$""", "", applyAll = false, order = 100)
 
   "rehydrate" should "union two docs a late merge-key rule collides, not drop one" in {

@@ -681,11 +681,11 @@ object MovieService {
   // of which other films happen to be in the cache at the moment.
   def normalize(title: String): String = TitleNormalizer.sanitize(title)
 
-  // Decoration-stripping lives in `TitleNormalizer` so the same patterns
-  // are used for merging (so "Top Gun 40th Anniversary" and "Top Gun"
-  // collapse into one card) AND for TMDB/Filmweb lookups (so the search
-  // hits the base film). See `TitleNormalizer.searchTitle` for the full
-  // list and why each anchor is shaped the way it is.
+  // Decoration-stripping for EXTERNAL LOOKUPS only: strip the anniversary /
+  // restored / wersja / Cykl / slash decoration so the TMDB/Filmweb search hits
+  // the base film. This does NOT affect identity — a decoration edition keys by
+  // its own form and stays a separate card (see `TitleNormalizer.searchTitle`
+  // and `MovieCache.keyOf`); it just resolves to the base film's ratings.
   def searchTitle(display: String): String = TitleNormalizer.searchTitle(display)
 
   /** Aggressive stripping for external-API queries — `searchTitle` plus the

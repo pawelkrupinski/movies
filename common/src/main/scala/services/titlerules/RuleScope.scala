@@ -13,8 +13,10 @@ object RuleScope {
   case object PerCinema extends RuleScope { val name = "PerCinema" }
 
   /** Global decoration stripping in `searchTitle` (Cykl prefix, slash postfix,
-   *  anniversary / restored / wersja suffixes) — affects the merge key and
-   *  display grouping for every cinema. */
+   *  anniversary / restored / wersja suffixes) — feeds the EXTERNAL-LOOKUP tiers
+   *  (`searchTitle` / `apiQuery`) only. Does NOT affect the merge key or display:
+   *  a decoration edition keys by its own form and stays a separate row (so the
+   *  base film's TMDB id is still found, but the edition isn't folded into it). */
   case object GlobalStructural extends RuleScope { val name = "GlobalStructural" }
 
   /** Extra stripping applied only for external-API queries (`apiQuery`):

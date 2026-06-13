@@ -1131,14 +1131,95 @@ cinemaScrapes:
 showings:
   2026-07-10  Kino Pałacowe                 20:15 Sala 1 - Kinowa
 
-=== Człowiek z marmuru ===
-displayTitle:      Człowiek z marmuru
-cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | „Człowiek z marmuru”
-runtimeMinutes:    153
+=== Cykl "Kultowa klasyka" - Zawieście czerwone latarnie ===
+displayTitle:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie
+cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie
+runtimeMinutes:    142
+releaseYear:       1991
+countries:         Chiny, Hongkong, Tajwan
+posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/04/ZCL_poster_B1_web_light-1-724x1024-1.jpg
+synopsis.length:   1908
+cast:              巩俐, 何赛飞, 曹翠芬, 孔琳, 周琦
+director:          张艺谋
+tmdbId:            10404
+imdbId:            tt0101640
+originalTitle:     大红灯笼高高挂
+imdbRating:        8.1
+metascore:         —
+rottenTomatoes:    97
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/raise_the_red_lantern_1991
+filmwebUrl:        —
+cinemaFilmUrls:
+  Kino Apollo = https://kinoapollo.pl/kino/cykl-kultowa-klasyka-zawiescie-czerwone-latarnie/
+cinemaScrapes:
+  Kino Apollo / Cykl "Kultowa klasyka" - Zawieście czerwone latarnie / —
+showings:
+  2026-06-13  Kino Apollo                   17:30
+
+=== Cykl "Zawsze Ósmego" - Follemente. W tym szaleństwie jest metoda ===
+displayTitle:      Cykl "Zawsze Ósmego" - Follemente. W tym szaleństwie jest metoda
+cinemaTitles:      Cykl "Zawsze Ósmego" - Follemente. W tym szaleństwie jest metoda
+runtimeMinutes:    97
+releaseYear:       2025
+countries:         Włochy
+posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/02/plakat_follemente.jpg
+synopsis.length:   611
+cast:              Edoardo Leo, Pilar Fogliati, Emanuela Fanelli, Maria Chiara Giannetta, Claudia Pandolfi
+director:          Paolo Genovese
+tmdbId:            1312157
+imdbId:            tt34621892
+originalTitle:     FolleMente
+imdbRating:        6.9
+metascore:         —
+rottenTomatoes:    12
+filmwebRating:     7.19523
+metacriticUrl:     —
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/somebody_to_love
+filmwebUrl:        https://www.filmweb.pl/film/Follemente.+W+tym+szale%C5%84stwie+jest+metoda-2025-10074839
+cinemaFilmUrls:
+  Kino Apollo = https://kinoapollo.pl/kino/cykl-zawsze-osmego-follemente-w-tym-szalenstwie-jest-metoda/
+cinemaScrapes:
+  Kino Apollo / Cykl "Zawsze Ósmego" - Follemente. W tym szaleństwie jest metoda / —
+showings:
+  2026-06-08  Kino Apollo                   18:30
+
+=== Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) ===
+displayTitle:      Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977)
+cinemaTitles:      Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977)
+runtimeMinutes:    156
 releaseYear:       1977
 countries:         Polska
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png
 synopsis.length:   1212
+cast:              Krystyna Janda, Jerzy Radziwiłowicz, Tadeusz Łomnicki, Jacek Łomnicki, Michał Tarkowski
+director:          Andrzej Wajda
+tmdbId:            224
+imdbId:            tt0075902
+originalTitle:     Człowiek z marmuru
+imdbRating:        7.6
+metascore:         —
+rottenTomatoes:    75
+filmwebRating:     7.6897
+metacriticUrl:     —
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/czlowiek_z_marmuru
+filmwebUrl:        https://www.filmweb.pl/film/Cz%C5%82owiek+z+marmuru-1976-1123
+cinemaFilmUrls:
+  Kino Apollo = https://kinoapollo.pl/kino/cykl-wajda-re-wizje-czlowiek-z-marmuru-man-of-marble1977/
+cinemaScrapes:
+  Kino Apollo / Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) / —
+showings:
+  2026-06-14  Kino Apollo                   15:00
+
+=== Człowiek z marmuru ===
+displayTitle:      Człowiek z marmuru
+cinemaTitles:      CZŁOWIEK Z MARMURU | Człowiek z marmuru | „Człowiek z marmuru”
+runtimeMinutes:    153
+releaseYear:       1977
+countries:         Polska
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg
+synopsis.length:   879
 cast:              Krystyna Janda, Jerzy Radziwiłowicz, Tadeusz Łomnicki, Jacek Łomnicki, Michał Tarkowski
 director:          Andrzej Wajda
 tmdbId:            224
@@ -1152,13 +1233,11 @@ metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/czlowiek_z_marmuru
 filmwebUrl:        —
 cinemaFilmUrls:
-  Kino Apollo = https://kinoapollo.pl/kino/cykl-wajda-re-wizje-czlowiek-z-marmuru-man-of-marble1977/
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/czlowiek-z-marmuru
 cinemaScrapes:
   Forum / CZŁOWIEK Z MARMURU / —
   Kino Agrafka / CZŁOWIEK Z MARMURU / 1977
   Kino Amok / Człowiek z marmuru / —
-  Kino Apollo / Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) / —
   Kino Diana / Człowiek z marmuru / —
   Kino Fenomen (WDK) / „Człowiek z marmuru” / —
   Kino Goplana / Człowiek z marmuru / —
@@ -1170,9 +1249,7 @@ cinemaScrapes:
   Kino Pionier 1907 / Człowiek z marmuru / —
   Kino nad Wartą / CZŁOWIEK Z MARMURU / —
   Kino za Rogiem Cafe / Człowiek z marmuru / —
-  OKF Iluzja / CZŁOWIEK Z MARMURU / MAN OF MARBLE / —
 showings:
-  2026-06-14  Kino Apollo                   15:00
   2026-06-30  Kino Malta Charlie Monroe     15:30 Sala Audrey
 
 === Diabeł ubiera się u Prady 2 ===
@@ -2230,34 +2307,6 @@ cinemaScrapes:
 showings:
   2026-06-09  Kino Rialto                   13:00 · 15:30
 
-=== FolleMente. W tym szaleństwie jest metoda ===
-displayTitle:      FolleMente. W tym szaleństwie jest metoda
-cinemaTitles:      Cykl "Zawsze Ósmego" - Follemente. W tym szaleństwie jest metoda | Follemente. W tym szaleństwie jest metoda
-runtimeMinutes:    97
-releaseYear:       2025
-countries:         Włochy
-posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/02/plakat_follemente.jpg
-synopsis.length:   611
-cast:              Edoardo Leo, Pilar Fogliati, Emanuela Fanelli, Maria Chiara Giannetta, Claudia Pandolfi
-director:          Paolo Genovese
-tmdbId:            1312157
-imdbId:            tt34621892
-originalTitle:     FolleMente
-imdbRating:        6.9
-metascore:         —
-rottenTomatoes:    12
-filmwebRating:     7.19523
-metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/somebody_to_love
-filmwebUrl:        https://www.filmweb.pl/film/Follemente.+W+tym+szale%C5%84stwie+jest+metoda-2025-10074839
-cinemaFilmUrls:
-  Kino Apollo = https://kinoapollo.pl/kino/cykl-zawsze-osmego-follemente-w-tym-szalenstwie-jest-metoda/
-cinemaScrapes:
-  Kino Apollo / Cykl "Zawsze Ósmego" - Follemente. W tym szaleństwie jest metoda / —
-  Kino na Szekspirowskim / Follemente. W tym szaleństwie jest metoda / —
-showings:
-  2026-06-08  Kino Apollo                   18:30
-
 === Following ===
 displayTitle:      Following
 cinemaTitles:      FOLLOWING | Following
@@ -2545,7 +2594,7 @@ showings:
 
 === K-popowe łowczynie demonów ===
 displayTitle:      K-popowe łowczynie demonów
-cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-Popowe Łowczynie Demonów | K-popowe łowczynie demonów | Kpopowe łowczynie demonów / napisy karaoke - nasze kino
+cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-Popowe Łowczynie Demonów | K-popowe łowczynie demonów
 runtimeMinutes:    96
 releaseYear:       2025
 countries:         USA, Kanada, Canada
@@ -2617,7 +2666,6 @@ cinemaScrapes:
   Kino Śnieżka / K-popowe łowczynie demonów / —
   Kinoteatr Rondo / K-popowe łowczynie demonów / —
   Kinoteka / K-popowe łowczynie demonów / 2026
-  Nasze Kino / Kpopowe łowczynie demonów / napisy karaoke - nasze kino / —
   Świt / K-popowe łowczynie demonów / —
 showings:
   2026-06-10  Cinema City Kinepolis         15:10 Sala 11 2D/NAP · 15:40 Sala 17 2D/NAP · 17:30 Sala 11 2D/NAP · 18:00 Sala 17 2D/NAP · 19:50 Sala 11 2D/NAP
@@ -2970,7 +3018,7 @@ showings:
 
 === Kosmiczny mecz ===
 displayTitle:      Kosmiczny mecz
-cinemaTitles:      Kosmiczny Mecz 30. Rocznica | Kosmiczny mecz | Kosmiczny mecz. 30 rocznica
+cinemaTitles:      Kosmiczny mecz
 runtimeMinutes:    88
 releaseYear:       1996
 countries:         USA
@@ -3026,11 +3074,6 @@ cinemaScrapes:
   Cinema City Wroclavia / Kosmiczny mecz / 1996
   Cinema City Zakopianka / Kosmiczny mecz / 1996
   Cinema City Zielona Góra / Kosmiczny mecz / 1996
-  Gdyńskie Centrum Filmowe / Kosmiczny mecz. 30 rocznica / —
-  Kino Kultura / Kosmiczny mecz. 30 rocznica / —
-  Kino Nowe Horyzonty / Kosmiczny Mecz 30. Rocznica / 1996
-  Koneckie Centrum Kultury / Kosmiczny mecz. 30 rocznica / —
-  Na Starówce / Kosmiczny mecz. 30 rocznica / —
 showings:
   2026-06-08  Cinema City Kinepolis         17:30 Sala 2 2D/DUB
   2026-06-08  Cinema City Poznań Plaza      15:50 Sala 2 2D/DUB
@@ -3696,7 +3739,7 @@ showings:
 
 === Milczenie owiec ===
 displayTitle:      Milczenie owiec
-cinemaTitles:      MILCZENIE OWIEC | Milczenie owiec | Milczenie owiec. 35 rocznica
+cinemaTitles:      MILCZENIE OWIEC | Milczenie owiec
 runtimeMinutes:    118
 releaseYear:       1991
 countries:         USA
@@ -3791,7 +3834,6 @@ cinemaScrapes:
   Kino Pionier 1907 / MILCZENIE OWIEC / —
   Kino Pod Baranami / Milczenie owiec / —
   Kino Sfinks / MILCZENIE OWIEC / —
-  Na Starówce / Milczenie owiec. 35 rocznica / —
   OKF Iluzja / Milczenie owiec / —
 showings:
   2026-06-12  Cinema City Poznań Plaza      19:00 Sala 7 2D/NAP
@@ -8672,11 +8714,11 @@ showings:
 
 === Zawieście czerwone latarnie ===
 displayTitle:      Zawieście czerwone latarnie
-cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie | ZAWIEŚCIE CZERWONE LATARNIE | Zawieście Czerwone Latarnie | Zawieście czerwone latarnie
-runtimeMinutes:    142
+cinemaTitles:      ZAWIEŚCIE CZERWONE LATARNIE | Zawieście Czerwone Latarnie | Zawieście czerwone latarnie
+runtimeMinutes:    125
 releaseYear:       1991
 countries:         Chiny, Hongkong, Tajwan
-posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/04/ZCL_poster_B1_web_light-1-724x1024-1.jpg
+posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/ZLC_poster_v3-1086x1536.jpg
 synopsis.length:   1934
 cast:              巩俐, 何赛飞, 曹翠芬, 孔琳, 周琦
 director:          Yimou Zhang
@@ -8691,7 +8733,6 @@ metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/raise_the_red_lantern_1991
 filmwebUrl:        https://www.filmweb.pl/film/Zawie%C5%9Bcie+czerwone+latarnie-1991-31273
 cinemaFilmUrls:
-  Kino Apollo = https://kinoapollo.pl/kino/cykl-kultowa-klasyka-zawiescie-czerwone-latarnie/
   Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/zawiescie-czerwone-latarnie
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/zawiescie-czerwone-latarnie
   Kino Muza = https://www.kinomuza.pl/movie/zawiescie-czerwone-latarnie/
@@ -8701,7 +8742,6 @@ cinemaScrapes:
   Gdyńskie Centrum Filmowe / Zawieście czerwone latarnie / —
   KINOMUZEUM / Zawieście czerwone latarnie / 1991
   Kino Agrafka / ZAWIEŚCIE CZERWONE LATARNIE / 1991
-  Kino Apollo / Cykl "Kultowa klasyka" - Zawieście czerwone latarnie / —
   Kino Bułgarska 19 / Zawieście czerwone latarnie / 1991
   Kino CK Lublin / Zawieście czerwone latarnie / —
   Kino Centrum CSW Toruń / Zawieście czerwone latarnie / —
@@ -8729,7 +8769,6 @@ showings:
   2026-06-10  Kino Bułgarska 19             19:00 Sala Thelma & Louise
   2026-06-10  Kino Malta Charlie Monroe     20:30 Sala Charlie
   2026-06-11  Kino Pałacowe                 20:30 Sala 1 - Kinowa
-  2026-06-13  Kino Apollo                   17:30
 
 === Zawodowcy ===
 displayTitle:      Zawodowcy
