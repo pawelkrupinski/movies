@@ -25,7 +25,8 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
 
   private def freshRunner() = new CinemaScrapeRunner(
     new CaffeineMovieCache(new InMemoryMovieRepo(), new InProcessEventBus()),
-    new InProcessEventBus()
+    new InProcessEventBus(),
+    deferredCinemas = Set.empty
   )
 
   private def task(c: Cinema) =
@@ -175,7 +176,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo")
     bus.subscribe(new DetailTaskEnqueuer(enricher, cache, queue, new InMemoryFreshnessStore).onCinemaMovieAdded)
 
-    new CinemaScrapeRunner(cache, bus).run(new FakeScraper(KinoApollo, movieWithRef(KinoApollo)))
+    new CinemaScrapeRunner(cache, bus, Set.empty).run(new FakeScraper(KinoApollo, movieWithRef(KinoApollo)))
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 
@@ -183,7 +184,37 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val bus   = new InProcessEventBus()
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(), bus)
     val queue = new InMemoryTaskQueue
-    new CinemaScrapeRunner(cache, bus).run(new FakeScraper(KinoApollo, movieWithRef(KinoApollo)))
+    new CinemaScrapeRunner(cache, bus, Set.empty).run(new FakeScraper(KinoApollo, movieWithRef(KinoApollo)))
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
+  }
+
+  // ── classify: when to enrich now vs wait for deferred detail ────────────────
+
+  "CinemaScrapeRunner.classify" should
+    "hold a deferred cinema's new film (mark detailPending, emit no event) until its detail lands" in {
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepo(), new InProcessEventBus())
+    val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set(KinoApollo))
+    val touched = cache.recordCinemaScrape(KinoApollo, movieWithRef(KinoApollo))
+
+    runner.classify(KinoApollo, touched) shouldBe empty // not resolved at scrape
+    cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(true)
+  }
+
+  it should "enrich a film with no deferred detail immediately (emit MovieDetailsComplete, no detailPending)" in {
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepo(), new InProcessEventBus())
+    val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set.empty)
+    val touched = cache.recordCinemaScrape(Multikino, movieAt(Multikino))
+
+    runner.classify(Multikino, touched).map(_.title) shouldBe Seq("Dune")
+    cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
+  }
+
+  it should "enrich a deferred cinema's film immediately when it carries no detail filmUrl (nothing to wait for)" in {
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepo(), new InProcessEventBus())
+    val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set(KinoApollo))
+    val touched = cache.recordCinemaScrape(KinoApollo, movieAt(KinoApollo)) // filmUrl = None
+
+    runner.classify(KinoApollo, touched).map(_.title) shouldBe Seq("Dune")
+    cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
   }
 }

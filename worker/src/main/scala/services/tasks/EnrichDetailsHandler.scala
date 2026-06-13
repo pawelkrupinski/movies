@@ -4,6 +4,7 @@ import models.SourceData
 import play.api.Logging
 import services.UptimeMonitor
 import services.cinemas.DetailEnricher
+import services.events.{EventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.{CacheKey, MovieCache}
 
@@ -55,7 +56,8 @@ class EnrichDetailsHandler(
   enrichersByGroup: Map[String, DetailEnricher],
   cache:            MovieCache,
   freshness:        FreshnessStore,
-  uptime:           UptimeMonitor
+  uptime:           UptimeMonitor,
+  bus:              EventBus
 ) extends TaskHandler with Logging {
   import HandlerOutcome._
 
@@ -84,13 +86,30 @@ class EnrichDetailsHandler(
             val title  = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, "")
             val year   = task.payload.get(EnrichDetailsTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
             val target = enricher.detailTarget
+            val rowKey = cache.keyOf(title, year)
+            // Was this the detail the row was held back for? Capture before the
+            // merge clears the flag, so a periodic re-fetch of an already-done
+            // row (DetailReaper refreshing showtimes) doesn't re-trigger TMDB.
+            val wasPending = cache.get(rowKey).exists(_.detailPending)
             // Merge into the target slot, creating it if absent: a chain's network
             // source has no slot from a listing scrape, so it must be added here;
             // a 1:1 cinema's slot already exists, so this preserves its showtimes.
-            cache.putIfPresent(cache.keyOf(title, year), current =>
-              current.copy(data = current.data + (target -> detail.mergeInto(current.data.getOrElse(target, SourceData())))))
+            // Clearing `detailPending` releases the row to the read model + the
+            // TMDB stage now that its detail (director/originalTitle/year) is in.
+            cache.putIfPresent(rowKey, current =>
+              current.copy(
+                data          = current.data + (target -> detail.mergeInto(current.data.getOrElse(target, SourceData()))),
+                detailPending = false))
             freshness.markFresh(key, FreshnessKind.DetailEnrich)
             uptime.recordSuccess(service)
+            // The detail just landed → enrich the film now, with the better hints.
+            if (wasPending) {
+              val row = cache.get(rowKey)
+              bus.publish(MovieDetailsComplete(
+                title, year,
+                row.flatMap(_.cinemaOriginalTitle),
+                row.map(_.director).filter(_.nonEmpty).map(_.mkString(", "))))
+            }
             Done
         }
     }

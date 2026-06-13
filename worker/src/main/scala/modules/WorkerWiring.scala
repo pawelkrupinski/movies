@@ -285,24 +285,29 @@ class WorkerWiring {
   lazy val detailEnrichers: Seq[DetailEnricher] =
     cinemaScraperCatalog.all.collect { case de: DetailEnricher => de }
 
-  // The shared scrape core: record + publish, injected into ScrapeCinemaHandler.
-  // Detail enqueue is no longer here — it's event-driven (DetailTaskEnqueuer off
-  // CinemaMovieAdded) plus the DetailReaper backstop.
-  lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus)
+  /** Cinemas that defer per-film detail — a film one of these scrapes (with a
+   *  detail filmUrl) waits for its EnrichDetails task before TMDB resolution. */
+  lazy val deferredDetailCinemas: Set[models.Cinema] = detailEnrichers.map(_.cinema).toSet
+
+  // The shared scrape core: record + decide-trigger, injected into
+  // ScrapeCinemaHandler. Detail enqueue is event-driven (DetailTaskEnqueuer off
+  // CinemaMovieAdded) plus the DetailReaper backstop; the runner publishes
+  // MovieDetailsComplete only for rows that don't await deferred detail.
+  lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus, deferredDetailCinemas)
 
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
     cinemaScrapeRunner, freshnessStore
   )
   lazy val enrichDetailsHandler = new EnrichDetailsHandler(
-    detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache, freshnessStore, uptimeMonitor
+    detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache, freshnessStore, uptimeMonitor, eventBus
   )
   // Detail enqueue is event-driven: one enqueuer per deferred cinema fires the
   // first detail fetch off CinemaMovieAdded; the reaper is the periodic
   // refresh/retry backstop (CinemaMovieAdded fires only on first appearance).
   lazy val detailEnqueuers: Seq[DetailTaskEnqueuer] =
     detailEnrichers.map(de => new DetailTaskEnqueuer(de, movieCache, taskQueue, freshnessStore))
-  lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore)
+  lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus)
 
   // Rating refresh as queue tasks. The handlers reuse each *Ratings class's
   // per-row refreshOneSync; the enqueuer turns the resolution bus events into

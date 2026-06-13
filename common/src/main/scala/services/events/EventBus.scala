@@ -14,25 +14,36 @@ import java.util.concurrent.CopyOnWriteArrayList
  */
 sealed trait DomainEvent
 
-/** A title was observed in a cinema's refreshed schedule. May fire repeatedly
- *  for the same film as long as it remains in any cinema's listing —
- *  subscribers are responsible for dedup.
+/** A film's per-cinema details are as complete as they're going to get, so it's
+ *  ready to enrich — resolve TMDB (and, downstream of that, the ratings). The
+ *  single trigger for the enrichment pipeline. It fires EITHER:
+ *    - immediately when a newly-scraped film needs no deferred detail
+ *      enrichment (its listing already carries everything we'll get), OR
+ *    - once a deferred cinema's per-film detail page has been fetched and
+ *      merged (published by `EnrichDetailsHandler`), so the director / original
+ *      title / production year the detail page supplies are on the row BEFORE
+ *      TMDB resolves — rather than burning a director-less attempt at scrape and
+ *      then waiting for the daily sweep (the "stuck TMDB-unresolved" class).
  *
- *  `originalTitle` carries the cinema's English/international title for the
- *  film when its API exposes one (Multikino does for ~5% of films — Cirque du
- *  Soleil, opera/concert docs, English-language imports). Used by the TMDB
- *  stage as a secondary search title when the Polish title doesn't resolve.
+ *  A film that DOES await detail enrichment is deliberately NOT published at
+ *  scrape time: `CinemaScrapeRunner` marks it `detailPending` and holds the
+ *  trigger until the detail lands. Such a row is also held out of the read
+ *  model until then — see `MovieRecord.readyToProject`.
  *
- *  `director` carries the cinema-reported director name(s) (possibly comma-
- *  separated for co-directors). Used by the TMDB stage to *verify* a title-
- *  search candidate — when the candidate's credits don't include the
- *  reported director, the resolver walks the director's TMDB filmography
- *  instead. Solves the same-title-different-film class of mis-resolution
- *  (e.g. Niedźwiedzica → Grizzly Falls 1999 vs Frost Without Snow and Ice
- *  2026).
+ *  `originalTitle` carries the cinema's English/international title when
+ *  available (Multikino exposes one for ~5% of films — Cirque du Soleil,
+ *  opera/concert docs, English imports). The TMDB stage uses it as a secondary
+ *  search title when the Polish title doesn't resolve.
  *
- *  Both optional fields default to None so existing tests and cinemas
- *  without the field stay unchanged. */
+ *  `director` carries the reported director name(s) (possibly comma-separated
+ *  for co-directors). The TMDB stage uses it to *verify* a title-search
+ *  candidate — when the candidate's credits don't include the reported
+ *  director, the resolver walks the director's TMDB filmography instead. Solves
+ *  the same-title-different-film mis-resolution class (Niedźwiedzica → Grizzly
+ *  Falls 1999 vs the 2026 film).
+ *
+ *  Both optional fields default to None so cinemas without the field — and the
+ *  unit specs that publish this directly — stay unchanged. */
 case class MovieDetailsComplete(
   title:         String,
   year:          Option[Int],
@@ -43,7 +54,7 @@ case class MovieDetailsComplete(
 /** A *new* `(cinema, title, year)` tuple was just persisted to the cache (and
  *  written through to Mongo) by `recordCinemaScrape`. Fires only on the
  *  *first* observation of that tuple on the row — repeat ticks for the same
- *  combination are suppressed (same `isNew` gate as `MovieDetailsComplete`).
+ *  combination are suppressed (the scrape's `isNew` gate).
  *  Published from inside `MovieCache.recordCinemaScrape` so the slot's
  *  visibility and the event are atomic: any handler reading the cache for
  *  the just-published tuple sees the newly-written slot.

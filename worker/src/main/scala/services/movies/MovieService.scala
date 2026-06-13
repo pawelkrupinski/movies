@@ -484,7 +484,11 @@ class MovieService(
     // that scraped FIRST didn't report a director, a later one might have,
     // and that hint is the only path `directorWalk` can fire on for films
     // TMDB doesn't index under their Polish title.
-    val targets = cache.entries.collect { case (k, e) if e.tmdbId.isEmpty => (k, e) }
+    // Skip rows still awaiting detail enrichment: resolving them now would burn a
+    // director-less attempt. `EnrichDetailsHandler` publishes `MovieDetailsComplete`
+    // (→ TMDB) once their detail lands, and `DetailReaper` keeps that detail
+    // enqueued — so this sweep only re-tries genuinely-stalled, detail-complete rows.
+    val targets = cache.entries.collect { case (k, e) if e.tmdbId.isEmpty && !e.detailPending => (k, e) }
     logger.info(s"TMDB retry: cleared negatives + re-scheduling ${targets.size} row(s) with missing tmdbId.")
     targets.foreach { case (k, e) =>
       val (origHint, dirHint) = tmdbHints(e)

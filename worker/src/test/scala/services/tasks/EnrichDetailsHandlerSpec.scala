@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.UptimeMonitor
 import services.cinemas.{DetailEnricher, FakeDetailEnricher, FilmDetail}
-import services.events.InProcessEventBus
+import services.events.{DomainEvent, EventBus, InProcessEventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
 
@@ -13,6 +13,15 @@ import java.time.LocalDateTime
 
 class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
   import HandlerOutcome._
+
+  /** Records what the handler publishes, so a test can assert the
+   *  detail-complete → MovieDetailsComplete re-trigger (and its absence). */
+  private class CapturingBus extends EventBus {
+    val published = scala.collection.mutable.ListBuffer.empty[DomainEvent]
+    def subscribe(handler: PartialFunction[DomainEvent, Unit]): Unit = ()
+    def publish(event: DomainEvent): Unit = { published += event; () }
+  }
+  private val noBus = new CapturingBus
 
   /** A cache pre-seeded with one (KinoApollo, title) row whose slot carries
    *  showtimes but no detail — exactly what a bare scrape leaves behind. */
@@ -40,7 +49,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val fresh    = new InMemoryFreshnessStore
     val uptime   = new UptimeMonitor()
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("A great film"), cast = Seq("Zendaya"))))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime)
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done
@@ -50,6 +59,33 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     slot.map(_.showtimes.size) shouldBe Some(1) // showtimes from the scrape preserved
     fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich) shouldBe true
     successes(uptime, EnrichmentService) shouldBe 1 // recorded under "<cinema>|enrichment"
+  }
+
+  it should "clear detailPending and publish MovieDetailsComplete (the TMDB re-trigger) once a held-back row's detail lands" in {
+    val cache    = seededCache("Hamnet")
+    val key      = cache.keyOf("Hamnet", None)
+    cache.putIfPresent(key, _.copy(detailPending = true)) // held back awaiting its detail
+    val bus      = new CapturingBus
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo",
+      Some(FilmDetail(synopsis = Some("..."), director = Seq("Chloé Zhao"), originalTitle = Some("Hamnet"))))
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(), bus)
+
+    h.handle(taskFor("kino-apollo", cache, "Hamnet", enricher)) shouldBe Done
+    // Released from the read-model / TMDB gate now that the detail is in.
+    cache.get(key).map(_.detailPending) shouldBe Some(false)
+    // The TMDB re-trigger carries the detail-page director + original title — the
+    // hints a director-less first scrape lacked.
+    bus.published.toList shouldBe List(MovieDetailsComplete("Hamnet", None, Some("Hamnet"), Some("Chloé Zhao")))
+  }
+
+  it should "NOT re-trigger TMDB when refreshing a row that wasn't awaiting detail (no detailPending)" in {
+    val cache    = seededCache("Dune") // detailPending defaults false — a plain refresh
+    val bus      = new CapturingBus
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("x"))))
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(), bus)
+
+    h.handle(taskFor("kino-apollo", cache, "Dune", enricher)) shouldBe Done
+    bus.published shouldBe empty // a periodic detail refresh mustn't churn the TMDB stage
   }
 
   it should "write a chain enricher's detail into its shared network source, leaving venue slots untouched, so every venue shows it" in {
@@ -68,7 +104,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     // network source, health under one global name.
     val enricher = new FakeDetailEnricher(CinemaCityPoznanPlaza, "cinema-city", Some(detail),
       target = Some(CinemaCityChain), uptimeOverride = Some("Cinema City Enrichment"))
-    val h        = new EnrichDetailsHandler(Map("cinema-city" -> enricher), cache, fresh, uptime)
+    val h        = new EnrichDetailsHandler(Map("cinema-city" -> enricher), cache, fresh, uptime, noBus)
     val task     = taskFor("cinema-city", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done
@@ -93,7 +129,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val fresh    = new InMemoryFreshnessStore
     val uptime   = new UptimeMonitor()
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("x"))))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime)
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
     fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich)
 
@@ -104,7 +140,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
 
   it should "drop a task whose detail group has no enricher" in {
     val cache = seededCache("Dune")
-    val h     = new EnrichDetailsHandler(Map.empty, cache, new InMemoryFreshnessStore, new UptimeMonitor())
+    val h     = new EnrichDetailsHandler(Map.empty, cache, new InMemoryFreshnessStore, new UptimeMonitor(), noBus)
     val task  = taskFor("gone", cache, "Dune", new FakeDetailEnricher(KinoApollo, "gone", None))
     h.handle(task) shouldBe Done
   }
@@ -114,7 +150,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val fresh    = new InMemoryFreshnessStore
     val uptime   = new UptimeMonitor()
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", None) // fetch failed/absent
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime)
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done

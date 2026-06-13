@@ -1,7 +1,6 @@
 package tools
 
 import clients.tools.FakeHttpFetch
-import services.cinemas.CinemaScrapeRunner
 import services.events.MovieDetailsComplete
 import services.movies.InMemoryMovieRepo
 import services.readmodel.{InMemoryReadModelRepo, ReadModelReader, ReadModelWriter, WebReadModel}
@@ -54,19 +53,23 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
    *  cinema + event order under a jittered fetch clock and asserts byte-identical
    *  records and rows across the whole corpus. */
   def runOneScrapeTick(): Unit = {
-    val created = collection.mutable.ListBuffer.empty[MovieDetailsComplete]
+    val ready = collection.mutable.ListBuffer.empty[MovieDetailsComplete]
     cinemaScrapers.foreach { scraper =>
       try {
         val touched = movieCache.recordCinemaScrape(scraper.cinema, scraper.fetch())
-        created ++= CinemaScrapeRunner.eventsFor(touched)
+        // `classify` marks rows that await deferred detail `detailPending` (held
+        // back, no event yet) and returns the ready-now MovieDetailsComplete.
+        ready ++= cinemaScrapeRunner.classify(scraper.cinema, touched)
       } catch { case _: Exception => () }
     }
     // Cinemas that defer detail scrape BARE; fill each row's per-film detail via
-    // the EnrichDetails queue tasks NOW — before the MovieDetailsComplete publish
-    // below starts the TMDB stage — so a detail-page director/originalTitle/year
-    // is present when TMDB resolves (the pre-deferral inline path had it already).
+    // the EnrichDetails queue tasks NOW. `enrichDetailsSync` then publishes the
+    // detail-complete films' MovieDetailsComplete (the deferred TMDB trigger), so
+    // every TMDB resolution runs after the tick has settled, with the detail-page
+    // director/originalTitle/year already on the row. The ready-now events publish
+    // last — same "settle the whole tick, THEN publish" rule for both groups.
     enrichDetailsSync()
-    created.foreach(eventBus.publish)
+    ready.foreach(eventBus.publish)
   }
 
   /** Convenience: scrape every cinema once, drain the cascade, then run

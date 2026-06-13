@@ -1,10 +1,12 @@
 package services.tasks
 
+import models.MovieRecord
 import play.api.Logging
 import services.Stoppable
 import services.cinemas.DetailEnricher
-import services.freshness.FreshnessStore
-import services.movies.MovieCacheReader
+import services.events.{EventBus, MovieDetailsComplete}
+import services.freshness.{FreshnessKind, FreshnessStore}
+import services.movies.{CacheKey, MovieCache}
 import tools.DaemonExecutors
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
@@ -21,15 +23,27 @@ import scala.util.Try
  * fetch. This is the detail-side analogue of [[ScrapeReaper]] /
  * [[EnrichmentReaper]].
  *
+ * It is ALSO the backstop for the `detailPending` gate: a film a deferred cinema
+ * scrapes is held back (`detailPending`, out of the read model + the TMDB stage)
+ * until its detail lands and `EnrichDetailsHandler` publishes
+ * `MovieDetailsComplete`. If that detail can NEVER complete — the page is gone,
+ * the row has no deferred slot/`filmUrl` anymore, or the completion event was
+ * lost across a restart while the detail is already fresh — the row would
+ * otherwise stay invisible forever (the daily TMDB sweep deliberately skips
+ * `detailPending` rows). `reapStuckPending` releases any `detailPending` row with
+ * no outstanding (enqueueable, not-yet-fresh) detail: it clears the flag and
+ * publishes `MovieDetailsComplete`, so the row finally resolves.
+ *
  * Walks the cache like `EnrichmentReaper`: for each row carrying a slot for a
  * deferred cinema with a `filmUrl`, enqueue (deduped + freshness-gated, so a
  * film already fresh — or already waiting/working — isn't re-queued).
  */
 class DetailReaper(
   enrichers: Seq[DetailEnricher],
-  cache:     MovieCacheReader,
+  cache:     MovieCache,
   queue:     TaskQueue,
   freshness: FreshnessStore,
+  bus:       EventBus,
   interval:  FiniteDuration = 15.minutes
 ) extends Stoppable with Logging {
 
@@ -37,7 +51,7 @@ class DetailReaper(
 
   def start(): Unit = {
     if (enrichers.isEmpty) { logger.info("DetailReaper: no deferred cinemas; not starting."); return }
-    scheduler.scheduleWithFixedDelay(() => Try(tick()), interval.toMillis, interval.toMillis, TimeUnit.MILLISECONDS)
+    scheduler.scheduleWithFixedDelay(() => Try { tick(); reapStuckPending() }, interval.toMillis, interval.toMillis, TimeUnit.MILLISECONDS)
     logger.info(s"DetailReaper started over ${enrichers.size} deferred cinema(s), every ${interval.toMinutes}min.")
   }
 
@@ -57,6 +71,38 @@ class DetailReaper(
     if (enqueued > 0) logger.info(s"DetailReaper enqueued $enqueued stale detail(s).")
     enqueued
   }
+
+  /** Release any `detailPending` row that has no outstanding detail to fetch —
+   *  its detail is already fresh (the completion event was lost) or it has no
+   *  deferred slot/`filmUrl` to enrich at all (orphaned flag). Clears the flag
+   *  and re-triggers TMDB via `MovieDetailsComplete`, so the row stops being held
+   *  out of the read model. Returns how many were released. Scheduled (not run by
+   *  the fixture harness's `enrichDetailsSync`, which only calls `tick`). */
+  def reapStuckPending(): Int = {
+    var released = 0
+    cache.entries.foreach { case (key, record) =>
+      if (record.detailPending && !detailOutstanding(key, record)) {
+        cache.putIfPresent(key, _.copy(detailPending = false))
+        val row = cache.get(key)
+        bus.publish(MovieDetailsComplete(
+          key.cleanTitle, key.year,
+          row.flatMap(_.cinemaOriginalTitle),
+          row.map(_.director).filter(_.nonEmpty).map(_.mkString(", "))))
+        released += 1
+      }
+    }
+    if (released > 0) logger.info(s"DetailReaper released $released detail-pending row(s) with no outstanding detail.")
+    released
+  }
+
+  /** True when a deferred cinema still owes this row a detail fetch — it has a
+   *  `filmUrl` slot whose detail isn't fresh yet. While true the row legitimately
+   *  stays `detailPending` (and `tick` keeps the fetch enqueued). */
+  private def detailOutstanding(key: CacheKey, record: MovieRecord): Boolean =
+    enrichers.exists { e =>
+      record.data.get(e.cinema).flatMap(_.filmUrl).isDefined &&
+        !freshness.isFresh(EnrichDetailsTasks.dedupKey(e.detailGroup, key), FreshnessKind.DetailEnrich)
+    }
 
   override def stop(): Unit = { scheduler.shutdown(); () }
 }

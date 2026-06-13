@@ -4,7 +4,7 @@ import models.{CinemaMovie, KinoApollo, Movie, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.FakeDetailEnricher
-import services.events.InProcessEventBus
+import services.events.{DomainEvent, EventBus, InProcessEventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
 
@@ -13,6 +13,12 @@ import java.time.LocalDateTime
 class DetailReaperSpec extends AnyFlatSpec with Matchers {
 
   private val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo")
+
+  private class CapturingBus extends EventBus {
+    val published = scala.collection.mutable.ListBuffer.empty[DomainEvent]
+    def subscribe(handler: PartialFunction[DomainEvent, Unit]): Unit = ()
+    def publish(event: DomainEvent): Unit = { published += event; () }
+  }
 
   /** Seed the cache with one KinoApollo film carrying (optionally) a filmUrl —
    *  exactly what a bare deferred scrape persists. */
@@ -25,8 +31,9 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     cache
   }
 
-  private def reaper(cache: CaffeineMovieCache, queue: InMemoryTaskQueue, fresh: InMemoryFreshnessStore) =
-    new DetailReaper(Seq(enricher), cache, queue, fresh)
+  private def reaper(cache: CaffeineMovieCache, queue: InMemoryTaskQueue, fresh: InMemoryFreshnessStore,
+                     bus: EventBus = new InProcessEventBus()) =
+    new DetailReaper(Seq(enricher), cache, queue, fresh, bus)
 
   "DetailReaper.tick" should "enqueue a detail task for each deferred film that has a filmUrl and isn't fresh" in {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
@@ -51,5 +58,36 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     r.tick() shouldBe 1
     r.tick() shouldBe 0 // already waiting → unique index rejects the duplicate
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
+  }
+
+  // ── reapStuckPending: release detail-pending rows that can never complete ────
+
+  "DetailReaper.reapStuckPending" should
+    "leave a row whose detail is still outstanding (filmUrl present, not yet fresh)" in {
+    val (cache, queue, fresh) = (cacheWith(Some("http://ref")), new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
+    val bus = new CapturingBus
+    reaper(cache, queue, fresh, bus).reapStuckPending() shouldBe 0
+    cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(true) // still held back
+    bus.published shouldBe empty
+  }
+
+  it should "release a detail-pending row with no deferred filmUrl to fetch (orphaned flag) and re-trigger TMDB" in {
+    val (cache, queue, fresh) = (cacheWith(None), new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
+    val bus = new CapturingBus
+    reaper(cache, queue, fresh, bus).reapStuckPending() shouldBe 1
+    cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
+    bus.published.collect { case e: MovieDetailsComplete => e.title } shouldBe List("Dune")
+  }
+
+  it should "release a detail-pending row whose detail is already fresh (a lost completion event)" in {
+    val (cache, queue, fresh) = (cacheWith(Some("http://ref")), new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
+    fresh.markFresh(EnrichDetailsTasks.dedupKey("kino-apollo", cache.keyOf("Dune", None)), FreshnessKind.DetailEnrich)
+    val bus = new CapturingBus
+    reaper(cache, queue, fresh, bus).reapStuckPending() shouldBe 1
+    cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
+    bus.published.size shouldBe 1
   }
 }

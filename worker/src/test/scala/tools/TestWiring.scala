@@ -4,8 +4,9 @@ import clients.TmdbClient
 import models.Cinema
 import modules.WorkerWiring
 import services.{MongoConnection, Stoppable}
+import services.events.{DomainEvent, EventBus}
 import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
-import services.tasks.{InMemoryTaskQueue, TaskQueue, TaskType}
+import services.tasks.{EnrichDetailsHandler, InMemoryTaskQueue, TaskQueue, TaskType}
 
 import scala.concurrent.duration._
 
@@ -41,6 +42,23 @@ trait TestWiring extends WorkerWiring {
   // / `converge`) — so these stay drained.
   override lazy val taskQueue: TaskQueue = new InMemoryTaskQueue
   override lazy val freshnessStore: FreshnessStore = new InMemoryFreshnessStore
+
+  // The harness's detail handler publishes its `MovieDetailsComplete` (the TMDB
+  // re-trigger after a deferred detail lands) to THIS buffer rather than straight
+  // to the bus. `enrichDetailsSync` flushes the buffer to the real bus only after
+  // EVERY detail in the pass has merged — preserving the "settle the whole tick,
+  // THEN publish" invariant `runOneScrapeTick` relies on (publishing mid-drain
+  // would let the async TMDB stage race other films' detail merges → an
+  // order-dependent single-pass corpus). Production publishes inline (no buffer)
+  // so a detail-complete film enriches immediately.
+  private val detailEventBuffer = scala.collection.mutable.ListBuffer.empty[DomainEvent]
+  private val detailCaptureBus: EventBus = new EventBus {
+    def subscribe(handler: PartialFunction[DomainEvent, Unit]): Unit = ()
+    def publish(event: DomainEvent): Unit = { detailEventBuffer += event; () }
+  }
+  override lazy val enrichDetailsHandler = new EnrichDetailsHandler(
+    detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache, freshnessStore, uptimeMonitor, detailCaptureBus
+  )
 
   // No Filmweb fallback in tests: pin the id map empty so fixture replay never
   // resolves (one GET per Filmweb city) or fetches Filmweb live. Eligible scrapers
@@ -143,6 +161,11 @@ trait TestWiring extends WorkerWiring {
           try enrichDetailsHandler.handle(task) catch { case _: Exception => () }
         taskQueue.complete(task.id, workerId)
       }
+    // Every detail has merged + cleared `detailPending`; now re-trigger TMDB for
+    // the films whose detail just landed, against a fully-settled cache.
+    val ready = detailEventBuffer.toList
+    detailEventBuffer.clear()
+    ready.foreach(eventBus.publish)
   }
 
   def quiesce(stoppables: Stoppable*): Unit =
