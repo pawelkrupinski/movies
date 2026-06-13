@@ -46,4 +46,24 @@ class KinoMikroClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     erupcja.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 8, 18, 0))
     erupcja.showtimes.flatMap(_.bookingUrl).head should startWith("https://kinomikro.pl/repertoire/krakow-erupcja/")
   }
+
+  it should "parse the director out of the event_description HTML blob" in {
+    val movies = new KinoMikroClient(http, "Kino Mikro", KinoMikro).fetch()
+
+    // No-colon layout terminated by the next field label (`Obsada`):
+    //   `…<div>Reżyseria George Sluizer</div><div>Obsada …`
+    movies.find(_.movie.title == "Zniknięcie").value.director shouldBe Seq("George Sluizer")
+
+    // Colon layout terminated by `<br>Scenariusz: …`:
+    //   `…<br>Reżyseria: Federico Fellini <br>Scenariusz: …`
+    movies
+      .find(_.movie.title == "FEDERICO FELLINI: ciao a tutti: Noce Cabirii")
+      .value
+      .director shouldBe Seq("Federico Fellini")
+
+    // The terminator label must never be swallowed into the captured name.
+    val forbidden = Seq("Obsada", "Scenariusz", "Gatunek", "Produkcja", "Czas", "Dystrybutor")
+    val allDirectors = movies.flatMap(_.director)
+    forbidden.foreach(label => all(allDirectors) should not include label)
+  }
 }

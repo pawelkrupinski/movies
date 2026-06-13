@@ -1,6 +1,7 @@
 package services.cinemas
 
 import models._
+import org.jsoup.Jsoup
 import play.api.libs.json._
 import tools.HttpFetch
 
@@ -15,7 +16,8 @@ import scala.util.Try
  * venues come back in the same flat array; `location_institution_name`
  * (`"Kino Mikro"` vs `"Mikro Bronowice"`) is the discriminant, so one client
  * parameterised by the venue name serves either screen. The JSON carries no
- * runtime / genres — TMDB supplies those downstream.
+ * runtime / genres — TMDB supplies those downstream — but the
+ * `event_description` HTML blob does name the director, which we extract.
  */
 class KinoMikroClient(http: HttpFetch, venueName: String, override val cinema: Cinema) extends CinemaScraper {
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoMikroClient.ApiUrl, "https://bilety.kinomikro.pl")
@@ -36,6 +38,26 @@ object KinoMikroParser {
   // `event_date` is rendered as `DD.MM.YYYY HH:mm` (e.g. "06.06.2026 18:00").
   private val DateFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
 
+  // `event_description` is an HTML blob whose director line reads either
+  // `<div>Reżyseria George Sluizer</div>` (no colon) or `<br>Reżyseria:
+  // Federico Fellini <br>` (colon). Once Jsoup flattens the markup to text the
+  // `<div>`/`<br>` boundaries collapse to spaces, so the value is bounded by
+  // the next field label rather than by markup. Capture everything after the
+  // `Reżyseria` marker up to the next known label (or end of text).
+  private val FieldLabels = "Obsada|Scenariusz|Gatunek|Produkcja|Czas|Dystrybutor"
+  private val DirectorPat =
+    ("""(?i)Reżyseria\s*:?\s*(.+?)\s*(?=(?:""" + FieldLabels + """)\b|$)""").r
+
+  /** Pull the director name(s) out of a row's `event_description` HTML. Splits
+   *  the captured value on `,`/`;`, trims, and drops empties. Returns an empty
+   *  Seq when the blob carries no `Reżyseria` marker. */
+  private[cinemas] def parseDirector(eventDescriptionHtml: String): Seq[String] = {
+    val text = Jsoup.parse(eventDescriptionHtml).text()
+    DirectorPat.findFirstMatchIn(text).map(_.group(1)).toSeq.flatMap { captured =>
+      captured.split("[,;]").iterator.map(_.trim).filter(_.nonEmpty).toSeq
+    }
+  }
+
   def parse(json: String, venueName: String, cinema: Cinema): Seq[CinemaMovie] = {
     val records = (Json.parse(json) \ "data").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
 
@@ -52,7 +74,9 @@ object KinoMikroParser {
         } yield s"https://kinomikro.pl/repertoire/$slug/$id.html?view=event"
         val poster = (r \ "system_image_url").asOpt[String].filter(_.nonEmpty)
           .map(u => if (u.startsWith("http")) u else s"https://bilety.kinomikro.pl$u")
-        RawSlot(title, dt, booking, poster)
+        val director = (r \ "event_description").asOpt[String]
+          .map(parseDirector).getOrElse(Seq.empty)
+        RawSlot(title, dt, booking, poster, director)
       }
     }
 
@@ -65,11 +89,17 @@ object KinoMikroParser {
         filmUrl   = None,
         synopsis  = None,
         cast      = Seq.empty,
-        director  = Seq.empty,
+        director  = sorted.map(_.director).find(_.nonEmpty).getOrElse(Seq.empty),
         showtimes = sorted.map(s => Showtime(s.dateTime, s.booking)).distinctBy(s => (s.dateTime, s.bookingUrl))
       )
     }.sortBy(_.movie.title)
   }
 
-  private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String], poster: Option[String])
+  private case class RawSlot(
+    title: String,
+    dateTime: LocalDateTime,
+    booking: Option[String],
+    poster: Option[String],
+    director: Seq[String]
+  )
 }
