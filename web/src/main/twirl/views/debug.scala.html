@@ -109,7 +109,10 @@
 
     /* Pending-work sections (top of page) */
     #pending { margin-bottom: 1rem; display: grid; gap: .7rem; }
-    .pending-sec h2 { font-size: 12px; color: #ffd479; margin: 0 0 .3rem; font-weight: normal; }
+    .pending-sec h2 { font-size: 12px; color: #ffd479; margin: 0 0 .3rem; font-weight: normal; cursor: pointer; -webkit-user-select: none; user-select: none; }
+    .pending-sec h2::before { content: '▾'; color: #666; margin-right: .35rem; font-size: 10px; }
+    .pending-sec.collapsed h2::before { content: '▸'; }
+    .pending-sec.collapsed .pending-list { display: none; }
     .pending-sec h2 .cnt {
       color: #fff; background: #3a2f14; border: 1px solid #5a4a1e;
       border-radius: 3px; padding: 0 .35rem; font-variant-numeric: tabular-nums;
@@ -290,13 +293,15 @@
   function tmdbKey(title, year)      { return 'resolve-tmdb|' + title + '|' + year; }
   function detailSuffix(title, year) { return '|' + title + '|' + year; }
 
+  // `rank` orders a section: worked-on first (0), then by queue place ascending,
+  // then queued-but-past-the-snapshot, then no-task last.
   function badgeFor(matches, places) {
-    if (!matches.length) return { cls: 'q-none', text: 'no task' };
-    if (matches.some(t => t.state === 'worked_on')) return { cls: 'q-run', text: '▶ running' };
+    if (!matches.length) return { cls: 'q-none', text: 'no task', rank: Infinity };
+    if (matches.some(t => t.state === 'worked_on')) return { cls: 'q-run', text: '▶ running', rank: 0 };
     const ps = matches.map(t => places.get(t.dedupKey)).filter(p => p != null);
-    if (!ps.length) return { cls: 'q-wait', text: 'queued' };
+    if (!ps.length) return { cls: 'q-wait', text: 'queued', rank: 1e9 };
     const best = Math.min.apply(null, ps);
-    return { cls: 'q-wait', text: '#' + best + (matches.length > 1 ? ' ·' + matches.length : '') };
+    return { cls: 'q-wait', text: '#' + best + (matches.length > 1 ? ' ·' + matches.length : ''), rank: best };
   }
 
   function rebuildPending() {
@@ -307,27 +312,33 @@
         .filter(tr => tr.dataset[flag] === 'true');
       const ul = sec.querySelector('.pending-list');
       ul.textContent = '';
-      rows.forEach(tr => {
+      // Annotate each row with its queue badge, then order the section by queue
+      // place — what the worker is on now (running) first, then by ascending
+      // place, no-task rows last. Ties keep the table's title order (stable sort).
+      const entries = rows.map(tr => {
         const title = tr.dataset.title || '';
         const year  = tr.dataset.queueYear || '';
         const matches = flag === 'tmdbUnresolved'
           ? queueActive.filter(t => t.taskType === 'ResolveTmdb' && t.dedupKey === tmdbKey(title, year))
           : queueActive.filter(t => t.taskType === 'EnrichDetails' && t.dedupKey.endsWith(detailSuffix(title, year)));
-        const b = badgeFor(matches, places);
+        return { id: tr.dataset.id, title, year, badge: badgeFor(matches, places) };
+      });
+      entries.sort((a, b) => a.badge.rank - b.badge.rank);
+      entries.forEach(e => {
         const li = document.createElement('li');
-        li.dataset.id = tr.dataset.id;
+        li.dataset.id = e.id;
         const t = document.createElement('span');
         t.className = 'pl-title';
-        t.textContent = title + (year ? ' (' + year + ')' : '');
-        t.addEventListener('click', () => revealRow(tr.dataset.id));
+        t.textContent = e.title + (e.year ? ' (' + e.year + ')' : '');
+        t.addEventListener('click', () => revealRow(e.id));
         const badge = document.createElement('span');
-        badge.className = 'badge ' + b.cls;
-        badge.textContent = b.text;
+        badge.className = 'badge ' + e.badge.cls;
+        badge.textContent = e.badge.text;
         li.append(t, badge);
         ul.appendChild(li);
       });
-      sec.querySelector('.cnt').textContent = rows.length;
-      if (!rows.length) {
+      sec.querySelector('.cnt').textContent = entries.length;
+      if (!entries.length) {
         const empty = document.createElement('li');
         empty.className = 'pending-empty';
         empty.textContent = '—';
@@ -354,6 +365,11 @@
       .then(j => { queueActive = Array.isArray(j.active) ? j.active : []; rebuildPending(); })
       .catch(() => {});
   }
+  // Clicking a section header folds/unfolds its list (the caret flips via CSS).
+  document.querySelectorAll('#pending .pending-sec h2').forEach(h2 => {
+    h2.addEventListener('click', () => h2.parentElement.classList.toggle('collapsed'));
+  });
+
   rebuildPending();
   pollQueue();
   setInterval(pollQueue, 2500);

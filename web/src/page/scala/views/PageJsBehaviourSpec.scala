@@ -2707,6 +2707,38 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  it should "order the unenriched list by queue place (lowest first, no-task last)" in {
+    onDebug { page =>
+      // Wait for the queue poll so places — and the ordering they drive — are painted.
+      page.waitFor(
+        """(function(){var l=document.querySelector('.pending-sec[data-flag="unenriched"] .pending-list li .badge');
+          |return l && l.textContent==='#1';})()""".stripMargin)
+      // "Pending Film" (#1) sorts ahead of "Lonely Pending" (no task), even though
+      // the table lists "Lonely Pending" first alphabetically.
+      page.evalString(
+        """document.querySelector('.pending-sec[data-flag="unenriched"] .pending-list li .pl-title').textContent""")
+        .startsWith("Pending Film") shouldBe true
+    }
+  }
+
+  it should "fold a pending section when its header is clicked, and unfold on a second click" in {
+    onDebug { page =>
+      def collapsed = page.evalBool(
+        """document.querySelector('.pending-sec[data-flag="unenriched"]').classList.contains('collapsed')""")
+      def listHidden = page.evalBool(
+        """getComputedStyle(document.querySelector('.pending-sec[data-flag="unenriched"] .pending-list')).display === 'none'""")
+
+      collapsed shouldBe false
+      listHidden shouldBe false
+      page.eval("""document.querySelector('.pending-sec[data-flag="unenriched"] h2').click()""")
+      collapsed shouldBe true
+      listHidden shouldBe true // folded
+      page.eval("""document.querySelector('.pending-sec[data-flag="unenriched"] h2').click()""")
+      collapsed shouldBe false
+      listHidden shouldBe false // unfolded again
+    }
+  }
+
   /** Dispatch a synthetic touch `PointerEvent` of `kind` at (`x`,`y`) on the
    *  document — drives the production `pointerdown`/`pointermove`/`pointerup`
    *  carousel handlers (which arm + translate `#day-track`) without needing real
