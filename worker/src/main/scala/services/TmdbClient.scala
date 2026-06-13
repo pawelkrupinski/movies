@@ -199,11 +199,14 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *    - Director(s) + top-billed cast
    *    - Year (`release_date`) + runtime
    *    - Production countries (raw names — caller canonicalises)
-   *    - Poster URL (constructed from `poster_path`)
+   *    - Poster URL — the best Polish portrait poster from `/movie/{id}/images`
+   *      (see `posters`), falling back to the default `poster_path` when that
+   *      endpoint has no usable portrait variant.
    *
    *  Returns None on network failure / unknown id — callers fall back to
-   *  whatever the previous slot held. Designed as a single round-trip so
-   *  the TMDB stage doesn't grow into N+1 calls per resolve. */
+   *  whatever the previous slot held. The detail itself is one round-trip; the
+   *  poster lookup adds a single failure-tolerant `/images` call, so a poster
+   *  hiccup never breaks the resolve. */
   def fullDetails(tmdbId: Int): Option[TmdbClient.FullDetails] = authHeader.flatMap { auth =>
     Try(http.get(s"$ApiBase/movie/$tmdbId?language=pl-PL&append_to_response=credits${apiKeyParam("&")}", auth))
       .toOption.map { body =>
@@ -234,10 +237,34 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
           releaseYear   = (js \ "release_date").asOpt[String].filter(_.length >= 4).flatMap(s => Try(s.take(4).toInt).toOption),
           countries     = countries,
           genres        = genres,
-          posterUrl     = (js \ "poster_path").asOpt[String].filter(_.nonEmpty).map(p => s"${TmdbClient.PosterBase}$p")
+          // Prefer the best Polish portrait poster from `/images` over the
+          // default `poster_path` (which is whatever TMDB flags primary,
+          // regardless of language or shape). This poster only ever surfaces
+          // as a backup — the Tmdb slot ranks below every cinema in
+          // `MovieRecord.posterUrl` — so a better localised portrait improves
+          // the `data-fallbacks` chain (and the no-cinema-poster case).
+          posterUrl     = TmdbClient.bestPortraitPosterUrl(posters(tmdbId))
+                            .orElse((js \ "poster_path").asOpt[String].filter(_.nonEmpty).map(p => s"${TmdbClient.PosterBase}$p"))
         )
       }
   }
+
+  /** Polish-localised + language-neutral poster variants for a movie, from
+   *  TMDB's `/movie/{id}/images` endpoint. Each carries its language tag,
+   *  aspect ratio and community vote, so `bestPortraitPosterUrl` can choose
+   *  the best *portrait* Polish poster — a better backup than the default
+   *  `poster_path`, which is whatever TMDB flags primary regardless of shape.
+   *
+   *  `include_image_language=pl,null` restricts the response to Polish-tagged
+   *  and language-neutral artwork. Wrapped so any failure — network, or a
+   *  missing fixture on test replay — yields an empty list; callers then fall
+   *  back to `poster_path` exactly as before. */
+  def posters(tmdbId: Int): Seq[TmdbClient.PosterImage] = authHeader.map { auth =>
+    Try {
+      val body = http.get(s"$ApiBase/movie/$tmdbId/images?include_image_language=pl,null${apiKeyParam("&")}", auth)
+      TmdbClient.parsePosters(body)
+    }.getOrElse(Seq.empty)
+  }.getOrElse(Seq.empty)
 
   /** TMDB person id for a name search, or None when the search returns no
    *  Directing-known hit. Picks the highest-popularity match whose
@@ -308,6 +335,10 @@ object TmdbClient {
   // Top-N cast cap for `fullDetails.cast`. TMDB's `cast` is the whole role
   // list; keeping the top 5 matches the length cinemas typically ship.
   private val MaxCastNames = 5
+  // Widest aspect ratio (width/height, TMDB's convention) we still treat as a
+  // portrait poster. A 2:3 poster is ~0.667; anything above this is squarer or
+  // landscape and would crop badly in the 2:3 card, so we skip it.
+  private val MaxPortraitAspectRatio = 0.72
 
   val ApiKey: Option[String] = Env.get("TMDB_API_KEY")
 
@@ -348,6 +379,45 @@ object TmdbClient {
     genres:         Seq[String],
     posterUrl:      Option[String]
   )
+
+  /** One poster variant from `/movie/{id}/images`. `aspectRatio` is
+   *  width/height (TMDB's convention) — a 2:3 portrait poster is ~0.667.
+   *  `language` is the `iso_639_1` tag ("pl"), or None for language-neutral
+   *  artwork. */
+  case class PosterImage(
+    filePath:    String,
+    language:    Option[String],
+    aspectRatio: Double,
+    voteAverage: Double,
+    width:       Int
+  )
+
+  private[clients] def parsePosters(body: String): Seq[PosterImage] =
+    (Json.parse(body) \ "posters").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+      .flatMap { js =>
+        (js \ "file_path").asOpt[String].filter(_.nonEmpty).map { fp =>
+          PosterImage(
+            filePath    = fp,
+            language    = (js \ "iso_639_1").asOpt[String].filter(_.nonEmpty),
+            aspectRatio = (js \ "aspect_ratio").asOpt[Double].getOrElse(0.0),
+            voteAverage = (js \ "vote_average").asOpt[Double].getOrElse(0.0),
+            width       = (js \ "width").asOpt[Int].getOrElse(0)
+          )
+        }
+      }
+
+  /** Pick the best *portrait* poster URL from a `/images` poster set,
+   *  preferring Polish-tagged artwork. Drops landscape/square variants
+   *  (aspect ratio above `MaxPortraitAspectRatio`), then orders by
+   *  (Polish first, highest community vote, then resolution) and returns the
+   *  winner as a w500 CDN URL. None when nothing portrait survives — the
+   *  caller falls back to `poster_path`. */
+  def bestPortraitPosterUrl(posters: Seq[PosterImage]): Option[String] =
+    posters
+      .filter(p => p.aspectRatio > 0 && p.aspectRatio <= MaxPortraitAspectRatio)
+      .sortBy(p => (if (p.language.contains("pl")) 0 else 1, -p.voteAverage, -p.width))
+      .headOption
+      .map(p => s"$PosterBase${p.filePath}")
 
   private[clients] def urlEncode(s: String): String = URLEncoder.encode(s, StandardCharsets.UTF_8)
 }

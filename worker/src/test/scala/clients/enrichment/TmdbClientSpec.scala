@@ -353,4 +353,97 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     val client = fakeClient(Map("/movie/99/credits" -> creditsBody))
     client.directorsFor(99) shouldBe Set("Akira Kurosawa")
   }
+
+  // ── fullDetails: Polish portrait poster from /movie/{id}/images ────────────
+  //
+  // The default `poster_path` is whatever TMDB flags primary, regardless of
+  // language or shape. For films whose cinema poster isn't a proper portrait,
+  // we want the best Polish portrait poster as the (backup) Tmdb-slot poster.
+  // `fullDetails` now reads `/movie/{id}/images?include_image_language=pl,null`
+  // and prefers the best portrait variant, falling back to `poster_path`.
+
+  it should "prefer the Polish portrait poster from /images over poster_path" in {
+    val detailsBody =
+      """{"id":555,"title":"Film","original_title":"Film","release_date":"2024-01-01",
+        |"poster_path":"/default.jpg","credits":{"crew":[],"cast":[]}}""".stripMargin
+    // The en poster has a *higher* vote than the pl one — Polish must still win.
+    val imagesBody =
+      """{"posters":[
+        |  {"file_path":"/english.jpg","iso_639_1":"en","aspect_ratio":0.667,"vote_average":9.0,"width":2000},
+        |  {"file_path":"/polish.jpg","iso_639_1":"pl","aspect_ratio":0.667,"vote_average":7.0,"width":2000},
+        |  {"file_path":"/neutral.jpg","iso_639_1":null,"aspect_ratio":0.667,"vote_average":8.0,"width":2000}
+        |]}""".stripMargin
+    val client = fakeClient(Map(
+      "/movie/555/images"         -> imagesBody,
+      "/movie/555?language=pl-PL" -> detailsBody
+    ))
+    client.fullDetails(555).flatMap(_.posterUrl) shouldBe
+      Some("https://image.tmdb.org/t/p/w500/polish.jpg")
+  }
+
+  it should "fall back to poster_path when /images has no portrait poster" in {
+    val detailsBody =
+      """{"id":556,"title":"Film","original_title":"Film","release_date":"2024-01-01",
+        |"poster_path":"/default.jpg","credits":{"crew":[],"cast":[]}}""".stripMargin
+    // Only a landscape (1.78) pl poster — excluded, so we keep poster_path.
+    val imagesBody =
+      """{"posters":[
+        |  {"file_path":"/wide.jpg","iso_639_1":"pl","aspect_ratio":1.78,"vote_average":9.0,"width":3000}
+        |]}""".stripMargin
+    val client = fakeClient(Map(
+      "/movie/556/images"         -> imagesBody,
+      "/movie/556?language=pl-PL" -> detailsBody
+    ))
+    client.fullDetails(556).flatMap(_.posterUrl) shouldBe
+      Some("https://image.tmdb.org/t/p/w500/default.jpg")
+  }
+
+  it should "fall back to poster_path when the /images call has no fixture (failure-tolerant)" in {
+    // No "/images" fragment registered → the fake throws → posters() swallows
+    // it → poster_path stands. This is the test-replay / network-error path.
+    val detailsBody =
+      """{"id":557,"title":"Film","original_title":"Film","release_date":"2024-01-01",
+        |"poster_path":"/default.jpg","credits":{"crew":[],"cast":[]}}""".stripMargin
+    val client = fakeClient(Map("/movie/557?language=pl-PL" -> detailsBody))
+    client.fullDetails(557).flatMap(_.posterUrl) shouldBe
+      Some("https://image.tmdb.org/t/p/w500/default.jpg")
+  }
+
+  "bestPortraitPosterUrl" should "prefer a Polish poster over a higher-voted language-neutral one" in {
+    TmdbClient.bestPortraitPosterUrl(Seq(
+      TmdbClient.PosterImage("/neutral.jpg", None,       0.667, 9.0, 2000),
+      TmdbClient.PosterImage("/polish.jpg",  Some("pl"), 0.667, 5.0, 2000)
+    )) shouldBe Some("https://image.tmdb.org/t/p/w500/polish.jpg")
+  }
+
+  it should "break ties among same-language posters by community vote, then resolution" in {
+    TmdbClient.bestPortraitPosterUrl(Seq(
+      TmdbClient.PosterImage("/low.jpg",  Some("pl"), 0.667, 5.0, 3000),
+      TmdbClient.PosterImage("/high.jpg", Some("pl"), 0.667, 8.0, 1000)
+    )) shouldBe Some("https://image.tmdb.org/t/p/w500/high.jpg")
+  }
+
+  it should "exclude landscape/square variants and return None when nothing portrait survives" in {
+    TmdbClient.bestPortraitPosterUrl(Seq(
+      TmdbClient.PosterImage("/wide.jpg",   Some("pl"), 1.78, 9.0, 3000),
+      TmdbClient.PosterImage("/square.jpg", Some("pl"), 1.0,  9.0, 2000)
+    )) shouldBe None
+  }
+
+  it should "return None for an empty poster set" in {
+    TmdbClient.bestPortraitPosterUrl(Seq.empty) shouldBe None
+  }
+
+  "parsePosters" should "decode file_path, language, aspect, vote and width (null language → None)" in {
+    val body =
+      """{"posters":[
+        |  {"file_path":"/a.jpg","iso_639_1":"pl","aspect_ratio":0.667,"vote_average":7.5,"width":2000},
+        |  {"file_path":"/b.jpg","iso_639_1":null,"aspect_ratio":0.69,"vote_average":3.1,"width":1500}
+        |]}""".stripMargin
+    val ps = TmdbClient.parsePosters(body)
+    ps.map(_.filePath) shouldBe Seq("/a.jpg", "/b.jpg")
+    ps.head.language   shouldBe Some("pl")
+    ps(1).language     shouldBe None
+    ps.head.voteAverage shouldBe 7.5 +- 0.001
+  }
 }
