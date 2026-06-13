@@ -5,65 +5,93 @@ import models.{KinoMikro, MikroBronowice}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoMikroClient
+import play.api.libs.json.JsString
+import services.cinemas.{KinoMikroClient, KinoMikroParser}
 
-import java.time.LocalDateTime
+import java.time.LocalDate
 
-/** Replays a recorded `api.php/v1/repertoires?limit=1000` JSON payload
- *  (06.06.2026) through the client. The single feed carries both venues, so the
- *  spec pins that the `location_institution_name` filter cleanly partitions them
- *  and that one shared client tags each row with the venue it was constructed
- *  for. The `limit` param is load-bearing: without it the feed truncates to ~20
- *  records (one screening per film); with it the full 06.06–30.06 window comes
- *  back — 28 Kino Mikro screenings here, up from the 18 the un-paginated feed
- *  exposed. Mikro Bronowice carries only a single screening in this feed
- *  regardless of `limit`; the rest of its programme simply isn't published to
- *  this API. */
+/** Replays the recorded per-day `api.php/v1/repertoires?from=D&to=D+1` JSON
+ *  payloads (one file per day, 13.06–19.06.2026) through the client, pinning
+ *  `today` to the capture date so the day-window URLs hit the recorded
+ *  fixtures.
+ *
+ *  The per-day fetch is load-bearing: a single broad request silently caps the
+ *  feed at ~25 records (today's schedule plus one teaser per future day) and
+ *  ignores `limit`, so the advance-date repeats are dropped — every film
+ *  collapsed to one screening and Filmweb showed 3–4× our count. Querying one
+ *  narrow `from`/`to` day at a time bypasses the cap; merging the days
+ *  reconstructs the full window (52 Kino Mikro showings here, up from the 28
+ *  the capped feed exposed; 10 Mikro Bronowice, up from 1). */
 class KinoMikroClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private val http = new FakeHttpFetch("kino-mikro")
+  private val http  = new FakeHttpFetch("kino-mikro")
+  private val today = LocalDate.of(2026, 6, 13)
 
   private def showtimeCount(movies: Seq[models.CinemaMovie]): Int = movies.map(_.showtimes.size).sum
 
-  "KinoMikroClient" should "scope the shared feed to the Kino Mikro screen" in {
-    val movies = new KinoMikroClient(http, "Kino Mikro", KinoMikro).fetch()
+  "KinoMikroClient" should "merge the per-day feeds into the whole window for Kino Mikro" in {
+    val movies = new KinoMikroClient(http, "Kino Mikro", KinoMikro, today).fetch()
 
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(KinoMikro)
-    // The un-paginated feed returned 18 Kino Mikro screenings; `?limit=1000`
-    // pulls the whole advance window, lifting this to 28.
-    showtimeCount(movies) shouldBe 28
+    // The capped single-request feed exposed 28 Kino Mikro showings (one per
+    // film per future day); per-day merging recovers the full 52.
+    showtimeCount(movies) shouldBe 52
+
+    // The fix's whole point: a film now carries its multi-day repeats, not a
+    // single survivor. "Zniknięcie" runs once a day across the window.
+    val zniknięcie = movies.find(_.movie.title == "Zniknięcie").value
+    zniknięcie.showtimes.size shouldBe 6
+    zniknięcie.showtimes.map(_.dateTime.toLocalDate).distinct.size should be > 1
   }
 
-  it should "scope the same feed to Mikro Bronowice, tagging rows with that venue" in {
-    val movies = new KinoMikroClient(http, "Mikro Bronowice", MikroBronowice).fetch()
+  it should "scope the same per-day feeds to Mikro Bronowice, tagging rows with that venue" in {
+    val movies = new KinoMikroClient(http, "Mikro Bronowice", MikroBronowice, today).fetch()
 
     movies.map(_.cinema).toSet shouldBe Set(MikroBronowice)
-    showtimeCount(movies) shouldBe 1
+    // The capped feed published a single Bronowice screening; per-day fetch
+    // recovers all 10 across 3 films.
+    showtimeCount(movies) shouldBe 10
 
-    // The single recorded Bronowice screening: Erupcja, 08.06.2026 18:00.
-    val erupcja = movies.find(_.movie.title == "Erupcja").value
-    erupcja.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 8, 18, 0))
-    erupcja.showtimes.flatMap(_.bookingUrl).head should startWith("https://kinomikro.pl/repertoire/krakow-erupcja/")
+    val tomIJerry = movies.find(_.movie.title == "Tom i Jerry: Przygoda w muzeum").value
+    tomIJerry.showtimes.size shouldBe 4
+    tomIJerry.showtimes.flatMap(_.bookingUrl).head should startWith("https://kinomikro.pl/repertoire/")
   }
 
   it should "parse the director out of the event_description HTML blob" in {
-    val movies = new KinoMikroClient(http, "Kino Mikro", KinoMikro).fetch()
+    val movies = new KinoMikroClient(http, "Kino Mikro", KinoMikro, today).fetch()
 
-    // No-colon layout terminated by the next field label (`Obsada`):
+    // No-colon layout terminated by the next field label, taken from the real
+    // recorded feed:
     //   `…<div>Reżyseria George Sluizer</div><div>Obsada …`
     movies.find(_.movie.title == "Zniknięcie").value.director shouldBe Seq("George Sluizer")
-
-    // Colon layout terminated by `<br>Scenariusz: …`:
-    //   `…<br>Reżyseria: Federico Fellini <br>Scenariusz: …`
-    movies
-      .find(_.movie.title == "FEDERICO FELLINI: ciao a tutti: Noce Cabirii")
-      .value
-      .director shouldBe Seq("Federico Fellini")
 
     // The terminator label must never be swallowed into the captured name.
     val forbidden = Seq("Obsada", "Scenariusz", "Gatunek", "Produkcja", "Czas", "Dystrybutor")
     val allDirectors = movies.flatMap(_.director)
     forbidden.foreach(label => all(allDirectors) should not include label)
+  }
+
+  // Director extraction is fixture-independent — exercise the colon layout
+  // (`Reżyseria: …`) and co-director splitting through the public parser with a
+  // hand-built record, so coverage doesn't hinge on which films happen to be
+  // showing in the recorded week (the no-colon layout is covered above via the
+  // real "Zniknięcie" feed).
+  private def directorOf(eventDescription: String): Seq[String] = {
+    val json =
+      s"""{"data":[{"location_institution_name":"Kino Mikro","event_title":"Probe",
+         |"event_date":"15.06.2026 18:00","event_description":${JsString(eventDescription)}}]}""".stripMargin
+    KinoMikroParser.parse(Seq(json), "Kino Mikro", KinoMikro).head.director
+  }
+
+  "KinoMikroParser.parse" should "read a colon-layout director terminated by the next label" in {
+    directorOf("<br>Reżyseria: Federico Fellini <br>Scenariusz: Federico Fellini, Tullio Pinelli") shouldBe
+      Seq("Federico Fellini")
+  }
+
+  it should "split co-directors and return no director when the Reżyseria marker is absent" in {
+    directorOf("<div>Reżyseria: Joel Coen, Ethan Coen</div><div>Gatunek dramat</div>") shouldBe
+      Seq("Joel Coen", "Ethan Coen")
+    directorOf("<div>Gatunek: dramat</div>") shouldBe empty
   }
 }

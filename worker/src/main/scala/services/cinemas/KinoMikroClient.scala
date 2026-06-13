@@ -3,35 +3,63 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import play.api.libs.json._
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
-import java.time.LocalDateTime
+import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.time.format.DateTimeFormatter
+import scala.concurrent.duration._
 import scala.util.Try
 
 /**
  * Kino Mikro (kinomikro.pl) and its sister screen Mikro Bronowice share one
- * Joomla/Omomo backend that exposes the whole programme as JSON at
+ * Joomla/Omomo backend that exposes the programme as JSON at
  * `api.php/v1/repertoires` — no HTML scraping, no detail-page fetch. Both
  * venues come back in the same flat array; `location_institution_name`
  * (`"Kino Mikro"` vs `"Mikro Bronowice"`) is the discriminant, so one client
  * parameterised by the venue name serves either screen. The JSON carries no
  * runtime / genres — TMDB supplies those downstream — but the
  * `event_description` HTML blob does name the director, which we extract.
+ *
+ * The feed is fetched one request per day across the [today, today+6] window.
+ * A broad/un-dated request silently caps the response at ~25 records — today's
+ * schedule in full plus a single teaser screening per upcoming day — and the
+ * `limit` param is ignored, so every advance-date repeat is dropped (Filmweb
+ * showed 3–4× our count). A per-day `from=D&to=D+1` request bypasses that cap
+ * and returns the whole day; merging the days reconstructs the full window.
  */
-class KinoMikroClient(http: HttpFetch, venueName: String, override val cinema: Cinema) extends CinemaScraper {
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoMikroClient.ApiUrl, "https://bilety.kinomikro.pl")
+class KinoMikroClient(
+  http:                HttpFetch,
+  venueName:           String,
+  override val cinema: Cinema,
+  today:               LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+) extends CinemaScraper {
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoMikroClient.BaseApiUrl, "https://bilety.kinomikro.pl")
 
-  def fetch(): Seq[CinemaMovie] = KinoMikroParser.parse(http.get(KinoMikroClient.ApiUrl), venueName, cinema)
+  def fetch(): Seq[CinemaMovie] = {
+    val dates = (0 until KinoMikroClient.WindowDays).map(today.plusDays(_))
+    val dayBodies = ParallelDetailFetch.keyed("kino-mikro-days", dates.map(_.toString), 1.minute) { dateStr =>
+      KinoMikroClient.dayUrl(LocalDate.parse(dateStr))
+    } { url =>
+      Try(http.get(url)).toOption
+    }
+    val jsons = dates.flatMap(d => dayBodies.getOrElse(d.toString, None))
+    KinoMikroParser.parse(jsons, venueName, cinema)
+  }
 }
 
 object KinoMikroClient {
-  // The feed paginates: with no `limit` it caps the response at ~20 records and
-  // silently drops the back half of the multi-week programme — one screening per
-  // film survives, the advance-date repeats are truncated. `limit` is honoured
-  // server-side, so ask for far more than the cinema could ever schedule to pull
-  // the whole window (06.06–30.06 at recording time) in one shot.
-  val ApiUrl = "https://kinomikro.pl/api.php/v1/repertoires?limit=1000"
+  // Scrape today and the next 6 days — the standard one-week window the other
+  // per-day clients (NoweHoryzonty, McswElektrownia) use.
+  private val WindowDays = 7
+
+  val BaseApiUrl = "https://kinomikro.pl/api.php/v1/repertoires"
+
+  // The feed caps a broad request at ~25 records and ignores `limit`; a narrow
+  // single-day `from`/`to` range returns that day's full schedule instead. `to`
+  // is exclusive (the day after). `limit=1000` is a harmless safety margin in
+  // case a single day ever exceeds the default page size.
+  def dayUrl(date: LocalDate): String =
+    s"$BaseApiUrl?limit=1000&from=$date&to=${date.plusDays(1)}"
 }
 
 object KinoMikroParser {
@@ -58,8 +86,13 @@ object KinoMikroParser {
     }
   }
 
-  def parse(json: String, venueName: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val records = (Json.parse(json) \ "data").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+  /** Parse and merge one-or-more day responses (`?from=D&to=D+1`). Each film
+   *  recurs across day-files, so grouping by title and de-duplicating showtimes
+   *  reconstructs the full window from the per-day slices. */
+  def parse(jsons: Seq[String], venueName: String, cinema: Cinema): Seq[CinemaMovie] = {
+    val records = jsons.flatMap { json =>
+      (Json.parse(json) \ "data").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+    }
 
     val rows = records.flatMap { r =>
       for {
