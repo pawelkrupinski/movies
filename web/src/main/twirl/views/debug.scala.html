@@ -145,12 +145,13 @@
    (so they update live off the same change stream), each entry annotated with
    whether the worker already has an enrichment task for it and its place in the
    queue (polled from /debug/queue). Unenriched first, then TMDB-unresolved. *@
+@* Both sections start folded (click a header to expand). *@
 <div id="pending">
-  <section class="pending-sec" data-flag="unenriched">
+  <section class="pending-sec collapsed" data-flag="unenriched">
     <h2>Unenriched <span class="cnt">0</span> <span class="hint">— a cinema detail-page enrichment hasn't run yet for this film</span></h2>
     <ul class="pending-list"></ul>
   </section>
-  <section class="pending-sec" data-flag="tmdbUnresolved">
+  <section class="pending-sec collapsed" data-flag="tmdbUnresolved">
     <h2>TMDB-unresolved <span class="cnt">0</span> <span class="hint">— no TMDB id yet (excludes concluded no-match)</span></h2>
     <ul class="pending-list"></ul>
   </section>

@@ -2721,21 +2721,21 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  it should "fold a pending section when its header is clicked, and unfold on a second click" in {
+  it should "start folded and toggle on each header click" in {
     onDebug { page =>
       def collapsed = page.evalBool(
         """document.querySelector('.pending-sec[data-flag="unenriched"]').classList.contains('collapsed')""")
       def listHidden = page.evalBool(
         """getComputedStyle(document.querySelector('.pending-sec[data-flag="unenriched"] .pending-list')).display === 'none'""")
 
-      collapsed shouldBe false
+      collapsed shouldBe true   // folded by default
+      listHidden shouldBe true
+      page.eval("""document.querySelector('.pending-sec[data-flag="unenriched"] h2').click()""")
+      collapsed shouldBe false  // expanded
       listHidden shouldBe false
       page.eval("""document.querySelector('.pending-sec[data-flag="unenriched"] h2').click()""")
-      collapsed shouldBe true
-      listHidden shouldBe true // folded
-      page.eval("""document.querySelector('.pending-sec[data-flag="unenriched"] h2').click()""")
-      collapsed shouldBe false
-      listHidden shouldBe false // unfolded again
+      collapsed shouldBe true   // folded again
+      listHidden shouldBe true
     }
   }
 
