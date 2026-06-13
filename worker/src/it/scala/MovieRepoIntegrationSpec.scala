@@ -346,13 +346,21 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
   // dropped rows. The fix sorts by the immutable, unique `_id` index, whose
   // key-ordered walk returns each doc exactly once. The duplication itself only
   // reproduces under live concurrent write load (not deterministically here), so
-  // this guards the fix MECHANISM: the result is `_id`-ascending, which holds
-  // only when the `_id` index drives the scan. Seeded out-of-order sentinels +
-  // the existing natural-order corpus make it fail before the sort, pass after.
+  // this guards the fix MECHANISM: with the sort, three out-of-order sentinels
+  // come back `_id`-ascending; without it the scan yields them in insertion
+  // (natural) order.
+  //
+  // Assert ONLY on these sentinels, not the whole corpus: `findAll` sorts by the
+  // STORED `_id`, but `idOf` RE-DERIVES the id from the (possibly programme-
+  // decorated) display title — for a real row keyed `follement…|2025` under the
+  // "Cykl…" programme, `idOf` yields `cyklzawsze…follement…`, so the two diverge
+  // and a corpus-wide order assertion is meaningless. These sentinels carry no
+  // sourceData, so their display title IS the id prefix and `idOf` == stored `_id`.
   it should "return rows in _id order (the _id-indexed scan that can't duplicate or skip)" in {
     Seq("c", "a", "b").foreach(s =>
       repo.upsert(s"__integration-test-order-${s}__", None, MovieRecord()))
-    val ids = repo.findAll().map(StoredMovieRecord.idOf)
+    val ids = repo.findAll().map(StoredMovieRecord.idOf).filter(_.startsWith("integrationtestorder"))
+    ids        should have size 3 // all three returned — no skip
     ids shouldBe ids.sorted
   }
 }
