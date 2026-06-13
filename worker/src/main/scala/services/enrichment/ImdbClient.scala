@@ -138,10 +138,14 @@ class ImdbClient(http: HttpFetch) {
    *  letter of the query; for non-ASCII titles we fall back to `x` which the
    *  endpoint also accepts.
    *
-   *  Conservative match: only `qid == "movie"` entries with an exact
-   *  case-insensitive title match qualify. Year-closest breaks ties; rank
-   *  (lower = more popular) is the final tie-breaker. Returns None rather
-   *  than guessing — a wrong id pollutes ratings + RT lookups downstream.
+   *  Conservative match: only `qid == "movie"` entries qualify. An exact
+   *  case-insensitive title match wins (year-closest breaks ties, rank —
+   *  lower = more popular — is the final tie-breaker). Failing that, a
+   *  foreign film whose IMDb display title is its international/English name
+   *  (e.g. Polish "Kumotry" → IMDb "Double Trouble") is accepted only when
+   *  it is IMDb's top movie suggestion AND its year matches the one we
+   *  already know from TMDB. Otherwise None — a wrong id pollutes ratings +
+   *  RT lookups downstream.
    */
   def findId(title: String, year: Option[Int]): Option[String] = {
     if (title.trim.isEmpty) None
@@ -160,19 +164,29 @@ class ImdbClient(http: HttpFetch) {
   def parseSuggestions(body: String, title: String, year: Option[Int]): Option[String] = {
     val q = title.toLowerCase.trim
     Try(Json.parse(body)).toOption.flatMap { js =>
-      (js \ "d").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+      // Real film candidates: tt-id, qid "movie". Keep document order — IMDb
+      // returns the best query match first, popularity padding after.
+      val movies = (js \ "d").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
         .flatMap { entry =>
           for {
-            id <- (entry \ "id").asOpt[String] if id.startsWith("tt")
+            id  <- (entry \ "id").asOpt[String] if id.startsWith("tt")
             qid <- (entry \ "qid").asOpt[String] if qid == "movie"
-            l <- (entry \ "l").asOpt[String] if l.toLowerCase.trim == q
-          } yield (id, (entry \ "y").asOpt[Int], (entry \ "rank").asOpt[Int].getOrElse(Int.MaxValue))
+          } yield Suggestion(id, (entry \ "l").asOpt[String].map(_.toLowerCase.trim), (entry \ "y").asOpt[Int], (entry \ "rank").asOpt[Int].getOrElse(Int.MaxValue))
         }
-        .sortBy { case (_, y, rank) =>
-          val yearDistance = year.flatMap(req => y.map(yi => math.abs(yi - req))).getOrElse(Int.MaxValue)
-          (yearDistance, rank)
+      val exact = movies
+        .filter(_.title.contains(q))
+        .sortBy { s =>
+          val yearDistance = year.flatMap(req => s.year.map(yi => math.abs(yi - req))).getOrElse(Int.MaxValue)
+          (yearDistance, s.rank)
         }
-        .headOption.map(_._1)
+        .headOption.map(_.id)
+      // Foreign-title fallback: when nothing matches the local title, accept
+      // IMDb's #1 movie suggestion only if its year corroborates the one TMDB
+      // gave us. That pair of signals (query relevance + exact year) is enough
+      // to bind e.g. "Kumotry"→"Double Trouble" without wild-guessing.
+      exact.orElse(year.flatMap(req => movies.headOption.collect {
+        case s if s.year.contains(req) => s.id
+      }))
     }
   }
 }
@@ -184,6 +198,11 @@ object ImdbClient {
   val MinVotes: Int    = 5
   // Top-N cap for IMDb's principal cast — matches TMDB's shape.
   val MaxCastNames: Int = 5
+
+  /** One parsed suggestion-endpoint movie row: tt-id plus the fields the
+   *  matcher ranks on (lowercased display title, release year, popularity
+   *  rank). */
+  private case class Suggestion(id: String, title: Option[String], year: Option[Int], rank: Int)
 
   /** Full IMDb record consumed by the IMDb enrichment stage: rating plus the
    *  content fields that fill `SourceData(Imdb)` (synopsis, director, cast,

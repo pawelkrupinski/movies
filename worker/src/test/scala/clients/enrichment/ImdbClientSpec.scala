@@ -58,6 +58,12 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   }
 
   private val MortalKombatFixture = "/fixtures/imdb/suggestion_mortal_kombat_ii.json"
+  // Captured live from https://v3.sg.media-imdb.com/suggestion/k/Kumotry.json
+  // on 2026-06-13. The Polish comedy "Kumotry" is listed on IMDb under its
+  // international title "Double Trouble" — searching the Polish title returns
+  // it as the #1 movie hit (an AKA match), followed by popularity padding
+  // (The Godfather films) that does NOT match the query year.
+  private val KumotryFixture = "/fixtures/imdb/suggestion_kumotry.json"
 
   "parseSuggestions" should "return the tt-id of the movie that exact-title matches the query" in {
     val body = loadFixture(MortalKombatFixture)
@@ -98,9 +104,43 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
 
   it should "return None when nothing exact-matches the query (no wild guessing)" in {
     val body = loadFixture(MortalKombatFixture)
-    // Nothing in the fixture is exactly "Inconnu de la Grande Arche" — return
+    // Nothing in the fixture is exactly "Inconnu de la Grande Arche", and the
+    // #1 movie (Mortal Kombat II, 2026) doesn't match the query year — return
     // None rather than picking the most popular Mortal Kombat film.
     client.parseSuggestions(body, "Inconnu de la Grande Arche", Some(2025)) shouldBe None
+  }
+
+  it should "resolve a foreign film listed under its international title via year-corroborated #1 hit" in {
+    val body = loadFixture(KumotryFixture)
+    // "Kumotry" (PL, 2025) has no exact-title entry — IMDb lists it as
+    // "Double Trouble". It is the top movie suggestion and its year matches,
+    // so we bind to it rather than dropping the IMDb rating entirely.
+    client.parseSuggestions(body, "Kumotry", Some(2025)) shouldBe Some("tt36396038")
+  }
+
+  it should "NOT take the #1 hit when its year contradicts the query year" in {
+    val body = loadFixture(KumotryFixture)
+    // Same fixture, wrong year: the #1 hit is a 2025 film, so a 1999 query
+    // gets no corroboration and no lower entry exact-matches → None.
+    client.parseSuggestions(body, "Kumotry", Some(1999)) shouldBe None
+  }
+
+  it should "NOT take the #1 hit when the caller supplied no year" in {
+    val body = loadFixture(KumotryFixture)
+    // Without a year there's no second signal to corroborate an AKA match —
+    // the foreign-title fallback stays off rather than guessing.
+    client.parseSuggestions(body, "Kumotry", None) shouldBe None
+  }
+
+  it should "prefer an exact title match over a year-matching #1 hit" in {
+    // The #1 movie is a year-matching foreign title, but a later entry
+    // exactly matches the query — the exact match must win.
+    val body =
+      """{"d":[
+         {"id":"tt0001","l":"Some Other Title","q":"feature","qid":"movie","rank":5,"y":2025},
+         {"id":"tt0002","l":"Exact","q":"feature","qid":"movie","rank":900,"y":2025}
+       ]}"""
+    client.parseSuggestions(body, "Exact", Some(2025)) shouldBe Some("tt0002")
   }
 
   it should "tolerate entries missing optional fields (rank, year)" in {
