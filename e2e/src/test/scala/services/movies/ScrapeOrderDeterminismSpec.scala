@@ -5,7 +5,7 @@ import controllers.{FilmSchedule, MovieControllerService}
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.MovieRecordCreated
+import services.events.MovieDetailsComplete
 import tools.{FixtureTestWiring, HttpFetch}
 
 import java.time.LocalDateTime
@@ -25,7 +25,7 @@ import scala.collection.mutable
  * For each of a handful of multi-cinema films it replays the same scrape input
  * `IterationsPerMovie` times, each time randomizing every ordering we control:
  *   - the order cinema scrapes arrive (and the within-cinema movie order),
- *   - the order `MovieRecordCreated` events are published,
+ *   - the order `MovieDetailsComplete` events are published,
  *   - the timing each enrichment fetch (TMDB / IMDb / Metacritic / Rotten
  *     Tomatoes / Filmweb) *completes* — a [[JitterHttpFetch]] sleeps a
  *     deterministic-per-(url,seed) few ms before each call, so the four rating
@@ -139,12 +139,12 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
       override lazy val httoFetch: HttpFetch = new JitterHttpFetch(new FakeHttpFetch(fixture), seed, MaxJitterMillis)
     }
 
-    val created = mutable.ListBuffer.empty[MovieRecordCreated]
+    val created = mutable.ListBuffer.empty[MovieDetailsComplete]
     rnd.shuffle(group.byCinema.toSeq).foreach { case (cinema, movies) =>
       val touched = w.movieCache.recordCinemaScrape(cinema, rnd.shuffle(movies))
       touched.foreach { case (cm, key, isNew) =>
         if (isNew)
-          created += MovieRecordCreated(
+          created += MovieDetailsComplete(
             key.cleanTitle, key.year, cm.movie.originalTitle,
             if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None
           )
@@ -215,12 +215,12 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     val w = new FixtureTestWiring(Fixture) {
       override lazy val httoFetch: HttpFetch = jitter
     }
-    val created = mutable.ListBuffer.empty[MovieRecordCreated]
+    val created = mutable.ListBuffer.empty[MovieDetailsComplete]
     rnd.shuffle(harvestByCinema).foreach { case (cinema, movies) =>
       val touched = w.movieCache.recordCinemaScrape(cinema, rnd.shuffle(movies))
       touched.foreach { case (cm, key, isNew) =>
         if (isNew)
-          created += MovieRecordCreated(
+          created += MovieDetailsComplete(
             key.cleanTitle, key.year, cm.movie.originalTitle,
             if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None
           )

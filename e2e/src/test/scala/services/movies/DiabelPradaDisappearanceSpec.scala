@@ -7,7 +7,7 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{CinemaCityClient, HeliosClient, MultikinoClient}
-import services.events.{InProcessEventBus, MovieRecordCreated}
+import services.events.{InProcessEventBus, MovieDetailsComplete}
 import tools.RoutingHttpFetch
 
 /**
@@ -20,7 +20,7 @@ import tools.RoutingHttpFetch
  * Replays the actual fixture payloads through the live cinema parsers
  * (`MultikinoClient`, `CinemaCityClient`, `HeliosClient`), runs them
  * through the production enrichment pipeline (recordCinemaScrape +
- * `MovieService.onMovieRecordCreated` on the bus), and asserts the
+ * `MovieService.onMovieDetailsComplete` on the bus), and asserts the
  * post-pipeline cache holds exactly ONE row for the film — with
  * `cinemaShowings` spanning every cinema that screened it.
  */
@@ -89,7 +89,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   // ── Parametrized scrape-order regression ──────────────────────────────────
   //
   // Same invariant as the MK II spec: after the production pipeline runs
-  // (recordCinemaScrape + MovieRecordCreated on the bus), exactly one row in the
+  // (recordCinemaScrape + MovieDetailsComplete on the bus), exactly one row in the
   // cache must hold the cinema slots — anything more is a duplicate card
   // on screen, anything less makes the film vanish from the home-page
   // list. Every permutation of the four scrape orders gets its own case
@@ -112,15 +112,15 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       val svc   = new MovieService(cache, bus, tmdbStub())
 
       // First scrape resolves the row synchronously so subsequent
-      // cinemas' MovieRecordCreated events find a sibling with a tmdbId.
+      // cinemas' MovieDetailsComplete events find a sibling with a tmdbId.
       val first = ordering.head
       cache.recordCinemaScrape(first.cinema, Seq(first.cm))
       svc.reEnrichSync(first.title, first.year)
 
-      bus.subscribe(svc.onMovieRecordCreated)
+      bus.subscribe(svc.onMovieDetailsComplete)
       for (s <- ordering.tail) {
         cache.recordCinemaScrape(s.cinema, Seq(s.cm))
-        bus.publish(MovieRecordCreated(s.title, s.year, s.cm.movie.originalTitle, if (s.cm.director.nonEmpty) Some(s.cm.director.mkString(", ")) else None))
+        bus.publish(MovieDetailsComplete(s.title, s.year, s.cm.movie.originalTitle, if (s.cm.director.nonEmpty) Some(s.cm.director.mkString(", ")) else None))
       }
 
       def isPrada(e: MovieRecord): Boolean =
@@ -214,7 +214,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   // cinemas reported the same film with different years (one with year=None,
   // one with year=Some(YYYY)). recordCinemaScrape's redirect already attached
   // both cinemas' slots to a single row, but the scrape published
-  // a `MovieRecordCreated` event for the RAW (title, year) reported
+  // a `MovieDetailsComplete` event for the RAW (title, year) reported
   // by each cinema. The TMDB stage ran independently for each raw key, and
   // when the in-flight TMDB call for the first row hadn't completed yet,
   // `hasResolvedSiblingByTitle` returned false and the second TMDB call
@@ -224,7 +224,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   //
   // Fix: recordCinemaScrape returns the *canonical* CacheKey it actually
   // wrote each slot to (the redirect target when one applies, the raw key
-  // otherwise). CinemaScrapeRunner publishes MovieRecordCreated using those
+  // otherwise). CinemaScrapeRunner publishes MovieDetailsComplete using those
   // canonical keys, so both cinemas' bus events name the same key and the
   // TMDB stage runs exactly once. No phantom row, no startup merge.
 
@@ -260,10 +260,10 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
     val bus   = new InProcessEventBus
     val svc   = new MovieService(cache, bus, tmdbStub())
-    bus.subscribe(svc.onMovieRecordCreated)
+    bus.subscribe(svc.onMovieDetailsComplete)
 
     // Drive the same flow `cinemaScrapeRunner.run` does: publish a
-    // MovieRecordCreated for each canonical key returned by recordCinemaScrape.
+    // MovieDetailsComplete for each canonical key returned by recordCinemaScrape.
     // The event's director hint is omitted here; `resolveTmdb` still verifies the
     // title hit against the director the row already carries (via `/credits`),
     // which the stub now exposes — the duplicate-prevention contract under test
@@ -272,7 +272,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       val touched = cache.recordCinemaScrape(cinema, Seq(cm))
       touched.foreach { case (m, key, isNew) =>
         if (isNew)
-          bus.publish(MovieRecordCreated(key.cleanTitle, key.year, m.movie.originalTitle, None))
+          bus.publish(MovieDetailsComplete(key.cleanTitle, key.year, m.movie.originalTitle, None))
       }
     }
 
