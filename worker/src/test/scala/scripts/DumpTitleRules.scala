@@ -73,6 +73,13 @@ object DumpTitleRules {
     val repo = new MongoTitleRulesRepo(conn.database, fallbackToOwnInit = false)
     try {
       val rules = ordered(repo.findAll())
+      // A seeded prod always has the full seed (~50 rules) plus the operator
+      // extras. An empty/tiny read means the connection landed on the wrong db
+      // or the tunnel didn't come up — refuse to overwrite the mirror with junk
+      // (which would also emit an unused import and fail the -Werror compile).
+      require(rules.size >= 10,
+        s"DumpTitleRules read only ${rules.size} title rules — refusing to overwrite the mirror. " +
+          "Check that MONGODB_URI / the Fly tunnel reaches the seeded prod kinowo-mongo.")
       Files.createDirectories(Out.getParent)
       Files.write(Out, render(rules).getBytes("UTF-8"))
       println(s"Wrote ${rules.size} prod title rules to $Out")
