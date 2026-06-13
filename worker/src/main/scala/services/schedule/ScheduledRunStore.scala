@@ -48,7 +48,7 @@ object AlwaysClaimScheduledRunStore extends ScheduledRunStore {
  * `claim` is an `insertOne` keyed by the occurrence id: the first machine's
  * insert wins; a second machine inserting the same `_id` gets a duplicate-key
  * (11000) error, caught and returned as `false` — the same dup-key-insert idiom
- * as `MongoLock` and `MongoTaskQueue` (see [[services.MongoErrors]]).
+ * as `MongoTaskQueue` (see [[services.MongoErrors]]).
  *
  * A TTL index on `claimedAt` (`expireAfter` 48h) lets Mongo delete stale
  * occurrence docs, so the collection doesn't grow without bound (a doc per

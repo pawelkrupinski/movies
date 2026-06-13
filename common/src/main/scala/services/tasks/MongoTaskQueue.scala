@@ -39,7 +39,7 @@ import scala.util.Try
  * `active` flag rather than a `state ∈ {waiting,worked_on}` predicate. A
  * `deleted` tombstone (active:false) is outside the index, so re-enqueuing a
  * finished key is allowed; concurrent inserts race on the index and the loser's
- * duplicate-key error is caught as `Duplicate` (the `MongoLock` idiom).
+ * duplicate-key error is caught as `Duplicate` (see [[services.MongoErrors]]).
  *
  * Blocking `.toFuture()` throughout — callers are daemon worker/reaper threads.
  *
