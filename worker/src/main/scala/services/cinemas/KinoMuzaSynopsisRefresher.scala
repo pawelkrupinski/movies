@@ -105,6 +105,26 @@ class KinoMuzaSynopsisRefresher(
     }
   }
 
+  /** Synchronously refresh EVERY currently-stale Muza slot, exactly once each,
+   *  in deterministic key order. Unlike the async `onCinemaMovieAdded` path —
+   *  which dispatches each fetch onto its own scheduler and so races a snapshot
+   *  taken right after the scrape — this settles the synopsis/poster inline and
+   *  makes the outcome a pure function of the fixtures. Used by the test
+   *  harness drain (`TestWiring.drainServices`) so the determinism specs don't
+   *  see a `synopsis`/`posterUrl` that sometimes landed and sometimes didn't. A
+   *  slot whose detail fetch fails stays `None` (same as prod's "retry next
+   *  tick") but deterministically — so it's identical every replay. One bounded
+   *  pass: a failed fetch is NOT re-picked, unlike a `refreshOne` loop. */
+  def refreshAllStaleSync(): Unit =
+    cache.entries.iterator
+      .collect { case (key, e) if e.data.get(KinoMuza).exists(needsRefresh) => key }
+      .toSeq
+      .sortBy(k => (k.cleanTitle, k.year.getOrElse(Int.MinValue)))
+      .foreach { key =>
+        cache.get(key).flatMap(_.data.get(KinoMuza)).flatMap(_.filmUrl)
+          .foreach(url => fetchAndWrite(key, url))
+      }
+
   /** Idempotent per-row refresh — only fetches when the slot still looks
    *  unrefreshed. Used by the event handler to avoid re-fetching a row
    *  whose first-time event was already processed and persisted. */

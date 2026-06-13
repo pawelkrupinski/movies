@@ -127,6 +127,21 @@ trait TestWiring extends WorkerWiring {
   /** Drain the event-cascade worker pools so every `TmdbResolved` /
    *  `ImdbIdMissing` / `ImdbIdResolved` published during the scrape is processed
    *  end to end. Uses the same `cascadeDrainOrder` production shutdown does —
-   *  single source of truth for the producer→consumer ordering. */
-  def drainServices(): Unit = quiesce(cascadeDrainOrder*)
+   *  single source of truth for the producer→consumer ordering.
+   *
+   *  Then settle the Kino Muza detail-page synopsis/poster inline: it's the one
+   *  enrichment driven ONLY by the async `CinemaMovieAdded` event path
+   *  (`KinoMuzaSynopsisRefresher`), which dispatches the detail fetch onto its
+   *  own scheduler — so whether the synopsis/poster has landed by snapshot time
+   *  is a pure timing race the cascade drain doesn't cover. The whole-corpus
+   *  `converge()` sweep masked it (its long serial re-enrich always gave the
+   *  async fetch time to win), but the fast single-film replay exposed it as a
+   *  flaky `synopsis`/`posterUrl` `Some` vs `None`. Mirror `enrichRatingsSync`:
+   *  drive the same per-row refresh to completion so the result is a pure
+   *  function of the fixtures. Idempotent against the async path — both write
+   *  byte-identical content from the same fixture URL. */
+  def drainServices(): Unit = {
+    quiesce(cascadeDrainOrder*)
+    kinoMuzaSynopsisRefresher.refreshAllStaleSync()
+  }
 }
