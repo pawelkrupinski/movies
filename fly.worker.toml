@@ -31,10 +31,11 @@ primary_region = 'arn'
   # ones arrive via the change stream), leaving same-film duplicates stranded
   # and invisible to the in-memory collapse. 20 × 1s covers Mongo's cold start.
   KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS = '20'
-  # Caps in-flight scrape/enrich tasks (default 4). Held at 2 to bound the peak
-  # concurrent write burst onto the shared-cpu-1x Mongo — the worker's write rate,
-  # not its CPU, is the constraint. Pairs with the 30min scrape freshness TTL below.
-  KINOWO_WORKER_POOL_SIZE = '2'
+  # Caps in-flight scrape/enrich tasks (matches the code default). The worker's
+  # write rate onto the shared-cpu-1x Mongo — not its CPU — is the constraint, so
+  # watch Mongo CPU-credit/throttle after raising this. Pairs with the 30min scrape
+  # freshness TTL below, which bounds the per-pass write volume.
+  KINOWO_WORKER_POOL_SIZE = '4'
   # Cinema-scrape freshness window. Raised from the 15min code default to 30min to
   # ~halve the re-scrape pass rate (each pass that finds a real change writes through
   # to `movies` + cascades to the read model) so the worker's write load stays within
