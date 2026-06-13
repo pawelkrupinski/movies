@@ -528,21 +528,31 @@ class CaffeineMovieCache(
     }
 
   /** The canonical key of an already TMDB-concluded row this scrape matches —
-   *  same normalised title, and the same year when the scrape carries one (else
-   *  title alone). A later scrape of a known film lands its slot straight on the
+   *  same normalised title, and a matching year when the scrape carries one. A
+   *  later scrape of a known film lands its slot straight on the
    *  resolved/concluded row, so the enrichment + TMDB trigger is skipped
    *  (`CinemaScrapeRunner.classify` short-circuits on `tmdbConcluded`) and no
-   *  held-back yearless variant is spawned beside it. None when no concluded
-   *  match exists. */
+   *  held-back variant is spawned beside it. None when no concluded match exists.
+   *
+   *  Year matching mirrors `clusterByFilm`'s ±1 adjacency, so the duplicate the
+   *  periodic settle would later fold is never spawned: a yearless scrape lands
+   *  on any concluded same-title row; a year-bearing scrape prefers the concluded
+   *  row at the SAME year, else the nearest within ±1 (a cinema reporting the
+   *  production year 2025 lands on the row TMDB resolved to the release year
+   *  2026 — the "two copies of Kumotry" bug). Ties break on `canonicalRank`. */
   private def concludedKeyFor(primary: CacheKey): Option[CacheKey] = {
     import scala.jdk.CollectionConverters._
     val norm = TitleNormalizer.sanitize(primary.cleanTitle)
-    positive.asMap().asScala.iterator
+    val concluded = positive.asMap().asScala.iterator
       .collect { case (k, e) if e.tmdbConcluded &&
-        TitleNormalizer.sanitize(k.cleanTitle) == norm &&
-        (primary.year.isEmpty || k.year == primary.year) => k }
+        TitleNormalizer.sanitize(k.cleanTitle) == norm => k }
       .toSeq
-      .minByOption(canonicalRank)
+    primary.year match {
+      case None    => concluded.minByOption(canonicalRank)
+      case Some(y) =>
+        concluded.filter(_.year.contains(y)).minByOption(canonicalRank)
+          .orElse(concluded.filter(_.year.exists(ky => math.abs(ky - y) <= 1)).minByOption(canonicalRank))
+    }
   }
 
   /** Collapse two same-tmdbId rows into one. The surviving key is chosen by

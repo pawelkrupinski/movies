@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{CinemaCityKinepolis, MovieRecord, Multikino, Source, SourceData}
+import models.{CinemaCityKinepolis, MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.titlerules.{RuleScope, TitleRule, TitleRuleDefaults, TitleRuleSet}
@@ -79,6 +79,31 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
   "rehydrate" should "collapse two same-tmdbId rows that differ only by year, on load" in {
     val cache = new CaffeineMovieCache(repoOf(
       resolvedRow(2025, Multikino), resolvedRow(2026, CinemaCityKinepolis)))
+    cache.entries should have size 1
+    cache.entries.head._2.cinemaData.keySet shouldBe Set(Multikino, CinemaCityKinepolis)
+  }
+
+  // The "two copies of Kumotry" prod bug: ONE cinema reports the film at the
+  // production year (2025) and never gets TMDB-resolved (no `tmdbId`); ANOTHER
+  // reports it at the release year (2026) and resolves to TMDB id 1454157
+  // (tmdbYear 2026). The unresolved 2025 row is within ±1 of the resolved
+  // cluster's TMDB year, so clustering rule (2) must attach it — yet both rows
+  // survive on /debug as `kumotry|2025` + `kumotry|2026`. Reproduces the exact
+  // shape: a Tmdb slot carrying the resolved year drives `tmdbYear`.
+  private def resolved2026Row(cinema: Source): StoredMovieRecord =
+    StoredMovieRecord("Kumotry", Some(2026),
+      MovieRecord(tmdbId = Some(1454157), data = Map[Source, SourceData](
+        cinema -> SourceData(title = Some("Kumotry"), rawTitle = Some("Kumotry"), releaseYear = Some(2025)),
+        Tmdb   -> SourceData(title = Some("Kumotry"), rawTitle = Some("Kumotry"), releaseYear = Some(2026)))))
+
+  private def unresolved2025Row(cinema: Source): StoredMovieRecord =
+    StoredMovieRecord("Kumotry", Some(2025),
+      MovieRecord(data = Map[Source, SourceData](
+        cinema -> SourceData(title = Some("Kumotry"), rawTitle = Some("Kumotry"), releaseYear = Some(2025)))))
+
+  it should "attach an unresolved ±1-year row to its resolved same-title cluster, on load" in {
+    val cache = new CaffeineMovieCache(repoOf(
+      unresolved2025Row(Multikino), resolved2026Row(CinemaCityKinepolis)))
     cache.entries should have size 1
     cache.entries.head._2.cinemaData.keySet shouldBe Set(Multikino, CinemaCityKinepolis)
   }

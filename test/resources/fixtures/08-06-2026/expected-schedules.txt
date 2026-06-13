@@ -796,7 +796,7 @@ synopsis.length:   934
 cast:              Mikołaj Wachowski, Jan Szydłowski, Łucja Dobrogowska, Magdalena Herman-Urbańska, Elżbieta Jarosik
 director:          Grzegorz Wacławek, Marta Szymańska
 tmdbId:            1277047
-imdbId:            —
+imdbId:            tt39637392
 originalTitle:     Chłopiec na krańcach świata
 imdbRating:        —
 metascore:         —

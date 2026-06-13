@@ -1,7 +1,7 @@
 package services.movies
 
 import clients.TmdbClient
-import models.{Cinema, CinemaMovie, Helios, Movie, Multikino, MovieRecord, Showtime, Source, SourceData}
+import models.{Cinema, CinemaCityKinepolis, CinemaMovie, Helios, Movie, Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
@@ -96,6 +96,36 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
     resolved.cinemaData.keySet shouldBe Set(Helios, Multikino)
     // The user sees both cinemas — not just Helios.
     projectedCinemas(cache) shouldBe Set(Helios, Multikino)
+  }
+
+  // The "two copies of Kumotry" bug: a cinema reports the film at the PRODUCTION
+  // year (2025) while it's TMDB-resolved at the RELEASE year (2026). The scrape's
+  // own year differs by one from the concluded row, and with several same-title
+  // year-variants present the unique-match redirect gives up — so `concludedKeyFor`
+  // is the only thing that can land the slot on the resolved row. It must match
+  // within ±1 (the same adjacency the periodic settle uses), else every tick
+  // re-spawns a held-back `kumotry|2025` beside the resolved `kumotry|2026`.
+  "a later ±1-year scrape" should "fold into the concluded sibling instead of spawning an off-by-one duplicate" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
+
+    // The resolved row at the TMDB release year 2026 …
+    cache.put(cache.keyOf(Title, Some(2026)),
+      MovieRecord(tmdbId = Some(1275779), imdbId = Some("tt15047880"), data = Map(slot(Helios, Some(2026)))))
+    // … plus a stranded yearless sibling, so the unique-match redirect can't fire
+    // (two same-title rows present) and `concludedKeyFor` must carry the match.
+    cache.put(cache.keyOf(Title, None),
+      MovieRecord(data = Map(slot(CinemaCityKinepolis, None))))
+
+    // A cinema reports the film at the production year 2025 — one off the
+    // resolved 2026 row.
+    cache.recordCinemaScrape(Multikino, Seq(scrape(Multikino, Some(2025))))
+
+    // No off-by-one `kumotry|2025` row was spawned …
+    cache.get(cache.keyOf(Title, Some(2025))) shouldBe None
+    // … the slot landed on the resolved row instead.
+    val resolved = cache.get(cache.keyOf(Title, Some(2026))).getOrElse(fail("resolved row vanished"))
+    resolved.cinemaData.keySet should contain(Multikino)
+    resolved.tmdbId shouldBe Some(1275779)
   }
 
   // ── PART A: conclusion settles the film's group in one merged write ─────────
