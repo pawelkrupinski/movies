@@ -125,18 +125,28 @@ jobs:
                       exit 1
                   fi
 
-            # Upload the freshly-recorded corpus under a FIXED artifact name so
-            # the "latest" is always fetchable by the same name, and with a
-            # one-day retention so yesterday's run has expired by the time this
-            # one finishes — i.e. only the last run's capture is ever kept.
-            # GitHub stores an artifact as a zip, so the download is a single
-            # zip of the fixture tree.
+                  # Zip the corpus ourselves rather than handing the raw tree to
+                  # upload-artifact. The recorder names per-URL fixture files after
+                  # the URL, so some contain a colon (e.g. `…,ts:1781388000`) —
+                  # which upload-artifact@v4 rejects as an NTFS-unsafe path char.
+                  # Inside a zip those names are just bytes, so we wrap the tree in
+                  # a single colon-free `country-fixture.zip` and upload that.
+                  ZIP="${GITHUB_WORKSPACE}/country-fixture.zip"
+                  ( cd test/resources/fixtures && zip -q -r -X "$ZIP" "$TODAY" )
+                  echo "zip_path=$ZIP" >> "$GITHUB_OUTPUT"
+                  echo "Wrote $(du -h "$ZIP" | cut -f1) zip with $COUNT fixtures"
+
+            # Upload the single zip under a FIXED artifact name so the "latest" is
+            # always fetchable by the same name, with a one-day retention so
+            # yesterday's run has expired by the time this one finishes — i.e.
+            # only the last run's capture is ever kept. The downloaded artifact is
+            # itself a zip wrapping `country-fixture.zip` (the actual corpus).
             - name: Upload country fixture artifact
               if: steps.gate.outputs.run == 'true'
               uses: actions/upload-artifact@v4
               with:
                   name: country-fixture
-                  path: test/resources/fixtures/${{ steps.record.outputs.capture_date }}
+                  path: ${{ steps.record.outputs.zip_path }}
                   retention-days: 1
                   overwrite: true
                   if-no-files-found: error
