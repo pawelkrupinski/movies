@@ -62,7 +62,14 @@ object RecordAllDataToFixture extends TestWiring {
   //     committed-snapshot corpus in a dated dir.
   // Env-driven (not a sed-rewritten literal) so neither workflow mutates this
   // source — a stale zinc class once shipped a wrong dir and failed the job.
-  val captureDate = tools.Env.get("KINOWO_FIXTURE_DIR").getOrElse("today")
+  //
+  // A `def`, NOT a `val`: httoFetch (a lazy val) is forced during super-
+  // construction, before a subclass `val` would initialise — it would then read
+  // captureDate as null and write the whole corpus to `fixtures/null` (the
+  // 323-byte-artifact bug). A literal `val` only worked because the compiler
+  // inlined it as a constant. A `def` is evaluated fresh on every read, so it is
+  // always correct regardless of init order.
+  def captureDate: String = tools.Env.get("KINOWO_FIXTURE_DIR").getOrElse("today")
 
   override lazy val movieRepo = new InMemoryMovieRepo()
   override lazy val httoFetch = new RecordingHttpFetch(captureDate, new RealHttpFetch())

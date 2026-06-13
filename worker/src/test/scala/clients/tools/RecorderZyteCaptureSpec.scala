@@ -85,6 +85,16 @@ class RecorderZyteCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndAf
     RecordAllDataToFixture.captureDate shouldBe "today"
   }
 
+  it should "build httoFetch's fixture tree under that dir (init-order safe)" in {
+    // Regression: when captureDate was a runtime `val`, httoFetch (a lazy val
+    // forced during super-construction) captured it as null → the corpus went to
+    // `test/resources/fixtures/null` while only CAPTURE_DATE landed in `today`
+    // (the 323-byte artifact). The lazy val caches that, so this asserts the
+    // cached instance is keyed off the right dir.
+    RecordAllDataToFixture.httoFetch
+      .asInstanceOf[RecordingHttpFetch].fixtureRoot shouldBe "test/resources/fixtures/today"
+  }
+
   override def afterAll(): Unit = {
     deleteRecursively(tmpRoot)
     super.afterAll()
