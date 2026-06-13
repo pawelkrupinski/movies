@@ -50,6 +50,11 @@ class CachingDetailFetch(
   // Detail fetches don't vary by request header; key on the URL alone.
   override def get(url: String, headers: Map[String, String]): String = get(url)
 
+  // Raw bytes pass straight through to the underlying fetch (uncached): the
+  // string cache holds UTF-8 bodies, and re-encoding one would mojibake a
+  // legacy single-byte page. Don't inherit the lossy base default.
+  override def getBytes(url: String): Array[Byte] = underlying.getBytes(url)
+
   override def post(url: String, body: String, contentType: String): String =
     underlying.post(url, body, contentType)
 }

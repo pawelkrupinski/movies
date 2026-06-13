@@ -139,4 +139,31 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
     fetch.get("https://www.multikino.pl/api/repertoire")
     monitor.services shouldBe empty
   }
+
+  // The charset-mojibake regression: a legacy single-byte site (Kino Pod
+  // Baranami / Charlie serve raw ISO-8859-2 with no charset declaration) is
+  // fetched through MonitoringHttpFetch(RealHttpFetch) in prod. The client calls
+  // `getBytes` to decode with the right charset. If the wrapper inherits the
+  // lossy base default (`get(url).getBytes(UTF_8)`), the wire bytes get
+  // UTF-8-decoded → re-encoded → "ż" becomes "ďż˝". getBytes MUST pass the
+  // delegate's RAW bytes straight through.
+  "getBytes" should "pass the delegate's raw wire bytes through, not re-encode via get" in {
+    // "Dzień" in ISO-8859-2 (ń = 0xF1) — a UTF-8 decode of these bytes is lossy.
+    val rawIso88592 = Array[Byte](0x44, 0x7A, 0x69, 0x65, 0xF1.toByte)
+    val monitor  = new UptimeMonitor()
+    val delegate = new HttpFetch {
+      def get(url: String): String = "MANGLED"  // would lose the byte if re-encoded
+      override def getBytes(url: String): Array[Byte] = rawIso88592
+      def post(url: String, body: String, contentType: String): String = get(url)
+    }
+    val fetch = new MonitoringHttpFetch(delegate, monitor)
+    fetch.getBytes("https://bilety.example.pl/repertuar") shouldBe rawIso88592
+  }
+
+  it should "record getBytes outcomes on the monitor like get does" in {
+    val (fetch, delegate, monitor) = fixture()
+    delegate.nextError = Some(new IOException("Connection refused"))
+    intercept[IOException] { fetch.getBytes("https://api.themoviedb.org/3/x") }
+    monitor.history("TMDB").head.failures shouldBe 1
+  }
 }

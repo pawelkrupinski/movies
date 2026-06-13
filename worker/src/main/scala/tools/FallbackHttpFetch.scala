@@ -24,12 +24,17 @@ class FallbackHttpFetch(backends: Seq[(String, HttpFetch)]) extends HttpFetch wi
 
   override def get(url: String): String = tryEach("get", url, _.get(url))
 
+  // Raw bytes through the same fallback chain — must NOT inherit the lossy base
+  // default (`get(url).getBytes(UTF_8)`), which would mojibake a legacy
+  // single-byte page fetched through this chain.
+  override def getBytes(url: String): Array[Byte] = tryEach("getBytes", url, _.getBytes(url))
+
   override def post(url: String, body: String, contentType: String): String =
     tryEach("post", url, _.post(url, body, contentType))
 
-  private def tryEach(verb: String, url: String, call: HttpFetch => String): String = {
+  private def tryEach[T](verb: String, url: String, call: HttpFetch => T): T = {
     val failures        = mutable.ListBuffer.empty[String]
-    var result: Option[String] = None
+    var result: Option[T] = None
     val it              = backends.iterator
     while (result.isEmpty && it.hasNext) {
       val (name, backend) = it.next()

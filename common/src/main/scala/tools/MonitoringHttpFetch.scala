@@ -96,6 +96,12 @@ class MonitoringHttpFetch(
   override def get(url: String, headers: Map[String, String]): String =
     monitored(url)(delegate.get(url, headers))
 
+  // Delegate to the underlying's RAW bytes — do NOT inherit the lossy base
+  // default (`get(url).getBytes(UTF_8)`), which UTF-8-decodes then re-encodes a
+  // legacy single-byte page and mojibakes it ("ż" → "ďż˝"). Monitored like get.
+  override def getBytes(url: String): Array[Byte] =
+    monitored(url)(delegate.getBytes(url))
+
   override def getAsync(url: String): CompletableFuture[String] = {
     classify(url) match {
       case None => delegate.getAsync(url)
