@@ -96,6 +96,12 @@ case class ImdbIdMissing(title: String, year: Option[Int], searchTitle: String) 
  *  the per-row refresh once the id is finally known. */
 case class ImdbIdResolved(title: String, year: Option[Int], imdbId: String) extends DomainEvent
 
+/** A newcomer film incubating in the `pending_movies` staging collection has
+ *  reached a definitive TMDB conclusion (a hit, or `tmdbNoMatch`). The
+ *  `StagingFolder` listens for this to fold the film's per-cinema staging rows
+ *  into the merged `movies` collection (in a transaction) and delete them. */
+case class StagingFilmEnriched(cleanTitle: String, year: Option[Int]) extends DomainEvent
+
 /**
  * Publish/subscribe bus carrying `DomainEvent`s. Per CLAUDE.md DIP guidance,
  * consumers depend on this trait; `InProcessEventBus` is the production

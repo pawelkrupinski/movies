@@ -1,7 +1,7 @@
 package services
 
 import com.mongodb.{ConnectionString, MongoCompressor}
-import org.mongodb.scala.{MongoClient, MongoClientSettings, MongoDatabase, SingleObservableFuture}
+import org.mongodb.scala.{ClientSession, MongoClient, MongoClientSettings, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
 import tools.Env
 
@@ -64,6 +64,13 @@ class MongoConnection(
   def database: Option[MongoDatabase] = initResult._2
 
   def close(): Unit = initResult._1.foreach(_.close())
+
+  /** Start a fresh `ClientSession` for a multi-document transaction (the staging
+   *  fold). `None` when Mongo is disabled. Requires a replica set — a standalone
+   *  Mongo rejects transactions; the caller degrades to a non-transactional fold.
+   *  The caller owns `close()`-ing the returned session. */
+  def startSession(): Option[ClientSession] =
+    initResult._1.map(c => Await.result(c.startSession().toFuture(), probeTimeout))
 
   private def init(): (Option[MongoClient], Option[MongoDatabase]) =
     uri match {
