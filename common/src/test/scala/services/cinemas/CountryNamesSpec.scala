@@ -29,6 +29,12 @@ class CountryNamesSpec extends AnyFlatSpec with Matchers {
     CountryNames.canonical("Atlantyda") shouldBe "Atlantyda"
   }
 
+  it should "recognise the 'Wlk. Brytania' abbreviation and Irak" in {
+    CountryNames.canonical("Wlk. Brytania") shouldBe "Wielka Brytania"
+    CountryNames.isPolish("Wlk. Brytania") shouldBe true
+    CountryNames.isPolish("Irak") shouldBe true
+  }
+
   "isPolish" should "recognise canonical names and their aliases" in {
     CountryNames.isPolish("Luksemburg") shouldBe true
     CountryNames.isPolish("Luxembourg") shouldBe true

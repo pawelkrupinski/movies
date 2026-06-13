@@ -48,15 +48,16 @@ class KinoAgrafkaClient(http: HttpFetch, override val cinema: Cinema) extends Ci
         .map(s => Showtime(s.dateTime, s.bookingUrl))
         .distinctBy(s => (s.dateTime, s.bookingUrl))
         .sortBy(_.dateTime)
+      val meta = group.map(_.meta).find(m => m.directors.nonEmpty || m.year.isDefined).getOrElse(MetaInfo.empty)
       if (showtimes.isEmpty) None
       else Some(CinemaMovie(
-        movie     = Movie(title),
+        movie     = Movie(title, releaseYear = meta.year),
         cinema    = cinema,
         posterUrl = None,
         filmUrl   = filmUrl,
         synopsis  = None,
         cast      = Seq.empty,
-        director  = Seq.empty,
+        director  = meta.directors,
         showtimes = showtimes
       ))
     }.sortBy(_.movie.title)
@@ -71,12 +72,43 @@ object KinoAgrafkaClient {
   // Matches "7 czerwca 2026 /niedziela/" — day, Polish genitive month, 4-digit year
   private val DatePat = """(\d{1,2})\s+(\w+)\s+(\d{4})""".r
 
+  // A production year inside the country/year block ("Kanada/Belgia/Francja 2024").
+  private val YearPat = """\b(?:19|20)\d{2}\b""".r
+
+  /** Per-film metadata carried in the `td.title` cell after the `reż.` marker:
+   *  `reż. <directors>, <countries> <year>, <runtime>’`. The country/year/runtime
+   *  block is inconsistently delimited — sometimes `Country YEAR` is one segment
+   *  ("Kanada/Belgia/Francja 2024"), sometimes the country is its own segment
+   *  ("Wlk. Brytania, USA 2026"), and some films carry no year ("Irak/Francja/Katar,
+   *  87’"). Directors are therefore the leading comma-segments that look like
+   *  person names: no digit, no slash (multi-country marker) and not a recognised
+   *  country. The year is the first 4-digit token anywhere in the tail. */
+  private[cinemas] case class MetaInfo(directors: Seq[String], year: Option[Int])
+  private[cinemas] object MetaInfo { val empty = MetaInfo(Seq.empty, None) }
+
   private[cinemas] case class RawSlot(
     title:      String,
     filmUrl:    Option[String],
     dateTime:   LocalDateTime,
-    bookingUrl: Option[String]
+    bookingUrl: Option[String],
+    meta:       MetaInfo
   )
+
+  private val DirMarker = "reż."
+
+  private[cinemas] def parseMeta(cellText: String): MetaInfo = {
+    val idx = cellText.indexOf(DirMarker)
+    if (idx < 0) MetaInfo.empty
+    else {
+      val tail = cellText.substring(idx + DirMarker.length)
+      val directors = tail.split(",").iterator.map(_.trim)
+        .takeWhile(seg => !seg.exists(_.isDigit) && !seg.contains("/") && !CountryNames.isPolish(seg))
+        .flatMap(_.split(";")).map(_.trim)   // some films join co-directors with ';'
+        .filter(_.nonEmpty).toSeq
+      val year = YearPat.findFirstMatchIn(tail).map(_.matched.toInt)
+      MetaInfo(directors, year)
+    }
+  }
 
   private[cinemas] def parseDoc(html: String): Seq[RawSlot] = {
     val doc = Jsoup.parse(html)
@@ -94,6 +126,7 @@ object KinoAgrafkaClient {
           currentDate.foreach { date =>
             val timeText  = Option(el.selectFirst("td.hour")).map(_.text.trim).getOrElse("")
             val titleEl   = Option(el.selectFirst("td.title a"))
+            val meta      = parseMeta(Option(el.selectFirst("td.title")).map(_.text).getOrElse(""))
             val time      = ScraperParse.parseHHmm(timeText)
             val rawTitle  = titleEl.map(_.text.trim).getOrElse("")
             // Titles are ALL-CAPS on the page; normalise to title-case.
@@ -106,7 +139,7 @@ object KinoAgrafkaClient {
 
             for {
               t     <- time if title.nonEmpty
-            } slots += RawSlot(title, filmUrl, LocalDateTime.of(date, t), bookingUrl)
+            } slots += RawSlot(title, filmUrl, LocalDateTime.of(date, t), bookingUrl, meta)
           }
         case _ =>
       }

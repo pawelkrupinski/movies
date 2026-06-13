@@ -34,4 +34,23 @@ class KinoAgrafkaClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     val film   = movies.find(_.movie.title == "MILCZĄCA PRZYJACIÓŁKA").value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 13, 30))
   }
+
+  it should "parse the single director and production year from the title cell" in {
+    val film = client.fetch().find(_.movie.title == "MILCZĄCA PRZYJACIÓŁKA").value
+    film.director shouldBe Seq("Ildiko Enyedi")
+    film.movie.releaseYear shouldBe Some(2026)
+  }
+
+  it should "parse multiple comma-separated directors, stopping before the country/year block" in {
+    val film = client.fetch().find(_.movie.title == "ZNAKI PANA ŚLIWKI").value
+    film.director shouldBe Seq("Urszula Morga", "Bartosz Mikołajczyk")
+    film.movie.releaseYear shouldBe Some(2025)
+  }
+
+  // A country whose name carries no digit ("Polska", "Wlk. Brytania") sits in
+  // its own comma segment, so the director cut must drop it rather than read it
+  // as a second director. Guard the whole corpus, not one film.
+  it should "never capture a country name as a director" in {
+    client.fetch().flatMap(_.director).filter(services.cinemas.CountryNames.isPolish) shouldBe empty
+  }
 }

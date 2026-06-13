@@ -1156,7 +1156,7 @@ cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/czlowiek-z-marmuru
 cinemaScrapes:
   Forum / CZŁOWIEK Z MARMURU / —
-  Kino Agrafka / CZŁOWIEK Z MARMURU / —
+  Kino Agrafka / CZŁOWIEK Z MARMURU / 1977
   Kino Amok / Człowiek z marmuru / —
   Kino Apollo / Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) / —
   Kino Diana / Człowiek z marmuru / —
@@ -1439,7 +1439,7 @@ cinemaScrapes:
   Helios Żory / Drugie życie / —
   Janosik / Drugie życie / —
   Kino 60 Krzeseł / Drugie życie / —
-  Kino Agrafka / DRUGIE ŻYCIE / —
+  Kino Agrafka / DRUGIE ŻYCIE / 2025
   Kino Apollo / Drugie życie / —
   Kino Apollo Wałbrzych / Drugie życie / —
   Kino Bajka / Drugie życie / —
@@ -3832,7 +3832,7 @@ cinemaScrapes:
   Dolnośląskie Centrum Filmowe / Milcząca przyjaciółka / 2025
   Gdyńskie Centrum Filmowe / Milcząca przyjaciółka / —
   KINOMUZEUM / Milcząca przyjaciółka / 2025
-  Kino Agrafka / MILCZĄCA PRZYJACIÓŁKA / —
+  Kino Agrafka / MILCZĄCA PRZYJACIÓŁKA / 2026
   Kino Amok / Milcząca przyjaciółka / —
   Kino Atlantic / Milcząca przyjaciółka / 2025
   Kino Bajka / Milcząca przyjaciółka / —
@@ -4571,7 +4571,7 @@ cinemaScrapes:
   Helios Żory / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Janosik / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   KINOkawiarnia Stacja Falenica / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Kino Agrafka / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / —
+  Kino Agrafka / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / 2026
   Kino Bajka / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Bułgarska 19 / Niesamowite przygody skarpetek 3. ale kosmos! / 2026
   Kino CK Lublin / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -5040,7 +5040,7 @@ cinemaScrapes:
   Janosik / Ojczyzna / —
   KINOMUZEUM / Ojczyzna / 2026
   Kino 60 Krzeseł / Ojczyzna / —
-  Kino Agrafka / OJCZYZNA / —
+  Kino Agrafka / OJCZYZNA / 2026
   Kino Apollo / Ojczyzna / —
   Kino Apollo Wałbrzych / Ojczyzna / —
   Kino Astra / Ojczyzna / 2026
@@ -8700,7 +8700,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Gdyńskie Centrum Filmowe / Zawieście czerwone latarnie / —
   KINOMUZEUM / Zawieście czerwone latarnie / 1991
-  Kino Agrafka / ZAWIEŚCIE CZERWONE LATARNIE / —
+  Kino Agrafka / ZAWIEŚCIE CZERWONE LATARNIE / 1991
   Kino Apollo / Cykl "Kultowa klasyka" - Zawieście czerwone latarnie / —
   Kino Bułgarska 19 / Zawieście czerwone latarnie / 1991
   Kino CK Lublin / Zawieście czerwone latarnie / —
@@ -8977,7 +8977,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Dolnośląskie Centrum Filmowe / Znaki Pana Śliwki / 2025
   Kino 60 Krzeseł / Znaki Pana Śliwki / —
-  Kino Agrafka / ZNAKI PANA ŚLIWKI / —
+  Kino Agrafka / ZNAKI PANA ŚLIWKI / 2025
   Kino Amok / Znaki Pana Śliwki / —
   Kino IKM / Znaki Pana Śliwki / —
   Kino Kika / ZNAKI PANA ŚLIWKI / —
