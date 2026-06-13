@@ -4,7 +4,7 @@ import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.MovieRecord
 import org.mongodb.scala.bson.{BsonDateTime, BsonNull}
-import org.mongodb.scala.model.{Filters, IndexOptions, Indexes, Updates}
+import org.mongodb.scala.model.{Filters, IndexOptions, Indexes, Sorts, Updates}
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import org.bson.conversions.Bson
 import play.api.Logging
@@ -202,7 +202,16 @@ class MongoMovieRepo(
   def findAll(): Seq[StoredMovieRecord] = coll match {
     case Some(c) =>
       Try {
-        Await.result(c.find().toFuture(), 60.seconds).map(StoredMovieDto.toDomain)
+        // Sort by the immutable, unique `_id` index. An UNSORTED scan over a
+        // collection being written concurrently (the worker resolves TMDB,
+        // clears `detailPending`, re-keys years on `movies` continuously) can
+        // return the same document more than once — and skip others — when an
+        // intervening write relocates it mid-scan. That surfaced on `/debug` as
+        // phantom duplicate rows (the same `_id` rendered twice, one a stale
+        // pre-write image) that never cleared, plus silently-dropped rows. An
+        // `_id`-ordered IXSCAN returns each doc exactly once (the key is unique
+        // and never changes), so it can neither duplicate nor skip.
+        Await.result(c.find().sort(Sorts.ascending("_id")).toFuture(), 60.seconds).map(StoredMovieDto.toDomain)
       }.recover {
         // Catch every throwable, not just MongoException — TimeoutException
         // (Java `j.u.c.TimeoutException` from `Await.result`) and BSON decode

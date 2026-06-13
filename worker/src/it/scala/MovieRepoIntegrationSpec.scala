@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
-import services.movies.MongoMovieRepo
+import services.movies.{MongoMovieRepo, StoredMovieRecord}
 import tools.Env
 
 import scala.concurrent.Await
@@ -27,17 +27,36 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
 
   private val repo = new MongoMovieRepo()
 
-  // Tidy sentinel rows so they don't leak into the production positive cache
-  // at the next app startup (the service hydrates *everything* from Mongo).
-  override protected def afterAll(): Unit = try {
+  // Every fake imdbId this spec writes. These are the STABLE handle: the worker
+  // re-keys a row's `_id` (e.g. settles `__integration-test-dotted-cinema__` to
+  // `dotted|1902` off its sourceData title), so an `_id`-only purge can miss a
+  // re-keyed sentinel — but `imdbId` never changes.
+  private val sentinelImdbIds = Seq(
+    "tt0000001", "tt0000002", "tt0000003", "tt0000004",
+    "tt0000005", "tt0000010", "tt0000077", "tt0000099"
+  )
+
+  // Delete every sentinel this spec could have written. Matches BOTH the
+  // sanitized `_id` shape the docs are actually stored under (`integrationtest…`
+  // — `docId` strips non-alphanumerics, so the raw `__integration-test-` form is
+  // never what lands in Mongo) AND the fake imdbIds (robust to worker re-keying).
+  private def purgeSentinels(): Unit = {
     val client = MongoClient(Env.get("MONGODB_URI").get)
     val coll   = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
       .getCollection("movies")
-    Await.ready(
-      coll.deleteMany(Filters.regex("_id", "^__integration-test-")).toFuture(),
+    try Await.ready(
+      coll.deleteMany(Filters.or(
+        Filters.regex("_id", "^integrationtest"),
+        Filters.in("imdbId", sentinelImdbIds*)
+      )).toFuture(),
       10.seconds
-    )
-    client.close()
+    ) finally client.close()
+  }
+
+  // Tidy sentinel rows so they don't leak into the production positive cache
+  // at the next app startup (the service hydrates *everything* from Mongo).
+  override protected def afterAll(): Unit = try {
+    purgeSentinels()
     repo.close()
   } finally super.afterAll()
 
@@ -288,7 +307,6 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
   // init, so the branch is a 1-key IXSCAN and the whole `$or` is an index union.
   // Fails before the index (winning plan is a COLLSCAN); passes after.
   it should "resolve the delete filter by index, not a collection scan" in {
-    import services.movies.StoredMovieRecord
     repo.enabled shouldBe true // force lazy init → ensureIndexes() runs
 
     val client = MongoClient(Env.get("MONGODB_URI").get)
@@ -304,5 +322,37 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
       plan        should include ("title_1_year_1")
       plan should not include ("COLLSCAN")
     } finally client.close()
+  }
+
+  // Regression: `afterAll` deleted `_id` matching `^__integration-test-`, but
+  // `docId` sanitizes the id (strips non-alphanumerics) so the stored `_id` is
+  // `integrationtest…` — the regex never matched and EVERY run leaked its
+  // sentinels into the prod corpus forever (8 fixtures were found sitting on
+  // /debug). The cleanup must target the sanitized id (and the stable imdbId).
+  // Fails before the fix (the sentinel survives `purgeSentinels`); passes after.
+  it should "purge its sentinels by the sanitized _id they are actually stored under" in {
+    repo.upsert("__integration-test-purge-check__", Some(1903), MovieRecord(imdbId = Some("tt0000077")))
+    repo.findAll().exists(_.record.imdbId.contains("tt0000077")) shouldBe true
+    purgeSentinels()
+    repo.findAll().exists(_.record.imdbId.contains("tt0000077")) shouldBe false
+  }
+
+  // Regression: `findAll` ran an UNSORTED scan (`c.find()`). Over a collection
+  // the worker writes concurrently (resolving TMDB, clearing `detailPending`,
+  // re-keying years), an unsorted scan can return the same document more than
+  // once — and skip others — when an intervening write relocates it mid-scan.
+  // On /debug that surfaced as phantom duplicate rows (the same `_id` rendered
+  // twice, one a stale pre-write image) that never cleared, plus silently
+  // dropped rows. The fix sorts by the immutable, unique `_id` index, whose
+  // key-ordered walk returns each doc exactly once. The duplication itself only
+  // reproduces under live concurrent write load (not deterministically here), so
+  // this guards the fix MECHANISM: the result is `_id`-ascending, which holds
+  // only when the `_id` index drives the scan. Seeded out-of-order sentinels +
+  // the existing natural-order corpus make it fail before the sort, pass after.
+  it should "return rows in _id order (the _id-indexed scan that can't duplicate or skip)" in {
+    Seq("c", "a", "b").foreach(s =>
+      repo.upsert(s"__integration-test-order-${s}__", None, MovieRecord()))
+    val ids = repo.findAll().map(StoredMovieRecord.idOf)
+    ids shouldBe ids.sorted
   }
 }
