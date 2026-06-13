@@ -76,6 +76,15 @@ class RecorderZyteCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndAf
     RecordAllDataToFixture.biletynaFetch  shouldBe a[RecordingHttpFetch]
   }
 
+  "The recorder's capture dir" should
+    "default to `today` (the daily artifact dir), overridable via KINOWO_FIXTURE_DIR" in {
+    // No KINOWO_FIXTURE_DIR in the test env → the dateless `today` dir the daily
+    // country-fixture job + local sync key off (refresh-fixtures.yml overrides
+    // it to a dd-MM-yyyy dir). Pins that the recorder no longer hard-codes a
+    // date literal a workflow must sed.
+    RecordAllDataToFixture.captureDate shouldBe "today"
+  }
+
   override def afterAll(): Unit = {
     deleteRecursively(tmpRoot)
     super.afterAll()

@@ -105,22 +105,17 @@ jobs:
                   MONGODB_DB:   ${{ secrets.MONGODB_DB }}
               run: |
                   set -euo pipefail
-                  TODAY="$(date -u +%d-%m-%Y)"
-                  echo "capture_date=$TODAY" >> "$GITHUB_OUTPUT"
 
-                  # Rewrite the recorder's hard-coded capture-date literal (the
-                  # `val captureDate = "dd-MM-yyyy"` every RecordingHttpFetch
-                  # keys its fixture tree off) to today.
-                  sed -i -E \
-                      "/val captureDate/ s#[0-9]{2}-[0-9]{2}-[0-9]{4}#${TODAY}#" \
-                      worker/src/test/scala/clients/tools/RecordAllDataToFixture.scala
-
+                  # The recorder writes to test/resources/fixtures/today by
+                  # default (KINOWO_FIXTURE_DIR unset → "today"). No date in the
+                  # dir name, no source rewrite — the real capture date is stamped
+                  # into today/CAPTURE_DATE by the recorder itself.
                   sbt "worker/Test/runMain clients.tools.RecordAllDataToFixture"
 
                   # Sanity-check the capture isn't empty before we upload it.
-                  DIR="test/resources/fixtures/${TODAY}"
+                  DIR="test/resources/fixtures/today"
                   COUNT="$(find "$DIR" -type f | wc -l | tr -d ' ')"
-                  echo "Captured $COUNT fixture files into $DIR"
+                  echo "Captured $COUNT fixture files into $DIR ($(cat "$DIR/CAPTURE_DATE" 2>/dev/null | tr '\n' ' '))"
                   if [ "$COUNT" -eq 0 ]; then
                       echo "::error::Recorder produced no fixture files — refusing to upload an empty artifact."
                       exit 1
@@ -133,7 +128,7 @@ jobs:
                   # Inside a zip those names are just bytes, so we wrap the tree in
                   # a single colon-free `country-fixture.zip` and upload that.
                   ZIP="${GITHUB_WORKSPACE}/country-fixture.zip"
-                  ( cd test/resources/fixtures && zip -q -r -X "$ZIP" "$TODAY" )
+                  ( cd test/resources/fixtures && zip -q -r -X "$ZIP" "today" )
                   echo "zip_path=$ZIP" >> "$GITHUB_OUTPUT"
                   echo "Wrote $(du -h "$ZIP" | cut -f1) zip with $COUNT fixtures"
 

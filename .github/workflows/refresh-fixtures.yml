@@ -123,10 +123,9 @@ jobs:
             # writing one fixture file per unique URL under
             # `test/resources/fixtures/<date>/`.
             #
-            # The recorder hard-codes its target dir as the OLD date string, so
-            # before running we rewrite that one literal to NEW_DATE. (Captured in
-            # the `Re-pin capture date` step's TODO — when the shared-date
-            # constant lands, this `sed` goes away.)
+            # The recorder's target dir is driven by KINOWO_FIXTURE_DIR (default
+            # "today"); we point it at NEW_DATE for the committed corpus. No
+            # source rewrite — the recorder reads the env var.
             #
             # Secrets: the same two API keys ci.yml's test jobs export, which are
             # the only keyed upstreams the recorder hits — TMDB (TMDB_API_KEY) for
@@ -146,11 +145,7 @@ jobs:
                   NEW_DATE="${{ steps.dates.outputs.new_date }}"
                   OLD_DATE="${{ steps.dates.outputs.old_date }}"
 
-                  # Point the recorder at the new dir name for this run.
-                  sed -i "s/${OLD_DATE}/${NEW_DATE}/g" \
-                      worker/src/test/scala/clients/tools/RecordAllDataToFixture.scala
-
-                  sbt "worker/Test/runMain clients.tools.RecordAllDataToFixture"
+                  KINOWO_FIXTURE_DIR="$NEW_DATE" sbt "worker/Test/runMain clients.tools.RecordAllDataToFixture"
 
                   # Drop the previous corpus — the new dir fully supersedes it.
                   if [ "$OLD_DATE" != "$NEW_DATE" ]; then
