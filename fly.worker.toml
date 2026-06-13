@@ -7,6 +7,16 @@ app = 'kinowo-worker'
 # Same region as `kinowo` + the self-hosted Mongo (`fly/mongo`) so writes run
 # on Fly's private network at ~1 ms RTT instead of a cross-region hop.
 primary_region = 'arn'
+# Runs as TWO machines (set out-of-band: `fly scale count 2 -a kinowo-worker`;
+# `flyctl deploy` preserves the count and rolls both). They are COMPETING
+# CONSUMERS, not shards: each drains the shared Mongo task queue, whose claim is
+# an atomic `findOneAndUpdate` (Waiting→WorkedOn + workerId + lease), so no task
+# runs twice and a dead worker's in-flight tasks are reclaimed via
+# `reapExpiredLeases`. The always-on singletons (read-model projector, cleanup,
+# rule rebuild, the reapers) run on both — all idempotent / enqueue-deduped, so
+# safe, just some doubled work. Per-film detail (incl. KinoMuza) is the one HTTP
+# fetch that MUST not double up; it rides the deduped `EnrichDetails` task, so
+# exactly one worker fetches each page.
 
 [build]
   dockerfile = 'Dockerfile'
