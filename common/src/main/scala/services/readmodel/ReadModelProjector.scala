@@ -63,8 +63,12 @@ class ReadModelProjector(
   def onMovieUpsert(stored: StoredMovieRecord): Unit = lock.synchronized(project(stored))
 
   // Caller holds `lock`. Project the row and write only what changed, movie
-  // doc before screenings.
+  // doc before screenings. A row whose enrichment hasn't concluded
+  // (`readyToProject` false) is held back — publishing the pre-enrichment,
+  // yearless row is exactly what creates the duplicate `foo|` + `foo|2025`
+  // cards, so it must never reach the read model until it has settled.
   private def project(stored: StoredMovieRecord): Unit = {
+    if (!stored.record.readyToProject) return
     val (movie, screenings) = ReadModelProjection.project(stored)
     if (!lastMovie.get(movie._id).contains(movie)) {
       writer.upsertMovie(movie)
@@ -104,9 +108,12 @@ class ReadModelProjector(
    *  A row that fails to project must not abort the prune (the prune is what
    *  removes the duplicates), so each projection is guarded individually. */
   def reconcile(): Unit = lock.synchronized {
-    val rows    = movieRepo.findAll()
-    val liveIds = rows.iterator.map(ReadModelProjection.filmId).toSet
-    rows.foreach { row =>
+    // Only READY rows are part of the read model — held-back rows are absent
+    // from `liveIds`, so they neither project nor leave a stale doc behind, and
+    // a row that becomes ready between ticks gets projected on the next one.
+    val ready   = movieRepo.findAll().filter(_.record.readyToProject)
+    val liveIds = ready.iterator.map(ReadModelProjection.filmId).toSet
+    ready.foreach { row =>
       try project(row)
       catch { case ex: Throwable =>
         logger.warn(s"read-model reconcile: a row failed to project, continuing: ${ex.getMessage}") }

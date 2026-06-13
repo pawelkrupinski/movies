@@ -30,6 +30,10 @@ case class StoredMovieDto(
   tmdbId:            Option[Int],
   metacriticUrl:     Option[String],
   rottenTomatoesUrl: Option[String],
+  // Optional on the wire so legacy docs (written before these existed) decode
+  // to None → default false; only persisted when true to keep docs lean.
+  tmdbNoMatch:       Option[Boolean],
+  detailPending:     Option[Boolean],
   sourceData:        Map[String, SourceData],
   updatedAt:         Instant
 )
@@ -53,6 +57,8 @@ object StoredMovieDto {
       tmdbId            = r.tmdbId,
       metacriticUrl     = r.metacriticUrl,
       rottenTomatoesUrl = r.rottenTomatoesUrl,
+      tmdbNoMatch       = Option.when(r.tmdbNoMatch)(true),
+      detailPending     = Option.when(r.detailPending)(true),
       sourceData        = r.data.map { case (s, sd) => s.displayName -> sd },
       updatedAt         = updatedAt
     )
@@ -68,6 +74,8 @@ object StoredMovieDto {
       tmdbId            = dto.tmdbId,
       metacriticUrl     = dto.metacriticUrl,
       rottenTomatoesUrl = dto.rottenTomatoesUrl,
+      tmdbNoMatch       = dto.tmdbNoMatch.getOrElse(false),
+      detailPending     = dto.detailPending.getOrElse(false),
       data              = dto.sourceData.flatMap { case (k, sd) => Source.byDisplayName.get(k).map(_ -> sd) }
     )
     // title + year are derived from the `_id` + `sourceData`, not stored — see

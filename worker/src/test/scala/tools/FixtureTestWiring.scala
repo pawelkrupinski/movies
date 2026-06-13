@@ -83,6 +83,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     // TMDB + IMDb-id cascade has already settled in drainServices.
     enrichRatingsSync()
     unscreenedCleanup.removeUnscreened()
+    concludeEnrichment()
     // Project the settled corpus into the read model and warm the web view, so
     // a spec can serve via `webReadModel` exactly as the web app does. Done as a
     // one-shot reconcile + reload (no change-stream/scheduler) to keep the test
@@ -91,6 +92,20 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     webReadModel.reload()
   }
 
+  /** In production every row's TMDB enrichment eventually concludes — the
+   *  boot/daily retry sweep resolves it or records a definitive no-match — and
+   *  only a concluded row is published by the projector. A one-shot fixture run
+   *  can't wait for that and has no TMDB fixture for every film, so mark any row
+   *  still un-concluded as a no-match here: the same end state the sweep reaches,
+   *  so the read model reflects the settled corpus, not a transient
+   *  mid-enrichment snapshot. These films were already `tmdbId`-less in the
+   *  fixtures, so only their visibility changes, not their rendered data. */
+  private def concludeEnrichment(): Unit =
+    movieRepo.findAll().foreach { sr =>
+      if (!sr.record.tmdbConcluded)
+        movieRepo.upsert(sr.title, sr.year, sr.record.copy(tmdbNoMatch = true))
+    }
+
   /** Settle the cache to its deterministic steady state. The production scrape
    *  (`cinemaScrapeRunner.run` per cinema) publishes enrichment INLINE as each
    *  cinema lands, so a film's TMDB/ratings can resolve against a partially-merged row; in
@@ -98,9 +113,11 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
    *  retry). A single test pass can't wait for that, so re-run enrichment
    *  synchronously against the now-settled rows — the same belt-and-braces sweep
    *  the fixture recorder uses — making the snapshot a pure function of the
-   *  fixtures rather than of thread scheduling. Deterministic title order so the
-   *  sweep itself introduces no ordering of its own. */
-  def converge(): Unit = {
+   *  fixtures rather than of thread scheduling. Pass a seeded `reorder` RNG to
+   *  shuffle the re-enrich sweep (the determinism spec does, to prove the sweep
+   *  is order-independent like prod's arbitrary one); omit it for a stable
+   *  title order. */
+  def converge(reorder: Option[scala.util.Random] = None): Unit = {
     // 1. Collapse spelling/year variants a concurrent scrape/enrichment left
     //    behind FIRST, so every row is under its canonical key BEFORE we
     //    re-enrich. Otherwise the title-keyed enrichment (esp. Filmweb's fuzzy
@@ -109,21 +126,21 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     //    canonicalisation the worker now runs on a timer — so this harness
     //    exercises the production settle path, not a test-only copy of it.
     movieService.settle()
-    // 2. Re-run enrichment synchronously against the now-canonical, settled rows
-    //    — the same belt-and-braces sweep the fixture recorder uses — so the
-    //    snapshot is a pure function of the fixtures, not of thread scheduling.
-    //    Deterministic title order so the sweep itself adds no ordering.
-    movieCache.snapshot()
-      .map(r => (r.title, r.year))
-      .sortBy { case (t, y) => (t, y.getOrElse(Int.MinValue)) }
-      .foreach { case (t, y) =>
-        // Swallow a missing-fixture throw the SAME way the async enrichment
-        // path does (MovieService logs "Giving up on TMDB …" and moves on):
-        // a row whose TMDB id has no recorded `external_ids` (NTLive theatre
-        // captures share id 203912, which has no IMDb cross-reference) would
-        // otherwise abort the whole sweep.
-        try fullySyncOne(t, y) catch { case _: Exception => () }
-      }
+    // 2. Re-run enrichment synchronously against the now-canonical, settled rows.
+    //    Production's `retryUnresolvedTmdb` sweeps rows in arbitrary map order,
+    //    so `reorder` SHUFFLES this sweep — a cross-film re-enrich/settle order
+    //    must not change the result (default: a stable title order).
+    val films = movieCache.snapshot().map(r => (r.title, r.year))
+    val sequenced = reorder.fold(
+      films.sortBy { case (t, y) => (t, y.getOrElse(Int.MinValue)) }
+    )(_.shuffle(films))
+    sequenced.foreach { case (t, y) =>
+      // Swallow a missing-fixture throw the SAME way the async enrichment path
+      // does (MovieService logs "Giving up on TMDB …" and moves on): a row whose
+      // TMDB id has no recorded `external_ids` (NTLive theatre captures share id
+      // 203912, no IMDb cross-reference) would otherwise abort the whole sweep.
+      try fullySyncOne(t, y) catch { case _: Exception => () }
+    }
     // 3. Re-collapse: the TMDB stage can rekey a no-year row onto a resolved
     //    year, briefly re-introducing a spelling/year variant — exactly the
     //    "Dzień objawienia" shape the worker's periodic settle exists to fix.

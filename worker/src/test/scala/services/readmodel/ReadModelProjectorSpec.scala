@@ -22,8 +22,10 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   private def slot(showtimes: Seq[Showtime]) =
     SourceData(title = Some("Foo"), releaseYear = Some(2024), filmUrl = Some("https://mk/foo"), showtimes = showtimes)
 
+  // tmdbId set → `readyToProject` (TMDB concluded); the projector only
+  // publishes rows whose enrichment has settled.
   private def record(rating: Option[Double], showtimes: Seq[Showtime]): MovieRecord =
-    MovieRecord(imdbRating = rating, data = Map[Source, SourceData](Multikino -> slot(showtimes)))
+    MovieRecord(imdbRating = rating, tmdbId = Some(1), data = Map[Source, SourceData](Multikino -> slot(showtimes)))
 
   private def stored(rec: MovieRecord): StoredMovieRecord = StoredMovieRecord("Foo", Some(2024), rec)
 
@@ -42,6 +44,41 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.writeOrder.head        should startWith("movie:")
     rm.writeOrder(1)          should startWith("screening:")
     rm.screeningUpserts.head._id shouldBe s"$fid|poznan|Multikino Stary Browar"
+  }
+
+  // ── Enrichment gate ─────────────────────────────────────────────────────────
+  // A row whose TMDB enrichment hasn't concluded (no tmdbId, no tmdbNoMatch) is
+  // held back: publishing the pre-enrichment row is exactly what leaks the
+  // duplicate `foo|` + `foo|2025` cards.
+  private def unresolved(showtimes: Seq[Showtime]): MovieRecord =
+    MovieRecord(data = Map[Source, SourceData](Multikino -> slot(showtimes)))
+
+  "an un-enriched row" should "be held back from the read model" in {
+    val (projector, _, rm) = fixture()
+    projector.onMovieUpsert(StoredMovieRecord("Foo", Some(2024), unresolved(Seq(at("2026-06-12T20:00")))))
+    rm.movieUpserts     shouldBe empty
+    rm.screeningUpserts shouldBe empty
+  }
+
+  "a row that concludes enrichment on a later upsert" should "then be projected" in {
+    val (projector, _, rm) = fixture()
+    val shows = Seq(at("2026-06-12T20:00"))
+    projector.onMovieUpsert(StoredMovieRecord("Foo", Some(2024), unresolved(shows)))
+    rm.movieUpserts shouldBe empty  // still enriching
+    // TMDB concludes as a definitive no-match → `tmdbNoMatch` → ready → projects.
+    projector.onMovieUpsert(StoredMovieRecord("Foo", Some(2024), unresolved(shows).copy(tmdbNoMatch = true)))
+    rm.movieUpserts     should have size 1
+    rm.screeningUpserts should have size 1
+  }
+
+  "reconcile" should "skip held-back rows while still projecting ready ones" in {
+    val (projector, repo, rm) = fixture()
+    repo.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))   // ready (tmdbId)
+    repo.upsert("Bar", Some(2024), unresolved(Seq(at("2026-06-12T20:00"))).copy(
+      data = Map[Source, SourceData](Multikino ->
+        SourceData(title = Some("Bar"), releaseYear = Some(2024), showtimes = Seq(at("2026-06-12T20:00"))))))
+    projector.reconcile()
+    rm.findAllMovies().map(_._id) should contain only fid  // Bar is held back
   }
 
   "a showtime-only change" should "move only the one screening doc" in {
@@ -111,7 +148,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     def yearKey(y: Int) = s"${TitleNormalizer.sanitize("Foo")}|$y"
     // A film whose reported year was 2025 when an earlier projector ran.
     def recYear(y: Int) =
-      MovieRecord(data = Map[Source, SourceData](Multikino ->
+      MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](Multikino ->
         SourceData(title = Some("Foo"), releaseYear = Some(y),
           filmUrl = Some("https://mk/foo"), showtimes = Seq(at("2026-06-12T20:00")))))
 

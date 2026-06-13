@@ -46,7 +46,10 @@ class ClientIntegrationSpec
 
   "Multikino"                should "fetch films" in requireRuntime(Multikino)
   "Kino Malta Charlie Monroe" should "fetch films" in requireRuntime(CharlieMonroe)
-  "Kino Pałacowe"            should "fetch films" in requireRuntime(KinoPalacowe)
+  // Pałacowe scrapes BARE (KINOWO_DEFERRED_DETAIL removal): runtime/director/year
+  // come from `fetchFilmDetail`, not the listing `fetch()`, so the smoke checks
+  // only base shape here — runtime is asserted in the detail unit spec.
+  "Kino Pałacowe"            should "fetch films" in requireNoRuntime(KinoPalacowe)
   "Helios Posnania"          should "fetch films" in requireRuntime(Helios)
   "Cinema City Plaza"        should "fetch films" in runtimeOptional(CinemaCityPoznanPlaza)
   "Cinema City Kinepolis"    should "fetch films" in runtimeOptional(CinemaCityKinepolis)

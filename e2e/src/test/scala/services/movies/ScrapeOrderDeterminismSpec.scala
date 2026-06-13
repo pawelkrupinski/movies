@@ -226,17 +226,22 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
           )
       }
     }
+    // Fill each deferred cinema's per-film detail BEFORE publishing, exactly as
+    // production's `runOneScrapeTick` does — so a detail-page year/director is on
+    // the row when the TMDB stage resolves. Without this a year-from-detail film
+    // (recorded bare/yearless) resolves on an order-pinned key and folds
+    // order-dependently (the `Zaproszenie` same-title divergence).
+    w.enrichDetailsSync()
     rnd.shuffle(created.toList).foreach(w.eventBus.publish)
     w.drainServices()
-    // The async drain above is the ONLY phase where fetch timing can change an
-    // outcome — it's where the concurrent enrichment pools complete in a
-    // perturbed order, which is exactly what the jitter exists to force. The
-    // following `converge()` re-enriches all ~950 films SERIALLY in a fixed
-    // sorted order (single-threaded, no concurrency to perturb), so its sleeps
-    // can't affect the result and only add wall-clock — multiplied by ~7 fetches
-    // per film × ~950 films × 3 replays. Switch the jitter off for it.
+    // The async drain above is where the concurrent enrichment pools complete in
+    // a perturbed order (what the jitter forces). The following `converge()`
+    // re-enriches all ~950 films SERIALLY, but in a SHUFFLED order (seeded by
+    // this replay) — mirroring prod's arbitrary `retryUnresolvedTmdb` sweep, so a
+    // cross-film re-enrich/settle order can't change the result. Single-threaded,
+    // so the per-fetch jitter only burns wall-clock here — switch it off.
     jitter.enabled = false
-    w.converge()
+    w.converge(Some(rnd))
     val record = w.movieRepo.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     // Project the converged corpus into the read model and warm it — the same
     // reconcile + reload the worker runs at boot — so we render through the
@@ -248,21 +253,17 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     (record, rows)
   }
 
-  // TODO(deferDetail-determinism): IGNORED pending a fix. Removing KINOWO_DEFERRED_DETAIL
-  // (scrapers now always scrape BARE) makes a *year-from-detail* film's cache key
-  // order-dependent in a SINGLE pass: it's recorded yearless, so
-  // `recordCinemaScrape`'s redirect picks (title, year) or (title, None) depending
-  // on which cinema lands first, and TMDB then resolves on that order-pinned key.
-  // Inline detail used to carry the year on the bare movie at record time, so the
-  // key was deterministic. Prod converges this across many passes + `settle()`;
-  // the single-pass guard here catches it. The fixed-order page/e2e snapshots are
-  // stable (deterministic scrape order), so this affects the determinism GUARANTEE,
-  // not the shipped snapshots. The fix likely belongs in `settle()` /
-  // `canonicalizeBySanitize` (re-key the yearless variant onto its year-bearing
-  // sibling BEFORE the TMDB stage), per the determinism-rekey memory. The
-  // single-film variant above still passes and stays active.
+  // Once IGNORED for a deferDetail-determinism divergence: removing
+  // KINOWO_DEFERRED_DETAIL made scrapers scrape BARE, so a *year-from-detail*
+  // film (e.g. `Zaproszenie`, one of several same-title TMDB entries) was
+  // recorded yearless and TMDB resolved it on an order-pinned key — folding it
+  // order-dependently. Root cause was the harness, not production: `replayCorpus`
+  // skipped the detail-enrich step that production's `runOneScrapeTick` runs
+  // BEFORE publishing, so the detail-page year/director wasn't on the row when
+  // the TMDB stage resolved. `replayCorpus` now calls `enrichDetailsSync()` first
+  // (as production does), and the whole corpus is byte-identical across orders.
   "the whole-corpus scrape" should
-    "persist an identical record set + rendered rows regardless of cross-film scrape/enrichment order" ignore {
+    "persist an identical record set + rendered rows regardless of cross-film scrape/enrichment order" in {
     harvestByCinema should not be empty
     val started = System.nanoTime()
     val (record0, rows0) = replayCorpus(900000L)
@@ -280,6 +281,64 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     withClue(s"${divergences.size} divergence(s):\n${divergences.take(40).mkString("\n")}\n") {
       divergences.toList shouldBe empty
     }
+  }
+
+  // ── Settle-pass ±1-year film-identity collapse ─────────────────────────────
+  // The harvested replays above can't construct the exact adjacency cases the
+  // settle pass's `canonicalizeBySanitize` sub-clustering must get right —
+  // distinct-tmdbId remakes sharing a title, a production-year cinema row one
+  // year off a TMDB-resolved sibling, an unbounded run of adjacent years. These
+  // build each scenario as a synthetic single-title corpus and assert the
+  // settled outcome is identical across EVERY insertion permutation — the same
+  // "force the disorder" guarantee, scoped to the partition logic. A wrong
+  // (order-dependent) partition would chain years differently per order, or fold
+  // two films together only when one spelling arrives first.
+
+  private def resolvedRow(title: String, cinema: Cinema, year: Int, tmdbId: Int): (CacheKey, MovieRecord) =
+    (CacheKey(TitleNormalizer.searchTitle(title), Some(year)),
+      MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
+        (Tmdb: Source)   -> SourceData(title = Some(title), releaseYear = Some(year)),
+        (cinema: Source) -> SourceData(title = Some(title), releaseYear = Some(year)))))
+
+  private def cinemaRow(title: String, cinema: Cinema, year: Option[Int]): (CacheKey, MovieRecord) =
+    (CacheKey(TitleNormalizer.searchTitle(title), year),
+      MovieRecord(data = Map[Source, SourceData](
+        (cinema: Source) -> SourceData(title = Some(title), releaseYear = year))))
+
+  /** Settle a synthetic corpus across EVERY insertion order and return the
+   *  distinct settled row-sets. Order-independence ⇒ exactly one. */
+  private def settledAcrossOrders(rows: Seq[(CacheKey, MovieRecord)]): Set[Set[(String, Option[Int])]] =
+    rows.permutations.map { ordered =>
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
+      ordered.foreach { case (k, e) => cache.put(k, e) }
+      cache.canonicalizeBySanitize()
+      cache.snapshot().map(r => (r.title, r.year)).toSet
+    }.toSet
+
+  "canonicalizeBySanitize" should "collapse a film's ±1-year variants identically regardless of order" in {
+    // One TMDB-resolved row (2026) + a production-year cinema row (2025) one year
+    // off → one row at TMDB's year, whatever order they arrive.
+    val outcomes = settledAcrossOrders(Seq(
+      resolvedRow("Erupcja", Helios,   2026, 555),
+      cinemaRow  ("Erupcja", KinoMuza, Some(2025))))
+    outcomes shouldBe Set(Set(("Erupcja", Some(2026))))
+  }
+
+  it should "keep distinct-tmdbId same-title remakes as two rows regardless of order" in {
+    val outcomes = settledAcrossOrders(Seq(
+      resolvedRow("Diuna", Helios,   1984, 100),
+      resolvedRow("Diuna", KinoMuza, 2021, 200)))
+    outcomes shouldBe Set(Set(("Diuna", Some(1984)), ("Diuna", Some(2021))))
+  }
+
+  it should "window a {2024,2025,2026} no-tmdbId run into the same two clusters regardless of order" in {
+    val outcomes = settledAcrossOrders(Seq(
+      cinemaRow("Festiwal", Helios,                Some(2024)),
+      cinemaRow("Festiwal", KinoMuza,              Some(2025)),
+      cinemaRow("Festiwal", CinemaCityPoznanPlaza, Some(2026))))
+    // Greedy from the lowest year: {2024,2025} then {2026}. NEVER one 3-year blob
+    // and NEVER {2025,2026} — both of which an order-dependent chain could give.
+    outcomes shouldBe Set(Set(("Festiwal", Some(2024)), ("Festiwal", Some(2026))))
   }
 
   // Distinct, reproducible seed per (film, iteration) so a divergence replays.

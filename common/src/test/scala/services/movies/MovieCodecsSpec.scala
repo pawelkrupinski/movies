@@ -143,6 +143,23 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     back.record.data.keySet shouldBe Set(Tmdb)
   }
 
+  it should "round-trip the tmdbNoMatch / detailPending conclusion markers when set" in {
+    val record = MovieRecord(imdbId = Some("tt0000004"), tmdbNoMatch = true, detailPending = true)
+    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("conc|2025", record, Instant.now())))
+    back.record.tmdbNoMatch   shouldBe true
+    back.record.detailPending shouldBe true
+  }
+
+  it should "default tmdbNoMatch / detailPending to false on a legacy doc that lacks them" in {
+    val record = MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Legacy"))))
+    val raw = new BsonDocument()
+    codec.encode(new BsonDocumentWriter(raw), StoredMovieDto.fromDomain("legacy|2025", record, Instant.now()), EncoderContext.builder().build())
+    raw.remove("tmdbNoMatch"); raw.remove("detailPending")  // a doc written before the fields existed
+    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()))
+    back.record.tmdbNoMatch   shouldBe false
+    back.record.detailPending shouldBe false
+  }
+
   // ── Derived title/year (no longer stored) ─────────────────────────────────
 
   it should "derive the display title from sourceData (dominant cinema form), not a stored field" in {

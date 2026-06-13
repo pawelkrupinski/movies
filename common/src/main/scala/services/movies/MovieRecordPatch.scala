@@ -31,6 +31,8 @@ final case class MovieRecordPatch(
   tmdbId:            FieldUpdate[Int]                       = FieldUpdate.NoChange,
   metacriticUrl:     FieldUpdate[String]                    = FieldUpdate.NoChange,
   rottenTomatoesUrl: FieldUpdate[String]                    = FieldUpdate.NoChange,
+  tmdbNoMatch:       FieldUpdate[Boolean]                   = FieldUpdate.NoChange,
+  detailPending:     FieldUpdate[Boolean]                   = FieldUpdate.NoChange,
   data:              Map[Source, FieldUpdate[SourceData]]   = Map.empty
 ) {
   /** No effective change — caller can skip the write entirely. */
@@ -39,7 +41,9 @@ final case class MovieRecordPatch(
     metascore == FieldUpdate.NoChange && filmwebUrl == FieldUpdate.NoChange &&
     filmwebRating == FieldUpdate.NoChange && rottenTomatoes == FieldUpdate.NoChange &&
     tmdbId == FieldUpdate.NoChange && metacriticUrl == FieldUpdate.NoChange &&
-    rottenTomatoesUrl == FieldUpdate.NoChange && data.isEmpty
+    rottenTomatoesUrl == FieldUpdate.NoChange &&
+    tmdbNoMatch == FieldUpdate.NoChange && detailPending == FieldUpdate.NoChange &&
+    data.isEmpty
 
   /** Apply the patch to `current`, returning a new `MovieRecord` with the
    *  changed fields overwritten and everything else preserved. Used by
@@ -50,6 +54,11 @@ final case class MovieRecordPatch(
       case FieldUpdate.NoChange  => existing
       case FieldUpdate.Unset     => None
       case FieldUpdate.SetTo(v)  => Some(v)
+    }
+    // Non-Option scalars (always present); only NoChange / SetTo apply.
+    def mergeFlag(u: FieldUpdate[Boolean], existing: Boolean): Boolean = u match {
+      case FieldUpdate.SetTo(v) => v
+      case _                    => existing
     }
     val mergedData = data.foldLeft(current.data) {
       case (acc, (source, FieldUpdate.SetTo(sd)))  => acc + (source -> sd)
@@ -66,6 +75,8 @@ final case class MovieRecordPatch(
       tmdbId            = merge(tmdbId,            current.tmdbId),
       metacriticUrl     = merge(metacriticUrl,     current.metacriticUrl),
       rottenTomatoesUrl = merge(rottenTomatoesUrl, current.rottenTomatoesUrl),
+      tmdbNoMatch       = mergeFlag(tmdbNoMatch,   current.tmdbNoMatch),
+      detailPending     = mergeFlag(detailPending, current.detailPending),
       data              = mergedData
     )
   }
@@ -85,8 +96,13 @@ object MovieRecordPatch {
       tmdbId            = diffOpt(before.tmdbId,            after.tmdbId),
       metacriticUrl     = diffOpt(before.metacriticUrl,     after.metacriticUrl),
       rottenTomatoesUrl = diffOpt(before.rottenTomatoesUrl, after.rottenTomatoesUrl),
+      tmdbNoMatch       = diffFlag(before.tmdbNoMatch,       after.tmdbNoMatch),
+      detailPending     = diffFlag(before.detailPending,     after.detailPending),
       data              = diffData(before.data, after.data)
     )
+
+  private def diffFlag(before: Boolean, after: Boolean): FieldUpdate[Boolean] =
+    if (before == after) FieldUpdate.NoChange else FieldUpdate.SetTo(after)
 
   private def diffOpt[A](before: Option[A], after: Option[A]): FieldUpdate[A] =
     if (before == after) FieldUpdate.NoChange
