@@ -68,6 +68,16 @@ trait DetailEnricher {
    *  network-level name so it reports one global entry instead of one per
    *  venue. */
   def enrichmentServiceOverride: Option[String] = None
+  /** Whether resolution should WAIT for this cinema's deferred detail. True (the
+   *  default) when the detail supplies TMDB-identity hints (director / original
+   *  title / production year): a scraped row with a `filmUrl` is then held
+   *  `detailPending` — out of the read model and the TMDB stage — until
+   *  `fetchFilmDetail` lands, at which point `EnrichDetailsHandler` triggers
+   *  resolution. Set false for a cinema whose listing already carries those
+   *  hints and whose detail is purely display enrichment (synopsis / poster /
+   *  trailer): the row resolves immediately from the listing and the detail
+   *  merges in asynchronously when its `EnrichDetails` task runs. */
+  def defersTmdbResolution: Boolean = true
   /** Fetch + parse one film's detail by the reference the listing scrape left on
    *  the movie (its `filmUrl`). None on failure/absence, so the task stays
    *  stale and is retried rather than recording an empty result as fresh. */

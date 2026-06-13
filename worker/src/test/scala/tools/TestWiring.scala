@@ -183,19 +183,10 @@ trait TestWiring extends WorkerWiring {
    *  end to end. Uses the same `cascadeDrainOrder` production shutdown does —
    *  single source of truth for the producer→consumer ordering.
    *
-   *  Then settle the Kino Muza detail-page synopsis/poster inline: it's the one
-   *  enrichment driven ONLY by the async `CinemaMovieAdded` event path
-   *  (`KinoMuzaSynopsisRefresher`), which dispatches the detail fetch onto its
-   *  own scheduler — so whether the synopsis/poster has landed by snapshot time
-   *  is a pure timing race the cascade drain doesn't cover. The whole-corpus
-   *  `converge()` sweep masked it (its long serial re-enrich always gave the
-   *  async fetch time to win), but the fast single-film replay exposed it as a
-   *  flaky `synopsis`/`posterUrl` `Some` vs `None`. Mirror `enrichRatingsSync`:
-   *  drive the same per-row refresh to completion so the result is a pure
-   *  function of the fixtures. Idempotent against the async path — both write
-   *  byte-identical content from the same fixture URL. */
-  def drainServices(): Unit = {
+   *  Kino Muza's detail-page synopsis/poster/trailer is no longer settled here:
+   *  it now rides the standard deferred-detail pipeline (a deduped
+   *  `EnrichDetails` task), which `enrichDetailsSync` drains to completion
+   *  alongside every other `DetailEnricher` before the snapshot is taken. */
+  def drainServices(): Unit =
     quiesce(cascadeDrainOrder*)
-    kinoMuzaSynopsisRefresher.refreshAllStaleSync()
-  }
 }

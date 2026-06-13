@@ -376,11 +376,11 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
   //
   // The listing page only carries a landscape-cropped thumbnail; the
   // higher-fidelity portrait poster lives on each film's detail page and is
-  // pulled by `KinoMuzaSynopsisRefresher`. Keeping the listing's posterUrl
+  // pulled by the deferred `fetchFilmDetail`. Keeping the listing's posterUrl
   // intentionally None means `MovieCache.recordCinemaScrape`'s slot merge
-  // can't undo the refresher's portrait poster on subsequent ticks.
+  // can't undo the detail-page portrait poster on subsequent ticks.
 
-  it should "return posterUrl = None for every film (detail-page poster owned by the refresher)" in {
+  it should "return posterUrl = None for every film (detail-page poster filled by fetchFilmDetail)" in {
     results.flatMap(_.posterUrl) shouldBe empty
   }
 
@@ -658,21 +658,19 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
 
   // ── Synopsis ──────────────────────────────────────────────────────────────
   //
-  // The 5-minute scrape no longer fetches per-film detail pages — Muza's
+  // The listing scrape no longer fetches per-film detail pages — Muza's
   // burst limiter doesn't tolerate 80+ detail-page requests every tick.
-  // A separate background `KinoMuzaSynopsisRefresher` (see its spec) walks
-  // unresolved rows once, slowly, and writes back. `fetch()` returns
-  // CinemaMovies with `synopsis = None`; the listing data (title, director,
-  // runtime, year, country, poster, showtimes) is still rich enough to
-  // render the home-page card. The `parseSynopsis(html)` helper stays
-  // public so the refresher can replay the same parse without re-running
-  // the listing loop.
+  // Per-film synopsis/poster/trailer is DEFERRED to an `EnrichDetails` queue
+  // task that calls `fetchFilmDetail` (see that section below). `fetch()`
+  // returns CinemaMovies with `synopsis = None`; the listing data (title,
+  // director, runtime, year, country, showtimes) is still rich enough to
+  // render the home-page card and to resolve TMDB without the detail.
 
-  it should "return synopsis = None for every film (detail fetch moved to the refresher)" in {
+  it should "return synopsis = None for every film (detail fetch deferred to fetchFilmDetail)" in {
     results.flatMap(_.synopsis) shouldBe empty
   }
 
-  it should "still expose parseSynopsis for the refresher to call against a recorded detail page" in {
+  it should "expose parseSynopsis for fetchFilmDetail to call against a recorded detail page" in {
     val html = scala.io.Source.fromFile("test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko")(using scala.io.Codec.UTF8).mkString
     val s    = client.parseSynopsis(Jsoup.parse(html))
     s                            should not be empty
@@ -681,8 +679,8 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
   }
 
   // Muza's detail page hosts a higher-fidelity portrait poster than the
-  // listing-page thumbnail. `parsePoster` pulls it out so the refresher
-  // can upgrade the row's posterUrl when it processes the detail page.
+  // listing-page thumbnail. `parsePoster` pulls it out so `fetchFilmDetail`
+  // can upgrade the row's posterUrl when its EnrichDetails task runs.
   it should "extract the portrait poster URL from a detail page" in {
     val html = scala.io.Source.fromFile("test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko")(using scala.io.Codec.UTF8).mkString
     client.parsePoster(Jsoup.parse(html)) shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/03/Pieniądze-to-wszystko-556x800.png")
@@ -702,5 +700,49 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
       Showtime(LocalDateTime.of(2026, 5, 20, 21, 15), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927870#total"), Some("Sala 1"), Nil),
       Showtime(LocalDateTime.of(2026, 5, 21, 21, 15), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927980#total"), Some("Sala 2"), Nil),
     )
+  }
+
+  // ── Deferred per-film detail (DetailEnricher.fetchFilmDetail) ──────────────
+  //
+  // KinoMuza opts into the standard deferred-detail pipeline: synopsis / poster
+  // / trailer are filled by a deduped `EnrichDetails` task calling
+  // `fetchFilmDetail` (one detail-page request covers all three). Its listing
+  // already carries the TMDB hints (director/year), so `defersTmdbResolution`
+  // is false — resolution doesn't wait on this fetch.
+
+  "KinoMuzaClient (DetailEnricher)" should "advertise the kino-muza detail group and not defer TMDB resolution" in {
+    client.detailGroup          shouldBe "kino-muza"
+    client.defersTmdbResolution shouldBe false
+  }
+
+  it should "fetchFilmDetail: pull synopsis + portrait poster from a detail page" in {
+    val detail = client.fetchFilmDetail("https://www.kinomuza.pl/movie/pieniadze-to-wszystko/")
+    detail                  should not be empty
+    detail.get.synopsis.get should startWith ("James Cox Chambers Jr.")
+    detail.get.posterUrl    shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/03/Pieniądze-to-wszystko-556x800.png")
+    detail.get.trailerUrl   shouldBe None  // this page embeds no trailer iframe
+  }
+
+  it should "fetchFilmDetail: pull the trailer URL when the detail page embeds one" in {
+    val detail = client.fetchFilmDetail("https://www.kinomuza.pl/movie/dziecko-z-pylu/")
+    detail.get.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=h9r7lx9yDXk")
+    detail.get.synopsis   should not be empty  // same fetch carries the synopsis
+  }
+
+  it should "fetchFilmDetail: return None on a fetch failure so the task stays stale and retries" in {
+    val failing = new FakeHttpFetch("kino-muza") {
+      override def get(url: String): String = throw new java.io.IOException("simulated fetch failure")
+    }
+    new KinoMuzaClient(failing).fetchFilmDetail("https://www.kinomuza.pl/movie/foo/") shouldBe None
+  }
+
+  it should "fetchFilmDetail: return Some with no synopsis when the page lacks a synopsis paragraph (marks fresh, no spin)" in {
+    val noSynopsis = new FakeHttpFetch("kino-muza") {
+      override def get(url: String): String =
+        "<html><body><div class='col-11 paragraph'><p>not the synopsis div</p></div></body></html>"
+    }
+    val detail = new KinoMuzaClient(noSynopsis).fetchFilmDetail("https://www.kinomuza.pl/movie/foo/")
+    detail              should not be empty  // page fetched OK → Some, so the handler marks it fresh
+    detail.get.synopsis shouldBe None
   }
 }

@@ -835,12 +835,12 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   // Muza is a two-stage scraper: every 5-min listing tick carries None for
   // `posterUrl` / `synopsis` / `trailerUrl` (the listing only knows title +
-  // showtimes + director + filmUrl), while a separate
-  // `KinoMuzaSynopsisRefresher` walks each row's detail page on a slower
-  // cadence and writes the portrait poster, synopsis, and trailer back.
+  // showtimes + director + filmUrl), while the deferred `EnrichDetails` task
+  // (`KinoMuzaClient.fetchFilmDetail`) fetches each row's detail page on a
+  // slower cadence and writes the portrait poster, synopsis, and trailer back.
   // The next listing tick mustn't undo that upgrade: the merge rule keeps
   // the existing slot's value whenever the cinema reports `None`.
-  it should "preserve refresher-upgraded synopsis / trailerUrl / posterUrl across listing scrapes" in {
+  it should "preserve detail-upgraded synopsis / trailerUrl / posterUrl across listing scrapes" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     val key   = cache.keyOf("Wolność po włosku", Some(2025))
 

@@ -9,7 +9,8 @@ import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
-class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper {
+class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")))
+  extends CinemaScraper with DetailEnricher {
 
   val cinema: Cinema = KinoMuza
   private val RepertoireUrl = "https://www.kinomuza.pl/repertuar/"
@@ -27,14 +28,16 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
       if (candidate.isBefore(today.minusMonths(6))) candidate.plusYears(1) else candidate
     }.toOption
 
-  // 5-min scrape returns just the listing — title, director, runtime, year,
-  // country, poster, showtimes. Per-film detail-page synopses used to be
-  // fetched inline (two-phase fetch + parallel workers) but the 80+ extra
-  // requests every tick tripped Muza's burst limiter and synopses came
-  // back empty for the whole tick. A separate
-  // `KinoMuzaSynopsisRefresher` walks unresolved rows once, slowly, off
-  // the scrape tick; this `fetch()` is back to a single repertuar-page
-  // request.
+  // The listing scrape returns just the listing — title, director, runtime,
+  // year, country, showtimes (no synopsis/poster/trailer). Fetching all 80+
+  // detail pages inline every tick tripped Muza's burst limiter and synopses
+  // came back empty for the whole tick, so per-film detail is DEFERRED: this
+  // `fetch()` is a single repertuar-page request, and each film's synopsis /
+  // poster / trailer is filled later by a deduped `EnrichDetails` queue task
+  // (the `DetailEnricher.fetchFilmDetail` below). Unlike most deferred-detail
+  // cinemas this detail is display-only — the listing already carries the TMDB
+  // hints (director/year) — so `defersTmdbResolution = false` keeps TMDB
+  // resolution immediate rather than waiting on the detail fetch.
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl)
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
@@ -47,8 +50,8 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
   // `<p>` children get joined with a blank line so original paragraph
   // boundaries survive the homepage card formatter.
   //
-  // Public so `KinoMuzaSynopsisRefresher` can drive its per-row fetches
-  // through the same parser without re-running the listing loop.
+  // Used by `fetchFilmDetail`; public so the client spec can exercise it
+  // against a detail-page document directly.
   def parseSynopsis(document: Document): Option[String] = {
     val paragraphs = document.select("div.col-lg-7.paragraph > p").asScala
       .map(_.text().trim)
@@ -66,8 +69,7 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
    *  from the screenshot stills further down (`lazyload` without
    *  `img-fuild`) and the mobile-only banner above (eagerly loaded with
    *  `src`, no `data-src`). Returns `None` when the slot is absent.
-   *  Public so `KinoMuzaSynopsisRefresher` can drive its per-row poster
-   *  upgrade through the same parser. */
+   *  Used by `fetchFilmDetail`; public for the client spec. */
   def parsePoster(document: Document): Option[String] =
     Option(document.selectFirst("img.img-fuild[data-src]"))
       .map(_.attr("data-src"))
@@ -77,11 +79,35 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
    *  via `<iframe class="embed-responsive-item" src="https://www.youtube
    *  .com/embed/<id>?…">`. Returns the canonical `watch?v=<id>` form; the
    *  view layer reshapes back to `/embed/` at render time via
-   *  `TrailerEmbed.embedUrlFor`. Public so the refresher can drive the
-   *  per-row fetch through the same parser. */
+   *  `TrailerEmbed.embedUrlFor`. Used by `fetchFilmDetail`; public for the
+   *  client spec. */
   def parseTrailer(document: Document): Option[String] =
     Option(document.selectFirst("iframe.embed-responsive-item")).map(_.attr("src")).filter(_.nonEmpty)
       .flatMap(ScraperParse.canonicalTrailer)
+
+  override val detailGroup: String = "kino-muza"
+
+  /** KinoMuza's deferred detail is display-only (synopsis / poster / trailer);
+   *  its TMDB hints (director / year) already come from the listing scrape, so
+   *  resolution must NOT wait on this fetch — see the class comment. */
+  override def defersTmdbResolution: Boolean = false
+
+  /** Deferred per-film detail fetch — the `EnrichDetails` task calls this with
+   *  the listing's `filmUrl`. One detail-page request covers synopsis, poster,
+   *  and trailer (Muza ships all three on the same page). `None` on a fetch
+   *  failure so the task stays stale and is retried rather than recording an
+   *  empty result as fresh; a page that simply lacks a synopsis still returns
+   *  `Some` (with whatever fields it does carry), marking the row fresh so it
+   *  isn't refetched until the freshness window lapses. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(http.get(ref)).toOption.map { html =>
+      val doc = Jsoup.parse(html)
+      FilmDetail(
+        synopsis   = parseSynopsis(doc),
+        posterUrl  = parsePoster(doc),
+        trailerUrl = parseTrailer(doc)
+      )
+    }
 
   private val RuntimePat = """(\d+)’""".r
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r
@@ -149,10 +175,10 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
           cinema    = KinoMuza,
           // The listing page only carries a landscape-cropped thumbnail; the
           // higher-fidelity portrait poster lives on each film's detail page
-          // and is pulled by `KinoMuzaSynopsisRefresher` on the
-          // `CinemaMovieAdded` event. Leaving the listing's posterUrl as None
-          // means the merge in `MovieCache.recordCinemaScrape` can't clobber
-          // the refresher's portrait on subsequent ticks.
+          // and is pulled by the deferred `fetchFilmDetail`. Leaving the
+          // listing's posterUrl as None means the merge in
+          // `MovieCache.recordCinemaScrape` can't clobber the detail-page
+          // portrait on subsequent ticks.
           posterUrl = None,
           filmUrl   = filmUrl,
           synopsis  = None,

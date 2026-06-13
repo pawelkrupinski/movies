@@ -59,7 +59,6 @@ class WorkerWiring {
     // Mongo-backed chain detail cache so Helios / Cinema City detail is deduped
     // across worker servers, not just within one process.
     (h, ttl) => new MongoCachingDetailFetch(h, mongoConnection.database, ttl))
-  def kinoMuzaClient: KinoMuzaClient = cinemaScraperCatalog.kinoMuzaClient
 
   // Scrape every modelled city by default; KINOWO_SCRAPE_CITIES (comma-separated
   // slugs) only NARROWS the set, e.g. to shed load if the worker throttles/OOMs.
@@ -264,7 +263,6 @@ class WorkerWiring {
       ()
     }))
   lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache)
-  lazy val kinoMuzaSynopsisRefresher = new KinoMuzaSynopsisRefresher(movieCache, kinoMuzaClient, httoFetch)
 
   // ── Task queue (scrape scheduling) ──────────────────────────────────────────
   // Hold the first scrape back from boot so the cold-boot scrape burst doesn't
@@ -293,9 +291,14 @@ class WorkerWiring {
   lazy val detailEnrichers: Seq[DetailEnricher] =
     cinemaScraperCatalog.all.collect { case de: DetailEnricher => de }
 
-  /** Cinemas that defer per-film detail — a film one of these scrapes (with a
-   *  detail filmUrl) waits for its EnrichDetails task before TMDB resolution. */
-  lazy val deferredDetailCinemas: Set[models.Cinema] = detailEnrichers.map(_.cinema).toSet
+  /** Cinemas that defer per-film detail AND whose detail supplies TMDB hints —
+   *  a film one of these scrapes (with a detail filmUrl) waits for its
+   *  EnrichDetails task before TMDB resolution. A display-only enricher
+   *  (`defersTmdbResolution = false`, e.g. KinoMuza) still rides the
+   *  EnrichDetails pipeline but isn't held back: it resolves from the listing
+   *  and merges its synopsis/poster/trailer in asynchronously. */
+  lazy val deferredDetailCinemas: Set[models.Cinema] =
+    detailEnrichers.filter(_.defersTmdbResolution).map(_.cinema).toSet
 
   // The shared scrape core: record + decide-trigger, injected into
   // ScrapeCinemaHandler. Detail enqueue is event-driven (DetailTaskEnqueuer off
@@ -369,11 +372,9 @@ class WorkerWiring {
   //   TmdbResolved       → ratingEnqueuer          (enqueue IMDb/RT/MC/Filmweb)
   //   ImdbIdMissing      → imdbIdResolver + ratingEnqueuer (TMDB-only hits)
   //   ImdbIdResolved     → ratingEnqueuer          (enqueue IMDb)
-  //   CinemaMovieAdded   → kinoMuzaSynopsisRefresher
   // Resolution stays inline (one-shot per scraped row).
   eventBus.subscribe(movieService.onMovieDetailsComplete)
   eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
-  eventBus.subscribe(kinoMuzaSynopsisRefresher.onCinemaMovieAdded)
   // One detail enqueuer per deferred-detail cinema.
   detailEnqueuers.foreach(e => eventBus.subscribe(e.onCinemaMovieAdded))
   // Rating subscribers ENQUEUE tasks; RatingHandlers + EnrichmentReaper fetch.
@@ -402,7 +403,6 @@ class WorkerWiring {
     // Ratings refresh via the queue (RatingHandlers + the EnrichmentReaper
     // backstop); refreshOneSync, which the handlers call, needs no start().
     unscreenedCleanup.start()
-    kinoMuzaSynopsisRefresher.start()
     // Publish the by-design Filmweb-only cinemas so the /uptime/fallback page can
     // list them (the catalog is worker-only; the web reads this from Mongo).
     filmwebFallbackStore.putFilmwebOnly(filmwebOnlyCinemas)
@@ -438,7 +438,6 @@ class WorkerWiring {
     freshnessStore.close()
     cascadeDrainOrder.foreach(_.stop())
     unscreenedCleanup.stop()
-    kinoMuzaSynopsisRefresher.stop()
     readModelProjector.stop()
     movieCache.stop()
     titleRulesCache.stop()

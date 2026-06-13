@@ -59,8 +59,8 @@ case class MovieDetailsComplete(
  *  visibility and the event are atomic: any handler reading the cache for
  *  the just-published tuple sees the newly-written slot.
  *
- *  Carries `filmUrl` so a cinema-specific listener (today:
- *  `KinoMuzaSynopsisRefresher`) can drive a per-film detail-page fetch
+ *  Carries `filmUrl` so a cinema-specific listener (a `DetailTaskEnqueuer`
+ *  for a deferred-detail cinema) can enqueue a per-film detail-page fetch
  *  without re-reading the slot.
  *
  *  Periodic safety net: detail-page enrichers should NOT rely solely on
