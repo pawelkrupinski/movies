@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.movies.{InMemoryNormalizationReportRepo, MovieRepo, NormalizationReport, NormalizationRebuilder}
+import services.movies.{InMemoryNormalizationReportRepo, MovieRepo, NormalizationReport, NormalizationRebuilder, StoredMovieRecord}
 import services.titlerules.{InMemoryTitleRulesRepo, RuleScope, TitleRule, TitleRuleRecord}
 import services.users.InMemoryUserRepo
 
@@ -29,10 +29,22 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     override def close() = ()
   }
 
+  /** A read-only corpus of the given display titles — only `findAll().title` is
+   *  read by the affected/preview endpoints. */
+  private def repoWith(titles: String*): MovieRepo = new MovieRepo {
+    def enabled = true
+    def findAll() = titles.map(t => StoredMovieRecord(t, None, MovieRecord()))
+    def delete(title: String, year: Option[Int]) = ()
+    def upsert(title: String, year: Option[Int], e: MovieRecord) = ()
+    def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord) = false
+    override def close() = ()
+  }
+
   private def controller(repo: InMemoryTitleRulesRepo = new InMemoryTitleRulesRepo(),
                          reports: InMemoryNormalizationReportRepo = new InMemoryNormalizationReportRepo(),
-                         gate: AdminAction = TestAdminAction()) =
-    new AdminTitleRulesController(Helpers.stubControllerComponents(), gate, repo, emptyRepo, reports)
+                         gate: AdminAction = TestAdminAction(),
+                         movies: MovieRepo = emptyRepo) =
+    new AdminTitleRulesController(Helpers.stubControllerComponents(), gate, repo, movies, reports)
 
   private val adminSession = FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
 
@@ -109,6 +121,38 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     val result = controller().preview().apply(jsonReq(session = true, body))
     status(result) shouldBe OK
     (contentAsJson(result) \ "newMergeCount").as[Int] shouldBe 0
+  }
+
+  "affected" should "401 an anonymous request" in {
+    val body = Json.obj("rules" -> Json.arr())
+    status(controller().affected().apply(jsonReq(session = false, body))) shouldBe UNAUTHORIZED
+  }
+
+  it should "report, per transient rule, which corpus titles it rewrites and to what" in {
+    val corpus = repoWith("Top Gun - Restored", "Klub: Vertigo", "Anora")
+    val body = Json.obj("rules" -> Json.arr(
+      Json.obj("id" -> "g1", "scope" -> "GlobalStructural",
+        "pattern" -> "(?i)\\s*-\\s*restored$", "replacement" -> "", "order" -> 1),
+      Json.obj("id" -> "s1", "scope" -> "Search",
+        "pattern" -> "(?i)^Klub:\\s*", "replacement" -> "", "order" -> 1),
+      // A record-changing rule: present in the draft but NOT in the affected output.
+      Json.obj("id" -> "p1", "scope" -> "PerCinema", "cinemaId" -> "cinema-city",
+        "pattern" -> "^X ", "replacement" -> "", "order" -> 1)))
+    val result = controller(movies = corpus).affected().apply(jsonReq(session = true, body))
+    status(result) shouldBe OK
+    val arr = (contentAsJson(result) \ "affected").as[Seq[play.api.libs.json.JsValue]]
+    arr.map(a => (a \ "ruleId").as[String]) should contain theSameElementsAs Seq("g1", "s1")
+    val g1 = arr.find(a => (a \ "ruleId").as[String] == "g1").get
+    (g1 \ "count").as[Int] shouldBe 1
+    (g1 \ "changes" \ 0 \ "title").as[String] shouldBe "Top Gun - Restored"
+    (g1 \ "changes" \ 0 \ "result").as[String] shouldBe "Top Gun"
+    val s1 = arr.find(a => (a \ "ruleId").as[String] == "s1").get
+    (s1 \ "changes" \ 0 \ "result").as[String] shouldBe "Vertigo"
+  }
+
+  it should "400 a malformed rule body" in {
+    val body = Json.obj("rules" -> Json.arr(Json.obj("scope" -> "GlobalStructural"))) // no pattern
+    status(controller().affected().apply(jsonReq(session = true, body))) shouldBe BAD_REQUEST
   }
 
   "report" should "surface the latest backfill outcome" in {

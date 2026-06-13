@@ -77,4 +77,44 @@ class TitleRuleSetSpec extends AnyFlatSpec with Matchers {
   "perCinema with no rules for a key" should "be an identity transform" in {
     TitleRuleSet.empty.perCinema("anything", "Untouched - X") shouldBe "Untouched - X"
   }
+
+  // ── transientAffected: the per-rule "affected films" preview ───────────────
+  private val previewSet = TitleRuleSet(Seq(
+    rule("g-restored", GlobalStructural, "(?i)\\s*-\\s*restored$", ""),
+    rule("g-noop",     GlobalStructural, "(?i)\\s*-\\s*director's cut$", ""),
+    rule("s-klub",     Search, "(?i)^Klub:\\s*", ""),
+    rule("c-amp",      Canonical, " & ", " i ", applyAll = true),
+    rule("p-strip",    PerCinema, "^X ", "", cinemaId = Some("cc"))
+  ))
+  private val previewTitles = Seq("Top Gun - Restored", "Top Gun", "Klub: Vertigo", "Batman & Robin")
+  private def affectedFor(id: String) =
+    previewSet.transientAffected(previewTitles).find(_.ruleId == id).get
+
+  "transientAffected" should "only cover the scopes that don't rewrite the stored record" in {
+    previewSet.transientAffected(previewTitles).map(_.ruleId) should contain theSameElementsAs
+      Seq("g-restored", "g-noop", "s-klub")     // no Canonical, no PerCinema
+  }
+
+  it should "credit a structural rule the exact corpus titles it rewrites, with the result" in {
+    val a = affectedFor("g-restored")
+    a.scope shouldBe GlobalStructural
+    a.changes shouldBe Seq(TitleRuleSet.Change("Top Gun - Restored", "Top Gun")) // not the bare "Top Gun"
+  }
+
+  it should "credit a search rule its own strip" in {
+    affectedFor("s-klub").changes shouldBe Seq(TitleRuleSet.Change("Klub: Vertigo", "Vertigo"))
+  }
+
+  it should "leave a rule that matches nothing in the corpus with an empty change list" in {
+    affectedFor("g-noop").changes shouldBe empty
+  }
+
+  it should "attribute each step to its own rule when several rules in a tier fire on one title" in {
+    val rs = TitleRuleSet(Seq(
+      rule("a", GlobalStructural, "^A ", "", order = 10),
+      rule("b", GlobalStructural, " B$", "", order = 20)))
+    val byId = rs.transientAffected(Seq("A Film B")).map(a => a.ruleId -> a.changes).toMap
+    byId("a") shouldBe Seq(TitleRuleSet.Change("A Film B", "Film B")) // original, after rule a
+    byId("b") shouldBe Seq(TitleRuleSet.Change("A Film B", "Film"))   // original, after rule b
+  }
 }

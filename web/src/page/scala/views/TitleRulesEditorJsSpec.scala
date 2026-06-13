@@ -84,6 +84,38 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     }
   }
 
+  it should "give every transient (external-lookup) rule an unfoldable affected-titles list, but not per-cinema rules" in {
+    onEditor { page =>
+      // GlobalStructural seeds 4 rules → 4 affected <details>; the Search/Canonical
+      // cards seed no rules, so the only affected lists come from those 4.
+      page.evalInt("document.querySelectorAll('.rule-wrap details.affected').length") shouldBe 4
+      // The per-cinema card (the one carrying a cinema <select>) has rule rows but
+      // NO affected list — its rules rewrite the stored record.
+      page.evalInt(
+        "[...document.querySelectorAll('.card')]" +
+          ".filter(c => c.querySelector('select'))" +
+          ".reduce((n, c) => n + c.querySelectorAll('details.affected').length, 0)"
+      ) shouldBe 0
+    }
+  }
+
+  it should "re-run the affected preview as the user edits a transient rule, but only once the regex compiles" in {
+    onEditor { page =>
+      // `scheduleAffected` is the debounced edit→refresh hook. It must fire for a
+      // valid pattern and stay quiet for a malformed one (no point querying the
+      // corpus with a regex the server will reject).
+      page.evalBool("typeof window.TitleRules.scheduleAffected === 'function'") shouldBe true
+      page.evalBool(
+        """(() => { let fired = false;
+          |  window.TitleRules.scheduleAffected({ pattern: '^Klub: ' }, () => { fired = true; });
+          |  return fired; })()""".stripMargin) shouldBe true
+      page.evalBool(
+        """(() => { let fired = false;
+          |  window.TitleRules.scheduleAffected({ pattern: '(oops' }, () => { fired = true; });
+          |  return fired; })()""".stripMargin) shouldBe false
+    }
+  }
+
   private def jsLit(s: String): String = "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
   "window.TitleRules.moveBetween" should "reorder within one list (the same-list drag decision)" in {

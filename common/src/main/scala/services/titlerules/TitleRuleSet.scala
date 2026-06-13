@@ -73,6 +73,36 @@ case class TitleRuleSet(rules: Seq[TitleRule]) {
    *  scope which records to re-key after a per-cinema edit. */
   def cinemasWithRules: Set[String] = perCinemaRules.keySet
 
+  /** For every rule in the tiers that DON'T rewrite the stored record
+   *  (`!scope.changesRecord` — `GlobalStructural`, `Search`), the corpus titles
+   *  that rule rewrites and what it rewrites them to. Used by the admin editor
+   *  to show, per transient rule, an unfoldable list of affected films.
+   *
+   *  Attribution is positional: each tier is folded in its sorted order and a
+   *  change is credited to the rule that produced it — `(original, after)` where
+   *  `after` is the title once this rule (and the rules before it in the tier)
+   *  have applied. A title the rule leaves untouched is omitted; a rule that
+   *  changes nothing in the corpus yields an empty `changes`. The `Search` tier
+   *  is folded on its own (the structural pass that follows in `apiQuery` is the
+   *  `GlobalStructural` tier's concern), so each rule is credited only its own
+   *  effect. Pure — the caller supplies the corpus display titles. */
+  def transientAffected(titles: Seq[String]): Seq[TitleRuleSet.RuleAffected] = {
+    val distinct = titles.distinct
+    RuleScope.all.filterNot(_.changesRecord).flatMap { scope =>
+      val tierRules = tier(scope)
+      // title → the changes each rule made to it, in fold order (ruleId-keyed).
+      val changesByRule: Map[String, Seq[TitleRuleSet.Change]] =
+        distinct.flatMap { title =>
+          tierRules.foldLeft((title, List.empty[(String, TitleRuleSet.Change)])) {
+            case ((acc, out), r) =>
+              val next = r(acc)
+              (next, if (next != acc) (r.id -> TitleRuleSet.Change(title, next)) :: out else out)
+          }._2
+        }.groupBy(_._1).view.mapValues(_.map(_._2)).toMap
+      tierRules.map(r => TitleRuleSet.RuleAffected(r.id, scope, changesByRule.getOrElse(r.id, Nil)))
+    }
+  }
+
   /** Patterns that failed to compile — surfaced to the editor so a typo can't
    *  silently no-op. */
   def invalidRules: Seq[TitleRule] = rules.filterNot(_.patternValid)
@@ -80,4 +110,13 @@ case class TitleRuleSet(rules: Seq[TitleRule]) {
 
 object TitleRuleSet {
   val empty: TitleRuleSet = TitleRuleSet(Nil)
+
+  /** One title a transient rule rewrites: the `original` corpus title and the
+   *  `result` once the rule applies. */
+  final case class Change(original: String, result: String)
+
+  /** A transient rule's effect on the corpus — the (original → result) pairs it
+   *  rewrites, in the corpus order they were folded. Empty when the rule touches
+   *  nothing currently in the corpus. */
+  final case class RuleAffected(ruleId: String, scope: RuleScope, changes: Seq[Change])
 }

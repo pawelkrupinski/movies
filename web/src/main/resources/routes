@@ -129,6 +129,8 @@ POST    /admin/title-rules               controllers.AdminTitleRulesController.s
 POST    /admin/title-rules/delete        controllers.AdminTitleRulesController.delete()
 + nocsrf
 POST    /admin/title-rules/preview       controllers.AdminTitleRulesController.preview()
++ nocsrf
+POST    /admin/title-rules/affected      controllers.AdminTitleRulesController.affected()
 GET     /admin/title-rules/report        controllers.AdminTitleRulesController.report()
 
 # ── robots.txt ────────────────────────────────────────────────────────────────

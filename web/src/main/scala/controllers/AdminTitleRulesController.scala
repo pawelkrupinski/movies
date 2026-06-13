@@ -89,6 +89,25 @@ class AdminTitleRulesController(
         }
     }
   }
+
+  /** For the DRAFT rule list, report — per rule of the transient scopes that
+   *  DON'T rewrite the stored record (`GlobalStructural`, `Search`) — which
+   *  corpus titles it rewrites and to what. Drives the editor's per-rule
+   *  unfoldable "affected films" list. Read-only — nothing is persisted. */
+  def affected(): Action[JsValue] = adminAction(parse.json) { request =>
+    (request.body \ "rules").validate[JsArray] match {
+      case JsError(_) => BadRequest(Json.obj("error" -> "expected { rules: [...] }"))
+      case JsSuccess(arr, _) =>
+        val parsed = arr.value.toSeq.map(flatRuleFromJson)
+        parsed.collectFirst { case Left(err) => err } match {
+          case Some(err) => BadRequest(Json.obj("error" -> err))
+          case None =>
+            val draft  = TitleRuleSet(parsed.collect { case Right(r) => r })
+            val titles = movieRepo.findAll().map(_.title).filter(_.nonEmpty)
+            Ok(Json.obj("affected" -> JsArray(draft.transientAffected(titles).map(affectedToJson))))
+        }
+    }
+  }
 }
 
 object AdminTitleRulesController {
@@ -112,6 +131,17 @@ object AdminTitleRulesController {
     case "bok"         => "BOK (wszystkie)"
     case _             => cinemas.map(_.displayName).distinct.sorted.headOption.getOrElse(key)
   }
+
+  /** Per-rule affected-titles payload for the editor. `count` is the full tally;
+   *  `changes` is capped so a broad rule can't bloat the response. */
+  def affectedToJson(a: TitleRuleSet.RuleAffected): JsObject = Json.obj(
+    "ruleId" -> a.ruleId,
+    "scope"  -> a.scope.name,
+    "count"  -> a.changes.size,
+    "changes" -> a.changes.take(AffectedSampleCap).map(c =>
+      Json.obj("title" -> c.original, "result" -> c.result)))
+
+  private val AffectedSampleCap = 500
 
   // ---- record JSON ----
 
