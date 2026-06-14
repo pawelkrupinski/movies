@@ -33,14 +33,14 @@ struct FilmDetails: Hashable, Codable {
     }
 
     init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.title = try c.decode(String.self, forKey: .title)
-        self.originalTitle = try c.decodeIfPresent(String.self, forKey: .originalTitle)
-        self.synopsis = try c.decodeIfPresent(String.self, forKey: .synopsis)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.title = try container.decode(String.self, forKey: .title)
+        self.originalTitle = try container.decodeIfPresent(String.self, forKey: .originalTitle)
+        self.synopsis = try container.decodeIfPresent(String.self, forKey: .synopsis)
         // Mirror how `Film` decodes URLs: drop any string that isn't a
         // valid URL rather than failing the whole row. A malformed
         // trailer link shouldn't sink the synopsis alongside it.
-        let raw = try c.decodeIfPresent([String].self, forKey: .trailerURLs) ?? []
+        let raw = try container.decodeIfPresent([String].self, forKey: .trailerURLs) ?? []
         self.trailerURLs = raw.compactMap { URL(string: $0) }
     }
 }

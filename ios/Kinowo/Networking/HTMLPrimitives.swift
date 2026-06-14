@@ -18,9 +18,9 @@ enum HTMLPrimitives {
         var result: [String.Index] = []
         var searchStart = haystack.startIndex
         while searchStart < haystack.endIndex,
-              let r = haystack.range(of: needle, range: searchStart..<haystack.endIndex) {
-            result.append(r.lowerBound)
-            searchStart = r.upperBound
+              let matchRange = haystack.range(of: needle, range: searchStart..<haystack.endIndex) {
+            result.append(matchRange.lowerBound)
+            searchStart = matchRange.upperBound
         }
         return result
     }
@@ -29,26 +29,26 @@ enum HTMLPrimitives {
     /// doesn't match. `.dotMatchesLineSeparators` so multi-line chunks
     /// (e.g. a `<div>` that wraps lines) still match.
     static func capture(_ string: String, _ pattern: String) -> String? {
-        guard let re = try? NSRegularExpression(
+        guard let regex = try? NSRegularExpression(
             pattern: pattern,
             options: [.dotMatchesLineSeparators]
         ) else { return nil }
         let ns = string as NSString
-        guard let m = re.firstMatch(in: string, range: NSRange(location: 0, length: ns.length)),
-              m.numberOfRanges >= 2 else { return nil }
-        let r = m.range(at: 1)
-        if r.location == NSNotFound { return nil }
-        return ns.substring(with: r)
+        guard let match = regex.firstMatch(in: string, range: NSRange(location: 0, length: ns.length)),
+              match.numberOfRanges >= 2 else { return nil }
+        let matchRange = match.range(at: 1)
+        if matchRange.location == NSNotFound { return nil }
+        return ns.substring(with: matchRange)
     }
 
     /// Named attribute value from a tag's attribute-blob (e.g. the
     /// substring between `<a ` and `>`). Attribute order doesn't
     /// matter; the regex is anchored on the attribute name.
     static func attribute(_ attrs: String, _ name: String) -> String? {
-        guard let re = try? NSRegularExpression(pattern: "\\b\(name)=\"([^\"]*)\"") else { return nil }
+        guard let regex = try? NSRegularExpression(pattern: "\\b\(name)=\"([^\"]*)\"") else { return nil }
         let ns = attrs as NSString
-        guard let m = re.firstMatch(in: attrs, range: NSRange(location: 0, length: ns.length)),
-              m.numberOfRanges >= 2 else { return nil }
-        return ns.substring(with: m.range(at: 1))
+        guard let match = regex.firstMatch(in: attrs, range: NSRange(location: 0, length: ns.length)),
+              match.numberOfRanges >= 2 else { return nil }
+        return ns.substring(with: match.range(at: 1))
     }
 }

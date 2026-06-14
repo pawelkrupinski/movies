@@ -116,11 +116,11 @@ struct MetaPillsView: View {
             .padding(.vertical, 3)
     }
 
-    static func formatRuntime(_ mins: Int) -> String {
-        let h = mins / 60, m = mins % 60
-        if h == 0 { return "\(m)min" }
-        if m == 0 { return "\(h)h" }
-        return "\(h)h \(m)min"
+    static func formatRuntime(_ totalMinutes: Int) -> String {
+        let hours = totalMinutes / 60, minutes = totalMinutes % 60
+        if hours == 0 { return "\(minutes)min" }
+        if minutes == 0 { return "\(hours)h" }
+        return "\(hours)h \(minutes)min"
     }
 }
 

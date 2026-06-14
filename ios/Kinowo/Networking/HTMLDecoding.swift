@@ -12,9 +12,9 @@ extension String {
         out.reserveCapacity(self.count)
         var i = self.startIndex
         while i < self.endIndex {
-            let c = self[i]
-            if c != "&" {
-                out.append(c)
+            let character = self[i]
+            if character != "&" {
+                out.append(character)
                 i = self.index(after: i)
                 continue
             }
@@ -22,7 +22,7 @@ extension String {
             // small. If absent, treat the `&` literally.
             let limit = self.index(i, offsetBy: 12, limitedBy: self.endIndex) ?? self.endIndex
             guard let semi = self.range(of: ";", range: i..<limit) else {
-                out.append(c)
+                out.append(character)
                 i = self.index(after: i)
                 continue
             }
@@ -31,7 +31,7 @@ extension String {
                 out.append(replacement)
                 i = semi.upperBound
             } else {
-                out.append(c)
+                out.append(character)
                 i = self.index(after: i)
             }
         }
@@ -51,7 +51,7 @@ private enum HTMLEntities {
     ]
 
     static func decode(_ entity: String) -> String? {
-        if let s = named[entity] { return s }
+        if let replacement = named[entity] { return replacement }
         // Numeric `&#NNN;` or hex `&#xHH;`.
         guard entity.hasPrefix("&#"), entity.hasSuffix(";") else { return nil }
         let inside = entity.dropFirst(2).dropLast()
@@ -61,7 +61,7 @@ private enum HTMLEntities {
         } else {
             scalarValue = UInt32(inside)
         }
-        guard let v = scalarValue, let scalar = Unicode.Scalar(v) else { return nil }
+        guard let value = scalarValue, let scalar = Unicode.Scalar(value) else { return nil }
         return String(scalar)
     }
 }

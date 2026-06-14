@@ -20,8 +20,8 @@ enum FlowLayoutMath {
         positions.reserveCapacity(sizes.count)
         var proposedWidths: [CGFloat] = []
         proposedWidths.reserveCapacity(sizes.count)
-        var x: CGFloat = 0
-        var y: CGFloat = 0
+        var xPosition: CGFloat = 0
+        var yPosition: CGFloat = 0
         var lineHeight: CGFloat = 0
         var maxLineWidth: CGFloat = 0
         var lineStart = 0
@@ -29,20 +29,20 @@ enum FlowLayoutMath {
         func finishLine(end: Int) {
             guard maxWidth.isFinite, end > lineStart else { return }
             let count = end - lineStart
-            let naturalWidth = (lineStart..<end).reduce(CGFloat(0)) { acc, i in
-                acc + sizes[i].width.rounded(.up)
+            let naturalWidth = (lineStart..<end).reduce(CGFloat(0)) { accumulator, i in
+                accumulator + sizes[i].width.rounded(.up)
             } + spacing * CGFloat(count - 1)
             let extra = maxWidth - naturalWidth
             guard extra > 0 else { return }
 
             if justified {
                 let perItem = extra / CGFloat(count)
-                var newX: CGFloat = 0
+                var newXPosition: CGFloat = 0
                 for i in lineStart..<end {
-                    positions[i] = CGPoint(x: newX, y: positions[i].y)
-                    let w = sizes[i].width.rounded(.up) + perItem
-                    proposedWidths[i] = w
-                    newX += w + spacing
+                    positions[i] = CGPoint(x: newXPosition, y: positions[i].y)
+                    let width = sizes[i].width.rounded(.up) + perItem
+                    proposedWidths[i] = width
+                    newXPosition += width + spacing
                 }
             } else if centered {
                 let offset = extra / 2
@@ -52,25 +52,25 @@ enum FlowLayoutMath {
             }
         }
 
-        for (i, s) in sizes.enumerated() {
-            let w = s.width.rounded(.up)
-            let h = s.height.rounded(.up)
-            if x > 0, x + w > maxWidth {
+        for (i, size) in sizes.enumerated() {
+            let width = size.width.rounded(.up)
+            let height = size.height.rounded(.up)
+            if xPosition > 0, xPosition + width > maxWidth {
                 finishLine(end: i)
-                maxLineWidth = max(maxLineWidth, x - spacing)
+                maxLineWidth = max(maxLineWidth, xPosition - spacing)
                 lineStart = i
-                x = 0
-                y += lineHeight + lineSpacing
+                xPosition = 0
+                yPosition += lineHeight + lineSpacing
                 lineHeight = 0
             }
-            positions.append(CGPoint(x: x, y: y))
-            proposedWidths.append(w)
-            x += w + spacing
-            lineHeight = max(lineHeight, h)
+            positions.append(CGPoint(x: xPosition, y: yPosition))
+            proposedWidths.append(width)
+            xPosition += width + spacing
+            lineHeight = max(lineHeight, height)
         }
         finishLine(end: sizes.count)
-        maxLineWidth = max(maxLineWidth, x - spacing)
-        let totalHeight = y + lineHeight
+        maxLineWidth = max(maxLineWidth, xPosition - spacing)
+        let totalHeight = yPosition + lineHeight
         let width = maxWidth.isFinite ? min(maxWidth, max(maxLineWidth, 0)) : max(maxLineWidth, 0)
         return Result(
             positions: positions,

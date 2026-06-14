@@ -82,7 +82,7 @@ struct City: Codable, Hashable {
     /// we serve — let them pick instead of dropping them on a far-off one).
     static func nearestWithin100km(lat: Double, lon: Double) -> City? {
         let ranked = all
-            .map { (city: $0, km: haversineKm(lat1: lat, lon1: lon, lat2: $0.lat, lon2: $0.lon)) }
+            .map { (city: $0, km: haversineKm(latitude1: lat, longitude1: lon, latitude2: $0.lat, longitude2: $0.lon)) }
             .min { $0.km < $1.km }
         guard let nearest = ranked, nearest.km <= 100 else { return nil }
         return nearest.city
@@ -154,15 +154,15 @@ struct City: Codable, Hashable {
     }
 
     /// Great-circle distance in kilometres between two coordinates.
-    private static func haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double) -> Double {
+    private static func haversineKm(latitude1: Double, longitude1: Double, latitude2: Double, longitude2: Double) -> Double {
         let earthRadiusKm = 6_371.0
-        let dLat = (lat2 - lat1) * .pi / 180
-        let dLon = (lon2 - lon1) * .pi / 180
-        let rLat1 = lat1 * .pi / 180
-        let rLat2 = lat2 * .pi / 180
-        let a = sin(dLat / 2) * sin(dLat / 2)
-            + sin(dLon / 2) * sin(dLon / 2) * cos(rLat1) * cos(rLat2)
-        let c = 2 * atan2(sqrt(a), sqrt(1 - a))
-        return earthRadiusKm * c
+        let deltaLatitude = (latitude2 - latitude1) * .pi / 180
+        let deltaLongitude = (longitude2 - longitude1) * .pi / 180
+        let latitude1Radians = latitude1 * .pi / 180
+        let latitude2Radians = latitude2 * .pi / 180
+        let squareHalfChord = sin(deltaLatitude / 2) * sin(deltaLatitude / 2)
+            + sin(deltaLongitude / 2) * sin(deltaLongitude / 2) * cos(latitude1Radians) * cos(latitude2Radians)
+        let angularDistance = 2 * atan2(sqrt(squareHalfChord), sqrt(1 - squareHalfChord))
+        return earthRadiusKm * angularDistance
     }
 }

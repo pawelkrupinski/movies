@@ -27,21 +27,21 @@ struct TopBar: View {
     let onTapFilters: () -> Void
 
     var body: some View {
-        let s = TopBar.viewportScale
-        // `spacing: 6 * s` matches the inter-pill gap inside
+        let scale = TopBar.viewportScale
+        // `spacing: 6 * scale` matches the inter-pill gap inside
         // `DatePillsRow`, so every gap on the bar — 🎬 → pills,
         // pills → search/Filtry — reads as the same width as the
         // gaps between the four pills.
-        HStack(spacing: 6 * s) {
+        HStack(spacing: 6 * scale) {
             Text("🎬")
-                .font(.system(size: 24 * s))
-            DatePillsRow(dateFilter: $dateFilter, scale: s)
+                .font(.system(size: 24 * scale))
+            DatePillsRow(dateFilter: $dateFilter, scale: scale)
                 .frame(maxWidth: .infinity)
             if searchInline {
                 // Cap the field so it stays a comfortable type-into width
                 // rather than eating the whole row — the pills get the rest.
-                InlineSearchField(search: $search, focused: $searchFocused, scale: s)
-                    .frame(maxWidth: 240 * s)
+                InlineSearchField(search: $search, focused: $searchFocused, scale: scale)
+                    .frame(maxWidth: 240 * scale)
             }
             Button(action: onTapFilters) {
                 // `line.3.horizontal.decrease.circle` is the funnel-in-
@@ -58,7 +58,7 @@ struct TopBar: View {
                 Image(systemName: filtersActive
                       ? "line.3.horizontal.decrease.circle.fill"
                       : "line.3.horizontal.decrease.circle")
-                    .font(.system(size: 30 * s))
+                    .font(.system(size: 30 * scale))
                     .foregroundStyle(filtersActive ? Color.accentColor : .primary)
             }
             .buttonStyle(BounceButtonStyle())
@@ -69,13 +69,13 @@ struct TopBar: View {
             .accessibilityLabel("Filtry")
             .accessibilityIdentifier(A11y.TopBar.filtryButton)
         }
-        .padding(.horizontal, 10 * s)
+        .padding(.horizontal, 10 * scale)
         // Tiny top padding so the pills hug the status bar; the
         // safeAreaInset already reserves the strip above. Larger bottom
         // padding keeps a small breathing buffer between the bar and the
         // grid scrolling beneath it.
-        .padding(.top, 2 * s)
-        .padding(.bottom, 8 * s)
+        .padding(.top, 2 * scale)
+        .padding(.bottom, 8 * scale)
         // No background here on purpose — no frosted material. The bar's
         // backing is a gradient *fade* (a scrim, not a frost) drawn in
         // `ContentView`: opaque app-background behind the pills, fading to
@@ -99,8 +99,8 @@ struct TopBar: View {
     /// `UIScreen.main` — the value is constant per launch on iPhone,
     /// which is where this app runs.
     private static let viewportScale: CGFloat = {
-        let w = UIScreen.main.bounds.width
-        return max(0.85, min(1.2, w / 393))
+        let width = UIScreen.main.bounds.width
+        return max(0.85, min(1.2, width / 393))
     }()
 
 }

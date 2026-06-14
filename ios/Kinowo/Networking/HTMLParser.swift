@@ -99,18 +99,18 @@ enum HTMLParser {
         )
     }
 
-    private static func parseRuntime(_ s: String) -> Int? {
-        var minutes = 0
-        var rest = Substring(s)
-        if let hRange = rest.range(of: "h") {
-            let h = Int(rest[..<hRange.lowerBound].trimmingCharacters(in: .whitespaces))
-            if let h = h { minutes += h * 60 }
-            rest = rest[hRange.upperBound...]
+    private static func parseRuntime(_ runtimeText: String) -> Int? {
+        var totalMinutes = 0
+        var rest = Substring(runtimeText)
+        if let hourRange = rest.range(of: "h") {
+            let hours = Int(rest[..<hourRange.lowerBound].trimmingCharacters(in: .whitespaces))
+            if let hours = hours { totalMinutes += hours * 60 }
+            rest = rest[hourRange.upperBound...]
         }
-        if let mRange = rest.range(of: "min") {
-            let m = Int(rest[..<mRange.lowerBound].trimmingCharacters(in: .whitespaces))
-            if let m = m { minutes += m }
+        if let minuteRange = rest.range(of: "min") {
+            let minutes = Int(rest[..<minuteRange.lowerBound].trimmingCharacters(in: .whitespaces))
+            if let minutes = minutes { totalMinutes += minutes }
         }
-        return minutes > 0 ? minutes : nil
+        return totalMinutes > 0 ? totalMinutes : nil
     }
 }

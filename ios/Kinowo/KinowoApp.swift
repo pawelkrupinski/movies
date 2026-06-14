@@ -9,13 +9,13 @@ struct KinowoApp: App {
     @StateObject private var sync: StateSyncService
 
     init() {
-        let p = UserPreferences()
-        let a = AuthService()
-        _prefs = StateObject(wrappedValue: p)
-        _authService = StateObject(wrappedValue: a)
+        let preferences = UserPreferences()
+        let authService = AuthService()
+        _prefs = StateObject(wrappedValue: preferences)
+        _authService = StateObject(wrappedValue: authService)
         _sync = StateObject(wrappedValue: StateSyncService(
-            prefs: p,
-            userPublisher: a.$user.eraseToAnyPublisher(),
+            prefs: preferences,
+            userPublisher: authService.$user.eraseToAnyPublisher(),
             client: HttpUserStateClient()
         ))
     }

@@ -117,14 +117,14 @@ struct ShowingsView: View {
         var rows = 1
         var rowWidth: CGFloat = 0
         for st in showtimes {
-            let w = pillWidth(for: st, commonTokens: commonTokens)
+            let width = pillWidth(for: st, commonTokens: commonTokens)
             if rowWidth == 0 {
-                rowWidth = w
-            } else if rowWidth + ShowtimePillMetrics.interPillGap + w <= contentWidth {
-                rowWidth += ShowtimePillMetrics.interPillGap + w
+                rowWidth = width
+            } else if rowWidth + ShowtimePillMetrics.interPillGap + width <= contentWidth {
+                rowWidth += ShowtimePillMetrics.interPillGap + width
             } else {
                 rows += 1
-                rowWidth = w
+                rowWidth = width
             }
         }
         return rows
@@ -186,10 +186,10 @@ struct ShowingsView: View {
     /// Polish plural for "seans". 1 → seans, 2–4 (excluding 12–14) →
     /// seanse, else (0, 5+, 11–14, 25–30 …) → seansów. Standard
     /// last-two-digits rule.
-    private func showtimeNoun(_ n: Int) -> String {
-        if n == 1 { return "seans" }
-        let mod10 = n % 10
-        let mod100 = n % 100
+    private func showtimeNoun(_ count: Int) -> String {
+        if count == 1 { return "seans" }
+        let mod10 = count % 10
+        let mod100 = count % 100
         if mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) { return "seanse" }
         return "seansów"
     }
@@ -300,7 +300,7 @@ private struct ShowtimeBadge: View {
     // otherwise push it past the card's edge. See `clampedTooltipOffsetX`.
     @ViewBuilder
     private func roomTooltip(_ room: String) -> some View {
-        let dx = ShowtimePillMetrics.clampedTooltipOffsetX(
+        let horizontalOffset = ShowtimePillMetrics.clampedTooltipOffsetX(
             pillMidX: pillMidX,
             tooltipWidth: Self.tooltipWidth(for: room),
             cardWidth: Self.cardWidth,
@@ -316,7 +316,7 @@ private struct ShowtimeBadge: View {
                     .stroke(Color(red: 0.23, green: 0.23, blue: 0.43), lineWidth: 1)
             )
             .fixedSize()
-            .offset(x: dx, y: -52)
+            .offset(x: horizontalOffset, y: -52)
             .transition(.opacity)
             .allowsHitTesting(false)
             .zIndex(1)

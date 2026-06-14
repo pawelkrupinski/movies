@@ -46,12 +46,12 @@ enum DateFilter: Hashable {
     }()
 
     private static let isoFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.calendar = warsawCalendar
-        f.timeZone = warsawCalendar.timeZone
-        f.dateFormat = "yyyy-MM-dd"
-        f.locale = Locale(identifier: "en_US_POSIX")
-        return f
+        let formatter = DateFormatter()
+        formatter.calendar = warsawCalendar
+        formatter.timeZone = warsawCalendar.timeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
     }()
 
     static func iso(_ date: Date) -> String { isoFormatter.string(from: date) }
@@ -80,11 +80,11 @@ struct FormatFilter: Equatable {
     /// list = no constraint from the format axes (the time axis can
     /// still narrow things).
     private var requiredTokens: [String] {
-        var t: [String] = []
-        if !dimension.isEmpty { t.append(dimension) }
-        if !language.isEmpty  { t.append(language)  }
-        if imax               { t.append("IMAX")    }
-        return t
+        var tokens: [String] = []
+        if !dimension.isEmpty { tokens.append(dimension) }
+        if !language.isEmpty  { tokens.append(language)  }
+        if imax               { tokens.append("IMAX")    }
+        return tokens
     }
 
     /// `nil` when the user picked "Dowolna" (any time).
@@ -385,10 +385,10 @@ extension Sequence where Element == Film {
         excludedCast: Set<String> = [],
         now: Date = Date()
     ) -> [Film] {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return self.compactMap { film in
             if hidden.contains(film.title) { return nil }
-            if !q.isEmpty && !film.title.lowercased().contains(q) { return nil }
+            if !trimmedQuery.isEmpty && !film.title.lowercased().contains(trimmedQuery) { return nil }
             if !excludedCountries.isEmpty && Set(film.countries).isSubset(of: excludedCountries) { return nil }
             if !excludedGenres.isEmpty && !film.genres.isEmpty && Set(film.genres).isSubset(of: excludedGenres) { return nil }
             if !excludedDirectors.isEmpty && !film.directors.isEmpty && Set(film.directors).isSubset(of: excludedDirectors) { return nil }
@@ -516,12 +516,12 @@ enum ShowtimeClock {
     }()
 
     private static let warsawFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.calendar = warsawCalendar
-        f.timeZone = warsawCalendar.timeZone
-        f.dateFormat = "yyyy-MM-dd HH:mm"
-        f.locale = Locale(identifier: "en_US_POSIX")
-        return f
+        let formatter = DateFormatter()
+        formatter.calendar = warsawCalendar
+        formatter.timeZone = warsawCalendar.timeZone
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
     }()
 
     private static func warsawDate(date: String, time: String) -> Date? {

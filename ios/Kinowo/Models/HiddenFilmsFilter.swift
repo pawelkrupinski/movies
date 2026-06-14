@@ -9,8 +9,8 @@ enum HiddenFilmsFilter {
         let sorted = hidden.sorted {
             $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
         }
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return sorted }
-        return sorted.filter { $0.localizedCaseInsensitiveContains(q) }
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedQuery.isEmpty else { return sorted }
+        return sorted.filter { $0.localizedCaseInsensitiveContains(trimmedQuery) }
     }
 }

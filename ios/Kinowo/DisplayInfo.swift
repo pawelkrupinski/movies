@@ -12,11 +12,11 @@ import Foundation
 enum DisplayInfo {
     /// e.g. `viewport 390×844 pt · @3× → 1170×2532 px`
     static func tuningReadout(pointWidth: Double, pointHeight: Double, scale: Double) -> String {
-        let w = Int(pointWidth.rounded())
-        let h = Int(pointHeight.rounded())
-        let px = Int((pointWidth * scale).rounded())
-        let py = Int((pointHeight * scale).rounded())
-        return "viewport \(w)×\(h) pt · @\(scaleText(scale))× → \(px)×\(py) px"
+        let width = Int(pointWidth.rounded())
+        let height = Int(pointHeight.rounded())
+        let pixelWidth = Int((pointWidth * scale).rounded())
+        let pixelHeight = Int((pointHeight * scale).rounded())
+        return "viewport \(width)×\(height) pt · @\(scaleText(scale))× → \(pixelWidth)×\(pixelHeight) px"
     }
 
     /// `2.0` → `2`, `2.625` → `2.625` — drop a trailing `.0`, keep real fractions.
