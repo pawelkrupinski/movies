@@ -99,4 +99,38 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
 
     wiring.webReadModel.allMovies() shouldBe empty
   }
+
+  // ── 3. /debug movie-mirror connection selection ──────────────────────────────
+  // `movieRepository` reads the `movies` corpus over a local mirror when
+  // MONGODB_MOVIES_MIRROR_URI is set, else the shared prod connection. The mirror
+  // is used UNCONDITIONALLY when configured — there is no fall-back to the prod
+  // tunnel, even when the mirror is unreachable (a previous version fell back to
+  // prod whenever the mirror's `database` was absent).
+  //
+  // A `uri = None` MongoConnection never dials Mongo, so it stands in for both an
+  // "unreachable mirror" (its `database` is None, as a failed probe leaves it) and
+  // the prod connection — distinct instances we can identity-check.
+  private def stubConnection(label: String): MongoConnection =
+    new MongoConnection(uri = None, dbName = label, required = false)
+
+  "Wiring.movieConnection" should
+    "use the configured local mirror unconditionally — no prod fall-back even when unreachable" in {
+    val mirror = stubConnection("mirror") // database = None, i.e. an unreachable mirror
+    val prod   = stubConnection("prod")
+    val chosen = Wiring.movieConnection(Some("mongodb://127.0.0.1:9/x"), _ => mirror, prod)
+    (chosen eq mirror) shouldBe true
+  }
+
+  it should "use the shared prod connection when no mirror URI is set" in {
+    val prod = stubConnection("prod")
+    val chosen = Wiring.movieConnection(None, _ => fail("must not open a mirror when the URI is unset"), prod)
+    (chosen eq prod) shouldBe true
+  }
+
+  it should "not force the prod connection when a mirror URI is configured" in {
+    var prodForced = false
+    Wiring.movieConnection(Some("mongodb://127.0.0.1:9/x"), _ => stubConnection("mirror"),
+      { prodForced = true; stubConnection("prod") })
+    prodForced shouldBe false
+  }
 }

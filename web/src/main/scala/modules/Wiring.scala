@@ -63,16 +63,15 @@ trait Wiring {
   // (the worker owns `movies` writes), and the task queue stays on the prod
   // connection below, so /debug re-enrich still works end-to-end: ↻ → prod
   // worker → prod `movies` → tailer → local mirror → /debug SSE. Unset (prod +
-  // default dev) → reuse the shared prod connection, behaviour identical;
-  // set-but-unreachable → fall back to prod rather than block boot, since only
-  // /debug needs it.
+  // default dev) → reuse the shared prod connection, behaviour identical. Set →
+  // ALWAYS read that local mirror and never fall back to the prod tunnel: an
+  // unreachable mirror just disables movieRepository (an empty /debug) instead
+  // of silently dumping the prod corpus over the slow tunnel.
   lazy val movieMirrorConnection: MongoConnection =
-    Env.get("MONGODB_MOVIES_MIRROR_URI") match {
-      case Some(uri) =>
-        val mirror = MongoConnection.fromUri(uri, required = false)
-        if (mirror.database.isDefined) mirror else { mirror.close(); mongoConnection }
-      case None => mongoConnection
-    }
+    Wiring.movieConnection(
+      Env.get("MONGODB_MOVIES_MIRROR_URI"),
+      MongoConnection.fromUri(_, required = false),
+      mongoConnection)
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(movieMirrorConnection.database, fallbackToOwnInit = false)
   lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database)
   lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository)
@@ -189,8 +188,21 @@ trait Wiring {
     userRepository.close()
     userStateRepository.close()
     // The /debug read-mirror owns its own MongoClient when distinct from the
-    // shared prod connection (i.e. MONGODB_MOVIES_MIRROR_URI was set + reachable).
+    // shared prod connection (i.e. MONGODB_MOVIES_MIRROR_URI was set).
     if (movieMirrorConnection ne mongoConnection) movieMirrorConnection.close()
     mongoConnection.close()
   }
+}
+
+object Wiring {
+  /** The connection `movieRepository` reads the `movies` corpus from for /debug.
+   *  With `MONGODB_MOVIES_MIRROR_URI` set, always the local mirror `openMirror`
+   *  builds — there is deliberately NO fall-back to the prod tunnel, even when
+   *  the mirror is unreachable (then that connection is simply disabled and
+   *  /debug renders empty). Unset → the shared `prod` connection. `prod` is
+   *  by-name so a configured mirror never forces the primary connection here. */
+  def movieConnection(mirrorUri: Option[String],
+                      openMirror: String => MongoConnection,
+                      prod: => MongoConnection): MongoConnection =
+    mirrorUri.fold(prod)(openMirror)
 }
