@@ -29,14 +29,25 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
 
-# Local convenience: pull the upstream keys from the gitignored .env.local when
-# they aren't already in the environment. CI sets them as secrets, so the file
-# is absent there and this is a no-op.
-if [ -f "$REPO_ROOT/.env.local" ] && { [ -z "${TMDB_API_KEY:-}" ] || [ -z "${ZYTE_API_KEY:-}" ]; }; then
-    set -a
-    # shellcheck disable=SC1091
-    . "$REPO_ROOT/.env.local"
-    set +a
+# Local convenience: pull the two upstream keys from the gitignored .env.local
+# when they aren't already in the environment. CI sets them as secrets, so the
+# file is absent there and this is a no-op.
+#
+# We extract ONLY the keys we need rather than `source`-ing the whole file —
+# .env.local also holds values bash can't safely execute (e.g. a comma-joined
+# Fly token), and sourcing would abort the run on the first such line.
+load_env_key() {
+    local key="$1" line val
+    line="$(grep -E "^[[:space:]]*(export[[:space:]]+)?${key}=" "$REPO_ROOT/.env.local" | tail -n1 || true)"
+    [ -n "$line" ] || return 0
+    val="${line#*=}"                       # drop everything up to the first =
+    val="${val%\"}"; val="${val#\"}"       # strip a surrounding pair of "…"
+    val="${val%\'}"; val="${val#\'}"       # …or '…'
+    export "$key=$val"
+}
+if [ -f "$REPO_ROOT/.env.local" ]; then
+    [ -n "${TMDB_API_KEY:-}" ] || load_env_key TMDB_API_KEY
+    [ -n "${ZYTE_API_KEY:-}" ] || load_env_key ZYTE_API_KEY
 fi
 
 if [ -z "${TMDB_API_KEY:-}" ]; then
