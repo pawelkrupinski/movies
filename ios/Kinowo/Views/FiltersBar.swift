@@ -402,11 +402,21 @@ struct FiltersSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                // Hidden films get a single row at the top of Filtry that
-                // pushes a child screen — the inline list would otherwise
-                // crowd out every other filter when the set grows. Row
-                // hidden entirely when the set is empty so the sheet
-                // stays uncluttered.
+                // Sortowanie leads the sheet (above Ukryte filmy, matching
+                // Android). Mirrors the web's `#sort-by` dropdown: earliest
+                // showtime (default) or weighted rating.
+                Section("Sortowanie") {
+                    Picker("Sortuj", selection: $sortOption) {
+                        ForEach(SortOption.allCases, id: \.self) { option in
+                            Text(option.label).tag(option)
+                        }
+                    }
+                }
+
+                // Hidden films get a single row that pushes a child screen —
+                // the inline list would otherwise crowd out every other filter
+                // when the set grows. Row hidden entirely when the set is empty
+                // so the sheet stays uncluttered.
                 if !prefs.hiddenFilms.isEmpty {
                     Section {
                         NavigationLink {
@@ -418,16 +428,6 @@ struct FiltersSheet: View {
                                 Text("\(prefs.hiddenFilms.count)")
                                     .foregroundStyle(.secondary)
                             }
-                        }
-                    }
-                }
-
-                // Mirrors the web's `#sort-by` dropdown: earliest showtime
-                // (default) or weighted rating.
-                Section("Sortowanie") {
-                    Picker("Sortuj", selection: $sortOption) {
-                        ForEach(SortOption.allCases, id: \.self) { option in
-                            Text(option.label).tag(option)
                         }
                     }
                 }
