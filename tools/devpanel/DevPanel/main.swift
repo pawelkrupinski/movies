@@ -260,6 +260,8 @@ private let actions: [Action] = [
            script: "run-web.sh", console: .web),
     Action(title: "Web + worker", subtitle: "sbt localStack · fixtures",
            script: "run-local-stack.sh", console: .web),
+    Action(title: "Reset local corpus", subtitle: "drop kinowo_local · re-scrape",
+           script: "reset-local-corpus.sh", console: .web),
 ]
 
 private let defaultExpandedWidth: CGFloat = 380

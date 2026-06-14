@@ -37,6 +37,9 @@ check "web → sbt web/run" \
 check "local stack → sbt localStack" \
   "cd $ROOT && sbt localStack" \
   "$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/run-local-stack.sh")"
+check "reset local corpus → reset-corpus.sh --local --yes" \
+  "cd $ROOT && scripts/reset-corpus.sh --local --yes" \
+  "$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/reset-local-corpus.sh")"
 
 ios="$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/deploy-ios.sh")"
 contains "ios → waits for unlock"        "wait_for_ios_unlock <connected-device-udid>" "$ios"

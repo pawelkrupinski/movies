@@ -1,6 +1,6 @@
 # DevPanel
 
-A small always-on-top macOS palette that floats over your desktop with four
+A small always-on-top macOS palette that floats over your desktop with five
 buttons for the movies repo. Every action streams its live output into an
 in-panel console.
 
@@ -10,6 +10,7 @@ in-panel console.
 | iOS → device     | wait-for-unlock → `xcodebuild build` → `devicectl install` → `devicectl launch` | Device |
 | Web server       | frees :9000 → `sbt web/run`            | Web |
 | Web + worker     | frees :9000 → `sbt localStack` (web + fixture worker, local Mongo :27018) | Web |
+| Reset local corpus | `scripts/reset-corpus.sh --local --yes` (drops the kinowo_local corpus collections so a local worker re-scrapes) | Web |
 
 ## Consoles
 
