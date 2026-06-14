@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# DevPanel commit gate. Asserts each action script dispatches the exact command
-# we intend (via DEVPANEL_PRINT_ONLY), bash-syntax-checks every script, and
-# type-checks the Swift app. Run: bash tools/devpanel/test.sh
+# DevPanel commit gate. Asserts each action script dispatches the commands we
+# intend (via DEVPANEL_PRINT_ONLY), checks free_port actually frees a port,
+# bash-syntax-checks every script, then compiles the Swift app and runs its
+# headless self-test (the real subprocess-streaming path). Run:
+#   bash tools/devpanel/test.sh
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS="$HERE/scripts"
@@ -37,10 +39,14 @@ check "local stack → sbt localStack" \
   "$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/run-local-stack.sh")"
 
 ios="$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/deploy-ios.sh")"
-contains "ios → from ios dir"        "cd $ROOT/ios" "$ios"
-contains "ios → xcodebuild build install" "xcodebuild" "$ios"
-contains "ios → Kinowo scheme"       "-scheme Kinowo" "$ios"
-contains "ios → device destination"  "platform=iOS,id=" "$ios"
+contains "ios → xcodebuild build"       "xcodebuild" "$ios"
+contains "ios → Kinowo scheme"          "-scheme Kinowo" "$ios"
+contains "ios → device destination"     "id=<connected-device-udid>" "$ios"
+contains "ios → installs the .app"      "devicectl device install app" "$ios"
+contains "ios → launches the app"       "devicectl device process launch" "$ios"
+
+echo "▶ runDevPanel.sh"
+contains "runDevPanel → calls build.sh" "tools/devpanel/build.sh" "$(cat "$ROOT/runDevPanel.sh")"
 
 echo "▶ free_port kills a listener"
 tport=9099
@@ -62,17 +68,25 @@ else
 fi
 
 echo "▶ bash syntax"
-for f in "$SCRIPTS"/*.sh; do
+for f in "$SCRIPTS"/*.sh "$ROOT/runDevPanel.sh"; do
   if bash -n "$f"; then printf '  ok   %s\n' "$(basename "$f")"
   else printf '  FAIL %s\n' "$(basename "$f")"; fails=$((fails + 1)); fi
 done
 
-echo "▶ swift type-check"
-if swiftc -typecheck "$HERE/DevPanel/main.swift" 2>/tmp/devpanel-swiftc.log; then
-  printf '  ok   main.swift\n'
+echo "▶ swift compile + headless self-test"
+bin="$(mktemp -t devpanel-bin)"
+if swiftc -O -o "$bin" "$HERE/DevPanel/main.swift" 2>/tmp/devpanel-swiftc.log; then
+  printf '  ok   compiles\n'
+  out="$(DEVPANEL_SELFTEST=1 "$bin" 2>&1)"; rc=$?
+  if [[ $rc -eq 0 && "$out" == *"SELFTEST_OK"* ]]; then
+    printf '  ok   CommandRunner streams subprocess output (%s)\n' "$out"
+  else
+    printf '  FAIL self-test rc=%s out=%q\n' "$rc" "$out"; fails=$((fails + 1))
+  fi
 else
-  printf '  FAIL main.swift\n'; sed 's/^/    /' /tmp/devpanel-swiftc.log; fails=$((fails + 1))
+  printf '  FAIL compile\n'; sed 's/^/    /' /tmp/devpanel-swiftc.log; fails=$((fails + 1))
 fi
+rm -f "$bin"
 
 echo
 if [[ $fails -eq 0 ]]; then echo "✓ all DevPanel checks passed"; exit 0

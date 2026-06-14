@@ -50,3 +50,17 @@ dispatch() {
   cd "$workdir"
   exec "$@"
 }
+
+# step <cmd...>
+#
+# Announce and run one command in a multi-step script (no `exec`, so several
+# steps can run in sequence). DEVPANEL_PRINT_ONLY=1 prints the command instead
+# of running it — test.sh asserts on those lines.
+step() {
+  if [[ "${DEVPANEL_PRINT_ONLY:-}" == "1" ]]; then
+    printf '%s\n' "$*"
+    return 0
+  fi
+  printf '\n\033[1m▶ %s\033[0m\n' "$*"
+  "$@"
+}
