@@ -47,10 +47,10 @@ test.describe('zoomed portrait card gaps', () => {
 
       const card0 = c0.querySelector('.card')!.getBoundingClientRect();
       const card1 = c1.querySelector('.card')!.getBoundingClientRect();
-      const cb = c0.querySelector('.card-body');
+      const checkbox = c0.querySelector('.card-body');
       return {
         cardGap: card1.left - card0.right,
-        cardBodyPad: cb ? parseFloat(getComputedStyle(cb).paddingLeft) : -1,
+        cardBodyPad: checkbox ? parseFloat(getComputedStyle(checkbox).paddingLeft) : -1,
         colPad: parseFloat(getComputedStyle(c0).paddingLeft),
       };
     });
@@ -63,13 +63,13 @@ test.describe('zoomed portrait card gaps', () => {
     // containers — Firefox defers getComputedStyle inside
     // content-visibility:auto subtrees even after scrollIntoView.
     const bodyPad = await page.evaluate(() => {
-      const el = document.createElement('div');
-      el.className = 'card-body';
-      el.style.position = 'fixed';
-      el.style.visibility = 'hidden';
-      document.body.appendChild(el);
-      const v = parseFloat(getComputedStyle(el).paddingLeft);
-      el.remove();
+      const element = document.createElement('div');
+      element.className = 'card-body';
+      element.style.position = 'fixed';
+      element.style.visibility = 'hidden';
+      document.body.appendChild(element);
+      const v = parseFloat(getComputedStyle(element).paddingLeft);
+      element.remove();
       return v;
     });
     expect(bodyPad).toBeGreaterThanOrEqual(8);

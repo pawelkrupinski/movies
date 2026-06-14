@@ -32,8 +32,8 @@ test.describe('card poster link on WebKit (iPhone emulation)', () => {
       const cols = [...document.querySelectorAll<HTMLElement>('.col[data-title]')];
       for (const c of cols) {
         if (c.style.display === 'none') continue;
-        const img = c.querySelector<HTMLImageElement>('.poster-wrap > a img');
-        if (!img || img.style.display === 'none') continue;
+        const image = c.querySelector<HTMLImageElement>('.poster-wrap > a img');
+        if (!image || image.style.display === 'none') continue;
         return c.dataset.title ?? null;
       }
       return null;
@@ -51,9 +51,9 @@ test.describe('card poster link on WebKit (iPhone emulation)', () => {
     const title = await firstVisibleTitle(page);
     expect(title).toBeTruthy();
 
-    const img = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a img`);
-    await expect(img).toBeVisible();
-    await img.tap();
+    const image = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a img`);
+    await expect(image).toBeVisible();
+    await image.tap();
 
     // `domcontentloaded`: the `/film` page's `load` event is gated on
     // poster-proxy images + the trailer iframe and can stall a contended
@@ -73,9 +73,9 @@ test.describe('card poster link on WebKit (iPhone emulation)', () => {
 
     const title = await firstVisibleTitle(page);
     expect(title).toBeTruthy();
-    const img = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a img`);
-    await expect(img).toBeVisible();
-    await img.tap();
+    const image = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a img`);
+    await expect(image).toBeVisible();
+    await image.tap();
     // `domcontentloaded`: the inline boot scripts run at DCL, so the JS-error
     // assertion doesn't need the poster/iframe `load` that can stall a runner.
     await page.waitForURL(/\/film\?title=/, { waitUntil: 'domcontentloaded' });

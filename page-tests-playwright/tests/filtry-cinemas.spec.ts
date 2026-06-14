@@ -34,10 +34,10 @@ test.describe('Filtry > Kina checkboxes', () => {
     // Unchecking the first cinema's checkbox runs the inline
     // `onchange` which writes to `disabledCinemas` + reapplies.
     await page.evaluate(() => {
-      const cb = document.querySelector<HTMLInputElement>(
+      const checkbox = document.querySelector<HTMLInputElement>(
         '#cinema-list .panel-label input[type="checkbox"]',
       );
-      cb?.click();
+      checkbox?.click();
     });
 
     const stored = (await getLocalStorageJson<string[]>(page, 'disabledCinemas')) ?? [];
@@ -61,11 +61,11 @@ test.describe('Filtry > Kina checkboxes', () => {
 
     // Toggle off then on.
     await page.evaluate(() => {
-      const cb = document.querySelector<HTMLInputElement>(
+      const checkbox = document.querySelector<HTMLInputElement>(
         '#cinema-list .panel-label input[type="checkbox"]',
       );
-      cb?.click();
-      cb?.click();
+      checkbox?.click();
+      checkbox?.click();
     });
 
     const afterVisible = await visibleCinemaGroups(page);
@@ -76,18 +76,18 @@ test.describe('Filtry > Kina checkboxes', () => {
   });
 
   test('disabling a cinema lights the Filtry funnel; Wyczyść re-enables cinemas + clears it', async ({ page }) => {
-    const btn = page.locator('#format-filter-btn');
+    const button = page.locator('#format-filter-btn');
     // Neutral funnel to start — nothing filtered yet.
-    await expect(btn).not.toHaveClass(/filters-active/);
+    await expect(button).not.toHaveClass(/filters-active/);
 
     // Disabling one cinema is a filter "Wyczyść" clears, so the funnel lights.
     await page.evaluate(() => {
-      const cb = document.querySelector<HTMLInputElement>(
+      const checkbox = document.querySelector<HTMLInputElement>(
         '#cinema-list .panel-label input[type="checkbox"]',
       );
-      cb?.click();
+      checkbox?.click();
     });
-    await expect(btn).toHaveClass(/filters-active/);
+    await expect(button).toHaveClass(/filters-active/);
 
     // Wyczyść re-enables every cinema in this city (matching iOS/Android) and
     // returns the funnel to neutral.
@@ -98,7 +98,7 @@ test.describe('Filtry > Kina checkboxes', () => {
     const stored = (await getLocalStorageJson<string[]>(page, 'disabledCinemas')) ?? [];
     expect(stored).toEqual([]);
     expect(await visibleCinemaGroups(page)).toBeGreaterThan(beforeVisible);
-    await expect(btn).not.toHaveClass(/filters-active/);
+    await expect(button).not.toHaveClass(/filters-active/);
   });
 
   test('Wszystkie kina master checkbox un-disables everything', async ({ page }) => {

@@ -29,9 +29,9 @@ test.describe('mobile landscape layout', () => {
   test('all navbar items share a single row', async ({ page }) => {
     const boxes = await page.evaluate(() => {
       const q = (sel: string) => {
-        const el = document.querySelector(sel);
-        if (!el) return null;
-        const r = el.getBoundingClientRect();
+        const element = document.querySelector(sel);
+        if (!element) return null;
+        const r = element.getBoundingClientRect();
         return { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
       };
       return {
@@ -111,9 +111,9 @@ test.describe('mobile landscape layout', () => {
     // (the whole stack fits inside the tallest item's height) rather than by
     // distinct top edges, which a centred-but-taller logo would trip.
     const oneRow = await page.evaluate(() => {
-      const nav = document.querySelector('.navbar')!;
+      const navbar = document.querySelector('.navbar')!;
       let minTop = Infinity, maxBottom = -Infinity, maxH = 0;
-      for (const c of Array.from(nav.children)) {
+      for (const c of Array.from(navbar.children)) {
         const r = c.getBoundingClientRect();
         if (r.width === 0 || r.height === 0) continue;
         minTop = Math.min(minTop, r.top);
@@ -136,8 +136,8 @@ test.describe('mobile landscape layout', () => {
     // right edge.
     const layout = await page.evaluate(() => {
       const r = (sel: string) => {
-        const el = document.querySelector(sel);
-        return el ? el.getBoundingClientRect() : null;
+        const element = document.querySelector(sel);
+        return element ? element.getBoundingClientRect() : null;
       };
       return {
         navbar: r('.navbar'),

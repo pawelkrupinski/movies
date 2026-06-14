@@ -32,8 +32,8 @@ const ALL_CONTROL_SELS = [
 
 async function measureNavbarControls(page: Page) {
   return page.evaluate((groups) => {
-    const nav = document.querySelector('.navbar');
-    if (!nav) return { byGroup: {} } as const;
+    const navbar = document.querySelector('.navbar');
+    if (!navbar) return { byGroup: {} } as const;
     const byGroup: Record<string, { sel: string; fontPx: number; heightPx: number }[]> = {
       text: [], input: [], pill: [],
     };
@@ -41,13 +41,13 @@ async function measureNavbarControls(page: Page) {
       el.offsetParent !== null && el.getBoundingClientRect().height > 0;
     for (const [group, sels] of Object.entries(groups)) {
       for (const sel of sels) {
-        const els = Array.from(nav.querySelectorAll(sel)) as HTMLElement[];
-        const el = els.find(isVisible);
-        if (!el) continue;
+        const elements = Array.from(navbar.querySelectorAll(sel)) as HTMLElement[];
+        const element = elements.find(isVisible);
+        if (!element) continue;
         byGroup[group].push({
           sel,
-          fontPx:   parseFloat(getComputedStyle(el).fontSize),
-          heightPx: el.getBoundingClientRect().height,
+          fontPx:   parseFloat(getComputedStyle(element).fontSize),
+          heightPx: element.getBoundingClientRect().height,
         });
       }
     }
@@ -57,15 +57,15 @@ async function measureNavbarControls(page: Page) {
 
 async function measureHeights(page: Page): Promise<Record<string, number>> {
   return page.evaluate((sels) => {
-    const nav = document.querySelector('.navbar');
-    if (!nav) return {};
+    const navbar = document.querySelector('.navbar');
+    if (!navbar) return {};
     const out: Record<string, number> = {};
     for (const sel of sels) {
-      const candidates = Array.from(nav.querySelectorAll(sel)) as HTMLElement[];
-      const el = candidates.find(
+      const candidates = Array.from(navbar.querySelectorAll(sel)) as HTMLElement[];
+      const element = candidates.find(
         (e) => e.offsetParent !== null && e.getBoundingClientRect().height > 0,
       );
-      if (el) out[sel] = el.getBoundingClientRect().height;
+      if (element) out[sel] = element.getBoundingClientRect().height;
     }
     return out;
   }, ALL_CONTROL_SELS);
@@ -182,8 +182,8 @@ async function injectAuthMenu(page: Page): Promise<void> {
   // Wait until the avatar image has loaded its intrinsic size — that's the
   // state that balloons an unpinned flex-item img.
   await page.waitForFunction(() => {
-    const img = document.querySelector('.auth-menu .auth-avatar') as HTMLImageElement | null;
-    return !!img && img.complete && img.naturalWidth > 0;
+    const image = document.querySelector('.auth-menu .auth-avatar') as HTMLImageElement | null;
+    return !!image && image.complete && image.naturalWidth > 0;
   });
 }
 
@@ -200,9 +200,9 @@ test.describe('logged-in avatar pill height', () => {
 
   test('avatar pill is the same height as the search input', async ({ page }) => {
     const heights = await page.evaluate(() => {
-      const nav = document.querySelector('.navbar')!;
-      const pill = nav.querySelector('.auth-menu') as HTMLElement | null;
-      const search = nav.querySelector('.search-input') as HTMLElement | null;
+      const navbar = document.querySelector('.navbar')!;
+      const pill = navbar.querySelector('.auth-menu') as HTMLElement | null;
+      const search = navbar.querySelector('.search-input') as HTMLElement | null;
       return {
         pill:   pill   ? pill.getBoundingClientRect().height   : -1,
         search: search ? search.getBoundingClientRect().height : -1,
@@ -221,13 +221,13 @@ test.describe('logged-in avatar pill height', () => {
 
   test('the avatar image stays a pinned 22px circle, never ballooned or misaligned', async ({ page }) => {
     const m = await page.evaluate(() => {
-      const nav = document.querySelector('.navbar')!;
-      const img = nav.querySelector('.auth-menu .auth-avatar') as HTMLElement | null;
-      const pill = nav.querySelector('.auth-menu') as HTMLElement | null;
-      const search = nav.querySelector('.search-input') as HTMLElement | null;
-      if (!img || !pill) return null;
-      const cs = getComputedStyle(img);
-      const ir = img.getBoundingClientRect();
+      const navbar = document.querySelector('.navbar')!;
+      const image = navbar.querySelector('.auth-menu .auth-avatar') as HTMLElement | null;
+      const pill = navbar.querySelector('.auth-menu') as HTMLElement | null;
+      const search = navbar.querySelector('.search-input') as HTMLElement | null;
+      if (!image || !pill) return null;
+      const cs = getComputedStyle(image);
+      const ir = image.getBoundingClientRect();
       const pr = pill.getBoundingClientRect();
       const sr = search ? search.getBoundingClientRect() : null;
       return {
@@ -310,12 +310,12 @@ test.describe('avatar pill without Bootstrap CSS', () => {
 
   test('avatar stays centred in its pill even when Bootstrap never loads', async ({ page }) => {
     const m = await page.evaluate(() => {
-      const nav = document.querySelector('.navbar')!;
-      const img = nav.querySelector('.auth-menu .auth-avatar') as HTMLElement | null;
-      const pill = nav.querySelector('.auth-menu') as HTMLElement | null;
-      const search = nav.querySelector('.search-input') as HTMLElement | null;
-      if (!img || !pill) return null;
-      const ir = img.getBoundingClientRect();
+      const navbar = document.querySelector('.navbar')!;
+      const image = navbar.querySelector('.auth-menu .auth-avatar') as HTMLElement | null;
+      const pill = navbar.querySelector('.auth-menu') as HTMLElement | null;
+      const search = navbar.querySelector('.search-input') as HTMLElement | null;
+      if (!image || !pill) return null;
+      const ir = image.getBoundingClientRect();
       const pr = pill.getBoundingClientRect();
       const sr = search ? search.getBoundingClientRect() : null;
       return {
@@ -323,7 +323,7 @@ test.describe('avatar pill without Bootstrap CSS', () => {
         pillH: pr.height,
         imgMid: ir.top + ir.height / 2,
         pillMid: pr.top + pr.height / 2,
-        navAlign: getComputedStyle(nav as HTMLElement).alignItems,
+        navAlign: getComputedStyle(navbar as HTMLElement).alignItems,
         searchH: sr ? sr.height : -1,
       };
     });
@@ -372,14 +372,14 @@ test.describe('avatar pill on a desktop browser narrowed to mobile width', () =>
     // Search is dropped below 480px, so the still-visible day pills are the
     // reference control the avatar pill must match in height + midline.
     const m = await page.evaluate(() => {
-      const nav = document.querySelector('.navbar')!;
-      const pill = nav.querySelector('.auth-menu') as HTMLElement | null;
-      const ref = nav.querySelector('.day-pill') as HTMLElement | null;
-      const img = nav.querySelector('.auth-menu .auth-avatar') as HTMLElement | null;
-      if (!pill || !img) return null;
+      const navbar = document.querySelector('.navbar')!;
+      const pill = navbar.querySelector('.auth-menu') as HTMLElement | null;
+      const ref = navbar.querySelector('.day-pill') as HTMLElement | null;
+      const image = navbar.querySelector('.auth-menu .auth-avatar') as HTMLElement | null;
+      if (!pill || !image) return null;
       const pr = pill.getBoundingClientRect();
       const rr = ref ? ref.getBoundingClientRect() : null;
-      const ir = img.getBoundingClientRect();
+      const ir = image.getBoundingClientRect();
       return {
         pillH: pr.height,
         refH: rr ? rr.height : -1,
@@ -451,11 +451,11 @@ test.describe('tablet portrait — search focus does not reflow the date row (83
 
   test('the date stepper stays put when the search box is focused', async ({ page }) => {
     const read = () => page.evaluate(() => {
-      const nav = document.querySelector('.navbar') as HTMLElement;
+      const navbar = document.querySelector('.navbar') as HTMLElement;
       const date = document.querySelector('.navbar-date') as HTMLElement | null;
-      if (!nav || !date) return null;
+      if (!navbar || !date) return null;
       const r = date.getBoundingClientRect();
-      return { navH: nav.getBoundingClientRect().height, dateMid: r.top + r.height / 2 };
+      return { navH: navbar.getBoundingClientRect().height, dateMid: r.top + r.height / 2 };
     });
 
     const before = await read();
@@ -558,8 +558,8 @@ test.describe('narrow landscape (760×360)', () => {
 
   test('navbar is compact — height ≤ 42px', async ({ page }) => {
     const height = await page.evaluate(() => {
-      const nav = document.querySelector('.navbar') as HTMLElement;
-      return nav ? nav.getBoundingClientRect().height : -1;
+      const navbar = document.querySelector('.navbar') as HTMLElement;
+      return navbar ? navbar.getBoundingClientRect().height : -1;
     });
     expect(height).toBeGreaterThan(0);
     expect(height).toBeLessThanOrEqual(42);
@@ -615,8 +615,8 @@ test.describe('portrait filtry button (360×760)', () => {
 
   test('Filtry button right edge stays inside viewport', async ({ page }) => {
     const right = await page.evaluate(() => {
-      const btn = document.querySelector('#format-filter-btn');
-      return btn ? btn.getBoundingClientRect().right : -1;
+      const button = document.querySelector('#format-filter-btn');
+      return button ? button.getBoundingClientRect().right : -1;
     });
     expect(right).toBeGreaterThan(0);
     expect(right).toBeLessThanOrEqual(360 + 1);
@@ -643,13 +643,13 @@ test.describe('day pills (390×844)', () => {
     const pills = await page.evaluate(() => {
       const navRight = document.querySelector('.navbar')!.getBoundingClientRect().right;
       return Array.from(document.querySelectorAll('.day-pill')).map((p) => {
-        const el = p as HTMLElement;
-        const b = el.getBoundingClientRect();
+        const element = p as HTMLElement;
+        const b = element.getBoundingClientRect();
         return {
-          label: el.textContent,
+          label: element.textContent,
           width: b.width,
           withinNav: b.right <= navRight + 0.5,
-          clip: el.scrollWidth - el.clientWidth,
+          clip: element.scrollWidth - element.clientWidth,
         };
       });
     });

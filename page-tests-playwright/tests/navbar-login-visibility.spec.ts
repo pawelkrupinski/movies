@@ -27,16 +27,16 @@ test.describe('navbar "Zaloguj" visibility', () => {
     // Anonymous + provider-configured render always emits the button.
     await expect(login).toHaveCount(1);
 
-    const vp = page.viewportSize()!;
-    if (isMobileViewport(vp.width, vp.height)) {
+    const viewport = page.viewportSize()!;
+    if (isMobileViewport(viewport.width, viewport.height)) {
       await expect(
         login,
-        `Zaloguj should be hidden at mobile viewport ${vp.width}×${vp.height}`,
+        `Zaloguj should be hidden at mobile viewport ${viewport.width}×${viewport.height}`,
       ).toBeHidden();
     } else {
       await expect(
         login,
-        `Zaloguj should be visible at desktop viewport ${vp.width}×${vp.height}`,
+        `Zaloguj should be visible at desktop viewport ${viewport.width}×${viewport.height}`,
       ).toBeVisible();
     }
   });

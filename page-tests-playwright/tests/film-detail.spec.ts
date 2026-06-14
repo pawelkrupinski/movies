@@ -70,8 +70,8 @@ test.describe('/film detail page', () => {
 
     // The src of the iframe is set + carries `autoplay=1` per
     // `playTrailer`'s logic.
-    const src = await page.locator('#trailer-iframe').getAttribute('src');
-    expect(src).toMatch(/autoplay=1/);
+    const source = await page.locator('#trailer-iframe').getAttribute('src');
+    expect(source).toMatch(/autoplay=1/);
 
     // Click the active button again — frame hides, src clears.
     await trailer.click();

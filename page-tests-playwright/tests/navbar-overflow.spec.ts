@@ -170,10 +170,10 @@ test.describe('navbar row count at project viewport', () => {
     await waitForCards(page);
 
     const rowCount = await navbarRowCount(page);
-    const vp = page.viewportSize()!;
+    const viewport = page.viewportSize()!;
     expect(
       rowCount,
-      `navbar at ${vp.width}×${vp.height} has ${rowCount} rows; should be ≤ 2`,
+      `navbar at ${viewport.width}×${viewport.height} has ${rowCount} rows; should be ≤ 2`,
     ).toBeLessThanOrEqual(2);
   });
 });
@@ -243,14 +243,14 @@ async function assertNoHorizontalOverflow(page: Page, viewportWidth: number): Pr
 /// the full long name and risked navbar overflow.
 async function assertAuthNameHiddenOrTruncated(page: Page): Promise<void> {
   const probe = await page.evaluate(() => {
-    const el = document.querySelector('.auth-name') as HTMLElement | null;
-    if (!el) return { state: 'missing' as const };
-    if (getComputedStyle(el).display === 'none') return { state: 'hidden' as const };
+    const element = document.querySelector('.auth-name') as HTMLElement | null;
+    if (!element) return { state: 'missing' as const };
+    if (getComputedStyle(element).display === 'none') return { state: 'hidden' as const };
     return {
       state: 'visible' as const,
-      scrollWidth: el.scrollWidth,
-      clientWidth: el.clientWidth,
-      text: el.textContent ?? '',
+      scrollWidth: element.scrollWidth,
+      clientWidth: element.clientWidth,
+      text: element.textContent ?? '',
     };
   });
   if (probe.state === 'missing') {
@@ -271,8 +271,8 @@ async function assertAuthNameHiddenOrTruncated(page: Page): Promise<void> {
 async function assertFiltryButtonContained(page: Page, viewportWidth: number): Promise<void> {
   const probe = await page.evaluate(() => {
     const wrapper = document.querySelector('.navbar-filtry') as HTMLElement | null;
-    const btn = document.getElementById('format-filter-btn') as HTMLElement | null;
-    if (!wrapper || !btn) return null;
+    const button = document.getElementById('format-filter-btn') as HTMLElement | null;
+    if (!wrapper || !button) return null;
     const wr = wrapper.getBoundingClientRect();
     return { wrapperRight: wr.right };
   });
