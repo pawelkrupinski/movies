@@ -4,6 +4,7 @@ import models.{CinemaCityWroclavia, MovieRecord, Poznan}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import play.api.libs.json.Json
 import services.movies.StoredMovieRecord
 import services.staging.StagingRecord
 import tools.{CdpPage, Chrome, FixtureTestWiring, TestHttpServer}
@@ -2690,6 +2691,24 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalString(cell(".tmdb-q .done-tick") + ".textContent")    shouldBe "✓"
       // ...and the done cells hold no queue badge.
       page.evalBool(s"""!${cell(".enrich-q .badge")} && !${cell(".tmdb-q .badge")}""") shouldBe true
+    }
+  }
+
+  // Staging rows are added/removed live off the pending_movies change stream
+  // (staging-* SSE frames). Drive the client router directly (applySse) — the
+  // server frame shape is covered by DebugStreamControllerSpec.
+  it should "add and remove staging rows live, tracking the header count" in {
+    onDebug { page =>
+      page.waitFor("""document.querySelectorAll('#staging-t tbody tr.data').length === 2""")
+      val row = """<tr class="data" data-row-id="Helios|liveone|2031" data-queue-title="Live One" data-queue-year="2031" data-detail-pending="true" data-tmdb-set="false"><td>Helios</td><td class="title">Live One</td><td>2031</td><td>—</td><td>—</td><td>yes</td><td class="enrich-q"></td><td class="tmdb-q"></td></tr>"""
+      // A newcomer arrives → row appears, count bumps to 3.
+      page.eval(s"""applySse(JSON.stringify({type:'staging-upsert', id:'Helios|liveone|2031', html:${Json.stringify(Json.toJson(row))}}))""")
+      page.evalInt("""document.querySelectorAll('#staging-t tbody tr.data').length""") shouldBe 3
+      page.evalString("""document.getElementById('staging-count').textContent""") shouldBe "3"
+      // It graduates (delete frame) → row removed, count back to 2.
+      page.eval("""applySse(JSON.stringify({type:'staging-delete', id:'Helios|liveone|2031'}))""")
+      page.evalInt("""document.querySelectorAll('#staging-t tbody tr.data').length""") shouldBe 2
+      page.evalString("""document.getElementById('staging-count').textContent""") shouldBe "2"
     }
   }
 

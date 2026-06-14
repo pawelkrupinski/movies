@@ -19,6 +19,7 @@ class InMemoryStagingRepository(seed: Seq[(Source, String, Option[Int], MovieRec
   val deletes       = mutable.ListBuffer.empty[(Source, String, Option[Int])]
 
   @volatile private var upsertWatcher: Option[StagingRecord => Unit] = None
+  @volatile private var deleteWatcher: Option[String => Unit]        = None
 
   seed.foreach { case (c, t, y, e) => store.put(StagingRecord.idFor(c, t, y), e) }
 
@@ -38,12 +39,15 @@ class InMemoryStagingRepository(seed: Seq[(Source, String, Option[Int], MovieRec
   }
 
   def delete(cinema: Source, title: String, year: Option[Int]): Unit = lock.synchronized {
-    store.remove(StagingRecord.idFor(cinema, title, year))
+    val id = StagingRecord.idFor(cinema, title, year)
+    store.remove(id)
     deletes.append((cinema, title, year))
+    deleteWatcher.foreach(_(id))
   }
 
-  override def watchUpserts(onUpsert: StagingRecord => Unit): Option[AutoCloseable] = {
+  override def watchChanges(onUpsert: StagingRecord => Unit, onDelete: String => Unit): Option[AutoCloseable] = {
     upsertWatcher = Some(onUpsert)
-    Some(new AutoCloseable { override def close(): Unit = upsertWatcher = None })
+    deleteWatcher = Some(onDelete)
+    Some(new AutoCloseable { override def close(): Unit = { upsertWatcher = None; deleteWatcher = None } })
   }
 }

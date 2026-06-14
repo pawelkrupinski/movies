@@ -13,6 +13,7 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers
 import play.api.test.Helpers._
 import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
+import services.staging.{InMemoryStagingRepository, StagingRecord, StagingRepository}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -32,8 +33,9 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   override def afterAll(): Unit = Await.result(sys.terminate(), 10.seconds)
 
-  private def controller(repository: InMemoryMovieRepository, mode: Mode = Mode.Dev) =
-    new DebugStreamController(Helpers.stubControllerComponents(), repository, mode, () => Map.empty)
+  private def controller(repository: InMemoryMovieRepository, mode: Mode = Mode.Dev,
+                         staging: StagingRepository = StagingRepository.empty) =
+    new DebugStreamController(Helpers.stubControllerComponents(), repository, staging, mode, () => Map.empty)
 
   private def record(title: String) =
     MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some(title))))
@@ -86,5 +88,42 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val frames = Await.result(
       controller(repository).eventSource().takeWithin(500.millis).runWith(Sink.seq), 3.seconds)
     frames shouldBe empty
+  }
+
+  // The same feed also watches `pending_movies`, tagged `staging-*` so the page
+  // routes them to the staging table: a newcomer INSERTs a staging row, a
+  // graduation DELETEs it.
+  "the live feed" should "push a staging-upsert frame (rendered row) when a pending_movies row appears" in {
+    val staging = new InMemoryStagingRepository()
+    val collecting = controller(new InMemoryMovieRepository(), staging = staging)
+      .eventSource().takeWithin(1.second).runWith(Sink.seq)
+
+    Thread.sleep(100)
+    staging.upsert(CinemaCityWroclavia, "Newcomer", Some(2026), record("Newcomer"))
+
+    val frames = Await.result(collecting, 3.seconds)
+    frames should have size 1
+    val message = Json.parse(frames.head.stripPrefix("data: ").trim)
+    (message \ "type").as[String] shouldBe "staging-upsert"
+    (message \ "id").as[String]   shouldBe StagingRecord.idFor(CinemaCityWroclavia, "Newcomer", Some(2026))
+    val html = (message \ "html").as[String]
+    html should include ("Newcomer")
+    html should include ("""class="enrich-q"""") // the live row carries the queue cells
+  }
+
+  it should "push a staging-delete frame with just the id when a row graduates" in {
+    val staging = new InMemoryStagingRepository(Seq(
+      (CinemaCityWroclavia, "Newcomer", Some(2026), record("Newcomer"))))
+    val collecting = controller(new InMemoryMovieRepository(), staging = staging)
+      .eventSource().takeWithin(1.second).runWith(Sink.seq)
+
+    Thread.sleep(100)
+    staging.delete(CinemaCityWroclavia, "Newcomer", Some(2026))
+
+    val frames = Await.result(collecting, 3.seconds)
+    frames should have size 1
+    val message = Json.parse(frames.head.stripPrefix("data: ").trim)
+    (message \ "type").as[String] shouldBe "staging-delete"
+    (message \ "id").as[String]   shouldBe StagingRecord.idFor(CinemaCityWroclavia, "Newcomer", Some(2026))
   }
 }

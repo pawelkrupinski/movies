@@ -70,9 +70,14 @@ trait StagingRepository {
   /** Remove one cinema's row. Best-effort — never throws. */
   def delete(cinema: Source, title: String, year: Option[Int]): Unit
 
+  /** Stream inserts/updates (`onUpsert`) and deletes (`onDelete`, given the row's
+   *  `_id`) so consumers can react as newcomers land and graduate. Best-effort;
+   *  `None` when unsupported (disabled, or standalone Mongo). */
+  def watchChanges(onUpsert: StagingRecord => Unit, onDelete: String => Unit): Option[AutoCloseable] = None
+
   /** Stream inserted/updated rows so the promoter can enrich them as they land.
-   *  Best-effort; `None` when unsupported (disabled, or standalone Mongo). */
-  def watchUpserts(onUpsert: StagingRecord => Unit): Option[AutoCloseable] = None
+   *  Derived from `watchChanges` (deletes ignored). */
+  def watchUpserts(onUpsert: StagingRecord => Unit): Option[AutoCloseable] = watchChanges(onUpsert, _ => ())
 
   /** Release any underlying resources. No-op when nothing to release. */
   def close(): Unit = ()
@@ -143,18 +148,19 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
     }
   }
 
-  override def watchUpserts(onUpsert: StagingRecord => Unit): Option[AutoCloseable] = coll.map { c =>
+  override def watchChanges(onUpsert: StagingRecord => Unit, onDelete: String => Unit): Option[AutoCloseable] = coll.map { c =>
     val subRef = new AtomicReference[Subscription]()
     c.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
       .subscribe(new Observer[ChangeStreamDocument[StoredMovieDto]] {
         override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
         override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit =
-          Option(change.getFullDocument).foreach { dto =>
-            StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record).foreach { row =>
-              try onUpsert(row)
-              catch { case exception: Throwable => logger.warn(s"StagingRepository change-stream apply failed: ${exception.getMessage}") }
-            }
+          try Option(change.getFullDocument) match {
+            case Some(dto) => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record).foreach(onUpsert)
+            // A delete (or drop/invalidate) carries no full document — the change's
+            // document key holds the `_id` of the row that graduated/left.
+            case None => Option(change.getDocumentKey).map(_.getString("_id").getValue).foreach(onDelete)
           }
+          catch { case exception: Throwable => logger.warn(s"StagingRepository change-stream apply failed: ${exception.getMessage}") }
         override def onError(e: Throwable): Unit =
           logger.warn(s"StagingRepository change stream ended (${e.getMessage}) — relying on the periodic backstop.")
         override def onComplete(): Unit = ()

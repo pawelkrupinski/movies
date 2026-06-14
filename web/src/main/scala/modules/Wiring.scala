@@ -149,9 +149,11 @@ trait Wiring {
   lazy val adminAllowlist: Set[String] =
     Env.get("ADMIN_ALLOWLIST").map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet).getOrElse(Set.empty)
   lazy val adminAction = new AdminAction(controllerComponents.parsers.anyContent, userRepository, adminAllowlist)(using controllerComponents.executionContext)
+  // The /debug "pending enrichment (staging)" table reads + live-watches this.
+  lazy val stagingRepository: services.staging.StagingRepository = new services.staging.MongoStagingRepository(mongoConnection.database)
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, movieRepository, taskQueue, userRepository, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),
-    stagingRepository = new services.staging.MongoStagingRepository(mongoConnection.database))
+    stagingRepository = stagingRepository)
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepository, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
   // Read-only on the web side: the worker writes fallback state; the /uptime/fallback
@@ -161,7 +163,7 @@ trait Wiring {
   lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue)
   // Dev-only SSE feed for the /debug live view; reuses the same on-demand
   // movieRepository + cinema-source-URL snapshot the /debug page renders from.
-  lazy val debugStreamController = new DebugStreamController(controllerComponents, movieRepository, environmentMode,
+  lazy val debugStreamController = new DebugStreamController(controllerComponents, movieRepository, stagingRepository, environmentMode,
     () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()))(using materializer)
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
   lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)

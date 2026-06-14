@@ -1,0 +1,28 @@
+@import services.staging.StagingRecord
+@(r: StagingRecord)
+@*
+ * One "Pending enrichment (staging)" row, keyed by the `pending_movies` `_id` so
+ * the /debug live feed can replace-or-remove it. Rendered both by the initial
+ * page pass and by DebugStreamController on each `pending_movies` change, so a
+ * live-inserted row is byte-identical to the server render.
+ *
+ * `data-queue-title`/`data-queue-year` are the identity title+year the worker's
+ * enrichment dedup keys are built from; `data-detail-pending`/`data-tmdb-set`
+ * drive the per-row "done" indicators. The two q# cells (`.enrich-q`/`.tmdb-q`)
+ * are filled by `rebuildStagingQueue`: a green ✓ once that step is done, else the
+ * live /debug/queue place.
+ *@
+<tr class="data" data-row-id="@StagingRecord.idFor(r.cinema, r.title, r.year)"
+    data-queue-title="@r.title"
+    data-queue-year="@r.year.map(_.toString).getOrElse("")"
+    data-detail-pending="@r.record.detailPending"
+    data-tmdb-set="@r.record.tmdbId.isDefined">
+  <td>@r.cinema.displayName</td>
+  <td class="title">@r.title</td>
+  <td>@r.year.map(_.toString).getOrElse("—")</td>
+  <td>@r.record.tmdbId.map(_.toString).getOrElse(if(r.record.tmdbNoMatch) "no-match" else "—")</td>
+  <td>@r.record.imdbId.getOrElse("—")</td>
+  <td>@if(r.record.detailPending) { yes } else { — }</td>
+  <td class="enrich-q"></td>
+  <td class="tmdb-q"></td>
+</tr>

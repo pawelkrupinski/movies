@@ -124,34 +124,17 @@
 @_debugNavbar("corpus")
 @* The staging table's header always renders — so an empty `pending_movies`
    shows as an empty table (header + columns), not a vanished section. Rows
-   appear only while newcomers are incubating. *@
-<h1>Pending enrichment (staging) · @staging.size</h1>
+   appear only while newcomers are incubating, and are added/removed live off the
+   `pending_movies` change stream (the count tracks them). *@
+<h1>Pending enrichment (staging) · <span id="staging-count">@staging.size</span></h1>
 <div class="summary">Newcomer films incubating in <code>pending_movies</code> — one row per cinema|title|year. They graduate into the corpus below once TMDB concludes, then disappear from here.</div>
 <table id="staging-t">
   <thead>
     <tr><th>Cinema</th><th>Title</th><th>Year</th><th>TMDB</th><th>IMDb</th><th>Detail pending</th><th>Enrich q#</th><th>TMDB q#</th></tr>
   </thead>
   <tbody>
-  @* `data-queue-title`/`data-queue-year` are the identity title+year the worker's
-     enrichment dedup keys are built from; `data-detail-pending`/`data-tmdb-set`
-     drive the per-row "done" indicators. The two q# cells (`.enrich-q`/`.tmdb-q`)
-     are filled by `rebuildStagingQueue`: a green ✓ once that step is done, else
-     the live /debug/queue place. *@
   @for(r <- staging) {
-    <tr class="data" data-row-id="@{r.cinema.displayName}|@{r.title}|@{r.year.map(_.toString).getOrElse("")}"
-        data-queue-title="@r.title"
-        data-queue-year="@r.year.map(_.toString).getOrElse("")"
-        data-detail-pending="@r.record.detailPending"
-        data-tmdb-set="@r.record.tmdbId.isDefined">
-      <td>@r.cinema.displayName</td>
-      <td class="title">@r.title</td>
-      <td>@r.year.map(_.toString).getOrElse("—")</td>
-      <td>@r.record.tmdbId.map(_.toString).getOrElse(if(r.record.tmdbNoMatch) "no-match" else "—")</td>
-      <td>@r.record.imdbId.getOrElse("—")</td>
-      <td>@if(r.record.detailPending) { yes } else { — }</td>
-      <td class="enrich-q"></td>
-      <td class="tmdb-q"></td>
-    </tr>
+    @_stagingRow(r)
   }
   </tbody>
 </table>
@@ -400,14 +383,51 @@
     filterRows(document.getElementById('q').value); // keep the new row in sync with the active filter
   }
 
+  // ── Live staging rows (pending_movies change stream) ───────────────────────
+  // The worker inserts a pending_movies row when a newcomer is first seen and
+  // deletes it once the film folds into the corpus. The same SSE feed pushes
+  // those changes (staging-* frames, rendered via `_stagingRow`) so the staging
+  // table gains/loses rows live, and the header count tracks them.
+  function stagingRowsFor(id) {
+    return document.querySelectorAll('#staging-t tbody tr[data-row-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
+  }
+
+  function updateStagingCount() {
+    const c = document.getElementById('staging-count');
+    if (c) c.textContent = document.querySelectorAll('#staging-t tbody tr.data').length;
+  }
+
+  function applyStagingDelete(id) {
+    stagingRowsFor(id).forEach(el => el.remove());
+    updateStagingCount();
+  }
+
+  function applyStagingUpsert(id, html) {
+    const tmp = document.createElement('tbody');
+    tmp.innerHTML = html.trim();
+    const fresh = tmp.firstElementChild;
+    if (!fresh) return;
+    const existing = stagingRowsFor(id);
+    if (existing.length) existing[0].replaceWith(fresh);
+    else document.querySelector('#staging-t tbody').appendChild(fresh);
+    rebuildStagingQueue(); // paint the new row's q# cells / done marks
+    updateStagingCount();
+  }
+
+  // Route one SSE frame to the right table. Named (not an inline closure) so it's
+  // unit-drivable without a live EventSource.
+  function applySse(data) {
+    let msg;
+    try { msg = JSON.parse(data); } catch (e) { return; }
+    if (msg.type === 'delete') applyDelete(msg.id);
+    else if (msg.type === 'upsert' && msg.html) applyUpsert(msg.id, msg.html);
+    else if (msg.type === 'staging-delete') applyStagingDelete(msg.id);
+    else if (msg.type === 'staging-upsert' && msg.html) applyStagingUpsert(msg.id, msg.html);
+  }
+
   try {
     const es = new EventSource("@routes.DebugStreamController.stream()");
-    es.onmessage = function (ev) {
-      let msg;
-      try { msg = JSON.parse(ev.data); } catch (e) { return; }
-      if (msg.type === 'delete') applyDelete(msg.id);
-      else if (msg.type === 'upsert' && msg.html) applyUpsert(msg.id, msg.html);
-    };
+    es.onmessage = function (ev) { applySse(ev.data); };
     // EventSource auto-reconnects on a dropped connection; nothing to do on error.
   } catch (e) { /* SSE unsupported — the static table still works */ }
 </script>
