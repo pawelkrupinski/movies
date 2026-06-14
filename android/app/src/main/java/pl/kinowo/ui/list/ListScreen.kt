@@ -150,11 +150,17 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
         tabLabel = null
     }
 
+    // The centre column's vertical scroll, hoisted so the revealed neighbours can
+    // mirror it during a drag — the new day slides in showing the same rows, and
+    // the committed day keeps that position (lands where the user was, not the
+    // top), so swiping between days continues browsing the same region.
+    val sharedScroll = rememberLazyGridState()
+
     // Commit a swiped-to day as the new selection. Wraparound is already applied
     // by the carousel (it hands back the actual neighbour preset). The first
     // committed swipe also retires the once-a-day hint.
     val onCommitDay: (DateFilter) -> Unit = { day ->
-        vm.dateFilter = day
+        selectDayKeepingTopFlat(sharedScroll) { vm.dateFilter = day }
         showSwipeHint = false
         vm.markSwiped()
     }
@@ -167,12 +173,6 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     // committed swipe both land the highlight on the new day with no flicker.
     var previewDay by remember { mutableStateOf(vm.dateFilter) }
     LaunchedEffect(vm.dateFilter) { previewDay = vm.dateFilter }
-
-    // The centre column's vertical scroll, hoisted so the revealed neighbours can
-    // mirror it during a drag — the new day slides in showing the same rows, and
-    // the committed day keeps that position (lands where the user was, not the
-    // top), so swiping between days continues browsing the same region.
-    val sharedScroll = rememberLazyGridState()
 
     // Surface the swipe hint the moment the first repertoire load lands, gated
     // to once per calendar day until the first swipe. The decision reads
@@ -207,7 +207,7 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                 filtersActive = vm.filtersActive(vm.allCinemas(films)),
                 search = vm.search,
                 onSearch = { vm.search = it },
-                onSelect = { vm.dateFilter = it },
+                onSelect = { day -> selectDayKeepingTopFlat(sharedScroll) { vm.dateFilter = day } },
                 onOpenFilters = { showFilters = true },
             )
 
@@ -254,8 +254,9 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                                 // The mirror lands the new day at the SAME scroll the
                                 // user was at; ScrollToTopOnChange then eases that up to
                                 // the top — so a swipe reads as "land where I was, then
-                                // roll to the top". A no-op when already at the exact
-                                // top, so an at-top swipe doesn't jump.
+                                // roll to the top". An at-top switch is pinned flat by
+                                // selectDayKeepingTopFlat, so this is a no-op there and
+                                // doesn't jump.
                                 if (day == vm.dateFilter) ScrollToTopOnChange(state, vm.dateFilter)
                                 FilmsGrid(
                                     films = visible,
@@ -573,15 +574,37 @@ internal fun posterGridColumns(landscape: Boolean, layoutWidthDp: Int): GridCell
     else GridCells.Adaptive(minSize = PosterGridMetrics.cardColumnDp(layoutWidthDp).dp)
 
 /**
- * Animate [state] to the first item whenever [key] changes — so a day swipe (the
- * mirror lands the new day where the user was) then eases up to the top, and a
- * date-pill tap / Kina section change starts the new content at the top instead
- * of stranding the user mid-list.
+ * Switch the selected day via [setDay], keeping an at-top view flat across the
+ * change.
  *
- * `animateScrollToItem(0)` is a visible roll-to-top — "land where I was, then go
- * to the top" — and a no-op from the exact top, so an at-top swipe doesn't jump.
- * The first composition is a no-op, which also preserves a scroll position
- * restored across a config change.
+ * The centre column shares ONE [LazyGridState] across days, and a day change
+ * restores the grid position BY KEY (films are keyed by title). If you're at the
+ * top of one day on a film that the next day also lists — but lower down — the
+ * state jumps to that film's index in the new day, and [ScrollToTopOnChange] then
+ * animates back up: a "synthetic scroll" for someone who was already at the top.
+ *
+ * When the outgoing day is already at the very top we pin the incoming day to
+ * index 0 in the SAME layout pass ([LazyGridState.requestScrollToItem]), which
+ * overrides the key restore so the new day lays out flat at the top — no jump to
+ * the film's index, so the follow-up roll-to-top is a genuine no-op. When NOT at
+ * the top we leave the scroll untouched: the new day keeps the position and
+ * [ScrollToTopOnChange] eases it up ("land where I was, then roll to the top").
+ */
+internal inline fun selectDayKeepingTopFlat(state: LazyGridState, setDay: () -> Unit) {
+    val wasAtTop = state.firstVisibleItemIndex == 0 && state.firstVisibleItemScrollOffset == 0
+    setDay()
+    if (wasAtTop) state.requestScrollToItem(0)
+}
+
+/**
+ * Animate [state] to the first item whenever [key] changes — so a day swipe from
+ * a scrolled position eases up to the top, and a date-pill tap / Kina section
+ * change starts the new content at the top instead of stranding the user mid-list.
+ *
+ * An at-top day switch is kept flat upstream by [selectDayKeepingTopFlat], so the
+ * grid is already at index 0 here and this animate is a true no-op — no visible
+ * roll. The first composition is a no-op too, which also preserves a scroll
+ * position restored across a config change.
  */
 @Composable
 internal fun ScrollToTopOnChange(state: LazyGridState, key: Any?) {
