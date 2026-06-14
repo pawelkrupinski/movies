@@ -406,9 +406,35 @@
 
   // ── Live updates via the Mongo change stream (dev-only SSE) ────────────────
   // The worker mutates the `movies` collection out of band — merges DELETE the
-  // losing row, a new film INSERTs a row, an enrichment UPDATEs one. The stream
-  // pushes each change so the table reflects it without a manual refresh:
-  // a merged-away row disappears, a new movie appears, in place.
+  // losing row, a new film INSERTs a row, an enrichment UPDATEs one — and pushes
+  // a frame per change. A scrape tick rewrites the WHOLE corpus, so frames arrive
+  // in bursts of hundreds. Applying each one live (find row → re-filter the whole
+  // table) is O(corpus) PER FRAME and saturated the main thread (Chrome's "page
+  // unresponsive" kill dialog). So we COALESCE frames by id into a buffer and
+  // apply the batch on a 1s timer: per-frame cost is O(1) (a Map write, last write
+  // wins), and the O(corpus) re-filter / re-fold run once per flush, not per frame.
+  const SSE_FLUSH_MS = 1000;
+  const moviePending  = new Map(); // id -> html (upsert) | null (delete)
+  const stagingPending = new Map();
+  let sseFlushTimer = null;
+
+  function scheduleSseFlush() {
+    if (sseFlushTimer === null) sseFlushTimer = setTimeout(flushSse, SSE_FLUSH_MS);
+  }
+
+  // Drain both buffers, then run the expensive recomputes AT MOST ONCE each.
+  // Exposed (not closured) so tests can apply a scripted burst synchronously.
+  function flushSse() {
+    sseFlushTimer = null;
+    let corpusChanged = false, stagingChanged = false;
+    moviePending.forEach((html, id) => { (html === null ? applyDelete : applyUpsert)(id, html); corpusChanged = true; });
+    moviePending.clear();
+    stagingPending.forEach((html, id) => { (html === null ? removeStagingSrc : upsertStagingSrc)(id, html); stagingChanged = true; });
+    stagingPending.clear();
+    if (corpusChanged)  filterRows(document.getElementById('q').value); // re-filter the corpus once
+    if (stagingChanged) rebuildStagingTable();                          // re-fold + re-sort + re-cap once
+  }
+
   function rowsFor(id) {
     return document.querySelectorAll('#t tbody tr[data-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
   }
@@ -438,26 +464,22 @@
       fresh.forEach(r => tbody.appendChild(r)); // new film — append (sortable on demand)
     }
     wireRow(fresh[0]);
-    filterRows(document.getElementById('q').value); // keep the new row in sync with the active filter
   }
 
   // ── Live staging rows (pending_movies change stream) ───────────────────────
   // The worker inserts a pending_movies row when a newcomer is first seen and
-  // deletes it once the film folds into the corpus. The same SSE feed pushes
-  // those changes (staging-* frames, rendered via `_stagingRow`) so the hidden
-  // per-cinema SOURCE rows (#staging-src) gain/lose entries live; each change
-  // re-runs rebuildStagingTable, which re-folds, re-sorts, re-caps and updates
-  // the film count. (STAGING_CAP is declared above, with the queue helpers.)
+  // deletes it once the film folds into the corpus. These mutate the hidden
+  // per-cinema SOURCE rows (#staging-src); the flush then re-folds once via
+  // rebuildStagingTable. (STAGING_CAP is declared above, with the queue helpers.)
   function stagingRowsFor(id) {
     return document.querySelectorAll('#staging-src tr[data-row-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
   }
 
-  function applyStagingDelete(id) {
+  function removeStagingSrc(id) {
     stagingRowsFor(id).forEach(el => el.remove());
-    rebuildStagingTable(); // the film may lose a cinema, or vanish entirely
   }
 
-  function applyStagingUpsert(id, html) {
+  function upsertStagingSrc(id, html) {
     const tmp = document.createElement('tbody');
     tmp.innerHTML = html.trim();
     const fresh = tmp.firstElementChild;
@@ -465,18 +487,19 @@
     const existing = stagingRowsFor(id);
     if (existing.length) existing[0].replaceWith(fresh);
     else document.getElementById('staging-src').appendChild(fresh);
-    rebuildStagingTable(); // re-fold with the new/updated cinema source row
   }
 
-  // Route one SSE frame to the right table. Named (not an inline closure) so it's
-  // unit-drivable without a live EventSource.
+  // Buffer one SSE frame (coalescing by id, last write wins) and arm the flush.
+  // Named (not an inline closure) so tests can drive it without a live EventSource.
   function applySse(data) {
     let msg;
     try { msg = JSON.parse(data); } catch (e) { return; }
-    if (msg.type === 'delete') applyDelete(msg.id);
-    else if (msg.type === 'upsert' && msg.html) applyUpsert(msg.id, msg.html);
-    else if (msg.type === 'staging-delete') applyStagingDelete(msg.id);
-    else if (msg.type === 'staging-upsert' && msg.html) applyStagingUpsert(msg.id, msg.html);
+    if (msg.type === 'delete') moviePending.set(msg.id, null);
+    else if (msg.type === 'upsert' && msg.html) moviePending.set(msg.id, msg.html);
+    else if (msg.type === 'staging-delete') stagingPending.set(msg.id, null);
+    else if (msg.type === 'staging-upsert' && msg.html) stagingPending.set(msg.id, msg.html);
+    else return;
+    scheduleSseFlush();
   }
 
   try {

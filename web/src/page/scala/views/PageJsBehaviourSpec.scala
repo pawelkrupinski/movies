@@ -2714,17 +2714,18 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   }
 
   // Source rows are added/removed live off the pending_movies change stream
-  // (staging-* SSE frames). Drive the client router directly (applySse) — the
-  // server frame shape is covered by DebugStreamControllerSpec. The header counts
-  // FILMS: a new anchor bumps it, an extra cinema of an existing film grows that
-  // film's count without bumping it, and a delete reverses each.
+  // (staging-* SSE frames), which the client COALESCES and applies on a 1s timer;
+  // the tests drive the router (applySse) then call flushSse() to apply the batch
+  // synchronously. The server frame shape is covered by DebugStreamControllerSpec.
+  // The header counts FILMS: a new anchor bumps it, an extra cinema of an existing
+  // film grows that film's count without bumping it, and a delete reverses each.
   it should "fold live source rows by film and track the film count" in {
     onDebug { page =>
       page.waitFor("""document.querySelectorAll('#staging-folded tr.data').length === 2""")
       def srcRow(id: String, cinema: String) =
         s"""<tr class="data" hidden data-row-id="$id" data-anchor="liveone" data-cinema="$cinema" data-title="Live One" data-year="2031" data-detail-done="false" data-tmdb-done="false" data-imdb-done="false"></tr>"""
       def upsert(id: String, cinema: String) =
-        page.eval(s"""applySse(JSON.stringify({type:'staging-upsert', id:'$id', html:${Json.stringify(Json.toJson(srcRow(id, cinema)))}}))""")
+        page.eval(s"""applySse(JSON.stringify({type:'staging-upsert', id:'$id', html:${Json.stringify(Json.toJson(srcRow(id, cinema)))}})); flushSse();""")
       def films = page.evalInt("""document.querySelectorAll('#staging-folded tr.data').length""")
       def liveCinemas = page.evalString(foldedRow("liveone") + """.querySelector('td.cinemas').textContent""")
 
@@ -2738,11 +2739,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       films shouldBe 3
       liveCinemas shouldBe "2"
       // That cinema drops out → back to 1; the film survives.
-      page.eval("""applySse(JSON.stringify({type:'staging-delete', id:'B|liveone|2031'}))""")
+      page.eval("""applySse(JSON.stringify({type:'staging-delete', id:'B|liveone|2031'})); flushSse();""")
       films shouldBe 3
       liveCinemas shouldBe "1"
       // The last cinema graduates → the film vanishes, count back to 2.
-      page.eval("""applySse(JSON.stringify({type:'staging-delete', id:'A|liveone|2031'}))""")
+      page.eval("""applySse(JSON.stringify({type:'staging-delete', id:'A|liveone|2031'})); flushSse();""")
       films shouldBe 2
       page.evalString("""document.getElementById('staging-count').textContent""") shouldBe "2"
     }
@@ -2787,7 +2788,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           ' data-cinema="C" data-title="Cap ' + i + '" data-year="2026"' +
           ' data-detail-done="false" data-tmdb-done="false" data-imdb-done="false"></tr>';
         applySse(JSON.stringify({type:'staging-upsert', id:id, html:html}));
-      }""")
+      }
+      flushSse();""")
       // Total films = 2 fixture + STAGING_CAP; visible (not .hidden) = the cap.
       page.evalInt("""document.querySelectorAll('#staging-folded tr.data').length""") shouldBe
         (page.evalInt("STAGING_CAP") + 2)
@@ -2795,6 +2797,25 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         page.evalInt("STAGING_CAP")
       page.evalString("""document.getElementById('staging-count').textContent""") shouldBe
         (page.evalInt("STAGING_CAP") + 2).toString
+    }
+  }
+
+  // SSE frames are COALESCED and applied on a 1s timer, not per-frame — that's what
+  // keeps a worker write-burst from hanging the tab. So a frame doesn't touch the
+  // table until the flush, and repeat frames for one id collapse to a single apply.
+  it should "defer SSE frames until flush and coalesce repeats by id" in {
+    onDebug { page =>
+      page.waitFor("""document.querySelectorAll('#staging-folded tr.data').length === 2""")
+      val src = """<tr class="data" hidden data-row-id="X|buffered|2099" data-anchor="buffered" data-cinema="C" data-title="Buffered" data-year="2099" data-detail-done="false" data-tmdb-done="false" data-imdb-done="false"></tr>"""
+      val frame = s"""applySse(JSON.stringify({type:'staging-upsert', id:'X|buffered|2099', html:${Json.stringify(Json.toJson(src))}}));"""
+      // Two frames for the same id arrive — nothing is applied yet (deferred).
+      page.eval(frame)
+      page.eval(frame)
+      page.evalInt("""document.querySelectorAll('#staging-folded tr.data').length""") shouldBe 2
+      // One flush applies the coalesced batch → the film appears exactly once.
+      page.eval("""flushSse();""")
+      page.evalInt("""document.querySelectorAll('#staging-folded tr.data').length""") shouldBe 3
+      page.evalInt("""document.querySelectorAll('#staging-src tr[data-anchor="buffered"]').length""") shouldBe 1
     }
   }
 
