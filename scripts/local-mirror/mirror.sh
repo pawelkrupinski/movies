@@ -46,33 +46,58 @@ case "$SRCZ" in *\?*) JOIN="&" ;; *) JOIN="?" ;; esac
 case "$SRCZ" in *compressors=*) ;; *) SRCZ="$SRCZ${JOIN}compressors=zlib"; JOIN="&" ;; esac
 case "$SRCZ" in *serverSelectionTimeoutMS=*) ;; *) SRCZ="$SRCZ${JOIN}serverSelectionTimeoutMS=10000" ;; esac
 
-# 1. local mirror up
-"$HERE/start-local-mongo.sh"
+# ── Resilience helpers ───────────────────────────────────────────────────────
+# Ensure the prod tunnel (sync source) is reachable, starting — and keeping
+# alive — our OWN `flyctl proxy` whenever nothing already serves :27017 (an
+# `sbt run` proxy, or a manual one). We only touch a proxy WE started, so we
+# never fight a tunnel someone else owns; `cleanup` kills ours on exit. This is
+# what makes the daemon survive a dropped/hung tunnel: the next cycle restarts it.
+PROXY_PID=""
+ensure_tunnel() {
+  nc -z -w2 127.0.0.1 27017 2>/dev/null && return 0      # already served (ours or theirs)
+  if [ -n "$PROXY_PID" ]; then                            # ours died or hung — replace it
+    echo "[mirror] tunnel down — restarting flyctl proxy"
+    kill "$PROXY_PID" 2>/dev/null || true; PROXY_PID=""
+  else
+    echo "[mirror] no tunnel on :27017 — starting flyctl proxy"
+  fi
+  flyctl proxy 27017:27017 --app kinowo-mongo >/dev/null 2>&1 &
+  PROXY_PID=$!
+  for _ in $(seq 1 30); do nc -z -w2 127.0.0.1 27017 2>/dev/null && return 0; sleep 1; done
+  return 1
+}
+cleanup() { [ -n "$PROXY_PID" ] && kill "$PROXY_PID" 2>/dev/null || true; }
+trap cleanup EXIT INT TERM
 
-# 2. prod reachable
-if ! mongosh "$SRCZ" --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; then
-  echo "[mirror] prod not reachable via MONGODB_URI — is the tunnel up?" >&2
-  echo "         flyctl proxy 27017:27017 --app kinowo-mongo" >&2
-  exit 1
-fi
+# Ensure the local mirror Mongo (Docker) is up — re-runs the idempotent starter
+# only when the container isn't running, so a Docker/Rancher restart self-heals.
+ensure_local_mongo() {
+  if ! docker ps --format '{{.Names}}' | grep -qx kinowo-local-mongo; then
+    echo "[mirror] local mirror Mongo not running — (re)starting"
+    "$HERE/start-local-mongo.sh"
+  fi
+}
 
 reseed() { mongosh "$SRCZ" --quiet --eval "var DST='$DST'" --file "$HERE/seed.js"; }
 
-# 3. seed if empty or forced
-LOCAL_N="$(mongosh "$DST" --quiet --eval 'print(db.getCollection("movies").countDocuments())' 2>/dev/null | tail -1)"
-if [ "$RESEED" = "--reseed" ] || [ "${LOCAL_N:-0}" = "0" ]; then reseed; fi
-
-# 4. tail, restart on disconnect. tail.js exits 2 when its saved resume token
-#    has aged out of prod's oplog (resume impossible) → full re-seed; any other
-#    exit is a transient blip → just re-run, resuming from the saved token (no
-#    re-seed, so near-real-time survives tunnel hiccups).
+# ── Resilient sync loop ──────────────────────────────────────────────────────
+# Every cycle re-ensures the mirror Mongo + the tunnel, (re)seeds when the local
+# `movies` is empty (a fresh container or a wiped volume), then tails. tail.js
+# exits 2 when its resume token has aged out of prod's oplog → full re-seed; any
+# other exit is a transient blip → resume from the saved token. Nothing here is
+# fatal: a down tunnel, a stopped container, or a wiped mirror all recover on the
+# next cycle instead of killing the sync.
+FORCE_RESEED="$([ "$RESEED" = "--reseed" ] && echo 1 || echo 0)"
 while true; do
+  ensure_local_mongo
+  if ! ensure_tunnel; then echo "[mirror] tunnel unavailable — retrying in 5s"; sleep 5; continue; fi
+
+  LOCAL_N="$(mongosh "$DST" --quiet --eval 'print(db.getCollection("movies").countDocuments())' 2>/dev/null | tail -1)" || LOCAL_N=""
+  if [ "$FORCE_RESEED" = "1" ] || [ "${LOCAL_N:-0}" = "0" ]; then reseed; FORCE_RESEED=0; fi
+
   echo "[mirror] tailing prod→local change stream (Ctrl-C to stop)…"
   set +e; mongosh "$SRCZ" --quiet --eval "var DST='$DST'" --file "$HERE/tail.js"; code=$?; set -e
-  if [ "$code" -eq 2 ]; then
-    echo "[mirror] resume token expired — re-seeding…"; reseed
-  else
-    echo "[mirror] stream ended (exit $code) — resuming in 2s…"
-  fi
+  if [ "$code" -eq 2 ]; then echo "[mirror] resume token expired — re-seeding…"; reseed
+  else echo "[mirror] stream ended (exit $code) — recovering in 2s…"; fi
   sleep 2
 done

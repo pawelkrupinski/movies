@@ -34,9 +34,14 @@ SSE view updates within seconds.
    scripts/local-mirror/mirror.sh
    ```
 
-   The prod tunnel must be up (the sync's source): `sbt run` starts it
-   automatically (see `project/MongoProxy.scala`), or run
-   `flyctl proxy 27017:27017 --app kinowo-mongo` yourself.
+   It's a self-healing daemon: it brings up its **own** `flyctl proxy` tunnel
+   when nothing already serves `:27017` (and uses an existing one — e.g. `sbt
+   run`'s — when there is, never fighting it), re-ensures the local Mongo if its
+   container stops, re-seeds if the mirror is wiped, and reconnects the tunnel /
+   change stream on every drop. So a dropped tunnel, a Docker restart, or a
+   stale resume token all recover on their own instead of leaving `/debug`
+   silently empty. Leave it running; `Ctrl-C` stops it (and kills the proxy it
+   started).
 
 3. **Run the web app** (`sbt run`) and open `/debug` — it now reads the mirror.
 
@@ -49,7 +54,8 @@ exactly as before, so this is opt-in and prod is never affected.
 insert/update/replace/delete to the local mirror, persisting a resume token on
 the local side so a restart resumes without re-seeding. If the token ages out
 of prod's oplog (rare — the oplog is ~1GB, `movies` churn is tiny), the stream
-can't resume and `mirror.sh` does a full re-seed.
+can't resume — `tail.js` detects this (on stream open **or** first `getMore`)
+and exits 2, and `mirror.sh` does a full re-seed.
 
 - Force a fresh full copy: `scripts/local-mirror/mirror.sh --reseed`
 - The initial seed is a zlib-compressed cursor copy over the tunnel (~50s for
