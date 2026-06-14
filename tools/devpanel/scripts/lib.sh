@@ -1,8 +1,9 @@
 # Shared helpers for the DevPanel action scripts.
 # Sourced (not executed) by each script; expects SCRIPT_DIR to be set first.
 
-# Repo root is three levels up from tools/devpanel/scripts.
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+# Repo root: a worktree path the panel passes via DEVPANEL_REPO_ROOT (the
+# long-press "run on worktree" menu), else three levels up from this script.
+REPO_ROOT="${DEVPANEL_REPO_ROOT:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
 
 # free_port <port>
 #
@@ -63,4 +64,55 @@ step() {
   fi
   printf '\n\033[1m▶ %s\033[0m\n' "$*"
   "$@"
+}
+
+# wait_for_android_unlock
+#
+# Block until the cabled Android device is present and its keyguard is
+# dismissed. Uses dumpsys window's lockscreen/keyguard flag; if the device
+# exposes no recognised flag we don't block (degrade to "assume unlocked")
+# rather than hang forever. No-op under DEVPANEL_PRINT_ONLY.
+wait_for_android_unlock() {
+  [[ "${DEVPANEL_PRINT_ONLY:-}" == "1" ]] && { echo "wait_for_android_unlock"; return 0; }
+  adb wait-for-device
+  local announced= win lock
+  while :; do
+    win="$(adb shell dumpsys window 2>/dev/null)"
+    lock="$(printf '%s' "$win" | grep -oE 'mDreamingLockscreen=(true|false)' | head -1)"
+    [[ -z "$lock" ]] && lock="$(printf '%s' "$win" | grep -oE 'mKeyguardShowing=(true|false)' | head -1)"
+    case "$lock" in
+      *=false|"") [[ -n "$announced" ]] && echo "  unlocked."; return 0 ;;
+    esac
+    if [[ -z "$announced" ]]; then echo "🔒 waiting for Android unlock…"; announced=1; fi
+    sleep 2
+  done
+}
+
+# ios_is_lock_error <text>  → exit 0 if <text> looks like a device-locked
+# error from devicectl. Kept separate so test.sh can assert the classification
+# against real captured output.
+ios_is_lock_error() {
+  printf '%s' "$1" | grep -qiE 'is locked|unlock the device|passcode|device.*lock|NoConnection.*lock'
+}
+
+# ios_run_unlocked <cmd...>
+#
+# Run a devicectl command, retrying for as long as it fails with a
+# device-locked error — i.e. waiting for the iPhone to be unlocked. Any other
+# failure aborts immediately. Under DEVPANEL_PRINT_ONLY it just prints the step.
+ios_run_unlocked() {
+  if [[ "${DEVPANEL_PRINT_ONLY:-}" == "1" ]]; then step "$@"; return 0; fi
+  local announced= out rc
+  while :; do
+    printf '\n\033[1m▶ %s\033[0m\n' "$*"
+    out="$("$@" 2>&1)"; rc=$?
+    printf '%s\n' "$out"
+    [[ $rc -eq 0 ]] && { [[ -n "$announced" ]] && echo "  unlocked."; return 0; }
+    if ios_is_lock_error "$out"; then
+      if [[ -z "$announced" ]]; then echo "🔒 waiting for iPhone unlock…"; announced=1; fi
+      sleep 2
+    else
+      return $rc
+    fi
+  done
 }

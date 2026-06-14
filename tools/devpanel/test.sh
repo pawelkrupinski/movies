@@ -28,9 +28,9 @@ contains() { # <desc> <needle> <haystack>
 }
 
 echo "▶ dispatched commands (DEVPANEL_PRINT_ONLY)"
-check "android → runOnDevice on cable" \
-  "cd $ROOT/android && ./gradlew runOnDevice" \
-  "$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/deploy-android.sh")"
+android="$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/deploy-android.sh")"
+contains "android → waits for unlock"   "wait_for_android_unlock" "$android"
+contains "android → runOnDevice"        "cd $ROOT/android && ./gradlew runOnDevice" "$android"
 check "web → sbt web/run" \
   "cd $ROOT && sbt web/run" \
   "$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/run-web.sh")"
@@ -44,6 +44,21 @@ contains "ios → Kinowo scheme"          "-scheme Kinowo" "$ios"
 contains "ios → device destination"     "id=<connected-device-udid>" "$ios"
 contains "ios → installs the .app"      "devicectl device install app" "$ios"
 contains "ios → launches the app"       "devicectl device process launch" "$ios"
+
+echo "▶ worktree override (DEVPANEL_REPO_ROOT)"
+contains "web honours override"  "cd /tmp/wt && sbt web/run" \
+  "$(DEVPANEL_REPO_ROOT=/tmp/wt DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/run-web.sh")"
+contains "android honours override" "cd /tmp/wt/android && ./gradlew runOnDevice" \
+  "$(DEVPANEL_REPO_ROOT=/tmp/wt DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/deploy-android.sh")"
+
+echo "▶ ios lock-error classifier"
+(
+  SCRIPT_DIR="$SCRIPTS"; source "$SCRIPTS/lib.sh"
+  ios_is_lock_error "The operation couldn't be completed. The device is locked." \
+    && echo "  ok   classifies a locked error" || { echo "  FAIL locked text not matched"; exit 9; }
+  ios_is_lock_error "error: Signing for \"Kinowo\" requires a development team." \
+    && { echo "  FAIL signing error misclassified as lock"; exit 9; } || echo "  ok   ignores a non-lock error"
+) || fails=$((fails + 1))
 
 echo "▶ runDevPanel.sh"
 contains "runDevPanel → calls build.sh" "tools/devpanel/build.sh" "$(cat "$ROOT/runDevPanel.sh")"

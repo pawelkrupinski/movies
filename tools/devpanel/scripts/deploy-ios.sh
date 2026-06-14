@@ -57,5 +57,7 @@ else
   BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")"
 fi
 
-step xcrun devicectl device install app --device "$UDID" "$APP"
-step xcrun devicectl device process launch --device "$UDID" "$BUNDLE_ID"
+# Install + launch wait for the device to be unlocked (devicectl can't write to
+# the data partition / foreground an app on a locked device).
+ios_run_unlocked xcrun devicectl device install app --device "$UDID" "$APP"
+ios_run_unlocked xcrun devicectl device process launch --device "$UDID" "$BUNDLE_ID"
