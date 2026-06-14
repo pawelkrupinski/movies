@@ -42,6 +42,8 @@ else
   echo "device: $UDID"
 fi
 
+wait_for_ios_unlock "$UDID"
+
 step xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Debug \
   -destination "id=$UDID" -derivedDataPath "$DERIVED" \
   -allowProvisioningUpdates build

@@ -88,11 +88,46 @@ wait_for_android_unlock() {
   done
 }
 
-# ios_is_lock_error <text>  → exit 0 if <text> looks like a device-locked
-# error from devicectl. Kept separate so test.sh can assert the classification
-# against real captured output.
+# ios_unlocked_enough <lockState-json-file>  → exit 0 if devicectl can write to
+# the device: either no passcode is set, or it has been unlocked at least once
+# since boot (the data partition is available). This is the one documented gate
+# that actually blocks `devicectl install`; a screen lock *after* first unlock
+# does not. Captured field shape (xcrun devicectl device info lockState):
+#   result: { passcodeRequired: bool, unlockedSinceBoot: bool }
+ios_unlocked_enough() {
+  /usr/bin/python3 -c 'import json,sys
+d=json.load(open(sys.argv[1])).get("result",{})
+sys.exit(0 if (not d.get("passcodeRequired",False)) or d.get("unlockedSinceBoot",False) else 1)' "$1" 2>/dev/null
+}
+
+# wait_for_ios_unlock <udid>
+#
+# Block until the cabled iPhone has been unlocked since boot (see above). On a
+# device set to never auto-lock this returns immediately. No-op under
+# DEVPANEL_PRINT_ONLY.
+wait_for_ios_unlock() {
+  local udid="$1"
+  [[ "${DEVPANEL_PRINT_ONLY:-}" == "1" ]] && { echo "wait_for_ios_unlock $udid"; return 0; }
+  local announced= tmp; tmp="$(mktemp)"
+  while :; do
+    if xcrun devicectl device info lockState --device "$udid" --json-output "$tmp" -q 2>/dev/null \
+       && ios_unlocked_enough "$tmp"; then
+      [[ -n "$announced" ]] && echo "  unlocked."
+      rm -f "$tmp"; return 0
+    fi
+    [[ -z "$announced" ]] && { echo "🔒 waiting for iPhone to be unlocked…"; announced=1; }
+    sleep 2
+  done
+}
+
+# ios_is_lock_error <text>  → exit 0 if <text> is devicectl's device-locked
+# error. `devicectl device process launch` is the step that fails on a locked
+# iPhone (install succeeds); patterns below are taken verbatim from a real
+# captured failure:
+#   "Unable to launch … because the device was not, or could not be, unlocked."
+#   "BSErrorCodeDescription = Locked" / "Reason: Locked"
 ios_is_lock_error() {
-  printf '%s' "$1" | grep -qiE 'is locked|unlock the device|passcode|device.*lock|NoConnection.*lock'
+  printf '%s' "$1" | grep -qiE 'could not be,? unlocked|was not,? or could not be|BSErrorCodeDescription = Locked|reason: locked|device is locked|unlock the device'
 }
 
 # ios_run_unlocked <cmd...>

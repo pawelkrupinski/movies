@@ -39,11 +39,12 @@ check "local stack → sbt localStack" \
   "$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/run-local-stack.sh")"
 
 ios="$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/deploy-ios.sh")"
-contains "ios → xcodebuild build"       "xcodebuild" "$ios"
-contains "ios → Kinowo scheme"          "-scheme Kinowo" "$ios"
-contains "ios → device destination"     "id=<connected-device-udid>" "$ios"
-contains "ios → installs the .app"      "devicectl device install app" "$ios"
-contains "ios → launches the app"       "devicectl device process launch" "$ios"
+contains "ios → waits for unlock"        "wait_for_ios_unlock <connected-device-udid>" "$ios"
+contains "ios → xcodebuild build"        "xcodebuild" "$ios"
+contains "ios → Kinowo scheme"           "-scheme Kinowo" "$ios"
+contains "ios → device destination"      "id=<connected-device-udid>" "$ios"
+contains "ios → installs the .app"       "devicectl device install app" "$ios"
+contains "ios → launches the app"        "devicectl device process launch" "$ios"
 
 echo "▶ worktree override (DEVPANEL_REPO_ROOT)"
 contains "web honours override"  "cd /tmp/wt && sbt web/run" \
@@ -51,13 +52,23 @@ contains "web honours override"  "cd /tmp/wt && sbt web/run" \
 contains "android honours override" "cd /tmp/wt/android && ./gradlew runOnDevice" \
   "$(DEVPANEL_REPO_ROOT=/tmp/wt DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/deploy-android.sh")"
 
-echo "▶ ios lock-error classifier"
+echo "▶ ios lock detection"
 (
   SCRIPT_DIR="$SCRIPTS"; source "$SCRIPTS/lib.sh"
-  ios_is_lock_error "The operation couldn't be completed. The device is locked." \
-    && echo "  ok   classifies a locked error" || { echo "  FAIL locked text not matched"; exit 9; }
-  ios_is_lock_error "error: Signing for \"Kinowo\" requires a development team." \
+  # Verbatim from a real `devicectl process launch` against a locked iPhone.
+  locked='The request was denied by service delegate (SBMainWorkspace) for reason: Locked ("Unable to launch dev.kinowo.Kinowo because the device was not, or could not be, unlocked"). BSErrorCodeDescription = Locked'
+  ios_is_lock_error "$locked" \
+    && echo "  ok   classifies the real launch lock error" || { echo "  FAIL locked text not matched"; exit 9; }
+  ios_is_lock_error 'error: Signing for "Kinowo" requires a development team.' \
     && { echo "  FAIL signing error misclassified as lock"; exit 9; } || echo "  ok   ignores a non-lock error"
+
+  # unlockedSinceBoot precheck against the captured lockState shape.
+  printf '{"result":{"passcodeRequired":true,"unlockedSinceBoot":true}}'  > /tmp/devpanel-ls-ok.json
+  printf '{"result":{"passcodeRequired":true,"unlockedSinceBoot":false}}' > /tmp/devpanel-ls-locked.json
+  printf '{"result":{"passcodeRequired":false,"unlockedSinceBoot":false}}'> /tmp/devpanel-ls-nopass.json
+  ios_unlocked_enough /tmp/devpanel-ls-ok.json     && echo "  ok   unlocked-since-boot ⇒ proceed"     || { echo "  FAIL ok-state blocked"; exit 9; }
+  ios_unlocked_enough /tmp/devpanel-ls-nopass.json && echo "  ok   no-passcode ⇒ proceed"             || { echo "  FAIL nopass blocked"; exit 9; }
+  ios_unlocked_enough /tmp/devpanel-ls-locked.json && { echo "  FAIL locked-since-boot not blocked"; exit 9; } || echo "  ok   locked-since-boot ⇒ wait"
 ) || fails=$((fails + 1))
 
 echo "▶ runDevPanel.sh"
