@@ -20,13 +20,17 @@
 # Drops: detailCache, freshness, movies, pending_movies, tasks, web_movies,
 #        web_screenings — i.e. everything the scrape→enrich→project pipeline
 #        rebuilds from scratch (`pending_movies` is the staging incubator added
-#        alongside `movies`).
+#        alongside `movies`). --local ALSO drops scheduled_runs (see below).
 #   NOT dropped — operational state, curated config, and accounts the worker does
 #   not rebuild: uptimeBuckets, uptimeServiceTags (monitoring history), titleRules
-#   (admin-curated), users, userStates (accounts), scheduled_runs (worker
-#   scheduling). Add filmwebFallback / filmwebFallbackMeta (per-cinema fallback
-#   prober state) and/or normalizationReports (a backfill report) to COLLECTIONS
-#   below if you want a fully-clean slate that re-derives those too.
+#   (admin-curated), users, userStates (accounts). Add filmwebFallback /
+#   filmwebFallbackMeta (per-cinema fallback prober state) and/or
+#   normalizationReports (a backfill report) to COLLECTIONS below if you want a
+#   fully-clean slate that re-derives those too.
+#   scheduled_runs is kept in PROD (worker scheduling — dropping it re-fires every
+#   sweep at once) but DROPPED in --local: the fixture worker's reapers are
+#   once-daily and gate on it, so a leftover `scrape@<today>` record makes a
+#   restarted local stack skip the scrape and never repopulate kinowo_local.
 #
 # PROD reads MONGODB_URI (prod tunnel) + MONGODB_DB from .env.local.
 # LOCAL defaults to mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true
@@ -57,6 +61,14 @@ for arg in "$@"; do
     *) echo "[reset] unknown argument: $arg (see the header for usage)" >&2; exit 1 ;;
   esac
 done
+
+# LOCAL also drops scheduled_runs: the local fixture worker's scrape/enrich
+# reapers run once-daily and gate on this collection, so a leftover
+# `scrape@<today>` record makes a freshly-restarted local stack skip the scrape —
+# leaving an empty kinowo_local that never repopulates. Dropping it forces the
+# next boot to re-scrape from scratch. PROD deliberately keeps it: dropping it
+# there would re-fire every scheduled sweep at once.
+[ "$MODE" = "local" ] && COLLECTIONS+=(scheduled_runs)
 
 # Read KEY=VALUE from .env.local WITHOUT sourcing it — the Mongo URI contains
 # `&`/`?`, which a shell `source` would mangle (same approach as mirror.sh).
