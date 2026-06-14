@@ -66,6 +66,19 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     exception.getMessage should include ("required")
   }
 
+  // The mirror's database comes from its URI's own path, NOT MONGODB_DB — so the
+  // /debug mirror (`…/kinowo_prod_mirror`) can live in a different database than
+  // the app's working db (used by the prod connection).
+  "MongoConnection.databaseFromUri" should "take the database from the URI path" in {
+    MongoConnection.databaseFromUri(
+      "mongodb://127.0.0.1:28017/kinowo_prod_mirror?directConnection=true") shouldBe "kinowo_prod_mirror"
+  }
+
+  it should "fall back to MONGODB_DB (then kinowo) when the URI names no database" in {
+    MongoConnection.databaseFromUri(
+      "mongodb://127.0.0.1:28017/?directConnection=true") shouldBe tools.Env.get("MONGODB_DB").getOrElse("kinowo")
+  }
+
   // Wire compression: the payload over the wire is uncompressed BSON, so on a
   // slow link (the local flyctl tunnel, or the prod boot hydrate) transfer
   // bytes dominate. We default to zlib — built into the JDK, no extra

@@ -3,9 +3,9 @@
 # Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts
 # at login and restarts on failure — no terminal to babysit. The agent runs
 # `mirror.sh`, which self-manages the whole stack: it brings up its own flyctl
-# tunnel, (re)ensures the Docker mirror Mongo, seeds/re-seeds, and tails prod's
-# change stream. The Docker container is its own service via `--restart
-# unless-stopped` (see start-local-mongo.sh); this agent manages the rest.
+# tunnel, (re)ensures the native brew-managed mirror Mongo, seeds/re-seeds, and
+# tails prod's change stream. The Mongo is itself a `brew services` agent (see
+# start-local-mongo.sh), so it restarts at login too; this agent manages the rest.
 #
 # Usage:
 #   scripts/local-mirror/service.sh install     # install + start, runs at login
@@ -26,10 +26,10 @@ DOMAIN="gui/$(id -u)"
 case "${1:-}" in
   install)
     # Build PATH from where the tools actually live (launchd starts agents with a
-    # bare PATH that wouldn't find flyctl/docker/mongosh). Resolve them in this
+    # bare PATH that wouldn't find flyctl/brew/mongosh). Resolve them in this
     # shell — which has the user's full PATH — and keep their dirs, de-duped.
     dirs=""
-    for t in bash flyctl docker mongosh nc; do
+    for t in bash flyctl brew mongosh nc; do
       p="$(command -v "$t" 2>/dev/null || true)"
       if [ -z "$p" ]; then echo "[service] WARN: '$t' not found in PATH — the agent may fail to find it" >&2
       else dirs="$dirs:$(cd "$(dirname "$p")" && pwd)"; fi
@@ -71,8 +71,8 @@ PLIST
     launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
     rm -f "$PLIST"
     echo "[service] uninstalled: $LABEL"
-    echo "[service] the Docker mirror container is left running; drop it with:"
-    echo "          docker rm -f kinowo-local-mongo && docker volume rm kinowo-mirror-data"
+    echo "[service] the native mirror Mongo is left running; stop it with:"
+    echo "          brew services stop mongodb-community@7.0"
     ;;
   status)
     launchctl print "$DOMAIN/$LABEL" 2>/dev/null | grep -E '^\s+(state|pid) =' || echo "[service] not loaded"

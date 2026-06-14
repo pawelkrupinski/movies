@@ -108,29 +108,14 @@
     .showtime a { color: #ccc; }
     .showtime a:hover { color: #aad4ff; text-decoration: none; }
 
-    /* Pending-work sections (top of page) */
-    #pending { margin-bottom: 1rem; display: grid; gap: .7rem; }
-    .pending-sec h2 { font-size: 12px; color: #ffd479; margin: 0 0 .3rem; font-weight: normal; cursor: pointer; -webkit-user-select: none; user-select: none; }
-    .pending-sec h2::before { content: '▾'; color: #666; margin-right: .35rem; font-size: 10px; }
-    .pending-sec.collapsed h2::before { content: '▸'; }
-    .pending-sec.collapsed .pending-list { display: none; }
-    .pending-sec h2 .cnt {
-      color: #fff; background: #3a2f14; border: 1px solid #5a4a1e;
-      border-radius: 3px; padding: 0 .35rem; font-variant-numeric: tabular-nums;
-    }
-    .pending-sec h2 .hint { color: #666; font-size: 10px; }
-    .pending-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .3rem; }
-    .pending-list li {
-      background: #14140f; border: 1px solid #2a2a1e; border-radius: 3px;
-      padding: 1px .45rem; display: flex; gap: .4rem; align-items: center;
-    }
-    .pending-list .pl-title { color: #cfd6e3; cursor: pointer; }
-    .pending-list .pl-title:hover { color: #fff; text-decoration: underline; }
-    .pending-list .badge, #staging-t .badge { font-size: 10px; border-radius: 3px; padding: 0 .3rem; font-variant-numeric: tabular-nums; }
+    /* Staging table queue-place badges (Enrich q# / TMDB q#) */
+    #staging-t .badge { font-size: 10px; border-radius: 3px; padding: 0 .3rem; font-variant-numeric: tabular-nums; }
     .badge.q-none { color: #555; }
     .badge.q-wait { color: #aad4ff; background: #16263a; border: 1px solid #244a6e; }
     .badge.q-run  { color: #cfe3d6; background: #14241a; border: 1px solid #245038; }
-    .pending-empty { color: #444; font-size: 10px; border: none; background: none; padding: 1px 0; }
+    /* "Done" marks: a green-background checkbox for Enrich q#, a green tick for TMDB q#. */
+    #staging-t .done-check { background: #1f6b2e; color: #eafff0; border-radius: 3px; padding: 0 .35rem; font-weight: bold; }
+    #staging-t .done-tick  { color: #46c463; font-weight: bold; }
   </style>
   @_ratingStyles()
 </head>
@@ -148,13 +133,16 @@
   </thead>
   <tbody>
   @* `data-queue-title`/`data-queue-year` are the identity title+year the worker's
-     enrichment dedup keys are built from; the two q# cells (`.enrich-q`/`.tmdb-q`)
-     are filled live from the /debug/queue poll by `rebuildStagingQueue`, mirroring
-     the corpus pending badges but as per-row columns. *@
+     enrichment dedup keys are built from; `data-detail-pending`/`data-tmdb-set`
+     drive the per-row "done" indicators. The two q# cells (`.enrich-q`/`.tmdb-q`)
+     are filled by `rebuildStagingQueue`: a green ✓ once that step is done, else
+     the live /debug/queue place. *@
   @for(r <- staging) {
     <tr class="data" data-row-id="@{r.cinema.displayName}|@{r.title}|@{r.year.map(_.toString).getOrElse("")}"
         data-queue-title="@r.title"
-        data-queue-year="@r.year.map(_.toString).getOrElse("")">
+        data-queue-year="@r.year.map(_.toString).getOrElse("")"
+        data-detail-pending="@r.record.detailPending"
+        data-tmdb-set="@r.record.tmdbId.isDefined">
       <td>@r.cinema.displayName</td>
       <td class="title">@r.title</td>
       <td>@r.year.map(_.toString).getOrElse("—")</td>
@@ -171,22 +159,6 @@
 <div class="summary">@rows.size total · click a row to expand · click headers to sort · filter is case-insensitive</div>
 
 <input type="search" id="q" placeholder="Filter by title, original, IMDb id…" oninput="filterRows(this.value)">
-
-@* Pending-work sections. Both lists are filled by JS from the main table's rows
-   (so they update live off the same change stream), each entry annotated with
-   whether the worker already has an enrichment task for it and its place in the
-   queue (polled from /debug/queue). Unenriched first, then TMDB-unresolved. *@
-@* Both sections start folded (click a header to expand). *@
-<div id="pending">
-  <section class="pending-sec collapsed" data-flag="unenriched">
-    <h2>Unenriched <span class="cnt">0</span> <span class="hint">— a cinema detail-page enrichment hasn't run yet for this film</span></h2>
-    <ul class="pending-list"></ul>
-  </section>
-  <section class="pending-sec collapsed" data-flag="tmdbUnresolved">
-    <h2>TMDB-unresolved <span class="cnt">0</span> <span class="hint">— no TMDB id yet (excludes concluded no-match)</span></h2>
-    <ul class="pending-list"></ul>
-  </section>
-</div>
 
 <table id="t">
   <thead>
@@ -297,15 +269,10 @@
 
   document.getElementById('q').focus();
 
-  // ── Pending-work sections (top of page) ────────────────────────────────────
-  // Two derived views over the same rows the change stream keeps live:
-  //   • Unenriched      — rows whose cinema detail enrichment hasn't run yet.
-  //   • TMDB-unresolved — rows with no TMDB id and not a concluded no-match.
-  // Membership is read straight off each row's data-* flags, so it updates for
-  // free whenever the change stream upserts/deletes a row (rebuildPending runs
-  // after applyUpsert/applyDelete). For each entry we show whether the worker
-  // already holds an enrichment task and its place in the queue, refreshed by
-  // polling /debug/queue.
+  // ── Task-queue place badges ────────────────────────────────────────────────
+  // The staging table's two columns show where each incubating row sits in the
+  // durable task queue. The snapshot is polled from /debug/queue; the helpers
+  // below turn it into a per-row badge (see rebuildStagingQueue).
   let queueActive = []; // [{taskType, dedupKey, state}] — oldest-first, waiting + worked_on mixed
 
   // Place every WAITING task's dedupKey at its 1-based spot in the global queue.
@@ -337,67 +304,12 @@
     return { cls: 'q-wait', text: '#' + best + (matches.length > 1 ? ' ·' + matches.length : ''), rank: best };
   }
 
-  function rebuildPending() {
-    const places = waitingPlaces();
-    document.querySelectorAll('#pending .pending-sec').forEach(sec => {
-      const flag = sec.dataset.flag; // 'unenriched' | 'tmdbUnresolved'
-      const rows = Array.from(document.querySelectorAll('#t tbody tr.data'))
-        .filter(tr => tr.dataset[flag] === 'true');
-      const ul = sec.querySelector('.pending-list');
-      ul.textContent = '';
-      // Annotate each row with its queue badge, then order the section by queue
-      // place — what the worker is on now (running) first, then by ascending
-      // place, no-task rows last. Ties keep the table's title order (stable sort).
-      const entries = rows.map(tr => {
-        const title = tr.dataset.title || '';
-        const year  = tr.dataset.queueYear || '';
-        const matches = flag === 'tmdbUnresolved'
-          ? queueActive.filter(t => t.taskType === 'ResolveTmdb' && t.dedupKey === tmdbKey(title, year))
-          : queueActive.filter(t => t.taskType === 'EnrichDetails' && t.dedupKey.endsWith(detailSuffix(title, year)));
-        return { id: tr.dataset.id, title, year, badge: badgeFor(matches, places) };
-      });
-      entries.sort((a, b) => a.badge.rank - b.badge.rank);
-      entries.forEach(e => {
-        const li = document.createElement('li');
-        li.dataset.id = e.id;
-        const t = document.createElement('span');
-        t.className = 'pl-title';
-        t.textContent = e.title + (e.year ? ' (' + e.year + ')' : '');
-        t.addEventListener('click', () => revealRow(e.id));
-        const badge = document.createElement('span');
-        badge.className = 'badge ' + e.badge.cls;
-        badge.textContent = e.badge.text;
-        li.append(t, badge);
-        ul.appendChild(li);
-      });
-      sec.querySelector('.cnt').textContent = entries.length;
-      if (!entries.length) {
-        const empty = document.createElement('li');
-        empty.className = 'pending-empty';
-        empty.textContent = '—';
-        ul.appendChild(empty);
-      }
-    });
-  }
-
-  // Expand + scroll to the matching main-table row when a pending chip is clicked.
-  function revealRow(id) {
-    const esc = window.CSS && CSS.escape ? CSS.escape(id) : id;
-    const tr = document.querySelector('#t tbody tr.data[data-id="' + esc + '"]');
-    if (!tr) return;
-    const details = document.querySelector('#t tbody tr.details[data-row-id="' + esc + '"]');
-    tr.classList.remove('hidden');
-    tr.classList.add('expanded');
-    if (details) details.classList.remove('hidden');
-    tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
   // ── Staging table queue columns ────────────────────────────────────────────
-  // The staging table (pending_movies, rendered above) carries the same queue-
-  // place badges the corpus pending sections show, but as two per-row columns:
-  // "Enrich q#" (this title|year's EnrichDetails task) and "TMDB q#" (its
-  // ResolveTmdb task). Filled off the same /debug/queue poll as rebuildPending,
-  // so the places tick live as the worker drains the queue — no page refresh.
+  // Each incubating staging row's two columns show one of two things per step:
+  //   • a green "done" mark once the step is complete — a checkbox in "Enrich q#"
+  //     when detail enrichment is done/not needed (`data-detail-pending=false`),
+  //     a tick in "TMDB q#" once a TMDB id is set (`data-tmdb-set=true`);
+  //   • otherwise the step's live place in the durable queue (off /debug/queue).
   function rebuildStagingQueue() {
     const staging = document.getElementById('staging-t');
     if (!staging) return;
@@ -405,14 +317,22 @@
     staging.querySelectorAll('tbody tr.data').forEach(tr => {
       const title = tr.dataset.queueTitle || '';
       const year  = tr.dataset.queueYear || '';
-      const detail = queueActive.filter(t => t.taskType === 'EnrichDetails' && t.dedupKey.endsWith(detailSuffix(title, year)));
-      const tmdb   = queueActive.filter(t => t.taskType === 'ResolveTmdb'   && t.dedupKey === tmdbKey(title, year));
-      paintQueueCell(tr.querySelector('.enrich-q'), badgeFor(detail, places));
-      paintQueueCell(tr.querySelector('.tmdb-q'),   badgeFor(tmdb, places));
+      if (tr.dataset.detailPending !== 'true') {
+        paintDone(tr.querySelector('.enrich-q'), 'done-check'); // detail done / not needed
+      } else {
+        const detail = queueActive.filter(t => t.taskType === 'EnrichDetails' && t.dedupKey.endsWith(detailSuffix(title, year)));
+        paintQueueCell(tr.querySelector('.enrich-q'), badgeFor(detail, places));
+      }
+      if (tr.dataset.tmdbSet === 'true') {
+        paintDone(tr.querySelector('.tmdb-q'), 'done-tick'); // TMDB resolved
+      } else {
+        const tmdb = queueActive.filter(t => t.taskType === 'ResolveTmdb' && t.dedupKey === tmdbKey(title, year));
+        paintQueueCell(tr.querySelector('.tmdb-q'), badgeFor(tmdb, places));
+      }
     });
   }
 
-  // Render one queue badge into a staging cell, replacing any prior badge.
+  // Render one queue badge into a staging cell, replacing any prior content.
   function paintQueueCell(td, b) {
     if (!td) return;
     td.textContent = '';
@@ -422,18 +342,23 @@
     td.appendChild(span);
   }
 
+  // Render a green "done" mark (✓) of class `cls` into a staging cell.
+  function paintDone(td, cls) {
+    if (!td) return;
+    td.textContent = '';
+    const span = document.createElement('span');
+    span.className = cls;
+    span.textContent = '✓';
+    td.appendChild(span);
+  }
+
   function pollQueue() {
     fetch("@routes.MovieController.debugQueue()", { headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
-      .then(j => { queueActive = Array.isArray(j.active) ? j.active : []; rebuildPending(); rebuildStagingQueue(); })
+      .then(j => { queueActive = Array.isArray(j.active) ? j.active : []; rebuildStagingQueue(); })
       .catch(() => {});
   }
-  // Clicking a section header folds/unfolds its list (the caret flips via CSS).
-  document.querySelectorAll('#pending .pending-sec h2').forEach(h2 => {
-    h2.addEventListener('click', () => h2.parentElement.classList.toggle('collapsed'));
-  });
 
-  rebuildPending();
   rebuildStagingQueue();
   pollQueue();
   setInterval(pollQueue, 2500);
@@ -449,7 +374,6 @@
 
   function applyDelete(id) {
     rowsFor(id).forEach(el => el.remove());
-    rebuildPending(); // a merged-away row leaves the pending sections too
   }
 
   function applyUpsert(id, html) {
@@ -474,7 +398,6 @@
     }
     wireRow(fresh[0]);
     filterRows(document.getElementById('q').value); // keep the new row in sync with the active filter
-    rebuildPending(); // an enrichment may have moved this row in/out of a pending section
   }
 
   try {

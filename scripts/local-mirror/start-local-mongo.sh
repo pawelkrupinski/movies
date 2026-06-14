@@ -1,56 +1,69 @@
 #!/usr/bin/env bash
 #
-# Start (or reuse) the local single-node replica-set Mongo that mirrors prod's
-# `movies` collection, so the dev `/debug` corpus dump is a fast LAN read
-# instead of a 30–60s read over the prod `flyctl` tunnel. See README.md.
+# Ensure the native (Homebrew) single-node replica-set Mongo that backs local
+# dev is up on :28017. Single-node replica set (not standalone) because both the
+# /debug live SSE view AND the local web+worker stack read change streams, which
+# a standalone mongod rejects (error 40573) — the same reason prod runs
+# `--replSet rs0`. No auth: it's loopback-only, dev-only, already-public data.
 #
-# Single-node replica set (not a standalone) because `/debug`'s live SSE view
-# reads a change stream, and a standalone mongod rejects `$changeStream`
-# (error 40573) — the same reason prod runs `--replSet rs0`. No `--auth`: it's
-# a throwaway, loopback-only, dev-only mirror of already-public showtime data.
+# One instance, two databases:
+#   - kinowo_prod_mirror  synced from prod by mirror.sh (the /debug corpus mirror, read-only)
+#   - kinowo_local        the local web+worker read/write playground (its own change streams)
+#
+# This replaces the former `mongo:7.0` Docker container. It's managed by
+# `brew services`, so it restarts at login on its own; mirror.sh re-invokes this
+# whenever :28017 goes unreachable.
 set -euo pipefail
 
-CONTAINER=kinowo-local-mongo
-VOLUME=kinowo-mirror-data
-PORT="${LOCAL_MIRROR_PORT:-28017}"          # host port; container always 27017
-IMAGE=mongo:7.0                             # match prod (server 7.0.x)
+SERVICE="mongodb-community@7.0"
+PORT="${LOCAL_MIRROR_PORT:-28017}"
+PREFIX="$(brew --prefix)"
+CONF="$PREFIX/etc/mongod.conf"
+DBPATH="$PREFIX/var/mongodb"
+LOGPATH="$PREFIX/var/log/mongodb/mongo.log"
 U="mongodb://127.0.0.1:${PORT}/?directConnection=true"
 
-if docker ps --format '{{.Names}}' | grep -qx "$CONTAINER"; then
-  echo "[local-mongo] already running on :$PORT"
-elif docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER"; then
-  echo "[local-mongo] starting existing container on :$PORT"
-  docker start "$CONTAINER" >/dev/null
-else
-  echo "[local-mongo] creating container on :$PORT (image $IMAGE)"
-  # `--restart unless-stopped`: Docker brings the mirror back up after a daemon
-  # /machine restart, so the container is itself a service — the launchd mirror
-  # agent (service.sh) only has to manage the tunnel + tailer on top of it.
-  docker run -d --name "$CONTAINER" -p "$PORT:27017" \
-    --restart unless-stopped \
-    -v "$VOLUME:/data/db" "$IMAGE" --replSet rs0 --bind_ip_all >/dev/null
-fi
+# Our config is the source of truth: loopback, our port, single-node replica
+# set. `brew services` launches `mongod --config "$CONF"`, so writing it here
+# (default is a standalone on 27017) is what makes change streams work and keeps
+# us off the prod tunnel's 27017.
+mkdir -p "$DBPATH" "$(dirname "$LOGPATH")"
+cat > "$CONF" <<CONF
+systemLog:
+  destination: file
+  path: $LOGPATH
+  logAppend: true
+storage:
+  dbPath: $DBPATH
+net:
+  bindIp: 127.0.0.1
+  port: $PORT
+replication:
+  replSetName: rs0
+CONF
 
-# Wait for mongod to accept connections.
+# (Re)start to apply the config, then wait for connections. Only called when
+# :28017 is down (or at first setup), so a restart is safe here.
+echo "[local-mongo] (re)starting $SERVICE on :$PORT"
+brew services restart "$SERVICE" >/dev/null
+
 for _ in $(seq 1 60); do
   [ "$(mongosh "$U" --quiet --eval 'db.runCommand({ping:1}).ok' 2>/dev/null | tail -1)" = "1" ] && break
   sleep 1
 done
 
-# Initiate the single-node set once. `host` is the container-internal
-# 127.0.0.1:27017; clients reach it from the host via `directConnection=true`,
-# which bypasses replica-set host discovery, so the advertised host is moot.
+# Initiate the single-node set once; the catch makes it idempotent on restarts.
 mongosh "$U" --quiet --eval '
   try { rs.status(); print("[local-mongo] replica set already initiated"); }
   catch (e) {
-    rs.initiate({_id:"rs0", members:[{_id:0, host:"127.0.0.1:27017"}]});
+    rs.initiate({_id:"rs0", members:[{_id:0, host:"127.0.0.1:'"$PORT"'"}]});
     print("[local-mongo] replica set initiated");
   }' 2>&1 | tail -1
 
 # Change streams need a PRIMARY.
-for i in $(seq 1 30); do
+for _ in $(seq 1 30); do
   [ "$(mongosh "$U" --quiet --eval 'print(db.hello().isWritablePrimary)' 2>/dev/null | tail -1)" = "true" ] \
-    && { echo "[local-mongo] PRIMARY ready on :$PORT"; exit 0; }
+    && { echo "[local-mongo] PRIMARY ready on :$PORT ($SERVICE)"; exit 0; }
   sleep 1
 done
 echo "[local-mongo] WARN: did not reach PRIMARY within 30s" >&2

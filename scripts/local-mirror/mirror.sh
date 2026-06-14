@@ -69,17 +69,14 @@ ensure_tunnel() {
 cleanup() { [ -n "$PROXY_PID" ] && kill "$PROXY_PID" 2>/dev/null || true; }
 trap cleanup EXIT INT TERM
 
-# Ensure the local mirror Mongo (Docker) is up — re-runs the idempotent starter
-# only when the container isn't running, so a Docker/Rancher restart self-heals.
-# Returns non-zero (instead of crashing) when the Docker daemon itself isn't
-# ready, so the loop just retries — important when this runs as a login service
-# and Docker/Rancher is still booting.
+# Ensure the local mirror Mongo (native, brew-managed) is reachable on :28017,
+# re-running the idempotent starter only when it isn't — so a stopped service
+# self-heals. Returns non-zero (instead of crashing) when the starter can't bring
+# it up, so the loop just retries — e.g. at login before `brew services` has it.
 ensure_local_mongo() {
-  docker ps >/dev/null 2>&1 || return 1   # Docker daemon not up yet
-  if ! docker ps --format '{{.Names}}' | grep -qx kinowo-local-mongo; then
-    echo "[mirror] local mirror Mongo not running — (re)starting"
-    "$HERE/start-local-mongo.sh" || return 1
-  fi
+  nc -z -w2 127.0.0.1 28017 2>/dev/null && return 0
+  echo "[mirror] local Mongo not reachable on :28017 — (re)starting"
+  "$HERE/start-local-mongo.sh" || return 1
 }
 
 reseed() { mongosh "$SRCZ" --quiet --eval "var DST='$DST'" --file "$HERE/seed.js"; }

@@ -443,7 +443,7 @@ class MovieController( cc: ControllerComponents,
   }
 
   /** Dev-only: the active tasks in the durable queue (oldest-first), so the
-   *  /debug "pending work" sections can show, per movie, whether an enrichment
+   *  /debug staging table's queue columns can show, per row, whether an enrichment
    *  task already exists and its place in the queue. The page polls this; it's a
    *  bounded, index-backed `monitor` read (the same one `/tasks/data` serves),
    *  so the cost scales with viewers-while-open, not queue churn. Only the

@@ -109,32 +109,26 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val userStateJson =
         """{"hiddenFilms":["Film A"],"disabledCinemas":[],"selectedMovies":[],"favouriteRooms":[]}"""
 
-      // The global-corpus /debug page (not city-scoped). A spread of enrichment
-      // states so the top "pending work" sections have something in each:
-      //   • detailPending          → "Unenriched"
-      //   • no TMDB id, no no-match → "TMDB-unresolved"
-      //   • a resolved/no-match row → in neither.
+      // The global-corpus /debug page (not city-scoped) — a few corpus rows to
+      // populate the main #t table behind the staging table under test.
       val debugRows = Seq(
         StoredMovieRecord("Pending Film",    Some(2024), MovieRecord(detailPending = true, tmdbId = Some(1))),
-        StoredMovieRecord("Lonely Pending",  Some(2025), MovieRecord(detailPending = true, tmdbId = Some(2))),
         StoredMovieRecord("Unresolved Film", Some(2023), MovieRecord()),
         StoredMovieRecord("Done Film",       Some(2022), MovieRecord(tmdbId = Some(7))),
       )
-      // One staging (pending_movies) row so the staging table renders with its two
-      // queue columns; its tasks are appended to the queue snapshot below.
+      // Two staging (pending_movies) rows: "Staging Film" is still working (detail
+      // pending, no TMDB id) so its columns show queue badges; "Done Newcomer" has
+      // detail done + a TMDB id, so its columns show green "done" marks instead.
       val debugStaging = Seq(
-        StagingRecord(CinemaCityWroclavia, "Staging Film", Some(2026), MovieRecord(detailPending = true)))
+        StagingRecord(CinemaCityWroclavia, "Staging Film",  Some(2026), MovieRecord(detailPending = true)),
+        StagingRecord(CinemaCityWroclavia, "Done Newcomer", Some(2025), MovieRecord(tmdbId = Some(550))))
       val debugHtml: String = views.html.debug(debugRows, Map.empty[String, String], debugStaging).body
-      // The queue snapshot the page polls (/debug/queue). Pending Film holds an
-      // EnrichDetails task at waiting place #1; Unresolved Film a ResolveTmdb at
-      // place #2; Lonely Pending has none. The staging row's EnrichDetails is being
-      // worked on (▶ running) while its ResolveTmdb waits at place #3. The dedup
-      // keys mirror the real ones (EnrichDetails: detail|<group>|<title>|<year>;
-      // ResolveTmdb: resolve-tmdb|<title>|<year>).
+      // The queue snapshot the page polls (/debug/queue). The staging row's
+      // EnrichDetails is being worked on (▶ running) while its ResolveTmdb waits at
+      // place #1 (the only waiting task). The dedup keys mirror the real ones
+      // (EnrichDetails: detail|<group>|<title>|<year>; ResolveTmdb: resolve-tmdb|<title>|<year>).
       val debugQueueJson =
         """{"active":[
-          {"taskType":"EnrichDetails","dedupKey":"detail|grp|Pending Film|2024","state":"waiting"},
-          {"taskType":"ResolveTmdb","dedupKey":"resolve-tmdb|Unresolved Film|2023","state":"waiting"},
           {"taskType":"EnrichDetails","dedupKey":"detail|grp|Staging Film|2026","state":"worked_on"},
           {"taskType":"ResolveTmdb","dedupKey":"resolve-tmdb|Staging Film|2026","state":"waiting"}
         ]}"""
@@ -2667,102 +2661,35 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     )
   }
 
-  // ── /debug pending-work sections ───────────────────────────────────────────
-  //
-  // The top of /debug shows two JS-built lists derived from the table's per-row
-  // data-* flags (so they ride the same change stream the table does):
-  // "Unenriched" (a cinema detail enrichment hasn't run) then "TMDB-unresolved"
-  // (no TMDB id, not a concluded no-match). Each entry is annotated with its
-  // place in the durable task queue, polled from /debug/queue.
-
-  "the /debug pending sections" should "list each film under the right heading" in {
-    onDebug { page =>
-      // Unenriched = the two detailPending rows; TMDB-unresolved = the id-less row.
-      page.waitFor("""document.querySelector('.pending-sec[data-flag="unenriched"] .cnt').textContent === '2'""")
-      page.evalString(
-        """document.querySelector('.pending-sec[data-flag="tmdbUnresolved"] .cnt').textContent""") shouldBe "1"
-
-      val unenriched = page.evalString(
-        """Array.from(document.querySelectorAll('.pending-sec[data-flag="unenriched"] .pl-title')).map(e=>e.textContent).join('|')""")
-      unenriched should include ("Pending Film")
-      unenriched should include ("Lonely Pending")
-      unenriched should not include "Done Film" // resolved + detail done → in neither
-
-      val tmdb = page.evalString(
-        """Array.from(document.querySelectorAll('.pending-sec[data-flag="tmdbUnresolved"] .pl-title')).map(e=>e.textContent).join('|')""")
-      tmdb should include ("Unresolved Film")
-    }
-  }
-
-  it should "annotate each entry with its place in the task queue" in {
-    onDebug { page =>
-      // The badge text for the entry whose title starts with `t` in section `flag`.
-      def badge(flag: String, t: String): String = page.evalString(
-        s"""(function(){var ls=document.querySelectorAll('.pending-sec[data-flag="$flag"] .pending-list li');
-           |for(var i=0;i<ls.length;i++){var e=ls[i].querySelector('.pl-title');
-           |if(e&&e.textContent.indexOf('$t')===0)return ls[i].querySelector('.badge').textContent;}return '';})()""".stripMargin)
-
-      // Wait for the /debug/queue poll to land and paint the places.
-      page.waitFor(
-        """(function(){var ls=document.querySelectorAll('.pending-sec[data-flag="unenriched"] .pending-list li');
-          |for(var i=0;i<ls.length;i++){var e=ls[i].querySelector('.pl-title');
-          |if(e&&e.textContent.indexOf('Pending Film')===0)return ls[i].querySelector('.badge').textContent==='#1';}
-          |return false;})()""".stripMargin)
-
-      badge("unenriched", "Pending Film")        shouldBe "#1"  // EnrichDetails, waiting place 1
-      badge("tmdbUnresolved", "Unresolved Film") shouldBe "#2"  // ResolveTmdb, waiting place 2
-      badge("unenriched", "Lonely Pending")      shouldBe "no task"
-    }
-  }
-
-  it should "order the unenriched list by queue place (lowest first, no-task last)" in {
-    onDebug { page =>
-      // Wait for the queue poll so places — and the ordering they drive — are painted.
-      page.waitFor(
-        """(function(){var l=document.querySelector('.pending-sec[data-flag="unenriched"] .pending-list li .badge');
-          |return l && l.textContent==='#1';})()""".stripMargin)
-      // "Pending Film" (#1) sorts ahead of "Lonely Pending" (no task), even though
-      // the table lists "Lonely Pending" first alphabetically.
-      page.evalString(
-        """document.querySelector('.pending-sec[data-flag="unenriched"] .pending-list li .pl-title').textContent""")
-        .startsWith("Pending Film") shouldBe true
-    }
-  }
-
-  it should "start folded and toggle on each header click" in {
-    onDebug { page =>
-      def collapsed = page.evalBool(
-        """document.querySelector('.pending-sec[data-flag="unenriched"]').classList.contains('collapsed')""")
-      def listHidden = page.evalBool(
-        """getComputedStyle(document.querySelector('.pending-sec[data-flag="unenriched"] .pending-list')).display === 'none'""")
-
-      collapsed shouldBe true   // folded by default
-      listHidden shouldBe true
-      page.eval("""document.querySelector('.pending-sec[data-flag="unenriched"] h2').click()""")
-      collapsed shouldBe false  // expanded
-      listHidden shouldBe false
-      page.eval("""document.querySelector('.pending-sec[data-flag="unenriched"] h2').click()""")
-      collapsed shouldBe true   // folded again
-      listHidden shouldBe true
-    }
-  }
-
   // ── /debug staging table queue columns ──────────────────────────────────────
   // The "Pending enrichment (staging)" table carries two queue-place columns —
-  // "Enrich q#" and "TMDB q#" — painted client-side from the same /debug/queue
-  // poll the corpus pending badges use, so they tick live as the worker drains
-  // the queue. The staging fixture's EnrichDetails task is being worked on; its
-  // ResolveTmdb waits at place #3.
+  // "Enrich q#" and "TMDB q#" — painted client-side from the /debug/queue poll,
+  // so they tick live as the worker drains the queue. The staging fixture's
+  // EnrichDetails task is being worked on; its ResolveTmdb waits at place #1.
   "the /debug staging table" should "fill its queue columns live from the /debug/queue poll" in {
     onDebug { page =>
       // Wait for the queue poll to land and paint the staging row's TMDB place.
       page.waitFor(
         """(function(){var c=document.querySelector('#staging-t tbody tr.data .tmdb-q .badge');
-          |return c && c.textContent==='#3';})()""".stripMargin)
+          |return c && c.textContent==='#1';})()""".stripMargin)
       page.evalString(
-        """document.querySelector('#staging-t tbody tr.data .tmdb-q .badge').textContent""") shouldBe "#3"
+        """document.querySelector('#staging-t tbody tr.data .tmdb-q .badge').textContent""") shouldBe "#1"
       page.evalString(
         """document.querySelector('#staging-t tbody tr.data .enrich-q .badge').textContent""") shouldBe "▶ running"
+    }
+  }
+
+  // A row whose step is complete shows a green "done" mark instead of a queue
+  // badge: a checkbox in Enrich q# once detail is done, a tick in TMDB q# once a
+  // TMDB id is set. "Done Newcomer" has both, so neither column shows a badge.
+  it should "show a green check/tick instead of a queue badge once a step is done" in {
+    onDebug { page =>
+      def cell(col: String) = s"""document.querySelector('#staging-t tbody tr.data[data-queue-title="Done Newcomer"] $col')"""
+      page.waitFor(s"""!!${cell(".enrich-q .done-check")} && !!${cell(".tmdb-q .done-tick")}""")
+      page.evalString(cell(".enrich-q .done-check") + ".textContent") shouldBe "✓"
+      page.evalString(cell(".tmdb-q .done-tick") + ".textContent")    shouldBe "✓"
+      // ...and the done cells hold no queue badge.
+      page.evalBool(s"""!${cell(".enrich-q .badge")} && !${cell(".tmdb-q .badge")}""") shouldBe true
     }
   }
 

@@ -64,7 +64,6 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     onEditor { page =>
       val text = page.evalString("document.body.textContent")
       text should include ("Global structural")
-      text should include ("Search (API query only)")
       text should include ("Canonical")
       // a per-cinema card carries a real cinema dropdown listing the human label
       page.evalInt("document.querySelectorAll('.card select option').length") should be > 1
@@ -86,8 +85,8 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
 
   it should "give every transient (external-lookup) rule an unfoldable affected-titles list, but not per-cinema rules" in {
     onEditor { page =>
-      // GlobalStructural seeds 4 rules → 4 affected <details>; the Search/Canonical
-      // cards seed no rules, so the only affected lists come from those 4.
+      // GlobalStructural seeds 4 rules → 4 affected <details>; the Canonical
+      // card seeds no rules, so the only affected lists come from those 4.
       page.evalInt("document.querySelectorAll('.rule-wrap details.affected').length") shouldBe 4
       // The per-cinema card (the one carrying a cinema <select>) has rule rows but
       // NO affected list — its rules rewrite the stored record.
@@ -142,12 +141,12 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     onEditor { page =>
       val res = page.evalString(
         """(() => {
-          |  const recs = [{ scope:'Search', cinemaId:null,
+          |  const recs = [{ scope:'GlobalStructural', cinemaId:null,
           |    rules:[{id:'a',pattern:'p'},{id:'b',pattern:'q'}],
           |    lastRules:[{id:'z',pattern:'r'}] }];
           |  const flat = window.TitleRules.flattenForPreview(recs);
           |  return JSON.stringify(flat.map(x => [x.scope, x.order, x.last, x.pattern])); })()""".stripMargin)
-      res shouldBe """[["Search",0,false,"p"],["Search",1,false,"q"],["Search",0,true,"r"]]"""
+      res shouldBe """[["GlobalStructural",0,false,"p"],["GlobalStructural",1,false,"q"],["GlobalStructural",0,true,"r"]]"""
     }
   }
 }
