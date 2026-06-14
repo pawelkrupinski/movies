@@ -376,10 +376,14 @@ jobs:
                       target
                       project/target
                       project/project/target
-                  # Same shared JDK-25 zinc key as `test`/`integration-test` so e2e
-                  # finds web+worker already compiled.
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}
+                  # Dedicated key so this job PERSISTS its own e2e/Test compile
+                  # (the shared `sbt-target-` key is owned by `test`, which never
+                  # compiles e2e — so on that key e2e recompiled cold every run,
+                  # ~100s). restore-keys falls back to the shared cache on a miss
+                  # so web+worker main still come in warm on the first run.
+                  key: sbt-target-e2e-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}
                   restore-keys: |
+                      sbt-target-e2e-${{ runner.os }}-
                       sbt-target-${{ runner.os }}-
 
             - run: sbt e2e/Test/test
