@@ -507,18 +507,28 @@ tasks.register("debugOnEmulator") {
 // same creds `assembleRelease` uses for Play — an unsigned `release` can't be
 // installed. Targets the one physical device by default; with more than one
 // attached, pick it with `-Pserial=<serial>` (emulators are ignored).
+//
+// We `adb install` the assembled APK ourselves rather than depend on AGP's
+// `installRelease`, so we can (a) install only to the chosen device and (b)
+// recover from INSTALL_FAILED_UPDATE_INCOMPATIBLE — the device already holds a
+// `pl.kinowo` signed with a different key (e.g. the debug build from the
+// emulator tasks / Android Studio), which Android won't update in place — by
+// uninstalling the old copy and reinstalling.
 tasks.register("runOnDevice") {
     group = "device"
     description = "Install the signed release build on a cable-connected device and launch it. Pick a device with -Pserial=<serial>."
-    // Only wire the install when it can succeed; otherwise the doLast below
-    // explains the missing-signing case instead of a cryptic "task not found".
-    if (hasReleaseSigning) dependsOn("installRelease")
+    // Only build the APK when it can be signed; otherwise the doLast below
+    // explains the missing-signing case instead of installing an unsigned APK.
+    if (hasReleaseSigning) dependsOn("assembleRelease")
     val adb = adbExe
     val appPkg = appId
     val component = mainComponent
     val signed = hasReleaseSigning
     val serialOverride = (findProperty("serial") as String?)
     val noSdk = noSdkMessage
+    // Captured at configuration time (a plain File) so the action stays
+    // config-cache clean. assembleRelease writes app-release.apk here.
+    val apkDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
     doLast {
         fun sh(vararg args: String): String {
             val p = ProcessBuilder(*args).redirectErrorStream(true).start()
@@ -546,6 +556,26 @@ tasks.register("runOnDevice") {
             else
                 "More than one device attached (${physical.joinToString(", ")}). Pick one with -Pserial=<serial>."
         )
+
+        val apk = apkDir.listFiles { f -> f.isFile && f.extension == "apk" }?.firstOrNull()
+            ?: throw GradleException("No release APK in $apkDir — did assembleRelease run?")
+
+        fun install() = sh(adb, "-s", serial, "install", "-r", "-d", apk.absolutePath)
+
+        logger.lifecycle("Installing ${apk.name} on $serial…")
+        var out = install()
+        if (out.contains("INSTALL_FAILED_UPDATE_INCOMPATIBLE")) {
+            // A differently-signed pl.kinowo is already installed; Android won't
+            // update across signing keys. Uninstall it and reinstall — this
+            // CLEARS that app's local data (hidden films, city, login).
+            logger.lifecycle(
+                "↻ Existing $appPkg is signed with a different key — uninstalling it " +
+                    "(its app data will be cleared) and reinstalling…"
+            )
+            sh(adb, "-s", serial, "uninstall", appPkg)
+            out = install()
+        }
+        if (!out.contains("Success")) throw GradleException("adb install failed on $serial:\n$out")
 
         logger.lifecycle("Launching $component on $serial…")
         sh(adb, "-s", serial, "shell", "am", "start", "-n", component)
