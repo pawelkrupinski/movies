@@ -1,12 +1,31 @@
 package services.staging
 
+import ch.qos.logback.classic.{Level, Logger => LogbackLogger}
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import models.{Cinema, Helios, Multikino, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.slf4j.LoggerFactory
 import services.cinemas.{DetailEnricher, FilmDetail}
 import services.movies.MovieService
 
+import scala.jdk.CollectionConverters._
+
 class StagingPromoterSpec extends AnyFlatSpec with Matchers {
+
+  /** Capture the INFO+ messages `StagingPromoter` logs while `body` runs, by
+   *  attaching a logback list appender to its logger. */
+  private def stagingLogs[T](body: => T): Seq[String] = {
+    val lb       = LoggerFactory.getLogger("services.staging.StagingPromoter").asInstanceOf[LogbackLogger]
+    val appender = new ListAppender[ILoggingEvent]
+    appender.start()
+    lb.addAppender(appender)
+    val prevLevel = lb.getLevel
+    lb.setLevel(Level.INFO)
+    try { body; appender.list.asScala.toSeq.map(_.getFormattedMessage) }
+    finally { lb.detachAppender(appender); lb.setLevel(prevLevel) }
+  }
 
   private class FakeEnricher(val cinema: Cinema, detail: Option[FilmDetail], defer: Boolean = true)
     extends DetailEnricher {
@@ -129,5 +148,20 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
     promoter.promote(row) shouldBe true
     recoverCalled shouldBe false
     repo.findAll().head.record.imdbId shouldBe Some("tt0000007")
+  }
+
+  it should "log each promotion step at INFO (the formerly-silent path is now traceable)" in {
+    val (repo, row) = seeded(Helios, "Loggable", Some(2026))
+    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"), director = Seq("Dir"))))
+    val promoter = new StagingPromoter(repo, Seq(enricher),
+      resolveStaging = (_, _, rec) => Some(rec.copy(tmdbId = Some(99))),
+      recoverImdbId = (_, _) => None,
+      onConcluded = _ => ())
+
+    val logs = stagingLogs(promoter.promote(row))
+
+    logs.exists(_.contains(s"Staging: promoting 'Loggable' (cinemas: ${Helios.displayName})")) shouldBe true
+    logs.exists(m => m.contains("Loggable") && m.contains(s"detail from ${Helios.displayName}")) shouldBe true
+    logs.exists(m => m.contains("Loggable") && m.contains("concluded") && m.contains("tmdbId=99")) shouldBe true
   }
 }

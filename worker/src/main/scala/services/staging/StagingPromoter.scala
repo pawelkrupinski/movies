@@ -64,6 +64,7 @@ class StagingPromoter(
    *  comment for why resolution is per-film but folding is per-variant. */
   private def promoteFilm(filmRows: Seq[StagingRecord]): Boolean = {
     val norm = TitleNormalizer.sanitize(filmRows.head.title)
+    logger.info(s"Staging: promoting '${filmRows.head.title}' (cinemas: ${filmRows.map(_.cinema.displayName).distinct.mkString(", ")})")
 
     // 1. Detail-enrich each cinema's row. `detailReady` is false when a cinema
     //    that DEFERS resolution couldn't get its detail yet (so TMDB would miss
@@ -119,6 +120,7 @@ class StagingPromoter(
         val concluded = resolved.tmdbConcluded
         // 5. Fold each year-variant separately — one event per distinct year.
         if (concluded) fresh.map(_.year).distinct.foreach { y =>
+          logger.info(s"Staging: '${fresh.head.title}' (${y.getOrElse("?")}) → concluded (tmdbId=${resolved.tmdbId.getOrElse("—")}), folding into movies")
           onConcluded(StagingRecord(fresh.head.cinema, fresh.head.title, y, resolved))
         }
         concluded
@@ -137,6 +139,7 @@ class StagingPromoter(
         val merged = row.record.copy(
           data = row.record.data + (target -> detail.mergeInto(row.record.data.getOrElse(target, models.SourceData()))))
         stagingRepo.upsert(row.cinema, row.title, row.year, merged)
+        logger.info(s"Staging: '${row.title}' ← detail from ${row.cinema.displayName}")
         true
       case None =>
         // No filmUrl, or the fetch failed: already-merged detail still counts as ready.

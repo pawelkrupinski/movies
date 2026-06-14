@@ -321,9 +321,13 @@ class MovieService(
     val origHint = originalTitle.orElse(cachedOrig)
     val dirHint  = director.orElse(cachedDir)
     if (!force && !needsTmdbResolution(key, origHint, dirHint)) true
-    else Try(runTmdbStageSync(key, origHint, dirHint)) match {
+    else {
+      logger.info(s"TMDB: resolving '${key.cleanTitle}' (${key.year.getOrElse("?")})" +
+        dirHint.fold("")(d => s" [director hint: $d]"))
+      Try(runTmdbStageSync(key, origHint, dirHint)) match {
       case Success(Some((finalKey, movieRecord))) => publishTmdbOutcome(finalKey, movieRecord); true
       case Success(None) =>
+        logger.info(s"TMDB: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no match")
         cache.markMissing(key)
         // Conclude as a definitive miss AND fold a stranded yearless+idless
         // sibling onto the now-concluded row in one write (same rationale as the
@@ -338,6 +342,7 @@ class MovieService(
       case Failure(ex) =>
         logger.warn(s"TMDB resolve failed for '${key.cleanTitle}' (${key.year.getOrElse("?")}): ${ex.getMessage}; will retry.")
         false
+      }
     }
   }
 
@@ -353,11 +358,17 @@ class MovieService(
    *  the fold, not on the per-cinema staging rows. */
   def resolveStagingRecord(cleanTitle: String, year: Option[Int], existing: MovieRecord): Option[MovieRecord] = {
     val (origHint, dirHint) = tmdbHints(existing)
+    val label = s"'$cleanTitle' (${year.getOrElse("?")})"
     Try(lookupTmdb(cleanTitle, year, existing, origHint, dirHint)) match {
-      case Success(Some((hit, imdbId, detailsOpt))) => Some(buildResolvedRecord(hit, imdbId, detailsOpt, existing))
-      case Success(None)                            => Some(existing.copy(tmdbNoMatch = true))
+      case Success(Some((hit, imdbId, detailsOpt))) =>
+        val resolved = buildResolvedRecord(hit, imdbId, detailsOpt, existing)
+        logger.info(s"TMDB (staging): $label → matched tmdbId=${resolved.tmdbId.getOrElse("—")} imdbId=${resolved.imdbId.getOrElse("—")}")
+        Some(resolved)
+      case Success(None) =>
+        logger.info(s"TMDB (staging): $label → no match")
+        Some(existing.copy(tmdbNoMatch = true))
       case Failure(ex) =>
-        logger.warn(s"Staging TMDB resolve failed for '$cleanTitle' (${year.getOrElse("?")}): ${ex.getMessage}; will retry.")
+        logger.warn(s"Staging TMDB resolve failed for $label: ${ex.getMessage}; will retry.")
         None
     }
   }
@@ -368,14 +379,14 @@ class MovieService(
     movieRecord.imdbId match {
       case Some(id) =>
         bus.publish(TmdbResolved(finalKey.cleanTitle, finalKey.year, id))
-        logger.debug(s"TMDB stage: ${finalKey.cleanTitle} (${finalKey.year.getOrElse("?")}) → $id")
+        logger.info(s"TMDB: '${finalKey.cleanTitle}' (${finalKey.year.getOrElse("?")}) → matched tmdbId=${movieRecord.tmdbId.getOrElse("—")} imdbId=$id")
       case None =>
         // IMDb's suggestion endpoint sees the cleaned-up form when TMDB didn't
         // ship an originalTitle, so accessibility-decorated rows ("Kino bez
         // barier: Freak Show (AD)") query IMDb as just "Freak Show". TMDB's
         // originalTitle, when present, is already canonical and needs no stripping.
         val searchTitle = movieRecord.originalTitle.getOrElse(MovieService.apiQuery(finalKey.cleanTitle))
-        logger.debug(s"TMDB stage: ${finalKey.cleanTitle} (${finalKey.year.getOrElse("?")}) → tmdbId=${movieRecord.tmdbId.getOrElse("—")} (no IMDb cross-reference yet); publishing ImdbIdMissing(search='$searchTitle')")
+        logger.info(s"TMDB: '${finalKey.cleanTitle}' (${finalKey.year.getOrElse("?")}) → matched tmdbId=${movieRecord.tmdbId.getOrElse("—")} (no IMDb cross-reference yet); publishing ImdbIdMissing(search='$searchTitle')")
         bus.publish(ImdbIdMissing(finalKey.cleanTitle, finalKey.year, searchTitle))
     }
 

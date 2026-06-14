@@ -27,6 +27,8 @@ class MetascoreRatings(
   metacritic: MetacriticClient
 ) extends CacheRefresher(cache) {
 
+  override protected def sourceName: String = "Metacritic"
+
   // ── Per-row work ───────────────────────────────────────────────────────────
 
   // Two paths, mirroring FilmwebRatings:
@@ -37,8 +39,10 @@ class MetascoreRatings(
   // Per-row failures are swallowed; the next refresh tries again.
   protected def refreshOne(key: CacheKey): Unit =
     cache.get(key).foreach { e =>
-      val urlOpt = e.metacriticUrl.orElse(resolveAndPersistUrl(key, e))
-      urlOpt.foreach(url => refreshScoreFromUrl(key, e, url))
+      e.metacriticUrl.orElse(resolveAndPersistUrl(key, e)) match {
+        case Some(url) => refreshScoreFromUrl(key, e, url)
+        case None      => logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no URL match")
+      }
     }
 
   // Probe MC for a canonical /movie/ URL using TMDB's title data; write it
@@ -72,24 +76,26 @@ class MetascoreRatings(
         .orElse(usTitle.flatMap(t => Try(metacritic.urlFor(t, None, year)).toOption.flatten))
 
       resolved.foreach { url =>
-        logger.debug(s"Metascore: ${key.cleanTitle} discovered $url")
+        logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → URL discovered $url")
         cache.putIfPresent(key, _.copy(metacriticUrl = Some(url)))
       }
       resolved
     }
 
-  private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Unit =
+  private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Unit = {
+    val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
     Try(metacritic.metascoreFor(url)).toOption.flatten match {
-      case Some(score) if !e.metascore.contains(score) =>
+      case Some(score) =>
+        logger.info(s"Metacritic: $label $url → metascore $score" +
+          (if (e.metascore.contains(score)) " (unchanged)" else s" (was ${e.metascore.getOrElse("—")})"))
         // The updater receives the live cached row — that's the merge point
         // for both the URL we may have just written and any other listener's
         // concurrent updates. No risk of clobbering.
-        cache.putIfPresent(key, current => {
-          logger.debug(s"Metascore: ${key.cleanTitle} $url ${current.metascore.getOrElse("—")} → $score")
-          current.copy(metascore = Some(score))
-        })
-      case _ => ()
+        if (!e.metascore.contains(score)) cache.putIfPresent(key, _.copy(metascore = Some(score)))
+      case None =>
+        logger.info(s"Metacritic: $label $url → no metascore on page")
     }
+  }
 
   // ── Full-corpus walk ───────────────────────────────────────────────────────
 

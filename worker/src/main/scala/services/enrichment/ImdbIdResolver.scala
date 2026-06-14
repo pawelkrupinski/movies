@@ -65,8 +65,12 @@ class ImdbIdResolver(
    *  the cache, so the event-driven `onImdbIdMissing` (which reads + `putIfPresent`s
    *  the cache) can't reach it; recovering here folds the row already carrying the
    *  id, the same end state the direct path's `ImdbIdMissing` chain produces. */
-  def findIdFor(searchTitle: String, year: Option[Int]): Option[String] =
-    Try(imdb.findId(searchTitle, year)).toOption.flatten
+  def findIdFor(searchTitle: String, year: Option[Int]): Option[String] = {
+    logger.info(s"IMDb-id (staging): looking up [search='$searchTitle'] (${year.getOrElse("?")})")
+    val id = Try(imdb.findId(searchTitle, year)).toOption.flatten
+    logger.info(s"IMDb-id (staging): [search='$searchTitle'] (${year.getOrElse("?")}) → ${id.getOrElse("no match")}")
+    id
+  }
 
   private def resolve(
     title:        String,
@@ -76,15 +80,16 @@ class ImdbIdResolver(
   ): Unit = {
     val key = cache.keyOf(title, year)
     cache.get(key).filter(_.imdbId.isEmpty).foreach { _ =>
+      logger.info(s"IMDb-id: looking up '${key.cleanTitle}' (${key.year.getOrElse("?")}) [search='$searchTitle']")
       Try(imdb.findId(searchTitle, year)).toOption.flatten match {
         case Some(id) =>
-          logger.info(s"IMDb id resolved via search: ${key.cleanTitle} (${key.year.getOrElse("?")}) → $id")
+          logger.info(s"IMDb-id: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → resolved $id")
           // putIfPresent so a concurrent `cache.invalidate` happening between
           // event publish and id resolution can't resurrect the row.
           val wrote = cache.putIfPresent(key, _.copy(imdbId = Some(id)))
           if (wrote && publishEvent) bus.publish(ImdbIdResolved(title, year, id))
         case None =>
-          logger.debug(s"IMDb search returned no match for ${key.cleanTitle} (${key.year.getOrElse("?")}) [search='$searchTitle']")
+          logger.info(s"IMDb-id: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no match [search='$searchTitle']")
       }
     }
   }

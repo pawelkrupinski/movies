@@ -24,6 +24,8 @@ class ImdbRatings(
   imdb:  ImdbClient
 ) extends CacheRefresher(cache) {
 
+  override protected def sourceName: String = "IMDb"
+
   // ── Per-row work ───────────────────────────────────────────────────────────
 
   // Look up the row, refresh the rating via the cheap `lookup` GraphQL call,
@@ -33,17 +35,24 @@ class ImdbRatings(
   // details fetch doesn't block the rating update. Skips rows without an
   // `imdbId` (TMDB-only — IMDb hasn't cross-referenced the film yet).
   protected def refreshOne(key: CacheKey): Unit =
-    cache.get(key).flatMap(e => e.imdbId.map(id => (e, id))).foreach { case (e, id) =>
-      val freshRating  = Try(imdb.lookup(id)).toOption.flatten
-      val freshDetails = Try(imdb.details(id)).toOption.flatten
-      val ratingUpdate = freshRating.filter(r => !e.imdbRating.contains(r))
-      val slotUpdate   = freshDetails.flatMap(d => makeSlot(d).filter(s => !e.data.get(Imdb).contains(s)))
-      if (ratingUpdate.isDefined || slotUpdate.isDefined) {
-        ratingUpdate.foreach(r => logger.debug(s"IMDb: ${key.cleanTitle} $id ${e.imdbRating.getOrElse("—")} → $r"))
-        cache.putIfPresent(key, current => current.copy(
-          imdbRating = ratingUpdate.orElse(current.imdbRating),
-          data       = slotUpdate.map(s => current.data + ((Imdb: Source) -> s)).getOrElse(current.data)
-        ))
+    cache.get(key).foreach { e =>
+      val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
+      e.imdbId match {
+        case None =>
+          logger.info(s"IMDb: $label → no imdbId yet, skipping rating")
+        case Some(id) =>
+          val freshRating  = Try(imdb.lookup(id)).toOption.flatten
+          val freshDetails = Try(imdb.details(id)).toOption.flatten
+          val ratingUpdate = freshRating.filter(r => !e.imdbRating.contains(r))
+          val slotUpdate   = freshDetails.flatMap(d => makeSlot(d).filter(s => !e.data.get(Imdb).contains(s)))
+          logger.info(s"IMDb: $label $id → rating ${freshRating.getOrElse("none")}" +
+            ratingUpdate.fold("")(_ => s" (changed from ${e.imdbRating.getOrElse("—")})") +
+            slotUpdate.fold("")(_ => " + details slot"))
+          if (ratingUpdate.isDefined || slotUpdate.isDefined)
+            cache.putIfPresent(key, current => current.copy(
+              imdbRating = ratingUpdate.orElse(current.imdbRating),
+              data       = slotUpdate.map(s => current.data + ((Imdb: Source) -> s)).getOrElse(current.data)
+            ))
       }
     }
 

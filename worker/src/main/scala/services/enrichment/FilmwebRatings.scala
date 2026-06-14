@@ -36,6 +36,8 @@ class FilmwebRatings(
   filmweb: FilmwebClient
 ) extends CacheRefresher(cache) {
 
+  override protected def sourceName: String = "Filmweb"
+
   /** Audit-and-fix the stored `filmwebUrl` for `(title, year)` against the
    *  tightened `FilmwebClient.lookup`. Re-resolves regardless of whether a
    *  URL is already stored, writes back any change to the cache (which
@@ -102,25 +104,34 @@ class FilmwebRatings(
       }
     }
 
-  private def refreshRatingFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Unit =
+  private def refreshRatingFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Unit = {
+    val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
     Try(filmweb.ratingFor(url)).toOption.flatten match {
-      case Some(rating) if !e.filmwebRating.contains(rating) =>
-        logger.debug(s"Filmweb: ${key.cleanTitle} $url ${e.filmwebRating.getOrElse("—")} → $rating")
-        cache.putIfPresent(key, _.copy(filmwebRating = Some(rating)))
-      case _ => ()
+      case Some(rating) =>
+        logger.info(s"Filmweb: $label $url → rating $rating" +
+          (if (e.filmwebRating.contains(rating)) " (unchanged)" else s" (was ${e.filmwebRating.getOrElse("—")})"))
+        if (!e.filmwebRating.contains(rating)) cache.putIfPresent(key, _.copy(filmwebRating = Some(rating)))
+      case None =>
+        logger.info(s"Filmweb: $label $url → no rating on page")
     }
+  }
 
   // Full URL discovery — only called when the row has no stored filmwebUrl.
   // Passes TMDB's originalTitle / englishTitle as `fallback` so non-Polish
   // films whose cinema-reported title doesn't surface a Filmweb hit still
   // resolve, and the union of TMDB credits + every cinema's reported director
   // as `directors` so same-titled films across years disambiguate.
-  private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Unit =
-    resolveUrl(key, e).foreach { fw =>
-      logger.debug(s"Filmweb: ${key.cleanTitle} discovered ${fw.url} rating=${fw.rating.getOrElse("—")}")
-      cache.putIfPresent(key, r =>
-        r.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating, data = withFilmwebGenres(r.data, fw.genres)))
+  private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Unit = {
+    val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
+    resolveUrl(key, e) match {
+      case Some(fw) =>
+        logger.info(s"Filmweb: $label → URL discovered ${fw.url} rating=${fw.rating.getOrElse("—")}")
+        cache.putIfPresent(key, r =>
+          r.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating, data = withFilmwebGenres(r.data, fw.genres)))
+      case None =>
+        logger.info(s"Filmweb: $label → no match")
     }
+  }
 
   /** Merge freshly-resolved Filmweb genres into the per-source slot map.
    *  Empty genres → drop the Filmweb slot entirely (don't store a slot that

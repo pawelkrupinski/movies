@@ -24,14 +24,23 @@ import services.movies.{CacheKey, MovieCache}
  */
 abstract class CacheRefresher(protected val cache: MovieCache) extends Logging {
 
+  /** Short name of the source this refresher owns (`"IMDb"`, `"Metacritic"`,
+   *  `"RT"`, `"Filmweb"`) — used to prefix the per-step enrichment logs so a
+   *  film's whole journey through the cascade is greppable by source. */
+  protected def sourceName: String
+
   /** Synchronous per-row refresh by `CacheKey` — the queue `RatingHandler`,
-   *  scripts, and tests call this. */
-  private[services] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
+   *  scripts, and tests call this. Logs the step boundary at INFO so every
+   *  per-film rating resolution is visible; the subclass logs the outcome. */
+  private[services] def refreshOneSync(key: CacheKey): Unit = {
+    logger.info(s"$sourceName: resolving '${key.cleanTitle}' (${key.year.getOrElse("?")})")
+    refreshOne(key)
+  }
 
   /** Synchronous refresh by `(title, year)` — public entry point for the
    *  `RatingHandler` and scripts. */
   def refreshOneSync(title: String, year: Option[Int]): Unit =
-    refreshOne(cache.keyOf(title, year))
+    refreshOneSync(cache.keyOf(title, year))
 
   /** Subclass hook: the per-row work. */
   protected def refreshOne(key: CacheKey): Unit

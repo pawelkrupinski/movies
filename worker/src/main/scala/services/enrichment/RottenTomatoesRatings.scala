@@ -26,6 +26,8 @@ class RottenTomatoesRatings(
   rt:    RottenTomatoesClient
 ) extends CacheRefresher(cache) {
 
+  override protected def sourceName: String = "RT"
+
   // ── Per-row work ───────────────────────────────────────────────────────────
 
   // Two paths, mirroring FilmwebRatings / MetascoreRatings:
@@ -36,8 +38,10 @@ class RottenTomatoesRatings(
   // Per-row failures are swallowed; the next refresh tries again.
   protected def refreshOne(key: CacheKey): Unit =
     cache.get(key).foreach { e =>
-      val urlOpt = e.rottenTomatoesUrl.orElse(resolveAndPersistUrl(key, e))
-      urlOpt.foreach(url => refreshScoreFromUrl(key, e, url))
+      e.rottenTomatoesUrl.orElse(resolveAndPersistUrl(key, e)) match {
+        case Some(url) => refreshScoreFromUrl(key, e, url)
+        case None      => logger.info(s"RT: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no URL match")
+      }
     }
 
   private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Option[String] =
@@ -68,21 +72,23 @@ class RottenTomatoesRatings(
         .orElse(usTitle.flatMap(t => Try(rt.urlFor(t, None, year)).toOption.flatten))
 
       resolved.foreach { url =>
-        logger.debug(s"RT: ${key.cleanTitle} discovered $url")
+        logger.info(s"RT: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → URL discovered $url")
         cache.putIfPresent(key, _.copy(rottenTomatoesUrl = Some(url)))
       }
       resolved
     }
 
-  private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Unit =
+  private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Unit = {
+    val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
     Try(rt.scoreFor(url)).toOption.flatten match {
-      case Some(score) if !e.rottenTomatoes.contains(score) =>
-        cache.putIfPresent(key, current => {
-          logger.debug(s"RT: ${key.cleanTitle} $url ${current.rottenTomatoes.getOrElse("—")} → $score")
-          current.copy(rottenTomatoes = Some(score))
-        })
-      case _ => ()
+      case Some(score) =>
+        logger.info(s"RT: $label $url → Tomatometer $score" +
+          (if (e.rottenTomatoes.contains(score)) " (unchanged)" else s" (was ${e.rottenTomatoes.getOrElse("—")})"))
+        if (!e.rottenTomatoes.contains(score)) cache.putIfPresent(key, _.copy(rottenTomatoes = Some(score)))
+      case None =>
+        logger.info(s"RT: $label $url → no Tomatometer on page")
     }
+  }
 
   // ── Full-corpus walk ───────────────────────────────────────────────────────
 
