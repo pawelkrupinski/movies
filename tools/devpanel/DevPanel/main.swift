@@ -214,6 +214,8 @@ final class ConsoleView: NSObject {
 
     @objc private func toggle() { setExpanded(!isExpanded) }
 
+    func setOpen(_ on: Bool) { if isExpanded != on { setExpanded(on) } }
+
     private func setExpanded(_ on: Bool) {
         isExpanded = on
         scroll.isHidden = !on
@@ -316,9 +318,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .nonactivatingPanel],
             backing: .buffered, defer: false)
         panel.title = "movies"
+        // An always-on-top floating panel can't use the OS's native minimize /
+        // zoom, so the yellow + green buttons drive floating-palette equivalents:
+        // minimize → collapse to the compact panel, zoom → open both consoles.
         panel.standardWindowButton(.closeButton)?.isHidden = false
-        panel.standardWindowButton(.miniaturizeButton)?.isHidden = false
-        panel.standardWindowButton(.zoomButton)?.isHidden = false
+        if let mini = panel.standardWindowButton(.miniaturizeButton) {
+            mini.isHidden = false
+            mini.target = self
+            mini.action = #selector(minimizePanel)
+        }
+        if let zoom = panel.standardWindowButton(.zoomButton) {
+            zoom.isHidden = false
+            zoom.target = self
+            zoom.action = #selector(zoomPanel)
+        }
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.hidesOnDeactivate = false
@@ -354,6 +367,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // The close traffic-light quits the app (accessory app — no Dock icon to
     // reopen a merely-closed window from).
     func windowWillClose(_ notification: Notification) { NSApp.terminate(nil) }
+
+    // Yellow: collapse to the compact panel. Green: open both consoles (toggle).
+    @objc private func minimizePanel() {
+        webConsole.setOpen(false)
+        deviceConsole.setOpen(false)
+    }
+
+    @objc private func zoomPanel() {
+        let open = !(webConsole.isExpanded && deviceConsole.isExpanded)
+        webConsole.setOpen(open)
+        deviceConsole.setOpen(open)
+    }
 
     private func button(for action: Action) -> NSButton {
         // Centred text → left padding always equals right padding, and stays
