@@ -71,10 +71,13 @@ jobs:
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
-            # Every module's unit tests in one sbt run; `all` keeps going so a
-            # failure in one module still runs the rest (testkit + e2e join the
-            # existing job — no new GH job is added).
-            - run: sbt testUnit
+            # Every module's unit tests except `e2e` in one sbt run; `all` keeps
+            # going so a failure in one module still runs the rest. The `e2e`
+            # module (the whole-corpus staging specs) rides the integration-test
+            # job instead — it doubled this step's wall-clock once staging ingest
+            # went always-on, and this is the deploy-gating job, so keep it off
+            # the critical path. See the `testUnitNoE2e` alias in build.sbt.
+            - run: sbt testUnitNoE2e
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
@@ -406,6 +409,26 @@ jobs:
               with:
                   report_paths: 'target/test-reports/it/**/*.xml'
                   check_name: integration tests
+                  detailed_summary: true
+                  include_passed: false
+
+            # The `e2e` module rides this job rather than `test`. Its
+            # whole-corpus staging specs (ScrapeOrderDeterminismSpec drains the
+            # staging pipeline per shuffled replay) doubled the `test` job's
+            # wall-clock when staging ingest went always-on — and `test` gates
+            # deploy. This job is the shortest sbt job, so e2e fits here under
+            # the 20-runner cap without adding a new GH job that would just queue.
+            # e2e uses FixtureTestWiring (no Mongo), so it ignores the container
+            # above. Reports land in the same root `target/test-reports/unit` dir
+            # (unitReportSettings) — a distinct check name keeps the signal clear.
+            - run: sbt e2e/Test/test
+
+            - name: Publish e2e test report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
+              with:
+                  report_paths: 'target/test-reports/unit/**/*.xml'
+                  check_name: e2e tests
                   detailed_summary: true
                   include_passed: false
 

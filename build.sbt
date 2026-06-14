@@ -312,8 +312,15 @@ def ensureLocalMongo(state: State, uri: String): Unit = {
 
 // One sbt invocation, every module's unit tests, no fail-fast: `all` runs each
 // listed task in parallel and reports all failures instead of stopping at the
-// first failing module. CI's unit job calls `sbt testUnit`; the integration
-// job `sbt itAll`. Keeping both as aggregating aliases means new modules join
-// the existing CI jobs rather than spawning new ones.
+// first failing module. `testUnit` is the full local alias; keeping the
+// aggregating aliases means new modules join the existing CI jobs rather than
+// spawning new ones.
 addCommandAlias("testUnit", "all common/Test/test testkit/Test/test web/Test/test worker/Test/test e2e/Test/test")
 addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/test")
+// CI runs `testUnit` split across two jobs so the heavy `e2e` module (the
+// whole-corpus staging specs — ScrapeOrderDeterminismSpec drains the staging
+// pipeline per shuffled replay) stays off the `test` job's critical path: the
+// `test` job runs `testUnitNoE2e`, the `integration-test` job tacks on
+// `e2e/Test/test`. Net zero extra runners (CI peaks at the 20-runner cap), and
+// the gating job drops ~4 min. See .github/workflows/ci.yml.
+addCommandAlias("testUnitNoE2e", "all common/Test/test testkit/Test/test web/Test/test worker/Test/test")
