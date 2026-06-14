@@ -43,6 +43,40 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe NOT_FOUND
   }
 
+  // `/debug` reads two full-collection Mongo scans (`movies` + `pending_movies`).
+  // Being dev-only it is always served over the slow local→prod Mongo tunnel,
+  // where each cursor is ~6 s, so doing them one-after-another doubled the page's
+  // cold-load latency. Prove the two reads overlap with a 2-party rendezvous:
+  // each repository's findAll() blocks at the barrier until the other arrives.
+  // Concurrent reads both reach it and trip it; a sequential implementation
+  // leaves the first read waiting for a second that hasn't been dispatched yet,
+  // so it times out and the flag stays false.
+  it should "read the corpus and staging collections concurrently, not one after the other" in {
+    val barrier = new java.util.concurrent.CyclicBarrier(2)
+    @volatile var bothScansOverlapped = false
+    def rendezvous(): Unit =
+      try {
+        barrier.await(3, java.util.concurrent.TimeUnit.SECONDS)
+        bothScansOverlapped = true
+      } catch { case _: Throwable => () } // timeout / broken barrier ⇒ ran sequentially
+
+    val movieRepo = new services.movies.InMemoryMovieRepository(records) {
+      override def findAll(): Seq[services.movies.StoredMovieRecord] = { rendezvous(); super.findAll() }
+    }
+    val stagingRepo = new services.staging.StagingRepository {
+      def enabled: Boolean = true
+      def findAll(): Seq[services.staging.StagingRecord] = { rendezvous(); Seq.empty }
+      def upsert(cinema: models.Source, title: String, year: Option[Int], record: MovieRecord): Unit = ()
+      def delete(cinema: models.Source, title: String, year: Option[Int]): Unit = ()
+    }
+
+    val ctrl = TestMovieController.build(records, Mode.Dev,
+      movieRepository = Some(movieRepo), stagingRepository = stagingRepo)._1
+
+    status(ctrl.debug().apply(FakeRequest(GET, "/debug"))) shouldBe OK
+    bothScansOverlapped shouldBe true
+  }
+
   // The top-of-page "pending work" sections derive their membership client-side
   // from per-row data-* flags the change stream keeps live, so the server only
   // emits the flags + the (initially empty) section scaffolding. Assert the

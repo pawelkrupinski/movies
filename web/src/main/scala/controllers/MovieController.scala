@@ -10,6 +10,8 @@ import services.readmodel.WebReadModel
 
 import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.DurationInt
 
 case class CinemaShowtimes(cinema: Cinema, showtimes: Seq[Showtime])
 
@@ -421,10 +423,22 @@ class MovieController( cc: ControllerComponents,
       // Pulled on demand from Mongo: the web doesn't keep the `movies` model
       // warm, so the corpus dump reads the source rows the read model is
       // projected from directly.
+      //
+      // Both `movies` and `pending_movies` are full-collection scans. `/debug`
+      // is dev-only, so it is ALWAYS served over the local→prod Mongo tunnel,
+      // where a single such cursor runs ~6 s (see `MovieRepository.findAll`).
+      // Reading the two collections one after the other made every reload ~12 s;
+      // firing them concurrently brings a cold load back down to a single scan's
+      // latency. The 70 s outer wait sits just above each read's own 60 s
+      // timeout so an inner timeout fires (and logs) first.
+      implicit val ec: scala.concurrent.ExecutionContext = cc.executionContext
+      val moviesFuture  = Future(movieRepository.findAll())
+      val stagingFuture = Future(stagingRepository.findAll())
+      val (movies, staging) = Await.result(moviesFuture.zip(stagingFuture), 70.seconds)
       Ok(views.html.debug(
-        movieRepository.findAll().sortBy(_.title.toLowerCase),
+        movies.sortBy(_.title.toLowerCase),
         cinemaSourceUrls(),
-        stagingRepository.findAll().sortBy(r => (r.title.toLowerCase, r.cinema.displayName))))
+        staging.sortBy(r => (r.title.toLowerCase, r.cinema.displayName))))
     }
   }
 

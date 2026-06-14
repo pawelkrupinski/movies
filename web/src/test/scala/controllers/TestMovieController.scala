@@ -18,14 +18,18 @@ object TestMovieController {
     cinemaSourceUrls: Map[String, String] = Map.empty,
     adminAction: AdminAction = TestAdminAction(),
     taskQueue: TaskQueue = new InMemoryTaskQueue,
+    // On-demand corpus dump only (dev /debug); defaults to an in-memory repo
+    // holding the same `records`. Override to drive the /debug read path (e.g.
+    // to assert the two scans run concurrently).
+    movieRepository: Option[services.movies.MovieRepository] = None,
+    stagingRepository: services.staging.StagingRepository = services.staging.StagingRepository.empty,
   ): (MovieController, WebReadModel) = {
     val readModel = TestReadModel.fromRecords(records)
     val ctrl  = new MovieController(
       cc                     = Helpers.stubControllerComponents(),
       movieControllerService = new MovieControllerService(readModel),
       readModel              = readModel,
-      // On-demand corpus dump only (dev /debug); holds the same rows.
-      movieRepository              = new InMemoryMovieRepository(records),
+      movieRepository        = movieRepository.getOrElse(new InMemoryMovieRepository(records)),
       taskQueue              = taskQueue,
       userRepository               = new services.users.InMemoryUserRepository,
       adminAction            = adminAction,
@@ -37,6 +41,7 @@ object TestMovieController {
       // don't assert on the card image itself.
       ogCardService          = new tools.OgCardService((_: String) => None),
       cinemaSourceUrls       = () => cinemaSourceUrls,
+      stagingRepository      = stagingRepository,
     )
     (ctrl, readModel)
   }
