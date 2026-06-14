@@ -46,8 +46,8 @@
   // The sort key (`data-rating`) is pre-parsed onto each card's INDEX entry by
   // the per-page buildIndex, so the comparator never re-reads the DOM.
   function getSortBy() {
-    var el = document.getElementById('sort-by');
-    var v = el ? el.value : 'earliest';
+    var element = document.getElementById('sort-by');
+    var v = element ? element.value : 'earliest';
     return (v === 'rating') ? v : 'earliest';
   }
 
@@ -112,15 +112,15 @@
   const _viewportMeta = () => document.querySelector('meta[name="viewport"]');
   let _searchBaseViewport = null;
   function lockSearchZoom() {
-    const vp = _viewportMeta();
-    if (!vp || _searchBaseViewport !== null) return;   // already locked — no-op
-    _searchBaseViewport = vp.getAttribute('content');
-    vp.setAttribute('content', _searchBaseViewport + ', maximum-scale=1');
+    const viewport = _viewportMeta();
+    if (!viewport || _searchBaseViewport !== null) return;   // already locked — no-op
+    _searchBaseViewport = viewport.getAttribute('content');
+    viewport.setAttribute('content', _searchBaseViewport + ', maximum-scale=1');
   }
   function unlockSearchZoom() {
-    const vp = _viewportMeta();
-    if (!vp || _searchBaseViewport === null) return;
-    vp.setAttribute('content', _searchBaseViewport);
+    const viewport = _viewportMeta();
+    if (!viewport || _searchBaseViewport === null) return;
+    viewport.setAttribute('content', _searchBaseViewport);
     _searchBaseViewport = null;
   }
   window.lockSearchZoom   = lockSearchZoom;
@@ -146,9 +146,9 @@
   }
 
   function updateFormatBtn() {
-    const btn = document.getElementById('format-filter-btn');
-    if (!btn) return;  // Filtry button not rendered on this page.
-    btn.classList.toggle('filters-active', filtersActive());
+    const button = document.getElementById('format-filter-btn');
+    if (!button) return;  // Filtry button not rendered on this page.
+    button.classList.toggle('filters-active', filtersActive());
   }
 
   function onFormatChange() {
@@ -185,7 +185,7 @@
     ['country', 'genre', 'director', 'cast', 'room'].forEach(function(key) {
       var list = document.getElementById(key + '-list');
       if (list) {
-        list.querySelectorAll('input[type="checkbox"]').forEach(function(cb) { cb.checked = true; });
+        list.querySelectorAll('input[type="checkbox"]').forEach(function(checkbox) { checkbox.checked = true; });
         list.style.display = 'none';
       }
       var chevron = document.getElementById(key + '-chevron');
@@ -211,9 +211,9 @@
     var list = document.getElementById(key + '-list');
     if (!list) return null;
     var boxes = [...list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)')];
-    var checked = boxes.filter(function(cb) { return cb.checked; });
+    var checked = boxes.filter(function(checkbox) { return checkbox.checked; });
     if (checked.length === boxes.length) return null;
-    return checked.map(function(cb) { return cb.value; });
+    return checked.map(function(checkbox) { return checkbox.value; });
   }
 
   function getCountryFilter()  { return getSubmenuFilter('country'); }
@@ -234,7 +234,7 @@
     var badge = document.getElementById(key + '-row-count');
     if (!badge || !list) return;
     var boxes = [...list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)')];
-    var unchecked = boxes.filter(function(cb) { return !cb.checked; }).length;
+    var unchecked = boxes.filter(function(checkbox) { return !checkbox.checked; }).length;
     if (unchecked > 0) {
       badge.textContent = boxes.length - unchecked + '/' + boxes.length;
       badge.style.display = '';
@@ -284,7 +284,7 @@
     allCb.checked = true;
     allCb.className = 'submenu-all';
     allCb.onchange = function() {
-      list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(function(cb) { cb.checked = allCb.checked; });
+      list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(function(checkbox) { checkbox.checked = allCb.checked; });
       updateSubmenuCount(key); updateFormatBtn(); applyFilters();
     };
     allLabel.appendChild(allCb);
@@ -294,17 +294,17 @@
     entries.forEach(function(entry) {
       var label = document.createElement('label');
       label.className = 'panel-label';
-      var cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.value = entry.value;
-      cb.checked = true;
-      cb.onchange = function() { updateSubmenuCount(key); updateFormatBtn(); applyFilters(); };
-      label.appendChild(cb);
+      var checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = entry.value;
+      checkbox.checked = true;
+      checkbox.onchange = function() { updateSubmenuCount(key); updateFormatBtn(); applyFilters(); };
+      label.appendChild(checkbox);
       label.appendChild(document.createTextNode(' ' + entry.label));
-      var cnt = document.createElement('span');
-      cnt.className = 'submenu-film-count';
-      cnt.textContent = '(' + entry.count + ')';
-      label.appendChild(cnt);
+      var count = document.createElement('span');
+      count.className = 'submenu-film-count';
+      count.textContent = '(' + entry.count + ')';
+      label.appendChild(count);
       list.appendChild(label);
     });
   }
@@ -361,9 +361,9 @@
     if (!list) return;
 
     var byCinema = {};
-    gridScope().querySelectorAll('.cinema-group[data-cinema]').forEach(function(cg) {
-      var cinema = cg.dataset.cinema;
-      cg.querySelectorAll('.badge-time[data-room]').forEach(function(b) {
+    gridScope().querySelectorAll('.cinema-group[data-cinema]').forEach(function(cinemaGroup) {
+      var cinema = cinemaGroup.dataset.cinema;
+      cinemaGroup.querySelectorAll('.badge-time[data-room]').forEach(function(b) {
         var room = b.dataset.room;
         if (!room) return;
         if (!byCinema[cinema]) byCinema[cinema] = {};
@@ -393,8 +393,8 @@
     allCb.checked = true;
     allCb.className = 'submenu-all';
     allCb.onchange = function() {
-      list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(function(cb) {
-        cb.checked = allCb.checked;
+      list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(function(checkbox) {
+        checkbox.checked = allCb.checked;
       });
       list.querySelectorAll('.room-cinema-header').forEach(function(h) { _updateRoomCinemaCount(h); });
       updateSubmenuCount('room'); updateFormatBtn(); applyFilters();
@@ -419,10 +419,10 @@
       header.appendChild(headerLabel);
       var right = document.createElement('span');
       right.className = 'submenu-right';
-      var cnt = document.createElement('span');
-      cnt.className = 'submenu-row-count room-cinema-count';
-      cnt.style.display = 'none';
-      right.appendChild(cnt);
+      var count = document.createElement('span');
+      count.className = 'submenu-row-count room-cinema-count';
+      count.style.display = 'none';
+      right.appendChild(count);
       var chevron = document.createElement('span');
       chevron.className = 'submenu-chevron';
       chevron.innerHTML = '&#8250;';
@@ -444,15 +444,15 @@
       rooms.forEach(function(room) {
         var label = document.createElement('label');
         label.className = 'panel-label';
-        var cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.value = cinema + '|' + room;
-        cb.checked = true;
-        cb.onchange = function() {
+        var checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = cinema + '|' + room;
+        checkbox.checked = true;
+        checkbox.onchange = function() {
           _updateRoomCinemaCount(header);
           updateSubmenuCount('room'); updateFormatBtn(); applyFilters();
         };
-        label.appendChild(cb);
+        label.appendChild(checkbox);
         label.appendChild(document.createTextNode(' ' + room));
         var roomCnt = document.createElement('span');
         roomCnt.className = 'submenu-film-count';
@@ -469,17 +469,17 @@
   // in that cinema are checked, so the user knows which cinemas they've
   // narrowed without expanding each one.
   function _updateRoomCinemaCount(headerEl) {
-    var cnt = headerEl.querySelector('.room-cinema-count');
-    if (!cnt) return;
+    var count = headerEl.querySelector('.room-cinema-count');
+    if (!count) return;
     var inner = headerEl.nextElementSibling;
     if (!inner) return;
     var boxes = [...inner.querySelectorAll('input[type="checkbox"]')];
     var unchecked = boxes.filter(function(b) { return !b.checked; }).length;
     if (unchecked > 0) {
-      cnt.textContent = (boxes.length - unchecked) + '/' + boxes.length;
-      cnt.style.display = '';
+      count.textContent = (boxes.length - unchecked) + '/' + boxes.length;
+      count.style.display = '';
     } else {
-      cnt.style.display = 'none';
+      count.style.display = 'none';
     }
   }
 
@@ -605,8 +605,8 @@
   }
 
   function undoTruncation() {
-    document.querySelectorAll('.date-group, .cinema-group').forEach(el => {
-      if (el._truncated) { el.style.display = ''; el._truncated = false; }
+    document.querySelectorAll('.date-group, .cinema-group').forEach(element => {
+      if (element._truncated) { element.style.display = ''; element._truncated = false; }
     });
   }
   window.undoTruncation = undoTruncation;
@@ -621,26 +621,26 @@
     let hidden = 0;
     let capped = false;
 
-    for (const dg of dateGroups) {
-      if (dg.style.display === 'none') continue;
+    for (const dateGroup of dateGroups) {
+      if (dateGroup.style.display === 'none') continue;
 
-      const cinemaGroups = dg.querySelectorAll('.cinema-group');
+      const cinemaGroups = dateGroup.querySelectorAll('.cinema-group');
       let dayHasVisible = false;
       const dayLabelRow = 1;
       let dayLines = dayLabelRow;
 
-      for (const cg of cinemaGroups) {
-        if (cg.style.display === 'none') continue;
+      for (const cinemaGroup of cinemaGroups) {
+        if (cinemaGroup.style.display === 'none') continue;
 
-        const visibleBadges = [...cg.querySelectorAll('.badge-time')].filter(
+        const visibleBadges = [...cinemaGroup.querySelectorAll('.badge-time')].filter(
           b => b.style.display !== 'none'
         ).length;
         if (visibleBadges === 0) continue;
 
         if (capped) {
           hidden += visibleBadges;
-          cg.style.display = 'none';
-          cg._truncated = true;
+          cinemaGroup.style.display = 'none';
+          cinemaGroup._truncated = true;
           continue;
         }
 
@@ -648,13 +648,13 @@
         const cinemaLines = (hasCinemaHeaders ? 1 : 0) + pillRows;
 
         if (lineCount + dayLines + cinemaLines <= _MAX_SHOWINGS_ROWS) {
-          if (cg._truncated) { cg.style.display = ''; cg._truncated = false; }
+          if (cinemaGroup._truncated) { cinemaGroup.style.display = ''; cinemaGroup._truncated = false; }
           dayHasVisible = true;
           dayLines += cinemaLines;
         } else {
           hidden += visibleBadges;
-          cg.style.display = 'none';
-          cg._truncated = true;
+          cinemaGroup.style.display = 'none';
+          cinemaGroup._truncated = true;
           capped = true;
         }
       }
@@ -662,9 +662,9 @@
       if (dayHasVisible) {
         lineCount += dayLines;
       } else if (capped) {
-        if (dg.style.display !== 'none') {
-          dg.style.display = 'none';
-          dg._truncated = true;
+        if (dateGroup.style.display !== 'none') {
+          dateGroup.style.display = 'none';
+          dateGroup._truncated = true;
         }
       }
     }
@@ -674,10 +674,10 @@
       link.style.display = '';
     } else {
       if (hidden > 0) {
-        for (const dg of dateGroups) {
-          if (dg._truncated) { dg.style.display = ''; dg._truncated = false; }
-          for (const cg of dg.querySelectorAll('.cinema-group')) {
-            if (cg._truncated) { cg.style.display = ''; cg._truncated = false; }
+        for (const dateGroup of dateGroups) {
+          if (dateGroup._truncated) { dateGroup.style.display = ''; dateGroup._truncated = false; }
+          for (const cinemaGroup of dateGroup.querySelectorAll('.cinema-group')) {
+            if (cinemaGroup._truncated) { cinemaGroup.style.display = ''; cinemaGroup._truncated = false; }
           }
         }
       }
@@ -807,11 +807,11 @@
     }
   });
 
-  function hideFilm(btn) {
+  function hideFilm(button) {
     // No scrollY snapshot needed: the sort function's subsequence check
     // (see `isSubsequence` below) skips the DOM rebuild when cards only got
     // hidden, so the browser's scroll anchor stays put.
-    const title = btn.closest('[data-title]').dataset.title;
+    const title = button.closest('[data-title]').dataset.title;
     const hidden = getHidden();
     if (!hidden.includes(title)) {
       hidden.push(title);
@@ -880,22 +880,22 @@
     ALL_CINEMAS.forEach(cinema => {
       const label = document.createElement('label');
       label.className = 'panel-label';
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = !disabled.includes(cinema);
-      cb.onchange = () => {
-        const dis = getDisabledCinemas();
-        if (cb.checked) {
-          setDisabledCinemas(dis.filter(c => c !== cinema));
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = !disabled.includes(cinema);
+      checkbox.onchange = () => {
+        const disabled = getDisabledCinemas();
+        if (checkbox.checked) {
+          setDisabledCinemas(disabled.filter(c => c !== cinema));
         } else {
-          if (!dis.includes(cinema)) dis.push(cinema);
-          setDisabledCinemas(dis);
+          if (!disabled.includes(cinema)) disabled.push(cinema);
+          setDisabledCinemas(disabled);
         }
         syncAllCheckbox();
         updateFormatBtn();   // cinema count is part of the Filtry label now
         applyFilters();
       };
-      label.appendChild(cb);
+      label.appendChild(checkbox);
       label.appendChild(document.createTextNode(' ' + (CINEMA_PILLS[cinema] || cinema)));
       list.appendChild(label);
     });
@@ -1249,7 +1249,7 @@
       const list = document.getElementById(key + '-list');
       if (!list) return;
       const boxes = [...list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)')];
-      const checked = boxes.filter(cb => cb.checked).map(cb => cb.value);
+      const checked = boxes.filter(checkbox => checkbox.checked).map(checkbox => checkbox.value);
       if (checked.length === boxes.length) return;  // all-on default → empty URL
       checked.forEach(v => p.append(key, v));
     });
@@ -1270,15 +1270,15 @@
   // Filtry-panel "Skopiuj link do schowka" handler: materialise the current
   // filter state into the address bar AND the clipboard. Briefly flips the
   // button label so the user has visual confirmation it took.
-  function copyFilterLinkToClipboard(btn) {
+  function copyFilterLinkToClipboard(button) {
     const path = buildShareURL();
     history.replaceState(null, '', path);
     const url = window.location.origin + path;
     const done = () => {
-      if (!btn) return;
-      const prev = btn.textContent;
-      btn.textContent = 'Skopiowano!';
-      setTimeout(() => { btn.textContent = prev; }, 1500);
+      if (!button) return;
+      const previous = button.textContent;
+      button.textContent = 'Skopiowano!';
+      setTimeout(() => { button.textContent = previous; }, 1500);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(url).then(done, done);
@@ -1311,13 +1311,13 @@
           // An old shared/bookmarked link can carry a specific ISO date even
           // though the picker now offers only the four presets — add an option
           // on the fly so the select reflects it rather than snapping to 'today'.
-          const opt = document.createElement('option');
-          opt.value = val;
+          const option = document.createElement('option');
+          option.value = val;
           const [y, mo, da] = val.split('-').map(Number);
-          const dow = new Date(y, mo - 1, da).getDay();
-          opt.textContent = DAY2[dow] + ' ' + da + ' ' + MONTHS[mo - 1];
+          const dayOfWeek = new Date(y, mo - 1, da).getDay();
+          option.textContent = DAY2[dayOfWeek] + ' ' + da + ' ' + MONTHS[mo - 1];
           const weekOpt = dateSel.querySelector('option[value="week"]');
-          if (weekOpt) dateSel.insertBefore(opt, weekOpt); else dateSel.appendChild(opt);
+          if (weekOpt) dateSel.insertBefore(option, weekOpt); else dateSel.appendChild(option);
         }
         dateSel.value = val;
       }
@@ -1328,13 +1328,13 @@
 
     const dim = p.get('dim');
     if (dim) {
-      const el = document.querySelector('input[name="format-dim"][value="' + CSS.escape(dim) + '"]');
-      if (el) el.checked = true;
+      const element = document.querySelector('input[name="format-dim"][value="' + CSS.escape(dim) + '"]');
+      if (element) element.checked = true;
     }
     const lang = p.get('lang');
     if (lang) {
-      const el = document.querySelector('input[name="format-lang"][value="' + CSS.escape(lang) + '"]');
-      if (el) el.checked = true;
+      const element = document.querySelector('input[name="format-lang"][value="' + CSS.escape(lang) + '"]');
+      if (element) element.checked = true;
     }
     const imaxEl = document.getElementById('format-imax');
     if (imaxEl && p.has('imax')) imaxEl.checked = p.get('imax') === '1';
@@ -1366,8 +1366,8 @@
       const list = document.getElementById(key + '-list');
       if (!list) return;
       const checkedSet = new Set(checked);
-      list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(cb => {
-        cb.checked = checkedSet.has(cb.value);
+      list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(checkbox => {
+        checkbox.checked = checkedSet.has(checkbox.value);
       });
       updateSubmenuCount(key);
       // Room is the two-level submenu — refresh each cinema's "x/y" badge so
@@ -1615,7 +1615,7 @@
   // ── Day carousel: swipe / arrows / keys / dropdown all slide ────────────────
   //
   // The films grid is the centre column of a three-column carousel
-  // (prev | current | next). The neighbouring columns are CLONES of `#film-grid`
+  // (previous | current | next). The neighbouring columns are CLONES of `#film-grid`
   // filtered to their day (honouring every other active filter), mounted into
   // `#day-track` only while a slide is in flight. A horizontal swipe translates
   // the track 1:1 with the finger so the neighbour day is revealed from the
@@ -1686,15 +1686,15 @@
   // and it hasn't already shown today. Called once at boot.
   function maybeShowSwipeHint() {
     if (!matchMedia('(pointer: coarse)').matches) return;   // desktop never sees it
-    const el = document.getElementById('swipe-hint');
-    if (!el) return;                                        // not the listing page
+    const element = document.getElementById('swipe-hint');
+    if (!element) return;                                        // not the listing page
     if (_hintGet(SWIPE_HINT_DONE)) return;                 // retired by a past swipe
     const today = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
     if (_hintGet(SWIPE_HINT_DAY) === today) return;        // already shown today
     _hintSet(SWIPE_HINT_DAY, today);
-    el.classList.add('visible');
+    element.classList.add('visible');
     clearTimeout(_swipeHintTimer);
-    _swipeHintTimer = setTimeout(() => el.classList.remove('visible'), SWIPE_HINT_MS);
+    _swipeHintTimer = setTimeout(() => element.classList.remove('visible'), SWIPE_HINT_MS);
   }
 
   // Hide the hint without retiring it (the user has started a horizontal drag).
@@ -1748,25 +1748,25 @@
     clone.removeAttribute('id');   // keep `#film-grid` unique to the real centre
     // The clone is a transient preview — strip ids so nothing inside collides
     // with the live DOM the filter helpers query by id.
-    clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+    clone.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
     col.appendChild(clone);
     if (typeof applyFiltersForDay === 'function') applyFiltersForDay(clone, dayValue);
     return col;
   }
 
   // Arm the track: park it at -100vw with the centre `#view-root` flanked by a
-  // prev (left) and next (right) column for the given day values. A missing
+  // previous (left) and next (right) column for the given day values. A missing
   // value (e.g. a directed slide that only needs one side) leaves that flank as
   // a spacer so the centre stays centred. Re-arming first tears down any prior
   // clones so we never stack columns.
-  function armTrack(prevDay, nextDay) {
+  function armTrack(previousDay, nextDay) {
     const track = dayTrack();
     const root  = document.getElementById('view-root');
     if (!track || !root) return false;
     unmountNeighbors();
-    const prev = (prevDay != null ? buildDayColumn(prevDay) : null) || spacerColumn();
+    const previous = (previousDay != null ? buildDayColumn(previousDay) : null) || spacerColumn();
     const next = (nextDay != null ? buildDayColumn(nextDay) : null) || spacerColumn();
-    track.insertBefore(prev, root);
+    track.insertBefore(previous, root);
     track.appendChild(next);
     track.classList.add('day-track--armed');
     track.style.transition = 'none';
@@ -1784,7 +1784,7 @@
     return col;
   }
 
-  // Remove the prev/next clones and disarm the track, returning to the resting
+  // Remove the previous/next clones and disarm the track, returning to the resting
   // single-column layout.
   function unmountNeighbors() {
     const track = dayTrack();
@@ -1803,7 +1803,7 @@
 
   // While a finger drag is in flight, move the day-pill highlight to the day a
   // release RIGHT NOW would land on: past the commit boundary → the neighbour
-  // we'd swipe to (finger left → next, right → prev), otherwise back to the
+  // we'd swipe to (finger left → next, right → previous), otherwise back to the
   // current day. Distance-only, matching the boundary the finger feels — the
   // grid's `#date-filter` stays put until the swipe actually commits, so this is
   // a pure preview of the pending decision. Mirrors the old filmy/kina tab
@@ -1847,13 +1847,13 @@
   }
 
   // Animate the armed track to the dir side and commit `targetValue` when it
-  // settles. `dir` = +1 (slide to the next/right column) or -1 (prev/left).
+  // settles. `dir` = +1 (slide to the next/right column) or -1 (previous/left).
   // `fromPx` continues a live drag smoothly from where the finger left off.
   function slideArmedTo(dir, targetValue, fromPx) {
     const track = dayTrack();
     if (!track) { commitDay(targetValue); return; }
     const w   = pagerWidth();
-    const end = dir > 0 ? -2 * w : 0;   // -200vw reveals next, 0 reveals prev
+    const end = dir > 0 ? -2 * w : 0;   // -200vw reveals next, 0 reveals previous
     const ms  = swipeAnimMs();
     _animating = true;
     track.style.transition = 'none';
@@ -1934,7 +1934,7 @@
   }
   window.animateToDay = animateToDay;
 
-  // Swipe commit: 'left' = finger went left → next day (dir +1). The prev/next
+  // Swipe commit: 'left' = finger went left → next day (dir +1). The previous/next
   // clones are already mounted by the drag (`armTrack` ran at axis-lock), so we
   // slide the existing armed track from the live offset.
   function commitDaySwipe(dir, fromPx) {
