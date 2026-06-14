@@ -124,19 +124,21 @@
 
 @_debugNavbar("corpus")
 @* The staging table's header always renders — so an empty `pending_movies`
-   shows as an empty table (header + columns), not a vanished section. Only the
-   first `StagingRowLimit` rows render (the count is the full total); rows are
-   added/removed live off the `pending_movies` change stream and the count
-   tracks them. *@
+   shows as an empty table (header + columns), not a vanished section. EVERY row
+   is rendered (pre-ordered by queue place), but the client shows only the first
+   `StagingRowLimit` of them and re-sorts live on each /debug/queue poll, so the
+   highest-in-queue rows stay at the top as the worker drains it (a row past the
+   cap surfaces the moment its task climbs). Rows are added/removed live off the
+   `pending_movies` change stream; the count is the full total. *@
 <h1>Pending enrichment (staging) · <span id="staging-count">@staging.size</span></h1>
-<div class="summary">Newcomer films incubating in <code>pending_movies</code> — one row per cinema|title|year. Each walks Detail → TMDB → IMDb → fold; a ✓ marks a concluded stage, the last column its place in the durable task queue. Showing the first @MovieController.StagingRowLimit, ordered by queue place (most imminent first).</div>
+<div class="summary">Newcomer films incubating in <code>pending_movies</code> — one row per cinema|title|year. Each walks Detail → TMDB → IMDb → fold; a ✓ marks a concluded stage, the last column its place in the durable task queue. Showing the first @MovieController.StagingRowLimit, re-sorted live by queue place (most imminent first).</div>
 <table id="staging-t">
   <thead>
     <tr><th>Cinema</th><th>Title</th><th>Year</th><th>Detail</th><th>TMDB</th><th>IMDb</th><th>Queue #</th></tr>
   </thead>
   <tbody>
-  @for(r <- staging.take(MovieController.StagingRowLimit)) {
-    @_stagingRow(r)
+  @for((r, i) <- staging.zipWithIndex) {
+    @_stagingRow(r, hidden = i >= MovieController.StagingRowLimit)
   }
   </tbody>
 </table>
@@ -261,6 +263,7 @@
   // per-stage ✓ cells are server-rendered (see _stagingRow), so this JS only
   // paints the queue place.
   let queueActive = []; // [{taskType, dedupKey, state}] — oldest-first, waiting + worked_on mixed
+  const STAGING_CAP = @MovieController.StagingRowLimit; // declared up here — rebuildStagingQueue (below) reads it on the first load call
 
   // Place every WAITING task's dedupKey at its 1-based spot in the global queue.
   // The worker leases the oldest waiting task first regardless of type, so a
@@ -299,14 +302,28 @@
     return { cls: 'q-wait', text: '#' + best + (matches.length > 1 ? ' ·' + matches.length : ''), rank: best };
   }
 
-  // Paint each incubating row's "Queue #" cell from the latest /debug/queue poll.
+  // Paint each incubating row's "Queue #" cell from the latest /debug/queue poll,
+  // then re-sort the rows so the highest-in-queue (▶ running, then lowest place)
+  // sit at the top, and show only the first STAGING_CAP of them. Every row is in
+  // the DOM (the server renders them all), so as the worker drains the queue a
+  // row that climbs past the cap surfaces here without a reload.
   function rebuildStagingQueue() {
     const staging = document.getElementById('staging-t');
     if (!staging) return;
+    const tbody = staging.querySelector('tbody');
     const places = waitingPlaces();
-    staging.querySelectorAll('tbody tr.data').forEach(tr => {
-      const tasks = stagingTasksFor(tr.dataset.anchor || '');
-      paintQueueCell(tr.querySelector('.queue-q'), badgeFor(tasks, places));
+    const ranked = Array.from(tbody.querySelectorAll('tr.data')).map(tr => {
+      const badge = badgeFor(stagingTasksFor(tr.dataset.anchor || ''), places);
+      paintQueueCell(tr.querySelector('.queue-q'), badge);
+      return { tr, rank: badge.rank };
+    });
+    // Stable ascending sort by rank — equal ranks (e.g. all no-task) keep their
+    // current order, which is the server's queue-then-title order. `|| 0` guards
+    // the Infinity − Infinity = NaN case (two no-task rows compare equal).
+    ranked.sort((a, b) => (a.rank - b.rank) || 0);
+    ranked.forEach((r, i) => {
+      tbody.appendChild(r.tr);                            // reorder in place
+      r.tr.classList.toggle('hidden', i >= STAGING_CAP);  // show only the top cap
     });
   }
 
@@ -329,7 +346,9 @@
 
   rebuildStagingQueue();
   pollQueue();
-  setInterval(pollQueue, 2500);
+  // Handle kept so tests can freeze the live re-sort (clearInterval) and drive
+  // `queueActive` deterministically.
+  let stagingPollTimer = setInterval(pollQueue, 2500);
 
   // ── Live updates via the Mongo change stream (dev-only SSE) ────────────────
   // The worker mutates the `movies` collection out of band — merges DELETE the
@@ -372,57 +391,35 @@
   // The worker inserts a pending_movies row when a newcomer is first seen and
   // deletes it once the film folds into the corpus. The same SSE feed pushes
   // those changes (staging-* frames, rendered via `_stagingRow`) so the staging
-  // table gains/loses rows live, and the header count tracks them.
-  //
-  // The table renders only the first STAGING_CAP rows, but the header count is
-  // the TRUE total. `stagingIds` holds EVERY pending id (not just the shown
-  // ones), so a live frame's id tells insert (new id) from update (known id) —
-  // which keeps the total correct even for changes to rows past the cap.
-  const stagingIds = new Set(@Html(play.api.libs.json.Json.toJson(staging.map(r => StagingRecord.idFor(r.cinema, r.title, r.year))).toString));
-  const STAGING_CAP = @MovieController.StagingRowLimit;
-  let stagingTotal = stagingIds.size;
-
+  // table gains/loses rows live. EVERY row lives in the DOM (only the top
+  // STAGING_CAP are shown), so the count is simply the row total and an inserted
+  // row is sorted into place — and surfaced if it ranks high — by the next
+  // rebuildStagingQueue. (STAGING_CAP is declared above, with the queue helpers.)
   function stagingRowsFor(id) {
     return document.querySelectorAll('#staging-t tbody tr[data-row-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
   }
 
-  function renderStagingCount() {
+  function updateStagingCount() {
     const c = document.getElementById('staging-count');
-    if (c) c.textContent = stagingTotal;
-  }
-
-  function parseStagingRow(html) {
-    const tmp = document.createElement('tbody');
-    tmp.innerHTML = html.trim();
-    return tmp.firstElementChild;
-  }
-
-  function shownStagingRows() {
-    return document.querySelectorAll('#staging-t tbody tr.data').length;
+    if (c) c.textContent = document.querySelectorAll('#staging-t tbody tr.data').length;
   }
 
   function applyStagingDelete(id) {
     stagingRowsFor(id).forEach(el => el.remove());
-    if (stagingIds.delete(id)) stagingTotal = stagingIds.size;
-    // A delete can't backfill a hidden row into the visible cap — its markup
-    // isn't held client-side. Reload to pull the next page into view.
-    renderStagingCount();
+    rebuildStagingQueue(); // a removed row may promote a capped one into view
+    updateStagingCount();
   }
 
   function applyStagingUpsert(id, html) {
-    const isNew = !stagingIds.has(id);
+    const tmp = document.createElement('tbody');
+    tmp.innerHTML = html.trim();
+    const fresh = tmp.firstElementChild;
+    if (!fresh) return;
     const existing = stagingRowsFor(id);
-    if (existing.length) {
-      const fresh = parseStagingRow(html); // a visible row advanced — repaint its ✓ cells
-      if (fresh) existing[0].replaceWith(fresh);
-    } else if (isNew && shownStagingRows() < STAGING_CAP) {
-      const fresh = parseStagingRow(html); // a genuinely-new film, room under the cap
-      if (fresh) document.querySelector('#staging-t tbody').appendChild(fresh);
-    }
-    // else: an update to a row past the cap — not in the DOM, count unchanged.
-    if (isNew) { stagingIds.add(id); stagingTotal = stagingIds.size; }
-    rebuildStagingQueue(); // paint the (possibly new) row's queue cell
-    renderStagingCount();
+    if (existing.length) existing[0].replaceWith(fresh);
+    else document.querySelector('#staging-t tbody').appendChild(fresh);
+    rebuildStagingQueue(); // paint + re-sort + re-cap with the new/updated row
+    updateStagingCount();
   }
 
   // Route one SSE frame to the right table. Named (not an inline closure) so it's

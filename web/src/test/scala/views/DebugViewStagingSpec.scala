@@ -82,13 +82,16 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
     html should include ("""<td class="stage-tmdb"><span class="stage-done">✓</span></td>""")
   }
 
-  it should "render only the first StagingRowLimit rows while the header shows the full count" in {
-    val rows = (1 to MovieController.StagingRowLimit + 5).map(i => stagingRow(s"Film $i", Some(2026)))
+  it should "render every row (header shows the full count) but pre-hide those past the cap" in {
+    val extra = 5
+    val rows = (1 to MovieController.StagingRowLimit + extra).map(i => stagingRow(s"Film $i", Some(2026)))
     val html = views.html.debug(Seq.empty, Map.empty[String, String], staging = rows).body
-    // Header carries the true total…
+    // Header carries the true total, and EVERY row is in the DOM (so the client
+    // can re-sort and surface any of them live)…
     html should include (s"""<span id="staging-count">${rows.size}</span>""")
-    // …but only the first StagingRowLimit rows are rendered.
-    """data-anchor="""".r.findAllMatchIn(html).size shouldBe MovieController.StagingRowLimit
+    """data-anchor="""".r.findAllMatchIn(html).size shouldBe rows.size
+    // …but rows past the cap start hidden, so the first paint shows only the cap.
+    """<tr class="data hidden"""".r.findAllMatchIn(html).size shouldBe extra
     html should include (s"Showing the first ${MovieController.StagingRowLimit}")
   }
 }

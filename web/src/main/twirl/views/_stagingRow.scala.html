@@ -1,6 +1,6 @@
 @import services.staging.StagingRecord
 @import services.movies.TitleNormalizer
-@(r: StagingRecord)
+@(r: StagingRecord, hidden: Boolean = false)
 @*
  * One "Pending enrichment (staging)" row, keyed by the `pending_movies` `_id` so
  * the /debug live feed can replace-or-remove it. Rendered both by the initial
@@ -16,9 +16,14 @@
  * `data-anchor` is `sanitize(title)` — the per-film key every `staging-*` dedup
  * key embeds — so `rebuildStagingQueue` can find this film's place in the durable
  * queue and paint the trailing "Queue #" cell (`.queue-q`).
+ *
+ * `hidden` pre-applies the display cap on the initial server pass (rows past
+ * `StagingRowLimit` in queue order start hidden, no first-paint flash); the
+ * client's `rebuildStagingQueue` then owns the cap live. Live SSE rows render
+ * visible and are re-capped on the next rebuild.
  *@
 @stageDone(done: Boolean) = {@if(done){<span class="stage-done">✓</span>}}
-<tr class="data" data-row-id="@StagingRecord.idFor(r.cinema, r.title, r.year)"
+<tr class="data@if(hidden){ hidden}" data-row-id="@StagingRecord.idFor(r.cinema, r.title, r.year)"
     data-anchor="@TitleNormalizer.sanitize(r.title)">
   <td>@r.cinema.displayName</td>
   <td class="title">@r.title</td>

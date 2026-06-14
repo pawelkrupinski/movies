@@ -2699,10 +2699,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // Staging rows are added/removed live off the pending_movies change stream
   // (staging-* SSE frames). Drive the client router directly (applySse) — the
-  // server frame shape is covered by DebugStreamControllerSpec. The header count
-  // is the TRUE total tracked off an id set, so an insert bumps it, a delete drops
-  // it, and a repeat upsert of a known id (an in-place update) leaves it alone.
-  it should "add and remove staging rows live, tracking the header count by id" in {
+  // server frame shape is covered by DebugStreamControllerSpec. Every row lives
+  // in the DOM, so the header count is just the row total: an insert bumps it, a
+  // delete drops it, and a repeat upsert of a known id (an in-place replace)
+  // leaves it alone.
+  it should "add and remove staging rows live, tracking the header count" in {
     onDebug { page =>
       page.waitFor("""document.querySelectorAll('#staging-t tbody tr.data').length === 2""")
       val row = """<tr class="data" data-row-id="Helios|liveone|2031" data-anchor="liveone"><td>Helios</td><td class="title">Live One</td><td>2031</td><td class="stage-detail"></td><td class="stage-tmdb"></td><td class="stage-imdb"></td><td class="queue-q"></td></tr>"""
@@ -2720,6 +2721,57 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("""applySse(JSON.stringify({type:'staging-delete', id:'Helios|liveone|2031'}))""")
       page.evalInt("""document.querySelectorAll('#staging-t tbody tr.data').length""") shouldBe 2
       page.evalString("""document.getElementById('staging-count').textContent""") shouldBe "2"
+    }
+  }
+
+  // The list keeps the highest-in-queue rows at the top: every poll re-sorts by
+  // queue rank (running first, then lowest waiting place). Drive `queueActive`
+  // directly + rebuildStagingQueue so the ranks are deterministic.
+  it should "re-sort the rows live so the highest-in-queue is first" in {
+    onDebug { page =>
+      def topAnchor = """document.querySelector('#staging-t tbody tr.data').dataset.anchor"""
+      // Let the initial poll land (fixture: Staging Film is running → sorts first),
+      // then freeze the 2.5s auto-poll so it can't clobber our scripted queue.
+      page.waitFor(s"""(function(){var t=document.querySelector('#staging-t tbody tr.data');return t && t.dataset.anchor==='stagingfilm';})()""")
+      page.eval("""clearInterval(stagingPollTimer); pollQueue = function(){};""")
+      // Done Newcomer running, Staging Film merely waiting → Done Newcomer first.
+      page.eval("""queueActive = [
+        {taskType:'StagingDetail', dedupKey:'staging-detail|donenewcomer|cc', state:'worked_on'},
+        {taskType:'StagingResolveTmdb', dedupKey:'staging-tmdb|stagingfilm', state:'waiting'}
+      ]; rebuildStagingQueue();""")
+      page.evalString(topAnchor) shouldBe "donenewcomer"
+      // Flip which one is running → the order inverts.
+      page.eval("""queueActive = [
+        {taskType:'StagingDetail', dedupKey:'staging-detail|stagingfilm|cc', state:'worked_on'},
+        {taskType:'StagingResolveImdbId', dedupKey:'staging-imdb|donenewcomer', state:'waiting'}
+      ]; rebuildStagingQueue();""")
+      page.evalString(topAnchor) shouldBe "stagingfilm"
+    }
+  }
+
+  // The DOM holds every row but only the first STAGING_CAP are shown (`.hidden`
+  // on the rest), so the count can climb past the cap while the visible set stays
+  // bounded. Insert enough rows to exceed the cap and check both.
+  it should "show only the first STAGING_CAP rows even as the total grows past it" in {
+    onDebug { page =>
+      page.waitFor("""document.querySelectorAll('#staging-t tbody tr.data').length === 2""")
+      // Insert STAGING_CAP extra rows (no queue tasks → they rank last, but they
+      // still inflate the DOM total and exercise the display cap).
+      page.eval("""for (var i = 0; i < STAGING_CAP; i++) {
+        var id = 'C|capfilm' + i + '|2026';
+        var html = '<tr class="data" data-row-id="' + id + '" data-anchor="capfilm' + i + '">' +
+          '<td>C</td><td class="title">Cap ' + i + '</td><td>2026</td>' +
+          '<td class="stage-detail"></td><td class="stage-tmdb"></td><td class="stage-imdb"></td>' +
+          '<td class="queue-q"></td></tr>';
+        applySse(JSON.stringify({type:'staging-upsert', id:id, html:html}));
+      }""")
+      // Total = 2 original + STAGING_CAP inserted; visible (not .hidden) = the cap.
+      page.evalInt("""document.querySelectorAll('#staging-t tbody tr.data').length""") shouldBe
+        (page.evalInt("STAGING_CAP") + 2)
+      page.evalInt("""document.querySelectorAll('#staging-t tbody tr.data:not(.hidden)').length""") shouldBe
+        page.evalInt("STAGING_CAP")
+      page.evalString("""document.getElementById('staging-count').textContent""") shouldBe
+        (page.evalInt("STAGING_CAP") + 2).toString
     }
   }
 
