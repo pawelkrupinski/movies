@@ -95,8 +95,9 @@ doesn't quietly rot between live-site changes.
   pull-to-refresh; no incremental updates.
 * Hidden-film state syncs server-side when signed in; local-device state
   is the fallback when not authenticated.
-* No per-film detail page; tapping a poster does nothing (yet). Tap a showtime
-  badge to open the booking URL; tap a rating badge to open the rating page.
+* Tapping a poster opens a per-film detail screen (synopsis + trailers from
+  `/api/details`). Tap a showtime badge to open the booking URL; tap a rating
+  badge to open the rating page.
 * iPad runs the same layout; not optimised for iPad split-view yet.
 * No format/time/from-time filters that the web app has — date + search only.
 * No cinema-pin (the web `/kina/:cinema` view).

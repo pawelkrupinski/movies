@@ -7,30 +7,36 @@ exercises, run **at least one** of those layers locally as part of
 the same task — before reporting the work as done. The list of
 layers and which kinds of changes they catch:
 
-- **`sbt test`** — unit specs for controllers, services,
-  enrichment, clients, models. Any change under `app/` that isn't
-  pure view markup should run this.
-- **`sbt IntegrationTest/test`** — `it/scala/` specs that wire fakes
-  + the real cache/repo. Required for any change to enrichment
-  pipelines, cache layering, or anything that crosses the
-  `MovieService` ↔ `MovieRepo` ↔ `MovieCache` seam.
-- **`sbt PageTest/test`** — `page/scala/PageJsBehaviourSpec` drives
-  real Chrome over CDP against Twirl-rendered fixtures. Run on any
-  change to `public/js/`, the inline `<script>` blocks in
-  `repertoire/film/kina.scala.html`, or the rendered HTML shape
-  those JS blocks read.
+- **`sbt testUnit`** (every module's unit specs in one run; or
+  `sbt web/Test/test` / `worker/Test/test` / `common/Test/test` /
+  `testkit/Test/test` / `e2e/Test/test` to scope to one module) —
+  unit specs for controllers, services, enrichment, clients, models.
+  Any change under `web/src/main/`, `worker/src/main/`, or
+  `common/src/main/` that isn't pure view markup should run this.
+- **`sbt itAll`** (or `sbt web/IntegrationTest/test` /
+  `worker/IntegrationTest/test`) — `*/src/it/scala/` specs that wire
+  fakes + the real cache/repo. Required for any change to enrichment
+  pipelines, cache layering, the read-model projection, or anything
+  that crosses the `MovieService` ↔ `MovieRepo` ↔ `MovieCache` seam.
+- **`sbt web/PageTest/test`** — `web/src/page/scala/views/PageJsBehaviourSpec`
+  drives real Chrome over CDP against Twirl-rendered fixtures. Run on any
+  change to `web/src/main/assets/js/`, the inline `<script>` blocks in
+  `web/src/main/twirl/views/repertoire.scala.html` /
+  `_repertoireView.scala.html`, or the rendered HTML shape those JS
+  blocks read.
 - **`cd page-tests-playwright && npx playwright test [--project …]`**
   — Playwright suite covering mobile + desktop × Chromium / WebKit /
   Firefox / Edge. Required for visible UX changes — card-tap, pill
-  rows, gestures, the empty / loading / favourites states. `--project`
+  rows, gestures, the empty / loading states. `--project`
   narrows to one engine; the default `--list` shows which exist.
-- **iOS LocalServer (`sbt 'PageTest/runMain tools.FixtureServerMain
+- **iOS LocalServer (`sbt 'web/PageTest/runMain tools.FixtureServerMain
   <port-file>'` in one shell, `KINOWO_LOCAL_URL=http://127.0.0.1:$(cat
   <port-file>) swift test --package-path ios --filter LocalServer`
-  in another)** — exercises real iOS parsers against the live
+  in another)** — exercises the real iOS listing parser against the live
   fixture-server render. Required for any change to either side of
-  that contract: server-side template/HTML shape or iOS
-  `HTMLParser` / `FilmDetailParser`.
+  that contract: server-side template/HTML shape or iOS `HTMLParser`.
+  (The detail screen no longer parses HTML — it reads the `/api/details`
+  JSON — so detail changes are covered by the unit suites, not here.)
 - **`swift test --package-path ios`** — iOS unit / integration
   suites without the live server. Quicker; required for any change
   to iOS model / parser logic regardless of whether you also need
@@ -51,34 +57,38 @@ layers are green locally is the right shape.
 
 ## Regenerate page snapshots when the rendered HTML changes
 
-`PageSnapshotSpec` (`page/scala/views/PageSnapshotSpec.scala`) diffs
-the rendered HTML for `/`, `/kina`, and `/plan` against checked-in
-expected files under `test/resources/fixtures/17-05-2026/`. Any change
-that alters the HTML a Twirl template emits — new or changed
-attributes on an element, added/removed markup, reordered output,
-changed inline JS — will break the snapshot comparison.
+`PageSnapshotSpec` (`web/src/page/scala/views/PageSnapshotSpec.scala`)
+diffs the rendered HTML for `/` (per city: Poznań, Wrocław, Warszawa)
+and `/plan` against checked-in expected files under
+`test/resources/fixtures/08-06-2026/`. Any change that alters the HTML a
+Twirl template emits — new or changed attributes on an element,
+added/removed markup, reordered output, changed inline JS — will break
+the snapshot comparison. (Comments inside inline `<style>`/`<script>`
+blocks are stripped by `tools.Minify` at render time, so editing those
+does NOT shift the snapshot; HTML `<!-- -->` comments do survive.)
 
 When your change intentionally alters the rendered HTML:
 
 1. Delete the stale expected file(s):
    ```
-   rm test/resources/fixtures/17-05-2026/expected-index.html
-   rm test/resources/fixtures/17-05-2026/expected-kina.html
-   rm test/resources/fixtures/17-05-2026/expected-plan.html
+   rm test/resources/fixtures/08-06-2026/expected-index.html
+   rm test/resources/fixtures/08-06-2026/expected-wroclaw-index.html
+   rm test/resources/fixtures/08-06-2026/expected-warszawa-index.html
+   rm test/resources/fixtures/08-06-2026/expected-plan.html
    ```
    Delete only the pages your change affects. When in doubt, delete
-   all three — they regenerate in seconds.
+   all four — they regenerate in seconds.
 
 2. Run the snapshot spec:
    ```
-   sbt 'PageTest/testOnly views.PageSnapshotSpec'
+   sbt 'web/PageTest/testOnly views.PageSnapshotSpec'
    ```
    The spec writes the missing file(s) and fails with
    "Snapshot didn't exist — wrote …". This is expected.
 
 3. Re-run to confirm the new snapshot is stable:
    ```
-   sbt 'PageTest/testOnly views.PageSnapshotSpec'
+   sbt 'web/PageTest/testOnly views.PageSnapshotSpec'
    ```
    All tests should pass. If they don't, the rendering is
    non-deterministic — investigate before committing.
@@ -88,7 +98,7 @@ When your change intentionally alters the rendered HTML:
    they're part of the same logical change.
 
 Changes that typically require regeneration: Twirl template edits
-(`app/views/*.scala.html`), `PosterProxy` output changes, model
+(`web/src/main/twirl/views/*.scala.html`), `PosterProxy` output changes, model
 fields that surface in the view, CSS class or `data-*` attribute
 changes on rendered elements, inline `onerror`/`onclick` handler
 changes.
@@ -133,7 +143,7 @@ a suggestion.
 
 **"Test" means any layer that reaches the behaviour — not just a unit
 test.** The fail-before / pass-after gate is satisfied by whichever
-layer actually exercises the change: a `swift test` / `sbt test` unit
+layer actually exercises the change: a `swift test` / `sbt testUnit` unit
 spec, an `IntegrationTest` spec, a `PageTest` (real Chrome) or
 Playwright browser test, or an iOS LocalServer / emulator test. "It's
 UI, I can't unit-test it" is NOT grounds to skip — it is grounds to
@@ -179,8 +189,8 @@ closest match, extend it rather than inventing a new style.
 
 For pure logic (parsers, formatters, normalisers, decision functions),
 unit tests against in-memory inputs are enough. For composed services,
-prefer the existing spec patterns in `test/scala/services/...` that
-wire fakes/in-memory implementations.
+prefer the existing spec patterns in `*/src/test/scala/services/...`
+that wire fakes/in-memory implementations.
 
 ### Record fixtures for external-service clients
 
@@ -354,7 +364,7 @@ If you find yourself writing the same shape of code in a second place —
 a `FakeRepo extends MovieRepo` defined inside every spec, the same
 regex+`replaceAll` chain across two parsers, a "load fixture and feed
 through this client" helper duplicated per spec — stop and extract it
-(a `private[services]` helper, a `test/scala/...` shared base, a method
+(a `private[services]` helper, a `*/src/test/scala/...` shared base, a method
 on the most relevant existing class). The threshold is *two* uses, not
 three.
 
@@ -370,7 +380,7 @@ enough surface area to be a concept.
 When extracting:
 
 - Put the shared piece where the most callers can already see it
-  (`services.movies` if every caller is in `services.*`; a `test/scala`
+  (`services.movies` if every caller is in `services.*`; a `*/src/test/scala`
   shared object if it's test-only). Don't pull in cross-package imports
   just for visibility.
 - Delete the inline copies in the same commit. Leaving one creates
@@ -711,10 +721,10 @@ tokens on patterns I keep falling into. Avoid them.
 
 ### Run the narrowest test scope you can
 
-`sbt page:test` runs 24 specs in ~30 s. `sbt 'page:testOnly
+`sbt web/PageTest/test` runs the page specs in ~30 s. `sbt 'web/PageTest/testOnly
 views.PageJsBehaviourSpec -- -z "card poster link"'` runs 4 in ~6 s.
 When iterating on one test, use `testOnly` + the `-z` substring
-filter. Same for the main `sbt test` — there are hundreds of unit
+filter. Same for the main `sbt testUnit` — there are hundreds of unit
 specs; `testOnly` to the spec under change cuts a full run from
 minutes to seconds.
 

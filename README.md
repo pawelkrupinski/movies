@@ -37,7 +37,7 @@ Live at **<https://kinowo.fly.dev>**.
 | Database    | MongoDB (official Scala driver 5)           |
 | Cache       | Caffeine (in-process, write-through to Mongo) |
 | Scraping    | jsoup, with Zyte proxy for bot-blocked sources |
-| DI          | Guice                                       |
+| DI          | Compile-time (Play `BuiltInComponents`, `modules.AppLoader`) |
 | Build       | sbt 1.12, JDK 25 → Java 21 bytecode         |
 | iOS         | SwiftUI                                     |
 | Hosting     | Fly.io (`kinowo` + `kinowo-worker` apps, region `arn`) |
@@ -45,63 +45,69 @@ Live at **<https://kinowo.fly.dev>**.
 ## Repository layout
 
 ```
-common/                   # Shared models, utilities
-worker/                   # Scrape + enrich app (kinowo-worker Fly app)
+common/                   # Shared domain used by both apps
 │   └── src/main/scala/
-│       └── services/
-│           ├── cinemas/      # One client per cinema chain / venue
-│           └── enrichment/   # TMDB / IMDb / Filmweb / Metacritic / RT clients + ratings
+│       ├── models/           # Movie, MovieRecord, Showtime, Cinema, User, ...
+│       └── services/         # movies/ (cache/repo/merge), events/, cinemas/,
+│                             #   readmodel/, titlerules/, freshness/, staging/, tasks/
+worker/                   # Scrape + enrich app (kinowo-worker Fly app)
+│   └── src/main/scala/services/
+│       ├── cinemas/          # One client per cinema chain / venue
+│       ├── enrichment/       # TMDB / IMDb / Filmweb / Metacritic / RT clients + ratings
+│       └── tasks/, staging/, schedule/, alerts/   # scrape loop + read-model projection
 web/                      # Play serving app (kinowo Fly app)
-│   └── src/main/
-│       ├── scala/
-│       │   ├── controllers/  # MovieController, AuthController, UserStateController, ...
-│       │   ├── models/       # Movie, MovieRecord, Showtime, Cinema, User, UserState
-│       │   ├── modules/      # Guice wiring
-│       │   └── services/     # movies/, events/, auth/, users/, lock/
-│       ├── twirl/views/      # Twirl templates
-│       └── assets/js/        # Vanilla JS assets
+│   ├── src/main/scala/
+│   │   ├── controllers/      # MovieController, AuthController, UserStateController, ...
+│   │   ├── modules/          # AppLoader composition root (compile-time DI)
+│   │   └── services/         # auth/ (OAuth2), users/ (per-user state)
+│   ├── src/main/twirl/views/ # Twirl templates
+│   ├── src/main/assets/js/   # Vanilla JS assets
+│   └── src/main/resources/   # application.conf, logback.xml, routes
 testkit/                  # Shared test helpers
 e2e/                      # End-to-end specs
 android/                  # Native Compose Android app
 ios/Kinowo/               # SwiftUI iOS app (uses /api/repertoire + /api/details)
-conf/
-├── application.conf
-├── logback.xml
-└── routes
 fly.toml, fly.worker.toml, Dockerfile   # Fly.io deploy (two apps, one image)
 ```
 
 ## Running locally
 
-Prereqs: **JDK 17+** (25 recommended), **sbt 1.12**, a running
-**MongoDB** instance.
+Prereqs: **JDK 17+** (25 recommended), **sbt 1.12**, and a local
+**MongoDB** (the local stack expects it on port **27018** as a
+single-node replica set — see below).
+
+The repo is two apps: **worker** scrapes + enriches into Mongo and
+projects a read model; **web** serves that read model. `sbt localStack`
+boots both against one local Mongo — the worker replays the checked-in
+fixtures (`test/resources/fixtures/today`) so you get a full corpus
+offline, and web serves it on :9000:
 
 ```bash
-# Point at your Mongo. The app reads MONGODB_URI; if unset the cache
-# falls back to in-memory-only (no rehydrate, no write-through).
-# MONGODB_DB picks the database name; defaults to `kinowo`.
-export MONGODB_URI=mongodb://localhost:27017
-export MONGODB_DB=kinowo
+# One-time: a local Mongo on 27018 (replica set → live change streams)
+docker run -d -p 27018:27017 --name kinowo-local-mongo mongo --replSet rs0
+docker exec kinowo-local-mongo mongosh --quiet --eval 'rs.initiate()'
 
-sbt run
-# → http://localhost:9000
+sbt localStack
+# → http://localhost:9000  (web serving; worker replaying fixtures in the background)
 ```
 
-The first start may take a minute as the scrapers fan out across every
-cinema and enrich each film. Subsequent starts rehydrate the in-memory
-cache from Mongo in a few seconds via 4-way parallel cursors (see
-`MongoMovieRepo.findAll` and `MeasureStartup`), then begin serving
-immediately.
+To run just the serving app against an existing Mongo, use `sbt web/run`
+— it reads `MONGODB_URI` / `MONGODB_DB` (db defaults to `kinowo`) and
+serves whatever a worker has already projected into the read model. Web
+rehydrates its in-memory cache from Mongo via 4-way parallel cursors
+(see `MongoMovieRepo.findAll` and `MeasureStartup`).
 
-### Useful local endpoints
+### Useful local endpoints (city-scoped routes take a `:city` slug, e.g. `poznan`)
 
-- `/` — main repertoire view
-- `/film?title=...` — single-film detail page
-- `/kina` — view grouped by cinema, `/kina/:cinema` to pin one
-- `/plan` — pick movies + cinemas + rooms, get an availability summary
-- `/debug` — dev page exposing the cache contents
+- `/` — landing page; `/:city/` — main repertoire view
+- `/:city/film?title=...` — single-film detail page
+- `/:city/filmy` — browse / filter the full film catalogue
+- `/:city/plan` — pick movies + cinemas + rooms, get an availability summary
+- `/:city/api/repertoire`, `/:city/api/details` — the JSON feeds the mobile apps read
+- `/debug` — dev page exposing the source `movies` corpus;
+  `/debug/readmodel` — the projected read model web actually serves
 - `POST /debug/reenrich?title=...` — drop one row and re-fetch every source
-- `POST /debug/rehydrate` — reload the in-memory cache from Mongo
+- `POST /:city/debug/rehydrate` — reload the in-memory cache from Mongo
 - `/health` — Fly health check
 
 ## Tests
@@ -121,18 +127,25 @@ CI runners don't need a Chrome install.
 ## Deploying
 
 Fly.io. Two apps in `arn` (Stockholm — nearest Fly region to Polish
-users, no `waw` exists): `kinowo` (serving, 1 GB shared-CPU) and
-`kinowo-worker` (scrape/enrich). Mongo is self-hosted on Fly too —
-`kinowo-mongo` app, same region, `fly/mongo/`.
+users, no `waw` exists): `kinowo` (serving, 1 GB shared-CPU, `fly.toml`)
+and `kinowo-worker` (scrape/enrich, `fly.worker.toml`), built from **one
+image** whose `BIN` build-arg selects the launcher (`web` or `worker`).
+Mongo is self-hosted on Fly too — `kinowo-mongo` app, same region,
+`fly/mongo/`.
+
+Every push to `main` deploys both legs via GitHub Actions
+(`.github/workflows/deploy.yml`): it `sbt "web/stage" "worker/stage"`s
+each app, then `flyctl deploy --build-arg BIN=<bin>` per app. To deploy
+one app by hand after staging it:
 
 ```bash
-flyctl deploy
+flyctl deploy -c fly.toml         --build-arg BIN=web
+flyctl deploy -c fly.worker.toml  --build-arg BIN=worker
 ```
 
-The Dockerfile builds the Play distribution via sbt-native-packager;
-`fly.toml` pins the runtime config (memory, ALPN, health check). Brief
-downtime during a redeploy is acceptable per project conventions —
-this is a hobby-traffic app, not a 24/7 SLA.
+`fly.toml` / `fly.worker.toml` pin each app's runtime config (memory,
+ALPN, health check). Brief downtime during a redeploy is acceptable per
+project conventions — this is a hobby-traffic app, not a 24/7 SLA.
 
 ## Conventions
 
