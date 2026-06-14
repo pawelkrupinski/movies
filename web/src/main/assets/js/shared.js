@@ -30,11 +30,11 @@
   // (e.g. 18:30 → 1110), or null when the hour dropdown is set to "Dowolna"
   // (any). Both dropdowns are read together; the minute default is 00.
   function getFromMinutes() {
-    const hStr = (document.getElementById('from-hour') || {}).value;
-    if (hStr == null || hStr === '') return null;
-    const h = parseInt(hStr, 10);
-    const m = parseInt((document.getElementById('from-minute') || {}).value, 10) || 0;
-    return h * 60 + m;
+    const hourString = (document.getElementById('from-hour') || {}).value;
+    if (hourString == null || hourString === '') return null;
+    const hours = parseInt(hourString, 10);
+    const minutes = parseInt((document.getElementById('from-minute') || {}).value, 10) || 0;
+    return hours * 60 + minutes;
   }
 
   // ── Sort axis ─────────────────────────────────────────────────────────────
@@ -47,8 +47,8 @@
   // the per-page buildIndex, so the comparator never re-reads the DOM.
   function getSortBy() {
     var element = document.getElementById('sort-by');
-    var v = element ? element.value : 'earliest';
-    return (v === 'rating') ? v : 'earliest';
+    var sortValue = element ? element.value : 'earliest';
+    return (sortValue === 'rating') ? sortValue : 'earliest';
   }
 
   // Order two visible cards for the active sort axis. `a`/`b` are
@@ -740,9 +740,9 @@
   function filterHiddenModal() {
     const input = document.getElementById('hidden-modal-search');
     if (!input) return;
-    const q = input.value.trim().toLowerCase();
+    const query = input.value.trim().toLowerCase();
     document.querySelectorAll('#hidden-modal-list .panel-item').forEach(item => {
-      item.style.display = q === '' || item.textContent.toLowerCase().includes(q) ? '' : 'none';
+      item.style.display = query === '' || item.textContent.toLowerCase().includes(query) ? '' : 'none';
     });
   }
 
@@ -753,15 +753,15 @@
     // get closed too — same idiom as `closeOtherPanels` for opening any
     // dropdown.
     closeOtherPanels(null);
-    const m = document.getElementById('hidden-modal-backdrop');
-    if (m) m.classList.add('open');
+    const modal = document.getElementById('hidden-modal-backdrop');
+    if (modal) modal.classList.add('open');
   }
   function closeHiddenModal() {
-    const m = document.getElementById('hidden-modal-backdrop');
-    if (m) m.classList.remove('open');
+    const modal = document.getElementById('hidden-modal-backdrop');
+    if (modal) modal.classList.remove('open');
     // Reset the search on close so the next open shows the full list.
-    const s = document.getElementById('hidden-modal-search');
-    if (s) { s.value = ''; filterHiddenModal(); }
+    const searchInput = document.getElementById('hidden-modal-search');
+    if (searchInput) { searchInput.value = ''; filterHiddenModal(); }
   }
 
   function clampPanel(panel) {
@@ -787,12 +787,12 @@
   }
 
   function openLoginModal() {
-    const m = document.getElementById('login-modal-backdrop');
-    if (m) m.classList.add('open');
+    const modal = document.getElementById('login-modal-backdrop');
+    if (modal) modal.classList.add('open');
   }
   function closeLoginModal() {
-    const m = document.getElementById('login-modal-backdrop');
-    if (m) m.classList.remove('open');
+    const modal = document.getElementById('login-modal-backdrop');
+    if (modal) modal.classList.remove('open');
   }
   // ESC closes any open dropdown / modal / menu — same UX every other
   // modal in the world has. `closeOtherPanels(null)` collapses every
@@ -1299,11 +1299,11 @@
   }
 
   function applyFiltersFromURL() {
-    const p = new URLSearchParams(window.location.search);
+    const searchParams = new URLSearchParams(window.location.search);
 
     const dateSel = document.getElementById('date-filter');
     if (dateSel) {
-      const val   = p.get('date');
+      const val   = searchParams.get('date');
       const ALLOW = ['today', 'tomorrow', 'week', 'anytime'];
       const isIso = val && /^\d{4}-\d{2}-\d{2}$/.test(val);
       if (val && (ALLOW.includes(val) || isIso)) {
@@ -1313,9 +1313,9 @@
           // on the fly so the select reflects it rather than snapping to 'today'.
           const option = document.createElement('option');
           option.value = val;
-          const [y, mo, da] = val.split('-').map(Number);
-          const dayOfWeek = new Date(y, mo - 1, da).getDay();
-          option.textContent = DAY2[dayOfWeek] + ' ' + da + ' ' + MONTHS[mo - 1];
+          const [year, month, day] = val.split('-').map(Number);
+          const dayOfWeek = new Date(year, month - 1, day).getDay();
+          option.textContent = DAY2[dayOfWeek] + ' ' + day + ' ' + MONTHS[month - 1];
           const weekOpt = dateSel.querySelector('option[value="week"]');
           if (weekOpt) dateSel.insertBefore(option, weekOpt); else dateSel.appendChild(option);
         }
@@ -1324,34 +1324,34 @@
     }
 
     const search = document.getElementById('search-input');
-    if (search) { const q = p.get('q'); if (q !== null) search.value = q; }
+    if (search) { const queryValue = searchParams.get('q'); if (queryValue !== null) search.value = queryValue; }
 
-    const dim = p.get('dim');
+    const dim = searchParams.get('dim');
     if (dim) {
       const element = document.querySelector('input[name="format-dim"][value="' + CSS.escape(dim) + '"]');
       if (element) element.checked = true;
     }
-    const lang = p.get('lang');
+    const lang = searchParams.get('lang');
     if (lang) {
       const element = document.querySelector('input[name="format-lang"][value="' + CSS.escape(lang) + '"]');
       if (element) element.checked = true;
     }
     const imaxEl = document.getElementById('format-imax');
-    if (imaxEl && p.has('imax')) imaxEl.checked = p.get('imax') === '1';
+    if (imaxEl && searchParams.has('imax')) imaxEl.checked = searchParams.get('imax') === '1';
 
-    const fromParam = p.get('from');
+    const fromParam = searchParams.get('from');
     if (fromParam && /^\d{1,2}:\d{2}$/.test(fromParam)) {
-      const [h, m] = fromParam.split(':');
-      const hSel = document.getElementById('from-hour');
-      const mSel = document.getElementById('from-minute');
-      if (hSel) hSel.value = String(parseInt(h, 10));
-      if (mSel) mSel.value = String(parseInt(m, 10));
+      const [hours, minutes] = fromParam.split(':');
+      const hourSelect = document.getElementById('from-hour');
+      const minuteSelect = document.getElementById('from-minute');
+      if (hourSelect) hourSelect.value = String(parseInt(hours, 10));
+      if (minuteSelect) minuteSelect.value = String(parseInt(minutes, 10));
     }
 
     const sortSel = document.getElementById('sort-by');
     if (sortSel) {
-      const s = p.get('sort');
-      if (s === 'rating' || s === 'earliest') sortSel.value = s;
+      const sortParam = searchParams.get('sort');
+      if (sortParam === 'rating' || sortParam === 'earliest') sortSel.value = sortParam;
     }
 
     // URL values are the INCLUSION set (checked items). Empty/absent → all
@@ -1359,7 +1359,7 @@
     // comma-lists by flattening on `,` so an old shared link still narrows
     // down rather than dropping into a single nonexistent value.
     ['country', 'genre', 'director', 'cast', 'room'].forEach(key => {
-      const checked = p.getAll(key).flatMap(v => v.split(','));
+      const checked = searchParams.getAll(key).flatMap(v => v.split(','));
       if (checked.length === 0) return;
       ensurePanel(key);   // a shared link references this filter → build it now
                           // so the checkboxes exist for the state to land on
@@ -1382,8 +1382,8 @@
     // cinema-panel checkboxes (and the Filtry button label) reflect it on
     // first render. The internal LS shape still stores DISABLED cinemas, so
     // invert. Pages without the picker have no `#cinema-list` → no-op.
-    if (document.getElementById('cinema-list') && p.has('cinema')) {
-      const enabled = p.getAll('cinema').flatMap(v => v.split(','));
+    if (document.getElementById('cinema-list') && searchParams.has('cinema')) {
+      const enabled = searchParams.getAll('cinema').flatMap(v => v.split(','));
       setDisabledCinemas(ALL_CINEMAS.filter(c => !enabled.includes(c)));
       buildCinemaPanel();
     }
@@ -1535,10 +1535,10 @@
   const _POSTER_RETRY_MAX = 4;
 
   function _posterDelay(attempt) {
-    var c = Math.max(0, Math.min(attempt, _POSTER_RETRY_MAX));
-    var v = 2;
-    for (var i = 0; i < c; i++) v *= 3;
-    return v;
+    var clampedAttempt = Math.max(0, Math.min(attempt, _POSTER_RETRY_MAX));
+    var delay = 2;
+    for (var i = 0; i < clampedAttempt; i++) delay *= 3;
+    return delay;
   }
 
   function _posterCacheBust(url, gen) {
@@ -1660,11 +1660,11 @@
   // around its full option list, then re-render via the normal date-change path
   // (`onDateChange` → `applyFilters` → `syncDateToURL`). Exposed for the swipe
   // gesture and unit tests.
-  function stepDateWrap(dir) {
+  function stepDateWrap(direction) {
     const sel = document.getElementById('date-filter');
     if (!sel || sel.options.length === 0) return;
-    const n = sel.options.length;
-    sel.selectedIndex = ((sel.selectedIndex + dir) % n + n) % n;
+    const optionCount = sel.options.length;
+    sel.selectedIndex = ((sel.selectedIndex + direction) % optionCount + optionCount) % optionCount;
     onDateChange();
   }
   window.stepDateWrap = stepDateWrap;
@@ -1731,8 +1731,8 @@
     const sel = document.getElementById('date-filter');
     const ring = dayRing();
     if (!sel || ring.length === 0) return null;
-    const n = ring.length;
-    return ring[((sel.selectedIndex + dir) % n + n) % n];
+    const ringLength = ring.length;
+    return ring[((sel.selectedIndex + dir) % ringLength + ringLength) % ringLength];
   }
 
   // Build a carousel column: a `.day-col` wrapper around a clone of `#film-grid`
@@ -1926,9 +1926,9 @@
       const from = ring.indexOf(_appliedDay);
       const to   = ring.indexOf(targetValue);
       if (from < 0 || to < 0) { commitDay(targetValue); return; }
-      const n = ring.length;
-      const fwd = ((to - from) % n + n) % n;   // steps walking forward (right)
-      dir = fwd <= n - fwd ? 1 : -1;           // shorter way round the ring
+      const ringLength = ring.length;
+      const forwardSteps = ((to - from) % ringLength + ringLength) % ringLength;   // steps walking forward (right)
+      dir = forwardSteps <= ringLength - forwardSteps ? 1 : -1;           // shorter way round the ring
     }
     runSlide(targetValue, dir);
   }
