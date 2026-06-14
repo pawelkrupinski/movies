@@ -476,19 +476,30 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    # Each iPhone family runs as 2 shards (was 3). The third
-                    # shard mostly slept on stragglers; 2 fits the per-job
-                    # slot budget (≤20 concurrent across the workflow) without
-                    # stretching the critical path much — each merged shard
-                    # is ~5 min, still under the chromium / safari desktop
-                    # leaders.
-                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, shard: '1/2' }
-                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, shard: '2/2' }
-                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, shard: '1/2' }
-                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, shard: '2/2' }
-                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, shard: '1/2' }
-                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, shard: '2/2' }
-                    - { variant: pw desktop,           kind: playwright, project: webkit-desktop,              browser: webkit }
+                    # The ~13 viewport-INDEPENDENT spec files (localStorage, URL
+                    # round-trips, filter inclusion-sets, search, keyboard a11y —
+                    # tagged `@agnostic`) assert byte-identically on all three
+                    # portrait iPhone widths (375/390/440 all sit in one CSS
+                    # bucket), so running them per-phone was a 3× re-run. They now
+                    # ride ONE `behaviour` job on iphone-13; each phone family runs
+                    # only its viewport-SENSITIVE specs (navbar geometry, landscape,
+                    # zoomed-gaps) — still 2-sharded so each shard stays small and
+                    # the webkit gate drops. Coverage of every width is unchanged
+                    # (layout specs still run on all phones/variants). The slots for
+                    # the extra phone shards come from dropping the standalone
+                    # Firefox CI job (Gecko coverage traded for the lower gate; the
+                    # firefox-desktop project stays in playwright.config.ts for
+                    # local runs).
+                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '1/2' }
+                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '2/2' }
+                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '1/2' }
+                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '2/2' }
+                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '1/2' }
+                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '2/2' }
+                    # Viewport-independent specs once, on the representative 390px
+                    # portrait (matches the `iPhone 13` base in webkitUse).
+                    - { variant: pw behaviour,         kind: playwright, project: webkit-iphone-13,            browser: webkit, grep: '@agnostic', grepInvert: 'axe-core' }
+                    - { variant: pw desktop,           kind: playwright, project: webkit-desktop,              browser: webkit, grepInvert: 'axe-core|@agnostic' }
         runs-on: ubuntu-latest
         permissions:
             contents: read
@@ -501,31 +512,5 @@ jobs:
                   project:       ${{ matrix.project }}
                   browser:       ${{ matrix.browser }}
                   shard:         ${{ matrix.shard }}
-
-    page-tests-firefox:
-        # Firefox runs a single unsharded desktop row, so — unlike the
-        # chrome/safari matrices above — this job omits the `shard` matrix
-        # key, the `shard:` action input, and the shard suffix in the name.
-        name: page tests (firefox / ${{ matrix.variant }})
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    # firefox-galaxy-s10 (mobile Gecko) intentionally not in CI
-                    # — Firefox mobile is <1 % of real traffic, and Gecko-engine
-                    # regressions still get caught by firefox-desktop below.
-                    # The project stays in playwright.config.ts so a local
-                    # `npx playwright test --project firefox-galaxy-s10` still
-                    # runs against it.
-                    - { variant: pw desktop,     kind: playwright, project: firefox-desktop,        browser: firefox }
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-            checks: write
-        steps:
-            - uses: actions/checkout@v4
-            - uses: ./.github/actions/run-page-test
-              with:
-                  kind:          ${{ matrix.kind }}
-                  project:       ${{ matrix.project }}
-                  browser:       ${{ matrix.browser }}
+                  grep:          ${{ matrix.grep }}
+                  grepInvert:    ${{ matrix.grepInvert }}

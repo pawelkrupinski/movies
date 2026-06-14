@@ -8,7 +8,7 @@ import { setLocalStorageJson } from './helpers';
 //   - The modal's ✕ button (`.login-modal-close`) closes it.
 //   - Clicking the backdrop (`#hidden-modal-backdrop`) closes it.
 
-test.describe('hidden films modal UI', () => {
+test.describe('hidden films modal UI', { tag: '@agnostic' }, () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/poznan/');

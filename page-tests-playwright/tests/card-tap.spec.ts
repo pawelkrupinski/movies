@@ -5,11 +5,11 @@ import { pinDateFilterAnytime } from './helpers';
 // straight to the /film detail page on every browser. Icons (★, ✕)
 // are always visible; no two-tap preview system.
 
-test.describe('card poster link on WebKit (iPhone emulation)', () => {
+test.describe('card poster link on WebKit (iPhone emulation)', { tag: '@agnostic' }, () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(
-      testInfo.project.name !== 'webkit',
-      'webkit (iPhone 13) project only',
+      !testInfo.project.name.startsWith('webkit'),
+      'webkit (iPhone emulation) projects only',
     );
     await page.goto('/poznan/');
     await pinDateFilterAnytime(page);

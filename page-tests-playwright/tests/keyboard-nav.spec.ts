@@ -6,7 +6,7 @@ import { setDateFilter, waitForCards } from './helpers';
 // buttons call. Keyboard-only users can cycle the date filter
 // without reaching for the on-screen controls.
 
-test.describe('keyboard arrow date navigation', () => {
+test.describe('keyboard arrow date navigation', { tag: '@agnostic' }, () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/poznan/');

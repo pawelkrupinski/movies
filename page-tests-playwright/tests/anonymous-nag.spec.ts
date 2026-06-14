@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test';
 // has an onclick that closes itself + opens the login modal, plus a
 // nested ✕ button that just closes.
 
-test.describe('anonymous nag toast', () => {
+test.describe('anonymous nag toast', { tag: '@agnostic' }, () => {
 
   test('showAnonymousNag adds .open; closeAnonymousNag removes it', async ({ page }) => {
     await page.goto('/poznan/');

@@ -5,7 +5,7 @@ import { firstVisibleTitle, gotoAndWaitForCards, pinDateFilterAnytime } from './
 // detail screen and asserts the page's content blocks render +
 // trailer interaction works.
 
-test.describe('/film detail page', () => {
+test.describe('/film detail page', { tag: '@agnostic' }, () => {
 
   // Helper: navigate to /film for the first visible card on /
   async function gotoFirstFilm(page: import('@playwright/test').Page): Promise<string> {

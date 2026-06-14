@@ -7,7 +7,7 @@ import { setDateFilter, gotoAndWaitForCards } from './helpers';
 // day before the first `applyFilters()` pass so the visible cards
 // already reflect the chosen state.
 
-test.describe('date selector ↔ URL', () => {
+test.describe('date selector ↔ URL', { tag: '@agnostic' }, () => {
 
   test('selecting a non-default day adds ?date= to the URL', async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/');

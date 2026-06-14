@@ -12,7 +12,7 @@ import { getVisibleTitles, setDateFilter } from './helpers';
 const visibleCardCount = async (page: import('@playwright/test').Page) =>
   (await getVisibleTitles(page)).length;
 
-test.describe('kinowo.fly.dev smoke', () => {
+test.describe('kinowo.fly.dev smoke', { tag: '@agnostic' }, () => {
   test('home page renders at least one visible card', async ({ page }) => {
     const resp = await page.goto('/poznan/');
     expect(resp?.status()).toBe(200);
