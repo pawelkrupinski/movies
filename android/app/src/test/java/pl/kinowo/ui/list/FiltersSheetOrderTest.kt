@@ -30,6 +30,7 @@ import pl.kinowo.data.UserPreferences
 import pl.kinowo.model.Cities
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
+import pl.kinowo.TestData
 import pl.kinowo.net.KinowoApi
 import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.ui.KinowoViewModel
@@ -130,6 +131,43 @@ class FiltersSheetOrderTest {
         // stays mounted underneath rather than being replaced.
         compose.onNode(isDialog()).assertExists()
         compose.onNodeWithText("Sortuj").assertExists()
+    }
+
+    /** Tapping Wyczyść closes the Filtry sheet (invokes the onClose callback). */
+    @Test
+    fun wyczyscClosesTheSheet() {
+        var closed = false
+        compose.setContent {
+            FiltersSheetContent(viewModel(), films = emptyList(), onClose = { closed = true })
+        }
+
+        compose.onNodeWithText("Wyczyść").performClick()
+
+        assertTrue("Clicking Wyczyść should close the sheet", closed)
+    }
+
+    /**
+     * Expanding Kina shows every cinema, not a capped inner-scrolling slice —
+     * a cinema well past the old 280dp cap renders. Fails the old nested
+     * LazyColumn, which only composed the first handful.
+     */
+    @Test
+    fun expandedKinaShowsEveryCinema() {
+        // 30 cinemas — far more than the old 280dp inner scroll could compose.
+        val cinemas = (1..30).map { i ->
+            TestData.cinema("Kino %02d".format(i), listOf(TestData.slot("18:00")))
+        }
+        val films = listOf(TestData.film("Film", listOf(TestData.day("2026-06-14", cinemas))))
+
+        compose.setContent {
+            FiltersSheetContent(viewModel(), films = films)
+        }
+
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Kina"))
+        compose.onNodeWithText("Kina").performClick() // expand the section
+
+        // The last cinema (well below the old cap) is now in the tree.
+        compose.onNodeWithText("Kino 30").assertExists()
     }
 
     @Test

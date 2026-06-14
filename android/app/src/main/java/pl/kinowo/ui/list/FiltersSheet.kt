@@ -88,7 +88,7 @@ fun FiltersSheet(
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        FiltersSheetContent(vm, films)
+        FiltersSheetContent(vm, films, onClose = onDismiss)
     }
 }
 
@@ -101,13 +101,14 @@ fun FiltersSheet(
 internal fun FiltersSheetContent(
     vm: KinowoViewModel,
     films: List<Film>,
+    onClose: () -> Unit = {},
 ) {
     // "Ukryte filmy" opens its own full-screen card (mirroring iOS's pushed
     // screen) rather than expanding inline — the hidden set grows large enough
     // to crowd out every other filter, and a full screen gives it room. The
     // filter list stays mounted underneath; closing the card returns to it.
     var showHidden by remember { mutableStateOf(false) }
-    FiltersList(vm, films, onOpenHidden = { showHidden = true })
+    FiltersList(vm, films, onOpenHidden = { showHidden = true }, onClose = onClose)
     if (showHidden) {
         HiddenFilmsScreen(vm, onClose = { showHidden = false })
     }
@@ -136,6 +137,7 @@ private fun FiltersList(
     vm: KinowoViewModel,
     films: List<Film>,
     onOpenHidden: () -> Unit,
+    onClose: () -> Unit,
 ) {
     val hidden by vm.hiddenFilms.collectAsState()
     val disabled by vm.disabledCinemas.collectAsState()
@@ -152,7 +154,7 @@ private fun FiltersList(
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("Filtry", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { vm.clearFilters() }) { Text("Wyczyść") }
+                    TextButton(onClick = { vm.clearFilters(); onClose() }) { Text("Wyczyść") }
                 }
             }
 
@@ -187,13 +189,13 @@ private fun FiltersList(
                     // (see CinemaCityFilter) and must not be counted here.
                     val disabledHere = CinemaCityFilter.disabledIn(disabled, allCinemas)
                     CollapsibleSection("Kina", if (disabledHere.isNotEmpty()) "${disabledHere.size} wyłączonych" else null) {
-                        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 280.dp)) {
-                            item(key = "cin_all") {
-                                ToggleRow("Wszystkie kina", CinemaCityFilter.allSelected(disabled, allCinemas)) { on ->
-                                    vm.setAllCinemas(allCinemas, on)
-                                }
+                        // A plain Column (not a capped, inner-scrolling LazyColumn)
+                        // so expanding shows EVERY cinema — the outer sheet scrolls.
+                        Column(Modifier.fillMaxWidth()) {
+                            ToggleRow("Wszystkie kina", CinemaCityFilter.allSelected(disabled, allCinemas)) { on ->
+                                vm.setAllCinemas(allCinemas, on)
                             }
-                            items(allCinemas, key = { "cin_$it" }) { cinema ->
+                            allCinemas.forEach { cinema ->
                                 CheckRow(
                                     label = CinemaSection.pillName(cinema),
                                     checked = cinema !in disabled,
