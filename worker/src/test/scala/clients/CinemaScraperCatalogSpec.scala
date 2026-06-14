@@ -9,6 +9,7 @@ import services.cinemas.CinemaScraperCatalog
 import _root_.tools.CachingDetailFetch
 
 import java.time.LocalDate
+import scala.concurrent.duration._
 
 /**
  * Guards the per-cinema fetch seams the catalog wires. biletyna.pl 403s our
@@ -93,6 +94,15 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     withClue(s"missing from catalog.scrapeHosts: ${(expected diff hosts).toSeq.sorted}") {
       (expected diff hosts) shouldBe empty
     }
+  }
+
+  // Helios detail (`/api/movie/{id}`) is identical across all Helios venues and
+  // shared through one chain cache; it refreshes more eagerly than Cinema City's
+  // film page so ratings/runtime changes surface within 2h, not 6h.
+  it should "cache Helios chain detail for 2h and Cinema City for 6h" in {
+    val catalog = catalogWithBiletyna("kino-kameralne")
+    catalog.heliosDetailTtl shouldBe 2.hours
+    catalog.cinemaCityDetailTtl shouldBe 6.hours
   }
 
   it should "expose only bare lower-case hosts (no scheme, port or path)" in {

@@ -48,13 +48,15 @@ class CinemaScraperCatalog(
       (h, ttl) => new CachingDetailFetch(h, ttl))
 
   // Per-film detail bodies are static between passes and IDENTICAL across a
-  // chain's locations, so each chain shares ONE 6h CachingDetailFetch: a film's
+  // chain's locations, so each chain shares ONE CachingDetailFetch: a film's
   // detail (Helios `/api/movie/{id}`, Cinema City film page) is fetched once per
-  // chain per 6h instead of once per location per pass. Live listing/screening
-  // fetches stay on `http`.
-  private val ChainDetailTtl = 6.hours
-  private val heliosDetailHttp:     HttpFetch = chainDetailCache(http, ChainDetailTtl)
-  private val cinemaCityDetailHttp: HttpFetch = chainDetailCache(http, ChainDetailTtl)
+  // chain per TTL instead of once per location per pass. Live listing/screening
+  // fetches stay on `http`. Helios refreshes detail more eagerly (2h) than
+  // Cinema City (6h).
+  val heliosDetailTtl:     FiniteDuration = 2.hours
+  val cinemaCityDetailTtl: FiniteDuration = 6.hours
+  private val heliosDetailHttp:     HttpFetch = chainDetailCache(http, heliosDetailTtl)
+  private val cinemaCityDetailHttp: HttpFetch = chainDetailCache(http, cinemaCityDetailTtl)
   private def helios(cfg: HeliosCinema): HeliosClient =
     new HeliosClient(http, cfg, today, Some(heliosDetailHttp))
 
