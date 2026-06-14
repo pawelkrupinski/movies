@@ -15,17 +15,22 @@ on:
 
 # Pipeline shape:
 #
-#   lint ────────────────┐
-#   test ────────────────┤
-#   integration-test ────┤   (all independent; deploy.yml's deploy job
-#   ios-local-server ────┤    `needs` this whole workflow)
-#   android-local-server ┤
-#   page-tests ──────────┘
+#   test (unit + eslint + stage) ─┐
+#   integration-test ─────────────┤
+#   e2e ──────────────────────────┤  (all independent; deploy.yml's deploy job
+#   mobile-local-server (iOS+And) ┤   `needs` this whole workflow)
+#   page-tests ───────────────────┘
 #
-# All gating legs run independently. The sbt-driven ones share
-# the `actions/cache` keyed on hashed sources so the second and third
-# jobs find zinc state warm. The test job also produces the Play
-# universal-stage dist for deploy, uploaded as the `stage` artifact —
+# Jobs are split to stay under the 20-runner cap WITHOUT any job queueing:
+# eslint rides `test` (was its own job), and iOS + Android LocalServer share
+# one `mobile-local-server` job (one FixtureServerMain boot for both) — the two
+# freed slots let `e2e` run as its own parallel job instead of weighing down
+# the deploy-gating `test`/`integration-test` jobs.
+#
+# All gating legs run independently. The sbt-driven ones share the
+# `actions/cache` keyed on hashed sources so later jobs find zinc state warm
+# (the mobile job keeps a separate JDK-21 cache key). The test job also produces
+# the Play universal-stage dist for deploy, uploaded as the `stage` artifact —
 # deploy.yml's deploy job downloads it from this run.
 #
 # Lighthouse moved to lighthouse.yml — runs on `workflow_run` after
@@ -115,17 +120,14 @@ jobs:
                   retention-days: 1
                   if-no-files-found: error
 
-    # ESLint over the production JS in `public/js/`. Quick — a Node
-    # install + one npm run is on the order of 15s; way under the
-    # cost of the sbt jobs and a much faster signal for the typos
-    # the bundlerless deploy can ship straight to the browser.
-    # Cross-file globals (constants from `_sharedJsConfig`, functions
-    # called from inline `<script>` blocks) are listed in
-    # `eslint.config.js` so `no-undef` stays meaningful.
-    lint:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
+            # ESLint over the production JS in `public/js/`. Folded into this job
+            # (was a standalone `lint` job) to free a runner slot for the dedicated
+            # `e2e` job, keeping CI at 20 jobs so nothing queues. Runs LAST: the
+            # unit-test check is published above with `always()`, so a lint failure
+            # never hides it, and the stage artifacts upload first. Cross-file
+            # globals (constants from `_sharedJsConfig`, functions called from
+            # inline `<script>` blocks) are listed in `eslint.config.js` so
+            # `no-undef` stays meaningful.
             - uses: actions/setup-node@v4
               with:
                   node-version: '22'
@@ -133,127 +135,23 @@ jobs:
             - run: npm ci
             - run: npm run lint
 
-    # iOS LocalServer tests. Boots `FixtureServerMain` (the same Play
-    # server FixtureServerMain + InMemoryMovieRepository combo the
-    # Playwright suite uses) in the background and runs the
-    # `LocalServer*` XCTest cases against it — `KinowoCore`'s real
-    # parsers (HTMLParser, FilmDetailParser) crawl HTML the Twirl
-    # templates just rendered.
+    # Mobile LocalServer tests — iOS + Android share ONE FixtureServerMain boot.
+    # Boots the fixture Play server (same FixtureServerMain + InMemoryMovieRepository
+    # the Playwright suite uses) once, then runs both the iOS `LocalServer*` XCTest
+    # cases and the Android `LocalServerApiTest` against it. KinowoCore's real
+    # parsers (HTMLParser, FilmDetailParser) crawl the HTML the Twirl templates
+    # rendered; Android's production KinowoApi + kotlinx models decode the live
+    # /api/repertoire + /api/details JSON. The cross-cutting gate: a server-side
+    # template / MovieController JSON drift that would break either mobile client
+    # fails CI here, on the PR that introduces it.
     #
-    # This is the cross-cutting gate: a server-side template change
-    # that would break the iOS parser fails CI here, on the PR that
-    # introduces it. Previously the catch was nightly smoke tests
-    # against kinowo.fly.dev, i.e. only POST-deploy.
-    #
-    # `continue-on-error: false` (default) — deploy depends on this.
-    ios-local-server:
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-            checks: write
-        steps:
-            - uses: actions/checkout@v4
-
-            - uses: actions/setup-java@v4
-              with:
-                  distribution: temurin
-                  java-version: 25
-                  cache: sbt
-
-            - uses: sbt/setup-sbt@v1
-
-            - uses: actions/cache@v4
-              with:
-                  path: |
-                      target
-                      project/target
-                      project/project/target
-                  # Boots web/PageTest FixtureServerMain → page scope
-                  # (every module's main + test + the web page sources).
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
-                  restore-keys: |
-                      sbt-target-${{ runner.os }}-
-
-            - uses: swift-actions/setup-swift@v2
-              with:
-                  swift-version: '5.10'
-
-            - uses: actions/cache@v4
-              with:
-                  path: ios/.build
-                  key: spm-build-${{ runner.os }}-${{ hashFiles('ios/Package.swift', 'ios/Package.resolved') }}
-                  restore-keys: |
-                      spm-build-${{ runner.os }}-
-
-            # Boot the server in the background. It binds to a
-            # kernel-assigned free port and writes that port to the
-            # file we pass; we busy-wait for the file (60s ceiling)
-            # then export the resulting URL for the swift test step.
-            - name: Boot FixtureServerMain
-              run: |
-                  set -euo pipefail
-                  PORT_FILE=$(mktemp)
-                  echo "PORT_FILE=$PORT_FILE" >> "$GITHUB_ENV"
-
-                  nohup sbt "web/PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
-                  echo "SERVER_PID=$!" >> "$GITHUB_ENV"
-
-                  # 300s ceiling: a cold sbt-target cache recompiles every
-                  # module (~120s) before bootStartup, which itself grew with
-                  # the corpus (Kraków + Trójmiasto cinemas, several missing
-                  # fixtures → retry-with-backoff). 120s was timing out.
-                  for _ in $(seq 1 150); do
-                      if [ -s "$PORT_FILE" ]; then break; fi
-                      sleep 2
-                  done
-                  if [ ! -s "$PORT_FILE" ]; then
-                      echo "::error::FixtureServerMain never wrote a port file"
-                      tail -100 fixture-server.log
-                      exit 1
-                  fi
-                  PORT=$(cat "$PORT_FILE")
-                  echo "KINOWO_LOCAL_URL=http://127.0.0.1:$PORT" >> "$GITHUB_ENV"
-                  echo "fixture server listening on http://127.0.0.1:$PORT"
-
-            - name: Run LocalServer iOS tests
-              run: swift test --package-path ios --filter LocalServer --xunit-output ios-localserver.xml
-
-            - name: Publish test report
-              if: always()
-              uses: mikepenz/action-junit-report@v5
-              with:
-                  # SwiftPM writes `<base>.xml` (XCTest) and
-                  # `<base>-swift-testing.xml` (swift-testing); glob both.
-                  report_paths: 'ios-localserver*.xml'
-                  check_name: iOS LocalServer
-                  detailed_summary: true
-                  include_passed: false
-
-            - name: Stop FixtureServerMain
-              if: always()
-              run: |
-                  if [ -n "${SERVER_PID:-}" ]; then
-                      kill "$SERVER_PID" 2>/dev/null || true
-                  fi
-
-            - name: Upload fixture-server log on failure
-              if: failure()
-              uses: actions/upload-artifact@v4
-              with:
-                  name: fixture-server-log
-                  path: fixture-server.log
-                  if-no-files-found: ignore
-
-
-    # Android twin of `ios-local-server`. Boots the same `FixtureServerMain`
-    # render, then runs the Android `LocalServerApiTest` (a plain JVM unit test)
-    # against it so the production `KinowoApi` + kotlinx models decode the live
-    # `/api/repertoire` + `/api/details` JSON. Catches a `MovieController` JSON
-    # shape drift that would break the Android decoder, on the same PR.
-    #
-    # One JDK 21 serves both toolchains: the Scala build caps output at Java 21
-    # (`--release 21`), and Gradle 8.9 / AGP 8.6 run fine on JDK 21.
-    android-local-server:
+    # Was two separate jobs, each paying the SAME ~4-min FixtureServerMain boot to
+    # run a <20s test. Merged so the boot is shared and one runner slot is freed —
+    # keeps CI under the 20-runner cap without a job queueing. One JDK 21 serves
+    # everything: the Scala build emits Java 21 (`--release 21`) and runs on 21,
+    # Gradle 8.9 / AGP 8.6 run on 21, and Swift needs no JDK. Both junit publishes
+    # keep their original `iOS LocalServer` / `Android LocalServer` check-names.
+    mobile-local-server:
         runs-on: ubuntu-latest
         permissions:
             contents: read
@@ -275,10 +173,24 @@ jobs:
                       target
                       project/target
                       project/project/target
-                  # Boots web/PageTest FixtureServerMain → page scope (every module's main + test + web page sources).
+                  # JDK-21 zinc cache, kept on its own key so cross-JDK class
+                  # artifacts don't mix with the JDK-25 jobs' cache. Boots
+                  # web/PageTest FixtureServerMain → page scope (every module's
+                  # main + test + the web page sources).
                   key: sbt-target-android-ls-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
                   restore-keys: |
                       sbt-target-android-ls-${{ runner.os }}-
+
+            - uses: swift-actions/setup-swift@v2
+              with:
+                  swift-version: '5.10'
+
+            - uses: actions/cache@v4
+              with:
+                  path: ios/.build
+                  key: spm-build-${{ runner.os }}-${{ hashFiles('ios/Package.swift', 'ios/Package.resolved') }}
+                  restore-keys: |
+                      spm-build-${{ runner.os }}-
 
             - name: Set up Android SDK
               uses: android-actions/setup-android@v3
@@ -286,9 +198,9 @@ jobs:
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
 
-            # Boot the server in the background (identical handshake to the iOS
-            # job): binds a free port, writes it to a file we busy-wait for
-            # (60s ceiling), then export the URL for the gradle test step.
+            # Boot the fixture server in the background ONCE for both mobile
+            # suites. Binds a kernel-assigned free port, writes it to a file we
+            # busy-wait for, then exports the URL both test steps read.
             - name: Boot FixtureServerMain
               run: |
                   set -euo pipefail
@@ -315,13 +227,32 @@ jobs:
                   echo "KINOWO_LOCAL_URL=http://127.0.0.1:$PORT" >> "$GITHUB_ENV"
                   echo "fixture server listening on http://127.0.0.1:$PORT"
 
-            # `--no-daemon` so the freshly-started Gradle process inherits
-            # KINOWO_LOCAL_URL and passes it to the forked test JVM.
-            - name: Run LocalServer Android tests
-              working-directory: android
-              run: ./gradlew --no-daemon testDebugUnitTest --tests 'pl.kinowo.localserver.*'
+            # Both suites run against the one server; `set +e` + a combined exit
+            # status so an iOS failure still lets the Android suite run (and vice
+            # versa) — the always() publishes below then surface both. `--no-daemon`
+            # so Gradle inherits KINOWO_LOCAL_URL for the forked test JVM.
+            - name: Run LocalServer mobile tests (iOS + Android)
+              run: |
+                  set +e
+                  swift test --package-path ios --filter LocalServer --xunit-output ios-localserver.xml
+                  ios=$?
+                  ( cd android && ./gradlew --no-daemon testDebugUnitTest --tests 'pl.kinowo.localserver.*' )
+                  android=$?
+                  echo "iOS exit=$ios  Android exit=$android"
+                  [ $ios -eq 0 ] && [ $android -eq 0 ]
 
-            - name: Publish test report
+            - name: Publish iOS test report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
+              with:
+                  # SwiftPM writes `<base>.xml` (XCTest) and
+                  # `<base>-swift-testing.xml` (swift-testing); glob both.
+                  report_paths: 'ios-localserver*.xml'
+                  check_name: iOS LocalServer
+                  detailed_summary: true
+                  include_passed: false
+
+            - name: Publish Android test report
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
@@ -341,7 +272,7 @@ jobs:
               if: failure()
               uses: actions/upload-artifact@v4
               with:
-                  name: fixture-server-log-android
+                  name: fixture-server-log-mobile
                   path: fixture-server.log
                   if-no-files-found: ignore
 
@@ -394,19 +325,12 @@ jobs:
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
-            # Both apps' IT suites + the `e2e` module in ONE sbt run. `e2e` rides
-            # this job rather than `test`: its whole-corpus staging specs
-            # (ScrapeOrderDeterminismSpec drains the staging pipeline per shuffled
-            # replay) doubled the `test` job's wall-clock when staging ingest went
-            # always-on — and `test` gates deploy. This is the shortest sbt job, so
-            # e2e fits here under the 20-runner cap without adding a GH job that
-            # would just queue. `itAndE2e` runs all three in one JVM (`all`, no
-            # fail-fast) so e2e compiles with the build already loaded and overlaps
-            # the IT tests' Mongo I/O — a separate sbt step paid a second cold boot
-            # + e2e recompile (~4 min overhead, measured). e2e uses FixtureTestWiring
-            # (no Mongo) so it ignores the container above; reports split by config
-            # (it → it/, e2e Test config → unit/).
-            - run: sbt itAndE2e
+            # Both apps' integration suites in one run (web + worker each have an
+            # `it` config); `all` keeps going across them. Still one GH job. The
+            # `e2e` module runs in its own parallel job (below) — combining it here
+            # made this the deploy gate; with a runner freed by merging the mobile
+            # jobs there's now a slot to parallelise e2e off the critical path.
+            - run: sbt itAll
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
@@ -421,6 +345,49 @@ jobs:
                   check_name: integration tests
                   detailed_summary: true
                   include_passed: false
+
+
+    # The `e2e` module (cross-app whole-corpus specs) in its own job. Its
+    # ScrapeOrderDeterminismSpec drains the always-on staging pipeline per
+    # shuffled replay, ~6 min of CI compute — too heavy to ride either the `test`
+    # job (it gates deploy) or `integration-test` (it became the gate when e2e
+    # rode it). A dedicated parallel job keeps the full spec coverage while taking
+    # e2e off the critical path. Uses FixtureTestWiring (no Mongo); reports go to
+    # the root unit/ dir (unitReportSettings) → its own `e2e tests` check.
+    e2e:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            checks: write
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            - uses: actions/cache@v4
+              with:
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  # Same shared JDK-25 zinc key as `test`/`integration-test` so e2e
+                  # finds web+worker already compiled.
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
+
+            - run: sbt e2e/Test/test
+              env:
+                  ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
+                  TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
+                  MONGODB_URI:     ${{ secrets.MONGODB_URI }}
+                  MONGODB_DB:      ${{ secrets.MONGODB_DB }}
 
             - name: Publish e2e test report
               if: always()
