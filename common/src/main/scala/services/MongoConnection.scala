@@ -164,10 +164,12 @@ object MongoConnection {
    *  connection alongside the primary one. The web wiring uses it for the
    *  local `/debug` read-mirror (`MONGODB_MOVIES_MIRROR_URI`): a separate
    *  MongoClient pointed at a local Mongo that's kept synced from prod, so the
-   *  full-corpus `movies` read is a LAN hop instead of the prod tunnel. Shares
-   *  `fromEnv`'s db-name + probe-timeout resolution; `required` is the caller's
-   *  to decide (the mirror is a soft optimisation, so the caller passes
-   *  `false` and degrades to the primary connection when it's absent). */
+   *  full-corpus `movies` read is a LAN hop instead of the prod tunnel. The
+   *  database is taken from the URI's own path (see `databaseFromUri`) so the
+   *  mirror can live in a different database than the app's working db; probe
+   *  timeout shares `fromEnv`'s resolution. `required` is the caller's to decide
+   *  (the mirror is a soft optimisation, so the caller passes `false` and
+   *  degrades to the primary connection when it's absent). */
   def fromUri(
       uri: String,
       required: Boolean,
@@ -175,10 +177,21 @@ object MongoConnection {
       serverSelectionTimeout: Option[FiniteDuration] = None): MongoConnection =
     new MongoConnection(
       Some(uri),
-      Env.get("MONGODB_DB").getOrElse("kinowo"),
+      databaseFromUri(uri),
       required,
       probeTimeout,
       serverSelectionTimeout)
+
+  /** Database name for an explicit-URI connection: the URI's own path (e.g.
+   *  `…/kinowo_prod_mirror`), so the `/debug` mirror lives in a different
+   *  database than the app's working db (`MONGODB_DB`, used by the prod
+   *  connection). Falls back to `MONGODB_DB` (then `kinowo`) when the URI names
+   *  no database. The parse is guarded so a malformed URI flows through to
+   *  `MongoConnection`'s own required/optional handling instead of throwing here. */
+  private[services] def databaseFromUri(uri: String): String =
+    Try(Option(new ConnectionString(uri).getDatabase)).toOption.flatten
+      .filter(_.nonEmpty)
+      .getOrElse(Env.get("MONGODB_DB").getOrElse("kinowo"))
 
   /** Driver settings for a connection string, defaulting wire compression to
    *  zlib. The wire payload is uncompressed BSON regardless of WiredTiger's
