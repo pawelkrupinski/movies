@@ -314,9 +314,19 @@ class CaffeineMovieCache(
   private[services] def canonicalKeyFor(key: CacheKey): Option[CacheKey] = {
     import scala.jdk.CollectionConverters._
     val target = TitleNormalizer.sanitize(key.cleanTitle)
-    positive.asMap().asScala.keysIterator
-      .filter(k => TitleNormalizer.sanitize(k.cleanTitle) == target)
-      .minByOption(canonicalRank)
+    val sameTitle = positive.asMap().asScala.keysIterator
+      .filter(k => TitleNormalizer.sanitize(k.cleanTitle) == target).toSeq
+    // Prefer a row at this EXACT year. A same-title row at a DIFFERENT year is a
+    // distinct film — a remake or re-release carrying the original's name
+    // ("Zaproszenie" 2022 "The Invitation" vs 2026 "The Invite", "Diuna" 1984 vs
+    // 2021) — not a stale-key alias of this one, so a resolve/read must never
+    // redirect onto it (year-blind `minByOption` clobbered the lowest-year row).
+    // The year-blind fallback still fires when NO exact-year row exists, which is
+    // the only shape the genuine redirect needs: `recordCinemaScrape`'s rekeys
+    // change spelling at the SAME year (case/separator) and a yearless key whose
+    // row gained a resolved year both reach their row through it.
+    sameTitle.filter(_.year == key.year).minByOption(canonicalRank)
+      .orElse(sameTitle.minByOption(canonicalRank))
   }
 
   /** Collapse every set of rows that share a normalised cleanTitle into ONE row

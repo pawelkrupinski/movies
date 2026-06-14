@@ -240,7 +240,19 @@ class MovieService(
         // would just create a phantom row at the `(title, year)` key that
         // nothing would clean up — wasted TMDB call plus a stale year-
         // divergent row sitting in Mongo forever.
-        else if (cache.hasResolvedSiblingByTitle(key.cleanTitle)) false
+        //
+        // Gate this on the `(title, year)` key carrying NO cinema slots of its
+        // own. The redirect only fires when this cinema's slot was folded onto
+        // the sibling (the Mortal Kombat II production-vs-release year collapse:
+        // one film, adjacent years, one canonical key) — leaving this key with
+        // no independent row. When this key DOES carry its own cinema slots it's
+        // a genuinely distinct film that merely shares a normalised title with a
+        // different-year sibling — "Zaproszenie" 2022 ("The Invitation") vs 2026
+        // ("The Invite") — and must resolve on its own. Matching on cleanTitle
+        // alone (year-blind) trapped every such row at tmdbId=None forever: the
+        // scrape path skipped it here, and the daily `retryUnresolvedTmdb` sweep
+        // re-dispatches non-forced, so it hit this same guard again.
+        else if (existing.forall(_.cinemaData.isEmpty) && cache.hasResolvedSiblingByTitle(key.cleanTitle)) false
         else true
     }
   }
