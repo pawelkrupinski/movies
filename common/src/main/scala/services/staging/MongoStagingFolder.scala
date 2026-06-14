@@ -117,13 +117,13 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
    *  / `abortTransaction` return — raw Java publishers, not scala Observables) to
    *  a `Future` so it composes with `await`. Completes on the terminal signal. */
   private def publisherToFuture[T](pub: Publisher[T]): scala.concurrent.Future[Unit] = {
-    val p = scala.concurrent.Promise[Unit]()
+    val promise = scala.concurrent.Promise[Unit]()
     pub.subscribe(new Subscriber[T] {
       def onSubscribe(s: Subscription): Unit = s.request(Long.MaxValue)
       def onNext(t: T): Unit = ()
-      def onError(e: Throwable): Unit = p.tryFailure(e)
-      def onComplete(): Unit = p.trySuccess(())
+      def onError(e: Throwable): Unit = promise.tryFailure(e)
+      def onComplete(): Unit = promise.trySuccess(())
     })
-    p.future
+    promise.future
   }
 }

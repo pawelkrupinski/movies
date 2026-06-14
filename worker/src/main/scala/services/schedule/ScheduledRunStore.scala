@@ -58,7 +58,7 @@ object AlwaysClaimScheduledRunStore extends ScheduledRunStore {
 class MongoScheduledRunStore(coll: MongoCollection[Document]) extends ScheduledRunStore with Logging {
 
   locally {
-    val t = new Thread(() => {
+    val thread = new Thread(() => {
       Try {
         Await.result(coll.createIndex(
           Indexes.ascending("claimedAt"),
@@ -67,8 +67,8 @@ class MongoScheduledRunStore(coll: MongoCollection[Document]) extends ScheduledR
       }.recover { case exception => logger.warn(s"scheduled_runs TTL index init failed: ${exception.getMessage}") }
       ()
     }, "scheduled-runs-init")
-    t.setDaemon(true)
-    t.start()
+    thread.setDaemon(true)
+    thread.start()
   }
 
   override def claim(occurrenceId: String): Boolean =

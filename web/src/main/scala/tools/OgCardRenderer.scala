@@ -121,30 +121,30 @@ object OgCardRenderer {
       val textRight = Width - Margin
       val textW     = textRight - textLeft
 
-      var y = Margin + 12
+      var yPosition = Margin + 12
 
       g.setFont(bold.deriveFont(60f))
       g.setColor(TitleCol)
       val titleFm = g.getFontMetrics
       for (line <- wrap(g, title, textW, maxLines = 3)) {
-        y += titleFm.getAscent
-        g.drawString(line, textLeft, y)
-        y += titleFm.getDescent + 4
+        yPosition += titleFm.getAscent
+        g.drawString(line, textLeft, yPosition)
+        yPosition += titleFm.getDescent + 4
       }
 
       if (subtitle.nonEmpty) {
-        y += 14
+        yPosition += 14
         g.setFont(regular.deriveFont(32f))
         g.setColor(SubCol)
         val sfm = g.getFontMetrics
-        y += sfm.getAscent
-        g.drawString(ellipsize(g, subtitle, textW), textLeft, y)
-        y += sfm.getDescent
+        yPosition += sfm.getAscent
+        g.drawString(ellipsize(g, subtitle, textW), textLeft, yPosition)
+        yPosition += sfm.getDescent
       }
 
       if (badges.nonEmpty) {
-        y += 36
-        drawBadges(g, badges, textLeft, y, textRight)
+        yPosition += 36
+        drawBadges(g, badges, textLeft, yPosition, textRight)
       }
 
       g.setFont(regular.deriveFont(28f))
@@ -188,29 +188,29 @@ object OgCardRenderer {
     val arcD = 16f // corner diameter (radius ~8, ~web 3px scaled to this font)
     // Uniform height across every badge, from the (taller) bold metrics.
     val refFm = g.getFontMetrics(labelFont)
-    val h      = refFm.getAscent + refFm.getDescent + padY * 2
-    var x = x0
-    var y = top
+    val height      = refFm.getAscent + refFm.getDescent + padY * 2
+    var xPosition = x0
+    var yPosition = top
     for (b <- badges) {
       val fms   = b.segs.map(s => g.getFontMetrics(fontFor(s)))
       val segW  = b.segs.zip(fms).map { case (s, fm) => fm.stringWidth(s.text) + s.padX * 2 }
-      val w     = segW.sum
-      if (x + w > xMax && x > x0) { x = x0; y += h + 12 }
-      val outer = new RoundRectangle2D.Float(x.toFloat, y.toFloat, w.toFloat, h.toFloat, arcD, arcD)
+      val width     = segW.sum
+      if (xPosition + width > xMax && xPosition > x0) { xPosition = x0; yPosition += height + 12 }
+      val outer = new RoundRectangle2D.Float(xPosition.toFloat, yPosition.toFloat, width.toFloat, height.toFloat, arcD, arcD)
       val saved = g.getClip
       g.setClip(outer) // rounds the outer corners; the per-segment fills keep a square seam
-      var sx = x
+      var sx = xPosition
       for (((s, fm), sw) <- b.segs.zip(fms).zip(segW)) {
         g.setColor(s.bg)
-        g.fillRect(sx, y, sw, h)
+        g.fillRect(sx, yPosition, sw, height)
         g.setColor(s.fg)
         g.setFont(fontFor(s))
-        val ty = y + (h - (fm.getAscent + fm.getDescent)) / 2 + fm.getAscent
+        val ty = yPosition + (height - (fm.getAscent + fm.getDescent)) / 2 + fm.getAscent
         g.drawString(s.text, sx + s.padX, ty)
         sx += sw
       }
       g.setClip(saved)
-      x += w + gap
+      xPosition += width + gap
     }
   }
 

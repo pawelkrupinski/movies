@@ -117,8 +117,8 @@ object MovieCodecs {
       def seqStr(key: String): Seq[String] =
         if (!document.containsKey(key) || document.get(key).isNull) Seq.empty
         else if (document.get(key).isString) {
-          val s = document.getString(key).getValue
-          if (s.isEmpty) Seq.empty else s.split(",").map(_.trim).filter(_.nonEmpty).toSeq
+          val stringValue = document.getString(key).getValue
+          if (stringValue.isEmpty) Seq.empty else stringValue.split(",").map(_.trim).filter(_.nonEmpty).toSeq
         }
         else if (document.get(key).isArray) {
           val array = document.getArray(key)

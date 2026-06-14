@@ -78,15 +78,15 @@ class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.
    *  an empty result as fresh. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     Try(detailHttp.get(ref)).toOption.map { html =>
-      val d = KinomuzeumClient.parseDetail(html)
+      val detail = KinomuzeumClient.parseDetail(html)
       FilmDetail(
-        synopsis       = d.synopsis,
+        synopsis       = detail.synopsis,
         cast           = Seq.empty,
-        director       = d.director,
-        runtimeMinutes = d.runtime,
-        releaseYear    = d.year,
-        countries      = d.countries,
-        posterUrl      = d.poster
+        director       = detail.director,
+        runtimeMinutes = detail.runtime,
+        releaseYear    = detail.year,
+        countries      = detail.countries,
+        posterUrl      = detail.poster
       )
     }
 

@@ -120,11 +120,11 @@ class MetacriticClient(http: HttpFetch) {
     query: String,
     year:  Option[Int]
   ): Option[SearchHit] = {
-    val q = query.toLowerCase.trim
-    if (hits.isEmpty || q.isEmpty) None
+    val normalizedQuery = query.toLowerCase.trim
+    if (hits.isEmpty || normalizedQuery.isEmpty) None
     else {
-      val exact = hits.filter(_.title.toLowerCase.trim == q)
-      val modifier = hits.filter(h => MetacriticClient.isModifierSuffix(h.title, q))
+      val exact = hits.filter(_.title.toLowerCase.trim == normalizedQuery)
+      val modifier = hits.filter(h => MetacriticClient.isModifierSuffix(h.title, normalizedQuery))
       val candidates =
         if (exact.nonEmpty) exact
         else if (modifier.nonEmpty) modifier
@@ -193,9 +193,9 @@ object MetacriticClient {
    *  `query` is expected pre-lowercased + trimmed.
    */
   def isModifierSuffix(title: String, query: String): Boolean = {
-    val t = title.toLowerCase.trim
-    t.startsWith(query) && t != query && {
-      val rest = t.drop(query.length).dropWhile(_.isWhitespace)
+    val normalizedTitle = title.toLowerCase.trim
+    normalizedTitle.startsWith(query) && normalizedTitle != query && {
+      val rest = normalizedTitle.drop(query.length).dropWhile(_.isWhitespace)
       rest.headOption.exists(c => !c.isLetterOrDigit)
     }
   }

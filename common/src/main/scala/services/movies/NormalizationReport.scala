@@ -93,10 +93,10 @@ class MongoNormalizationReportRepository(
         Try {
           val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
           val client = MongoClient(uri)
-          val c = client.getDatabase(dbName).withCodecRegistry(NormalizationReportCodecs.registry)
+          val database = client.getDatabase(dbName).withCodecRegistry(NormalizationReportCodecs.registry)
             .getCollection[StoredNormalizationReport]("normalizationReports")
-          Await.result(c.countDocuments().toFuture(), 10.seconds)
-          (Some(client), Some(c))
+          Await.result(database.countDocuments().toFuture(), 10.seconds)
+          (Some(client), Some(database))
         }.recover { case exception =>
           logger.error(s"MongoNormalizationReportRepository init failed (${exception.getMessage}) — disabled.")
           (None, None)

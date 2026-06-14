@@ -43,12 +43,12 @@ object TextNormalization {
     var atWordStart = true
     var i = 0
     while (i < s.length) {
-      val c = s.charAt(i)
-      if (c.isLetter) {
-        sb.append(if (atWordStart) c.toUpper else c.toLower)
+      val character = s.charAt(i)
+      if (character.isLetter) {
+        sb.append(if (atWordStart) character.toUpper else character.toLower)
         atWordStart = false
       } else {
-        sb.append(c)
+        sb.append(character)
         atWordStart = true
       }
       i += 1

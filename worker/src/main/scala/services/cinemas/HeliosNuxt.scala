@@ -203,10 +203,10 @@ object HeliosNuxt {
   // A resolver turns a token — either a `"literal"` or a single-identifier parameter
   // reference — into its underlying string. `/` is decoded everywhere.
   private def makeResolver(parameterMap: Map[String, JsValue]): String => Option[String] = { token =>
-    val t = token.trim
+    val trimmedToken = token.trim
     val raw =
-      if (t.startsWith("\"")) Some(t.stripPrefix("\"").stripSuffix("\""))
-      else parameterMap.get(t).flatMap {
+      if (trimmedToken.startsWith("\"")) Some(trimmedToken.stripPrefix("\"").stripSuffix("\""))
+      else parameterMap.get(trimmedToken).flatMap {
         case JsString(s) => Some(s)
         case n: JsNumber => n.value.toBigIntExact.map(_.toString)
         case _           => None

@@ -82,9 +82,9 @@ object DaemonExecutors {
    *  itself. */
   def scheduler(name: String): ScheduledExecutorService =
     Executors.newSingleThreadScheduledExecutor { r =>
-      val t = new Thread(r, name)
-      t.setDaemon(true)
-      t
+      val thread = new Thread(r, name)
+      thread.setDaemon(true)
+      thread
     }
 }
 

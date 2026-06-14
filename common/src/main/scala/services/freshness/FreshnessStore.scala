@@ -92,9 +92,9 @@ class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessSto
 
   coll match {
     case Some(c) =>
-      val t = new Thread(() => hydrate(c), "freshness-init")
-      t.setDaemon(true)
-      t.start()
+      val thread = new Thread(() => hydrate(c), "freshness-init")
+      thread.setDaemon(true)
+      thread.start()
     case None =>
       scrapeReady.trySuccess(())
   }

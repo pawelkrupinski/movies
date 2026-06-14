@@ -162,7 +162,7 @@ class ImdbClient(http: HttpFetch) {
    *  ids, video games sharing the title, missing optional fields) that we
    *  want fixture-driven assertions independent of HTTP. */
   def parseSuggestions(body: String, title: String, year: Option[Int]): Option[String] = {
-    val q = title.toLowerCase.trim
+    val normalizedTitle = title.toLowerCase.trim
     Try(Json.parse(body)).toOption.flatMap { js =>
       // Real film candidates: tt-id, qid "movie". Keep document order — IMDb
       // returns the best query match first, popularity padding after.
@@ -174,7 +174,7 @@ class ImdbClient(http: HttpFetch) {
           } yield Suggestion(id, (entry \ "l").asOpt[String].map(_.toLowerCase.trim), (entry \ "y").asOpt[Int], (entry \ "rank").asOpt[Int].getOrElse(Int.MaxValue))
         }
       val exact = movies
-        .filter(_.title.contains(q))
+        .filter(_.title.contains(normalizedTitle))
         .sortBy { s =>
           val yearDistance = year.flatMap(request => s.year.map(yi => math.abs(yi - request))).getOrElse(Int.MaxValue)
           (yearDistance, s.rank)

@@ -44,11 +44,11 @@ object KinoAurumClient {
       .asOpt[Seq[JsValue]].getOrElse(Seq.empty)
 
     val slots = documents.flatMap { document =>
-      val f = document \ "fields"
+      val fields = document \ "fields"
       for {
-        title <- (f \ "film_tytul" \ "stringValue").asOpt[String].map(_.trim).filter(_.nonEmpty)
-        date  <- (f \ "data" \ "stringValue").asOpt[String]
-        time  <- (f \ "godzina" \ "stringValue").asOpt[String]
+        title <- (fields \ "film_tytul" \ "stringValue").asOpt[String].map(_.trim).filter(_.nonEmpty)
+        date  <- (fields \ "data" \ "stringValue").asOpt[String]
+        time  <- (fields \ "godzina" \ "stringValue").asOpt[String]
         dt    <- Try(LocalDateTime.parse(s"$date $time", Fmt)).toOption
       } yield (title, dt)
     }

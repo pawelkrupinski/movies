@@ -64,9 +64,9 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
   def collectionWriteConcern: Option[WriteConcern] = coll.map(_.writeConcern)
 
   coll.foreach { c =>
-    val t = new Thread(() => createIndexes(c), "tasks-init")
-    t.setDaemon(true)
-    t.start()
+    val thread = new Thread(() => createIndexes(c), "tasks-init")
+    thread.setDaemon(true)
+    thread.start()
   }
 
   private def createIndexes(c: MongoCollection[Document]): Unit = Try {
@@ -266,8 +266,8 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
     val payload = document.get("payload")
       .filter(_.isDocument)
       .map { v =>
-        val d = v.asDocument()
-        d.keySet().asScala.iterator.map(k => k -> d.getString(k).getValue).toMap
+        val document = v.asDocument()
+        document.keySet().asScala.iterator.map(k => k -> document.getString(k).getValue).toMap
       }
       .getOrElse(Map.empty[String, String])
     Task(

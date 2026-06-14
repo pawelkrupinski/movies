@@ -81,9 +81,9 @@ object FilmCanonicalizer {
     val adjacent = scala.collection.mutable.LinkedHashMap.empty[Int, scala.collection.mutable.ListBuffer[Row]]
     val orphans  = scala.collection.mutable.ListBuffer.empty[Row]
     yeared.sortBy(rank).foreach { row =>
-      val y = row._1.year.get
+      val year = row._1.year.get
       resolvedClusters.zipWithIndex
-        .filter { case (c, _) => c.refYear.exists(ry => math.abs(y - ry) <= 1) }
+        .filter { case (c, _) => c.refYear.exists(ry => math.abs(year - ry) <= 1) }
         .minByOption { case (c, index) => (c.minRank, index) } match {
         case Some((_, index)) => adjacent.getOrElseUpdate(index, scala.collection.mutable.ListBuffer.empty) += row
         case None           => orphans += row

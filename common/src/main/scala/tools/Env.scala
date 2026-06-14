@@ -47,11 +47,11 @@ object Env {
               val index = line.indexOf('=')
               if (index <= 0) None
               else {
-                val k = line.take(index).trim
-                val v = line.drop(index + 1).trim
+                val key = line.take(index).trim
+                val value = line.drop(index + 1).trim
                   .stripPrefix("\"").stripSuffix("\"")
                   .stripPrefix("'").stripSuffix("'")
-                Some(k -> v)
+                Some(key -> value)
               }
             }.toMap
         } finally source.close()

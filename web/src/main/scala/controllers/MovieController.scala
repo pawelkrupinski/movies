@@ -69,24 +69,24 @@ object ApiFilm {
   private val TimeFmt = DateTimeFormatter.ofPattern("HH:mm")
 
   def from(fs: FilmSchedule): ApiFilm = {
-    val r = fs.resolved
+    val resolved = fs.resolved
     val cinemaUrlMap = fs.cinemaFilmUrls.map { case (c, url) => c.displayName -> url }.toMap
     ApiFilm(
       title            = fs.movie.title,
       posterURL        = fs.posterUrl,
-      fallbackPosterURLs = r.fallbackPosterUrls,
+      fallbackPosterURLs = resolved.fallbackPosterUrls,
       runtimeMinutes   = fs.movie.runtimeMinutes,
       releaseYear      = fs.movie.releaseYear,
       genres           = fs.movie.genres,
       ratings          = ApiRatings(
-        imdb              = r.ratings.imdb,
-        imdbURL           = r.ratings.imdbUrl,
-        metascore         = r.ratings.metascore,
-        metacriticURL     = Some(r.ratings.metacriticUrl),
-        rottenTomatoes    = r.ratings.rottenTomatoes,
-        rottenTomatoesURL = Some(r.ratings.rottenTomatoesUrl),
-        filmweb           = r.ratings.filmweb,
-        filmwebURL        = Some(r.ratings.filmwebUrl)
+        imdb              = resolved.ratings.imdb,
+        imdbURL           = resolved.ratings.imdbUrl,
+        metascore         = resolved.ratings.metascore,
+        metacriticURL     = Some(resolved.ratings.metacriticUrl),
+        rottenTomatoes    = resolved.ratings.rottenTomatoes,
+        rottenTomatoesURL = Some(resolved.ratings.rottenTomatoesUrl),
+        filmweb           = resolved.ratings.filmweb,
+        filmwebURL        = Some(resolved.ratings.filmwebUrl)
       ),
       countries        = fs.movie.countries,
       directors        = fs.director,
@@ -779,12 +779,12 @@ object MovieController {
    *  skipping sources that aren't set. Feeds the text `og:description`
    *  ([[previewDescription]], joined with " · "). */
   private[controllers] def ratingTokens(film: FilmSchedule): Seq[String] = {
-    val r = film.resolved.ratings
+    val ratings = film.resolved.ratings
     Seq(
-      r.imdb.map(x => f"IMDb $x%.1f"),
-      r.rottenTomatoes.map(s => s"RT $s%"),
-      r.metascore.map(s => s"Metacritic $s"),
-      r.filmweb.map(x => f"Filmweb $x%.1f")
+      ratings.imdb.map(x => f"IMDb $x%.1f"),
+      ratings.rottenTomatoes.map(s => s"RT $s%"),
+      ratings.metascore.map(s => s"Metacritic $s"),
+      ratings.filmweb.map(x => f"Filmweb $x%.1f")
     ).flatten
   }
 

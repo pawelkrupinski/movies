@@ -81,15 +81,15 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema)
    *  stays stale and is retried. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     Try(detailHttp.get(ref)).toOption.map { html =>
-      val d = NoveKinoClient.parseDetail(html)
+      val detail = NoveKinoClient.parseDetail(html)
       FilmDetail(
-        synopsis    = d.synopsis,
-        cast        = d.cast,
-        director    = d.director,
-        releaseYear = d.year,
-        countries   = d.countries,
-        genres      = d.genres,
-        trailerUrl  = d.trailer
+        synopsis    = detail.synopsis,
+        cast        = detail.cast,
+        director    = detail.director,
+        releaseYear = detail.year,
+        countries   = detail.countries,
+        genres      = detail.genres,
+        trailerUrl  = detail.trailer
       )
     }
 

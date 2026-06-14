@@ -193,9 +193,9 @@ class FilmwebClient(http: HttpFetch) {
   }
 
   private[enrichment] def matchesByTitle(c: Candidate, query: String): Boolean = {
-    val q = query.toLowerCase.trim
+    val normalizedQuery = query.toLowerCase.trim
     val titles = (c.title +: c.originalTitle.toSeq).map(_.toLowerCase.trim)
-    titles.exists(_ == q) || titles.exists(t => MetacriticClient.isModifierSuffix(t, q))
+    titles.exists(_ == normalizedQuery) || titles.exists(t => MetacriticClient.isModifierSuffix(t, normalizedQuery))
   }
 
   private[enrichment] def matchesByDirector(c: Candidate, directors: Set[String]): Boolean = {

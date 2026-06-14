@@ -66,7 +66,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
   // hydration finishes write to the in-memory bucket regardless; once
   // hydrate lands, counts merge additively.
   coll.foreach { c =>
-    val t = new Thread(() => {
+    val thread = new Thread(() => {
       ensureIndexes(c)
       hydrate(c)
       tagColl.foreach(loadTags)
@@ -87,8 +87,8 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
         logger.info(s"UptimeMonitor: polling uptimeBuckets every ${PollIntervalMs / 1000}s for cross-process updates.")
       }
     }, "uptime-monitor-init")
-    t.setDaemon(true)
-    t.start()
+    thread.setDaemon(true)
+    thread.start()
   }
 
   /** Create the TTL + compound indexes, and bring an EXISTING bucket-TTL index's

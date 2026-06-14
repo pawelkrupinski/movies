@@ -74,18 +74,18 @@ class KinotekaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
    *  empty result as fresh. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     Try(detailHttp.get(ref)).toOption.map { html =>
-      val d = KinotekaClient.parseDetail(html)
+      val detail = KinotekaClient.parseDetail(html)
       FilmDetail(
-        synopsis       = d.synopsis,
-        cast           = d.cast,
-        director       = d.director,
-        runtimeMinutes = d.runtime,
-        releaseYear    = d.year,
-        originalTitle  = d.originalTitle,
-        countries      = d.countries,
+        synopsis       = detail.synopsis,
+        cast           = detail.cast,
+        director       = detail.director,
+        runtimeMinutes = detail.runtime,
+        releaseYear    = detail.year,
+        originalTitle  = detail.originalTitle,
+        countries      = detail.countries,
         genres         = Seq.empty, // genres come from the listing page, not the detail page
-        posterUrl      = d.poster,
-        trailerUrl     = d.trailer
+        posterUrl      = detail.poster,
+        trailerUrl     = detail.trailer
       )
     }
 

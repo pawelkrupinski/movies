@@ -123,8 +123,8 @@ object Chrome {
   }
 
   private def findFreePort(): Int = {
-    val s = new java.net.ServerSocket(0)
-    try s.getLocalPort finally s.close()
+    val serverSocket = new java.net.ServerSocket(0)
+    try serverSocket.getLocalPort finally serverSocket.close()
   }
 
   private[tools] def httpGet(url: String): String = {

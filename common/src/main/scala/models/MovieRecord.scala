@@ -344,17 +344,17 @@ case class MovieRecord(
   /** Display-time URL: validated stored URL if we have one, else an on-the-fly
    *  search URL (for legacy records that pre-date URL persistence). */
   def metacriticHref(fallbackTitle: String): String = metacriticUrl.getOrElse {
-    val q = java.net.URLEncoder.encode(originalTitle.getOrElse(fallbackTitle), "UTF-8")
-    s"https://www.metacritic.com/search/$q/?category=2"
+    val encodedQuery = java.net.URLEncoder.encode(originalTitle.getOrElse(fallbackTitle), "UTF-8")
+    s"https://www.metacritic.com/search/$encodedQuery/?category=2"
   }
 
   def rottenTomatoesHref(fallbackTitle: String): String = rottenTomatoesUrl.getOrElse {
-    val q = java.net.URLEncoder.encode(originalTitle.getOrElse(fallbackTitle), "UTF-8")
-    s"https://www.rottentomatoes.com/search?search=$q"
+    val encodedQuery = java.net.URLEncoder.encode(originalTitle.getOrElse(fallbackTitle), "UTF-8")
+    s"https://www.rottentomatoes.com/search?search=$encodedQuery"
   }
 
   def filmwebHref(fallbackTitle: String): String = filmwebUrl.getOrElse {
-    val q = java.net.URLEncoder.encode(originalTitle.getOrElse(fallbackTitle), "UTF-8")
-    s"https://www.filmweb.pl/search?query=$q"
+    val encodedQuery = java.net.URLEncoder.encode(originalTitle.getOrElse(fallbackTitle), "UTF-8")
+    s"https://www.filmweb.pl/search?query=$encodedQuery"
   }
 }

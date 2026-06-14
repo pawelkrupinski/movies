@@ -90,16 +90,16 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
    *  so the task stays stale and is retried. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     Try(detailHttp.get(ref)).toOption.map { html =>
-      val d = NoweHoryzontyClient.parseDetail(html)
+      val detail = NoweHoryzontyClient.parseDetail(html)
       FilmDetail(
-        synopsis       = d.synopsis,
-        director       = d.director,
-        runtimeMinutes = d.runtimeMinutes,
-        releaseYear    = d.year,
-        originalTitle  = d.originalTitle,
-        countries      = d.countries,
-        genres         = d.genres,
-        posterUrl      = d.poster
+        synopsis       = detail.synopsis,
+        director       = detail.director,
+        runtimeMinutes = detail.runtimeMinutes,
+        releaseYear    = detail.year,
+        originalTitle  = detail.originalTitle,
+        countries      = detail.countries,
+        genres         = detail.genres,
+        posterUrl      = detail.poster
       )
     }
 

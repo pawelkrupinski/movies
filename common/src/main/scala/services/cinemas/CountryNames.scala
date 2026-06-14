@@ -148,8 +148,8 @@ object CountryNames {
    *  exotic country names rather than dropping them silently. Matching
    *  is case-insensitive and whitespace-tolerant. */
   def canonical(raw: String): String = {
-    val t = raw.trim
-    Aliases.getOrElse(t.toLowerCase, t)
+    val trimmed = raw.trim
+    Aliases.getOrElse(trimmed.toLowerCase, trimmed)
   }
 
   def isPolish(name: String): Boolean = Polish.contains(canonical(name))

@@ -70,14 +70,14 @@ class AmondoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
    *  empty result as fresh. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     Try(detailHttp.get(ref)).toOption.map { html =>
-      val d = AmondoClient.parseDetail(html)
+      val detail = AmondoClient.parseDetail(html)
       FilmDetail(
-        synopsis       = d.synopsis,
+        synopsis       = detail.synopsis,
         cast           = Seq.empty,
-        director       = d.director,
-        runtimeMinutes = d.runtimeMinutes,
-        releaseYear    = d.year,
-        countries      = d.countries
+        director       = detail.director,
+        runtimeMinutes = detail.runtimeMinutes,
+        releaseYear    = detail.year,
+        countries      = detail.countries
       )
     }
 

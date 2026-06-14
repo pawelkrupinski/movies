@@ -31,14 +31,14 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
    *  fetch failure so the task stays stale and is retried. */
   def fetchFilmDetail(ref: String): Option[FilmDetail] =
     Try(detailFetch.get(ref)).toOption.map { html =>
-      val d = CinemaCityClient.parseDetails(html)
+      val detail = CinemaCityClient.parseDetails(html)
       FilmDetail(
-        synopsis   = d.synopsis,
-        cast       = d.cast,
-        director   = d.director,
-        countries  = d.countries,
-        genres     = d.genres,
-        trailerUrl = d.trailerUrl
+        synopsis   = detail.synopsis,
+        cast       = detail.cast,
+        director   = detail.director,
+        countries  = detail.countries,
+        genres     = detail.genres,
+        trailerUrl = detail.trailerUrl
       )
     }
 

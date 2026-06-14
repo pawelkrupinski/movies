@@ -19,9 +19,9 @@ object OccurrenceKey {
    *  `offset` past the epoch-aligned boundary. Stable across machines for any
    *  instant in the same window. */
   def at(job: String, nowMillis: Long, period: FiniteDuration, offset: FiniteDuration): String = {
-    val p = period.toMillis
-    val o = offset.toMillis
-    val boundary = Math.floorDiv(nowMillis - o, p) * p + o
+    val periodMillis = period.toMillis
+    val offsetMillis = offset.toMillis
+    val boundary = Math.floorDiv(nowMillis - offsetMillis, periodMillis) * periodMillis + offsetMillis
     s"$job@${java.time.Instant.ofEpochMilli(boundary)}"
   }
 }

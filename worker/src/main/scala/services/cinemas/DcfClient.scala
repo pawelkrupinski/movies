@@ -86,16 +86,16 @@ class DcfClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
    *  empty result as fresh. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     Try(detailHttp.get(ref)).toOption.map { html =>
-      val d = DcfClient.parseDetail(html)
+      val detail = DcfClient.parseDetail(html)
       FilmDetail(
-        synopsis       = d.synopsis,
+        synopsis       = detail.synopsis,
         cast           = Seq.empty,
-        director       = d.director,
-        runtimeMinutes = d.runtimeMinutes,
-        releaseYear    = d.year,
-        countries      = d.countries,
-        genres         = d.genres,
-        trailerUrl     = d.trailer
+        director       = detail.director,
+        runtimeMinutes = detail.runtimeMinutes,
+        releaseYear    = detail.year,
+        countries      = detail.countries,
+        genres         = detail.genres,
+        trailerUrl     = detail.trailer
       )
     }
 

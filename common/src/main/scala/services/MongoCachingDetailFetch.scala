@@ -37,7 +37,7 @@ class MongoCachingDetailFetch(
 
   // TTL index built in a daemon thread so construction never blocks on Mongo.
   coll.foreach { c =>
-    val t = new Thread(() => {
+    val thread = new Thread(() => {
       Try(
         Await.result(
           c.createIndex(Indexes.ascending("fetchedAt"),
@@ -46,8 +46,8 @@ class MongoCachingDetailFetch(
       ).recover { case exception => logger.warn(s"Detail-cache index creation failed: ${exception.getMessage}") }
       ()
     }, "detail-cache-init")
-    t.setDaemon(true)
-    t.start()
+    thread.setDaemon(true)
+    thread.start()
   }
 
   override def get(url: String): String = coll match {

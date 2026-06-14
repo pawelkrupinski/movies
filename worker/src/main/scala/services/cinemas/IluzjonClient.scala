@@ -81,16 +81,16 @@ class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
    *  recording an empty result as fresh. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     Try(detailHttp.get(ref)).toOption.map { html =>
-      val d = IluzjonClient.parseDetail(html)
+      val detail = IluzjonClient.parseDetail(html)
       FilmDetail(
-        synopsis       = d.synopsis,
-        cast           = d.cast,
-        director       = d.director,
-        runtimeMinutes = d.runtimeMinutes,
-        releaseYear    = d.year,
-        originalTitle  = d.originalTitle,
-        countries      = d.countries,
-        posterUrl      = d.poster
+        synopsis       = detail.synopsis,
+        cast           = detail.cast,
+        director       = detail.director,
+        runtimeMinutes = detail.runtimeMinutes,
+        releaseYear    = detail.year,
+        originalTitle  = detail.originalTitle,
+        countries      = detail.countries,
+        posterUrl      = detail.poster
       )
     }
 

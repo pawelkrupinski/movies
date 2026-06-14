@@ -206,7 +206,7 @@ object RealHttpFetch {
     // Swallow a malformed URL here so routing never changes failure semantics —
     // the subsequent buildRequest's own URI.create throws it the same way.
     scala.util.Try(Option(URI.create(url).getHost)).toOption.flatten.exists { host =>
-      val h = host.toLowerCase
-      SlowTlsHostSuffixes.exists(s => h == s || h.endsWith("." + s))
+      val lowerHost = host.toLowerCase
+      SlowTlsHostSuffixes.exists(suffix => lowerHost == suffix || lowerHost.endsWith("." + suffix))
     }
 }

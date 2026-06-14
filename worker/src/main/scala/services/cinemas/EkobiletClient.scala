@@ -139,8 +139,8 @@ object EkobiletClient {
   /** The next date with the given month/day on or after `today` (so a December
    *  listing seen in January resolves to this year, not last). */
   private def nextOccurrence(today: LocalDate, month: Int, day: Int): LocalDate = {
-    val y = today.getYear
-    val thisYear = Try(LocalDate.of(y, month, day)).getOrElse(today)
-    if (thisYear.isBefore(today)) Try(LocalDate.of(y + 1, month, day)).getOrElse(thisYear) else thisYear
+    val year = today.getYear
+    val thisYear = Try(LocalDate.of(year, month, day)).getOrElse(today)
+    if (thisYear.isBefore(today)) Try(LocalDate.of(year + 1, month, day)).getOrElse(thisYear) else thisYear
   }
 }
