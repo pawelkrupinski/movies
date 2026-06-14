@@ -53,6 +53,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -159,10 +160,11 @@ private fun FiltersList(
     // list to its top mid-gesture — would spill its leftover into the
     // ModalBottomSheet's own nested-scroll drag and yank the sheet closed instead
     // of scrolling (see FiltersSheetDragDismissTest). The gate snapshots "was the
-    // list at the top when this drag began?" from the connection's own scroll
-    // events — NOT a separate pointerInput, which shadowed the rows' taps (a swipe
-    // near a section header was read as a tap that collapsed it, and the first tap
-    // after a scroll was swallowed).
+    // list at the top when this drag began?" from the list's own
+    // [DragInteraction.Start] — which fires once per real drag and ignores
+    // programmatic scrolls — NOT a pointerInput, which shadowed the rows' taps
+    // (a swipe near a section header read as a tap that collapsed it, the first
+    // tap after a scroll swallowed).
     val listState = rememberLazyListState()
     val gate = remember(listState) { TopOnlyDismissScrollGate(atTop = { !listState.canScrollBackward }) }
     LaunchedEffect(gate, listState) {
@@ -359,6 +361,11 @@ private fun collapsibleNameFilter(
  * badge, chevron) over a body that only composes when expanded. Shared by
  * Ukryte filmy, Kina, and the Kraj/Gatunek/… name filters so they fold
  * identically. Each call site keeps its own expanded state.
+ *
+ * [rememberSaveable], not [remember]: an expanded section (e.g. Kina with every
+ * cinema) is one tall LazyColumn item, so scrolling past it disposes the item
+ * and a plain `remember` would reset it to collapsed. LazyColumn restores
+ * rememberSaveable per item key, so it stays expanded when scrolled back.
  */
 @Composable
 private fun CollapsibleSection(
@@ -366,7 +373,7 @@ private fun CollapsibleSection(
     countLabel: String?,
     content: @Composable () -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
     Column {
         Row(
             Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(vertical = 8.dp),

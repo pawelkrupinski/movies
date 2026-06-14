@@ -170,6 +170,36 @@ class FiltersSheetOrderTest {
         compose.onNodeWithText("Kino 30").assertExists()
     }
 
+    /**
+     * Expanded Kina stays expanded after it scrolls out of view and back. The
+     * expanded section is one tall LazyColumn item; scrolling past it disposes
+     * the item, and a plain `remember` would reset it to collapsed (CollapsibleSection
+     * now uses rememberSaveable). Fails — "Kino 01" can't be found after the round
+     * trip — if the expanded state is lost on disposal.
+     */
+    @Test
+    fun expandedKinaStaysExpandedAfterScrollingPastIt() {
+        val cinemas = (1..30).map { i ->
+            TestData.cinema("Kino %02d".format(i), listOf(TestData.slot("18:00")))
+        }
+        val films = listOf(TestData.film("Film", listOf(TestData.day("2026-06-14", cinemas))))
+
+        compose.setContent {
+            FiltersSheetContent(viewModel(), films = films)
+        }
+
+        val list = compose.onNode(hasScrollAction())
+        list.performScrollToNode(hasText("Kina"))
+        compose.onNodeWithText("Kina").performClick() // expand
+
+        // Scroll all the way past the (now tall) Kina item so it disposes, then back.
+        list.performScrollToNode(hasText("Zaloguj przez Google"))
+        list.performScrollToNode(hasText("Kino 01"))
+
+        // Still expanded — the cinemas survived the round trip.
+        compose.onNodeWithText("Kino 01").assertExists()
+    }
+
     @Test
     fun cityPickerSitsBelowTheFiltersAndAboveTheAccountSection() {
         compose.setContent {
