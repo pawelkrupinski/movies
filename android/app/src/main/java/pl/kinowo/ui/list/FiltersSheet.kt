@@ -708,14 +708,14 @@ internal class WindowCenteredMenuPositionProvider(
         layoutDirection: LayoutDirection,
         popupContentSize: IntSize,
     ): IntOffset {
-        val x = ((windowSize.width - popupContentSize.width) / 2).coerceAtLeast(0)
+        val horizontalOffset = ((windowSize.width - popupContentSize.width) / 2).coerceAtLeast(0)
         val below = anchorBounds.bottom + verticalGapPx
-        val y =
+        val verticalOffset =
             if (below + popupContentSize.height <= windowSize.height || anchorBounds.top < popupContentSize.height) {
                 below
             } else {
                 (anchorBounds.top - verticalGapPx - popupContentSize.height).coerceAtLeast(0)
             }
-        return IntOffset(x, y)
+        return IntOffset(horizontalOffset, verticalOffset)
     }
 }

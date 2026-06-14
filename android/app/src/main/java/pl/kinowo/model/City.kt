@@ -136,13 +136,13 @@ object Cities {
         nearestSlug?.takeIf { it != chosenSlug }?.let { switchPromptKey(chosenSlug, it) }
 
     /** Great-circle distance in kilometres between two lat/lon points. */
-    private fun haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+    private fun haversineKm(latitude1: Double, longitude1: Double, latitude2: Double, longitude2: Double): Double {
         val earthRadiusKm = 6371.0
-        val dLat = Math.toRadians(lat2 - lat1)
-        val dLon = Math.toRadians(lon2 - lon1)
-        val a = sin(dLat / 2) * sin(dLat / 2) +
-            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-            sin(dLon / 2) * sin(dLon / 2)
-        return earthRadiusKm * 2 * atan2(sqrt(a), sqrt(1 - a))
+        val deltaLatitude = Math.toRadians(latitude2 - latitude1)
+        val deltaLongitude = Math.toRadians(longitude2 - longitude1)
+        val squareHalfChord = sin(deltaLatitude / 2) * sin(deltaLatitude / 2) +
+            cos(Math.toRadians(latitude1)) * cos(Math.toRadians(latitude2)) *
+            sin(deltaLongitude / 2) * sin(deltaLongitude / 2)
+        return earthRadiusKm * 2 * atan2(sqrt(squareHalfChord), sqrt(1 - squareHalfChord))
     }
 }

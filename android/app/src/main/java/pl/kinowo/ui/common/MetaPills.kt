@@ -84,12 +84,12 @@ private fun YearText(label: String, scale: Float, modifier: Modifier = Modifier)
 }
 
 /** "157" → "2h 37min", "45" → "45min". Matches the web/iOS runtime label. */
-fun formatRuntime(mins: Int): String {
-    val h = mins / 60
-    val m = mins % 60
+fun formatRuntime(totalMinutes: Int): String {
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
     return when {
-        h > 0 && m > 0 -> "${h}h ${m}min"
-        h > 0 -> "${h}h"
-        else -> "${m}min"
+        hours > 0 && minutes > 0 -> "${hours}h ${minutes}min"
+        hours > 0 -> "${hours}h"
+        else -> "${minutes}min"
     }
 }

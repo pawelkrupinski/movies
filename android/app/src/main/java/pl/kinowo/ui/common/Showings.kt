@@ -86,18 +86,18 @@ data class ShowtimeChipStyle(
  *  it through `CompositionLocalProvider`. */
 val LocalShowtimeChipStyle = compositionLocalOf { ShowtimeChipStyle() }
 
-/** A copy with every dimension multiplied by [s] — the viewport-width factor
- *  from [ShowtimeChipMetrics]. Weights are untouched. `s == 1f` (the 360 dp
+/** A copy with every dimension multiplied by [scale] — the viewport-width factor
+ *  from [ShowtimeChipMetrics]. Weights are untouched. `scale == 1f` (the 360 dp
  *  baseline) returns this unchanged, so a chip at the floor renders the dialled
  *  values exactly. */
-fun ShowtimeChipStyle.scaledBy(s: Float): ShowtimeChipStyle =
-    if (s == 1f) this else copy(
-        timeFontSize = timeFontSize * s,
-        formatFontSize = formatFontSize * s,
-        horizontalInset = horizontalInset * s,
-        verticalInset = verticalInset * s,
-        internalGap = internalGap * s,
-        interPillGap = interPillGap * s,
+fun ShowtimeChipStyle.scaledBy(scale: Float): ShowtimeChipStyle =
+    if (scale == 1f) this else copy(
+        timeFontSize = timeFontSize * scale,
+        formatFontSize = formatFontSize * scale,
+        horizontalInset = horizontalInset * scale,
+        verticalInset = verticalInset * scale,
+        internalGap = internalGap * scale,
+        interPillGap = interPillGap * scale,
     )
 
 /**
@@ -123,11 +123,11 @@ fun Showings(
     // chip is the same size in landscape as in portrait); two-per-row stays safe
     // because the card column grows faster than the scaled chips (see
     // ShowtimeChipMetrics). scale == 1f at the 360 dp floor.
-    val s = ShowtimeChipMetrics.scale(layoutWidthDp())
-    val chipStyle = LocalShowtimeChipStyle.current.scaledBy(s)
+    val scale = ShowtimeChipMetrics.scale(layoutWidthDp())
+    val chipStyle = LocalShowtimeChipStyle.current.scaledBy(scale)
     val cardSpacing = LocalCardSpacingStyle.current
-    val showingsBlock = cardSpacing.showingsBlock * s
-    val dayToCinema = cardSpacing.dayToCinema * s
+    val showingsBlock = cardSpacing.showingsBlock * scale
+    val dayToCinema = cardSpacing.dayToCinema * scale
     val total = film.showings.sumOf { d -> d.cinemas.sumOf { it.showtimes.size } }
     var budget = maxChips ?: Int.MAX_VALUE
     var shown = 0
@@ -144,7 +144,7 @@ fun Showings(
                 Text(
                     text = day.label.uppercase(),
                     color = TextSecondary,
-                    fontSize = (11 * s).sp,
+                    fontSize = (11 * scale).sp,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Column(
@@ -157,7 +157,7 @@ fun Showings(
                             Text(
                                 text = cg.cinema,
                                 color = CinemaBlue,
-                                fontSize = (12 * s).sp,
+                                fontSize = (12 * scale).sp,
                                 fontWeight = FontWeight.Medium,
                                 modifier = if (cg.cinemaURL != null) {
                                     Modifier.clickable { openUrl(context, cg.cinemaURL) }
@@ -190,7 +190,7 @@ fun Showings(
             Text(
                 text = "+$hidden ${seansForm(hidden)}",
                 color = TextSecondary,
-                fontSize = (11 * s).sp,
+                fontSize = (11 * scale).sp,
                 fontWeight = FontWeight.Medium,
             )
         }
@@ -210,7 +210,7 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
     val style = LocalShowtimeChipStyle.current
     // The room tooltip grows with the viewport in lockstep with the chip it pops
     // from — same factor `Showings` scales `chipStyle` by. scale == 1f at 360 dp.
-    val s = ShowtimeChipMetrics.scale(layoutWidthDp())
+    val scale = ShowtimeChipMetrics.scale(layoutWidthDp())
     val base = Modifier
         // Outermost, so the tagged node's bounds include the padding (a tag
         // placed after .padding() would wrap only the inner text).
@@ -255,12 +255,12 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
             // FlowRow neighbours) sideways. A Popup is its own window — it never
             // resizes the pill, and with clipping disabled it floats free of the
             // card's rounded-Surface clip. It's anchored just above the pill.
-            val gapPx = with(LocalDensity.current) { (RoomTooltipGap * s).roundToPx() }
+            val gapPx = with(LocalDensity.current) { (RoomTooltipGap * scale).roundToPx() }
             Popup(
                 popupPositionProvider = remember(gapPx) { RoomTooltipPositionProvider(gapPx) },
                 properties = PopupProperties(focusable = false, clippingEnabled = false),
             ) {
-                RoomTooltip(room, s)
+                RoomTooltip(room, scale)
             }
         }
     }
@@ -272,23 +272,23 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
 private val RoomTooltipGap = 20.dp
 
 @Composable
-private fun RoomTooltip(room: String, s: Float) {
+private fun RoomTooltip(room: String, scale: Float) {
     // The tooltip pops on a press-and-hold, so the thumb is parked right on the
     // pill. It's sized to stay legible around the finger — the 24sp text (1.5×
     // the pill) + padding carry it — without dominating the card; half the size
     // of the original oversized bubble. Every dimension scales with the viewport
-    // (factor `s`) so the bubble tracks the chip. Size pinned by RoomTooltipSizeTest.
-    val corner = RoundedCornerShape((6 * s).dp)
+    // (factor `scale`) so the bubble tracks the chip. Size pinned by RoomTooltipSizeTest.
+    val corner = RoundedCornerShape((6 * scale).dp)
     Text(
         text = room,
         color = RoomTooltipText,
-        fontSize = (24 * s).sp,
+        fontSize = (24 * scale).sp,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier
             .clip(corner)
             .background(RoomTooltipBackground)
-            .border((1 * s).dp, RoomTooltipBorder, corner)
-            .padding(horizontal = (10 * s).dp, vertical = (6 * s).dp),
+            .border((1 * scale).dp, RoomTooltipBorder, corner)
+            .padding(horizontal = (10 * scale).dp, vertical = (6 * scale).dp),
     )
 }
 
@@ -322,11 +322,11 @@ private class RoomTooltipPositionProvider(private val gapPx: Int) : PopupPositio
 }
 
 /** Polish plural: 1 seans, 2–4 seanse, else seansów. */
-private fun seansForm(n: Int): String {
-    val mod10 = n % 10
-    val mod100 = n % 100
+private fun seansForm(count: Int): String {
+    val mod10 = count % 10
+    val mod100 = count % 100
     return when {
-        n == 1 -> "seans"
+        count == 1 -> "seans"
         mod10 in 2..4 && mod100 !in 12..14 -> "seanse"
         else -> "seansów"
     }

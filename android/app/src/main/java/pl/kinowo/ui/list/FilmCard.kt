@@ -72,11 +72,11 @@ fun FilmCard(
     // Card gaps scale with the device's portrait width off the 360 dp baseline,
     // in lockstep with the chips (layoutWidthDp, so landscape matches portrait —
     // see ShowtimeChipMetrics). scale == 1f at the 360 dp floor.
-    val s = ShowtimeChipMetrics.scale(layoutWidthDp())
+    val scale = ShowtimeChipMetrics.scale(layoutWidthDp())
     var menuExpanded by remember { mutableStateOf(false) }
     Surface(
         color = CardSurface,
-        shape = RoundedCornerShape((12 * s).dp),
+        shape = RoundedCornerShape((12 * scale).dp),
         // A tap anywhere opens the detail screen. Long-press is deliberately a
         // no-op at the card level: the share menu lives on the POSTER and the
         // room tooltip on each showtime CHIP (both below). A card-wide
@@ -118,9 +118,9 @@ fun FilmCard(
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding((6 * s).dp)
-                        .size((28 * s).dp)
-                        .clip(RoundedCornerShape((14 * s).dp))
+                        .padding((6 * scale).dp)
+                        .size((28 * scale).dp)
+                        .clip(RoundedCornerShape((14 * scale).dp))
                         .background(Color.Black.copy(alpha = 0.45f))
                         .clickable(onClick = onHide),
                     contentAlignment = Alignment.Center,
@@ -129,7 +129,7 @@ fun FilmCard(
                         Icons.Filled.Close,
                         contentDescription = "Ukryj film",
                         tint = Color.White,
-                        modifier = Modifier.size((16 * s).dp),
+                        modifier = Modifier.size((16 * scale).dp),
                     )
                 }
             }
@@ -142,7 +142,7 @@ fun FilmCard(
                 Text(
                     text = film.title,
                     color = Color.White,
-                    fontSize = (14 * s).sp,
+                    fontSize = (14 * scale).sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -151,17 +151,17 @@ fun FilmCard(
                 MetaPills(
                     runtimeMinutes = film.runtimeMinutes,
                     releaseYear = film.releaseYear,
-                    scale = s,
-                    modifier = Modifier.padding(top = spacing.titleToMeta * s),
+                    scale = scale,
+                    modifier = Modifier.padding(top = spacing.titleToMeta * scale),
                 )
                 if (!film.ratings.isEmpty) {
-                    RatingBadges(film.ratings, Modifier.padding(top = spacing.metaToRatings * s))
+                    RatingBadges(film.ratings, Modifier.padding(top = spacing.metaToRatings * scale))
                 }
                 Showings(
                     film = film,
                     showCinemaHeaders = showCinemaHeaders,
                     maxChips = 14,
-                    modifier = Modifier.padding(top = spacing.ratingsToShowings * s),
+                    modifier = Modifier.padding(top = spacing.ratingsToShowings * scale),
                 )
             }
         }

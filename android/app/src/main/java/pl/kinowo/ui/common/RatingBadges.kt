@@ -111,19 +111,19 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
             )
         }
         ratings.metascore?.let { v ->
-            val c = if (v >= 61) MetaGood else if (v >= 40) MetaMid else MetaBad
+            val color = if (v >= 61) MetaGood else if (v >= 40) MetaMid else MetaBad
             SinglePill(
-                text = v.toString(), fg = c,
+                text = v.toString(), fg = color,
                 fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
                 weight = style.solidWeight,
                 onClick = { openUrl(context, ratings.metacriticURL) },
             )
         }
         ratings.rottenTomatoes?.let { v ->
-            val c = if (v >= 60) RtFresh else RtRotten
+            val color = if (v >= 60) RtFresh else RtRotten
             LabelValuePill(
-                label = "RT", labelBg = c, labelFg = Color.White,
-                value = "$v%", valueFg = c,
+                label = "RT", labelBg = color, labelFg = Color.White,
+                value = "$v%", valueFg = color,
                 fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
                 labelWeight = style.labelWeight, valueWeight = style.valueWeight,
                 onClick = { openUrl(context, ratings.rottenTomatoesURL) },
@@ -164,7 +164,7 @@ internal fun pillTextStyle(fontSize: TextUnit, weight: FontWeight) = TextStyle(
  *  place — a whole-number score like 7.0 renders "7.0", not "7" — and pins
  *  [Locale.US] so the separator is a dot, never a Polish-locale comma. Matches
  *  the web's `f"$r%.1f"` and iOS's `Film.Ratings.scoreText`. */
-internal fun oneDecimal(v: Double): String = String.format(Locale.US, "%.1f", v)
+internal fun oneDecimal(value: Double): String = String.format(Locale.US, "%.1f", value)
 
 @Composable
 private fun LabelValuePill(
