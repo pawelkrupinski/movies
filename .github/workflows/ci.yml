@@ -348,6 +348,19 @@ jobs:
         permissions:
             contents: read
             checks: write
+        # Throwaway Mongo for the run. The IT suites self-seed every doc they
+        # assert on (MovieRepoIntegrationSpec, MongoTaskQueueIntegrationSpec,
+        # UserRepoIntegrationSpec, …) and create their own collections/indexes
+        # on first use, so a bare empty instance is all they need. Previously
+        # this job wrote to the shared Atlas DB via `secrets.MONGODB_URI`; a run
+        # cancelled mid-suite — the concurrency group kills superseded pushes
+        # before `afterAll` — stranded sentinel fixtures there (the "Dotted
+        # (1902)" rows). An ephemeral service can't be polluted.
+        services:
+            mongo:
+                image: mongo:7
+                ports:
+                    - 27017:27017
         steps:
             - uses: actions/checkout@v4
 
@@ -376,8 +389,8 @@ jobs:
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
-                  MONGODB_URI:     ${{ secrets.MONGODB_URI }}
-                  MONGODB_DB:      ${{ secrets.MONGODB_DB }}
+                  MONGODB_URI:     mongodb://127.0.0.1:27017/kinowo?directConnection=true
+                  MONGODB_DB:      kinowo
 
             - name: Publish test report
               if: always()
