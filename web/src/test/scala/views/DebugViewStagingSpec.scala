@@ -8,8 +8,9 @@ import services.staging.StagingRecord
 /**
  * /debug renders a "Pending enrichment (staging)" section ABOVE the corpus table
  * listing the per-cinema newcomer rows incubating in `pending_movies`, so a dev
- * can watch a film resolve then graduate. The section is absent when nothing is
- * incubating.
+ * can watch a film resolve then graduate. The section's header (incl. the queue
+ * columns) always renders — an empty `pending_movies` shows as an empty table,
+ * not a missing section; only the data rows are conditional on incubating films.
  */
 class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
 
@@ -20,9 +21,15 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
       tmdbId = tmdbId,
       data = Map[Source, SourceData](Helios -> SourceData(title = Some(title), releaseYear = year))))
 
-  "debug view" should "not render the staging section when nothing is incubating" in {
+  "debug view" should "render the empty staging table header when nothing is incubating" in {
     val html = views.html.debug(Seq.empty, Map.empty[String, String]).body
-    html should not include ("Pending enrichment")
+    // The section + its queue columns always render, so an empty pending queue is
+    // a visible empty table rather than a vanished section.
+    html should include ("Pending enrichment (staging)")
+    html should include ("<th>Enrich q#</th>")
+    html should include ("<th>TMDB q#</th>")
+    // ...with no incubating rows — a staging data row carries data-queue-title.
+    html should not include ("data-queue-title")
   }
 
   it should "list incubating staging rows above the corpus, before TMDB concludes" in {
