@@ -116,10 +116,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         StoredMovieRecord("Unresolved Film", Some(2023), MovieRecord()),
         StoredMovieRecord("Done Film",       Some(2022), MovieRecord(tmdbId = Some(7))),
       )
-      // One staging (pending_movies) row so the staging table renders with its two
-      // queue columns; its tasks are the queue snapshot below.
+      // Two staging (pending_movies) rows: "Staging Film" is still working (detail
+      // pending, no TMDB id) so its columns show queue badges; "Done Newcomer" has
+      // detail done + a TMDB id, so its columns show green "done" marks instead.
       val debugStaging = Seq(
-        StagingRecord(CinemaCityWroclavia, "Staging Film", Some(2026), MovieRecord(detailPending = true)))
+        StagingRecord(CinemaCityWroclavia, "Staging Film",  Some(2026), MovieRecord(detailPending = true)),
+        StagingRecord(CinemaCityWroclavia, "Done Newcomer", Some(2025), MovieRecord(tmdbId = Some(550))))
       val debugHtml: String = views.html.debug(debugRows, Map.empty[String, String], debugStaging).body
       // The queue snapshot the page polls (/debug/queue). The staging row's
       // EnrichDetails is being worked on (▶ running) while its ResolveTmdb waits at
@@ -2674,6 +2676,20 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         """document.querySelector('#staging-t tbody tr.data .tmdb-q .badge').textContent""") shouldBe "#1"
       page.evalString(
         """document.querySelector('#staging-t tbody tr.data .enrich-q .badge').textContent""") shouldBe "▶ running"
+    }
+  }
+
+  // A row whose step is complete shows a green "done" mark instead of a queue
+  // badge: a checkbox in Enrich q# once detail is done, a tick in TMDB q# once a
+  // TMDB id is set. "Done Newcomer" has both, so neither column shows a badge.
+  it should "show a green check/tick instead of a queue badge once a step is done" in {
+    onDebug { page =>
+      def cell(col: String) = s"""document.querySelector('#staging-t tbody tr.data[data-queue-title="Done Newcomer"] $col')"""
+      page.waitFor(s"""!!${cell(".enrich-q .done-check")} && !!${cell(".tmdb-q .done-tick")}""")
+      page.evalString(cell(".enrich-q .done-check") + ".textContent") shouldBe "✓"
+      page.evalString(cell(".tmdb-q .done-tick") + ".textContent")    shouldBe "✓"
+      // ...and the done cells hold no queue badge.
+      page.evalBool(s"""!${cell(".enrich-q .badge")} && !${cell(".tmdb-q .badge")}""") shouldBe true
     }
   }
 

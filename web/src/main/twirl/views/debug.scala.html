@@ -113,6 +113,9 @@
     .badge.q-none { color: #555; }
     .badge.q-wait { color: #aad4ff; background: #16263a; border: 1px solid #244a6e; }
     .badge.q-run  { color: #cfe3d6; background: #14241a; border: 1px solid #245038; }
+    /* "Done" marks: a green-background checkbox for Enrich q#, a green tick for TMDB q#. */
+    #staging-t .done-check { background: #1f6b2e; color: #eafff0; border-radius: 3px; padding: 0 .35rem; font-weight: bold; }
+    #staging-t .done-tick  { color: #46c463; font-weight: bold; }
   </style>
   @_ratingStyles()
 </head>
@@ -130,13 +133,16 @@
   </thead>
   <tbody>
   @* `data-queue-title`/`data-queue-year` are the identity title+year the worker's
-     enrichment dedup keys are built from; the two q# cells (`.enrich-q`/`.tmdb-q`)
-     are filled live from the /debug/queue poll by `rebuildStagingQueue`, mirroring
-     the corpus pending badges but as per-row columns. *@
+     enrichment dedup keys are built from; `data-detail-pending`/`data-tmdb-set`
+     drive the per-row "done" indicators. The two q# cells (`.enrich-q`/`.tmdb-q`)
+     are filled by `rebuildStagingQueue`: a green ✓ once that step is done, else
+     the live /debug/queue place. *@
   @for(r <- staging) {
     <tr class="data" data-row-id="@{r.cinema.displayName}|@{r.title}|@{r.year.map(_.toString).getOrElse("")}"
         data-queue-title="@r.title"
-        data-queue-year="@r.year.map(_.toString).getOrElse("")">
+        data-queue-year="@r.year.map(_.toString).getOrElse("")"
+        data-detail-pending="@r.record.detailPending"
+        data-tmdb-set="@r.record.tmdbId.isDefined">
       <td>@r.cinema.displayName</td>
       <td class="title">@r.title</td>
       <td>@r.year.map(_.toString).getOrElse("—")</td>
@@ -299,10 +305,11 @@
   }
 
   // ── Staging table queue columns ────────────────────────────────────────────
-  // Each incubating staging row shows where its work sits in the durable queue as
-  // two columns: "Enrich q#" (its EnrichDetails task) and "TMDB q#" (its
-  // ResolveTmdb task). Filled off the /debug/queue poll, so the places tick live
-  // as the worker drains the queue — no page refresh.
+  // Each incubating staging row's two columns show one of two things per step:
+  //   • a green "done" mark once the step is complete — a checkbox in "Enrich q#"
+  //     when detail enrichment is done/not needed (`data-detail-pending=false`),
+  //     a tick in "TMDB q#" once a TMDB id is set (`data-tmdb-set=true`);
+  //   • otherwise the step's live place in the durable queue (off /debug/queue).
   function rebuildStagingQueue() {
     const staging = document.getElementById('staging-t');
     if (!staging) return;
@@ -310,20 +317,38 @@
     staging.querySelectorAll('tbody tr.data').forEach(tr => {
       const title = tr.dataset.queueTitle || '';
       const year  = tr.dataset.queueYear || '';
-      const detail = queueActive.filter(t => t.taskType === 'EnrichDetails' && t.dedupKey.endsWith(detailSuffix(title, year)));
-      const tmdb   = queueActive.filter(t => t.taskType === 'ResolveTmdb'   && t.dedupKey === tmdbKey(title, year));
-      paintQueueCell(tr.querySelector('.enrich-q'), badgeFor(detail, places));
-      paintQueueCell(tr.querySelector('.tmdb-q'),   badgeFor(tmdb, places));
+      if (tr.dataset.detailPending !== 'true') {
+        paintDone(tr.querySelector('.enrich-q'), 'done-check'); // detail done / not needed
+      } else {
+        const detail = queueActive.filter(t => t.taskType === 'EnrichDetails' && t.dedupKey.endsWith(detailSuffix(title, year)));
+        paintQueueCell(tr.querySelector('.enrich-q'), badgeFor(detail, places));
+      }
+      if (tr.dataset.tmdbSet === 'true') {
+        paintDone(tr.querySelector('.tmdb-q'), 'done-tick'); // TMDB resolved
+      } else {
+        const tmdb = queueActive.filter(t => t.taskType === 'ResolveTmdb' && t.dedupKey === tmdbKey(title, year));
+        paintQueueCell(tr.querySelector('.tmdb-q'), badgeFor(tmdb, places));
+      }
     });
   }
 
-  // Render one queue badge into a staging cell, replacing any prior badge.
+  // Render one queue badge into a staging cell, replacing any prior content.
   function paintQueueCell(td, b) {
     if (!td) return;
     td.textContent = '';
     const span = document.createElement('span');
     span.className = 'badge ' + b.cls;
     span.textContent = b.text;
+    td.appendChild(span);
+  }
+
+  // Render a green "done" mark (✓) of class `cls` into a staging cell.
+  function paintDone(td, cls) {
+    if (!td) return;
+    td.textContent = '';
+    const span = document.createElement('span');
+    span.className = cls;
+    span.textContent = '✓';
     td.appendChild(span);
   }
 

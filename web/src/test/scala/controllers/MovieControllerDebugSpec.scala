@@ -103,6 +103,11 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     // match on rides along on the staging row.
     html should include ("""data-queue-title="Newcomer"""")
     html should include ("""data-queue-year="2099"""")
+
+    // The per-row state the "done" indicators read: this row still needs detail
+    // enrichment and has no TMDB id, so both flags say "not done yet".
+    html should include ("""data-detail-pending="true"""")
+    html should include ("""data-tmdb-set="false"""")
   }
 
   // ── /debug/queue snapshot the staging columns poll for queue places ─────────
