@@ -115,18 +115,24 @@ final class ConsoleView: NSObject {
     private var runner: CommandRunner?
 
     private let clearsOnRun: Bool
+    private let titleText: String
     var onLayoutChange: (() -> Void)?
 
     init(title: String, clearsOnRun: Bool) {
         self.clearsOnRun = clearsOnRun
+        self.titleText = title
         super.init()
 
-        disclosure.title = title
-        disclosure.bezelStyle = .disclosure
-        disclosure.setButtonType(.pushOnPushOff)
+        // A clearly-labelled fold header: "▸ Web output" / "▾ Web output".
+        disclosure.isBordered = false
+        disclosure.bezelStyle = .inline
+        disclosure.alignment = .left
+        disclosure.font = .systemFont(ofSize: 11, weight: .medium)
+        disclosure.contentTintColor = .secondaryLabelColor
         disclosure.target = self
         disclosure.action = #selector(toggle)
         disclosure.setContentHuggingPriority(.required, for: .horizontal)
+        updateDisclosureTitle()
 
         status.font = .systemFont(ofSize: 10)
         status.textColor = .secondaryLabelColor
@@ -210,9 +216,13 @@ final class ConsoleView: NSObject {
 
     private func setExpanded(_ on: Bool) {
         isExpanded = on
-        disclosure.state = on ? .on : .off
         scroll.isHidden = !on
+        updateDisclosureTitle()
         onLayoutChange?()
+    }
+
+    private func updateDisclosureTitle() {
+        disclosure.title = (isExpanded ? "▾ " : "▸ ") + titleText
     }
 
     private func append(_ text: String) {
