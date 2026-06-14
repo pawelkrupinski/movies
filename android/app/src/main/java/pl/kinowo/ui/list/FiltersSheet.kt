@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -62,6 +64,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
@@ -98,14 +102,32 @@ internal fun FiltersSheetContent(
     vm: KinowoViewModel,
     films: List<Film>,
 ) {
-    // "Ukryte filmy" pushes its own card (mirroring iOS), so the sheet swaps
-    // between the filter list and that card rather than expanding inline — the
-    // hidden set grows large enough to crowd out every other filter.
+    // "Ukryte filmy" opens its own full-screen card (mirroring iOS's pushed
+    // screen) rather than expanding inline — the hidden set grows large enough
+    // to crowd out every other filter, and a full screen gives it room. The
+    // filter list stays mounted underneath; closing the card returns to it.
     var showHidden by remember { mutableStateOf(false) }
+    FiltersList(vm, films, onOpenHidden = { showHidden = true })
     if (showHidden) {
-        HiddenFilmsCard(vm, onBack = { showHidden = false })
-    } else {
-        FiltersList(vm, films, onOpenHidden = { showHidden = true })
+        HiddenFilmsScreen(vm, onClose = { showHidden = false })
+    }
+}
+
+/**
+ * The "Ukryte filmy" card as a full-screen overlay over the Filtry sheet: a
+ * [Dialog] sized to the whole window (default platform width removed, content
+ * filling max size) so the hidden list gets the entire screen. System back and
+ * a scrim tap both close it back to the filter list.
+ */
+@Composable
+private fun HiddenFilmsScreen(vm: KinowoViewModel, onClose: () -> Unit) {
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(Modifier.fillMaxSize()) {
+            HiddenFilmsCard(vm, onBack = onClose)
+        }
     }
 }
 
@@ -390,16 +412,17 @@ private fun HiddenFilmsRow(count: Int, onClick: () -> Unit) {
 }
 
 /**
- * The "Ukryte filmy" card pushed from [HiddenFilmsRow]: a back header, a search
- * box that narrows the list as you type (case-insensitive substring, shared
- * shape with iOS HiddenFilmsFilter), each title with a "Pokaż" un-hide, and a
- * "Pokaż wszystkie" bulk action. Pops back automatically once the set drains
- * empty — there is nothing left to manage.
+ * The "Ukryte filmy" card body (hosted full-screen by [HiddenFilmsScreen]): a
+ * back header, a search box that narrows the list as you type (case-insensitive
+ * substring, shared shape with iOS HiddenFilmsFilter), each title with a "Pokaż"
+ * un-hide, and a "Pokaż wszystkie" bulk action. The list fills the rest of the
+ * screen. Closes automatically once the set drains empty — there is nothing
+ * left to manage.
  */
 @Composable
 private fun HiddenFilmsCard(vm: KinowoViewModel, onBack: () -> Unit) {
     val hidden by vm.hiddenFilms.collectAsState()
-    // Unhiding the last film leaves nothing to manage — pop back to the filter
+    // Unhiding the last film leaves nothing to manage — close back to the filter
     // list (its "Ukryte filmy" row has vanished too). Run as an effect so the
     // state change doesn't happen mid-composition.
     LaunchedEffect(hidden.isEmpty()) {
@@ -410,7 +433,7 @@ private fun HiddenFilmsCard(vm: KinowoViewModel, onBack: () -> Unit) {
         hidden.sortedWith(String.CASE_INSENSITIVE_ORDER)
             .filter { query.isBlank() || it.contains(query.trim(), ignoreCase = true) }
     }
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+    Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 16.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wstecz")
@@ -418,7 +441,7 @@ private fun HiddenFilmsCard(vm: KinowoViewModel, onBack: () -> Unit) {
             Text("Ukryte filmy", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
         HiddenFilmsSearchField(query) { query = it }
-        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
+        LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
             items(titles, key = { "hid_$it" }) { title ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(title, fontSize = 14.sp, modifier = Modifier.weight(1f))
@@ -431,7 +454,6 @@ private fun HiddenFilmsCard(vm: KinowoViewModel, onBack: () -> Unit) {
                 }
             }
         }
-        Column(Modifier.padding(bottom = 24.dp)) {}
     }
 }
 

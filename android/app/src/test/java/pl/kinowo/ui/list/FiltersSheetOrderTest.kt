@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -106,6 +107,29 @@ class FiltersSheetOrderTest {
         compose.onNode(hasSetTextAction()).performTextInput("Diu")
         compose.onNodeWithText("Diuna").assertExists()
         compose.onNodeWithText("Barbie").assertDoesNotExist()
+    }
+
+    /**
+     * The card takes the whole screen: it's presented as a full-screen Dialog
+     * over the Filtry sheet (not an in-place swap), so the filter list stays
+     * mounted underneath. Fails the old inline/swap rendering, which had no
+     * dialog and replaced the filter list.
+     */
+    @Test
+    fun hiddenFilmsCardOpensAsAFullScreenDialogOverTheFilters() {
+        compose.setContent {
+            FiltersSheetContent(viewModel("Diuna"), films = emptyList())
+        }
+
+        // No dialog until the row is tapped.
+        compose.onNode(isDialog()).assertDoesNotExist()
+
+        compose.onNodeWithText("Ukryte filmy").performClick()
+
+        // The card is a Dialog (full-screen overlay), and the filter list (Sortuj)
+        // stays mounted underneath rather than being replaced.
+        compose.onNode(isDialog()).assertExists()
+        compose.onNodeWithText("Sortuj").assertExists()
     }
 
     @Test
