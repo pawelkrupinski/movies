@@ -6,9 +6,10 @@
 // Uses a cursor copy over the zlib-compressed prod connection (same path the
 // app's findAll uses, ~6x less wire data) rather than mongodump/mongorestore,
 // whose uncompressed cursor drops mid-transfer over the flyctl tunnel.
-const DB = "kinowo";
-const src = db.getSiblingDB(DB).getCollection("movies");
-const dstDb = new Mongo(DST).getDB(DB);
+const SRC_DB = "kinowo";              // prod's database (the sync source)
+const DST_DB = "kinowo_prod_mirror";  // local mirror database (the sync target)
+const src = db.getSiblingDB(SRC_DB).getCollection("movies");
+const dstDb = new Mongo(DST).getDB(DST_DB);
 const dst = dstDb.getCollection("movies");
 
 print("[seed] copying prod movies → local…");

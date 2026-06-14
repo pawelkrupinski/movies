@@ -8,9 +8,10 @@
 // a tailer restart), letting reconnects continue without re-seeding. If the
 // token has aged out of prod's oplog, `watch()` throws on open and mirror.sh
 // falls back to a full re-seed.
-const DB = "kinowo";
-const src = db.getSiblingDB(DB).getCollection("movies");
-const dstDb = new Mongo(DST).getDB(DB);
+const SRC_DB = "kinowo";              // prod's database (the sync source)
+const DST_DB = "kinowo_prod_mirror";  // local mirror database (the sync target)
+const src = db.getSiblingDB(SRC_DB).getCollection("movies");
+const dstDb = new Mongo(DST).getDB(DST_DB);
 const dst = dstDb.getCollection("movies");
 const state = dstDb.getCollection("__mirror_state");
 

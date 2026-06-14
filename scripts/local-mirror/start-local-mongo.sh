@@ -7,8 +7,8 @@
 # `--replSet rs0`. No auth: it's loopback-only, dev-only, already-public data.
 #
 # One instance, two databases:
-#   - kinowo      synced from prod by mirror.sh (the /debug corpus mirror, read-only)
-#   - kinowo_dev  the local web+worker read/write playground (its own change streams)
+#   - kinowo_prod_mirror  synced from prod by mirror.sh (the /debug corpus mirror, read-only)
+#   - kinowo_local        the local web+worker read/write playground (its own change streams)
 #
 # This replaces the former `mongo:7.0` Docker container. It's managed by
 # `brew services`, so it restarts at login on its own; mirror.sh re-invokes this
