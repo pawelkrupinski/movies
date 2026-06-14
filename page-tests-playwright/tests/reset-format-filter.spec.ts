@@ -11,7 +11,7 @@ import { pinDateFilterAnytime } from './helpers';
 // `.filters-active` class while any clearable filter is set, so the
 // reset's effect is asserted on that class rather than on a text label.
 
-test.describe('Filtry > Wyczyść', () => {
+test.describe('Filtry > Wyczyść', { tag: '@agnostic' }, () => {
 
   test('resets every format axis and the from-hour pickers', async ({ page }) => {
     await page.goto('/poznan/');

@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
 // by default; clicking the button flips it; clicking the document
 // outside closes it (delegated handler in shared.js).
 
-test.describe('Filtry dropdown panel', () => {
+test.describe('Filtry dropdown panel', { tag: '@agnostic' }, () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/poznan/');

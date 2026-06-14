@@ -79,7 +79,7 @@ async function firstMovieBlockSummary(page: Page): Promise<string> {
   return text!;
 }
 
-test.describe('plan availability summary', () => {
+test.describe('plan availability summary', { tag: '@agnostic' }, () => {
 
   test('"tylko <day>" form for a movie playing on exactly one date', async ({ page }) => {
     await page.goto('/poznan/plan');
@@ -168,7 +168,7 @@ test.describe('plan availability summary', () => {
   });
 });
 
-test.describe('plan option list', () => {
+test.describe('plan option list', { tag: '@agnostic' }, () => {
 
   test('renders one block per selected movie, each carrying that movie\'s options', async ({ page }) => {
     await page.goto('/poznan/plan');
@@ -301,7 +301,7 @@ test.describe('plan option list', () => {
 
 });
 
-test.describe('plan posters fold', () => {
+test.describe('plan posters fold', { tag: '@agnostic' }, () => {
 
   test('"Zwiń plakaty" folds the poster grid and persists across reloads', async ({ page }) => {
     await page.goto('/poznan/plan');

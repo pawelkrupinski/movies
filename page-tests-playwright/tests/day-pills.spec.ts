@@ -5,7 +5,7 @@ import { waitForCards } from './helpers';
 // `#date-filter` <select> (the state every filter/carousel helper reads).
 // Tapping a pill moves the select + URL and the active highlight follows.
 // Runs on every engine — no touch/CDP needed.
-test.describe('day pills', () => {
+test.describe('day pills', { tag: '@agnostic' }, () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/poznan/?date=anytime');
     await waitForCards(page);

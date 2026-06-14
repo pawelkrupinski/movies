@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
 // under `/{city}/`). It tries browser geolocation first and falls back to a
 // manual list; the Filtry → Miasto picker switches cities from any page.
 
-test.describe('city selection landing (/)', () => {
+test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
   test('lists every supported city and a pick navigates into that city', async ({ page }) => {
     await page.goto('/');
     const links = page.locator('.city-list a');
@@ -34,7 +34,7 @@ test.describe('city selection landing (/)', () => {
   });
 });
 
-test.describe('geolocation auto-redirect', () => {
+test.describe('geolocation auto-redirect', { tag: '@agnostic' }, () => {
   // A fix inside 100 km of a supported city redirects straight there.
   test.use({ permissions: ['geolocation'], geolocation: { latitude: 52.4064, longitude: 16.9252 } });
 
@@ -44,7 +44,7 @@ test.describe('geolocation auto-redirect', () => {
   });
 });
 
-test.describe('Filtry → Miasto switch', () => {
+test.describe('Filtry → Miasto switch', { tag: '@agnostic' }, () => {
   test('selecting another city navigates to its repertoire root', async ({ page }) => {
     await page.goto('/poznan/');
     await page.waitForSelector('.col[data-title]', { state: 'attached' });

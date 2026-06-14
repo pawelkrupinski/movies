@@ -28,6 +28,22 @@ inputs:
   shard:
     description: Playwright shard when kind=playwright (e.g. `1/2`).
     required: false
+  grep:
+    description: >-
+      Playwright `--grep` tag/pattern when kind=playwright — runs ONLY matching
+      tests. Used to run the `@agnostic` (viewport-independent) specs once on a
+      single representative webkit width instead of re-running them on every
+      phone. Empty = no `--grep` filter.
+    required: false
+    default: ''
+  grepInvert:
+    description: >-
+      Playwright `--grep-invert` pattern when kind=playwright — EXCLUDES matching
+      tests. Defaults to `axe-core` (the informational a11y suite has its own
+      step). The per-phone jobs pass `axe-core|@agnostic` so each phone runs only
+      its viewport-SENSITIVE specs; the agnostic ones ride the single behaviour job.
+    required: false
+    default: 'axe-core'
 
 runs:
   using: composite
@@ -145,6 +161,8 @@ runs:
       env:
         PW_PROJECT: ${{ inputs.project }}
         PW_SHARD: ${{ inputs.shard }}
+        PW_GREP: ${{ inputs.grep }}
+        PW_GREP_INVERT: ${{ inputs.grepInvert }}
       run: |
         cd page-tests-playwright
         set -f
@@ -153,7 +171,13 @@ runs:
         for p in "${PROJS[@]}"; do PROJECT_FLAGS+=" --project \"$p\""; done
         SHARD_FLAG=""
         [ -n "$PW_SHARD" ] && SHARD_FLAG="--shard $PW_SHARD"
-        eval npx playwright test $PROJECT_FLAGS --grep-invert "axe-core" $SHARD_FLAG
+        GREP_FLAG=""
+        [ -n "$PW_GREP" ] && GREP_FLAG="--grep \"$PW_GREP\""
+        # Guard: an EMPTY --grep-invert is an empty regex that matches every test,
+        # so it would exclude the whole suite. Only add the flag when non-empty.
+        GREP_INVERT_FLAG=""
+        [ -n "$PW_GREP_INVERT" ] && GREP_INVERT_FLAG="--grep-invert \"$PW_GREP_INVERT\""
+        eval npx playwright test $PROJECT_FLAGS $GREP_INVERT_FLAG $GREP_FLAG $SHARD_FLAG
 
     - name: Run Playwright axe-core a11y audit (informational)
       if: inputs.kind == 'playwright' && inputs.project == 'chrome-desktop'
