@@ -309,11 +309,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             content.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -12),
         ])
 
+        // Standard titled panel (not HUD) so all three macOS window buttons —
+        // close, minimize, zoom — are shown.
         let panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: defaultExpandedWidth, height: 10),
-            styleMask: [.titled, .resizable, .nonactivatingPanel, .utilityWindow, .hudWindow],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .nonactivatingPanel],
             backing: .buffered, defer: false)
         panel.title = "movies"
+        panel.standardWindowButton(.closeButton)?.isHidden = false
+        panel.standardWindowButton(.miniaturizeButton)?.isHidden = false
+        panel.standardWindowButton(.zoomButton)?.isHidden = false
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.hidesOnDeactivate = false
@@ -332,25 +337,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: views
 
     private func headerRow() -> NSView {
+        // The title bar now carries the close button, so no custom ✕ here.
         let label = NSTextField(labelWithString: "kinowo dev")
         label.font = .systemFont(ofSize: 11, weight: .semibold)
         label.textColor = .secondaryLabelColor
         label.setContentHuggingPriority(.required, for: .horizontal)
 
-        let quit = NSButton(title: "✕", target: self, action: #selector(quit))
-        quit.bezelStyle = .inline
-        quit.isBordered = false
-        quit.font = .systemFont(ofSize: 11)
-        quit.toolTip = "Quit DevPanel"
-        quit.setContentHuggingPriority(.required, for: .horizontal)
-
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        let row = NSStackView(views: [label, spacer, quit])
+        let row = NSStackView(views: [label, spacer])
         row.orientation = .horizontal
         row.distribution = .fill
         return row
     }
+
+    // The close traffic-light quits the app (accessory app — no Dock icon to
+    // reopen a merely-closed window from).
+    func windowWillClose(_ notification: Notification) { NSApp.terminate(nil) }
 
     private func button(for action: Action) -> NSButton {
         // Centred text → left padding always equals right padding, and stays
