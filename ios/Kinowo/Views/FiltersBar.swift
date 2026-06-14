@@ -403,6 +403,9 @@ struct FiltersSheet: View {
     // shared across both branches so a sign-in can scroll it into view.
     private let accountAnchor = "account"
 
+    // Gate the actual sign-out behind a yes/no confirmation.
+    @State private var showSignOutConfirm = false
+
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
@@ -499,13 +502,16 @@ struct FiltersSheet: View {
 
                 Section {
                     Button(role: .destructive) {
+                        // Reset only the actual filters — cinema selection and
+                        // hidden films persist (they're not "filtering"; see
+                        // ActiveFilters) — then close the sheet.
                         sortOption = .earliest
                         formatFilter = .empty
                         excludedCountries = []
                         excludedGenres = []
                         excludedDirectors = []
                         excludedCast = []
-                        prefs.setDisabledCinemas([])
+                        dismiss()
                     } label: {
                         Text("Wyczyść")
                             .frame(maxWidth: .infinity)
@@ -540,7 +546,17 @@ struct FiltersSheet: View {
                             Text(user.displayName ?? user.email ?? user.provider)
                         }
                         Button("Wyloguj") {
-                            Task { await authService.signOut() }
+                            showSignOutConfirm = true
+                        }
+                        .confirmationDialog(
+                            "Wylogować się?",
+                            isPresented: $showSignOutConfirm,
+                            titleVisibility: .visible
+                        ) {
+                            Button("Wyloguj", role: .destructive) {
+                                Task { await authService.signOut() }
+                            }
+                            Button("Anuluj", role: .cancel) {}
                         }
                         Button("Usuń konto", role: .destructive) {
                             Task {

@@ -110,6 +110,28 @@ struct FormatFilter: Equatable {
     }
 }
 
+/// Whether any filter that "Wyczyść" clears is currently set — the single
+/// source of truth for the Filtry button's active tint. Deliberately ignores
+/// cinema selection and hidden films: those are persistent preferences that
+/// Wyczyść leaves alone, so they must not light the bar (or it would read as
+/// "filtering" for a state Wyczyść can't clear). Mirrors exactly the reset in
+/// the Filtry sheet's Wyczyść button.
+enum ActiveFilters {
+    static func any(
+        format: FormatFilter,
+        excludedCountries: Set<String>,
+        excludedGenres: Set<String>,
+        excludedDirectors: Set<String>,
+        excludedCast: Set<String>
+    ) -> Bool {
+        !format.isEmpty
+            || !excludedCountries.isEmpty
+            || !excludedGenres.isEmpty
+            || !excludedDirectors.isEmpty
+            || !excludedCast.isEmpty
+    }
+}
+
 /// One cinema's slice of a filtered film list: every film that plays at
 /// this cinema, with each film's `showings` restricted to this cinema's
 /// dates and slots. Drives the Kina tab's cinema-grouped layout —

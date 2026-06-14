@@ -400,15 +400,15 @@ struct ContentView: View {
     private var allCast:      [(name: String, count: Int)] { nameCounts { $0.cast } }
 
     private var filtersActive: Bool {
-        // Scope to THIS city's cinemas: a cinema deselected in another city
-        // lingers in the global set but must not light up the Filtry bar here.
-        !formatFilter.isEmpty
-            || !prefs.disabledCinemas(in: allCinemas).isEmpty
-            || !prefs.hiddenFilms.isEmpty
-            || !excludedCountries.isEmpty
-            || !excludedGenres.isEmpty
-            || !excludedDirectors.isEmpty
-            || !excludedCast.isEmpty
+        // Only the filters Wyczyść clears light the bar — NOT cinema selection
+        // or hidden films, which persist and aren't part of the reset.
+        ActiveFilters.any(
+            format: formatFilter,
+            excludedCountries: excludedCountries,
+            excludedGenres: excludedGenres,
+            excludedDirectors: excludedDirectors,
+            excludedCast: excludedCast
+        )
     }
 
     /// The filtered, sorted film list for a given day filter — one call per
