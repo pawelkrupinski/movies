@@ -34,7 +34,7 @@ jobs:
         steps:
             - uses: actions/checkout@v4
 
-            # Same Scala toolchain as every other sbt job (ci.yml / refresh-fixtures.yml):
+            # Same Scala toolchain as every other sbt job (ci.yml / filmweb-diff.yml):
             # Temurin JDK 25 + sbt dependency caching.
             - uses: actions/setup-java@v4
               with:

@@ -1,8 +1,7 @@
 name: Daily country fixture artifact
 
 # Records the WHOLE country's fixture corpus once a day and uploads it as a
-# downloadable build artifact. Unlike `refresh-fixtures.yml` (monthly, opens a
-# PR to land a re-pinned corpus into the repo), this job lands nothing in git —
+# downloadable build artifact. This job lands nothing in git —
 # it just captures the live scrape + enrichment of every cinema/city and parks
 # the result as the artifact `country-fixture`, kept for one day so only the
 # latest run's capture is ever available.
@@ -30,8 +29,8 @@ jobs:
     record-country-fixture:
         runs-on: ubuntu-latest
         # A full live re-record of every cinema + the whole enrichment cascade is
-        # heavy and a cold cache compiles every module first; mirror the headroom
-        # refresh-fixtures.yml gives the same recorder.
+        # heavy and a cold cache compiles every module first; give it plenty of
+        # headroom over the default.
         timeout-minutes: 90
         steps:
             # Run the body only when it is the 00:xx hour in Warsaw, so the two
@@ -57,7 +56,7 @@ jobs:
               uses: actions/checkout@v4
 
             # Same Scala toolchain as every other sbt job in this repo
-            # (ci.yml / filmweb-diff.yml / refresh-fixtures.yml): Temurin JDK 25
+            # (ci.yml / filmweb-diff.yml): Temurin JDK 25
             # with sbt dependency caching.
             - if: steps.gate.outputs.run == 'true'
               uses: actions/setup-java@v4
