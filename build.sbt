@@ -312,8 +312,23 @@ def ensureLocalMongo(state: State, uri: String): Unit = {
 
 // One sbt invocation, every module's unit tests, no fail-fast: `all` runs each
 // listed task in parallel and reports all failures instead of stopping at the
-// first failing module. CI's unit job calls `sbt testUnit`; the integration
-// job `sbt itAll`. Keeping both as aggregating aliases means new modules join
-// the existing CI jobs rather than spawning new ones.
+// first failing module. `testUnit` is the full local alias; keeping the
+// aggregating aliases means new modules join the existing CI jobs rather than
+// spawning new ones.
 addCommandAlias("testUnit", "all common/Test/test testkit/Test/test web/Test/test worker/Test/test e2e/Test/test")
 addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/test")
+// CI runs `testUnit` split across two jobs so the heavy `e2e` module (the
+// whole-corpus staging specs — ScrapeOrderDeterminismSpec drains the staging
+// pipeline per shuffled replay) stays off the `test` job's critical path: the
+// `test` job runs `testUnitNoE2e`, the `integration-test` job runs `itAndE2e`.
+// Net zero extra runners (CI peaks at the 20-runner cap), and the gating job
+// drops ~4 min. See .github/workflows/ci.yml.
+addCommandAlias("testUnitNoE2e", "all common/Test/test testkit/Test/test web/Test/test worker/Test/test")
+// The integration-test job's payload: IT suites + the e2e module in ONE sbt
+// invocation. `all` runs them in parallel (no fail-fast) so e2e compiles inside
+// the JVM that already loaded the build and overlaps the IT tests' Mongo I/O —
+// a separate `sbt e2e/Test/test` step paid a second cold JVM boot + e2e recompile
+// (~4 min of pure overhead, measured). e2e uses FixtureTestWiring (no Mongo), so
+// it ignores the job's throwaway Mongo. Reports split by config: it → it/, e2e
+// (Test config) → unit/.
+addCommandAlias("itAndE2e", "all web/IntegrationTest/test worker/IntegrationTest/test e2e/Test/test")
