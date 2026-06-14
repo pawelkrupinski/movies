@@ -599,6 +599,11 @@ object MovieController {
    *  resolvable, without an unbounded scan. */
   private val DebugQueueActiveLimit = 1000
 
+  /** How many staging rows `/debug` renders. The header still shows the full
+   *  `pending_movies` count; only the table is capped (and the page's live
+   *  count-tracking JS caps appends to the same number). */
+  val StagingRowLimit = 20
+
   /** Deterministic sample cards for the `/debug/tune` page — built in process
    *  so the tuning page renders the real `_movieCard` partial without depending
    *  on live cache contents. The set is a deliberate spread of edge cases so

@@ -117,21 +117,24 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         StoredMovieRecord("Unresolved Film", Some(2023), MovieRecord()),
         StoredMovieRecord("Done Film",       Some(2022), MovieRecord(tmdbId = Some(7))),
       )
-      // Two staging (pending_movies) rows: "Staging Film" is still working (detail
-      // pending, no TMDB id) so its columns show queue badges; "Done Newcomer" has
-      // detail done + a TMDB id, so its columns show green "done" marks instead.
+      // Two staging (pending_movies) rows. "Staging Film" (anchor `stagingfilm`)
+      // is at its detail-fetch step; "Done Newcomer" (anchor `donenewcomer`) has
+      // detail + TMDB concluded (so those stage cells render a server-side ✓) and
+      // is now at IMDb recovery.
       val debugStaging = Seq(
         StagingRecord(CinemaCityWroclavia, "Staging Film",  Some(2026), MovieRecord(detailPending = true)),
-        StagingRecord(CinemaCityWroclavia, "Done Newcomer", Some(2025), MovieRecord(tmdbId = Some(550))))
+        StagingRecord(CinemaCityWroclavia, "Done Newcomer", Some(2025),
+          MovieRecord(detailPending = false, tmdbId = Some(550))))
       val debugHtml: String = views.html.debug(debugRows, Map.empty[String, String], debugStaging).body
-      // The queue snapshot the page polls (/debug/queue). The staging row's
-      // EnrichDetails is being worked on (▶ running) while its ResolveTmdb waits at
-      // place #1 (the only waiting task). The dedup keys mirror the real ones
-      // (EnrichDetails: detail|<group>|<title>|<year>; ResolveTmdb: resolve-tmdb|<title>|<year>).
+      // The queue snapshot the page polls (/debug/queue). "Staging Film"'s detail
+      // fetch is being worked on (▶ running); "Done Newcomer"'s IMDb recovery
+      // waits at place #1 (the only waiting task). The dedup keys mirror the real
+      // staging ones (StagingTaskKeys): every key embeds the film's `anchor`
+      // (= sanitize(title)) as the segment after the `staging-*` prefix.
       val debugQueueJson =
         """{"active":[
-          {"taskType":"EnrichDetails","dedupKey":"detail|grp|Staging Film|2026","state":"worked_on"},
-          {"taskType":"ResolveTmdb","dedupKey":"resolve-tmdb|Staging Film|2026","state":"waiting"}
+          {"taskType":"StagingDetail","dedupKey":"staging-detail|stagingfilm|cc","state":"worked_on"},
+          {"taskType":"StagingResolveImdbId","dedupKey":"staging-imdb|donenewcomer","state":"waiting"}
         ]}"""
 
       // Pages are served under `/{city}/…` (production hard-cut). `onPath`
@@ -2662,47 +2665,55 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     )
   }
 
-  // ── /debug staging table queue columns ──────────────────────────────────────
-  // The "Pending enrichment (staging)" table carries two queue-place columns —
-  // "Enrich q#" and "TMDB q#" — painted client-side from the /debug/queue poll,
-  // so they tick live as the worker drains the queue. The staging fixture's
-  // EnrichDetails task is being worked on; its ResolveTmdb waits at place #1.
-  "the /debug staging table" should "fill its queue columns live from the /debug/queue poll" in {
+  // ── /debug staging table queue column ───────────────────────────────────────
+  // The "Pending enrichment (staging)" table carries a trailing "Queue #" column,
+  // painted client-side from the /debug/queue poll, matched per row by the film's
+  // `data-anchor` against its `staging-*` tasks — so it ticks live as the worker
+  // drains the queue. The fixture has "Staging Film"'s detail fetch worked-on
+  // (▶ running) and "Done Newcomer"'s IMDb recovery waiting at place #1.
+  "the /debug staging table" should "fill its queue column live from the /debug/queue poll, matched by anchor" in {
     onDebug { page =>
-      // Wait for the queue poll to land and paint the staging row's TMDB place.
-      page.waitFor(
-        """(function(){var c=document.querySelector('#staging-t tbody tr.data .tmdb-q .badge');
-          |return c && c.textContent==='#1';})()""".stripMargin)
-      page.evalString(
-        """document.querySelector('#staging-t tbody tr.data .tmdb-q .badge').textContent""") shouldBe "#1"
-      page.evalString(
-        """document.querySelector('#staging-t tbody tr.data .enrich-q .badge').textContent""") shouldBe "▶ running"
+      def queueBadge(anchor: String) =
+        s"""document.querySelector('#staging-t tbody tr.data[data-anchor="$anchor"] .queue-q .badge')"""
+      // Wait for the queue poll to land and paint "Done Newcomer"'s waiting place.
+      page.waitFor(s"""(function(){var c=${queueBadge("donenewcomer")};return c && c.textContent==='#1';})()""")
+      page.evalString(queueBadge("donenewcomer") + ".textContent") shouldBe "#1"
+      // "Staging Film"'s detail fetch is being worked on → ▶ running.
+      page.evalString(queueBadge("stagingfilm") + ".textContent") shouldBe "▶ running"
     }
   }
 
-  // A row whose step is complete shows a green "done" mark instead of a queue
-  // badge: a checkbox in Enrich q# once detail is done, a tick in TMDB q# once a
-  // TMDB id is set. "Done Newcomer" has both, so neither column shows a badge.
-  it should "show a green check/tick instead of a queue badge once a step is done" in {
+  // The per-stage Detail/TMDB/IMDb cells are server-rendered: a green ✓ once a
+  // step has concluded, an empty cell otherwise. "Done Newcomer" has detail +
+  // TMDB done but not yet IMDb, so it shows ✓, ✓, then empty — confirming the
+  // server markup reaches the real DOM intact (the shape is unit-tested in
+  // DebugViewStagingSpec).
+  it should "render a green ✓ for each concluded stage and leave pending stages empty" in {
     onDebug { page =>
-      def cell(col: String) = s"""document.querySelector('#staging-t tbody tr.data[data-queue-title="Done Newcomer"] $col')"""
-      page.waitFor(s"""!!${cell(".enrich-q .done-check")} && !!${cell(".tmdb-q .done-tick")}""")
-      page.evalString(cell(".enrich-q .done-check") + ".textContent") shouldBe "✓"
-      page.evalString(cell(".tmdb-q .done-tick") + ".textContent")    shouldBe "✓"
-      // ...and the done cells hold no queue badge.
-      page.evalBool(s"""!${cell(".enrich-q .badge")} && !${cell(".tmdb-q .badge")}""") shouldBe true
+      def cell(col: String) = s"""document.querySelector('#staging-t tbody tr.data[data-anchor="donenewcomer"] $col')"""
+      page.waitFor(s"""!!${cell(".stage-detail .stage-done")}""")
+      page.evalBool(s"""!!${cell(".stage-detail .stage-done")} && !!${cell(".stage-tmdb .stage-done")}""") shouldBe true
+      page.evalBool(s"""!${cell(".stage-imdb .stage-done")}""") shouldBe true
     }
   }
 
   // Staging rows are added/removed live off the pending_movies change stream
   // (staging-* SSE frames). Drive the client router directly (applySse) — the
-  // server frame shape is covered by DebugStreamControllerSpec.
-  it should "add and remove staging rows live, tracking the header count" in {
+  // server frame shape is covered by DebugStreamControllerSpec. The header count
+  // is the TRUE total tracked off an id set, so an insert bumps it, a delete drops
+  // it, and a repeat upsert of a known id (an in-place update) leaves it alone.
+  it should "add and remove staging rows live, tracking the header count by id" in {
     onDebug { page =>
       page.waitFor("""document.querySelectorAll('#staging-t tbody tr.data').length === 2""")
-      val row = """<tr class="data" data-row-id="Helios|liveone|2031" data-queue-title="Live One" data-queue-year="2031" data-detail-pending="true" data-tmdb-set="false"><td>Helios</td><td class="title">Live One</td><td>2031</td><td>—</td><td>—</td><td>yes</td><td class="enrich-q"></td><td class="tmdb-q"></td></tr>"""
+      val row = """<tr class="data" data-row-id="Helios|liveone|2031" data-anchor="liveone"><td>Helios</td><td class="title">Live One</td><td>2031</td><td class="stage-detail"></td><td class="stage-tmdb"></td><td class="stage-imdb"></td><td class="queue-q"></td></tr>"""
+      def upsertLiveOne() =
+        page.eval(s"""applySse(JSON.stringify({type:'staging-upsert', id:'Helios|liveone|2031', html:${Json.stringify(Json.toJson(row))}}))""")
       // A newcomer arrives → row appears, count bumps to 3.
-      page.eval(s"""applySse(JSON.stringify({type:'staging-upsert', id:'Helios|liveone|2031', html:${Json.stringify(Json.toJson(row))}}))""")
+      upsertLiveOne()
+      page.evalInt("""document.querySelectorAll('#staging-t tbody tr.data').length""") shouldBe 3
+      page.evalString("""document.getElementById('staging-count').textContent""") shouldBe "3"
+      // A second upsert of the SAME id is an in-place update — no new row, count holds.
+      upsertLiveOne()
       page.evalInt("""document.querySelectorAll('#staging-t tbody tr.data').length""") shouldBe 3
       page.evalString("""document.getElementById('staging-count').textContent""") shouldBe "3"
       // It graduates (delete frame) → row removed, count back to 2.

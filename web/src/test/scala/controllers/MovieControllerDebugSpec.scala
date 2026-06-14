@@ -81,11 +81,12 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     bothScansOverlapped shouldBe true
   }
 
-  // The staging table gains two queue-place columns ("Enrich q#"/"TMDB q#"). The
-  // badges are painted client-side from the /debug/queue poll, so the server only
-  // emits the column shells (empty `.enrich-q`/`.tmdb-q` cells) plus the identity
-  // title+year the JS matches queue tasks on (`data-queue-title`/`-year`).
-  "GET /debug" should "render the staging queue columns + per-row queue identity" in {
+  // The staging table carries a trailing "Queue #" column, painted client-side
+  // from the /debug/queue poll, so the server only emits the column shell (an
+  // empty `.queue-q` cell) plus the per-film `data-anchor` the JS matches the
+  // film's `staging-*` queue tasks on. The per-stage Detail/TMDB/IMDb cells are
+  // server-rendered ✓ marks (empty here — this row hasn't fetched detail yet).
+  "GET /debug" should "render the staging queue column + per-row anchor" in {
     val staging = new services.staging.InMemoryStagingRepository(Seq(
       (CinemaCityWroclavia, "Newcomer", Some(2099),
         MovieRecord(detailPending = true, data = Map(CinemaCityWroclavia -> SourceData(title = Some("Newcomer")))))))
@@ -93,21 +94,16 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
       TestMovieController.build(records, Mode.Dev, stagingRepository = staging)._1
         .debug().apply(FakeRequest(GET, "/debug")))
 
-    // The two new column headers + the empty cells the JS fills.
-    html should include ("<th>Enrich q#</th>")
-    html should include ("<th>TMDB q#</th>")
-    html should include ("""<td class="enrich-q">""")
-    html should include ("""<td class="tmdb-q">""")
+    // The queue column header + the empty cell the JS fills.
+    html should include ("<th>Queue #</th>")
+    html should include ("""<td class="queue-q">""")
 
-    // The identity title+year the enrichment dedup keys (and so the q# badges)
-    // match on rides along on the staging row.
-    html should include ("""data-queue-title="Newcomer"""")
-    html should include ("""data-queue-year="2099"""")
+    // The anchor = sanitize(title) the `staging-*` dedup keys (and so the queue
+    // badge) match on rides along on the staging row.
+    html should include ("""data-anchor="newcomer"""")
 
-    // The per-row state the "done" indicators read: this row still needs detail
-    // enrichment and has no TMDB id, so both flags say "not done yet".
-    html should include ("""data-detail-pending="true"""")
-    html should include ("""data-tmdb-set="false"""")
+    // Detail not yet fetched → its stage cell is empty (no ✓ yet).
+    html should include ("""<td class="stage-detail"></td>""")
   }
 
   // ── /debug/queue snapshot the staging columns poll for queue places ─────────

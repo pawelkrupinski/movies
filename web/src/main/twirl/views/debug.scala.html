@@ -1,5 +1,7 @@
 @import services.movies.StoredMovieRecord
-@(rows: Seq[StoredMovieRecord], cinemaUrls: Map[String, String] = Map.empty, staging: Seq[services.staging.StagingRecord] = Seq.empty)(implicit city: models.City)
+@import services.staging.StagingRecord
+@import controllers.MovieController
+@(rows: Seq[StoredMovieRecord], cinemaUrls: Map[String, String] = Map.empty, staging: Seq[StagingRecord] = Seq.empty)(implicit city: models.City)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -108,14 +110,13 @@
     .showtime a { color: #ccc; }
     .showtime a:hover { color: #aad4ff; text-decoration: none; }
 
-    /* Staging table queue-place badges (Enrich q# / TMDB q#) */
+    /* Staging table: per-stage "done" checkbox + the trailing queue-place badge. */
+    #staging-t .stage-done { background: #1f6b2e; color: #eafff0; border-radius: 3px; padding: 0 .35rem; font-weight: bold; }
+    #staging-t td.stage-detail, #staging-t td.stage-tmdb, #staging-t td.stage-imdb { text-align: center; }
     #staging-t .badge { font-size: 10px; border-radius: 3px; padding: 0 .3rem; font-variant-numeric: tabular-nums; }
     .badge.q-none { color: #555; }
     .badge.q-wait { color: #aad4ff; background: #16263a; border: 1px solid #244a6e; }
     .badge.q-run  { color: #cfe3d6; background: #14241a; border: 1px solid #245038; }
-    /* "Done" marks: a green-background checkbox for Enrich q#, a green tick for TMDB q#. */
-    #staging-t .done-check { background: #1f6b2e; color: #eafff0; border-radius: 3px; padding: 0 .35rem; font-weight: bold; }
-    #staging-t .done-tick  { color: #46c463; font-weight: bold; }
   </style>
   @_ratingStyles()
 </head>
@@ -123,17 +124,18 @@
 
 @_debugNavbar("corpus")
 @* The staging table's header always renders — so an empty `pending_movies`
-   shows as an empty table (header + columns), not a vanished section. Rows
-   appear only while newcomers are incubating, and are added/removed live off the
-   `pending_movies` change stream (the count tracks them). *@
+   shows as an empty table (header + columns), not a vanished section. Only the
+   first `StagingRowLimit` rows render (the count is the full total); rows are
+   added/removed live off the `pending_movies` change stream and the count
+   tracks them. *@
 <h1>Pending enrichment (staging) · <span id="staging-count">@staging.size</span></h1>
-<div class="summary">Newcomer films incubating in <code>pending_movies</code> — one row per cinema|title|year. They graduate into the corpus below once TMDB concludes, then disappear from here.</div>
+<div class="summary">Newcomer films incubating in <code>pending_movies</code> — one row per cinema|title|year. Each walks Detail → TMDB → IMDb → fold; a ✓ marks a concluded stage, the last column its place in the durable task queue. Showing the first @MovieController.StagingRowLimit.</div>
 <table id="staging-t">
   <thead>
-    <tr><th>Cinema</th><th>Title</th><th>Year</th><th>TMDB</th><th>IMDb</th><th>Detail pending</th><th>Enrich q#</th><th>TMDB q#</th></tr>
+    <tr><th>Cinema</th><th>Title</th><th>Year</th><th>Detail</th><th>TMDB</th><th>IMDb</th><th>Queue #</th></tr>
   </thead>
   <tbody>
-  @for(r <- staging) {
+  @for(r <- staging.take(MovieController.StagingRowLimit)) {
     @_stagingRow(r)
   }
   </tbody>
@@ -252,10 +254,12 @@
 
   document.getElementById('q').focus();
 
-  // ── Task-queue place badges ────────────────────────────────────────────────
-  // The staging table's two columns show where each incubating row sits in the
-  // durable task queue. The snapshot is polled from /debug/queue; the helpers
-  // below turn it into a per-row badge (see rebuildStagingQueue).
+  // ── Task-queue place badge ─────────────────────────────────────────────────
+  // The staging table's trailing "Queue #" column shows where each incubating row
+  // sits in the durable task queue. The snapshot is polled from /debug/queue; the
+  // helpers below turn it into a per-row badge (see rebuildStagingQueue). The
+  // per-stage ✓ cells are server-rendered (see _stagingRow), so this JS only
+  // paints the queue place.
   let queueActive = []; // [{taskType, dedupKey, state}] — oldest-first, waiting + worked_on mixed
 
   // Place every WAITING task's dedupKey at its 1-based spot in the global queue.
@@ -270,11 +274,19 @@
     return m;
   }
 
-  // The dedup keys the web/worker build (EnrichTaskKeys + EnrichDetailsHandler):
-  //   ResolveTmdb  : resolve-tmdb|<title>|<year>
-  //   EnrichDetails: detail|<group>|<title>|<year>  (one per cinema detail group)
-  function tmdbKey(title, year)      { return 'resolve-tmdb|' + title + '|' + year; }
-  function detailSuffix(title, year) { return '|' + title + '|' + year; }
+  // Every staging dedup key (see StagingTaskKeys) embeds the film's `anchor`
+  // (= sanitize(title)) as the segment right after the `staging-*` prefix:
+  //   StagingDetail       : staging-detail|<anchor>|<cinema>
+  //   StagingResolveTmdb  : staging-tmdb|<anchor>
+  //   StagingResolveImdbId: staging-imdb|<anchor>
+  //   StagingFold         : staging-fold|<anchor>
+  // so a row's tasks are exactly the active Staging* tasks whose 2nd `|` segment
+  // equals its `data-anchor`. (Matching all stages is intentional — the column
+  // shows the place of WHATEVER step this film is currently waiting on.)
+  function stagingTasksFor(anchor) {
+    return queueActive.filter(t =>
+      t.taskType.indexOf('Staging') === 0 && t.dedupKey.split('|')[1] === anchor);
+  }
 
   // `rank` orders a section: worked-on first (0), then by queue place ascending,
   // then queued-but-past-the-snapshot, then no-task last.
@@ -287,31 +299,14 @@
     return { cls: 'q-wait', text: '#' + best + (matches.length > 1 ? ' ·' + matches.length : ''), rank: best };
   }
 
-  // ── Staging table queue columns ────────────────────────────────────────────
-  // Each incubating staging row's two columns show one of two things per step:
-  //   • a green "done" mark once the step is complete — a checkbox in "Enrich q#"
-  //     when detail enrichment is done/not needed (`data-detail-pending=false`),
-  //     a tick in "TMDB q#" once a TMDB id is set (`data-tmdb-set=true`);
-  //   • otherwise the step's live place in the durable queue (off /debug/queue).
+  // Paint each incubating row's "Queue #" cell from the latest /debug/queue poll.
   function rebuildStagingQueue() {
     const staging = document.getElementById('staging-t');
     if (!staging) return;
     const places = waitingPlaces();
     staging.querySelectorAll('tbody tr.data').forEach(tr => {
-      const title = tr.dataset.queueTitle || '';
-      const year  = tr.dataset.queueYear || '';
-      if (tr.dataset.detailPending !== 'true') {
-        paintDone(tr.querySelector('.enrich-q'), 'done-check'); // detail done / not needed
-      } else {
-        const detail = queueActive.filter(t => t.taskType === 'EnrichDetails' && t.dedupKey.endsWith(detailSuffix(title, year)));
-        paintQueueCell(tr.querySelector('.enrich-q'), badgeFor(detail, places));
-      }
-      if (tr.dataset.tmdbSet === 'true') {
-        paintDone(tr.querySelector('.tmdb-q'), 'done-tick'); // TMDB resolved
-      } else {
-        const tmdb = queueActive.filter(t => t.taskType === 'ResolveTmdb' && t.dedupKey === tmdbKey(title, year));
-        paintQueueCell(tr.querySelector('.tmdb-q'), badgeFor(tmdb, places));
-      }
+      const tasks = stagingTasksFor(tr.dataset.anchor || '');
+      paintQueueCell(tr.querySelector('.queue-q'), badgeFor(tasks, places));
     });
   }
 
@@ -322,16 +317,6 @@
     const span = document.createElement('span');
     span.className = 'badge ' + b.cls;
     span.textContent = b.text;
-    td.appendChild(span);
-  }
-
-  // Render a green "done" mark (✓) of class `cls` into a staging cell.
-  function paintDone(td, cls) {
-    if (!td) return;
-    td.textContent = '';
-    const span = document.createElement('span');
-    span.className = cls;
-    span.textContent = '✓';
     td.appendChild(span);
   }
 
@@ -388,30 +373,56 @@
   // deletes it once the film folds into the corpus. The same SSE feed pushes
   // those changes (staging-* frames, rendered via `_stagingRow`) so the staging
   // table gains/loses rows live, and the header count tracks them.
+  //
+  // The table renders only the first STAGING_CAP rows, but the header count is
+  // the TRUE total. `stagingIds` holds EVERY pending id (not just the shown
+  // ones), so a live frame's id tells insert (new id) from update (known id) —
+  // which keeps the total correct even for changes to rows past the cap.
+  const stagingIds = new Set(@Html(play.api.libs.json.Json.toJson(staging.map(r => StagingRecord.idFor(r.cinema, r.title, r.year))).toString));
+  const STAGING_CAP = @MovieController.StagingRowLimit;
+  let stagingTotal = stagingIds.size;
+
   function stagingRowsFor(id) {
     return document.querySelectorAll('#staging-t tbody tr[data-row-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
   }
 
-  function updateStagingCount() {
+  function renderStagingCount() {
     const c = document.getElementById('staging-count');
-    if (c) c.textContent = document.querySelectorAll('#staging-t tbody tr.data').length;
+    if (c) c.textContent = stagingTotal;
+  }
+
+  function parseStagingRow(html) {
+    const tmp = document.createElement('tbody');
+    tmp.innerHTML = html.trim();
+    return tmp.firstElementChild;
+  }
+
+  function shownStagingRows() {
+    return document.querySelectorAll('#staging-t tbody tr.data').length;
   }
 
   function applyStagingDelete(id) {
     stagingRowsFor(id).forEach(el => el.remove());
-    updateStagingCount();
+    if (stagingIds.delete(id)) stagingTotal = stagingIds.size;
+    // A delete can't backfill a hidden row into the visible cap — its markup
+    // isn't held client-side. Reload to pull the next page into view.
+    renderStagingCount();
   }
 
   function applyStagingUpsert(id, html) {
-    const tmp = document.createElement('tbody');
-    tmp.innerHTML = html.trim();
-    const fresh = tmp.firstElementChild;
-    if (!fresh) return;
+    const isNew = !stagingIds.has(id);
     const existing = stagingRowsFor(id);
-    if (existing.length) existing[0].replaceWith(fresh);
-    else document.querySelector('#staging-t tbody').appendChild(fresh);
-    rebuildStagingQueue(); // paint the new row's q# cells / done marks
-    updateStagingCount();
+    if (existing.length) {
+      const fresh = parseStagingRow(html); // a visible row advanced — repaint its ✓ cells
+      if (fresh) existing[0].replaceWith(fresh);
+    } else if (isNew && shownStagingRows() < STAGING_CAP) {
+      const fresh = parseStagingRow(html); // a genuinely-new film, room under the cap
+      if (fresh) document.querySelector('#staging-t tbody').appendChild(fresh);
+    }
+    // else: an update to a row past the cap — not in the DOM, count unchanged.
+    if (isNew) { stagingIds.add(id); stagingTotal = stagingIds.size; }
+    rebuildStagingQueue(); // paint the (possibly new) row's queue cell
+    renderStagingCount();
   }
 
   // Route one SSE frame to the right table. Named (not an inline closure) so it's
