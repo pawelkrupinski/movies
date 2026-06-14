@@ -85,6 +85,26 @@ echo "▶ android unlock wait (adb resolution)"
   [[ $rc -eq 0 ]] && echo "  ok   proceeds when device reports unlocked" || { echo "  FAIL unlocked rc=$rc out=$out"; exit 9; }
 ) || fails=$((fails + 1))
 
+echo "▶ android device selection (android_serial)"
+(
+  SCRIPT_DIR="$SCRIPTS"; source "$SCRIPTS/lib.sh"
+  fake="$(mktemp)"
+  cat > "$fake" <<'FAKE'
+#!/bin/sh
+[ "$1" = devices ] && printf 'List of devices attached\nAAA\tdevice\nBBB\tdevice\n'
+FAKE
+  chmod +x "$fake"
+  out="$(DEVPANEL_ADB="$fake" android_serial 2>/tmp/dp-asel)"
+  [[ "$out" == "AAA" ]] && grep -q "multiple devices" /tmp/dp-asel \
+    && echo "  ok   picks first of several + warns" || { echo "  FAIL multi out=$out"; exit 9; }
+  printf '#!/bin/sh\n[ "$1" = devices ] && printf "List of devices attached\\nONLY\\tdevice\\n"\n' > "$fake"
+  out="$(DEVPANEL_ADB="$fake" android_serial 2>/dev/null)"
+  [[ "$out" == "ONLY" ]] && echo "  ok   single device" || { echo "  FAIL single out=$out"; exit 9; }
+  rm -f "$fake" /tmp/dp-asel
+  out="$(DEVPANEL_ANDROID_SERIAL=ZZZ android_serial 2>/dev/null)"
+  [[ "$out" == "ZZZ" ]] && echo "  ok   honours DEVPANEL_ANDROID_SERIAL" || { echo "  FAIL override out=$out"; exit 9; }
+) || fails=$((fails + 1))
+
 echo "▶ ios unlock wait message"
 (
   SCRIPT_DIR="$SCRIPTS"; source "$SCRIPTS/lib.sh"

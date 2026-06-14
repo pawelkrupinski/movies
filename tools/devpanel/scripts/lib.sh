@@ -77,23 +77,58 @@ step() {
   "$@"
 }
 
-# wait_for_android_unlock
+# resolve_adb — echo a usable adb path, or nothing. Order: $DEVPANEL_ADB, an
+# adb on PATH, the SDK from android/local.properties' sdk.dir, then the common
+# default SDK locations.
+resolve_adb() {
+  if [[ -n "${DEVPANEL_ADB:-}" ]]; then echo "$DEVPANEL_ADB"; return 0; fi
+  command -v adb 2>/dev/null && return 0
+  local sdk cand
+  sdk="$(sed -n 's/^sdk\.dir=//p' "$REPO_ROOT/android/local.properties" 2>/dev/null | head -1)"
+  for cand in "$sdk/platform-tools/adb" "${ANDROID_HOME:-}/platform-tools/adb" \
+              "${ANDROID_SDK_ROOT:-}/platform-tools/adb" "$HOME/Library/Android/sdk/platform-tools/adb"; do
+    [[ -n "$cand" && -x "$cand" ]] && { echo "$cand"; return 0; }
+  done
+  return 0
+}
+
+# android_serial — echo the device serial to target. $DEVPANEL_ANDROID_SERIAL
+# wins; else the single attached device; else the first of several (with a note
+# to stderr so you can override). Empty if adb/no device.
+android_serial() {
+  [[ -n "${DEVPANEL_ANDROID_SERIAL:-}" ]] && { echo "$DEVPANEL_ANDROID_SERIAL"; return 0; }
+  local adb; adb="$(resolve_adb)"
+  command -v "$adb" >/dev/null 2>&1 || return 0
+  local serials n
+  serials="$("$adb" devices 2>/dev/null | awk '$2=="device"{print $1}')"
+  n="$(printf '%s\n' "$serials" | grep -c .)"
+  if [[ "$n" -gt 1 ]]; then
+    echo "  multiple devices attached: $(echo $serials) — using the first; set DEVPANEL_ANDROID_SERIAL to pick" >&2
+    printf '%s\n' "$serials" | head -1
+  elif [[ "$n" -eq 1 ]]; then
+    printf '%s\n' "$serials"
+  fi
+}
+
+# wait_for_android_unlock [serial]
 #
-# Block until the cabled Android device is present and its keyguard is
-# dismissed. Uses dumpsys window's lockscreen/keyguard flag; if the device
-# exposes no recognised flag we don't block (degrade to "assume unlocked")
-# rather than hang forever. No-op under DEVPANEL_PRINT_ONLY.
+# Block until the (optionally serial-pinned) cabled Android device is present
+# and its keyguard is dismissed. Uses dumpsys window's lockscreen/keyguard flag;
+# if the device exposes no recognised flag we don't block (degrade to "assume
+# unlocked") rather than hang forever. No-op under DEVPANEL_PRINT_ONLY.
 wait_for_android_unlock() {
   [[ "${DEVPANEL_PRINT_ONLY:-}" == "1" ]] && { echo "wait_for_android_unlock"; return 0; }
-  local adb="${DEVPANEL_ADB:-adb}"
-  if ! command -v "$adb" >/dev/null 2>&1; then
-    echo "  (adb not on PATH — skipping unlock wait; set ANDROID_HOME if your SDK is elsewhere)"
+  local serial="${1:-}" adb
+  adb="$(resolve_adb)"
+  if [[ -z "$adb" ]] || ! command -v "$adb" >/dev/null 2>&1; then
+    echo "  (adb not found — skipping unlock wait; set DEVPANEL_ADB or ANDROID_HOME)"
     return 0
   fi
-  "$adb" wait-for-device
+  local s=""; [[ -n "$serial" ]] && s="-s $serial"   # serials have no spaces
+  "$adb" $s wait-for-device
   local announced= win lock
   while :; do
-    win="$("$adb" shell dumpsys window 2>/dev/null)"
+    win="$("$adb" $s shell dumpsys window 2>/dev/null)"
     lock="$(printf '%s' "$win" | grep -oE 'mDreamingLockscreen=(true|false)' | head -1)"
     [[ -z "$lock" ]] && lock="$(printf '%s' "$win" | grep -oE 'mKeyguardShowing=(true|false)' | head -1)"
     case "$lock" in
