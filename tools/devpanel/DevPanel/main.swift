@@ -115,11 +115,16 @@ final class ConsoleView: NSObject {
     private var runner: CommandRunner?
 
     private let clearsOnRun: Bool
+    private let reapsWorkerOnStop: Bool
     private let titleText: String
     var onLayoutChange: (() -> Void)?
+    /// Absolute path to the action scripts dir (for reaping the fixture worker
+    /// via lib.sh's kill_stale_worker). Set by the app delegate after init.
+    var scriptsDir = ""
 
-    init(title: String, clearsOnRun: Bool) {
+    init(title: String, clearsOnRun: Bool, reapsWorkerOnStop: Bool = false) {
         self.clearsOnRun = clearsOnRun
+        self.reapsWorkerOnStop = reapsWorkerOnStop
         self.titleText = title
         super.init()
 
@@ -208,9 +213,38 @@ final class ConsoleView: NSObject {
         r.run(executable: "/bin/bash", arguments: ["-lc", "exec bash \"\(scriptPath)\""], environment: env)
     }
 
-    func stop() { runner?.stop() }
+    func stop() { doStop() }
 
-    @objc private func stopRunning() { runner?.stop() }
+    @objc private func stopRunning() { doStop() }
+
+    /// Stop the running action AND, for the web console, reap a stale fixture
+    /// worker. The web+worker stack forks the worker (LocalFixtureWorkerMain)
+    /// into its own process tree via sbt's bgRunMain, so SIGTERM-ing the
+    /// script's process group leaves it running; kill_stale_worker (lib.sh)
+    /// pattern-kills it the same way the action scripts do at launch.
+    private func doStop() {
+        runner?.stop()
+        if reapsWorkerOnStop { reapStaleWorker() }
+    }
+
+    private func reapStaleWorker() {
+        guard !scriptsDir.isEmpty else { return }
+        let lib = (scriptsDir as NSString).appendingPathComponent("lib.sh")
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/bash")
+        p.arguments = ["-lc", "source \"\(lib)\"; kill_stale_worker"]
+        let pipe = Pipe()
+        p.standardOutput = pipe
+        p.standardError = pipe
+        pipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            let data = handle.availableData
+            guard !data.isEmpty else { return }
+            let text = String(decoding: data, as: UTF8.self)
+            DispatchQueue.main.async { self?.append(text) }
+        }
+        p.terminationHandler = { _ in pipe.fileHandleForReading.readabilityHandler = nil }
+        try? p.run()
+    }
 
     @objc private func toggle() { setExpanded(!isExpanded) }
 
@@ -277,7 +311,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             .deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().path
 
-    private let webConsole = ConsoleView(title: "Web output", clearsOnRun: false)
+    private let webConsole = ConsoleView(title: "Web output", clearsOnRun: false, reapsWorkerOnStop: true)
     private let deviceConsole = ConsoleView(title: "Device output", clearsOnRun: true)
     private var suppressClick: Set<String> = []
     private var expandedWidth = defaultExpandedWidth
@@ -285,6 +319,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_ note: Notification) {
         installMenu()
+        webConsole.scriptsDir = scriptsDir
 
         let content = NSStackView()
         content.orientation = .vertical

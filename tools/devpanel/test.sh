@@ -148,6 +148,27 @@ else
   printf '  FAIL before=%q after=%q\n' "$before" "$after"; fails=$((fails + 1))
 fi
 
+echo "▶ kill_pattern reaps a stale match"
+kmarker="DEVPANEL_KILLTEST_$$"
+# A single-process sleeper whose argv carries the marker (no child fork, so the
+# SIGTERM lands on the matched process itself) — stands in for the worker JVM.
+python3 -c "import time; time.sleep(300)" "$kmarker" >/dev/null 2>&1 &
+kpid=$!
+disown "$kpid" 2>/dev/null || true
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  sleep 0.2
+  [[ -n "$(pgrep -f "$kmarker" 2>/dev/null)" ]] && break
+done
+kbefore="$(pgrep -f "$kmarker" 2>/dev/null)"
+( SCRIPT_DIR="$SCRIPTS"; source "$SCRIPTS/lib.sh"; kill_pattern "$kmarker" "test marker" >/dev/null )
+kafter="$(pgrep -f "$kmarker" 2>/dev/null)"
+kill "$kpid" 2>/dev/null || true
+if [[ -n "$kbefore" && -z "$kafter" ]]; then
+  printf '  ok   reaped the stale match (pid %s)\n' "$kbefore"
+else
+  printf '  FAIL before=%q after=%q\n' "$kbefore" "$kafter"; fails=$((fails + 1))
+fi
+
 echo "▶ bash syntax"
 for f in "$SCRIPTS"/*.sh "$ROOT/runDevPanel.sh"; do
   if bash -n "$f"; then printf '  ok   %s\n' "$(basename "$f")"

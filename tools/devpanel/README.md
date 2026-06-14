@@ -8,8 +8,8 @@ in-panel console.
 |----------------|-------------------------------|---------|
 | Android → device | wait-for-unlock → `cd android && ./gradlew runOnDevice` | Device |
 | iOS → device     | wait-for-unlock → `xcodebuild build` → `devicectl install` → `devicectl launch` | Device |
-| Web server       | frees :9000 → `sbt web/run`            | Web |
-| Web + worker     | frees :9000 → `sbt localStack` (web + fixture worker, local Mongo :27018) | Web |
+| Web server       | frees :9000 + reaps a stale fixture worker → `sbt web/run`            | Web |
+| Web + worker     | frees :9000 + reaps a stale fixture worker → `sbt localStack` (web + fixture worker, local Mongo :27018) | Web |
 | Reset local corpus | `scripts/reset-corpus.sh --local --yes` (drops the kinowo_local corpus collections so a local worker re-scrapes) | Web |
 
 ## Consoles
@@ -17,7 +17,11 @@ in-panel console.
 Two collapsible consoles, each with its own **Stop** button:
 
 - **Web** — shared by the two server actions; **keeps** its scrollback across
-  runs (long-lived servers you want to keep watching).
+  runs (long-lived servers you want to keep watching). Its **Stop** also reaps
+  a stale fixture worker — the web+worker stack forks the worker JVM
+  (`LocalFixtureWorkerMain`) into its own process tree, so killing the script's
+  process group alone leaves it running and still projecting fixtures into the
+  local Mongo.
 - **Device** — shared by Android + iOS; **cleared** at the start of each run.
 
 Toggle either with its disclosure triangle. When **both** are collapsed the

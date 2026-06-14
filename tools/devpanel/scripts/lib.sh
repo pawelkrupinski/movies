@@ -39,6 +39,46 @@ free_port() {
   kill -9 $pids 2>/dev/null || true
 }
 
+# kill_pattern <pgrep-pattern> <label>
+#
+# SIGTERM (then SIGKILL) every process whose FULL command line matches
+# <pgrep-pattern>, except this script's own process tree. The companion to
+# free_port for processes that bind no port: a stale `sbt localStack` worker
+# is a forked JVM with no listening socket, so lsof/free_port can't see it.
+# We can't track it by pid file either — the worker is a grandchild forked by
+# sbt's bgRunMain, so the launcher script never learns its pid; the one stable
+# handle is its unique main-class on the JVM command line. No-op under
+# DEVPANEL_PRINT_ONLY.
+kill_pattern() {
+  local pattern="$1" label="$2"
+  [[ "${DEVPANEL_PRINT_ONLY:-}" == "1" ]] && return 0
+
+  # pgrep -f matches the whole command line; exclude our own pid + parent so a
+  # launcher whose argv happens to contain the pattern can't kill itself.
+  local pids
+  pids="$(pgrep -f "$pattern" 2>/dev/null | grep -vx -e "$$" -e "$PPID" || true)"
+  [[ -z "$pids" ]] && return 0
+
+  echo "  killing stale $label ($(echo "$pids" | tr '\n' ' '))"
+  kill $pids 2>/dev/null || true
+  for _ in 1 2 3 4 5 6; do
+    sleep 0.3
+    pids="$(pgrep -f "$pattern" 2>/dev/null | grep -vx -e "$$" -e "$PPID" || true)"
+    [[ -z "$pids" ]] && return 0
+  done
+  kill -9 $pids 2>/dev/null || true
+}
+
+# kill_stale_worker
+#
+# Reap a stale local-stack fixture worker (the forked JVM `sbt localStack`
+# leaves behind). Both the web-server and web+worker actions call this so a
+# previous run's worker can't keep projecting fixtures into the local Mongo
+# under a fresh stack. No-op under DEVPANEL_PRINT_ONLY.
+kill_stale_worker() {
+  kill_pattern "modules.LocalFixtureWorkerMain" "local fixture worker"
+}
+
 # dispatch <workdir> <label> <cmd...>
 #
 # Normal mode: announce, cd into <workdir>, and `exec` the command so a
