@@ -645,10 +645,20 @@ private val MenuAnchorGap = 4.dp
  * Gates the Filtry [ModalBottomSheet]'s drag-to-close so it only fires when a
  * downward drag STARTS with the list already at the top. [onDragStart] snapshots
  * whether the list was at the top at finger-down; while it wasn't, [connection]
- * swallows the leftover downward drag ([NestedScrollConnection.onPostScroll]) and
- * fling ([NestedScrollConnection.onPostFling]) — so the sheet's own nested-scroll
- * connection never receives it and can't yank the sheet closed mid-scroll. The
- * decision is a pure function of the snapshot + the leftover's direction, so it's
+ * keeps the leftover from the sheet's own nested-scroll connection so it can't
+ * yank the sheet closed mid-scroll.
+ *
+ * Two leftovers, handled differently:
+ *  - [onPostScroll] is swallowed ONLY for a real drag ([NestedScrollSource.UserInput]).
+ *    During a fling ([NestedScrollSource.SideEffect]) it must pass through as zero:
+ *    swallowing it would make the LazyColumn's fling believe it's still scrolling, so
+ *    it never cancels at the top and keeps "flinging in place" — leaving the list in
+ *    scrollInProgress, which eats the first tap after a flick. The sheet ignores
+ *    SideEffect in its own onPostScroll anyway, so letting it through can't close it.
+ *  - [onPostFling] (the leftover velocity, where the sheet DOES close on a flick) is
+ *    always swallowed, so a flick that began below the top still can't close it.
+ *
+ * The decisions are pure functions of the snapshot + direction + source, so they're
  * unit-tested directly (TopOnlyDismissScrollGateTest).
  */
 internal class TopOnlyDismissScrollGate(private val atTop: () -> Boolean) {
@@ -662,17 +672,20 @@ internal class TopOnlyDismissScrollGate(private val atTop: () -> Boolean) {
         atTopAtDragStart = atTop()
     }
 
-    /** Leftover downward scroll the sheet must not see (positive Y), else [Offset.Zero]. */
-    fun swallowedPostScroll(available: Offset): Offset =
-        if (!atTopAtDragStart && available.y > 0f) Offset(0f, available.y) else Offset.Zero
+    /** Leftover downward DRAG scroll the sheet must not see (positive Y, user input),
+     *  else [Offset.Zero]. Fling frames pass through so the list's fling can stop. */
+    fun swallowedPostScroll(available: Offset, source: NestedScrollSource): Offset =
+        if (source == NestedScrollSource.UserInput && !atTopAtDragStart && available.y > 0f)
+            Offset(0f, available.y)
+        else Offset.Zero
 
-    /** Leftover downward fling the sheet must not see (positive Y), else [Velocity.Zero]. */
+    /** Leftover downward fling velocity the sheet must not see (positive Y), else [Velocity.Zero]. */
     fun swallowedPostFling(available: Velocity): Velocity =
         if (!atTopAtDragStart && available.y > 0f) Velocity(0f, available.y) else Velocity.Zero
 
     val connection: NestedScrollConnection = object : NestedScrollConnection {
         override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset =
-            swallowedPostScroll(available)
+            swallowedPostScroll(available, source)
 
         override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity =
             swallowedPostFling(available)
