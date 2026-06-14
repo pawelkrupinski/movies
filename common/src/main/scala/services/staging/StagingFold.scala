@@ -46,7 +46,10 @@ object StagingFold {
     // picks the cinema spelling + unions; force the key year to the variant's own.
     val upserts = (stagingPairs ++ moviesPairs).groupBy(_._2.tmdbId).valuesIterator.map { cluster =>
       val (canonKey, merged) = FilmCanonicalizer.canonical(cluster)
-      CacheKey(canonKey.cleanTitle, variantYear) -> merged
+      // Drop the staging-only `searchTitle`: a `movies` row queries external
+      // services off its canonical title, so it never carries the (order-pinned)
+      // staging search title — movies stay a deterministic function of the corpus.
+      CacheKey(canonKey.cleanTitle, variantYear) -> merged.copy(searchTitle = None)
     }.toSeq
     val canonicalKeys = upserts.map(_._1).toSet
     val moviesDeletes = moviesPairs.map(_._1).distinct.filterNot(canonicalKeys.contains)

@@ -95,27 +95,25 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
     s.get("Top Gun Maverick",  Some(2022)).flatMap(_.imdbId) shouldBe Some("tt1745960")
   }
 
-  "searchTitle" should "strip a Kino Apollo Cykl prefix with straight quotes" in {
-    MovieService.searchTitle("""Cykl "Kultowa klasyka" - Zawieście czerwone latarnie""") shouldBe
+  "apiQuery" should "strip a Kino Apollo Cykl prefix with straight quotes" in {
+    MovieService.apiQuery("""Cykl "Kultowa klasyka" - Zawieście czerwone latarnie""") shouldBe
       "Zawieście czerwone latarnie"
   }
 
   it should "strip a Cykl prefix with Polish curly quotes" in {
-    MovieService.searchTitle("""Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977)""") shouldBe
+    MovieService.apiQuery("""Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977)""") shouldBe
       "Człowiek z marmuru"
   }
 
   it should "strip a bilingual ' / English Title (year)' suffix" in {
-    MovieService.searchTitle("Bez znieczulenia / Rough Treatment (1978)") shouldBe "Bez znieczulenia"
+    MovieService.apiQuery("Bez znieczulenia / Rough Treatment (1978)") shouldBe "Bez znieczulenia"
   }
 
-  it should "keep a ' + prelekcja…' event suffix on the cache-key title but strip it for upstream lookups" in {
+  it should "strip a ' + prelekcja…' event suffix for upstream lookups" in {
     // The "+ <event>" suffix marks a screening with an associated event (a
-    // lecture + meeting), so it stays its own cache row separate from the
-    // plain film — only the external-API query drops it so both rows enrich
-    // off the same base title. See TitleNormalizerSpec for the full rationale.
-    MovieService.searchTitle("Znaki Pana Śliwki + prelekcja i spotkanie z Damianem Dudkiem") shouldBe
-      "Znaki Pana Śliwki + prelekcja i spotkanie z Damianem Dudkiem"
+    // lecture + meeting). The display row keeps it (sanitize keeps the suffix)
+    // so it stays its own card, but the external-API query drops it so both
+    // rows enrich off the same base title. See TitleNormalizerSpec for the rationale.
     MovieService.apiQuery("Znaki Pana Śliwki + prelekcja i spotkanie z Damianem Dudkiem") shouldBe
       "Znaki Pana Śliwki"
   }
@@ -124,18 +122,18 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   // titles to before the first `+`, so "Orwell: 2 + 2 = 5" became "Orwell: 2"
   // and TMDB found a different film. Require a letter after the `+`.
   it should "leave 'Orwell: 2 + 2 = 5' intact (the + is part of the title, not an event suffix)" in {
-    MovieService.searchTitle("Orwell: 2 + 2 = 5") shouldBe "Orwell: 2 + 2 = 5"
+    MovieService.apiQuery("Orwell: 2 + 2 = 5") shouldBe "Orwell: 2 + 2 = 5"
   }
 
   it should "leave clean titles untouched" in {
-    MovieService.searchTitle("Drzewo Magii") shouldBe "Drzewo Magii"
-    MovieService.searchTitle("Mortal Kombat II") shouldBe "Mortal Kombat II"
+    MovieService.apiQuery("Drzewo Magii") shouldBe "Drzewo Magii"
+    MovieService.apiQuery("Mortal Kombat II") shouldBe "Mortal Kombat II"
   }
 
   it should "leave dashes inside the title alone (e.g. 're-wizje' inside the cycle name)" in {
     // The Cykl regex requires spaces around the dash separator, so a dash
     // inside the cycle name's quoted text doesn't trigger an early cut.
-    MovieService.searchTitle("""Cykl „Wajda: re-wizje" - Brzezina / The Birch Wood (1970)""") shouldBe
+    MovieService.apiQuery("""Cykl „Wajda: re-wizje" - Brzezina / The Birch Wood (1970)""") shouldBe
       "Brzezina"
   }
 
@@ -146,44 +144,44 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   // under the original film, so we strip the decoration for the lookup key.
 
   it should "strip an English anniversary suffix" in {
-    MovieService.searchTitle("Top Gun 40th Anniversary") shouldBe "Top Gun"
+    MovieService.apiQuery("Top Gun 40th Anniversary") shouldBe "Top Gun"
   }
 
   it should "strip a Polish 'rocznica' suffix with a pipe separator" in {
-    MovieService.searchTitle("Top gun | 40 rocznica") shouldBe "Top gun"
+    MovieService.apiQuery("Top gun | 40 rocznica") shouldBe "Top gun"
   }
 
   it should "strip a Polish 'Rocznica' suffix with dot separators" in {
-    MovieService.searchTitle("Kosmiczny mecz. 30. Rocznica") shouldBe "Kosmiczny mecz"
+    MovieService.apiQuery("Kosmiczny mecz. 30. Rocznica") shouldBe "Kosmiczny mecz"
   }
 
   it should "leave a standalone 'Rocznica' title untouched (it's a real Polish film)" in {
-    MovieService.searchTitle("Rocznica") shouldBe "Rocznica"
+    MovieService.apiQuery("Rocznica") shouldBe "Rocznica"
   }
 
   it should "leave 'Top Gun: Maverick' untouched (it's a sequel, not an anniversary)" in {
-    MovieService.searchTitle("Top Gun: Maverick") shouldBe "Top Gun: Maverick"
+    MovieService.apiQuery("Top Gun: Maverick") shouldBe "Top Gun: Maverick"
   }
 
   // ── Restoration / remaster decoration ─────────────────────────────────────
 
   it should "strip a Polish remaster suffix with a period separator" in {
-    MovieService.searchTitle("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana") shouldBe
+    MovieService.apiQuery("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana") shouldBe
       "Żywot Briana Grupy Monty Pythona"
   }
 
   it should "strip a Polish 'wersja oryginalna' suffix with an en-dash separator" in {
-    MovieService.searchTitle("Moulin Rouge! – wersja oryginalna") shouldBe "Moulin Rouge!"
-    MovieService.searchTitle("Romeo i Julia – wersja oryginalna") shouldBe "Romeo i Julia"
+    MovieService.apiQuery("Moulin Rouge! – wersja oryginalna") shouldBe "Moulin Rouge!"
+    MovieService.apiQuery("Romeo i Julia – wersja oryginalna") shouldBe "Romeo i Julia"
   }
 
   it should "strip a hypothetical English '4K Restored' suffix" in {
-    MovieService.searchTitle("Drama 4K Restored")   shouldBe "Drama"
-    MovieService.searchTitle("Blade Runner 4K Remaster") shouldBe "Blade Runner"
+    MovieService.apiQuery("Drama 4K Restored")   shouldBe "Drama"
+    MovieService.apiQuery("Blade Runner 4K Remaster") shouldBe "Blade Runner"
   }
 
   it should "leave 'X-Men 2' / 'Mortal Kombat II' untouched (numeric sequels, not anniversaries)" in {
-    MovieService.searchTitle("X-Men 2")           shouldBe "X-Men 2"
-    MovieService.searchTitle("Mortal Kombat II")  shouldBe "Mortal Kombat II"
+    MovieService.apiQuery("X-Men 2")           shouldBe "X-Men 2"
+    MovieService.apiQuery("Mortal Kombat II")  shouldBe "Mortal Kombat II"
   }
 }

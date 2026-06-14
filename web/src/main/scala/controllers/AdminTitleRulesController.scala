@@ -90,10 +90,10 @@ class AdminTitleRulesController(
     }
   }
 
-  /** For the DRAFT rule list, report — per rule of the transient scopes that
-   *  DON'T rewrite the stored record (`GlobalStructural`, `Search`) — which
-   *  corpus titles it rewrites and to what. Drives the editor's per-rule
-   *  unfoldable "affected films" list. Read-only — nothing is persisted. */
+  /** For the DRAFT rule list, report — per rule of the transient scope that
+   *  DOESN'T rewrite the stored record (`GlobalStructural`) — which corpus
+   *  titles it rewrites and to what. Drives the editor's per-rule unfoldable
+   *  "affected films" list. Read-only — nothing is persisted. */
   def affected(): Action[JsValue] = adminAction(parse.json) { request =>
     (request.body \ "rules").validate[JsArray] match {
       case JsError(_) => BadRequest(Json.obj("error" -> "expected { rules: [...] }"))

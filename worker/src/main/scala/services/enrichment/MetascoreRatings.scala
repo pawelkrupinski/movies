@@ -53,7 +53,7 @@ class MetascoreRatings(
       // `apiQuery` strips accessibility-programme decoration so an "Kino
       // bez barier: Arco (AD)" row queries MC as just "Arco". Cache key
       // stays decorated so the accessibility screening keeps its own row.
-      val cleanLookup = MovieService.apiQuery(key.cleanTitle)
+      val cleanLookup = MovieService.searchQuery(key.cleanTitle)
       val linkTitle   = e.originalTitle.getOrElse(cleanLookup)
       val mcFallback  = if (linkTitle != cleanLookup) Some(cleanLookup) else None
       val details    = tmdb.details(tmdbId)

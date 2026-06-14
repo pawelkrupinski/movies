@@ -7,15 +7,16 @@ package services.titlerules
  *
  *  Tier composition:
  *  {{{
- *    searchTitle(t) = structural(t)              // global decoration strip + trim — EXTERNAL LOOKUPS ONLY
- *    apiQuery(t)    = structural(searchRules(t)) // + programme/access/event strips — external lookups
- *    canonical(t)   = canonicalRules(t.trim)     // Gwiezdne Wojny / & → i — IDENTITY + display
+ *    apiQuery(t)    = structural(t)           // decoration + programme/access/event strips — EXTERNAL LOOKUPS ONLY
+ *    canonical(t)   = canonicalRules(t.trim)  // Gwiezdne Wojny / & → i — IDENTITY + display
  *  }}}
  *  `canonical` deliberately does NOT apply `structural`: identity (`sanitize`)
- *  and display key a title by its OWN form, so a decoration edition
- *  ("Top Gun / 40th Anniversary") stays a separate row from the base film
- *  rather than folding into it. The structural decoration strip survives only
- *  for the upstream-lookup tiers (`searchTitle` / `apiQuery`).
+ *  and display key a title by its OWN form, so a decoration/programme edition
+ *  ("Top Gun / 40th Anniversary", "Kino bez barier: …") stays a separate row
+ *  from the base film rather than folding into it. The structural strip survives
+ *  only for the upstream-lookup tier (`apiQuery`); the `programmePrefix` rules in
+ *  it additionally locate banner boundaries for display casing
+ *  (`leadingBannerBoundary`).
  */
 case class TitleRuleSet(rules: Seq[TitleRule]) {
   import RuleScope._
@@ -28,7 +29,6 @@ case class TitleRuleSet(rules: Seq[TitleRule]) {
     rules.iterator.filter(_.scope == scope).toSeq.sortBy(ruleOrder)
 
   private val structuralRules = tier(GlobalStructural)
-  private val searchRules     = tier(Search)
   private val canonicalRules  = tier(Canonical)
   private val perCinemaRules: Map[String, Seq[TitleRule]] =
     rules.iterator.filter(_.scope == PerCinema).toSeq
@@ -37,11 +37,14 @@ case class TitleRuleSet(rules: Seq[TitleRule]) {
 
   private def fold(rs: Seq[TitleRule], in: String): String = rs.foldLeft(in)((s, r) => r(s))
 
-  /** `searchTitle` tier — global decoration stripping, then trim. */
+  /** `apiQuery` tier — the full decoration + programme/access/event strip, then
+   *  trim. Folded in rule order (former Search strips are numbered to run before
+   *  the former structural strips, preserving the legacy composition). */
   def structural(t: String): String = fold(structuralRules, t).trim
 
-  /** `apiQuery` tier — the search-only strips, then the structural chain. */
-  def search(t: String): String = structural(fold(searchRules, t))
+  /** Alias of [[structural]] — kept so existing `apiQuery`/`search` call sites
+   *  (e.g. `NormalizationRebuilder`) compile after the tier merge. */
+  def search(t: String): String = structural(t)
 
   /** `canonical` fold used by `sanitize` / `preferredDisplay` — the
    *  cross-cinema spelling unifications (Gwiezdne Wojny prefix, & → i) over the
@@ -60,32 +63,43 @@ case class TitleRuleSet(rules: Seq[TitleRule]) {
     fold(perCinemaRules.getOrElse(cinemaId, Nil), raw)
 
   /** The programme-prefix banner at the start of `title`, including the trailing
-   *  ": " delimiter, when one of the `tag = "programmePrefix"` Search rules
-   *  matches at the start. None otherwise. Used by the separate-row casing
-   *  logic, which needs to split the banner off rather than strip it. */
+   *  ": " delimiter, when one of the `tag = "programmePrefix"` rules matches at
+   *  the start. None otherwise. The tagged subset of [[leadingBannerBoundary]]. */
   def programmePrefix(title: String): Option[String] =
-    searchRules.iterator
+    structuralRules.iterator
       .filter(_.tag.contains("programmePrefix"))
       .flatMap(r => r.compiled.flatMap(_.findPrefixMatchOf(title)).map(_.matched))
       .find(_.nonEmpty)
+
+  /** The end offset of the longest leading banner on `title` matched by ANY
+   *  enabled `^`-anchored rule in the lookup tier (programme prefixes, the Cykl
+   *  banner, …). Drives [[services.movies.TitleNormalizer.recase]], which splits
+   *  there and cases the banner and the film independently — generalising the
+   *  old Rialto-only, single-prefix casing to every prefix rule. `None` when no
+   *  prefix rule matches at the start. */
+  def leadingBannerBoundary(title: String): Option[Int] =
+    structuralRules.iterator
+      .filter(r => r.enabled && r.isPrefixAnchored)
+      .flatMap(r => r.compiled.flatMap(_.findPrefixMatchOf(title)))
+      .map(_.end)
+      .filter(_ > 0)
+      .maxOption
 
   /** Cinema ids that have at least one per-cinema rule — used by the backfill to
    *  scope which records to re-key after a per-cinema edit. */
   def cinemasWithRules: Set[String] = perCinemaRules.keySet
 
-  /** For every rule in the tiers that DON'T rewrite the stored record
-   *  (`!scope.changesRecord` — `GlobalStructural`, `Search`), the corpus titles
+  /** For every rule in the tier that DOESN'T rewrite the stored record
+   *  (`!scope.changesRecord` — now just `GlobalStructural`), the corpus titles
    *  that rule rewrites and what it rewrites them to. Used by the admin editor
    *  to show, per transient rule, an unfoldable list of affected films.
    *
-   *  Attribution is positional: each tier is folded in its sorted order and a
+   *  Attribution is positional: the tier is folded in its sorted order and a
    *  change is credited to the rule that produced it — `(original, after)` where
    *  `after` is the title once this rule (and the rules before it in the tier)
    *  have applied. A title the rule leaves untouched is omitted; a rule that
-   *  changes nothing in the corpus yields an empty `changes`. The `Search` tier
-   *  is folded on its own (the structural pass that follows in `apiQuery` is the
-   *  `GlobalStructural` tier's concern), so each rule is credited only its own
-   *  effect. Pure — the caller supplies the corpus display titles. */
+   *  changes nothing in the corpus yields an empty `changes`. Pure — the caller
+   *  supplies the corpus display titles. */
   def transientAffected(titles: Seq[String]): Seq[TitleRuleSet.RuleAffected] = {
     val distinct = titles.distinct
     RuleScope.all.filterNot(_.changesRecord).flatMap { scope =>

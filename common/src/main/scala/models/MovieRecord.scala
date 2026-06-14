@@ -36,6 +36,11 @@ case class MovieRecord(
   tmdbId:            Option[Int]      = None,
   metacriticUrl:     Option[String]   = None,
   rottenTomatoesUrl: Option[String]   = None,
+  // Cased + decoration-stripped title, generated once at scrape ingestion
+  // (`apiQuery(recase(<cinema slot title>))`). External-metadata services
+  // (Filmweb / Metacritic / RT / IMDb suggestion) query with this stable
+  // value instead of recomputing `apiQuery` over the now-raw cleanTitle.
+  searchTitle:       Option[String]   = None,
 
   // ── Enrichment-conclusion markers (persisted) ─────────────────────────────
   // Gate read-model projection: a row is published only once its enrichment
@@ -141,19 +146,26 @@ case class MovieRecord(
    *
    *  Caller supplies cleanTitle (the post-decoration-strip anchor the cache
    *  keys the row by) because the record itself doesn't carry it; it's the
-   *  fallback when no cinema is scraping yet (TMDB-only row). */
+   *  fallback when no cinema is scraping yet (TMDB-only row).
+   *
+   *  The chosen spelling is finally run through `recase` — the shared, banner-
+   *  aware display casing (replaces the old per-client casing). The picker ranks
+   *  on the RAW cinema spellings first (an all-caps variant must rank low), then
+   *  only the winner is cased; casing here keeps the row identity unchanged
+   *  (`sanitize` lowercases). */
   def displayTitle(cleanTitle: String): String = {
-    import services.movies.TitleNormalizer.{sanitize, preferredDisplay, wellFormedTitle}
+    import services.movies.TitleNormalizer.{sanitize, preferredDisplay, wellFormedTitle, recase}
     val perCinema = cinemaData.values.flatMap(_.title).toSeq
     val votePool  = if (perCinema.nonEmpty) perCinema else Seq(cleanTitle)
     val dominantKey =
       votePool.groupBy(sanitize).toSeq.sortBy { case (k, timestamp) => (-timestamp.size, k) }.head._1
-    data.get(Tmdb).flatMap(_.title)
+    val chosen = data.get(Tmdb).flatMap(_.title)
       .filter(t => sanitize(t) == dominantKey && wellFormedTitle(t))
       .getOrElse {
         val variants = (perCinema :+ cleanTitle).filter(t => sanitize(t) == dominantKey)
         preferredDisplay(variants).getOrElse(cleanTitle)
       }
+    recase(chosen)
   }
 
   /** TMDB-resolved original (production-language) title. None when TMDB

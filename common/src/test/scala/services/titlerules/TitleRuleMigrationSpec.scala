@@ -22,10 +22,9 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
 
   private val rs = TitleRuleDefaults.ruleSet
 
-  // The pure equivalents of TitleNormalizer.{searchTitle,apiQuery,sanitize},
-  // computed off the default rule set (the global-free script bits — Arabic→Roman
-  // `normalize`, NFD `deburr`, the final strip — stay as the production code).
-  private def searchTitle(t: String): String = rs.structural(t)
+  // The pure equivalents of TitleNormalizer.{apiQuery,sanitize}, computed off the
+  // default rule set (the global-free script bits — Arabic→Roman `normalize`, NFD
+  // `deburr`, the final strip — stay as the production code).
   private def apiQuery(t: String): String    = rs.search(t)
   private def programmePrefix(t: String): Option[String] = rs.programmePrefix(t)
   private def sanitize(t: String): String =
@@ -37,7 +36,6 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
   // per-cinema methods (verbatim from each client's pre-rules cleanTitle) live
   // here since they're only needed by this spec.
   private object Legacy {
-    def searchTitle(display: String): String     = FrozenLegacyNormalizer.searchTitle(display)
     def apiQuery(display: String): String        = FrozenLegacyNormalizer.apiQuery(display)
     def programmePrefix(t: String): Option[String] = FrozenLegacyNormalizer.programmePrefix(t)
     def sanitize(title: String): String          = FrozenLegacyNormalizer.sanitize(title)
@@ -129,13 +127,7 @@ class TitleRuleMigrationSpec extends AnyFlatSpec with Matchers {
     "Star Wars: A New Hope"
   )
 
-  "TitleRuleDefaults" should "match the frozen legacy searchTitle for every corpus title" in {
-    corpus.foreach { t =>
-      withClue(s"searchTitle('$t'): ")(searchTitle(t) shouldBe Legacy.searchTitle(t))
-    }
-  }
-
-  it should "match the frozen legacy apiQuery for every corpus title" in {
+  "TitleRuleDefaults" should "match the frozen legacy apiQuery for every corpus title" in {
     corpus.foreach { t =>
       withClue(s"apiQuery('$t'): ")(apiQuery(t) shouldBe Legacy.apiQuery(t))
     }

@@ -36,7 +36,10 @@ import models.{MovieRecord, Showtime, Source, SourceData}
 object MovieRecordMerge {
 
   def union(canonical: MovieRecord, victim: MovieRecord): MovieRecord =
-    canonical.copy(data = mergeData(canonical.data, victim.data))
+    canonical.copy(
+      searchTitle = canonical.searchTitle.orElse(victim.searchTitle),
+      data        = mergeData(canonical.data, victim.data)
+    )
 
   /** Fold a set of rows of the SAME film into one. The enriched row (the first
    *  carrying a `tmdbId`) is the canonical, so its single-source enrichment

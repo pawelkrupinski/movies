@@ -42,29 +42,45 @@ object TitleNormalizer {
   // The patterns formerly hardcoded here now live in the active `TitleRuleSet`
   // (seeded from `TitleRuleDefaults`, editable in Mongo via the admin page). The
   // tiers:
-  //   - `searchTitle` (GlobalStructural) — decoration stripping for EXTERNAL
-  //     LOOKUPS ONLY: "Top Gun 40th Anniversary" → "Top Gun" for the TMDB search.
-  //     It does NOT feed the merge key (see `sanitize` / `canonical`), so a
-  //     decoration edition keys by its own form and stays a separate row.
-  //   - `apiQuery` (Search tier on top of structural) — also strips programme
-  //     prefixes / accessibility tags / "+ <event>" suffixes for upstream
-  //     lookups, while the display row keeps them (a programme screening is its
-  //     own row).
+  //   - `apiQuery` (GlobalStructural) — decoration strips (anniversary, restored,
+  //     Cykl prefix, slash, language-version) PLUS programme prefixes /
+  //     accessibility tags / "+ <event>" suffixes, for EXTERNAL LOOKUPS ONLY:
+  //     "Kino bez barier: Freak Show (AD + CC + PJM)" → "Freak Show". It does NOT
+  //     feed the merge key (see `sanitize` / `canonical`), so a decoration /
+  //     programme edition keys by its own form and stays a separate row.
   //   - `canonical` (Canonical tier — NO structural) — cross-cinema spelling
   //     unifications (Gwiezdne Wojny / & → i) folded into the stable documentId.
+  //
+  // Display casing (`recase`) reuses the same tier's `^`-anchored rules to find
+  // banner boundaries, but only re-cases — it never strips.
 
-  /** Strip cinema decoration (anniversary, restored, Cykl prefix, slash
-   *  postfix, language-version suffix) via the GlobalStructural rules — for
-   *  external-API lookups only. Identity (`sanitize`) does NOT apply these, so a
-   *  decoration edition keys by its own form and stays its own card; this just
-   *  finds the base film upstream. */
-  def searchTitle(display: String): String = active.structural(display)
-
-  /** Everything `searchTitle` strips PLUS the programme prefix, trailing
-   *  accessibility tag, and "+ <event>" suffix (the Search-tier rules). Used by
-   *  every external-API resolver so "Kino bez barier: Freak Show (AD + CC + PJM)"
-   *  queries upstream as just "Freak Show". */
+  /** The aggressive strip used by every external-API resolver: decoration plus
+   *  programme prefix / accessibility tag / "+ <event>" suffix, so
+   *  "Kino bez barier: Freak Show (AD + CC + PJM)" queries upstream as just
+   *  "Freak Show". Identity (`sanitize`) does NOT apply these, so the decorated
+   *  row stays its own card; this just finds the base film upstream. */
   def apiQuery(display: String): String = active.search(display)
+
+  /** Display-side casing applied to EVERY scraper's title at the scrape choke
+   *  point (`MovieCache.recordCinemaScrape`). Banner-aware: when a leading
+   *  banner rule matches (any programme prefix, the Cykl prefix, …), split at
+   *  its boundary and case the banner and the film independently so the film
+   *  keeps its own capital ("FILMOWY KLUB SENIORA: OJCZYZNA" → "Filmowy klub
+   *  seniora: Ojczyzna"). Guardrailed: a segment is re-cased only when it is
+   *  all-UPPERCASE or all-lowercase; an already-mixed-case segment is left
+   *  byte-identical (so "Paris Saint-Germain", "Moulin Rouge!" are untouched).
+   *  Identity-invariant — `sanitize` lowercases, so casing never re-keys a row. */
+  def recase(title: String): String = active.leadingBannerBoundary(title) match {
+    case Some(n) => caseSegment(title.substring(0, n)) + caseSegment(title.substring(n))
+    case None    => caseSegment(title)
+  }
+
+  private def caseSegment(s: String): String = {
+    val letters = s.filter(_.isLetter)
+    if (letters.isEmpty) s
+    else if (letters.forall(_.isUpper) || letters.forall(_.isLower)) tools.TextNormalization.sentenceCase(s)
+    else s // already mixed-case → leave byte-identical (guardrail)
+  }
 
   /** When `title` opens with a recognised programme prefix (Kino bez barier,
    *  Filmowy Klub Seniora, …), return the matched prefix INCLUDING the trailing

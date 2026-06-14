@@ -216,11 +216,10 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       enrichment.rottenTomatoesUrl shouldBe Some("https://www.rottentomatoes.com/m/in_the_grey")
       enrichment.filmwebUrl        shouldBe Some("https://www.filmweb.pl/film/Zawodowcy-2026-10051619")
 
-      // `displayTitle` is what `MovieController.toSchedules` writes into
-      // `Movie.title` — the canonical spelling chosen across every cinema's
-      // variant. Some cinemas report all-caps "ZAWODOWCY"; the picker prefers
-      // the proper-cased "Zawodowcy". If it regressed to all-caps the
-      // home-page card would shout.
+      // Cinemas keep their RAW reported spelling as provenance — some report
+      // all-caps "ZAWODOWCY", some "Zawodowcy". `displayTitle` ranks those raw
+      // spellings (the all-caps one ranks low) and then `recase`s the winner, so
+      // the home-page card reads "Zawodowcy" and never shouts.
       enrichment.cinemaTitles should contain allElementsOf Set(
         "Zawodowcy",
         "ZAWODOWCY"
@@ -243,7 +242,11 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       enrichment.cinemaData(CinemaCityKinepolis).releaseYear  shouldBe Some(2025)
       enrichment.cinemaData(KinoPalacowe).title               shouldBe Some("Zawodowcy")
       enrichment.cinemaData(KinoPalacowe).releaseYear         shouldBe Some(2026)
-      enrichment.cinemaData(Rialto).title                     shouldBe Some("Zawodowcy")
+      // Rialto reports the title ALL-CAPS and now keeps that raw spelling in its
+      // provenance slot (casing moved out of the client to `displayTitle.recase`).
+      // The all-caps slot ranks low in the picker, so `displayTitle` below is the
+      // proper-cased "Zawodowcy".
+      enrichment.cinemaData(Rialto).title                     shouldBe Some("ZAWODOWCY")
       enrichment.cinemaData(Rialto).releaseYear               shouldBe Some(2026)
       enrichment.cinemaData(Helios).title                     shouldBe Some("Zawodowcy")
       // Helios fetches the year via its REST `/cinema/.../screening` endpoint

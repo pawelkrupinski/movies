@@ -31,6 +31,7 @@ final case class MovieRecordPatch(
   tmdbId:            FieldUpdate[Int]                       = FieldUpdate.NoChange,
   metacriticUrl:     FieldUpdate[String]                    = FieldUpdate.NoChange,
   rottenTomatoesUrl: FieldUpdate[String]                    = FieldUpdate.NoChange,
+  searchTitle:       FieldUpdate[String]                    = FieldUpdate.NoChange,
   tmdbNoMatch:       FieldUpdate[Boolean]                   = FieldUpdate.NoChange,
   detailPending:     FieldUpdate[Boolean]                   = FieldUpdate.NoChange,
   data:              Map[Source, FieldUpdate[SourceData]]   = Map.empty
@@ -41,7 +42,7 @@ final case class MovieRecordPatch(
     metascore == FieldUpdate.NoChange && filmwebUrl == FieldUpdate.NoChange &&
     filmwebRating == FieldUpdate.NoChange && rottenTomatoes == FieldUpdate.NoChange &&
     tmdbId == FieldUpdate.NoChange && metacriticUrl == FieldUpdate.NoChange &&
-    rottenTomatoesUrl == FieldUpdate.NoChange &&
+    rottenTomatoesUrl == FieldUpdate.NoChange && searchTitle == FieldUpdate.NoChange &&
     tmdbNoMatch == FieldUpdate.NoChange && detailPending == FieldUpdate.NoChange &&
     data.isEmpty
 
@@ -75,6 +76,7 @@ final case class MovieRecordPatch(
       tmdbId            = merge(tmdbId,            current.tmdbId),
       metacriticUrl     = merge(metacriticUrl,     current.metacriticUrl),
       rottenTomatoesUrl = merge(rottenTomatoesUrl, current.rottenTomatoesUrl),
+      searchTitle       = merge(searchTitle,       current.searchTitle),
       tmdbNoMatch       = mergeFlag(tmdbNoMatch,   current.tmdbNoMatch),
       detailPending     = mergeFlag(detailPending, current.detailPending),
       data              = mergedData
@@ -96,6 +98,7 @@ object MovieRecordPatch {
       tmdbId            = diffOpt(before.tmdbId,            after.tmdbId),
       metacriticUrl     = diffOpt(before.metacriticUrl,     after.metacriticUrl),
       rottenTomatoesUrl = diffOpt(before.rottenTomatoesUrl, after.rottenTomatoesUrl),
+      searchTitle       = diffOpt(before.searchTitle,       after.searchTitle),
       tmdbNoMatch       = diffFlag(before.tmdbNoMatch,       after.tmdbNoMatch),
       detailPending     = diffFlag(before.detailPending,     after.detailPending),
       data              = diffData(before.data, after.data)

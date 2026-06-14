@@ -13,11 +13,11 @@ import services.titlerules.TitleRule
 class DumpTitleRulesSpec extends AnyFlatSpec with Matchers {
 
   "DumpTitleRules.render" should "escape backslashes and quotes so the emitted source compiles" in {
-    val r = TitleRule("xtra-x", Search, None, """(?i)^A\s+"B"\|\s*""", "",
+    val r = TitleRule("xtra-x", GlobalStructural, None, """(?i)^A\s+"B"\|\s*""", "",
       applyAll = false, order = 5, last = false, enabled = true, tag = None, note = Some("a note"))
     val out = DumpTitleRules.render(Seq(r))
     // `\` → `\\`, `"` → `\"`, scope as a bare identifier, options rendered.
-    out should include ("""TitleRule("xtra-x", Search, None, "(?i)^A\\s+\"B\"\\|\\s*", "", """ +
+    out should include ("""TitleRule("xtra-x", GlobalStructural, None, "(?i)^A\\s+\"B\"\\|\\s*", "", """ +
       """applyAll = false, order = 5, last = false, enabled = true, tag = None, note = Some("a note"))""")
     out should include ("object GeneratedTitleRules")
     out should include ("import services.titlerules.RuleScope._")
@@ -33,7 +33,7 @@ class DumpTitleRulesSpec extends AnyFlatSpec with Matchers {
   }
 
   "DumpTitleRules.ordered" should "be deterministic regardless of input order" in {
-    val a = TitleRule("a", Search,    None, "a", "", applyAll = false, order = 0, last = false, enabled = true, tag = None, note = None)
+    val a = TitleRule("a", GlobalStructural, None, "a", "", applyAll = false, order = 0, last = false, enabled = true, tag = None, note = None)
     val b = TitleRule("b", Canonical, None, "b", "", applyAll = false, order = 0, last = false, enabled = true, tag = None, note = None)
     DumpTitleRules.ordered(Seq(a, b)).map(_.id) shouldBe DumpTitleRules.ordered(Seq(b, a)).map(_.id)
   }

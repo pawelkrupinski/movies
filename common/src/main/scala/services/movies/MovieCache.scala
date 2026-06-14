@@ -648,7 +648,10 @@ class CaffeineMovieCache(
     // string in `rawTitle`), so this re-application is idempotent insurance; a
     // client that emits a raw title with no inline cleanup gets cleaned here.
     // Either way `displayTitle` is a pure function of the scraped title + the
-    // active rules. A key with no rules is an identity no-op.
+    // active rules. A key with no rules is an identity no-op. Display CASING is
+    // NOT applied here — the raw spelling is kept as provenance and so the
+    // `displayTitle` picker can rank on it (an all-caps variant signals low
+    // quality); casing is applied to the chosen title in `MovieRecord.displayTitle`.
     val ruleKey = TitleRuleKey.of(cinema)
     val cleaned: CinemaMovie => String = cm => TitleNormalizer.cinemaClean(ruleKey, cm.movie.title)
 
@@ -718,7 +721,10 @@ class CaffeineMovieCache(
           val priorSlot     = priorStagingRows.get(norm).flatMap(_.record.data.get(cinema))
           val effectiveYear = cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))
           val slot          = buildCinemaSlot(cm, displayTitle, priorSlot, effectiveYear)
-          staging.get.upsert(cinema, displayTitle, cm.movie.releaseYear, MovieRecord(data = Map((cinema: Source) -> slot)))
+          staging.get.upsert(cinema, displayTitle, cm.movie.releaseYear, MovieRecord(
+            searchTitle = Some(TitleNormalizer.apiQuery(TitleNormalizer.recase(displayTitle))),
+            data        = Map((cinema: Source) -> slot)
+          ))
           divertedSanitized += norm
           None
         } else {
@@ -755,6 +761,10 @@ class CaffeineMovieCache(
             case Some(_) =>
               putIfPresent(key, current => current.copy(data = current.data + ((cinema: Source) -> slot)))
             case None =>
+              // `searchTitle` is a STAGING-only field (set on the newcomer that
+              // diverts to `pending_movies`); a row landing straight in `movies`
+              // carries none, so movies ingestion stays a pure function of the
+              // canonical title — no scrape-order dependence.
               put(key, existing.copy(data = existing.data + ((cinema: Source) -> slot)))
           }
           // A brand-new cinema observation grows what the TMDB stage can work

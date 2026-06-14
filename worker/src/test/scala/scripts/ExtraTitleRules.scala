@@ -19,12 +19,12 @@ import services.titlerules.TitleRule
  *  re-enriches the affected rows.
  *
  *  Three tiers, matching the existing pipeline:
- *   - `programmePrefixes` — Search scope, `tag = programmePrefix`: a banner the
- *     display EXTRACTS to its own row (the screening stays distinct) but the
- *     external-API query STRIPS, so "Klub Konesera: Ojczyzna" finally resolves
- *     ratings/poster as "Ojczyzna".
- *   - `searchStrips` — Search scope, no tag: stripped for enrichment only; the
- *     row is kept (przedpremiera screenings, DKF-suffix forms, the `*AD` tag).
+ *   - `programmePrefixes` — GlobalStructural scope, `tag = programmePrefix`: a
+ *     banner the display EXTRACTS to its own row (the screening stays distinct)
+ *     but the external-API query STRIPS, so "Klub Konesera: Ojczyzna" finally
+ *     resolves ratings/poster as "Ojczyzna".
+ *   - `searchStrips` — GlobalStructural scope, no tag: stripped for enrichment
+ *     only; the row is kept (przedpremiera screenings, DKF-suffix forms, `*AD`).
  *
  *  Decoration MERGES (Tani wtorek: / `/Kino Cafe` collapsing into the base film)
  *  were intentionally left out. They'd be GlobalStructural rules, and a
@@ -40,11 +40,11 @@ import services.titlerules.TitleRule
 object ExtraTitleRules {
 
   private def prog(id: String, pattern: String, note: String): TitleRule =
-    TitleRule(id, Search, None, pattern, "", applyAll = false, order = 0,
+    TitleRule(id, GlobalStructural, None, pattern, "", applyAll = false, order = 0,
       tag = Some("programmePrefix"), note = Some(note))
 
   private def searchStrip(id: String, pattern: String, note: String): TitleRule =
-    TitleRule(id, Search, None, pattern, "", applyAll = false, order = 0, note = Some(note))
+    TitleRule(id, GlobalStructural, None, pattern, "", applyAll = false, order = 0, note = Some(note))
 
   /** Programme banners not in the seed alternation. Each anchored at `^` and
    *  ending in its delimiter (`: `, ` | `) so it's a true prefix the extractor

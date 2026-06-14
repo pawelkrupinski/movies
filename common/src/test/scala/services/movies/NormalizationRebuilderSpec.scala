@@ -205,7 +205,7 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
       MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Plain Film")))))
 
     // Old set strips the programme prefix; new set drops that rule.
-    val progRule = TitleRule("search-prog", RuleScope.Search, None,
+    val progRule = TitleRule("search-prog", RuleScope.GlobalStructural, None,
       "(?i)^Kino bez barier: ", "", applyAll = false, order = 10)
     val oldRules = TitleRuleSet(Seq(progRule))
     val newRules = TitleRuleSet.empty
@@ -228,8 +228,8 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
 
     // Two order-dependent search rules: strip "ab", strip "a". On "aab",
     // [stripAb, stripA] → "" but [stripA, stripAb] → "b".
-    val stripAb = TitleRule("strip-ab", RuleScope.Search, None, "ab", "", applyAll = true, order = 0)
-    val stripA  = TitleRule("strip-a",  RuleScope.Search, None, "a",  "", applyAll = true, order = 1)
+    val stripAb = TitleRule("strip-ab", RuleScope.GlobalStructural, None, "ab", "", applyAll = true, order = 0)
+    val stripA  = TitleRule("strip-a",  RuleScope.GlobalStructural, None, "a",  "", applyAll = true, order = 1)
     val before  = TitleRuleSet(Seq(stripAb, stripA))                  // tier order [stripAb, stripA]
     val after   = TitleRuleSet(Seq(stripAb.copy(last = true), stripA)) // `last` sinks stripAb → [stripA, stripAb]
 

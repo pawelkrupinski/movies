@@ -61,7 +61,7 @@ class TitleRulesCacheSpec extends AnyFlatSpec with Matchers {
     cache.reload()            // unchanged — must NOT fire
     fired shouldBe 0
     repository.upsertRecord(TitleRuleRecord.fromRules(Seq(
-      TitleRule("new", RuleScope.Search, None, "x$", "", applyAll = false, order = 1))).head)
+      TitleRule("new", RuleScope.GlobalStructural, None, "x$", "", applyAll = false, order = 1))).head)
     cache.reload()            // changed — fires once
     fired shouldBe 1
     cache.reload()            // unchanged again — no further fire

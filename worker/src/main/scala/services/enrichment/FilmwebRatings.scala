@@ -148,7 +148,7 @@ class FilmwebRatings(
     // "Kino bez barier: Freak Show (AD)" queries upstream as just
     // "Freak Show". Cache key keeps the full form so this row stays
     // distinct from the DKF / regular screening of the same film.
-    val linkTitle = MovieService.apiQuery(key.cleanTitle)
+    val linkTitle = MovieService.searchQuery(key.cleanTitle)
     val details   = e.tmdbId.flatMap(tmdb.details)
     val fallback  = e.originalTitle
       .orElse(details.flatMap(_.englishTitle))

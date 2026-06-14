@@ -162,9 +162,9 @@ showings:
   2026-06-19  Helios Posnania               18:00 2D/NAP
   2026-06-21  Kino Pałacowe                 20:00 Sala 1 - Kinowa
 
-=== André rieu. Niech żyje maastricht! | retransmisja letniego koncertu z maastricht 2026 ===
-displayTitle:      André rieu. Niech żyje maastricht! | retransmisja letniego koncertu z maastricht 2026
-cinemaTitles:      André rieu. Niech żyje maastricht! | retransmisja letniego koncertu z maastricht 2026
+=== André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026 ===
+displayTitle:      André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026
+cinemaTitles:      André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026
 runtimeMinutes:    —
 releaseYear:       2026
 countries:         —
@@ -185,7 +185,7 @@ filmwebUrl:        —
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157352
 cinemaScrapes:
-  Kino Rialto / André rieu. Niech żyje maastricht! | retransmisja letniego koncertu z maastricht 2026 / 2026
+  Kino Rialto / André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026 / 2026
 showings:
   2026-06-09  Kino Rialto                   18:00
 
@@ -562,8 +562,8 @@ showings:
   2026-07-14  Kino Muza                     20:30 Sala 1
   2026-07-26  Kino Pałacowe                 16:00 Sala 1 - Kinowa
 
-=== BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE ===
-displayTitle:      BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE
+=== Bts world tour 'arirang' in busan: live ===
+displayTitle:      Bts world tour 'arirang' in busan: live
 cinemaTitles:      BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE
 runtimeMinutes:    195
 releaseYear:       2026
@@ -606,8 +606,8 @@ showings:
   2026-06-13  Cinema City Kinepolis         11:45 Sala 6 2D/NAP
   2026-06-13  Cinema City Poznań Plaza      11:45 Sala 3 2D/NAP
 
-=== BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE) ===
-displayTitle:      BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE)
+=== Bts world tour 'arirang' in busan: live viewing (encore) ===
+displayTitle:      Bts world tour 'arirang' in busan: live viewing (encore)
 cinemaTitles:      BTS WORLD TOUR 'ARIRANG' IN BUSAN: LIVE VIEWING (ENCORE)
 runtimeMinutes:    195
 releaseYear:       2026
@@ -754,7 +754,7 @@ showings:
 
 === Chronologia wody ===
 displayTitle:      Chronologia wody
-cinemaTitles:      Chronologia wody
+cinemaTitles:      CHRONOLOGIA WODY | Chronologia wody
 runtimeMinutes:    128
 releaseYear:       2025
 countries:         USA, Francja, Łotwa, Szwajcaria
@@ -776,7 +776,7 @@ cinemaFilmUrls:
   Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/chronologia-wody
   Kino Muza = https://www.kinomuza.pl/movie/chronologia-wody/
 cinemaScrapes:
-  Kino Bułgarska 19 / Chronologia wody / 2025
+  Kino Bułgarska 19 / CHRONOLOGIA WODY / 2025
   Kino Goplana / Chronologia wody / —
   Kino IKM / Chronologia wody / —
   Kino Muza / Chronologia wody / 2025
@@ -787,7 +787,7 @@ showings:
 
 === Chłopiec na krańcach świata ===
 displayTitle:      Chłopiec na krańcach świata
-cinemaTitles:      Chłopiec na krańcach świata
+cinemaTitles:      CHŁOPIEC NA KRAŃCACH ŚWIATA | Chłopiec na krańcach świata
 runtimeMinutes:    88
 releaseYear:       2026
 countries:         Polska, Hiszpania, Turcja, Kanada
@@ -827,7 +827,7 @@ cinemaScrapes:
   Kino Muranów / Chłopiec na krańcach świata / 2025
   Kino Nowe Horyzonty / Chłopiec na krańcach świata / 2025
   Kino Pałacowe / Chłopiec na krańcach świata / 2025
-  Kino Rialto / Chłopiec na krańcach świata / 2025
+  Kino Rialto / CHŁOPIEC NA KRAŃCACH ŚWIATA / 2025
   Świt / Chłopiec na krańcach świata / —
 showings:
   2026-06-21  Kino Rialto                   12:00
@@ -1541,7 +1541,7 @@ cinemaScrapes:
   Kino Pionier 1907 / Drugie życie / —
   Kino Praha / Drugie życie / —
   Kino Przedwiośnie / Drugie życie / 2025
-  Kino Rialto / Drugie życie / 2025
+  Kino Rialto / DRUGIE ŻYCIE / 2025
   Kino Sfinks / DRUGIE ŻYCIE / —
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino U-jazdowski / Drugie życie / 2025
@@ -1681,7 +1681,7 @@ cinemaScrapes:
   Jutrzenka / Drzewo magii / —
   Kino Atlantic / Drzewo magii / 2026
   Kino Bajka / Drzewo magii / —
-  Kino Bułgarska 19 / Drzewo magii / 2026
+  Kino Bułgarska 19 / DRZEWO MAGII / 2026
   Kino Centrum CSW Toruń / Drzewo magii / —
   Kino Charlie / Drzewo Magii / —
   Kino DK / Drzewo magii / —
@@ -1910,7 +1910,7 @@ cinemaScrapes:
   Kino Piast / Dzień objawienia / —
   Kino Planeta / Dzień objawienia / —
   Kino Przedwiośnie / Dzień objawienia / 2026
-  Kino Rialto / Dzień objawienia / 2026
+  Kino Rialto / DZIEŃ OBJAWIENIA / 2026
   Kino Sokół / DZIEŃ OBJAWIENIA / —
   Kino Wawel / Dzień Objawienia / —
   Kino Wisła / Dzień objawienia / 2026
@@ -2198,9 +2198,9 @@ cinemaScrapes:
 showings:
   2026-06-21  Helios Posnania               10:30 2D/DUB
 
-=== Filmowy klub seniora: 18 lecie - takie jest życie ===
-displayTitle:      Filmowy klub seniora: 18 lecie - takie jest życie
-cinemaTitles:      Filmowy klub seniora: 18 lecie - takie jest życie
+=== Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE ===
+displayTitle:      Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE
+cinemaTitles:      Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE
 runtimeMinutes:    118
 releaseYear:       2025
 countries:         Włochy
@@ -2221,13 +2221,13 @@ filmwebUrl:        https://www.filmweb.pl/film/Takie+jest+%C5%BCycie-2025-101025
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157176
 cinemaScrapes:
-  Kino Rialto / Filmowy klub seniora: 18 lecie - takie jest życie / 2025
+  Kino Rialto / Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE / 2025
 showings:
   2026-06-30  Kino Rialto                   13:00 · 15:30
 
-=== Filmowy klub seniora: Drugie życie ===
-displayTitle:      Filmowy klub seniora: Drugie życie
-cinemaTitles:      Filmowy Klub Seniora - Drugie życie | Filmowy klub seniora: Drugie życie
+=== Filmowy Klub Seniora: Drugie życie ===
+displayTitle:      Filmowy Klub Seniora: Drugie życie
+cinemaTitles:      Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora: DRUGIE ŻYCIE
 runtimeMinutes:    116
 releaseYear:       2025
 countries:         Niemcy, Francja, Hiszpania, Belgia, Maroko
@@ -2248,14 +2248,14 @@ filmwebUrl:        https://www.filmweb.pl/film/Drugie+%C5%BCycie-2025-10088399
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157168
 cinemaScrapes:
-  Kino Rialto / Filmowy klub seniora: Drugie życie / 2025
+  Kino Rialto / Filmowy Klub Seniora: DRUGIE ŻYCIE / 2025
   Kinoteatr Rialto / Filmowy Klub Seniora - Drugie życie / —
 showings:
   2026-06-16  Kino Rialto                   13:00 · 15:30
 
-=== Filmowy klub seniora: Ojczyzna ===
-displayTitle:      Filmowy klub seniora: Ojczyzna
-cinemaTitles:      Filmowy klub seniora: Ojczyzna
+=== Filmowy Klub Seniora: Ojczyzna ===
+displayTitle:      Filmowy Klub Seniora: Ojczyzna
+cinemaTitles:      Filmowy Klub Seniora: OJCZYZNA
 runtimeMinutes:    82
 releaseYear:       2026
 countries:         Francja, Niemcy, Polska, Włochy
@@ -2276,13 +2276,13 @@ filmwebUrl:        https://www.filmweb.pl/film/Ojczyzna-2026-10074985
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157099
 cinemaScrapes:
-  Kino Rialto / Filmowy klub seniora: Ojczyzna / 2026
+  Kino Rialto / Filmowy Klub Seniora: OJCZYZNA / 2026
 showings:
   2026-06-23  Kino Rialto                   13:00 · 15:30
 
-=== Filmowy klub seniora: Werdykt ===
-displayTitle:      Filmowy klub seniora: Werdykt
-cinemaTitles:      Filmowy klub seniora: Werdykt
+=== Filmowy Klub Seniora: Werdykt ===
+displayTitle:      Filmowy Klub Seniora: Werdykt
+cinemaTitles:      Filmowy Klub Seniora: WERDYKT
 runtimeMinutes:    90
 releaseYear:       2025
 countries:         Irlandia, Luksemburg
@@ -2303,7 +2303,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Werdykt-2025-10115470
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157095
 cinemaScrapes:
-  Kino Rialto / Filmowy klub seniora: Werdykt / 2025
+  Kino Rialto / Filmowy Klub Seniora: WERDYKT / 2025
 showings:
   2026-06-09  Kino Rialto                   13:00 · 15:30
 
@@ -2336,8 +2336,8 @@ cinemaScrapes:
 showings:
   2026-06-18  Kino Pałacowe                 20:15 Sala 1 - Kinowa
 
-=== GALA ROZDANIA NAGRÓD - 19. MFFA ANIMATOR ===
-displayTitle:      GALA ROZDANIA NAGRÓD - 19. MFFA ANIMATOR
+=== Gala rozdania nagród - 19. Mffa animator ===
+displayTitle:      Gala rozdania nagród - 19. Mffa animator
 cinemaTitles:      GALA ROZDANIA NAGRÓD - 19. MFFA ANIMATOR
 runtimeMinutes:    120
 releaseYear:       —
@@ -2394,9 +2394,9 @@ showings:
   2026-07-13  Kino Pałacowe                 20:00 Sala 1 - Kinowa
   2026-08-18  Kino Muza                     20:30 Sala 1
 
-=== Giulietta i duchy | przed filmem wykład prof. Marka hendrykowskiego ===
-displayTitle:      Giulietta i duchy | przed filmem wykład prof. Marka hendrykowskiego
-cinemaTitles:      Giulietta i duchy | przed filmem wykład prof. Marka hendrykowskiego
+=== GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego ===
+displayTitle:      GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego
+cinemaTitles:      GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego
 runtimeMinutes:    148
 releaseYear:       1965
 countries:         Francja, Włochy
@@ -2417,7 +2417,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Giulietta+i+duchy-1965-30829
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157280
 cinemaScrapes:
-  Kino Rialto / Giulietta i duchy | przed filmem wykład prof. Marka hendrykowskiego / 1965
+  Kino Rialto / GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego / 1965
 showings:
   2026-06-17  Kino Rialto                   18:00
 
@@ -2660,7 +2660,7 @@ cinemaScrapes:
   Kino NCKF EC1 / K-Popowe Łowczynie Demonów / —
   Kino Nowe Horyzonty / K-popowe łowczynie demonów / 2025
   Kino PCKul / K-popowe łowczynie demonów / —
-  Kino Rialto / K-popowe łowczynie demonów / 2025
+  Kino Rialto / K-POPOWE ŁOWCZYNIE DEMONÓW / 2025
   Kino Roma / K-POPOWE ŁOWCZYNIE DEMONÓW / —
   Kino Twierdza / K-popowe łowczynie demonów / —
   Kino Śnieżka / K-popowe łowczynie demonów / —
@@ -3696,7 +3696,7 @@ showings:
 
 === Mikey i Nicky ===
 displayTitle:      Mikey i Nicky
-cinemaTitles:      MIKEY I NICKY | Mikey i Nicky | Mikey i nicky
+cinemaTitles:      MIKEY I NICKY | Mikey i Nicky
 runtimeMinutes:    106
 releaseYear:       1976
 countries:         USA
@@ -3727,7 +3727,7 @@ cinemaScrapes:
   Kino Paradox / Mikey i Nicky / 1976
   Kino Pałacowe / Mikey i Nicky / 1976
   Kino Pod Baranami / Mikey i Nicky / —
-  Kino Rialto / Mikey i nicky / 1976
+  Kino Rialto / MIKEY I NICKY / 1976
   Kino Spektrum / Mikey i Nicky / —
   Kino U-jazdowski / Mikey i Nicky / 1976
   Kino Żak / Mikey i Nicky / 1976
@@ -3878,7 +3878,7 @@ cinemaScrapes:
   Kino Amok / Milcząca przyjaciółka / —
   Kino Atlantic / Milcząca przyjaciółka / 2025
   Kino Bajka / Milcząca przyjaciółka / —
-  Kino Bułgarska 19 / Milcząca przyjaciółka / 2025
+  Kino Bułgarska 19 / MILCZĄCA PRZYJACIÓŁKA / 2025
   Kino Fenomen (WDK) / „Milcząca przyjaciółka” / —
   Kino Forum / Milcząca przyjaciółka / —
   Kino Kika / MILCZĄCA PRZYJACIÓŁKA / —
@@ -4154,7 +4154,7 @@ showings:
 
 === Miłość, która zostaje ===
 displayTitle:      Miłość, która zostaje
-cinemaTitles:      Miłość, która zostaje
+cinemaTitles:      MIŁOŚĆ, KTÓRA ZOSTAJE | Miłość, która zostaje
 runtimeMinutes:    115
 releaseYear:       2025
 countries:         Islandia, Dania, Szwecja, Francja
@@ -4176,7 +4176,7 @@ cinemaFilmUrls:
   Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/milosc-ktora-zostaje
   Kino Muza = https://www.kinomuza.pl/movie/milosc-ktora-zostaje/
 cinemaScrapes:
-  Kino Bułgarska 19 / Miłość, która zostaje / 2025
+  Kino Bułgarska 19 / MIŁOŚĆ, KTÓRA ZOSTAJE / 2025
   Kino Muza / Miłość, która zostaje / 2025
   Kino Spektrum / Miłość, która zostaje / —
   Kino na Szekspirowskim / Miłość, która zostaje / —
@@ -4187,7 +4187,7 @@ showings:
 
 === Monterey Pop ===
 displayTitle:      Monterey Pop
-cinemaTitles:      MONTEREY POP | Monterey Pop | Monterey pop
+cinemaTitles:      MONTEREY POP | Monterey Pop
 runtimeMinutes:    78
 releaseYear:       1968
 countries:         USA
@@ -4214,7 +4214,7 @@ cinemaScrapes:
   Kino 60 Krzeseł / Monterey Pop / —
   Kino Apollo / Monterey Pop / —
   Kino Pionier 1907 / MONTEREY POP / —
-  Kino Rialto / Monterey pop / 1968
+  Kino Rialto / MONTEREY POP / 1968
 showings:
   2026-06-16  Kino Apollo                   19:30
   2026-06-16  Kino Rialto                   20:45
@@ -4269,7 +4269,7 @@ showings:
 
 === Munch: miłość, duchy i wampirzyce ===
 displayTitle:      Munch: miłość, duchy i wampirzyce
-cinemaTitles:      Munch: miłość, duchy i wampirzyce
+cinemaTitles:      MUNCH: MIŁOŚĆ, DUCHY I WAMPIRZYCE
 runtimeMinutes:    90
 releaseYear:       2022
 countries:         Wielka Brytania, Włochy, Norwegia
@@ -4290,7 +4290,7 @@ filmwebUrl:        —
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=95047
 cinemaScrapes:
-  Kino Rialto / Munch: miłość, duchy i wampirzyce / 2022
+  Kino Rialto / MUNCH: MIŁOŚĆ, DUCHY I WAMPIRZYCE / 2022
 showings:
   2026-06-13  Kino Rialto                   15:30
 
@@ -4543,7 +4543,7 @@ showings:
 
 === Niesamowite przygody skarpetek 3. Ale kosmos ===
 displayTitle:      Niesamowite przygody skarpetek 3. Ale kosmos
-cinemaTitles:      NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS ! | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! | Niesamowite przygody skarpetek 3. Ale kosmos | Niesamowite przygody skarpetek 3. Ale kosmos! | Niesamowite przygody skarpetek 3. ale kosmos!
+cinemaTitles:      NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS ! | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! | Niesamowite przygody skarpetek 3. Ale kosmos | Niesamowite przygody skarpetek 3. Ale kosmos!
 runtimeMinutes:    55
 releaseYear:       2026
 countries:         Polska, Portugalia
@@ -4615,7 +4615,7 @@ cinemaScrapes:
   KINOkawiarnia Stacja Falenica / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Agrafka / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / 2026
   Kino Bajka / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Kino Bułgarska 19 / Niesamowite przygody skarpetek 3. ale kosmos! / 2026
+  Kino Bułgarska 19 / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / 2026
   Kino CK Lublin / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Centrum CSW Toruń / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Charlie / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -5105,7 +5105,7 @@ cinemaScrapes:
   Kino Piast / Ojczyzna / —
   Kino Pionier 1907 / OJCZYZNA / —
   Kino Pod Baranami / Ojczyzna / —
-  Kino Rialto / Ojczyzna / 2026
+  Kino Rialto / OJCZYZNA / 2026
   Kino Roma / Ojczyzna / —
   Kino Sfinks / OJCZYZNA / —
   Kino Stary Młyn / Ojczyzna / —
@@ -5187,7 +5187,7 @@ cinemaScrapes:
   Kino Apollo Wałbrzych / Orły Republiki / —
   Kino Atlantic / Orły Republiki / 2025
   Kino Awangarda 2 / Orły Republiki / 2025
-  Kino Bułgarska 19 / Orły republiki / 2025
+  Kino Bułgarska 19 / ORŁY REPUBLIKI / 2025
   Kino CK Lublin / Orły Republiki / —
   Kino Fenomen (WDK) / Orły Republiki / —
   Kino Forum / Orły republiki / —
@@ -5257,7 +5257,7 @@ showings:
 
 === Ostatnia sesja w Paryżu ===
 displayTitle:      Ostatnia sesja w Paryżu
-cinemaTitles:      Ostatnia sesja w Paryżu | Ostatnia sesja w paryżu
+cinemaTitles:      OSTATNIA SESJA W PARYŻU | Ostatnia sesja w Paryżu | Ostatnia sesja w paryżu
 runtimeMinutes:    105
 releaseYear:       2025
 countries:         Francja
@@ -5279,7 +5279,7 @@ cinemaFilmUrls:
   Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/ostatnia-sesja-w-paryzu
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/ostatnia-sesja-w-paryzu
 cinemaScrapes:
-  Kino Bułgarska 19 / Ostatnia sesja w paryżu / 2025
+  Kino Bułgarska 19 / OSTATNIA SESJA W PARYŻU / 2025
   Kino Malta Charlie Monroe / Ostatnia sesja w Paryżu / —
   Kino Muranów / Ostatnia sesja w Paryżu / 2025
   Kino Przedwiośnie / Ostatnia sesja w Paryżu / 2025
@@ -5799,8 +5799,8 @@ cinemaScrapes:
 showings:
   2026-07-07  Kino Pałacowe                 21:30 Dziedziniec Zamkowy
 
-=== Plenerowe Pałacowe: FATHER MOTHER SISTER BROTHER ===
-displayTitle:      Plenerowe Pałacowe: FATHER MOTHER SISTER BROTHER
+=== Plenerowe Pałacowe: Father mother sister brother ===
+displayTitle:      Plenerowe Pałacowe: Father mother sister brother
 cinemaTitles:      Plenerowe Pałacowe: FATHER MOTHER SISTER BROTHER
 runtimeMinutes:    110
 releaseYear:       2025
@@ -6397,7 +6397,7 @@ cinemaScrapes:
   Helios Outlet Park / Posłani / 2026
   Helios Tczew / Posłani / —
   Kino Bajka / Posłani / —
-  Kino Bułgarska 19 / Posłani / 2026
+  Kino Bułgarska 19 / POSŁANI / 2026
   Kino Kijów / Posłani / —
   Kino MOKiS / Posłani / —
   Kino Moskwa / POSŁANI / —
@@ -6774,7 +6774,7 @@ cinemaScrapes:
   Helios Przemyśl / Pucio / 2026
   Helios Starachowice / Pucio / 2026
   KINOkawiarnia Stacja Falenica / Pucio / —
-  Kino Bułgarska 19 / Pucio / 2026
+  Kino Bułgarska 19 / PUCIO / 2026
   Kino Diana / Pucio / —
   Kino Kika / PUCIO / —
   Kino Nowe Horyzonty / Pucio / 2026
@@ -6818,7 +6818,7 @@ showings:
 
 === Romería ===
 displayTitle:      Romería
-cinemaTitles:      Romeria | Romería
+cinemaTitles:      ROMERÍA | Romeria | Romería
 runtimeMinutes:    115
 releaseYear:       2025
 countries:         Hiszpania, Niemcy
@@ -6843,7 +6843,7 @@ cinemaScrapes:
   Bajka / Romeria / —
   Janosik / Romeria / —
   Jaworzyna / Romeria / —
-  Kino Bułgarska 19 / Romería / 2025
+  Kino Bułgarska 19 / ROMERÍA / 2025
   Kino IKM / Romeria / —
   Kino Iluzjon / Romería / 2025
   Kino Luna / Romería / —
@@ -7608,9 +7608,9 @@ showings:
   2026-06-28  Kino Pałacowe                 17:00 Sala 1 - Kinowa
   2026-08-11  Kino Muza                     20:30 Sala 1
 
-=== Słodkie życie | przed filmem wykład prof. Marka hendrykowskiego ===
-displayTitle:      Słodkie życie | przed filmem wykład prof. Marka hendrykowskiego
-cinemaTitles:      Słodkie życie | przed filmem wykład prof. Marka hendrykowskiego
+=== SŁODKIE ŻYCIE | przed filmem wykład prof. Marka Hendrykowskiego ===
+displayTitle:      SŁODKIE ŻYCIE | przed filmem wykład prof. Marka Hendrykowskiego
+cinemaTitles:      SŁODKIE ŻYCIE | przed filmem wykład prof. Marka Hendrykowskiego
 runtimeMinutes:    176
 releaseYear:       1960
 countries:         Francja, Włochy
@@ -7631,7 +7631,7 @@ filmwebUrl:        https://www.filmweb.pl/film/S%C5%82odkie+%C5%BCycie-1960-3094
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=155999
 cinemaScrapes:
-  Kino Rialto / Słodkie życie | przed filmem wykład prof. Marka hendrykowskiego / 1960
+  Kino Rialto / SŁODKIE ŻYCIE | przed filmem wykład prof. Marka Hendrykowskiego / 1960
 showings:
   2026-06-10  Kino Rialto                   18:00
 
@@ -7740,7 +7740,7 @@ showings:
 
 === To był zwykły przypadek ===
 displayTitle:      To był zwykły przypadek
-cinemaTitles:      To był zwykły przypadek
+cinemaTitles:      TO BYŁ ZWYKŁY PRZYPADEK | To był zwykły przypadek
 runtimeMinutes:    105
 releaseYear:       2025
 countries:         Francja, Iran, Luksemburg
@@ -7761,7 +7761,7 @@ filmwebUrl:        https://www.filmweb.pl/film/To+by%C5%82+zwyk%C5%82y+przypadek
 cinemaFilmUrls:
   Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/to-byl-zwykly-przypadek
 cinemaScrapes:
-  Kino Bułgarska 19 / To był zwykły przypadek / 2025
+  Kino Bułgarska 19 / TO BYŁ ZWYKŁY PRZYPADEK / 2025
   Kino na Szekspirowskim / To był zwykły przypadek / —
 showings:
   2026-06-11  Kino Bułgarska 19             19:50 Sala Thelma & Louise
@@ -8255,7 +8255,7 @@ showings:
 
 === Werdykt ===
 displayTitle:      Werdykt
-cinemaTitles:      Werdykt | Werdykt.
+cinemaTitles:      WERDYKT | Werdykt | Werdykt.
 runtimeMinutes:    89
 releaseYear:       2025
 countries:         Irlandia, Luksemburg
@@ -8289,7 +8289,7 @@ cinemaScrapes:
   Gdyńskie Centrum Filmowe / Werdykt / —
   Kino Amok / Werdykt / —
   Kino Bajka Kluczbork / Werdykt / —
-  Kino Bułgarska 19 / Werdykt / 2025
+  Kino Bułgarska 19 / WERDYKT / 2025
   Kino CK Lublin / Werdykt / —
   Kino Kreska / Werdykt / 2025
   Kino Luna / Werdykt / —
@@ -8742,7 +8742,7 @@ cinemaScrapes:
   Gdyńskie Centrum Filmowe / Zawieście czerwone latarnie / —
   KINOMUZEUM / Zawieście czerwone latarnie / 1991
   Kino Agrafka / ZAWIEŚCIE CZERWONE LATARNIE / 1991
-  Kino Bułgarska 19 / Zawieście czerwone latarnie / 1991
+  Kino Bułgarska 19 / ZAWIEŚCIE CZERWONE LATARNIE / 1991
   Kino CK Lublin / Zawieście czerwone latarnie / —
   Kino Centrum CSW Toruń / Zawieście czerwone latarnie / —
   Kino Iluzjon / Zawieście czerwone latarnie / 1991
@@ -8757,7 +8757,7 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Zawieście czerwone latarnie / 1991
   Kino Paradox / Zawieście czerwone latarnie / 1991
   Kino Pałacowe / Zawieście czerwone latarnie / 1991
-  Kino Rialto / Zawieście czerwone latarnie / 1991
+  Kino Rialto / ZAWIEŚCIE CZERWONE LATARNIE / 1991
   Kino SDK / Zawieście czerwone latarnie / 1991
   Kino U-jazdowski / Zawieście czerwone latarnie / 1991
   Kino Żak / Zawieście czerwone latarnie / 1991
@@ -8911,7 +8911,7 @@ cinemaScrapes:
   Kino Piast / Zawodowcy / —
   Kino Pod Baranami / Zawodowcy / —
   Kino Przedwiośnie / Zawodowcy / 2026
-  Kino Rialto / Zawodowcy / 2026
+  Kino Rialto / ZAWODOWCY / 2026
   Kino Scena Kultura / Zawodowcy / 2026
   Kino Sokół / ZAWODOWCY / —
   Kino Stary Młyn / ZAWODOWCY / —

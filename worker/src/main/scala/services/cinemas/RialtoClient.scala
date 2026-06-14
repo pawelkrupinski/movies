@@ -216,19 +216,12 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
 
 object RialtoClient {
 
-  /** Full title cleanup: drop the cycle prefix, strip event-decoration
-   *  suffixes, then sentence-case. When a recognised programme prefix survives
-   *  (e.g. "Filmowy Klub Seniora:"), case the prefix and the film title
-   *  independently so the film title keeps its own leading capital
-   *  ("Filmowy klub seniora: Ojczyzna", not "… ojczyzna"). Public so it can be
+  /** Rialto-specific title cleanup: drop the cycle prefix and the event-
+   *  decoration suffix. Casing is NOT done here — the shared, banner-aware
+   *  `TitleNormalizer.recase` cases every cinema's title once at the scrape
+   *  choke point (`MovieCache.recordCinemaScrape`). Public so it can be
    *  unit-tested directly. */
-  def normalizeTitle(raw: String): String = {
-    val cleaned = stripPreviewSuffix(stripCyclePrefix(raw))
-    services.movies.TitleNormalizer.programmePrefix(cleaned) match {
-      case Some(prefix) => normalizeCase(prefix) + normalizeCase(cleaned.substring(prefix.length))
-      case None         => normalizeCase(cleaned)
-    }
-  }
+  def normalizeTitle(raw: String): String = stripPreviewSuffix(stripCyclePrefix(raw))
 
   // Recurring-programme prefixes whose screenings are their OWN row, not folded
   // into the base film — a senior-club showing targets a distinct audience and
@@ -251,42 +244,5 @@ object RialtoClient {
 
   private def stripPreviewSuffix(title: String): String =
     PreviewSuffixPat.replaceFirstIn(title, "")
-
-  // Rialto presents most titles in upper case; lower-case them so that they
-  // merge case-insensitively with the same films from other cinemas. Sentence-
-  // case rather than just-first-letter so multi-sentence titles read naturally
-  // ("Mavka. Prawdziwy mit", not "Mavka. prawdziwy mit").
-  //
-  // After `. ` (period + space) we capitalize the next letter only when the
-  // preceding token looks like a sentence-ending word — a 4+ letter run, or a
-  // digit. That keeps "Mavka. Prawdziwy" and "skarpetek 3. Ale kosmos" right
-  // while leaving Polish abbreviations untouched ("ang. napisami", "reż.
-  // Jana", "ul. Świętego Marcina") — those abbreviations are 2–3 letters.
-  private def normalizeCase(title: String): String = {
-    if (title.isEmpty) return title
-    val chars = title.toLowerCase.toCharArray
-    chars(0) = chars(0).toUpper
-    var i = 0
-    while (i + 2 < chars.length) {
-      if (chars(i) == '.' && chars(i + 1) == ' ' && precedingTokenEndsSentence(chars, i))
-        chars(i + 2) = chars(i + 2).toUpper
-      i += 1
-    }
-    new String(chars)
-  }
-
-  /** True if the character run ending at index `dotIndex - 1` looks like a
-   *  sentence-ending token: a digit (sequel/chapter number) or a 4+ letter
-   *  word. Counts contiguous letters/digits backwards from `dotIndex - 1`. */
-  private def precedingTokenEndsSentence(chars: Array[Char], dotIndex: Int): Boolean = {
-    if (dotIndex == 0) return false
-    val previous = chars(dotIndex - 1)
-    if (previous.isDigit) return true
-    if (!previous.isLetter) return false
-    var letters = 0
-    var j = dotIndex - 1
-    while (j >= 0 && chars(j).isLetter) { letters += 1; j -= 1 }
-    letters >= 4
-  }
 }
 

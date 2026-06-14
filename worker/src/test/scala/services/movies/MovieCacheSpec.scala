@@ -154,9 +154,10 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     handle.get.close()
     repository.upsert("B", Some(2025), mkEnrichment("tt-b"))  // after close → not observed
     // The repository re-derives the display title on read, as Mongo does — a record
-    // with no title slot collapses to its sanitized _id prefix ("a"). What this
-    // pins is that the watcher fires on each write until closed; title is incidental.
-    seen.toList shouldBe List(("a", Some(2024), None), ("a", Some(2024), Some(8.0)))
+    // with no title slot collapses to its sanitized _id prefix ("a"), which
+    // `displayTitle` then re-cases to "A". What this pins is that the watcher
+    // fires on each write until closed; title is incidental.
+    seen.toList shouldBe List(("A", Some(2024), None), ("A", Some(2024), Some(8.0)))
   }
 
   "InMemoryMovieRepository.findAll" should "re-derive title/year from the _id + record like Mongo, not return them verbatim" in {

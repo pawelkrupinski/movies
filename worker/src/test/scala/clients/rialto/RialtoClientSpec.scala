@@ -5,13 +5,16 @@ import models.{Rialto, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.RialtoClient
+import services.movies.TitleNormalizer
 
 import java.time.LocalDateTime
 
 class RialtoClientSpec extends AnyFlatSpec with Matchers {
 
   private val client  = new RialtoClient(new FakeHttpFetch("rialto"))
+  // casing is applied centrally now (TitleNormalizer.recase); apply it here so assertions read display titles
   private val results = client.fetch()
+    .map(cm => cm.copy(movie = cm.movie.copy(title = TitleNormalizer.recase(cm.movie.title))))
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
   // ── Totals ────────────────────────────────────────────────────────────────
@@ -38,13 +41,14 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
 
   it should "return exactly the expected set of movie titles" in {
     results.map(_.movie.title).toSet shouldBe Set(
-      "Ale mam | ну мам | wersja ukraińska z ang. napisami",
+      "Ale mam | Ну мам | wersja ukraińska z ang. napisami",
       "Człowiek z marmuru",
       "Diabeł ubiera się u prady 2",
       "Filmowe spotkania z psychoanalizą: Dobry chłopiec",
-      // Senior-club showings kept as their own row (cycle prefix preserved).
-      "Filmowy klub seniora: Diabeł ubiera się u prady 2",
-      "Filmowy klub seniora: Młode matki",
+      // Senior-club showings kept as their own row (cycle prefix preserved;
+      // banner casing kept as the fixture reports it now that recase is banner-aware).
+      "Filmowy Klub Seniora: Diabeł ubiera się u prady 2",
+      "Filmowy Klub Seniora: Młode matki",
       "Mavka. Prawdziwy mit",
       "Modigliani: portret odarty z legendy",
       "Munch: miłość, duchy i wampirzyce",
@@ -52,7 +56,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
       "Niesamowite przygody skarpetek 3. Ale kosmos!",
       "Szepty lasu",
       "Sprawiedliwość owiec",
-      "Top gun | 40 rocznica",
+      "TOP GUN | 40 rocznica",
       "Van gogh. Pola zbóż i zachmurzone niebiosa",
       "Znaki pana śliwki",
     )
@@ -62,7 +66,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
 
   it should "return correct runtime for every movie" in {
     val runtimes = results.map(m => m.movie.title -> m.movie.runtimeMinutes).toMap
-    runtimes("Ale mam | ну мам | wersja ukraińska z ang. napisami") shouldBe Some(90)
+    runtimes("Ale mam | Ну мам | wersja ukraińska z ang. napisami") shouldBe Some(90)
     runtimes("Człowiek z marmuru")                                   shouldBe Some(156)
     runtimes("Diabeł ubiera się u prady 2")                         shouldBe Some(120)
     runtimes("Filmowe spotkania z psychoanalizą: Dobry chłopiec")    shouldBe Some(110)
@@ -73,7 +77,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     runtimes("Niesamowite przygody skarpetek 3. Ale kosmos!")        shouldBe Some(55)
     runtimes("Szepty lasu")                                          shouldBe Some(84)
     runtimes("Sprawiedliwość owiec")                                 shouldBe Some(105)
-    runtimes("Top gun | 40 rocznica")                                shouldBe Some(110)
+    runtimes("TOP GUN | 40 rocznica")                                shouldBe Some(110)
     runtimes("Van gogh. Pola zbóż i zachmurzone niebiosa")          shouldBe Some(85)
     runtimes("Znaki pana śliwki")                                    shouldBe Some(72)
   }
@@ -81,7 +85,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
   // ── Release years ─────────────────────────────────────────────────────────
 
   it should "return correct release year for every movie" in {
-    byTitle("Ale mam | ну мам | wersja ukraińska z ang. napisami").movie.releaseYear shouldBe Some(2026)
+    byTitle("Ale mam | Ну мам | wersja ukraińska z ang. napisami").movie.releaseYear shouldBe Some(2026)
     byTitle("Człowiek z marmuru").movie.releaseYear                                   shouldBe Some(1976)
     byTitle("Diabeł ubiera się u prady 2").movie.releaseYear                         shouldBe Some(2026)
     byTitle("Filmowe spotkania z psychoanalizą: Dobry chłopiec").movie.releaseYear    shouldBe Some(2025)
@@ -92,7 +96,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Niesamowite przygody skarpetek 3. Ale kosmos!").movie.releaseYear        shouldBe Some(2026)
     byTitle("Szepty lasu").movie.releaseYear                                          shouldBe Some(2026)
     byTitle("Sprawiedliwość owiec").movie.releaseYear                                 shouldBe Some(2026)
-    byTitle("Top gun | 40 rocznica").movie.releaseYear                                shouldBe Some(1986)
+    byTitle("TOP GUN | 40 rocznica").movie.releaseYear                                shouldBe Some(1986)
     byTitle("Van gogh. Pola zbóż i zachmurzone niebiosa").movie.releaseYear          shouldBe Some(2018)
     byTitle("Znaki pana śliwki").movie.releaseYear                                    shouldBe Some(2025)
   }
@@ -100,7 +104,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
   // ── Production country ────────────────────────────────────────────────────
 
   it should "return correct production country for every movie" in {
-    byTitle("Ale mam | ну мам | wersja ukraińska z ang. napisami").movie.countries shouldBe Seq("Ukraina")
+    byTitle("Ale mam | Ну мам | wersja ukraińska z ang. napisami").movie.countries shouldBe Seq("Ukraina")
     byTitle("Człowiek z marmuru").movie.countries shouldBe Seq("Polska")
     byTitle("Diabeł ubiera się u prady 2").movie.countries shouldBe Seq("USA")
     byTitle("Filmowe spotkania z psychoanalizą: Dobry chłopiec").movie.countries shouldBe Seq("Polska", "Wielka Brytania")
@@ -111,7 +115,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Niesamowite przygody skarpetek 3. Ale kosmos!").movie.countries shouldBe Seq("Polska", "Portugalia")
     byTitle("Sprawiedliwość owiec").movie.countries shouldBe Seq("Irlandia", "Niemcy", "USA", "Wielka Brytania")
     byTitle("Szepty lasu").movie.countries shouldBe Seq("Polska")
-    byTitle("Top gun | 40 rocznica").movie.countries shouldBe Seq("USA")
+    byTitle("TOP GUN | 40 rocznica").movie.countries shouldBe Seq("USA")
     byTitle("Van gogh. Pola zbóż i zachmurzone niebiosa").movie.countries shouldBe Seq("Włochy")
     byTitle("Znaki pana śliwki").movie.countries shouldBe Seq("Polska")
   }
@@ -130,7 +134,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
 
   it should "return correct poster URL for every movie" in {
     val posters = results.map(m => m.movie.title -> m.posterUrl).toMap
-    posters("Ale mam | ну мам | wersja ukraińska z ang. napisami") shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/a1a0-v3-1x-062logo.jpg")
+    posters("Ale mam | Ну мам | wersja ukraińska z ang. napisami") shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/a1a0-v3-1x-062logo.jpg")
     posters("Człowiek z marmuru")                                   shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/czlowiek-z-marmuru-plakat1.jpg")
     posters("Diabeł ubiera się u prady 2")                         shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/diabel-ubiera-sie-u-prady-2-plakat1.jpg")
     posters("Filmowe spotkania z psychoanalizą: Dobry chłopiec")    shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/dobry-chlopiec-plakat.jpg")
@@ -141,7 +145,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     posters("Niesamowite przygody skarpetek 3. Ale kosmos!")        shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/niesamowite-przygody-skarpetek-3-ale-kosmos-plakat-scaled.jpg")
     posters("Szepty lasu")                                          shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/szepty-lasu-plakat.jpg")
     posters("Sprawiedliwość owiec")                                 shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/plakat-sprawiedliwosc-owiec-internetjpg.jpg")
-    posters("Top gun | 40 rocznica")                                shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/top-gun-rocznica-tg40th.jpg")
+    posters("TOP GUN | 40 rocznica")                                shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/top-gun-rocznica-tg40th.jpg")
     posters("Van gogh. Pola zbóż i zachmurzone niebiosa")          shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/vangogh-plakat.jpg")
     posters("Znaki pana śliwki")                                    shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/znaki-pana-sliwki-plakat.jpg")
   }
@@ -150,7 +154,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
 
   it should "return correct film URL for every movie" in {
     val filmUrls = results.map(m => m.movie.title -> m.filmUrl).toMap
-    filmUrls("Ale mam | ну мам | wersja ukraińska z ang. napisami") shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=155841")
+    filmUrls("Ale mam | Ну мам | wersja ukraińska z ang. napisami") shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=155841")
     filmUrls("Człowiek z marmuru")                                   shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=155445")
     filmUrls("Diabeł ubiera się u prady 2")                         shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=154210")
     filmUrls("Filmowe spotkania z psychoanalizą: Dobry chłopiec")    shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=155850")
@@ -161,7 +165,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     filmUrls("Niesamowite przygody skarpetek 3. Ale kosmos!")        shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=155443")
     filmUrls("Szepty lasu")                                          shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=155439")
     filmUrls("Sprawiedliwość owiec")                                 shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=154188")
-    filmUrls("Top gun | 40 rocznica")                                shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=154207")
+    filmUrls("TOP GUN | 40 rocznica")                                shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=154207")
     filmUrls("Van gogh. Pola zbóż i zachmurzone niebiosa")          shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=48676")
     filmUrls("Znaki pana śliwki")                                    shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=155877")
   }
@@ -179,7 +183,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Niesamowite przygody skarpetek 3. Ale kosmos!").director     shouldBe Seq("Paweł Wendorff", "Elżbieta Wąsik; Jarosław Szyszko", "Barbara Koniecka", "Mateusz Kmieć", "Natalia Bartska-Kmieć")
     byTitle("Szepty lasu").director                                       shouldBe Seq("Krzysztof Sarapata", "Tomasz Kotaś")
     byTitle("Sprawiedliwość owiec").director                              shouldBe Seq("Kyle Balda")
-    byTitle("Top gun | 40 rocznica").director                             shouldBe Seq("Tony Scott")
+    byTitle("TOP GUN | 40 rocznica").director                             shouldBe Seq("Tony Scott")
     byTitle("Van gogh. Pola zbóż i zachmurzone niebiosa").director       shouldBe Seq("Giovanni Piscaglia")
     byTitle("Znaki pana śliwki").director                                 shouldBe Seq("Urszula Morga", "Bartosz Mikołajczyk")
   }
@@ -208,7 +212,8 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "strip the suffix regardless of case and dash style" in {
-    RialtoClient.normalizeTitle("OJCZYZNA – POKAZ PRZEDPREMIEROWY") shouldBe "Ojczyzna"
+    // casing is applied centrally now (TitleNormalizer.recase); wrap so the assertion reads the display title
+    TitleNormalizer.recase(RialtoClient.normalizeTitle("OJCZYZNA – POKAZ PRZEDPREMIEROWY")) shouldBe "Ojczyzna"
   }
 
   it should "leave a title without the suffix untouched" in {
@@ -216,23 +221,25 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "strip an ordinary cycle prefix" in {
-    RialtoClient.normalizeTitle("DKF Absolwent: MILCZĄCA PRZYJACIÓŁKA") shouldBe "Milcząca przyjaciółka"
+    // casing is applied centrally now (TitleNormalizer.recase); wrap so the assertion reads the display title
+    TitleNormalizer.recase(RialtoClient.normalizeTitle("DKF Absolwent: MILCZĄCA PRZYJACIÓŁKA")) shouldBe "Milcząca przyjaciółka"
   }
 
-  it should "keep the 'Filmowy Klub Seniora:' prefix (lower-cased) but capitalize the film title after it" in {
-    RialtoClient.normalizeTitle("Filmowy Klub Seniora: OJCZYZNA") shouldBe "Filmowy klub seniora: Ojczyzna"
+  it should "keep the 'Filmowy Klub Seniora:' prefix but capitalize the film title after it" in {
+    // casing is applied centrally now (TitleNormalizer.recase); wrap so the assertion reads the display title
+    TitleNormalizer.recase(RialtoClient.normalizeTitle("Filmowy Klub Seniora: OJCZYZNA")) shouldBe "Filmowy Klub Seniora: Ojczyzna"
   }
 
   // ── Showtime counts ───────────────────────────────────────────────────────
 
   it should "return correct showtime count for every movie" in {
     val counts = results.map(m => m.movie.title -> m.showtimes.size).toMap
-    counts("Ale mam | ну мам | wersja ukraińska z ang. napisami") shouldBe 11
+    counts("Ale mam | Ну мам | wersja ukraińska z ang. napisami") shouldBe 11
     counts("Człowiek z marmuru")                                   shouldBe 11
     counts("Diabeł ubiera się u prady 2")                         shouldBe 22
     counts("Filmowe spotkania z psychoanalizą: Dobry chłopiec")    shouldBe 11
-    counts("Filmowy klub seniora: Diabeł ubiera się u prady 2")    shouldBe 11
-    counts("Filmowy klub seniora: Młode matki")                    shouldBe 11
+    counts("Filmowy Klub Seniora: Diabeł ubiera się u prady 2")    shouldBe 11
+    counts("Filmowy Klub Seniora: Młode matki")                    shouldBe 11
     counts("Mavka. Prawdziwy mit")                                 shouldBe 11
     counts("Modigliani: portret odarty z legendy")                 shouldBe 11
     counts("Munch: miłość, duchy i wampirzyce")                   shouldBe 11
@@ -240,7 +247,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     counts("Niesamowite przygody skarpetek 3. Ale kosmos!")        shouldBe 22
     counts("Szepty lasu")                                          shouldBe 11
     counts("Sprawiedliwość owiec")                                 shouldBe 33
-    counts("Top gun | 40 rocznica")                                shouldBe 11
+    counts("TOP GUN | 40 rocznica")                                shouldBe 11
     counts("Van gogh. Pola zbóż i zachmurzone niebiosa")          shouldBe 11
     counts("Znaki pana śliwki")                                    shouldBe 11
   }

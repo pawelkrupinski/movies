@@ -5,13 +5,16 @@ import models.{KinoBulgarska, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.KinoBulgarskaClient
+import services.movies.TitleNormalizer
 
 import java.time.LocalDateTime
 
 class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
 
   private val client  = new KinoBulgarskaClient(new FakeHttpFetch("kino-bulgarska"))
+  // casing is applied centrally now (TitleNormalizer.recase); apply it here so assertions read display titles
   private val results = client.fetch()
+    .map(cm => cm.copy(movie = cm.movie.copy(title = TitleNormalizer.recase(cm.movie.title))))
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
   // ── Totals ────────────────────────────────────────────────────────────────
@@ -35,7 +38,7 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
       "Chronologia wody",
       "Father mother sister brother",
       "La grazia",
-      "Maryja. matka papieża",
+      "Maryja. Matka papieża",
       "Miłość w czasach apokalipsy",
       "Na rauszu",
       "Ostatnia sesja w paryżu",
@@ -51,7 +54,7 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
     runtimes("Chronologia wody")             shouldBe Some(128)
     runtimes("Father mother sister brother") shouldBe Some(110)
     runtimes("La grazia")                    shouldBe Some(131)
-    runtimes("Maryja. matka papieża")        shouldBe Some(80)
+    runtimes("Maryja. Matka papieża")        shouldBe Some(80)
     runtimes("Miłość w czasach apokalipsy")  shouldBe Some(100)
     runtimes("Na rauszu")                    shouldBe Some(115)
     runtimes("Ostatnia sesja w paryżu")      shouldBe Some(105)
@@ -65,7 +68,7 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Chronologia wody").movie.releaseYear             shouldBe Some(2025)
     byTitle("Father mother sister brother").movie.releaseYear shouldBe Some(2025)
     byTitle("La grazia").movie.releaseYear                    shouldBe Some(2025)
-    byTitle("Maryja. matka papieża").movie.releaseYear        shouldBe Some(2026)
+    byTitle("Maryja. Matka papieża").movie.releaseYear        shouldBe Some(2026)
     byTitle("Miłość w czasach apokalipsy").movie.releaseYear  shouldBe Some(2025)
     byTitle("Na rauszu").movie.releaseYear                    shouldBe Some(2020)
     byTitle("Ostatnia sesja w paryżu").movie.releaseYear      shouldBe Some(2025)
@@ -79,7 +82,7 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Chronologia wody").movie.countries             shouldBe Seq("USA")
     byTitle("Father mother sister brother").movie.countries shouldBe Seq("USA")
     byTitle("La grazia").movie.countries                    shouldBe Seq("Włochy")
-    byTitle("Maryja. matka papieża").movie.countries        shouldBe Seq("Polska")
+    byTitle("Maryja. Matka papieża").movie.countries        shouldBe Seq("Polska")
     byTitle("Miłość w czasach apokalipsy").movie.countries  shouldBe Seq("Kanada")
     byTitle("Na rauszu").movie.countries                    shouldBe Seq("Dania")
     byTitle("Ostatnia sesja w paryżu").movie.countries      shouldBe Seq("Francja")
@@ -94,7 +97,7 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
     posters("Chronologia wody")             shouldBe Some("http://kinobulgarska19.pl/wp-content/uploads/2026/04/CHRONOLOGIA-WODY-PLAKAT-PL-clean.jpg")
     posters("Father mother sister brother") shouldBe Some("http://kinobulgarska19.pl/wp-content/uploads/2025/12/FMSB-plakat-PL_HQ.jpg")
     posters("La grazia")                    shouldBe Some("http://kinobulgarska19.pl/wp-content/uploads/2026/01/la-grazia-plakat-b1-lq_1.jpg")
-    posters("Maryja. matka papieża")        shouldBe Some("http://kinobulgarska19.pl/wp-content/uploads/2026/03/maryja-matka-papieza-scaled.jpg")
+    posters("Maryja. Matka papieża")        shouldBe Some("http://kinobulgarska19.pl/wp-content/uploads/2026/03/maryja-matka-papieza-scaled.jpg")
     posters("Miłość w czasach apokalipsy")  shouldBe Some("http://kinobulgarska19.pl/wp-content/uploads/2026/04/milosc-w-czasach-apo_plakat.jpg")
     posters("Na rauszu")                    shouldBe Some("http://kinobulgarska19.pl/wp-content/uploads/2021/02/NaRauszu_plakat_OSCAR_final.jpg")
     posters("Ostatnia sesja w paryżu")      shouldBe Some("http://kinobulgarska19.pl/wp-content/uploads/2026/03/ostatnia-sesja-w-paryzu-plakat-z-data-11.jpg")
@@ -109,7 +112,7 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
     filmUrls("Chronologia wody")             shouldBe Some("http://kinobulgarska19.pl/filmy/chronologia-wody")
     filmUrls("Father mother sister brother") shouldBe Some("http://kinobulgarska19.pl/filmy/father-mother-sister-brother")
     filmUrls("La grazia")                    shouldBe Some("http://kinobulgarska19.pl/filmy/la-grazia")
-    filmUrls("Maryja. matka papieża")        shouldBe Some("http://kinobulgarska19.pl/filmy/maryja-matka-papieza")
+    filmUrls("Maryja. Matka papieża")        shouldBe Some("http://kinobulgarska19.pl/filmy/maryja-matka-papieza")
     filmUrls("Miłość w czasach apokalipsy")  shouldBe Some("http://kinobulgarska19.pl/filmy/milosc-w-czasach-apokalipsy")
     filmUrls("Na rauszu")                    shouldBe Some("http://kinobulgarska19.pl/filmy/na-rauszu")
     filmUrls("Ostatnia sesja w paryżu")      shouldBe Some("http://kinobulgarska19.pl/filmy/ostatnia-sesja-w-paryzu")
@@ -123,7 +126,7 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Chronologia wody").director             shouldBe Seq("Kristen Stewart")
     byTitle("Father mother sister brother").director shouldBe Seq("Jim Jarmusch")
     byTitle("La grazia").director                    shouldBe Seq("Paolo Sorrentino")
-    byTitle("Maryja. matka papieża").director        shouldBe Seq("Jan Sobierajski")
+    byTitle("Maryja. Matka papieża").director        shouldBe Seq("Jan Sobierajski")
     byTitle("Miłość w czasach apokalipsy").director  shouldBe Seq("Anne Émond")
     byTitle("Na rauszu").director                    shouldBe Seq("Thomas Vinterberg")
     byTitle("Ostatnia sesja w paryżu").director      shouldBe Seq("Rebecca Zlotowski")
@@ -141,7 +144,7 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "extract the exact synopsis for Maryja. matka papieża" in {
-    byTitle("Maryja. matka papieża").synopsis shouldBe Some(
+    byTitle("Maryja. Matka papieża").synopsis shouldBe Some(
       "Pierwszy film ukazujący mistyczną relację Karola Wojtyły z Matką Bożą. To Ona prowadziła Jana Pawła II przez wszystkie dni jego pontyfikatu. W filmie ukazane są uznane objawienia Maryjne, w których ważnym elementem jest aktualne zagrożenie ze strony Rosji. Od wypełnienia orędzi Matki Bożej…"
     )
   }
@@ -153,7 +156,7 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
     counts("Chronologia wody")             shouldBe 2
     counts("Father mother sister brother") shouldBe 1
     counts("La grazia")                    shouldBe 1
-    counts("Maryja. matka papieża")        shouldBe 1
+    counts("Maryja. Matka papieża")        shouldBe 1
     counts("Miłość w czasach apokalipsy")  shouldBe 1
     counts("Na rauszu")                    shouldBe 1
     counts("Ostatnia sesja w paryżu")      shouldBe 2
@@ -188,28 +191,29 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
   // title reaches the cache so the row merges with the same film reported
   // un-decorated by other cinemas.
 
+  // casing is applied centrally now (TitleNormalizer.recase); wrap so the assertions read display titles
   "KinoBulgarskaClient.normalizeTitle" should "strip a single '– pokazy przedpremierowe' suffix" in {
-    KinoBulgarskaClient.normalizeTitle("POSŁANI – Pokazy przedpremierowe") shouldBe "Posłani"
+    TitleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("POSŁANI – Pokazy przedpremierowe")) shouldBe "Posłani"
   }
 
   it should "strip a single '– pokaz przedpremierowy' suffix" in {
-    KinoBulgarskaClient.normalizeTitle("FILM – Pokaz przedpremierowy") shouldBe "Film"
+    TitleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("FILM – Pokaz przedpremierowy")) shouldBe "Film"
   }
 
   it should "strip a single '– kino dzieci' suffix" in {
-    KinoBulgarskaClient.normalizeTitle("PUCIO – Kino dzieci") shouldBe "Pucio"
+    TitleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("PUCIO – Kino dzieci")) shouldBe "Pucio"
   }
 
   it should "strip chained '– pokazy przedpremierowe – kino dzieci' suffixes" in {
-    KinoBulgarskaClient.normalizeTitle("DRZEWO MAGII – Pokazy przedpremierowe – Kino dzieci") shouldBe "Drzewo magii"
+    TitleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("DRZEWO MAGII – Pokazy przedpremierowe – Kino dzieci")) shouldBe "Drzewo magii"
   }
 
   it should "still strip the legacy '– poznańska premiera' suffix" in {
-    KinoBulgarskaClient.normalizeTitle("ROMERÍA – Poznańska premiera") shouldBe "Romería"
+    TitleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("ROMERÍA – Poznańska premiera")) shouldBe "Romería"
   }
 
   it should "leave plain titles untouched apart from sentence-casing" in {
-    KinoBulgarskaClient.normalizeTitle("CHRONOLOGIA WODY") shouldBe "Chronologia wody"
+    TitleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("CHRONOLOGIA WODY")) shouldBe "Chronologia wody"
   }
 
   // ── Trailers ──────────────────────────────────────────────────────────────
@@ -232,6 +236,6 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
 
   it should "leave trailerUrl None when the detail page is unavailable" in {
     // Maryja. matka papieża has no detail-page fixture → fetchFilmDetail returns None.
-    client.fetchFilmDetail(byTitle("Maryja. matka papieża").filmUrl.getOrElse(fail("no filmUrl for Maryja. matka papieża"))) shouldBe None
+    client.fetchFilmDetail(byTitle("Maryja. Matka papieża").filmUrl.getOrElse(fail("no filmUrl for Maryja. matka papieża"))) shouldBe None
   }
 }

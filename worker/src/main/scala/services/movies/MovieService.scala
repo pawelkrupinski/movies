@@ -385,7 +385,7 @@ class MovieService(
         // ship an originalTitle, so accessibility-decorated rows ("Kino bez
         // barier: Freak Show (AD)") query IMDb as just "Freak Show". TMDB's
         // originalTitle, when present, is already canonical and needs no stripping.
-        val searchTitle = movieRecord.originalTitle.getOrElse(MovieService.apiQuery(finalKey.cleanTitle))
+        val searchTitle = movieRecord.searchTitle.orElse(movieRecord.originalTitle).getOrElse(MovieService.searchQuery(finalKey.cleanTitle))
         logger.info(s"TMDB: '${finalKey.cleanTitle}' (${finalKey.year.getOrElse("?")}) → matched tmdbId=${movieRecord.tmdbId.getOrElse("—")} (no IMDb cross-reference yet); publishing ImdbIdMissing(search='$searchTitle')")
         bus.publish(ImdbIdMissing(finalKey.cleanTitle, finalKey.year, searchTitle))
     }
@@ -657,9 +657,16 @@ class MovieService(
     // several map to the same film — is independent of the (Set) iteration
     // order, which varied run-to-run.
     val extraTitles = (cinemaTitles ++ slotOriginals).toSeq.sorted
+    // Try BOTH the raw-stripped and the re-cased-stripped form of every
+    // candidate: a cinema that reports a title ALL-CAPS resolves via the re-cased
+    // query ("MONTEREY POP" → "Monterey pop"), while one that reports it as-is
+    // resolves via the raw query — and TMDB is case-insensitive, so trying both
+    // costs nothing but covers every spelling. Order is deterministic
+    // (`searchTitleCandidates` is pre-sorted), so resolution is order-independent.
     val candidates = MovieService
       .searchTitleCandidates(title, originalTitle, extraTitles)
-      .map(MovieService.apiQuery).filter(_.nonEmpty).distinct
+      .flatMap(t => Seq(MovieService.apiQuery(t), MovieService.searchQuery(t)))
+      .filter(_.nonEmpty).distinct
     // Director hints drawn from the WHOLE merged row, not just the one cinema
     // event that happened to trigger this stage. Every cinema fires its own
     // `MovieDetailsComplete`, so the triggering event's director varied with
@@ -751,19 +758,22 @@ object MovieService {
   // of which other films happen to be in the cache at the moment.
   def normalize(title: String): String = TitleNormalizer.sanitize(title)
 
-  // Decoration-stripping for EXTERNAL LOOKUPS only: strip the anniversary /
-  // restored / wersja / Cykl / slash decoration so the TMDB/Filmweb search hits
-  // the base film. This does NOT affect identity — a decoration edition keys by
-  // its own form and stays a separate card (see `TitleNormalizer.searchTitle`
-  // and `MovieCache.keyOf`); it just resolves to the base film's ratings.
-  def searchTitle(display: String): String = TitleNormalizer.searchTitle(display)
-
-  /** Aggressive stripping for external-API queries — `searchTitle` plus the
-   *  accessibility-programme decoration (Kino bez barier, Pokaz sensorycznie,
-   *  "(AD + CC + PJM)"). See `TitleNormalizer.apiQuery` for the rationale:
-   *  cache keys preserve the accessibility row's identity, but the upstream
-   *  resolver should see the bare film title. */
+  /** Aggressive stripping for external-API queries: the anniversary / restored /
+   *  wersja / Cykl / slash decoration PLUS the accessibility-programme decoration
+   *  (Kino bez barier, Pokaz sensorycznie, "(AD + CC + PJM)", "+ <event>") so the
+   *  TMDB/Filmweb/IMDb search hits the base film. This does NOT affect identity —
+   *  a decoration / programme edition keys by its own form and stays a separate
+   *  card (see `TitleNormalizer.sanitize` and `MovieCache.keyOf`); it just
+   *  resolves to the base film's ratings. */
   def apiQuery(display: String): String = TitleNormalizer.apiQuery(display)
+
+  /** The external-search form of a title: `apiQuery` (decoration strip) over the
+   *  banner-aware re-cased title, so the query a resolver sends is normalised
+   *  regardless of how a cinema spelled it (ALL-CAPS, all-lower, mixed). A pure
+   *  function of its input — no scrape-order dependence — and, applied to a row's
+   *  canonical `cleanTitle`, it reproduces the cased query the per-client casing
+   *  used to produce (now that cinema slots keep their raw spelling). */
+  def searchQuery(title: String): String = TitleNormalizer.apiQuery(TitleNormalizer.recase(title))
 
   /** TMDB title-search candidates for a row, in priority order: the row's title,
    *  the cinema-provided original title, then every other reported title

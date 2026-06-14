@@ -35,7 +35,8 @@ class ProdTitlesNormalizationSpec extends AnyFlatSpec with Matchers {
     val timestamp = titles
     if (timestamp.isEmpty) cancel("prod-movies fixture absent — run tools.SnapshotProdTitlesToFixture")
     timestamp.foreach { t =>
-      withClue(s"searchTitle('$t'): ")(rs.structural(t) shouldBe FrozenLegacyNormalizer.searchTitle(t))
+      // The structural and search tiers merged — `rs.search` is the single
+      // lookup strip, byte-identical to the frozen legacy `apiQuery`.
       withClue(s"apiQuery('$t'): ")(rs.search(t) shouldBe FrozenLegacyNormalizer.apiQuery(t))
       withClue(s"sanitize('$t'): ")(sanitize(t) shouldBe FrozenLegacyNormalizer.sanitize(t))
       withClue(s"programmePrefix('$t'): ")(rs.programmePrefix(t) shouldBe FrozenLegacyNormalizer.programmePrefix(t))

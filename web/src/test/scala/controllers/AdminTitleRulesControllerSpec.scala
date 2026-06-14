@@ -102,15 +102,25 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "401 a save with no session" in {
-    val body = Json.obj("scope" -> "Search", "rules" -> Json.arr(Json.obj("pattern" -> "x")))
+    val body = Json.obj("scope" -> "GlobalStructural", "rules" -> Json.arr(Json.obj("pattern" -> "x")))
     status(controller().save().apply(jsonRequest(session = false, body))) shouldBe UNAUTHORIZED
+  }
+
+  it should "accept the legacy \"Search\" scope name and store it under GlobalStructural (alias)" in {
+    val repository = new InMemoryTitleRulesRepository()
+    val body = Json.obj("scope" -> "Search",
+      "rules" -> Json.arr(Json.obj("pattern" -> "^Klub: ", "replacement" -> "")))
+    status(controller(repository).save().apply(jsonRequest(session = true, body))).shouldBe(OK)
+    // byName("Search") → GlobalStructural, so the record's id is the live scope name.
+    repository.loadRecords().map(_.id).shouldBe(Seq("GlobalStructural"))
+    repository.loadRecords().head.scope.shouldBe(RuleScope.GlobalStructural)
   }
 
   "delete" should "remove the record by id" in {
     val repository = new InMemoryTitleRulesRepository(TitleRuleRecord.fromRules(Seq(
-      TitleRule("r1", RuleScope.Search, None, "x", "", applyAll = false, order = 1))))
-    repository.loadRecords().map(_.id) shouldBe Seq("Search")          // global record id = scope name
-    val result = controller(repository).delete().apply(jsonRequest(session = true, Json.obj("id" -> "Search")))
+      TitleRule("r1", RuleScope.GlobalStructural, None, "x", "", applyAll = false, order = 1))))
+    repository.loadRecords().map(_.id) shouldBe Seq("GlobalStructural")          // global record id = scope name
+    val result = controller(repository).delete().apply(jsonRequest(session = true, Json.obj("id" -> "GlobalStructural")))
     status(result) shouldBe OK
     repository.findAll() shouldBe empty
   }
@@ -133,8 +143,9 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     val body = Json.obj("rules" -> Json.arr(
       Json.obj("id" -> "g1", "scope" -> "GlobalStructural",
         "pattern" -> "(?i)\\s*-\\s*restored$", "replacement" -> "", "order" -> 1),
+      // "Search" is the legacy alias of GlobalStructural — still accepted as a transient rule.
       Json.obj("id" -> "s1", "scope" -> "Search",
-        "pattern" -> "(?i)^Klub:\\s*", "replacement" -> "", "order" -> 1),
+        "pattern" -> "(?i)^Klub:\\s*", "replacement" -> "", "order" -> 2),
       // A record-changing rule: present in the draft but NOT in the affected output.
       Json.obj("id" -> "p1", "scope" -> "PerCinema", "cinemaId" -> "cinema-city",
         "pattern" -> "^X ", "replacement" -> "", "order" -> 1)))
@@ -183,8 +194,13 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   "flatRuleFromJson" should "parse the flattened preview shape incl. last + order" in {
-    val js = Json.obj("id" -> "x", "scope" -> "Search", "pattern" -> "p$",
+    val js = Json.obj("id" -> "x", "scope" -> "GlobalStructural", "pattern" -> "p$",
       "order" -> 3, "last" -> true)
     AdminTitleRulesController.flatRuleFromJson(js).map(r => (r.order, r.last)) shouldBe Right((3, true))
+  }
+
+  it should "resolve the legacy \"Search\" scope name to GlobalStructural (alias)" in {
+    val js = Json.obj("id" -> "x", "scope" -> "Search", "pattern" -> "p$", "order" -> 3)
+    AdminTitleRulesController.flatRuleFromJson(js).map(_.scope) shouldBe Right(RuleScope.GlobalStructural)
   }
 }

@@ -16,8 +16,8 @@ class TitleRuleRecordSpec extends AnyFlatSpec with Matchers {
   "toRules" should "stamp order from list position and last from which list, forcing scope/cinema" in {
     val record = TitleRuleRecord("cinema-city", PerCinema, Some("cinema-city"),
       // deliberately give the embedded rules a wrong order/scope to prove toRules overrides them
-      rules     = Seq(r("a", Search, None, "a", order = 99), r("b", Search, None, "b", order = 99)),
-      lastRules = Seq(r("z", Search, None, "z", order = 99)))
+      rules     = Seq(r("a", GlobalStructural, None, "a", order = 99), r("b", GlobalStructural, None, "b", order = 99)),
+      lastRules = Seq(r("z", GlobalStructural, None, "z", order = 99)))
     val flat = record.toRules
     flat.map(x => (x.id, x.order, x.last)) shouldBe Seq(("a", 0, false), ("b", 1, false), ("z", 0, true))
     flat.foreach { x => x.scope shouldBe PerCinema; x.cinemaId shouldBe Some("cinema-city") }
@@ -25,8 +25,8 @@ class TitleRuleRecordSpec extends AnyFlatSpec with Matchers {
 
   "a last rule" should "apply after the normal rules of the same scope (via TitleRuleSet)" in {
     // Order-dependent strips: "ab" then "a". On "aab", [ab, a] → "" but [a, ab] → "b".
-    val ab = TitleRule("ab", Search, None, "ab", "", applyAll = true, order = 0)
-    val a  = TitleRule("a",  Search, None, "a",  "", applyAll = true, order = 1)
+    val ab = TitleRule("ab", GlobalStructural, None, "ab", "", applyAll = true, order = 0)
+    val a  = TitleRule("a",  GlobalStructural, None, "a",  "", applyAll = true, order = 1)
     TitleRuleSet(Seq(ab, a)).search("aab") shouldBe ""
     TitleRuleSet(Seq(ab.copy(last = true), a)).search("aab") shouldBe "b"
   }
@@ -65,15 +65,15 @@ class TitleRuleRecordSpec extends AnyFlatSpec with Matchers {
 class InMemoryTitleRulesRepositorySpec extends AnyFlatSpec with Matchers {
   "InMemoryTitleRulesRepository" should "round-trip records and derive findAll by flattening" in {
     val repository = new InMemoryTitleRulesRepository()
-    val record = TitleRuleRecord("Search", RuleScope.Search, None,
-      rules     = Seq(TitleRule("a", RuleScope.Search, None, "x", "", applyAll = false, order = 0)),
-      lastRules = Seq(TitleRule("b", RuleScope.Search, None, "y", "", applyAll = false, order = 0, last = true)))
+    val record = TitleRuleRecord("GlobalStructural", RuleScope.GlobalStructural, None,
+      rules     = Seq(TitleRule("a", RuleScope.GlobalStructural, None, "x", "", applyAll = false, order = 0)),
+      lastRules = Seq(TitleRule("b", RuleScope.GlobalStructural, None, "y", "", applyAll = false, order = 0, last = true)))
     repository.upsertRecord(record)
 
-    repository.loadRecords().map(_.id) shouldBe Seq("Search")
+    repository.loadRecords().map(_.id) shouldBe Seq("GlobalStructural")
     repository.findAll().map(r => (r.id, r.last)) shouldBe Seq(("a", false), ("b", true))
 
-    repository.deleteRecord("Search")
+    repository.deleteRecord("GlobalStructural")
     repository.loadRecords() shouldBe empty
     repository.findAll() shouldBe empty
   }

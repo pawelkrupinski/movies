@@ -45,6 +45,13 @@ case class TitleRule(
 
   val patternValid: Boolean = compiled.isDefined
 
+  /** True when the pattern is anchored to the START of the title (a `^`, after an
+   *  optional leading inline-flag group like `(?i)`) — i.e. a prefix/banner rule
+   *  such as the programme prefixes or the Cykl banner, as opposed to a `$`-anchored
+   *  suffix strip. Drives `TitleRuleSet.leadingBannerBoundary` (display casing). */
+  val isPrefixAnchored: Boolean =
+    pattern.replaceFirst("""^\(\?[a-zA-Z]+\)""", "").startsWith("^")
+
   /** Apply this rule to `in`. No-op when disabled or the pattern didn't compile. */
   def apply(in: String): String = compiled match {
     case Some(re) if enabled =>

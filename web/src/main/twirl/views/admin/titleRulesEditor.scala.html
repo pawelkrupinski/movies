@@ -107,9 +107,7 @@
     "use strict";
     const GLOBAL_SCOPES = [
       { name: "GlobalStructural", title: "Global structural", changesRecord: false,
-        desc: "Decoration stripping for EXTERNAL LOOKUPS only — Cykl prefixes, slash postfixes, anniversary / restored / 'wersja' suffixes. Strips these so the TMDB/Filmweb search hits the base film, but does NOT affect the merge key: a decoration edition keys by its own form and stays its own row." },
-      { name: "Search", title: "Search (API query only)", changesRecord: false,
-        desc: "Extra stripping applied only when querying external rating/metadata APIs — programme prefixes, accessibility tags, '+ <event>' suffixes. Does NOT affect the merge key, so the programme/event screening keeps its own row." },
+        desc: "Stripping for EXTERNAL LOOKUPS only — decoration (Cykl prefixes, slash postfixes, anniversary / restored / 'wersja' suffixes) AND programme prefixes, accessibility tags and '+ <event>' suffixes. Strips these so the TMDB/Filmweb search hits the base film, but does NOT affect the merge key: a decoration / programme edition keys by its own form and stays its own row. The programme-prefix rules also drive the shared display casing." },
       { name: "Canonical", title: "Canonical", changesRecord: true,
         desc: "Cross-cinema spelling unifications folded into the stable document id — e.g. stripping a 'Gwiezdne Wojny:' lead-in, ' & ' to ' i '." }
     ];

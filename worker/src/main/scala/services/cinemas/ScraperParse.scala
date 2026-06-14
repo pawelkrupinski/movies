@@ -62,31 +62,19 @@ private[cinemas] object ScraperParse {
       .filter(_.nonEmpty)
 
   /**
-   * Convert an ALL-CAPS title to sentence case. Lowercases everything, then
-   * uppercases the first character and any letter after `. ` where the
-   * preceding token is a sentence-ending token (digit, or a 4+-letter word).
-   * Keeps "Mavka. Prawdziwy mit" and "90. Urodziny pavarottiego" correct while
-   * leaving Polish abbreviations like "ang." / "reż." untouched. Used by the MSI
-   * scrapers (Cinema1, Kino Zamek, Kino Kijów) whose portals serve ALL-CAPS titles.
+   * Convert an ALL-CAPS title to sentence case for the MSI scrapers (Cinema1,
+   * Kino Zamek, Kino Kijów, …) whose portals serve ALL-CAPS titles. The casing
+   * itself is the shared `tools.TextNormalization.sentenceCase` (also used by
+   * the central scrape-time `TitleNormalizer.recase`); this wrapper just runs
+   * the MSI-specific de-glue first.
+   *
+   * A sequel number glued to the next word by a missing space ("3.ALE KOSMOS"
+   * on RCK Kołobrzeg) is a source typo — restore the space so the word
+   * capitalises and the cleaned title converges with the cinemas that spell it
+   * "3. Ale kosmos". A digit-dot-digit decimal ("2.0") is untouched.
    */
-  def sentenceCase(title: String): String = {
-    if (title.isEmpty) return title
-    // A sequel number glued to the next word by a missing space ("3.ALE KOSMOS"
-    // on RCK Kołobrzeg) is a source typo — restore the space so the word
-    // capitalises and the cleaned title converges with the cinemas that spell it
-    // "3. Ale kosmos" (otherwise the glued variant pollutes the display-title
-    // election). A digit-dot-digit decimal ("2.0") is untouched.
-    val deglued = title.replaceAll("""(\d)\.(\p{L})""", "$1. $2")
-    val chars = deglued.toLowerCase(Locale.ROOT).toCharArray
-    chars(0) = chars(0).toUpper
-    var i = 0
-    while (i + 2 < chars.length) {
-      if (chars(i) == '.' && chars(i + 1) == ' ' && precedingTokenEndsSentence(chars, i))
-        chars(i + 2) = chars(i + 2).toUpper
-      i += 1
-    }
-    new String(chars)
-  }
+  def sentenceCase(title: String): String =
+    tools.TextNormalization.sentenceCase(title.replaceAll("""(\d)\.(\p{L})""", "$1. $2"))
 
   /** Lower-case format/version word → the display token it maps to, shared with
    *  the cinema clients that surface a screening's version as a `Showtime.format`
@@ -173,17 +161,6 @@ private[cinemas] object ScraperParse {
       .map(w => bareWord(w))
       .filter(FormatToken.contains)
       .foreach(out.add)
-
-  private def precedingTokenEndsSentence(chars: Array[Char], dotIndex: Int): Boolean = {
-    if (dotIndex == 0) return false
-    val previous = chars(dotIndex - 1)
-    if (previous.isDigit) return true
-    if (!previous.isLetter) return false
-    var len = 0
-    var j = dotIndex - 1
-    while (j >= 0 && chars(j).isLetter) { len += 1; j -= 1 }
-    len >= 4
-  }
 
   /** Canonical `https://www.youtube.com/watch?v=<id>` form for a YouTube
     * embed / watch / `youtu.be` URL; Vimeo URLs pass through unchanged for the

@@ -57,7 +57,9 @@ class RialtoOjczyznaReproSpec extends AnyFlatSpec with Matchers {
     def post(url: String, body: String, contentType: String): String = ???
   }
 
+  // casing is applied centrally now (TitleNormalizer.recase); apply it here so assertions read display titles
   private val results = new RialtoClient(http).fetch()
+    .map(cm => cm.copy(movie = cm.movie.copy(title = services.movies.TitleNormalizer.recase(cm.movie.title))))
   private def times(cm: models.CinemaMovie) = cm.showtimes.map(_.dateTime).toSet
 
   "RialtoClient" should "merge the plain and preview blocks into one Ojczyzna row" in {
@@ -73,7 +75,7 @@ class RialtoOjczyznaReproSpec extends AnyFlatSpec with Matchers {
   it should "keep the Filmowy Klub Seniora showing as its own row" in {
     val seniorRow = results.filter(_.movie.title.toLowerCase.contains("klub seniora"))
     seniorRow.size shouldBe 1
-    seniorRow.head.movie.title shouldBe "Filmowy klub seniora: Ojczyzna"
+    seniorRow.head.movie.title shouldBe "Filmowy Klub Seniora: Ojczyzna"
     val t = times(seniorRow.head)
     t shouldBe Set(LocalDateTime.of(2026, 6, 23, 13, 0), LocalDateTime.of(2026, 6, 23, 15, 30))
   }

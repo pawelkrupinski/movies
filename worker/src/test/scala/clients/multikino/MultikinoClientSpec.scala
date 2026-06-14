@@ -5,13 +5,16 @@ import models.{Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{MultikinoClient, MultikinoParser}
+import services.movies.TitleNormalizer
 
 import java.time.LocalDateTime
 
 class MultikinoClientSpec extends AnyFlatSpec with Matchers {
 
   private val client  = new MultikinoClient(new FakeHttpFetch("multikino"))
+  // casing is applied centrally now (TitleNormalizer.recase); apply it here so assertions read display titles
   private val results = client.fetch()
+    .map(cm => cm.copy(movie = cm.movie.copy(title = TitleNormalizer.recase(cm.movie.title))))
   // "Drugie życie" appears twice; toMap keeps the last entry for duplicate keys
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 

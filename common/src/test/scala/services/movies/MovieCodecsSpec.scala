@@ -49,8 +49,9 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     val back = StoredMovieDto.toDomain(decoded)
     // title/year are derived, not stored: year from the _id, title from
     // sourceData (here there are no cinema slots, so it falls back to the
-    // _id's sanitized prefix).
-    back.title         shouldBe "test"
+    // _id's sanitized prefix — `displayTitle` then re-cases that all-lowercase
+    // fallback, so "test" surfaces as "Test").
+    back.title         shouldBe "Test"
     back.year          shouldBe Some(1900)
     back.record        shouldBe record
     decoded.updatedAt  shouldBe dto.updatedAt

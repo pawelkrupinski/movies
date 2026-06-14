@@ -148,8 +148,8 @@ object KinoBulgarskaClient {
   // – pokazy przedpremierowe – kino dzieci" needs "– kino dzieci" gone first
   // so the next pattern's `$` anchor can match the residual "– pokazy
   // przedpremierowe" tail. Case-insensitive — the page's raw titles are
-  // mixed-case ("DRZEWO MAGII – Pokazy przedpremierowe – Kino dzieci"),
-  // sentence-casing happens after.
+  // mixed-case ("DRZEWO MAGII – Pokazy przedpremierowe – Kino dzieci");
+  // casing is applied centrally afterwards (`TitleNormalizer.recase`).
   private val SuffixPats: Seq[scala.util.matching.Regex] = Seq(
     """(?i)\s+–\s+kino dzieci$""".r,
     """(?i)\s+–\s+pokazy przedpremierowe$""".r,
@@ -157,9 +157,7 @@ object KinoBulgarskaClient {
     """(?i)\s+–\s+poznańska premiera$""".r
   )
 
-  def normalizeTitle(raw: String): String = {
-    val stripped = SuffixPats.foldLeft(raw)((acc, p) => p.replaceFirstIn(acc, ""))
-    if (stripped.isEmpty) stripped else s"${stripped.head.toUpper}${stripped.tail.toLowerCase}"
-  }
+  def normalizeTitle(raw: String): String =
+    SuffixPats.foldLeft(raw)((acc, p) => p.replaceFirstIn(acc, ""))
 }
 

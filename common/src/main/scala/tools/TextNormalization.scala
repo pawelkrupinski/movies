@@ -65,6 +65,40 @@ object TextNormalization {
     titleCaseIfAllCaps(s.toUpperCase(Locale.ROOT))
   }
 
+  /** Sentence-case `s`: lowercase everything, capitalise the first letter, and
+   *  capitalise the letter after a ". " only when the preceding token looks like
+   *  a sentence end — a digit, or a 4+ letter word. So "MAVKA. PRAWDZIWY MIT" →
+   *  "Mavka. Prawdziwy mit" and "SKARPETEK 3. ALE KOSMOS" capitalises after the
+   *  "3.", while Polish 2–3 letter abbreviations ("ANG. NAPISAMI", "REŻ. JANA")
+   *  stay lower. Unconditional — callers gate on all-caps/all-lower themselves
+   *  (see `TitleNormalizer.recase`). Shared by the central scraper casing stage
+   *  (was duplicated in RialtoClient / MultikinoParser / ScraperParse). */
+  def sentenceCase(s: String): String = {
+    if (s.isEmpty) return s
+    val chars = s.toLowerCase.toCharArray
+    chars(0) = chars(0).toUpper
+    var i = 0
+    while (i + 2 < chars.length) {
+      if (chars(i) == '.' && chars(i + 1) == ' ' && precedingTokenEndsSentence(chars, i))
+        chars(i + 2) = chars(i + 2).toUpper
+      i += 1
+    }
+    new String(chars)
+  }
+
+  /** True if the character run ending at `dotIdx - 1` looks like a sentence-
+   *  ending token: a digit (sequel/chapter number) or a 4+ letter word. */
+  private def precedingTokenEndsSentence(chars: Array[Char], dotIdx: Int): Boolean = {
+    if (dotIdx == 0) return false
+    val prev = chars(dotIdx - 1)
+    if (prev.isDigit) return true
+    if (!prev.isLetter) return false
+    var letters = 0
+    var j = dotIdx - 1
+    while (j >= 0 && chars(j).isLetter) { letters += 1; j -= 1 }
+    letters >= 4
+  }
+
   /**
    * Strip the trailing partial name from a likely-truncated cast string.
    *

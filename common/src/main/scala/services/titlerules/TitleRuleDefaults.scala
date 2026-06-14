@@ -20,26 +20,11 @@ import RuleScope._
  *  at this baseline the per-cinema tier is empty and clients still clean inline. */
 object TitleRuleDefaults {
 
-  // ── searchTitle tier — global decoration stripping ────────────────────────
-  private val structural: Seq[TitleRule] = Seq(
-    TitleRule("structural-cykl-prefix", GlobalStructural, None,
-      """^Cykl\s+[„"][^„""]*[„""]?\s+[-–—]\s+""", "", applyAll = false, order = 10,
-      note = Some("Festival cycle banner: Cykl \"…\" – ")),
-    TitleRule("structural-slash-suffix", GlobalStructural, None,
-      """\s+/\s+.+$""", "", applyAll = false, order = 20,
-      note = Some("Slash postfix: 'Top Gun / 40th Anniversary'")),
-    TitleRule("structural-anniversary-suffix", GlobalStructural, None,
-      """(?i)\s*[-–—|.]?\s*\d+(?:st|nd|rd|th)?\.?\s*(?:anniversary|rocznica)\s*$""", "",
-      applyAll = false, order = 30, note = Some("Anniversary rerelease suffix")),
-    TitleRule("structural-restored-suffix", GlobalStructural, None,
-      """(?i)\s*[-–—|.]?\s*\d+\s*k\s+(?:restored|remaster(?:ed)?)\s*$""", "",
-      applyAll = false, order = 40, note = Some("Restored / remastered suffix (4K restored)")),
-    TitleRule("structural-wersja-suffix", GlobalStructural, None,
-      """(?i)\s*[-–—.]\s+wersja\s+\p{L}+\s*$""", "", applyAll = false, order = 50,
-      note = Some("Polish language-version suffix: '- wersja polska'"))
-  )
-
-  // ── apiQuery tier — search-only strips (NOT in the merge key) ──────────────
+  // ── apiQuery tier (merged GlobalStructural) — programme/access/event strips
+  //    fold FIRST (orders 10–14), then the decoration strips (orders 20–60),
+  //    reproducing the legacy `structural(searchRules(t))` composition
+  //    byte-for-byte. NOT in the merge key — a decoration/programme edition keys
+  //    by its own form and stays a separate row. ──────────────────────────────
   private val ProgrammePrefixPattern =
     """(?i)^(?:Kino\s+bez\s+barier|""" +
     """Pokaz\s+sensorycznie\s+przyjazny|""" +
@@ -52,17 +37,32 @@ object TitleRuleDefaults {
     """Cinema\s+Italia\s+Oggi|""" +
     """Plenerowe\s+Pa[łl]acowe):\s+"""
 
-  private val search: Seq[TitleRule] = Seq(
-    TitleRule("search-programme-prefix", Search, None,
+  private val structural: Seq[TitleRule] = Seq(
+    TitleRule("search-programme-prefix", GlobalStructural, None,
       ProgrammePrefixPattern, "", applyAll = false, order = 10,
       tag = Some("programmePrefix"),
       note = Some("Cinema programme banners (Kino bez barier, DKF, Filmowe Poranki…)")),
-    TitleRule("search-accessibility-tag", Search, None,
-      """(?i)\s*\(\s*AD\b[^)]*\)?\s*$""", "", applyAll = false, order = 20,
+    TitleRule("search-accessibility-tag", GlobalStructural, None,
+      """(?i)\s*\(\s*AD\b[^)]*\)?\s*$""", "", applyAll = false, order = 12,
       note = Some("Trailing accessibility tag: (AD), (AD + CC + PJM)")),
-    TitleRule("search-plus-event-suffix", Search, None,
-      """\s+\+\s+\p{L}[^)]*$""", "", applyAll = false, order = 30,
-      note = Some("'+ <event>' suffix: '+ spotkanie z producentką'"))
+    TitleRule("search-plus-event-suffix", GlobalStructural, None,
+      """\s+\+\s+\p{L}[^)]*$""", "", applyAll = false, order = 14,
+      note = Some("'+ <event>' suffix: '+ spotkanie z producentką'")),
+    TitleRule("structural-cykl-prefix", GlobalStructural, None,
+      """^Cykl\s+[„"][^„""]*[„""]?\s+[-–—]\s+""", "", applyAll = false, order = 20,
+      note = Some("Festival cycle banner: Cykl \"…\" – ")),
+    TitleRule("structural-slash-suffix", GlobalStructural, None,
+      """\s+/\s+.+$""", "", applyAll = false, order = 30,
+      note = Some("Slash postfix: 'Top Gun / 40th Anniversary'")),
+    TitleRule("structural-anniversary-suffix", GlobalStructural, None,
+      """(?i)\s*[-–—|.]?\s*\d+(?:st|nd|rd|th)?\.?\s*(?:anniversary|rocznica)\s*$""", "",
+      applyAll = false, order = 40, note = Some("Anniversary rerelease suffix")),
+    TitleRule("structural-restored-suffix", GlobalStructural, None,
+      """(?i)\s*[-–—|.]?\s*\d+\s*k\s+(?:restored|remaster(?:ed)?)\s*$""", "",
+      applyAll = false, order = 50, note = Some("Restored / remastered suffix (4K restored)")),
+    TitleRule("structural-wersja-suffix", GlobalStructural, None,
+      """(?i)\s*[-–—.]\s+wersja\s+\p{L}+\s*$""", "", applyAll = false, order = 60,
+      note = Some("Polish language-version suffix: '- wersja polska'"))
   )
 
   // ── canonical tier — cross-cinema spelling unifications (sanitize) ─────────
@@ -186,7 +186,7 @@ object TitleRuleDefaults {
       note = Some("Trim leading/trailing whitespace"))
   }
 
-  val all: Seq[TitleRule] = structural ++ search ++ canonical ++ perCinema ++ heliosRules ++ trimRules
+  val all: Seq[TitleRule] = structural ++ canonical ++ perCinema ++ heliosRules ++ trimRules
 
   val ruleSet: TitleRuleSet = TitleRuleSet(all)
 }

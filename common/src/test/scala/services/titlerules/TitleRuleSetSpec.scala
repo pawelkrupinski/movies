@@ -65,10 +65,10 @@ class TitleRuleSetSpec extends AnyFlatSpec with Matchers {
     rs.structural("AB") shouldBe ""
   }
 
-  "programmePrefix" should "extract only tagged Search rules' prefixes" in {
+  "programmePrefix" should "extract only tagged GlobalStructural rules' prefixes" in {
     val rs = TitleRuleSet(Seq(
-      rule("prog", Search, "(?i)^Klub: ", "", tag = Some("programmePrefix")),
-      rule("other", Search, """\s*\(AD\)$""", "")  // untagged, must not be extracted
+      rule("prog", GlobalStructural, "(?i)^Klub: ", "", tag = Some("programmePrefix")),
+      rule("other", GlobalStructural, """\s*\(AD\)$""", "")  // untagged, must not be extracted
     ))
     rs.programmePrefix("Klub: Vertigo") shouldBe Some("Klub: ")
     rs.programmePrefix("Vertigo (AD)") shouldBe None
@@ -82,7 +82,7 @@ class TitleRuleSetSpec extends AnyFlatSpec with Matchers {
   private val previewSet = TitleRuleSet(Seq(
     rule("g-restored", GlobalStructural, "(?i)\\s*-\\s*restored$", ""),
     rule("g-noop",     GlobalStructural, "(?i)\\s*-\\s*director's cut$", ""),
-    rule("s-klub",     Search, "(?i)^Klub:\\s*", ""),
+    rule("s-klub",     GlobalStructural, "(?i)^Klub:\\s*", "", order = 30),
     rule("c-amp",      Canonical, " & ", " i ", applyAll = true),
     rule("p-strip",    PerCinema, "^X ", "", cinemaId = Some("cc"))
   ))

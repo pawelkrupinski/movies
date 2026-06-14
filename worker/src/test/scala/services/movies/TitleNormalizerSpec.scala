@@ -206,11 +206,11 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
 
   it should "preserve the full accessibility tag on a Kino bez barier screening" in {
     // Simulates `MovieRecord.displayTitle`, which feeds the union of the
-    // cinema's raw reported title and the row's cleanTitle (= searchTitle of
-    // the same raw title) into preferredDisplay. Both must end up as the full
+    // cinema's raw reported title and the row's cleanTitle (= recase of the
+    // same raw title) into preferredDisplay. Both must end up as the full
     // "(AD + CC + PJM)" form so the user-visible title isn't truncated.
     val raw        = "Kino bez barier: Arco (AD + CC + PJM)"
-    val cleanTitle = TitleNormalizer.searchTitle(raw)
+    val cleanTitle = TitleNormalizer.recase(raw)
     preferredDisplay(Seq(raw, cleanTitle)) shouldBe Some(raw)
   }
 
@@ -241,57 +241,23 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     wellFormedTitle("„Arco”")                   shouldBe false  // wrapping quotes
   }
 
-  // ── searchTitle vs apiQuery ───────────────────────────────────────────────
+  // ── apiQuery (merged GlobalStructural tier) ────────────────────────────────
   //
-  // searchTitle backs the cache key — it MUST keep accessibility-programme
-  // decoration so "Arco" (DKF screening) and "Kino bez barier: Arco (AD)"
-  // (accessibility screening) stay as separate cache rows with separate
-  // showtimes. apiQuery is the more aggressive form used by every external-
-  // API resolver (TMDB, Filmweb, MC, RT, IMDb), so the resolver sees the
-  // bare film title and resolves cleanly. The DKF row and the accessibility
-  // row both resolve to the same TMDB id / FW URL while staying as distinct
-  // cache rows that aggregate their cinema's two screenings separately.
+  // apiQuery is the aggressive strip every external-API resolver (TMDB, Filmweb,
+  // MC, RT, IMDb) uses: decoration PLUS programme prefix / accessibility tag /
+  // "+ <event>" suffix, so "Kino bez barier: Freak Show (AD + CC + PJM)" queries
+  // upstream as just "Freak Show". It does NOT feed the merge key — `sanitize`
+  // keeps the banner — so the DKF / accessibility / event row stays its own
+  // cache card while resolving off the bare film. The display title likewise
+  // keeps the banner; only its CASING is normalised (see `recase` below).
 
-  import TitleNormalizer.{searchTitle, apiQuery, programmePrefix}
+  import TitleNormalizer.{apiQuery, programmePrefix, recase}
 
-  "searchTitle" should "leave the 'Kino bez barier:' programme prefix AND the trailing accessibility tag intact (cache-key boundary)" in {
-    // Cache key must differ from a plain "Freak Show" row (or a DKF "Arco"
-    // row from the same cinema) so both rows live — each with its own
-    // filmUrl + showtimes. The programme prefix, the accessibility tag, and
-    // the "+ <event>" suffix are all apiQuery-only strippers, so none of them
-    // touch this title here — the user-facing displayTitle then reads as the
-    // cinema reported it. apiQuery handles the stripping for the external
-    // lookups below.
-    searchTitle("Kino bez barier: Freak Show (AD + CC + PJM)") shouldBe
-      "Kino bez barier: Freak Show (AD + CC + PJM)"
+  "apiQuery" should "leave 'Orwell: 2 + 2 = 5' alone (the '+ <event>' suffix must start with a letter)" in {
+    apiQuery("Orwell: 2 + 2 = 5") shouldBe "Orwell: 2 + 2 = 5"
   }
 
-  it should "keep the 'Cinema Italia Oggi:' festival banner (display + cache key boundary)" in {
-    // The festival banner is a programme prefix: stripped only for upstream
-    // API queries (see apiQuery), kept verbatim in the display title and the
-    // cache key so the festival screening stays its own row.
-    searchTitle("Cinema Italia Oggi: La Grande Bellezza") shouldBe
-      "Cinema Italia Oggi: La Grande Bellezza"
-  }
-
-  it should "keep a ' + <event>' screening suffix (cache-key boundary → separate row)" in {
-    // "Ojczyzna + spotkanie z producentką Ewą Puszczyńską" is a screening with
-    // an associated event (a producer Q&A). The event differentiates it, so it
-    // stays its OWN cache row separate from the plain "Ojczyzna" — same
-    // treatment as a programme prefix. Folding both onto one slot dropped one
-    // screening's showtimes and flipped isNew every pass (the recurring
-    // "Refreshed Kino Kultura: … (2 new)" worker log). apiQuery strips it for
-    // upstream lookups so both rows still enrich off the bare base title.
-    searchTitle("Ojczyzna + spotkanie z producentką Ewą Puszczyńską") shouldBe
-      "Ojczyzna + spotkanie z producentką Ewą Puszczyńską"
-    searchTitle("Tytuł A + Title B") shouldBe "Tytuł A + Title B"
-  }
-
-  it should "leave 'Orwell: 2 + 2 = 5' alone (the suffix must start with a letter)" in {
-    searchTitle("Orwell: 2 + 2 = 5") shouldBe "Orwell: 2 + 2 = 5"
-  }
-
-  "apiQuery" should "strip the 'Kino bez barier:' programme prefix" in {
+  it should "strip the 'Kino bez barier:' programme prefix" in {
     apiQuery("Kino bez barier: Freak Show") shouldBe "Freak Show"
   }
 
@@ -323,9 +289,6 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     apiQuery("Filmowy Poranek - Tomek i Przyjaciele: Wielki wyścig") shouldBe "Wielki wyścig"
     apiQuery("Poranek dla dzieci: Pszczółka Maja")                   shouldBe "Pszczółka Maja"
     apiQuery("Zimowe Poranki z Bobem Budowniczym: Śnieżna przygoda") shouldBe "Śnieżna przygoda"
-    // searchTitle (the cache-key boundary) keeps the banner — separate row.
-    searchTitle("Filmowe Poranki - Miraculous: Biedronka i Czarny Kot") shouldBe
-      "Filmowe Poranki - Miraculous: Biedronka i Czarny Kot"
     // A real film whose own title carries a colon must NOT be eaten by the banner.
     apiQuery("Top Gun: Maverick") shouldBe "Top Gun: Maverick"
   }
@@ -338,7 +301,6 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     // Kept its own cache row (a senior-club showing is listed separately) but
     // enriched off the clean base title upstream.
     apiQuery("Filmowy Klub Seniora: Ojczyzna") shouldBe "Ojczyzna"
-    searchTitle("Filmowy Klub Seniora: Ojczyzna") shouldBe "Filmowy Klub Seniora: Ojczyzna"
   }
 
   it should "strip the 'Dyskusyjny Klub Filmowy:' prefix for ratings/enrichment but keep it on the row" in {
@@ -346,7 +308,6 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     // Case-insensitive: cinemas report it upper-cased ("DYSKUSYJNY KLUB FILMOWY: ").
     apiQuery("Dyskusyjny Klub Filmowy: Vertigo") shouldBe "Vertigo"
     apiQuery("DYSKUSYJNY KLUB FILMOWY: Vertigo") shouldBe "Vertigo"
-    searchTitle("Dyskusyjny Klub Filmowy: Vertigo") shouldBe "Dyskusyjny Klub Filmowy: Vertigo"
     programmePrefix("DYSKUSYJNY KLUB FILMOWY: Vertigo") shouldBe Some("DYSKUSYJNY KLUB FILMOWY: ")
   }
 
@@ -378,14 +339,47 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     apiQuery("Annie (2014)") shouldBe "Annie (2014)"
   }
 
-  it should "still apply searchTitle's decoration strippers (anniversary etc.)" in {
+  it should "still apply the decoration strippers (anniversary etc.)" in {
     apiQuery("Top Gun 40th Anniversary") shouldBe "Top Gun"
   }
 
   it should "strip the ' + <event>' screening suffix so the event screening enriches off the base film" in {
-    // The cache keeps "Ojczyzna + spotkanie…" as its own row (see searchTitle
-    // above); the external resolvers must still query the bare "Ojczyzna" so
-    // the event screening shares the plain film's tmdbId / ratings / URLs.
+    // The display row keeps "Ojczyzna + spotkanie…" as its own card (sanitize
+    // keeps the suffix); the external resolvers must still query the bare
+    // "Ojczyzna" so the event screening shares the plain film's tmdbId / URLs.
     apiQuery("Ojczyzna + spotkanie z producentką Ewą Puszczyńską") shouldBe "Ojczyzna"
+  }
+
+  // ── recase — shared banner-aware display casing applied to every scraper ────
+
+  "recase" should "sentence-case an all-UPPERCASE title" in {
+    recase("OJCZYZNA")            shouldBe "Ojczyzna"
+    recase("MAVKA. PRAWDZIWY MIT") shouldBe "Mavka. Prawdziwy mit" // caps after a 5-letter word + '. '
+  }
+
+  it should "sentence-case an all-lowercase title" in {
+    recase("drzewo magii") shouldBe "Drzewo magii"
+  }
+
+  it should "leave an already-mixed-case title byte-identical (guardrail)" in {
+    recase("Paris Saint-Germain") shouldBe "Paris Saint-Germain"
+    recase("Moulin Rouge!")       shouldBe "Moulin Rouge!"
+    recase("Liga Mistrzów UEFA - Finał 2026: Paris Saint-Germain") shouldBe
+      "Liga Mistrzów UEFA - Finał 2026: Paris Saint-Germain"
+  }
+
+  it should "split a programme banner and case the banner and film independently" in {
+    // The banner and the film each get the guardrail applied on their own, so an
+    // all-caps film after an all-caps banner keeps its own leading capital.
+    recase("FILMOWY KLUB SENIORA: OJCZYZNA") shouldBe "Filmowy klub seniora: Ojczyzna"
+    recase("DYSKUSYJNY KLUB FILMOWY: VERTIGO") shouldBe "Dyskusyjny klub filmowy: Vertigo"
+  }
+
+  it should "keep a mixed-case banner as reported while casing only the all-caps film half" in {
+    recase("Filmowy Klub Seniora: OJCZYZNA") shouldBe "Filmowy Klub Seniora: Ojczyzna"
+  }
+
+  it should "leave a digit-only title alone (no letters to case)" in {
+    recase("2 + 2 = 5") shouldBe "2 + 2 = 5"
   }
 }

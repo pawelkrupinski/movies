@@ -30,6 +30,7 @@ case class StoredMovieDto(
   tmdbId:            Option[Int],
   metacriticUrl:     Option[String],
   rottenTomatoesUrl: Option[String],
+  searchTitle:       Option[String],
   // Optional on the wire so legacy documents (written before these existed) decode
   // to None → default false; only persisted when true to keep documents lean.
   tmdbNoMatch:       Option[Boolean],
@@ -57,6 +58,7 @@ object StoredMovieDto {
       tmdbId            = r.tmdbId,
       metacriticUrl     = r.metacriticUrl,
       rottenTomatoesUrl = r.rottenTomatoesUrl,
+      searchTitle       = r.searchTitle,
       tmdbNoMatch       = Option.when(r.tmdbNoMatch)(true),
       detailPending     = Option.when(r.detailPending)(true),
       sourceData        = r.data.map { case (s, sd) => s.displayName -> sd },
@@ -74,6 +76,7 @@ object StoredMovieDto {
       tmdbId            = dto.tmdbId,
       metacriticUrl     = dto.metacriticUrl,
       rottenTomatoesUrl = dto.rottenTomatoesUrl,
+      searchTitle       = dto.searchTitle,
       tmdbNoMatch       = dto.tmdbNoMatch.getOrElse(false),
       detailPending     = dto.detailPending.getOrElse(false),
       data              = dto.sourceData.flatMap { case (k, sd) => Source.byDisplayName.get(k).map(_ -> sd) }
