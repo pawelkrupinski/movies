@@ -36,6 +36,10 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     // Deep-links into a city the film actually plays in (Wrocław), never a
     // city slug from the URL (there isn't one anymore).
     html should include("""href="/wroclaw/film?title=Belle"""")
+    // The old top-of-page "Unenriched"/"TMDB-unresolved" pill sections are gone —
+    // the staging table is now the only pending-work view. `data-flag` was their
+    // distinctive marker.
+    html should not include ("data-flag=")
   }
 
   it should "404 in production" in {
@@ -77,49 +81,6 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     bothScansOverlapped shouldBe true
   }
 
-  // The top-of-page "pending work" sections derive their membership client-side
-  // from per-row data-* flags the change stream keeps live, so the server only
-  // emits the flags + the (initially empty) section scaffolding. Assert the
-  // flags resolve correctly per row: a detail-pending row is `unenriched`; a row
-  // with no TMDB id that isn't a concluded no-match is `tmdb-unresolved`; a
-  // no-match row is neither (it's done, not pending).
-  private val flagRecords = Seq(
-    ("Pending",    Some(2024), MovieRecord(detailPending = true, tmdbId = Some(1),
-                                 data = Map(CinemaCityWroclavia -> SourceData(title = Some("Pending"))))),
-    ("Unresolved", Some(2023), MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some("Unresolved"))))),
-    ("NoMatch",    Some(2022), MovieRecord(tmdbNoMatch = true,
-                                 data = Map(CinemaCityWroclavia -> SourceData(title = Some("NoMatch"))))),
-  )
-
-  /** The value of `attr` on the `<tr class="data">` whose `data-title` is `title`.
-   *  Scoped to that one opening tag (`.*?>` stops at the first `>`). */
-  private def rowAttr(html: String, title: String, attr: String): Option[String] = {
-    val row = ("(?s)data-title=\"" + java.util.regex.Pattern.quote(title) + "\".*?>").r.findFirstIn(html)
-    row.flatMap((attr + "=\"([^\"]*)\"").r.findFirstMatchIn(_).map(_.group(1)))
-  }
-
-  "GET /debug" should "carry per-row pending flags and the two section shells" in {
-    val html = contentAsString(
-      TestMovieController.build(flagRecords, Mode.Dev)._1.debug().apply(FakeRequest(GET, "/debug")))
-
-    // Both section shells present (JS fills the lists).
-    html should include ("""data-flag="unenriched"""")
-    html should include ("""data-flag="tmdbUnresolved"""")
-
-    // detailPending → unenriched; the others have run their detail step.
-    rowAttr(html, "Pending",    "data-unenriched") shouldBe Some("true")
-    rowAttr(html, "Unresolved", "data-unenriched") shouldBe Some("false")
-
-    // No id and not a no-match → tmdb-unresolved; a resolved id or a concluded
-    // no-match → not.
-    rowAttr(html, "Unresolved", "data-tmdb-unresolved") shouldBe Some("true")
-    rowAttr(html, "Pending",    "data-tmdb-unresolved") shouldBe Some("false")
-    rowAttr(html, "NoMatch",    "data-tmdb-unresolved") shouldBe Some("false")
-
-    // The identity year the queue dedup keys match on rides along.
-    rowAttr(html, "Pending", "data-queue-year") shouldBe Some("2024")
-  }
-
   // The staging table gains two queue-place columns ("Enrich q#"/"TMDB q#"). The
   // badges are painted client-side from the /debug/queue poll, so the server only
   // emits the column shells (empty `.enrich-q`/`.tmdb-q` cells) plus the identity
@@ -144,7 +105,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     html should include ("""data-queue-year="2099"""")
   }
 
-  // ── /debug/queue snapshot the pending sections poll for queue places ─────────
+  // ── /debug/queue snapshot the staging columns poll for queue places ─────────
   "GET /debug/queue" should "return the active tasks oldest-first in dev" in {
     val q  = new InMemoryTaskQueue
     val t0 = java.time.Instant.parse("2026-06-13T10:00:00Z")
