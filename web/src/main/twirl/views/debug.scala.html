@@ -126,7 +126,7 @@
     }
     .pending-list .pl-title { color: #cfd6e3; cursor: pointer; }
     .pending-list .pl-title:hover { color: #fff; text-decoration: underline; }
-    .pending-list .badge { font-size: 10px; border-radius: 3px; padding: 0 .3rem; font-variant-numeric: tabular-nums; }
+    .pending-list .badge, #staging-t .badge { font-size: 10px; border-radius: 3px; padding: 0 .3rem; font-variant-numeric: tabular-nums; }
     .badge.q-none { color: #555; }
     .badge.q-wait { color: #aad4ff; background: #16263a; border: 1px solid #244a6e; }
     .badge.q-run  { color: #cfe3d6; background: #14241a; border: 1px solid #245038; }
@@ -142,17 +142,25 @@
   <div class="summary">Newcomer films incubating in <code>pending_movies</code> — one row per cinema|title|year. They graduate into the corpus below once TMDB concludes, then disappear from here.</div>
   <table id="staging-t">
     <thead>
-      <tr><th>Cinema</th><th>Title</th><th>Year</th><th>TMDB</th><th>IMDb</th><th>Detail pending</th></tr>
+      <tr><th>Cinema</th><th>Title</th><th>Year</th><th>TMDB</th><th>IMDb</th><th>Detail pending</th><th>Enrich q#</th><th>TMDB q#</th></tr>
     </thead>
     <tbody>
+    @* `data-queue-title`/`data-queue-year` are the identity title+year the worker's
+       enrichment dedup keys are built from; the two q# cells (`.enrich-q`/`.tmdb-q`)
+       are filled live from the /debug/queue poll by `rebuildStagingQueue`, mirroring
+       the corpus pending badges but as per-row columns. *@
     @for(r <- staging) {
-      <tr class="data" data-row-id="@{r.cinema.displayName}|@{r.title}|@{r.year.map(_.toString).getOrElse("")}">
+      <tr class="data" data-row-id="@{r.cinema.displayName}|@{r.title}|@{r.year.map(_.toString).getOrElse("")}"
+          data-queue-title="@r.title"
+          data-queue-year="@r.year.map(_.toString).getOrElse("")">
         <td>@r.cinema.displayName</td>
         <td class="title">@r.title</td>
         <td>@r.year.map(_.toString).getOrElse("—")</td>
         <td>@r.record.tmdbId.map(_.toString).getOrElse(if(r.record.tmdbNoMatch) "no-match" else "—")</td>
         <td>@r.record.imdbId.getOrElse("—")</td>
         <td>@if(r.record.detailPending) { yes } else { — }</td>
+        <td class="enrich-q"></td>
+        <td class="tmdb-q"></td>
       </tr>
     }
     </tbody>
@@ -383,10 +391,40 @@
     tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
+  // ── Staging table queue columns ────────────────────────────────────────────
+  // The "Pending enrichment (staging)" table carries the same queue-place badges
+  // the corpus pending sections show, but as two per-row columns: "Enrich q#"
+  // (this title|year's EnrichDetails task) and "TMDB q#" (its ResolveTmdb task).
+  // Filled off the same /debug/queue poll as rebuildPending, so the places tick
+  // live as the worker drains the queue — no page refresh.
+  function rebuildStagingQueue() {
+    const staging = document.getElementById('staging-t');
+    if (!staging) return;
+    const places = waitingPlaces();
+    staging.querySelectorAll('tbody tr.data').forEach(tr => {
+      const title = tr.dataset.queueTitle || '';
+      const year  = tr.dataset.queueYear || '';
+      const detail = queueActive.filter(t => t.taskType === 'EnrichDetails' && t.dedupKey.endsWith(detailSuffix(title, year)));
+      const tmdb   = queueActive.filter(t => t.taskType === 'ResolveTmdb'   && t.dedupKey === tmdbKey(title, year));
+      paintQueueCell(tr.querySelector('.enrich-q'), badgeFor(detail, places));
+      paintQueueCell(tr.querySelector('.tmdb-q'),   badgeFor(tmdb, places));
+    });
+  }
+
+  // Render one queue badge into a staging cell, replacing any prior badge.
+  function paintQueueCell(td, b) {
+    if (!td) return;
+    td.textContent = '';
+    const span = document.createElement('span');
+    span.className = 'badge ' + b.cls;
+    span.textContent = b.text;
+    td.appendChild(span);
+  }
+
   function pollQueue() {
     fetch("@routes.MovieController.debugQueue()", { headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
-      .then(j => { queueActive = Array.isArray(j.active) ? j.active : []; rebuildPending(); })
+      .then(j => { queueActive = Array.isArray(j.active) ? j.active : []; rebuildPending(); rebuildStagingQueue(); })
       .catch(() => {});
   }
   // Clicking a section header folds/unfolds its list (the caret flips via CSS).
@@ -395,6 +433,7 @@
   });
 
   rebuildPending();
+  rebuildStagingQueue();
   pollQueue();
   setInterval(pollQueue, 2500);
 

@@ -1,10 +1,11 @@
 package views
 
-import models.{MovieRecord, Poznan}
+import models.{CinemaCityWroclavia, MovieRecord, Poznan}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.StoredMovieRecord
+import services.staging.StagingRecord
 import tools.{CdpPage, Chrome, FixtureTestWiring, TestHttpServer}
 
 import java.net.URLDecoder
@@ -119,15 +120,23 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         StoredMovieRecord("Unresolved Film", Some(2023), MovieRecord()),
         StoredMovieRecord("Done Film",       Some(2022), MovieRecord(tmdbId = Some(7))),
       )
-      val debugHtml: String = views.html.debug(debugRows, Map.empty[String, String]).body
+      // One staging (pending_movies) row so the staging table renders with its two
+      // queue columns; its tasks are appended to the queue snapshot below.
+      val debugStaging = Seq(
+        StagingRecord(CinemaCityWroclavia, "Staging Film", Some(2026), MovieRecord(detailPending = true)))
+      val debugHtml: String = views.html.debug(debugRows, Map.empty[String, String], debugStaging).body
       // The queue snapshot the page polls (/debug/queue). Pending Film holds an
       // EnrichDetails task at waiting place #1; Unresolved Film a ResolveTmdb at
-      // place #2; Lonely Pending has none. The dedup keys mirror the real ones
-      // (EnrichDetails: detail|<group>|<title>|<year>; ResolveTmdb: resolve-tmdb|…).
+      // place #2; Lonely Pending has none. The staging row's EnrichDetails is being
+      // worked on (▶ running) while its ResolveTmdb waits at place #3. The dedup
+      // keys mirror the real ones (EnrichDetails: detail|<group>|<title>|<year>;
+      // ResolveTmdb: resolve-tmdb|<title>|<year>).
       val debugQueueJson =
         """{"active":[
           {"taskType":"EnrichDetails","dedupKey":"detail|grp|Pending Film|2024","state":"waiting"},
-          {"taskType":"ResolveTmdb","dedupKey":"resolve-tmdb|Unresolved Film|2023","state":"waiting"}
+          {"taskType":"ResolveTmdb","dedupKey":"resolve-tmdb|Unresolved Film|2023","state":"waiting"},
+          {"taskType":"EnrichDetails","dedupKey":"detail|grp|Staging Film|2026","state":"worked_on"},
+          {"taskType":"ResolveTmdb","dedupKey":"resolve-tmdb|Staging Film|2026","state":"waiting"}
         ]}"""
 
       // Pages are served under `/{city}/…` (production hard-cut). `onPath`
@@ -2735,6 +2744,25 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("""document.querySelector('.pending-sec[data-flag="unenriched"] h2').click()""")
       collapsed shouldBe true   // folded again
       listHidden shouldBe true
+    }
+  }
+
+  // ── /debug staging table queue columns ──────────────────────────────────────
+  // The "Pending enrichment (staging)" table carries two queue-place columns —
+  // "Enrich q#" and "TMDB q#" — painted client-side from the same /debug/queue
+  // poll the corpus pending badges use, so they tick live as the worker drains
+  // the queue. The staging fixture's EnrichDetails task is being worked on; its
+  // ResolveTmdb waits at place #3.
+  "the /debug staging table" should "fill its queue columns live from the /debug/queue poll" in {
+    onDebug { page =>
+      // Wait for the queue poll to land and paint the staging row's TMDB place.
+      page.waitFor(
+        """(function(){var c=document.querySelector('#staging-t tbody tr.data .tmdb-q .badge');
+          |return c && c.textContent==='#3';})()""".stripMargin)
+      page.evalString(
+        """document.querySelector('#staging-t tbody tr.data .tmdb-q .badge').textContent""") shouldBe "#3"
+      page.evalString(
+        """document.querySelector('#staging-t tbody tr.data .enrich-q .badge').textContent""") shouldBe "▶ running"
     }
   }
 

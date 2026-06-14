@@ -120,6 +120,30 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     rowAttr(html, "Pending", "data-queue-year") shouldBe Some("2024")
   }
 
+  // The staging table gains two queue-place columns ("Enrich q#"/"TMDB q#"). The
+  // badges are painted client-side from the /debug/queue poll, so the server only
+  // emits the column shells (empty `.enrich-q`/`.tmdb-q` cells) plus the identity
+  // title+year the JS matches queue tasks on (`data-queue-title`/`-year`).
+  "GET /debug" should "render the staging queue columns + per-row queue identity" in {
+    val staging = new services.staging.InMemoryStagingRepository(Seq(
+      (CinemaCityWroclavia, "Newcomer", Some(2099),
+        MovieRecord(detailPending = true, data = Map(CinemaCityWroclavia -> SourceData(title = Some("Newcomer")))))))
+    val html = contentAsString(
+      TestMovieController.build(records, Mode.Dev, stagingRepository = staging)._1
+        .debug().apply(FakeRequest(GET, "/debug")))
+
+    // The two new column headers + the empty cells the JS fills.
+    html should include ("<th>Enrich q#</th>")
+    html should include ("<th>TMDB q#</th>")
+    html should include ("""<td class="enrich-q">""")
+    html should include ("""<td class="tmdb-q">""")
+
+    // The identity title+year the enrichment dedup keys (and so the q# badges)
+    // match on rides along on the staging row.
+    html should include ("""data-queue-title="Newcomer"""")
+    html should include ("""data-queue-year="2099"""")
+  }
+
   // ── /debug/queue snapshot the pending sections poll for queue places ─────────
   "GET /debug/queue" should "return the active tasks oldest-first in dev" in {
     val q  = new InMemoryTaskQueue
