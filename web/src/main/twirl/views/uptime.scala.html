@@ -228,17 +228,17 @@
     function applyUpdate(d) {
       var rows = rowsByService[d.service];
       if (!rows) return;   // a service with no rendered row appears only on reload
-      var ts = String(d.bucketTs);
+      var timestamp = String(d.bucketTs);
       rows.forEach(function(row) {
         var barsDiv = row.querySelector('.bars');
-        var bar = barsDiv.querySelector('.bar[data-ts="' + ts + '"]');
+        var bar = barsDiv.querySelector('.bar[data-ts="' + timestamp + '"]');
         if (bar) {
           bar.className = 'bar ' + d.status + (d.fallback ? ' fallback' : '');
           bar.dataset.info = JSON.stringify(d);
         } else {
           var nb = document.createElement('div');
           nb.className = 'bar ' + d.status + (d.fallback ? ' fallback' : '');
-          nb.dataset.ts = ts;
+          nb.dataset.ts = timestamp;
           nb.dataset.info = JSON.stringify(d);
           attachBarHover(nb);
           barsDiv.appendChild(nb);

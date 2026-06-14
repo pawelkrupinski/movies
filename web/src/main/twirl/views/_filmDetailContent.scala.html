@@ -129,8 +129,8 @@
       }
       // First open or switch trailer: set src + autoplay, show slot,
       // move the active marker to this button.
-      const sep = url.includes('?') ? '&' : '?';
-      iframe.src = url + sep + 'autoplay=1';
+      const separator = url.includes('?') ? '&' : '?';
+      iframe.src = url + separator + 'autoplay=1';
       frame.style.display = '';
       document.querySelectorAll('.trailer-link').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');

@@ -23,7 +23,7 @@
   function buildIndex() {
     const grid = document.getElementById('film-grid');
     INDEX = [...grid.querySelectorAll('.col[data-title]')].map(col => ({
-      el:       col,
+      element:       col,
       title:    col.dataset.title.toLowerCase(),
       rawTitle: col.dataset.title,
       // Sort key, parsed once: the server-computed weighted rating average
@@ -35,11 +35,11 @@
       cast:      new Set((col.dataset.cast     || '').split(',').map(s => s.trim()).filter(Boolean)),
       visible:  true,  // remembered so we only write style.display on changes
       groups:   [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
-        el:           group,
+        element:           group,
         date:         group.dataset.date,
         visible:      true,
         cinemaGroups: [...group.querySelectorAll('.cinema-group[data-cinema]')].map(cg => ({
-          el:      cg,
+          element:      cg,
           cinema:  cg.dataset.cinema,
           visible: true,
           // Pre-parse each badge's format tokens into a Set + a numeric
@@ -54,7 +54,7 @@
               : -1;
             const room = b.dataset.room || '';
             return {
-              el:          b,
+              element:          b,
               time:        t,
               timeMin:     timeMin,
               formats:     new Set((b.dataset.format || '').split(' ').filter(Boolean)),
@@ -78,7 +78,7 @@
   // avoids triggering layout when nothing moved.
   function setVisible(node, want) {
     if (node.visible !== want) {
-      node.el.style.display = want ? '' : 'none';
+      node.element.style.display = want ? '' : 'none';
       node.visible = want;
     }
   }
@@ -227,7 +227,7 @@
 
     const grid = document.getElementById('film-grid');
     const frag = document.createDocumentFragment();
-    for (const i of visible) frag.appendChild(INDEX[i].el);
+    for (const i of visible) frag.appendChild(INDEX[i].element);
     grid.appendChild(frag);
   }
 
@@ -323,7 +323,7 @@
       }
       col.style.display = colVisible ? '' : 'none';
       if (colVisible) {
-        visible.push({ el: col, earliest: colEarliest || '', rating: parseFloat(col.dataset.rating) || 0, idx });
+        visible.push({ element: col, earliest: colEarliest || '', rating: parseFloat(col.dataset.rating) || 0, idx });
       }
     });
 
@@ -338,7 +338,7 @@
       return a.idx - b.idx;
     });
     const frag = document.createDocumentFragment();
-    for (const v of visible) frag.appendChild(v.el);
+    for (const v of visible) frag.appendChild(v.element);
     gridEl.appendChild(frag);
   }
 

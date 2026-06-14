@@ -51504,7 +51504,7 @@ let INDEX = null;
 function buildIndex() {
 const grid = document.getElementById('film-grid');
 INDEX = [...grid.querySelectorAll('.col[data-title]')].map(col => ({
-el: col,
+element: col,
 title: col.dataset.title.toLowerCase(),
 rawTitle: col.dataset.title,
 rating: parseFloat(col.dataset.rating) || 0,
@@ -51514,11 +51514,11 @@ directors: new Set((col.dataset.director || '').split(',').map(s => s.trim()).fi
 cast: new Set((col.dataset.cast || '').split(',').map(s => s.trim()).filter(Boolean)),
 visible: true,
 groups: [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
-el: group,
+element: group,
 date: group.dataset.date,
 visible: true,
 cinemaGroups: [...group.querySelectorAll('.cinema-group[data-cinema]')].map(cg => ({
-el: cg,
+element: cg,
 cinema: cg.dataset.cinema,
 visible: true,
 badges: [...cg.querySelectorAll('.badge-time')].map(b => {
@@ -51529,7 +51529,7 @@ const timeMin = colon > 0
 : -1;
 const room = b.dataset.room || '';
 return {
-el: b,
+element: b,
 time: t,
 timeMin: timeMin,
 formats: new Set((b.dataset.format || '').split(' ').filter(Boolean)),
@@ -51543,7 +51543,7 @@ visible: true
 }
 function setVisible(node, want) {
 if (node.visible !== want) {
-node.el.style.display = want ? '' : 'none';
+node.element.style.display = want ? '' : 'none';
 node.visible = want;
 }
 }
@@ -51655,7 +51655,7 @@ if (isSubsequence(visible, _prevVisibleOrder)) return;
 _prevVisibleOrder = visible;
 const grid = document.getElementById('film-grid');
 const frag = document.createDocumentFragment();
-for (const i of visible) frag.appendChild(INDEX[i].el);
+for (const i of visible) frag.appendChild(INDEX[i].element);
 grid.appendChild(frag);
 }
 function applyFiltersForDay(gridEl, dayValue) {
@@ -51732,7 +51732,7 @@ if (groupVisible) colVisible = true;
 }
 col.style.display = colVisible ? '' : 'none';
 if (colVisible) {
-visible.push({ el: col, earliest: colEarliest || '', rating: parseFloat(col.dataset.rating) || 0, idx });
+visible.push({ element: col, earliest: colEarliest || '', rating: parseFloat(col.dataset.rating) || 0, idx });
 }
 });
 visible.sort((a, b) => {
@@ -51741,7 +51741,7 @@ if (a.earliest !== b.earliest) return a.earliest < b.earliest ? -1 : 1;
 return a.idx - b.idx;
 });
 const frag = document.createDocumentFragment();
-for (const v of visible) frag.appendChild(v.el);
+for (const v of visible) frag.appendChild(v.element);
 gridEl.appendChild(frag);
 }
 window.buildIndex = buildIndex;

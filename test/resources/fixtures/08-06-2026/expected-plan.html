@@ -10369,15 +10369,15 @@ const card = e.target.closest('.plan-card');
 if (card) togglePlanMovie(card);
 });
 function syncPlanRoomChecksFromStorage() {
-const fav = new Set(getFavouriteRooms());
+const favourites = new Set(getFavouriteRooms());
 document.querySelectorAll('.room-cb').forEach(cb => {
-cb.checked = fav.has(cb.dataset.roomKey);
+cb.checked = favourites.has(cb.dataset.roomKey);
 });
 }
 function onPlanRoomToggle(cb) {
-const fav = new Set(getFavouriteRooms());
-if (cb.checked) fav.add(cb.dataset.roomKey); else fav.delete(cb.dataset.roomKey);
-setFavouriteRooms([...fav].sort());
+const favourites = new Set(getFavouriteRooms());
+if (cb.checked) favourites.add(cb.dataset.roomKey); else favourites.delete(cb.dataset.roomKey);
+setFavouriteRooms([...favourites].sort());
 renderPlan();
 }
 const PL_DAYS = ['niedziela','poniedziałek','wtorek','środa','czwartek','piątek','sobota'];

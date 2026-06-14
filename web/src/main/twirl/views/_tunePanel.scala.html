@@ -30,9 +30,9 @@
   // Keep the display-geometry readout live — it changes as the window is
   // resized to dial in different viewports.
   (function () {
-    const el = document.getElementById('viewportInfo');
+    const element = document.getElementById('viewportInfo');
     const render = () => {
-      el.textContent = ViewportInfo.formatViewportInfo({
+      element.textContent = ViewportInfo.formatViewportInfo({
         innerWidth: window.innerWidth,
         innerHeight: window.innerHeight,
         dpr: window.devicePixelRatio,
@@ -58,41 +58,41 @@
   const actions = panel.querySelector('.actions');
 
   const flat = [];
-  for (const g of CONTROLS) {
+  for (const group of CONTROLS) {
     const groupEl = document.createElement('div');
     groupEl.className = 'panel-group';
     const h2 = document.createElement('h2');
-    h2.textContent = g.group;
+    h2.textContent = group.group;
     groupEl.appendChild(h2);
 
-    for (const it of g.items) {
-      flat.push(it);
+    for (const item of group.items) {
+      flat.push(item);
       const row = document.createElement('div');
       row.className = 'ctrl';
 
       const label = document.createElement('label');
-      label.textContent = it.v;
-      label.title = it.css;
+      label.textContent = item.v;
+      label.title = item.css;
 
       const input = document.createElement('input');
       input.type = 'range';
-      input.min = it.min; input.max = it.max; input.step = it.step;
-      input.value = it.def;
-      input.dataset.var = it.v;
-      input.dataset.unit = it.unit;
+      input.min = item.min; input.max = item.max; input.step = item.step;
+      input.value = item.def;
+      input.dataset.var = item.v;
+      input.dataset.unit = item.unit;
 
-      const val = document.createElement('span');
-      val.className = 'val';
+      const value = document.createElement('span');
+      value.className = 'val';
 
-      const fmt = (n) => (it.step < 1 ? Number(n).toFixed(2) : String(Number(n)));
+      const format = (n) => (item.step < 1 ? Number(n).toFixed(2) : String(Number(n)));
       const apply = () => {
-        const css = fmt(input.value) + it.unit;
-        scope.style.setProperty(it.v, css);
-        val.textContent = css;
+        const css = format(input.value) + item.unit;
+        scope.style.setProperty(item.v, css);
+        value.textContent = css;
       };
       input.addEventListener('input', apply);
-      it._input = input;
-      it._fmt = fmt;
+      item._input = input;
+      item._fmt = format;
       apply();
 
       // ± buttons on each side: stepDown/stepUp clamp to the slider's
@@ -116,16 +116,16 @@
 
       row.appendChild(label);
       row.appendChild(wrap);
-      row.appendChild(val);
+      row.appendChild(value);
       groupEl.appendChild(row);
     }
     panel.insertBefore(groupEl, actions);
   }
 
   function dumpText() {
-    return flat.map(it => {
-      const css = it._fmt(it._input.value) + it.unit;
-      return `${it.v} = ${css}    // ${it.css}`;
+    return flat.map(item => {
+      const css = item._fmt(item._input.value) + item.unit;
+      return `${item.v} = ${css}    // ${item.css}`;
     }).join('\n');
   }
 
