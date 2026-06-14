@@ -2,12 +2,15 @@ package pl.kinowo.ui.list
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -45,7 +48,7 @@ class FiltersSheetOrderTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun viewModel(): KinowoViewModel {
+    private fun viewModel(vararg hidden: String): KinowoViewModel {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val http = OkHttpClient()
         val api = KinowoApi(client = http)
@@ -56,7 +59,53 @@ class FiltersSheetOrderTest {
             override suspend fun fetchState() = UserSyncState(emptySet(), emptySet())
             override suspend fun putState(state: UserSyncState) {}
         }
-        return KinowoViewModel(repo, detailsRepo, UserPreferences(context), authRepo, noopStateClient)
+        val prefs = UserPreferences(context)
+        if (hidden.isNotEmpty()) runBlocking { hidden.forEach { prefs.hide(it) } }
+        return KinowoViewModel(repo, detailsRepo, prefs, authRepo, noopStateClient)
+    }
+
+    /**
+     * Sortuj stays above the "Ukryte filmy" row — unlike iOS, where the hidden
+     * row leads. Guards requirement #1 against the row drifting to the top when
+     * it became a nav row.
+     */
+    @Test
+    fun sortujSitsAboveTheHiddenFilmsRow() {
+        compose.setContent {
+            FiltersSheetContent(viewModel("Diuna", "Barbie"), films = emptyList())
+        }
+
+        fun top(text: String) =
+            compose.onNodeWithText(text).fetchSemanticsNode().boundsInRoot.top
+
+        assertTrue("Sortuj must sit above the Ukryte filmy row",
+            top("Sortuj") < top("Ukryte filmy"))
+    }
+
+    /**
+     * "Ukryte filmy" is a nav row that opens its own card (mirroring iOS), not
+     * an inline collapsible: tapping it reveals a search box that narrows the
+     * hidden list as you type. Covers requirements #2 and #3.
+     */
+    @Test
+    fun hiddenFilmsRowOpensASearchableCard() {
+        compose.setContent {
+            FiltersSheetContent(viewModel("Diuna", "Barbie"), films = emptyList())
+        }
+
+        // The filter list shows the row but no search box yet.
+        compose.onNodeWithText("Szukaj filmu").assertDoesNotExist()
+        compose.onNodeWithText("Ukryte filmy").performClick()
+
+        // The card: search box plus every hidden title.
+        compose.onNodeWithText("Szukaj filmu").assertIsDisplayed()
+        compose.onNodeWithText("Diuna").assertExists()
+        compose.onNodeWithText("Barbie").assertExists()
+
+        // Typing narrows the list to matching titles only.
+        compose.onNode(hasSetTextAction()).performTextInput("Diu")
+        compose.onNodeWithText("Diuna").assertExists()
+        compose.onNodeWithText("Barbie").assertDoesNotExist()
     }
 
     @Test

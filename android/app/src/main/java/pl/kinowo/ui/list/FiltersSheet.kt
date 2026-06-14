@@ -14,9 +14,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
@@ -24,6 +29,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
@@ -38,6 +44,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -90,6 +98,23 @@ internal fun FiltersSheetContent(
     vm: KinowoViewModel,
     films: List<Film>,
 ) {
+    // "Ukryte filmy" pushes its own card (mirroring iOS), so the sheet swaps
+    // between the filter list and that card rather than expanding inline — the
+    // hidden set grows large enough to crowd out every other filter.
+    var showHidden by remember { mutableStateOf(false) }
+    if (showHidden) {
+        HiddenFilmsCard(vm, onBack = { showHidden = false })
+    } else {
+        FiltersList(vm, films, onOpenHidden = { showHidden = true })
+    }
+}
+
+@Composable
+private fun FiltersList(
+    vm: KinowoViewModel,
+    films: List<Film>,
+    onOpenHidden: () -> Unit,
+) {
     val hidden by vm.hiddenFilms.collectAsState()
     val disabled by vm.disabledCinemas.collectAsState()
     val allCinemas = remember(films) { vm.allCinemas(films) }
@@ -123,24 +148,12 @@ internal fun FiltersSheetContent(
             // Sortuj → Ukryte filmy → Kina → Kraj/Gatunek/Reżyseria/Obsada → Wymiar/Wersja/IMAX/Od godziny.
             // (Web's "Sale" room picker has no Android equivalent.)
 
-            // Ukryte filmy — collapsible, matching Kina and the name filters.
+            // Ukryte filmy — a nav row that opens its own card (HiddenFilmsCard),
+            // mirroring iOS; the inline list would crowd out every other filter
+            // once the hidden set grows. Stays below Sortuj.
             if (hidden.isNotEmpty()) {
                 item(key = "sec_hidden") {
-                    CollapsibleSection("Ukryte filmy", "${hidden.size}") {
-                        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 280.dp)) {
-                            items(hidden.toList(), key = { "hid_$it" }) { title ->
-                                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Text(title, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                                    TextButton(onClick = { vm.unhide(title) }) { Text("Pokaż") }
-                                }
-                            }
-                            item(key = "hid_unhide_all") {
-                                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.End) {
-                                    TextButton(onClick = { vm.unhideAll() }) { Text("Pokaż wszystkie") }
-                                }
-                            }
-                        }
-                    }
+                    HiddenFilmsRow(count = hidden.size, onClick = onOpenHidden)
                 }
             }
 
@@ -357,6 +370,97 @@ private fun CitySection(vm: KinowoViewModel) {
             }
         }
     }
+}
+
+/**
+ * The "Ukryte filmy" entry in the filter list: a tappable row (title, count
+ * badge, forward chevron) that opens [HiddenFilmsCard]. Mirrors iOS's
+ * NavigationLink row rather than the old inline collapsible.
+ */
+@Composable
+private fun HiddenFilmsRow(count: Int, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable { onClick() }.padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Ukryte filmy", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Text("$count", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+    }
+}
+
+/**
+ * The "Ukryte filmy" card pushed from [HiddenFilmsRow]: a back header, a search
+ * box that narrows the list as you type (case-insensitive substring, shared
+ * shape with iOS HiddenFilmsFilter), each title with a "Pokaż" un-hide, and a
+ * "Pokaż wszystkie" bulk action. Pops back automatically once the set drains
+ * empty — there is nothing left to manage.
+ */
+@Composable
+private fun HiddenFilmsCard(vm: KinowoViewModel, onBack: () -> Unit) {
+    val hidden by vm.hiddenFilms.collectAsState()
+    // Unhiding the last film leaves nothing to manage — pop back to the filter
+    // list (its "Ukryte filmy" row has vanished too). Run as an effect so the
+    // state change doesn't happen mid-composition.
+    LaunchedEffect(hidden.isEmpty()) {
+        if (hidden.isEmpty()) onBack()
+    }
+    var query by remember { mutableStateOf("") }
+    val titles = remember(hidden, query) {
+        hidden.sortedWith(String.CASE_INSENSITIVE_ORDER)
+            .filter { query.isBlank() || it.contains(query.trim(), ignoreCase = true) }
+    }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wstecz")
+            }
+            Text("Ukryte filmy", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        }
+        HiddenFilmsSearchField(query) { query = it }
+        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
+            items(titles, key = { "hid_$it" }) { title ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { vm.unhide(title) }) { Text("Pokaż") }
+                }
+            }
+            item(key = "hid_unhide_all") {
+                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = { vm.unhideAll() }) { Text("Pokaż wszystkie") }
+                }
+            }
+        }
+        Column(Modifier.padding(bottom = 24.dp)) {}
+    }
+}
+
+/**
+ * Search box on the Ukryte filmy card: a Material3 [OutlinedTextField] with a
+ * magnifier lead and a clear glyph, fitting the sheet surface (the dark
+ * top-bar SearchFieldContent in ListScreen would clash here).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HiddenFilmsSearchField(query: String, onChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onChange,
+        singleLine = true,
+        placeholder = { Text("Szukaj filmu") },
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Wyczyść",
+                    modifier = Modifier.clickable { onChange("") },
+                )
+            }
+        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+    )
 }
 
 @Composable
