@@ -3,7 +3,7 @@ package modules
 import clients.TmdbClient
 import models.{Cinema, City}
 import services.{MongoCachingDetailFetch, MongoConnection, Stoppable, UptimeMonitor}
-import services.alerts.{FallbackAlert, FilmwebDropAlerter, TelegramNotifier}
+import services.alerts.{FallbackAlert, FilmwebDropAlerter, StagingStuckAlerter, TelegramNotifier}
 import services.cinemas._
 import services.enrichment._
 import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
@@ -18,6 +18,7 @@ import services.titlerules.{MongoTitleRulesRepo, TitleRuleSet, TitleRulesCache, 
 import tools.{DaemonExecutors, Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
 import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration.DurationLong
 
 /**
@@ -354,6 +355,24 @@ class WorkerWiring extends play.api.Logging {
   private val StagingPromoterInitialDelay = Env.positiveLong("KINOWO_STAGING_PROMOTE_INITIAL_SECONDS", 30L)
   private val StagingPromoterInterval     = Env.positiveLong("KINOWO_STAGING_PROMOTE_SECONDS", 120L)
 
+  // Telegram alerter for newcomers the promoter can't conclude: a row sitting in
+  // `pending_movies` TMDB-unresolved for over an hour never folds into `movies`, so
+  // it never reaches the app — a silent data hole. Routes to its own chat if set,
+  // else the shared "Kinowo Monitoring" group (KINOWO_FALLBACK_TG_CHAT_ID), so it
+  // works on prod without a new secret; off in CI / local without any chat id.
+  protected lazy val stagingStuckAlerter: Option[StagingStuckAlerter] = for {
+    token  <- Env.get("TELEGRAM_BOT_TOKEN")
+    chatId <- Env.get("KINOWO_STAGING_STUCK_TG_CHAT_ID")
+                .orElse(Env.get("KINOWO_FALLBACK_TG_CHAT_ID"))
+                .flatMap(s => scala.util.Try(s.toLong).toOption)
+  } yield {
+    val notifier = new TelegramNotifier(httoFetch, token, chatId,
+      Env.get("KINOWO_STAGING_STUCK_TG_TOPIC_ID").flatMap(s => scala.util.Try(s.toLong).toOption))
+    new StagingStuckAlerter(stagingRepo, notifier.send,
+      stuckThreshold = FiniteDuration(Env.positiveLong("KINOWO_STAGING_STUCK_MINUTES", 60L), TimeUnit.MINUTES),
+      interval       = FiniteDuration(Env.positiveLong("KINOWO_STAGING_STUCK_SCAN_MINUTES", 10L), TimeUnit.MINUTES))
+  }
+
   // Rating refresh as queue tasks. The handlers reuse each *Ratings class's
   // per-row refreshOneSync; the enqueuer turns the resolution bus events into
   // rating tasks; the reaper is the periodic (staggered 4h) backstop.
@@ -467,6 +486,7 @@ class WorkerWiring extends play.api.Logging {
         case e => logger.warn(s"Staging promoter tick failed: ${e.getMessage}")
       },
       StagingPromoterInitialDelay, StagingPromoterInterval, TimeUnit.SECONDS)
+    stagingStuckAlerter.foreach(_.start())
   }
 
   /** Event-cascade drain order, producer→consumer (see monolith comment). Only
@@ -475,6 +495,7 @@ class WorkerWiring extends play.api.Logging {
   def cascadeDrainOrder: Seq[Stoppable] = Seq(movieService, imdbIdResolver)
 
   def stop(): Unit = {
+    stagingStuckAlerter.foreach(_.stop())
     stagingPromoterScheduler.shutdown()
     scrapeReaper.stop()
     enrichmentReaper.stop()
