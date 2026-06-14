@@ -1,35 +1,27 @@
 @import services.staging.StagingRecord
 @import services.movies.TitleNormalizer
-@(r: StagingRecord, hidden: Boolean = false)
+@(r: StagingRecord)
 @*
- * One "Pending enrichment (staging)" row, keyed by the `pending_movies` `_id` so
- * the /debug live feed can replace-or-remove it. Rendered both by the initial
- * page pass and by DebugStreamController on each `pending_movies` change, so a
- * live-inserted row is byte-identical to the server render.
+ * Hidden per-cinema SOURCE row for the /debug staging table — a data carrier,
+ * not a displayed row. The visible table folds these by film (`data-anchor` =
+ * sanitize(title), the key every `staging-*` queue task embeds) into one row per
+ * film with a cinema count; see `rebuildStagingTable` in debug.scala.html.
  *
- * The three stage cells (Detail / TMDB / IMDb) are server-rendered "done" marks:
- * a green-background ✓ once that step has concluded, an empty cell otherwise —
- * so a live row-replace repaints them for free as the record advances. A row
- * walks Detail → TMDB → IMDb → Fold; Fold is terminal (the row disappears once
- * it lands in `movies`), so there is no Fold cell to show on a present row.
+ * Rendered both by the initial page pass and by DebugStreamController on each
+ * `pending_movies` change (keyed by `_id` so the live feed can replace-or-remove
+ * it), so a live-inserted source row is byte-identical to the server render and
+ * the fold re-runs over it.
  *
- * `data-anchor` is `sanitize(title)` — the per-film key every `staging-*` dedup
- * key embeds — so `rebuildStagingQueue` can find this film's place in the durable
- * queue and paint the trailing "Queue #" cell (`.queue-q`).
- *
- * `hidden` pre-applies the display cap on the initial server pass (rows past
- * `StagingRowLimit` in queue order start hidden, no first-paint flash); the
- * client's `rebuildStagingQueue` then owns the cap live. Live SSE rows render
- * visible and are re-capped on the next rebuild.
+ * Stage flags are the film-progress signals the folded row aggregates: detail is
+ * per-cinema (the folded ✓ shows only when ALL cinemas are done); tmdb/imdb are
+ * film-level. Fold is terminal (the row disappears on graduation), so no flag.
  *@
-@stageDone(done: Boolean) = {@if(done){<span class="stage-done">✓</span>}}
-<tr class="data@if(hidden){ hidden}" data-row-id="@StagingRecord.idFor(r.cinema, r.title, r.year)"
-    data-anchor="@TitleNormalizer.sanitize(r.title)">
-  <td>@r.cinema.displayName</td>
-  <td class="title">@r.title</td>
-  <td>@r.year.map(_.toString).getOrElse("—")</td>
-  <td class="stage-detail">@stageDone(!r.record.detailPending)</td>
-  <td class="stage-tmdb">@stageDone(r.record.tmdbId.isDefined || r.record.tmdbNoMatch)</td>
-  <td class="stage-imdb">@stageDone(r.record.imdbId.isDefined)</td>
-  <td class="queue-q"></td>
-</tr>
+<tr class="data" hidden
+    data-row-id="@StagingRecord.idFor(r.cinema, r.title, r.year)"
+    data-anchor="@TitleNormalizer.sanitize(r.title)"
+    data-cinema="@r.cinema.displayName"
+    data-title="@r.title"
+    data-year="@r.year.map(_.toString).getOrElse("")"
+    data-detail-done="@(!r.record.detailPending)"
+    data-tmdb-done="@(r.record.tmdbId.isDefined || r.record.tmdbNoMatch)"
+    data-imdb-done="@r.record.imdbId.isDefined"></tr>

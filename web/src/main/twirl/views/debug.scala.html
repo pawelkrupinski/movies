@@ -1,4 +1,5 @@
 @import services.movies.StoredMovieRecord
+@import services.movies.TitleNormalizer
 @import services.staging.StagingRecord
 @import controllers.MovieController
 @(rows: Seq[StoredMovieRecord], cinemaUrls: Map[String, String] = Map.empty, staging: Seq[StagingRecord] = Seq.empty)(implicit city: models.City)
@@ -110,9 +111,13 @@
     .showtime a { color: #ccc; }
     .showtime a:hover { color: #aad4ff; text-decoration: none; }
 
-    /* Staging table: per-stage "done" checkbox + the trailing queue-place badge. */
+    /* Staging table: per-stage "done" checkbox + the trailing queue-place badge.
+       Rows are FOLDED by film: `#staging-src` holds hidden per-cinema source rows,
+       `#staging-folded` the one-row-per-film projection the JS builds. */
+    #staging-src { display: none; }
     #staging-t .stage-done { background: #1f6b2e; color: #eafff0; border-radius: 3px; padding: 0 .35rem; font-weight: bold; }
     #staging-t td.stage-detail, #staging-t td.stage-tmdb, #staging-t td.stage-imdb { text-align: center; }
+    #staging-t td.cinemas { text-align: right; font-variant-numeric: tabular-nums; }
     #staging-t .badge { font-size: 10px; border-radius: 3px; padding: 0 .3rem; font-variant-numeric: tabular-nums; }
     .badge.q-none { color: #555; }
     .badge.q-wait { color: #aad4ff; background: #16263a; border: 1px solid #244a6e; }
@@ -124,23 +129,25 @@
 
 @_debugNavbar("corpus")
 @* The staging table's header always renders — so an empty `pending_movies`
-   shows as an empty table (header + columns), not a vanished section. EVERY row
-   is rendered (pre-ordered by queue place), but the client shows only the first
-   `StagingRowLimit` of them and re-sorts live on each /debug/queue poll, so the
-   highest-in-queue rows stay at the top as the worker drains it (a row past the
-   cap surfaces the moment its task climbs). Rows are added/removed live off the
-   `pending_movies` change stream; the count is the full total. *@
-<h1>Pending enrichment (staging) · <span id="staging-count">@staging.size</span></h1>
-<div class="summary">Newcomer films incubating in <code>pending_movies</code> — one row per cinema|title|year. Each walks Detail → TMDB → IMDb → fold; a ✓ marks a concluded stage, the last column its place in the durable task queue. Showing the first @MovieController.StagingRowLimit, re-sorted live by queue place (most imminent first).</div>
+   shows as an empty table (header + columns), not a vanished section. Rows are
+   FOLDED by film: the hidden `#staging-src` tbody carries one (per-cinema) source
+   row per `pending_movies` doc; the JS folds same-`data-anchor` rows into a single
+   `#staging-folded` row (Cinemas = the count), re-sorts them live on each
+   /debug/queue poll so the highest-in-queue film stays on top, and shows only the
+   first `StagingRowLimit` films. Source rows are added/removed live off the
+   `pending_movies` change stream; the header count is the film total. *@
+<h1>Pending enrichment (staging) · <span id="staging-count">@staging.map(r => TitleNormalizer.sanitize(r.title)).distinct.size</span> films</h1>
+<div class="summary">Newcomer films incubating in <code>pending_movies</code> — folded across cinemas (Cinemas = how many report the film). Each walks Detail → TMDB → IMDb → fold; a ✓ marks a concluded stage (Detail only once all cinemas are done), the last column its place in the durable task queue. Showing the first @MovieController.StagingRowLimit films, re-sorted live by queue place (most imminent first).</div>
 <table id="staging-t">
   <thead>
-    <tr><th>Cinema</th><th>Title</th><th>Year</th><th>Detail</th><th>TMDB</th><th>IMDb</th><th>Queue #</th></tr>
+    <tr><th>Cinemas</th><th>Title</th><th>Year</th><th>Detail</th><th>TMDB</th><th>IMDb</th><th>Queue #</th></tr>
   </thead>
-  <tbody>
-  @for((r, i) <- staging.zipWithIndex) {
-    @_stagingRow(r, hidden = i >= MovieController.StagingRowLimit)
+  <tbody id="staging-src">
+  @for(r <- staging) {
+    @_stagingRow(r)
   }
   </tbody>
+  <tbody id="staging-folded"></tbody>
 </table>
 <h1>Debug</h1>
 <div class="summary">@rows.size total · click a row to expand · click headers to sort · filter is case-insensitive</div>
@@ -257,13 +264,11 @@
   document.getElementById('q').focus();
 
   // ── Task-queue place badge ─────────────────────────────────────────────────
-  // The staging table's trailing "Queue #" column shows where each incubating row
+  // The staging table's trailing "Queue #" column shows where each folded film
   // sits in the durable task queue. The snapshot is polled from /debug/queue; the
-  // helpers below turn it into a per-row badge (see rebuildStagingQueue). The
-  // per-stage ✓ cells are server-rendered (see _stagingRow), so this JS only
-  // paints the queue place.
+  // helpers below turn it into a per-film badge (see rebuildStagingTable).
   let queueActive = []; // [{taskType, dedupKey, state}] — oldest-first, waiting + worked_on mixed
-  const STAGING_CAP = @MovieController.StagingRowLimit; // declared up here — rebuildStagingQueue (below) reads it on the first load call
+  const STAGING_CAP = @MovieController.StagingRowLimit; // declared up here — rebuildStagingTable (below) reads it on the first load call
 
   // Place every WAITING task's dedupKey at its 1-based spot in the global queue.
   // The worker leases the oldest waiting task first regardless of type, so a
@@ -302,29 +307,78 @@
     return { cls: 'q-wait', text: '#' + best + (matches.length > 1 ? ' ·' + matches.length : ''), rank: best };
   }
 
-  // Paint each incubating row's "Queue #" cell from the latest /debug/queue poll,
-  // then re-sort the rows so the highest-in-queue (▶ running, then lowest place)
-  // sit at the top, and show only the first STAGING_CAP of them. Every row is in
-  // the DOM (the server renders them all), so as the worker drains the queue a
-  // row that climbs past the cap surfaces here without a reload.
-  function rebuildStagingQueue() {
-    const staging = document.getElementById('staging-t');
-    if (!staging) return;
-    const tbody = staging.querySelector('tbody');
+  // Fold the hidden per-cinema source rows (#staging-src) into one visible row
+  // per film (#staging-folded): group by `data-anchor`, count the cinemas,
+  // aggregate the stage flags, paint the film's queue place, then re-sort so the
+  // highest-in-queue film (▶ running, then lowest place) is on top and show only
+  // the first STAGING_CAP films. Re-run on every /debug/queue poll and SSE frame,
+  // so a film climbing the queue (or a newly-arrived/graduated one) updates live.
+  function rebuildStagingTable() {
+    const src = document.getElementById('staging-src');
+    const out = document.getElementById('staging-folded');
+    if (!src || !out) return;
     const places = waitingPlaces();
-    const ranked = Array.from(tbody.querySelectorAll('tr.data')).map(tr => {
-      const badge = badgeFor(stagingTasksFor(tr.dataset.anchor || ''), places);
-      paintQueueCell(tr.querySelector('.queue-q'), badge);
-      return { tr, rank: badge.rank };
+    // Group source rows by film anchor (insertion order = the server's queue order).
+    const groups = new Map();
+    src.querySelectorAll('tr.data').forEach(tr => {
+      const a = tr.dataset.anchor || '';
+      let g = groups.get(a);
+      if (!g) {
+        g = { anchor: a, title: tr.dataset.title || '', year: tr.dataset.year || '',
+              cinemas: [], detailDone: true, tmdbDone: false, imdbDone: false };
+        groups.set(a, g);
+      }
+      if (tr.dataset.cinema) g.cinemas.push(tr.dataset.cinema);
+      if (tr.dataset.detailDone !== 'true') g.detailDone = false; // Detail ✓ only once EVERY cinema is done
+      if (tr.dataset.tmdbDone === 'true') g.tmdbDone = true;      // tmdb/imdb are film-level
+      if (tr.dataset.imdbDone === 'true') g.imdbDone = true;
     });
-    // Stable ascending sort by rank — equal ranks (e.g. all no-task) keep their
-    // current order, which is the server's queue-then-title order. `|| 0` guards
-    // the Infinity − Infinity = NaN case (two no-task rows compare equal).
-    ranked.sort((a, b) => (a.rank - b.rank) || 0);
+    // Rank each film by its place in the queue, then stable-sort (|| 0 guards the
+    // Infinity − Infinity = NaN of two no-task films, keeping their queue order).
+    const ranked = Array.from(groups.values())
+      .map(g => ({ g, badge: badgeFor(stagingTasksFor(g.anchor), places) }));
+    ranked.sort((a, b) => (a.badge.rank - b.badge.rank) || 0);
+    out.textContent = '';
     ranked.forEach((r, i) => {
-      tbody.appendChild(r.tr);                            // reorder in place
-      r.tr.classList.toggle('hidden', i >= STAGING_CAP);  // show only the top cap
+      const tr = renderFoldedRow(r.g, r.badge);
+      if (i >= STAGING_CAP) tr.classList.add('hidden'); // show only the top cap of films
+      out.appendChild(tr);
     });
+    const cnt = document.getElementById('staging-count');
+    if (cnt) cnt.textContent = groups.size; // the film total (folded), not the cinema total
+  }
+
+  // Build one folded film row. Cinemas cell = the count (names in its tooltip).
+  function renderFoldedRow(g, badge) {
+    const tr = document.createElement('tr');
+    tr.className = 'data';
+    tr.dataset.anchor = g.anchor;
+    const cinemas = td('cinemas', String(g.cinemas.length));
+    cinemas.title = g.cinemas.join(', ');
+    tr.appendChild(cinemas);
+    tr.appendChild(td('title', g.title));
+    tr.appendChild(td('', g.year || '—'));
+    tr.appendChild(stageCell('stage-detail', g.detailDone));
+    tr.appendChild(stageCell('stage-tmdb', g.tmdbDone));
+    tr.appendChild(stageCell('stage-imdb', g.imdbDone));
+    const q = td('queue-q', '');
+    paintQueueCell(q, badge);
+    tr.appendChild(q);
+    return tr;
+  }
+
+  function td(cls, text) {
+    const el = document.createElement('td');
+    if (cls) el.className = cls;
+    el.textContent = text;
+    return el;
+  }
+
+  // A stage cell: a green ✓ when the step has concluded, empty otherwise.
+  function stageCell(cls, done) {
+    const el = td(cls, '');
+    if (done) { const s = document.createElement('span'); s.className = 'stage-done'; s.textContent = '✓'; el.appendChild(s); }
+    return el;
   }
 
   // Render one queue badge into a staging cell, replacing any prior content.
@@ -340,11 +394,11 @@
   function pollQueue() {
     fetch("@routes.MovieController.debugQueue()", { headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
-      .then(j => { queueActive = Array.isArray(j.active) ? j.active : []; rebuildStagingQueue(); })
+      .then(j => { queueActive = Array.isArray(j.active) ? j.active : []; rebuildStagingTable(); })
       .catch(() => {});
   }
 
-  rebuildStagingQueue();
+  rebuildStagingTable();
   pollQueue();
   // Handle kept so tests can freeze the live re-sort (clearInterval) and drive
   // `queueActive` deterministically.
@@ -390,24 +444,17 @@
   // ── Live staging rows (pending_movies change stream) ───────────────────────
   // The worker inserts a pending_movies row when a newcomer is first seen and
   // deletes it once the film folds into the corpus. The same SSE feed pushes
-  // those changes (staging-* frames, rendered via `_stagingRow`) so the staging
-  // table gains/loses rows live. EVERY row lives in the DOM (only the top
-  // STAGING_CAP are shown), so the count is simply the row total and an inserted
-  // row is sorted into place — and surfaced if it ranks high — by the next
-  // rebuildStagingQueue. (STAGING_CAP is declared above, with the queue helpers.)
+  // those changes (staging-* frames, rendered via `_stagingRow`) so the hidden
+  // per-cinema SOURCE rows (#staging-src) gain/lose entries live; each change
+  // re-runs rebuildStagingTable, which re-folds, re-sorts, re-caps and updates
+  // the film count. (STAGING_CAP is declared above, with the queue helpers.)
   function stagingRowsFor(id) {
-    return document.querySelectorAll('#staging-t tbody tr[data-row-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
-  }
-
-  function updateStagingCount() {
-    const c = document.getElementById('staging-count');
-    if (c) c.textContent = document.querySelectorAll('#staging-t tbody tr.data').length;
+    return document.querySelectorAll('#staging-src tr[data-row-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
   }
 
   function applyStagingDelete(id) {
     stagingRowsFor(id).forEach(el => el.remove());
-    rebuildStagingQueue(); // a removed row may promote a capped one into view
-    updateStagingCount();
+    rebuildStagingTable(); // the film may lose a cinema, or vanish entirely
   }
 
   function applyStagingUpsert(id, html) {
@@ -417,9 +464,8 @@
     if (!fresh) return;
     const existing = stagingRowsFor(id);
     if (existing.length) existing[0].replaceWith(fresh);
-    else document.querySelector('#staging-t tbody').appendChild(fresh);
-    rebuildStagingQueue(); // paint + re-sort + re-cap with the new/updated row
-    updateStagingCount();
+    else document.getElementById('staging-src').appendChild(fresh);
+    rebuildStagingTable(); // re-fold with the new/updated cinema source row
   }
 
   // Route one SSE frame to the right table. Named (not an inline closure) so it's

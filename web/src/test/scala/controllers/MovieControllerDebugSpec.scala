@@ -84,12 +84,11 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     bothScansOverlapped shouldBe true
   }
 
-  // The staging table carries a trailing "Queue #" column, painted client-side
-  // from the /debug/queue poll, so the server only emits the column shell (an
-  // empty `.queue-q` cell) plus the per-film `data-anchor` the JS matches the
-  // film's `staging-*` queue tasks on. The per-stage Detail/TMDB/IMDb cells are
-  // server-rendered ✓ marks (empty here — this row hasn't fetched detail yet).
-  "GET /debug" should "render the staging queue column + per-row anchor" in {
+  // The staging table is folded by film client-side: the server emits the column
+  // headers, the hidden `#staging-src` source tbody (one data-only row per cinema)
+  // and the empty `#staging-folded` tbody the JS fills. The source row carries the
+  // `data-anchor` the queue badge matches on + the per-cinema fold inputs.
+  "GET /debug" should "render the staging fold scaffolding + per-cinema source row" in {
     val staging = new services.staging.InMemoryStagingRepository(Seq(
       (CinemaCityWroclavia, "Newcomer", Some(2099),
         MovieRecord(detailPending = true, data = Map(CinemaCityWroclavia -> SourceData(title = Some("Newcomer")))))))
@@ -97,16 +96,16 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
       TestMovieController.build(records, Mode.Dev, stagingRepository = staging)._1
         .debug().apply(FakeRequest(GET, "/debug")))
 
-    // The queue column header + the empty cell the JS fills.
+    html should include ("<th>Cinemas</th>")
     html should include ("<th>Queue #</th>")
-    html should include ("""<td class="queue-q">""")
+    html should include ("""id="staging-src"""")
+    html should include ("""id="staging-folded"""")
 
     // The anchor = sanitize(title) the `staging-*` dedup keys (and so the queue
-    // badge) match on rides along on the staging row.
+    // badge) match on, plus the per-cinema fold inputs, ride along on the source row.
     html should include ("""data-anchor="newcomer"""")
-
-    // Detail not yet fetched → its stage cell is empty (no ✓ yet).
-    html should include ("""<td class="stage-detail"></td>""")
+    html should include (s"""data-cinema="${CinemaCityWroclavia.displayName}"""")
+    html should include ("""data-detail-done="false"""") // detail not yet fetched
   }
 
   // ── ordering staging rows by their queue place ──────────────────────────────

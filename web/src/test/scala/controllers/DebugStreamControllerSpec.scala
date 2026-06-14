@@ -108,7 +108,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
     (message \ "id").as[String]   shouldBe StagingRecord.idFor(CinemaCityWroclavia, "Newcomer", Some(2026))
     val html = (message \ "html").as[String]
     html should include ("Newcomer")
-    html should include ("""class="queue-q"""") // the live row carries the queue-place cell
+    html should include ("""data-anchor="newcomer"""") // hidden source row the page folds by film
   }
 
   it should "push a staging-delete frame with just the id when a row graduates" in {
