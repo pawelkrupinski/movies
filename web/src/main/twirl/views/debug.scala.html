@@ -129,7 +129,7 @@
    added/removed live off the `pending_movies` change stream and the count
    tracks them. *@
 <h1>Pending enrichment (staging) · <span id="staging-count">@staging.size</span></h1>
-<div class="summary">Newcomer films incubating in <code>pending_movies</code> — one row per cinema|title|year. Each walks Detail → TMDB → IMDb → fold; a ✓ marks a concluded stage, the last column its place in the durable task queue. Showing the first @MovieController.StagingRowLimit.</div>
+<div class="summary">Newcomer films incubating in <code>pending_movies</code> — one row per cinema|title|year. Each walks Detail → TMDB → IMDb → fold; a ✓ marks a concluded stage, the last column its place in the durable task queue. Showing the first @MovieController.StagingRowLimit, ordered by queue place (most imminent first).</div>
 <table id="staging-t">
   <thead>
     <tr><th>Cinema</th><th>Title</th><th>Year</th><th>Detail</th><th>TMDB</th><th>IMDb</th><th>Queue #</th></tr>

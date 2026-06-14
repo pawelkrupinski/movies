@@ -434,11 +434,19 @@ class MovieController( cc: ControllerComponents,
       implicit val ec: scala.concurrent.ExecutionContext = cc.executionContext
       val moviesFuture  = Future(movieRepository.findAll())
       val stagingFuture = Future(stagingRepository.findAll())
-      val (movies, staging) = Await.result(moviesFuture.zip(stagingFuture), 70.seconds)
+      // The same bounded, index-backed queue snapshot `/debug/queue` serves —
+      // read here too so the staging rows can be ORDERED by their place in the
+      // queue (the page renders only the first `StagingRowLimit`, so the most
+      // imminent rows must sort to the top server-side; the client poll then
+      // repaints the live badge in place, but does not reorder).
+      val queueFuture   = Future(taskQueue.monitor(MovieController.DebugQueueActiveLimit))
+      val (movies, (staging, queue)) =
+        Await.result(moviesFuture.zip(stagingFuture.zip(queueFuture)), 70.seconds)
+      val staged = staging.sortBy(r => (r.title.toLowerCase, r.cinema.displayName))
       Ok(views.html.debug(
         movies.sortBy(_.title.toLowerCase),
         cinemaSourceUrls(),
-        staging.sortBy(r => (r.title.toLowerCase, r.cinema.displayName))))
+        MovieController.orderStagingByQueue(staged, queue.active)))
     }
   }
 
@@ -603,6 +611,50 @@ object MovieController {
    *  `pending_movies` count; only the table is capped (and the page's live
    *  count-tracking JS caps appends to the same number). */
   val StagingRowLimit = 20
+
+  /**
+   * Order staging rows by their place in the durable queue — the same ranking
+   * the /debug "Queue #" badge shows, so the rows that sort to the top (and thus
+   * survive the `StagingRowLimit` cap) are the ones the worker is about to touch:
+   *   1. a row with a worked-on `staging-*` task (▶ running) sorts first;
+   *   2. then by best waiting place (1-based, oldest-first among waiting tasks);
+   *   3. then queued-but-past-the-snapshot, then no-task last.
+   * Ties keep the incoming order (the caller pre-sorts by title, cinema).
+   *
+   * `active` must be oldest-first, as `TaskQueue.monitor` returns it. This mirrors
+   * the page's `waitingPlaces`/`badgeFor` JS (debug.scala.html) — keep the two in
+   * sync so the server order and the live badge agree.
+   */
+  def orderStagingByQueue(
+    staging: Seq[services.staging.StagingRecord],
+    active:  Seq[services.tasks.TaskSummary],
+  ): Seq[services.staging.StagingRecord] = {
+    import services.tasks.TaskState
+    // 1-based place of each waiting dedupKey among the waiting tasks (first seen).
+    val waitingPlaces = {
+      val b = scala.collection.mutable.LinkedHashMap.empty[String, Int]
+      var i = 0
+      active.foreach { t =>
+        if (t.state == TaskState.Waiting) { i += 1; b.getOrElseUpdate(t.dedupKey, i) }
+      }
+      b.toMap
+    }
+    // Active `staging-*` tasks grouped by the film anchor their dedupKey embeds
+    // (the segment after the `staging-*` prefix). Mirrors the JS `stagingTasksFor`.
+    val byAnchor: Map[String, Seq[services.tasks.TaskSummary]] =
+      active.flatMap { t =>
+        if (t.taskType.startsWith("Staging")) t.dedupKey.split('|').lift(1).map(_ -> t) else None
+      }.groupMap(_._1)(_._2)
+    def rank(anchor: String): Double = byAnchor.get(anchor) match {
+      case None | Some(Nil)                                        => Double.PositiveInfinity // no task
+      case Some(ts) if ts.exists(_.state == TaskState.WorkedOn)    => 0d                       // ▶ running
+      case Some(ts) =>
+        val places = ts.flatMap(t => waitingPlaces.get(t.dedupKey))
+        if (places.isEmpty) 1e9d else places.min.toDouble                                      // waiting / queued-past-snapshot
+    }
+    // sortBy is stable, so equal-rank rows keep the caller's (title, cinema) order.
+    staging.sortBy(r => rank(TitleNormalizer.sanitize(r.title)))
+  }
 
   /** Deterministic sample cards for the `/debug/tune` page — built in process
    *  so the tuning page renders the real `_movieCard` partial without depending

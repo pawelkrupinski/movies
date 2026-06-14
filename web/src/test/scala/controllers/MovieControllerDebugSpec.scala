@@ -7,7 +7,10 @@ import play.api.Mode
 import play.api.libs.json.Json
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import services.tasks.{EnrichTaskKeys, InMemoryTaskQueue, TaskType}
+import services.staging.StagingRecord
+import services.tasks.{EnrichTaskKeys, InMemoryTaskQueue, TaskState, TaskSummary, TaskType}
+
+import java.time.Instant
 
 /**
  * `/debug` is the dev-only global-corpus table. It used to be city-scoped
@@ -104,6 +107,33 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
 
     // Detail not yet fetched → its stage cell is empty (no ✓ yet).
     html should include ("""<td class="stage-detail"></td>""")
+  }
+
+  // ── ordering staging rows by their queue place ──────────────────────────────
+  // The page renders only the first `StagingRowLimit` rows, so the most imminent
+  // ones must sort to the top server-side: running first, then by waiting place.
+  private def staged(title: String): StagingRecord =
+    StagingRecord(CinemaCityWroclavia, title, Some(2026),
+      MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some(title)))))
+  private def task(taskType: String, dedupKey: String, state: String): TaskSummary =
+    TaskSummary(dedupKey, taskType, dedupKey, state, Instant.EPOCH, 0, None, None, None)
+
+  "orderStagingByQueue" should "sort running first, then by waiting place, then no-task last" in {
+    // anchors: sanitize drops the space + lowercases → "runningfilm" etc.
+    val rows = Seq("No Task", "Running Film", "Waiting Five", "Waiting Two").map(staged)
+    val active = Seq( // oldest-first, as TaskQueue.monitor returns
+      task("StagingDetail",        "staging-detail|runningfilm|cc", TaskState.WorkedOn), // ▶ running → 0
+      task("StagingResolveTmdb",   "staging-tmdb|waitingtwo",       TaskState.Waiting),  // place 1
+      task("ImdbRating",           "imdb-rating|x",                 TaskState.Waiting),  // place 2 (non-staging, bumps counter)
+      task("StagingResolveImdbId", "staging-imdb|waitingfive",      TaskState.Waiting),  // place 3
+    )
+    MovieController.orderStagingByQueue(rows, active).map(_.title) shouldBe
+      Seq("Running Film", "Waiting Two", "Waiting Five", "No Task")
+  }
+
+  it should "keep the incoming order for equal-rank (e.g. no-task) rows — a stable sort" in {
+    val rows = Seq("Zebra", "Alpha").map(staged) // both have no active task → equal rank
+    MovieController.orderStagingByQueue(rows, Seq.empty).map(_.title) shouldBe Seq("Zebra", "Alpha")
   }
 
   // ── /debug/queue snapshot the staging columns poll for queue places ─────────
