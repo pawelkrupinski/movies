@@ -2,21 +2,21 @@ import XCTest
 @testable import KinowoCore
 
 final class PosterStoreTests: XCTestCase {
-    private var dir: URL!
+    private var directory: URL!
 
     override func setUpWithError() throws {
-        dir = FileManager.default.temporaryDirectory
+        directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("PosterStoreTests-\(UUID().uuidString)", isDirectory: true)
     }
 
     override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: dir)
+        try? FileManager.default.removeItem(at: directory)
     }
 
     private func url(_ s: String) -> URL { URL(string: s)! }
     private func fileExists(_ url: URL) -> Bool {
         FileManager.default.fileExists(
-            atPath: dir.appendingPathComponent(PosterStore.fileName(for: url)).path
+            atPath: directory.appendingPathComponent(PosterStore.fileName(for: url)).path
         )
     }
 
@@ -35,7 +35,7 @@ final class PosterStoreTests: XCTestCase {
 
     func testDownloadsOnceThenServesFromDisk() async {
         let counter = CallCounter()
-        let store = PosterStore(directory: dir, fetch: { _ in
+        let store = PosterStore(directory: directory, fetch: { _ in
             await counter.bump()
             return Data("poster-bytes".utf8)
         })
@@ -49,7 +49,7 @@ final class PosterStoreTests: XCTestCase {
 
     func testFailedDownloadIsNotCached() async {
         let counter = CallCounter()
-        let store = PosterStore(directory: dir, fetch: { _ in
+        let store = PosterStore(directory: directory, fetch: { _ in
             await counter.bump()
             return nil // simulate a non-2xx / transport failure
         })
@@ -64,7 +64,7 @@ final class PosterStoreTests: XCTestCase {
     // MARK: - Daily purge
 
     func testReconcileDeletesDepartedFilmsAndKeepsCurrentOnes() async {
-        let store = PosterStore(directory: dir, fetch: { _ in Data("x".utf8) })
+        let store = PosterStore(directory: directory, fetch: { _ in Data("x".utf8) })
         let keep = url("https://img/keep.jpg")
         let drop = url("https://img/drop.jpg")
         _ = await store.data(for: keep)

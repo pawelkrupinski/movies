@@ -239,8 +239,8 @@ struct FilmDetailView: View {
                     .foregroundColor(.secondary)
                     .tracking(0.6)
                 FlowLayout(spacing: 8, lineSpacing: 8) {
-                    ForEach(Array(trailers.enumerated()), id: \.offset) { (idx, url) in
-                        trailerButton(idx: idx, url: url)
+                    ForEach(Array(trailers.enumerated()), id: \.offset) { (index, url) in
+                        trailerButton(index: index, url: url)
                     }
                 }
                 if let active = playingTrailerIndex, trailers.indices.contains(active) {
@@ -253,14 +253,14 @@ struct FilmDetailView: View {
     }
 
     @ViewBuilder
-    private func trailerButton(idx: Int, url: URL) -> some View {
-        let active = playingTrailerIndex == idx
+    private func trailerButton(index: Int, url: URL) -> some View {
+        let active = playingTrailerIndex == index
         Button {
             // Re-tapping the active trailer toggles it off (matches the
             // web's playTrailer behaviour: clear src + hide frame).
-            playingTrailerIndex = active ? nil : idx
+            playingTrailerIndex = active ? nil : index
         } label: {
-            Text("Zwiastun \(idx + 1)")
+            Text("Zwiastun \(index + 1)")
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(active ? Color(red: 0.10, green: 0.10, blue: 0.18) : Color(red: 0.667, green: 0.831, blue: 1.0))
                 .padding(.horizontal, 12)

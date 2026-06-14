@@ -42,7 +42,7 @@ class SearchPlacementOrientationTest {
      *  `smallestScreenWidthDp` at 360 — exactly what a real device reports. */
     @Composable
     private fun AsPhone(landscape: Boolean, content: @Composable () -> Unit) {
-        val cfg = Configuration(LocalConfiguration.current).apply {
+        val config = Configuration(LocalConfiguration.current).apply {
             smallestScreenWidthDp = 360
             if (landscape) {
                 orientation = Configuration.ORIENTATION_LANDSCAPE
@@ -54,7 +54,7 @@ class SearchPlacementOrientationTest {
                 screenHeightDp = 800
             }
         }
-        CompositionLocalProvider(LocalConfiguration provides cfg, content = content)
+        CompositionLocalProvider(LocalConfiguration provides config, content = content)
     }
 
     /** Renders the production placement decision as a tag so the test can read it. */

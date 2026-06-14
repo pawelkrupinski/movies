@@ -56,13 +56,13 @@ class KinowoApi(
             .header("User-Agent", UA)
             .cacheControl(CacheControl.FORCE_NETWORK)
         if (ifModifiedSince != null) builder.header("If-Modified-Since", ifModifiedSince)
-        client.newCall(builder.build()).execute().use { resp ->
-            if (resp.code == 304) {
+        client.newCall(builder.build()).execute().use { response ->
+            if (response.code == 304) {
                 return@withContext Fetched<T>(null, ifModifiedSince, notModified = true)
             }
-            if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
-            val body = resp.body?.string() ?: throw IOException("empty body")
-            Fetched(json.decodeFromString<List<T>>(body), resp.header("Last-Modified"), notModified = false)
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+            val body = response.body?.string() ?: throw IOException("empty body")
+            Fetched(json.decodeFromString<List<T>>(body), response.header("Last-Modified"), notModified = false)
         }
     }
 

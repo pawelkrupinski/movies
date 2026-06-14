@@ -92,14 +92,14 @@ import pl.kinowo.ui.theme.TextSecondary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
-    val films by vm.films.collectAsState()
-    val isLoading by vm.isLoading.collectAsState()
-    val error by vm.error.collectAsState()
+fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
+    val films by viewModel.films.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
     // Observed here (not read off the StateFlow inside the VM) so hiding a film
     // or toggling a cinema recomposes the grid — see filmsForFilmsTab's comment.
-    val hidden by vm.hiddenFilms.collectAsState()
-    val disabled by vm.disabledCinemas.collectAsState()
+    val hidden by viewModel.hiddenFilms.collectAsState()
+    val disabled by viewModel.disabledCinemas.collectAsState()
 
     // Wide viewports (tablets, and phones rotated to landscape) host search
     // inline on the top bar; narrow ones (portrait phones) keep it as the
@@ -140,12 +140,12 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     // swipes don't leave a stale label stuck. Skips the very first composition
     // (no swipe happened — just don't flash on arrival).
     var seenFirstDay by remember { mutableStateOf(false) }
-    LaunchedEffect(vm.dateFilter) {
+    LaunchedEffect(viewModel.dateFilter) {
         if (!seenFirstDay) {
             seenFirstDay = true
             return@LaunchedEffect
         }
-        tabLabel = vm.dateFilter.label
+        tabLabel = viewModel.dateFilter.label
         delay(700)
         tabLabel = null
     }
@@ -160,19 +160,19 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     // by the carousel (it hands back the actual neighbour preset). The first
     // committed swipe also retires the once-a-day hint.
     val onCommitDay: (DateFilter) -> Unit = { day ->
-        selectDayKeepingTopFlat(sharedScroll) { vm.dateFilter = day }
+        selectDayKeepingTopFlat(sharedScroll) { viewModel.dateFilter = day }
         showSwipeHint = false
-        vm.markSwiped()
+        viewModel.markSwiped()
     }
 
-    // Which day pill is highlighted. At rest it tracks vm.dateFilter; during a
+    // Which day pill is highlighted. At rest it tracks viewModel.dateFilter; during a
     // drag the carousel flips it (via onPreviewDay) to the day a release would
     // commit to, the moment the drag crosses the commit threshold — a highlight-
     // only PREVIEW that leaves the selection, grid, and scroll untouched. Kept
-    // in sync with vm.dateFilter so a pill TAP (which sets vm.dateFilter) and a
+    // in sync with viewModel.dateFilter so a pill TAP (which sets viewModel.dateFilter) and a
     // committed swipe both land the highlight on the new day with no flicker.
-    var previewDay by remember { mutableStateOf(vm.dateFilter) }
-    LaunchedEffect(vm.dateFilter) { previewDay = vm.dateFilter }
+    var previewDay by remember { mutableStateOf(viewModel.dateFilter) }
+    LaunchedEffect(viewModel.dateFilter) { previewDay = viewModel.dateFilter }
 
     // Surface the swipe hint the moment the first repertoire load lands, gated
     // to once per calendar day until the first swipe. The decision reads
@@ -181,9 +181,9 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     LaunchedEffect(moviesLoaded) {
         if (!moviesLoaded) return@LaunchedEffect
         val today = LocalDate.now().toString()
-        if (vm.shouldShowSwipeHint(today)) {
+        if (viewModel.shouldShowSwipeHint(today)) {
             showSwipeHint = true
-            vm.markSwipeHintShown(today)
+            viewModel.markSwipeHintShown(today)
             delay(2500)
             showSwipeHint = false
         }
@@ -193,7 +193,7 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     // that have left it (no future screening). See KinowoViewModel.
     val context = LocalContext.current
     LaunchedEffect(moviesLoaded) {
-        if (moviesLoaded) vm.purgePostersIfNeeded(context, LocalDate.now().toString())
+        if (moviesLoaded) viewModel.purgePostersIfNeeded(context, LocalDate.now().toString())
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -204,10 +204,10 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
             DateBar(
                 wide = wide,
                 highlighted = previewDay,
-                filtersActive = vm.filtersActive(vm.allCinemas(films)),
-                search = vm.search,
-                onSearch = { vm.search = it },
-                onSelect = { day -> selectDayKeepingTopFlat(sharedScroll) { vm.dateFilter = day } },
+                filtersActive = viewModel.filtersActive(viewModel.allCinemas(films)),
+                search = viewModel.search,
+                onSearch = { viewModel.search = it },
+                onSelect = { day -> selectDayKeepingTopFlat(sharedScroll) { viewModel.dateFilter = day } },
                 onOpenFilters = { showFilters = true },
             )
 
@@ -224,29 +224,29 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                 Box(Modifier.fillMaxSize().haze(hazeState)) {
                     when {
                         isLoading && films.isEmpty() -> CenteredMessage("Ładowanie repertuaru…")
-                        error != null && films.isEmpty() -> ErrorState(error!!) { vm.reload() }
+                        error != null && films.isEmpty() -> ErrorState(error!!) { viewModel.reload() }
                         else -> PullToRefreshBox(
                             isRefreshing = refreshing,
                             onRefresh = {
                                 refreshing = true
                                 refreshScope.launch {
-                                    vm.reload().join()
+                                    viewModel.reload().join()
                                     refreshing = false
                                 }
                             },
                         ) {
                             // A finger-following carousel: the selected day's grid
                             // is centred; dragging horizontally reveals the wrap-
-                            // around prev/next day and commits it on release. The
+                            // around previous/next day and commits it on release. The
                             // revealed neighbour mirrors the centre's vertical
                             // scroll during the drag.
                             DayCarousel(
-                                current = vm.dateFilter,
+                                current = viewModel.dateFilter,
                                 sharedScroll = sharedScroll,
                                 onCommitDay = onCommitDay,
                                 onPreviewDay = { previewDay = it },
                             ) { day, state, columnModifier ->
-                                val visible = vm.filmsFor(day, films, hidden, disabled)
+                                val visible = viewModel.filmsFor(day, films, hidden, disabled)
                                 // Suppress the per-card cinema label when the
                                 // repertoire on show narrows to a single cinema —
                                 // it's the same name on every card.
@@ -257,14 +257,14 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                                 // roll to the top". An at-top switch is pinned flat by
                                 // selectDayKeepingTopFlat, so this is a no-op there and
                                 // doesn't jump.
-                                if (day == vm.dateFilter) ScrollToTopOnChange(state, vm.dateFilter)
+                                if (day == viewModel.dateFilter) ScrollToTopOnChange(state, viewModel.dateFilter)
                                 FilmsGrid(
                                     films = visible,
                                     state = state,
                                     bottomInset = gridBottomInset,
                                     showCinemaHeaders = showCinemaHeaders,
                                     onOpen = onOpenFilm,
-                                    onHide = { vm.hide(it) },
+                                    onHide = { viewModel.hide(it) },
                                     modifier = columnModifier,
                                 )
                             }
@@ -274,8 +274,8 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
 
                 if (!wide) {
                     FloatingSearchBar(
-                        value = vm.search,
-                        onValueChange = { vm.search = it },
+                        value = viewModel.search,
+                        onValueChange = { viewModel.search = it },
                         hazeState = hazeState,
                         modifier = Modifier.align(Alignment.BottomCenter).imePadding(),
                     )
@@ -299,7 +299,7 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
 
     if (showFilters) {
         FiltersSheet(
-            vm = vm,
+            viewModel = viewModel,
             films = films,
             sheetState = sheetState,
             onDismiss = { showFilters = false },
@@ -498,9 +498,9 @@ internal fun DateBar(
 // pills (Dziś / Jutro / 7 dni) get weight while "Wszystkie" keeps its intrinsic
 // width, so the dated pills fill all the width left between the 🎬 mark and the
 // Filtry icon with no trailing slack. See TopBarLayout.datePillFillsRow.
-// [highlighted] drives which pill reads as selected — it tracks vm.dateFilter at
+// [highlighted] drives which pill reads as selected — it tracks viewModel.dateFilter at
 // rest but flips to the swipe-preview day mid-drag (see ListScreen.previewDay).
-// A TAP still sets vm.dateFilter directly, which becomes the new highlight.
+// A TAP still sets viewModel.dateFilter directly, which becomes the new highlight.
 @Composable
 private fun RowScope.DatePills(wide: Boolean, highlighted: DateFilter, onSelect: (DateFilter) -> Unit) {
     for (preset in DateFilter.presets) {
@@ -564,9 +564,9 @@ private val SearchBarBottomInset = 84.dp
 // so every landscape column is wide enough to keep two chips on a row.
 @Composable
 private fun posterGridCells(): GridCells {
-    val cfg = LocalConfiguration.current
-    val landscape = cfg.orientation == Configuration.ORIENTATION_LANDSCAPE
-    return posterGridColumns(landscape, cfg.smallestScreenWidthDp)
+    val config = LocalConfiguration.current
+    val landscape = config.orientation == Configuration.ORIENTATION_LANDSCAPE
+    return posterGridColumns(landscape, config.smallestScreenWidthDp)
 }
 
 internal fun posterGridColumns(landscape: Boolean, layoutWidthDp: Int): GridCells =

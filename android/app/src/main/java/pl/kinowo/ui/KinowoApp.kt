@@ -41,16 +41,16 @@ import pl.kinowo.ui.list.ListScreen
  *  repertoire fetch is suppressed (see [KinowoViewModel.start]) and we resolve
  *  one — by location if granted + in range, else by explicit pick. */
 @Composable
-fun KinowoApp(vm: KinowoViewModel) {
-    LaunchedEffect(Unit) { vm.start() }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.onResume() }
+fun KinowoApp(viewModel: KinowoViewModel) {
+    LaunchedEffect(Unit) { viewModel.start() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onResume() }
 
-    val city by vm.selectedCity.collectAsState()
+    val city by viewModel.selectedCity.collectAsState()
     if (city == null) {
-        CityGate(vm)
+        CityGate(viewModel)
     } else {
-        Repertoire(vm)
-        NearerCityPrompt(vm)
+        Repertoire(viewModel)
+        NearerCityPrompt(viewModel)
     }
 }
 
@@ -62,22 +62,22 @@ fun KinowoApp(vm: KinowoViewModel) {
  * location permission and fires at most once per `chosen→nearest` pair.
  */
 @Composable
-private fun NearerCityPrompt(vm: KinowoViewModel) {
+private fun NearerCityPrompt(viewModel: KinowoViewModel) {
     val context = LocalContext.current
-    LaunchedEffect(Unit) { vm.checkCitySwitch(context) }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.checkCitySwitch(context) }
+    LaunchedEffect(Unit) { viewModel.checkCitySwitch(context) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.checkCitySwitch(context) }
 
-    val suggestion = vm.citySwitchSuggestion ?: return
+    val suggestion = viewModel.citySwitchSuggestion ?: return
     val target = suggestion.target
     AlertDialog(
-        onDismissRequest = { vm.dismissCitySwitch() },
+        onDismissRequest = { viewModel.dismissCitySwitch() },
         title = { Text("Jesteś bliżej miasta ${target.name}") },
         text = { Text("Przełączyć repertuar na ${target.name}?") },
         confirmButton = {
-            TextButton(onClick = { vm.setCity(target.slug) }) { Text("Przełącz") }
+            TextButton(onClick = { viewModel.setCity(target.slug) }) { Text("Przełącz") }
         },
         dismissButton = {
-            TextButton(onClick = { vm.dismissCitySwitch() }) { Text("Nie teraz") }
+            TextButton(onClick = { viewModel.dismissCitySwitch() }) { Text("Nie teraz") }
         },
     )
 }
@@ -89,7 +89,7 @@ private fun NearerCityPrompt(vm: KinowoViewModel) {
  * out-of-range, or "choose other", falls back to [CityChoiceScreen].
  */
 @Composable
-private fun CityGate(vm: KinowoViewModel) {
+private fun CityGate(viewModel: KinowoViewModel) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     // Show the chooser once the location attempt is done without a hit — until
@@ -122,10 +122,10 @@ private fun CityGate(vm: KinowoViewModel) {
 
     val city = detected
     when {
-        showChooser     -> CityChoiceScreen(onPick = { vm.chooseCityAtGate(it.slug, nearest?.slug) })
+        showChooser     -> CityChoiceScreen(onPick = { viewModel.chooseCityAtGate(it.slug, nearest?.slug) })
         city != null    -> CityConfirmScreen(
             city = city,
-            onConfirm = { vm.setCity(city.slug) },
+            onConfirm = { viewModel.setCity(city.slug) },
             onChooseOther = { detected = null; showChooser = true },
         )
         // else: still resolving — keep the screen blank (no flash) until the
@@ -134,11 +134,11 @@ private fun CityGate(vm: KinowoViewModel) {
 }
 
 @Composable
-private fun Repertoire(vm: KinowoViewModel) {
+private fun Repertoire(viewModel: KinowoViewModel) {
     val nav = rememberNavController()
     NavHost(navController = nav, startDestination = "list") {
         composable("list") {
-            ListScreen(vm = vm, onOpenFilm = { title -> nav.navigate("detail/${Uri.encode(title)}") })
+            ListScreen(viewModel = viewModel, onOpenFilm = { title -> nav.navigate("detail/${Uri.encode(title)}") })
         }
         composable(
             route = "detail/{title}",
@@ -147,8 +147,8 @@ private fun Repertoire(vm: KinowoViewModel) {
             val title = entry.arguments?.getString("title").orEmpty()
             // Observe both maps so the screen fills in synopsis/trailers when
             // the parallel /api/details fetch lands after navigation.
-            val films by vm.films.collectAsState()
-            val details by vm.details.collectAsState()
+            val films by viewModel.films.collectAsState()
+            val details by viewModel.details.collectAsState()
             DetailScreen(
                 film = films.firstOrNull { it.title == title },
                 details = details[title],

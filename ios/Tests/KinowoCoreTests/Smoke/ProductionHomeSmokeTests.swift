@@ -77,10 +77,10 @@ final class ProductionHomeSmokeTests: XCTestCase {
 }
 
 private func fetchHTML(_ url: URL) async throws -> String {
-    var req = URLRequest(url: url)
-    req.setValue("KinowoTests/1.0", forHTTPHeaderField: "User-Agent")
-    req.cachePolicy = .reloadIgnoringLocalCacheData
-    let (data, response) = try await URLSession.shared.data(for: req)
+    var request = URLRequest(url: url)
+    request.setValue("KinowoTests/1.0", forHTTPHeaderField: "User-Agent")
+    request.cachePolicy = .reloadIgnoringLocalCacheData
+    let (data, response) = try await URLSession.shared.data(for: request)
     if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
         throw URLError(.badServerResponse)
     }

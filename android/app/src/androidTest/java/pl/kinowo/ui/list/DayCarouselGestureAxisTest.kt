@@ -47,7 +47,7 @@ class DayCarouselGestureAxisTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private class Probe(val day: () -> DateFilter, val colIndex: () -> Int)
+    private class Probe(val day: () -> DateFilter, val columnIndex: () -> Int)
 
     private fun mount(): Probe {
         var current by mutableStateOf(DateFilter.Today)
@@ -100,7 +100,7 @@ class DayCarouselGestureAxisTest {
         assertEquals("a horizontal swipe must change the day", DateFilter.Tomorrow, p.day())
         assertEquals(
             "a horizontal day-swipe must NOT scroll the column (it stayed at the top)",
-            0, p.colIndex(),
+            0, p.columnIndex(),
         )
     }
 
@@ -111,8 +111,8 @@ class DayCarouselGestureAxisTest {
         p.swipe(hToV = 0.33f)   // clearly vertical: 1 across for 3 up
         assertEquals("a vertical drag must not change the day", DateFilter.Today, p.day())
         assertTrue(
-            "a vertical drag must scroll the column (got idx ${p.colIndex()})",
-            p.colIndex() > 3,
+            "a vertical drag must scroll the column (got index ${p.columnIndex()})",
+            p.columnIndex() > 3,
         )
     }
 }

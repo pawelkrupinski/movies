@@ -84,17 +84,17 @@ fun DayCarousel(
     dayColumn: @Composable (day: DateFilter, state: LazyGridState, modifier: Modifier) -> Unit,
 ) {
     val presets = DateFilter.presets
-    val currentIdx = presets.indexOf(current).coerceAtLeast(0)
-    val prev = presets[wrappedDayIndex(currentIdx, -1, presets.size)]
-    val next = presets[wrappedDayIndex(currentIdx, +1, presets.size)]
+    val currentIndex = presets.indexOf(current).coerceAtLeast(0)
+    val previous = presets[wrappedDayIndex(currentIndex, -1, presets.size)]
+    val next = presets[wrappedDayIndex(currentIndex, +1, presets.size)]
 
     // Independent scroll states for the revealed neighbours; mirrored off the
     // centre's [sharedScroll] during a drag so all three sit at the same offset.
-    val prevScroll = rememberLazyGridState()
+    val previousScroll = rememberLazyGridState()
     val nextScroll = rememberLazyGridState()
 
     // Drag offset in px: 0 = centred, negative = dragging left (next revealed
-    // from the right edge), positive = dragging right (prev revealed).
+    // from the right edge), positive = dragging right (previous revealed).
     val dragOffset = remember { Animatable(0f) }
     var containerWidthPx by remember { mutableStateOf(0) }
     // Guards against starting a fresh drag while a commit/recentre is mid-flight
@@ -111,12 +111,12 @@ fun DayCarousel(
     // INSTANT (scrollToItem, not animate) to track the finger frame-for-frame;
     // differing column heights are clamped silently by scrollToItem. Restricting
     // to an active drag keeps it off the centre's own programmatic scrolls.
-    LaunchedEffect(sharedScroll, prevScroll, nextScroll) {
+    LaunchedEffect(sharedScroll, previousScroll, nextScroll) {
         snapshotFlow {
             Triple(dragging, sharedScroll.firstVisibleItemIndex, sharedScroll.firstVisibleItemScrollOffset)
         }.collect { (active, index, offset) ->
             if (!active) return@collect
-            prevScroll.scrollToItem(index, offset)
+            previousScroll.scrollToItem(index, offset)
             nextScroll.scrollToItem(index, offset)
         }
     }
@@ -143,7 +143,7 @@ fun DayCarousel(
             .fillMaxSize()
             .clipToBounds()
             .onSizeChanged { containerWidthPx = it.width }
-            .pointerInput(currentIdx, containerWidthPx) {
+            .pointerInput(currentIndex, containerWidthPx) {
                 if (containerWidthPx == 0) return@pointerInput
                 val width = containerWidthPx.toFloat()
                 // Axis-lock the gesture. The day grid is an inner vertical scroller;
@@ -174,7 +174,7 @@ fun DayCarousel(
                                 previewDayIndex(
                                     dragOffsetPx = offset,
                                     widthPx = width,
-                                    currentIndex = currentIdx,
+                                    currentIndex = currentIndex,
                                     count = presets.size,
                                     commitFraction = CommitFraction,
                                 )
@@ -209,7 +209,7 @@ fun DayCarousel(
                         dragging = false
                         when {
                             dragOffset.value <= -width * CommitFraction -> commit(next, -width)
-                            dragOffset.value >= width * CommitFraction -> commit(prev, width)
+                            dragOffset.value >= width * CommitFraction -> commit(previous, width)
                             // Abort: ease back to the current day, scroll untouched,
                             // and snap the pill highlight back to the current day.
                             else -> {
@@ -228,7 +228,7 @@ fun DayCarousel(
             // The strip is three container-widths wide and slid one width left so
             // the centre column sits in view. Pin the Row's width to 3× explicitly:
             // the parent Box is only ONE width wide, so without this the Row inherits
-            // a single-width max constraint and hands the first (prev) column the
+            // a single-width max constraint and hands the first (previous) column the
             // whole budget, leaving the centre + next columns measured at WIDTH 0 —
             // the centre grid then composes nothing at rest and cards only appear
             // mid-drag when the offset drags a neighbour in. The Box's clipToBounds
@@ -248,7 +248,7 @@ fun DayCarousel(
                     .fillMaxHeight()
                     .offset { IntOffset(x = (-containerWidthPx + dragOffset.value).toInt(), y = 0) },
             ) {
-                dayColumn(prev, prevScroll, Modifier.width(widthDp).fillMaxHeight())
+                dayColumn(previous, previousScroll, Modifier.width(widthDp).fillMaxHeight())
                 dayColumn(current, sharedScroll, Modifier.width(widthDp).fillMaxHeight())
                 dayColumn(next, nextScroll, Modifier.width(widthDp).fillMaxHeight())
             }

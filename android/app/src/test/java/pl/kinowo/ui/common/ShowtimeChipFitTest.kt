@@ -70,11 +70,11 @@ class ShowtimeChipFitTest {
      *  so both are pinned to [screen]. */
     @Composable
     private fun AtWidth(screen: Int, content: @Composable () -> Unit) {
-        val cfg = Configuration(LocalConfiguration.current).apply {
+        val config = Configuration(LocalConfiguration.current).apply {
             screenWidthDp = screen
             smallestScreenWidthDp = screen
         }
-        CompositionLocalProvider(LocalConfiguration provides cfg, content = content)
+        CompositionLocalProvider(LocalConfiguration provides config, content = content)
     }
 
     /** Showings-column width inside one card on the portrait two-column grid —

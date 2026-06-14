@@ -49,10 +49,10 @@ fun PosterImage(
             PlaceholderGlyph()
             return@Box
         }
-        var idx by remember(chain) { mutableIntStateOf(0) }
+        var index by remember(chain) { mutableIntStateOf(0) }
         SubcomposeAsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
-                .data(chain[idx])
+                .data(chain[index])
                 // No crossfade: PosterPrefetch warms the disk cache ahead of
                 // scroll, so posters should snap in rather than fade.
                 .crossfade(false)
@@ -63,7 +63,7 @@ fun PosterImage(
             loading = { PlaceholderGlyph() },
             error = {
                 // Advance to the next candidate; if exhausted, leave the glyph.
-                if (idx < chain.lastIndex) idx++ else PlaceholderGlyph()
+                if (index < chain.lastIndex) index++ else PlaceholderGlyph()
             },
             success = { SubcomposeAsyncImageContent() },
         )

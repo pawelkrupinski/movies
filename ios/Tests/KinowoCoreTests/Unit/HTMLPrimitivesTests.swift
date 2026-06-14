@@ -5,9 +5,9 @@ final class HTMLPrimitivesTests: XCTestCase {
 
     func testRangesFindsEveryOccurrenceInSourceOrder() {
         let src = "AxAyAzA"
-        let idxs = HTMLPrimitives.ranges(of: "A", in: src)
-        XCTAssertEqual(idxs.count, 4)
-        let offsets = idxs.map { src.distance(from: src.startIndex, to: $0) }
+        let indexes = HTMLPrimitives.ranges(of: "A", in: src)
+        XCTAssertEqual(indexes.count, 4)
+        let offsets = indexes.map { src.distance(from: src.startIndex, to: $0) }
         XCTAssertEqual(offsets, [0, 2, 4, 6])
     }
 
@@ -17,9 +17,9 @@ final class HTMLPrimitivesTests: XCTestCase {
 
     func testRangesOnMultiCharNeedleAdvancesPastMatch() {
         let src = "ababab"
-        let idxs = HTMLPrimitives.ranges(of: "aba", in: src)
+        let indexes = HTMLPrimitives.ranges(of: "aba", in: src)
         // After matching "aba" at 0, the search resumes from offset 3, finding nothing.
-        XCTAssertEqual(idxs.count, 1)
+        XCTAssertEqual(indexes.count, 1)
     }
 
     func testCaptureReturnsFirstGroupOrNil() {

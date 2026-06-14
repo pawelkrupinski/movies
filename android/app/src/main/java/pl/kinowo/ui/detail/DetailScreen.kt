@@ -250,8 +250,8 @@ private fun TrailerPlayer(embedUrl: String) {
         // No `Modifier.clip` here — it forces the view into an offscreen layer the
         // video can't composite into. Corners are rounded on the wrapper below.
         modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-        factory = { ctx ->
-            val web = WebView(ctx).apply {
+        factory = { context ->
+            val web = WebView(context).apply {
                 settings.javaScriptEnabled = true
                 settings.mediaPlaybackRequiresUserGesture = false
                 settings.domStorageEnabled = true
@@ -271,8 +271,8 @@ private fun TrailerPlayer(embedUrl: String) {
             // WebView directly as the AndroidView root lets Compose impose an
             // offscreen layer that blacks the video; the FrameLayout insulates it.
             // Round the corners here, on the wrapper, not on the video surface.
-            FrameLayout(ctx).apply {
-                val radiusPx = 8f * ctx.resources.displayMetrics.density
+            FrameLayout(context).apply {
+                val radiusPx = 8f * context.resources.displayMetrics.density
                 clipToOutline = true
                 outlineProvider = object : ViewOutlineProvider() {
                     override fun getOutline(view: View, outline: Outline) =

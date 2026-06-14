@@ -49,9 +49,9 @@ class AuthRepository(
     suspend fun exchangeCode(code: String) = withContext(Dispatchers.IO) {
         val payload = json.encodeToString(CodeRequest(code))
         val request = post("auth/exchange", payload)
-        client.newCall(request).execute().use { resp ->
-            val body = resp.body?.string()
-            if (resp.isSuccessful && body != null) {
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string()
+            if (response.isSuccessful && body != null) {
                 _user.value = json.decodeFromString<UserProfile>(body)
             }
         }
@@ -64,9 +64,9 @@ class AuthRepository(
             .header("User-Agent", UA)
             .build()
         runCatching {
-            client.newCall(request).execute().use { resp ->
-                val body = resp.body?.string()
-                if (resp.isSuccessful && body != null) {
+            client.newCall(request).execute().use { response ->
+                val body = response.body?.string()
+                if (response.isSuccessful && body != null) {
                     _user.value = json.decodeFromString<UserProfile>(body)
                 }
             }

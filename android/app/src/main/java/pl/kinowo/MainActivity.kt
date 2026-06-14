@@ -49,12 +49,12 @@ class MainActivity : ComponentActivity() {
             .readTimeout(20, TimeUnit.SECONDS)
             .build()
         val api = KinowoApi(client = httpClient)
-        val repo = RepertoireRepository(api, JsonListCache(cacheDir, "repertoire", Film.serializer()))
-        val detailsRepo = DetailsRepository(api, JsonListCache(cacheDir, "details", FilmDetails.serializer()))
+        val repository = RepertoireRepository(api, JsonListCache(cacheDir, "repertoire", Film.serializer()))
+        val detailsRepository = DetailsRepository(api, JsonListCache(cacheDir, "details", FilmDetails.serializer()))
         val prefs = UserPreferences(applicationContext)
-        val authRepo = AuthRepository(httpClient, cookieJar)
+        val authRepository = AuthRepository(httpClient, cookieJar)
         val userStateClient = HttpUserStateClient(client = httpClient)
-        KinowoViewModel.Factory(repo, detailsRepo, prefs, authRepo, userStateClient)
+        KinowoViewModel.Factory(repository, detailsRepository, prefs, authRepository, userStateClient)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

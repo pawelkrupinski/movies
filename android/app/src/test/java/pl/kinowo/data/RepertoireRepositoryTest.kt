@@ -51,28 +51,28 @@ class RepertoireRepositoryTest {
         val poznan = listOf(Film(title = "Poznań film"))
         val warszawa = listOf(Film(title = "Warszawa film"))
         val api = GlobalLastModifiedApi(mapOf("poznan" to poznan, "warszawa" to warszawa), LM)
-        val repo = RepertoireRepository(api, cache())
+        val repository = RepertoireRepository(api, cache())
 
-        repo.reload("poznan")
-        assertEquals(poznan, repo.films.value)
+        repository.reload("poznan")
+        assertEquals(poznan, repository.films.value)
 
         // Before the fix this sent poznań's (global) Last-Modified, drew a 304,
         // and the grid stayed on the Poznań films.
-        repo.reload("warszawa")
-        assertEquals(warszawa, repo.films.value)
+        repository.reload("warszawa")
+        assertEquals(warszawa, repository.films.value)
     }
 
     @Test
     fun `reloading the same city still revalidates with If-Modified-Since`() = runBlocking {
         val poznan = listOf(Film(title = "Poznań film"))
         val api = GlobalLastModifiedApi(mapOf("poznan" to poznan), LM)
-        val repo = RepertoireRepository(api, cache())
+        val repository = RepertoireRepository(api, cache())
 
-        repo.reload("poznan")                       // 200 — stores the timestamp for Poznań
+        repository.reload("poznan")                       // 200 — stores the timestamp for Poznań
         assertEquals(null, api.lastIfModifiedSince)
 
-        repo.reload("poznan")                       // same city — must revalidate
+        repository.reload("poznan")                       // same city — must revalidate
         assertEquals(LM, api.lastIfModifiedSince)   // conditional header replayed
-        assertEquals(poznan, repo.films.value)      // 304 keeps the (correct) cached city
+        assertEquals(poznan, repository.films.value)      // 304 keeps the (correct) cached city
     }
 }

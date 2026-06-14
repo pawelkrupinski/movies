@@ -56,8 +56,8 @@ class DayScrollOnSwipeTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
-    private fun seedVm(): KinowoViewModel {
-        val ctx = ApplicationProvider.getApplicationContext<Context>()
+    private fun seedViewModel(): KinowoViewModel {
+        val context = ApplicationProvider.getApplicationContext<Context>()
         val zone = ZoneId.of("Europe/Warsaw")
         val today = LocalDate.now(zone).format(DateTimeFormatter.ISO_DATE)
         val tomorrow = LocalDate.now(zone).plusDays(1).format(DateTimeFormatter.ISO_DATE)
@@ -78,16 +78,16 @@ class DayScrollOnSwipeTest {
             override suspend fun fetchRepertoire(citySlug: String, ifModifiedSince: String?) =
                 KinowoApi.Fetched(all, null, false)
         }
-        val repo = RepertoireRepository(fakeApi, JsonListCache(ctx.cacheDir, "rep_probe", Film.serializer()))
-        runBlocking { repo.reload("warszawa") }
+        val repository = RepertoireRepository(fakeApi, JsonListCache(context.cacheDir, "rep_probe", Film.serializer()))
+        runBlocking { repository.reload("warszawa") }
         val http = OkHttpClient()
-        val detailsRepo = DetailsRepository(KinowoApi(client = http), JsonListCache(ctx.cacheDir, "det_probe", FilmDetails.serializer()))
-        val authRepo = AuthRepository(http, PersistentCookieJar(ctx))
+        val detailsRepository = DetailsRepository(KinowoApi(client = http), JsonListCache(context.cacheDir, "det_probe", FilmDetails.serializer()))
+        val authRepository = AuthRepository(http, PersistentCookieJar(context))
         val noop = object : UserStateClient {
             override suspend fun fetchState() = UserSyncState(emptySet(), emptySet())
             override suspend fun putState(state: UserSyncState) {}
         }
-        return KinowoViewModel(repo, detailsRepo, UserPreferences(ctx), authRepo, noop)
+        return KinowoViewModel(repository, detailsRepository, UserPreferences(context), authRepository, noop)
     }
 
     private fun screenW() = compose.activity.resources.displayMetrics.widthPixels.toFloat()
@@ -130,8 +130,8 @@ class DayScrollOnSwipeTest {
     }
 
     private fun mountSeeded() {
-        val vm = seedVm()
-        compose.setContent { KinowoTheme { ListScreen(vm, onOpenFilm = {}) } }
+        val viewModel = seedViewModel()
+        compose.setContent { KinowoTheme { ListScreen(viewModel, onOpenFilm = {}) } }
         compose.waitForIdle()
     }
 

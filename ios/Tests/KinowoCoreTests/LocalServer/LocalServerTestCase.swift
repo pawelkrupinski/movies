@@ -46,13 +46,13 @@ class LocalServerTestCase: XCTestCase {
         guard let url = URL(string: path, relativeTo: baseURL) else {
             throw URLError(.badURL)
         }
-        var req = URLRequest(url: url)
-        req.setValue("KinowoLocalServerTests/1.0", forHTTPHeaderField: "User-Agent")
-        req.cachePolicy = .reloadIgnoringLocalCacheData
+        var request = URLRequest(url: url)
+        request.setValue("KinowoLocalServerTests/1.0", forHTTPHeaderField: "User-Agent")
+        request.cachePolicy = .reloadIgnoringLocalCacheData
 
         let semaphore = DispatchSemaphore(value: 0)
         var captured: Result<String, Error> = .failure(URLError(.badServerResponse))
-        URLSession.shared.dataTask(with: req) { data, response, error in
+        URLSession.shared.dataTask(with: request) { data, response, error in
             defer { semaphore.signal() }
             if let error = error {
                 captured = .failure(error)

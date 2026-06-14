@@ -100,8 +100,8 @@ class TrailerPlaybackTest {
         compose.setContent {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
-                factory = { ctx ->
-                    WebView(ctx).apply {
+                factory = { context ->
+                    WebView(context).apply {
                         settings.javaScriptEnabled = true
                         settings.mediaPlaybackRequiresUserGesture = false
                         settings.domStorageEnabled = true

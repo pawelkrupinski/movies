@@ -40,9 +40,9 @@ class HttpUserStateClient(
             .url("$baseUrl/api/me/state")
             .header("User-Agent", UA)
             .build()
-        client.newCall(request).execute().use { resp ->
-            if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
-            val body = resp.body?.string() ?: throw IOException("empty body")
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+            val body = response.body?.string() ?: throw IOException("empty body")
             val wire = json.decodeFromString<WireState>(body)
             UserSyncState(wire.hiddenFilms, wire.disabledCinemas)
         }
@@ -55,8 +55,8 @@ class HttpUserStateClient(
             .header("User-Agent", UA)
             .put(payload.toRequestBody(JSON_MEDIA))
             .build()
-        client.newCall(request).execute().use { resp ->
-            if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
         }
     }
 

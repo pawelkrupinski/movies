@@ -54,16 +54,16 @@ class FiltersSheetOrderTest {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val http = OkHttpClient()
         val api = KinowoApi(client = http)
-        val repo = RepertoireRepository(api, JsonListCache(context.cacheDir, "repertoire", Film.serializer()))
-        val detailsRepo = DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer()))
-        val authRepo = AuthRepository(http, PersistentCookieJar(context))
+        val repository = RepertoireRepository(api, JsonListCache(context.cacheDir, "repertoire", Film.serializer()))
+        val detailsRepository = DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer()))
+        val authRepository = AuthRepository(http, PersistentCookieJar(context))
         val noopStateClient = object : UserStateClient {
             override suspend fun fetchState() = UserSyncState(emptySet(), emptySet())
             override suspend fun putState(state: UserSyncState) {}
         }
         val prefs = UserPreferences(context)
         if (hidden.isNotEmpty()) runBlocking { hidden.forEach { prefs.hide(it) } }
-        return KinowoViewModel(repo, detailsRepo, prefs, authRepo, noopStateClient)
+        return KinowoViewModel(repository, detailsRepository, prefs, authRepository, noopStateClient)
     }
 
     /**

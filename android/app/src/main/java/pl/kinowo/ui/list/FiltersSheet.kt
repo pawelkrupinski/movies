@@ -90,13 +90,13 @@ import pl.kinowo.ui.theme.TextSecondary
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FiltersSheet(
-    vm: KinowoViewModel,
+    viewModel: KinowoViewModel,
     films: List<Film>,
     sheetState: SheetState,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        FiltersSheetContent(vm, films, onClose = onDismiss)
+        FiltersSheetContent(viewModel, films, onClose = onDismiss)
     }
 }
 
@@ -107,7 +107,7 @@ fun FiltersSheet(
  */
 @Composable
 internal fun FiltersSheetContent(
-    vm: KinowoViewModel,
+    viewModel: KinowoViewModel,
     films: List<Film>,
     onClose: () -> Unit = {},
 ) {
@@ -116,9 +116,9 @@ internal fun FiltersSheetContent(
     // to crowd out every other filter, and a full screen gives it room. The
     // filter list stays mounted underneath; closing the card returns to it.
     var showHidden by remember { mutableStateOf(false) }
-    FiltersList(vm, films, onOpenHidden = { showHidden = true }, onClose = onClose)
+    FiltersList(viewModel, films, onOpenHidden = { showHidden = true }, onClose = onClose)
     if (showHidden) {
-        HiddenFilmsScreen(vm, onClose = { showHidden = false })
+        HiddenFilmsScreen(viewModel, onClose = { showHidden = false })
     }
 }
 
@@ -129,31 +129,31 @@ internal fun FiltersSheetContent(
  * a scrim tap both close it back to the filter list.
  */
 @Composable
-private fun HiddenFilmsScreen(vm: KinowoViewModel, onClose: () -> Unit) {
+private fun HiddenFilmsScreen(viewModel: KinowoViewModel, onClose: () -> Unit) {
     Dialog(
         onDismissRequest = onClose,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(Modifier.fillMaxSize()) {
-            HiddenFilmsCard(vm, onBack = onClose)
+            HiddenFilmsCard(viewModel, onBack = onClose)
         }
     }
 }
 
 @Composable
 private fun FiltersList(
-    vm: KinowoViewModel,
+    viewModel: KinowoViewModel,
     films: List<Film>,
     onOpenHidden: () -> Unit,
     onClose: () -> Unit,
 ) {
-    val hidden by vm.hiddenFilms.collectAsState()
-    val disabled by vm.disabledCinemas.collectAsState()
-    val allCinemas = remember(films) { vm.allCinemas(films) }
-    val allCountries = remember(films) { vm.allCountries(films) }
-    val allGenres = remember(films) { vm.allGenres(films) }
-    val allDirectors = remember(films) { vm.allDirectors(films) }
-    val allCast = remember(films) { vm.allCast(films) }
+    val hidden by viewModel.hiddenFilms.collectAsState()
+    val disabled by viewModel.disabledCinemas.collectAsState()
+    val allCinemas = remember(films) { viewModel.allCinemas(films) }
+    val allCountries = remember(films) { viewModel.allCountries(films) }
+    val allGenres = remember(films) { viewModel.allGenres(films) }
+    val allDirectors = remember(films) { viewModel.allDirectors(films) }
+    val allCast = remember(films) { viewModel.allCast(films) }
 
     // Drag-to-close must only fire when the gesture STARTS with the list already
     // at the top. Otherwise a downward swipe to scroll back up — which rolls the
@@ -182,7 +182,7 @@ private fun FiltersList(
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("Filtry", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { vm.clearFilters(); onClose() }) { Text("Wyczyść") }
+                    TextButton(onClick = { viewModel.clearFilters(); onClose() }) { Text("Wyczyść") }
                 }
             }
 
@@ -192,8 +192,8 @@ private fun FiltersList(
                 FilterSectionLabel("Sortuj")
                 SegmentedChoice(
                     options = SortOption.entries.map { it.label to it },
-                    selected = vm.sortBy,
-                ) { vm.sortBy = it }
+                    selected = viewModel.sortBy,
+                ) { viewModel.sortBy = it }
             }
 
             // Section order mirrors the web Filtry panel (app/views/_navbar.scala.html):
@@ -221,13 +221,13 @@ private fun FiltersList(
                         // so expanding shows EVERY cinema — the outer sheet scrolls.
                         Column(Modifier.fillMaxWidth()) {
                             ToggleRow("Wszystkie kina", CinemaCityFilter.allSelected(disabled, allCinemas)) { on ->
-                                vm.setAllCinemas(allCinemas, on)
+                                viewModel.setAllCinemas(allCinemas, on)
                             }
                             allCinemas.forEach { cinema ->
                                 CheckRow(
                                     label = CinemaSection.pillName(cinema),
                                     checked = cinema !in disabled,
-                                ) { on -> vm.toggleCinema(cinema, disabled = !on) }
+                                ) { on -> viewModel.toggleCinema(cinema, disabled = !on) }
                             }
                         }
                     }
@@ -235,46 +235,46 @@ private fun FiltersList(
             }
 
             // Kraj / Gatunek / Reżyseria / Obsada (excluded sets)
-            collapsibleNameFilter(this, "Kraj produkcji", allCountries, vm.excludedCountries) { vm.excludedCountries = it }
-            collapsibleNameFilter(this, "Gatunek", allGenres, vm.excludedGenres) { vm.excludedGenres = it }
-            collapsibleNameFilter(this, "Reżyseria", allDirectors, vm.excludedDirectors) { vm.excludedDirectors = it }
-            collapsibleNameFilter(this, "Obsada", allCast, vm.excludedCast) { vm.excludedCast = it }
+            collapsibleNameFilter(this, "Kraj produkcji", allCountries, viewModel.excludedCountries) { viewModel.excludedCountries = it }
+            collapsibleNameFilter(this, "Gatunek", allGenres, viewModel.excludedGenres) { viewModel.excludedGenres = it }
+            collapsibleNameFilter(this, "Reżyseria", allDirectors, viewModel.excludedDirectors) { viewModel.excludedDirectors = it }
+            collapsibleNameFilter(this, "Obsada", allCast, viewModel.excludedCast) { viewModel.excludedCast = it }
 
             // Wymiar
             item {
                 FilterSectionLabel("Wymiar")
                 SegmentedChoice(
                     options = listOf("Wszystkie" to "", "2D" to "2D", "3D" to "3D"),
-                    selected = vm.formatFilter.dimension,
-                ) { vm.formatFilter = vm.formatFilter.copy(dimension = it) }
+                    selected = viewModel.formatFilter.dimension,
+                ) { viewModel.formatFilter = viewModel.formatFilter.copy(dimension = it) }
             }
             // Wersja
             item {
                 FilterSectionLabel("Wersja")
                 SegmentedChoice(
                     options = listOf("Wszystkie" to "", "Napisy" to "NAP", "Dubbing" to "DUB"),
-                    selected = vm.formatFilter.language,
-                ) { vm.formatFilter = vm.formatFilter.copy(language = it) }
+                    selected = viewModel.formatFilter.language,
+                ) { viewModel.formatFilter = viewModel.formatFilter.copy(language = it) }
             }
             // IMAX
             item {
-                ToggleRow("Tylko IMAX", vm.formatFilter.imax) {
-                    vm.formatFilter = vm.formatFilter.copy(imax = it)
+                ToggleRow("Tylko IMAX", viewModel.formatFilter.imax) {
+                    viewModel.formatFilter = viewModel.formatFilter.copy(imax = it)
                 }
             }
             // Od godziny
             item {
                 FilterSectionLabel("Od godziny")
-                FromHourRow(vm.formatFilter) { vm.formatFilter = it }
+                FromHourRow(viewModel.formatFilter) { viewModel.formatFilter = it }
             }
 
             // Miasto — the city the repertoire is served for. Last filter,
             // right above the account section, mirroring iOS FiltersBar.
             // Usable before login (it's just a city switch); switching
             // re-fetches.
-            item(key = "sec_city") { CitySection(vm) }
+            item(key = "sec_city") { CitySection(viewModel) }
 
-            item { AccountSection(vm) }
+            item { AccountSection(viewModel) }
 
             item { Column(Modifier.padding(bottom = 24.dp)) {} }
         }
@@ -288,8 +288,8 @@ private fun FiltersList(
  * [pl.kinowo.auth.StateSyncService]).
  */
 @Composable
-private fun AccountSection(vm: KinowoViewModel) {
-    val user by vm.user.collectAsState()
+private fun AccountSection(viewModel: KinowoViewModel) {
+    val user by viewModel.user.collectAsState()
     val context = LocalContext.current
     val signedIn = user
 
@@ -306,21 +306,21 @@ private fun AccountSection(vm: KinowoViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                OutlinedButton(onClick = { vm.signOut() }, modifier = Modifier.weight(1f)) {
+                OutlinedButton(onClick = { viewModel.signOut() }, modifier = Modifier.weight(1f)) {
                     Text("Wyloguj")
                 }
-                TextButton(onClick = { vm.deleteAccount() }) {
+                TextButton(onClick = { viewModel.deleteAccount() }) {
                     Text("Usuń konto", color = MaterialTheme.colorScheme.error)
                 }
             }
         } else {
             Text("Zaloguj się", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
             Button(
-                onClick = { vm.signInWithGoogle(context) },
+                onClick = { viewModel.signInWithGoogle(context) },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Zaloguj przez Google") }
             Button(
-                onClick = { vm.signInWithFacebook(context) },
+                onClick = { viewModel.signInWithFacebook(context) },
                 modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
             ) { Text("Zaloguj przez Facebook") }
         }
@@ -397,8 +397,8 @@ private fun CollapsibleSection(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CitySection(vm: KinowoViewModel) {
-    val selected by vm.selectedCity.collectAsState()
+private fun CitySection(viewModel: KinowoViewModel) {
+    val selected by viewModel.selectedCity.collectAsState()
     val current = Cities.allSorted.firstOrNull { it.slug == selected } ?: Cities.DEFAULT
     var expanded by remember { mutableStateOf(false) }
     FilterSectionLabel("Miasto")
@@ -420,7 +420,7 @@ private fun CitySection(vm: KinowoViewModel) {
                 DropdownMenuItem(
                     text = { Text(city.name) },
                     onClick = {
-                        vm.setCity(city.slug)
+                        viewModel.setCity(city.slug)
                         expanded = false
                     },
                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
@@ -456,8 +456,8 @@ private fun HiddenFilmsRow(count: Int, onClick: () -> Unit) {
  * left to manage.
  */
 @Composable
-private fun HiddenFilmsCard(vm: KinowoViewModel, onBack: () -> Unit) {
-    val hidden by vm.hiddenFilms.collectAsState()
+private fun HiddenFilmsCard(viewModel: KinowoViewModel, onBack: () -> Unit) {
+    val hidden by viewModel.hiddenFilms.collectAsState()
     // Unhiding the last film leaves nothing to manage — close back to the filter
     // list (its "Ukryte filmy" row has vanished too). Run as an effect so the
     // state change doesn't happen mid-composition.
@@ -481,12 +481,12 @@ private fun HiddenFilmsCard(vm: KinowoViewModel, onBack: () -> Unit) {
             items(titles, key = { "hid_$it" }) { title ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(title, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { vm.unhide(title) }) { Text("Pokaż") }
+                    TextButton(onClick = { viewModel.unhide(title) }) { Text("Pokaż") }
                 }
             }
             item(key = "hid_unhide_all") {
                 Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = { vm.unhideAll() }) { Text("Pokaż wszystkie") }
+                    TextButton(onClick = { viewModel.unhideAll() }) { Text("Pokaż wszystkie") }
                 }
             }
         }

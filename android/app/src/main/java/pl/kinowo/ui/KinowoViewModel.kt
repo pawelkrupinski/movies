@@ -54,24 +54,24 @@ data class NameCount(val name: String, val count: Int)
  * sections, filter option lists) are computed on demand by the screens.
  */
 class KinowoViewModel(
-    private val repo: RepertoireRepository,
-    private val detailsRepo: DetailsRepository,
+    private val repository: RepertoireRepository,
+    private val detailsRepository: DetailsRepository,
     private val prefs: UserPreferences,
-    private val authRepo: AuthRepository,
+    private val authRepository: AuthRepository,
     userStateClient: UserStateClient,
 ) : ViewModel() {
 
-    val films: StateFlow<List<Film>> = repo.films
-    val isLoading: StateFlow<Boolean> = repo.isLoading
-    val error: StateFlow<String?> = repo.error
-    val details: StateFlow<Map<String, FilmDetails>> = detailsRepo.byTitle
+    val films: StateFlow<List<Film>> = repository.films
+    val isLoading: StateFlow<Boolean> = repository.isLoading
+    val error: StateFlow<String?> = repository.error
+    val details: StateFlow<Map<String, FilmDetails>> = detailsRepository.byTitle
 
     /** The signed-in user, or null when anonymous. Drives the Filtry → Konto UI. */
-    val user: StateFlow<UserProfile?> = authRepo.user
+    val user: StateFlow<UserProfile?> = authRepository.user
 
     // Mirror prefs to the server while signed in. Constructed here so it shares
     // the ViewModel's scope; `start()` makes it observe the auth state.
-    private val sync = StateSyncService(prefs, authRepo.user, userStateClient, viewModelScope)
+    private val sync = StateSyncService(prefs, authRepository.user, userStateClient, viewModelScope)
 
     // Skips the one nearer-city check that the post-OAuth resume would otherwise
     // fire — armed when a web sign-in starts (see [signInWithGoogle]).
@@ -81,7 +81,7 @@ class KinowoViewModel(
         sync.start()
         // Re-hydrate a session persisted across launches (iOS does this in
         // `KinowoApp.task { await authService.checkSession() }`).
-        viewModelScope.launch { authRepo.checkSession() }
+        viewModelScope.launch { authRepository.checkSession() }
     }
 
     /** Slug of the active city, or null until the first-launch gate resolves
@@ -131,7 +131,7 @@ class KinowoViewModel(
         filmsFor(dateFilter, all, hidden, disabled)
 
     // The day-swipe carousel needs the listing for an ARBITRARY day preset (the
-    // revealed prev/next neighbour), not just the selected one — so the date is
+    // revealed previous/next neighbour), not just the selected one — so the date is
     // an explicit parameter here. [filmsForFilmsTab] is the special case of the
     // currently-selected day.
     fun filmsFor(date: DateFilter, all: List<Film>, hidden: Set<String>, disabled: Set<String>): List<Film> =
@@ -178,9 +178,9 @@ class KinowoViewModel(
 
     // ── lifecycle / data ──────────────────────────────────────────────────
     fun start() {
-        repo.loadCachedData()
-        detailsRepo.loadCachedData()
-        repo.pruneStaleShowings()
+        repository.loadCachedData()
+        detailsRepository.loadCachedData()
+        repository.pruneStaleShowings()
         // The network fetch is gated on a city being chosen — until the
         // first-launch gate resolves one, `selectedCity` is null and nothing
         // hits the wire. Each distinct (non-null) slug triggers a fresh load,
@@ -196,8 +196,8 @@ class KinowoViewModel(
     /** Listing + details fetched concurrently for [citySlug] — the grid paints
      *  as soon as the listing lands; details merge in when ready. */
     private suspend fun fetchAll(citySlug: String) = coroutineScope {
-        val listing = async { repo.reload(citySlug) }
-        val det = async { detailsRepo.reload(citySlug) }
+        val listing = async { repository.reload(citySlug) }
+        val det = async { detailsRepository.reload(citySlug) }
         listing.await(); det.await()
     }
 
@@ -206,12 +206,12 @@ class KinowoViewModel(
     }
 
     fun onResume() {
-        repo.pruneStaleShowings()
+        repository.pruneStaleShowings()
         val slug = selectedCity.value ?: return
         viewModelScope.launch {
             coroutineScope {
-                async { repo.reloadIfStale(slug) }
-                async { detailsRepo.reloadIfStale(slug) }
+                async { repository.reloadIfStale(slug) }
+                async { detailsRepository.reloadIfStale(slug) }
             }
         }
     }
@@ -329,36 +329,36 @@ class KinowoViewModel(
     // returns must not re-fire the nearer-city prompt the user just dealt with.
     fun signInWithGoogle(context: Context) {
         citySwitchSuppressor.suppressNextCheck()
-        authRepo.startWebSignIn(context, "google")
+        authRepository.startWebSignIn(context, "google")
     }
 
     fun signInWithFacebook(context: Context) {
         citySwitchSuppressor.suppressNextCheck()
-        authRepo.startWebSignIn(context, "facebook")
+        authRepository.startWebSignIn(context, "facebook")
     }
 
     /** Redeem the one-shot code delivered by the `kinowo://auth-done` deep link. */
-    fun handleAuthRedirect(code: String) = viewModelScope.launch { authRepo.exchangeCode(code) }
+    fun handleAuthRedirect(code: String) = viewModelScope.launch { authRepository.exchangeCode(code) }
 
-    fun signOut() = viewModelScope.launch { authRepo.signOut() }
+    fun signOut() = viewModelScope.launch { authRepository.signOut() }
 
     /** Delete the account, then wipe local prefs — matches iOS, which clears
      *  hidden films + disabled cinemas after `deleteAccount()`. */
     fun deleteAccount() = viewModelScope.launch {
-        authRepo.deleteAccount()
+        authRepository.deleteAccount()
         prefs.unhideAll()
         prefs.setDisabledCinemas(emptySet())
     }
 
     class Factory(
-        private val repo: RepertoireRepository,
-        private val detailsRepo: DetailsRepository,
+        private val repository: RepertoireRepository,
+        private val detailsRepository: DetailsRepository,
         private val prefs: UserPreferences,
-        private val authRepo: AuthRepository,
+        private val authRepository: AuthRepository,
         private val userStateClient: UserStateClient,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            KinowoViewModel(repo, detailsRepo, prefs, authRepo, userStateClient) as T
+            KinowoViewModel(repository, detailsRepository, prefs, authRepository, userStateClient) as T
     }
 }

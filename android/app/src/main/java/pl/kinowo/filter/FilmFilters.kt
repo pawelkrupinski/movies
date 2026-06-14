@@ -237,7 +237,7 @@ fun List<Film>.filteredFor(
  *                            earliest showing.
  *
  * `sortedWith` is stable, so films that tie on every key keep their input
- * order — the same final fallback the web uses (`a.idx - b.idx`).
+ * order — the same final fallback the web uses (`a.index - b.index`).
  */
 fun List<Film>.sortedFor(sort: SortOption): List<Film> = when (sort) {
     SortOption.EARLIEST -> sortedBy { it.earliestShowing }

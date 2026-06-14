@@ -39,7 +39,7 @@ import pl.kinowo.filter.DateFilter
  * that never display.
  *
  * The carousel's three-column strip Row inherited the parent Box's single-width
- * max constraint, so the first (prev) column ate the whole budget and the centre
+ * max constraint, so the first (previous) column ate the whole budget and the centre
  * + next columns were measured at width 0 — the centre column then showed nothing
  * at rest, and cards only flashed mid-drag as a neighbour slid in.
  *

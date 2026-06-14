@@ -68,27 +68,27 @@ class FiltersSheetDragDismissTest {
         )
     }
 
-    private fun seedVm(): KinowoViewModel {
-        val ctx = ApplicationProvider.getApplicationContext<Context>()
+    private fun seedViewModel(): KinowoViewModel {
+        val context = ApplicationProvider.getApplicationContext<Context>()
         val http = OkHttpClient()
-        val repo = RepertoireRepository(KinowoApi(client = http), JsonListCache(ctx.cacheDir, "rep_filt", Film.serializer()))
-        val detailsRepo = DetailsRepository(KinowoApi(client = http), JsonListCache(ctx.cacheDir, "det_filt", FilmDetails.serializer()))
-        val authRepo = AuthRepository(http, PersistentCookieJar(ctx))
+        val repository = RepertoireRepository(KinowoApi(client = http), JsonListCache(context.cacheDir, "rep_filt", Film.serializer()))
+        val detailsRepository = DetailsRepository(KinowoApi(client = http), JsonListCache(context.cacheDir, "det_filt", FilmDetails.serializer()))
+        val authRepository = AuthRepository(http, PersistentCookieJar(context))
         val noop = object : UserStateClient {
             override suspend fun fetchState() = UserSyncState(emptySet(), emptySet())
             override suspend fun putState(state: UserSyncState) {}
         }
-        return KinowoViewModel(repo, detailsRepo, UserPreferences(ctx), authRepo, noop)
+        return KinowoViewModel(repository, detailsRepository, UserPreferences(context), authRepository, noop)
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
     private fun mount(onDismiss: () -> Unit) {
-        val vm = seedVm()
+        val viewModel = seedViewModel()
         val films = longFilms()
         compose.setContent {
             KinowoTheme {
                 val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-                FiltersSheet(vm, films, sheetState = sheetState, onDismiss = onDismiss)
+                FiltersSheet(viewModel, films, sheetState = sheetState, onDismiss = onDismiss)
             }
         }
         compose.waitForIdle()
