@@ -116,25 +116,30 @@ class StagingSteps(
   /** STEP 3 (per film): recover a missing IMDb cross-reference and stamp it onto
    *  every row — the promoter's inline recovery, now its own retryable task. A
    *  staging row never enters the cache, so the event-driven `ImdbIdResolver`
-   *  can't reach it. No-ops (returns true) when there's nothing to recover (no
-   *  tmdbId, or imdbId already present); on a miss it gives up and lets the film
-   *  fold with just the TMDB id, exactly as the promoter did. */
+   *  can't reach it. On a miss it gives up and lets the film fold with just the
+   *  TMDB id, exactly as the promoter did.
+   *
+   *  Recovers from ANY row that carries a `tmdbId` but no `imdbId` — NOT just the
+   *  `_id`-first row. A film's cinemas can disagree on year, and a late-arriving
+   *  variant (no tmdbId yet) can sort ahead of the resolved one; keying off `head`
+   *  then skipped recovery AND the freshness mark, so the reaper (whose gate fires
+   *  on ANY needy row) re-enqueued this step forever. The mark is now
+   *  UNCONDITIONAL: whenever the step runs for a non-empty group it records "done",
+   *  so it's genuinely one-shot and can't hot-loop. */
   def recoverImdbFor(anchor: String): Unit = {
     val fresh = rowsFor(anchor)
-    fresh.headOption.foreach { head =>
-      if (head.record.tmdbId.isDefined && head.record.imdbId.isEmpty) {
-        val search = head.record.originalTitle.getOrElse(MovieService.apiQuery(head.title))
-        recoverImdbId(search, fresh.flatMap(_.year).minOption) match {
-          case Some(id) =>
-            fresh.foreach(r => stagingRepository.upsert(r.cinema, r.title, r.year, r.record.copy(imdbId = Some(id))))
-            logger.info(s"Staging: '${head.title}' ← recovered imdbId=$id")
-          case None => ()                                                // fold without it, like the promoter
-        }
-        // Recovery is best-effort + one-shot: mark it done (found OR not) so the
-        // film folds rather than re-enqueuing the step on a permanent no-match.
-        freshness.markFresh(StagingTaskKeys.imdbKey(anchor), FreshnessKind.ImdbRating)
+    if (fresh.isEmpty) return
+    fresh.find(r => r.record.tmdbId.isDefined && r.record.imdbId.isEmpty).foreach { needy =>
+      val search = needy.record.originalTitle.getOrElse(MovieService.apiQuery(needy.title))
+      recoverImdbId(search, fresh.flatMap(_.year).minOption).foreach { id =>
+        fresh.foreach(r => stagingRepository.upsert(r.cinema, r.title, r.year, r.record.copy(imdbId = Some(id))))
+        logger.info(s"Staging: '${needy.title}' ← recovered imdbId=$id")
       }
     }
+    // Best-effort + one-shot: mark done whenever the step runs (recovered,
+    // not-found, or nothing to recover) so the reaper folds instead of
+    // re-enqueuing forever.
+    freshness.markFresh(StagingTaskKeys.imdbKey(anchor), FreshnessKind.ImdbRating)
   }
 
   /** Whether IMDb recovery has already been attempted for this film — so the

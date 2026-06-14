@@ -131,6 +131,37 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     repository.findAll().head.record.imdbId shouldBe Some("tt42003604")
   }
 
+  it should "recover from a NON-head row and mark done one-shot when the _id-first row has no tmdbId" in {
+    // Regression: a film's cinemas disagree on year, and a late-arriving variant
+    // with NO tmdbId sorts ahead (by `_id`) of the resolved one. Keying recovery
+    // off `head` skipped both the recovery AND the freshness mark, so the reaper
+    // re-enqueued StagingResolveImdbId forever (8790× observed in prod).
+    val repository = new InMemoryStagingRepository
+    val title = "Chłopiec na krańcach świata"
+    val anchor = TitleNormalizer.sanitize(title)
+    // Helios row (`_id` sorts first) has NO tmdbId; Multikino row carries tmdbId, no imdb.
+    repository.upsert(Helios, title, Some(2025), MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some(title)))))
+    repository.upsert(Multikino, title, None, MovieRecord(tmdbId = Some(1277047), data = Map[Source, SourceData](Multikino -> SourceData(title = Some(title)))))
+    repository.findAll().head.record.tmdbId shouldBe None             // precondition: head lacks tmdbId
+
+    var searched = Option.empty[String]
+    val s = steps(repository, Seq.empty, (_, _, r) => Some(r), (search, _) => { searched = Some(search); Some("tt1277047") })
+    s.imdbRecoveryDone(anchor) shouldBe false
+    s.recoverImdbFor(anchor)
+    searched should not be empty                                       // recovered from the needy (non-head) row
+    s.imdbRecoveryDone(anchor) shouldBe true                          // one-shot mark set → reaper can't re-loop
+    repository.findAll().foreach(_.record.imdbId shouldBe Some("tt1277047"))   // stamped on every row
+  }
+
+  it should "mark recovery done even when there is nothing to recover (no needy row)" in {
+    // No row has tmdbId-without-imdb, so recovery is a no-op — but it must still
+    // mark done so the reaper doesn't treat the step as outstanding.
+    val (repository, anchor) = seeded(Multikino, "NoNeed", Some(2026))
+    val s = steps(repository, Seq.empty, (_, _, r) => Some(r), (_, _) => Some("x"))
+    s.recoverImdbFor(anchor)
+    s.imdbRecoveryDone(anchor) shouldBe true
+  }
+
   it should "not call recovery when TMDB already shipped a cross-reference" in {
     val (repository, anchor) = seeded(Helios, "HasImdb", Some(2026))
     val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
