@@ -75,8 +75,8 @@ object TlsTrust extends Logging {
    *  the platform default if anything goes wrong, so a packaging slip can never
    *  take TLS down — it just reverts to the unaugmented store. */
   lazy val augmentedContext: SSLContext =
-    build().recover { case ex =>
-      logger.warn(s"TlsTrust: falling back to default SSLContext (${ex.getMessage})")
+    build().recover { case exception =>
+      logger.warn(s"TlsTrust: falling back to default SSLContext (${exception.getMessage})")
       SSLContext.getDefault
     }.get
 

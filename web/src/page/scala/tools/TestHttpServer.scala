@@ -35,10 +35,10 @@ class TestHttpServer(
       java.time.ZonedDateTime.of(2026, 5, 17, 0, 0, 0, 0, java.time.ZoneOffset.UTC))
   private val server: HttpServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
   server.createContext("/", new HttpHandler {
-    override def handle(ex: HttpExchange): Unit = {
+    override def handle(exception: HttpExchange): Unit = {
       try {
-        val path = ex.getRequestURI.getPath
-        val rawQ = ex.getRequestURI.getRawQuery
+        val path = exception.getRequestURI.getPath
+        val rawQ = exception.getRequestURI.getRawQuery
         // Routes match on the path-plus-query (`/film?title=…` carries
         // its identity in the query string, not the path). Existing
         // path-only routes (`/`, `/plan`) don't ever come through with a
@@ -60,37 +60,37 @@ class TestHttpServer(
           // assets directory (resolve + startsWith).
           val publicRoot = Paths.get("web/src/main/assets").toAbsolutePath
           if (!file.startsWith(publicRoot) || !Files.exists(file)) {
-            ex.sendResponseHeaders(404, -1)
+            exception.sendResponseHeaders(404, -1)
           } else {
             val bytes = Files.readAllBytes(file)
             val ct = if (path.endsWith(".css"))  "text/css; charset=UTF-8"
                      else if (path.endsWith(".js")) "application/javascript; charset=UTF-8"
                      else "application/octet-stream"
-            ex.getResponseHeaders.add("Content-Type", ct)
-            ex.sendResponseHeaders(200, bytes.length.toLong)
-            val os = ex.getResponseBody
+            exception.getResponseHeaders.add("Content-Type", ct)
+            exception.sendResponseHeaders(200, bytes.length.toLong)
+            val os = exception.getResponseBody
             try os.write(bytes) finally os.close()
           }
         } else if (jsonRoutes.isDefinedAt(routeKey)) {
           val bytes = jsonRoutes(routeKey).getBytes(StandardCharsets.UTF_8)
-          ex.getResponseHeaders.add("Content-Type", "application/json; charset=UTF-8")
-          ex.getResponseHeaders.add("Last-Modified", jsonLastModified)
-          ex.sendResponseHeaders(200, bytes.length.toLong)
-          val os = ex.getResponseBody
+          exception.getResponseHeaders.add("Content-Type", "application/json; charset=UTF-8")
+          exception.getResponseHeaders.add("Last-Modified", jsonLastModified)
+          exception.sendResponseHeaders(200, bytes.length.toLong)
+          val os = exception.getResponseBody
           try os.write(bytes) finally os.close()
         } else {
           routes.lift(routeKey) match {
           case Some(html) =>
             val bytes = html.getBytes(StandardCharsets.UTF_8)
-            ex.getResponseHeaders.add("Content-Type", "text/html; charset=UTF-8")
-            ex.sendResponseHeaders(200, bytes.length.toLong)
-            val os = ex.getResponseBody
+            exception.getResponseHeaders.add("Content-Type", "text/html; charset=UTF-8")
+            exception.sendResponseHeaders(200, bytes.length.toLong)
+            val os = exception.getResponseBody
             try os.write(bytes) finally os.close()
           case None =>
-            ex.sendResponseHeaders(404, -1)
+            exception.sendResponseHeaders(404, -1)
           }
         }
-      } finally ex.close()
+      } finally exception.close()
     }
   })
   server.start()

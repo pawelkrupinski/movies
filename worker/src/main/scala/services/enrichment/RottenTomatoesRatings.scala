@@ -113,9 +113,9 @@ class RottenTomatoesRatings(
           cache.putIfPresent(key, _.copy(rottenTomatoes = fresh))
           changed.incrementAndGet()
         case Success(_) => ()
-        case Failure(ex) =>
+        case Failure(exception) =>
           failed.incrementAndGet()
-          logger.debug(s"RT refresh: $url lookup failed: ${ex.getMessage}")
+          logger.debug(s"RT refresh: $url lookup failed: ${exception.getMessage}")
       }
     }
 

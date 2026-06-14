@@ -123,9 +123,9 @@ class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessSto
           new UpdateOptions().upsert(true)
         ).subscribe(
           (_: org.mongodb.scala.result.UpdateResult) => (),
-          (ex: Throwable) => logger.debug(s"Freshness write failed for $key: ${ex.getMessage}")
+          (exception: Throwable) => logger.debug(s"Freshness write failed for $key: ${exception.getMessage}")
         )
-      }.recover { case ex => logger.debug(s"Freshness write failed for $key: ${ex.getMessage}") }
+      }.recover { case exception => logger.debug(s"Freshness write failed for $key: ${exception.getMessage}") }
     }
   }
 
@@ -154,7 +154,7 @@ class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessSto
       } { mirror.put(key, Instant.ofEpochMilli(date.getTime)); count += 1 }
     }
     if (count > 0) logger.info(s"Hydrated $count $label freshness stamp(s) from Mongo.")
-  }.recover { case ex => logger.warn(s"Freshness $label hydrate failed: ${ex.getMessage}") }
+  }.recover { case exception => logger.warn(s"Freshness $label hydrate failed: ${exception.getMessage}") }
 }
 
 object MongoFreshnessStore {

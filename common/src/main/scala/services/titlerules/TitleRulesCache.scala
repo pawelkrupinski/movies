@@ -52,7 +52,7 @@ class TitleRulesCache(
     if (previous.exists(_ != current)) {
       logger.info("TitleRulesCache: rules changed — running the change hook.")
       try onRulesChanged(previous.get.toSeq, current.toSeq)
-      catch { case ex: Throwable => logger.warn(s"onRulesChanged failed: ${ex.getMessage}") }
+      catch { case exception: Throwable => logger.warn(s"onRulesChanged failed: ${exception.getMessage}") }
     }
   }
 
@@ -69,7 +69,7 @@ class TitleRulesCache(
       s"TitleRulesCache change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — backstop only"}; " +
       s"backstop reload every ${IntervalSeconds}s.")
     scheduler.scheduleAtFixedRate(
-      () => Try(reload()).recover { case ex => logger.warn(s"TitleRulesCache reload tick failed: ${ex.getMessage}") },
+      () => Try(reload()).recover { case exception => logger.warn(s"TitleRulesCache reload tick failed: ${exception.getMessage}") },
       IntervalSeconds, IntervalSeconds, TimeUnit.SECONDS)
   }
 

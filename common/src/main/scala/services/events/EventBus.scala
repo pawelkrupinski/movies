@@ -130,8 +130,8 @@ class InProcessEventBus extends EventBus with Logging {
     while (it.hasNext) {
       val pf = it.next()
       try pf.applyOrElse(event, (_: DomainEvent) => ()) catch {
-        case ex: Throwable =>
-          logger.warn(s"Event listener failed for $event: ${ex.getMessage}")
+        case exception: Throwable =>
+          logger.warn(s"Event listener failed for $event: ${exception.getMessage}")
       }
     }
   }

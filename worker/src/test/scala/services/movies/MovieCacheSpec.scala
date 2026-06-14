@@ -15,10 +15,10 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // Carry the title in a cinema slot, as a scraped row does: the repository
     // re-derives the display title from the record on read (like Mongo), so a
     // title-less record would surface its sanitized _id prefix, not "Drzewo Magii".
-    val rec   = mkEnrichment("tt1").copy(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Drzewo Magii"))))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Drzewo Magii", Some(2024), rec))))
+    val record   = mkEnrichment("tt1").copy(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Drzewo Magii"))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Drzewo Magii", Some(2024), record))))
 
-    cache.get(cache.keyOf("Drzewo Magii", Some(2024))) shouldBe Some(rec)
+    cache.get(cache.keyOf("Drzewo Magii", Some(2024))) shouldBe Some(record)
     cache.snapshot().map(r => (r.title, r.year)) shouldBe Seq(("Drzewo Magii", Some(2024)))
   }
 

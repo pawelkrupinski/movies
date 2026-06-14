@@ -25,15 +25,15 @@ class MovieRecordPosterSpec extends AnyFlatSpec with Matchers {
     val multikino   = "https://www.multikino.pl/.../werdykt.jpg"
     val cinemaCity  = "https://www.cinema-city.pl/.../8194S2R.jpg"
     val tmdb        = "https://image.tmdb.org/t/p/w500/x.jpg"
-    val rec = MovieRecord(
+    val record = MovieRecord(
       data = Map[Source, SourceData](
         Multikino           -> SourceData(posterUrl = Some(multikino)),
         CinemaCityKinepolis -> SourceData(posterUrl = Some(cinemaCity)),
         Tmdb                -> SourceData(posterUrl = Some(tmdb))
       )
     )
-    rec.posterUrl          shouldBe Some(multikino)
-    rec.fallbackPosterUrls shouldBe Seq(cinemaCity, tmdb)
+    record.posterUrl          shouldBe Some(multikino)
+    record.fallbackPosterUrls shouldBe Seq(cinemaCity, tmdb)
   }
 
   it should "include IMDb after every cinema and before / after TMDB per Source.priority" in {
@@ -41,7 +41,7 @@ class MovieRecordPosterSpec extends AnyFlatSpec with Matchers {
     val cinemaCity = "https://www.cinema-city.pl/y.jpg"
     val tmdb       = "https://image.tmdb.org/t/p/w500/z.jpg"
     val imdb       = "https://m.media-amazon.com/.../poster.jpg"
-    val rec = MovieRecord(
+    val record = MovieRecord(
       data = Map[Source, SourceData](
         Multikino           -> SourceData(posterUrl = Some(multikino)),
         CinemaCityKinepolis -> SourceData(posterUrl = Some(cinemaCity)),
@@ -51,50 +51,50 @@ class MovieRecordPosterSpec extends AnyFlatSpec with Matchers {
     )
     // Source.priority is cinemas (Multikino first) → Tmdb → Imdb, so once
     // Multikino is the primary the chain is CinemaCity, Tmdb, Imdb.
-    rec.fallbackPosterUrls shouldBe Seq(cinemaCity, tmdb, imdb)
+    record.fallbackPosterUrls shouldBe Seq(cinemaCity, tmdb, imdb)
   }
 
   it should "drop the primary even when other sources duplicate it" in {
     val url = "https://image.tmdb.org/t/p/w500/x.jpg"
-    val rec = MovieRecord(
+    val record = MovieRecord(
       data = Map[Source, SourceData](
         Multikino -> SourceData(posterUrl = Some(url)),
         Tmdb      -> SourceData(posterUrl = Some(url))
       )
     )
-    rec.posterUrl          shouldBe Some(url)
-    rec.fallbackPosterUrls shouldBe empty
+    record.posterUrl          shouldBe Some(url)
+    record.fallbackPosterUrls shouldBe empty
   }
 
   it should "deduplicate when two non-primary sources share a URL" in {
     val multikino = "https://www.multikino.pl/m.jpg"
     val shared    = "https://image.tmdb.org/t/p/w500/x.jpg"
-    val rec = MovieRecord(
+    val record = MovieRecord(
       data = Map[Source, SourceData](
         Multikino           -> SourceData(posterUrl = Some(multikino)),
         CinemaCityKinepolis -> SourceData(posterUrl = Some(shared)),
         Tmdb                -> SourceData(posterUrl = Some(shared))
       )
     )
-    rec.fallbackPosterUrls shouldBe Seq(shared)
+    record.fallbackPosterUrls shouldBe Seq(shared)
   }
 
   it should "be empty when only the primary source has a poster" in {
-    val rec = MovieRecord(
+    val record = MovieRecord(
       data = Map[Source, SourceData](
         Helios -> SourceData(posterUrl = Some("https://img.helios.pl/x.jpg"))
       )
     )
-    rec.fallbackPosterUrls shouldBe empty
+    record.fallbackPosterUrls shouldBe empty
   }
 
   it should "be empty when no source has a poster at all" in {
-    val rec = MovieRecord(
+    val record = MovieRecord(
       data = Map[Source, SourceData](
         Helios -> SourceData(posterUrl = None)
       )
     )
-    rec.posterUrl          shouldBe None
-    rec.fallbackPosterUrls shouldBe empty
+    record.posterUrl          shouldBe None
+    record.fallbackPosterUrls shouldBe empty
   }
 }

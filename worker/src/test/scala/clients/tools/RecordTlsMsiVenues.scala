@@ -16,14 +16,14 @@ import scala.util.Try
  *  then delete + regenerate the snapshots. today is pinned to the capture date. */
 object RecordTlsMsiVenues {
   def main(args: Array[String]): Unit = {
-    val rec   = new RecordingHttpFetch("08-06-2026", new RealHttpFetch())
+    val record   = new RecordingHttpFetch("08-06-2026", new RealHttpFetch())
     val today = LocalDate.of(2026, 6, 8)
     def rep(label: String)(n: => Int): Unit =
       println(f"$label%-26s ${Try(n).fold(e => s"FAIL ${e.getClass.getSimpleName}: ${e.getMessage}", x => s"$x films")}")
-    rep("KinoKryterium")(new MsiClient(rec, "https://bilety.ck105.koszalin.pl", KinoKryterium, today).fetch().size)
-    rep("KinoKozienickiDomKultury")(new MsiClient(rec, "https://bilety.dkkozienice.pl", KinoKozienickiDomKultury, today).fetch().size)
-    rep("KinoSwitZwolen")(new MsiClient(rec, "https://bilety.switzwolen.pl", KinoSwitZwolen, today).fetch().size)
-    rep("KinoChemik")(new MsiClient(rec, "https://bilety.mok.com.pl", KinoChemik, today, titlePrefix = Some("Chemik")).fetch().size)
-    rep("KinoTwierdza")(new MsiClient(rec, "https://bilety.mok.com.pl", KinoTwierdza, today, titlePrefix = Some("TWIERDZA")).fetch().size)
+    rep("KinoKryterium")(new MsiClient(record, "https://bilety.ck105.koszalin.pl", KinoKryterium, today).fetch().size)
+    rep("KinoKozienickiDomKultury")(new MsiClient(record, "https://bilety.dkkozienice.pl", KinoKozienickiDomKultury, today).fetch().size)
+    rep("KinoSwitZwolen")(new MsiClient(record, "https://bilety.switzwolen.pl", KinoSwitZwolen, today).fetch().size)
+    rep("KinoChemik")(new MsiClient(record, "https://bilety.mok.com.pl", KinoChemik, today, titlePrefix = Some("Chemik")).fetch().size)
+    rep("KinoTwierdza")(new MsiClient(record, "https://bilety.mok.com.pl", KinoTwierdza, today, titlePrefix = Some("TWIERDZA")).fetch().size)
   }
 }

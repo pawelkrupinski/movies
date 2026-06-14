@@ -226,8 +226,8 @@ class MongoMovieRepository(
         // (Java `j.u.c.TimeoutException` from `Await.result`) and BSON decode
         // errors must be logged, not swallowed into `.getOrElse(Seq.empty)`,
         // which would strand the cache empty on the boot path with no log line.
-        case ex: Throwable =>
-          logger.warn(s"MovieRepository.findAll failed: ${ex.getClass.getSimpleName}: ${ex.getMessage}")
+        case exception: Throwable =>
+          logger.warn(s"MovieRepository.findAll failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
           Seq.empty
       }.getOrElse(Seq.empty)
     case None => Seq.empty
@@ -257,7 +257,7 @@ class MongoMovieRepository(
         logger.info(s"MovieRepository.delete($title, $year) removed ${result.getDeletedCount} document(s).")
       ()
     }.recover {
-      case ex: Throwable => logger.warn(s"MovieRepository.delete($title, $year) failed: ${ex.getMessage}")
+      case exception: Throwable => logger.warn(s"MovieRepository.delete($title, $year) failed: ${exception.getMessage}")
     }
   }
 
@@ -269,13 +269,13 @@ class MongoMovieRepository(
       Await.result(c.replaceOne(Filters.eq("_id", id), dto, opts).toFuture(), 10.seconds)
       ()
     }.recover {
-      case ex: Throwable if isClusterClosed(ex) =>
+      case exception: Throwable if isClusterClosed(exception) =>
         // Shutdown race — the lifecycle closed the MongoClient while a worker
         // was still mid-write. Harmless: the in-memory cache already has the
         // value and the next refresh will persist it.
         logger.debug(s"MovieRepository.upsert($title, $year) skipped — Mongo client closing.")
-      case ex: Throwable =>
-        logger.warn(s"MovieRepository.upsert($title, $year) failed: ${ex.getMessage}")
+      case exception: Throwable =>
+        logger.warn(s"MovieRepository.upsert($title, $year) failed: ${exception.getMessage}")
     }
   }
 
@@ -303,9 +303,9 @@ class MongoMovieRepository(
           }
         matched > 0
       }.recover {
-        case ex: Throwable if isClusterClosed(ex) => false
-        case ex: Throwable =>
-          logger.warn(s"MovieRepository.updateIfPresent($title, $year) failed: ${ex.getMessage}")
+        case exception: Throwable if isClusterClosed(exception) => false
+        case exception: Throwable =>
+          logger.warn(s"MovieRepository.updateIfPresent($title, $year) failed: ${exception.getMessage}")
           false
       }.getOrElse(false)
   }
@@ -364,7 +364,7 @@ class MongoMovieRepository(
           Option(change.getFullDocument) match {
             case Some(dto) =>
               try onUpsert(StoredMovieDto.toDomain(dto))
-              catch { case ex: Throwable => logger.warn(s"MovieRepository change-stream apply failed: ${ex.getMessage}") }
+              catch { case exception: Throwable => logger.warn(s"MovieRepository change-stream apply failed: ${exception.getMessage}") }
             case None =>
               // No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't
               // back-fill). Surface its _id so the consumer can drop the row.
@@ -372,7 +372,7 @@ class MongoMovieRepository(
                 .map(v => if (v.isString) v.asString.getValue else v.toString)
                 .foreach { id =>
                   try onDelete(id)
-                  catch { case ex: Throwable => logger.warn(s"MovieRepository change-stream delete apply failed: ${ex.getMessage}") }
+                  catch { case exception: Throwable => logger.warn(s"MovieRepository change-stream delete apply failed: ${exception.getMessage}") }
                 }
           }
         override def onError(e: Throwable): Unit =
@@ -403,7 +403,7 @@ class MongoMovieRepository(
         10.seconds)
       ()
     }.recover {
-      case ex: Throwable => logger.warn(s"movies (title, year) index creation failed: ${ex.getMessage}")
+      case exception: Throwable => logger.warn(s"movies (title, year) index creation failed: ${exception.getMessage}")
     }
 
   private def init(): (Option[MongoClient], Option[MongoCollection[StoredMovieDto]]) =
@@ -426,8 +426,8 @@ class MongoMovieRepository(
           logger.info(s"MongoMovieRepository connected to $dbName.movies")
           (client, coll)
         }.recover {
-          case ex: Throwable =>
-            logger.error(s"MongoMovieRepository init failed (${ex.getMessage}) — falling back to in-memory cache.")
+          case exception: Throwable =>
+            logger.error(s"MongoMovieRepository init failed (${exception.getMessage}) — falling back to in-memory cache.")
             null
         }.toOption.filter(_ != null) match {
           case Some((c, coll)) => (Some(c), Some(coll))
@@ -437,8 +437,8 @@ class MongoMovieRepository(
 
   // The driver throws IllegalStateException("state should be: open") from
   // BaseCluster / DefaultConnectionPool once MongoClient.close() has fired.
-  private def isClusterClosed(ex: Throwable): Boolean =
-    Option(ex.getMessage).exists(_.contains("state should be: open"))
+  private def isClusterClosed(exception: Throwable): Boolean =
+    Option(exception.getMessage).exists(_.contains("state should be: open"))
 
   // Match the in-memory CacheKey's normalization rules so case-only and
   // diacritic variants of the same title share a single Mongo record. Without

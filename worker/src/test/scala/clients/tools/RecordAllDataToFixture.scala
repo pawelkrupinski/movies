@@ -159,7 +159,7 @@ object RecordAllDataToFixture extends TestWiring {
       val title    = s"'${row.title}' (${row.year.getOrElse("?")})"
       outcome match {
         case scala.util.Success(_)  => println(f"$label done in $elapsed%5d ms · $title")
-        case scala.util.Failure(ex) => println(f"$label FAIL  in $elapsed%5d ms · $title — ${ex.getMessage}")
+        case scala.util.Failure(exception) => println(f"$label FAIL  in $elapsed%5d ms · $title — ${exception.getMessage}")
       }
     }
   }

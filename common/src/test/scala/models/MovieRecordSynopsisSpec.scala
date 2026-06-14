@@ -18,43 +18,43 @@ import org.scalatest.matchers.should.Matchers
 class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
 
   "synopsis" should "strip a leading YouTube URL folded into the blurb" in {
-    val rec = MovieRecord(
+    val record = MovieRecord(
       data = Map[Source, SourceData](
         StacjaFalenica -> SourceData(synopsis = Some(
           "https://www.youtube.com/watch?v=ERysio3sHjw&embeds_referring_euri=https%3A%2F%2Faurorafilms.pl%2F " +
             "Nowy film laureata Złotej Palmy George Fahmy to największa produkcja."))
       )
     )
-    rec.synopsis shouldBe Some("Nowy film laureata Złotej Palmy George Fahmy to największa produkcja.")
+    record.synopsis shouldBe Some("Nowy film laureata Złotej Palmy George Fahmy to największa produkcja.")
   }
 
   it should "pick the longest blurb after URLs are stripped, not before" in {
     // The Falenica blurb is the longest only because of the prepended URL; once
     // cleaned, the genuine TMDB synopsis is longer and should win.
-    val rec = MovieRecord(
+    val record = MovieRecord(
       data = Map[Source, SourceData](
         StacjaFalenica -> SourceData(synopsis = Some("https://www.youtube.com/watch?v=ERysio3sHjw Krótki opis.")),
         Tmdb           -> SourceData(synopsis = Some("Znacznie dłuższy i pełniejszy opis filmu bez żadnego linku."))
       )
     )
-    rec.synopsis shouldBe Some("Znacznie dłuższy i pełniejszy opis filmu bez żadnego linku.")
+    record.synopsis shouldBe Some("Znacznie dłuższy i pełniejszy opis filmu bez żadnego linku.")
   }
 
   it should "drop a source whose synopsis is nothing but a URL" in {
-    val rec = MovieRecord(
+    val record = MovieRecord(
       data = Map[Source, SourceData](
         StacjaFalenica -> SourceData(synopsis = Some("https://www.youtube.com/watch?v=ERysio3sHjw")),
         Tmdb           -> SourceData(synopsis = Some("Prawdziwy opis."))
       )
     )
-    rec.synopsis shouldBe Some("Prawdziwy opis.")
+    record.synopsis shouldBe Some("Prawdziwy opis.")
   }
 
   it should "leave a URL-free synopsis unchanged" in {
-    val rec = MovieRecord(
+    val record = MovieRecord(
       data = Map[Source, SourceData](Tmdb -> SourceData(synopsis = Some("Zwykły opis filmu.")))
     )
-    rec.synopsis shouldBe Some("Zwykły opis filmu.")
+    record.synopsis shouldBe Some("Zwykły opis filmu.")
   }
 
   it should "be None when no source carries a synopsis" in {

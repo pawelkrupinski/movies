@@ -33,7 +33,7 @@ object RegroupTitleRulesToRecords {
     val dbName  = Env.get("MONGODB_DB").getOrElse("kinowo")
     val client  = MongoClient(uri)
     val rawColl = client.getDatabase(dbName).getCollection[Document]("titleRules")
-    val recColl = client.getDatabase(dbName)
+    val recordColl = client.getDatabase(dbName)
       .withCodecRegistry(TitleRuleCodecs.registry)
       .getCollection[StoredTitleRuleRecord]("titleRules")
 
@@ -51,11 +51,11 @@ object RegroupTitleRulesToRecords {
     val regrouped = TitleRuleRecord.fromRules(rules)
     println(s"@@ regrouping ${rules.size} rule(s) into ${regrouped.size} record(s)")
 
-    regrouped.foreach { rec =>
+    regrouped.foreach { record =>
       Await.result(
-        recColl.replaceOne(Filters.eq("_id", rec.id), StoredTitleRuleRecord.fromDomain(rec),
+        recordColl.replaceOne(Filters.eq("_id", record.id), StoredTitleRuleRecord.fromDomain(record),
           new ReplaceOptions().upsert(true)).toFuture(), 30.seconds)
-      println(s"   wrote record ${rec.id} (${rec.rules.size} rules, ${rec.lastRules.size} last)")
+      println(s"   wrote record ${record.id} (${record.rules.size} rules, ${record.lastRules.size} last)")
     }
 
     val flatIds = flat.flatMap(d => str(d, "_id"))

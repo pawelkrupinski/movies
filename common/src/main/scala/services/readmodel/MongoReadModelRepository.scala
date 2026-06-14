@@ -46,7 +46,7 @@ class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadMode
     Try {
       Await.result(c.createIndex(Indexes.ascending("city"), new IndexOptions().background(true)).toFuture(), 10.seconds)
       Await.result(c.createIndex(Indexes.ascending("filmId"), new IndexOptions().background(true)).toFuture(), 10.seconds)
-    }.recover { case ex: Throwable => logger.warn(s"web_screenings index creation failed: ${ex.getMessage}") }
+    }.recover { case exception: Throwable => logger.warn(s"web_screenings index creation failed: ${exception.getMessage}") }
   }
 
   def enabled: Boolean = movies.isDefined
@@ -59,8 +59,8 @@ class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadMode
   def findAllMovies(): Seq[ResolvedMovie] = movies match {
     case Some(c) =>
       Try(Await.result(c.find().toFuture(), 60.seconds)).recover {
-        case ex: Throwable =>
-          logger.warn(s"ReadModelRepository.findAllMovies failed: ${ex.getClass.getSimpleName}: ${ex.getMessage}")
+        case exception: Throwable =>
+          logger.warn(s"ReadModelRepository.findAllMovies failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
           Seq.empty
       }.getOrElse(Seq.empty)
     case None => Seq.empty
@@ -69,8 +69,8 @@ class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadMode
   def findAllScreenings(): Seq[CityScreening] = screenings match {
     case Some(c) =>
       Try(Await.result(c.find().toFuture(), 60.seconds)).recover {
-        case ex: Throwable =>
-          logger.warn(s"ReadModelRepository.findAllScreenings failed: ${ex.getClass.getSimpleName}: ${ex.getMessage}")
+        case exception: Throwable =>
+          logger.warn(s"ReadModelRepository.findAllScreenings failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
           Seq.empty
       }.getOrElse(Seq.empty)
     case None => Seq.empty
@@ -92,8 +92,8 @@ class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadMode
       Await.result(c.replaceOne(Filters.eq("_id", id), document, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
       ()
     }.recover {
-      case ex: Throwable if isClusterClosed(ex) => ()
-      case ex: Throwable => logger.warn(s"ReadModelRepository.$op($id) failed: ${ex.getMessage}")
+      case exception: Throwable if isClusterClosed(exception) => ()
+      case exception: Throwable => logger.warn(s"ReadModelRepository.$op($id) failed: ${exception.getMessage}")
     }
   }
 
@@ -102,8 +102,8 @@ class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadMode
       Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
       ()
     }.recover {
-      case ex: Throwable if isClusterClosed(ex) => ()
-      case ex: Throwable => logger.warn(s"ReadModelRepository.$op($id) failed: ${ex.getMessage}")
+      case exception: Throwable if isClusterClosed(exception) => ()
+      case exception: Throwable => logger.warn(s"ReadModelRepository.$op($id) failed: ${exception.getMessage}")
     }
   }
 
@@ -127,10 +127,10 @@ class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadMode
         override def onNext(change: ChangeStreamDocument[T]): Unit = change.getOperationType match {
           case OperationType.DELETE =>
             Option(change.getDocumentKey).flatMap(k => Option(k.getString("_id")))
-              .foreach(v => try onDelete(v.getValue) catch { case ex: Throwable => logger.warn(s"$label delete-apply failed: ${ex.getMessage}") })
+              .foreach(v => try onDelete(v.getValue) catch { case exception: Throwable => logger.warn(s"$label delete-apply failed: ${exception.getMessage}") })
           case _ =>
             Option(change.getFullDocument)
-              .foreach(d => try onUpsert(d) catch { case ex: Throwable => logger.warn(s"$label upsert-apply failed: ${ex.getMessage}") })
+              .foreach(d => try onUpsert(d) catch { case exception: Throwable => logger.warn(s"$label upsert-apply failed: ${exception.getMessage}") })
         }
         override def onError(e: Throwable): Unit =
           logger.warn(s"$label change stream ended (${e.getMessage}) — relying on the periodic reload.")
@@ -143,6 +143,6 @@ class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadMode
   // Shared MongoClient owned by `MongoConnection`; this repository doesn't close it.
   def close(): Unit = ()
 
-  private def isClusterClosed(ex: Throwable): Boolean =
-    Option(ex.getMessage).exists(_.contains("state should be: open"))
+  private def isClusterClosed(exception: Throwable): Boolean =
+    Option(exception.getMessage).exists(_.contains("state should be: open"))
 }

@@ -22,5 +22,5 @@ class TelegramNotifier(http: HttpFetch, botToken: String, chatId: Long, topicId:
         s"&text=${URLEncoder.encode(text, StandardCharsets.UTF_8)}"
       http.get(url)
       ()
-    }.recover { case ex => logger.warn(s"Telegram notify failed: ${ex.getMessage}") }.getOrElse(())
+    }.recover { case exception => logger.warn(s"Telegram notify failed: ${exception.getMessage}") }.getOrElse(())
 }

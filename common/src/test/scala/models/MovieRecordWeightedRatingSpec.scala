@@ -14,19 +14,19 @@ class MovieRecordWeightedRatingSpec extends AnyFlatSpec with Matchers {
 
   "weightedRating" should "average all four sources on a common 0–10 scale" in {
     // imdb 8.0, filmweb 7.0, metascore 80→8.0, RT 90→9.0 ⇒ 32/4 = 8.0
-    val rec = MovieRecord(
+    val record = MovieRecord(
       imdbRating     = Some(8.0),
       filmwebRating  = Some(7.0),
       metascore      = Some(80),
       rottenTomatoes = Some(90)
     )
-    rec.weightedRating shouldBe 8.0 +- 1e-9
+    record.weightedRating shouldBe 8.0 +- 1e-9
   }
 
   it should "skip missing sources and average only the present ones" in {
     // imdb 8.0 + RT 60→6.0 ⇒ 14/2 = 7.0 (filmweb + metascore absent)
-    val rec = MovieRecord(imdbRating = Some(8.0), rottenTomatoes = Some(60))
-    rec.weightedRating shouldBe 7.0 +- 1e-9
+    val record = MovieRecord(imdbRating = Some(8.0), rottenTomatoes = Some(60))
+    record.weightedRating shouldBe 7.0 +- 1e-9
   }
 
   it should "normalise a lone Metacritic score by dividing by 10" in {

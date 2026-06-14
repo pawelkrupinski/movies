@@ -162,9 +162,9 @@ class TaskWorker(
         case Success(Reschedule(err)) =>
           queue.release(task.id, workerId, err, Some(backoffUntil(task.attempts)))
           PollResult.Returned
-        case Failure(ex) =>
-          logger.warn(s"Task ${task.taskType.name}/${task.dedupKey} failed: ${ex.getMessage}")
-          queue.release(task.id, workerId, Some(ex.getMessage), Some(backoffUntil(task.attempts)))
+        case Failure(exception) =>
+          logger.warn(s"Task ${task.taskType.name}/${task.dedupKey} failed: ${exception.getMessage}")
+          queue.release(task.id, workerId, Some(exception.getMessage), Some(backoffUntil(task.attempts)))
           PollResult.Returned
       }
   }

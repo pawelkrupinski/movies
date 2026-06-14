@@ -121,9 +121,9 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
   "window.TitleRules.moveBetween" should "reorder within one list (the same-list drag decision)" in {
     onEditor { page =>
       val res = page.evalString(
-        """(() => { const rec = { rules: [{id:'a'},{id:'b'},{id:'c'}], lastRules: [] };
-          |  window.TitleRules.moveBetween(rec, 'rules', 0, 'rules', 2);
-          |  return JSON.stringify(rec.rules.map(x => x.id)); })()""".stripMargin)
+        """(() => { const record = { rules: [{id:'a'},{id:'b'},{id:'c'}], lastRules: [] };
+          |  window.TitleRules.moveBetween(record, 'rules', 0, 'rules', 2);
+          |  return JSON.stringify(record.rules.map(x => x.id)); })()""".stripMargin)
       res shouldBe """["b","c","a"]"""
     }
   }
@@ -131,9 +131,9 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
   it should "move a rule across to the Last list (the cross-list drag that replaces the checkbox)" in {
     onEditor { page =>
       val res = page.evalString(
-        """(() => { const rec = { rules: [{id:'x'},{id:'y'}], lastRules: [] };
-          |  window.TitleRules.moveBetween(rec, 'rules', 0, 'lastRules', rec.lastRules.length);
-          |  return JSON.stringify([rec.rules.map(r=>r.id), rec.lastRules.map(r=>r.id)]); })()""".stripMargin)
+        """(() => { const record = { rules: [{id:'x'},{id:'y'}], lastRules: [] };
+          |  window.TitleRules.moveBetween(record, 'rules', 0, 'lastRules', record.lastRules.length);
+          |  return JSON.stringify([record.rules.map(r=>r.id), record.lastRules.map(r=>r.id)]); })()""".stripMargin)
       res shouldBe """[["y"],["x"]]"""
     }
   }

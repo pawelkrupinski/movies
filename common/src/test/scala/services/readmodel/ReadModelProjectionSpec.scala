@@ -103,10 +103,10 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
   it should "display TMDB's release year, overriding a cinema-reported one" in {
     // Cinemas report the production year (2025); TMDB has the theatrical year
     // (2026). The served year must be TMDB's.
-    val rec = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+    val record = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino -> SourceData(title = Some("X"), releaseYear = Some(2025)),
       Tmdb      -> SourceData(title = Some("X"), releaseYear = Some(2026))))
-    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|2026", rec))
+    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|2026", record))
     m.releaseYear shouldBe Some(2026)
   }
 
@@ -118,11 +118,11 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     // TMDB year can't leave a second, differently-keyed copy of the film behind
     // (the duplicate-card bug). Both `kumotry|2025` and `kumotry|2026` source
     // rows then project to the one id `kumotry|2026`.
-    val rec = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+    val record = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino -> SourceData(title = Some("Kumotry"), releaseYear = Some(2025),
         showtimes = Seq(at("2026-06-12T18:00"))),
       Tmdb      -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026))))
-    val (m, ss) = ReadModelProjection.project(StoredMovieRecord.fromStorage("kumotry|2025", rec))
+    val (m, ss) = ReadModelProjection.project(StoredMovieRecord.fromStorage("kumotry|2025", record))
     m._id shouldBe "kumotry|2026"
     ss.map(_.filmId).distinct shouldBe Seq("kumotry|2026")
   }

@@ -33,7 +33,7 @@ class NormalizationRebuilder(
 ) extends Logging {
   import NormalizationRebuilder._
 
-  private case class Frag(key: CacheKey, rec: MovieRecord, from: CacheKey, fresh: Boolean)
+  private case class Frag(key: CacheKey, record: MovieRecord, from: CacheKey, fresh: Boolean)
 
   /** Re-derive a slot's merge key the SAME way a fresh scrape does:
    *  `keyOf(cinemaClean(slot.title))`. `recordCinemaScrape` keys a slot by its
@@ -53,19 +53,19 @@ class NormalizationRebuilder(
       .getOrElse(oldKey)
   }
 
-  private def fragmentsOf(oldKey: CacheKey, rec: MovieRecord): Seq[Frag] = {
+  private def fragmentsOf(oldKey: CacheKey, record: MovieRecord): Seq[Frag] = {
     val byKey: Map[CacheKey, Seq[(Cinema, SourceData)]] =
-      rec.cinemaData.toSeq.groupBy { case (cinema, slot) => keyOfSlot(cinema, slot, oldKey) }
+      record.cinemaData.toSeq.groupBy { case (cinema, slot) => keyOfSlot(cinema, slot, oldKey) }
     if (byKey.sizeIs <= 1) {
-      Seq(Frag(byKey.keys.headOption.getOrElse(oldKey), rec, oldKey, fresh = false))
+      Seq(Frag(byKey.keys.headOption.getOrElse(oldKey), record, oldKey, fresh = false))
     } else {
       // Non-cinema (Tmdb/Imdb/Filmweb) slots + the record's top-level enrichment stay
       // with the remnant: the fragment under the original key, else the largest.
-      val nonCinema: Map[Source, SourceData] = rec.data -- rec.cinemaData.keys
+      val nonCinema: Map[Source, SourceData] = record.data -- record.cinemaData.keys
       val remnant   = if (byKey.contains(oldKey)) oldKey else byKey.maxBy(_._2.size)._1
       byKey.toSeq.map { case (k, pairs) =>
         val slots: Map[Source, SourceData] = pairs.map { case (c, s) => (c: Source) -> s }.toMap
-        if (k == remnant) Frag(k, rec.copy(data = slots ++ nonCinema), oldKey, fresh = false)
+        if (k == remnant) Frag(k, record.copy(data = slots ++ nonCinema), oldKey, fresh = false)
         else              Frag(k, MovieRecord(data = slots),           oldKey, fresh = true)
       }
     }
@@ -89,17 +89,17 @@ class NormalizationRebuilder(
 
     val merges = scala.collection.mutable.ListBuffer.empty[MergeEvent]
     byKey.foreach { case (key, fs) =>
-      val merged = MovieRecordMerge.unionAll(fs.map(_.rec))
+      val merged = MovieRecordMerge.unionAll(fs.map(_.record))
       if (!cache.get(key).contains(merged)) { cache.put(key, merged); changed += 1 }
       if (fs.map(_.from).distinct.sizeIs > 1)
         merges += MergeEvent(merged.displayTitle(key.cleanTitle), key.year,
-          fs.flatMap(_.rec.cinemaTitles).distinct.sorted)
+          fs.flatMap(_.record.cinemaTitles).distinct.sorted)
       if (merged.tmdbId.isEmpty && fs.exists(_.fresh)) onSplitOff(key.cleanTitle, key.year)
     }
 
     val splits = frags.groupBy(_.from).iterator.collect {
       case (from, fs) if fs.map(_.key).distinct.sizeIs > 1 =>
-        SplitEvent(from.cleanTitle, fs.map(f => f.rec.displayTitle(f.key.cleanTitle)).distinct.sorted)
+        SplitEvent(from.cleanTitle, fs.map(f => f.record.displayTitle(f.key.cleanTitle)).distinct.sorted)
     }.toSeq
 
     val result = RebuildResult(changed, merges.toSeq, splits)

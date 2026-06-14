@@ -115,8 +115,8 @@ class ReadModelProjector(
     val liveIds = ready.iterator.map(ReadModelProjection.filmId).toSet
     ready.foreach { row =>
       try project(row)
-      catch { case ex: Throwable =>
-        logger.warn(s"read-model reconcile: a row failed to project, continuing: ${ex.getMessage}") }
+      catch { case exception: Throwable =>
+        logger.warn(s"read-model reconcile: a row failed to project, continuing: ${exception.getMessage}") }
     }
     reader.findAllMovies().iterator.map(_._id).filterNot(liveIds).foreach(deleteFilm)
     reader.findAllScreenings().iterator.filterNot(s => liveIds(s.filmId)).foreach { s =>
@@ -141,7 +141,7 @@ class ReadModelProjector(
     // so it doesn't compete with boot hydrate + the first scrape.
     watchHandle = movieRepository.watchUpserts(onMovieUpsert)
     scheduler.scheduleAtFixedRate(
-      () => Try(reconcile()).recover { case ex => logger.warn(s"read-model reconcile tick failed: ${ex.getMessage}") },
+      () => Try(reconcile()).recover { case exception => logger.warn(s"read-model reconcile tick failed: ${exception.getMessage}") },
       ReconcileBootDelaySeconds, ReconcileSeconds, TimeUnit.SECONDS)
     logger.info(s"ReadModelProjector started; first reconcile in ${ReconcileBootDelaySeconds}s, " +
       s"then every ${ReconcileSeconds}s; " +

@@ -40,10 +40,10 @@ class AdminTitleRulesController(
   def save(): Action[JsValue] = adminAction(parse.json) { request =>
     recordFromJson(request.body) match {
       case Left(err) => BadRequest(Json.obj("error" -> err))
-      case Right(rec) =>
-        (rec.rules ++ rec.lastRules).find(!_.patternValid) match {
+      case Right(record) =>
+        (record.rules ++ record.lastRules).find(!_.patternValid) match {
           case Some(bad) => BadRequest(Json.obj("error" -> s"Invalid regex: ${bad.pattern}"))
-          case None      => titleRulesRepository.upsertRecord(rec); Ok(recordToJson(rec))
+          case None      => titleRulesRepository.upsertRecord(record); Ok(recordToJson(record))
         }
     }
   }
@@ -113,8 +113,8 @@ class AdminTitleRulesController(
 object AdminTitleRulesController {
   /** Records sorted by scope (in the canonical tier order) then cinema, so the
    *  editor renders deterministically. */
-  private def recordSortKey(rec: TitleRuleRecord): (Int, String) =
-    (RuleScope.all.indexOf(rec.scope), rec.cinemaId.getOrElse(""))
+  private def recordSortKey(record: TitleRuleRecord): (Int, String) =
+    (RuleScope.all.indexOf(record.scope), record.cinemaId.getOrElse(""))
 
   /** Dropdown options for the per-cinema cards: distinct cinema KEY → human
    *  label. Chain branches (Cinema City / Helios / Multikino / BOK) collapse to
@@ -145,12 +145,12 @@ object AdminTitleRulesController {
 
   // ---- record JSON ----
 
-  def recordToJson(rec: TitleRuleRecord): JsObject = Json.obj(
-    "id"        -> rec.id,
-    "scope"     -> rec.scope.name,
-    "cinemaId"  -> rec.cinemaId,
-    "rules"     -> rec.rules.map(ruleToJson),
-    "lastRules" -> rec.lastRules.map(ruleToJson))
+  def recordToJson(record: TitleRuleRecord): JsObject = Json.obj(
+    "id"        -> record.id,
+    "scope"     -> record.scope.name,
+    "cinemaId"  -> record.cinemaId,
+    "rules"     -> record.rules.map(ruleToJson),
+    "lastRules" -> record.lastRules.map(ruleToJson))
 
   private def ruleToJson(r: TitleRule): JsObject = Json.obj(
     "id" -> r.id, "pattern" -> r.pattern, "replacement" -> r.replacement,

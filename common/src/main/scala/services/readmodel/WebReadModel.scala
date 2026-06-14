@@ -107,7 +107,7 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
     movieWatch     = reader.watchMovies(applyMovieUpsert, applyMovieDelete)
     screeningWatch = reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete)
     scheduler.scheduleAtFixedRate(
-      () => Try(reload()).recover { case ex => logger.warn(s"WebReadModel reload tick failed: ${ex.getMessage}") },
+      () => Try(reload()).recover { case exception => logger.warn(s"WebReadModel reload tick failed: ${exception.getMessage}") },
       BackstopSeconds, BackstopSeconds, TimeUnit.SECONDS)
     logger.info(s"WebReadModel started; backstop reload every ${BackstopSeconds}s; " +
       s"change-stream watches ${if (movieWatch.isDefined) "active" else "unavailable — backstop only"}.")

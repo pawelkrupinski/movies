@@ -52,7 +52,7 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
 
   it should "throw the LAST failure unchanged after exhausting attempts" in {
     val (_, sleep) = withSleepLog()
-    val ex = intercept[IllegalStateException] {
+    val exception = intercept[IllegalStateException] {
       var n = 0
       RetryWithBackoff("t", maxAttempts = 3, initialBackoff = 1.millis, sleep = sleep) {
         n += 1
@@ -62,7 +62,7 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
     // The exception type and message of the third (last) failure surface
     // unchanged — caller's existing try/catch still sees the original
     // type, no wrapping layer.
-    ex.getMessage shouldBe "fail-3"
+    exception.getMessage shouldBe "fail-3"
   }
 
   it should "not sleep after the final attempt — no wasted wait when there's nothing left to retry" in {

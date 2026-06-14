@@ -77,7 +77,7 @@ class MongoFilmwebFallbackStore(
             Updates.set("cinemas", cinemas.toList.sorted.asJava), new UpdateOptions().upsert(true)).toFuture(),
           10.seconds
         )
-      }.recover { case ex => logger.debug(s"Filmweb-only write failed: ${ex.getMessage}") }
+      }.recover { case exception => logger.debug(s"Filmweb-only write failed: ${exception.getMessage}") }
     }
   }
 
@@ -86,7 +86,7 @@ class MongoFilmwebFallbackStore(
       filmwebOnlyMirror = Try(document.getList("cinemas", classOf[String])).toOption.flatMap(Option(_))
         .fold(Set.empty[String])(_.asScala.toSet)
     }
-  }.recover { case ex => logger.warn(s"Filmweb-only hydrate failed: ${ex.getMessage}") }
+  }.recover { case exception => logger.warn(s"Filmweb-only hydrate failed: ${exception.getMessage}") }
 
   /** Writes are SYNCHRONOUS (unlike the hot-path freshness store): a cinema
    *  enters/leaves fallback at most a few times a day, so the round-trip cost is
@@ -100,7 +100,7 @@ class MongoFilmwebFallbackStore(
           c.updateOne(Filters.eq("_id", state.cinema), toUpdate(state), new UpdateOptions().upsert(true)).toFuture(),
           10.seconds
         )
-      }.recover { case ex => logger.debug(s"Filmweb-fallback write failed for ${state.cinema}: ${ex.getMessage}") }
+      }.recover { case exception => logger.debug(s"Filmweb-fallback write failed for ${state.cinema}: ${exception.getMessage}") }
     }
   }
 
@@ -109,7 +109,7 @@ class MongoFilmwebFallbackStore(
     var count = 0
     documents.foreach(document => fromDocument(document).foreach { s => mirror.put(s.cinema, s); count += 1 })
     if (count > 0) logger.info(s"Hydrated $count Filmweb-fallback state(s) from Mongo.")
-  }.recover { case ex => logger.warn(s"Filmweb-fallback hydrate failed: ${ex.getMessage}") }
+  }.recover { case exception => logger.warn(s"Filmweb-fallback hydrate failed: ${exception.getMessage}") }
 }
 
 object MongoFilmwebFallbackStore {

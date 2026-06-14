@@ -75,12 +75,12 @@ class MongoNormalizationReportRepository(
     Try {
       Await.result(c.replaceOne(Filters.eq("_id", report._id), report, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
       ()
-    }.recover { case ex => logger.warn(s"NormalizationReportRepository.writeLatest failed: ${ex.getMessage}") }
+    }.recover { case exception => logger.warn(s"NormalizationReportRepository.writeLatest failed: ${exception.getMessage}") }
   }
 
   def readLatest(): Option[StoredNormalizationReport] = coll.flatMap { c =>
     Try(Await.result(c.find(Filters.eq("_id", NormalizationReport.LatestId)).headOption(), 10.seconds))
-      .recover { case ex => logger.warn(s"NormalizationReportRepository.readLatest failed: ${ex.getMessage}"); None }
+      .recover { case exception => logger.warn(s"NormalizationReportRepository.readLatest failed: ${exception.getMessage}"); None }
       .getOrElse(None)
   }
 
@@ -97,8 +97,8 @@ class MongoNormalizationReportRepository(
             .getCollection[StoredNormalizationReport]("normalizationReports")
           Await.result(c.countDocuments().toFuture(), 10.seconds)
           (Some(client), Some(c))
-        }.recover { case ex =>
-          logger.error(s"MongoNormalizationReportRepository init failed (${ex.getMessage}) — disabled.")
+        }.recover { case exception =>
+          logger.error(s"MongoNormalizationReportRepository init failed (${exception.getMessage}) — disabled.")
           (None, None)
         }.getOrElse((None, None))
     }

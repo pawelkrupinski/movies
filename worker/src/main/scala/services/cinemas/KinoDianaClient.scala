@@ -68,9 +68,9 @@ object KinoDianaClient {
   private[cinemas] def parseFeed(body: String): Seq[(String, LocalDateTime, Option[String])] = {
     val records = Try(Json.parse(body)).toOption.collect { case a: JsArray => a.value.toSeq }
       .getOrElse(Seq.empty)
-    records.flatMap { rec =>
-      val date = (rec \ "date").asOpt[String].map(_.take(10)).flatMap(d => Try(LocalDate.parse(d)).toOption)
-      val document  = Jsoup.parse((rec \ "title").asOpt[String].getOrElse(""), BaseUrl)
+    records.flatMap { record =>
+      val date = (record \ "date").asOpt[String].map(_.take(10)).flatMap(d => Try(LocalDate.parse(d)).toOption)
+      val document  = Jsoup.parse((record \ "title").asOpt[String].getOrElse(""), BaseUrl)
       val title   = Option(document.selectFirst("p.event-title")).map(_.text.trim).filter(_.nonEmpty)
       val time    = Option(document.selectFirst("p.event-hour")).map(_.text).flatMap(ScraperParse.parseHHmm)
       val booking = Option(document.selectFirst("a[href*=/Bilety/Sala]")).map(_.attr("abs:href")).filter(_.nonEmpty)

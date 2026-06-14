@@ -64,7 +64,7 @@ class MongoScheduledRunStore(coll: MongoCollection[Document]) extends ScheduledR
           Indexes.ascending("claimedAt"),
           new JIndexOptions().expireAfter(MongoScheduledRunStore.TtlHours, TimeUnit.HOURS)
         ).toFuture(), 10.seconds)
-      }.recover { case ex => logger.warn(s"scheduled_runs TTL index init failed: ${ex.getMessage}") }
+      }.recover { case exception => logger.warn(s"scheduled_runs TTL index init failed: ${exception.getMessage}") }
       ()
     }, "scheduled-runs-init")
     t.setDaemon(true)
@@ -79,14 +79,14 @@ class MongoScheduledRunStore(coll: MongoCollection[Document]) extends ScheduledR
       )).toFuture(), 10.seconds)
       true
     }.recover {
-      case ex: MongoWriteException if MongoErrors.isDuplicateKey(ex) =>
+      case exception: MongoWriteException if MongoErrors.isDuplicateKey(exception) =>
         // Another machine already claimed this occurrence — skip.
         false
-      case ex: Throwable =>
+      case exception: Throwable =>
         // On any other failure, skip rather than risk a double-run; the next
         // occurrence gets a fresh claim. (A missed occurrence is recovered by the
         // reaper's freshness gating, which re-queues the same stale work later.)
-        logger.warn(s"ScheduledRunStore.claim($occurrenceId) failed: ${ex.getMessage}")
+        logger.warn(s"ScheduledRunStore.claim($occurrenceId) failed: ${exception.getMessage}")
         false
     }.getOrElse(false)
 }

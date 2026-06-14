@@ -118,9 +118,9 @@ class RealHttpFetch extends HttpFetch with Logging {
 
   private def sendLogged(method: String, url: String, send: => HttpResponse[Array[Byte]]): String = {
     val response = try send catch {
-      case ex: Throwable =>
-        logFailure(method, url, ex)
-        throw ex
+      case exception: Throwable =>
+        logFailure(method, url, exception)
+        throw exception
     }
     checkStatus(method, url, response)
   }
@@ -144,17 +144,17 @@ class RealHttpFetch extends HttpFetch with Logging {
   private def decodeBody(bytes: Array[Byte]): String =
     new String(Gunzip.decode(bytes), StandardCharsets.UTF_8)
 
-  private def logFailure(method: String, url: String, ex: Throwable): Unit = ex match {
+  private def logFailure(method: String, url: String, exception: Throwable): Unit = exception match {
     case _: HttpTimeoutException =>
       logger.warn(s"HTTP $method $url timed out after ${RequestTimeout.toSeconds}s (service not responding)")
     case _ =>
-      logger.warn(s"HTTP $method $url failed: ${ex.getClass.getSimpleName}: ${ex.getMessage}")
+      logger.warn(s"HTTP $method $url failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
   }
 
   // Async failures come wrapped in `CompletionException`; unwrap so the
   // log line names the real cause (`HttpTimeoutException`, …) rather than
   // the framework wrapper.
-  private def unwrap(ex: Throwable): Throwable = ex match {
+  private def unwrap(exception: Throwable): Throwable = exception match {
     case ce: java.util.concurrent.CompletionException if ce.getCause != null => ce.getCause
     case other => other
   }

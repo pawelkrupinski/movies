@@ -35,7 +35,7 @@ class MongoTitleRulesRepository(
 
   def loadRecords(): Seq[TitleRuleRecord] = coll.map { c =>
     Try(Await.result(c.find().toFuture(), 10.seconds))
-      .recover { case ex => logger.warn(s"TitleRulesRepository.loadRecords failed: ${ex.getMessage}"); Seq.empty }
+      .recover { case exception => logger.warn(s"TitleRulesRepository.loadRecords failed: ${exception.getMessage}"); Seq.empty }
       .getOrElse(Seq.empty)
       .flatMap(safeToDomain)
   }.getOrElse(Seq.empty)
@@ -45,20 +45,20 @@ class MongoTitleRulesRepository(
   private def safeToDomain(s: StoredTitleRuleRecord): Option[TitleRuleRecord] =
     Try(StoredTitleRuleRecord.toDomain(s)).toOption.flatten
 
-  def upsertRecord(rec: TitleRuleRecord): Unit = coll.foreach { c =>
+  def upsertRecord(record: TitleRuleRecord): Unit = coll.foreach { c =>
     Try {
       Await.result(
-        c.replaceOne(Filters.eq("_id", rec.id), StoredTitleRuleRecord.fromDomain(rec),
+        c.replaceOne(Filters.eq("_id", record.id), StoredTitleRuleRecord.fromDomain(record),
           new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
       ()
-    }.recover { case ex => logger.warn(s"TitleRulesRepository.upsertRecord(${rec.id}) failed: ${ex.getMessage}") }
+    }.recover { case exception => logger.warn(s"TitleRulesRepository.upsertRecord(${record.id}) failed: ${exception.getMessage}") }
   }
 
   def deleteRecord(id: String): Unit = coll.foreach { c =>
     Try {
       Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
       ()
-    }.recover { case ex => logger.warn(s"TitleRulesRepository.deleteRecord($id) failed: ${ex.getMessage}") }
+    }.recover { case exception => logger.warn(s"TitleRulesRepository.deleteRecord($id) failed: ${exception.getMessage}") }
   }
 
   override def watchChanges(onChange: () => Unit): Option[AutoCloseable] = coll.map { c =>
@@ -66,7 +66,7 @@ class MongoTitleRulesRepository(
     c.watch().subscribe(new Observer[ChangeStreamDocument[StoredTitleRuleRecord]] {
       override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
       override def onNext(change: ChangeStreamDocument[StoredTitleRuleRecord]): Unit =
-        try onChange() catch { case ex: Throwable => logger.warn(s"TitleRules change-stream apply failed: ${ex.getMessage}") }
+        try onChange() catch { case exception: Throwable => logger.warn(s"TitleRules change-stream apply failed: ${exception.getMessage}") }
       override def onError(e: Throwable): Unit =
         logger.warn(s"TitleRules change stream ended (${e.getMessage}) — relying on the periodic backstop reload.")
       override def onComplete(): Unit = ()
@@ -91,8 +91,8 @@ class MongoTitleRulesRepository(
           Await.result(c.countDocuments().toFuture(), 10.seconds)
           logger.info(s"MongoTitleRulesRepository connected to $dbName.titleRules")
           (Some(client), Some(c))
-        }.recover { case ex =>
-          logger.error(s"MongoTitleRulesRepository init failed (${ex.getMessage}) — disabled.")
+        }.recover { case exception =>
+          logger.error(s"MongoTitleRulesRepository init failed (${exception.getMessage}) — disabled.")
           (None, None)
         }.getOrElse((None, None))
     }

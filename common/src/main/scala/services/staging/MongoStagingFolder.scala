@@ -98,10 +98,10 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
       val moviesRows = await(movies.find(session, Filters.regex("_id", s"^$sanitize\\|$yearStr$$")).toFuture())
         .map(StoredMovieDto.toDomain)
       val plan = StagingFold.plan(stagingRows, moviesRows)
-      plan.moviesUpserts.foreach { case (k, rec) =>
+      plan.moviesUpserts.foreach { case (k, record) =>
         val id = StoredMovieRecord.idFor(k.cleanTitle, k.year)
         await(movies.replaceOne(session, Filters.eq("_id", id),
-          StoredMovieDto.fromDomain(id, rec, Instant.now()), new ReplaceOptions().upsert(true)).toFuture())
+          StoredMovieDto.fromDomain(id, record, Instant.now()), new ReplaceOptions().upsert(true)).toFuture())
       }
       plan.moviesDeletes.foreach(k =>
         await(movies.deleteOne(session, Filters.eq("_id", StoredMovieRecord.idFor(k.cleanTitle, k.year))).toFuture()))

@@ -19,10 +19,10 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     val plan = StagingFold.plan(rows, moviesRows = Seq.empty)
 
     plan.moviesUpserts should have size 1
-    val (key, rec) = plan.moviesUpserts.head
+    val (key, record) = plan.moviesUpserts.head
     key.year shouldBe Some(2026)
-    rec.tmdbId shouldBe Some(1454157)
-    rec.data.keySet shouldBe Set(Helios, Multikino, Tmdb)
+    record.tmdbId shouldBe Some(1454157)
+    record.data.keySet shouldBe Set(Helios, Multikino, Tmdb)
     plan.stagingDeletes should have size 2
     plan.moviesDeletes shouldBe empty
   }
@@ -60,9 +60,9 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     val plan = StagingFold.plan(rows, moviesRows = Seq.empty)
 
     plan.moviesUpserts should have size 1
-    val (key, rec) = plan.moviesUpserts.head
+    val (key, record) = plan.moviesUpserts.head
     key.year shouldBe None
-    rec.data.keySet shouldBe cinemas.toSet               // every cinema survives
+    record.data.keySet shouldBe cinemas.toSet               // every cinema survives
     plan.stagingDeletes should have size cinemas.size
   }
 

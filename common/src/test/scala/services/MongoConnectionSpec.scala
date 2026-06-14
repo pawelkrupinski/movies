@@ -22,17 +22,17 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   private val MalformedUri = "not-a-mongo-uri"
 
   "MongoConnection with required = true" should "throw when MONGODB_URI is absent" in {
-    val ex = intercept[IllegalStateException] {
+    val exception = intercept[IllegalStateException] {
       new MongoConnection(uri = None, dbName = "kinowo", required = true)
     }
-    ex.getMessage should include ("required")
+    exception.getMessage should include ("required")
   }
 
   it should "throw when the connection can't be established" in {
-    val ex = intercept[IllegalStateException] {
+    val exception = intercept[IllegalStateException] {
       new MongoConnection(uri = Some(MalformedUri), dbName = "kinowo", required = true)
     }
-    ex.getMessage should include ("required")
+    exception.getMessage should include ("required")
   }
 
   "MongoConnection with required = false" should "disable (database None) when MONGODB_URI is absent" in {
@@ -59,10 +59,10 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   }
 
   "MongoConnection.fromUri with required = true" should "throw on an unusable URI" in {
-    val ex = intercept[IllegalStateException] {
+    val exception = intercept[IllegalStateException] {
       MongoConnection.fromUri(MalformedUri, required = true)
     }
-    ex.getMessage should include ("required")
+    exception.getMessage should include ("required")
   }
 
   // Wire compression: the payload over the wire is uncompressed BSON, so on a

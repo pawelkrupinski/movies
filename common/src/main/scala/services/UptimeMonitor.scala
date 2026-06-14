@@ -103,7 +103,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
         Indexes.ascending("bucket"),
         new JIndexOptions().expireAfter(BucketTtlSeconds, TimeUnit.SECONDS)
       ).toFuture(), 10.seconds)
-    }.recover { case ex => logger.debug(s"Uptime TTL index not (re)created — collMod will reconcile: ${ex.getMessage}") }
+    }.recover { case exception => logger.debug(s"Uptime TTL index not (re)created — collMod will reconcile: ${exception.getMessage}") }
 
     db.foreach { database =>
       Try {
@@ -111,14 +111,14 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
           .append("index", new org.bson.Document("keyPattern", new org.bson.Document("bucket", 1))
             .append("expireAfterSeconds", BucketTtlSeconds))
         Await.result(database.runCommand(collMod).toFuture(), 10.seconds)
-      }.recover { case ex => logger.debug(s"Uptime TTL collMod skipped: ${ex.getMessage}") }
+      }.recover { case exception => logger.debug(s"Uptime TTL collMod skipped: ${exception.getMessage}") }
     }
 
     Try {
       Await.result(c.createIndex(
         Indexes.compoundIndex(Indexes.ascending("service"), Indexes.ascending("bucket"))
       ).toFuture(), 10.seconds)
-    }.recover { case ex => logger.warn(s"Uptime compound index creation failed: ${ex.getMessage}") }
+    }.recover { case exception => logger.warn(s"Uptime compound index creation failed: ${exception.getMessage}") }
   }
 
   def addListener(f: BucketListener): Unit = { listeners.add(f); () }
@@ -221,9 +221,9 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
           new UpdateOptions().upsert(true)
         ).subscribe(
           (_: org.mongodb.scala.result.UpdateResult) => (),
-          (ex: Throwable) => logger.debug(s"Uptime tag write failed: ${ex.getMessage}")
+          (exception: Throwable) => logger.debug(s"Uptime tag write failed: ${exception.getMessage}")
         )
-      }.recover { case ex => logger.debug(s"Uptime tag write failed: ${ex.getMessage}") }.getOrElse(())
+      }.recover { case exception => logger.debug(s"Uptime tag write failed: ${exception.getMessage}") }.getOrElse(())
     }
   }
 
@@ -244,7 +244,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
         if (tags.nonEmpty) serviceTags.put(service, tags) else serviceTags.remove(service)
       }
     }
-  }.recover { case ex => logger.debug(s"Uptime tag load failed: ${ex.getMessage}") }
+  }.recover { case exception => logger.debug(s"Uptime tag load failed: ${exception.getMessage}") }
 
   private def currentBucket(service: String): Bucket = {
     val ts = bucketTimestamp(System.currentTimeMillis())
@@ -303,9 +303,9 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
       new UpdateOptions().upsert(true)
     ).subscribe(
       (_: org.mongodb.scala.result.UpdateResult) => (),
-      (ex: Throwable) => logger.debug(s"Uptime Mongo write failed: ${ex.getMessage}")
+      (exception: Throwable) => logger.debug(s"Uptime Mongo write failed: ${exception.getMessage}")
     )
-  }.recover { case ex => logger.debug(s"Uptime Mongo write failed: ${ex.getMessage}") }.getOrElse(())
+  }.recover { case exception => logger.debug(s"Uptime Mongo write failed: ${exception.getMessage}") }.getOrElse(())
 
   // ── Polled reads (serving app) ──────────────────────────────────────────────
 
@@ -349,7 +349,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
           )
       }
     }
-  }.recover { case ex => logger.warn(s"Uptime poll failed: ${ex.getMessage}") }
+  }.recover { case exception => logger.warn(s"Uptime poll failed: ${exception.getMessage}") }
 
   private def notifyListeners(service: String, bucket: Bucket): Unit =
     if (!listeners.isEmpty) {
@@ -399,7 +399,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
       }
     }
     if (count > 0) logger.info(s"Hydrated $count uptime bucket(s) from Mongo.")
-  }.recover { case ex => logger.warn(s"Uptime hydrate failed after $HydrateMaxAttempts attempts: ${ex.getMessage}") }
+  }.recover { case exception => logger.warn(s"Uptime hydrate failed after $HydrateMaxAttempts attempts: ${exception.getMessage}") }
 
   /** Merge a bucket post-image that originated in another process (the worker),
    *  read by the poller. The snapshot carries the CUMULATIVE totals for that

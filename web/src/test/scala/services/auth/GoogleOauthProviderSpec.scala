@@ -91,9 +91,9 @@ class GoogleOauthProviderSpec extends AnyFlatSpec with Matchers {
       "oauth2.googleapis.com/token" -> """{"error":"invalid_grant","error_description":"code expired"}"""
     ))
     val p  = new GoogleOauthProvider(fake, Client, Secret)
-    val ex = intercept[RuntimeException](p.exchangeCode("X", "https://k/cb"))
-    ex.getMessage should include ("missing access_token")
-    ex.getMessage should include ("invalid_grant")
+    val exception = intercept[RuntimeException](p.exchangeCode("X", "https://k/cb"))
+    exception.getMessage should include ("missing access_token")
+    exception.getMessage should include ("invalid_grant")
   }
 
   it should "throw when /userinfo omits sub — the User upsert key would be empty" in {
@@ -102,8 +102,8 @@ class GoogleOauthProviderSpec extends AnyFlatSpec with Matchers {
       "googleapis.com/oauth2/v3/userinfo" -> """{"email":"u@x.com"}"""
     ))
     val p  = new GoogleOauthProvider(fake, Client, Secret)
-    val ex = intercept[RuntimeException](p.exchangeCode("X", "https://k/cb"))
-    ex.getMessage should include ("missing sub")
+    val exception = intercept[RuntimeException](p.exchangeCode("X", "https://k/cb"))
+    exception.getMessage should include ("missing sub")
   }
 
   it should "treat email / name / picture as optional — a sub-only response yields a valid profile" in {

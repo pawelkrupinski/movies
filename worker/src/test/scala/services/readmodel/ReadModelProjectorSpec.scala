@@ -27,7 +27,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   private def record(rating: Option[Double], showtimes: Seq[Showtime]): MovieRecord =
     MovieRecord(imdbRating = rating, tmdbId = Some(1), data = Map[Source, SourceData](Multikino -> slot(showtimes)))
 
-  private def stored(rec: MovieRecord): StoredMovieRecord = StoredMovieRecord("Foo", Some(2024), rec)
+  private def stored(record: MovieRecord): StoredMovieRecord = StoredMovieRecord("Foo", Some(2024), record)
 
   private def fixture(): (ReadModelProjector, InMemoryMovieRepository, InMemoryReadModelRepository) = {
     val repository = new InMemoryMovieRepository()
@@ -147,13 +147,13 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val rm   = new InMemoryReadModelRepository()
     def yearKey(y: Int) = s"${TitleNormalizer.sanitize("Foo")}|$y"
     // A film whose reported year was 2025 when an earlier projector ran.
-    def recYear(y: Int) =
+    def recordYear(y: Int) =
       MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](Multikino ->
         SourceData(title = Some("Foo"), releaseYear = Some(y),
           filmUrl = Some("https://mk/foo"), showtimes = Seq(at("2026-06-12T20:00")))))
 
     val p1 = new ReadModelProjector(repository, rm, rm)
-    repository.upsert("Foo", Some(2025), recYear(2025))
+    repository.upsert("Foo", Some(2025), recordYear(2025))
     p1.reconcile()
     rm.findAllMovies().map(_._id) should contain(yearKey(2025))
     p1.stop()  // the worker dies, taking its in-memory state with it
@@ -161,7 +161,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     // `settle` re-keys the source row onto the (now resolved) year — old gone,
     // new live.
     repository.delete("Foo", Some(2025))
-    repository.upsert("Foo", Some(2026), recYear(2026))
+    repository.upsert("Foo", Some(2026), recordYear(2026))
 
     // A fresh projector boots with an empty `lastMovie` and reconciles.
     val p2 = new ReadModelProjector(repository, rm, rm)

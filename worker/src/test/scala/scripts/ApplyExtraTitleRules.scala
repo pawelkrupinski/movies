@@ -65,8 +65,8 @@ object ApplyExtraTitleRules {
 
     val current = repository.loadRecords()
     ExtraTitleRules.all.groupBy(_.scope).foreach { case (scope, extras) =>
-      val recId    = TitleRuleRecord.idFor(scope, None)
-      val existing = current.find(_.id == recId)
+      val recordId    = TitleRuleRecord.idFor(scope, None)
+      val existing = current.find(_.id == recordId)
       // If the record is somehow missing, seed it from the frozen defaults for
       // this scope so we never write a record that DROPS the baseline rules.
       val baseRules = existing.map(_.rules)
@@ -76,11 +76,11 @@ object ApplyExtraTitleRules {
 
       val present = baseRules.map(_.id).toSet
       val toAdd   = extras.filterNot(r => present.contains(r.id))
-      if (toAdd.isEmpty) println(s"[apply] [$recId] already current — nothing to add.")
+      if (toAdd.isEmpty) println(s"[apply] [$recordId] already current — nothing to add.")
       else {
-        val merged = TitleRuleRecord(recId, scope, None, baseRules ++ toAdd, lastRules)
+        val merged = TitleRuleRecord(recordId, scope, None, baseRules ++ toAdd, lastRules)
         repository.upsertRecord(merged)
-        println(s"[apply] [$recId] appended ${toAdd.size} rules -> ${merged.rules.size} total " +
+        println(s"[apply] [$recordId] appended ${toAdd.size} rules -> ${merged.rules.size} total " +
           s"(${toAdd.map(_.id).mkString(", ")})")
       }
     }

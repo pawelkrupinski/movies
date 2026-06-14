@@ -464,22 +464,22 @@ class CaffeineMovieCache(
    *  first; enrichment-thread arrival order (which varies across machines, and
    *  used to flip the canonical here, drifting the whole-corpus snapshot
    *  between arm64 dev boxes and amd64 CI) no longer matters. */
-  private def foldDeterministically(newKey: CacheKey, newRec: MovieRecord, siblingKey: CacheKey): Unit = {
-    val siblingRec = Option(positive.getIfPresent(siblingKey)).getOrElse(newRec)
+  private def foldDeterministically(newKey: CacheKey, newRecord: MovieRecord, siblingKey: CacheKey): Unit = {
+    val siblingRecord = Option(positive.getIfPresent(siblingKey)).getOrElse(newRecord)
     val newWins    = Ordering[(Boolean, Int, String)].lt(canonicalRank(newKey), canonicalRank(siblingKey))
     val canonical  = if (newWins) newKey else siblingKey
     val victim     = if (newWins) siblingKey else newKey
     // union(canonical, victim): per-source slots are unioned (no loss); the
     // shared top-level enrichment fields are identical between same-tmdbId
     // siblings, so the merged record doesn't depend on the union direction.
-    val merged = if (newWins) MovieRecordMerge.union(newRec, siblingRec)
-                 else         MovieRecordMerge.union(siblingRec, newRec)
+    val merged = if (newWins) MovieRecordMerge.union(newRecord, siblingRecord)
+                 else         MovieRecordMerge.union(siblingRecord, newRecord)
     persist(canonical, merged)
     if (victim != canonical) {
       positive.invalidate(victim)
       repository.delete(victim.cleanTitle, victim.year)
       logger.info(s"Folded duplicate '${victim.cleanTitle}' (${victim.year.getOrElse("—")}) " +
-                  s"into '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}) — same tmdbId=${newRec.tmdbId.get}.")
+                  s"into '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}) — same tmdbId=${newRecord.tmdbId.get}.")
     }
   }
 
@@ -939,7 +939,7 @@ class CaffeineMovieCache(
     val byKey: Map[CacheKey, MovieRecord] =
       rows.groupBy(r => CacheKey(r.title, r.year))
         .map { case (k, rs) => k -> MovieRecordMerge.unionAll(rs.map(_.record)) }
-    byKey.foreach { case (k, rec) => positive.put(k, rec) }
+    byKey.foreach { case (k, record) => positive.put(k, record) }
     positive.asMap().keySet().asScala.toSeq
       .filterNot(byKey.keySet.contains)
       .foreach(positive.invalidate)
@@ -1007,7 +1007,7 @@ class CaffeineMovieCache(
       s"backstop rehydrate every ${BackstopIntervalSeconds}s.")
     refreshScheduler.scheduleAtFixedRate(
       () => Try(rehydrate()).recover {
-        case ex => logger.warn(s"MovieCache rehydrate tick failed: ${ex.getMessage}")
+        case exception => logger.warn(s"MovieCache rehydrate tick failed: ${exception.getMessage}")
       },
       BackstopIntervalSeconds, BackstopIntervalSeconds, TimeUnit.SECONDS
     )

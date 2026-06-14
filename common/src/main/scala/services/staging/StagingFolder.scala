@@ -36,7 +36,7 @@ class InMemoryStagingFolder(stagingRepository: StagingRepository, movieRepositor
     if (stagingRows.nonEmpty) {
       val moviesRows = movieRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key && r.year == year)
       val plan       = StagingFold.plan(stagingRows, moviesRows)
-      plan.moviesUpserts.foreach { case (k, rec) => movieRepository.upsert(k.cleanTitle, k.year, rec) }
+      plan.moviesUpserts.foreach { case (k, record) => movieRepository.upsert(k.cleanTitle, k.year, record) }
       plan.moviesDeletes.foreach(k => movieRepository.delete(k.cleanTitle, k.year))
       plan.stagingDeletes.foreach(r => stagingRepository.delete(r.cinema, r.title, r.year))
       logger.info(s"Folded '$cleanTitle' (${year.getOrElse("—")}): ${stagingRows.size} staging row(s) → " +

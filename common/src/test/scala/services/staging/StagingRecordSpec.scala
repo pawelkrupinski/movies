@@ -44,12 +44,12 @@ class StagingRecordSpec extends AnyFlatSpec with Matchers {
   }
 
   "the movies storage shape" should "round-trip a 3-part staging id through the codec" in {
-    val rec = slot("Kumotry", Some(2026)).copy(
+    val record = slot("Kumotry", Some(2026)).copy(
       tmdbId = Some(1454157),
       data   = slot("Kumotry", Some(2026)).data +
         (Tmdb -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026))))
     val id  = StagingRecord.idFor(Helios, "Kumotry", Some(2026))
-    val dto = StoredMovieDto.fromDomain(id, rec, Instant.now())
+    val dto = StoredMovieDto.fromDomain(id, record, Instant.now())
     val back = StoredMovieDto.toDomain(dto).record
     back.tmdbId               shouldBe Some(1454157)
     back.data.keySet          shouldBe Set(Helios, Tmdb)

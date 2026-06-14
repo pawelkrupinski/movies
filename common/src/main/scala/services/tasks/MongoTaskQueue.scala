@@ -80,7 +80,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       Indexes.ascending("deletedAt"),
       new JIndexOptions().expireAfter(6L, TimeUnit.HOURS).partialFilterExpression(Filters.exists("deletedAt", true))
     ).toFuture(), 10.seconds)
-  }.recover { case ex => logger.warn(s"Task queue index creation failed: ${ex.getMessage}") }
+  }.recover { case exception => logger.warn(s"Task queue index creation failed: ${exception.getMessage}") }
 
   override def enqueue(
     taskType:    TaskType,
@@ -105,9 +105,9 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         val res = Await.result(c.updateOne(filter, onInsert, new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(), 10.seconds)
         if (res.getUpsertedId != null) EnqueueResult.Added else EnqueueResult.Duplicate
       }.recover {
-        case ex: MongoWriteException if services.MongoErrors.isDuplicateKey(ex) => EnqueueResult.Duplicate
-        case ex: Throwable =>
-          logger.warn(s"TaskQueue.enqueue($dedupKey) failed: ${ex.getMessage}")
+        case exception: MongoWriteException if services.MongoErrors.isDuplicateKey(exception) => EnqueueResult.Duplicate
+        case exception: Throwable =>
+          logger.warn(s"TaskQueue.enqueue($dedupKey) failed: ${exception.getMessage}")
           EnqueueResult.Duplicate
       }.getOrElse(EnqueueResult.Duplicate)
   }
@@ -135,8 +135,8 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         Await.result(c.findOneAndUpdate(eligible, update, opts).headOption(), 10.seconds)
           .map(toTask)
       }.recover {
-        case ex: Throwable =>
-          logger.warn(s"TaskQueue.claim failed: ${ex.getMessage}")
+        case exception: Throwable =>
+          logger.warn(s"TaskQueue.claim failed: ${exception.getMessage}")
           None
       }.getOrElse(None)
   }
@@ -151,7 +151,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       Updates.unset("leaseExpiresAt")
     )
     Try(Await.result(c.updateOne(filter, update).toFuture(), 10.seconds))
-      .recover { case ex => logger.warn(s"TaskQueue.complete($id) failed: ${ex.getMessage}") }
+      .recover { case exception => logger.warn(s"TaskQueue.complete($id) failed: ${exception.getMessage}") }
   }
 
   override def release(id: String, workerId: String, error: Option[String],
@@ -169,7 +169,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
     )
     val update = error.fold(base)(e => Updates.combine(base, Updates.set("lastError", e)))
     Try(Await.result(c.updateOne(filter, update).toFuture(), 10.seconds))
-      .recover { case ex => logger.warn(s"TaskQueue.release($id) failed: ${ex.getMessage}") }
+      .recover { case exception => logger.warn(s"TaskQueue.release($id) failed: ${exception.getMessage}") }
   }
 
   override def reapExpiredLeases(now: Instant): Int = coll match {
@@ -187,8 +187,8 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       Try {
         Await.result(c.updateMany(filter, update).toFuture(), 10.seconds).getModifiedCount.toInt
       }.recover {
-        case ex: Throwable =>
-          logger.warn(s"TaskQueue.reapExpiredLeases failed: ${ex.getMessage}")
+        case exception: Throwable =>
+          logger.warn(s"TaskQueue.reapExpiredLeases failed: ${exception.getMessage}")
           0
       }.getOrElse(0)
   }
@@ -213,8 +213,8 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
             .toFuture(),
           10.seconds).map(toSummary)
       }.recover {
-        case ex: Throwable =>
-          logger.warn(s"TaskQueue.monitor failed: ${ex.getMessage}")
+        case exception: Throwable =>
+          logger.warn(s"TaskQueue.monitor failed: ${exception.getMessage}")
           Seq.empty[TaskSummary]
       }.getOrElse(Seq.empty)
       QueueSnapshot(countByState(), active)
@@ -235,7 +235,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       override def onNext(change: ChangeStreamDocument[Document]): Unit =
         if (change.getOperationType == OperationType.INSERT)
           try onWaiting()
-          catch { case ex: Throwable => logger.warn(s"Task queue doorbell ring failed: ${ex.getMessage}") }
+          catch { case exception: Throwable => logger.warn(s"Task queue doorbell ring failed: ${exception.getMessage}") }
       override def onError(e: Throwable): Unit =
         logger.warn(s"Task queue change stream ended (${e.getMessage}) — worker pool falls back to its idle backstop.")
       override def onComplete(): Unit = ()

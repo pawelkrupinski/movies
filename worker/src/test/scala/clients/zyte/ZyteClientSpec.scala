@@ -52,9 +52,9 @@ class ZyteClientSpec extends AnyFlatSpec with Matchers {
 
   it should "throw naming the non-2xx upstream status (the biletyna 403 case)" in {
     val json = """{"statusCode":403,"httpResponseBody":""}"""
-    val ex   = the[RuntimeException] thrownBy ZyteClient.bodyOrThrow(json, "https://biletyna.pl/x")
-    ex.getMessage should include("403")
-    ex.getMessage should include("https://biletyna.pl/x")
+    val exception   = the[RuntimeException] thrownBy ZyteClient.bodyOrThrow(json, "https://biletyna.pl/x")
+    exception.getMessage should include("403")
+    exception.getMessage should include("https://biletyna.pl/x")
   }
 
   it should "throw when the body is missing even on a 2xx status" in {

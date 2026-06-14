@@ -43,7 +43,7 @@ class MongoCachingDetailFetch(
           c.createIndex(Indexes.ascending("fetchedAt"),
             new JIndexOptions().expireAfter(ttl.toSeconds, TimeUnit.SECONDS)).toFuture(),
           10.seconds)
-      ).recover { case ex => logger.warn(s"Detail-cache index creation failed: ${ex.getMessage}") }
+      ).recover { case exception => logger.warn(s"Detail-cache index creation failed: ${exception.getMessage}") }
       ()
     }, "detail-cache-init")
     t.setDaemon(true)
@@ -90,7 +90,7 @@ class MongoCachingDetailFetch(
         new com.mongodb.client.model.UpdateOptions().upsert(true)
       ).subscribe(
         (_: org.mongodb.scala.result.UpdateResult) => (),
-        (ex: Throwable) => logger.debug(s"Detail-cache write failed for $url: ${ex.getMessage}")
+        (exception: Throwable) => logger.debug(s"Detail-cache write failed for $url: ${exception.getMessage}")
       )
-    }.recover { case ex => logger.debug(s"Detail-cache write failed for $url: ${ex.getMessage}") }
+    }.recover { case exception => logger.debug(s"Detail-cache write failed for $url: ${exception.getMessage}") }
 }

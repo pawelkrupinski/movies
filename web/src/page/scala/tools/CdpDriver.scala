@@ -254,8 +254,8 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
       "awaitPromise"  -> true
     )
     val result = send("Runtime.evaluate", parameters)
-    (result \ "exceptionDetails").asOpt[JsValue].foreach { ex =>
-      throw new RuntimeException(s"JS exception evaluating [$js]: ${Json.stringify(ex)}")
+    (result \ "exceptionDetails").asOpt[JsValue].foreach { exception =>
+      throw new RuntimeException(s"JS exception evaluating [$js]: ${Json.stringify(exception)}")
     }
     (result \ "result" \ "value").asOpt[JsValue].getOrElse(Json.obj())
   }

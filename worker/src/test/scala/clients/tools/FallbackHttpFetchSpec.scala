@@ -52,12 +52,12 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
       "zyte"   -> boom("z-failure"),
       "direct" -> boom("d-failure")
     ))
-    val ex = intercept[RuntimeException](chain.get("https://example"))
-    ex.getMessage should include ("All 2 backends failed")
-    ex.getMessage should include ("zyte:")
-    ex.getMessage should include ("z-failure")
-    ex.getMessage should include ("direct:")
-    ex.getMessage should include ("d-failure")
+    val exception = intercept[RuntimeException](chain.get("https://example"))
+    exception.getMessage should include ("All 2 backends failed")
+    exception.getMessage should include ("zyte:")
+    exception.getMessage should include ("z-failure")
+    exception.getMessage should include ("direct:")
+    exception.getMessage should include ("d-failure")
   }
 
   it should "exercise the same fallback for post as for get" in {

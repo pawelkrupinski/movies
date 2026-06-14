@@ -52,7 +52,7 @@ class MovieCardSpec extends AnyFlatSpec with Matchers {
     val cinemaCity = "https://www.cinema-city.pl/.../8194S2R.jpg"
     val tmdb       = "https://image.tmdb.org/t/p/w500/x.jpg"
     val imdb       = "https://m.media-amazon.com/.../poster.jpg"
-    val rec = MovieRecord(
+    val record = MovieRecord(
       data = Map[Source, SourceData](
         Multikino           -> SourceData(posterUrl = Some(multikino)),
         CinemaCityKinepolis -> SourceData(posterUrl = Some(cinemaCity)),
@@ -60,7 +60,7 @@ class MovieCardSpec extends AnyFlatSpec with Matchers {
         Imdb                -> SourceData(posterUrl = Some(imdb))
       )
     )
-    val rendered = views.html._movieCard(movie, Some(multikino), TestReadModel.resolved("Karuppu", None, rec))(Html("")).body
+    val rendered = views.html._movieCard(movie, Some(multikino), TestReadModel.resolved("Karuppu", None, record))(Html("")).body
     rendered should include ("data-fallbacks=\"")
     // Three fallbacks, joined by a literal pipe. Each individually goes
     // through PosterProxy → weserv (Cinema City is HTTPS but still gets

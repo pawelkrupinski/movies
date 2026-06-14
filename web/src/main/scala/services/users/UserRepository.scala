@@ -80,8 +80,8 @@ class MongoUserRepository(
     Try {
       Await.result(c.find(Filters.eq("id", id)).headOption(), 10.seconds)
     }.recover {
-      case ex: Throwable =>
-        logger.warn(s"UserRepository.findById($id) failed: ${ex.getMessage}")
+      case exception: Throwable =>
+        logger.warn(s"UserRepository.findById($id) failed: ${exception.getMessage}")
         None
     }.getOrElse(None)
   }
@@ -94,8 +94,8 @@ class MongoUserRepository(
         10.seconds
       )
     }.recover {
-      case ex: Throwable =>
-        logger.warn(s"UserRepository.findByProviderSub($provider, …) failed: ${ex.getMessage}")
+      case exception: Throwable =>
+        logger.warn(s"UserRepository.findByProviderSub($provider, …) failed: ${exception.getMessage}")
         None
     }.getOrElse(None)
   }
@@ -110,8 +110,8 @@ class MongoUserRepository(
     Try {
       Await.result(c.find(Filters.regex("email", pattern, "i")).headOption(), 10.seconds)
     }.recover {
-      case ex: Throwable =>
-        logger.warn(s"UserRepository.findByEmail(…) failed: ${ex.getMessage}")
+      case exception: Throwable =>
+        logger.warn(s"UserRepository.findByEmail(…) failed: ${exception.getMessage}")
         None
     }.getOrElse(None)
   }
@@ -121,7 +121,7 @@ class MongoUserRepository(
       Await.result(c.deleteOne(Filters.eq("id", id)).toFuture(), 10.seconds)
       ()
     }.recover {
-      case ex: Throwable => logger.warn(s"UserRepository.delete($id) failed: ${ex.getMessage}")
+      case exception: Throwable => logger.warn(s"UserRepository.delete($id) failed: ${exception.getMessage}")
     }
   }
 
@@ -131,8 +131,8 @@ class MongoUserRepository(
       Await.result(c.replaceOne(Filters.eq("id", user.id), user, opts).toFuture(), 10.seconds)
       ()
     }.recover {
-      case ex: Throwable =>
-        logger.warn(s"UserRepository.upsert(${user.id}) failed: ${ex.getMessage}")
+      case exception: Throwable =>
+        logger.warn(s"UserRepository.upsert(${user.id}) failed: ${exception.getMessage}")
     }
   }
 
@@ -154,8 +154,8 @@ class MongoUserRepository(
           logger.info(s"MongoUserRepository connected to $dbName.users")
           (client, coll)
         }.recover {
-          case ex: Throwable =>
-            logger.error(s"MongoUserRepository init failed (${ex.getMessage}) — disabled.")
+          case exception: Throwable =>
+            logger.error(s"MongoUserRepository init failed (${exception.getMessage}) — disabled.")
             null
         }.toOption.filter(_ != null) match {
           case Some((c, coll)) => (Some(c), Some(coll))

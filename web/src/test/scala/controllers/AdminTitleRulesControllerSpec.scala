@@ -174,12 +174,12 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   "recordFromJson / recordToJson" should "round-trip a record with normal + last rules" in {
-    val rec = TitleRuleRecord("cinema-city", RuleScope.PerCinema, Some("cinema-city"),
+    val record = TitleRuleRecord("cinema-city", RuleScope.PerCinema, Some("cinema-city"),
       rules = Seq(TitleRule("r1", RuleScope.PerCinema, Some("cinema-city"), "^A ", "",
         applyAll = false, order = 0, tag = Some("t"), note = Some("n"))),
       lastRules = Seq(TitleRule("r2", RuleScope.PerCinema, Some("cinema-city"), "B$", "",
         applyAll = true, order = 0, last = true)))
-    AdminTitleRulesController.recordFromJson(AdminTitleRulesController.recordToJson(rec)) shouldBe Right(rec)
+    AdminTitleRulesController.recordFromJson(AdminTitleRulesController.recordToJson(record)) shouldBe Right(record)
   }
 
   "flatRuleFromJson" should "parse the flattened preview shape incl. last + order" in {

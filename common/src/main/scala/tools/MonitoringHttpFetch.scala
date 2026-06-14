@@ -107,11 +107,11 @@ class MonitoringHttpFetch(
       case None => delegate.getAsync(url)
       case Some(service) =>
         val t0 = System.nanoTime()
-        delegate.getAsync(url).whenComplete { (_, ex) =>
+        delegate.getAsync(url).whenComplete { (_, exception) =>
           val ms = (System.nanoTime() - t0) / 1000000L
-          if (ex == null) monitor.recordSuccess(service, ms)
+          if (exception == null) monitor.recordSuccess(service, ms)
           else {
-            val cause = unwrap(ex)
+            val cause = unwrap(exception)
             if (isConnectionFailure(cause)) monitor.recordFailure(service, errorDescription(cause))
             else monitor.recordSuccess(service, ms)
           }
@@ -122,7 +122,7 @@ class MonitoringHttpFetch(
   override def post(url: String, body: String, contentType: String): String =
     monitored(url)(delegate.post(url, body, contentType))
 
-  private def unwrap(ex: Throwable): Throwable = ex match {
+  private def unwrap(exception: Throwable): Throwable = exception match {
     case ce: java.util.concurrent.CompletionException if ce.getCause != null => ce.getCause
     case other => other
   }

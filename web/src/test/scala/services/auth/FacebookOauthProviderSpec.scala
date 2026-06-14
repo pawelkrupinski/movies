@@ -62,10 +62,10 @@ class FacebookOauthProviderSpec extends AnyFlatSpec with Matchers {
       "graph.facebook.com/v18.0/oauth/access_token" -> """{"access_token":"t"}""",
       "graph.facebook.com/v18.0/me"                 -> """{"name":"Idless"}"""
     ))
-    val ex = intercept[RuntimeException] {
+    val exception = intercept[RuntimeException] {
       new FacebookOauthProvider(fake, AppId, Secret).exchangeCode("X", "https://k/cb")
     }
-    ex.getMessage should include ("missing id")
+    exception.getMessage should include ("missing id")
   }
 
   "Facebook.name" should "be 'facebook' (matches the route :provider segment)" in {

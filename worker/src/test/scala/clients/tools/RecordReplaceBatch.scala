@@ -16,12 +16,12 @@ import scala.util.Try
 object RecordReplaceBatch {
   def main(args: Array[String]): Unit = {
     val real  = new RealHttpFetch()
-    def rec(directory: String) = new RecordingHttpFetch(directory, real)
+    def record(directory: String) = new RecordingHttpFetch(directory, real)
     val today = LocalDate.of(2026, 6, 8)
     def rep(label: String)(n: => Int): Unit =
       println(f"$label%-30s ${Try(n).fold(e => s"FAIL ${e.getClass.getSimpleName}: ${e.getMessage}", x => s"$x films")}")
 
-    def corpus = rec("08-06-2026")
+    def corpus = record("08-06-2026")
 
     // ── Chains: Helios (native REST) + Cinema City ──
     Seq(HeliosNuxt.Starachowice, HeliosNuxt.Krosno, HeliosNuxt.Tczew, HeliosNuxt.Zory,
@@ -52,7 +52,7 @@ object RecordReplaceBatch {
 
     // ── Per-client fixtures for the new specs ──
     println("--- spec fixtures ---")
-    rep("ekobilet spec (Meduza)")(new EkobiletClient(rec("kino-meduza"), "opolskielamy", KinoMeduza, today).fetch().size)
-    rep("systembiletowy-alt spec")(new SystemBiletowyClient(rec("kino-pckul"), "https://bilety.pckul.pl", KinoPckulKino).fetch().size)
+    rep("ekobilet spec (Meduza)")(new EkobiletClient(record("kino-meduza"), "opolskielamy", KinoMeduza, today).fetch().size)
+    rep("systembiletowy-alt spec")(new SystemBiletowyClient(record("kino-pckul"), "https://bilety.pckul.pl", KinoPckulKino).fetch().size)
   }
 }

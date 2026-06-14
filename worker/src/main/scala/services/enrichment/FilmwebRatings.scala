@@ -188,9 +188,9 @@ class FilmwebRatings(
           cache.putIfPresent(key, _.copy(filmwebRating = fresh))
           changed.incrementAndGet()
         case Success(_) => ()
-        case Failure(ex) =>
+        case Failure(exception) =>
           failed.incrementAndGet()
-          logger.debug(s"Filmweb refresh: $url lookup failed: ${ex.getMessage}")
+          logger.debug(s"Filmweb refresh: $url lookup failed: ${exception.getMessage}")
       }
     }
 
@@ -201,9 +201,9 @@ class FilmwebRatings(
           // stored a URL. Cheap (single Caffeine lookup) and avoids leaking
           // the resolved Option through the helper's API.
           if (cache.get(key).exists(_.filmwebUrl.isDefined && !enrichment.filmwebUrl.isDefined)) urlDiscovered.incrementAndGet()
-        case Failure(ex) =>
+        case Failure(exception) =>
           failed.incrementAndGet()
-          logger.debug(s"Filmweb refresh: ${key.cleanTitle} full-lookup failed: ${ex.getMessage}")
+          logger.debug(s"Filmweb refresh: ${key.cleanTitle} full-lookup failed: ${exception.getMessage}")
       }
     }
 

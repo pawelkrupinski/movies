@@ -83,7 +83,7 @@ object MeasureStartup {
       val streamDone = Promise[Unit]()
       movies.find().subscribe(
         (_: StoredMovieDto) => timings += (System.nanoTime() - cursorOpen),
-        (ex: Throwable)     => { System.err.println(s"   stream error: ${ex.getMessage}"); streamDone.tryFailure(ex) },
+        (exception: Throwable)     => { System.err.println(s"   stream error: ${exception.getMessage}"); streamDone.tryFailure(exception) },
         ()                  => streamDone.trySuccess(())
       )
       Await.result(streamDone.future, 60.seconds)
@@ -192,8 +192,8 @@ object MeasureStartup {
       println(f"   per-row toDomain mapping:     ${(t5 - t4).toDouble / rows.size / 1e6}%6.3f ms")
       println(f"   per-row Caffeine populate:    ${(t6 - t5).toDouble / rows.size / 1e6}%6.3f ms")
     } catch {
-      case ex: Throwable =>
-        System.err.println(s"MeasureStartup aborted: ${ex.getClass.getSimpleName}: ${Option(ex.getMessage).getOrElse("")}")
+      case exception: Throwable =>
+        System.err.println(s"MeasureStartup aborted: ${exception.getClass.getSimpleName}: ${Option(exception.getMessage).getOrElse("")}")
         sys.exit(2)
     } finally {
       client.close()

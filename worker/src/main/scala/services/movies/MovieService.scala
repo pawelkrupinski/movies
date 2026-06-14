@@ -90,14 +90,14 @@ class MovieService(
     logger.info(s"TMDB retry scheduled every ${TmdbRetryHours}h (first run in ${StartupDelaySeconds}s).")
     tmdbRetryScheduler.scheduleAtFixedRate(
       () => Try(retryUnresolvedTmdb()).recover {
-        case ex => logger.warn(s"TMDB retry tick failed: ${ex.getMessage}")
+        case exception => logger.warn(s"TMDB retry tick failed: ${exception.getMessage}")
       },
       StartupDelaySeconds, tmdbInterval, TimeUnit.SECONDS
     )
     logger.info(s"Corpus settle scheduled every ${SettleIntervalSeconds}s (first run in ${StartupDelaySeconds}s).")
     settleScheduler.scheduleAtFixedRate(
       () => Try(settle()).recover {
-        case ex => logger.warn(s"Corpus settle tick failed: ${ex.getMessage}")
+        case exception => logger.warn(s"Corpus settle tick failed: ${exception.getMessage}")
       },
       StartupDelaySeconds, SettleIntervalSeconds, TimeUnit.SECONDS
     )
@@ -335,12 +335,12 @@ class MovieService(
         // the periodic settle.
         val liveKey = cache.canonicalKeyFor(key).getOrElse(key)
         cache.get(liveKey) match {
-          case Some(rec) => cache.settleResolved(liveKey, rec.copy(tmdbNoMatch = true))
+          case Some(record) => cache.settleResolved(liveKey, record.copy(tmdbNoMatch = true))
           case None      => cache.putIfPresent(liveKey, _.copy(tmdbNoMatch = true))
         }
         true
-      case Failure(ex) =>
-        logger.warn(s"TMDB resolve failed for '${key.cleanTitle}' (${key.year.getOrElse("?")}): ${ex.getMessage}; will retry.")
+      case Failure(exception) =>
+        logger.warn(s"TMDB resolve failed for '${key.cleanTitle}' (${key.year.getOrElse("?")}): ${exception.getMessage}; will retry.")
         false
       }
     }
@@ -367,8 +367,8 @@ class MovieService(
       case Success(None) =>
         logger.info(s"TMDB (staging): $label → no match")
         Some(existing.copy(tmdbNoMatch = true))
-      case Failure(ex) =>
-        logger.warn(s"Staging TMDB resolve failed for $label: ${ex.getMessage}; will retry.")
+      case Failure(exception) =>
+        logger.warn(s"Staging TMDB resolve failed for $label: ${exception.getMessage}; will retry.")
         None
     }
   }

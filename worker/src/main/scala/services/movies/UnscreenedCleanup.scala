@@ -49,7 +49,7 @@ class UnscreenedCleanup(cache: MovieCache) extends Stoppable with Logging {
     logger.info(s"Unscreened-row cleanup scheduled every ${RunEveryHours}h (first run in ${StartupDelaySeconds}s).")
     scheduler.scheduleAtFixedRate(
       () => Try(removeUnscreened()).recover {
-        case ex => logger.warn(s"Unscreened-row cleanup tick failed: ${ex.getMessage}")
+        case exception => logger.warn(s"Unscreened-row cleanup tick failed: ${exception.getMessage}")
       },
       StartupDelaySeconds, RunEveryHours * 3600, TimeUnit.SECONDS
     )

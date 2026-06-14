@@ -62,8 +62,8 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
     // so boot's hydrate has the same single fill path production does.
     override lazy val readModelRepository: ReadModelReader = {
       val store = new InMemoryReadModelRepository()
-      seed.foreach { case (title, year, rec) =>
-        val stored = StoredMovieRecord(title, year, rec)
+      seed.foreach { case (title, year, record) =>
+        val stored = StoredMovieRecord(title, year, record)
         store.upsertMovie(ReadModelProjection.resolve(stored))
         ReadModelProjection.screenings(stored).foreach(store.upsertScreening)
       }

@@ -116,8 +116,8 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
         Await.result(c.find().sort(Sorts.ascending("_id")).toFuture(), 60.seconds)
           .flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record))
       }.recover {
-        case ex: Throwable =>
-          logger.warn(s"StagingRepository.findAll failed: ${ex.getClass.getSimpleName}: ${ex.getMessage}")
+        case exception: Throwable =>
+          logger.warn(s"StagingRepository.findAll failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
           Seq.empty
       }.getOrElse(Seq.empty)
   }
@@ -129,7 +129,7 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
       Await.result(c.replaceOne(Filters.eq("_id", id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
       ()
     }.recover {
-      case ex: Throwable => logger.warn(s"StagingRepository.upsert($id) failed: ${ex.getMessage}")
+      case exception: Throwable => logger.warn(s"StagingRepository.upsert($id) failed: ${exception.getMessage}")
     }
   }
 
@@ -139,7 +139,7 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
       Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
       ()
     }.recover {
-      case ex: Throwable => logger.warn(s"StagingRepository.delete($id) failed: ${ex.getMessage}")
+      case exception: Throwable => logger.warn(s"StagingRepository.delete($id) failed: ${exception.getMessage}")
     }
   }
 
@@ -152,7 +152,7 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
           Option(change.getFullDocument).foreach { dto =>
             StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record).foreach { row =>
               try onUpsert(row)
-              catch { case ex: Throwable => logger.warn(s"StagingRepository change-stream apply failed: ${ex.getMessage}") }
+              catch { case exception: Throwable => logger.warn(s"StagingRepository change-stream apply failed: ${exception.getMessage}") }
             }
           }
         override def onError(e: Throwable): Unit =

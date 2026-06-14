@@ -22,8 +22,8 @@ import scala.util.Try
 object RecordNewCities {
   def main(args: Array[String]): Unit = {
     val real = new RealHttpFetch()
-    val rec  = new RecordingHttpFetch("new-cities", real)
-    val cc   = new CinemaCityClient(rec)
+    val record  = new RecordingHttpFetch("new-cities", real)
+    val cc   = new CinemaCityClient(record)
 
     def report(label: String)(n: => Int): Unit =
       println(s"$label: ${Try(n).fold(e => s"FAIL ${e.getMessage}", x => s"$x films")}")
@@ -43,11 +43,11 @@ object RecordNewCities {
       "0028" -> MultikinoRzeszow, "0003" -> MultikinoZabrze,
     )
     multikino.foreach { case (id, c) =>
-      report(s"Multikino ${c.displayName} ($id)")(new MultikinoClient(rec, id, c).fetch().size)
+      report(s"Multikino ${c.displayName} ($id)")(new MultikinoClient(record, id, c).fetch().size)
     }
 
     Seq(HeliosNuxt.Radom, HeliosNuxt.Sosnowiec, HeliosNuxt.Kielce, HeliosNuxt.Rzeszow).foreach { config =>
-      report(s"Helios ${config.cinema.displayName}")(new HeliosClient(rec, config).fetch().size)
+      report(s"Helios ${config.cinema.displayName}")(new HeliosClient(record, config).fetch().size)
     }
 
     report("Kino Zorza (Rzeszów)")(

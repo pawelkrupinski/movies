@@ -102,8 +102,8 @@ class AuthController(
           val profile = p.exchangeCode(code, redirectUri)
           upsertUser(provider, profile)
         } match {
-          case Failure(ex) =>
-            logger.error(s"OAuth sign-in failed for $provider: ${ex.getMessage}", ex)
+          case Failure(exception) =>
+            logger.error(s"OAuth sign-in failed for $provider: ${exception.getMessage}", exception)
             InternalServerError("Couldn't complete sign-in. Please try again.")
           case Success(user) =>
             val nextSession = request.session
@@ -152,13 +152,13 @@ class AuthController(
             }
           case other => throw new RuntimeException(s"Unknown provider: $other")
         }) match {
-          case Failure(ex) =>
-            logger.warn(s"Token validation failed for $provider: ${ex.getMessage}")
-            Unauthorized(Json.obj("error" -> ex.getMessage))
+          case Failure(exception) =>
+            logger.warn(s"Token validation failed for $provider: ${exception.getMessage}")
+            Unauthorized(Json.obj("error" -> exception.getMessage))
           case Success(profile) =>
             Try(upsertUser(provider, profile)) match {
-              case Failure(ex) =>
-                logger.error(s"Token sign-in failed for $provider: ${ex.getMessage}", ex)
+              case Failure(exception) =>
+                logger.error(s"Token sign-in failed for $provider: ${exception.getMessage}", exception)
                 InternalServerError(Json.obj("error" -> "Couldn't complete sign-in."))
               case Success(user) =>
                 Ok(Json.obj(

@@ -104,9 +104,9 @@ class ImdbRatings(
       val ratingResult  = Try(imdb.lookup(id))
       val detailsResult = Try(imdb.details(id))
       ratingResult match {
-        case Failure(ex) =>
+        case Failure(exception) =>
           failed.incrementAndGet()
-          logger.debug(s"IMDb refresh: $id lookup failed: ${ex.getMessage}")
+          logger.debug(s"IMDb refresh: $id lookup failed: ${exception.getMessage}")
         case _ => ()
       }
       val freshRating  = ratingResult.toOption.flatten

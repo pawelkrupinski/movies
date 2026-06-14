@@ -121,9 +121,9 @@ class MetascoreRatings(
           cache.putIfPresent(key, _.copy(metascore = fresh))
           changed.incrementAndGet()
         case Success(_) => ()
-        case Failure(ex) =>
+        case Failure(exception) =>
           failed.incrementAndGet()
-          logger.debug(s"Metascore refresh: $url lookup failed: ${ex.getMessage}")
+          logger.debug(s"Metascore refresh: $url lookup failed: ${exception.getMessage}")
       }
     }
 

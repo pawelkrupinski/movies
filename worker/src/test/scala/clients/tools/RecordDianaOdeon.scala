@@ -14,11 +14,11 @@ import scala.util.Try
  *  then delete + regenerate the snapshots. today is pinned to the capture date. */
 object RecordDianaOdeon {
   def main(args: Array[String]): Unit = {
-    val rec   = new RecordingHttpFetch("08-06-2026", new RealHttpFetch())
+    val record   = new RecordingHttpFetch("08-06-2026", new RealHttpFetch())
     val today = LocalDate.of(2026, 6, 8)
     def rep(label: String)(n: => Int): Unit =
       println(f"$label%-16s ${Try(n).fold(e => s"FAIL ${e.getClass.getSimpleName}: ${e.getMessage}", x => s"$x films")}")
-    rep("KinoDiana")(new KinoDianaClient(rec, KinoDiana).fetch().size)
-    rep("KinoODEON")(new MsiClient(rec, "https://kinoodeon.eurobilet.pl", KinoODEON, today).fetch().size)
+    rep("KinoDiana")(new KinoDianaClient(record, KinoDiana).fetch().size)
+    rep("KinoODEON")(new MsiClient(record, "https://kinoodeon.eurobilet.pl", KinoODEON, today).fetch().size)
   }
 }

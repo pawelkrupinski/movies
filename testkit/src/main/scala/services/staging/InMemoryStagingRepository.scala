@@ -27,7 +27,7 @@ class InMemoryStagingRepository(seed: Seq[(Source, String, Option[Int], MovieRec
   // Sorted by `_id`, like `MongoStagingRepository.findAll` — so callers (the promoter)
   // see a stable order independent of insertion/scrape order.
   def findAll(): Seq[StagingRecord] = lock.synchronized {
-    store.iterator.toSeq.sortBy(_._1).flatMap { case (id, rec) => StagingRecord.fromStorage(id, rec) }
+    store.iterator.toSeq.sortBy(_._1).flatMap { case (id, record) => StagingRecord.fromStorage(id, record) }
   }
 
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = lock.synchronized {

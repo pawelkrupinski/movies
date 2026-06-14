@@ -14,11 +14,11 @@ class TitleRuleRecordSpec extends AnyFlatSpec with Matchers {
     TitleRule(id, scope, cinema, pattern, "", applyAll = false, order = order, last = last)
 
   "toRules" should "stamp order from list position and last from which list, forcing scope/cinema" in {
-    val rec = TitleRuleRecord("cinema-city", PerCinema, Some("cinema-city"),
+    val record = TitleRuleRecord("cinema-city", PerCinema, Some("cinema-city"),
       // deliberately give the embedded rules a wrong order/scope to prove toRules overrides them
       rules     = Seq(r("a", Search, None, "a", order = 99), r("b", Search, None, "b", order = 99)),
       lastRules = Seq(r("z", Search, None, "z", order = 99)))
-    val flat = rec.toRules
+    val flat = record.toRules
     flat.map(x => (x.id, x.order, x.last)) shouldBe Seq(("a", 0, false), ("b", 1, false), ("z", 0, true))
     flat.foreach { x => x.scope shouldBe PerCinema; x.cinemaId shouldBe Some("cinema-city") }
   }
@@ -65,10 +65,10 @@ class TitleRuleRecordSpec extends AnyFlatSpec with Matchers {
 class InMemoryTitleRulesRepositorySpec extends AnyFlatSpec with Matchers {
   "InMemoryTitleRulesRepository" should "round-trip records and derive findAll by flattening" in {
     val repository = new InMemoryTitleRulesRepository()
-    val rec = TitleRuleRecord("Search", RuleScope.Search, None,
+    val record = TitleRuleRecord("Search", RuleScope.Search, None,
       rules     = Seq(TitleRule("a", RuleScope.Search, None, "x", "", applyAll = false, order = 0)),
       lastRules = Seq(TitleRule("b", RuleScope.Search, None, "y", "", applyAll = false, order = 0, last = true)))
-    repository.upsertRecord(rec)
+    repository.upsertRecord(record)
 
     repository.loadRecords().map(_.id) shouldBe Seq("Search")
     repository.findAll().map(r => (r.id, r.last)) shouldBe Seq(("a", false), ("b", true))

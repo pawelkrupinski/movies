@@ -96,16 +96,16 @@ class MongoConnection(
         } match {
           case Success((client, db)) =>
             (Some(client), Some(db))
-          case Failure(ex) =>
+          case Failure(exception) =>
             val isLocalUri = connectionString.contains("127.0.0.1") || connectionString.contains("localhost")
             val hint = if (isLocalUri)
               " (local URI — start the tunnel with `flyctl proxy 27017:27017 --app kinowo-mongo` and restart, or uncomment the Atlas fallback in .env.local)"
             else ""
             if (required)
               throw new IllegalStateException(
-                s"MongoConnection init failed and a Mongo connection is required — refusing to start: ${ex.getMessage}$hint",
-                ex)
-            logger.error(s"MongoConnection init failed (${ex.getMessage}) — disabled.$hint")
+                s"MongoConnection init failed and a Mongo connection is required — refusing to start: ${exception.getMessage}$hint",
+                exception)
+            logger.error(s"MongoConnection init failed (${exception.getMessage}) — disabled.$hint")
             (None, None)
         }
     }

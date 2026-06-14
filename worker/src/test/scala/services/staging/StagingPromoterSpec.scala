@@ -50,9 +50,9 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
     var resolveSawDirector = false
     val concluded = scala.collection.mutable.ListBuffer.empty[StagingRecord]
     val promoter = new StagingPromoter(repository, Seq(enricher),
-      resolveStaging = (_, _, rec) => {
-        resolveSawDirector = rec.data.get(Helios).exists(_.director.contains("Jane Doe"))
-        Some(rec.copy(tmdbId = Some(1275779)))
+      resolveStaging = (_, _, record) => {
+        resolveSawDirector = record.data.get(Helios).exists(_.director.contains("Jane Doe"))
+        Some(record.copy(tmdbId = Some(1275779)))
       },
       recoverImdbId = (_, _) => None,
       onConcluded = concluded += _)
@@ -69,7 +69,7 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
     val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
     val concluded = scala.collection.mutable.ListBuffer.empty[StagingRecord]
     val promoter = new StagingPromoter(repository, Seq(enricher),
-      resolveStaging = (_, _, rec) => Some(rec.copy(tmdbNoMatch = true)),
+      resolveStaging = (_, _, record) => Some(record.copy(tmdbNoMatch = true)),
       recoverImdbId = (_, _) => None,
       onConcluded = concluded += _)
 
@@ -109,7 +109,7 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
     val (repository, row) = seeded(Multikino, "Inline", Some(2026))
     val concluded = scala.collection.mutable.ListBuffer.empty[StagingRecord]
     val promoter = new StagingPromoter(repository, Seq.empty, // Multikino isn't a DetailEnricher
-      resolveStaging = (_, _, rec) => Some(rec.copy(tmdbId = Some(42))),
+      resolveStaging = (_, _, record) => Some(record.copy(tmdbId = Some(42))),
       recoverImdbId = (_, _) => None,
       onConcluded = concluded += _)
 
@@ -127,7 +127,7 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
     val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
     var searchedFor = Option.empty[String]
     val promoter = new StagingPromoter(repository, Seq(enricher),
-      resolveStaging = (_, _, rec) => Some(rec.copy(tmdbId = Some(1645035))), // hit, but imdbId empty
+      resolveStaging = (_, _, record) => Some(record.copy(tmdbId = Some(1645035))), // hit, but imdbId empty
       recoverImdbId = (search, _) => { searchedFor = Some(search); Some("tt42003604") },
       onConcluded = _ => ())
 
@@ -141,7 +141,7 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
     val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
     var recoverCalled = false
     val promoter = new StagingPromoter(repository, Seq(enricher),
-      resolveStaging = (_, _, rec) => Some(rec.copy(tmdbId = Some(7), imdbId = Some("tt0000007"))),
+      resolveStaging = (_, _, record) => Some(record.copy(tmdbId = Some(7), imdbId = Some("tt0000007"))),
       recoverImdbId = (_, _) => { recoverCalled = true; None },
       onConcluded = _ => ())
 
@@ -154,7 +154,7 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
     val (repository, row) = seeded(Helios, "Loggable", Some(2026))
     val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"), director = Seq("Directory"))))
     val promoter = new StagingPromoter(repository, Seq(enricher),
-      resolveStaging = (_, _, rec) => Some(rec.copy(tmdbId = Some(99))),
+      resolveStaging = (_, _, record) => Some(record.copy(tmdbId = Some(99))),
       recoverImdbId = (_, _) => None,
       onConcluded = _ => ())
 

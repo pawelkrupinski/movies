@@ -21,7 +21,7 @@ import scala.jdk.CollectionConverters._
 trait TitleRulesRepository {
   def enabled: Boolean
   def loadRecords(): Seq[TitleRuleRecord]
-  def upsertRecord(rec: TitleRuleRecord): Unit
+  def upsertRecord(record: TitleRuleRecord): Unit
   def deleteRecord(id: String): Unit
 
   /** The flat rule list the domain consumes — every record's `toRules`. Derived
@@ -69,9 +69,9 @@ object StoredTitleRuleRecord {
   private def ruleToDomain(scope: RuleScope, cinemaId: Option[String], order: Int, last: Boolean)(s: StoredRule): TitleRule =
     TitleRule(s.id, scope, cinemaId, s.pattern, s.replacement, s.applyAll, order, last, s.enabled, s.tag, s.note)
 
-  def fromDomain(rec: TitleRuleRecord): StoredTitleRuleRecord =
-    StoredTitleRuleRecord(rec.id, rec.scope.name, rec.cinemaId,
-      rec.rules.map(ruleFromDomain), rec.lastRules.map(ruleFromDomain))
+  def fromDomain(record: TitleRuleRecord): StoredTitleRuleRecord =
+    StoredTitleRuleRecord(record.id, record.scope.name, record.cinemaId,
+      record.rules.map(ruleFromDomain), record.lastRules.map(ruleFromDomain))
 
   /** None when the stored `scope` isn't recognised (a forward-compat document from a
    *  newer schema) — such records are skipped rather than crashing the load. */
@@ -101,6 +101,6 @@ class InMemoryTitleRulesRepository(initial: Seq[TitleRuleRecord] = Nil) extends 
 
   def enabled: Boolean                      = true
   def loadRecords(): Seq[TitleRuleRecord]   = store.values().asScala.toSeq
-  def upsertRecord(rec: TitleRuleRecord): Unit = { store.put(rec.id, rec); () }
+  def upsertRecord(record: TitleRuleRecord): Unit = { store.put(record.id, record); () }
   def deleteRecord(id: String): Unit        = { store.remove(id); () }
 }

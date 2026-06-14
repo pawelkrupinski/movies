@@ -66,8 +66,8 @@ class MongoUserStateRepository(
     Try {
       Await.result(c.find(Filters.eq("userId", userId)).headOption(), 10.seconds)
     }.recover {
-      case ex: Throwable =>
-        logger.warn(s"UserStateRepository.find($userId) failed: ${ex.getMessage}")
+      case exception: Throwable =>
+        logger.warn(s"UserStateRepository.find($userId) failed: ${exception.getMessage}")
         None
     }.getOrElse(None)
   }
@@ -78,8 +78,8 @@ class MongoUserStateRepository(
       Await.result(c.replaceOne(Filters.eq("userId", state.userId), state, opts).toFuture(), 10.seconds)
       ()
     }.recover {
-      case ex: Throwable =>
-        logger.warn(s"UserStateRepository.upsert(${state.userId}) failed: ${ex.getMessage}")
+      case exception: Throwable =>
+        logger.warn(s"UserStateRepository.upsert(${state.userId}) failed: ${exception.getMessage}")
     }
   }
 
@@ -88,7 +88,7 @@ class MongoUserStateRepository(
       Await.result(c.deleteOne(Filters.eq("userId", userId)).toFuture(), 10.seconds)
       ()
     }.recover {
-      case ex: Throwable => logger.warn(s"UserStateRepository.delete($userId) failed: ${ex.getMessage}")
+      case exception: Throwable => logger.warn(s"UserStateRepository.delete($userId) failed: ${exception.getMessage}")
     }
   }
 
@@ -110,8 +110,8 @@ class MongoUserStateRepository(
           logger.info(s"MongoUserStateRepository connected to $dbName.userStates")
           (client, coll)
         }.recover {
-          case ex: Throwable =>
-            logger.error(s"MongoUserStateRepository init failed (${ex.getMessage}) — disabled.")
+          case exception: Throwable =>
+            logger.error(s"MongoUserStateRepository init failed (${exception.getMessage}) — disabled.")
             null
         }.toOption.filter(_ != null) match {
           case Some((c, coll)) => (Some(c), Some(coll))
