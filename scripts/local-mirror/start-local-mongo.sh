@@ -23,7 +23,11 @@ elif docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER"; then
   docker start "$CONTAINER" >/dev/null
 else
   echo "[local-mongo] creating container on :$PORT (image $IMAGE)"
+  # `--restart unless-stopped`: Docker brings the mirror back up after a daemon
+  # /machine restart, so the container is itself a service — the launchd mirror
+  # agent (service.sh) only has to manage the tunnel + tailer on top of it.
   docker run -d --name "$CONTAINER" -p "$PORT:27017" \
+    --restart unless-stopped \
     -v "$VOLUME:/data/db" "$IMAGE" --replSet rs0 --bind_ip_all >/dev/null
 fi
 

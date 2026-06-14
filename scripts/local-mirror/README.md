@@ -48,6 +48,25 @@ SSE view updates within seconds.
 When `MONGODB_MOVIES_MIRROR_URI` is unset, the app reads `movies` from prod
 exactly as before, so this is opt-in and prod is never affected.
 
+## Run it as a service (no terminal to babysit)
+
+Instead of leaving `mirror.sh` in a terminal, install it as a **macOS launchd
+user agent** — it then starts at login and restarts on failure:
+
+```
+scripts/local-mirror/service.sh install     # install + start (runs at login)
+scripts/local-mirror/service.sh status      # show state + pid
+scripts/local-mirror/service.sh logs        # tail the agent log
+scripts/local-mirror/service.sh uninstall   # stop + remove the agent
+```
+
+The agent runs `mirror.sh`, which self-manages the whole stack (its own flyctl
+tunnel, the Docker mirror Mongo, seeding, and the change-stream tailer). The
+Mongo container is itself a service via `--restart unless-stopped`, so the two
+together survive logout, reboot, and Docker/flyctl hiccups. Logs go to
+`~/Library/Logs/kinowo-local-mirror.log`. Prereqs: `MONGODB_MOVIES_MIRROR_URI`
+set (above) and `flyctl auth login` done so the agent can open the tunnel.
+
 ## How it stays in sync
 
 `mirror.sh` tails prod's `movies` change stream (`tail.js`) and applies every

@@ -71,10 +71,14 @@ trap cleanup EXIT INT TERM
 
 # Ensure the local mirror Mongo (Docker) is up — re-runs the idempotent starter
 # only when the container isn't running, so a Docker/Rancher restart self-heals.
+# Returns non-zero (instead of crashing) when the Docker daemon itself isn't
+# ready, so the loop just retries — important when this runs as a login service
+# and Docker/Rancher is still booting.
 ensure_local_mongo() {
+  docker ps >/dev/null 2>&1 || return 1   # Docker daemon not up yet
   if ! docker ps --format '{{.Names}}' | grep -qx kinowo-local-mongo; then
     echo "[mirror] local mirror Mongo not running — (re)starting"
-    "$HERE/start-local-mongo.sh"
+    "$HERE/start-local-mongo.sh" || return 1
   fi
 }
 
@@ -89,7 +93,7 @@ reseed() { mongosh "$SRCZ" --quiet --eval "var DST='$DST'" --file "$HERE/seed.js
 # next cycle instead of killing the sync.
 FORCE_RESEED="$([ "$RESEED" = "--reseed" ] && echo 1 || echo 0)"
 while true; do
-  ensure_local_mongo
+  if ! ensure_local_mongo; then echo "[mirror] local Mongo unavailable (Docker down?) — retrying in 5s"; sleep 5; continue; fi
   if ! ensure_tunnel; then echo "[mirror] tunnel unavailable — retrying in 5s"; sleep 5; continue; fi
 
   LOCAL_N="$(mongosh "$DST" --quiet --eval 'print(db.getCollection("movies").countDocuments())' 2>/dev/null | tail -1)" || LOCAL_N=""
