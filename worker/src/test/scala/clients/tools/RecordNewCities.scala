@@ -11,7 +11,7 @@ import scala.util.Try
  * smaller cities added on top of the 11-city base — Częstochowa, Radom,
  * Sosnowiec, Toruń, Kielce, Rzeszów, Gliwice, Zabrze — into the `new-cities`
  * fixture corpus, plus Kino Zorza (Rzeszów's bespoke art-house) into its own
- * dir. Replayed by `clients.newcities.NewCitiesChainScrapeSpec` and
+ * directory. Replayed by `clients.newcities.NewCitiesChainScrapeSpec` and
  * `clients.kino_zorza.KinoZorzaClientSpec`. Scrape-only (no enrichment). Run:
  *
  *   sbt 'worker/Test/runMain clients.tools.RecordNewCities'

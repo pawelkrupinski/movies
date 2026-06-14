@@ -42,10 +42,10 @@ class GoogleOauthProvider(http: HttpFetch, clientId: String, clientSecret: Strin
       "state"         -> state,
       "prompt"        -> "select_account"
     )
-    val params = if (isPrivateIp(redirectUri)) {
+    val parameters = if (isPrivateIp(redirectUri)) {
       base ++ Seq("device_id" -> clientId.take(64), "device_name" -> "local-dev")
     } else base
-    AuthEndpoint + "?" + formEncode(params)
+    AuthEndpoint + "?" + formEncode(parameters)
   }
 
   def exchangeCode(code: String, redirectUri: String): OauthProfile = {

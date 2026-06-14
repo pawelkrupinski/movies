@@ -44,12 +44,12 @@ class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
   def fetch(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
-    val doc = Jsoup.parse(http.get(ListingUrl))
+    val document = Jsoup.parse(http.get(ListingUrl))
 
     // h3 date headers and screening rows in document order; fold to attach each
     // row to the most recent date.
     var currentDate: Option[LocalDate] = None
-    val slots = doc.select("h3, tr:has(span.hour)").asScala.toSeq.flatMap { el =>
+    val slots = document.select("h3, tr:has(span.hour)").asScala.toSeq.flatMap { el =>
       if (el.tagName == "h3") { currentDate = IluzjonClient.parseDate(el.text, today); Seq.empty }
       else currentDate.toSeq.flatMap(d => rowSlot(el, d))
     }
@@ -146,21 +146,21 @@ object IluzjonClient {
   )
   object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, Seq.empty, None, None, None) }
 
-  private def dd(doc: org.jsoup.nodes.Document, label: String): Option[String] =
-    ScraperParse.ddField(doc, label)
+  private def dd(document: org.jsoup.nodes.Document, label: String): Option[String] =
+    ScraperParse.ddField(document, label)
 
   def parseDetail(html: String): Detail = {
-    val doc = Jsoup.parse(html)
+    val document = Jsoup.parse(html)
     Detail(
-      runtimeMinutes = dd(doc, "czas trwania").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
-      year           = dd(doc, "rok produkcji").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
-      countries      = dd(doc, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      director       = dd(doc, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      cast           = dd(doc, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      originalTitle  = dd(doc, "tytuł oryg"),
-      synopsis       = Option(doc.selectFirst("h4:contains(Opis filmu) + div.content")).map(_.text.trim)
-                         .orElse(Option(doc.selectFirst("div.content p")).map(_.text.trim)).filter(_.length > 20),
-      poster         = Option(doc.selectFirst("div.plakat img[src]")).map(_.attr("src")).filter(_.nonEmpty)
+      runtimeMinutes = dd(document, "czas trwania").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
+      year           = dd(document, "rok produkcji").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
+      countries      = dd(document, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      director       = dd(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      cast           = dd(document, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      originalTitle  = dd(document, "tytuł oryg"),
+      synopsis       = Option(document.selectFirst("h4:contains(Opis filmu) + div.content")).map(_.text.trim)
+                         .orElse(Option(document.selectFirst("div.content p")).map(_.text.trim)).filter(_.length > 20),
+      poster         = Option(document.selectFirst("div.plakat img[src]")).map(_.attr("src")).filter(_.nonEmpty)
                          .map(u => if (u.startsWith("http")) u else s"https://www.iluzjon.fn.org.pl/${u.stripPrefix("/")}")
     )
   }

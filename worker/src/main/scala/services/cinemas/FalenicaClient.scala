@@ -77,12 +77,12 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
    *  scrape rather than recording an empty result as fresh. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     Try(detailHttp.get(ref)).toOption.map { html =>
-      val doc = Jsoup.parse(html)
+      val document = Jsoup.parse(html)
       FilmDetail(
-        synopsis   = Option(doc.selectFirst("div.section.tresc")).map(_.text.trim).filter(_.length > 20),
+        synopsis   = Option(document.selectFirst("div.section.tresc")).map(_.text.trim).filter(_.length > 20),
         // The detail page's WordPress `[video]` block holds the YouTube
         // trailer as `<source type="video/youtube" src="…watch?v=…">`.
-        trailerUrl = doc.select("video source[src], iframe[src]").asScala
+        trailerUrl = document.select("video source[src], iframe[src]").asScala
                        .map(_.attr("src")).filter(_.nonEmpty).flatMap(ScraperParse.canonicalTrailer).headOption
       )
     }
@@ -102,8 +102,8 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
       }
     }
 
-  private def parseShowtimes(doc: org.jsoup.nodes.Document): Seq[Showtime] =
-    doc.select("div.terminy_list > div.row").asScala.toSeq.flatMap { row =>
+  private def parseShowtimes(document: org.jsoup.nodes.Document): Seq[Showtime] =
+    document.select("div.terminy_list > div.row").asScala.toSeq.flatMap { row =>
       val dets = row.select("div.term_det").asScala.toSeq.map(_.text.trim)
       val date = dets.flatMap(t => Try(java.time.LocalDate.parse(t, DateFmt)).toOption).headOption
       val time = dets.flatMap(ScraperParse.parseHHmm).headOption

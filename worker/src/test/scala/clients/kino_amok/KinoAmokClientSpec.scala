@@ -16,7 +16,7 @@ import java.time.{LocalDate, LocalDateTime}
  *
  *  Fixture recorder:
  *    new RecordingHttpFetch("kino-amok", real).get("https://amok.gliwice.pl/repertuar/")
- *  Fixture dir: test/resources/fixtures/kino-amok/
+ *  Fixture directory: test/resources/fixtures/kino-amok/
  *  Fetch URL:   https://amok.gliwice.pl/repertuar/ */
 class KinoAmokClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 

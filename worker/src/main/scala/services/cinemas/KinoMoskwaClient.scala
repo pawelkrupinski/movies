@@ -53,19 +53,19 @@ class KinoMoskwaClient(
 
   def fetch(): Seq[CinemaMovie] = {
     val todayHtml  = http.get(dayUrl(today))
-    val todayDoc   = Jsoup.parse(todayHtml)
+    val todayDocument   = Jsoup.parse(todayHtml)
 
     // Collect future event-days from the mini-calendar (today inclusive).
-    val eventDays = miniCalendarEventDays(todayDoc, today)
+    val eventDays = miniCalendarEventDays(todayDocument, today)
 
     // Fetch future days in parallel; today's page is already in hand.
     val futureHtml = ParallelDetailFetch.keyed("kino-moskwa-days", eventDays.tail, 1.minute)(dayUrl) { url =>
       Try(Jsoup.parse(http.get(url))).toOption
     }
-    val docs = todayDoc +: eventDays.tail.flatMap(d => futureHtml.getOrElse(d, None))
+    val documents = todayDocument +: eventDays.tail.flatMap(d => futureHtml.getOrElse(d, None))
 
     // Parse all days and merge by title.
-    val slots    = docs.zip(eventDays.take(docs.size)).flatMap { case (doc, date) => parseDayDoc(doc, date) }
+    val slots    = documents.zip(eventDays.take(documents.size)).flatMap { case (document, date) => parseDayDocument(document, date) }
     val byTitle  = slots.groupBy(_.title)
 
     byTitle.toSeq.flatMap { case (title, group) =>
@@ -105,16 +105,16 @@ object KinoMoskwaClient {
   private[cinemas] case class RawSlot(title: String, dateTime: LocalDateTime, room: String)
 
   /** Dates that carry events in the mini-calendar, on or after `today`. */
-  private[cinemas] def miniCalendarEventDays(doc: Document, today: LocalDate): Seq[LocalDate] = {
-    doc.select("td[id^='mini-'][class*='has-events']").asScala.toSeq.flatMap { td =>
+  private[cinemas] def miniCalendarEventDays(document: Document, today: LocalDate): Seq[LocalDate] = {
+    document.select("td[id^='mini-'][class*='has-events']").asScala.toSeq.flatMap { td =>
       val id = td.attr("id").stripPrefix("mini-")
       Try(LocalDate.parse(id)).toOption.filter(d => !d.isBefore(today))
     }.sorted
   }
 
   /** Parse all public film screenings from a single day-view page. */
-  private[cinemas] def parseDayDoc(doc: Document, date: LocalDate): Seq[RawSlot] =
-    doc.select("div#mc-day div.list-event.mc_repertuar").asScala.toSeq.flatMap { eventDiv =>
+  private[cinemas] def parseDayDocument(document: Document, date: LocalDate): Seq[RawSlot] =
+    document.select("div#mc-day div.list-event.mc_repertuar").asScala.toSeq.flatMap { eventDiv =>
       parseEvent(eventDiv, date)
     }
 

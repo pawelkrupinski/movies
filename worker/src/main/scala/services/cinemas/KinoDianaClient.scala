@@ -70,10 +70,10 @@ object KinoDianaClient {
       .getOrElse(Seq.empty)
     records.flatMap { rec =>
       val date = (rec \ "date").asOpt[String].map(_.take(10)).flatMap(d => Try(LocalDate.parse(d)).toOption)
-      val doc  = Jsoup.parse((rec \ "title").asOpt[String].getOrElse(""), BaseUrl)
-      val title   = Option(doc.selectFirst("p.event-title")).map(_.text.trim).filter(_.nonEmpty)
-      val time    = Option(doc.selectFirst("p.event-hour")).map(_.text).flatMap(ScraperParse.parseHHmm)
-      val booking = Option(doc.selectFirst("a[href*=/Bilety/Sala]")).map(_.attr("abs:href")).filter(_.nonEmpty)
+      val document  = Jsoup.parse((rec \ "title").asOpt[String].getOrElse(""), BaseUrl)
+      val title   = Option(document.selectFirst("p.event-title")).map(_.text.trim).filter(_.nonEmpty)
+      val time    = Option(document.selectFirst("p.event-hour")).map(_.text).flatMap(ScraperParse.parseHHmm)
+      val booking = Option(document.selectFirst("a[href*=/Bilety/Sala]")).map(_.attr("abs:href")).filter(_.nonEmpty)
       for { d <- date; t <- title; lt <- time } yield (cleanTitle(t), LocalDateTime.of(d, lt), booking)
     }
   }

@@ -51,7 +51,7 @@ object TitleNormalizer {
   //     lookups, while the display row keeps them (a programme screening is its
   //     own row).
   //   - `canonical` (Canonical tier — NO structural) — cross-cinema spelling
-  //     unifications (Gwiezdne Wojny / & → i) folded into the stable docId.
+  //     unifications (Gwiezdne Wojny / & → i) folded into the stable documentId.
 
   /** Strip cinema decoration (anniversary, restored, Cykl prefix, slash
    *  postfix, language-version suffix) via the GlobalStructural rules — for
@@ -76,7 +76,7 @@ object TitleNormalizer {
   // over the trimmed title. Does NOT apply `searchTitle`/structural: decoration
   // (anniversary / wersja / slash / Cykl / restored) is NOT part of identity, so
   // a decoration edition keys by its own form and is NOT merged with the base
-  // film. Used by `sanitize` (the docId) and `preferredDisplay`.
+  // film. Used by `sanitize` (the documentId) and `preferredDisplay`.
   private def canonical(t: String): String = active.canonical(t)
 
   // Last-resort collapse for titles that share words + order but differ only
@@ -94,7 +94,7 @@ object TitleNormalizer {
   /** Corpus-independent stable key — the same collapse as `mergeKeyLookup`'s
    *  most-aggressive tier (`stripPunct` of `canonical`), applied
    *  unconditionally rather than gated on a sibling reducing to the same
-   *  form. Used as the persistent docId in `MovieRepository`/`MovieCache`
+   *  form. Used as the persistent documentId in `MovieRepository`/`MovieCache`
    *  so the cache key is stable across refresh ticks and write sites: every
    *  cinema-reported variant of the same film (Arabic/Roman, colon-or-not,
    *  &/i, "Gwiezdne Wojny:" prefix) lands on the same key without needing to

@@ -80,7 +80,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "not flag a mobile client for a plain web start (no platform param)" in {
+  it should "not flag a mobile client for a plain web start (no platform parameter)" in {
     val (ctl, _) = fixture(new FakeProvider("google", Profile))
     val result   = ctl.start("google")(FakeRequest("GET", "/auth/google/start"))
     session(result).get("mobileClient") shouldBe empty

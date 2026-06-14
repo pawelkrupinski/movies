@@ -21,7 +21,7 @@ import scala.util.Try
  * signal: it advances only when a resolved movie or a screening actually
  * changes — a no-op scrape tick on the worker moves nothing here.
  *
- * The join is ordering-tolerant: a screening whose movie doc hasn't landed yet
+ * The join is ordering-tolerant: a screening whose movie document hasn't landed yet
  * is simply skipped by `MovieControllerService` until it does, so the
  * movie-before-screenings write order is preferred but not required.
  */
@@ -68,7 +68,7 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
    *  and the `/rehydrate` endpoint. Additive-then-evict so a page render mid-
    *  reload never sees an empty corpus (mirrors `MovieCache.rehydrate`); a
    *  transient empty result on a warm cache is treated as a Mongo hiccup and
-   *  skipped. Returns the movie-doc count. */
+   *  skipped. Returns the movie-document count. */
   def reload(): Int = {
     val ms = reader.findAllMovies()
     val ss = reader.findAllScreenings()

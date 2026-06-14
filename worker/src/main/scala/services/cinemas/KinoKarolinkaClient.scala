@@ -45,9 +45,9 @@ object KinoKarolinkaClient {
   private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String], filmUrl: Option[String])
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val doc = Jsoup.parse(html, BaseUrl)
+    val document = Jsoup.parse(html, BaseUrl)
 
-    val slots = doc.select("div.event-item").asScala.toSeq.flatMap(parseEvent)
+    val slots = document.select("div.event-item").asScala.toSeq.flatMap(parseEvent)
 
     slots.groupBy(_.title).toSeq.flatMap { case (title, group) =>
       val showtimes = group

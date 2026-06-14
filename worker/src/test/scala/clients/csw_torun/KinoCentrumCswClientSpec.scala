@@ -16,7 +16,7 @@ import java.time.{LocalDate, LocalDateTime}
  *
  *  Fixture recorder:
  *    new RecordingHttpFetch("csw-torun", real).get("https://csw.torun.pl/repertuar/")
- *  Fixture dir: test/resources/fixtures/csw-torun/
+ *  Fixture directory: test/resources/fixtures/csw-torun/
  *  Fetch URL:   https://csw.torun.pl/repertuar/ */
 class KinoCentrumCswClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 

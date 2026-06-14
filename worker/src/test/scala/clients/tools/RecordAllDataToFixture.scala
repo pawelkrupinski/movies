@@ -55,13 +55,13 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  *      keeps the recording correct.
  */
 object RecordAllDataToFixture extends TestWiring {
-  // The fixture dir under test/resources/fixtures/ that this run writes into.
+  // The fixture directory under test/resources/fixtures/ that this run writes into.
   //   - country-fixture-artifact.yml leaves it at the default `today` (a fixed,
-  //     dateless dir the daily artifact + local sync key off).
+  //     dateless directory the daily artifact + local sync key off).
   //   - refresh-fixtures.yml sets KINOWO_FIXTURE_DIR=<dd-MM-yyyy> to land the
-  //     committed-snapshot corpus in a dated dir.
+  //     committed-snapshot corpus in a dated directory.
   // Env-driven (not a sed-rewritten literal) so neither workflow mutates this
-  // source — a stale zinc class once shipped a wrong dir and failed the job.
+  // source — a stale zinc class once shipped a wrong directory and failed the job.
   //
   // A `def`, NOT a `val`: httoFetch (a lazy val) is forced during super-
   // construction, before a subclass `val` would initialise — it would then read
@@ -176,7 +176,7 @@ object RecordAllDataToFixture extends TestWiring {
   //    screenings" code path so its (lack of) HTTP is captured too.
   unscreenedCleanup.removeUnscreened()
 
-  // 4. Stamp the real capture date into the corpus. The dir name is `today`
+  // 4. Stamp the real capture date into the corpus. The directory name is `today`
   //    (dateless), but Helios bakes the scrape day into its REST URLs, so a
   //    replay must pin `heliosToday` to this exact date or every Helios fixture
   //    misses. `heliosToday` is the date this run actually used.
@@ -189,7 +189,7 @@ object RecordAllDataToFixture extends TestWiring {
 
   /** Write `test/resources/fixtures/$captureDate/CAPTURE_DATE` recording the
    *  scrape day (`heliosToday`) so a fixture replay can reconstruct the date
-   *  the dateless `today` dir no longer carries. */
+   *  the dateless `today` directory no longer carries. */
   private def writeCaptureDate(): Unit = {
     val date = heliosToday.format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
     val file = new java.io.File(s"test/resources/fixtures/$captureDate/CAPTURE_DATE")

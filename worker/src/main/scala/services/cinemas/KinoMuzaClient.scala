@@ -101,11 +101,11 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
    *  isn't refetched until the freshness window lapses. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     Try(http.get(ref)).toOption.map { html =>
-      val doc = Jsoup.parse(html)
+      val document = Jsoup.parse(html)
       FilmDetail(
-        synopsis   = parseSynopsis(doc),
-        posterUrl  = parsePoster(doc),
-        trailerUrl = parseTrailer(doc)
+        synopsis   = parseSynopsis(document),
+        posterUrl  = parsePoster(document),
+        trailerUrl = parseTrailer(document)
       )
     }
 
@@ -118,8 +118,8 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
     services.movies.TitleNormalizer.cinemaClean("kino-muza", raw)
 
   private def parseHtml(html: String): Seq[CinemaMovie] = {
-    val doc      = Jsoup.parse(html)
-    val previews = doc.select("#movies .preview").asScala
+    val document      = Jsoup.parse(html)
+    val previews = document.select("#movies .preview").asScala
 
     previews.flatMap { preview =>
       val rawTitle = Option(preview.selectFirst(".preview-title")).map(_.text().trim).filter(_.nonEmpty)

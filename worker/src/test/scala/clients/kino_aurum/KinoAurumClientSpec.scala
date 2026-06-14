@@ -10,7 +10,7 @@ import services.cinemas.KinoAurumClient
 import java.time.LocalDateTime
 
 /** Replays the recorded Firestore `seanse` collection for Kino Aurum
- *  (Złotoryja) through the client. Each screening doc carries the title, date
+ *  (Złotoryja) through the client. Each screening document carries the title, date
  *  and time directly, so one fetch is the whole programme.
  *
  *  Previously scraped from Filmweb, which had silently gone empty for it. */

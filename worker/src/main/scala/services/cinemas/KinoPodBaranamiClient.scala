@@ -44,7 +44,7 @@ class KinoPodBaranamiClient(
   def fetch(): Seq[CinemaMovie] = {
     val html  = http.getBytes(RepertoireUrl)
     val str   = new String(html, "ISO-8859-2")
-    val slots = parseDoc(str, today)
+    val slots = parseDocument(str, today)
 
     val byFilmUrl = slots.groupBy(s => (s.title, s.filmUrl))
     byFilmUrl.toSeq.flatMap { case ((title, filmUrl), group) =>
@@ -92,12 +92,12 @@ object KinoPodBaranamiClient {
     }
   }
 
-  private[cinemas] def parseDoc(html: String, today: LocalDate): Seq[RawSlot] = {
-    val doc = Jsoup.parse(html)
+  private[cinemas] def parseDocument(html: String, today: LocalDate): Seq[RawSlot] = {
+    val document = Jsoup.parse(html)
     val slots = collection.mutable.ArrayBuffer.empty[RawSlot]
     var currentDate: Option[LocalDate] = None
 
-    doc.select("p.rep_date, ul.program_list").asScala.foreach { el =>
+    document.select("p.rep_date, ul.program_list").asScala.foreach { el =>
       el.tagName match {
         case "p" if el.hasClass("rep_date") =>
           // "Niedziela 7 czerwca // Sunday, June 7"

@@ -68,7 +68,7 @@ object Chrome {
    *  Chrome binary is reachable on this machine. */
   def tryStart(): Option[Chrome] = findExecutable().flatMap { exe =>
     val port    = findFreePort()
-    val userDir = Files.createTempDirectory("chrome-cdp-test-")
+    val userDirectory = Files.createTempDirectory("chrome-cdp-test-")
     val pb = new ProcessBuilder(
       exe.toString,
       "--headless",
@@ -85,7 +85,7 @@ object Chrome {
       // header (our java.net.http.WebSocket doesn't) with a 403.
       "--remote-allow-origins=*",
       s"--remote-debugging-port=$port",
-      s"--user-data-dir=${userDir.toString}",
+      s"--user-data-dir=${userDirectory.toString}",
       "about:blank"
     ).redirectErrorStream(true)
     val process = pb.start()
@@ -115,7 +115,7 @@ object Chrome {
         val version = """"Browser":\s*"([^"]+)"""".r.findFirstMatchIn(info).map(_.group(1)).getOrElse("unknown")
         System.err.println(s"[CdpDriver] Chrome=$version path=$exe")
       } catch { case _: Throwable => () }
-      Some(new Chrome(process, port, userDir))
+      Some(new Chrome(process, port, userDirectory))
     } else {
       process.destroyForcibly()
       None
@@ -129,19 +129,19 @@ object Chrome {
 
   private[tools] def httpGet(url: String): String = {
     val client = HttpClient.newHttpClient()
-    val req = HttpRequest.newBuilder(URI.create(url))
+    val request = HttpRequest.newBuilder(URI.create(url))
       .timeout(Duration.ofSeconds(5))
       .build()
-    client.send(req, BodyHandlers.ofString()).body()
+    client.send(request, BodyHandlers.ofString()).body()
   }
 
   private[tools] def httpPut(url: String): String = {
     val client = HttpClient.newHttpClient()
-    val req = HttpRequest.newBuilder(URI.create(url))
+    val request = HttpRequest.newBuilder(URI.create(url))
       .timeout(Duration.ofSeconds(5))
       .PUT(HttpRequest.BodyPublishers.noBody())
       .build()
-    client.send(req, BodyHandlers.ofString()).body()
+    client.send(request, BodyHandlers.ofString()).body()
   }
 }
 
@@ -149,7 +149,7 @@ object Chrome {
 class Chrome private[tools] (
                               process: Process,
                               port: Int,
-                              userDataDir: Path
+                              userDataDirectory: Path
                             ) extends AutoCloseable {
 
   /** Open `url` in a fresh tab, run `body`, then close the tab. The page
@@ -192,11 +192,11 @@ class Chrome private[tools] (
   override def close(): Unit = {
     try process.destroy() catch { case _: Throwable => () }
     if (!process.waitFor(3, TimeUnit.SECONDS)) process.destroyForcibly()
-    // Best-effort cleanup of the temp user-data dir. Don't fail the
+    // Best-effort cleanup of the temp user-data directory. Don't fail the
     // spec if a lock file lingers — Chrome occasionally holds one open
     // for a tick after the process exits.
     try {
-      Files.walk(userDataDir).sorted(Comparator.reverseOrder()).forEach(p =>
+      Files.walk(userDataDirectory).sorted(Comparator.reverseOrder()).forEach(p =>
         try Files.deleteIfExists(p) catch { case _: Throwable => () }
       )
     } catch { case _: Throwable => () }
@@ -231,11 +231,11 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
 
   /** Issue a CDP method call and return the `result` field of the reply.
    *  Blocks the caller until the reply arrives or 30s elapses. */
-  def send(method: String, params: JsValue = Json.obj()): JsValue = {
+  def send(method: String, parameters: JsValue = Json.obj()): JsValue = {
     val id  = idGen.incrementAndGet()
     val fut = new CompletableFuture[JsValue]()
     pending.put(id, fut)
-    val message = Json.obj("id" -> id, "method" -> method, "params" -> params).toString
+    val message = Json.obj("id" -> id, "method" -> method, "parameters" -> parameters).toString
     ws.sendText(message, true).get(5, TimeUnit.SECONDS)
     val reply = fut.get(30, TimeUnit.SECONDS)
     (reply \ "error").asOpt[JsValue].foreach { err =>
@@ -248,12 +248,12 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
    *  the JS itself threw — that's the test's signal that the page is
    *  in an unexpected shape. */
   def eval(js: String): JsValue = {
-    val params = Json.obj(
+    val parameters = Json.obj(
       "expression"    -> js,
       "returnByValue" -> true,
       "awaitPromise"  -> true
     )
-    val result = send("Runtime.evaluate", params)
+    val result = send("Runtime.evaluate", parameters)
     (result \ "exceptionDetails").asOpt[JsValue].foreach { ex =>
       throw new RuntimeException(s"JS exception evaluating [$js]: ${Json.stringify(ex)}")
     }

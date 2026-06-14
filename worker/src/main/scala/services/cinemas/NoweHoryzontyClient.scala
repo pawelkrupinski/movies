@@ -148,32 +148,32 @@ object NoweHoryzontyClient {
   private val RuntimePat = """(\d+)""".r
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r
 
-  private def crrow(doc: org.jsoup.nodes.Document, label: String): Option[String] =
-    doc.select("div.crrow").asScala.find(_.text.toLowerCase.contains(label))
+  private def crrow(document: org.jsoup.nodes.Document, label: String): Option[String] =
+    document.select("div.crrow").asScala.find(_.text.toLowerCase.contains(label))
       .map(_.text.replaceFirst(s"(?i)^[^:]*:\\s*", "").trim).filter(_.nonEmpty)
 
   /** Parse the op.s film page for metadata. Selectors mirror the page's
    *  `czas:` / `produkcja:` / `gatunek:` credit rows plus the synopsis block. */
   def parseDetail(html: String): Detail = {
-    val doc = Jsoup.parse(html)
-    val runtime = crrow(doc, "czas").flatMap(s => RuntimePat.findFirstMatchIn(s).map(_.group(1).toInt))
-    val prod    = crrow(doc, "produkcja")
+    val document = Jsoup.parse(html)
+    val runtime = crrow(document, "czas").flatMap(s => RuntimePat.findFirstMatchIn(s).map(_.group(1).toInt))
+    val prod    = crrow(document, "produkcja")
     val year    = prod.flatMap(s => YearPat.findFirstMatchIn(s).map(_.group(1).toInt))
     val countries = prod.map(s => YearPat.replaceAllIn(s, "")).map(_.trim.stripSuffix(","))
                       .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-    val genreRaw = crrow(doc, "gatunek")
-      .orElse(Option(doc.selectFirst("h4:contains(gatunek)")).map(_.text))
+    val genreRaw = crrow(document, "gatunek")
+      .orElse(Option(document.selectFirst("h4:contains(gatunek)")).map(_.text))
       .map(_.replaceFirst("(?i)^[^:]*:\\s*", "").trim)
       // The genre run is sometimes followed by an age-rating clause in the same
       // element ("Dramat, Kryminał Kategoria Wiekowa: 16+") — drop it.
       .map(_.split("(?i)kategoria").head.trim).filter(_.nonEmpty)
     val genres  = genreRaw.toSeq.flatMap(_.split("[,/]").map(_.trim).filter(_.nonEmpty))
                     .map(tools.TextNormalization.titleCaseIfAllLower)
-    val director = Option(doc.selectFirst("h4:contains(reż.) a")).map(_.text.trim)
+    val director = Option(document.selectFirst("h4:contains(reż.) a")).map(_.text.trim)
                     .filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-    val original = Option(doc.selectFirst("h4.tytulorg")).map(_.text.trim).filter(_.nonEmpty)
-    val synopsis = Option(doc.selectFirst("div.txt.wciecia.opisf p")).map(_.text.trim).filter(_.length > 20)
-    val poster   = Option(doc.selectFirst("div.plakat img[src]")).map(_.attr("src"))
+    val original = Option(document.selectFirst("h4.tytulorg")).map(_.text.trim).filter(_.nonEmpty)
+    val synopsis = Option(document.selectFirst("div.txt.wciecia.opisf p")).map(_.text.trim).filter(_.length > 20)
+    val poster   = Option(document.selectFirst("div.plakat img[src]")).map(_.attr("src"))
                     .filter(_.nonEmpty).map(u => if (u.startsWith("http")) u else s"https://www.kinonh.pl/${u.stripPrefix("/")}")
     Detail(runtime, year, original, countries, genres, director, synopsis, poster)
   }

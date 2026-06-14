@@ -17,18 +17,18 @@ import scala.util.Try
  *
  *  1. INCREMENTAL — subscribes to the `movies` change stream
  *     (`MovieRepository.watchUpserts`); each changed row is re-projected and the
- *     resulting docs are diffed against the last projection so only the docs
+ *     resulting documents are diffed against the last projection so only the documents
  *     that actually changed are written.
  *  2. RECONCILE (backstop) — a periodic full re-projection that also prunes
- *     derived docs whose source film has vanished (the change stream delivers
+ *     derived documents whose source film has vanished (the change stream delivers
  *     no deletes; a fold-victim / `UnscreenedCleanup` removal is reconciled
  *     here).
  *
- * Minimal writes: the last-projected doc per film is kept in memory (hydrated
+ * Minimal writes: the last-projected document per film is kept in memory (hydrated
  * from the read model at boot, so a restart rewrites only what changed since
  * the projector last ran). A showtime-only edit re-projects to the same
  * `ResolvedMovie` (skipped) and the same screenings except one (written) — so
- * the web's change-stream delta is that one screening doc. The movie doc is
+ * the web's change-stream delta is that one screening document. The movie document is
  * always written before its screenings, so a consumer joining screening→movie
  * sees the metadata first; the web join also tolerates the reverse order, so
  * neither side depends on it.
@@ -63,7 +63,7 @@ class ReadModelProjector(
   def onMovieUpsert(stored: StoredMovieRecord): Unit = lock.synchronized(project(stored))
 
   // Caller holds `lock`. Project the row and write only what changed, movie
-  // doc before screenings. A row whose enrichment hasn't concluded
+  // document before screenings. A row whose enrichment hasn't concluded
   // (`readyToProject` false) is held back — publishing the pre-enrichment,
   // yearless row is exactly what creates the duplicate `foo|` + `foo|2025`
   // cards, so it must never reach the read model until it has settled.
@@ -93,14 +93,14 @@ class ReadModelProjector(
   }
 
   /** Re-project every source row (the diff keeps it cheap — only genuinely
-   *  changed docs are written) and prune derived docs whose source film is gone.
+   *  changed documents are written) and prune derived documents whose source film is gone.
    *
    *  Self-healing: the prune diffs the ACTUAL read model (`reader.findAll*`)
    *  against the live source, NOT this process's in-memory `lastMovie`. The
    *  change stream delivers no deletes, so a film the worker re-keyed — a scrape
    *  pins a raw cinema year, enrichment resolves a different TMDB year, `settle`
    *  folds same-tmdbId variants — leaves its old `web_movies`/`web_screenings`
-   *  docs behind. Those orphans may have been written by a PRIOR worker process
+   *  documents behind. Those orphans may have been written by a PRIOR worker process
    *  and so were never in this process's `lastMovie`; a memory-based prune can't
    *  see them, which is how a re-key across a restart leaked a duplicate card
    *  permanently. Reading the read model's own ids closes that gap.
@@ -109,7 +109,7 @@ class ReadModelProjector(
    *  removes the duplicates), so each projection is guarded individually. */
   def reconcile(): Unit = lock.synchronized {
     // Only READY rows are part of the read model — held-back rows are absent
-    // from `liveIds`, so they neither project nor leave a stale doc behind, and
+    // from `liveIds`, so they neither project nor leave a stale document behind, and
     // a row that becomes ready between ticks gets projected on the next one.
     val ready   = movieRepository.findAll().filter(_.record.readyToProject)
     val liveIds = ready.iterator.map(ReadModelProjection.filmId).toSet
@@ -127,7 +127,7 @@ class ReadModelProjector(
 
   def start(): Unit = if (enabled) {
     // Seed the last-projection state from the derived collections, so a restart
-    // doesn't rewrite docs that are already correct.
+    // doesn't rewrite documents that are already correct.
     lock.synchronized {
       reader.findAllMovies().foreach(m => lastMovie.update(m._id, m))
       reader.findAllScreenings().groupBy(_.filmId).foreach { case (fid, ss) =>
@@ -135,8 +135,8 @@ class ReadModelProjector(
       }
     }
     // The change-stream watch covers live changes from now on; the seeded state
-    // above means incremental writes are no-ops for already-correct docs. The
-    // full reconcile (which additionally prunes derived docs whose source row
+    // above means incremental writes are no-ops for already-correct documents. The
+    // full reconcile (which additionally prunes derived documents whose source row
     // vanished while the worker was down) is deferred to the first scheduled tick
     // so it doesn't compete with boot hydrate + the first scrape.
     watchHandle = movieRepository.watchUpserts(onMovieUpsert)

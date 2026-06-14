@@ -98,8 +98,8 @@ object UserStateController {
     def stringSet(field: String, fallback: Set[String]): Either[String, Set[String]] =
       (body \ field).toOption match {
         case None                      => Right(fallback)
-        case Some(jsArr) =>
-          jsArr.asOpt[Seq[String]] match {
+        case Some(jsArray) =>
+          jsArray.asOpt[Seq[String]] match {
             case Some(seq) => Right(seq.toSet)
             case None      => Left(s"$field must be an array of strings")
           }

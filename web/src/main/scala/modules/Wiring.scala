@@ -50,13 +50,13 @@ trait Wiring {
   // The serving app reads from the worker-maintained `web_movies` /
   // `web_screenings` collections via `WebReadModel`, kept warm by their change
   // streams. It deliberately does NOT watch `movies` — a showtime edit there
-  // now reaches the web as one small screening-doc delta, not a full-record
+  // now reaches the web as one small screening-document delta, not a full-record
   // re-push. `movieRepository` survives only for the on-demand /debug corpus dump and
   // the admin rule-merge preview (a one-off `findAll`, no change stream).
   //
   // Local read-mirror: `/debug`'s `movieRepository.findAll()` is a full `movies`
   // scan. Run locally it goes over the prod `flyctl` tunnel, where 1200+ full
-  // docs take 30–60s and intermittently hit findAll's 60s timeout (→ an empty
+  // documents take 30–60s and intermittently hit findAll's 60s timeout (→ an empty
   // /debug table). When `MONGODB_MOVIES_MIRROR_URI` points at a local Mongo
   // kept synced from prod by `scripts/local-mirror/mirror.sh`, movieRepository reads
   // that LAN mirror (~100ms) instead. movieRepository is read-only in this process

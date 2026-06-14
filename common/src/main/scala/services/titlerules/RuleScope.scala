@@ -6,7 +6,7 @@ package services.titlerules
  *  changing where they apply.
  *
  *  `changesRecord` splits the scopes by whether they rewrite the STORED row.
- *  `PerCinema` (display title + merge key) and `Canonical` (the docId) both
+ *  `PerCinema` (display title + merge key) and `Canonical` (the documentId) both
  *  reshape what's persisted, so an edit there re-keys/merges/splits the corpus.
  *  `GlobalStructural` and `Search` only rewrite the title used for EXTERNAL
  *  LOOKUPS (`searchTitle` / `apiQuery`) — the stored row is untouched, so their
@@ -31,7 +31,7 @@ object RuleScope {
    *  affect the merge key — the programme/event screening keeps its own row. */
   case object Search extends RuleScope { val name = "Search"; val changesRecord = false }
 
-  /** Cross-cinema spelling unifications folded into the stable docId key
+  /** Cross-cinema spelling unifications folded into the stable documentId key
    *  (`sanitize` / `preferredDisplay`): "Gwiezdne Wojny:" strip, " & " → " i ". */
   case object Canonical extends RuleScope { val name = "Canonical"; val changesRecord = true }
 

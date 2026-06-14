@@ -25,8 +25,8 @@ object JsonLdAggregateRating {
    *  values, so we accept either. Returns None when the page has no
    *  JSON-LD, no `aggregateRating`, or only non-numeric values. */
   def parseInt(html: String): Option[Int] = {
-    val doc = Jsoup.parse(html)
-    doc.select("script[type=application/ld+json]").asScala.iterator
+    val document = Jsoup.parse(html)
+    document.select("script[type=application/ld+json]").asScala.iterator
       .map(_.data())
       .flatMap { raw =>
         Try(Json.parse(raw)).toOption.toSeq.flatMap { js =>

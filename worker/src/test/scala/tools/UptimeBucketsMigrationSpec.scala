@@ -8,7 +8,7 @@ import tools.UptimeBucketsMigration.RawBucket
 class UptimeBucketsMigrationSpec extends AnyFlatSpec with Matchers {
 
   // A 15-min boundary to hang sub-buckets off; the old writer floored to 5-min,
-  // so a single 15-min slot held up to three docs (at :00, :05, :10).
+  // so a single 15-min slot held up to three documents (at :00, :05, :10).
   private val slot = UptimeMonitor.bucketTimestamp(1700000000000L)
   private val fiveMin = 5 * 60 * 1000L
 
@@ -60,7 +60,7 @@ class UptimeBucketsMigrationSpec extends AnyFlatSpec with Matchers {
     merged.head.errors.head shouldBe "err-0-1"
   }
 
-  it should "be idempotent — a slot already collapsed to one boundary doc merges to itself" in {
+  it should "be idempotent — a slot already collapsed to one boundary document merges to itself" in {
     val once = UptimeBucketsMigration.merge15Min(Seq(
       RawBucket("TMDB", slot,           successes = 5, failures = 0, durationSumMs = 0L, durationCount = 0, errors = Nil),
       RawBucket("TMDB", slot + fiveMin, successes = 7, failures = 0, durationSumMs = 0L, durationCount = 0, errors = Nil)

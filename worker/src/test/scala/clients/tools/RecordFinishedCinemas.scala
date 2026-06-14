@@ -15,7 +15,7 @@ import scala.util.Try
 object RecordFinishedCinemas {
   def main(args: Array[String]): Unit = {
     val real = new RealHttpFetch()
-    def rec(dir: String) = new RecordingHttpFetch(dir, real)
+    def rec(directory: String) = new RecordingHttpFetch(directory, real)
     def report(label: String)(n: => Int): Unit =
       println(f"$label%-26s ${Try(n).fold(e => s"FAIL ${e.getClass.getSimpleName} ${e.getMessage}", x => s"$x films")}")
 

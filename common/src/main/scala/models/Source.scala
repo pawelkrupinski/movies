@@ -39,7 +39,7 @@ object Source {
   /** Stable priority index for ordering source slots. Lower = preferred. */
   val priority: Map[Source, Int] = all.zipWithIndex.toMap
 
-  /** Look a source up by its `displayName` — the wire form used as a sub-doc
+  /** Look a source up by its `displayName` — the wire form used as a sub-document
    *  key in Mongo. Unknown names return None (legacy/dropped cinemas). */
   val byDisplayName: Map[String, Source] = all.map(s => s.displayName -> s).toMap
 }

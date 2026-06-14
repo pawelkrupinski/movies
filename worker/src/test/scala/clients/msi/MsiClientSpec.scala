@@ -31,7 +31,7 @@ class MsiClientSpec
     with OptionValues
     with TableDrivenPropertyChecks {
 
-  // (label, fixtureDir, baseUrl, cinema, today, pinned title substring (lower-cased), pinned showtime)
+  // (label, fixtureDirectory, baseUrl, cinema, today, pinned title substring (lower-cased), pinned showtime)
   private val venues = Table(
     ("label", "dir", "baseUrl", "cinema", "today", "title", "when"),
     ("Cinema1 Gdańsk", "cinema1", "https://bilety.cinemaone.pl",
@@ -55,9 +55,9 @@ class MsiClientSpec
       KinoODEON, LocalDate.of(2026, 6, 8), "drzewo magii", LocalDateTime.of(2026, 6, 11, 10, 25))
   )
 
-  forAll(venues) { (label, dir, baseUrl, cinema, today, titleSub, when) =>
+  forAll(venues) { (label, directory, baseUrl, cinema, today, titleSub, when) =>
     lazy val movies =
-      new MsiClient(new FakeHttpFetch(dir), baseUrl, cinema, today = today).fetch()
+      new MsiClient(new FakeHttpFetch(directory), baseUrl, cinema, today = today).fetch()
 
     it should s"return a non-empty, single-cinema film list — $label" in {
       movies should not be empty

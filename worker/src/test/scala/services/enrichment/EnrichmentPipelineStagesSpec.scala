@@ -289,9 +289,9 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     bus.subscribe { case r: TmdbResolved => resolved.append(r) }
     bus.subscribe { case m: services.events.ImdbIdMissing => missing.append(m) }
 
-    // TMDB title search for "Niedźwiedzica" returns Grizzly Falls (1999, dir
+    // TMDB title search for "Niedźwiedzica" returns Grizzly Falls (1999, directory
     // Stewart Raffill) — wrong film. Director walk for "Asgeir Helgestad"
-    // surfaces his actual 2026 doc; the resolver should pick that one.
+    // surfaces his actual 2026 document; the resolver should pick that one.
     val wrongTitleHit =
       """{"results":[{"id":50416,"title":"Niedźwiedzica","original_title":"Grizzly Falls","release_date":"1999-12-31","popularity":2.5}]}"""
     val wrongCredits  = """{"id":50416,"crew":[{"id":99,"name":"Stewart Raffill","job":"Director","department":"Directing"}]}"""

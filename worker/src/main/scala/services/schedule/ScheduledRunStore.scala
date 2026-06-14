@@ -51,7 +51,7 @@ object AlwaysClaimScheduledRunStore extends ScheduledRunStore {
  * as `MongoTaskQueue` (see [[services.MongoErrors]]).
  *
  * A TTL index on `claimedAt` (`expireAfter` 48h) lets Mongo delete stale
- * occurrence docs, so the collection doesn't grow without bound (a doc per
+ * occurrence documents, so the collection doesn't grow without bound (a document per
  * occurrence per window — ~1/min for the scrape reaper). Created fire-and-forget
  * at construction, matching `MongoTaskQueue`'s index init.
  */
@@ -92,7 +92,7 @@ class MongoScheduledRunStore(coll: MongoCollection[Document]) extends ScheduledR
 }
 
 object MongoScheduledRunStore {
-  /** How long a claimed-occurrence doc lives before Mongo's TTL monitor deletes
+  /** How long a claimed-occurrence document lives before Mongo's TTL monitor deletes
    *  it. Comfortably longer than any job's period so a claim can't expire while
    *  its window is still live, short enough to keep the collection small. */
   val TtlHours: Long = 48L

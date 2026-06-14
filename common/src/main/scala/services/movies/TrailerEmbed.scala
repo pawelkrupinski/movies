@@ -44,7 +44,7 @@ object TrailerEmbed {
         Some(path.stripPrefix("/")).map(_.takeWhile(_ != '/')).filter(isYouTubeId)
       case "youtube.com" | "youtube-nocookie.com" =>
         if (path == "/watch")
-          queryParam(parsed.getRawQuery, "v").filter(isYouTubeId)
+          queryParameter(parsed.getRawQuery, "v").filter(isYouTubeId)
         else if (path.startsWith("/embed/") || path.startsWith("/shorts/") || path.startsWith("/v/"))
           Some(path.split("/").lift(2).getOrElse("")).map(_.takeWhile(_ != '?')).filter(isYouTubeId)
         else None
@@ -73,7 +73,7 @@ object TrailerEmbed {
   private def isYouTubeId(s: String): Boolean =
     s.length == 11 && s.forall(c => c.isLetterOrDigit || c == '_' || c == '-')
 
-  private def queryParam(rawQuery: String, key: String): Option[String] =
+  private def queryParameter(rawQuery: String, key: String): Option[String] =
     Option(rawQuery).toSeq.flatMap(_.split("&"))
       .map(_.split("=", 2))
       .collectFirst { case Array(k, v) if k == key => v }

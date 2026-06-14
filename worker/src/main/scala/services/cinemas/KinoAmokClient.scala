@@ -44,8 +44,8 @@ class KinoAmokClient(
 
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(RepertoireUrl)
-    val doc  = Jsoup.parse(html)
-    val slots = parseDoc(doc, today)
+    val document  = Jsoup.parse(html)
+    val slots = parseDocument(document, today)
 
     val byTitle = slots.groupBy(_.title)
     byTitle.toSeq.flatMap { case (title, group) =>
@@ -83,10 +83,10 @@ object KinoAmokClient {
     booking:  Option[String]
   )
 
-  private[cinemas] def parseDoc(doc: Document, today: LocalDate): Seq[RawSlot] = {
+  private[cinemas] def parseDocument(document: Document, today: LocalDate): Seq[RawSlot] = {
     // Split the page by ribbon divs (each day section).  We use Jsoup's
     // own select rather than splitting raw HTML.
-    val container = doc.selectFirst("div.repertoire_list_f")
+    val container = document.selectFirst("div.repertoire_list_f")
     if (container == null) return Seq.empty
 
     var currentDate: Option[LocalDate] = None

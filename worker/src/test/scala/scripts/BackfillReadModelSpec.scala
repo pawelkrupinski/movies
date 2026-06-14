@@ -31,7 +31,7 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
     ReadModelProjection.screenings(stale).foreach(readModel.upsertScreening)
   }
 
-  "BackfillReadModel.run" should "populate the read model from movies and prune stale derived docs" in {
+  "BackfillReadModel.run" should "populate the read model from movies and prune stale derived documents" in {
     val movieRepository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), record("Foo", 2024))))
     val readModel = new InMemoryReadModelRepository()
     seedStale(readModel)
@@ -47,7 +47,7 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
     readModel.findAllScreenings().map(_.filmId) should contain only filmId("Foo", 2024)
   }
 
-  it should "be idempotent — a second run writes the same docs and prunes nothing" in {
+  it should "be idempotent — a second run writes the same documents and prunes nothing" in {
     val movieRepository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), record("Foo", 2024))))
     val readModel = new InMemoryReadModelRepository()
 

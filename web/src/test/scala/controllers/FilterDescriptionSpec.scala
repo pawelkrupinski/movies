@@ -55,7 +55,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     meta.description should include("poznańskich")
   }
 
-  it should "ignore unrecognised params and date=today (the default)" in {
+  it should "ignore unrecognised parameters and date=today (the default)" in {
     val meta = FilterDescription.forIndex(Poznan,Map("date" -> Seq("today"), "junk" -> Seq("noise")), schedules)
     meta.title shouldBe "Kinowo"
   }

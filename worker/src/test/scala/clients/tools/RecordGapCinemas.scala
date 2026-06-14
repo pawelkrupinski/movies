@@ -8,7 +8,7 @@ import scala.util.Try
 
 /**
  * Records the art-house / independent "gap" cinemas added for Filmweb parity,
- * each into its own per-cinema fixture dir (replayed by the matching
+ * each into its own per-cinema fixture directory (replayed by the matching
  * `clients.*` specs). 17 bespoke scrapers + 3 reuses (Kino Wisła via NoveKino,
  * Helios Outlet Park via Helios, Kino CK Lublin via Bilety24). Run:
  *
@@ -17,7 +17,7 @@ import scala.util.Try
 object RecordGapCinemas {
   def main(args: Array[String]): Unit = {
     val real = new RealHttpFetch()
-    def rec(dir: String) = new RecordingHttpFetch(dir, real)
+    def rec(directory: String) = new RecordingHttpFetch(directory, real)
     def report(label: String)(n: => Int): Unit =
       println(f"$label%-28s ${Try(n).fold(e => s"FAIL ${e.getClass.getSimpleName} ${e.getMessage}", x => s"$x films")}")
 

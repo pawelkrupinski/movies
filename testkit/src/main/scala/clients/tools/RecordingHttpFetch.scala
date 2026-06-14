@@ -7,7 +7,7 @@ import java.net.URI
 import java.nio.file.Files
 
 /** Pass-through `HttpFetch` that also writes every response body to a
- *  fixture file under `test/resources/fixtures/$fixtureDir/`. Used by
+ *  fixture file under `test/resources/fixtures/$fixtureDirectory/`. Used by
  *  `RecordAllDataToFixture` to capture every byte every client would
  *  fetch in normal operation, on disk and replayable via
  *  `FakeHttpFetch`.
@@ -26,8 +26,8 @@ import java.nio.file.Files
  *  Wrapping the whole chain instead records the response keyed by the request
  *  (target) URL regardless of which leg served it. See `RecorderZyteCaptureSpec`.
  */
-class RecordingHttpFetch(fixtureDir: String, delegate: HttpFetch) extends HttpFetch {
-  val fixtureRoot = "test/resources/fixtures/" + fixtureDir
+class RecordingHttpFetch(fixtureDirectory: String, delegate: HttpFetch) extends HttpFetch {
+  val fixtureRoot = "test/resources/fixtures/" + fixtureDirectory
 
   override def get(url: String): String = {
     val content = delegate.get(url)
@@ -55,7 +55,7 @@ class RecordingHttpFetch(fixtureDir: String, delegate: HttpFetch) extends HttpFe
     new File(s"$fixtureRoot/${uri.getHost}/$path$querySuffix$bodySuffix")
   }
 
-  /** Hash the query string with rotating auth params (`api_key`,
+  /** Hash the query string with rotating auth parameters (`api_key`,
    *  `access_token`, …) stripped, so the same query produces the same
    *  fingerprint regardless of who recorded it. Without this, every
    *  developer's TMDB key would produce a different hash and fixtures
@@ -110,7 +110,7 @@ class RecordingHttpFetch(fixtureDir: String, delegate: HttpFetch) extends HttpFe
 }
 
 object RecordingHttpFetch {
-  /** Query params that aren't semantically distinguishing for fixture
+  /** Query parameters that aren't semantically distinguishing for fixture
    *  replay — stripped before fingerprinting so the fixture filename
    *  stays stable across users, scrape orders, and other rotating
    *  state. Two flavours:
@@ -125,11 +125,11 @@ object RecordingHttpFetch {
    *  year (Multikino's `year=None` wins if it finishes ahead of
    *  CinemaCity's `year=Some(2026)`, and vice versa). A sequential
    *  test run gets a different winner, so the URL `TmdbClient.search`
-   *  emits has different year params at recording vs test. The
+   *  emits has different year parameters at recording vs test. The
    *  *response* doesn't materially differ for our parser — pickBest
    *  filters the results anyway — so we fold both URL flavours onto a
    *  single fixture file and avoid the order-of-scrape coupling. */
-  private val IgnoredParams = Set(
+  private val IgnoredParameters = Set(
     "api_key", "apikey", "access_token", "token",
     "year", "primary_release_year"
   )
@@ -141,8 +141,8 @@ object RecordingHttpFetch {
   def stableQueryFingerprint(rawQuery: String): String = {
     val meaningful = rawQuery
       .split("&")
-      .filterNot(p => IgnoredParams.exists(name => p.startsWith(s"$name=")))
-      .sorted  // canonicalise param order so URL-builder differences don't matter
+      .filterNot(p => IgnoredParameters.exists(name => p.startsWith(s"$name=")))
+      .sorted  // canonicalise parameter order so URL-builder differences don't matter
     meaningful.mkString("&").hashCode.toHexString
   }
 }

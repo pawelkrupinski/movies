@@ -25,7 +25,7 @@ class TrailerEmbedSpec extends AnyFlatSpec with Matchers {
       Some("https://www.youtube.com/embed/dQw4w9WgXcQ")
   }
 
-  it should "strip query params on /watch URLs (timestamps, list)" in {
+  it should "strip query parameters on /watch URLs (timestamps, list)" in {
     TrailerEmbed.embedUrlFor("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42s&list=PL123") shouldBe
       Some("https://www.youtube.com/embed/dQw4w9WgXcQ")
   }
@@ -54,7 +54,7 @@ class TrailerEmbedSpec extends AnyFlatSpec with Matchers {
     TrailerEmbed.embedUrlFor("https://www.youtube.com/channel/UCIMTXiHkou3DJ7ov4SF-wcQ") shouldBe None
   }
 
-  it should "reject a /watch URL with no v= param" in {
+  it should "reject a /watch URL with no v= parameter" in {
     TrailerEmbed.embedUrlFor("https://www.youtube.com/watch") shouldBe None
   }
 

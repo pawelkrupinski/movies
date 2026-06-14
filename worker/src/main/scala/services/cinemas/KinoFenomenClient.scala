@@ -39,9 +39,9 @@ class KinoFenomenClient(
 
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(ListingUrl)
-    val doc  = Jsoup.parse(html)
+    val document  = Jsoup.parse(html)
 
-    val slots = doc.select("div.iframe_all").asScala.toSeq.flatMap(parseSlot)
+    val slots = document.select("div.iframe_all").asScala.toSeq.flatMap(parseSlot)
 
     val byTitle = slots.groupBy(_.title)
     byTitle.toSeq.flatMap { case (title, group) =>

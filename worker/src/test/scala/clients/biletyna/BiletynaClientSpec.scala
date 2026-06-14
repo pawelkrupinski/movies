@@ -25,7 +25,7 @@ class BiletynaClientSpec
     with OptionValues
     with TableDrivenPropertyChecks {
 
-  // (label, fixtureDir, pageUrl, cinema, pinned title, pinned showtime, exact booking URL)
+  // (label, fixtureDirectory, pageUrl, cinema, pinned title, pinned showtime, exact booking URL)
   private val venues = Table(
     ("label", "dir", "pageUrl", "cinema", "title", "when", "booking"),
     ("ADA Kino Studyjne", "ada-kino-studyjne", "https://www.biletyna.pl/Warszawa/ADA-Kino-Studyjne",
@@ -39,8 +39,8 @@ class BiletynaClientSpec
       "https://biletyna.pl/film/Pieknosc-dnia?eid=666810#opis")
   )
 
-  forAll(venues) { (label, dir, pageUrl, cinema, title, when, booking) =>
-    lazy val movies = new BiletynaClient(new FakeHttpFetch(dir), pageUrl, cinema).fetch()
+  forAll(venues) { (label, directory, pageUrl, cinema, title, when, booking) =>
+    lazy val movies = new BiletynaClient(new FakeHttpFetch(directory), pageUrl, cinema).fetch()
 
     it should s"return a non-empty, single-cinema film list — $label" in {
       movies should not be empty

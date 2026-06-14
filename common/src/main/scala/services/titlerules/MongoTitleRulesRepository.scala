@@ -40,7 +40,7 @@ class MongoTitleRulesRepository(
       .flatMap(safeToDomain)
   }.getOrElse(Seq.empty)
 
-  // A doc that can't be decoded (e.g. a legacy flat rule not yet migrated, or a
+  // A document that can't be decoded (e.g. a legacy flat rule not yet migrated, or a
   // forward-compat shape) is skipped rather than crashing the whole load.
   private def safeToDomain(s: StoredTitleRuleRecord): Option[TitleRuleRecord] =
     Try(StoredTitleRuleRecord.toDomain(s)).toOption.flatten

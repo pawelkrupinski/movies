@@ -39,10 +39,10 @@ class CytadelaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
   def fetch(): Seq[CinemaMovie] = parseListing(http.get(ListingUrl))
 
   private def parseListing(html: String): Seq[CinemaMovie] = {
-    val doc = Jsoup.parse(html)
+    val document = Jsoup.parse(html)
 
     var date: Option[LocalDate] = None
-    val slots = doc.select("time.repertoire-list__title, div.repertoire-item").asScala.toSeq.flatMap { el =>
+    val slots = document.select("time.repertoire-list__title, div.repertoire-item").asScala.toSeq.flatMap { el =>
       if (el.hasClass("repertoire-list__title")) { date = Try(LocalDate.parse(el.attr("datetime"))).toOption; Seq.empty }
       else date.toSeq.flatMap(d => rowSlot(el, d))
     }
@@ -73,8 +73,8 @@ class CytadelaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
    *  retried by the next scrape rather than recording an empty result as fresh. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     Try(detailHttp.get(ref)).toOption.map { html =>
-      val doc      = Jsoup.parse(html)
-      val synopsis = Option(doc.selectFirst("div.article-info__text.description")).map(_.text.trim).filter(_.length > 20)
+      val document      = Jsoup.parse(html)
+      val synopsis = Option(document.selectFirst("div.article-info__text.description")).map(_.text.trim).filter(_.length > 20)
       FilmDetail(synopsis = synopsis)
     }
 
@@ -89,13 +89,13 @@ class CytadelaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
                      .map(tools.TextNormalization.titleCaseIfAllLower)
       val spans  = item.select("span.text-with-sections-movies__item__content-text").asScala.toSeq.map(_.text.trim)
       val year   = spans.flatMap(x => """(?i)rok produkcji:\s*(\d{4})""".r.findFirstMatchIn(x).map(_.group(1).toInt)).headOption
-      val dir    = spans.flatMap(x => """(?i)reżyseria:\s*(.+)$""".r.findFirstMatchIn(x).map(_.group(1).trim)).headOption
+      val directory    = spans.flatMap(x => """(?i)reżyseria:\s*(.+)$""".r.findFirstMatchIn(x).map(_.group(1).trim)).headOption
                      .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
       val rt     = spans.flatMap(x => """(?i)czas:\s*(\d+)\s*min""".r.findFirstMatchIn(x).map(_.group(1).toInt)).headOption
       val booking = Option(item.selectFirst("a.repertoire-item__container__button--dark[href]")).map(_.attr("href")).filter(_.nonEmpty)
       val poster  = Option(item.selectFirst("img.repertoire-item__image[src]")).map(_.attr("src")).filter(_.nonEmpty)
                       .map(u => if (u.startsWith("http")) u else s"$BaseUrl/${u.stripPrefix("/")}")
-      RawSlot(s, t, date.atTime(tm), genres, year, dir, rt, booking, poster)
+      RawSlot(s, t, date.atTime(tm), genres, year, directory, rt, booking, poster)
     }
   }
 }

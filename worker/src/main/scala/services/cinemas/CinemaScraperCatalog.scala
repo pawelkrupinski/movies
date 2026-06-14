@@ -39,7 +39,7 @@ class CinemaScraperCatalog(
 
   /** Diagnostic ctor: the Zyte-routed fetches (Multikino's API, biletyna's venue
    *  pages) default to the path derived from `http` (a clean body-derived
-   *  default, not the old `null`-param workaround — Scala can't reference `http`
+   *  default, not the old `null`-parameter workaround — Scala can't reference `http`
    *  in a primary-constructor default, but a secondary constructor can).
    *  `WorkerWiring` uses the primary ctor to inject its (possibly
    *  fixture-overridden) `multikinoFetch` / `biletynaFetch`. */

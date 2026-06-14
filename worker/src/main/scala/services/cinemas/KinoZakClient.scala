@@ -129,8 +129,8 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
   private case class Segment(days: Seq[Int], month: Int, time: LocalTime)
 
   private def parseDetail(html: String): Detail = {
-    val doc = Jsoup.parse(html)
-    val block = doc.select("h3").asScala
+    val document = Jsoup.parse(html)
+    val block = document.select("h3").asScala
       .find(h => SeansHeading.contains(h.text.trim))
       .flatMap(h => Option(h.parent))
     val seans = block.toSeq.flatMap { el =>
@@ -140,7 +140,7 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
     }
     // `text()` decodes the `&nbsp;` after "reż." to a plain space, so the
     // credits parser sees "reż. <name>" regardless of the source entity.
-    val (director, year) = parseCredits(doc.text())
+    val (director, year) = parseCredits(document.text())
     Detail(seans, director, year)
   }
 

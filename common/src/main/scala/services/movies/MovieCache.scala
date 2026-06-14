@@ -930,10 +930,10 @@ class CaffeineMovieCache(
                   "Pages will render with no films until the next successful tick.")
     }
     val tPostFetch = System.nanoTime()
-    // Group by key BEFORE putting: a merge-key rule added after these docs were
+    // Group by key BEFORE putting: a merge-key rule added after these documents were
     // written (a new GlobalStructural strip) makes two stored titles collide on
     // `CacheKey`, and a bare `put`-per-row is last-write-wins — it would silently
-    // drop one doc's showtimes until the next scrape. Union the colliding rows
+    // drop one document's showtimes until the next scrape. Union the colliding rows
     // instead, so the cache is lossless the moment the rule lands (the orphaned
     // Mongo `_id` is reconciled by a later scrape / the reaper).
     val byKey: Map[CacheKey, MovieRecord] =

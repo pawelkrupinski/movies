@@ -97,9 +97,9 @@ object FilmwebDiff {
     val knownSlugs  = City.all.map(_.slug).toSet
     val pathArgs    = args.tail.filter(a => a.endsWith(".txt") || a.endsWith(".csv") || a.endsWith(".json") || a.startsWith("/"))
     val cityFilter  = args.tail.filter(knownSlugs).toSet
-    val txtPath     = pathArgs.find(_.endsWith(".txt")).getOrElse("/tmp/filmweb-diff-output.txt")
-    val csvPath     = pathArgs.find(_.endsWith(".csv")).getOrElse("/tmp/filmweb-diff-summary.csv")
-    val jsonPath    = pathArgs.find(_.endsWith(".json")).getOrElse("/tmp/filmweb-diff-output.json")
+    val txtPath     = pathArgs.find(_.endsWith(".txt")).getOrElse("/temporary/filmweb-diff-output.txt")
+    val csvPath     = pathArgs.find(_.endsWith(".csv")).getOrElse("/temporary/filmweb-diff-summary.csv")
+    val jsonPath    = pathArgs.find(_.endsWith(".json")).getOrElse("/temporary/filmweb-diff-output.json")
 
     val http     = new RealHttpFetch()
     val catalog  = new CinemaScraperCatalog(http, today = today)

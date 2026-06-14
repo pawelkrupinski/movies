@@ -7,7 +7,7 @@ import tools.RealHttpFetch
 
 class MovieServiceSpec extends AnyFlatSpec with Matchers {
 
-  // `normalize` is the stable docId rule — it delegates to
+  // `normalize` is the stable documentId rule — it delegates to
   // `TitleNormalizer.sanitize`, which applies Arabic→Roman, strips display
   // decoration (anniversary, Cykl, wersja), folds " & " → " i " and the
   // "Gwiezdne Wojny:" prefix, then collapses every non-alphanumeric char.
@@ -30,7 +30,7 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "preserve Cyrillic letters but drop the Cyrillic-side whitespace + Arabic→Roman fold" in {
-    // Non-Latin scripts keep their letters (so the row's docId isn't empty);
+    // Non-Latin scripts keep their letters (so the row's documentId isn't empty);
     // the Arabic '2' is folded to Roman via TitleNormalizer.normalize before
     // the strip.
     MovieService.normalize("ДИЯВОЛ НОСИТЬ ПРАДА 2") shouldBe "дияволноситьпрадаii"
@@ -38,7 +38,7 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
 
   it should "fold colon/space punctuation differences to the same key" in {
     // Phase 2 of the MovieCache transition: this is what gives "Prady 2" and
-    // "Prady II" the same docId, fixing the bug where the display title's
+    // "Prady II" the same documentId, fixing the bug where the display title's
     // Arabic→Roman folding produced a key that didn't match Mongo storage.
     MovieService.normalize("Top Gun Maverick")  shouldBe "topgunmaverick"
     MovieService.normalize("Top Gun: Maverick") shouldBe "topgunmaverick"
@@ -54,9 +54,9 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
     k2 shouldBe k3
   }
 
-  // ── Cross-variant lookups via the stable docId ──────────────────────────
+  // ── Cross-variant lookups via the stable documentId ──────────────────────────
   //
-  // Phase 2.3 made the docId corpus-independent and aggressive enough that
+  // Phase 2.3 made the documentId corpus-independent and aggressive enough that
   // every variant of a film resolves to the same key. The variant-tolerant
   // `getForMerge` fallback that existed in phase 1 is no longer necessary —
   // a plain `get` with any variant finds the row.
@@ -81,7 +81,7 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
 
   // Regression: cinemas report "Diabeł ubiera się u Prady 2" with an Arabic
   // numeral; merged display title goes through Arabic→Roman → "Prady II".
-  // Under the new docId rule both produce the same key, so `get` works
+  // Under the new documentId rule both produce the same key, so `get` works
   // regardless of which form is asked for.
   "get" should "find a row regardless of Arabic vs Roman variant of the title" in {
     val s = service(("Diabeł ubiera się u Prady 2", Some(2026), pradyEnrichment))

@@ -22,7 +22,7 @@ class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
   val screeningUpserts = mutable.ListBuffer.empty[CityScreening]
   val screeningDeletes = mutable.ListBuffer.empty[String]
   // Combined, in-order log of every write — lets a test assert ordering across
-  // the two collections (e.g. movie-doc-before-its-screenings). Entries:
+  // the two collections (e.g. movie-document-before-its-screenings). Entries:
   // "movie:<id>", "screening:<id>", "del-movie:<id>", "del-screening:<id>".
   val writeOrder       = mutable.ListBuffer.empty[String]
 

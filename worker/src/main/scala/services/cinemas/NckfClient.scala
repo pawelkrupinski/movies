@@ -76,8 +76,8 @@ object NckfClient {
   )
 
   private[cinemas] def parseHtml(html: String, today: LocalDate, cinema: Cinema): Seq[CinemaMovie] = {
-    val doc   = Jsoup.parse(html)
-    val items = doc.select("div.events-archive__item.cinema.active").asScala.toSeq
+    val document   = Jsoup.parse(html)
+    val items = document.select("div.events-archive__item.cinema.active").asScala.toSeq
     val slots = items.flatMap(parseItem(_, today))
 
     slots.groupBy(_.title).toSeq.flatMap { case (title, group) =>

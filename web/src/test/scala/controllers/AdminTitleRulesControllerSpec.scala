@@ -48,7 +48,7 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
 
   private val adminSession = FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
 
-  private def jsonReq(session: Boolean, body: play.api.libs.json.JsValue) = {
+  private def jsonRequest(session: Boolean, body: play.api.libs.json.JsValue) = {
     val base = if (session) adminSession else FakeRequest()
     base.withBody(body).withHeaders("Content-Type" -> "application/json")
   }
@@ -61,13 +61,13 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     val users = new InMemoryUserRepository
     users.upsert(User("rando1", "google", "sub-rando", Some("rando@example.com"),
       None, None, Instant.EPOCH, Instant.EPOCH))
-    val req = FakeRequest().withSession("userId" -> "rando1")
-    status(controller(gate = TestAdminAction(users = users)).index().apply(req)) shouldBe FORBIDDEN
+    val request = FakeRequest().withSession("userId" -> "rando1")
+    status(controller(gate = TestAdminAction(users = users)).index().apply(request)) shouldBe FORBIDDEN
   }
 
   it should "403 when the session user id can't be resolved" in {
-    val req = FakeRequest().withSession("userId" -> "ghost")
-    status(controller().index().apply(req)) shouldBe FORBIDDEN
+    val request = FakeRequest().withSession("userId" -> "ghost")
+    status(controller().index().apply(request)) shouldBe FORBIDDEN
   }
 
   it should "render the editor for an allowlisted user" in {
@@ -80,7 +80,7 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryTitleRulesRepository()
     val body = Json.obj("scope" -> "PerCinema", "cinemaId" -> "cinema-city",
       "rules" -> Json.arr(Json.obj("pattern" -> "^Ladies Night - ", "replacement" -> "")))
-    val result = controller(repository).save().apply(jsonReq(session = true, body))
+    val result = controller(repository).save().apply(jsonRequest(session = true, body))
     status(result) shouldBe OK
     repository.loadRecords().map(_.id) shouldBe Seq("cinema-city")     // non-composite id = cinema key
     val saved = repository.findAll()
@@ -92,25 +92,25 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
   it should "reject a record carrying an invalid regex" in {
     val body = Json.obj("scope" -> "GlobalStructural",
       "rules" -> Json.arr(Json.obj("pattern" -> "(unclosed")))
-    status(controller().save().apply(jsonReq(session = true, body))) shouldBe BAD_REQUEST
+    status(controller().save().apply(jsonRequest(session = true, body))) shouldBe BAD_REQUEST
   }
 
   it should "reject a PerCinema record with no cinema" in {
     val body = Json.obj("scope" -> "PerCinema",
       "rules" -> Json.arr(Json.obj("pattern" -> "x")))
-    status(controller().save().apply(jsonReq(session = true, body))) shouldBe BAD_REQUEST
+    status(controller().save().apply(jsonRequest(session = true, body))) shouldBe BAD_REQUEST
   }
 
   it should "401 a save with no session" in {
     val body = Json.obj("scope" -> "Search", "rules" -> Json.arr(Json.obj("pattern" -> "x")))
-    status(controller().save().apply(jsonReq(session = false, body))) shouldBe UNAUTHORIZED
+    status(controller().save().apply(jsonRequest(session = false, body))) shouldBe UNAUTHORIZED
   }
 
   "delete" should "remove the record by id" in {
     val repository = new InMemoryTitleRulesRepository(TitleRuleRecord.fromRules(Seq(
       TitleRule("r1", RuleScope.Search, None, "x", "", applyAll = false, order = 1))))
     repository.loadRecords().map(_.id) shouldBe Seq("Search")          // global record id = scope name
-    val result = controller(repository).delete().apply(jsonReq(session = true, Json.obj("id" -> "Search")))
+    val result = controller(repository).delete().apply(jsonRequest(session = true, Json.obj("id" -> "Search")))
     status(result) shouldBe OK
     repository.findAll() shouldBe empty
   }
@@ -118,14 +118,14 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
   "preview" should "return a zero-merge result over an empty corpus" in {
     val body = Json.obj("rules" -> Json.arr(
       Json.obj("scope" -> "PerCinema", "cinemaId" -> "cinema-city", "pattern" -> "^X ", "order" -> 1)))
-    val result = controller().preview().apply(jsonReq(session = true, body))
+    val result = controller().preview().apply(jsonRequest(session = true, body))
     status(result) shouldBe OK
     (contentAsJson(result) \ "newMergeCount").as[Int] shouldBe 0
   }
 
   "affected" should "401 an anonymous request" in {
     val body = Json.obj("rules" -> Json.arr())
-    status(controller().affected().apply(jsonReq(session = false, body))) shouldBe UNAUTHORIZED
+    status(controller().affected().apply(jsonRequest(session = false, body))) shouldBe UNAUTHORIZED
   }
 
   it should "report, per transient rule, which corpus titles it rewrites and to what" in {
@@ -138,21 +138,21 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
       // A record-changing rule: present in the draft but NOT in the affected output.
       Json.obj("id" -> "p1", "scope" -> "PerCinema", "cinemaId" -> "cinema-city",
         "pattern" -> "^X ", "replacement" -> "", "order" -> 1)))
-    val result = controller(movies = corpus).affected().apply(jsonReq(session = true, body))
+    val result = controller(movies = corpus).affected().apply(jsonRequest(session = true, body))
     status(result) shouldBe OK
-    val arr = (contentAsJson(result) \ "affected").as[Seq[play.api.libs.json.JsValue]]
-    arr.map(a => (a \ "ruleId").as[String]) should contain theSameElementsAs Seq("g1", "s1")
-    val g1 = arr.find(a => (a \ "ruleId").as[String] == "g1").get
+    val array = (contentAsJson(result) \ "affected").as[Seq[play.api.libs.json.JsValue]]
+    array.map(a => (a \ "ruleId").as[String]) should contain theSameElementsAs Seq("g1", "s1")
+    val g1 = array.find(a => (a \ "ruleId").as[String] == "g1").get
     (g1 \ "count").as[Int] shouldBe 1
     (g1 \ "changes" \ 0 \ "title").as[String] shouldBe "Top Gun - Restored"
     (g1 \ "changes" \ 0 \ "result").as[String] shouldBe "Top Gun"
-    val s1 = arr.find(a => (a \ "ruleId").as[String] == "s1").get
+    val s1 = array.find(a => (a \ "ruleId").as[String] == "s1").get
     (s1 \ "changes" \ 0 \ "result").as[String] shouldBe "Vertigo"
   }
 
   it should "400 a malformed rule body" in {
     val body = Json.obj("rules" -> Json.arr(Json.obj("scope" -> "GlobalStructural"))) // no pattern
-    status(controller().affected().apply(jsonReq(session = true, body))) shouldBe BAD_REQUEST
+    status(controller().affected().apply(jsonRequest(session = true, body))) shouldBe BAD_REQUEST
   }
 
   "report" should "surface the latest backfill outcome" in {

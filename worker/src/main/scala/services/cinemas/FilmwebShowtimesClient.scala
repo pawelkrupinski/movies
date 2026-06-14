@@ -196,7 +196,7 @@ object FilmwebShowtimesClient extends play.api.Logging {
     } finally ec.shutdown()
   }
   private val HourPat     = """^(\d{1,2})\.(\d{2})$""".r
-  private val DateParam   = """[?&]date=(\d{4}-\d{2}-\d{2})""".r
+  private val DateParameter   = """[?&]date=(\d{4}-\d{2}-\d{2})""".r
 
   /** Language-version flags Filmweb sets on a seance, mapped to the project's
    *  format-token vocabulary (mirrors `NoveKinoClient.FormatWord`). Only the
@@ -230,7 +230,7 @@ object FilmwebShowtimesClient extends play.api.Logging {
   }
 
   private def dateOf(url: String): Option[LocalDate] =
-    DateParam.findFirstMatchIn(url).flatMap(m => Try(LocalDate.parse(m.group(1))).toOption)
+    DateParameter.findFirstMatchIn(url).flatMap(m => Try(LocalDate.parse(m.group(1))).toOption)
 
   /** One screening row from the seances endpoint: the film id, the parsed
    *  showtimes (date + hour + booking link + format), and Filmweb's optional

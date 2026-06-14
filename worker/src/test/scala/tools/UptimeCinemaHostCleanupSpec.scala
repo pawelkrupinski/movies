@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * The cleanup deletes `uptimeBuckets` docs whose `service` is a bare cinema
+ * The cleanup deletes `uptimeBuckets` documents whose `service` is a bare cinema
  * scrape host. The risk is collateral damage — wiping the enrichment rows,
  * the per-cinema `displayName` rows, the `img:` reliability rows, or the
  * genuine-external catch-all (Google OAuth) that legitimately live in the

@@ -42,8 +42,8 @@ class KinoZaRogiemCafeClient(
 
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(RepertoireUrl)
-    val doc  = Jsoup.parse(html)
-    val slots = parseDoc(doc, today)
+    val document  = Jsoup.parse(html)
+    val slots = parseDocument(document, today)
 
     val bySlug = slots.groupBy(_.filmSlug)
     bySlug.toSeq.flatMap { case (_, group) =>
@@ -96,10 +96,10 @@ object KinoZaRogiemCafeClient {
     dateTime: LocalDateTime
   )
 
-  private[cinemas] def parseDoc(doc: Document, today: LocalDate): Seq[RawSlot] = {
+  private[cinemas] def parseDocument(document: Document, today: LocalDate): Seq[RawSlot] = {
     // The film-post grid is the section containing blog-classic-v6 posts of
     // type "film". Each wrapping div has class "post-wrapper … film …".
-    doc.select("div.post-wrapper.film").asScala.toSeq.flatMap { wrapper =>
+    document.select("div.post-wrapper.film").asScala.toSeq.flatMap { wrapper =>
       val article = Option(wrapper.selectFirst("article.news-v9"))
 
       val dateTime: Option[LocalDateTime] = article.flatMap { a =>

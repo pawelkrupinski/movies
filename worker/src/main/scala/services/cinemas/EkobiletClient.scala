@@ -109,13 +109,13 @@ object EkobiletClient {
   /** (cleaned title, detail-page URL) for each film card on the venue landing,
    *  de-duplicated (cards render twice for desktop/mobile). */
   private[cinemas] def parseLanding(html: String): Seq[(String, String)] = {
-    val doc = Jsoup.parse(html, BaseUrl)
-    doc.select("div.event-card a[href]").asScala.toSeq.flatMap { a =>
+    val document = Jsoup.parse(html, BaseUrl)
+    document.select("div.event-card a[href]").asScala.toSeq.flatMap { a =>
       val url = a.attr("abs:href").takeWhile(_ != '?')
       // The card's title is the nearest following `p.overme`.
       val titleEl = Option(a.closest("div.event-card")).flatMap(c =>
         Option(c.parent).flatMap(p => Option(p.selectFirst("p.overme"))))
-        .orElse(Option(doc.selectFirst("p.overme")))
+        .orElse(Option(document.selectFirst("p.overme")))
       for {
         t <- titleEl.map(e => ScraperParse.stripFormatTags(e.text)).filter(_.nonEmpty)
         if url.nonEmpty

@@ -45,7 +45,7 @@ class TestHttpServer(
         // query attached, so they keep matching on the bare path —
         // `routeKey` is the path verbatim when there's no query at all.
         val routeKey = if (rawQ == null) path else s"$path?$rawQ"
-        // `/assets/*` is served from the web app's assets dir on disk
+        // `/assets/*` is served from the web app's assets directory on disk
         // (`web/src/main/assets/*`, the same source Play's Assets controller
         // serves in prod) so the rendered page can load `shared.js` + the
         // inline-linked CSS in the test the same way prod does. Tests that
@@ -57,7 +57,7 @@ class TestHttpServer(
           val rel  = path.stripPrefix("/assets/")
           val file = Paths.get("web/src/main/assets").resolve(rel).toAbsolutePath
           // Guard against `../` traversal — only serve files under the
-          // assets dir (resolve + startsWith).
+          // assets directory (resolve + startsWith).
           val publicRoot = Paths.get("web/src/main/assets").toAbsolutePath
           if (!file.startsWith(publicRoot) || !Files.exists(file)) {
             ex.sendResponseHeaders(404, -1)

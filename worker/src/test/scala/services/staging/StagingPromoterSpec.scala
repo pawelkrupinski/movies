@@ -152,7 +152,7 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
 
   it should "log each promotion step at INFO (the formerly-silent path is now traceable)" in {
     val (repository, row) = seeded(Helios, "Loggable", Some(2026))
-    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"), director = Seq("Dir"))))
+    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"), director = Seq("Directory"))))
     val promoter = new StagingPromoter(repository, Seq(enricher),
       resolveStaging = (_, _, rec) => Some(rec.copy(tmdbId = Some(99))),
       recoverImdbId = (_, _) => None,

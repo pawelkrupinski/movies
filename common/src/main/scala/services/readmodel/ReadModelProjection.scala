@@ -13,7 +13,7 @@ import services.movies.{StoredMovieRecord, TitleNormalizer, TrailerEmbed}
  * so the same row always projects to identical documents. That determinism is
  * what the projector's minimal-write diff relies on: a row whose metadata is
  * unchanged projects to the same `ResolvedMovie` and is skipped; a row where
- * one cinema's showtimes changed projects to the same docs except that
+ * one cinema's showtimes changed projects to the same documents except that
  * cinema's `CityScreening`.
  *
  * Resolution logic itself stays on [[MovieRecord]] — this object only
@@ -80,7 +80,7 @@ object ReadModelProjection {
   /** One `CityScreening` per (city, cinema) the film currently screens in.
    *  A cinema slot with no showtimes, or one that maps to no city, contributes
    *  nothing — matching the web's existing rule that only this-city cinemas'
-   *  showtimes surface. Showtimes are sorted into a canonical order so the doc
+   *  showtimes surface. Showtimes are sorted into a canonical order so the document
    *  is a pure function of the showtime *set*, not of upstream scrape order —
    *  reordering upstream can't churn the diff. */
   def screenings(stored: StoredMovieRecord): Seq[CityScreening] = {

@@ -146,7 +146,7 @@ object HeliosNuxt {
 
   // Bundles the three things every internal parser needs: the slice of the IIFE
   // body that contains film metadata, the slice that contains screenings, and
-  // the resolver that turns a param-name token into its string value.
+  // the resolver that turns a parameter-name token into its string value.
   private case class NuxtContext(
     movieBody:      String,
     screeningsBody: String,
@@ -176,37 +176,37 @@ object HeliosNuxt {
     )).getOrElse(empty)
   }
 
-  // Locate the `(function(params){body}(values))` IIFE and return (paramMap, body).
+  // Locate the `(function(parameters){body}(values))` IIFE and return (parameterMap, body).
   private def extractIifeBody(html: String): Option[(Map[String, JsValue], String)] = {
     val index = html.lastIndexOf("window.__NUXT__")
     if (index < 0) return None
     val script      = html.substring(index)
-    val paramsStart = script.indexOf("(function(") + "(function(".length
-    val paramsEnd   = script.indexOf("){", paramsStart)
+    val parametersStart = script.indexOf("(function(") + "(function(".length
+    val parametersEnd   = script.indexOf("){", parametersStart)
     val bodyEnd     = script.indexOf("}(")
-    if (paramsStart < "(function(".length || paramsEnd < 0 || bodyEnd < 0) return None
+    if (parametersStart < "(function(".length || parametersEnd < 0 || bodyEnd < 0) return None
 
-    val paramNames = script.substring(paramsStart, paramsEnd).split(",").toSeq
+    val parameterNames = script.substring(parametersStart, parametersEnd).split(",").toSeq
     val valuesRaw  = script.substring(bodyEnd + 2)
     val valuesEnd  = valuesRaw.lastIndexOf("))")
 
-    val paramMap = Try {
+    val parameterMap = Try {
       val clean = valuesRaw.substring(0, valuesEnd)
         .replaceAll("""Array\(\d+\)""", "null")
         .replace("undefined", "null")
-      paramNames.zip(Json.parse("[" + clean + "]").as[JsArray].value).toMap
+      parameterNames.zip(Json.parse("[" + clean + "]").as[JsArray].value).toMap
     }.getOrElse(Map.empty[String, JsValue])
 
-    Some((paramMap, script.substring(paramsEnd + 2, bodyEnd)))
+    Some((parameterMap, script.substring(parametersEnd + 2, bodyEnd)))
   }
 
-  // A resolver turns a token — either a `"literal"` or a single-identifier param
+  // A resolver turns a token — either a `"literal"` or a single-identifier parameter
   // reference — into its underlying string. `/` is decoded everywhere.
-  private def makeResolver(paramMap: Map[String, JsValue]): String => Option[String] = { token =>
+  private def makeResolver(parameterMap: Map[String, JsValue]): String => Option[String] = { token =>
     val t = token.trim
     val raw =
       if (t.startsWith("\"")) Some(t.stripPrefix("\"").stripSuffix("\""))
-      else paramMap.get(t).flatMap {
+      else parameterMap.get(t).flatMap {
         case JsString(s) => Some(s)
         case n: JsNumber => n.value.toBigIntExact.map(_.toString)
         case _           => None
@@ -244,8 +244,8 @@ object HeliosNuxt {
   private def parseEmbeddedScreeningNuxtMovies(context: NuxtContext): Map[String, NuxtMovie] =
     MovieGroupStart.findAllMatchIn(context.screeningsBody).flatMap { gm =>
       val movieId = gm.group(1)
-      val arr     = bracketedArrayContent(context.screeningsBody, gm.end)
-      EmbeddedMovieBlk.findFirstMatchIn(arr)
+      val array     = bracketedArrayContent(context.screeningsBody, gm.end)
+      EmbeddedMovieBlk.findFirstMatchIn(array)
         .flatMap(m => parseNuxtEmbeddedMovieBlock(m.group(1), context.resolve, context.baseUrl).map(movieId -> _))
     }.toMap
 
@@ -314,8 +314,8 @@ object HeliosNuxt {
     dayBlocks(context.screeningsBody).flatMap { dayBlock =>
       MovieGroupStart.findAllMatchIn(dayBlock).flatMap { gm =>
         val movieId = gm.group(1)
-        val arr     = bracketedArrayContent(dayBlock, gm.end)
-        ScreeningEntry.findAllMatchIn(arr).flatMap { sm =>
+        val array     = bracketedArrayContent(dayBlock, gm.end)
+        ScreeningEntry.findAllMatchIn(array).flatMap { sm =>
           for {
             timeStr <- context.resolve(sm.group(1)) if timeStr.length == 19
             sid     <- resolveSourceId(sm.group(2), context.resolve)
@@ -325,7 +325,7 @@ object HeliosNuxt {
             // embedded `event:{…}` and `screeningMovies:[{…}]` blocks. Every Helios entry
             // we've seen carries one, so the first match in a generous lookahead window
             // is always the current entry's release.
-            val tail   = arr.substring(sm.end, math.min(sm.end + 2000, arr.length))
+            val tail   = array.substring(sm.end, math.min(sm.end + 2000, array.length))
             val format = PrintRelease.findFirstMatchIn(tail)
               .flatMap(m => context.resolve(m.group(1)))
               .map(_.split("/").toList.filter(_.nonEmpty))
@@ -350,7 +350,7 @@ object HeliosNuxt {
   // ── NUXT field extraction helpers ─────────────────────────────────────────
   //
   // NUXT IIFE values come in two flavours: literal `"strings"` or single-token
-  // param references (param names may include `$`, so plain `\w` isn't enough).
+  // parameter references (parameter names may include `$`, so plain `\w` isn't enough).
 
   private def nuxtField(block: String, field: String, resolve: String => Option[String]): Option[String] =
     s"""$field:(?:"([^"]+)"|([\\w$$]+))""".r.findFirstMatchIn(block)

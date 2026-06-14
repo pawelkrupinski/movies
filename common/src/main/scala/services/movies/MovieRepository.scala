@@ -86,7 +86,7 @@ trait MovieRepository {
    *  to a field this updater didn't touch (e.g. `FilmwebUrlAudit`
    *  clearing `filmwebUrl` while a stale-cache rating tick concurrently
    *  bumps `filmwebRating`) is therefore preserved instead of being
-   *  clobbered by a full-doc replace. */
+   *  clobbered by a full-document replace. */
   def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean
 
   /** Stream out-of-band changes to persisted rows as they happen, so the cache
@@ -185,9 +185,9 @@ class MongoMovieRepository(
    *  collection. The earlier discover-then-fan-out (project the `_id`s, split
    *  them into contiguous half-open `_id` ranges, fire four parallel ranged
    *  finds, join) existed to dodge Atlas serialising single cursors at
-   *  ~50 ms/doc. We have since moved to a self-hosted Mongo, where that
+   *  ~50 ms/document. We have since moved to a self-hosted Mongo, where that
    *  pathology is gone: on the prod app→Mongo LAN one cursor ties the fan-out
-   *  — measured (N=20, warm) p50 ~108 ms for ~600 docs vs ~128 ms, inside the
+   *  — measured (N=20, warm) p50 ~108 ms for ~600 documents vs ~128 ms, inside the
    *  run-to-run noise. Dropping it also removes the range-gap correctness
    *  hazard — a single cursor reads a consistent set by construction.
    *
@@ -218,7 +218,7 @@ class MongoMovieRepository(
         // intervening write relocates it mid-scan. That surfaced on `/debug` as
         // phantom duplicate rows (the same `_id` rendered twice, one a stale
         // pre-write image) that never cleared, plus silently-dropped rows. An
-        // `_id`-ordered IXSCAN returns each doc exactly once (the key is unique
+        // `_id`-ordered IXSCAN returns each document exactly once (the key is unique
         // and never changes), so it can neither duplicate nor skip.
         Await.result(c.find().sort(Sorts.ascending("_id")).toFuture(), 60.seconds).map(StoredMovieDto.toDomain)
       }.recover {
@@ -233,28 +233,28 @@ class MongoMovieRepository(
     case None => Seq.empty
   }
 
-  /** Deletes by `_id` (the current `docId` formula) OR by the legacy `title` +
-   *  `year` fields. Current docs no longer persist `title`/`year` (the `_id`
+  /** Deletes by `_id` (the current `documentId` formula) OR by the legacy `title` +
+   *  `year` fields. Current documents no longer persist `title`/`year` (the `_id`
    *  encodes both — see `StoredMovieDto`), so they're caught by the `_id`
-   *  branch. The legacy field branch still catches OLD-format docs whose `_id`
-   *  used a prior `docId` formula but which carry the `title`/`year` columns —
+   *  branch. The legacy field branch still catches OLD-format documents whose `_id`
+   *  used a prior `documentId` formula but which carry the `title`/`year` columns —
    *  `_id`-only would silently miss those orphans and they'd survive every
    *  startup's merge. */
   def delete(title: String, year: Option[Int]): Unit = coll.foreach { c =>
     val yearFilter = year match {
       case Some(y) => Filters.eq("year", y)
       // year=None in the in-memory model lands as either BsonNull() or a
-      // missing field in legacy docs; cover both.
+      // missing field in legacy documents; cover both.
       case None    => Filters.or(Filters.eq("year", BsonNull()), Filters.exists("year", false))
     }
     val filter = Filters.or(
-      Filters.eq("_id", docId(title, year)),
+      Filters.eq("_id", documentId(title, year)),
       Filters.and(Filters.eq("title", title), yearFilter)
     )
     Try {
       val result = Await.result(c.deleteMany(filter).toFuture(), 10.seconds)
       if (result.getDeletedCount > 1)
-        logger.info(s"MovieRepository.delete($title, $year) removed ${result.getDeletedCount} doc(s).")
+        logger.info(s"MovieRepository.delete($title, $year) removed ${result.getDeletedCount} document(s).")
       ()
     }.recover {
       case ex: Throwable => logger.warn(s"MovieRepository.delete($title, $year) failed: ${ex.getMessage}")
@@ -262,7 +262,7 @@ class MongoMovieRepository(
   }
 
   def upsert(title: String, year: Option[Int], e: MovieRecord): Unit = coll.foreach { c =>
-    val id   = docId(title, year)
+    val id   = documentId(title, year)
     val dto  = StoredMovieDto.fromDomain(id, e, Instant.now())
     val opts = new ReplaceOptions().upsert(true)
     Try {
@@ -282,7 +282,7 @@ class MongoMovieRepository(
   def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = coll match {
     case None => false
     case Some(c) =>
-      val id    = docId(title, year)
+      val id    = documentId(title, year)
       val patch = MovieRecordPatch.diff(before, after)
       Try {
         // MongoDB update-operator paths treat '.' as a nesting separator, so a
@@ -386,14 +386,14 @@ class MongoMovieRepository(
   def close(): Unit = clientOpt.foreach(_.close())
 
   /** Index `(title, year)` so [[delete]]'s `$or(_id, title+year)` filter resolves
-   *  by index union instead of a full collection scan. The stored docs no longer
+   *  by index union instead of a full collection scan. The stored documents no longer
    *  carry `title`/`year` columns (the 2026-06-11 derived-title migration dropped
    *  them), so for current rows the second `$or` branch matches nothing — but
    *  without this index Mongo still COLLSCANs the whole collection to prove that
-   *  on every delete (~400ms / ~1100 docs examined per delete; the single largest
+   *  on every delete (~400ms / ~1100 documents examined per delete; the single largest
    *  source of `movies` read-lock time in prod). With the index the branch is a
    *  1-key IXSCAN. The index stays cheap (currently all-null entries, ~24KB) and
-   *  still catches any legacy stale-`_id` doc that DOES carry the columns — the
+   *  still catches any legacy stale-`_id` document that DOES carry the columns — the
    *  delete-by-(title,year) safety net the change-stream regression depends on.
    *  Idempotent + best-effort: a re-create is a no-op, a failure only logs. */
   private def ensureIndexes(coll: MongoCollection[StoredMovieDto]): Unit =
@@ -446,6 +446,6 @@ class MongoMovieRepository(
   // muzeum" — both reported by different cinemas for the same film — each get
   // their own row, and only one can be updated per hourly refresh tick (the
   // tick walks the deduplicated Caffeine cache).
-  private def docId(title: String, year: Option[Int]): String =
+  private def documentId(title: String, year: Option[Int]): String =
     StoredMovieRecord.idFor(title, year)
 }

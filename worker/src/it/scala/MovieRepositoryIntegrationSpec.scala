@@ -37,8 +37,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   )
 
   // Delete every sentinel this spec could have written. Matches BOTH the
-  // sanitized `_id` shape the docs are actually stored under (`integrationtest…`
-  // — `docId` strips non-alphanumerics, so the raw `__integration-test-` form is
+  // sanitized `_id` shape the documents are actually stored under (`integrationtest…`
+  // — `documentId` strips non-alphanumerics, so the raw `__integration-test-` form is
   // never what lands in Mongo) AND the fake imdbIds (robust to worker re-keying).
   private def purgeSentinels(): Unit = {
     val client = MongoClient(Env.get("MONGODB_URI").get)
@@ -97,7 +97,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
     repository.upsert(sentinelTitle, sentinelYear, toStore)
 
-    // Locate by imdbId, not title: the stored doc no longer carries a `title`
+    // Locate by imdbId, not title: the stored document no longer carries a `title`
     // column — `findAll` derives the display title from `sourceData`, and this
     // record has no cinema slot so the derived title is the sanitized _id, not
     // the raw sentinel. imdbId is the stable round-trip handle.
@@ -241,7 +241,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
   // Regression for "Tom i Jerry: Przygoda w muzeum" / "Tom i jerry: przygoda w
   // muzeum": case-only variants of the same Polish title accumulated as
-  // separate Mongo rows because docId was case-preserved. The hourly refresh
+  // separate Mongo rows because documentId was case-preserved. The hourly refresh
   // walks the Caffeine cache (which collapses them) and only ever wrote back
   // to one row, leaving the other(s) frozen at whatever they were when first
   // upserted — including with metacriticUrl/rottenTomatoesUrl set to None for
@@ -263,7 +263,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     )
 
     // Upsert UPPER first (with URLs), then LOWER (without). With normalized
-    // docId both writes target the same _id, so the second overwrites.
+    // documentId both writes target the same _id, so the second overwrites.
     repository.upsert(titleCaps, Some(2025), withUrls)
     repository.upsert(titleLow,  Some(2025), withoutUrls)
 
@@ -275,36 +275,36 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     rows.head.record.rottenTomatoesUrl shouldBe None
   }
 
-  // Regression: legacy docs in prod were written with an older `docId`
+  // Regression: legacy documents in prod were written with an older `documentId`
   // formula (whitespace-preserving), and `repository.delete` — which builds the
   // `_id` from the *current* formula — silently failed to delete them
-  // (`deleteOne` matched zero docs, no warning). On every restart the
+  // (`deleteOne` matched zero documents, no warning). On every restart the
   // mergeAll pass picked the same losers and tried to delete them, but
   // their old-formula `_id`s never matched. Fix: delete by `title` + `year`
   // instead of by `_id`, so any past or future `_id` drift can't defeat the
   // cleanup.
-  it should "delete every doc matching (title, year), regardless of its _id formula" in {
+  it should "delete every document matching (title, year), regardless of its _id formula" in {
     import org.mongodb.scala.bson._
     val client = MongoClient(Env.get("MONGODB_URI").get)
     val coll   = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
       .getCollection[org.mongodb.scala.bson.collection.immutable.Document]("movies")
     try {
-      // Seed two docs at the same (title, year) but with different `_id`s —
+      // Seed two documents at the same (title, year) but with different `_id`s —
       // one matching the current formula, one with a stale "old-formula"
-      // shape that the current `MovieRepository.docId` wouldn't compute.
+      // shape that the current `MovieRepository.documentId` wouldn't compute.
       val title = "__integration-test-stale-id__"
       val year  = Some(2099)
       val freshId = s"${title.toLowerCase.replaceAll("[^a-z0-9]+", "")}|2099"
       val staleId = s"${title.toLowerCase}|2099"  // stale formula keeps spaces/underscores
       Seq(freshId, staleId).foreach { id =>
-        val doc = org.mongodb.scala.bson.collection.immutable.Document(
+        val document = org.mongodb.scala.bson.collection.immutable.Document(
           "_id"   -> BsonString(id),
           "title" -> BsonString(title),
           "year"  -> BsonInt32(2099)
         )
-        Await.ready(coll.insertOne(doc).toFuture(), 10.seconds)
+        Await.ready(coll.insertOne(document).toFuture(), 10.seconds)
       }
-      // Sanity: both docs exist.
+      // Sanity: both documents exist.
       val before = Await.result(coll.countDocuments(Filters.eq("title", title)).toFuture(), 10.seconds)
       before shouldBe 2
 
@@ -317,7 +317,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
   // Regression: the delete filter `$or(_id, title+year)` used to COLLSCAN the
   // entire `movies` collection on every delete — the `(title, year)` branch was
-  // unindexed, so Mongo scanned all ~1100 docs (~400ms, max ~6s under load) just
+  // unindexed, so Mongo scanned all ~1100 documents (~400ms, max ~6s under load) just
   // to evaluate it, the single largest source of `movies` read-lock time on the
   // self-hosted box. `MongoMovieRepository` now creates a `(title, year)` index at
   // init, so the branch is a 1-key IXSCAN and the whole `$or` is an index union.
@@ -341,7 +341,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   }
 
   // Regression: `afterAll` deleted `_id` matching `^__integration-test-`, but
-  // `docId` sanitizes the id (strips non-alphanumerics) so the stored `_id` is
+  // `documentId` sanitizes the id (strips non-alphanumerics) so the stored `_id` is
   // `integrationtest…` — the regex never matched and EVERY run leaked its
   // sentinels into the prod corpus forever (8 fixtures were found sitting on
   // /debug). The cleanup must target the sanitized id (and the stable imdbId).
@@ -360,7 +360,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // On /debug that surfaced as phantom duplicate rows (the same `_id` rendered
   // twice, one a stale pre-write image) that never cleared, plus silently
   // dropped rows. The fix sorts by the immutable, unique `_id` index, whose
-  // key-ordered walk returns each doc exactly once. The duplication itself only
+  // key-ordered walk returns each document exactly once. The duplication itself only
   // reproduces under live concurrent write load (not deterministically here), so
   // this guards the fix MECHANISM: with the sort, three out-of-order sentinels
   // come back `_id`-ascending; without it the scan yields them in insertion

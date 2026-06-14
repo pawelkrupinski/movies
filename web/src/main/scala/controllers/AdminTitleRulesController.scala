@@ -72,8 +72,8 @@ class AdminTitleRulesController(
   def preview(): Action[JsValue] = adminAction(parse.json) { request =>
     (request.body \ "rules").validate[JsArray] match {
       case JsError(_) => BadRequest(Json.obj("error" -> "expected { rules: [...] }"))
-      case JsSuccess(arr, _) =>
-        val parsed = arr.value.toSeq.map(flatRuleFromJson)
+      case JsSuccess(array, _) =>
+        val parsed = array.value.toSeq.map(flatRuleFromJson)
         parsed.collectFirst { case Left(err) => err } match {
           case Some(err) => BadRequest(Json.obj("error" -> err))
           case None =>
@@ -97,8 +97,8 @@ class AdminTitleRulesController(
   def affected(): Action[JsValue] = adminAction(parse.json) { request =>
     (request.body \ "rules").validate[JsArray] match {
       case JsError(_) => BadRequest(Json.obj("error" -> "expected { rules: [...] }"))
-      case JsSuccess(arr, _) =>
-        val parsed = arr.value.toSeq.map(flatRuleFromJson)
+      case JsSuccess(array, _) =>
+        val parsed = array.value.toSeq.map(flatRuleFromJson)
         parsed.collectFirst { case Left(err) => err } match {
           case Some(err) => BadRequest(Json.obj("error" -> err))
           case None =>
@@ -169,8 +169,8 @@ object AdminTitleRulesController {
 
   private def ruleList(js: JsValue, field: String, scope: RuleScope,
                        cinemaId: Option[String], last: Boolean): Either[String, Seq[TitleRule]] = {
-    val arr    = (js \ field).asOpt[JsArray].map(_.value.toSeq).getOrElse(Nil)
-    val parsed = arr.zipWithIndex.map { case (rj, i) => recordRuleFromJson(rj, scope, cinemaId, i, last) }
+    val array    = (js \ field).asOpt[JsArray].map(_.value.toSeq).getOrElse(Nil)
+    val parsed = array.zipWithIndex.map { case (rj, i) => recordRuleFromJson(rj, scope, cinemaId, i, last) }
     parsed.collectFirst { case Left(e) => e }.toLeft(parsed.collect { case Right(r) => r })
   }
 

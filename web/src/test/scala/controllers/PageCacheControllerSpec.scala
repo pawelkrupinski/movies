@@ -33,7 +33,7 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     TestMovieController.build(Seq(("Cache Test Film", Some(2024), record)))
   }
 
-  private def gzipReq(path: String) =
+  private def gzipRequest(path: String) =
     FakeRequest("GET", path).withHeaders("Accept-Encoding" -> "gzip, deflate, br")
 
   private def gunzip(bytes: org.apache.pekko.util.ByteString): String = {
@@ -43,7 +43,7 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
 
   "the / index page" should "be served gzip-precompressed to a gzip-accepting anonymous visitor" in {
     val (ctrl, _) = buildController()
-    val result = ctrl.index("poznan")(gzipReq("/poznan/"))
+    val result = ctrl.index("poznan")(gzipRequest("/poznan/"))
 
     status(result) shouldBe OK
     header("Content-Encoding", result) shouldBe Some("gzip")
@@ -52,19 +52,19 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "serve byte-identical bytes on a repeat request at the same cache version" in {
     val (ctrl, _) = buildController()
-    val first  = contentAsBytes(ctrl.index("poznan")(gzipReq("/poznan/")))
-    val second = contentAsBytes(ctrl.index("poznan")(gzipReq("/poznan/")))
+    val first  = contentAsBytes(ctrl.index("poznan")(gzipRequest("/poznan/")))
+    val second = contentAsBytes(ctrl.index("poznan")(gzipRequest("/poznan/")))
     second shouldBe first
   }
 
   it should "re-serve a fresh valid page after the cache version advances" in {
     val (ctrl, cache) = buildController()
-    ctrl.index("poznan")(gzipReq("/poznan/"))
+    ctrl.index("poznan")(gzipRequest("/poznan/"))
 
     Thread.sleep(1100) // mtime is second-resolution; ensure the rehydrate advances it
     cache.reload()
 
-    val after = ctrl.index("poznan")(gzipReq("/poznan/"))
+    val after = ctrl.index("poznan")(gzipRequest("/poznan/"))
     status(after) shouldBe OK
     header("Content-Encoding", after) shouldBe Some("gzip")
     gunzip(contentAsBytes(after)) should include ("Cache Test Film")
@@ -83,7 +83,7 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
 
   "a cacheable page" should "carry Last-Modified + Cache-Control so the browser revalidates" in {
     val (ctrl, _) = buildController()
-    val result = ctrl.index("poznan")(gzipReq("/poznan/"))
+    val result = ctrl.index("poznan")(gzipRequest("/poznan/"))
 
     header("Last-Modified", result) shouldBe defined
     header("Cache-Control", result) shouldBe Some("private, no-cache")
@@ -91,10 +91,10 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "304 a refresh whose If-Modified-Since is current, with no body" in {
     val (ctrl, _) = buildController()
-    val first   = ctrl.index("poznan")(gzipReq("/poznan/"))
+    val first   = ctrl.index("poznan")(gzipRequest("/poznan/"))
     val lastMod = header("Last-Modified", first).get
 
-    val refresh = ctrl.index("poznan")(gzipReq("/poznan/").withHeaders("If-Modified-Since" -> lastMod))
+    val refresh = ctrl.index("poznan")(gzipRequest("/poznan/").withHeaders("If-Modified-Since" -> lastMod))
     status(refresh) shouldBe NOT_MODIFIED
     header("Content-Encoding", refresh) shouldBe None
     contentAsBytes(refresh).isEmpty shouldBe true
@@ -102,12 +102,12 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "200 with a fresh body after the cache version advances despite an old If-Modified-Since" in {
     val (ctrl, cache) = buildController()
-    val lastMod = header("Last-Modified", ctrl.index("poznan")(gzipReq("/poznan/"))).get
+    val lastMod = header("Last-Modified", ctrl.index("poznan")(gzipRequest("/poznan/"))).get
 
     Thread.sleep(1100)
     cache.reload()
 
-    val after = ctrl.index("poznan")(gzipReq("/poznan/").withHeaders("If-Modified-Since" -> lastMod))
+    val after = ctrl.index("poznan")(gzipRequest("/poznan/").withHeaders("If-Modified-Since" -> lastMod))
     status(after) shouldBe OK
     header("Content-Encoding", after) shouldBe Some("gzip")
     gunzip(contentAsBytes(after)) should include ("Cache Test Film")

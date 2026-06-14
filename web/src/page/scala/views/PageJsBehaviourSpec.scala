@@ -103,7 +103,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         schedules, cinemas, pills, devMode = false,
         currentUser = Some(testUser), oauthProviders = noOauth
       ).body
-      // Static server-side state: one hidden film. resp.json() parses the body
+      // Static server-side state: one hidden film. response.json() parses the body
       // regardless of content-type, so serving it via the HTML route map is fine.
       val userStateJson =
         """{"hiddenFilms":["Film A"],"disabledCinemas":[],"selectedMovies":[],"favouriteRooms":[]}"""
@@ -137,7 +137,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         {
           // `/{city}/` accepts arbitrary query strings (e.g. `?date=tomorrow`)
           // — the real Play routes do too, and the day-selector ↔ URL tests
-          // need to boot the page with the param already in `location.search`.
+          // need to boot the page with the parameter already in `location.search`.
           case p if { val s = sub(p); s == "/" || s.startsWith("/?") }     => indexHtml
           case p if sub(p).startsWith("/film?title=") =>
             renderFilm(sub(p).stripPrefix("/film?title="))
@@ -933,7 +933,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           "          } })()"
         )
 
-        case class Row(width: Int, rows: Int, docOverflow: Int)
+        case class Row(width: Int, rows: Int, documentOverflow: Int)
         val measured: Seq[Row] = DesktopViewports.map { w =>
           page.setDesktopViewport(w, 900)
           Thread.sleep(60L)
@@ -948,21 +948,21 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
             "          }" +
             "          return tops.size; })()"
           )
-          val docOverflow = page.evalInt(
+          val documentOverflow = page.evalInt(
             "Math.max(0, document.documentElement.scrollWidth - window.innerWidth)"
           )
-          Row(w, rowCount, docOverflow)
+          Row(w, rowCount, documentOverflow)
         }
 
         page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
 
         val table = measured.map { r =>
-          f"  ${r.width}%4d px → rows=${r.rows} overflow=${r.docOverflow}%3d px"
+          f"  ${r.width}%4d px → rows=${r.rows} overflow=${r.documentOverflow}%3d px"
         }.mkString("\n")
         info(s"desktop layout sweep on $path:\n$table")
         withClue(s"desktop layout sweep on $path:\n$table\n") {
           all (measured.map(_.rows))        shouldBe 1
-          all (measured.map(_.docOverflow)) shouldBe 0
+          all (measured.map(_.documentOverflow)) shouldBe 0
         }
       }
     }
@@ -1253,7 +1253,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   "the sort axis ↔ URL sync" should "round-trip through ?sort= when the Copy button is used" in {
     onPath("/") { page =>
       page.eval("document.getElementById('sort-by').value = 'rating'; copyFilterLinkToClipboard()")
-      page.evalString("new URL(location.href).searchParams.get('sort')") shouldBe "rating"
+      page.evalString("new URL(location.href).searchParameters.get('sort')") shouldBe "rating"
     }
     onPath("/?sort=rating") { page =>
       page.evalString("document.getElementById('sort-by').value") shouldBe "rating"
@@ -1263,7 +1263,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "keep the default 'earliest' out of the URL" in {
     onPath("/") { page =>
       page.eval("document.getElementById('sort-by').value = 'earliest'; copyFilterLinkToClipboard()")
-      page.evalBool("new URL(location.href).searchParams.has('sort')") shouldBe false
+      page.evalBool("new URL(location.href).searchParameters.has('sort')") shouldBe false
     }
   }
 
@@ -1286,8 +1286,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // ── Day-stepping wrap (horizontal swipe) ────────────────────────────────────
   //
-  // A horizontal swipe steps the selected day via `window.stepDateWrap(dir)`
-  // (dir = +1 next, -1 previous), wrapping the `#date-filter` option list with
+  // A horizontal swipe steps the selected day via `window.stepDateWrap(directory)`
+  // (directory = +1 next, -1 previous), wrapping the `#date-filter` option list with
   // modulo arithmetic — last → first on +1, first → last on -1 — then
   // re-rendering through `onDateChange()` → `applyFilters()`. The clamping
   // `stepDate` (arrow buttons / keys) is exercised separately; this asserts the
@@ -1416,7 +1416,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // It settles on the next day with `?date=` reflecting it.
       page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
       page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
-      page.evalBool("new URL(location.href).searchParams.get('date') === 'tomorrow'") shouldBe true
+      page.evalBool("new URL(location.href).searchParameters.get('date') === 'tomorrow'") shouldBe true
     }
   }
 
@@ -1434,7 +1434,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
       page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
-      page.evalBool("new URL(location.href).searchParams.get('date') === 'anytime'") shouldBe true
+      page.evalBool("new URL(location.href).searchParameters.get('date') === 'anytime'") shouldBe true
     }
   }
 
@@ -1594,7 +1594,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // The pill highlight moves eagerly, but the URL only updates once the
       // slide commits — wait on the committed `?date=` as the settle signal.
       page.eval("pickDay('anytime')")
-      page.waitFor("new URL(location.href).searchParams.get('date') === 'anytime'", timeoutMs = 2000)
+      page.waitFor("new URL(location.href).searchParameters.get('date') === 'anytime'", timeoutMs = 2000)
 
       // The matching pill is the only `.active`, and carries aria-selected.
       page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "anytime"
@@ -1607,7 +1607,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // Back to 'today' strips ?date (today is the default) and moves the highlight.
       page.eval("pickDay('today')")
-      page.waitFor("new URL(location.href).searchParams.get('date') === null", timeoutMs = 2000)
+      page.waitFor("new URL(location.href).searchParameters.get('date') === null", timeoutMs = 2000)
       page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "today"
     }
   }
@@ -1795,13 +1795,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   //
   // `?date=` is the pasteable representation of the navbar's #date-filter:
   // selecting a day must rewrite the URL (so the link survives a copy/paste),
-  // and opening a URL that already carries the param must seed the selector
+  // and opening a URL that already carries the parameter must seed the selector
   // before `applyFilters()` runs.
 
   "the date filter ↔ URL sync" should "add ?date= when a non-default day is selected" in {
     onPath("/") { page =>
       page.eval("document.getElementById('date-filter').value = 'tomorrow'; onDateChange()")
-      page.evalString("new URL(location.href).searchParams.get('date')") shouldBe "tomorrow"
+      page.evalString("new URL(location.href).searchParameters.get('date')") shouldBe "tomorrow"
     }
   }
 
@@ -1809,7 +1809,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/?date=tomorrow") { page =>
       page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
       page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
-      page.evalBool("new URL(location.href).searchParams.has('date')") shouldBe false
+      page.evalBool("new URL(location.href).searchParameters.has('date')") shouldBe false
     }
   }
 
@@ -1834,7 +1834,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // `copyFilterLinkToClipboard()`. That helper folds the full filter state
   // into the URL and pushes it to the clipboard. Tests below trip it
   // directly (`copyFilterLinkToClipboard()`) to assert the URL shape per
-  // filter; boot-from-URL is asserted with the same `?param=` shape on a
+  // filter; boot-from-URL is asserted with the same `?parameter=` shape on a
   // fresh page.
 
   "a non-date filter change" should "leave the URL alone until the Copy button is pressed" in {
@@ -1844,8 +1844,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "document.getElementById('format-imax').click()"
       )
       // Neither click is reflected in the URL — only Copy commits state.
-      page.evalBool("new URL(location.href).searchParams.has('dim')")  shouldBe false
-      page.evalBool("new URL(location.href).searchParams.has('imax')") shouldBe false
+      page.evalBool("new URL(location.href).searchParameters.has('dim')")  shouldBe false
+      page.evalBool("new URL(location.href).searchParameters.has('imax')") shouldBe false
     }
   }
 
@@ -1855,7 +1855,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').click();" +
         "copyFilterLinkToClipboard()"
       )
-      page.evalString("new URL(location.href).searchParams.get('dim')") shouldBe "3D"
+      page.evalString("new URL(location.href).searchParameters.get('dim')") shouldBe "3D"
     }
     onPath("/?dim=3D") { page =>
       page.evalBool("document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').checked") shouldBe true
@@ -1869,14 +1869,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "document.querySelector('input[name=\"format-lang\"][value=\"\"]').click();" +
         "copyFilterLinkToClipboard()"
       )
-      page.evalBool("new URL(location.href).searchParams.has('lang')") shouldBe false
+      page.evalBool("new URL(location.href).searchParameters.has('lang')") shouldBe false
     }
   }
 
   "the IMAX checkbox" should "round-trip through ?imax=1 when the Copy button is used" in {
     onPath("/") { page =>
       page.eval("document.getElementById('format-imax').click(); copyFilterLinkToClipboard()")
-      page.evalString("new URL(location.href).searchParams.get('imax')") shouldBe "1"
+      page.evalString("new URL(location.href).searchParameters.get('imax')") shouldBe "1"
     }
     onPath("/?imax=1") { page =>
       page.evalBool("document.getElementById('format-imax').checked") shouldBe true
@@ -1890,7 +1890,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "document.getElementById('from-minute').value = '30';" +
         "onFormatChange(); copyFilterLinkToClipboard()"
       )
-      page.evalString("new URL(location.href).searchParams.get('from')") shouldBe "18:30"
+      page.evalString("new URL(location.href).searchParameters.get('from')") shouldBe "18:30"
     }
     onPath("/?from=20:15") { page =>
       page.evalString("document.getElementById('from-hour').value")   shouldBe "20"
@@ -1905,10 +1905,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "document.getElementById('search-input').value = 'Diabeł';" +
         "applyFilters(); copyFilterLinkToClipboard()"
       )
-      page.evalString("new URL(location.href).searchParams.get('q')") shouldBe "Diabeł"
+      page.evalString("new URL(location.href).searchParameters.get('q')") shouldBe "Diabeł"
     }
     onPath("/?q=Diab%C5%82eb") { page =>
-      // The character class is round-tripped, not interpreted — the param
+      // The character class is round-tripped, not interpreted — the parameter
       // lands in the input verbatim so the same `q=…` link reproduces the
       // same filter result.
       page.evalString("document.getElementById('search-input').value") shouldBe "Diabłeb"
@@ -1941,7 +1941,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "copyFilterLinkToClipboard()"
       )
       val included = page.evalString(
-        "new URL(location.href).searchParams.getAll('country').join('|')"
+        "new URL(location.href).searchParameters.getAll('country').join('|')"
       ).split('|').toSet
       included should not contain firstCountry
       included.size should be > 0
@@ -2032,7 +2032,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       cinema should not be ""
       page.eval("copyFilterLinkToClipboard()")
       val enabled = page.evalString(
-        "new URL(location.href).searchParams.getAll('cinema').join('|')"
+        "new URL(location.href).searchParameters.getAll('cinema').join('|')"
       ).split('|').toSet
       // The URL carries the canonical cinema displayNames of every enabled
       // cinema (i.e. ALL_CINEMAS minus the one just disabled). Look up what
@@ -2308,7 +2308,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "copyFilterLinkToClipboard()"
       )
       val included = page.evalString(
-        "new URL(location.href).searchParams.getAll('room').join('||')"
+        "new URL(location.href).searchParameters.getAll('room').join('||')"
       ).split("\\|\\|").toSet
       included should not contain targetPair
       included.size should be > 0
@@ -2546,8 +2546,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   /** While a directed slide is armed, `animateToDay` mounts the TARGET day's
    *  populated `.day-col` on just one flank of `#view-root` (the other flank is
-   *  an empty spacer) — the right/next side for `dir > 0`, the left/previous side
-   *  for `dir < 0`. Returns "next" or "previous" for whichever side holds the
+   *  an empty spacer) — the right/next side for `directory > 0`, the left/previous side
+   *  for `directory < 0`. Returns "next" or "previous" for whichever side holds the
    *  populated column, or "" if neither is populated (no slide in flight). This
    *  is the deterministic read of the slide direction the dropdown picked. */
   private def armedSlideSide(page: CdpPage): String =
@@ -2555,9 +2555,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       """(() => {
         |  const root = document.getElementById('view-root');
         |  if (!root) return '';
-        |  const popOn = (dirProp) => {
-        |    let el = root[dirProp];
-        |    while (el && !el.classList.contains('day-col')) el = el[dirProp];
+        |  const popOn = (directoryProp) => {
+        |    let el = root[directoryProp];
+        |    while (el && !el.classList.contains('day-col')) el = el[directoryProp];
         |    return !!(el && el.querySelector('.col[data-title]'));
         |  };
         |  if (popOn('nextElementSibling'))     return 'next';

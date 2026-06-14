@@ -237,11 +237,11 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   "the poll query" should "fetch only buckets within the lookback window, not the whole collection" in {
     val monitor = new UptimeMonitor()
     val now = 1700000000000L
-    val filterDoc = monitor.pollFilter(now).toBsonDocument()
+    val filterDocument = monitor.pollFilter(now).toBsonDocument()
 
     // A regression to find()/an empty filter would scan the whole collection.
-    filterDoc.isEmpty shouldBe false
-    filterDoc.getDocument("bucket").getDateTime("$gte").getValue shouldBe (now - UptimeMonitor.PollLookbackMs)
+    filterDocument.isEmpty shouldBe false
+    filterDocument.getDocument("bucket").getDateTime("$gte").getValue shouldBe (now - UptimeMonitor.PollLookbackMs)
   }
 
   // Boot hydrate must load only the displayed window, not the whole collection
@@ -250,10 +250,10 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   "the hydrate query" should "bound to the displayed window, not scan the whole collection" in {
     val monitor = new UptimeMonitor()
     val now = 1700000000000L
-    val filterDoc = monitor.hydrateFilter(now).toBsonDocument()
+    val filterDocument = monitor.hydrateFilter(now).toBsonDocument()
 
-    filterDoc.isEmpty shouldBe false
-    filterDoc.getDocument("bucket").getDateTime("$gte").getValue shouldBe
+    filterDocument.isEmpty shouldBe false
+    filterDocument.getDocument("bucket").getDateTime("$gte").getValue shouldBe
       (UptimeMonitor.bucketTimestamp(now) - UptimeMonitor.MaxBuckets.toLong * UptimeMonitor.BucketDurationMs)
   }
 

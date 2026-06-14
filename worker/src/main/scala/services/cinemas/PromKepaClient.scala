@@ -67,15 +67,15 @@ object PromKepaClient {
                            synopsis: Option[String], poster: Option[String])
 
   private def parseEvent(html: String, slug: String): Option[Event] = {
-    val doc   = Jsoup.parse(html)
-    val title = Option(doc.selectFirst("h3.event_title")).map(_.text.trim)
+    val document   = Jsoup.parse(html)
+    val title = Option(document.selectFirst("h3.event_title")).map(_.text.trim)
       .map(_.replaceFirst("(?i)^KINO KĘPA:\\s*", "").replaceAll("[\"„”“]", "").trim).filter(_.nonEmpty)
 
     title.map { t =>
-      val dt = TimelinePat.findFirstMatchIn(Option(doc.selectFirst("p.timeline")).map(_.text).getOrElse(""))
+      val dt = TimelinePat.findFirstMatchIn(Option(document.selectFirst("p.timeline")).map(_.text).getOrElse(""))
         .flatMap(m => Try(LocalDateTime.parse(m.group(1).replaceAll(",\\s*", ", "), DateTimeFmt)).toOption)
-      val booking = Option(doc.selectFirst("p.ticket a.cfs-hyperlink[href]")).map(_.attr("href")).filter(_.nonEmpty)
-      val meta = MetaPat.findFirstMatchIn(Option(doc.selectFirst("p.repertuar_description")).map(_.text).getOrElse(""))
+      val booking = Option(document.selectFirst("p.ticket a.cfs-hyperlink[href]")).map(_.attr("href")).filter(_.nonEmpty)
+      val meta = MetaPat.findFirstMatchIn(Option(document.selectFirst("p.repertuar_description")).map(_.text).getOrElse(""))
       Event(
         slug      = slug,
         title     = t,
@@ -84,9 +84,9 @@ object PromKepaClient {
         year      = meta.map(_.group(3).toInt),
         countries = meta.toSeq.flatMap(_.group(2).split("[,/]").map(_.trim).filter(_.nonEmpty)),
         director  = meta.toSeq.flatMap(_.group(1).split(",").map(_.trim).filter(_.nonEmpty)),
-        synopsis  = Option(doc.selectFirst("div.single_content")).map(_.text.trim)
+        synopsis  = Option(document.selectFirst("div.single_content")).map(_.text.trim)
                       .map(_.replaceAll("(?i)\\s*bilet[^.]*\\d+\\s*zł.*$", "").trim).filter(_.length > 20),
-        poster    = Option(doc.selectFirst("div.image_item img.wp-post-image[src]")).map(_.attr("src")).filter(_.nonEmpty)
+        poster    = Option(document.selectFirst("div.image_item img.wp-post-image[src]")).map(_.attr("src")).filter(_.nonEmpty)
       )
     }
   }

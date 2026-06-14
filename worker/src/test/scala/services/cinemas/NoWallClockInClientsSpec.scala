@@ -21,7 +21,7 @@ import scala.jdk.CollectionConverters._
  *  `.now(` is a leak and fails this spec, naming the offending file:line. */
 class NoWallClockInClientsSpec extends AnyFlatSpec with Matchers {
 
-  private val ClientsDir: Path = Paths.get("worker/src/main/scala/services/cinemas")
+  private val ClientsDirectory: Path = Paths.get("worker/src/main/scala/services/cinemas")
 
   private val NowCall = """Local(?:Date|DateTime)\.now\(""".r
 
@@ -33,10 +33,10 @@ class NoWallClockInClientsSpec extends AnyFlatSpec with Matchers {
     """(?:today|fallbackYear)\s*:?\s*(?:LocalDate|Int)?\s*=\s*(?:java\.time\.)?LocalDate\.now\(""".r
 
   "Cinema scraper clients" should "never read the wall clock outside a default-parameter declaration" in {
-    Files.exists(ClientsDir) shouldBe true
+    Files.exists(ClientsDirectory) shouldBe true
 
     val offenders: Seq[String] =
-      Files.list(ClientsDir).iterator.asScala.toSeq
+      Files.list(ClientsDirectory).iterator.asScala.toSeq
         .filter(p => p.getFileName.toString.endsWith(".scala"))
         .sortBy(_.getFileName.toString)
         .flatMap { path =>
@@ -72,7 +72,7 @@ class NoWallClockInClientsSpec extends AnyFlatSpec with Matchers {
     // Clients that default `today`/`fallbackYear` to the wall clock — they MUST
     // be handed the injected date wherever the catalog builds them directly.
     val dateSensitive: Seq[String] =
-      Files.list(ClientsDir).iterator.asScala.toSeq
+      Files.list(ClientsDirectory).iterator.asScala.toSeq
         .filter(p => p.getFileName.toString.endsWith("Client.scala"))
         .filter(p => AllowedDefault.findFirstIn(new String(Files.readAllBytes(p), java.nio.charset.StandardCharsets.UTF_8)).isDefined)
         .map(_.getFileName.toString.stripSuffix(".scala"))

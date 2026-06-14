@@ -43,12 +43,12 @@ class DcfClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
   def fetch(): Seq[CinemaMovie] = parseListing()
 
   private def parseListing(): Seq[CinemaMovie] = {
-    val doc = Jsoup.parse(http.get(RepertoireUrl))
+    val document = Jsoup.parse(http.get(RepertoireUrl))
 
     // A film can repeat under several date sections; each repeat is its own
     // `.film__item` block. Group by the numeric film id so all its slots merge.
     case class Block(filmId: String, title: String, poster: Option[String], slots: Seq[RawSlot])
-    val blocks = doc.select("div.film__item").asScala.toSeq.flatMap { el =>
+    val blocks = document.select("div.film__item").asScala.toSeq.flatMap { el =>
       val filmId = el.classNames().asScala.collectFirst { case FilmIdPat(id) => id }
       val title  = Option(el.selectFirst("h3.film__title")).map(_.text.trim).filter(_.nonEmpty)
       for { id <- filmId; t <- title } yield
@@ -148,20 +148,20 @@ object DcfClient {
    *  ("Dramat | Komedia | 120 min") and a description block whose first line is
    *  "reż. <director> | <country> | <year>" followed by the synopsis. */
   def parseDetail(html: String): Detail = {
-    val doc = Jsoup.parse(html)
+    val document = Jsoup.parse(html)
 
-    val params = Option(doc.selectFirst("p.movie-parameters")).map(_.text.trim).getOrElse("")
-    val segs   = params.split("\\|").map(_.trim).filter(_.nonEmpty).toSeq
+    val parameters = Option(document.selectFirst("p.movie-parameters")).map(_.text.trim).getOrElse("")
+    val segs   = parameters.split("\\|").map(_.trim).filter(_.nonEmpty).toSeq
     val runtime = segs.flatMap(s => RuntimePat.findFirstMatchIn(s).map(_.group(1).toInt)).headOption
     val genres  = segs.filterNot(s => RuntimePat.findFirstMatchIn(s).isDefined)
                       .map(tools.TextNormalization.titleCaseIfAllLower)
 
     // The trailer is the `youtube`-classed buy-style anchor; its href is already
     // a `watch?v=` URL. Other YouTube links on the page are footer share buttons.
-    val trailer = Option(doc.selectFirst("a.youtube[href*=youtube]")).map(_.attr("href"))
+    val trailer = Option(document.selectFirst("a.youtube[href*=youtube]")).map(_.attr("href"))
                     .filter(_.nonEmpty).flatMap(ScraperParse.canonicalTrailer)
 
-    Option(doc.selectFirst("div.title-description-content")) match {
+    Option(document.selectFirst("div.title-description-content")) match {
       case None => Detail(runtime, None, Seq.empty, genres, Seq.empty, None, trailer)
       case Some(desc) =>
         val lines    = desc.html.split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).text.trim).filter(_.nonEmpty)

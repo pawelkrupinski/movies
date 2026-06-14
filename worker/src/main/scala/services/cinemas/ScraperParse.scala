@@ -53,8 +53,8 @@ private[cinemas] object ScraperParse {
     * `label` (case-insensitive), searched within `dtSelector`. Trimmed; empty
     * → `None`. The Drupal-style cinema sites render film metadata as such
     * definition lists. */
-  def ddField(doc: Document, label: String, dtSelector: String = "dt"): Option[String] =
-    doc.select(dtSelector).asScala
+  def ddField(document: Document, label: String, dtSelector: String = "dt"): Option[String] =
+    document.select(dtSelector).asScala
       .find(_.text.toLowerCase.contains(label))
       .flatMap(dt => Option(dt.nextElementSibling))
       .filter(_.tagName == "dd")

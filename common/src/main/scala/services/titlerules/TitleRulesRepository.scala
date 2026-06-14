@@ -73,7 +73,7 @@ object StoredTitleRuleRecord {
     StoredTitleRuleRecord(rec.id, rec.scope.name, rec.cinemaId,
       rec.rules.map(ruleFromDomain), rec.lastRules.map(ruleFromDomain))
 
-  /** None when the stored `scope` isn't recognised (a forward-compat doc from a
+  /** None when the stored `scope` isn't recognised (a forward-compat document from a
    *  newer schema) — such records are skipped rather than crashing the load. */
   def toDomain(s: StoredTitleRuleRecord): Option[TitleRuleRecord] =
     RuleScope.byName(s.scope).map { sc =>

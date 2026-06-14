@@ -9,7 +9,7 @@ import scala.collection.mutable
  * needing a real Mongo cluster. Implements the `MovieRepository` trait so it slots
  * in wherever the production cache expects a repository.
  *
- * Indexed by the same normalized docId formula as the production repository
+ * Indexed by the same normalized documentId formula as the production repository
  * (`TitleNormalizer.sanitize(title)|year`), so case + diacritic + whitespace
  * variants of the same title collapse to one row exactly as they do in Mongo.
  *

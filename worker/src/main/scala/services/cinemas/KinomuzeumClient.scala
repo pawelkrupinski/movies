@@ -37,10 +37,10 @@ class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.
   def fetch(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
-    val doc = Jsoup.parse(http.get(ListingUrl))
+    val document = Jsoup.parse(http.get(ListingUrl))
 
     var date: Option[LocalDate] = None
-    val slots = doc.select("div.section_title_small, h3.h4").asScala.toSeq.flatMap { el =>
+    val slots = document.select("div.section_title_small, h3.h4").asScala.toSeq.flatMap { el =>
       if (el.hasClass("section_title_small")) { date = KinomuzeumClient.parseDate(el.text, today); Seq.empty }
       else date.toSeq.flatMap(d => cardSlot(el, d))
     }
@@ -132,21 +132,21 @@ object KinomuzeumClient {
                           director: Seq[String], synopsis: Option[String], poster: Option[String])
   object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, None, None) }
 
-  private def meta(doc: org.jsoup.nodes.Document, label: String): Option[String] =
-    doc.select("div.meta-data").asScala.find(_.text.toLowerCase.contains(label))
+  private def meta(document: org.jsoup.nodes.Document, label: String): Option[String] =
+    document.select("div.meta-data").asScala.find(_.text.toLowerCase.contains(label))
       .flatMap(d => Option(d.selectFirst(".description"))).map(_.text.trim).filter(_.nonEmpty)
 
   def parseDetail(html: String): Detail = {
-    val doc = Jsoup.parse(html)
+    val document = Jsoup.parse(html)
     Detail(
-      runtime   = meta(doc, "czas trwania").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
-      year      = meta(doc, "rok produkcji").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
-      countries = meta(doc, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      director  = meta(doc, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      synopsis  = Option(doc.selectFirst("div.block-element.text .description")).map(_.text.trim)
-                    .orElse(Option(doc.selectFirst("meta[property=og:description]")).map(_.attr("content").trim))
+      runtime   = meta(document, "czas trwania").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
+      year      = meta(document, "rok produkcji").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
+      countries = meta(document, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      director  = meta(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      synopsis  = Option(document.selectFirst("div.block-element.text .description")).map(_.text.trim)
+                    .orElse(Option(document.selectFirst("meta[property=og:description]")).map(_.attr("content").trim))
                     .filter(_.length > 20),
-      poster    = Option(doc.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty)
+      poster    = Option(document.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty)
     )
   }
 }

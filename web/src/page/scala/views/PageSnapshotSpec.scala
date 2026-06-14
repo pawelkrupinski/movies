@@ -23,7 +23,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
   private val anonymousUser    = Option.empty[models.User]
   private val noOauthProviders = Set.empty[String]
 
-  private val snapshotDir = Paths.get("test/resources/fixtures/08-06-2026")
+  private val snapshotDirectory = Paths.get("test/resources/fixtures/08-06-2026")
 
   // Boot the whole pipeline ONCE and render every page from the shared cache.
   // The scrape tick is the spec's dominant cost (~3s warm, ~15s cold-JIT) and
@@ -44,7 +44,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
       service.toSchedules(city, now), city.cinemaDisplayNames, city.cinemaPillMap,
       devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
     ).body
-    assertSnapshot(snapshotDir.resolve("expected-index.html"), html)
+    assertSnapshot(snapshotDirectory.resolve("expected-index.html"), html)
   }
 
   // Multi-city coverage: the same corpus now carries Wrocław + Warszawa
@@ -54,7 +54,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
       service.toSchedules(models.Wroclaw, now), models.Wroclaw.cinemaDisplayNames, models.Wroclaw.cinemaPillMap,
       devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
     )(models.Wroclaw).body
-    assertSnapshot(snapshotDir.resolve("expected-wroclaw-index.html"), html)
+    assertSnapshot(snapshotDirectory.resolve("expected-wroclaw-index.html"), html)
   }
 
   "the Warszawa index" should "render the same HTML as the checked-in snapshot" in {
@@ -62,7 +62,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
       service.toSchedules(models.Warszawa, now), models.Warszawa.cinemaDisplayNames, models.Warszawa.cinemaPillMap,
       devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
     )(models.Warszawa).body
-    assertSnapshot(snapshotDir.resolve("expected-warszawa-index.html"), html)
+    assertSnapshot(snapshotDirectory.resolve("expected-warszawa-index.html"), html)
   }
 
   "the /plan page" should "render the same HTML as the checked-in snapshot" in {
@@ -71,7 +71,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
       data, city.cinemaDisplayNames, city.cinemaPillMap,
       devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
     ).body
-    assertSnapshot(snapshotDir.resolve("expected-plan.html"), html)
+    assertSnapshot(snapshotDirectory.resolve("expected-plan.html"), html)
   }
 
   private def assertSnapshot(expectedPath: Path, actual: String): Unit = {

@@ -45,9 +45,9 @@ class KinoIkmClient(
   def fetch(): Seq[CinemaMovie] = parseHtml(http.get(KinoIkmClient.PageUrl))
 
   def parseHtml(html: String): Seq[CinemaMovie] = {
-    val doc     = Jsoup.parse(html)
-    val posters = posterIndex(doc)
-    val slots   = doc.select("div.screeningtable div.schedulerow").asScala.toSeq.flatMap(parseRow)
+    val document     = Jsoup.parse(html)
+    val posters = posterIndex(document)
+    val slots   = document.select("div.screeningtable div.schedulerow").asScala.toSeq.flatMap(parseRow)
 
     slots.groupBy(_.title).toSeq.flatMap { case (title, group) =>
       val showtimes = group
@@ -69,8 +69,8 @@ class KinoIkmClient(
   }
 
   /** Film-page URL → poster URL, read off the `section.movielist` grid. */
-  private def posterIndex(doc: Document): Map[String, String] =
-    doc.select("section.movielist div.singleposter").asScala.toSeq.flatMap { card =>
+  private def posterIndex(document: Document): Map[String, String] =
+    document.select("section.movielist div.singleposter").asScala.toSeq.flatMap { card =>
       val url    = Option(card.selectFirst("h4 a[href]")).map(_.attr("href")).filter(_.nonEmpty)
       val poster = Option(card.selectFirst("div.pthumb img[src]")).map(_.attr("src")).filter(_.nonEmpty)
       for { u <- url; p <- poster } yield u -> p

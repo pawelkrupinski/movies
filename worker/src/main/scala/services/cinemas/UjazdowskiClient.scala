@@ -91,10 +91,10 @@ class UjazdowskiClient(
    *  from the detail page (the meta line on the listing supplies everything
    *  else). None on fetch failure so the task stays stale and is retried. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(detailHttp.get(ref)).toOption.map(Jsoup.parse).map { doc =>
+    Try(detailHttp.get(ref)).toOption.map(Jsoup.parse).map { document =>
       FilmDetail(
-        synopsis      = Option(doc.selectFirst("div.body.max-w")).map(_.text.trim).filter(_.length > 20),
-        originalTitle = UjazdowskiClient.originalTitleOf(doc)
+        synopsis      = Option(document.selectFirst("div.body.max-w")).map(_.text.trim).filter(_.length > 20),
+        originalTitle = UjazdowskiClient.originalTitleOf(document)
       )
     }
 
@@ -128,8 +128,8 @@ object UjazdowskiClient {
 
   /** The bracketed original title from the film-page header meta, e.g.
    *  "[Da hong deng long gao gao gua], reż. …" → "Da hong deng long gao gao gua". */
-  def originalTitleOf(doc: org.jsoup.nodes.Document): Option[String] =
-    Option(doc.selectFirst("div.event-content-header div.fs-20.max-w")).map(_.text.trim)
+  def originalTitleOf(document: org.jsoup.nodes.Document): Option[String] =
+    Option(document.selectFirst("div.event-content-header div.fs-20.max-w")).map(_.text.trim)
       .flatMap(s => OrigTitlePat.findFirstMatchIn(s).map(_.group(1).trim)).filter(_.nonEmpty)
 
   final case class Meta(director: Seq[String], countries: Seq[String], year: Option[Int], runtime: Option[Int])

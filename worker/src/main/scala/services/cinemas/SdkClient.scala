@@ -91,15 +91,15 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
       }
     }
 
-  private def booking(doc: org.jsoup.nodes.Document): Option[String] =
-    Option(doc.selectFirst("a[href*=biletyna]")).map(_.attr("href")).filter(_.nonEmpty)
+  private def booking(document: org.jsoup.nodes.Document): Option[String] =
+    Option(document.selectFirst("a[href*=biletyna]")).map(_.attr("href")).filter(_.nonEmpty)
 
-  private def room(doc: org.jsoup.nodes.Document): Option[String] =
-    doc.select("dl.event-details dd").asScala.find(_.selectFirst("span.text-muted") != null)
+  private def room(document: org.jsoup.nodes.Document): Option[String] =
+    document.select("dl.event-details dd").asScala.find(_.selectFirst("span.text-muted") != null)
       .flatMap(d => Option(d.selectFirst("span.text-muted"))).map(_.text.trim).filter(_.nonEmpty)
 
-  private def metaLi(doc: org.jsoup.nodes.Document, label: String): Option[String] =
-    doc.select("li").asScala.find(_.text.toLowerCase.startsWith(label))
+  private def metaLi(document: org.jsoup.nodes.Document, label: String): Option[String] =
+    document.select("li").asScala.find(_.text.toLowerCase.startsWith(label))
       .map(_.text.replaceFirst(s"(?i)^$label[:\\s]*", "").trim).filter(_.nonEmpty)
 
   private def intIn(s: String): Option[Int]  = """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)

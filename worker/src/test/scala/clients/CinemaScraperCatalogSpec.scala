@@ -23,15 +23,15 @@ import scala.concurrent.duration._
  */
 class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  // `http` deliberately points at a fixture dir without any biletyna capture, so
+  // `http` deliberately points at a fixture directory without any biletyna capture, so
   // any cinema that wrongly fetches through it (instead of its own seam) fails.
   private val http = new FakeHttpFetch("does-not-exist")
 
-  /** Catalog whose biletyna seam reads `fixtureDir`; `http`/`mkFetch` are the
+  /** Catalog whose biletyna seam reads `fixtureDirectory`; `http`/`mkFetch` are the
    *  fixture-less fake so a leaked fetch onto the shared path throws. */
-  private def catalogWithBiletyna(fixtureDir: String): CinemaScraperCatalog =
+  private def catalogWithBiletyna(fixtureDirectory: String): CinemaScraperCatalog =
     new CinemaScraperCatalog(
-      http, mkFetch = http, bnFetch = new FakeHttpFetch(fixtureDir), today = LocalDate.of(2026, 6, 6),
+      http, mkFetch = http, bnFetch = new FakeHttpFetch(fixtureDirectory), today = LocalDate.of(2026, 6, 6),
       chainDetailCache = (h, ttl) => new CachingDetailFetch(h, ttl)
     )
 

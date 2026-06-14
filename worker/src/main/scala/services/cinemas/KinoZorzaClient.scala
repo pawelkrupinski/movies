@@ -45,8 +45,8 @@ class KinoZorzaClient(
 
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(RepertoireUrl)
-    val doc  = Jsoup.parse(html)
-    val slots = parseDoc(doc, today)
+    val document  = Jsoup.parse(html)
+    val slots = parseDocument(document, today)
 
     val byFilmUrl = slots.groupBy(_.filmUrl)
     byFilmUrl.toSeq.flatMap { case (_, group) =>
@@ -84,11 +84,11 @@ object KinoZorzaClient {
 
   private[cinemas] case class RawSlot(title: String, filmUrl: String, dateTime: LocalDateTime, hall: String)
 
-  private[cinemas] def parseDoc(doc: Document, today: LocalDate): Seq[RawSlot] = {
+  private[cinemas] def parseDocument(document: Document, today: LocalDate): Seq[RawSlot] = {
     // The date blocks and content blocks are adjacent siblings inside the same
     // container. We walk them in pairs: fullrepertoire-date → fullrepertoire-content.
-    val dateDivs    = doc.select("div.fullrepertoire-date").asScala.toSeq
-    val contentDivs = doc.select("div.fullrepertoire-content").asScala.toSeq
+    val dateDivs    = document.select("div.fullrepertoire-date").asScala.toSeq
+    val contentDivs = document.select("div.fullrepertoire-content").asScala.toSeq
 
     dateDivs.zip(contentDivs).flatMap { case (dateDiv, contentDiv) =>
       parseDate(dateDiv, today) match {

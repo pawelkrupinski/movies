@@ -11,7 +11,7 @@ import scala.util.Try
 /**
  * Kino Aurum (Złotoryja). The site kinoaurum.pl is a JS app backed by a public
  * Google Firestore database; the `seanse` collection's REST endpoint returns
- * every screening as a Firestore document. Each `seanse` doc carries the film
+ * every screening as a Firestore document. Each `seanse` document carries the film
  * title denormalised (`film_tytul`) plus the date (`data`, "YYYY-MM-DD") and
  * time (`godzina`, "HH:MM") as plain Warsaw-local strings — so one fetch yields
  * the whole programme with no join to the `filmy` collection.
@@ -40,11 +40,11 @@ object KinoAurumClient {
   private val Fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
   def parse(json: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val docs = (Try(Json.parse(json)).toOption.getOrElse(JsNull) \ "documents")
+    val documents = (Try(Json.parse(json)).toOption.getOrElse(JsNull) \ "documents")
       .asOpt[Seq[JsValue]].getOrElse(Seq.empty)
 
-    val slots = docs.flatMap { doc =>
-      val f = doc \ "fields"
+    val slots = documents.flatMap { document =>
+      val f = document \ "fields"
       for {
         title <- (f \ "film_tytul" \ "stringValue").asOpt[String].map(_.trim).filter(_.nonEmpty)
         date  <- (f \ "data" \ "stringValue").asOpt[String]

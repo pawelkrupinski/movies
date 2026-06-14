@@ -16,7 +16,7 @@ import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
- * @param surfaceExternalWrites when true, after hydrating from Mongo this
+ * @parameter surfaceExternalWrites when true, after hydrating from Mongo this
  *        instance POLLS `uptimeBuckets` every `PollIntervalMs` and merges the
  *        current snapshot — including buckets written by OTHER processes — into
  *        its in-memory map, firing listeners for the ones that changed so the
@@ -36,7 +36,7 @@ import scala.util.Try
  *    24h of retained history — an unbounded poll re-read the whole collection
  *    every interval and, once every city scraped (so the collection tripled),
  *    dominated the serving vCPU. This replaced a per-write change stream
- *    (UPDATE_LOOKUP) whose full-doc lookups pegged the serving vCPU at multi-city
+ *    (UPDATE_LOOKUP) whose full-document lookups pegged the serving vCPU at multi-city
  *    volume, and it drops the change stream's replica-set requirement.
  */
 class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boolean = false) extends Logging {
@@ -54,7 +54,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
 
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection("uptimeBuckets"))
   // Tags live in their own collection (no TTL — they're static config, unlike the
-  // 24h-expiring buckets), one doc per service keyed by `service`.
+  // 24h-expiring buckets), one document per service keyed by `service`.
   private val tagColl: Option[MongoCollection[Document]] = db.map(_.getCollection("uptimeServiceTags"))
 
   // Daemon scheduler running the flusher (always) + poller (serving app only);
@@ -82,7 +82,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
         exec.scheduleWithFixedDelay(() => Try(poll(c)), PollIntervalMs, PollIntervalMs, TimeUnit.MILLISECONDS)
         // Re-read the tiny tag collection on the same cadence so a cinema tagged by
         // the worker after this app booted still surfaces (cheap full read — tags
-        // are ~one doc per cinema, not the 24h × N-service bucket history).
+        // are ~one document per cinema, not the 24h × N-service bucket history).
         tagColl.foreach(tc => exec.scheduleWithFixedDelay(() => Try(loadTags(tc)), PollIntervalMs, PollIntervalMs, TimeUnit.MILLISECONDS))
         logger.info(s"UptimeMonitor: polling uptimeBuckets every ${PollIntervalMs / 1000}s for cross-process updates.")
       }
@@ -208,7 +208,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
   // ── Per-service tags (generic per-row labels) ────────────────────────────────
 
   /** Attach `tags` to `service`, replacing any existing set. Updates the
-   *  in-memory map and best-effort upserts the one tag doc for the service so
+   *  in-memory map and best-effort upserts the one tag document for the service so
    *  other processes (the serving app) pick it up. A no-op set is still written
    *  (idempotent `$set`). Caller-supplied empty `tags` clears the row's tags. */
   def tagService(service: String, tags: Set[String]): Unit = {
@@ -233,13 +233,13 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
   def serviceTagsSnapshot(): Map[String, Set[String]] = serviceTags.asScala.toMap
 
   /** Load all service tags from Mongo into the in-memory map. The collection is
-   *  small (one doc per tagged service), so an unfiltered read is cheap; `$set`
+   *  small (one document per tagged service), so an unfiltered read is cheap; `$set`
    *  semantics make re-loading idempotent. */
   private def loadTags(c: MongoCollection[Document]): Unit = Try {
-    val docs = Await.result(c.find().toFuture(), HydrateTimeout)
-    docs.foreach { doc =>
-      Option(doc.getString("service")).foreach { service =>
-        val tags = Try(doc.getList("tags", classOf[String])).toOption.flatMap(Option(_))
+    val documents = Await.result(c.find().toFuture(), HydrateTimeout)
+    documents.foreach { document =>
+      Option(document.getString("service")).foreach { service =>
+        val tags = Try(document.getList("tags", classOf[String])).toOption.flatMap(Option(_))
           .map(_.asScala.toSet).getOrElse(Set.empty[String])
         if (tags.nonEmpty) serviceTags.put(service, tags) else serviceTags.remove(service)
       }
@@ -325,11 +325,11 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
    *  query per interval — cost scales with the number of services in the window,
    *  not with the full 24h of retained history. */
   private def poll(c: MongoCollection[Document]): Unit = Try {
-    val docs = Await.result(c.find(pollFilter(System.currentTimeMillis())).toFuture(), 10.seconds)
-    docs.foreach { doc =>
+    val documents = Await.result(c.find(pollFilter(System.currentTimeMillis())).toFuture(), 10.seconds)
+    documents.foreach { document =>
       for {
-        service    <- Option(doc.getString("service"))
-        bucketDate <- Option(doc.getDate("bucket"))
+        service    <- Option(document.getString("service"))
+        bucketDate <- Option(document.getDate("bucket"))
       } {
         val ts = bucketTimestamp(bucketDate.getTime)
         // Don't clobber a bucket this process has un-flushed local changes for
@@ -339,13 +339,13 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
         if (!locallyDirty)
           applyExternalUpdate(
             service, bucketDate.getTime,
-            doc.getInteger("successes", 0),
-            doc.getInteger("failures", 0),
-            doc.getInteger("zeroes", 0),
-            Try(doc.get("durationSumMs").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L),
-            doc.getInteger("durationCount", 0),
-            Try(doc.getList("errors", classOf[String])).toOption.fold(Seq.empty[String])(_.asScala.toSeq),
-            Try(doc.getBoolean("fallback", false)).getOrElse(false)
+            document.getInteger("successes", 0),
+            document.getInteger("failures", 0),
+            document.getInteger("zeroes", 0),
+            Try(document.get("durationSumMs").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L),
+            document.getInteger("durationCount", 0),
+            Try(document.getList("errors", classOf[String])).toOption.fold(Seq.empty[String])(_.asScala.toSeq),
+            Try(document.getBoolean("fallback", false)).getOrElse(false)
           )
       }
     }
@@ -358,7 +358,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
     }
 
   /** The hydrate only needs the buckets the /uptime page actually renders — the
-   *  most recent `MaxBuckets` slots. Bounding to that window (a) skips older docs
+   *  most recent `MaxBuckets` slots. Bounding to that window (a) skips older documents
    *  that linger inside the TTL margin but never display, and (b) rides the
    *  `{bucket:1}` index instead of a full collection scan. */
   private[services] def hydrateFilter(nowMs: Long): Bson =
@@ -372,29 +372,29 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
    *  generous per-attempt timeout before giving up. Runs on a daemon thread, so
    *  neither the timeout nor the backoff blocks app start, and records arriving
    *  mid-hydrate merge additively. Only the FETCH retries — the merge runs once on
-   *  the materialised docs, so a retry can't double-count via `addAndGet`. */
+   *  the materialised documents, so a retry can't double-count via `addAndGet`. */
   private def hydrate(c: MongoCollection[Document]): Unit = Try {
-    val docs = RetryWithBackoff("Uptime hydrate", maxAttempts = HydrateMaxAttempts, initialBackoff = HydrateRetryBackoff) {
+    val documents = RetryWithBackoff("Uptime hydrate", maxAttempts = HydrateMaxAttempts, initialBackoff = HydrateRetryBackoff) {
       Await.result(c.find(hydrateFilter(System.currentTimeMillis())).toFuture(), HydrateTimeout)
     }
     var count = 0
-    docs.foreach { doc =>
+    documents.foreach { document =>
       for {
-        service <- Option(doc.getString("service"))
-        bucketDate <- Option(doc.getDate("bucket"))
+        service <- Option(document.getString("service"))
+        bucketDate <- Option(document.getDate("bucket"))
       } {
         val ts = bucketTimestamp(bucketDate.getTime)
         val buckets = data.computeIfAbsent(service, _ => new java.util.concurrent.ConcurrentSkipListMap[Long, Bucket]())
         val bucket = buckets.computeIfAbsent(ts, t => Bucket(t))
-        bucket.successes.addAndGet(doc.getInteger("successes", 0))
-        bucket.failures.addAndGet(doc.getInteger("failures", 0))
-        bucket.zeroes.addAndGet(doc.getInteger("zeroes", 0))
-        bucket.durationSumMs.addAndGet(Try(doc.get("durationSumMs").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L))
-        bucket.durationCount.addAndGet(doc.getInteger("durationCount", 0))
-        Try(doc.getList("errors", classOf[String])).toOption.foreach { errs =>
+        bucket.successes.addAndGet(document.getInteger("successes", 0))
+        bucket.failures.addAndGet(document.getInteger("failures", 0))
+        bucket.zeroes.addAndGet(document.getInteger("zeroes", 0))
+        bucket.durationSumMs.addAndGet(Try(document.get("durationSumMs").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L))
+        bucket.durationCount.addAndGet(document.getInteger("durationCount", 0))
+        Try(document.getList("errors", classOf[String])).toOption.foreach { errs =>
           errs.asScala.take(MaxErrorsPerBucket).foreach(bucket.errors.add)
         }
-        if (Try(doc.getBoolean("fallback", false)).getOrElse(false)) bucket.fallback.set(true)
+        if (Try(document.getBoolean("fallback", false)).getOrElse(false)) bucket.fallback.set(true)
         count += 1
       }
     }

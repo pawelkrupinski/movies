@@ -128,8 +128,8 @@ object McswElektrowniaCinemaClient {
   }
 
   private[cinemas] def parseDayPage(html: String, date: LocalDate): Seq[RawSlot] = {
-    val doc = Jsoup.parse(html)
-    doc.select("div.js-event-details-filter.movies-movie__single").asScala.toSeq.flatMap { block =>
+    val document = Jsoup.parse(html)
+    document.select("div.js-event-details-filter.movies-movie__single").asScala.toSeq.flatMap { block =>
       val rawTitle = Option(block.selectFirst("h2.movies-movie__single__title"))
         .map(_.text.trim).getOrElse("")
       if (rawTitle.isEmpty) Seq.empty

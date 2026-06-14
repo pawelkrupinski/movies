@@ -23,7 +23,7 @@ import java.nio.file.Files
  */
 class RecorderZyteCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  private val tmpRoot = new File("test/resources/fixtures/recorder-zyte-capture-spec")
+  private val temporaryRoot = new File("test/resources/fixtures/recorder-zyte-capture-spec")
   private val MultikinoFilmsUrl =
     "https://www.multikino.pl/api/microservice/showings/cinemas/0011/films"
 
@@ -33,8 +33,8 @@ class RecorderZyteCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndAf
     override def get(url: String): String = body
   }
 
-  private def filmsFixture(dir: String): File =
-    new File(s"test/resources/fixtures/recorder-zyte-capture-spec/$dir/" +
+  private def filmsFixture(directory: String): File =
+    new File(s"test/resources/fixtures/recorder-zyte-capture-spec/$directory/" +
       "www.multikino.pl/api/microservice/showings/cinemas/0011/films")
 
   "Recording wired as the chain's inner `direct` fallback (the old wiring)" should
@@ -76,27 +76,27 @@ class RecorderZyteCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndAf
     RecordAllDataToFixture.biletynaFetch  shouldBe a[RecordingHttpFetch]
   }
 
-  "The recorder's capture dir" should
-    "default to `today` (the daily artifact dir), overridable via KINOWO_FIXTURE_DIR" in {
-    // No KINOWO_FIXTURE_DIR in the test env → the dateless `today` dir the daily
+  "The recorder's capture directory" should
+    "default to `today` (the daily artifact directory), overridable via KINOWO_FIXTURE_DIR" in {
+    // No KINOWO_FIXTURE_DIR in the test env → the dateless `today` directory the daily
     // country-fixture job + local sync key off (refresh-fixtures.yml overrides
-    // it to a dd-MM-yyyy dir). Pins that the recorder no longer hard-codes a
+    // it to a dd-MM-yyyy directory). Pins that the recorder no longer hard-codes a
     // date literal a workflow must sed.
     RecordAllDataToFixture.captureDate shouldBe "today"
   }
 
-  it should "build httoFetch's fixture tree under that dir (init-order safe)" in {
+  it should "build httoFetch's fixture tree under that directory (init-order safe)" in {
     // Regression: when captureDate was a runtime `val`, httoFetch (a lazy val
     // forced during super-construction) captured it as null → the corpus went to
     // `test/resources/fixtures/null` while only CAPTURE_DATE landed in `today`
     // (the 323-byte artifact). The lazy val caches that, so this asserts the
-    // cached instance is keyed off the right dir.
+    // cached instance is keyed off the right directory.
     RecordAllDataToFixture.httoFetch
       .asInstanceOf[RecordingHttpFetch].fixtureRoot shouldBe "test/resources/fixtures/today"
   }
 
   override def afterAll(): Unit = {
-    deleteRecursively(tmpRoot)
+    deleteRecursively(temporaryRoot)
     super.afterAll()
   }
 

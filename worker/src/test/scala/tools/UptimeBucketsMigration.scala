@@ -16,19 +16,19 @@ import scala.util.Try
  *  MERGING the sub-buckets that now fall in the same 15-min slot — summing
  *  their counts and concatenating their errors (capped at
  *  `MaxErrorsPerBucket`) — into a single document keyed at the 15-min
- *  boundary, then deleting the redundant sub-boundary docs.
+ *  boundary, then deleting the redundant sub-boundary documents.
  *
  *  Why a migration rather than relying on the app's hydrate (which already
- *  sums old docs into 15-min buckets in memory): the stale sub-boundary docs
+ *  sums old documents into 15-min buckets in memory): the stale sub-boundary documents
  *  otherwise linger for the bucket TTL, where the serving app's poll re-applies
  *  them with SET semantics (last-write-wins clobber) and a reboot's hydrate
- *  double-counts any slot whose boundary doc was already flushed-merged. This
- *  collapses Mongo to exactly one doc per (service, 15-min slot).
+ *  double-counts any slot whose boundary document was already flushed-merged. This
+ *  collapses Mongo to exactly one document per (service, 15-min slot).
  *
  *  Only FROZEN slots are touched: it skips the current and previous slot (the
  *  ones writers may still be mutating / may carry a flushed-merged boundary
- *  doc from a deploy that landed inside them), so it never double-counts an
- *  active slot. Idempotent — a slot already collapsed to one boundary doc
+ *  document from a deploy that landed inside them), so it never double-counts an
+ *  active slot. Idempotent — a slot already collapsed to one boundary document
  *  merges to itself.
  *
  *  Reads `MONGODB_URI` / `MONGODB_DB` from env — source `.env.local` first:
@@ -84,32 +84,32 @@ object UptimeBucketsMigration {
 
       // Skip the current + previous slot: writers may still be flushing them,
       // and a deploy that landed inside one leaves a flushed-merged boundary
-      // doc that summing would double-count. Everything older is frozen.
+      // document that summing would double-count. Everything older is frozen.
       val cutoff = UptimeMonitor.bucketTimestamp(System.currentTimeMillis()) - UptimeMonitor.BucketDurationMs
 
-      val docs = Await.result(coll.find().toFuture(), 60.seconds)
-      val rows = docs.flatMap { doc =>
+      val documents = Await.result(coll.find().toFuture(), 60.seconds)
+      val rows = documents.flatMap { document =>
         for {
-          service    <- Option(doc.getString("service"))
-          bucketDate <- Option(doc.getDate("bucket"))
+          service    <- Option(document.getString("service"))
+          bucketDate <- Option(document.getDate("bucket"))
         } yield RawBucket(
           service, bucketDate.getTime,
-          doc.getInteger("successes", 0),
-          doc.getInteger("failures", 0),
-          Try(doc.get("durationSumMs").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L),
-          doc.getInteger("durationCount", 0),
-          Try(doc.getList("errors", classOf[String])).toOption.fold(Seq.empty[String])(_.asScala.toSeq))
+          document.getInteger("successes", 0),
+          document.getInteger("failures", 0),
+          Try(document.get("durationSumMs").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L),
+          document.getInteger("durationCount", 0),
+          Try(document.getList("errors", classOf[String])).toOption.fold(Seq.empty[String])(_.asScala.toSeq))
       }.toSeq
 
       val frozen = rows.filter(r => UptimeMonitor.bucketTimestamp(r.bucketTs) < cutoff)
       val merged = merge15Min(frozen)
-      println(s"Read ${rows.size} doc(s); ${frozen.size} in frozen slots collapse to ${merged.size} 15-min bucket(s).")
+      println(s"Read ${rows.size} document(s); ${frozen.size} in frozen slots collapse to ${merged.size} 15-min bucket(s).")
 
       var collapsed = 0
       merged.foreach { m =>
         val boundary = new java.util.Date(m.bucketTs)
         // Persist the merged total at the boundary FIRST (upsert), so the data
-        // survives before any delete; then drop the redundant sub-boundary docs
+        // survives before any delete; then drop the redundant sub-boundary documents
         // in this 15-min window. Crash-safe: a re-run reconciles.
         Await.result(coll.updateOne(
           Filters.and(Filters.eq("service", m.service), Filters.eq("bucket", boundary)),
@@ -130,7 +130,7 @@ object UptimeBucketsMigration {
         )).toFuture(), 30.seconds)
         collapsed += del.getDeletedCount.toInt
       }
-      println(s"Done: wrote ${merged.size} boundary doc(s), deleted $collapsed redundant sub-bucket doc(s).")
+      println(s"Done: wrote ${merged.size} boundary document(s), deleted $collapsed redundant sub-bucket document(s).")
     } finally connection.close()
   }
 }

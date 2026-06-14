@@ -32,7 +32,7 @@ sealed trait DomainEvent
  *
  *  `originalTitle` carries the cinema's English/international title when
  *  available (Multikino exposes one for ~5% of films — Cirque du Soleil,
- *  opera/concert docs, English imports). The TMDB stage uses it as a secondary
+ *  opera/concert documents, English imports). The TMDB stage uses it as a secondary
  *  search title when the Polish title doesn't resolve.
  *
  *  `director` carries the reported director name(s) (possibly comma-separated

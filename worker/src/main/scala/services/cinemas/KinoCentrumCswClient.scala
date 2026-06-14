@@ -44,8 +44,8 @@ class KinoCentrumCswClient(
 
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(RepertoireUrl)
-    val doc  = Jsoup.parse(html)
-    val slots = parseDoc(doc, today)
+    val document  = Jsoup.parse(html)
+    val slots = parseDocument(document, today)
 
     // Group by title: the same film appears on different days under different
     // per-date event URLs (e.g. "drzewo-magii-14/", "drzewo-magii-15/") — we
@@ -86,9 +86,9 @@ object KinoCentrumCswClient {
     dateTime: LocalDateTime
   )
 
-  private[cinemas] def parseDoc(doc: Document, today: LocalDate): Seq[RawSlot] = {
+  private[cinemas] def parseDocument(document: Document, today: LocalDate): Seq[RawSlot] = {
     // All day boxes are in one wrapping div; select them directly.
-    doc.select("div.box").asScala.toSeq.flatMap { box =>
+    document.select("div.box").asScala.toSeq.flatMap { box =>
       val h2    = Option(box.selectFirst("h2")).map(_.text.trim).getOrElse("")
       val date  = parsePolishDate(h2, today)
       date match {

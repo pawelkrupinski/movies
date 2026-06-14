@@ -117,7 +117,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
   // ── Gzip response cache ────────────────────────────────────────────────────
 
-  private def gzipReq(path: String) =
+  private def gzipRequest(path: String) =
     FakeRequest("GET", path).withHeaders("Accept-Encoding" -> "gzip, deflate, br")
 
   private def gunzip(bytes: org.apache.pekko.util.ByteString): String =
@@ -125,7 +125,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
   "apiRepertoire" should "serve gzip-precompressed JSON to a gzip-accepting client, with Last-Modified" in {
     val (ctrl, _) = buildController()
-    val result = ctrl.apiRepertoire("poznan")(gzipReq("/poznan/api/repertoire"))
+    val result = ctrl.apiRepertoire("poznan")(gzipRequest("/poznan/api/repertoire"))
 
     status(result) shouldBe OK
     header("Content-Encoding", result) shouldBe Some("gzip")
@@ -137,10 +137,10 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
   it should "still 304 a current client even when it accepts gzip (cache must not shadow the 304)" in {
     val (ctrl, _) = buildController()
-    val lastMod = header("Last-Modified", ctrl.apiRepertoire("poznan")(gzipReq("/poznan/api/repertoire"))).get
+    val lastMod = header("Last-Modified", ctrl.apiRepertoire("poznan")(gzipRequest("/poznan/api/repertoire"))).get
 
     val revalidated = ctrl.apiRepertoire("poznan")(
-      gzipReq("/poznan/api/repertoire").withHeaders("If-Modified-Since" -> lastMod)
+      gzipRequest("/poznan/api/repertoire").withHeaders("If-Modified-Since" -> lastMod)
     )
     status(revalidated) shouldBe NOT_MODIFIED
     header("Content-Encoding", revalidated) shouldBe None
@@ -149,12 +149,12 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
   it should "re-serve fresh gzipped JSON after the cache version advances" in {
     val (ctrl, cache) = buildController()
-    ctrl.apiRepertoire("poznan")(gzipReq("/poznan/api/repertoire"))
+    ctrl.apiRepertoire("poznan")(gzipRequest("/poznan/api/repertoire"))
 
     Thread.sleep(1100)
     cache.reload()
 
-    val after = ctrl.apiRepertoire("poznan")(gzipReq("/poznan/api/repertoire"))
+    val after = ctrl.apiRepertoire("poznan")(gzipRequest("/poznan/api/repertoire"))
     status(after) shouldBe OK
     header("Content-Encoding", after) shouldBe Some("gzip")
     gunzip(contentAsBytes(after)) should include ("Test Film")
@@ -162,7 +162,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
   "apiDetails" should "serve gzip-precompressed JSON to a gzip-accepting client" in {
     val (ctrl, _) = buildController()
-    val result = ctrl.apiDetails("poznan")(gzipReq("/poznan/api/details"))
+    val result = ctrl.apiDetails("poznan")(gzipRequest("/poznan/api/details"))
 
     status(result) shouldBe OK
     header("Content-Encoding", result) shouldBe Some("gzip")

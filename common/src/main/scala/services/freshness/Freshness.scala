@@ -6,7 +6,7 @@ import scala.concurrent.duration._
 
 /** The kinds of network-touching work whose recency we track so a scheduler can
  *  skip it when it was done recently enough. Each kind owns a short `label` that
- *  prefixes its [[FreshnessStore]] key (e.g. `imdb|<docId>`), so the label must
+ *  prefixes its [[FreshnessStore]] key (e.g. `imdb|<documentId>`), so the label must
  *  stay stable — it's the on-disk key shape, not just a display string. */
 sealed trait FreshnessKind { def label: String }
 

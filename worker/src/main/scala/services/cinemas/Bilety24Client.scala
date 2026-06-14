@@ -53,14 +53,14 @@ object Bilety24Client {
   private val RuntimePat      = """(\d+)\s*min""".r
 
   def parseEvent(html: String, cinema: Cinema, baseUrl: String, eventId: String): Option[CinemaMovie] = {
-    val doc = Jsoup.parse(html)
+    val document = Jsoup.parse(html)
 
-    val title = Option(doc.selectFirst("div.title-name[title]")).map(_.attr("title").trim)
-      .orElse(Option(doc.selectFirst(".title-name")).map(_.text.trim))
+    val title = Option(document.selectFirst("div.title-name[title]")).map(_.attr("title").trim)
+      .orElse(Option(document.selectFirst(".title-name")).map(_.text.trim))
       .filter(_.nonEmpty)
 
     // Buy buttons are rendered twice (desktop + mobile) — dedup by booking URL.
-    val slots = doc.select("a.b24-button[title^=\"Kup bilet - Film:\"]").asScala.toSeq.flatMap { a =>
+    val slots = document.select("a.b24-button[title^=\"Kup bilet - Film:\"]").asScala.toSeq.flatMap { a =>
       val href = a.attr("href")
       // Skip disabled/placeholder buttons (href="#") — only real kup-bilety
       // links are bookable slots.
@@ -77,17 +77,17 @@ object Bilety24Client {
       }
     }.distinctBy(_.dateTime).sortBy(_.dateTime)
 
-    val params  = Option(doc.selectFirst("p.movie-parameters")).map(_.text.trim).getOrElse("")
-    val segs    = params.split("\\|").map(_.trim).filter(_.nonEmpty).toSeq
+    val parameters  = Option(document.selectFirst("p.movie-parameters")).map(_.text.trim).getOrElse("")
+    val segs    = parameters.split("\\|").map(_.trim).filter(_.nonEmpty).toSeq
     val runtime = segs.flatMap(s => RuntimePat.findFirstMatchIn(s).map(_.group(1).toInt)).headOption
     val genres  = segs.filterNot(s => RuntimePat.findFirstMatchIn(s).isDefined)
                       .map(tools.TextNormalization.titleCaseIfAllLower)
-    val synopsis = Option(doc.selectFirst("div.title-description-content")).map(_.text.trim).filter(_.length > 20)
+    val synopsis = Option(document.selectFirst("div.title-description-content")).map(_.text.trim).filter(_.length > 20)
     // Some b24-image slots are generic SVG placeholders ("PAN-BILET…svg"); take
     // the first real raster image, else fall back to the og:image poster.
-    val poster   = doc.select("img.b24-image").asScala.toSeq.map(_.attr("src"))
+    val poster   = document.select("img.b24-image").asScala.toSeq.map(_.attr("src"))
                      .find(s => s.nonEmpty && !s.toLowerCase.endsWith(".svg"))
-                     .orElse(Option(doc.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty))
+                     .orElse(Option(document.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty))
 
     for {
       t <- title if slots.nonEmpty

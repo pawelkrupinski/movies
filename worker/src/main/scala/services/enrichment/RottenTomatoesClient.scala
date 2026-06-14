@@ -107,8 +107,8 @@ class RottenTomatoesClient(http: HttpFetch) {
    *  with the title text. Cards without a `/m/{slug}` link (RT mixes
    *  celebrities + TV elsewhere) are skipped. */
   def parseSearchResults(html: String): Seq[SearchHit] = {
-    val doc = Jsoup.parse(html)
-    doc.select("search-page-media-row").asScala.toSeq.flatMap { row =>
+    val document = Jsoup.parse(html)
+    document.select("search-page-media-row").asScala.toSeq.flatMap { row =>
       val link = row.select("a[data-qa=info-name]").asScala.headOption
       val href = link.map(_.attr("href")).getOrElse("")
       val slug = MoviePathSlug.findFirstMatchIn(href).map(_.group(1))

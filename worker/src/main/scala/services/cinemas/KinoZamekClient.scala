@@ -33,10 +33,10 @@ import scala.util.Try
  * MSI title `CASABLANCA – AMERYKAŃSKA KLASYKA` → slug `casablanca` matches
  * listing slug `casablanca`.
  *
- * @param http   HTTP client (swap for `FakeHttpFetch` in tests).
- * @param cinema The [[Cinema]] source tag attached to every [[CinemaMovie]]
+ * @parameter http   HTTP client (swap for `FakeHttpFetch` in tests).
+ * @parameter cinema The [[Cinema]] source tag attached to every [[CinemaMovie]]
  *               produced by this client.
- * @param today  Calendar anchor for computing the months to fetch; defaults to
+ * @parameter today  Calendar anchor for computing the months to fetch; defaults to
  *               the current Warsaw clock date.
  */
 class KinoZamekClient(
@@ -77,8 +77,8 @@ class KinoZamekClient(
   private def fetchFilmSlugs(): Set[String] = {
     val html = Try(http.get(ListingUrl)).getOrElse("")
     if (html.isEmpty) return Set.empty
-    val doc = Jsoup.parse(html)
-    doc.select("a[href*='/wydarzenie/kino/']").asScala.toSeq
+    val document = Jsoup.parse(html)
+    document.select("a[href*='/wydarzenie/kino/']").asScala.toSeq
       .flatMap(a => SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1)))
       .toSet
   }
@@ -93,7 +93,7 @@ object KinoZamekClient {
   /**
    * Date-scoped MSI month page.  We hit `/MSI/mvc/pl` directly rather than the
    * bare `/MSI` path: `/MSI?…` 301-redirects to `/MSI/?…` which then 302-redirects
-   * to a bare `/MSI/mvc/pl` — dropping the `date` query param in the process, so
+   * to a bare `/MSI/mvc/pl` — dropping the `date` query parameter in the process, so
    * the redirect-following client always landed on the unscoped default page and
    * never actually fetched the requested month (next-month showtimes were silently
    * lost).  The direct `/MSI/mvc/pl?…&date=…` URL — the same shape every other MSI

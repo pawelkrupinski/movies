@@ -124,25 +124,25 @@ object KinotekaClient {
                           synopsis: Option[String], poster: Option[String], trailer: Option[String])
   object Detail { val empty: Detail = Detail(None, None, None, Seq.empty, Seq.empty, Seq.empty, None, None, None) }
 
-  private def dd(doc: org.jsoup.nodes.Document, label: String): Option[String] =
-    ScraperParse.ddField(doc, label, "dl.p-movie-details__general-info dt")
+  private def dd(document: org.jsoup.nodes.Document, label: String): Option[String] =
+    ScraperParse.ddField(document, label, "dl.p-movie-details__general-info dt")
 
   def parseDetail(html: String): Detail = {
-    val doc = Jsoup.parse(html)
+    val document = Jsoup.parse(html)
     Detail(
-      runtime       = dd(doc, "czas trwania").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
-      year          = dd(doc, "data premiery").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
-      originalTitle = dd(doc, "oryginalny tytuł").filter(_.nonEmpty),
-      countries     = dd(doc, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      director      = dd(doc, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      cast          = dd(doc, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      synopsis      = Option(doc.selectFirst("div.mce-content-body")).map(_.text.trim)
-                        .orElse(Option(doc.selectFirst("meta[property=og:description]")).map(_.attr("content").trim)).filter(_.length > 20),
-      poster        = Option(doc.selectFirst("div.p-movie-details__hero-poster img[src]")).map(_.attr("src")).filter(_.nonEmpty)
-                        .orElse(Option(doc.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty)),
+      runtime       = dd(document, "czas trwania").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
+      year          = dd(document, "data premiery").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
+      originalTitle = dd(document, "oryginalny tytuł").filter(_.nonEmpty),
+      countries     = dd(document, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      director      = dd(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      cast          = dd(document, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      synopsis      = Option(document.selectFirst("div.mce-content-body")).map(_.text.trim)
+                        .orElse(Option(document.selectFirst("meta[property=og:description]")).map(_.attr("content").trim)).filter(_.length > 20),
+      poster        = Option(document.selectFirst("div.p-movie-details__hero-poster img[src]")).map(_.attr("src")).filter(_.nonEmpty)
+                        .orElse(Option(document.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty)),
       // The trailer is a YouTube `/embed/` iframe in the content figure; skip
       // the GTM/analytics iframes by taking the first src that canonicalises.
-      trailer       = doc.select("iframe[src]").asScala.iterator.map(_.attr("src")).filter(_.nonEmpty)
+      trailer       = document.select("iframe[src]").asScala.iterator.map(_.attr("src")).filter(_.nonEmpty)
                         .flatMap(ScraperParse.canonicalTrailer).nextOption()
     )
   }

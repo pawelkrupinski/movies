@@ -34,7 +34,7 @@ class KinoParadoxClient(http: HttpFetch, override val cinema: Cinema) extends Ci
 
   def fetch(): Seq[CinemaMovie] = {
     val html  = http.get(RepertoireUrl)
-    val slots = parseDoc(html)
+    val slots = parseDocument(html)
 
     val byFilmUrl = slots.groupBy(s => (s.title, s.filmUrl))
     byFilmUrl.toSeq.flatMap { case ((title, filmUrl), group) =>
@@ -89,9 +89,9 @@ object KinoParadoxClient {
     (directors, year)
   }
 
-  private[cinemas] def parseDoc(html: String): Seq[RawSlot] = {
-    val doc = Jsoup.parse(html)
-    doc.select("div.list-item__content__row[data-date]").asScala.toSeq.flatMap { row =>
+  private[cinemas] def parseDocument(html: String): Seq[RawSlot] = {
+    val document = Jsoup.parse(html)
+    document.select("div.list-item__content__row[data-date]").asScala.toSeq.flatMap { row =>
       val dateAttr = row.attr("data-date").trim
       val date     = Try(LocalDate.parse(dateAttr, DateFmt)).toOption
       val time     = Option(row.selectFirst("div.item-time")).flatMap(e => ScraperParse.parseHHmm(e.text.trim))

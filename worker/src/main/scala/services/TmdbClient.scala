@@ -16,7 +16,7 @@ import scala.util.Try
  * the IMDB id (e.g. `tt15239678`), which is the stable cross-system key.
  *
  * `TMDB_API_KEY` can be either:
- *   - legacy v3 API key (32-char hex), passed as `?api_key=…` query param, or
+ *   - legacy v3 API key (32-char hex), passed as `?api_key=…` query parameter, or
  *   - v4 application bearer token (JWT-shaped), passed as
  *     `Authorization: Bearer …`.
  * The client sends BOTH on every request. TMDB picks whichever is valid for
@@ -42,8 +42,8 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  evaluated alongside a real key). Appended to every URL that already
    *  has at least one query parameter (`?language=…&api_key=…`); for
    *  query-less URLs the caller switches `?` for the leading `&` via
-   *  `apiKeyParam(separator)`. */
-  private def apiKeyParam(separator: String): String =
+   *  `apiKeyParameter(separator)`. */
+  private def apiKeyParameter(separator: String): String =
     apiKey.map(k => s"${separator}api_key=$k").getOrElse("")
 
   /**
@@ -55,9 +55,9 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    * requested one. Ties broken by popularity.
    */
   def search(title: String, year: Option[Int]): Option[TmdbClient.SearchResult] = authHeader.flatMap { auth =>
-    def searchOnce(yearParam: Option[Int]): Seq[TmdbClient.SearchResult] = {
-      val yp = yearParam.map(y => s"&year=$y&primary_release_year=$y").getOrElse("")
-      val url = s"$ApiBase/search/movie?language=pl-PL&include_adult=false&query=${urlEncode(title)}$yp${apiKeyParam("&")}"
+    def searchOnce(yearParameter: Option[Int]): Seq[TmdbClient.SearchResult] = {
+      val yp = yearParameter.map(y => s"&year=$y&primary_release_year=$y").getOrElse("")
+      val url = s"$ApiBase/search/movie?language=pl-PL&include_adult=false&query=${urlEncode(title)}$yp${apiKeyParameter("&")}"
       parseSearchResults(http.get(url, auth))
     }
 
@@ -104,7 +104,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  releases, common for film festival items).
    */
   def imdbId(tmdbId: Int): Option[String] = authHeader.flatMap { auth =>
-    val body = http.get(s"$ApiBase/movie/$tmdbId/external_ids${apiKeyParam("?")}", auth)
+    val body = http.get(s"$ApiBase/movie/$tmdbId/external_ids${apiKeyParameter("?")}", auth)
     (Json.parse(body) \ "imdb_id").asOpt[String].filter(_.startsWith("tt"))
   }
 
@@ -115,7 +115,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  the rest of the enrichment row.
    */
   def findByImdbId(imdbId: String): Option[TmdbClient.SearchResult] = authHeader.flatMap { auth =>
-    val body = http.get(s"$ApiBase/find/$imdbId?external_source=imdb_id&language=pl-PL${apiKeyParam("&")}", auth)
+    val body = http.get(s"$ApiBase/find/$imdbId?external_source=imdb_id&language=pl-PL${apiKeyParameter("&")}", auth)
     parseFindMovieResults(body).headOption
   }
 
@@ -125,7 +125,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  field comes back in the production language.
    */
   def originalTitle(tmdbId: Int): Option[String] = authHeader.flatMap { auth =>
-    val body = http.get(s"$ApiBase/movie/$tmdbId${apiKeyParam("?")}", auth)
+    val body = http.get(s"$ApiBase/movie/$tmdbId${apiKeyParameter("?")}", auth)
     (Json.parse(body) \ "original_title").asOpt[String].filter(_.nonEmpty)
   }
 
@@ -150,7 +150,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *      title in `title` even for en-US).
    *  Single HTTP for all three fields via `append_to_response`. */
   def details(tmdbId: Int): Option[TmdbClient.Details] = authHeader.flatMap { auth =>
-    Try(http.get(s"$ApiBase/movie/$tmdbId?language=en-US&append_to_response=alternative_titles${apiKeyParam("&")}", auth))
+    Try(http.get(s"$ApiBase/movie/$tmdbId?language=en-US&append_to_response=alternative_titles${apiKeyParameter("&")}", auth))
       .toOption.map { body =>
         val js = Json.parse(body)
         // Prefer the "untyped" US alt-title (an actual release title) over
@@ -174,10 +174,10 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  credits or the call fails. Used to verify a title-search candidate
    *  against the cinema-reported director — when a film's title and a
    *  cinema's title happen to collide (Polish "Niedźwiedzica" matches both
-   *  Grizzly Falls 1999 and the 2026 Helgestad doc) the directors disagree. */
+   *  Grizzly Falls 1999 and the 2026 Helgestad document) the directors disagree. */
   def directorsFor(tmdbId: Int): Set[String] = authHeader.map { auth =>
     Try {
-      val body = http.get(s"$ApiBase/movie/$tmdbId/credits${apiKeyParam("?")}", auth)
+      val body = http.get(s"$ApiBase/movie/$tmdbId/credits${apiKeyParameter("?")}", auth)
       (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
         .filter(c => (c \ "job").asOpt[String].contains("Director"))
         .flatMap { c =>
@@ -208,7 +208,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  poster lookup adds a single failure-tolerant `/images` call, so a poster
    *  hiccup never breaks the resolve. */
   def fullDetails(tmdbId: Int): Option[TmdbClient.FullDetails] = authHeader.flatMap { auth =>
-    Try(http.get(s"$ApiBase/movie/$tmdbId?language=pl-PL&append_to_response=credits${apiKeyParam("&")}", auth))
+    Try(http.get(s"$ApiBase/movie/$tmdbId?language=pl-PL&append_to_response=credits${apiKeyParameter("&")}", auth))
       .toOption.map { body =>
         val js   = Json.parse(body)
         val crew = (js \ "credits" \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
@@ -261,7 +261,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  back to `poster_path` exactly as before. */
   def posters(tmdbId: Int): Seq[TmdbClient.PosterImage] = authHeader.map { auth =>
     Try {
-      val body = http.get(s"$ApiBase/movie/$tmdbId/images?include_image_language=pl,null${apiKeyParam("&")}", auth)
+      val body = http.get(s"$ApiBase/movie/$tmdbId/images?include_image_language=pl,null${apiKeyParameter("&")}", auth)
       TmdbClient.parsePosters(body)
     }.getOrElse(Seq.empty)
   }.getOrElse(Seq.empty)
@@ -272,7 +272,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  who happens to share a name with a director. */
   def findPerson(name: String): Option[Int] = authHeader.flatMap { auth =>
     Try {
-      val body = http.get(s"$ApiBase/search/person?query=${urlEncode(name)}${apiKeyParam("&")}", auth)
+      val body = http.get(s"$ApiBase/search/person?query=${urlEncode(name)}${apiKeyParameter("&")}", auth)
       val rows = (Json.parse(body) \ "results").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
       rows.find(r => (r \ "known_for_department").asOpt[String].contains("Directing"))
         .orElse(rows.headOption)
@@ -285,7 +285,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  caller can reuse picking / sorting logic. */
   def personDirectorCredits(personId: Int): Seq[TmdbClient.SearchResult] = authHeader.map { auth =>
     Try {
-      val body = http.get(s"$ApiBase/person/$personId/movie_credits?language=pl-PL${apiKeyParam("&")}", auth)
+      val body = http.get(s"$ApiBase/person/$personId/movie_credits?language=pl-PL${apiKeyParameter("&")}", auth)
       (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
         .filter(c => (c \ "department").asOpt[String].contains("Directing"))
         .flatMap { js =>
@@ -312,8 +312,8 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
     (Json.parse(body) \ "movie_results").asOpt[JsArray]
       .map(decodeMovieArray).getOrElse(Seq.empty)
 
-  private def decodeMovieArray(arr: JsArray): Seq[TmdbClient.SearchResult] =
-    arr.value.flatMap { js =>
+  private def decodeMovieArray(array: JsArray): Seq[TmdbClient.SearchResult] =
+    array.value.flatMap { js =>
       for {
         id <- (js \ "id").asOpt[Int]
       } yield TmdbClient.SearchResult(

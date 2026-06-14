@@ -67,9 +67,9 @@ class KinoKulturaClient(http: HttpFetch) extends CinemaScraper {
   }
 
   private def parseDay(html: String): Seq[RawSlot] = {
-    val doc = Jsoup.parse(html)
+    val document = Jsoup.parse(html)
     // film id → (title, poster) from the poster images.
-    val byId = doc.select("img.poster_photo").asScala.toSeq.flatMap { img =>
+    val byId = document.select("img.poster_photo").asScala.toSeq.flatMap { img =>
       val src = img.attr("src")
       PosterPat.findFirstMatchIn(src).map(_.group(1)).map { id =>
         val poster = Some(if (src.startsWith("http")) src else s"$BaseUrl/${src.stripPrefix("/")}")

@@ -190,8 +190,8 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
    *  uptime page sees per-host image-fetch reliability (the
    *  `images.weserv.nl` proxy that fronts every cinema poster, the
    *  origin CDNs we link directly, etc.). */
-  def imgEvent: Action[JsValue] = adminAction(parse.json) { req =>
-    val events = (req.body \ "events").asOpt[Seq[JsObject]].getOrElse(Seq.empty)
+  def imgEvent: Action[JsValue] = adminAction(parse.json) { request =>
+    val events = (request.body \ "events").asOpt[Seq[JsObject]].getOrElse(Seq.empty)
     events.foreach { e =>
       val host    = (e \ "host").asOpt[String].getOrElse("unknown")
       val success = (e \ "success").asOpt[Boolean].getOrElse(false)

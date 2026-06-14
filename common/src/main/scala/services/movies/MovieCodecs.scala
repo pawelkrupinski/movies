@@ -30,8 +30,8 @@ case class StoredMovieDto(
   tmdbId:            Option[Int],
   metacriticUrl:     Option[String],
   rottenTomatoesUrl: Option[String],
-  // Optional on the wire so legacy docs (written before these existed) decode
-  // to None → default false; only persisted when true to keep docs lean.
+  // Optional on the wire so legacy documents (written before these existed) decode
+  // to None → default false; only persisted when true to keep documents lean.
   tmdbNoMatch:       Option[Boolean],
   detailPending:     Option[Boolean],
   sourceData:        Map[String, SourceData],
@@ -44,7 +44,7 @@ object StoredMovieDto {
   // `sourceData` on read. Storing them was a second, order-dependent source of
   // truth (the title was pinned to whichever scrape wrote the row first); see
   // `toDomain`. The `id` still encodes both — the caller computes it via
-  // `MovieRepository.docId(title, year)` — so the cache key is unchanged.
+  // `MovieRepository.documentId(title, year)` — so the cache key is unchanged.
   def fromDomain(id: String, r: MovieRecord, updatedAt: Instant): StoredMovieDto =
     StoredMovieDto(
       _id               = id,
@@ -107,32 +107,32 @@ object MovieCodecs {
       macroSourceDataCodec.encode(w, v, c)
 
     override def decode(r: BsonReader, c: DecoderContext): SourceData = {
-      val doc = org.bson.codecs.BsonDocumentCodec().decode(r, c)
+      val document = org.bson.codecs.BsonDocumentCodec().decode(r, c)
       def optStr(key: String): Option[String] =
-        if (doc.containsKey(key) && doc.get(key).isString) Some(doc.getString(key).getValue)
+        if (document.containsKey(key) && document.get(key).isString) Some(document.getString(key).getValue)
         else None
       def optInt(key: String): Option[Int] =
-        if (doc.containsKey(key) && doc.get(key).isInt32) Some(doc.getInt32(key).getValue)
+        if (document.containsKey(key) && document.get(key).isInt32) Some(document.getInt32(key).getValue)
         else None
       def seqStr(key: String): Seq[String] =
-        if (!doc.containsKey(key) || doc.get(key).isNull) Seq.empty
-        else if (doc.get(key).isString) {
-          val s = doc.getString(key).getValue
+        if (!document.containsKey(key) || document.get(key).isNull) Seq.empty
+        else if (document.get(key).isString) {
+          val s = document.getString(key).getValue
           if (s.isEmpty) Seq.empty else s.split(",").map(_.trim).filter(_.nonEmpty).toSeq
         }
-        else if (doc.get(key).isArray) {
-          val arr = doc.getArray(key)
-          (0 until arr.size()).map(i => arr.get(i).asString().getValue).toSeq
+        else if (document.get(key).isArray) {
+          val array = document.getArray(key)
+          (0 until array.size()).map(i => array.get(i).asString().getValue).toSeq
         }
         else Seq.empty
       def showtimes: Seq[Showtime] =
-        if (!doc.containsKey("showtimes") || doc.get("showtimes").isNull) Seq.empty
+        if (!document.containsKey("showtimes") || document.get("showtimes").isNull) Seq.empty
         else {
-          val arr = doc.getArray("showtimes")
+          val array = document.getArray("showtimes")
           val stCodec = macroSourceDataCodec // reuse the registry's Showtime codec
-          (0 until arr.size()).map { i =>
-            val stDoc = arr.get(i).asDocument()
-            val stReader = new org.bson.BsonDocumentReader(stDoc)
+          (0 until array.size()).map { i =>
+            val stDocument = array.get(i).asDocument()
+            val stReader = new org.bson.BsonDocumentReader(stDocument)
             Macros.createCodecProviderIgnoreNone[Showtime]()
               .get(classOf[Showtime], fromRegistries(fromCodecs(JavaTimeCodecs.localDateTime), DEFAULT_CODEC_REGISTRY))
               .decode(stReader, c)

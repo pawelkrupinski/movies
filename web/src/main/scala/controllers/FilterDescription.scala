@@ -70,9 +70,9 @@ object FilterDescription {
 
     // Search query first — it's the most specific filter and the user-typed
     // text deserves prime real estate in the share preview.
-    paramOf(query, "q").filter(_.nonEmpty).foreach { q => out += s"„$q”" }
+    parameterOf(query, "q").filter(_.nonEmpty).foreach { q => out += s"„$q”" }
 
-    paramOf(query, "date").foreach {
+    parameterOf(query, "date").foreach {
       case "tomorrow" => out += "jutro"
       case "week"     => out += "w tym tygodniu"
       // `anytime` is the no-restriction view — the description would otherwise
@@ -113,14 +113,14 @@ object FilterDescription {
       countNoun = "kin",
     )
 
-    paramOf(query, "dim").foreach { case d @ ("2D" | "3D") => out += d; case _ => () }
-    paramOf(query, "lang").foreach {
+    parameterOf(query, "dim").foreach { case d @ ("2D" | "3D") => out += d; case _ => () }
+    parameterOf(query, "lang").foreach {
       case "NAP" => out += "z napisami"
       case "DUB" => out += "z dubbingiem"
       case _     => ()
     }
-    if (paramOf(query, "imax").contains("1")) out += "IMAX"
-    paramOf(query, "from").filter(_.matches("\\d{1,2}:\\d{2}")).foreach(f => out += s"od $f")
+    if (parameterOf(query, "imax").contains("1")) out += "IMAX"
+    parameterOf(query, "from").filter(_.matches("\\d{1,2}:\\d{2}")).foreach(f => out += s"od $f")
 
     val allCountries = schedules.flatMap(_.movie.countries).toSet
     out ++= inclusionPhrase(
@@ -171,8 +171,8 @@ object FilterDescription {
 
   /** Express a multi-checkbox filter as one phrase using the smaller of the
    *  inclusion / exclusion sets — "tylko te trzy" reads better than "wszystkie
-   *  z wyjątkiem tych trzydziestu". `included = None` means "param absent
-   *  from URL = all checked = no filter"; an empty Set means "param present
+   *  z wyjątkiem tych trzydziestu". `included = None` means "parameter absent
+   *  from URL = all checked = no filter"; an empty Set means "parameter present
    *  but with zero values = nothing visible" which we still skip in the
    *  description (the page is empty, the OG would read oddly). */
   private def inclusionPhrase(
@@ -204,10 +204,10 @@ object FilterDescription {
     }
   }
 
-  private def paramOf(query: Map[String, Seq[String]], key: String): Option[String] =
+  private def parameterOf(query: Map[String, Seq[String]], key: String): Option[String] =
     query.get(key).flatMap(_.headOption).map(_.trim).filter(_.nonEmpty)
 
-  /** `None` when the param is absent (= no filter). `Some(set)` when present,
+  /** `None` when the parameter is absent (= no filter). `Some(set)` when present,
    *  tolerating both the per-value shape (`?room=A&room=B`) and the legacy
    *  comma-list (`?room=A,B`) so old shared URLs still narrow correctly. */
   private def maybeListOf(query: Map[String, Seq[String]], key: String): Option[Set[String]] =

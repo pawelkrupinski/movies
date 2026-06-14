@@ -76,8 +76,8 @@ object GdynskieCentrumFilmoweClient {
   )
 
   private[cinemas] def parseHtml(html: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val doc   = Jsoup.parse(html)
-    val slots = doc.select("div.film-width").asScala.toSeq.flatMap(parseFilmBlock)
+    val document   = Jsoup.parse(html)
+    val slots = document.select("div.film-width").asScala.toSeq.flatMap(parseFilmBlock)
 
     slots
       .groupBy(_.title)

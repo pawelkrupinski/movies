@@ -51,8 +51,8 @@ class OkfIluzjaClient(
 
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(WeeklyUrl)
-    val doc  = Jsoup.parse(html)
-    val slots = parseDoc(doc)
+    val document  = Jsoup.parse(html)
+    val slots = parseDocument(document)
 
     // Group by filmUrl (the per-film page slug) so the same title on multiple
     // days collapses into one CinemaMovie with all its showtimes.
@@ -99,8 +99,8 @@ object OkfIluzjaClient {
     dateTime: LocalDateTime
   )
 
-  private[cinemas] def parseDoc(doc: org.jsoup.nodes.Document): Seq[RawSlot] =
-    doc.select("div.repertuar-list").asScala.toSeq.flatMap { block =>
+  private[cinemas] def parseDocument(document: org.jsoup.nodes.Document): Seq[RawSlot] =
+    document.select("div.repertuar-list").asScala.toSeq.flatMap { block =>
       val dateOpt = parseBlockDate(block)
       dateOpt match {
         case None       => Seq.empty

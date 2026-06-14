@@ -102,8 +102,8 @@ class HeliosClient(
   )
 
   private def parseApiScreenings(body: String): Map[String, ApiScreening] =
-    Try(Json.parse(body).as[JsArray]).map { arr =>
-      arr.value.flatMap { s =>
+    Try(Json.parse(body).as[JsArray]).map { array =>
+      array.value.flatMap { s =>
         for {
           id       <- (s \ "id").asOpt[String]
           movieId  <- (s \ "movieId").asOpt[String]
@@ -123,8 +123,8 @@ class HeliosClient(
   // left empty — events already arrive fully described via NUXT, so they neither need
   // nor have a REST movie body to fetch (the empty id is filtered out before fetching).
   private def parseEventScreenings(body: String): Map[String, ApiScreening] =
-    Try(Json.parse(body).as[JsArray]).map { arr =>
-      arr.value.flatMap { e =>
+    Try(Json.parse(body).as[JsArray]).map { array =>
+      array.value.flatMap { e =>
         for {
           id       <- (e \ "screeningId").asOpt[String]
           screenId <- (e \ "screenId").asOpt[String]

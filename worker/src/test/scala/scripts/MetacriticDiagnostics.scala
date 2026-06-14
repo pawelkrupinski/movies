@@ -32,13 +32,13 @@ object MetacriticDiagnostics {
 
   private def probe(label: String, slug: String): Probe = {
     val url = s"$Site/movie/$slug/"
-    val req = HttpRequest.newBuilder()
+    val request = HttpRequest.newBuilder()
       .uri(URI.create(url))
       .timeout(Duration.ofSeconds(15))
       .header("User-Agent", "Mozilla/5.0 (kinowo-diagnostics)")
       .GET()
       .build()
-    val status = Try(http.send(req, HttpResponse.BodyHandlers.discarding()).statusCode())
+    val status = Try(http.send(request, HttpResponse.BodyHandlers.discarding()).statusCode())
       .getOrElse(-1)
     Probe(label, slug, url, status)
   }

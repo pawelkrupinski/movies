@@ -7,7 +7,7 @@ import models.{MovieRecord, Source, SourceData}
  * per-field updates needed to turn `before` into `after`.
  *
  * Used by `MovieRepository.updateIfPresent` to drive a `$set`/`$unset` Mongo
- * update instead of a full-doc `replaceOne`. Out-of-band edits to fields
+ * update instead of a full-document `replaceOne`. Out-of-band edits to fields
  * the in-memory cache didn't touch then survive a concurrent write — the
  * audit-vs-rating-tick race that produced the wrong Filmweb URLs on
  * production rows.

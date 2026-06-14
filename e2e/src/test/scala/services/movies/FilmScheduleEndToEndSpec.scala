@@ -87,7 +87,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
   }
   // The web app's read transform, built from the read model the worker
   // projected — the seam the two apps share in production (web serves the
-  // denormalised docs), exercised here in one JVM.
+  // denormalised documents), exercised here in one JVM.
   private lazy val schedules: Seq[FilmSchedule] =
     new MovieControllerService(wiring.webReadModel).toSchedules(Poznan, now)
 

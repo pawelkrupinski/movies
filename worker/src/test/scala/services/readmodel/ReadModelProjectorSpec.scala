@@ -9,9 +9,9 @@ import java.time.LocalDateTime
 
 /**
  * The projector's minimal-write diff: the whole point of the read-model split
- * is that a showtime-only edit moves one screening doc and a metadata-only edit
- * moves one movie doc. Drives `onMovieUpsert` / `reconcile` directly against the
- * in-memory repos and asserts exactly which docs were written.
+ * is that a showtime-only edit moves one screening document and a metadata-only edit
+ * moves one movie document. Drives `onMovieUpsert` / `reconcile` directly against the
+ * in-memory repos and asserts exactly which documents were written.
  */
 class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
@@ -35,7 +35,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     (new ReadModelProjector(repository, rm, rm), repository, rm)
   }
 
-  "the first projection of a row" should "write the movie doc before its screenings" in {
+  "the first projection of a row" should "write the movie document before its screenings" in {
     val (projector, _, rm) = fixture()
     projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
 
@@ -81,26 +81,26 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.findAllMovies().map(_._id) should contain only fid  // Bar is held back
   }
 
-  "a showtime-only change" should "move only the one screening doc" in {
+  "a showtime-only change" should "move only the one screening document" in {
     val (projector, _, rm) = fixture()
     projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
     projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00"), at("2026-06-13T18:00")))))
 
     rm.movieUpserts     should have size 1  // metadata unchanged → not rewritten
-    rm.screeningUpserts should have size 2  // the one changed screening doc, again
+    rm.screeningUpserts should have size 2  // the one changed screening document, again
   }
 
-  "a rating-only change" should "move only the movie doc" in {
+  "a rating-only change" should "move only the movie document" in {
     val (projector, _, rm) = fixture()
     val shows = Seq(at("2026-06-12T20:00"))
     projector.onMovieUpsert(stored(record(Some(8.0), shows)))
     projector.onMovieUpsert(stored(record(Some(9.1), shows)))
 
-    rm.movieUpserts     should have size 2  // rating changed → movie doc rewritten
+    rm.movieUpserts     should have size 2  // rating changed → movie document rewritten
     rm.screeningUpserts should have size 1  // showtimes unchanged → no screening write
   }
 
-  "a film leaving a cinema" should "delete that cinema's screening doc" in {
+  "a film leaving a cinema" should "delete that cinema's screening document" in {
     val (projector, _, rm) = fixture()
     projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
     projector.onMovieUpsert(stored(record(Some(8.0), Seq.empty)))  // cinema slot now has no showtimes
@@ -123,7 +123,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.stop()
   }
 
-  "reconcile" should "prune derived docs whose source film vanished" in {
+  "reconcile" should "prune derived documents whose source film vanished" in {
     val (projector, repository, rm) = fixture()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.reconcile()
@@ -136,10 +136,10 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   }
 
   // The change stream drops deletes, so a film re-keyed by `settle` (old `_id`
-  // deleted, new one written) leaves the old read-model docs behind. They're
-  // pruned only by `reconcile`. The trap: a worker that *wrote* the stale doc
+  // deleted, new one written) leaves the old read-model documents behind. They're
+  // pruned only by `reconcile`. The trap: a worker that *wrote* the stale document
   // restarts before pruning it — its successor's in-memory `lastMovie` never
-  // knew the doc, so a `lastMovie`-based prune can't see it and the duplicate
+  // knew the document, so a `lastMovie`-based prune can't see it and the duplicate
   // card persists forever. `reconcile` must therefore diff the *actual read
   // model* against the live source, not this process's memory.
   "reconcile after a restart" should "prune a stale film a prior process left in the read model" in {

@@ -195,7 +195,7 @@ case class MovieRecord(
    *  order. Same cinema giving the same URL across slots collapses; URL
    *  shapes that differ but point to the same video are NOT collapsed here
    *  (different cinemas occasionally surface YouTube / Vimeo links with
-   *  different query params), the view layer collapses by embed URL via
+   *  different query parameters), the view layer collapses by embed URL via
    *  `TrailerEmbed.embedUrlFor`. */
   def trailerUrls: Seq[String] = {
     val seen = scala.collection.mutable.LinkedHashSet.empty[String]

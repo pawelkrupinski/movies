@@ -23,7 +23,7 @@ import scala.util.Try
  * The feed is fetched one request per day across the [today, today+6] window.
  * A broad/un-dated request silently caps the response at ~25 records — today's
  * schedule in full plus a single teaser screening per upcoming day — and the
- * `limit` param is ignored, so every advance-date repeat is dropped (Filmweb
+ * `limit` parameter is ignored, so every advance-date repeat is dropped (Filmweb
  * showed 3–4× our count). A per-day `from=D&to=D+1` request bypasses that cap
  * and returns the whole day; merging the days reconstructs the full window.
  */

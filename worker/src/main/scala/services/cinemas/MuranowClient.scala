@@ -36,10 +36,10 @@ class MuranowClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
   def fetch(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
-    val doc  = Jsoup.parse(http.get(RepertoireUrl))
-    val year = MuranowClient.yearFromLabel(Option(doc.selectFirst("p.calendar-seance-full__month-label")).map(_.text).getOrElse(""), today.getYear)
+    val document  = Jsoup.parse(http.get(RepertoireUrl))
+    val year = MuranowClient.yearFromLabel(Option(document.selectFirst("p.calendar-seance-full__month-label")).map(_.text).getOrElse(""), today.getYear)
 
-    val slots = doc.select("div.calendar-seance-full__day--filled").asScala.toSeq.flatMap { day =>
+    val slots = document.select("div.calendar-seance-full__day--filled").asScala.toSeq.flatMap { day =>
       MuranowClient.dayDate(day, year) match {
         case None => Seq.empty[RawSlot]
         case Some(date) =>
@@ -147,29 +147,29 @@ object MuranowClient {
   )
   object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, Seq.empty, Seq.empty, None, None, None) }
 
-  private def field(doc: org.jsoup.nodes.Document, name: String): Option[String] =
-    Option(doc.selectFirst(s"div.field--name-$name .field__item")).map(_.text.trim).filter(_.nonEmpty)
+  private def field(document: org.jsoup.nodes.Document, name: String): Option[String] =
+    Option(document.selectFirst(s"div.field--name-$name .field__item")).map(_.text.trim).filter(_.nonEmpty)
 
-  private def fields(doc: org.jsoup.nodes.Document, name: String): Seq[String] =
-    doc.select(s"div.field--name-$name .field__item").asScala.toSeq.map(_.text.trim).filter(_.nonEmpty)
+  private def fields(document: org.jsoup.nodes.Document, name: String): Seq[String] =
+    document.select(s"div.field--name-$name .field__item").asScala.toSeq.map(_.text.trim).filter(_.nonEmpty)
 
   /** Parse the Drupal `/film/<slug>` node for the metadata fields. */
   def parseDetail(html: String): Detail = {
-    val doc = Jsoup.parse(html)
+    val document = Jsoup.parse(html)
     Detail(
-      runtimeMinutes = field(doc, "field-movie-duration").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
-      year           = field(doc, "field-movie-production-year").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
-      countries      = fields(doc, "field-movie-production-country"),
-      genres         = field(doc, "field-movie-category").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+      runtimeMinutes = field(document, "field-movie-duration").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
+      year           = field(document, "field-movie-production-year").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
+      countries      = fields(document, "field-movie-production-country"),
+      genres         = field(document, "field-movie-category").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
                          .map(tools.TextNormalization.titleCaseIfAllLower),
-      director       = field(doc, "field-movie-director").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      cast           = field(doc, "field-movie-cast").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      originalTitle  = field(doc, "field-movie-original-title"),
-      synopsis       = Option(doc.selectFirst("div.field--name-body p")).map(_.text.trim).filter(_.length > 20),
+      director       = field(document, "field-movie-director").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      cast           = field(document, "field-movie-cast").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      originalTitle  = field(document, "field-movie-original-title"),
+      synopsis       = Option(document.selectFirst("div.field--name-body p")).map(_.text.trim).filter(_.length > 20),
       // The Drupal remote-video paragraph renders the trailer as
       // `<div class="youtube-player" data-vid="<id>">`; build the canonical
       // watch URL from the id.
-      trailer        = Option(doc.selectFirst("div.youtube-player[data-vid]")).map(_.attr("data-vid")).filter(_.nonEmpty)
+      trailer        = Option(document.selectFirst("div.youtube-player[data-vid]")).map(_.attr("data-vid")).filter(_.nonEmpty)
                          .flatMap(id => ScraperParse.canonicalTrailer(s"https://www.youtube.com/watch?v=$id"))
     )
   }

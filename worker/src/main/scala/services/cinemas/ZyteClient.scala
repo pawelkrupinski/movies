@@ -127,7 +127,7 @@ object ZyteClient {
   }
 
   /** Zyte authenticates with Basic auth where the API key is the username
-   *  and the password is empty — see docs.zyte.com/zyte-api/usage.
+   *  and the password is empty — see documents.zyte.com/zyte-api/usage.
    */
   def basicAuth(apiKey: String): String =
     "Basic " + Base64.getEncoder.encodeToString(s"$apiKey:".getBytes(StandardCharsets.UTF_8))

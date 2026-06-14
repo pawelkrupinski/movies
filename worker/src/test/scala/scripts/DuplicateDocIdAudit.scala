@@ -12,17 +12,17 @@ import scala.util.Try
 /**
  * Diagnostic: list every `(title, year)` in `movies` that has more than one
  * underlying `_id`. Confirms whether `MovieRepository.delete` is silently matching
- * zero docs because the `_id` formula at delete-time doesn't match the `_id`
- * legacy docs were inserted with.
+ * zero documents because the `_id` formula at delete-time doesn't match the `_id`
+ * legacy documents were inserted with.
  *
- * Also prints, per duplicate pair, what `MovieRepository.docId` would compute for
+ * Also prints, per duplicate pair, what `MovieRepository.documentId` would compute for
  * the row right now — so we can see at a glance whether either of the
  * existing `_id`s matches the formula. If both diverge, the cleanup needs to
  * happen via a title+year filter instead.
  *
- * Run: sbt "Test/runMain scripts.DuplicateDocIdAudit"
+ * Run: sbt "Test/runMain scripts.DuplicateDocumentIdAudit"
  */
-object DuplicateDocIdAudit {
+object DuplicateDocumentIdAudit {
   def main(args: Array[String]): Unit = {
     val uri = Env.get("MONGODB_URI").getOrElse {
       println("MONGODB_URI not set."); sys.exit(1)
@@ -33,7 +33,7 @@ object DuplicateDocIdAudit {
 
     println(s"@@ scanning $dbName.movies")
     val all = Await.result(coll.find().toFuture(), 60.seconds)
-    println(s"@@ ${all.size} doc(s) total")
+    println(s"@@ ${all.size} document(s) total")
 
     // ── (title, year) duplicates — would collapse on hydrate (same CacheKey) ──
     val groupedByTitleYear = all.groupBy { d =>
@@ -42,20 +42,20 @@ object DuplicateDocIdAudit {
       (title, year)
     }
 
-    val titleYearDupes = groupedByTitleYear.filter { case (_, docs) => docs.size > 1 }
+    val titleYearDupes = groupedByTitleYear.filter { case (_, documents) => documents.size > 1 }
     println(s"══════ (title, year) duplicates ══════")
-    println(s"@@ ${titleYearDupes.size} (title, year) group(s) with more than one doc")
+    println(s"@@ ${titleYearDupes.size} (title, year) group(s) with more than one document")
     println(s"   (these collapse on hydrate; not what the merger is catching)")
     println()
     titleYearDupes.toSeq
       .sortBy { case ((t, _), _) => t.toLowerCase }
-      .foreach { case ((title, year), docs) =>
+      .foreach { case ((title, year), documents) =>
         val expectedId = s"${MovieService.normalize(title)}|${year.map(_.toString).getOrElse("")}"
-        println(s"── '$title' (${year.getOrElse("—")})  → docId-now-would-be: $expectedId")
-        docs.foreach { d =>
+        println(s"── '$title' (${year.getOrElse("—")})  → documentId-now-would-be: $expectedId")
+        documents.foreach { d =>
           val id     = Try(d.get("_id").get.asString().getValue).toOption.getOrElse("?")
           val tmdbId = Option(d.get("tmdbId").orNull).flatMap(v => Try(v.asInt32().getValue).toOption)
-          val matches = if (id == expectedId) "  (matches docId formula)" else "  (MISMATCH — delete by _id wouldn't find this)"
+          val matches = if (id == expectedId) "  (matches documentId formula)" else "  (MISMATCH — delete by _id wouldn't find this)"
           println(s"    _id=$id  tmdb=${tmdbId.getOrElse("—")}$matches")
         }
         println()
@@ -67,8 +67,8 @@ object DuplicateDocIdAudit {
     val byTmdb = all
       .filter(d => Option(d.get("tmdbId").orNull).flatMap(v => Try(v.asInt32().getValue).toOption).isDefined)
       .groupBy(d => d.get("tmdbId").get.asInt32().getValue)
-    val tmdbDupes = byTmdb.filter { case (_, docs) =>
-      docs.map { d =>
+    val tmdbDupes = byTmdb.filter { case (_, documents) =>
+      documents.map { d =>
         val t = Try(d.get("title").get.asString().getValue).toOption.getOrElse("?")
         val y = Option(d.get("year").orNull).flatMap(v => Try(v.asInt32().getValue).toOption)
         (t, y)
@@ -76,14 +76,14 @@ object DuplicateDocIdAudit {
     }
     println(s"@@ ${tmdbDupes.size} tmdbId group(s) spanning more than one (title, year)")
     println()
-    tmdbDupes.toSeq.sortBy(_._1).foreach { case (tmdbId, docs) =>
-      println(s"── tmdb=$tmdbId  (${docs.size} doc(s))")
-      docs.foreach { d =>
+    tmdbDupes.toSeq.sortBy(_._1).foreach { case (tmdbId, documents) =>
+      println(s"── tmdb=$tmdbId  (${documents.size} document(s))")
+      documents.foreach { d =>
         val id    = Try(d.get("_id").get.asString().getValue).toOption.getOrElse("?")
         val title = Try(d.get("title").get.asString().getValue).toOption.getOrElse("?")
         val year  = Option(d.get("year").orNull).flatMap(v => Try(v.asInt32().getValue).toOption)
         val expectedId = s"${MovieService.normalize(title)}|${year.map(_.toString).getOrElse("")}"
-        val matches = if (id == expectedId) "  (matches docId formula)" else "  (MISMATCH — delete by _id wouldn't find this)"
+        val matches = if (id == expectedId) "  (matches documentId formula)" else "  (MISMATCH — delete by _id wouldn't find this)"
         println(s"    _id=$id  title='$title' year=${year.getOrElse("—")}  expected=$expectedId$matches")
       }
       println()

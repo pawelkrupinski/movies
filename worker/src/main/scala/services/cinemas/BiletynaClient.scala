@@ -32,10 +32,10 @@ import scala.util.Try
  * routes these through the `bnFetch` seam — Zyte's residential egress in
  * production, the fixture fake in tests.
  *
- * @param http    HTTP client (the biletyna fetch seam in production).
- * @param pageUrl The venue's biletyna place page, e.g.
+ * @parameter http    HTTP client (the biletyna fetch seam in production).
+ * @parameter pageUrl The venue's biletyna place page, e.g.
  *                `https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe`.
- * @param cinema  The [[Cinema]] source tag attached to every [[CinemaMovie]].
+ * @parameter cinema  The [[Cinema]] source tag attached to every [[CinemaMovie]].
  */
 class BiletynaClient(http: HttpFetch, pageUrl: String, override val cinema: Cinema)
     extends CinemaScraper {

@@ -244,7 +244,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
   // Multikino's `originalTitle` is mostly empty (Polish releases just use the
   // Polish title) but is populated for international productions Multikino
   // distributes in Poland — typically Cirque du Soleil shows, opera /
-  // concert recordings, and English-language docs. When present, it's the
+  // concert recordings, and English-language documents. When present, it's the
   // film's English-language title and a strong TMDB-search fallback for
   // niche titles whose Polish translation doesn't index well.
 

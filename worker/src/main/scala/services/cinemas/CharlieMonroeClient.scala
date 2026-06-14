@@ -65,15 +65,15 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
     )
 
   private def parseHtml(html: String): Seq[CinemaMovie] = {
-    val doc = Jsoup.parse(html)
+    val document = Jsoup.parse(html)
 
-    val screenings = doc.select("script[type=application/ld+json]").asScala
+    val screenings = document.select("script[type=application/ld+json]").asScala
       .flatMap(el => Try(Json.parse(el.data())).toOption)
       .flatMap(parseScreeningEvent)
       .toSeq
 
     val roomMap = collection.mutable.Map[(String, String, String), String]()
-    val detailsByTitle = doc.select("article.movie-card").asScala.flatMap { article =>
+    val detailsByTitle = document.select("article.movie-card").asScala.flatMap { article =>
       Option(article.selectFirst("h2.title")).map(_.text().trim).map { title =>
         article.select(".showtimes-row").asScala.foreach { row =>
           val hall = Option(row.selectFirst(".hall-label")).map(_.text().trim).filter(_.nonEmpty)

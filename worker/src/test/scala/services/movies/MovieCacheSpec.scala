@@ -32,7 +32,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // An unchanged re-scrape: the updater returns an identical record — the
     // per-tick common case for every already-listed film across ~50 cinemas.
     // Pre-fix it still issued an updateOne (bumping only `updatedAt`), each one
-    // an oplog entry + a change-stream `updateLookup` full-doc read — the
+    // an oplog entry + a change-stream `updateLookup` full-document read — the
     // dominant load on the shared-CPU Mongo. It must now be a true no-op.
     cache.putIfPresent(key, (r: MovieRecord) => r) shouldBe true // row present → still reports success
     repository.upserts.size shouldBe writesAfterPut                    // ...but NO new write fired
@@ -699,13 +699,13 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     row.cinemaData(Multikino).showtimes.size shouldBe 1
   }
 
-  it should "merge two cinemas' slots into the same record when their titles share a docId" in {
+  it should "merge two cinemas' slots into the same record when their titles share a documentId" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("Top Gun: Maverick", Multikino, Some(2022), Some("multikino.jpg"))
     ))
     cache.recordCinemaScrape(Helios, Seq(
-      // Punctuation-only variant — phase 2's docId rule collapses both.
+      // Punctuation-only variant — phase 2's documentId rule collapses both.
       cinemaMovie("Top Gun Maverick", Helios, Some(2022), Some("helios.jpg"))
     ))
 

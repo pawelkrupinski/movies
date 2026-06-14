@@ -43,18 +43,18 @@ class KinoSfinksClient(http: HttpFetch, override val cinema: Cinema) extends Cin
 
   def fetch(): Seq[CinemaMovie] = {
     val firstHtml = http.get(PageUrl)
-    val firstDoc  = Jsoup.parse(firstHtml)
+    val firstDocument  = Jsoup.parse(firstHtml)
 
     // Follow the "next page" chain off page 1. Extra pages are fetched in
     // parallel and tolerantly — a fetch failure (or a fixture that only
     // recorded page 1) drops that page rather than failing the scrape.
-    val extraPaths = nextPagePaths(firstDoc)
-    val extraDocs  = ParallelDetailFetch.keyed("kino-sfinks-pages", extraPaths, 1.minute)(p => BaseUrl + p) { url =>
+    val extraPaths = nextPagePaths(firstDocument)
+    val extraDocuments  = ParallelDetailFetch.keyed("kino-sfinks-pages", extraPaths, 1.minute)(p => BaseUrl + p) { url =>
       Try(Jsoup.parse(http.get(url))).toOption
     }
-    val docs = firstDoc +: extraPaths.flatMap(p => extraDocs.getOrElse(p, None))
+    val documents = firstDocument +: extraPaths.flatMap(p => extraDocuments.getOrElse(p, None))
 
-    val slots = docs.flatMap(parseDoc)
+    val slots = documents.flatMap(parseDocument)
     val byTitle = slots.groupBy(_.title)
 
     byTitle.toSeq.flatMap { case (title, group) =>
@@ -95,16 +95,16 @@ object KinoSfinksClient {
   /** Distinct "next page" listing paths reachable from a page — the paginator
     * links every page (`-strona-2…6.html`), so collecting them off page 1
     * covers the whole schedule without walking the chain page by page. */
-  private def nextPagePaths(doc: org.jsoup.nodes.Document): Seq[String] =
-    doc.select("a[href]").asScala.toSeq
+  private def nextPagePaths(document: org.jsoup.nodes.Document): Seq[String] =
+    document.select("a[href]").asScala.toSeq
       .map(_.attr("href"))
       .flatMap(h => NextPagePat.findFirstIn(h))
       .distinct
 
   /** Parse one harmonogram page into its film screenings. */
-  private def parseDoc(doc: org.jsoup.nodes.Document): Seq[RawSlot] = {
+  private def parseDocument(document: org.jsoup.nodes.Document): Seq[RawSlot] = {
     var carriedDate: Option[LocalDate] = None
-    doc.select("table.widok_listy tbody tr[onclick]").asScala.toSeq.flatMap { row =>
+    document.select("table.widok_listy tbody tr[onclick]").asScala.toSeq.flatMap { row =>
       // The date cell is only populated on the first row of each day; carry the
       // last seen date forward to the day's remaining rows.
       cellDate(row).foreach(d => carriedDate = Some(d))

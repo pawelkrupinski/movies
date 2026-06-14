@@ -66,9 +66,9 @@ class RealHttpFetch extends HttpFetch with Logging {
    *  right charset itself. See [[HttpFetch.getBytes]] — only the charset-quirky
    *  scrapers (Kino Charlie) use this; everyone else gets the UTF-8 `get`. */
   override def getBytes(url: String): Array[Byte] = {
-    val resp = clientFor(url).send(buildRequest(url, Map.empty), HttpResponse.BodyHandlers.ofByteArray())
-    val code = resp.statusCode()
-    if (code >= 200 && code < 300) Gunzip.decode(resp.body())
+    val response = clientFor(url).send(buildRequest(url, Map.empty), HttpResponse.BodyHandlers.ofByteArray())
+    val code = response.statusCode()
+    if (code >= 200 && code < 300) Gunzip.decode(response.body())
     else throw new RuntimeException(s"HTTP $code for GET $url")
   }
 
@@ -86,7 +86,7 @@ class RealHttpFetch extends HttpFetch with Logging {
       }
 
   override def post(url: String, body: String, contentType: String = "application/json"): String = {
-    val req = HttpRequest.newBuilder()
+    val request = HttpRequest.newBuilder()
       .uri(URI.create(url))
       .timeout(RequestTimeout)
       .header("Content-Type", contentType)
@@ -96,7 +96,7 @@ class RealHttpFetch extends HttpFetch with Logging {
       .header("Accept-Encoding", "gzip")
       .POST(HttpRequest.BodyPublishers.ofString(body))
       .build()
-    sendLogged("POST", url, clientFor(url).send(req, HttpResponse.BodyHandlers.ofByteArray()))
+    sendLogged("POST", url, clientFor(url).send(request, HttpResponse.BodyHandlers.ofByteArray()))
   }
 
   // ── Logging hooks ─────────────────────────────────────────────────────────
@@ -117,17 +117,17 @@ class RealHttpFetch extends HttpFetch with Logging {
   //     the logs with hundreds of expected 404s per refresh tick.
 
   private def sendLogged(method: String, url: String, send: => HttpResponse[Array[Byte]]): String = {
-    val resp = try send catch {
+    val response = try send catch {
       case ex: Throwable =>
         logFailure(method, url, ex)
         throw ex
     }
-    checkStatus(method, url, resp)
+    checkStatus(method, url, response)
   }
 
-  private def checkStatus(method: String, url: String, resp: HttpResponse[Array[Byte]]): String = {
-    val code = resp.statusCode()
-    if (code >= 200 && code < 300) decodeBody(resp.body())
+  private def checkStatus(method: String, url: String, response: HttpResponse[Array[Byte]]): String = {
+    val code = response.statusCode()
+    if (code >= 200 && code < 300) decodeBody(response.body())
     else {
       if (code >= 500) logger.warn(s"HTTP $code from $method $url (server-side)")
       else             logger.debug(s"HTTP $code from $method $url")

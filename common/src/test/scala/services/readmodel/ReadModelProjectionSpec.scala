@@ -69,7 +69,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     movie.ratings.filmwebUrl should not be empty
   }
 
-  "screenings" should "emit one doc per (city, cinema) keyed and indexed by city" in {
+  "screenings" should "emit one document per (city, cinema) keyed and indexed by city" in {
     screenings should have size 2
     val byCinema = screenings.map(s => s.cinema -> s).toMap
 
@@ -78,7 +78,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     mk.filmId shouldBe movie._id
     mk._id shouldBe s"${movie._id}|poznan|Multikino Stary Browar"
     mk.filmUrl shouldBe Some("https://mk/film")
-    // All showtimes carried, sorted canonically (the doc is a function of the
+    // All showtimes carried, sorted canonically (the document is a function of the
     // set, not scrape order).
     mk.showtimes.map(_.dateTime) shouldBe Seq(
       LocalDateTime.parse("2026-06-12T17:30"),
@@ -96,7 +96,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     s.map(_.cinema) should not contain "Kino Rialto"
   }
 
-  it should "be deterministic — the same row projects to identical docs" in {
+  it should "be deterministic — the same row projects to identical documents" in {
     ReadModelProjection.project(stored) shouldBe (movie, screenings)
   }
 

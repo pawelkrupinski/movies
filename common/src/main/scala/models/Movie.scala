@@ -17,7 +17,7 @@ case class Movie(
   genres:         Seq[String]       = Seq.empty,
   // English/international release title when the cinema's API exposes it
   // (Multikino does for niche international shows — Cirque du Soleil, opera,
-  // English-language docs). Used as a TMDB-search fallback for titles whose
+  // English-language documents). Used as a TMDB-search fallback for titles whose
   // Polish translation doesn't index well; absent for most films, where the
   // Polish title is the canonical entry point.
   originalTitle:  Option[String]    = None,

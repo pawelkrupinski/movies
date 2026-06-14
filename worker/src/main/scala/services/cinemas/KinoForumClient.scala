@@ -43,8 +43,8 @@ class KinoForumClient(
   override def sourceUrl: Option[String] = Some(PageUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val doc   = Jsoup.parse(http.get(PageUrl))
-    val slots = doc.select("div.repertoire-row[data-date][data-hour]").asScala.toSeq
+    val document   = Jsoup.parse(http.get(PageUrl))
+    val slots = document.select("div.repertoire-row[data-date][data-hour]").asScala.toSeq
       .flatMap(parseRow)
       .filter(!_.dateTime.toLocalDate.isBefore(today))
 

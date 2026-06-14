@@ -74,7 +74,7 @@ trait TestWiring extends WorkerWiring {
   // absent — without an override, every CI runner (and any local box without
   // `.env.local`) sees no TMDB resolution, no TmdbResolved events, no
   // enrichment cascade. The fixture replay doesn't need a real key (the URL's
-  // `api_key` query param is stripped from the fixture fingerprint via
+  // `api_key` query parameter is stripped from the fixture fingerprint via
   // `RecordingHttpFetch.stableQueryFingerprint`), so any non-empty string works.
   override lazy val tmdbClient: TmdbClient = new TmdbClient(httoFetch, apiKey = Some("test-api-key"))
 

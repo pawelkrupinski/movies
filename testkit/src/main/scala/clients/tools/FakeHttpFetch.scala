@@ -6,8 +6,8 @@ import java.net.URI
 import java.nio.file.{Files, Path, Paths}
 import java.util.concurrent.CompletableFuture
 
-class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
-  val fixtureRoot = FakeHttpFetch.rootFor(fixtureDir)
+class FakeHttpFetch(fixtureDirectory: String) extends HttpFetch {
+  val fixtureRoot = FakeHttpFetch.rootFor(fixtureDirectory)
 
   override def get(url: String): String = new String(readBytes(url, body = None), "UTF-8")
 
@@ -129,17 +129,17 @@ class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
 }
 
 object FakeHttpFetch {
-  /** Fixture root for a dir: `test/resources/fixtures/<dir>` relative to the CWD
-   *  (the repository root for sbt test/runMain), OR `<KINOWO_FIXTURE_ROOT>/<dir>` when
+  /** Fixture root for a directory: `test/resources/fixtures/<directory>` relative to the CWD
+   *  (the repository root for sbt test/runMain), OR `<KINOWO_FIXTURE_ROOT>/<directory>` when
    *  that env/sysprop is set — so a process whose CWD is NOT the repository root (a
    *  forked `bgRunMain`, e.g. `sbt localStack`'s worker) can still find the
    *  corpus. Default (unset) is unchanged, so existing callers are unaffected. */
-  def rootFor(fixtureDir: String): String = rootFor(fixtureDir, Env.get("KINOWO_FIXTURE_ROOT"))
+  def rootFor(fixtureDirectory: String): String = rootFor(fixtureDirectory, Env.get("KINOWO_FIXTURE_ROOT"))
 
   /** Pure form, for testing without touching the global env. */
-  def rootFor(fixtureDir: String, base: Option[String]): String =
+  def rootFor(fixtureDirectory: String, base: Option[String]): String =
     base.filter(_.nonEmpty) match {
-      case Some(b) => s"$b/$fixtureDir"
-      case None    => "test/resources/fixtures/" + fixtureDir
+      case Some(b) => s"$b/$fixtureDirectory"
+      case None    => "test/resources/fixtures/" + fixtureDirectory
     }
 }

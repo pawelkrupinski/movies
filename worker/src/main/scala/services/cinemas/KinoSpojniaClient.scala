@@ -58,9 +58,9 @@ object KinoSpojniaClient {
   )
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val doc = Jsoup.parse(html, BaseUrl)
+    val document = Jsoup.parse(html, BaseUrl)
 
-    val slots = doc.select("table:has(span.godzina):has(a.tytul)").asScala.toSeq.flatMap { t =>
+    val slots = document.select("table:has(span.godzina):has(a.tytul)").asScala.toSeq.flatMap { t =>
       for {
         titleEl <- Option(t.selectFirst("a.tytul"))
         title    = titleEl.text.replace(' ', ' ').trim if title.nonEmpty

@@ -40,7 +40,7 @@ class KinoAgrafkaClient(http: HttpFetch, override val cinema: Cinema) extends Ci
 
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(RepertoireUrl)
-    val slots = parseDoc(html)
+    val slots = parseDocument(html)
 
     val byFilmUrl = slots.groupBy(s => (s.title, s.filmUrl))
     byFilmUrl.toSeq.flatMap { case ((title, filmUrl), group) =>
@@ -94,13 +94,13 @@ object KinoAgrafkaClient {
     meta:       MetaInfo
   )
 
-  private val DirMarker = "reż."
+  private val DirectoryMarker = "reż."
 
   private[cinemas] def parseMeta(cellText: String): MetaInfo = {
-    val index = cellText.indexOf(DirMarker)
+    val index = cellText.indexOf(DirectoryMarker)
     if (index < 0) MetaInfo.empty
     else {
-      val tail = cellText.substring(index + DirMarker.length)
+      val tail = cellText.substring(index + DirectoryMarker.length)
       val directors = tail.split(",").iterator.map(_.trim)
         .takeWhile(seg => !seg.exists(_.isDigit) && !seg.contains("/") && !CountryNames.isPolish(seg))
         .flatMap(_.split(";")).map(_.trim)   // some films join co-directors with ';'
@@ -110,15 +110,15 @@ object KinoAgrafkaClient {
     }
   }
 
-  private[cinemas] def parseDoc(html: String): Seq[RawSlot] = {
-    val doc = Jsoup.parse(html)
+  private[cinemas] def parseDocument(html: String): Seq[RawSlot] = {
+    val document = Jsoup.parse(html)
     var currentDate: Option[LocalDate] = None
     val slots = collection.mutable.ArrayBuffer.empty[RawSlot]
 
     // Each day block is a <div> wrapping an <h3> date header and a <table>.
     // Alternatively the h3 and tables are siblings. We walk ALL elements in
     // document order to carry the last-seen date forward across rows.
-    doc.select("h3, table.repertoire tbody tr").asScala.foreach { el =>
+    document.select("h3, table.repertoire tbody tr").asScala.foreach { el =>
       el.tagName match {
         case "h3" =>
           currentDate = parseDate(el.text.trim)

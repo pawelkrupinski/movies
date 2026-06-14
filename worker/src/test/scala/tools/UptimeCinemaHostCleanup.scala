@@ -17,7 +17,7 @@ import scala.concurrent.duration._
  *  under the request HOST (e.g. `kinomuranow.pl`). The host rows had no home on
  *  the uptime page's Cinemas/Enrichment sections, so they piled into "Other".
  *  Going forward those hosts are SUPPRESSED at the source (their union is
- *  `CinemaScraperCatalog.scrapeHosts`), but the already-written host docs linger
+ *  `CinemaScraperCatalog.scrapeHosts`), but the already-written host documents linger
  *  until the bucket TTL expires them. This deletes them now so "Other" clears immediately.
  *
  *  We DELETE rather than re-attribute: a host maps many-to-one to cinemas
@@ -59,7 +59,7 @@ object UptimeCinemaHostCleanup {
       val del = Await.result(
         coll.deleteMany(Filters.in("service", matched.toSeq*)).toFuture(),
         120.seconds)
-      println(s"Deleted ${del.getDeletedCount} redundant per-host uptime doc(s) across ${matched.size} host(s).")
+      println(s"Deleted ${del.getDeletedCount} redundant per-host uptime document(s) across ${matched.size} host(s).")
     } finally connection.close()
   }
 }

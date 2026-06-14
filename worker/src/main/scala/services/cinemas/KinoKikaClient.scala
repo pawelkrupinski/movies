@@ -36,7 +36,7 @@ class KinoKikaClient(http: HttpFetch, override val cinema: Cinema) extends Cinem
 
   def fetch(): Seq[CinemaMovie] = {
     val html  = http.get(RepertoireUrl)
-    val slots = parseDoc(html)
+    val slots = parseDocument(html)
 
     val byTitle = slots.groupBy(_.title)
     byTitle.toSeq.flatMap { case (title, group) =>
@@ -78,9 +78,9 @@ object KinoKikaClient {
     room:       Option[String]
   )
 
-  private[cinemas] def parseDoc(html: String): Seq[RawSlot] = {
-    val doc = Jsoup.parse(html)
-    doc.select("div.repertoire-once").asScala.toSeq.flatMap { row =>
+  private[cinemas] def parseDocument(html: String): Seq[RawSlot] = {
+    val document = Jsoup.parse(html)
+    document.select("div.repertoire-once").asScala.toSeq.flatMap { row =>
       val classes = row.attr("class")
       val date = DateClassPat.findFirstIn(classes).flatMap(s => Try(LocalDate.parse(s)).toOption)
 

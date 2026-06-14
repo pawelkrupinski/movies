@@ -83,8 +83,8 @@ class MetacriticClient(http: HttpFetch) {
    *  containing a `<p class="c-search-item__title">` and a release date string
    *  (e.g. "May 27, 2022") from which we extract the year. */
   def parseSearchResults(html: String): Seq[SearchHit] = {
-    val doc = Jsoup.parse(html)
-    doc.select("a.c-search-item.search-item__content").asScala.toSeq.flatMap { a =>
+    val document = Jsoup.parse(html)
+    document.select("a.c-search-item.search-item__content").asScala.toSeq.flatMap { a =>
       val href = a.attr("href")
       val slug = if (href.startsWith("/movie/")) Some(href.stripPrefix("/movie/").stripSuffix("/")) else None
       val title = a.select("p.c-search-item__title").text().trim

@@ -30,7 +30,7 @@ import tools.GetOnlyHttpFetch
  * Both specs use the real `directorWalk` chain end-to-end (search returns
  * nothing → `findPerson` → `personDirectorCredits` → `imdbId`) against a
  * stubbed TmdbClient. The film modelled is real (Kurozając, tmdb=1215532,
- * imdb=tt31260224, dir. Benjamin Mousquet, year 2025) — gives the diff
+ * imdb=tt31260224, directory. Benjamin Mousquet, year 2025) — gives the diff
  * reviewer a concrete reference.
  */
 class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {

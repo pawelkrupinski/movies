@@ -11,7 +11,7 @@ import org.mongodb.scala.bson.codecs.Macros
  * small (only `String`, `Option[String]`, `Set[String]`, `Instant`) so
  * the macros derive everything from `User` / `UserState` directly —
  * there's no DTO indirection here, unlike `StoredMovieDto`. Domain
- * fields named `id` / `userId` end up as regular doc fields; the
+ * fields named `id` / `userId` end up as regular document fields; the
  * `_id` is delegated to whichever field the repository chooses (it filters
  * by `id` / `userId` explicitly so the auto-generated ObjectId never
  * surfaces in domain code).
@@ -30,10 +30,10 @@ object UserCodecs {
     DEFAULT_CODEC_REGISTRY
   )
 
-  // `IgnoreNone` keeps the docs tidy when the user opted out of
+  // `IgnoreNone` keeps the documents tidy when the user opted out of
   // email/avatar/displayName sharing at consent time. Without it,
   // every optional field that's `None` would be written as `BsonNull`.
   // The trade-off is that a `None` write doesn't *clear* a previously
-  // set field — for User we only do full-doc upserts, so that's fine;
+  // set field — for User we only do full-document upserts, so that's fine;
   // a future partial update would need to use `$unset` explicitly.
 }

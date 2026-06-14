@@ -74,8 +74,8 @@ object KinematografLodzClient {
     services.movies.TitleNormalizer.cinemaClean("kino-kinematograf", raw)
 
   private[cinemas] def parseHtml(html: String, today: LocalDate, cinema: Cinema): Seq[CinemaMovie] = {
-    val doc = Jsoup.parse(html)
-    doc.select("article.cwb-movie-item").asScala.toSeq.flatMap(parseItem(_, today, cinema))
+    val document = Jsoup.parse(html)
+    document.select("article.cwb-movie-item").asScala.toSeq.flatMap(parseItem(_, today, cinema))
   }
 
   private def parseItem(item: Element, today: LocalDate, cinema: Cinema): Option[CinemaMovie] = {

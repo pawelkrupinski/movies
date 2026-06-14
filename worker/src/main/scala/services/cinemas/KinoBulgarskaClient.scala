@@ -85,11 +85,11 @@ class KinoBulgarskaClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
     TrailerIframePat.findFirstMatchIn(html).map(_.group(1)).flatMap(ScraperParse.canonicalTrailer)
 
   private def parseHtml(html: String): Seq[CinemaMovie] = {
-    val doc            = Jsoup.parse(html)
+    val document            = Jsoup.parse(html)
     val filmByUrl      = collection.mutable.Map[String, (String, Option[String], Option[String], Seq[String], Seq[String], Option[Int], Option[Int])]()
     val showtimesByUrl = collection.mutable.Map[String, collection.mutable.ListBuffer[Showtime]]()
 
-    doc.select("article").asScala.foreach { article =>
+    document.select("article").asScala.foreach { article =>
       val dateOpt = Option(article.selectFirst("h3")).flatMap(h3 => parsePolishDate(h3.text()))
 
       article.select("section.clearfix").asScala.foreach { section =>

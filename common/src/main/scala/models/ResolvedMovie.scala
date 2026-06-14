@@ -10,10 +10,10 @@ package models
  * every request, and — crucially — a `web_movies` document changes only when a
  * film's metadata/enrichment actually changes. A showtime-only edit touches no
  * field here, so the web's change-stream delta for it carries nothing from this
- * collection (the screening doc alone moves). See [[CityScreening]].
+ * collection (the screening document alone moves). See [[CityScreening]].
  *
  * `_id` is the same identity as the source `movies` row (`sanitize(title)|year`
- * — see `ReadModelProjection.filmId`), so a screening doc's `filmId` joins
+ * — see `ReadModelProjection.filmId`), so a screening document's `filmId` joins
  * straight back to it.
  */
 case class ResolvedMovie(

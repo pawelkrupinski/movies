@@ -16,7 +16,7 @@ import scala.util.Try
 object RecordReplaceBatch {
   def main(args: Array[String]): Unit = {
     val real  = new RealHttpFetch()
-    def rec(dir: String) = new RecordingHttpFetch(dir, real)
+    def rec(directory: String) = new RecordingHttpFetch(directory, real)
     val today = LocalDate.of(2026, 6, 8)
     def rep(label: String)(n: => Int): Unit =
       println(f"$label%-30s ${Try(n).fold(e => s"FAIL ${e.getClass.getSimpleName}: ${e.getMessage}", x => s"$x films")}")

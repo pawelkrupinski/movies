@@ -22,7 +22,7 @@ import scala.util.Try
  * Mongo-backed `TaskQueue`, collection `tasks`. Document shape:
  * {{{
  *   { _id: <uuid>, taskType: "ScrapeCinema", dedupKey: "scrape|kino-x",
- *     payload: { ... },              // string→string sub-doc
+ *     payload: { ... },              // string→string sub-document
  *     state: "waiting"|"worked_on"|"deleted",
  *     active: Bool,                  // true iff state != deleted (drives the dedup index)
  *     submittedAt: ISODate, attempts: Int,
@@ -95,7 +95,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         Updates.setOnInsert("_id", UUID.randomUUID().toString),
         Updates.setOnInsert("taskType", taskType.name),
         Updates.setOnInsert("dedupKey", dedupKey),
-        Updates.setOnInsert("payload", payloadDoc(payload)),
+        Updates.setOnInsert("payload", payloadDocument(payload)),
         Updates.setOnInsert("state", TaskState.Waiting),
         Updates.setOnInsert("active", true),
         Updates.setOnInsert("submittedAt", new java.util.Date(submittedAt.toEpochMilli)),
@@ -244,26 +244,26 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
     new AutoCloseable { override def close(): Unit = Option(subRef.get()).foreach(_.unsubscribe()) }
   }
 
-  private def toSummary(doc: Document): TaskSummary = TaskSummary(
-    id             = doc.getString("_id"),
-    taskType       = doc.getString("taskType"),
-    dedupKey       = doc.getString("dedupKey"),
-    state          = doc.getString("state"),
-    submittedAt    = Instant.ofEpochMilli(doc.getDate("submittedAt").getTime),
-    attempts       = doc.getInteger("attempts", 0),
-    workerId       = Option(doc.getString("workerId")),
-    leaseExpiresAt = Option(doc.getDate("leaseExpiresAt")).map(d => Instant.ofEpochMilli(d.getTime)),
-    lastError      = Option(doc.getString("lastError"))
+  private def toSummary(document: Document): TaskSummary = TaskSummary(
+    id             = document.getString("_id"),
+    taskType       = document.getString("taskType"),
+    dedupKey       = document.getString("dedupKey"),
+    state          = document.getString("state"),
+    submittedAt    = Instant.ofEpochMilli(document.getDate("submittedAt").getTime),
+    attempts       = document.getInteger("attempts", 0),
+    workerId       = Option(document.getString("workerId")),
+    leaseExpiresAt = Option(document.getDate("leaseExpiresAt")).map(d => Instant.ofEpochMilli(d.getTime)),
+    lastError      = Option(document.getString("lastError"))
   )
 
-  private def payloadDoc(payload: Map[String, String]): org.mongodb.scala.bson.BsonDocument = {
+  private def payloadDocument(payload: Map[String, String]): org.mongodb.scala.bson.BsonDocument = {
     val bd = new org.mongodb.scala.bson.BsonDocument()
     payload.foreach { case (k, v) => bd.put(k, BsonString(v)) }
     bd
   }
 
-  private def toTask(doc: Document): Task = {
-    val payload = doc.get("payload")
+  private def toTask(document: Document): Task = {
+    val payload = document.get("payload")
       .filter(_.isDocument)
       .map { v =>
         val d = v.asDocument()
@@ -271,12 +271,12 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       }
       .getOrElse(Map.empty[String, String])
     Task(
-      id       = doc.getString("_id"),
-      taskType = TaskType.byName(doc.getString("taskType")).getOrElse(
-        throw new IllegalStateException(s"Unknown taskType ${doc.getString("taskType")}")),
-      dedupKey = doc.getString("dedupKey"),
+      id       = document.getString("_id"),
+      taskType = TaskType.byName(document.getString("taskType")).getOrElse(
+        throw new IllegalStateException(s"Unknown taskType ${document.getString("taskType")}")),
+      dedupKey = document.getString("dedupKey"),
       payload  = payload,
-      attempts = doc.getInteger("attempts", 0)
+      attempts = document.getInteger("attempts", 0)
     )
   }
 }
@@ -284,6 +284,6 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
 object MongoTaskQueue {
   /** `{w:1, j:false}` — ack on primary apply, no journal-fsync/majority wait. The
    *  queue is recoverable bookkeeping, so the durability trade buys back the
-   *  per-op cost that dominated the shared-cpu Mongo's load. See the class doc. */
+   *  per-op cost that dominated the shared-cpu Mongo's load. See the class document. */
   val QueueWriteConcern: WriteConcern = WriteConcern.W1.withJournal(false)
 }

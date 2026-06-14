@@ -12,7 +12,7 @@ import tools.Env
  * window before the worker's first projection lands.
  *
  * A FULL idempotent reconcile: every `movies` row is projected and upserted,
- * then any derived doc not in the freshly-projected set is deleted (a film that
+ * then any derived document not in the freshly-projected set is deleted (a film that
  * left the corpus, or a cinema that stopped screening one). Re-running converges
  * to the same state, and it's safe to run while the worker is live — the
  * projector's incremental writes and this backfill both key on `_id` and agree.
@@ -24,7 +24,7 @@ import tools.Env
  */
 object BackfillReadModel {
 
-  /** Project every `movies` row into the read model and prune derived docs no
+  /** Project every `movies` row into the read model and prune derived documents no
    *  longer produced. Pure over the repository traits, so `BackfillReadModelSpec`
    *  exercises it with in-memory repos. Returns
    *  (moviesWritten, screeningsWritten, moviesPruned, screeningsPruned). */
@@ -63,7 +63,7 @@ object BackfillReadModel {
       val (movies, screenings, prunedM, prunedS) = run(movieRepository, readModelRepository)
       val secs = (System.nanoTime() - started) / 1e9
       println(f"@@ done in $secs%.1fs — wrote web_movies=$movies, web_screenings=$screenings" +
-              s"${if (prunedM + prunedS > 0) s" (pruned $prunedM movie + $prunedS screening stale doc(s))" else ""}")
+              s"${if (prunedM + prunedS > 0) s" (pruned $prunedM movie + $prunedS screening stale document(s))" else ""}")
     } finally client.close()
   }
 }

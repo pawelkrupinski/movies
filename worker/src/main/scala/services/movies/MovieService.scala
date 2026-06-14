@@ -317,14 +317,14 @@ class MovieService(
     // none — the operator `/debug` re-enrich enqueues only (title, year), so
     // without this its `directorWalk` would never fire (the inline operator
     // path used to derive the same hints from the row directly).
-    val (cachedOrig, cachedDir) = cache.get(key).map(tmdbHints).getOrElse((None, None))
+    val (cachedOrig, cachedDirectory) = cache.get(key).map(tmdbHints).getOrElse((None, None))
     val origHint = originalTitle.orElse(cachedOrig)
-    val dirHint  = director.orElse(cachedDir)
-    if (!force && !needsTmdbResolution(key, origHint, dirHint)) true
+    val directoryHint  = director.orElse(cachedDirectory)
+    if (!force && !needsTmdbResolution(key, origHint, directoryHint)) true
     else {
       logger.info(s"TMDB: resolving '${key.cleanTitle}' (${key.year.getOrElse("?")})" +
-        dirHint.fold("")(d => s" [director hint: $d]"))
-      Try(runTmdbStageSync(key, origHint, dirHint)) match {
+        directoryHint.fold("")(d => s" [director hint: $d]"))
+      Try(runTmdbStageSync(key, origHint, directoryHint)) match {
       case Success(Some((finalKey, movieRecord))) => publishTmdbOutcome(finalKey, movieRecord); true
       case Success(None) =>
         logger.info(s"TMDB: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no match")
@@ -357,9 +357,9 @@ class MovieService(
    *  Publishes no events: rating enrichment runs on the merged `movies` row after
    *  the fold, not on the per-cinema staging rows. */
   def resolveStagingRecord(cleanTitle: String, year: Option[Int], existing: MovieRecord): Option[MovieRecord] = {
-    val (origHint, dirHint) = tmdbHints(existing)
+    val (origHint, directoryHint) = tmdbHints(existing)
     val label = s"'$cleanTitle' (${year.getOrElse("?")})"
-    Try(lookupTmdb(cleanTitle, year, existing, origHint, dirHint)) match {
+    Try(lookupTmdb(cleanTitle, year, existing, origHint, directoryHint)) match {
       case Success(Some((hit, imdbId, detailsOpt))) =>
         val resolved = buildResolvedRecord(hit, imdbId, detailsOpt, existing)
         logger.info(s"TMDB (staging): $label → matched tmdbId=${resolved.tmdbId.getOrElse("—")} imdbId=${resolved.imdbId.getOrElse("—")}")
@@ -582,8 +582,8 @@ class MovieService(
     val targets = cache.entries.collect { case (k, e) if e.tmdbId.isEmpty && !e.detailPending => (k, e) }
     logger.info(s"TMDB retry: cleared negatives + re-dispatching ${targets.size} row(s) with missing tmdbId.")
     targets.foreach { case (k, e) =>
-      val (origHint, dirHint) = tmdbHints(e)
-      dispatchResolve(k.cleanTitle, k.year, origHint, dirHint)
+      val (origHint, directoryHint) = tmdbHints(e)
+      dispatchResolve(k.cleanTitle, k.year, origHint, directoryHint)
     }
   }
 
@@ -704,8 +704,8 @@ class MovieService(
     candidate.flatMap { hit =>
       director match {
         case None => Some(hit)   // no hint → can't verify, accept
-        case Some(dir) =>
-          val cinemaNames = dir.split(",").iterator.map(_.trim).filter(_.nonEmpty)
+        case Some(directory) =>
+          val cinemaNames = directory.split(",").iterator.map(_.trim).filter(_.nonEmpty)
             .map(MovieService.normalize).toSet
           if (cinemaNames.isEmpty) Some(hit)
           else {
@@ -726,12 +726,12 @@ class MovieService(
     year:     Option[Int]
   ): Option[TmdbClient.SearchResult] = {
     for {
-      dir      <- director
+      directory      <- director
       y        <- year
-      personId <- tmdb.findPerson(dir.split(",").head.trim)
+      personId <- tmdb.findPerson(directory.split(",").head.trim)
       film     <- tmdb.personDirectorCredits(personId).find(_.releaseYear.contains(y))
     } yield {
-      logger.info(s"Director-walk: '$dir' year=$y → tmdbId=${film.id} '${film.originalTitle.getOrElse(film.title)}'")
+      logger.info(s"Director-walk: '$directory' year=$y → tmdbId=${film.id} '${film.originalTitle.getOrElse(film.title)}'")
       film
     }
   }
@@ -739,7 +739,7 @@ class MovieService(
 }
 
 object MovieService {
-  // Stable docId key for the cache + Mongo `_id`. Delegates to
+  // Stable documentId key for the cache + Mongo `_id`. Delegates to
   // `TitleNormalizer.sanitize`, which applies Arabic→Roman, strips display-
   // only decoration (anniversary/Cykl/wersja), folds " & " → " i " and the
   // "Gwiezdne Wojny:" prefix, and finally collapses every non-alphanumeric

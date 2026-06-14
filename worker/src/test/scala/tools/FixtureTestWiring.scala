@@ -16,7 +16,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   override lazy val readModelRepository: ReadModelReader & ReadModelWriter = new InMemoryReadModelRepository()
   lazy val webReadModel = new WebReadModel(readModelRepository)
 
-  // Pin Helios's REST date to the fixture's capture day when the `fixture` dir
+  // Pin Helios's REST date to the fixture's capture day when the `fixture` directory
   // is named `dd-MM-yyyy` (e.g. "08-06-2026"). Helios bakes the date window into
   // its `/screening` + `/event` URLs; without this the live `LocalDate.now`
   // makes those URLs miss the recorded fixtures, dropping Helios room/format

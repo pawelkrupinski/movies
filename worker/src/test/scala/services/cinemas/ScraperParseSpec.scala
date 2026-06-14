@@ -43,24 +43,24 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
   }
 
   "ddField" should "return the <dd> after the matching <dt> (case-insensitive label)" in {
-    val doc = Jsoup.parse(
+    val document = Jsoup.parse(
       "<dl><dt>Rok produkcji</dt><dd>2024</dd><dt>Reżyseria</dt><dd>Jan Kowalski</dd></dl>"
     )
-    ScraperParse.ddField(doc, "rok produkcji") shouldBe Some("2024")
-    ScraperParse.ddField(doc, "reżyseria")     shouldBe Some("Jan Kowalski")
+    ScraperParse.ddField(document, "rok produkcji") shouldBe Some("2024")
+    ScraperParse.ddField(document, "reżyseria")     shouldBe Some("Jan Kowalski")
   }
 
   it should "honour a custom dt selector and ignore dt outside it" in {
-    val doc = Jsoup.parse(
+    val document = Jsoup.parse(
       "<dl class='x'><dt>Czas</dt><dd>90 min</dd></dl><dl><dt>Czas</dt><dd>WRONG</dd></dl>"
     )
-    ScraperParse.ddField(doc, "czas", "dl.x dt") shouldBe Some("90 min")
+    ScraperParse.ddField(document, "czas", "dl.x dt") shouldBe Some("90 min")
   }
 
   it should "return None for a missing label or an empty dd" in {
-    val doc = Jsoup.parse("<dl><dt>Rok</dt><dd>   </dd></dl>")
-    ScraperParse.ddField(doc, "rok")     shouldBe None // empty dd → None
-    ScraperParse.ddField(doc, "gatunek") shouldBe None // no such dt
+    val document = Jsoup.parse("<dl><dt>Rok</dt><dd>   </dd></dl>")
+    ScraperParse.ddField(document, "rok")     shouldBe None // empty dd → None
+    ScraperParse.ddField(document, "gatunek") shouldBe None // no such dt
   }
 
   "extractFormatTags" should "split a parenthesised format tag into clean title + display tokens" in {

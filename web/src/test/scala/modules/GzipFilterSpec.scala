@@ -36,10 +36,10 @@ class GzipFilterSpec extends AnyFlatSpec with Matchers {
   private val rawBytes = bigHtml.getBytes("UTF-8").length
 
   private def run(acceptEncoding: Option[String]): (play.api.mvc.Result, ByteString) = {
-    val req =
+    val request =
       acceptEncoding.fold(FakeRequest())(ae => FakeRequest().withHeaders("Accept-Encoding" -> ae))
     val action = EssentialAction(_ => Accumulator.done(Results.Ok(bigHtml).as("text/html")))
-    val result = Await.result(gzip(action)(req).run(), 5.seconds)
+    val result = Await.result(gzip(action)(request).run(), 5.seconds)
     val body   = Await.result(result.body.consumeData, 5.seconds)
     (result, body)
   }

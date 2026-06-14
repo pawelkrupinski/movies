@@ -55,19 +55,19 @@ private[cinemas] object MsiScraper {
    * Parse one MSI month page with full year context.  Returns one `RawSlot`
    * per unique event anchor found in the desktop showtime list.
    *
-   * @param html       Raw HTML of the month page.
-   * @param yearMonth  The calendar month this page was fetched for — used to
+   * @parameter html       Raw HTML of the month page.
+   * @parameter yearMonth  The calendar month this page was fetched for — used to
    *                   supply the year component missing from event-anchor text.
-   * @param baseUrl    Base URL of the MSI host (used only with `attr("abs:href")`
+   * @parameter baseUrl    Base URL of the MSI host (used only with `attr("abs:href")`
    *                   expansion by Jsoup to produce absolute booking URLs).
-   * @param cleanTitle Per-cinema title normalisation: returns the cleaned title
+   * @parameter cleanTitle Per-cinema title normalisation: returns the cleaned title
    *                   plus the screening-format display tokens (2D/NAP/DUB/…)
    *                   the MSI title buried in its text.
    */
   def parseMonthWithYear(html: String, yearMonth: YearMonth, baseUrl: String,
                          cleanTitle: String => (String, List[String])): Seq[RawSlot] = {
-    val doc = Jsoup.parse(html, baseUrl)
-    doc.select("div.movies-movie__single").asScala.toSeq.flatMap { movieDiv =>
+    val document = Jsoup.parse(html, baseUrl)
+    document.select("div.movies-movie__single").asScala.toSeq.flatMap { movieDiv =>
       val rawTitle = Option(movieDiv.selectFirst(".movies-movie__single__title"))
         .map(_.attr("title").trim)
         .filter(_.nonEmpty)

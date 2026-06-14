@@ -60,7 +60,7 @@ class FilmwebFallbackSpec extends AnyFlatSpec with Matchers {
     h.bucket.successes shouldBe 1
     h.bucket.fallback  shouldBe false
     h.bucket.status    shouldBe "green"
-    h.state shouldBe None                 // never entered fallback → no state doc
+    h.state shouldBe None                 // never entered fallback → no state document
     h.primary.calls shouldBe 1            // filmweb never consulted
   }
 

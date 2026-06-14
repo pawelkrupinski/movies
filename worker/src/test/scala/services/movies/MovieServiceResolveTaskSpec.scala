@@ -31,11 +31,11 @@ class MovieServiceResolveTaskSpec extends AnyFlatSpec with Matchers {
   private def serviceEnqueueing(queue: InMemoryTaskQueue, cache: MovieCache): MovieService =
     new MovieService(
       cache, new InProcessEventBus(), deadTmdb,
-      enqueueResolveTmdb = Some((title, year, orig, dir) => {
+      enqueueResolveTmdb = Some((title, year, orig, directory) => {
         queue.enqueue(
           TaskType.ResolveTmdb,
           EnrichTaskKeys.resolveTmdbDedup(title, year),
-          EnrichTaskKeys.resolveTmdbPayload(title, year, dir, orig))
+          EnrichTaskKeys.resolveTmdbPayload(title, year, directory, orig))
         ()
       }))
 

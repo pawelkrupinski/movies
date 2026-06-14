@@ -18,10 +18,10 @@ import java.util.concurrent.CountDownLatch
  * separate process.
  *
  * Usage (one terminal):
- *   sbt 'PageTest/runMain tools.FixtureServerMain /tmp/kinowo-port.txt'
+ *   sbt 'PageTest/runMain tools.FixtureServerMain /temporary/kinowo-port.txt'
  *
  * Then in another (or the same CI job):
- *   PORT=$(cat /tmp/kinowo-port.txt)
+ *   PORT=$(cat /temporary/kinowo-port.txt)
  *   KINOWO_BASE_URL=http://127.0.0.1:$PORT npx playwright test
  *
  * Why a port file: the server binds to port 0 (kernel-assigned free

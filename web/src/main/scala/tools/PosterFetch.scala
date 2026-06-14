@@ -34,13 +34,13 @@ class HttpPosterFetch extends PosterFetch {
 
   def bytes(url: String): Option[Array[Byte]] =
     try {
-      val req = HttpRequest.newBuilder()
+      val request = HttpRequest.newBuilder()
         .uri(URI.create(url))
         .timeout(Duration.ofSeconds(20))
         .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
         .GET()
         .build()
-      val resp = client.send(req, HttpResponse.BodyHandlers.ofByteArray())
-      if (resp.statusCode() / 100 == 2) Some(resp.body()) else None
+      val response = client.send(request, HttpResponse.BodyHandlers.ofByteArray())
+      if (response.statusCode() / 100 == 2) Some(response.body()) else None
     } catch { case _: Throwable => None }
 }

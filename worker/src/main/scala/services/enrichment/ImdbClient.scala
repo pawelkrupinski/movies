@@ -176,7 +176,7 @@ class ImdbClient(http: HttpFetch) {
       val exact = movies
         .filter(_.title.contains(q))
         .sortBy { s =>
-          val yearDistance = year.flatMap(req => s.year.map(yi => math.abs(yi - req))).getOrElse(Int.MaxValue)
+          val yearDistance = year.flatMap(request => s.year.map(yi => math.abs(yi - request))).getOrElse(Int.MaxValue)
           (yearDistance, s.rank)
         }
         .headOption.map(_.id)
@@ -184,8 +184,8 @@ class ImdbClient(http: HttpFetch) {
       // IMDb's #1 movie suggestion only if its year corroborates the one TMDB
       // gave us. That pair of signals (query relevance + exact year) is enough
       // to bind e.g. "Kumotry"→"Double Trouble" without wild-guessing.
-      exact.orElse(year.flatMap(req => movies.headOption.collect {
-        case s if s.year.contains(req) => s.id
+      exact.orElse(year.flatMap(request => movies.headOption.collect {
+        case s if s.year.contains(request) => s.id
       }))
     }
   }

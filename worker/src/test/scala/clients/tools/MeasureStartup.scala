@@ -25,7 +25,7 @@ import scala.concurrent.duration._
  *       collection, including driver-side BSON decoding into the typed DTO.
  *    4. Per-document wall time — same query via the streaming Observable,
  *       so we get "time from cursor open until N-th document arrives". The
- *       gap between successive docs tells us if it's network-bound (steady)
+ *       gap between successive documents tells us if it's network-bound (steady)
  *       or batched (stepped at 101/201/…). Reported as first / median /
  *       last document arrival time relative to cursor open.
  *    5. `StoredMovieDto.toDomain` mapping — pure-Scala fold over the
@@ -70,12 +70,12 @@ object MeasureStartup {
       val movies: MongoCollection[StoredMovieDto] = db.getCollection[StoredMovieDto]("movies")
       val count = Await.result(movies.countDocuments().toFuture(), 30.seconds)
       val t2 = System.nanoTime()
-      fmt(s"2. countDocuments() — first RTT, $count docs", t2 - t1)
+      fmt(s"2. countDocuments() — first RTT, $count documents", t2 - t1)
 
       // Phase 3: find().toFuture() wall time.
       val rows: Seq[StoredMovieDto] = Await.result(movies.find().toFuture(), 60.seconds)
       val t3 = System.nanoTime()
-      fmt(s"3. find().toFuture() — full cursor drain (${rows.size} docs)", t3 - t2)
+      fmt(s"3. find().toFuture() — full cursor drain (${rows.size} documents)", t3 - t2)
 
       // Phase 4: Per-document timing via streaming Observable.
       val cursorOpen = System.nanoTime()
@@ -91,9 +91,9 @@ object MeasureStartup {
       val first  = timings.head
       val median = timings.sorted.apply(timings.size / 2)
       val last   = timings.last
-      fmt(s"4. streamed find() — first doc arrives at",   first)
-      fmt(s"   streamed find() — median doc arrives at",  median)
-      fmt(s"   streamed find() — last doc arrives at",    last)
+      fmt(s"4. streamed find() — first document arrives at",   first)
+      fmt(s"   streamed find() — median document arrives at",  median)
+      fmt(s"   streamed find() — last document arrives at",    last)
       fmt(s"   streamed find() — total wall time",        t4 - t3)
 
       // Phase 5: StoredMovieDto → StoredMovieRecord conversion.
@@ -110,7 +110,7 @@ object MeasureStartup {
       val t6 = System.nanoTime()
       fmt(s"6. Caffeine populate × ${converted.size}", t6 - t5)
 
-      // Phase 7: payload-size + raw-doc baseline. The collStats.size value
+      // Phase 7: payload-size + raw-document baseline. The collStats.size value
       // tells us total bytes on disk; a `find()` returning untyped `Document`
       // (no BSON-macro decode into the typed DTO) isolates raw transfer +
       // light decode from the codec-heavy phase 3 number. Together they
@@ -119,22 +119,22 @@ object MeasureStartup {
         db.runCommand(Document.parse(s"""{"collStats":"movies"}""")).toFuture(),
         10.seconds
       )
-      def numField(name: String): Long = stats.get(name) match {
+      def numberField(name: String): Long = stats.get(name) match {
         case Some(v: org.bson.BsonInt32)  => v.getValue.toLong
         case Some(v: org.bson.BsonInt64)  => v.getValue
         case Some(v: org.bson.BsonDouble) => v.getValue.toLong
         case _                            => 0L
       }
-      val sizeBytes    = numField("size")
-      val storageBytes = numField("storageSize")
+      val sizeBytes    = numberField("size")
+      val storageBytes = numberField("storageSize")
       println()
-      println(f"  movies collStats: size=${sizeBytes / 1024.0 / 1024.0}%.1f MB  storage=${storageBytes / 1024.0 / 1024.0}%.1f MB  avgDoc=${sizeBytes.toDouble / count / 1024.0}%.1f KB")
+      println(f"  movies collStats: size=${sizeBytes / 1024.0 / 1024.0}%.1f MB  storage=${storageBytes / 1024.0 / 1024.0}%.1f MB  avgDocument=${sizeBytes.toDouble / count / 1024.0}%.1f KB")
 
       val rawColl   = db.getCollection("movies")
       val tRawStart = System.nanoTime()
       val rawRows   = Await.result(rawColl.find().toFuture(), 60.seconds)
       val tRawEnd   = System.nanoTime()
-      fmt(s"   raw Document find() — no DTO codec, ${rawRows.size} docs", tRawEnd - tRawStart)
+      fmt(s"   raw Document find() — no DTO codec, ${rawRows.size} documents", tRawEnd - tRawStart)
 
       // Phase 8: parallel _id-range cursors. If the bottleneck is per-cursor
       // server-side latency (Atlas serializing a single response), splitting
@@ -165,7 +165,7 @@ object MeasureStartup {
         val rs: List[Seq[StoredMovieDto]] = Await.result(combined, 60.seconds)
         val total = rs.map(_.size).sum
         val elapsed = System.nanoTime() - tStart
-        println(f"  ${"7. parallel find() × " + n + s" — $total docs"}%-50s ${ms(elapsed)}")
+        println(f"  ${"7. parallel find() × " + n + s" — $total documents"}%-50s ${ms(elapsed)}")
         elapsed
       }
       // Phase 8: discovery cost — how long does it take to fetch JUST the
@@ -177,7 +177,7 @@ object MeasureStartup {
         60.seconds
       )
       val tDiscEnd = System.nanoTime()
-      fmt(s"8. _id-only projection find() — ${idsOnly.size} docs", tDiscEnd - tDiscStart)
+      fmt(s"8. _id-only projection find() — ${idsOnly.size} documents", tDiscEnd - tDiscStart)
 
       parallelProbe(2)
       parallelProbe(4)

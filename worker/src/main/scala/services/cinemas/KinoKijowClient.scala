@@ -49,7 +49,7 @@ class KinoKijowClient(
     val pages  = ParallelDetailFetch.keyed("kino-kijow-months", months, 1.minute)(m => monthUrl(m)) { url =>
       Try(http.get(url)).toOption
     }
-    val slots = months.flatMap(m => pages.getOrElse(m, None).toSeq.flatMap(html => parseDoc(html, m)))
+    val slots = months.flatMap(m => pages.getOrElse(m, None).toSeq.flatMap(html => parseDocument(html, m)))
 
     val byTitle = slots.groupBy(_.title)
     byTitle.toSeq.flatMap { case (title, group) =>
@@ -100,9 +100,9 @@ object KinoKijowClient {
 
   private[cinemas] case class RawSlot(title: String, dateTime: LocalDateTime, bookingUrl: String)
 
-  private[cinemas] def parseDoc(html: String, month: YearMonth): Seq[RawSlot] = {
-    val doc = Jsoup.parse(html)
-    doc.select("div.cd-timeline-content.eventlist").asScala.toSeq.flatMap { block =>
+  private[cinemas] def parseDocument(html: String, month: YearMonth): Seq[RawSlot] = {
+    val document = Jsoup.parse(html)
+    document.select("div.cd-timeline-content.eventlist").asScala.toSeq.flatMap { block =>
       // Prefer the desktop hidden span; fallback to h2 text which repeats the date
       val cdDate  = Option(block.selectFirst("span.cd-date")).map(_.text.trim).getOrElse("")
       val h2Text  = Option(block.selectFirst("h2")).map(_.text.trim).getOrElse("")

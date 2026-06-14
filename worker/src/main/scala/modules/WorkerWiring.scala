@@ -222,7 +222,7 @@ class WorkerWiring extends play.api.Logging {
   // ── Denormalised read model (web_movies + web_screenings) ───────────────────
   // The worker projects every `movies` write into the two read-model collections
   // the serving app consumes. One impl is both reader (boot-seed the diff state)
-  // and writer (upsert/delete the derived docs).
+  // and writer (upsert/delete the derived documents).
   // Typed as the read+write intersection so test wirings can swap in
   // `InMemoryReadModelRepository` (Mongo-free fixture replay).
   lazy val readModelRepository: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(mongoConnection.database)

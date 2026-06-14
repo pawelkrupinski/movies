@@ -27,7 +27,7 @@ trait UserStateRepository {
    *  callers treat `None` as `UserState.empty(userId)`. */
   def find(userId: String): Option[UserState]
 
-  /** Full-doc replace. Best-effort. */
+  /** Full-document replace. Best-effort. */
   def upsert(state: UserState): Unit
 
   /** Remove this user's state row entirely. Used by the account-deletion

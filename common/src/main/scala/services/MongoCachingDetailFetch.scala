@@ -71,13 +71,13 @@ class MongoCachingDetailFetch(
   override def post(url: String, body: String, contentType: String): String =
     underlying.post(url, body, contentType)
 
-  /** A doc only survives in the collection while within the TTL (the TTL index
+  /** A document only survives in the collection while within the TTL (the TTL index
    *  reaps it after `fetchedAt + ttl`, modulo Mongo's ~60s reaper cadence), so
-   *  any doc found is fresh enough to reuse. */
+   *  any document found is fresh enough to reuse. */
   private def cached(c: MongoCollection[Document], url: String): Option[String] =
     Try(Await.result(c.find(Filters.eq("_id", url)).headOption(), 10.seconds))
       .toOption.flatten
-      .flatMap(doc => Option(doc.getString("body")))
+      .flatMap(document => Option(document.getString("body")))
 
   private def store(c: MongoCollection[Document], url: String, body: String): Unit =
     Try {

@@ -43,9 +43,9 @@ object SystemBiletowyClient {
   private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String])
 
   def parse(html: String, cinema: Cinema, baseUrl: String): Seq[CinemaMovie] = {
-    val doc = Jsoup.parse(html, baseUrl)
+    val document = Jsoup.parse(html, baseUrl)
 
-    val tblSlots = doc.select("table.tbl_repertoire tr").asScala.toSeq.flatMap { tr =>
+    val tblSlots = document.select("table.tbl_repertoire tr").asScala.toSeq.flatMap { tr =>
       // Only rows that are a real screening carry a repertoire/booking link.
       if (tr.selectFirst("a[href*=repertoire.html]") == null) None
       else for {
@@ -68,7 +68,7 @@ object SystemBiletowyClient {
     // `div.event-item` per screening, with the Polish full date + time mashed
     // into `div.date` ("… 10 czerwca 2026 … godz. 13:30") and the title/booking
     // in `div.title a`.
-    val altSlots = doc.select("div.event-item:has(a[href*=repertoire.html])").asScala.toSeq.flatMap { item =>
+    val altSlots = document.select("div.event-item:has(a[href*=repertoire.html])").asScala.toSeq.flatMap { item =>
       for {
         titleEl <- Option(item.selectFirst("div.title a"))
         title    = cleanTitle(titleEl.text) if title.nonEmpty

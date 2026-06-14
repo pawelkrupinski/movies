@@ -57,9 +57,9 @@ object PrahaClient {
   )
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val doc = Jsoup.parse(html, BaseUrl)
+    val document = Jsoup.parse(html, BaseUrl)
 
-    val slots = doc.select("div.post:has(div.box_tytul):has(div.label)").asScala.toSeq.flatMap { post =>
+    val slots = document.select("div.post:has(div.box_tytul):has(div.label)").asScala.toSeq.flatMap { post =>
       for {
         titleEl <- Option(post.selectFirst("div.box_tytul h2"))
         title    = titleEl.text.trim if title.nonEmpty

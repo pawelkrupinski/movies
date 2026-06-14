@@ -5,10 +5,10 @@ import services.movies.{MongoMovieRepository, MovieService, StoredMovieRecord}
 /**
  * Audit duplicate rows across alternative merge keys.
  *
- * The (title, year) docId we ship today produces duplicates whenever cinemas
+ * The (title, year) documentId we ship today produces duplicates whenever cinemas
  * disagree on year reporting — `("Top Gun: Maverick", Some(2022))` and
  * `("Top Gun: Maverick", None)` are separate rows because year is part of the
- * docId. Same film, two rows, two cards on /debug/enrichment.
+ * documentId. Same film, two rows, two cards on /debug/enrichment.
  *
  * This script does NOT mutate Mongo. It reads every row and reports what
  * each merge strategy would collapse:
@@ -43,7 +43,7 @@ object DuplicateAudit {
     println(s"@@ ${rows.size} rows read")
     println()
 
-    // Helpers — the sanitized title is the same form the production docId
+    // Helpers — the sanitized title is the same form the production documentId
     // already uses, just without the |year suffix.
     def titleKey(t: String): String = MovieService.normalize(t)
     def directorKey(d: Seq[String]): String =

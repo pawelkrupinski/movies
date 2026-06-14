@@ -20,7 +20,7 @@ class PosterProxySpec extends AnyFlatSpec with Matchers {
     // The original `?rev=abc&v=1` query string must be encoded as part
     // of the `url=` value, NOT bleed out into the weserv URL's own
     // query (which would make weserv interpret `&v=1` as one of its
-    // own params and either ignore it or break the cache key).
+    // own parameters and either ignore it or break the cache key).
     proxied should include ("url=image.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F235%2Fposter.jpg%3Frev%3Dabc%26v%3D1")
   }
 

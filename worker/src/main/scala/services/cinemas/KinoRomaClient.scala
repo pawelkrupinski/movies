@@ -40,8 +40,8 @@ class KinoRomaClient(
 
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(RepertoireUrl)
-    val doc  = Jsoup.parse(html)
-    val slots = parseDoc(doc, today)
+    val document  = Jsoup.parse(html)
+    val slots = parseDocument(document, today)
 
     // Group by slug (one CinemaMovie per film)
     val bySlug = slots.groupBy(_.filmSlug)
@@ -83,8 +83,8 @@ object KinoRomaClient {
     posterUrl: Option[String]
   )
 
-  private[cinemas] def parseDoc(doc: Document, today: LocalDate): Seq[RawSlot] =
-    doc.select("div.poster-box").asScala.toSeq.flatMap { box =>
+  private[cinemas] def parseDocument(document: Document, today: LocalDate): Seq[RawSlot] =
+    document.select("div.poster-box").asScala.toSeq.flatMap { box =>
       val dateText  = Option(box.selectFirst("div.big-date")).map(_.text.trim).getOrElse("")
       val hourText  = Option(box.selectFirst("div.hour")).map(_.text.trim).getOrElse("")
       val titleEl   = Option(box.selectFirst("a.film-title"))

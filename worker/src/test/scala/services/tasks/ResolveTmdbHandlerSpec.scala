@@ -13,8 +13,8 @@ class ResolveTmdbHandlerSpec extends AnyFlatSpec with Matchers {
   /** A handler whose resolve records its args and returns `concluded` (true =
    *  definitive → Done; false = transient failure → Reschedule). */
   private def handlerReturning(concluded: Boolean, into: ListBuffer[ResolveCall]) =
-    new ResolveTmdbHandler((title, year, orig, dir, force) => {
-      into += ((title, year, orig, dir, force)); concluded
+    new ResolveTmdbHandler((title, year, orig, directory, force) => {
+      into += ((title, year, orig, directory, force)); concluded
     })
 
   "ResolveTmdbHandler" should "resolve with the task's title/year/hints/force and return Done when concluded" in {

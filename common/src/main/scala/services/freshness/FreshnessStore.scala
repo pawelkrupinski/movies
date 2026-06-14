@@ -21,7 +21,7 @@ import scala.util.Try
  * The TTL/skip logic lives here as a default method so both the real store and
  * the test fake share it by construction — they differ only in *where* the
  * timestamps are kept. Keys are the canonical dedup strings the producers build,
- * e.g. `scrape|<cinema>`, `detail|<chain>|<docId>`, `imdb|<docId>`.
+ * e.g. `scrape|<cinema>`, `detail|<chain>|<documentId>`, `imdb|<documentId>`.
  */
 trait FreshnessStore {
   /** When `key` was last marked fresh, or None if never. */
@@ -145,12 +145,12 @@ class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessSto
   }
 
   private def hydrateInto(c: MongoCollection[Document], filter: Bson, timeout: FiniteDuration, label: String): Unit = Try {
-    val docs = Await.result(c.find(filter).toFuture(), timeout)
+    val documents = Await.result(c.find(filter).toFuture(), timeout)
     var count = 0
-    docs.foreach { doc =>
+    documents.foreach { document =>
       for {
-        key  <- Option(doc.getString("_id"))
-        date <- Option(doc.getDate("lastFetchedAt"))
+        key  <- Option(document.getString("_id"))
+        date <- Option(document.getDate("lastFetchedAt"))
       } { mirror.put(key, Instant.ofEpochMilli(date.getTime)); count += 1 }
     }
     if (count > 0) logger.info(s"Hydrated $count $label freshness stamp(s) from Mongo.")

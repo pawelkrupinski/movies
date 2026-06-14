@@ -50,9 +50,9 @@ class KinoZamekClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 19, 0))
   }
 
-  it should "build the date-scoped /MSI/mvc/pl month URL, not the param-dropping /MSI redirect" in {
+  it should "build the date-scoped /MSI/mvc/pl month URL, not the parameter-dropping /MSI redirect" in {
     // `/MSI?…&date=…` 301→302 redirects to a bare `/MSI/mvc/pl`, dropping the
-    // `date` param, so the month was never actually selected. Hit `/MSI/mvc/pl`
+    // `date` parameter, so the month was never actually selected. Hit `/MSI/mvc/pl`
     // directly — the shape every other MSI cinema uses — to scope the month.
     KinoZamekClient.monthUrl(YearMonth.of(2026, 6)) shouldBe
       "https://bilety.zamek.szczecin.pl/MSI/mvc/pl?sort=Name&date=2026-06"

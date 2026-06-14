@@ -34,8 +34,8 @@ class FilmwebFallbackStoreSpec extends AnyFlatSpec with Matchers {
     store.findAll().map(_.cinema).toSet shouldBe Set("Kino Praha", "Kino Elektronik")
   }
 
-  "MongoFilmwebFallbackStore.fromDoc" should "round-trip a full document incl. string-encoded history" in {
-    val doc = Document(
+  "MongoFilmwebFallbackStore.fromDocument" should "round-trip a full document incl. string-encoded history" in {
+    val document = Document(
       "_id"                 -> "Kino Praha",
       "active"              -> true,
       "filmwebCinemaId"     -> 2180,
@@ -52,7 +52,7 @@ class FilmwebFallbackStoreSpec extends AnyFlatSpec with Matchers {
       "alerted"             -> true
     )
 
-    MongoFilmwebFallbackStore.fromDoc(doc) shouldBe Some(FilmwebFallbackState(
+    MongoFilmwebFallbackStore.fromDocument(document) shouldBe Some(FilmwebFallbackState(
       cinema = "Kino Praha", active = true, filmwebCinemaId = Some(2180),
       since = Some(Instant.ofEpochMilli(1000)), lastReason = Some("RuntimeException: down"),
       consecutiveFailures = 2, lastPrimaryProbeAt = Some(Instant.ofEpochMilli(1500)),
@@ -66,7 +66,7 @@ class FilmwebFallbackStoreSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "default missing optional fields for a minimal (id-only) document" in {
-    MongoFilmwebFallbackStore.fromDoc(Document("_id" -> "Kino X")) shouldBe Some(FilmwebFallbackState(
+    MongoFilmwebFallbackStore.fromDocument(Document("_id" -> "Kino X")) shouldBe Some(FilmwebFallbackState(
       cinema = "Kino X", active = false, filmwebCinemaId = None, since = None, lastReason = None,
       consecutiveFailures = 0, lastPrimaryProbeAt = None, nextPrimaryProbeAt = None,
       updatedAt = Instant.EPOCH, history = Nil
@@ -74,13 +74,13 @@ class FilmwebFallbackStoreSpec extends AnyFlatSpec with Matchers {
   }
 
   // Pure write→read round-trip with no Mongo: render the $set toUpdate produces,
-  // feed it back through fromDoc. Catches any field-name drift between the two
+  // feed it back through fromDocument. Catches any field-name drift between the two
   // halves of the codec (a typo only a live Mongo would otherwise reveal).
-  "MongoFilmwebFallbackStore write→read" should "round-trip a state through toUpdate + fromDoc" in {
+  "MongoFilmwebFallbackStore write→read" should "round-trip a state through toUpdate + fromDocument" in {
     val s = state("Kino Praha", active = true)
     val set = MongoFilmwebFallbackStore.toUpdate(s)
       .toBsonDocument(classOf[org.bson.BsonDocument], com.mongodb.MongoClientSettings.getDefaultCodecRegistry)
       .getDocument("$set")
-    MongoFilmwebFallbackStore.fromDoc(Document(set) + ("_id" -> s.cinema)) shouldBe Some(s)
+    MongoFilmwebFallbackStore.fromDocument(Document(set) + ("_id" -> s.cinema)) shouldBe Some(s)
   }
 }

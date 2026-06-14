@@ -7,7 +7,7 @@ import tools.RealHttpFetch
 object WriteBilety24 {
   def main(args: Array[String]): Unit = {
     val real = new RealHttpFetch()
-    def rec(dir: String) = new RecordingHttpFetch(dir, real)
+    def rec(directory: String) = new RecordingHttpFetch(directory, real)
 
     // Kino Luna is still on the legacy per-venue subdomain.
     val luna = new Bilety24Client(rec("kino-luna"), "https://kinoluna.bilety24.pl", KinoLuna)
@@ -20,9 +20,9 @@ object WriteBilety24 {
       ("kino-swiatowid",  "https://www.bilety24.pl/kino/organizator/kino-swiatowid-1503", KinoSwiatowid),
       ("kino-elektronik", "https://www.bilety24.pl/kino/organizator/kino-elektronik-631", KinoElektronik)
     )
-    migrated.foreach { case (dir, url, cinema) =>
+    migrated.foreach { case (directory, url, cinema) =>
       println(s"=== ${cinema.displayName} ===")
-      new Bilety24OrganizerClient(rec(dir), url, cinema).fetch().foreach(println)
+      new Bilety24OrganizerClient(rec(directory), url, cinema).fetch().foreach(println)
     }
   }
 }

@@ -38,8 +38,8 @@ class PionierClient(http: tools.HttpFetch, override val cinema: Cinema = KinoPio
   override def sourceUrl: Option[String] = Some(PageUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val doc   = Jsoup.parse(http.get(PageUrl))
-    val slots = parseSlots(doc)
+    val document   = Jsoup.parse(http.get(PageUrl))
+    val slots = parseSlots(document)
 
     slots.groupBy(_.title).toSeq.flatMap { case (title, group) =>
       val showtimes = group
@@ -78,9 +78,9 @@ object PionierClient {
 
   /** Walk `.repertuar-list` children in document order: day headings set the
     * current date, event boxes inherit it. */
-  private def parseSlots(doc: org.jsoup.nodes.Document): Seq[RawSlot] = {
+  private def parseSlots(document: org.jsoup.nodes.Document): Seq[RawSlot] = {
     var carriedDate: Option[LocalDate] = None
-    val nodes = doc.select("div.repertuar-list").asScala.headOption
+    val nodes = document.select("div.repertuar-list").asScala.headOption
       .map(_.children.asScala.toSeq)
       .getOrElse(Seq.empty)
 

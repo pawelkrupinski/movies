@@ -21,8 +21,8 @@ class CspFilterSpec extends AnyFlatSpec with Matchers {
 
   private val filter = new CspFilter()
 
-  private def run(req: RequestHeader = FakeRequest(), upstream: Result = Results.Ok("ok")): Result =
-    Await.result(filter.apply(_ => Future.successful(upstream))(req), 2.seconds)
+  private def run(request: RequestHeader = FakeRequest(), upstream: Result = Results.Ok("ok")): Result =
+    Await.result(filter.apply(_ => Future.successful(upstream))(request), 2.seconds)
 
   "CspFilter" should "attach a Content-Security-Policy header to every response" in {
     val result = run()

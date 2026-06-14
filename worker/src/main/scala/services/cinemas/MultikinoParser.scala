@@ -55,7 +55,7 @@ object MultikinoParser {
         // and let TMDB rank by title alone.
         releaseYear    = None,
         // English/international release title — non-empty on ~5% of films
-        // (Cirque du Soleil, opera/concert docs, English-language imports
+        // (Cirque du Soleil, opera/concert documents, English-language imports
         // distributed under a Polish title). Empty on Polish releases and
         // most blockbusters where the Polish title IS the only known
         // identifier. Useful as a TMDB-search fallback for niche titles.

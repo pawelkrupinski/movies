@@ -30,7 +30,7 @@ import scala.util.Try
 class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadModelReader with ReadModelWriter with Logging {
 
   // Relaxed write concern (w:1, j:false): the read model is a pure projection of
-  // `movies` — every doc is re-derived by the projector's reconcile, so a write
+  // `movies` — every document is re-derived by the projector's reconcile, so a write
   // lost to a crash is self-healing. Skipping the journal sync cuts per-write cost
   // on the shared-CPU Mongo, which the worker's projection cascade was saturating.
   private val RelaxedWrites = WriteConcern.W1.withJournal(false)
@@ -87,9 +87,9 @@ class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadMode
   def deleteMovie(id: String): Unit     = removeById(movies, id, "deleteMovie")
   def deleteScreening(id: String): Unit = removeById(screenings, id, "deleteScreening")
 
-  private def replace[T](coll: Option[MongoCollection[T]], id: String, doc: T, op: String): Unit = coll.foreach { c =>
+  private def replace[T](coll: Option[MongoCollection[T]], id: String, document: T, op: String): Unit = coll.foreach { c =>
     Try {
-      Await.result(c.replaceOne(Filters.eq("_id", id), doc, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
+      Await.result(c.replaceOne(Filters.eq("_id", id), document, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
       ()
     }.recover {
       case ex: Throwable if isClusterClosed(ex) => ()

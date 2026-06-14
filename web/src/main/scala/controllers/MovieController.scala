@@ -46,7 +46,7 @@ object ApiFilmDetails {
   def from(fs: FilmSchedule): ApiFilmDetails = ApiFilmDetails(
     title         = fs.movie.title,
     // The genuinely-distinct original title and the embed-ready trailer URLs are
-    // pre-resolved on the read-model doc (the redundancy check + URL transform
+    // pre-resolved on the read-model document (the redundancy check + URL transform
     // ran at projection time), so clients render them unconditionally.
     originalTitle = fs.resolved.originalTitle,
     synopsis      = fs.synopsis,
@@ -121,7 +121,7 @@ case class FilmSchedule(
                          director: Seq[String],
                          cinemaFilmUrls: Seq[(Cinema, String)],
                          showings: Seq[(LocalDate, Seq[CinemaShowtimes])],
-                         // The fully-resolved metadata doc this schedule was built from —
+                         // The fully-resolved metadata document this schedule was built from —
                          // ratings, poster fallbacks, original title, trailers. Replaces the
                          // old `Option[MovieRecord]`: the web no longer holds MovieRecords.
                          resolved: ResolvedMovie
@@ -129,7 +129,7 @@ case class FilmSchedule(
 
 /**
  * Builds the per-city [[FilmSchedule]] view from the denormalised read model:
- * this city's [[CityScreening]] docs joined to their [[ResolvedMovie]]. The web
+ * this city's [[CityScreening]] documents joined to their [[ResolvedMovie]]. The web
  * never touches the `movies` collection or a MovieRecord — the merge already
  * happened at projection time.
  */
@@ -143,15 +143,15 @@ class MovieControllerService(readModel: WebReadModel) {
    * returns only this city's cinemas' screenings, so a film playing only
    * elsewhere drops out here.
    *
-   * Ordering-tolerant join: a screening doc whose `ResolvedMovie` hasn't landed
+   * Ordering-tolerant join: a screening document whose `ResolvedMovie` hasn't landed
    * yet (the movie-before-screenings write order can still be observed in the
    * reverse order over two independent change streams) simply contributes
-   * nothing until the movie doc arrives — no half-rendered card. */
+   * nothing until the movie document arrives — no half-rendered card. */
   def toSchedules(city: City, now: LocalDateTime): Seq[FilmSchedule] = {
     readModel.screeningsForCity(city.slug).groupBy(_.filmId).toSeq.flatMap { case (filmId, screenings) =>
       readModel.movie(filmId).flatMap { resolved =>
         // Flatten this city's future showtimes. A film with no future showing in
-        // this city drops out of its list view (its docs stay in the store).
+        // this city drops out of its list view (its documents stay in the store).
         val allShowtimes: Seq[(Cinema, Showtime)] = screenings.flatMap { sc =>
           MovieControllerService.cinemaByName(sc.cinema).toSeq.flatMap { cinema =>
             sc.showtimes.iterator.filter(_.dateTime.isAfter(now.minusMinutes(30))).map(st => (cinema, st))
@@ -313,9 +313,9 @@ class MovieController( cc: ControllerComponents,
     Cookie("city", city.slug, maxAge = Some(60 * 60 * 24 * 365), path = "/", httpOnly = false)
 
   // Render the main "Filmy" listing — repertoire view, full corpus,
-  // OG meta derived from `?…` filter params. Shared between `/` and
-  // `/filmy` (no params) so both URLs are interchangeable; `/filmy`
-  // with one of the browse-axis params still routes through `browse`
+  // OG meta derived from `?…` filter parameters. Shared between `/` and
+  // `/filmy` (no parameters) so both URLs are interchangeable; `/filmy`
+  // with one of the browse-axis parameters still routes through `browse`
   // below to the per-director / per-cast / per-country page.
   private def renderIndex(city: City, request: RequestHeader): Result = {
     implicit val c: City = city

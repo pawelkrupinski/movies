@@ -64,9 +64,9 @@ object KinoOrzelClient {
   /** Parse the organiser listing into the cinema's grouped films. Public for
     * the spec's fixture replay. */
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val doc = Jsoup.parse(html)
+    val document = Jsoup.parse(html)
 
-    val slots = doc.select("a[href][title^=Film:]").asScala.toSeq.flatMap { a =>
+    val slots = document.select("a[href][title^=Film:]").asScala.toSeq.flatMap { a =>
       val href = a.attr("href")
       (FilmHrefPat.findFirstMatchIn(href), TitlePat.findFirstMatchIn(a.attr("title"))) match {
         case (Some(h), Some(t)) =>

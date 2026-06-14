@@ -28,7 +28,7 @@ import services.titlerules.TitleRule
  *
  *  Decoration MERGES (Tani wtorek: / `/Kino Cafe` collapsing into the base film)
  *  were intentionally left out. They'd be GlobalStructural rules, and a
- *  GlobalStructural (merge-key-changing) rule added AFTER the docs exist can't be
+ *  GlobalStructural (merge-key-changing) rule added AFTER the documents exist can't be
  *  back-filled by the change-stream rebuilder: `CacheKey` equality is by
  *  `sanitize` (which runs the GlobalStructural tier), so the stale "X/Kino Cafe"
  *  and the base "X" collide on cache hydration — Caffeine last-write-wins drops

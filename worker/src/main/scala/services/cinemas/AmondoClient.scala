@@ -36,9 +36,9 @@ class AmondoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
   def fetch(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
-    val doc = Jsoup.parse(http.get(RepertoireUrl))
+    val document = Jsoup.parse(http.get(RepertoireUrl))
 
-    val slots = doc.select("div[id^=schedule-]").asScala.toSeq.flatMap { pane =>
+    val slots = document.select("div[id^=schedule-]").asScala.toSeq.flatMap { pane =>
       val date = pane.id.stripPrefix("schedule-")
       pane.select("div.movie-tabs").asScala.toSeq.flatMap(block => blockSlots(block, date))
     }
@@ -120,22 +120,22 @@ object AmondoClient {
                           director: Seq[String], synopsis: Option[String])
   object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, None) }
 
-  private def infoLi(doc: org.jsoup.nodes.Document, label: String): Option[String] =
-    doc.select("ul.movie-info li").asScala.find(_.text.toLowerCase.contains(label))
+  private def infoLi(document: org.jsoup.nodes.Document, label: String): Option[String] =
+    document.select("ul.movie-info li").asScala.find(_.text.toLowerCase.contains(label))
       .map(_.text.replaceFirst(s"(?i)^[^A-Za-zÀ-ž0-9]*$label[:\\s]*", "").trim).filter(_.nonEmpty)
 
   def parseDetail(html: String): Detail = {
-    val doc  = Jsoup.parse(html)
-    val prod = infoLi(doc, "produkcja")
+    val document  = Jsoup.parse(html)
+    val prod = infoLi(document, "produkcja")
     val year = prod.flatMap(s => """\b((?:19|20)\d{2})\b""".r.findFirstMatchIn(s).map(_.group(1).toInt))
     val countries = prod.map(s => s.replaceAll("""\b(?:19|20)\d{2}\b.*$""", "").trim.stripSuffix(","))
                       .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
     Detail(
-      runtimeMinutes = infoLi(doc, "czas trwania").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
+      runtimeMinutes = infoLi(document, "czas trwania").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
       year           = year,
       countries      = countries,
-      director       = infoLi(doc, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      synopsis       = Option(doc.selectFirst("div.filmPosterSection__plot")).map(_.text.trim).filter(_.length > 20)
+      director       = infoLi(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      synopsis       = Option(document.selectFirst("div.filmPosterSection__plot")).map(_.text.trim).filter(_.length > 20)
     )
   }
 }

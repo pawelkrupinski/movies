@@ -82,8 +82,8 @@ class MongoFilmwebFallbackStore(
   }
 
   private def hydrateMeta(c: MongoCollection[Document]): Unit = Try {
-    Await.result(c.find(Filters.eq("_id", FilmwebOnlyId)).toFuture(), 10.seconds).headOption.foreach { doc =>
-      filmwebOnlyMirror = Try(doc.getList("cinemas", classOf[String])).toOption.flatMap(Option(_))
+    Await.result(c.find(Filters.eq("_id", FilmwebOnlyId)).toFuture(), 10.seconds).headOption.foreach { document =>
+      filmwebOnlyMirror = Try(document.getList("cinemas", classOf[String])).toOption.flatMap(Option(_))
         .fold(Set.empty[String])(_.asScala.toSet)
     }
   }.recover { case ex => logger.warn(s"Filmweb-only hydrate failed: ${ex.getMessage}") }
@@ -105,16 +105,16 @@ class MongoFilmwebFallbackStore(
   }
 
   private def hydrate(c: MongoCollection[Document]): Unit = Try {
-    val docs = Await.result(c.find().toFuture(), 10.seconds)
+    val documents = Await.result(c.find().toFuture(), 10.seconds)
     var count = 0
-    docs.foreach(doc => fromDoc(doc).foreach { s => mirror.put(s.cinema, s); count += 1 })
+    documents.foreach(document => fromDocument(document).foreach { s => mirror.put(s.cinema, s); count += 1 })
     if (count > 0) logger.info(s"Hydrated $count Filmweb-fallback state(s) from Mongo.")
   }.recover { case ex => logger.warn(s"Filmweb-fallback hydrate failed: ${ex.getMessage}") }
 }
 
 object MongoFilmwebFallbackStore {
   val CollectionName = "filmwebFallback"
-  /** Separate collection for the singleton "Filmweb-only cinemas" meta doc, so it
+  /** Separate collection for the singleton "Filmweb-only cinemas" meta document, so it
    *  never pollutes the per-cinema `findAll`. */
   val MetaCollectionName = "filmwebFallbackMeta"
   private val FilmwebOnlyId = "filmwebOnly"
@@ -145,22 +145,22 @@ object MongoFilmwebFallbackStore {
     Updates.set("alerted", s.alerted)
   )
 
-  private[fallback] def fromDoc(doc: Document): Option[FilmwebFallbackState] =
-    Option(doc.getString("_id")).map { id =>
-      def instant(key: String): Option[Instant] = Option(doc.getDate(key)).map(d => Instant.ofEpochMilli(d.getTime))
+  private[fallback] def fromDocument(document: Document): Option[FilmwebFallbackState] =
+    Option(document.getString("_id")).map { id =>
+      def instant(key: String): Option[Instant] = Option(document.getDate(key)).map(d => Instant.ofEpochMilli(d.getTime))
       FilmwebFallbackState(
         cinema              = id,
-        active              = Try(doc.getBoolean("active", false)).getOrElse(false),
-        filmwebCinemaId     = doc.get("filmwebCinemaId").filter(_.isNumber).map(_.asNumber().intValue()),
+        active              = Try(document.getBoolean("active", false)).getOrElse(false),
+        filmwebCinemaId     = document.get("filmwebCinemaId").filter(_.isNumber).map(_.asNumber().intValue()),
         since               = instant("since"),
-        lastReason          = Option(doc.getString("lastReason")),
-        consecutiveFailures = Try(doc.getInteger("consecutiveFailures", 0)).getOrElse(0),
+        lastReason          = Option(document.getString("lastReason")),
+        consecutiveFailures = Try(document.getInteger("consecutiveFailures", 0)).getOrElse(0),
         lastPrimaryProbeAt  = instant("lastPrimaryProbeAt"),
         nextPrimaryProbeAt  = instant("nextPrimaryProbeAt"),
         updatedAt           = instant("updatedAt").getOrElse(Instant.EPOCH),
-        history             = Try(doc.getList("history", classOf[String])).toOption.flatMap(Option(_))
+        history             = Try(document.getList("history", classOf[String])).toOption.flatMap(Option(_))
                                 .fold(List.empty[FallbackEvent])(_.asScala.toList.flatMap(eventFromString)),
-        alerted             = Try(doc.getBoolean("alerted", false)).getOrElse(false)
+        alerted             = Try(document.getBoolean("alerted", false)).getOrElse(false)
       )
     }
 }

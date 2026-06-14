@@ -67,8 +67,8 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
    *  `/<prefix>,ts:<epoch-seconds>` links whose timestamp is local midnight of
    *  the day. Falls back to today-only if the calendar markup is missing. */
   private def dayLinks(listing: String): List[(LocalDate, String)] = {
-    val doc  = Jsoup.parse(listing)
-    val tabs = doc.select("div.calendar-submenu-week a.day[href]").asScala.toList
+    val document  = Jsoup.parse(listing)
+    val tabs = document.select("div.calendar-submenu-week a.day[href]").asScala.toList
     val parsed = tabs.flatMap { a =>
       val href = a.attr("href")
       BokClient.TsPat.findFirstMatchIn(href) match {
@@ -129,8 +129,8 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
   }
 
   /** Date+time → biletyna URL from a detail page's `movieshow-list` blocks. */
-  private def detailBookings(doc: Document): Seq[(LocalDateTime, String)] =
-    doc.select("div.movieshow-list.p-relative").asScala.toSeq.flatMap { block =>
+  private def detailBookings(document: Document): Seq[(LocalDateTime, String)] =
+    document.select("div.movieshow-list.p-relative").asScala.toSeq.flatMap { block =>
       val date = Option(block.selectFirst("div.fs-24.fw-black")).map(_.text.trim)
       val time = Option(block.selectFirst("div.fs-16.fw-black")).map(_.text.trim)
       for {
@@ -142,8 +142,8 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
 
   private def splitCsv(s: String): Seq[String] = s.split(",").map(_.trim).filter(_.nonEmpty).toSeq
 
-  private def metaRow(doc: Document, label: String): Option[String] =
-    doc.select("div.meta-row").asScala.find(_.text.toLowerCase.contains(label))
+  private def metaRow(document: Document, label: String): Option[String] =
+    document.select("div.meta-row").asScala.find(_.text.toLowerCase.contains(label))
       .flatMap(r => Option(r.selectFirst("div.body"))).map(_.text.trim).filter(_.nonEmpty)
 
   private case class DayShowing(slug: String, title: String, rawTitle: String, dateTimes: Seq[LocalDateTime])

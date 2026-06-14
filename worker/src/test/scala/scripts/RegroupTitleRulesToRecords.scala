@@ -11,14 +11,14 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 /**
- * One-shot migration: regroup the legacy FLAT `titleRules` docs (one document
+ * One-shot migration: regroup the legacy FLAT `titleRules` documents (one document
  * per rule, the original schema) into the new per-record shape (one document per
  * `(scope, cinema)` group, each holding ordered `rules` + `lastRules` arrays).
  *
- * Idempotent: a doc that already has a `rules` array is a record and is left
- * alone; only docs carrying a top-level `pattern` (i.e. legacy flat rules) are
+ * Idempotent: a document that already has a `rules` array is a record and is left
+ * alone; only documents carrying a top-level `pattern` (i.e. legacy flat rules) are
  * read, regrouped via `TitleRuleRecord.fromRules`, written back as records, and
- * then deleted. Re-running after a successful pass finds no flat docs and is a
+ * then deleted. Re-running after a successful pass finds no flat documents and is a
  * no-op.
  *
  * Run against prod over the tunnel:
@@ -39,12 +39,12 @@ object RegroupTitleRulesToRecords {
 
     println(s"@@ scanning $dbName.titleRules")
     val all = Await.result(rawColl.find().toFuture(), 60.seconds)
-    println(s"@@ ${all.size} doc(s) total")
+    println(s"@@ ${all.size} document(s) total")
 
-    // Legacy flat rule docs carry a top-level `pattern`; new record docs carry a
+    // Legacy flat rule documents carry a top-level `pattern`; new record documents carry a
     // `rules` array instead.
     val (flat, records) = all.partition(d => d.get("pattern").isDefined && d.get("rules").isEmpty)
-    println(s"@@ ${flat.size} legacy flat rule doc(s), ${records.size} already-record doc(s)")
+    println(s"@@ ${flat.size} legacy flat rule document(s), ${records.size} already-record document(s)")
     if (flat.isEmpty) { println("@@ nothing to migrate — already on the record schema."); client.close(); return }
 
     val rules    = flat.flatMap(toTitleRule)
@@ -60,7 +60,7 @@ object RegroupTitleRulesToRecords {
 
     val flatIds = flat.flatMap(d => str(d, "_id"))
     flatIds.foreach(id => Await.result(rawColl.deleteOne(Filters.eq("_id", id)).toFuture(), 30.seconds))
-    println(s"@@ deleted ${flatIds.size} legacy flat doc(s)")
+    println(s"@@ deleted ${flatIds.size} legacy flat document(s)")
     println("@@ done.")
     client.close()
   }
@@ -79,7 +79,7 @@ object RegroupTitleRulesToRecords {
       replacement = str(d, "replacement").getOrElse(""),
       applyAll    = bool(d, "applyAll"),
       order       = int(d, "order").getOrElse(0),
-      last        = bool(d, "last"), // legacy docs have no `last` → false
+      last        = bool(d, "last"), // legacy documents have no `last` → false
       enabled     = d.get("enabled").flatMap(v => Try(v.asBoolean().getValue).toOption).getOrElse(true),
       tag         = str(d, "tag"),
       note        = str(d, "note"))

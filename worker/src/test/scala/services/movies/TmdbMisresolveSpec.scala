@@ -18,11 +18,11 @@ import tools.GetOnlyHttpFetch
  *
  * Modelled on a real same-title, SAME-YEAR TMDB ambiguity (captured from the
  * live API), where the year can't disambiguate — only the director can:
- *   - tmdb 881487  "The Visitor" (2022), dir Justin P. Lange, imdb tt15558152.
+ *   - tmdb 881487  "The Visitor" (2022), directory Justin P. Lange, imdb tt15558152.
  *     PL title "Gość", original_title "The Visitor", popularity 1.41. `pickBest`
  *     (exact-title incl. original_title → year-distance → popularity-first)
  *     returns THIS for a director-less "The Visitor"/2022 query.
- *   - tmdb 1026057 "The Visitor" (2022), dir Itay Gordon (person 3706395),
+ *   - tmdb 1026057 "The Visitor" (2022), directory Itay Gordon (person 3706395),
  *     popularity 0.15 — the film the cinema is actually showing.
  *
  * CinemaCity scrapes first WITHOUT a director → the row resolves to the popular

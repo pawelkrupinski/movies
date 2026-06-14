@@ -22,7 +22,7 @@ class Bilety24OrganizerClientSpec
     with OptionValues
     with TableDrivenPropertyChecks {
 
-  // (label, fixtureDir, organizerUrl, cinema, pinned title substring (lower-cased), pinned showtime)
+  // (label, fixtureDirectory, organizerUrl, cinema, pinned title substring (lower-cased), pinned showtime)
   private val venues = Table(
     ("label", "dir", "url", "cinema", "title", "when"),
     ("Kino Kosmos", "kino-kosmos", "https://www.bilety24.pl/kino/organizator/kino-kosmos-1501",
@@ -41,8 +41,8 @@ class Bilety24OrganizerClientSpec
       KinoKrapkowice, "drzewo magii", LocalDateTime.of(2026, 6, 12, 17, 0))
   )
 
-  forAll(venues) { (label, dir, url, cinema, titleSub, when) =>
-    lazy val movies = new Bilety24OrganizerClient(new FakeHttpFetch(dir), url, cinema).fetch()
+  forAll(venues) { (label, directory, url, cinema, titleSub, when) =>
+    lazy val movies = new Bilety24OrganizerClient(new FakeHttpFetch(directory), url, cinema).fetch()
 
     it should s"return a non-empty, single-cinema film list — $label" in {
       movies should not be empty

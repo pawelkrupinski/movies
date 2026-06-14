@@ -103,24 +103,24 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
    *  recording an empty result as fresh. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     Try(detailHttp.get(ref)).toOption.map { html =>
-      val doc    = Jsoup.parse(html)
+      val document    = Jsoup.parse(html)
       val genres = parseGenres(html)
-      val synopsisOpt = Option(doc.selectFirst("span.text")).flatMap { span =>
+      val synopsisOpt = Option(document.selectFirst("span.text")).flatMap { span =>
         val lines   = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
         val emptyIndex = lines.indexWhere(_.isEmpty)
         val synLines = if (emptyIndex >= 0) lines.drop(emptyIndex + 1) else Array.empty[String]
         val synText  = synLines.filter(_.nonEmpty).mkString(" ").trim
         Option(synText).filter(_.nonEmpty)
       }
-      val fullText = Option(doc.selectFirst("span.text")).map(_.text()).getOrElse("")
+      val fullText = Option(document.selectFirst("span.text")).map(_.text()).getOrElse("")
       val runtime  = RuntimePat.findFirstMatchIn(fullText).flatMap(m => Try(m.group(1).toInt).toOption)
       val year     = YearPat.findAllMatchIn(fullText).flatMap(m => Try(m.group(1).toInt).toOption).toSeq.headOption
-      val director = Option(doc.selectFirst("span.text")).toSeq.flatMap { span =>
+      val director = Option(document.selectFirst("span.text")).toSeq.flatMap { span =>
         val lines = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
         lines.find(_.startsWith("Reż. ")).map(_.stripPrefix("Reż. ").trim).filter(_.nonEmpty)
           .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
       }
-      val countries: Seq[String] = Option(doc.selectFirst("span.text")).toSeq.flatMap { span =>
+      val countries: Seq[String] = Option(document.selectFirst("span.text")).toSeq.flatMap { span =>
         val lines = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
         val countryPat = """(?s)^(.+?)\s*,?\s+(?:19|20)\d{2}\b""".r
         lines.find(l => YearPat.findFirstMatchIn(l).isDefined && !l.toLowerCase.startsWith("reż"))
@@ -161,7 +161,7 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
           case None => (None, Seq.empty[String], None, None, Seq.empty[String])
           case Some(span) =>
             val lines    = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
-            val dir      = lines.find(_.startsWith("Reż. ")).map(_.stripPrefix("Reż. ").trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+            val directory      = lines.find(_.startsWith("Reż. ")).map(_.stripPrefix("Reż. ").trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
             val emptyIndex = lines.indexWhere(_.isEmpty)
             val synLines = if (emptyIndex >= 0) lines.drop(emptyIndex + 1) else Array.empty[String]
             val synText  = synLines.filter(_.nonEmpty).mkString(" ").trim
@@ -180,7 +180,7 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
               .filter(_.nonEmpty)
               .toSeq
               .flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-            (Option(synText).filter(_.nonEmpty), dir, rt, yr, cs)
+            (Option(synText).filter(_.nonEmpty), directory, rt, yr, cs)
         }
 
         FilmEntry(title, eventUrl, posterUrl, synopsis, director, runtime, year, countries)
@@ -201,8 +201,8 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
     }.getOrElse(Seq.empty)
 
   private def parseEventPage(html: String): Seq[Showtime] = {
-    val doc = Jsoup.parse(html)
-    doc.select("a.b24-button.show[href][title]").asScala.flatMap { a =>
+    val document = Jsoup.parse(html)
+    document.select("a.b24-button.show[href][title]").asScala.flatMap { a =>
       val href  = a.attr("href")
       val title = a.attr("title")
       val url   = if (href.startsWith("http")) href else BaseUrl + href

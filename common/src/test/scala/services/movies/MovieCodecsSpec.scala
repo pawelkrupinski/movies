@@ -122,8 +122,8 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     decodedShowtimes(1).format    shouldBe Nil
   }
 
-  it should "drop unknown sub-doc keys on decode (legacy / deprecated Source displayName)" in {
-    // Simulate a row whose `sourceData` sub-doc contains a key Source.byDisplayName
+  it should "drop unknown sub-document keys on decode (legacy / deprecated Source displayName)" in {
+    // Simulate a row whose `sourceData` sub-document contains a key Source.byDisplayName
     // doesn't know (e.g. a cinema removed from `Cinema.all`). The current
     // decoder dropped these silently; this confirms the new path matches.
     val raw = new BsonDocument()
@@ -133,9 +133,9 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
       MovieRecord(data = Map[Source, SourceData](Tmdb -> tmdbSlot)), Instant.now())
     outerCodec.encode(new BsonDocumentWriter(raw), dto, EncoderContext.builder().build())
 
-    // Inject an unknown source into the encoded doc.
-    val sourceDataDoc = raw.getDocument("sourceData")
-    sourceDataDoc.put("DeprecatedCinema", new BsonDocument().append("title",
+    // Inject an unknown source into the encoded document.
+    val sourceDataDocument = raw.getDocument("sourceData")
+    sourceDataDocument.put("DeprecatedCinema", new BsonDocument().append("title",
       org.bson.BsonString("legacy slot")))
 
     val decoded = outerCodec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build())
@@ -150,11 +150,11 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     back.record.detailPending shouldBe true
   }
 
-  it should "default tmdbNoMatch / detailPending to false on a legacy doc that lacks them" in {
+  it should "default tmdbNoMatch / detailPending to false on a legacy document that lacks them" in {
     val record = MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Legacy"))))
     val raw = new BsonDocument()
     codec.encode(new BsonDocumentWriter(raw), StoredMovieDto.fromDomain("legacy|2025", record, Instant.now()), EncoderContext.builder().build())
-    raw.remove("tmdbNoMatch"); raw.remove("detailPending")  // a doc written before the fields existed
+    raw.remove("tmdbNoMatch"); raw.remove("detailPending")  // a document written before the fields existed
     val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()))
     back.record.tmdbNoMatch   shouldBe false
     back.record.detailPending shouldBe false
@@ -181,7 +181,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "derive a title that sanitizes back to the _id prefix (no re-keying churn)" in {
-    // The derived title must recompute to the SAME docId, or a later upsert
+    // The derived title must recompute to the SAME documentId, or a later upsert
     // would orphan the row under a new _id.
     val id = s"${TitleNormalizer.sanitize("Top Gun: Maverick")}|2022"
     val record = MovieRecord(data = Map[Source, SourceData](
@@ -193,8 +193,8 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     TitleNormalizer.sanitize(back.title) shouldBe id.split('|').head
   }
 
-  it should "ignore stale top-level title/year columns on a legacy doc (back-compat decode)" in {
-    // Existing prod docs still carry the now-dropped `title`/`year` columns.
+  it should "ignore stale top-level title/year columns on a legacy document (back-compat decode)" in {
+    // Existing prod documents still carry the now-dropped `title`/`year` columns.
     // The codec must decode them without error, and `toDomain` must derive from
     // sourceData + the _id, NOT trust the stale (order-dependent) columns.
     val id = s"${TitleNormalizer.sanitize("Wonka")}|2023"

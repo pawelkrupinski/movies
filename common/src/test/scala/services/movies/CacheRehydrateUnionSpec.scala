@@ -7,10 +7,10 @@ import services.titlerules.{RuleScope, TitleRule, TitleRuleDefaults, TitleRuleSe
 
 /** Pins the fix for the late-added-merge-rule data-loss bug: when a merge-key
  *  rule (a Canonical-tier unification — NOT a GlobalStructural decoration strip,
- *  which no longer feeds the key) is added AFTER two docs were written under
+ *  which no longer feeds the key) is added AFTER two documents were written under
  *  distinct keys, they now collide on `CacheKey` (equality is `sanitize`, which
  *  runs the canonical tier). `rehydrate` must UNION the colliding rows, not
- *  last-write-wins drop one — otherwise a hydration silently loses one doc's
+ *  last-write-wins drop one — otherwise a hydration silently loses one document's
  *  showtimes until the next scrape (and on the read-only web app, the row
  *  briefly serves half its cinemas). Reproduces prod: seed two distinct rows
  *  under the defaults, install a `/Kino Cafe` canonical unification so they
@@ -46,7 +46,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
   private val kinoCafeRule = TitleRule("test-kino-cafe", RuleScope.Canonical, None,
     """(?i)\s*/\s*Kino\s+Cafe\s*$""", "", applyAll = false, order = 100)
 
-  "rehydrate" should "union two docs a late merge-key rule collides, not drop one" in {
+  "rehydrate" should "union two documents a late merge-key rule collides, not drop one" in {
     withInstalledRules(TitleRuleSet(TitleRuleDefaults.all :+ kinoCafeRule)) {
       val cache = new CaffeineMovieCache(repositoryOf(decorated, base))   // rehydrates at construction
       cache.entries should have size 1

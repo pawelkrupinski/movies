@@ -36,11 +36,11 @@ import scala.util.Try
  * keyword (`2D`, `3D`, `IMAX`, `DOLBY`, `4DX`) and normalises the title to
  * sentence case so it merges correctly with TMDB and other sources.
  *
- * @param http    HTTP client (swap for `FakeHttpFetch` in tests).
- * @param baseUrl Scheme + host of the venue's MSI portal, no trailing slash
+ * @parameter http    HTTP client (swap for `FakeHttpFetch` in tests).
+ * @parameter baseUrl Scheme + host of the venue's MSI portal, no trailing slash
  *                (e.g. `https://bilety.goktychowo.pl`).
- * @param cinema  The [[Cinema]] source tag attached to every [[CinemaMovie]].
- * @param today   Calendar anchor for computing the two months to fetch;
+ * @parameter cinema  The [[Cinema]] source tag attached to every [[CinemaMovie]].
+ * @parameter today   Calendar anchor for computing the two months to fetch;
  *                defaults to the current Warsaw clock date.
  */
 class MsiClient(

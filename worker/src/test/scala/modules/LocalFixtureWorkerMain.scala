@@ -12,7 +12,7 @@ import scala.concurrent.duration._
 /**
  * Local dev entry point behind `sbt localStack`. Runs the REAL worker pipeline
  * (scrape → enrich → project to the read model) against a LOCAL Mongo, but
- * replays every HTTP fetch from a fixture dir (default `today`) instead of
+ * replays every HTTP fetch from a fixture directory (default `today`) instead of
  * hitting the internet. `localStack` also starts `web/run` against the same
  * local Mongo, so the web app serves the projected fixture corpus while still
  * fetching posters/etc. from the real internet.
@@ -31,11 +31,11 @@ object LocalFixtureWorkerMain {
   def main(args: Array[String]): Unit = {
     forceLocalMongo()
     locateFixtureRoot()
-    val fixtureDir = Env.get("KINOWO_FIXTURE_DIR").getOrElse("today")
-    println(s"[local-fixture-worker] replaying HTTP from test/resources/fixtures/$fixtureDir " +
+    val fixtureDirectory = Env.get("KINOWO_FIXTURE_DIR").getOrElse("today")
+    println(s"[local-fixture-worker] replaying HTTP from test/resources/fixtures/$fixtureDirectory " +
       s"into Mongo ${Env.get("MONGODB_URI").getOrElse("?")} db=${Env.get("MONGODB_DB").getOrElse("kinowo")}")
 
-    val wiring = new FixtureWorkerWiring(fixtureDir)
+    val wiring = new FixtureWorkerWiring(fixtureDirectory)
     wiring.start()
     println("[local-fixture-worker] started — scraping the fixture corpus into the local read model. Ctrl-C to stop.")
 
@@ -58,18 +58,18 @@ object LocalFixtureWorkerMain {
       System.setProperty("MONGODB_DB", Env.get("KINOWO_LOCAL_MONGO_DB").getOrElse(DefaultMongoDb))
   }
 
-  /** `bgRunMain` forks with CWD = the worker module dir, but FakeHttpFetch reads
+  /** `bgRunMain` forks with CWD = the worker module directory, but FakeHttpFetch reads
    *  `test/resources/fixtures/…` relative to the repository root. Walk up from the CWD
-   *  to the dir that contains `test/resources/fixtures` and pin it as
+   *  to the directory that contains `test/resources/fixtures` and pin it as
    *  KINOWO_FIXTURE_ROOT (a JVM prop FakeHttpFetch honours), so the corpus
    *  resolves regardless of where the fork started. No-op if already set. */
   private def locateFixtureRoot(): Unit = {
     if (Env.get("KINOWO_FIXTURE_ROOT").isEmpty) {
-      var dir = new java.io.File(".").getCanonicalFile
-      while (dir != null && !new java.io.File(dir, "test/resources/fixtures").isDirectory)
-        dir = dir.getParentFile
-      if (dir != null)
-        System.setProperty("KINOWO_FIXTURE_ROOT", new java.io.File(dir, "test/resources/fixtures").getPath)
+      var directory = new java.io.File(".").getCanonicalFile
+      while (directory != null && !new java.io.File(directory, "test/resources/fixtures").isDirectory)
+        directory = directory.getParentFile
+      if (directory != null)
+        System.setProperty("KINOWO_FIXTURE_ROOT", new java.io.File(directory, "test/resources/fixtures").getPath)
     }
   }
 }
@@ -79,8 +79,8 @@ object LocalFixtureWorkerMain {
  * projection. Mirrors `FixtureTestWiring`'s fetch overrides, minus its in-memory
  * repos — here the projector writes to the local Mongo so `web` can serve it.
  */
-class FixtureWorkerWiring(fixtureDir: String) extends WorkerWiring {
-  override lazy val httoFetch: HttpFetch      = new FakeHttpFetch(fixtureDir)
+class FixtureWorkerWiring(fixtureDirectory: String) extends WorkerWiring {
+  override lazy val httoFetch: HttpFetch      = new FakeHttpFetch(fixtureDirectory)
   override lazy val multikinoFetch: HttpFetch = httoFetch
   override lazy val biletynaFetch: HttpFetch  = httoFetch
 
@@ -102,26 +102,26 @@ class FixtureWorkerWiring(fixtureDir: String) extends WorkerWiring {
       interval = 24.hours, runStore = scheduledRunStore)
 
   // Helios bakes the scrape day into its REST URLs, so pin it to the captured
-  // day or every Helios fixture misses. Prefer <dir>/CAPTURE_DATE (written by
-  // the recorder), fall back to the dir name if it's dd-MM-yyyy, else the real
+  // day or every Helios fixture misses. Prefer <directory>/CAPTURE_DATE (written by
+  // the recorder), fall back to the directory name if it's dd-MM-yyyy, else the real
   // date (FakeHttpFetch then returns its empty fallback for the day's URLs).
   override protected def heliosToday: LocalDate =
-    FixtureWorkerWiring.captureDate(fixtureDir).getOrElse(super.heliosToday)
+    FixtureWorkerWiring.captureDate(fixtureDirectory).getOrElse(super.heliosToday)
 }
 
 object FixtureWorkerWiring {
   private val Fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy")
 
-  /** The scrape day for a fixture dir: `date=dd-MM-yyyy` from its CAPTURE_DATE
-   *  file, else the dir name when it is itself a `dd-MM-yyyy` date. */
-  def captureDate(fixtureDir: String): Option[LocalDate] = {
+  /** The scrape day for a fixture directory: `date=dd-MM-yyyy` from its CAPTURE_DATE
+   *  file, else the directory name when it is itself a `dd-MM-yyyy` date. */
+  def captureDate(fixtureDirectory: String): Option[LocalDate] = {
     val fromFile = scala.util.Try {
-      val f = new java.io.File(s"test/resources/fixtures/$fixtureDir/CAPTURE_DATE")
+      val f = new java.io.File(s"test/resources/fixtures/$fixtureDirectory/CAPTURE_DATE")
       val src = scala.io.Source.fromFile(f, "UTF-8")
       try src.getLines().find(_.startsWith("date=")).map(_.stripPrefix("date=").trim)
       finally src.close()
     }.toOption.flatten
-    (fromFile.toList :+ fixtureDir)
+    (fromFile.toList :+ fixtureDirectory)
       .flatMap(s => scala.util.Try(LocalDate.parse(s, Fmt)).toOption)
       .headOption
   }

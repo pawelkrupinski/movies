@@ -65,8 +65,8 @@ object CharlieClient {
   )
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val doc = Jsoup.parse(html)
-    val slots = doc.select("script[type=application/ld+json]").asScala.toSeq
+    val document = Jsoup.parse(html)
+    val slots = document.select("script[type=application/ld+json]").asScala.toSeq
       .map(_.data())
       .flatMap(block => parseEvent(block).map(slot => slot -> block))
       .map { case (slot, block) =>

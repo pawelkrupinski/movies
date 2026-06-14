@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 class RuleScopeSpec extends AnyFlatSpec with Matchers {
   import RuleScope._
 
-  "changesRecord" should "be true for the scopes that reshape the stored row (display title / docId)" in {
+  "changesRecord" should "be true for the scopes that reshape the stored row (display title / documentId)" in {
     PerCinema.changesRecord shouldBe true
     Canonical.changesRecord shouldBe true
   }

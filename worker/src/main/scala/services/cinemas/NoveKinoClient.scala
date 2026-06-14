@@ -148,20 +148,20 @@ object NoveKinoClient {
                           director: Seq[String], cast: Seq[String], synopsis: Option[String], trailer: Option[String])
   object Detail { val empty: Detail = Detail(None, Seq.empty, Seq.empty, Seq.empty, Seq.empty, None, None) }
 
-  private def dd(doc: org.jsoup.nodes.Document, label: String): Option[String] =
-    ScraperParse.ddField(doc, label)
+  private def dd(document: org.jsoup.nodes.Document, label: String): Option[String] =
+    ScraperParse.ddField(document, label)
 
   def parseDetail(html: String): Detail = {
-    val doc = Jsoup.parse(html)
+    val document = Jsoup.parse(html)
     Detail(
-      year      = dd(doc, "rok produkcji").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
-      countries = dd(doc, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      genres    = dd(doc, "gatunek").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)).map(tools.TextNormalization.titleCaseIfAllLower),
-      director  = dd(doc, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      cast      = dd(doc, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      synopsis  = Option(doc.selectFirst("section.text_panel p")).map(_.text.trim).filter(_.length > 20),
+      year      = dd(document, "rok produkcji").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
+      countries = dd(document, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      genres    = dd(document, "gatunek").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)).map(tools.TextNormalization.titleCaseIfAllLower),
+      director  = dd(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      cast      = dd(document, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      synopsis  = Option(document.selectFirst("section.text_panel p")).map(_.text.trim).filter(_.length > 20),
       // The film page embeds a single YouTube `/embed/` iframe in its slider.
-      trailer   = doc.select("iframe[src]").asScala.iterator.map(_.attr("src")).filter(_.nonEmpty)
+      trailer   = document.select("iframe[src]").asScala.iterator.map(_.attr("src")).filter(_.nonEmpty)
                     .flatMap(ScraperParse.canonicalTrailer).nextOption()
     )
   }

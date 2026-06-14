@@ -134,7 +134,7 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper with DetailEnriche
   )
 
   def parseDetail(html: String): DetailMeta = {
-    val doc = Jsoup.parse(html)
+    val document = Jsoup.parse(html)
     // The page's own metadata sits inside its first text-editor widget. Apollo
     // detail pages also render "related screenings" listings further down via
     // a `jet-listing-grid` widget — those repeat every other current film's
@@ -143,7 +143,7 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper with DetailEnriche
     // text-editor body keeps that bleed out of the result. (Runtime is in a
     // sibling heading widget, not the text-editor — scan the full page for
     // that one.)
-    val firstEditorHtml = Option(doc.select("div.elementor-widget-text-editor div.elementor-widget-container").first())
+    val firstEditorHtml = Option(document.select("div.elementor-widget-text-editor div.elementor-widget-container").first())
       .map(_.html()).getOrElse("")
     DetailMeta(
       runtime    = parseRuntime(html),
@@ -195,8 +195,8 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper with DetailEnriche
   // blank-line separator so the original paragraph boundaries survive the
   // formatter on the homepage card.
   private def parseSynopsis(html: String): Option[String] = {
-    val doc = Jsoup.parse(html)
-    val firstEditor = doc.select("div.elementor-widget-text-editor div.elementor-widget-container").first()
+    val document = Jsoup.parse(html)
+    val firstEditor = document.select("div.elementor-widget-text-editor div.elementor-widget-container").first()
     if (firstEditor == null) None
     else {
       val paragraphs = firstEditor.select("p").iterator().asScala

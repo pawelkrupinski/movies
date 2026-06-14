@@ -39,9 +39,9 @@ object MobileScreenshots {
   private val now = LocalDateTime.of(2026, 6, 8, 0, 0)
 
   def main(args: Array[String]): Unit = {
-    val outDir: Path = if (args.nonEmpty) Paths.get(args(0))
+    val outDirectory: Path = if (args.nonEmpty) Paths.get(args(0))
                       else Paths.get("page/screenshots")
-    Files.createDirectories(outDir)
+    Files.createDirectories(outDirectory)
 
     val chrome = Chrome.tryStart().getOrElse {
       System.err.println("Chrome not installed — install Google Chrome or Chromium and retry.")
@@ -113,7 +113,7 @@ object MobileScreenshots {
               // resize-listeners + flex reflow settle before the capture.
               Thread.sleep(80L)
               val pngBase64 = page.screenshot()
-              val out = outDir.resolve(s"$slug-$w" + "px.png")
+              val out = outDirectory.resolve(s"$slug-$w" + "px.png")
               Files.write(out, Base64.getDecoder.decode(pngBase64),
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
               val bytes = Files.size(out)

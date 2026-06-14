@@ -9,7 +9,7 @@ import scala.util.Try
 
 /**
  * Posts a message to a Telegram chat (optionally a forum topic) via the Bot API
- * `sendMessage` endpoint. Uses GET with URL-encoded query params so it works
+ * `sendMessage` endpoint. Uses GET with URL-encoded query parameters so it works
  * through any `HttpFetch` (incl. GET-only test fakes). Best-effort: a delivery
  * failure is logged, never thrown — an alert must never break the scrape tick
  * that triggered it.

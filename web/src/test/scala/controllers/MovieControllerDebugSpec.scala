@@ -12,7 +12,7 @@ import services.tasks.{EnrichTaskKeys, InMemoryTaskQueue, TaskType}
 /**
  * `/debug` is the dev-only global-corpus table. It used to be city-scoped
  * (`/:city/debug`) even though the data is the whole corpus regardless of city,
- * so it's now a top-level `GET /debug` taking no city param. It renders (200) in
+ * so it's now a top-level `GET /debug` taking no city parameter. It renders (200) in
  * Dev/Test and 404s in Prod via the same `devOnly` gate as `/debug/tune`.
  */
 class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
@@ -128,36 +128,36 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
   // Unlike the other /debug pages, rehydrate runs in every mode (it reconciles a
   // live prod instance's caches) and mutates state — so it's gated by the admin
   // allowlist instead of left open, even in prod.
-  private val rehydrateReq = FakeRequest(POST, "/wroclaw/debug/rehydrate")
+  private val rehydrateRequest = FakeRequest(POST, "/wroclaw/debug/rehydrate")
 
   "POST /…/debug/rehydrate" should "401 an anonymous request" in {
     val ctrl = TestMovieController.build(records, Mode.Prod)._1
-    status(ctrl.rehydrate("wroclaw").apply(rehydrateReq)) shouldBe UNAUTHORIZED
+    status(ctrl.rehydrate("wroclaw").apply(rehydrateRequest)) shouldBe UNAUTHORIZED
   }
 
   it should "403 a logged-in user not on the allowlist" in {
     val ctrl = TestMovieController.build(records, Mode.Prod,
       adminAction = TestAdminAction(allow = Set("someone-else@example.com")))._1
     status(ctrl.rehydrate("wroclaw").apply(
-      rehydrateReq.withSession("userId" -> TestAdminAction.AdminUserId))) shouldBe FORBIDDEN
+      rehydrateRequest.withSession("userId" -> TestAdminAction.AdminUserId))) shouldBe FORBIDDEN
   }
 
   it should "reload the caches for an allowlisted admin" in {
     val ctrl = TestMovieController.build(records, Mode.Prod)._1
     val result = ctrl.rehydrate("wroclaw").apply(
-      rehydrateReq.withSession("userId" -> TestAdminAction.AdminUserId))
+      rehydrateRequest.withSession("userId" -> TestAdminAction.AdminUserId))
     status(result) shouldBe OK
     contentAsString(result) should include("rehydrated")
   }
 
   // ── Per-row re-enrich button (dev-only) ──────────────────────────────────────
-  private val reenrichReq = FakeRequest(POST, "/debug/reenrich")
+  private val reenrichRequest = FakeRequest(POST, "/debug/reenrich")
 
   "POST /debug/reenrich" should "enqueue a ResolveTmdb task with the row's title + year in dev" in {
     val q    = new InMemoryTaskQueue
     val ctrl = TestMovieController.build(records, Mode.Dev, taskQueue = q)._1
 
-    val result = ctrl.reenrich("Belle", Some(2021)).apply(reenrichReq)
+    val result = ctrl.reenrich("Belle", Some(2021)).apply(reenrichRequest)
     status(result) shouldBe OK
     (Json.parse(contentAsString(result)) \ "enqueued").as[Boolean] shouldBe true
 
@@ -169,8 +169,8 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
   it should "report duplicate on a second enqueue for the same film" in {
     val q    = new InMemoryTaskQueue
     val ctrl = TestMovieController.build(records, Mode.Dev, taskQueue = q)._1
-    ctrl.reenrich("Belle", Some(2021)).apply(reenrichReq)
-    val second = ctrl.reenrich("Belle", Some(2021)).apply(reenrichReq)
+    ctrl.reenrich("Belle", Some(2021)).apply(reenrichRequest)
+    val second = ctrl.reenrich("Belle", Some(2021)).apply(reenrichRequest)
     (Json.parse(contentAsString(second)) \ "duplicate").as[Boolean] shouldBe true
     q.monitor().active.size shouldBe 1
   }
@@ -178,14 +178,14 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
   it should "400 a request with no title (and enqueue nothing)" in {
     val q    = new InMemoryTaskQueue
     val ctrl = TestMovieController.build(records, Mode.Dev, taskQueue = q)._1
-    status(ctrl.reenrich("", None).apply(reenrichReq)) shouldBe BAD_REQUEST
+    status(ctrl.reenrich("", None).apply(reenrichRequest)) shouldBe BAD_REQUEST
     q.monitor().active shouldBe empty
   }
 
   it should "404 in production (no enqueue) like the rest of /debug" in {
     val q    = new InMemoryTaskQueue
     val ctrl = TestMovieController.build(records, Mode.Prod, taskQueue = q)._1
-    status(ctrl.reenrich("Belle", Some(2021)).apply(reenrichReq)) shouldBe NOT_FOUND
+    status(ctrl.reenrich("Belle", Some(2021)).apply(reenrichRequest)) shouldBe NOT_FOUND
     q.monitor().active shouldBe empty
   }
 }
