@@ -6,14 +6,14 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
-import services.movies.{MongoMovieRepo, StoredMovieRecord}
+import services.movies.{MongoMovieRepository, StoredMovieRecord}
 import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
 /**
- * Live test of MovieRepo against real MongoDB Atlas. Requires MONGODB_URI
+ * Live test of MovieRepository against real MongoDB Atlas. Requires MONGODB_URI
  * to be set (in `.env.local` or the environment). Skips otherwise so CI doesn't
  * fail without secrets.
  *
@@ -21,11 +21,11 @@ import scala.concurrent.duration._
  * up. Run-isolated so it won't interfere with the production collection of
  * real movies.
  */
-class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
-  private val repo = new MongoMovieRepo()
+  private val repository = new MongoMovieRepository()
 
   // Every fake imdbId this spec writes. These are the STABLE handle: the worker
   // re-keys a row's `_id` (e.g. settles `__integration-test-dotted-cinema__` to
@@ -72,11 +72,11 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
   // at the next app startup (the service hydrates *everything* from Mongo).
   override protected def afterAll(): Unit = try {
     purgeSentinels()
-    repo.close()
+    repository.close()
   } finally super.afterAll()
 
-  "MovieRepo" should "be enabled when MONGODB_URI is set" in {
-    repo.enabled shouldBe true
+  "MovieRepository" should "be enabled when MONGODB_URI is set" in {
+    repository.enabled shouldBe true
   }
 
   it should "round-trip an MovieRecord: upsert → findAll → match" in {
@@ -95,13 +95,13 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
       data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Integration Test")))
     )
 
-    repo.upsert(sentinelTitle, sentinelYear, toStore)
+    repository.upsert(sentinelTitle, sentinelYear, toStore)
 
     // Locate by imdbId, not title: the stored doc no longer carries a `title`
     // column — `findAll` derives the display title from `sourceData`, and this
     // record has no cinema slot so the derived title is the sanitized _id, not
     // the raw sentinel. imdbId is the stable round-trip handle.
-    val all   = repo.findAll()
+    val all   = repository.findAll()
     val found = all.find(r => r.record.imdbId.contains("tt0000001"))
     found should not be empty
     val e = found.get.record
@@ -132,7 +132,7 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     val gotUpsert = new CountDownLatch(1)
     val gotDelete = new CountDownLatch(1)
 
-    val handle = repo.watchChanges(
+    val handle = repository.watchChanges(
       onUpsert = r   => if (StoredMovieRecord.idOf(r) == id) gotUpsert.countDown(),
       onDelete = did => if (did == id) gotDelete.countDown()
     )
@@ -140,10 +140,10 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
 
     try {
       Thread.sleep(1500) // let the stream establish before the writes
-      repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000099")))
+      repository.upsert(title, year, MovieRecord(imdbId = Some("tt0000099")))
       gotUpsert.await(15, TimeUnit.SECONDS) shouldBe true
 
-      repo.delete(title, year)
+      repository.delete(title, year)
       gotDelete.await(15, TimeUnit.SECONDS) shouldBe true
     } finally handle.foreach(_.close())
   }
@@ -153,8 +153,8 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     val toStore = MovieRecord(
       imdbId         = Some("tt0000002")
     )
-    repo.upsert(title, None, toStore)
-    val found = repo.findAll().find(r => r.record.imdbId.contains("tt0000002"))
+    repository.upsert(title, None, toStore)
+    val found = repository.findAll().find(r => r.record.imdbId.contains("tt0000002"))
     found should not be empty
     val e = found.get.record
     e.imdbId         shouldBe Some("tt0000002")
@@ -191,9 +191,9 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
       imdbId = Some("tt0000003"),
       data   = Map[Source, SourceData](Helios -> slot)
     )
-    repo.upsert(title, year, toStore)
+    repository.upsert(title, year, toStore)
 
-    val found = repo.findAll().find(r => r.title == title && r.year == year)
+    val found = repository.findAll().find(r => r.title == title && r.year == year)
     found should not be empty
     val e = found.get.record
     e.cinemaData.keySet shouldBe Set(Helios)
@@ -215,13 +215,13 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     val before = MovieRecord(
       imdbId = Some("tt0000004"),
       data   = Map[Source, SourceData](Multikino -> SourceData(title = Some("Dotted"))))
-    repo.upsert(title, year, before) // create the row
+    repository.upsert(title, year, before) // create the row
     val after = before.copy(data = before.data +
       (HeliosOstrowWlkp -> SourceData(title = Some("Dotted"), synopsis = Some("from Ostrów"))))
 
-    repo.updateIfPresent(title, year, before, after) shouldBe true
+    repository.updateIfPresent(title, year, before, after) shouldBe true
 
-    val found = repo.findAll().find(r => r.record.imdbId.contains("tt0000004"))
+    val found = repository.findAll().find(r => r.record.imdbId.contains("tt0000004"))
     found should not be empty
     found.get.record.cinemaData.get(HeliosOstrowWlkp).flatMap(_.synopsis) shouldBe Some("from Ostrów")
   }
@@ -229,11 +229,11 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
   it should "leave countries empty when a slot was written without them" in {
     val title = "__integration-test-sourcedata-no-country__"
     val slot  = SourceData()
-    repo.upsert(title, None, MovieRecord(
+    repository.upsert(title, None, MovieRecord(
       imdbId = Some("tt0000005"),
       data   = Map[Source, SourceData](Multikino -> slot)
     ))
-    val found = repo.findAll().find(r => r.record.imdbId.contains("tt0000005"))
+    val found = repository.findAll().find(r => r.record.imdbId.contains("tt0000005"))
     found should not be empty
     found.get.record.cinemaData(Multikino).countries shouldBe Seq.empty
     found.get.record.countries shouldBe Seq.empty
@@ -264,10 +264,10 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
 
     // Upsert UPPER first (with URLs), then LOWER (without). With normalized
     // docId both writes target the same _id, so the second overwrites.
-    repo.upsert(titleCaps, Some(2025), withUrls)
-    repo.upsert(titleLow,  Some(2025), withoutUrls)
+    repository.upsert(titleCaps, Some(2025), withUrls)
+    repository.upsert(titleLow,  Some(2025), withoutUrls)
 
-    val rows = repo.findAll().filter(_.record.imdbId.contains("tt0000010"))
+    val rows = repository.findAll().filter(_.record.imdbId.contains("tt0000010"))
     rows                                  should have size 1
     // Second upsert wins: URLs nulled, which is exactly what made the
     // production case observable.
@@ -276,7 +276,7 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
   }
 
   // Regression: legacy docs in prod were written with an older `docId`
-  // formula (whitespace-preserving), and `repo.delete` — which builds the
+  // formula (whitespace-preserving), and `repository.delete` — which builds the
   // `_id` from the *current* formula — silently failed to delete them
   // (`deleteOne` matched zero docs, no warning). On every restart the
   // mergeAll pass picked the same losers and tried to delete them, but
@@ -291,7 +291,7 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     try {
       // Seed two docs at the same (title, year) but with different `_id`s —
       // one matching the current formula, one with a stale "old-formula"
-      // shape that the current `MovieRepo.docId` wouldn't compute.
+      // shape that the current `MovieRepository.docId` wouldn't compute.
       val title = "__integration-test-stale-id__"
       val year  = Some(2099)
       val freshId = s"${title.toLowerCase.replaceAll("[^a-z0-9]+", "")}|2099"
@@ -308,7 +308,7 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
       val before = Await.result(coll.countDocuments(Filters.eq("title", title)).toFuture(), 10.seconds)
       before shouldBe 2
 
-      repo.delete(title, year)
+      repository.delete(title, year)
 
       val after = Await.result(coll.countDocuments(Filters.eq("title", title)).toFuture(), 10.seconds)
       after shouldBe 0
@@ -319,11 +319,11 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
   // entire `movies` collection on every delete — the `(title, year)` branch was
   // unindexed, so Mongo scanned all ~1100 docs (~400ms, max ~6s under load) just
   // to evaluate it, the single largest source of `movies` read-lock time on the
-  // self-hosted box. `MongoMovieRepo` now creates a `(title, year)` index at
+  // self-hosted box. `MongoMovieRepository` now creates a `(title, year)` index at
   // init, so the branch is a 1-key IXSCAN and the whole `$or` is an index union.
   // Fails before the index (winning plan is a COLLSCAN); passes after.
   it should "resolve the delete filter by index, not a collection scan" in {
-    repo.enabled shouldBe true // force lazy init → ensureIndexes() runs
+    repository.enabled shouldBe true // force lazy init → ensureIndexes() runs
 
     val client = MongoClient(Env.get("MONGODB_URI").get)
     val coll   = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
@@ -347,10 +347,10 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
   // /debug). The cleanup must target the sanitized id (and the stable imdbId).
   // Fails before the fix (the sentinel survives `purgeSentinels`); passes after.
   it should "purge its sentinels by the sanitized _id they are actually stored under" in {
-    repo.upsert("__integration-test-purge-check__", Some(1903), MovieRecord(imdbId = Some("tt0000077")))
-    repo.findAll().exists(_.record.imdbId.contains("tt0000077")) shouldBe true
+    repository.upsert("__integration-test-purge-check__", Some(1903), MovieRecord(imdbId = Some("tt0000077")))
+    repository.findAll().exists(_.record.imdbId.contains("tt0000077")) shouldBe true
     purgeSentinels()
-    repo.findAll().exists(_.record.imdbId.contains("tt0000077")) shouldBe false
+    repository.findAll().exists(_.record.imdbId.contains("tt0000077")) shouldBe false
   }
 
   // Regression: `findAll` ran an UNSORTED scan (`c.find()`). Over a collection
@@ -374,8 +374,8 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
   // sourceData, so their display title IS the id prefix and `idOf` == stored `_id`.
   it should "return rows in _id order (the _id-indexed scan that can't duplicate or skip)" in {
     Seq("c", "a", "b").foreach(s =>
-      repo.upsert(s"__integration-test-order-${s}__", None, MovieRecord()))
-    val ids = repo.findAll().map(StoredMovieRecord.idOf).filter(_.startsWith("integrationtestorder"))
+      repository.upsert(s"__integration-test-order-${s}__", None, MovieRecord()))
+    val ids = repository.findAll().map(StoredMovieRecord.idOf).filter(_.startsWith("integrationtestorder"))
     ids        should have size 3 // all three returned — no skip
     ids shouldBe ids.sorted
   }

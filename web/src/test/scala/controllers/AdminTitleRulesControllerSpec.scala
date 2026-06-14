@@ -6,21 +6,21 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.movies.{InMemoryNormalizationReportRepo, MovieRepo, NormalizationReport, NormalizationRebuilder, StoredMovieRecord}
-import services.titlerules.{InMemoryTitleRulesRepo, RuleScope, TitleRule, TitleRuleRecord}
-import services.users.InMemoryUserRepo
+import services.movies.{InMemoryNormalizationReportRepository, MovieRepository, NormalizationReport, NormalizationRebuilder, StoredMovieRecord}
+import services.titlerules.{InMemoryTitleRulesRepository, RuleScope, TitleRule, TitleRuleRecord}
+import services.users.InMemoryUserRepository
 
 import java.time.Instant
 
 /**
  * Locks the admin editor's contract: session + allowlist auth on every action,
- * rule JSON round-trips, saves/deletes hit the repo, and preview returns a
+ * rule JSON round-trips, saves/deletes hit the repository, and preview returns a
  * well-formed shape. The merge math itself is covered by RuleMergePreviewSpec.
  */
 class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
 
-  // Disabled repo → empty corpus; the rule-merge preview's findAll() is empty.
-  private val emptyRepo = new MovieRepo {
+  // Disabled repository → empty corpus; the rule-merge preview's findAll() is empty.
+  private val emptyRepository = new MovieRepository {
     def enabled = false
     def findAll() = Seq.empty
     def delete(title: String, year: Option[Int]) = ()
@@ -31,7 +31,7 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
 
   /** A read-only corpus of the given display titles — only `findAll().title` is
    *  read by the affected/preview endpoints. */
-  private def repoWith(titles: String*): MovieRepo = new MovieRepo {
+  private def repositoryWith(titles: String*): MovieRepository = new MovieRepository {
     def enabled = true
     def findAll() = titles.map(t => StoredMovieRecord(t, None, MovieRecord()))
     def delete(title: String, year: Option[Int]) = ()
@@ -40,11 +40,11 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     override def close() = ()
   }
 
-  private def controller(repo: InMemoryTitleRulesRepo = new InMemoryTitleRulesRepo(),
-                         reports: InMemoryNormalizationReportRepo = new InMemoryNormalizationReportRepo(),
+  private def controller(repository: InMemoryTitleRulesRepository = new InMemoryTitleRulesRepository(),
+                         reports: InMemoryNormalizationReportRepository = new InMemoryNormalizationReportRepository(),
                          gate: AdminAction = TestAdminAction(),
-                         movies: MovieRepo = emptyRepo) =
-    new AdminTitleRulesController(Helpers.stubControllerComponents(), gate, repo, movies, reports)
+                         movies: MovieRepository = emptyRepository) =
+    new AdminTitleRulesController(Helpers.stubControllerComponents(), gate, repository, movies, reports)
 
   private val adminSession = FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
 
@@ -58,7 +58,7 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "403 when logged in but the user's email is not on the allowlist" in {
-    val users = new InMemoryUserRepo
+    val users = new InMemoryUserRepository
     users.upsert(User("rando1", "google", "sub-rando", Some("rando@example.com"),
       None, None, Instant.EPOCH, Instant.EPOCH))
     val req = FakeRequest().withSession("userId" -> "rando1")
@@ -77,13 +77,13 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   "save" should "persist a per-cinema record under its cinema id, minting rule ids when blank" in {
-    val repo = new InMemoryTitleRulesRepo()
+    val repository = new InMemoryTitleRulesRepository()
     val body = Json.obj("scope" -> "PerCinema", "cinemaId" -> "cinema-city",
       "rules" -> Json.arr(Json.obj("pattern" -> "^Ladies Night - ", "replacement" -> "")))
-    val result = controller(repo).save().apply(jsonReq(session = true, body))
+    val result = controller(repository).save().apply(jsonReq(session = true, body))
     status(result) shouldBe OK
-    repo.loadRecords().map(_.id) shouldBe Seq("cinema-city")     // non-composite id = cinema key
-    val saved = repo.findAll()
+    repository.loadRecords().map(_.id) shouldBe Seq("cinema-city")     // non-composite id = cinema key
+    val saved = repository.findAll()
     saved should have size 1
     saved.head.cinemaId shouldBe Some("cinema-city")
     saved.head.id should not be empty
@@ -107,12 +107,12 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   "delete" should "remove the record by id" in {
-    val repo = new InMemoryTitleRulesRepo(TitleRuleRecord.fromRules(Seq(
+    val repository = new InMemoryTitleRulesRepository(TitleRuleRecord.fromRules(Seq(
       TitleRule("r1", RuleScope.Search, None, "x", "", applyAll = false, order = 1))))
-    repo.loadRecords().map(_.id) shouldBe Seq("Search")          // global record id = scope name
-    val result = controller(repo).delete().apply(jsonReq(session = true, Json.obj("id" -> "Search")))
+    repository.loadRecords().map(_.id) shouldBe Seq("Search")          // global record id = scope name
+    val result = controller(repository).delete().apply(jsonReq(session = true, Json.obj("id" -> "Search")))
     status(result) shouldBe OK
-    repo.findAll() shouldBe empty
+    repository.findAll() shouldBe empty
   }
 
   "preview" should "return a zero-merge result over an empty corpus" in {
@@ -129,7 +129,7 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "report, per transient rule, which corpus titles it rewrites and to what" in {
-    val corpus = repoWith("Top Gun - Restored", "Klub: Vertigo", "Anora")
+    val corpus = repositoryWith("Top Gun - Restored", "Klub: Vertigo", "Anora")
     val body = Json.obj("rules" -> Json.arr(
       Json.obj("id" -> "g1", "scope" -> "GlobalStructural",
         "pattern" -> "(?i)\\s*-\\s*restored$", "replacement" -> "", "order" -> 1),
@@ -156,7 +156,7 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   "report" should "surface the latest backfill outcome" in {
-    val reports = new InMemoryNormalizationReportRepo()
+    val reports = new InMemoryNormalizationReportRepository()
     reports.writeLatest(NormalizationReport.render(
       NormalizationRebuilder.RebuildResult(1,
         Seq(NormalizationRebuilder.MergeEvent("Anora", Some(2024), Seq("Anora", "Ladies Night - Anora"))),

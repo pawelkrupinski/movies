@@ -59,7 +59,7 @@ object LocalFixtureWorkerMain {
   }
 
   /** `bgRunMain` forks with CWD = the worker module dir, but FakeHttpFetch reads
-   *  `test/resources/fixtures/…` relative to the repo root. Walk up from the CWD
+   *  `test/resources/fixtures/…` relative to the repository root. Walk up from the CWD
    *  to the dir that contains `test/resources/fixtures` and pin it as
    *  KINOWO_FIXTURE_ROOT (a JVM prop FakeHttpFetch honours), so the corpus
    *  resolves regardless of where the fork started. No-op if already set. */

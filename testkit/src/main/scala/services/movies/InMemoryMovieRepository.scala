@@ -5,11 +5,11 @@ import models.MovieRecord
 import scala.collection.mutable
 
 /**
- * In-memory `MovieRepo` for tests — full write-through semantics without
- * needing a real Mongo cluster. Implements the `MovieRepo` trait so it slots
- * in wherever the production cache expects a repo.
+ * In-memory `MovieRepository` for tests — full write-through semantics without
+ * needing a real Mongo cluster. Implements the `MovieRepository` trait so it slots
+ * in wherever the production cache expects a repository.
  *
- * Indexed by the same normalized docId formula as the production repo
+ * Indexed by the same normalized docId formula as the production repository
  * (`TitleNormalizer.sanitize(title)|year`), so case + diacritic + whitespace
  * variants of the same title collapse to one row exactly as they do in Mongo.
  *
@@ -17,7 +17,7 @@ import scala.collection.mutable
  * test can assert write-through behavior. Tests that don't care simply
  * ignore the buffers.
  */
-class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty) extends MovieRepo {
+class InMemoryMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty) extends MovieRepository {
 
   private val store   = mutable.LinkedHashMap.empty[String, StoredMovieRecord]
   val upserts         = mutable.ListBuffer.empty[(String, Option[Int], MovieRecord)]
@@ -25,7 +25,7 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
 
   // The enrichment cascade writes from several worker pools at once (TMDB,
   // IMDb, and the four *Ratings stages), so every store access is guarded by
-  // this monitor. Production's `MongoMovieRepo` gets the same atomicity for
+  // this monitor. Production's `MongoMovieRepository` gets the same atomicity for
   // free (per-document `$set`/`$unset`, single-document writes are atomic in
   // Mongo); without it here the bare `mutable.Map` loses concurrent updates —
   // e.g. a rating stage's read-modify-write `updateIfPresent` interleaving with
@@ -55,7 +55,7 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
   def enabled: Boolean = true
 
   // Re-derive `title`/`year` from the stored `_id` + record via
-  // `StoredMovieRecord.fromStorage` on read — EXACTLY as `MongoMovieRepo`'s
+  // `StoredMovieRecord.fromStorage` on read — EXACTLY as `MongoMovieRepository`'s
   // codec does (Mongo persists only `_id` + `sourceData`, dropping the title/
   // year columns). A faithful fake must do the same: returning the verbatim
   // upsert title instead hid two real bugs — title `_id`-drift (a row whose

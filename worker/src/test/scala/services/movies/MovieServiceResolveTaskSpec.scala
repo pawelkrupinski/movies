@@ -41,7 +41,7 @@ class MovieServiceResolveTaskSpec extends AnyFlatSpec with Matchers {
 
   "onMovieDetailsComplete" should "enqueue a ResolveTmdb task carrying the director hint for an unresolved film" in {
     val queue = new InMemoryTaskQueue()
-    val svc   = serviceEnqueueing(queue, new CaffeineMovieCache(new InMemoryMovieRepo()))
+    val svc   = serviceEnqueueing(queue, new CaffeineMovieCache(new InMemoryMovieRepository()))
 
     svc.onMovieDetailsComplete(
       MovieDetailsComplete("Interstellar", Some(2014), originalTitle = None, director = Some("Christopher Nolan")))
@@ -56,7 +56,7 @@ class MovieServiceResolveTaskSpec extends AnyFlatSpec with Matchers {
 
   it should "not enqueue for a film already resolved (no churn, no phantom queue place)" in {
     val queue = new InMemoryTaskQueue()
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.put(cache.keyOf("Resolved Film", Some(2020)), MovieRecord(tmdbId = Some(99)))
     val svc = serviceEnqueueing(queue, cache)
 

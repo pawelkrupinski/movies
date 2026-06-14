@@ -4,7 +4,7 @@ import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{ImdbIdMissing, ImdbIdResolved, InProcessEventBus}
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import tools.HttpFetch
 import tools.Eventually.eventually
 
@@ -50,8 +50,8 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       tmdbId = Some(1024),
       data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II")))
     )
-    val repo  = new InMemoryMovieRepo(Seq(("Mortal Kombat 2", Some(2026), tmdbOnly)))
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository(Seq(("Mortal Kombat 2", Some(2026), tmdbOnly)))
+    val cache = new CaffeineMovieCache(repository)
     val resolver = new ImdbIdResolver(cache, imdbStub(
       Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))
     ), bus)
@@ -75,9 +75,9 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       tmdbId = Some(1),
       data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Imaginary Film")))
     )
-    val repo  = new InMemoryMovieRepo(Seq(("Imaginary Film", None, tmdbOnly)))
-    val cache = new CaffeineMovieCache(repo)
-    repo.upserts.clear()
+    val repository  = new InMemoryMovieRepository(Seq(("Imaginary Film", None, tmdbOnly)))
+    val cache = new CaffeineMovieCache(repository)
+    repository.upserts.clear()
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")), bus)
 
     val resolved = mutable.ListBuffer.empty[ImdbIdResolved]
@@ -86,7 +86,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
 
     noException should be thrownBy bus.publish(ImdbIdMissing("Imaginary Film", None, "Imaginary Film"))
     Thread.sleep(100)
-    repo.upserts shouldBe empty
+    repository.upserts shouldBe empty
     resolved     shouldBe empty
   }
 
@@ -97,9 +97,9 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       tmdbId = Some(1),
       data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Foo")))
     )
-    val repo  = new InMemoryMovieRepo(Seq(("Foo", None, resolved)))
-    val cache = new CaffeineMovieCache(repo)
-    repo.upserts.clear()
+    val repository  = new InMemoryMovieRepository(Seq(("Foo", None, resolved)))
+    val cache = new CaffeineMovieCache(repository)
+    repository.upserts.clear()
     // Stub that THROWS if findId or any HTTP call lands — confirms the
     // resolver short-circuits before hitting IMDb when the id is already
     // present on the row.
@@ -115,7 +115,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
 
     noException should be thrownBy bus.publish(ImdbIdMissing("Foo", None, "Foo"))
     Thread.sleep(100)
-    repo.upserts shouldBe empty
+    repository.upserts shouldBe empty
     emitted      shouldBe empty
   }
 }

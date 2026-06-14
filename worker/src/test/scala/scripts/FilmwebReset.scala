@@ -3,7 +3,7 @@ package scripts
 import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
 import services.events.InProcessEventBus
-import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieService, StoredMovieRecord}
+import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieService, StoredMovieRecord}
 import tools.{DaemonExecutors, RealHttpFetch}
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -35,8 +35,8 @@ object FilmwebReset {
   private case class  ReplacedDifferent(beforeUrl: String, afterUrl: String, rating: Option[Double]) extends Outcome
 
   def main(args: Array[String]): Unit = {
-    val repo = new MongoMovieRepo()
-    if (!repo.enabled) {
+    val repository = new MongoMovieRepository()
+    if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to reset.")
       sys.exit(1)
     }
@@ -51,21 +51,21 @@ object FilmwebReset {
     // cache so a subsequent FilmwebRatings.refreshOneSync starts from a
     // clean slate (filmwebUrl=None forces the full discovery path, not the
     // cheap rating-only refresh).
-    val before: Seq[StoredMovieRecord] = repo.findAll().sortBy(r => (r.title.toLowerCase, r.year))
+    val before: Seq[StoredMovieRecord] = repository.findAll().sortBy(r => (r.title.toLowerCase, r.year))
     println(s"${before.size} rows in Mongo · clearing filmwebUrl + filmwebRating on all of them…")
 
     before.foreach { r =>
       val cleared = r.record.copy(filmwebUrl = None, filmwebRating = None)
-      repo.upsert(r.title, r.year, cleared)
+      repository.upsert(r.title, r.year, cleared)
     }
     println("Clear pass done.")
 
     // ── Phase 2: hydrate a fresh cache + ratings + re-resolve every row ────
     //
-    // Building CaffeineMovieCache(repo) AFTER the wipe means hydration sees
+    // Building CaffeineMovieCache(repository) AFTER the wipe means hydration sees
     // the cleared values; refreshOneSync's filmwebUrl=None branch runs the
     // full lookup (search → /info → optional /preview → /rating).
-    val cache   = new CaffeineMovieCache(repo)
+    val cache   = new CaffeineMovieCache(repository)
     val ratings = new FilmwebRatings(cache, tmdb, filmweb)
     // `MovieService.get` is the only public window into the cache from a
     // script — used post-refresh to read back the newly-resolved values.
@@ -125,7 +125,7 @@ object FilmwebReset {
 
     val outcomes = Await.result(Future.sequence(tasks), 60.minutes)
     ec.shutdown()
-    repo.close()
+    repository.close()
 
     val kept       = outcomes.count(_._3.isInstanceOf[ReplacedSame])
     val changed    = outcomes.count(_._3.isInstanceOf[ReplacedDifferent])

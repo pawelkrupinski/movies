@@ -12,7 +12,7 @@ import scala.util.Try
  *      Format: simple `KEY=VALUE` lines, `#` for comments, optional quoting.
  *
  * The `.env.local` route is meant for putting secrets like ZYTE_API_KEY in
- * a local file without polluting the shell or the repo.
+ * a local file without polluting the shell or the repository.
  */
 object Env {
 

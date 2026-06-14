@@ -14,7 +14,7 @@ import java.time.LocalDate
  * dateless `today` dir (its dateless name carries no date, so Helios's
  * date-baked URLs would miss without this). The fetch-replay overrides
  * themselves mirror the proven `FixtureTestWiring` and are compile-checked;
- * exercising them needs a live Mongo (the wiring eagerly builds the repo), so
+ * exercising them needs a live Mongo (the wiring eagerly builds the repository), so
  * that path is left to the running `localStack` rather than a unit spec.
  */
 class LocalFixtureWorkerSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
@@ -37,9 +37,9 @@ class LocalFixtureWorkerSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     FixtureWorkerWiring.captureDate("definitely-not-a-fixture-dir") shouldBe None
   }
 
-  // The forked bg worker's CWD isn't the repo root, so FakeHttpFetch must be
+  // The forked bg worker's CWD isn't the repository root, so FakeHttpFetch must be
   // able to resolve the corpus under an absolute KINOWO_FIXTURE_ROOT base.
-  "FakeHttpFetch.rootFor" should "default to the repo-relative fixtures path" in {
+  "FakeHttpFetch.rootFor" should "default to the repository-relative fixtures path" in {
     FakeHttpFetch.rootFor("today", None) shouldBe "test/resources/fixtures/today"
   }
 

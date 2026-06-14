@@ -25,9 +25,9 @@ import scala.util.Try
  * query) and `filmId` (the projector's per-film prune).
  *
  * When `sharedDb` is `None` (Mongo disabled in local dev / tests without a
- * cluster) the repo is a silent no-op, mirroring `MongoMovieRepo`.
+ * cluster) the repository is a silent no-op, mirroring `MongoMovieRepository`.
  */
-class MongoReadModelRepo(sharedDb: Option[MongoDatabase]) extends ReadModelReader with ReadModelWriter with Logging {
+class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadModelReader with ReadModelWriter with Logging {
 
   // Relaxed write concern (w:1, j:false): the read model is a pure projection of
   // `movies` — every doc is re-derived by the projector's reconcile, so a write
@@ -60,7 +60,7 @@ class MongoReadModelRepo(sharedDb: Option[MongoDatabase]) extends ReadModelReade
     case Some(c) =>
       Try(Await.result(c.find().toFuture(), 60.seconds)).recover {
         case ex: Throwable =>
-          logger.warn(s"ReadModelRepo.findAllMovies failed: ${ex.getClass.getSimpleName}: ${ex.getMessage}")
+          logger.warn(s"ReadModelRepository.findAllMovies failed: ${ex.getClass.getSimpleName}: ${ex.getMessage}")
           Seq.empty
       }.getOrElse(Seq.empty)
     case None => Seq.empty
@@ -70,7 +70,7 @@ class MongoReadModelRepo(sharedDb: Option[MongoDatabase]) extends ReadModelReade
     case Some(c) =>
       Try(Await.result(c.find().toFuture(), 60.seconds)).recover {
         case ex: Throwable =>
-          logger.warn(s"ReadModelRepo.findAllScreenings failed: ${ex.getClass.getSimpleName}: ${ex.getMessage}")
+          logger.warn(s"ReadModelRepository.findAllScreenings failed: ${ex.getClass.getSimpleName}: ${ex.getMessage}")
           Seq.empty
       }.getOrElse(Seq.empty)
     case None => Seq.empty
@@ -93,7 +93,7 @@ class MongoReadModelRepo(sharedDb: Option[MongoDatabase]) extends ReadModelReade
       ()
     }.recover {
       case ex: Throwable if isClusterClosed(ex) => ()
-      case ex: Throwable => logger.warn(s"ReadModelRepo.$op($id) failed: ${ex.getMessage}")
+      case ex: Throwable => logger.warn(s"ReadModelRepository.$op($id) failed: ${ex.getMessage}")
     }
   }
 
@@ -103,7 +103,7 @@ class MongoReadModelRepo(sharedDb: Option[MongoDatabase]) extends ReadModelReade
       ()
     }.recover {
       case ex: Throwable if isClusterClosed(ex) => ()
-      case ex: Throwable => logger.warn(s"ReadModelRepo.$op($id) failed: ${ex.getMessage}")
+      case ex: Throwable => logger.warn(s"ReadModelRepository.$op($id) failed: ${ex.getMessage}")
     }
   }
 
@@ -136,11 +136,11 @@ class MongoReadModelRepo(sharedDb: Option[MongoDatabase]) extends ReadModelReade
           logger.warn(s"$label change stream ended (${e.getMessage}) — relying on the periodic reload.")
         override def onComplete(): Unit = ()
       })
-    logger.info(s"MongoReadModelRepo: watching $label change stream.")
+    logger.info(s"MongoReadModelRepository: watching $label change stream.")
     new AutoCloseable { override def close(): Unit = Option(subRef.get()).foreach(_.unsubscribe()) }
   }
 
-  // Shared MongoClient owned by `MongoConnection`; this repo doesn't close it.
+  // Shared MongoClient owned by `MongoConnection`; this repository doesn't close it.
   def close(): Unit = ()
 
   private def isClusterClosed(ex: Throwable): Boolean =

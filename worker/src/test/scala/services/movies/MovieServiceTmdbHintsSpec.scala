@@ -76,8 +76,8 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   // ── Fix 1 — bus path: new director hint must bypass the negative cache ────
 
   "needsTmdbResolution (bus path)" should "bypass the isNegative short-circuit when a fresh director hint arrives" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val bus   = new InProcessEventBus()
     val svc   = new MovieService(cache, bus, kurozajacTmdb())
     bus.subscribe(svc.onMovieDetailsComplete)
@@ -103,8 +103,8 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   // negative cache. Without this the fix would turn every redundant
   // scrape-tick into a TMDB hammer for known misses.
   it should "still short-circuit on isNegative when the event carries no new hints" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val bus   = new InProcessEventBus()
     // Tmdb stub that throws on any access — proves we never tried.
     val tmdb  = new TmdbClient(http = new GetOnlyHttpFetch {
@@ -133,8 +133,8 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
       // TMDB never resolved; Helios reported director
       data = Map[Source, SourceData](Helios -> heliosSlot)
     )
-    val repo  = new InMemoryMovieRepo(Seq((Title, Year, seeded)))
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository(Seq((Title, Year, seeded)))
+    val cache = new CaffeineMovieCache(repository)
     val svc   = new MovieService(cache, new InProcessEventBus(), kurozajacTmdb())
 
     svc.retryUnresolvedTmdb()
@@ -170,8 +170,8 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   }
 
   "resolveTmdb" should "resolve a decorated title from its own original-title search candidate (no sibling needed)" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val bus   = new InProcessEventBus()
     // The decorated title finds nothing on TMDB; searching the cinema's original
     // title "Possession" finds the film. No sibling row exists and the event
@@ -202,8 +202,8 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   // from an empty cache, that cinema title never became a query, so the 5-cinema
   // variant resolved to a no-match while the corpus-wide direct path resolved it.
   "resolveStagingRecord" should "mine search candidates from the passed row's cinema titles (cache-free)" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val tmdb  = new TmdbClient(http = new StubFetch(Map(
       // The bare staging title finds nothing; the cinema-reported title does.
       "query=Backrooms"           -> """{"results":[{"id":1083381,"title":"Backrooms","original_title":"Backrooms","release_date":"2026-01-01","popularity":9.0}]}""",

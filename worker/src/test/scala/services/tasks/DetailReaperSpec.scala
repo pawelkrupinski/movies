@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.FakeDetailEnricher
 import services.events.{DomainEvent, EventBus, InProcessEventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
 
 import java.time.LocalDateTime
@@ -24,7 +24,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   /** Seed the cache with one KinoApollo film carrying (optionally) a filmUrl —
    *  exactly what a bare deferred scrape persists. */
   private def cacheWith(filmUrl: Option[String]) = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo(), new InProcessEventBus())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
     val bare  = CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = filmUrl,
       synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))

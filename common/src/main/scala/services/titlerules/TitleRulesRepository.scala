@@ -18,7 +18,7 @@ import scala.jdk.CollectionConverters._
  *  drag and keep a separate "last" list per record. `findAll` is derived: the
  *  domain still consumes a flat `Seq[TitleRule]`, which is just every record
  *  flattened. */
-trait TitleRulesRepo {
+trait TitleRulesRepository {
   def enabled: Boolean
   def loadRecords(): Seq[TitleRuleRecord]
   def upsertRecord(rec: TitleRuleRecord): Unit
@@ -95,7 +95,7 @@ object TitleRuleCodecs {
 /** In-memory rules store — the fallback when Mongo is disabled (tests, local
  *  runs without a DB) and the fake used in specs. No business logic: just a map.
  *  The real cache semantics come from `TitleRulesCache` wrapping this. */
-class InMemoryTitleRulesRepo(initial: Seq[TitleRuleRecord] = Nil) extends TitleRulesRepo {
+class InMemoryTitleRulesRepository(initial: Seq[TitleRuleRecord] = Nil) extends TitleRulesRepository {
   private val store = new ConcurrentHashMap[String, TitleRuleRecord]()
   initial.foreach(r => store.put(r.id, r))
 

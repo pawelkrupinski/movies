@@ -17,7 +17,7 @@ import services.titlerules.{RuleScope, TitleRule, TitleRuleDefaults, TitleRuleSe
  *  collide, then hydrate. */
 class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
 
-  private def repoOf(rows: StoredMovieRecord*): MovieRepo = new MovieRepo {
+  private def repositoryOf(rows: StoredMovieRecord*): MovieRepository = new MovieRepository {
     def enabled = true
     def findAll() = rows.toSeq
     def delete(t: String, y: Option[Int]) = ()
@@ -48,7 +48,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
 
   "rehydrate" should "union two docs a late merge-key rule collides, not drop one" in {
     withInstalledRules(TitleRuleSet(TitleRuleDefaults.all :+ kinoCafeRule)) {
-      val cache = new CaffeineMovieCache(repoOf(decorated, base))   // rehydrates at construction
+      val cache = new CaffeineMovieCache(repositoryOf(decorated, base))   // rehydrates at construction
       cache.entries should have size 1
       // The union keeps BOTH cinemas; the old last-write-wins kept only the
       // last-iterated row's slot.
@@ -59,7 +59,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
   it should "leave non-colliding rows as separate entries (no spurious union)" in {
     // Same two rows, but WITHOUT the /Kino Cafe rule they don't collide.
     withInstalledRules(TitleRuleDefaults.ruleSet) {
-      val cache = new CaffeineMovieCache(repoOf(decorated, base))
+      val cache = new CaffeineMovieCache(repositoryOf(decorated, base))
       cache.entries should have size 2
     }
   }
@@ -77,7 +77,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
         cinema -> SourceData(title = Some("Kumotry"), rawTitle = Some("Kumotry"), releaseYear = Some(year)))))
 
   "rehydrate" should "collapse two same-tmdbId rows that differ only by year, on load" in {
-    val cache = new CaffeineMovieCache(repoOf(
+    val cache = new CaffeineMovieCache(repositoryOf(
       resolvedRow(2025, Multikino), resolvedRow(2026, CinemaCityKinepolis)))
     cache.entries should have size 1
     cache.entries.head._2.cinemaData.keySet shouldBe Set(Multikino, CinemaCityKinepolis)
@@ -102,20 +102,20 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
         cinema -> SourceData(title = Some("Kumotry"), rawTitle = Some("Kumotry"), releaseYear = Some(2025)))))
 
   it should "attach an unresolved ±1-year row to its resolved same-title cluster, on load" in {
-    val cache = new CaffeineMovieCache(repoOf(
+    val cache = new CaffeineMovieCache(repositoryOf(
       unresolved2025Row(Multikino), resolved2026Row(CinemaCityKinepolis)))
     cache.entries should have size 1
     cache.entries.head._2.cinemaData.keySet shouldBe Set(Multikino, CinemaCityKinepolis)
   }
 
-  // A repo whose first `findAll` is empty (Mongo not ready at boot) then returns
+  // A repository whose first `findAll` is empty (Mongo not ready at boot) then returns
   // the row. Without retry the boot hydrate gives up on the empty result and the
   // cache starts empty — the row only ever arrives if it's later re-written
   // (via the change stream), so a quiescent row stays Mongo-only and invisible
   // to the in-memory fold/settle. With retry enabled, boot waits Mongo out.
-  private def flakeyRepo(row: StoredMovieRecord): MovieRepo = {
+  private def flakeyRepository(row: StoredMovieRecord): MovieRepository = {
     val calls = new java.util.concurrent.atomic.AtomicInteger(0)
-    new MovieRepo {
+    new MovieRepository {
       def enabled = true
       def findAll() = if (calls.getAndIncrement() == 0) Seq.empty else Seq(row)
       def delete(t: String, y: Option[Int]) = ()
@@ -127,12 +127,12 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
 
   "boot hydrate" should "retry an empty findAll (Mongo not ready) so quiescent rows still load" in {
     val cache = new CaffeineMovieCache(
-      flakeyRepo(base), bootHydrateMaxAttempts = 5, bootHydrateRetryMillis = 20)
+      flakeyRepository(base), bootHydrateMaxAttempts = 5, bootHydrateRetryMillis = 20)
     cache.entries should have size 1   // boot retried past the empty first findAll
   }
 
-  it should "give up after the configured attempts on a genuinely empty repo" in {
-    val cache = new CaffeineMovieCache(repoOf(), bootHydrateMaxAttempts = 3, bootHydrateRetryMillis = 5)
+  it should "give up after the configured attempts on a genuinely empty repository" in {
+    val cache = new CaffeineMovieCache(repositoryOf(), bootHydrateMaxAttempts = 3, bootHydrateRetryMillis = 5)
     cache.entries should have size 0  // no rows, and it didn't hang
   }
 }

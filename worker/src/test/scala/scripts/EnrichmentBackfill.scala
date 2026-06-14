@@ -3,7 +3,7 @@ package scripts
 import clients.TmdbClient
 import models.MovieRecord
 import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
-import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieService, StoredMovieRecord}
+import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieService, StoredMovieRecord}
 import services.events.InProcessEventBus
 import tools.{DaemonExecutors, RealHttpFetch}
 
@@ -30,8 +30,8 @@ object EnrichmentBackfill {
   private case class Failed(title: String, year: Option[Int], before: MovieRecord) extends Outcome
 
   def main(args: Array[String]): Unit = {
-    val repo = new MongoMovieRepo()
-    if (!repo.enabled) {
+    val repository = new MongoMovieRepository()
+    if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)
     }
@@ -40,7 +40,7 @@ object EnrichmentBackfill {
     // and IMDb stages synchronously. MC / RT URL discovery + score scrape
     // now live in their dedicated ratings classes; the script invokes them
     // directly per row so a single backfill pass covers everything.
-    val cache       = new CaffeineMovieCache(repo)
+    val cache       = new CaffeineMovieCache(repository)
     val tmdb        = new TmdbClient(new RealHttpFetch)
     val imdbRatings = new ImdbRatings(cache, new ImdbClient(new RealHttpFetch))
     val mcRatings   = new MetascoreRatings(cache, tmdb, new MetacriticClient(new RealHttpFetch))
@@ -48,7 +48,7 @@ object EnrichmentBackfill {
     val fwRatings   = new FilmwebRatings(cache, tmdb, new FilmwebClient(new RealHttpFetch))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
-    val rows = repo.findAll().sortBy(r => (r.title.toLowerCase, r.year))
+    val rows = repository.findAll().sortBy(r => (r.title.toLowerCase, r.year))
     val Workers = 5
     println(s"${rows.size} rows in Mongo · re-enriching in parallel ($Workers workers)…\n")
 
@@ -112,7 +112,7 @@ object EnrichmentBackfill {
     val outcomes = Await.result(Future.sequence(tasks), 30.minutes)
     ec.shutdown()
     service.stop()
-    repo.close()
+    repository.close()
 
     val changed   = outcomes.collect { case c: Changed   => c }
     val refreshed = outcomes.collect { case r: Refreshed => r }

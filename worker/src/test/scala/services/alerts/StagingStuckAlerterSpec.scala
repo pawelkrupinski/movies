@@ -3,7 +3,7 @@ package services.alerts
 import models.{Helios, Multikino, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.staging.InMemoryStagingRepo
+import services.staging.InMemoryStagingRepository
 
 import java.time.{Clock, Instant, ZoneId, ZoneOffset}
 import scala.collection.mutable.ListBuffer
@@ -38,16 +38,16 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
     (cinema, title, year, MovieRecord(tmdbId = tmdbId, tmdbNoMatch = noMatch,
       data = Map[Source, SourceData](cinema -> SourceData(title = Some(title), releaseYear = year))))
 
-  private def newAlerter(repo: InMemoryStagingRepo, clock: MutableClock)
+  private def newAlerter(repository: InMemoryStagingRepository, clock: MutableClock)
   : (StagingStuckAlerter, ListBuffer[String]) = {
     val sent = ListBuffer.empty[String]
-    (new StagingStuckAlerter(repo, s => { sent += s; () }, stuckThreshold = 1.hour, clock = clock), sent)
+    (new StagingStuckAlerter(repository, s => { sent += s; () }, stuckThreshold = 1.hour, clock = clock), sent)
   }
 
   "StagingStuckAlerter" should "alert once after a row stays unresolved past the threshold" in {
     val clock = new MutableClock(Start)
-    val repo  = new InMemoryStagingRepo(Seq(staged(Helios, "Brand New Film", Some(2026))))
-    val (a, sent) = newAlerter(repo, clock)
+    val repository  = new InMemoryStagingRepository(Seq(staged(Helios, "Brand New Film", Some(2026))))
+    val (a, sent) = newAlerter(repository, clock)
 
     a.runOnce() shouldBe None              // just observed — not stuck yet
     sent shouldBe empty
@@ -71,10 +71,10 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
 
   it should "never alert on a concluded row (TMDB hit or definitive no-match)" in {
     val clock = new MutableClock(Start)
-    val repo  = new InMemoryStagingRepo(Seq(
+    val repository  = new InMemoryStagingRepository(Seq(
       staged(Helios,    "Resolved Film", Some(2026), tmdbId = Some(123)),
       staged(Multikino, "No Match Film", Some(2026), noMatch = true)))
-    val (a, sent) = newAlerter(repo, clock)
+    val (a, sent) = newAlerter(repository, clock)
 
     a.runOnce()
     clock.advance(3.hours)
@@ -84,13 +84,13 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
 
   it should "not alert a row that resolves before crossing the threshold" in {
     val clock = new MutableClock(Start)
-    val repo  = new InMemoryStagingRepo(Seq(staged(Helios, "Quick Film", Some(2026))))
-    val (a, sent) = newAlerter(repo, clock)
+    val repository  = new InMemoryStagingRepository(Seq(staged(Helios, "Quick Film", Some(2026))))
+    val (a, sent) = newAlerter(repository, clock)
 
     a.runOnce()
     clock.advance(30.minutes)
     // Resolves (folds out / gets a tmdbId) before the hour is up.
-    repo.upsert(Helios, "Quick Film", Some(2026),
+    repository.upsert(Helios, "Quick Film", Some(2026),
       MovieRecord(tmdbId = Some(999),
         data = Map[Source, SourceData](Helios -> SourceData(title = Some("Quick Film"), releaseYear = Some(2026)))))
     clock.advance(40.minutes)              // 70m elapsed, but now concluded
@@ -100,11 +100,11 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
 
   it should "batch several newly-stuck films into one message, one bullet per film" in {
     val clock = new MutableClock(Start)
-    val repo  = new InMemoryStagingRepo(Seq(
+    val repository  = new InMemoryStagingRepository(Seq(
       staged(Helios,    "Alpha", Some(2026)),
       staged(Multikino, "Alpha", Some(2026)),   // same film, two cinemas → one bullet
       staged(Helios,    "Bravo", Some(2025))))
-    val (a, sent) = newAlerter(repo, clock)
+    val (a, sent) = newAlerter(repository, clock)
 
     a.runOnce()
     clock.advance(61.minutes)
@@ -119,8 +119,8 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
 
   it should "re-arm a film that vanishes then reappears" in {
     val clock = new MutableClock(Start)
-    val repo  = new InMemoryStagingRepo(Seq(staged(Helios, "Comeback Film", Some(2026))))
-    val (a, sent) = newAlerter(repo, clock)
+    val repository  = new InMemoryStagingRepository(Seq(staged(Helios, "Comeback Film", Some(2026))))
+    val (a, sent) = newAlerter(repository, clock)
 
     a.runOnce()
     clock.advance(61.minutes)
@@ -128,11 +128,11 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
     sent.size shouldBe 1
 
     // Cinema stops listing it → pruned from staging; tracking clears.
-    repo.delete(Helios, "Comeback Film", Some(2026))
+    repository.delete(Helios, "Comeback Film", Some(2026))
     a.runOnce() shouldBe None
 
     // It comes back as a fresh newcomer; the clock starts over.
-    repo.upsert(Helios, "Comeback Film", Some(2026),
+    repository.upsert(Helios, "Comeback Film", Some(2026),
       MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some("Comeback Film"), releaseYear = Some(2026)))))
     a.runOnce() shouldBe None              // freshly re-seen → not stuck yet
     sent.size shouldBe 1

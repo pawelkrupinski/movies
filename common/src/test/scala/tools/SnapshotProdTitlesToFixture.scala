@@ -1,7 +1,7 @@
 package tools
 
 import services.MongoConnection
-import services.movies.MongoMovieRepo
+import services.movies.MongoMovieRepository
 
 import java.nio.file.{Files, Paths}
 import scala.jdk.CollectionConverters._
@@ -24,9 +24,9 @@ object SnapshotProdTitlesToFixture {
 
   def main(args: Array[String]): Unit = {
     val conn = MongoConnection.fromEnv(required = true)
-    val repo = new MongoMovieRepo(conn.database, fallbackToOwnInit = false)
+    val repository = new MongoMovieRepository(conn.database, fallbackToOwnInit = false)
     try {
-      val records = repo.findAll()
+      val records = repository.findAll()
       val titles = records
         .flatMap(r => r.record.cinemaTitles + r.title)
         .map(_.trim).filter(_.nonEmpty).distinct.sorted
@@ -34,7 +34,7 @@ object SnapshotProdTitlesToFixture {
       Files.write(Out, titles.asJava)
       println(s"Wrote ${titles.size} distinct prod titles from ${records.size} records to $Out")
     } finally {
-      repo.close()
+      repository.close()
       conn.close()
     }
   }

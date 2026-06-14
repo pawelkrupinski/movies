@@ -38,7 +38,7 @@ class CanonicalSpellingSpec extends AnyFlatSpec with Matchers {
   )
 
   private def finalRow(order: Seq[CinemaMovie]): (String, Option[Int], Set[Cinema]) = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
     order.foreach(v => cache.recordCinemaScrape(v.cinema, Seq(v)))
     cache.canonicalizeBySanitize()
     val rows = cache.snapshot()
@@ -87,7 +87,7 @@ class CanonicalSpellingSpec extends AnyFlatSpec with Matchers {
   // 2026 by others, TMDB dated 2026), the merged row must key at TMDB's year,
   // NOT the lowest cinema-reported one the old rule picked.
   it should "key a resolved film at TMDB's year, overriding a lower cinema-reported year" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
     // Resolved row — TMDB dated this film 2026.
     cache.put(cache.keyOf("Dzień objawienia", Some(2026)),
       MovieRecord(tmdbId = Some(1275779), data = Map[Source, SourceData](

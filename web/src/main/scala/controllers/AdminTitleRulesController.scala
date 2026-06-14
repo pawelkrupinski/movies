@@ -3,8 +3,8 @@ package controllers
 import models.Cinema
 import play.api.libs.json._
 import play.api.mvc._
-import services.movies.{MovieRepo, NormalizationReportRepo, RuleMergePreview, TitleNormalizer}
-import services.titlerules.{RuleScope, TitleRule, TitleRuleKey, TitleRuleRecord, TitleRuleSet, TitleRulesRepo}
+import services.movies.{MovieRepository, NormalizationReportRepository, RuleMergePreview, TitleNormalizer}
+import services.titlerules.{RuleScope, TitleRule, TitleRuleKey, TitleRuleRecord, TitleRuleSet, TitleRulesRepository}
 
 import java.util.UUID
 
@@ -24,17 +24,17 @@ import java.util.UUID
 class AdminTitleRulesController(
   cc:             ControllerComponents,
   adminAction:    AdminAction,
-  titleRulesRepo: TitleRulesRepo,
+  titleRulesRepository: TitleRulesRepository,
   // On-demand corpus read only (the rule-merge preview). The web doesn't keep
   // the `movies` model warm, so the preview pulls a fresh snapshot from Mongo.
-  movieRepo:      MovieRepo,
-  reportRepo:     NormalizationReportRepo
+  movieRepository:      MovieRepository,
+  reportRepository:     NormalizationReportRepository
 ) extends AbstractController(cc) {
 
   import AdminTitleRulesController._
 
   def index(): Action[AnyContent] = adminAction {
-    Ok(views.html.admin.titleRulesEditor(titleRulesRepo.loadRecords().sortBy(recordSortKey), cinemaOptions))
+    Ok(views.html.admin.titleRulesEditor(titleRulesRepository.loadRecords().sortBy(recordSortKey), cinemaOptions))
   }
 
   def save(): Action[JsValue] = adminAction(parse.json) { request =>
@@ -43,7 +43,7 @@ class AdminTitleRulesController(
       case Right(rec) =>
         (rec.rules ++ rec.lastRules).find(!_.patternValid) match {
           case Some(bad) => BadRequest(Json.obj("error" -> s"Invalid regex: ${bad.pattern}"))
-          case None      => titleRulesRepo.upsertRecord(rec); Ok(recordToJson(rec))
+          case None      => titleRulesRepository.upsertRecord(rec); Ok(recordToJson(rec))
         }
     }
   }
@@ -51,7 +51,7 @@ class AdminTitleRulesController(
   /** The realized outcome of the last rule-change backfill (written by the
    *  worker) — "what actually got merged / split / re-enriched". */
   def report(): Action[AnyContent] = adminAction {
-    reportRepo.readLatest() match {
+    reportRepository.readLatest() match {
       case None => Ok(Json.obj("empty" -> true))
       case Some(r) => Ok(Json.obj(
         "atEpochMs" -> r.atEpochMs, "merges" -> r.merges,
@@ -61,7 +61,7 @@ class AdminTitleRulesController(
 
   def delete(): Action[JsValue] = adminAction(parse.json) { request =>
     (request.body \ "id").asOpt[String] match {
-      case Some(id) => titleRulesRepo.deleteRecord(id); Ok(Json.obj("deleted" -> id))
+      case Some(id) => titleRulesRepository.deleteRecord(id); Ok(Json.obj("deleted" -> id))
       case None     => BadRequest(Json.obj("error" -> "missing id"))
     }
   }
@@ -78,7 +78,7 @@ class AdminTitleRulesController(
           case Some(err) => BadRequest(Json.obj("error" -> err))
           case None =>
             val draft   = TitleRuleSet(parsed.collect { case Right(r) => r })
-            val entries = RuleMergePreview.entriesFrom(movieRepo.findAll())
+            val entries = RuleMergePreview.entriesFrom(movieRepository.findAll())
             val merges  = RuleMergePreview.newMerges(TitleNormalizer.currentRules, draft, entries)
             Ok(Json.obj(
               "newMerges" -> merges.take(200).map(g => Json.obj(
@@ -103,7 +103,7 @@ class AdminTitleRulesController(
           case Some(err) => BadRequest(Json.obj("error" -> err))
           case None =>
             val draft  = TitleRuleSet(parsed.collect { case Right(r) => r })
-            val titles = movieRepo.findAll().map(_.title).filter(_.nonEmpty)
+            val titles = movieRepository.findAll().map(_.title).filter(_.nonEmpty)
             Ok(Json.obj("affected" -> JsArray(draft.transientAffected(titles).map(affectedToJson))))
         }
     }

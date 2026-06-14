@@ -62,7 +62,7 @@ trait MovieCacheReader {
 }
 
 /**
- * In-memory enrichment store with write-through to the underlying `MovieRepo`.
+ * In-memory enrichment store with write-through to the underlying `MovieRepository`.
  * Adds the mutating surface on top of `MovieCacheReader`.
  *
  * Per CLAUDE.md DIP guidance: consumers depend on this trait (or the narrower
@@ -75,8 +75,8 @@ trait MovieCache extends MovieCacheReader {
    *  `(CinemaMovie, CacheKey, isNew)` triple per input movie. */
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey, Boolean)]
 
-  /** Reload the positive cache from the repo: drop every in-memory positive
-   *  entry, then `repo.findAll()` and put each row. Returns the number of
+  /** Reload the positive cache from the repository: drop every in-memory positive
+   *  entry, then `repository.findAll()` and put each row. Returns the number of
    *  rows loaded. Leaves the negative cache (24h-TTL TMDB miss markers)
    *  alone — negatives aren't persisted in Mongo, so they're orthogonal to
    *  this reload. Used at construction and by the admin rehydrate endpoint. */
@@ -114,7 +114,7 @@ trait MovieCache extends MovieCacheReader {
 }
 
 /**
- * Caffeine-backed `MovieCache` with write-through to `MovieRepo`.
+ * Caffeine-backed `MovieCache` with write-through to `MovieRepository`.
  *
  * Two caches:
  *   - **Positive**: successful enrichments, never expire in-process (they
@@ -130,7 +130,7 @@ trait MovieCache extends MovieCacheReader {
  * `MovieService` (which owns the worker pool + dedup).
  */
 class CaffeineMovieCache(
-  repo: MovieRepo,
+  repository: MovieRepository,
   bus:  EventBus = new InProcessEventBus(),
   // Boot-hydrate retry — OFF by default (0 attempts) so tests and a genuine
   // cold start pay nothing. Prod turns it on via the Fly env
@@ -142,9 +142,9 @@ class CaffeineMovieCache(
   // `movies`) is diverted to this staging sink — one row per `cinema|title|year`
   // — to incubate until TMDB concludes, instead of landing in the merged
   // `movies` cache; known films keep the direct path. The worker wires this
-  // `Some(stagingRepo)`. `None` (the default, used by unit tests that exercise the
+  // `Some(stagingRepository)`. `None` (the default, used by unit tests that exercise the
   // cache directly) disables diversion — every scrape lands in `movies`.
-  staging: Option[services.staging.StagingRepo] = None
+  staging: Option[services.staging.StagingRepository] = None
 ) extends MovieCache with Stoppable with Logging {
 
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
@@ -228,7 +228,7 @@ class CaffeineMovieCache(
    *  same tmdbId, the write is folded onto that canonical row instead of
    *  creating a duplicate — the victim's cinema-side data is unioned in via
    *  `MovieRecordMerge.union`, the source key is dropped from both cache and
-   *  repo.
+   *  repository.
    *
    *  Identity check: **same `tmdbId` AND same normalised `cleanTitle`**.
    *  This narrows the gate to the *year-divergence* case ("Viridiana"
@@ -248,7 +248,7 @@ class CaffeineMovieCache(
    *  comparison — this gate is the one remaining bridge that needed an
    *  explicit guard.
    *
-   *  This is the only persist path in the codebase — `MovieRepo.upsert` is
+   *  This is the only persist path in the codebase — `MovieRepository.upsert` is
    *  called from nowhere else — so the gate is the chokepoint that prevents
    *  new tmdbId-duplicates from ever being written. */
   private[services] def put(key: CacheKey, e: MovieRecord): Unit = e.tmdbId match {
@@ -266,7 +266,7 @@ class CaffeineMovieCache(
   private def persist(key: CacheKey, e: MovieRecord): Unit = {
     val clean = withoutZeroRatings(e)
     positive.put(key, clean)
-    repo.upsert(key.cleanTitle, key.year, clean)
+    repository.upsert(key.cleanTitle, key.year, clean)
     touch()
   }
 
@@ -367,7 +367,7 @@ class CaffeineMovieCache(
    *  `CacheKey` equality is by NORMALISED title + year, so a case/separator
    *  variant compares EQUAL to the canonical even though its stored string
    *  differs (and the Caffeine-side first-inserted key can disagree with the
-   *  repo's last-written title). So `invalidate` every key, then `put` under the
+   *  repository's last-written title). So `invalidate` every key, then `put` under the
    *  canonical string, rewriting BOTH stores — but only when something differs. */
   private def collapseCluster(cluster: Seq[(CacheKey, MovieRecord)]): Unit = {
     val (canonical, merged) = FilmCanonicalizer.canonical(cluster)
@@ -477,7 +477,7 @@ class CaffeineMovieCache(
     persist(canonical, merged)
     if (victim != canonical) {
       positive.invalidate(victim)
-      repo.delete(victim.cleanTitle, victim.year)
+      repository.delete(victim.cleanTitle, victim.year)
       logger.info(s"Folded duplicate '${victim.cleanTitle}' (${victim.year.getOrElse("—")}) " +
                   s"into '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}) — same tmdbId=${newRec.tmdbId.get}.")
     }
@@ -492,7 +492,7 @@ class CaffeineMovieCache(
    *  The updater runs inside Caffeine's per-key compute lock so two
    *  concurrent rating updates on the same key serialize cleanly. The Mongo
    *  side uses `replaceOne(upsert=false)` for the same no-resurrect
-   *  guarantee against a concurrent `repo.delete`.
+   *  guarantee against a concurrent `repository.delete`.
    *
    *  The updater takes the CURRENT value (the freshest cached row) rather
    *  than a captured snapshot — so a listener that read the row, made a
@@ -510,7 +510,7 @@ class CaffeineMovieCache(
     // fetch already happened in the caller; only the cache write is held here.
     withTitleLock(key.cleanTitle) {
     // Capture both `before` and `after` inside the Caffeine compute lock so
-    // the pair is atomic. The repo write below uses the pair to compute a
+    // the pair is atomic. The repository write below uses the pair to compute a
     // per-field diff — out-of-band Mongo edits to fields the updater didn't
     // touch (e.g. `FilmwebUrlAudit` clearing `filmwebUrl` while we're
     // bumping `filmwebRating`) survive the write.
@@ -529,10 +529,10 @@ class CaffeineMovieCache(
       // each such no-op write is an oplog entry plus a change-stream
       // `updateLookup` full-document read per row, per pass — the dominant load
       // on the shared-CPU Mongo. The row is already in the desired state, so
-      // report success without touching the repo (or firing the change stream).
+      // report success without touching the repository (or firing the change stream).
       true
     } else {
-      repo.updateIfPresent(key.cleanTitle, key.year, before.get(), updated)
+      repository.updateIfPresent(key.cleanTitle, key.year, before.get(), updated)
       touch()
       true
     }
@@ -560,7 +560,7 @@ class CaffeineMovieCache(
    *  a stale row before re-keying it under a corrected (title, year). */
   private[services] def invalidate(key: CacheKey): Unit = {
     positive.invalidate(key)
-    repo.delete(key.cleanTitle, key.year)
+    repository.delete(key.cleanTitle, key.year)
     touch()
   }
 
@@ -902,9 +902,9 @@ class CaffeineMovieCache(
     // that disappeared from Mongo since the last sync.
     import scala.jdk.CollectionConverters._
     val tFindAllStart = System.nanoTime()
-    val rows          = repo.findAll()
+    val rows          = repository.findAll()
     val tFindAllMs    = (System.nanoTime() - tFindAllStart) / 1000000
-    // `repo.findAll()` swallows every Mongo failure into `Seq.empty` — a
+    // `repository.findAll()` swallows every Mongo failure into `Seq.empty` — a
     // TLS-selector race, a connection-pool churn, an Atlas-side reset all
     // surface as "no rows". Treating that as "Mongo is genuinely empty,
     // evict every cached row" wipes the live cache on every transient
@@ -926,7 +926,7 @@ class CaffeineMovieCache(
     // surrounding flow stays the same.
     if (rows.isEmpty && cachedSize == 0) {
       logger.warn(s"MovieCache rehydrate: findAll() returned empty on a cold cache (findAll=${tFindAllMs}ms) — " +
-                  "Mongo connection disabled, query timed out, or repo genuinely empty. " +
+                  "Mongo connection disabled, query timed out, or repository genuinely empty. " +
                   "Pages will render with no films until the next successful tick.")
     }
     val tPostFetch = System.nanoTime()
@@ -967,7 +967,7 @@ class CaffeineMovieCache(
   // `db.movies.update(...)` to fix one row — bypass the in-memory cache. Two
   // mechanisms keep the cache current:
   //
-  //  1. INCREMENTAL (primary): a change stream (`repo.watchUpserts`) applies
+  //  1. INCREMENTAL (primary): a change stream (`repository.watchUpserts`) applies
   //     each inserted/updated/replaced row to the cache the moment it lands in
   //     Mongo — O(changes), near-instant, and costs nothing when nothing
   //     changes. This replaced a periodic full `findAll()` that re-read the
@@ -1001,7 +1001,7 @@ class CaffeineMovieCache(
   }
 
   def start(): Unit = {
-    watchHandle = repo.watchUpserts(applyUpsert)
+    watchHandle = repository.watchUpserts(applyUpsert)
     logger.info(
       s"MovieCache incremental change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — backstop only"}; " +
       s"backstop rehydrate every ${BackstopIntervalSeconds}s.")

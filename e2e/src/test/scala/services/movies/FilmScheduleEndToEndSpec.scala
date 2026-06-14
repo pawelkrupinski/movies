@@ -25,7 +25,7 @@ import scala.collection.mutable
  * `*Ratings` listeners, `ImdbIdResolver`, `UnscreenedCleanup`). Reads
  * cinema HTML / JSON and TMDB / IMDb / MC / RT / Filmweb responses
  * from `test/resources/fixtures/08-06-2026/`. No Play server, no real
- * network, no stubs — the only test-only swaps are `InMemoryMovieRepo`
+ * network, no stubs — the only test-only swaps are `InMemoryMovieRepository`
  * and `FakeHttpFetch`.
  *
  * The flow:

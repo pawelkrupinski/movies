@@ -4,8 +4,8 @@ import com.mongodb.WriteConcern
 import org.mongodb.scala.MongoClient
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.MongoMovieRepo
-import services.readmodel.MongoReadModelRepo
+import services.movies.MongoMovieRepository
+import services.readmodel.MongoReadModelRepository
 
 /**
  * The `movies` collection and the derived read-model collections are written with
@@ -26,11 +26,11 @@ class RelaxedWriteConcernSpec extends AnyFlatSpec with Matchers {
   private def neverConnects =
     MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200").getDatabase("test")
 
-  "MongoMovieRepo" should "write the `movies` collection with w:1 j:false" in {
-    new MongoMovieRepo(sharedDb = Some(neverConnects)).collectionWriteConcern shouldBe Some(relaxed)
+  "MongoMovieRepository" should "write the `movies` collection with w:1 j:false" in {
+    new MongoMovieRepository(sharedDb = Some(neverConnects)).collectionWriteConcern shouldBe Some(relaxed)
   }
 
-  "MongoReadModelRepo" should "write the derived collections with w:1 j:false" in {
-    new MongoReadModelRepo(Some(neverConnects)).collectionWriteConcerns.distinct shouldBe Seq(relaxed)
+  "MongoReadModelRepository" should "write the derived collections with w:1 j:false" in {
+    new MongoReadModelRepository(Some(neverConnects)).collectionWriteConcerns.distinct shouldBe Seq(relaxed)
   }
 }

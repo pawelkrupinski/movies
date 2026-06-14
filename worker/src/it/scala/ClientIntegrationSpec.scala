@@ -31,7 +31,7 @@ import tools.TestWiring
 object ClientIntegrationSpec {
   // Singleton: `ParallelTestExecution` mixes in `OneInstancePerTest`, so a
   // class-level `val wiring = new TestWiring {}` would build one Wiring per
-  // test — 10 simultaneous MongoMovieRepo connections, hydrations, etc.
+  // test — 10 simultaneous MongoMovieRepository connections, hydrations, etc.
   // We just want one production-shaped graph shared across all parallel
   // network probes.
   private val wiring = new TestWiring {}

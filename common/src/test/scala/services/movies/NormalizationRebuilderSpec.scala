@@ -15,7 +15,7 @@ import services.titlerules.{RuleScope, TitleRule, TitleRuleSet}
  */
 class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
 
-  private val disabledRepo = new MovieRepo {
+  private val disabledRepository = new MovieRepository {
     def enabled = false
     def findAll() = Seq.empty
     def delete(title: String, year: Option[Int]) = ()
@@ -28,7 +28,7 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
   private def mkSlot   = SourceData(title = Some("Anora"),                rawTitle = Some("Anora"),                releaseYear = Some(2024))
 
   private def staleCache(): CaffeineMovieCache = {
-    val cache = new CaffeineMovieCache(disabledRepo)
+    val cache = new CaffeineMovieCache(disabledRepository)
     // Row A: scraped before the rule — stored under the un-stripped key.
     cache.put(cache.keyOf("Ladies Night - Anora", Some(2024)),
       MovieRecord(data = Map[Source, SourceData](CinemaCityKinepolis -> ccSlot)))
@@ -63,7 +63,7 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
   }
 
   "rebuild" should "split a row whose cinema slots now map to different keys (un-merge)" in {
-    val cache = new CaffeineMovieCache(disabledRepo)
+    val cache = new CaffeineMovieCache(disabledRepository)
     // A single row that bundles two genuinely different films (the state left
     // behind after a too-broad rule that merged them is deleted), enriched.
     val bundled = MovieRecord(
@@ -88,7 +88,7 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not spawn a phantom empty-titled row from a slot whose rawTitle cleans to empty" in {
-    val cache = new CaffeineMovieCache(disabledRepo)
+    val cache = new CaffeineMovieCache(disabledRepository)
     // A healthy row whose two cinemas both screen "Dobry chłopiec", but one
     // slot's verbatim rawTitle is blank (e.g. a scraper that stored an empty
     // raw string, or a rule that strips it to nothing). The blank raw must NOT
@@ -114,7 +114,7 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "prune a pre-existing empty-titled phantom row (all-blank slot)" in {
-    val cache = new CaffeineMovieCache(disabledRepo)
+    val cache = new CaffeineMovieCache(disabledRepository)
     // The junk left behind by the old bug: a row keyed by the empty string,
     // holding a slot with no usable title at all. The rebuild must drop it.
     cache.put(CacheKey("", Some(1999)),
@@ -129,7 +129,7 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not split a row over a titleless detail-only slot (CinemaCityChain)" in {
-    val cache = new CaffeineMovieCache(disabledRepo)
+    val cache = new CaffeineMovieCache(disabledRepository)
     // The real shape behind the spurious "Michael ⟶ Michael" split: a healthy
     // row whose Cinema City detail is shared per-network into a synthetic
     // `CinemaCityChain` slot that carries enrichment but NO title/rawTitle.
@@ -152,7 +152,7 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not split a row whose slots carry mixed per-slot release years" in {
-    val cache = new CaffeineMovieCache(disabledRepo)
+    val cache = new CaffeineMovieCache(disabledRepository)
     // The real shape behind "Obsesja ⟶ Obsesja": one row, same title everywhere,
     // but the cinemas disagree on the release year (some 2025, some 2026, some
     // none). keyOfSlot must key every slot off the ROW's year, not the slot's,
@@ -173,7 +173,7 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not split a row when only rawTitle keeps a client-stripped decoration (DUB/2D DUBBING)" in {
-    val cache = new CaffeineMovieCache(disabledRepo)
+    val cache = new CaffeineMovieCache(disabledRepository)
     // The Władcy Wszechświata shape: the cinema CLIENT strips a format/language
     // tag ("DUB", "2D DUBBING") into a clean `title`, but `rawTitle` keeps it.
     // keyOfSlot must key off the cleaned title (as a fresh scrape does), not the
@@ -196,7 +196,7 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
   }
 
   "reEnrichSearchChanges" should "re-resolve only rows whose apiQuery changed" in {
-    val cache = new CaffeineMovieCache(disabledRepo)
+    val cache = new CaffeineMovieCache(disabledRepository)
     // Row keyed by its display title incl. the programme prefix (search-tier
     // strips it; structural/key keeps it).
     cache.put(cache.keyOf("Kino bez barier: Freak Show", None),
@@ -220,7 +220,7 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "re-resolve when toggling a rule's `last` flag reorders the search tier" in {
-    val cache = new CaffeineMovieCache(disabledRepo)
+    val cache = new CaffeineMovieCache(disabledRepository)
     val aabKey = cache.keyOf("aab", None)
     cache.put(aabKey, MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("aab")))))
     val zzzKey = cache.keyOf("zzz", None)

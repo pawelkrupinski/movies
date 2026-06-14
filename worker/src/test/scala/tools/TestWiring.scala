@@ -26,7 +26,7 @@ trait TestWiring extends WorkerWiring {
   override def scrapeCities: Set[String] = ScrapeCities.allCities
 
   // Pin a DISABLED Mongo connection. Tests get their movie data from
-  // `InMemoryMovieRepo` / fixtures and don't exercise the user repos, so a real
+  // `InMemoryMovieRepository` / fixtures and don't exercise the user repos, so a real
   // Mongo is never needed — but the production `fromEnv` would still CONNECT to
   // whatever `MONGODB_URI` (`.env.local`) is reachable. With a developer's
   // `flyctl proxy 27017` tunnel up, that hydrated real PRODUCTION enrichment
@@ -91,13 +91,13 @@ trait TestWiring extends WorkerWiring {
   override lazy val movieService =
     new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.ec("enrichment-worker"))
 
-  // Staging repo/folder are Mongo-backed in prod; pin in-memory here — TestWiring's
-  // Mongo is disabled, so the inherited MongoStagingRepo would silently drop the
+  // Staging repository/folder are Mongo-backed in prod; pin in-memory here — TestWiring's
+  // Mongo is disabled, so the inherited MongoStagingRepository would silently drop the
   // diverted newcomers and MongoStagingFolder couldn't open a transaction. The
   // fixture wiring drives promote+fold explicitly (see FixtureTestWiring.drainStaging).
-  override lazy val stagingRepo: services.staging.StagingRepo = new services.staging.InMemoryStagingRepo()
+  override lazy val stagingRepository: services.staging.StagingRepository = new services.staging.InMemoryStagingRepository()
   override lazy val stagingFolder: services.staging.StagingFolder =
-    new services.staging.InMemoryStagingFolder(stagingRepo, movieRepo)
+    new services.staging.InMemoryStagingFolder(stagingRepository, movieRepository)
 
   // Don't retry cinema scrapes in fixture replay: a missing fixture is permanent,
   // so backoff per fixture-less cinema just multiplies fixture-server boot time
@@ -206,7 +206,7 @@ trait TestWiring extends WorkerWiring {
    *  (TMDB-fixture-less) rows — `concludeEnrichment` then marks those still-
    *  unresolved `movies` rows `tmdbNoMatch`, the same end state a no-fixture film
    *  reaches on the direct route. The harness has no `movies` change stream, so
-   *  finally rehydrate the cache from the repo (prod's stream does this), which
+   *  finally rehydrate the cache from the repository (prod's stream does this), which
    *  also re-settles the freshly-folded rows.
    *
    *  Staging ingest is always-on in prod, so EVERY newcomer is diverted to
@@ -216,14 +216,14 @@ trait TestWiring extends WorkerWiring {
   def drainStaging(): Unit = {
     var folded = true
     while (folded) {
-      val before = stagingRepo.findAll().size
+      val before = stagingRepository.findAll().size
       if (before == 0) folded = false
       else {
         try stagingPromoter.runOnce() catch { case _: Exception => () }
-        folded = stagingRepo.findAll().size < before
+        folded = stagingRepository.findAll().size < before
       }
     }
-    stagingRepo.findAll().map(r => (r.title, r.year)).distinct.foreach { case (t, y) =>
+    stagingRepository.findAll().map(r => (r.title, r.year)).distinct.foreach { case (t, y) =>
       try stagingFolder.foldFilm(t, y) catch { case _: Exception => () }
     }
     movieCache.rehydrate()

@@ -1,7 +1,7 @@
 package clients.tools
 
 import services.cinemas.{MultikinoClient, ZyteFallback}
-import services.movies.InMemoryMovieRepo
+import services.movies.InMemoryMovieRepository
 import tools.{DaemonExecutors, HttpFetch, RealHttpFetch, TestWiring}
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -48,7 +48,7 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  *      boot, so fixtures for any "row with no current screenings" code
  *      path are captured.
  *
- *   4. `unscreenedCleanup.stop()` / `movieRepo.close()` — close the
+ *   4. `unscreenedCleanup.stop()` / `movieRepository.close()` — close the
  *      remaining schedulers + Mongo client. The pool threads are
  *      daemon-flagged, so the JVM would exit cleanly without this, but if
  *      anyone ever flips a thread to non-daemon, the explicit shutdown
@@ -71,7 +71,7 @@ object RecordAllDataToFixture extends TestWiring {
   // always correct regardless of init order.
   def captureDate: String = tools.Env.get("KINOWO_FIXTURE_DIR").getOrElse("today")
 
-  override lazy val movieRepo = new InMemoryMovieRepo()
+  override lazy val movieRepository = new InMemoryMovieRepository()
   override lazy val httoFetch = new RecordingHttpFetch(captureDate, new RealHttpFetch())
 
   // Multikino and Kino Kameralne (biletyna) sit behind a WAF that blocks our
@@ -184,7 +184,7 @@ object RecordAllDataToFixture extends TestWiring {
 
   // 5. Close remaining schedulers + Mongo.
   unscreenedCleanup.stop()
-  movieRepo.close()
+  movieRepository.close()
   }
 
   /** Write `test/resources/fixtures/$captureDate/CAPTURE_DATE` recording the

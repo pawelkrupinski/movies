@@ -3,7 +3,7 @@ package services.readmodel
 import models.{CityScreening, ResolvedMovie}
 import play.api.Logging
 import services.Stoppable
-import services.movies.{MovieRepo, StoredMovieRecord}
+import services.movies.{MovieRepository, StoredMovieRecord}
 import tools.{DaemonExecutors, Env}
 
 import java.util.concurrent.TimeUnit
@@ -16,7 +16,7 @@ import scala.util.Try
  * Two mechanisms, mirroring `MovieCache`'s sync design:
  *
  *  1. INCREMENTAL — subscribes to the `movies` change stream
- *     (`MovieRepo.watchUpserts`); each changed row is re-projected and the
+ *     (`MovieRepository.watchUpserts`); each changed row is re-projected and the
  *     resulting docs are diffed against the last projection so only the docs
  *     that actually changed are written.
  *  2. RECONCILE (backstop) — a periodic full re-projection that also prunes
@@ -37,7 +37,7 @@ import scala.util.Try
  * so the in-memory last-projection state needs no further synchronisation.
  */
 class ReadModelProjector(
-  movieRepo: MovieRepo,
+  movieRepository: MovieRepository,
   writer:    ReadModelWriter,
   reader:    ReadModelReader
 ) extends Stoppable with Logging {
@@ -48,7 +48,7 @@ class ReadModelProjector(
 
   private val scheduler        = DaemonExecutors.scheduler("read-model-projector")
   private val ReconcileSeconds = Env.positiveLong("KINOWO_READMODEL_RECONCILE_SECONDS", 1800L)
-  // The boot reconcile is a full `movieRepo.findAll()` + project-every-row scan.
+  // The boot reconcile is a full `movieRepository.findAll()` + project-every-row scan.
   // Running it synchronously at `start()` stacked a second full scan onto the
   // cache hydrate and the first scrape on a cold JVM (the boot CPU-credit drain).
   // Defer it to the first scheduled tick this many seconds in — short, NOT the
@@ -57,7 +57,7 @@ class ReadModelProjector(
     Env.positiveLong("KINOWO_READMODEL_RECONCILE_BOOT_DELAY_SECONDS", 60L)
   @volatile private var watchHandle: Option[AutoCloseable] = None
 
-  def enabled: Boolean = writer.enabled && movieRepo.enabled
+  def enabled: Boolean = writer.enabled && movieRepository.enabled
 
   /** Apply one source-row change from the change stream. */
   def onMovieUpsert(stored: StoredMovieRecord): Unit = lock.synchronized(project(stored))
@@ -111,7 +111,7 @@ class ReadModelProjector(
     // Only READY rows are part of the read model — held-back rows are absent
     // from `liveIds`, so they neither project nor leave a stale doc behind, and
     // a row that becomes ready between ticks gets projected on the next one.
-    val ready   = movieRepo.findAll().filter(_.record.readyToProject)
+    val ready   = movieRepository.findAll().filter(_.record.readyToProject)
     val liveIds = ready.iterator.map(ReadModelProjection.filmId).toSet
     ready.foreach { row =>
       try project(row)
@@ -139,14 +139,14 @@ class ReadModelProjector(
     // full reconcile (which additionally prunes derived docs whose source row
     // vanished while the worker was down) is deferred to the first scheduled tick
     // so it doesn't compete with boot hydrate + the first scrape.
-    watchHandle = movieRepo.watchUpserts(onMovieUpsert)
+    watchHandle = movieRepository.watchUpserts(onMovieUpsert)
     scheduler.scheduleAtFixedRate(
       () => Try(reconcile()).recover { case ex => logger.warn(s"read-model reconcile tick failed: ${ex.getMessage}") },
       ReconcileBootDelaySeconds, ReconcileSeconds, TimeUnit.SECONDS)
     logger.info(s"ReadModelProjector started; first reconcile in ${ReconcileBootDelaySeconds}s, " +
       s"then every ${ReconcileSeconds}s; " +
       s"change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — reconcile only"}.")
-  } else logger.info("ReadModelProjector disabled (read model or movies repo not enabled).")
+  } else logger.info("ReadModelProjector disabled (read model or movies repository not enabled).")
 
   def stop(): Unit = {
     watchHandle.foreach(h => Try(h.close()))

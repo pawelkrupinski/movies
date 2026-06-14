@@ -6,11 +6,11 @@ import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
 import services.auth.{AppleTokenValidator, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, OauthProvider}
 import services.fallback.{FilmwebFallbackStore, MongoFilmwebFallbackStore}
-import services.movies.{MongoMovieRepo, MongoNormalizationReportRepo, MovieRepo, NormalizationReportRepo}
-import services.readmodel.{MongoReadModelRepo, ReadModelReader, WebReadModel}
+import services.movies.{MongoMovieRepository, MongoNormalizationReportRepository, MovieRepository, NormalizationReportRepository}
+import services.readmodel.{MongoReadModelRepository, ReadModelReader, WebReadModel}
 import services.tasks.{MongoTaskQueue, TaskQueue}
-import services.titlerules.{MongoTitleRulesRepo, TitleRulesCache, TitleRulesRepo}
-import services.users.{AccountDeletion, CachingUserRepo, CachingUserStateRepo, MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
+import services.titlerules.{MongoTitleRulesRepository, TitleRulesCache, TitleRulesRepository}
+import services.users.{AccountDeletion, CachingUserRepository, CachingUserStateRepository, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
 
 /**
@@ -43,23 +43,23 @@ trait Wiring {
 
   // ── Users ─────────────────────────────────────────────────────────────────
   // Caching decorators trim the Atlas RTT off the logged-in critical path.
-  lazy val userRepo:      UserRepo      = new CachingUserRepo(new MongoUserRepo(mongoConnection.database, fallbackToOwnInit = false))
-  lazy val userStateRepo: UserStateRepo = new CachingUserStateRepo(new MongoUserStateRepo(mongoConnection.database, fallbackToOwnInit = false))
+  lazy val userRepository:      UserRepository      = new CachingUserRepository(new MongoUserRepository(mongoConnection.database, fallbackToOwnInit = false))
+  lazy val userStateRepository: UserStateRepository = new CachingUserStateRepository(new MongoUserStateRepository(mongoConnection.database, fallbackToOwnInit = false))
 
   // ── Denormalised read model ──────────────────────────────────────────────────
   // The serving app reads from the worker-maintained `web_movies` /
   // `web_screenings` collections via `WebReadModel`, kept warm by their change
   // streams. It deliberately does NOT watch `movies` — a showtime edit there
   // now reaches the web as one small screening-doc delta, not a full-record
-  // re-push. `movieRepo` survives only for the on-demand /debug corpus dump and
+  // re-push. `movieRepository` survives only for the on-demand /debug corpus dump and
   // the admin rule-merge preview (a one-off `findAll`, no change stream).
   //
-  // Local read-mirror: `/debug`'s `movieRepo.findAll()` is a full `movies`
+  // Local read-mirror: `/debug`'s `movieRepository.findAll()` is a full `movies`
   // scan. Run locally it goes over the prod `flyctl` tunnel, where 1200+ full
   // docs take 30–60s and intermittently hit findAll's 60s timeout (→ an empty
   // /debug table). When `MONGODB_MOVIES_MIRROR_URI` points at a local Mongo
-  // kept synced from prod by `scripts/local-mirror/mirror.sh`, movieRepo reads
-  // that LAN mirror (~100ms) instead. movieRepo is read-only in this process
+  // kept synced from prod by `scripts/local-mirror/mirror.sh`, movieRepository reads
+  // that LAN mirror (~100ms) instead. movieRepository is read-only in this process
   // (the worker owns `movies` writes), and the task queue stays on the prod
   // connection below, so /debug re-enrich still works end-to-end: ↻ → prod
   // worker → prod `movies` → tailer → local mirror → /debug SSE. Unset (prod +
@@ -73,18 +73,18 @@ trait Wiring {
         if (mirror.database.isDefined) mirror else { mirror.close(); mongoConnection }
       case None => mongoConnection
     }
-  lazy val movieRepo: MovieRepo = new MongoMovieRepo(movieMirrorConnection.database, fallbackToOwnInit = false)
-  lazy val readModelRepo: ReadModelReader = new MongoReadModelRepo(mongoConnection.database)
-  lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepo)
+  lazy val movieRepository: MovieRepository = new MongoMovieRepository(movieMirrorConnection.database, fallbackToOwnInit = false)
+  lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database)
+  lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository)
 
   // Title-stripping rules, shared with the worker via Mongo. The web app reads
   // and never seeds (the worker owns seeding); it watches the change stream so
   // an admin edit takes effect here without a redeploy.
-  lazy val titleRulesRepo: TitleRulesRepo = new MongoTitleRulesRepo(mongoConnection.database, fallbackToOwnInit = false)
-  lazy val titleRulesCache: TitleRulesCache = new TitleRulesCache(titleRulesRepo, seedIfEmpty = false)
+  lazy val titleRulesRepository: TitleRulesRepository = new MongoTitleRulesRepository(mongoConnection.database, fallbackToOwnInit = false)
+  lazy val titleRulesCache: TitleRulesCache = new TitleRulesCache(titleRulesRepository, seedIfEmpty = false)
   // The worker writes the backfill outcome here; the editor reads it.
-  lazy val normalizationReportRepo: NormalizationReportRepo =
-    new MongoNormalizationReportRepo(mongoConnection.database, fallbackToOwnInit = false)
+  lazy val normalizationReportRepository: NormalizationReportRepository =
+    new MongoNormalizationReportRepository(mongoConnection.database, fallbackToOwnInit = false)
 
   // Reads come straight from the read model; enrichment + projection happen in
   // the worker process.
@@ -141,11 +141,11 @@ trait Wiring {
   // against this set.
   lazy val adminAllowlist: Set[String] =
     Env.get("ADMIN_ALLOWLIST").map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet).getOrElse(Set.empty)
-  lazy val adminAction = new AdminAction(controllerComponents.parsers.anyContent, userRepo, adminAllowlist)(using controllerComponents.executionContext)
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, movieRepo, taskQueue, userRepo, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService,
+  lazy val adminAction = new AdminAction(controllerComponents.parsers.anyContent, userRepository, adminAllowlist)(using controllerComponents.executionContext)
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, movieRepository, taskQueue, userRepository, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),
-    stagingRepo = new services.staging.MongoStagingRepo(mongoConnection.database))
-  lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepo, oauthProviders.keySet, environmentMode)
+    stagingRepository = new services.staging.MongoStagingRepository(mongoConnection.database))
+  lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepository, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
   // Read-only on the web side: the worker writes fallback state; the /uptime/fallback
   // page reads it (hydrated from Mongo at boot).
@@ -153,17 +153,17 @@ trait Wiring {
   lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, filmwebFallbackStore)(using materializer)
   lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue)
   // Dev-only SSE feed for the /debug live view; reuses the same on-demand
-  // movieRepo + cinema-source-URL snapshot the /debug page renders from.
-  lazy val debugStreamController = new DebugStreamController(controllerComponents, movieRepo, environmentMode,
+  // movieRepository + cinema-source-URL snapshot the /debug page renders from.
+  lazy val debugStreamController = new DebugStreamController(controllerComponents, movieRepository, environmentMode,
     () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()))(using materializer)
-  lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepo, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
-  lazy val accountDeletion   = new AccountDeletion(userRepo, userStateRepo)
-  lazy val userStateController = new UserStateController(controllerComponents, userStateRepo, accountDeletion)
+  lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
+  lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)
+  lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion)
   lazy val legalController   = new LegalController(controllerComponents)
   lazy val facebookDataDeletionController =
-    new FacebookDataDeletionController(controllerComponents, Env.get("FACEBOOK_APP_SECRET"), userRepo, accountDeletion)
+    new FacebookDataDeletionController(controllerComponents, Env.get("FACEBOOK_APP_SECRET"), userRepository, accountDeletion)
   lazy val adminTitleRulesController =
-    new AdminTitleRulesController(controllerComponents, adminAction, titleRulesRepo, movieRepo, normalizationReportRepo)
+    new AdminTitleRulesController(controllerComponents, adminAction, titleRulesRepository, movieRepository, normalizationReportRepository)
 
   // Start the data layer. Force the Mongo connection at boot (so connection
   // errors surface in the boot timeline, not mid-request), then start the cache
@@ -181,13 +181,13 @@ trait Wiring {
     uptimeMonitor.close()
     webReadModel.stop()
     titleRulesCache.stop()
-    // Each repo's close() is a no-op when it borrowed its database from
+    // Each repository's close() is a no-op when it borrowed its database from
     // `mongoConnection` — closing the shared MongoClient is owned here.
-    readModelRepo.close()
-    movieRepo.close()
-    titleRulesRepo.close()
-    userRepo.close()
-    userStateRepo.close()
+    readModelRepository.close()
+    movieRepository.close()
+    titleRulesRepository.close()
+    userRepository.close()
+    userStateRepository.close()
     // The /debug read-mirror owns its own MongoClient when distinct from the
     // shared prod connection (i.e. MONGODB_MOVIES_MIRROR_URI was set + reachable).
     if (movieMirrorConnection ne mongoConnection) movieMirrorConnection.close()

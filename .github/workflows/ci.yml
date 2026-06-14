@@ -131,7 +131,7 @@ jobs:
             - run: npm run lint
 
     # iOS LocalServer tests. Boots `FixtureServerMain` (the same Play
-    # server FixtureServerMain + InMemoryMovieRepo combo the
+    # server FixtureServerMain + InMemoryMovieRepository combo the
     # Playwright suite uses) in the background and runs the
     # `LocalServer*` XCTest cases against it — `KinowoCore`'s real
     # parsers (HTMLParser, FilmDetailParser) crawl HTML the Twirl
@@ -349,8 +349,8 @@ jobs:
             contents: read
             checks: write
         # Throwaway Mongo for the run. The IT suites self-seed every doc they
-        # assert on (MovieRepoIntegrationSpec, MongoTaskQueueIntegrationSpec,
-        # UserRepoIntegrationSpec, …) and create their own collections/indexes
+        # assert on (MovieRepositoryIntegrationSpec, MongoTaskQueueIntegrationSpec,
+        # UserRepositoryIntegrationSpec, …) and create their own collections/indexes
         # on first use, so a bare empty instance is all they need. Previously
         # this job wrote to the shared Atlas DB via `secrets.MONGODB_URI`; a run
         # cancelled mid-suite — the concurrency group kills superseded pushes
@@ -425,7 +425,7 @@ jobs:
     #   by `browser`, boot `FixtureServerMain` over a free port, then
     #   `npx playwright test --project <project>`. The Playwright
     #   suite drives `page-tests-playwright/` against a Twirl-rendered
-    #   fixture server (InMemoryMovieRepo + FakeHttpFetch — same
+    #   fixture server (InMemoryMovieRepository + FakeHttpFetch — same
     #   wiring the Scala spec uses, exposed over HTTP). Mobile
     #   projects are split per-phone so each runner handles one
     #   phone's four variants (portrait, zoomed, landscape,

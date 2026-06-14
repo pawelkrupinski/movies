@@ -7,18 +7,18 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.users.{AccountDeletion, InMemoryUserRepo, InMemoryUserStateRepo}
+import services.users.{AccountDeletion, InMemoryUserRepository, InMemoryUserStateRepository}
 
 import java.time.Instant
 
 class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
-  private def fixture(prefilled: Option[UserState] = None): (UserStateController, InMemoryUserStateRepo, InMemoryUserRepo) = {
-    val stateRepo = new InMemoryUserStateRepo
-    val userRepo  = new InMemoryUserRepo
-    prefilled.foreach(stateRepo.upsert)
-    val accountDeletion = new AccountDeletion(userRepo, stateRepo)
-    (new UserStateController(Helpers.stubControllerComponents(), stateRepo, accountDeletion), stateRepo, userRepo)
+  private def fixture(prefilled: Option[UserState] = None): (UserStateController, InMemoryUserStateRepository, InMemoryUserRepository) = {
+    val stateRepository = new InMemoryUserStateRepository
+    val userRepository  = new InMemoryUserRepository
+    prefilled.foreach(stateRepository.upsert)
+    val accountDeletion = new AccountDeletion(userRepository, stateRepository)
+    (new UserStateController(Helpers.stubControllerComponents(), stateRepository, accountDeletion), stateRepository, userRepository)
   }
 
   // ── GET /api/me/state ─────────────────────────────────────────────────────
@@ -61,18 +61,18 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   // ── PUT /api/me/state ─────────────────────────────────────────────────────
 
   "PUT /api/me/state" should "401 anonymous requests without writing anything" in {
-    val (ctl, repo, _) = fixture()
+    val (ctl, repository, _) = fixture()
     val request = FakeRequest("PUT", "/api/me/state")
       .withBody(Json.obj("hiddenFilms" -> Json.arr("X")))
       .withHeaders("Content-Type" -> "application/json")
     val result = ctl.put()(request)
     status(result)              shouldBe UNAUTHORIZED
-    repo.find("anyone")         shouldBe empty
+    repository.find("anyone")         shouldBe empty
   }
 
   it should "replace the user's state with the request body" in {
     val initial = UserState("u1", Set("OLD"), Set.empty, Instant.now())
-    val (ctl, repo, _) = fixture(Some(initial))
+    val (ctl, repository, _) = fixture(Some(initial))
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
       .withBody(Json.obj(
@@ -84,7 +84,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val result = ctl.put()(request)
     status(result) shouldBe OK
 
-    val stored = repo.find("u1").value
+    val stored = repository.find("u1").value
     stored.hiddenFilms     shouldBe Set("Hidden A")
     stored.disabledCinemas shouldBe empty
     stored.selectedMovies  shouldBe Set("Conclave")
@@ -100,7 +100,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
       selectedMovies  = Set("Plan Pick"),
       favouriteRooms  = Set("Helios|Sala 1")
     )
-    val (ctl, repo, _) = fixture(Some(initial))
+    val (ctl, repository, _) = fixture(Some(initial))
     // A mobile client PUTs only the two sets it models — the web-only /plan
     // picks must survive untouched.
     val request = FakeRequest("PUT", "/api/me/state")
@@ -111,7 +111,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
       ))
 
     status(ctl.put()(request)) shouldBe OK
-    val stored = repo.find("u1").value
+    val stored = repository.find("u1").value
     stored.hiddenFilms     shouldBe Set("New Hide")       // present → replaced
     stored.disabledCinemas shouldBe Set("New Cinema")     // present → replaced
     stored.selectedMovies  shouldBe Set("Plan Pick")      // absent  → preserved
@@ -120,13 +120,13 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "still clear a field when the body sends it as an explicit empty array" in {
     val initial = UserState("u1", Set("H"), Set.empty, Instant.now(), selectedMovies = Set("Pick"))
-    val (ctl, repo, _) = fixture(Some(initial))
+    val (ctl, repository, _) = fixture(Some(initial))
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
       .withBody(Json.obj("selectedMovies" -> Json.arr()))
     status(ctl.put()(request)) shouldBe OK
-    repo.find("u1").value.selectedMovies shouldBe empty   // present-but-empty → cleared
-    repo.find("u1").value.hiddenFilms    shouldBe Set("H") // absent → preserved
+    repository.find("u1").value.selectedMovies shouldBe empty   // present-but-empty → cleared
+    repository.find("u1").value.hiddenFilms    shouldBe Set("H") // absent → preserved
   }
 
   it should "echo the saved state in the response so the client confirms what landed" in {
@@ -140,14 +140,14 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "400 a malformed payload (wrong type) and not touch storage" in {
-    val (ctl, repo, _) = fixture()
+    val (ctl, repository, _) = fixture()
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
       .withBody(Json.obj("hiddenFilms" -> "not-an-array"))
     val result = ctl.put()(request)
     status(result)               shouldBe BAD_REQUEST
     (contentAsJson(result) \ "error").as[String] should include ("hiddenFilms")
-    repo.find("u1")              shouldBe empty
+    repository.find("u1")              shouldBe empty
   }
 
   // ── DELETE /api/me ──────────────────────────────────────────────────────
@@ -159,8 +159,8 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "remove the user + state rows AND clear the session" in {
     val initialState = UserState("u1", Set("Conclave"), Set.empty, Instant.now())
-    val (ctl, stateRepo, userRepo) = fixture(Some(initialState))
-    userRepo.upsert(models.User(
+    val (ctl, stateRepository, userRepository) = fixture(Some(initialState))
+    userRepository.upsert(models.User(
       id = "u1", provider = "google", providerSub = "G-1",
       email = Some("a@x"), displayName = Some("Alice"), avatarUrl = None,
       createdAt = Instant.now(), lastSeenAt = Instant.now()
@@ -170,8 +170,8 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val result  = ctl.deleteAccount()(request)
 
     status(result)               shouldBe NO_CONTENT
-    stateRepo.find("u1")         shouldBe empty
-    userRepo.findById("u1")      shouldBe empty
+    stateRepository.find("u1")         shouldBe empty
+    userRepository.findById("u1")      shouldBe empty
     val sess = session(result)
     sess.get("userId")           shouldBe empty
     sess.get("extra")            shouldBe empty

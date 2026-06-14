@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.{CinemaScrapeRunner, CinemaScraper, FakeDetailEnricher}
 import services.events.InProcessEventBus
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
 
 import java.time.LocalDateTime
@@ -25,7 +25,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   )
 
   private def freshRunner() = new CinemaScrapeRunner(
-    new CaffeineMovieCache(new InMemoryMovieRepo(), new InProcessEventBus()),
+    new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus()),
     new InProcessEventBus(),
     deferredCinemas = Set.empty
   )
@@ -190,7 +190,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     // into one EnrichDetails task. End-to-end proof the event path replaces the
     // old inline enqueue.
     val bus     = new InProcessEventBus()
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepo(), bus)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), bus)
     val queue   = new InMemoryTaskQueue
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo")
     bus.subscribe(new DetailTaskEnqueuer(enricher, cache, queue, new InMemoryFreshnessStore).onCinemaMovieAdded)
@@ -201,7 +201,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
 
   it should "leave the queue empty when no enqueuer is subscribed for the cinema" in {
     val bus   = new InProcessEventBus()
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo(), bus)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), bus)
     val queue = new InMemoryTaskQueue
     new CinemaScrapeRunner(cache, bus, Set.empty).run(new FakeScraper(KinoApollo, movieWithRef(KinoApollo)))
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
@@ -211,7 +211,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
 
   "CinemaScrapeRunner.classify" should
     "hold a deferred cinema's new film (mark detailPending, emit no event) until its detail lands" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepo(), new InProcessEventBus())
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
     val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set(KinoApollo))
     val touched = cache.recordCinemaScrape(KinoApollo, movieWithRef(KinoApollo))
 
@@ -220,7 +220,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "enrich a film with no deferred detail immediately (emit MovieDetailsComplete, no detailPending)" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepo(), new InProcessEventBus())
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
     val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set.empty)
     val touched = cache.recordCinemaScrape(Multikino, movieAt(Multikino))
 
@@ -229,7 +229,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "enrich a deferred cinema's film immediately when it carries no detail filmUrl (nothing to wait for)" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepo(), new InProcessEventBus())
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
     val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set(KinoApollo))
     val touched = cache.recordCinemaScrape(KinoApollo, movieAt(KinoApollo)) // filmUrl = None
 

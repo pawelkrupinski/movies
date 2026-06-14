@@ -1,7 +1,7 @@
 package services.staging
 
 import play.api.Logging
-import services.movies.{MovieRepo, TitleNormalizer}
+import services.movies.{MovieRepository, TitleNormalizer}
 
 /**
  * Folds a concluded newcomer's per-cinema staging rows into the merged `movies`
@@ -21,24 +21,24 @@ trait StagingFolder {
 }
 
 /**
- * Lock-guarded `StagingFolder` over the `MovieRepo` + `StagingRepo` traits — the
+ * Lock-guarded `StagingFolder` over the `MovieRepository` + `StagingRepository` traits — the
  * no-Mongo / test path (and the shape `MongoStagingFolder` mirrors with a real
- * transaction). Writing to `movieRepo` (not a `MovieCache`) is deliberate: the
+ * transaction). Writing to `movieRepository` (not a `MovieCache`) is deliberate: the
  * worker's in-memory cache + read-model projector catch the folded row up via
  * the `movies` change stream, exactly as every other out-of-band `movies` write.
  */
-class InMemoryStagingFolder(stagingRepo: StagingRepo, movieRepo: MovieRepo) extends StagingFolder with Logging {
+class InMemoryStagingFolder(stagingRepository: StagingRepository, movieRepository: MovieRepository) extends StagingFolder with Logging {
   private val lock = new AnyRef
 
   def foldFilm(cleanTitle: String, year: Option[Int]): Unit = lock.synchronized {
     val key         = TitleNormalizer.sanitize(cleanTitle)
-    val stagingRows = stagingRepo.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key && r.year == year)
+    val stagingRows = stagingRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key && r.year == year)
     if (stagingRows.nonEmpty) {
-      val moviesRows = movieRepo.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key && r.year == year)
+      val moviesRows = movieRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key && r.year == year)
       val plan       = StagingFold.plan(stagingRows, moviesRows)
-      plan.moviesUpserts.foreach { case (k, rec) => movieRepo.upsert(k.cleanTitle, k.year, rec) }
-      plan.moviesDeletes.foreach(k => movieRepo.delete(k.cleanTitle, k.year))
-      plan.stagingDeletes.foreach(r => stagingRepo.delete(r.cinema, r.title, r.year))
+      plan.moviesUpserts.foreach { case (k, rec) => movieRepository.upsert(k.cleanTitle, k.year, rec) }
+      plan.moviesDeletes.foreach(k => movieRepository.delete(k.cleanTitle, k.year))
+      plan.stagingDeletes.foreach(r => stagingRepository.delete(r.cinema, r.title, r.year))
       logger.info(s"Folded '$cleanTitle' (${year.getOrElse("—")}): ${stagingRows.size} staging row(s) → " +
         s"${plan.moviesUpserts.size} movies row(s).")
     }

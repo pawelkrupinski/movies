@@ -1,6 +1,6 @@
 // ── Multi-module layout ─────────────────────────────────────────────────────
 //
-//   common  — shared domain + data layer (models, MovieRepo/MovieCache, Mongo,
+//   common  — shared domain + data layer (models, MovieRepository/MovieCache, Mongo,
 //             EventBus, UptimeMonitor, the HTTP-fetch family). Plain Scala lib.
 //   testkit — shared test fakes/helpers (not deployed). dependsOn(common).
 //   web     — content-serving Play app (controllers, Twirl views). Fly: kinowo.
@@ -79,12 +79,12 @@ lazy val common = (project in file("common"))
 
 // ── Shared test support (not deployed) ───────────────────────────────────────
 //
-// The fakes/helpers every module's tests reuse — FakeHttpFetch, InMemoryMovieRepo,
+// The fakes/helpers every module's tests reuse — FakeHttpFetch, InMemoryMovieRepository,
 // RecordingHttpFetch, RoutingHttpFetch, Eventually, ExecutorProbes. Sources live
 // in src/main/scala so consumers pull them with a plain `dependsOn(testkit % Test)`
 // rather than the old `common % "test->test"` re-export. That keeps common's test
 // surface to its own specs and stops worker-only fakes from being forced into
-// common. Depends on common for HttpFetch/MovieRepo/models; carries scalatest on
+// common. Depends on common for HttpFetch/MovieRepository/models; carries scalatest on
 // the compile classpath because Eventually returns an `org.scalatest.Assertion`.
 lazy val testkit = (project in file("testkit"))
   .dependsOn(common)

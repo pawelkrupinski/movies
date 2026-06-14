@@ -5,7 +5,7 @@ import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
 import services.auth.{AppleTokenValidator, FacebookTokenValidator, GoogleTokenValidator, OauthProfile, OauthProvider}
-import services.users.UserRepo
+import services.users.UserRepository
 
 import java.time.Clock
 import java.util.UUID
@@ -40,7 +40,7 @@ import scala.util.{Failure, Success, Try}
 class AuthController(
   cc:                     ControllerComponents,
   providers:              Map[String, OauthProvider],
-  userRepo:               UserRepo,
+  userRepository:               UserRepository,
   googleTokenValidator:   Option[GoogleTokenValidator] = None,
   facebookTokenValidator: Option[FacebookTokenValidator] = None,
   appleTokenValidator:    Option[AppleTokenValidator] = None,
@@ -173,7 +173,7 @@ class AuthController(
   }
 
   def me(): Action[AnyContent] = Action { request =>
-    request.session.get("userId").flatMap(userRepo.findById) match {
+    request.session.get("userId").flatMap(userRepository.findById) match {
       case None => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(user) => Ok(Json.obj(
         "displayName" -> user.displayName,
@@ -193,7 +193,7 @@ class AuthController(
     val email = profile.email.getOrElse(
       throw new RuntimeException(s"OAuth $provider profile has no email — cannot identify user")
     ).toLowerCase
-    val user = userRepo.findById(email) match {
+    val user = userRepository.findById(email) match {
       case Some(existing) =>
         existing.copy(
           provider    = provider,
@@ -214,7 +214,7 @@ class AuthController(
           lastSeenAt  = now
         )
     }
-    userRepo.upsert(user)
+    userRepository.upsert(user)
     user
   }
 
@@ -228,7 +228,7 @@ class AuthController(
       case None =>
         Unauthorized(Json.obj("error" -> "invalid or expired code"))
       case Some(userId) =>
-        userRepo.findById(userId) match {
+        userRepository.findById(userId) match {
           case None =>
             Unauthorized(Json.obj("error" -> "user not found"))
           case Some(user) =>

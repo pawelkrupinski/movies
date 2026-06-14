@@ -25,7 +25,7 @@ trait ReadModelReader {
 /**
  * Write side of the denormalised read model — what the **worker's projector**
  * depends on. Each write is keyed by the document's own `_id`, best-effort
- * (failures logged, never thrown), mirroring `MovieRepo`'s contract.
+ * (failures logged, never thrown), mirroring `MovieRepository`'s contract.
  */
 trait ReadModelWriter {
   def enabled: Boolean

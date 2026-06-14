@@ -1,6 +1,6 @@
 package services.enrichment
 
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
@@ -36,8 +36,8 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   // ── refreshOneSync ──────────────────────────────────────────────────────────
 
   "refreshOneSync" should "fetch the rating and write it back when it differs from the cached value" in {
-    val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
+    val cache = new CaffeineMovieCache(repository)
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
 
     ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
@@ -46,20 +46,20 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not write back when the fetched rating equals the cached value (idempotent)" in {
-    val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(7.4)))))
-    val cache = new CaffeineMovieCache(repo)
-    repo.upserts.clear()
+    val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(7.4)))))
+    val cache = new CaffeineMovieCache(repository)
+    repository.upserts.clear()
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
 
     ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
 
     // No new upserts — the value hadn't changed.
-    repo.upserts shouldBe empty
+    repository.upserts shouldBe empty
   }
 
   it should "swallow IMDb client failures (network blip, HTML challenge) without throwing" in {
-    val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
+    val cache = new CaffeineMovieCache(repository)
     val failingImdb = new ImdbClient(http = new HttpFetch {
       def get(url: String): String                                              = throw new RuntimeException("boom")
       override def post(url: String, body: String, contentType: String): String = throw new RuntimeException("boom")
@@ -73,8 +73,8 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "be a no-op when the row has no imdbId (TMDB resolved without a cross-reference)" in {
     val tmdbOnly = MovieRecord(tmdbId = Some(42))
-    val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), tmdbOnly)))
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), tmdbOnly)))
+    val cache = new CaffeineMovieCache(repository)
     // ImdbClient must never be invoked — the stub throws on any request.
     val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
@@ -85,7 +85,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the cache has no entry for the key" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository())
     val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
       override def post(url: String, body: String, contentType: String): String = get(url)
@@ -97,12 +97,12 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   // ── refreshAll ──────────────────────────────────────────────────────────────
 
   "refreshAll" should "walk every cached row and update each rating that changed" in {
-    val repo = new InMemoryMovieRepo(Seq(
+    val repository = new InMemoryMovieRepository(Seq(
       ("A", None, mkEnrichment("tt1", rating = Some(5.0))),
       ("B", None, mkEnrichment("tt2", rating = Some(6.0))),
       ("C", None, mkEnrichment("tt3", rating = Some(7.0)))
     ))
-    val cache = new CaffeineMovieCache(repo)
+    val cache = new CaffeineMovieCache(repository)
     val ratings = new ImdbRatings(cache, imdbStub(Map(
       "tt1" -> 7.4,  // changed
       "tt2" -> 6.0,  // unchanged

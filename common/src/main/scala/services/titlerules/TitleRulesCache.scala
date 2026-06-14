@@ -10,7 +10,7 @@ import scala.util.Try
 /** Owns the title-rule business logic that's shared between the real Mongo store
  *  and the in-memory fake: load the rules, compile them into a `TitleRuleSet`,
  *  install it via `install`, and keep it current via the change stream plus a
- *  periodic backstop reload. The repo is the only infrastructure seam.
+ *  periodic backstop reload. The repository is the only infrastructure seam.
  *
  *  Runs on BOTH web and worker (each its own JVM, its own `TitleNormalizer`
  *  global). The worker passes `seedIfEmpty = true` so a fresh DB gets the
@@ -18,7 +18,7 @@ import scala.util.Try
  *  defaults to mutating the `TitleNormalizer` global but is injectable so tests
  *  capture the installed set instead of racing on process-global state. */
 class TitleRulesCache(
-  repo: TitleRulesRepo,
+  repository: TitleRulesRepository,
   seedIfEmpty: Boolean = false,
   install: TitleRuleSet => Unit = TitleNormalizer.installRules,
   // Fired AFTER a reload that actually changed the rules (never on the first
@@ -39,7 +39,7 @@ class TitleRulesCache(
    *  so the normaliser is never left rule-less. Fires `onRulesChanged` when the
    *  effective rule set differs from the previously-installed one. */
   def reload(): Unit = {
-    val rules = repo.findAll()
+    val rules = repository.findAll()
     val effective = if (rules.nonEmpty) rules else TitleRuleDefaults.all
     install(TitleRuleSet(effective))
     logger.info(
@@ -57,14 +57,14 @@ class TitleRulesCache(
   }
 
   def start(): Unit = {
-    if (seedIfEmpty && repo.enabled && repo.findAll().isEmpty) {
+    if (seedIfEmpty && repository.enabled && repository.findAll().isEmpty) {
       val records = TitleRuleRecord.fromRules(TitleRuleDefaults.all)
       logger.info(s"TitleRulesCache: seeding ${TitleRuleDefaults.all.size} default rules " +
         s"(${records.size} records) into empty store.")
-      records.foreach(repo.upsertRecord)
+      records.foreach(repository.upsertRecord)
     }
     reload()
-    watchHandle = repo.watchChanges(() => reload())
+    watchHandle = repository.watchChanges(() => reload())
     logger.info(
       s"TitleRulesCache change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — backstop only"}; " +
       s"backstop reload every ${IntervalSeconds}s.")

@@ -3,7 +3,7 @@ package services.staging
 import models.{Helios, Multikino, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.InMemoryMovieRepo
+import services.movies.InMemoryMovieRepository
 
 class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
 
@@ -13,8 +13,8 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
       Tmdb   -> SourceData(title = Some("Kumotry"), releaseYear = Some(year))))
 
   "foldFilm" should "move a film's staging rows into movies and delete them" in {
-    val staging  = new InMemoryStagingRepo
-    val movies   = new InMemoryMovieRepo
+    val staging  = new InMemoryStagingRepository
+    val movies   = new InMemoryMovieRepository
     staging.upsert(Helios, "Kumotry", Some(2026), resolved(Helios, 2026))
     staging.upsert(Multikino, "Kumotry", Some(2026), resolved(Multikino, 2026))
     val folder = new InMemoryStagingFolder(staging, movies)
@@ -29,8 +29,8 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when no staging rows match (already folded)" in {
-    val staging = new InMemoryStagingRepo
-    val movies  = new InMemoryMovieRepo
+    val staging = new InMemoryStagingRepository
+    val movies  = new InMemoryMovieRepository
     new InMemoryStagingFolder(staging, movies).foldFilm("Ghost", Some(2026))
     movies.findAll() shouldBe empty
   }

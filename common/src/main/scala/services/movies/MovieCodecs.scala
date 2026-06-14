@@ -44,7 +44,7 @@ object StoredMovieDto {
   // `sourceData` on read. Storing them was a second, order-dependent source of
   // truth (the title was pinned to whichever scrape wrote the row first); see
   // `toDomain`. The `id` still encodes both — the caller computes it via
-  // `MovieRepo.docId(title, year)` — so the cache key is unchanged.
+  // `MovieRepository.docId(title, year)` — so the cache key is unchanged.
   def fromDomain(id: String, r: MovieRecord, updatedAt: Instant): StoredMovieDto =
     StoredMovieDto(
       _id               = id,
@@ -79,13 +79,13 @@ object StoredMovieDto {
       data              = dto.sourceData.flatMap { case (k, sd) => Source.byDisplayName.get(k).map(_ -> sd) }
     )
     // title + year are derived from the `_id` + `sourceData`, not stored — see
-    // `StoredMovieRecord.fromStorage` (shared with the in-memory repo).
+    // `StoredMovieRecord.fromStorage` (shared with the in-memory repository).
     StoredMovieRecord.fromStorage(dto._id, record)
   }
 }
 
 /**
- * BSON codec wiring for the Mongo-backed repo. The macros handle `SourceData`,
+ * BSON codec wiring for the Mongo-backed repository. The macros handle `SourceData`,
  * `Showtime`, and `StoredMovieDto` directly; only `LocalDateTime` needs a
  * hand-written codec — see `JavaTimeCodecs.localDateTime`, shared with the
  * read-model collections.

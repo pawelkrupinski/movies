@@ -5,13 +5,13 @@ import models.{MovieRecord, Source}
 import scala.collection.mutable
 
 /**
- * In-memory `StagingRepo` for tests — full write-through semantics without a
+ * In-memory `StagingRepository` for tests — full write-through semantics without a
  * real Mongo cluster. Keyed by the same `cinema|sanitize(title)|year` `_id`
- * formula as `MongoStagingRepo`, and re-derives `StagingRecord` from that `_id`
+ * formula as `MongoStagingRepository`, and re-derives `StagingRecord` from that `_id`
  * on read exactly as the codec does, so case/diacritic variants collapse and the
  * fake differs from Mongo only at the storage boundary (a HashMap, not BSON).
  */
-class InMemoryStagingRepo(seed: Seq[(Source, String, Option[Int], MovieRecord)] = Seq.empty) extends StagingRepo {
+class InMemoryStagingRepository(seed: Seq[(Source, String, Option[Int], MovieRecord)] = Seq.empty) extends StagingRepository {
 
   private val store = mutable.LinkedHashMap.empty[String, MovieRecord]
   private val lock  = new AnyRef
@@ -24,7 +24,7 @@ class InMemoryStagingRepo(seed: Seq[(Source, String, Option[Int], MovieRecord)] 
 
   def enabled: Boolean = true
 
-  // Sorted by `_id`, like `MongoStagingRepo.findAll` — so callers (the promoter)
+  // Sorted by `_id`, like `MongoStagingRepository.findAll` — so callers (the promoter)
   // see a stable order independent of insertion/scrape order.
   def findAll(): Seq[StagingRecord] = lock.synchronized {
     store.iterator.toSeq.sortBy(_._1).flatMap { case (id, rec) => StagingRecord.fromStorage(id, rec) }

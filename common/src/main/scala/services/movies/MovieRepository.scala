@@ -18,13 +18,13 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 /** One persisted (title, year) → MovieRecord row. Used as the return type
- *  of `MovieRepo.findAll` and `MovieCache.snapshot` so callers iterate
+ *  of `MovieRepository.findAll` and `MovieCache.snapshot` so callers iterate
  *  named fields instead of destructuring an anonymous 3-tuple. */
 case class StoredMovieRecord(title: String, year: Option[Int], record: MovieRecord)
 
 object StoredMovieRecord {
   /** The Mongo `_id` for a `(title, year)` row: `sanitize(title)|year`. The one
-   *  formula the repo keys rows by — exposed so the change stream and the
+   *  formula the repository keys rows by — exposed so the change stream and the
    *  /debug live view can key DOM rows on the same id the store does. Matches
    *  the in-memory `CacheKey` normalization (case/diacritic-folded). */
   def idFor(title: String, year: Option[Int]): String =
@@ -40,7 +40,7 @@ object StoredMovieRecord {
    *  `|`, so the suffix is the year and the prefix is the cache key's sanitized
    *  form. Every spelling in a row sanitizes to that prefix (the `CacheKey`
    *  identity), so `displayTitle(prefix)` sanitizes back to it — the rebuilt key
-   *  recomputes to the same `_id`, no re-keying churn. (The in-memory repo keeps
+   *  recomputes to the same `_id`, no re-keying churn. (The in-memory repository keeps
    *  the full record in memory and returns its title verbatim, so it needs no
    *  recovery step; for realistic rows the two agree.) */
   def fromStorage(id: String, record: MovieRecord): StoredMovieRecord = {
@@ -55,12 +55,12 @@ object StoredMovieRecord {
  * Persistent store for `(title, year) → MovieRecord` records.
  *
  * The trait is what consumers (`MovieCache`, scripts, integration tests) see
- * — `MongoMovieRepo` (production) and `InMemoryMovieRepo` (tests) are the two
+ * — `MongoMovieRepository` (production) and `InMemoryMovieRepository` (tests) are the two
  * implementations. Per CLAUDE.md's DIP guidance: every collaborator is wired
  * via the trait; the concrete type only appears at the composition root
  * (`AppLoader`) and in test setup.
  */
-trait MovieRepo {
+trait MovieRepository {
   /** Whether the persistence layer is wired up. When false, callers can still
    *  use the in-memory cache but writes are no-ops. */
   def enabled: Boolean
@@ -115,9 +115,9 @@ trait MovieRepo {
 }
 
 /**
- * MongoDB-backed `MovieRepo`. Persists records to the `movies` collection.
+ * MongoDB-backed `MovieRepository`. Persists records to the `movies` collection.
  *
- * When `MONGODB_URI` is unset the repo silently no-ops — local dev / tests
+ * When `MONGODB_URI` is unset the repository silently no-ops — local dev / tests
  * without Mongo connectivity keep working off the in-memory cache only.
  *
  * The driver uses Reactive Streams, but the enrichment pipeline is a single
@@ -133,7 +133,7 @@ trait MovieRepo {
  * Lifecycle: caller (`AppLoader`) registers a shutdown hook that calls
  * `close()` — the class doesn't self-register.
  */
-class MongoMovieRepo(
+class MongoMovieRepository(
   sharedDb: Option[MongoDatabase] = None,
   // Scripts pass `sharedDb = None` and expect us to connect from
   // `MONGODB_URI` ourselves (default true). Wiring sets it to false:
@@ -142,11 +142,11 @@ class MongoMovieRepo(
   // same DNS / TLS timeout twice. Saves ~15s of boot time on the
   // offline / unreachable-cluster path.
   fallbackToOwnInit: Boolean = true
-) extends MovieRepo with Logging {
+) extends MovieRepository with Logging {
 
   // Lazy so subclasses that override every wire method (e.g.
-  // `InMemoryMovieRepo` in tests) never trigger a Mongo connection
-  // attempt — `new InMemoryMovieRepo()` was waiting 10 seconds per test
+  // `InMemoryMovieRepository` in tests) never trigger a Mongo connection
+  // attempt — `new InMemoryMovieRepository()` was waiting 10 seconds per test
   // for the parent's init() to time out against an unreachable cluster.
   //
   // `sharedDb` injection (the production path): Wiring's `MongoConnection`
@@ -227,7 +227,7 @@ class MongoMovieRepo(
         // errors must be logged, not swallowed into `.getOrElse(Seq.empty)`,
         // which would strand the cache empty on the boot path with no log line.
         case ex: Throwable =>
-          logger.warn(s"MovieRepo.findAll failed: ${ex.getClass.getSimpleName}: ${ex.getMessage}")
+          logger.warn(s"MovieRepository.findAll failed: ${ex.getClass.getSimpleName}: ${ex.getMessage}")
           Seq.empty
       }.getOrElse(Seq.empty)
     case None => Seq.empty
@@ -254,10 +254,10 @@ class MongoMovieRepo(
     Try {
       val result = Await.result(c.deleteMany(filter).toFuture(), 10.seconds)
       if (result.getDeletedCount > 1)
-        logger.info(s"MovieRepo.delete($title, $year) removed ${result.getDeletedCount} doc(s).")
+        logger.info(s"MovieRepository.delete($title, $year) removed ${result.getDeletedCount} doc(s).")
       ()
     }.recover {
-      case ex: Throwable => logger.warn(s"MovieRepo.delete($title, $year) failed: ${ex.getMessage}")
+      case ex: Throwable => logger.warn(s"MovieRepository.delete($title, $year) failed: ${ex.getMessage}")
     }
   }
 
@@ -273,9 +273,9 @@ class MongoMovieRepo(
         // Shutdown race — the lifecycle closed the MongoClient while a worker
         // was still mid-write. Harmless: the in-memory cache already has the
         // value and the next refresh will persist it.
-        logger.debug(s"MovieRepo.upsert($title, $year) skipped — Mongo client closing.")
+        logger.debug(s"MovieRepository.upsert($title, $year) skipped — Mongo client closing.")
       case ex: Throwable =>
-        logger.warn(s"MovieRepo.upsert($title, $year) failed: ${ex.getMessage}")
+        logger.warn(s"MovieRepository.upsert($title, $year) failed: ${ex.getMessage}")
     }
   }
 
@@ -305,7 +305,7 @@ class MongoMovieRepo(
       }.recover {
         case ex: Throwable if isClusterClosed(ex) => false
         case ex: Throwable =>
-          logger.warn(s"MovieRepo.updateIfPresent($title, $year) failed: ${ex.getMessage}")
+          logger.warn(s"MovieRepository.updateIfPresent($title, $year) failed: ${ex.getMessage}")
           false
       }.getOrElse(false)
   }
@@ -364,7 +364,7 @@ class MongoMovieRepo(
           Option(change.getFullDocument) match {
             case Some(dto) =>
               try onUpsert(StoredMovieDto.toDomain(dto))
-              catch { case ex: Throwable => logger.warn(s"MovieRepo change-stream apply failed: ${ex.getMessage}") }
+              catch { case ex: Throwable => logger.warn(s"MovieRepository change-stream apply failed: ${ex.getMessage}") }
             case None =>
               // No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't
               // back-fill). Surface its _id so the consumer can drop the row.
@@ -372,14 +372,14 @@ class MongoMovieRepo(
                 .map(v => if (v.isString) v.asString.getValue else v.toString)
                 .foreach { id =>
                   try onDelete(id)
-                  catch { case ex: Throwable => logger.warn(s"MovieRepo change-stream delete apply failed: ${ex.getMessage}") }
+                  catch { case ex: Throwable => logger.warn(s"MovieRepository change-stream delete apply failed: ${ex.getMessage}") }
                 }
           }
         override def onError(e: Throwable): Unit =
-          logger.warn(s"MovieRepo change stream ended (${e.getMessage}) — relying on the periodic backstop rehydrate.")
+          logger.warn(s"MovieRepository change stream ended (${e.getMessage}) — relying on the periodic backstop rehydrate.")
         override def onComplete(): Unit = ()
       })
-    logger.info("MongoMovieRepo: watching change stream for incremental cache updates.")
+    logger.info("MongoMovieRepository: watching change stream for incremental cache updates.")
     new AutoCloseable { override def close(): Unit = Option(subRef.get()).foreach(_.unsubscribe()) }
   }
 
@@ -409,7 +409,7 @@ class MongoMovieRepo(
   private def init(): (Option[MongoClient], Option[MongoCollection[StoredMovieDto]]) =
     Env.get("MONGODB_URI") match {
       case None =>
-        logger.info("MONGODB_URI not set — MongoMovieRepo disabled (in-memory cache only).")
+        logger.info("MONGODB_URI not set — MongoMovieRepository disabled (in-memory cache only).")
         (None, None)
       case Some(uri) =>
         Try {
@@ -423,11 +423,11 @@ class MongoMovieRepo(
           // not on the first read after the app is "up".
           Await.result(coll.countDocuments().toFuture(), 10.seconds)
           ensureIndexes(coll)
-          logger.info(s"MongoMovieRepo connected to $dbName.movies")
+          logger.info(s"MongoMovieRepository connected to $dbName.movies")
           (client, coll)
         }.recover {
           case ex: Throwable =>
-            logger.error(s"MongoMovieRepo init failed (${ex.getMessage}) — falling back to in-memory cache.")
+            logger.error(s"MongoMovieRepository init failed (${ex.getMessage}) — falling back to in-memory cache.")
             null
         }.toOption.filter(_ != null) match {
           case Some((c, coll)) => (Some(c), Some(coll))

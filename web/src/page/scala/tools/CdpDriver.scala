@@ -17,7 +17,7 @@ import java.util.concurrent.{CompletableFuture, ConcurrentHashMap, TimeUnit}
  * regression tests against the JavaScript on the rendered Twirl pages.
  * Drives Chrome over the DevTools Protocol via WebSocket (java.net.http).
  *
- * Why not Playwright/Puppeteer: this repo is Scala-only with no npm.
+ * Why not Playwright/Puppeteer: this repository is Scala-only with no npm.
  * Adding a JS test runner would bring node, a separate build step, and
  * cross-tool wiring just to assert on a handful of DOM behaviours.
  * CDP-over-WebSocket gives us the same surface — drive a real browser,

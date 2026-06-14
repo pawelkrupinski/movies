@@ -17,10 +17,10 @@ import scala.util.Try
  * using the same email accesses the same account and state.
  *
  * The trait is what callers (AuthController, UserStateController) see;
- * `MongoUserRepo` is the production impl, `InMemoryUserRepo` the test
- * fake. Pattern mirrors `MovieRepo`.
+ * `MongoUserRepository` is the production impl, `InMemoryUserRepository` the test
+ * fake. Pattern mirrors `MovieRepository`.
  */
-trait UserRepo {
+trait UserRepository {
   def enabled: Boolean
 
   /** Look up by id (= lowercased email). Used on every authenticated
@@ -39,17 +39,17 @@ trait UserRepo {
 }
 
 /**
- * MongoDB-backed `UserRepo`. Persists to the `users` collection.
+ * MongoDB-backed `UserRepository`. Persists to the `users` collection.
  *
- * When `MONGODB_URI` is unset the repo silently no-ops — local dev
+ * When `MONGODB_URI` is unset the repository silently no-ops — local dev
  * without Atlas keeps working with the OAuth flow returning a
  * "session-only" user that doesn't persist (Phase B will surface
  * that explicitly).
  */
-class MongoUserRepo(
+class MongoUserRepository(
   sharedDb: Option[MongoDatabase] = None,
   fallbackToOwnInit: Boolean = true
-) extends UserRepo with Logging {
+) extends UserRepository with Logging {
 
   // When `sharedDb` is provided (production path via `MongoConnection`),
   // we apply our codec registry to it and grab the `users` collection
@@ -81,7 +81,7 @@ class MongoUserRepo(
       Await.result(c.find(Filters.eq("id", id)).headOption(), 10.seconds)
     }.recover {
       case ex: Throwable =>
-        logger.warn(s"UserRepo.findById($id) failed: ${ex.getMessage}")
+        logger.warn(s"UserRepository.findById($id) failed: ${ex.getMessage}")
         None
     }.getOrElse(None)
   }
@@ -95,7 +95,7 @@ class MongoUserRepo(
       )
     }.recover {
       case ex: Throwable =>
-        logger.warn(s"UserRepo.findByProviderSub($provider, …) failed: ${ex.getMessage}")
+        logger.warn(s"UserRepository.findByProviderSub($provider, …) failed: ${ex.getMessage}")
         None
     }.getOrElse(None)
   }
@@ -111,7 +111,7 @@ class MongoUserRepo(
       Await.result(c.find(Filters.regex("email", pattern, "i")).headOption(), 10.seconds)
     }.recover {
       case ex: Throwable =>
-        logger.warn(s"UserRepo.findByEmail(…) failed: ${ex.getMessage}")
+        logger.warn(s"UserRepository.findByEmail(…) failed: ${ex.getMessage}")
         None
     }.getOrElse(None)
   }
@@ -121,7 +121,7 @@ class MongoUserRepo(
       Await.result(c.deleteOne(Filters.eq("id", id)).toFuture(), 10.seconds)
       ()
     }.recover {
-      case ex: Throwable => logger.warn(s"UserRepo.delete($id) failed: ${ex.getMessage}")
+      case ex: Throwable => logger.warn(s"UserRepository.delete($id) failed: ${ex.getMessage}")
     }
   }
 
@@ -132,7 +132,7 @@ class MongoUserRepo(
       ()
     }.recover {
       case ex: Throwable =>
-        logger.warn(s"UserRepo.upsert(${user.id}) failed: ${ex.getMessage}")
+        logger.warn(s"UserRepository.upsert(${user.id}) failed: ${ex.getMessage}")
     }
   }
 
@@ -141,7 +141,7 @@ class MongoUserRepo(
   private def init(): (Option[MongoClient], Option[MongoCollection[User]]) =
     Env.get("MONGODB_URI") match {
       case None =>
-        logger.info("MONGODB_URI not set — MongoUserRepo disabled.")
+        logger.info("MONGODB_URI not set — MongoUserRepository disabled.")
         (None, None)
       case Some(uri) =>
         Try {
@@ -151,11 +151,11 @@ class MongoUserRepo(
           val coll   = db.getCollection[User]("users")
           Await.result(coll.countDocuments().toFuture(), 10.seconds)
           Await.result(coll.createIndex(org.mongodb.scala.model.Indexes.ascending("id")).toFuture(), 10.seconds)
-          logger.info(s"MongoUserRepo connected to $dbName.users")
+          logger.info(s"MongoUserRepository connected to $dbName.users")
           (client, coll)
         }.recover {
           case ex: Throwable =>
-            logger.error(s"MongoUserRepo init failed (${ex.getMessage}) — disabled.")
+            logger.error(s"MongoUserRepository init failed (${ex.getMessage}) — disabled.")
             null
         }.toOption.filter(_ != null) match {
           case Some((c, coll)) => (Some(c), Some(coll))
@@ -165,12 +165,12 @@ class MongoUserRepo(
 }
 
 /**
- * In-memory `UserRepo` for tests. Trivial map keyed by `id` plus an
+ * In-memory `UserRepository` for tests. Trivial map keyed by `id` plus an
  * index on `(provider, providerSub)` so the lookup signatures both
  * stay O(1). Never persists anything across instances — every spec
  * starts with a fresh empty store.
  */
-class InMemoryUserRepo extends UserRepo {
+class InMemoryUserRepository extends UserRepository {
   private val byId  = scala.collection.mutable.Map.empty[String, User]
   private val bySub = scala.collection.mutable.Map.empty[(String, String), String]
 

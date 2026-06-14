@@ -78,7 +78,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   // ── PART B: a re-scrape folds into the concluded row, by title + opt. year ──
 
   "a later yearless scrape" should "fold into an already-resolved sibling instead of stranding a held-back row" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
 
     // The resolved, year-bearing row (Helios reported 2026, TMDB resolved it) …
     cache.put(cache.keyOf(Title, Some(2026)),
@@ -106,7 +106,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   // within ±1 (the same adjacency the periodic settle uses), else every tick
   // re-spawns a held-back `kumotry|2025` beside the resolved `kumotry|2026`.
   "a later ±1-year scrape" should "fold into the concluded sibling instead of spawning an off-by-one duplicate" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
 
     // The resolved row at the TMDB release year 2026 …
     cache.put(cache.keyOf(Title, Some(2026)),
@@ -137,7 +137,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   // while a cinema detail is still outstanding; the detail only adds
   // cinema-specific extras the resolved row doesn't need to be displayable.
   "a TMDB-resolved row with a still-pending cinema detail" should "project anyway, not be held back" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
     cache.put(cache.keyOf(Title, Some(2026)),
       MovieRecord(tmdbId = Some(1275779), imdbId = Some("tt15047880"),
         detailPending = true, data = Map(slot(Helios, Some(2026)))))
@@ -151,7 +151,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   // out of the read model. The resolved-row relaxation above must not weaken
   // either case.
   "an unresolved row with a pending detail" should "stay held back until detail concludes" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
     cache.put(cache.keyOf(Title, Some(2026)),
       MovieRecord(tmdbNoMatch = true, detailPending = true, data = Map(slot(Helios, Some(2026)))))
     projectedCinemas(cache) shouldBe empty
@@ -163,7 +163,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   // ── PART A: conclusion settles the film's group in one merged write ─────────
 
   "a TMDB HIT" should "fold a stranded yearless sibling onto the resolved row at conclusion" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
     val svc   = service(cache, tmdbHit())
 
     // Unresolved pair, as a concurrent scrape leaves it: yeared Helios + yearless Multikino.
@@ -182,7 +182,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   }
 
   "a TMDB MISS" should "still fold a stranded yearless sibling onto the concluded row" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
     val svc   = service(cache, tmdbMiss())
 
     cache.put(cache.keyOf(Title, Some(2026)), MovieRecord(data = Map(slot(Helios, Some(2026)))))

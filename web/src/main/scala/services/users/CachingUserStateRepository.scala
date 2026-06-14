@@ -6,7 +6,7 @@ import models.UserState
 import java.util.concurrent.TimeUnit
 
 /**
- * `UserStateRepo` decorator that caches positive `find` lookups. Each
+ * `UserStateRepository` decorator that caches positive `find` lookups. Each
  * logged-in page load calls `bootMergeFromServer` (in shared.js) which
  * fires `GET /api/me/state` — this resolves through `find(userId)`.
  * Without caching, every page-load triggers a Frankfurt-Atlas
@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit
  * Misses are not cached: a fresh user with no state row yet should not
  * carry a phantom-empty across an upsert that lands between two calls.
  */
-class CachingUserStateRepo(inner: UserStateRepo) extends UserStateRepo {
+class CachingUserStateRepository(inner: UserStateRepository) extends UserStateRepository {
 
   private val byUserIdCache: Cache[String, UserState] =
     Caffeine.newBuilder()

@@ -11,7 +11,7 @@ import scala.util.{Failure, Success, Try}
 
 /**
  * Single Mongo connection shared across every repository. Prior to this,
- * each `Mongo*Repo` built its own `MongoClient` in its lazy init — Movies +
+ * each `Mongo*Repository` built its own `MongoClient` in its lazy init — Movies +
  * Users + UserStates added up to three independent connection pools, three
  * Netty event loops, three replica-set monitor threads, and three Mongo
  * driver memory footprints on the same Atlas cluster. That tipped the JVM
@@ -42,7 +42,7 @@ import scala.util.{Failure, Success, Try}
  * lives in `Wiring`; `MongoConnection.isRequired` is its pure core.
  *
  * `close()` is idempotent. Wiring constructs one of these and calls
- * `close()` in its shutdown hook; each repo's own `close()` becomes a
+ * `close()` in its shutdown hook; each repository's own `close()` becomes a
  * no-op when it borrowed the database from here.
  */
 class MongoConnection(
@@ -86,7 +86,7 @@ class MongoConnection(
           val db     = client.getDatabase(dbName)
           // Touch the database to surface connectivity errors at boot
           // (same `countDocuments`-against-a-known-collection probe the
-          // old per-repo init used). Picking `movies` here because it
+          // old per-repository init used). Picking `movies` here because it
           // exists in every environment; an empty collection still
           // round-trips fine. The wait is `probeTimeout` (default 30s) rather
           // than the old hard-coded 10s — see `DefaultProbeTimeout`.

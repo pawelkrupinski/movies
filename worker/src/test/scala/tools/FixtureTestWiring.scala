@@ -2,19 +2,19 @@ package tools
 
 import clients.tools.FakeHttpFetch
 import services.events.MovieDetailsComplete
-import services.movies.InMemoryMovieRepo
-import services.readmodel.{InMemoryReadModelRepo, ReadModelReader, ReadModelWriter, WebReadModel}
+import services.movies.InMemoryMovieRepository
+import services.readmodel.{InMemoryReadModelRepository, ReadModelReader, ReadModelWriter, WebReadModel}
 
 class FixtureTestWiring(val fixture: String) extends TestWiring {
   override lazy val httoFetch: HttpFetch = new FakeHttpFetch(fixture)
-  override lazy val movieRepo = new InMemoryMovieRepo()
+  override lazy val movieRepository = new InMemoryMovieRepository()
 
   // Mongo-free read model: the worker projects the scraped corpus into this
   // in-memory store, and the web's `WebReadModel` serves from it — the same
   // worker→read-model→web seam as production, minus Mongo. Specs build their
   // `MovieControllerService` from `webReadModel` (not the raw cache).
-  override lazy val readModelRepo: ReadModelReader & ReadModelWriter = new InMemoryReadModelRepo()
-  lazy val webReadModel = new WebReadModel(readModelRepo)
+  override lazy val readModelRepository: ReadModelReader & ReadModelWriter = new InMemoryReadModelRepository()
+  lazy val webReadModel = new WebReadModel(readModelRepository)
 
   // Pin Helios's REST date to the fixture's capture day when the `fixture` dir
   // is named `dd-MM-yyyy` (e.g. "08-06-2026"). Helios bakes the date window into
@@ -105,9 +105,9 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
    *  mid-enrichment snapshot. These films were already `tmdbId`-less in the
    *  fixtures, so only their visibility changes, not their rendered data. */
   private def concludeEnrichment(): Unit =
-    movieRepo.findAll().foreach { sr =>
+    movieRepository.findAll().foreach { sr =>
       if (!sr.record.tmdbConcluded)
-        movieRepo.upsert(sr.title, sr.year, sr.record.copy(tmdbNoMatch = true))
+        movieRepository.upsert(sr.title, sr.year, sr.record.copy(tmdbNoMatch = true))
     }
 
   /** Settle the cache to its deterministic steady state. The production scrape

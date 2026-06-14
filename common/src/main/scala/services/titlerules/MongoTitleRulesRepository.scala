@@ -11,15 +11,15 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
 
-/** Mongo-backed title rules store, mirroring `MongoUserStateRepo` /
- *  `MongoMovieRepo`: a shared `MongoDatabase` (the web/worker connection) or a
+/** Mongo-backed title rules store, mirroring `MongoUserStateRepository` /
+ *  `MongoMovieRepository`: a shared `MongoDatabase` (the web/worker connection) or a
  *  self-init fallback, all writes best-effort with a 10s timeout, and a change
  *  stream so an edit on one process reaches the other. Collection: `titleRules`,
  *  one document per [[TitleRuleRecord]]. */
-class MongoTitleRulesRepo(
+class MongoTitleRulesRepository(
   sharedDb: Option[MongoDatabase] = None,
   fallbackToOwnInit: Boolean = true
-) extends TitleRulesRepo with Logging {
+) extends TitleRulesRepository with Logging {
 
   private lazy val initResult: (Option[MongoClient], Option[MongoCollection[StoredTitleRuleRecord]]) =
     sharedDb match {
@@ -35,7 +35,7 @@ class MongoTitleRulesRepo(
 
   def loadRecords(): Seq[TitleRuleRecord] = coll.map { c =>
     Try(Await.result(c.find().toFuture(), 10.seconds))
-      .recover { case ex => logger.warn(s"TitleRulesRepo.loadRecords failed: ${ex.getMessage}"); Seq.empty }
+      .recover { case ex => logger.warn(s"TitleRulesRepository.loadRecords failed: ${ex.getMessage}"); Seq.empty }
       .getOrElse(Seq.empty)
       .flatMap(safeToDomain)
   }.getOrElse(Seq.empty)
@@ -51,14 +51,14 @@ class MongoTitleRulesRepo(
         c.replaceOne(Filters.eq("_id", rec.id), StoredTitleRuleRecord.fromDomain(rec),
           new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
       ()
-    }.recover { case ex => logger.warn(s"TitleRulesRepo.upsertRecord(${rec.id}) failed: ${ex.getMessage}") }
+    }.recover { case ex => logger.warn(s"TitleRulesRepository.upsertRecord(${rec.id}) failed: ${ex.getMessage}") }
   }
 
   def deleteRecord(id: String): Unit = coll.foreach { c =>
     Try {
       Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
       ()
-    }.recover { case ex => logger.warn(s"TitleRulesRepo.deleteRecord($id) failed: ${ex.getMessage}") }
+    }.recover { case ex => logger.warn(s"TitleRulesRepository.deleteRecord($id) failed: ${ex.getMessage}") }
   }
 
   override def watchChanges(onChange: () => Unit): Option[AutoCloseable] = coll.map { c =>
@@ -71,7 +71,7 @@ class MongoTitleRulesRepo(
         logger.warn(s"TitleRules change stream ended (${e.getMessage}) — relying on the periodic backstop reload.")
       override def onComplete(): Unit = ()
     })
-    logger.info("MongoTitleRulesRepo: watching change stream for rule edits.")
+    logger.info("MongoTitleRulesRepository: watching change stream for rule edits.")
     new AutoCloseable { override def close(): Unit = Option(subRef.get()).foreach(_.unsubscribe()) }
   }
 
@@ -80,7 +80,7 @@ class MongoTitleRulesRepo(
   private def init(): (Option[MongoClient], Option[MongoCollection[StoredTitleRuleRecord]]) =
     Env.get("MONGODB_URI") match {
       case None =>
-        logger.info("MONGODB_URI not set — MongoTitleRulesRepo disabled.")
+        logger.info("MONGODB_URI not set — MongoTitleRulesRepository disabled.")
         (None, None)
       case Some(uri) =>
         Try {
@@ -89,10 +89,10 @@ class MongoTitleRulesRepo(
           val db     = client.getDatabase(dbName).withCodecRegistry(TitleRuleCodecs.registry)
           val c      = db.getCollection[StoredTitleRuleRecord]("titleRules")
           Await.result(c.countDocuments().toFuture(), 10.seconds)
-          logger.info(s"MongoTitleRulesRepo connected to $dbName.titleRules")
+          logger.info(s"MongoTitleRulesRepository connected to $dbName.titleRules")
           (Some(client), Some(c))
         }.recover { case ex =>
-          logger.error(s"MongoTitleRulesRepo init failed (${ex.getMessage}) — disabled.")
+          logger.error(s"MongoTitleRulesRepository init failed (${ex.getMessage}) — disabled.")
           (None, None)
         }.getOrElse((None, None))
     }

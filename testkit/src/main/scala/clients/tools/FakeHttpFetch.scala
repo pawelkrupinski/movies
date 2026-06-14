@@ -130,8 +130,8 @@ class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
 
 object FakeHttpFetch {
   /** Fixture root for a dir: `test/resources/fixtures/<dir>` relative to the CWD
-   *  (the repo root for sbt test/runMain), OR `<KINOWO_FIXTURE_ROOT>/<dir>` when
-   *  that env/sysprop is set — so a process whose CWD is NOT the repo root (a
+   *  (the repository root for sbt test/runMain), OR `<KINOWO_FIXTURE_ROOT>/<dir>` when
+   *  that env/sysprop is set — so a process whose CWD is NOT the repository root (a
    *  forked `bgRunMain`, e.g. `sbt localStack`'s worker) can still find the
    *  corpus. Default (unset) is unchanged, so existing callers are unaffected. */
   def rootFor(fixtureDir: String): String = rootFor(fixtureDir, Env.get("KINOWO_FIXTURE_ROOT"))

@@ -61,13 +61,13 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   // `getForMerge` fallback that existed in phase 1 is no longer necessary —
   // a plain `get` with any variant finds the row.
 
-  import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
+  import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
   import services.events.InProcessEventBus
   import clients.TmdbClient
   import models.{MovieRecord, Source, SourceData, Tmdb}
 
   private def svc(seed: (String, Option[Int], MovieRecord)*): MovieService = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo(seed))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(seed))
     new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None))
   }
 

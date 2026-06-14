@@ -18,12 +18,12 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     CityScreening(id, film, city, "Cinema " + id, None, Nil)
 
   "allScreenings" should "return every cached screening flattened across all city buckets" in {
-    val repo = new InMemoryReadModelRepo
-    repo.upsertMovie(movie("belle|2021"))
-    repo.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
-    repo.upsertScreening(screening("s2", "belle|2021", "krakow"))
-    repo.upsertScreening(screening("s3", "belle|2021", "wroclaw"))
-    val rm = new WebReadModel(repo)
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
+    repository.upsertScreening(screening("s2", "belle|2021", "krakow"))
+    repository.upsertScreening(screening("s3", "belle|2021", "wroclaw"))
+    val rm = new WebReadModel(repository)
     rm.reload()
 
     rm.allScreenings().map(_._id) should contain theSameElementsAs Seq("s1", "s2", "s3")
@@ -32,6 +32,6 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be empty when the cache holds no screenings" in {
-    new WebReadModel(new InMemoryReadModelRepo).allScreenings() shouldBe empty
+    new WebReadModel(new InMemoryReadModelRepository).allScreenings() shouldBe empty
   }
 }

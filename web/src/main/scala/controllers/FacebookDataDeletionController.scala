@@ -4,7 +4,7 @@ import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc._
 import services.auth.FacebookSignedRequest
-import services.users.{AccountDeletion, UserRepo}
+import services.users.{AccountDeletion, UserRepository}
 
 /**
  * Facebook's "Data Deletion Request Callback" (Meta app dashboard →
@@ -31,7 +31,7 @@ import services.users.{AccountDeletion, UserRepo}
 class FacebookDataDeletionController(
   cc:              ControllerComponents,
   appSecret:       Option[String],
-  userRepo:        UserRepo,
+  userRepository:        UserRepository,
   accountDeletion: AccountDeletion
 ) extends AbstractController(cc) with Logging {
 
@@ -51,7 +51,7 @@ class FacebookDataDeletionController(
                 logger.warn(s"Rejected Facebook data-deletion callback: $reason")
                 BadRequest(Json.obj("error" -> reason))
               case Right(parsed) =>
-                userRepo.findByProviderSub("facebook", parsed.userId) match {
+                userRepository.findByProviderSub("facebook", parsed.userId) match {
                   case Some(user) =>
                     accountDeletion.delete(user.id)
                     logger.info(s"Facebook data-deletion: removed account ${user.id} (fb ${parsed.userId})")

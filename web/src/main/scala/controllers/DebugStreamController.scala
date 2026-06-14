@@ -6,7 +6,7 @@ import org.apache.pekko.stream.scaladsl.Source
 import play.api.Mode
 import play.api.libs.json.Json
 import play.api.mvc._
-import services.movies.{MovieRepo, StoredMovieRecord}
+import services.movies.{MovieRepository, StoredMovieRecord}
 
 import scala.concurrent.ExecutionContext
 
@@ -24,7 +24,7 @@ import scala.concurrent.ExecutionContext
  */
 class DebugStreamController(
   cc:               ControllerComponents,
-  movieRepo:        MovieRepo,
+  movieRepository:        MovieRepository,
   environment:      Mode,
   cinemaSourceUrls: () => Map[String, String]
 )(using mat: Materializer) extends AbstractController(cc) {
@@ -53,7 +53,7 @@ class DebugStreamController(
     val (queue, source) =
       Source.queue[String](DebugStreamController.BufferSize, OverflowStrategy.dropHead).preMaterialize()
     val urls = cinemaSourceUrls()
-    val watch: Option[AutoCloseable] = movieRepo.watchChanges(
+    val watch: Option[AutoCloseable] = movieRepository.watchChanges(
       onUpsert = row => { queue.offer(upsertFrame(row, urls)); () },
       onDelete = id  => { queue.offer(deleteFrame(id)); () }
     )

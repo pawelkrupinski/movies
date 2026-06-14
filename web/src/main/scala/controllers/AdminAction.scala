@@ -1,7 +1,7 @@
 package controllers
 
 import play.api.mvc._
-import services.users.UserRepo
+import services.users.UserRepository
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -17,7 +17,7 @@ import scala.concurrent.{ExecutionContext, Future}
  *  `adminAction(parse.json) { request => ... }` when the action reads a body. */
 class AdminAction(
   override val parser: BodyParser[AnyContent],
-  userRepo:            UserRepo,
+  userRepository:            UserRepository,
   adminAllowlist:      Set[String]
 )(implicit val executionContext: ExecutionContext)
     extends ActionBuilder[Request, AnyContent] {
@@ -26,7 +26,7 @@ class AdminAction(
     request.session.get("userId") match {
       case None      => Future.successful(Results.Unauthorized("Not logged in."))
       case Some(uid) =>
-        userRepo.findById(uid).filter(_.email.exists(adminAllowlist.contains)) match {
+        userRepository.findById(uid).filter(_.email.exists(adminAllowlist.contains)) match {
           case Some(_) => block(request)
           case None    => Future.successful(Results.Forbidden("Not an admin."))
         }

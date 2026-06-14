@@ -5,7 +5,7 @@ import play.api.Logging
 import play.api.libs.json.{Json, Writes}
 import play.api.mvc._
 import play.api.Mode
-import services.movies.{MovieRepo, TitleNormalizer}
+import services.movies.{MovieRepository, TitleNormalizer}
 import services.readmodel.WebReadModel
 
 import java.time.{LocalDate, LocalDateTime}
@@ -213,11 +213,11 @@ class MovieController( cc: ControllerComponents,
                        // Read-only, on-demand only: the /debug corpus dump. The web
                        // never keeps this warm (no `movies` change stream) — it pulls
                        // a fresh snapshot when the dev endpoint is hit.
-                       movieRepo: MovieRepo,
+                       movieRepository: MovieRepository,
                        // Enqueue target for the dev-only /debug row "re-enrich"
                        // button — the same durable queue the worker drains.
                        taskQueue: services.tasks.TaskQueue,
-                       userRepo: services.users.UserRepo,
+                       userRepository: services.users.UserRepository,
                        // Gate for the state-mutating /…/debug/rehydrate trigger
                        // (the other /debug pages are dev-only; rehydrate runs in
                        // every mode, so it needs the admin gate instead).
@@ -234,7 +234,7 @@ class MovieController( cc: ControllerComponents,
                        // Read-only, on-demand: the /debug "pending enrichment" section
                        // lists the per-cinema newcomer rows incubating in
                        // `pending_movies`. Empty no-op when staging isn't wired.
-                       stagingRepo: services.staging.StagingRepo = services.staging.StagingRepo.empty,
+                       stagingRepository: services.staging.StagingRepository = services.staging.StagingRepository.empty,
                      ) extends AbstractController(cc) with Logging {
 
   // Read the session's `userId` (set by `AuthController.callback`) and
@@ -243,7 +243,7 @@ class MovieController( cc: ControllerComponents,
   // authenticated session's user row was deleted out of band — the
   // session is stale, treat it as logged out.
   private def currentUser(request: RequestHeader): Option[models.User] =
-    request.session.get("userId").flatMap(userRepo.findById)
+    request.session.get("userId").flatMap(userRepository.findById)
 
   private def acceptsGzip(request: RequestHeader): Boolean =
     request.headers.get("Accept-Encoding").exists(_.toLowerCase.contains("gzip"))
@@ -422,9 +422,9 @@ class MovieController( cc: ControllerComponents,
       // warm, so the corpus dump reads the source rows the read model is
       // projected from directly.
       Ok(views.html.debug(
-        movieRepo.findAll().sortBy(_.title.toLowerCase),
+        movieRepository.findAll().sortBy(_.title.toLowerCase),
         cinemaSourceUrls(),
-        stagingRepo.findAll().sortBy(r => (r.title.toLowerCase, r.cinema.displayName))))
+        stagingRepository.findAll().sortBy(r => (r.title.toLowerCase, r.cinema.displayName))))
     }
   }
 

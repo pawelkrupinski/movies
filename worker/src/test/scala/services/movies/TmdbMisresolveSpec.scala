@@ -76,8 +76,8 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     "be corrected once the real director arrives (it currently isn't)" in {
     // CinemaCity scraped it first, no director reported.
     val seed  = MovieRecord(data = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some(Title))))
-    val repo  = new InMemoryMovieRepo(Seq((Title, Year, seed)))
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository(Seq((Title, Year, seed)))
+    val cache = new CaffeineMovieCache(repository)
     val bus   = new InProcessEventBus()
     val svc   = new MovieService(cache, bus, visitorTmdb())
     val key   = cache.keyOf(Title, Year)

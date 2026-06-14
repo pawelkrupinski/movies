@@ -7,7 +7,7 @@ import services.UptimeMonitor
 import services.cinemas.{DetailEnricher, FakeDetailEnricher, FilmDetail}
 import services.events.{DomainEvent, EventBus, InProcessEventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 
 import java.time.LocalDateTime
 
@@ -26,7 +26,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
   /** A cache pre-seeded with one (KinoApollo, title) row whose slot carries
    *  showtimes but no detail — exactly what a bare scrape leaves behind. */
   private def seededCache(title: String) = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo(), new InProcessEventBus())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
     val bare = CinemaMovie(Movie(title), KinoApollo, posterUrl = None, filmUrl = Some("http://ref"),
       synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))
@@ -90,7 +90,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
 
   it should "write a chain enricher's detail into its shared network source, leaving venue slots untouched, so every venue shows it" in {
     // Two Cinema City venues scrape the same film (bare: showtimes only, no detail).
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo(), new InProcessEventBus())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
     def bareAt(venue: models.Cinema) = CinemaMovie(Movie("Dune"), venue, posterUrl = None,
       filmUrl = Some("http://ref"), synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))

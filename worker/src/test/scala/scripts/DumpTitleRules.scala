@@ -1,7 +1,7 @@
 package scripts
 
 import services.MongoConnection
-import services.titlerules.{MongoTitleRulesRepo, TitleRule, TitleRuleRecord}
+import services.titlerules.{MongoTitleRulesRepository, TitleRule, TitleRuleRecord}
 
 import java.nio.file.{Files, Paths}
 
@@ -70,9 +70,9 @@ object DumpTitleRules {
 
   def main(args: Array[String]): Unit = {
     val conn = MongoConnection.fromEnv(required = true)
-    val repo = new MongoTitleRulesRepo(conn.database, fallbackToOwnInit = false)
+    val repository = new MongoTitleRulesRepository(conn.database, fallbackToOwnInit = false)
     try {
-      val rules = ordered(repo.findAll())
+      val rules = ordered(repository.findAll())
       // A seeded prod always has the full seed (~50 rules) plus the operator
       // extras. An empty/tiny read means the connection landed on the wrong db
       // or the tunnel didn't come up — refuse to overwrite the mirror with junk
@@ -84,7 +84,7 @@ object DumpTitleRules {
       Files.write(Out, render(rules).getBytes("UTF-8"))
       println(s"Wrote ${rules.size} prod title rules to $Out")
     } finally {
-      repo.close()
+      repository.close()
       conn.close()
     }
   }

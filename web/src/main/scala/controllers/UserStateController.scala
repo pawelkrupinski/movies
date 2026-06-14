@@ -3,7 +3,7 @@ package controllers
 import models.UserState
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
-import services.users.{AccountDeletion, UserStateRepo}
+import services.users.{AccountDeletion, UserStateRepository}
 
 import java.time.Instant
 
@@ -21,7 +21,7 @@ import java.time.Instant
  */
 class UserStateController(
   cc:              ControllerComponents,
-  userStateRepo:   UserStateRepo,
+  userStateRepository:   UserStateRepository,
   accountDeletion: AccountDeletion
 ) extends AbstractController(cc) {
   import UserStateController._
@@ -30,7 +30,7 @@ class UserStateController(
     request.session.get("userId") match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
-        val state = userStateRepo.find(userId).getOrElse(UserState.empty(userId))
+        val state = userStateRepository.find(userId).getOrElse(UserState.empty(userId))
         Ok(toJson(state))
     }
   }
@@ -42,11 +42,11 @@ class UserStateController(
         // PUT is a partial update over the stored row (see fromJson): fields
         // the body omits keep their stored value, so a client that only
         // models some of the sets can't wipe the others.
-        val base = userStateRepo.find(userId).getOrElse(UserState.empty(userId))
+        val base = userStateRepository.find(userId).getOrElse(UserState.empty(userId))
         fromJson(base, request.body) match {
           case Left(reason) => BadRequest(Json.obj("error" -> reason))
           case Right(state) =>
-            userStateRepo.upsert(state)
+            userStateRepository.upsert(state)
             Ok(toJson(state))
         }
     }

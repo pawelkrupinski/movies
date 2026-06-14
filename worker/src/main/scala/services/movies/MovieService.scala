@@ -110,7 +110,7 @@ class MovieService(
    *  collapse logic lives in `MovieCache.canonicalizeBySanitize`; this is the
    *  PRODUCTION caller of it.
    *
-   *  Deliberately IN-MEMORY, not corpus-scoped: collapsing over `repo.findAll()`
+   *  Deliberately IN-MEMORY, not corpus-scoped: collapsing over `repository.findAll()`
    *  re-keys rows by their re-derived display title, which runs DURING the
    *  enrichment cascade and races in-flight Filmweb/TMDB writes — a non-
    *  determinism the order guard (`ScrapeOrderDeterminismSpec`) catches. The
@@ -128,8 +128,8 @@ class MovieService(
   /** Drain the INLINE enrichment pool (`ec`) so any in-flight inline TMDB
    *  resolution finishes — its upserts hit Mongo and its TmdbResolved /
    *  ImdbIdMissing events fire (downstream listeners dispatch synchronously on
-   *  this thread) — before `MovieRepo` closes its client. The caller
-   *  (`AppLoader`) registers this hook so the repo's close runs strictly after.
+   *  this thread) — before `MovieRepository` closes its client. The caller
+   *  (`AppLoader`) registers this hook so the repository's close runs strictly after.
    *
    *  In production single-movie resolution runs as a `ResolveTmdb` worker task,
    *  not on this pool, so the TaskWorker's own lifecycle owns its drain (and a
@@ -472,7 +472,7 @@ class MovieService(
 
   /** Build the resolved `MovieRecord` from a TMDB hit + the row's `existing`
    *  record — pure (no cache, no lock), so the movies path (then `settleResolved`)
-   *  and the staging promoter (then `stagingRepo.upsert`) share ONE definition of
+   *  and the staging promoter (then `stagingRepository.upsert`) share ONE definition of
    *  how a resolution writes the TMDB-side fields + `Tmdb` slot while carrying the
    *  cinema-side data and score fields forward. */
   private def buildResolvedRecord(

@@ -42,23 +42,23 @@ object NormalizationReportCodecs {
     DEFAULT_CODEC_REGISTRY)
 }
 
-trait NormalizationReportRepo {
+trait NormalizationReportRepository {
   def writeLatest(report: StoredNormalizationReport): Unit
   def readLatest(): Option[StoredNormalizationReport]
   def close(): Unit = ()
 }
 
 /** Fallback when Mongo is disabled, and the fake for tests. */
-class InMemoryNormalizationReportRepo extends NormalizationReportRepo {
+class InMemoryNormalizationReportRepository extends NormalizationReportRepository {
   @volatile private var latest: Option[StoredNormalizationReport] = None
   def writeLatest(report: StoredNormalizationReport): Unit = latest = Some(report)
   def readLatest(): Option[StoredNormalizationReport] = latest
 }
 
-class MongoNormalizationReportRepo(
+class MongoNormalizationReportRepository(
   sharedDb: Option[MongoDatabase] = None,
   fallbackToOwnInit: Boolean = true
-) extends NormalizationReportRepo with Logging {
+) extends NormalizationReportRepository with Logging {
 
   private lazy val initResult: (Option[MongoClient], Option[MongoCollection[StoredNormalizationReport]]) =
     sharedDb match {
@@ -75,12 +75,12 @@ class MongoNormalizationReportRepo(
     Try {
       Await.result(c.replaceOne(Filters.eq("_id", report._id), report, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
       ()
-    }.recover { case ex => logger.warn(s"NormalizationReportRepo.writeLatest failed: ${ex.getMessage}") }
+    }.recover { case ex => logger.warn(s"NormalizationReportRepository.writeLatest failed: ${ex.getMessage}") }
   }
 
   def readLatest(): Option[StoredNormalizationReport] = coll.flatMap { c =>
     Try(Await.result(c.find(Filters.eq("_id", NormalizationReport.LatestId)).headOption(), 10.seconds))
-      .recover { case ex => logger.warn(s"NormalizationReportRepo.readLatest failed: ${ex.getMessage}"); None }
+      .recover { case ex => logger.warn(s"NormalizationReportRepository.readLatest failed: ${ex.getMessage}"); None }
       .getOrElse(None)
   }
 
@@ -98,7 +98,7 @@ class MongoNormalizationReportRepo(
           Await.result(c.countDocuments().toFuture(), 10.seconds)
           (Some(client), Some(c))
         }.recover { case ex =>
-          logger.error(s"MongoNormalizationReportRepo init failed (${ex.getMessage}) — disabled.")
+          logger.error(s"MongoNormalizationReportRepository init failed (${ex.getMessage}) — disabled.")
           (None, None)
         }.getOrElse((None, None))
     }

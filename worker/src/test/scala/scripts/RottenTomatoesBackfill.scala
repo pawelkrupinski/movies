@@ -1,7 +1,7 @@
 package scripts
 
 import services.enrichment.RottenTomatoesClient
-import services.movies.{MongoMovieRepo, StoredMovieRecord}
+import services.movies.{MongoMovieRepository, StoredMovieRecord}
 import tools.{DaemonExecutors, RealHttpFetch}
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -42,14 +42,14 @@ object RottenTomatoesBackfill {
   private case class  ScoreCleared (before: Int)                   extends Change
 
   def main(args: Array[String]): Unit = {
-    val repo = new MongoMovieRepo()
-    if (!repo.enabled) {
+    val repository = new MongoMovieRepository()
+    if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)
     }
     val rt = new RottenTomatoesClient(new RealHttpFetch)
 
-    val rows = repo.findAll().sortBy(r => (r.title.toLowerCase, r.year))
+    val rows = repository.findAll().sortBy(r => (r.title.toLowerCase, r.year))
     val bogusUrlCount = rows.count(_.record.rottenTomatoesUrl.exists(_.endsWith(BogusUrlSuffix)))
     val missingScore = rows.count(_.record.rottenTomatoes.isEmpty)
     // 10 workers per CLAUDE.md ("5–10 for undocumented services"). Each row
@@ -103,7 +103,7 @@ object RottenTomatoesBackfill {
         }
 
         if (urlChange != NoChange || scoreChange != NoChange) {
-          repo.upsert(title, year, e.copy(
+          repository.upsert(title, year, e.copy(
             rottenTomatoesUrl = freshUrl,
             rottenTomatoes    = freshScore
           ))
@@ -129,7 +129,7 @@ object RottenTomatoesBackfill {
 
     val outcomes = Await.result(Future.sequence(tasks), 30.minutes)
     ec.shutdown()
-    repo.close()
+    repository.close()
 
     val urlChanges   = outcomes.count { case (u, _) => u != NoChange }
     val scoreChanges = outcomes.count { case (_, s) => s != NoChange }

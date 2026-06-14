@@ -50,13 +50,13 @@ case class PlanViewData(
 class PlanController(
   cc:                     ControllerComponents,
   movieControllerService: MovieControllerService,
-  userRepo:               services.users.UserRepo,
+  userRepository:               services.users.UserRepository,
   oauthProviders:         Set[String],
   environment:            Mode
 ) extends AbstractController(cc) with Logging {
 
   private def currentUser(request: RequestHeader): Option[models.User] =
-    request.session.get("userId").flatMap(userRepo.findById)
+    request.session.get("userId").flatMap(userRepository.findById)
 
   def plan(city: String): Action[AnyContent] = Action { request =>
     City.bySlug(city) match {

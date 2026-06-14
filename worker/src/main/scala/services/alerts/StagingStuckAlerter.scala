@@ -2,7 +2,7 @@ package services.alerts
 
 import play.api.Logging
 import services.Stoppable
-import services.staging.{StagingRecord, StagingRepo}
+import services.staging.{StagingRecord, StagingRepository}
 import tools.DaemonExecutors
 
 import java.time.{Clock, Instant}
@@ -40,7 +40,7 @@ import scala.util.Try
  * stuck film alerts once until it clears.
  */
 class StagingStuckAlerter(
-  stagingRepo:    StagingRepo,
+  stagingRepository:    StagingRepository,
   notify:         String => Unit,  // deliver one alert message (e.g. TelegramNotifier.send)
   stuckThreshold: FiniteDuration = 1.hour,
   interval:       FiniteDuration = 10.minutes,
@@ -68,7 +68,7 @@ class StagingStuckAlerter(
    *  scheduled tick. */
   private[alerts] def runOnce(): Option[String] = synchronized {
     val now        = clock.instant()
-    val unresolved = stagingRepo.findAll().filterNot(_.record.tmdbConcluded)
+    val unresolved = stagingRepository.findAll().filterNot(_.record.tmdbConcluded)
     val currentIds = unresolved.map(idOf).toSet
 
     // Drop rows that resolved or vanished since last pass — frees them to re-alert.

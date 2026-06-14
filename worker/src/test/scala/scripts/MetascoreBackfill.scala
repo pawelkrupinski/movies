@@ -1,7 +1,7 @@
 package scripts
 
 import services.enrichment.MetacriticClient
-import services.movies.{MongoMovieRepo, StoredMovieRecord}
+import services.movies.{MongoMovieRepository, StoredMovieRecord}
 import tools.{DaemonExecutors, RealHttpFetch}
 
 import java.util.concurrent.TimeUnit
@@ -29,14 +29,14 @@ object MetascoreBackfill {
   private case class Unchanged(title: String, year: Option[Int], orig: Option[String], hasUrl: Boolean, current: Option[Int]) extends Outcome
 
   def main(args: Array[String]): Unit = {
-    val repo = new MongoMovieRepo()
-    if (!repo.enabled) {
+    val repository = new MongoMovieRepository()
+    if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)
     }
     val mc = new MetacriticClient(new RealHttpFetch)
 
-    val rows = repo.findAll().sortBy(r => (r.title.toLowerCase, r.year))
+    val rows = repository.findAll().sortBy(r => (r.title.toLowerCase, r.year))
     val withUrl = rows.count(_.record.metacriticUrl.isDefined)
     val withScore = rows.count(_.record.metascore.isDefined)
     println(s"${rows.size} rows in Mongo · $withUrl have MC URL · $withScore have metascore · revalidating every row's metascore")
@@ -55,10 +55,10 @@ object MetascoreBackfill {
 
         val outcome: Outcome = (e.metascore, freshScore) match {
           case (None, Some(s)) =>
-            repo.upsert(title, year, e.copy(metascore = Some(s)))
+            repository.upsert(title, year, e.copy(metascore = Some(s)))
             Filled(title, year, e.originalTitle, s)
           case (Some(old), Some(s)) if old != s =>
-            repo.upsert(title, year, e.copy(metascore = Some(s)))
+            repository.upsert(title, year, e.copy(metascore = Some(s)))
             Corrected(title, year, e.originalTitle, old, s)
           case _ =>
             Unchanged(title, year, e.originalTitle, e.metacriticUrl.isDefined, e.metascore)
@@ -78,7 +78,7 @@ object MetascoreBackfill {
     val outcomes = Await.result(Future.sequence(tasks), 60.minutes)
     ec.shutdown()
     ec.awaitTermination(30, TimeUnit.SECONDS)
-    repo.close()
+    repository.close()
 
     val filled    = outcomes.collect { case f: Filled    => f }
     val corrected = outcomes.collect { case c: Corrected => c }

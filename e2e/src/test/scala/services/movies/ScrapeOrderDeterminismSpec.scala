@@ -105,7 +105,7 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     // `recordCinemaScrape` returns every film's canonical key. With staging on it
     // would divert newcomers and return nothing to harvest from.
     val w = new FixtureTestWiring(Fixture) {
-      override lazy val movieCache = new CaffeineMovieCache(movieRepo, eventBus, staging = None)
+      override lazy val movieCache = new CaffeineMovieCache(movieRepository, eventBus, staging = None)
     }
     val rows = mutable.ListBuffer.empty[(String, Option[Int], Cinema, CinemaMovie)]
     w.cinemaScrapers.foreach { scraper =>
@@ -161,7 +161,7 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     // them into `movies` (the prod scheduler's job) before reading the corpus.
     w.drainStaging()
 
-    val record = w.movieRepo.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+    val record = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     // Project the settled corpus into the read model and serve from it, exactly
     // as the web does. The cache holds only this one film, so toSchedules over
     // every city yields just this film's rows (one per city it screens in).
@@ -250,7 +250,7 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     // so the per-fetch jitter only burns wall-clock here — switch it off.
     jitter.enabled = false
     w.converge(Some(rnd))
-    val record = w.movieRepo.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+    val record = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     // Project the converged corpus into the read model and warm it — the same
     // reconcile + reload the worker runs at boot — so we render through the
     // web's read seam (webReadModel), not the raw worker cache.
@@ -317,7 +317,7 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
    *  distinct settled row-sets. Order-independence ⇒ exactly one. */
   private def settledAcrossOrders(rows: Seq[(CacheKey, MovieRecord)]): Set[Set[(String, Option[Int])]] =
     rows.permutations.map { ordered =>
-      val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
       ordered.foreach { case (k, e) => cache.put(k, e) }
       cache.canonicalizeBySanitize()
       cache.snapshot().map(r => (r.title, r.year)).toSet

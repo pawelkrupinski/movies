@@ -1,7 +1,7 @@
 package scripts
 
 import services.movies.TitleNormalizer.normalize
-import services.titlerules.{MongoTitleRulesRepo, TitleRuleDefaults, TitleRuleRecord, TitleRuleSet}
+import services.titlerules.{MongoTitleRulesRepository, TitleRuleDefaults, TitleRuleRecord, TitleRuleSet}
 
 import java.nio.file.{Files, Paths}
 import scala.jdk.CollectionConverters._
@@ -60,10 +60,10 @@ object ApplyExtraTitleRules {
   }
 
   private def apply(): Unit = {
-    val repo = new MongoTitleRulesRepo()
-    if (!repo.enabled) { println("[apply] titleRules repo disabled — set MONGODB_URI. Aborting."); return }
+    val repository = new MongoTitleRulesRepository()
+    if (!repository.enabled) { println("[apply] titleRules repository disabled — set MONGODB_URI. Aborting."); return }
 
-    val current = repo.loadRecords()
+    val current = repository.loadRecords()
     ExtraTitleRules.all.groupBy(_.scope).foreach { case (scope, extras) =>
       val recId    = TitleRuleRecord.idFor(scope, None)
       val existing = current.find(_.id == recId)
@@ -79,12 +79,12 @@ object ApplyExtraTitleRules {
       if (toAdd.isEmpty) println(s"[apply] [$recId] already current — nothing to add.")
       else {
         val merged = TitleRuleRecord(recId, scope, None, baseRules ++ toAdd, lastRules)
-        repo.upsertRecord(merged)
+        repository.upsertRecord(merged)
         println(s"[apply] [$recId] appended ${toAdd.size} rules -> ${merged.rules.size} total " +
           s"(${toAdd.map(_.id).mkString(", ")})")
       }
     }
-    repo.close()
+    repository.close()
     println("[apply] done. The worker's change stream will re-key + re-enrich the corpus; " +
       "check /admin/title-rules/report for the realized counts.")
   }

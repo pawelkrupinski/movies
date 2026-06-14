@@ -54,10 +54,10 @@ object StagingRecord {
  * `pending_movies` collection. A genuinely-new `(title, year)` incubates here
  * (one row per cinema) until it resolves, then a transactional fold moves it
  * into `movies` and deletes the staging rows. The trait is what consumers see;
- * `MongoStagingRepo` (prod) and `InMemoryStagingRepo` (tests) are the impls,
+ * `MongoStagingRepository` (prod) and `InMemoryStagingRepository` (tests) are the impls,
  * wired by the trait per CLAUDE.md's DIP guidance.
  */
-trait StagingRepo {
+trait StagingRepository {
   /** Whether the persistence layer is wired up; writes no-op when false. */
   def enabled: Boolean
 
@@ -78,11 +78,11 @@ trait StagingRepo {
   def close(): Unit = ()
 }
 
-object StagingRepo {
-  /** A disabled, empty no-op `StagingRepo` — the default for callers that don't
+object StagingRepository {
+  /** A disabled, empty no-op `StagingRepository` — the default for callers that don't
    *  wire staging (e.g. the web `/debug` controller in tests, or any non-staging
    *  build). `findAll` is empty and writes are dropped. */
-  val empty: StagingRepo = new StagingRepo {
+  val empty: StagingRepository = new StagingRepository {
     def enabled: Boolean = false
     def findAll(): Seq[StagingRecord] = Seq.empty
     def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = ()
@@ -91,14 +91,14 @@ object StagingRepo {
 }
 
 /**
- * MongoDB-backed `StagingRepo` over the `pending_movies` collection. Reuses the
+ * MongoDB-backed `StagingRepository` over the `pending_movies` collection. Reuses the
  * `movies` storage shape (`StoredMovieDto` + `MovieCodecs.registry`) — a staging
  * row is just a `MovieRecord` with a single-cinema `data` map — differing only in
- * the collection name and the cinema-scoped `_id`. Mirrors `MongoMovieRepo`'s
+ * the collection name and the cinema-scoped `_id`. Mirrors `MongoMovieRepository`'s
  * relaxed write concern: `pending_movies` is re-scraped continuously and its rows
  * are transient, so a write lost to a crash is recovered by the next scrape.
  */
-class MongoStagingRepo(sharedDb: Option[MongoDatabase] = None) extends StagingRepo with Logging {
+class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends StagingRepository with Logging {
 
   private lazy val coll: Option[MongoCollection[StoredMovieDto]] =
     sharedDb.map { db =>
@@ -117,7 +117,7 @@ class MongoStagingRepo(sharedDb: Option[MongoDatabase] = None) extends StagingRe
           .flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record))
       }.recover {
         case ex: Throwable =>
-          logger.warn(s"StagingRepo.findAll failed: ${ex.getClass.getSimpleName}: ${ex.getMessage}")
+          logger.warn(s"StagingRepository.findAll failed: ${ex.getClass.getSimpleName}: ${ex.getMessage}")
           Seq.empty
       }.getOrElse(Seq.empty)
   }
@@ -129,7 +129,7 @@ class MongoStagingRepo(sharedDb: Option[MongoDatabase] = None) extends StagingRe
       Await.result(c.replaceOne(Filters.eq("_id", id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
       ()
     }.recover {
-      case ex: Throwable => logger.warn(s"StagingRepo.upsert($id) failed: ${ex.getMessage}")
+      case ex: Throwable => logger.warn(s"StagingRepository.upsert($id) failed: ${ex.getMessage}")
     }
   }
 
@@ -139,7 +139,7 @@ class MongoStagingRepo(sharedDb: Option[MongoDatabase] = None) extends StagingRe
       Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
       ()
     }.recover {
-      case ex: Throwable => logger.warn(s"StagingRepo.delete($id) failed: ${ex.getMessage}")
+      case ex: Throwable => logger.warn(s"StagingRepository.delete($id) failed: ${ex.getMessage}")
     }
   }
 
@@ -152,14 +152,14 @@ class MongoStagingRepo(sharedDb: Option[MongoDatabase] = None) extends StagingRe
           Option(change.getFullDocument).foreach { dto =>
             StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record).foreach { row =>
               try onUpsert(row)
-              catch { case ex: Throwable => logger.warn(s"StagingRepo change-stream apply failed: ${ex.getMessage}") }
+              catch { case ex: Throwable => logger.warn(s"StagingRepository change-stream apply failed: ${ex.getMessage}") }
             }
           }
         override def onError(e: Throwable): Unit =
-          logger.warn(s"StagingRepo change stream ended (${e.getMessage}) — relying on the periodic backstop.")
+          logger.warn(s"StagingRepository change stream ended (${e.getMessage}) — relying on the periodic backstop.")
         override def onComplete(): Unit = ()
       })
-    logger.info("MongoStagingRepo: watching pending_movies change stream.")
+    logger.info("MongoStagingRepository: watching pending_movies change stream.")
     new AutoCloseable { override def close(): Unit = Option(subRef.get()).foreach(_.unsubscribe()) }
   }
 }

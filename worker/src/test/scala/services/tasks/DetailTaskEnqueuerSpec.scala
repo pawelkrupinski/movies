@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.FakeDetailEnricher
 import services.events.CinemaMovieAdded
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.events.InProcessEventBus
 
 import scala.concurrent.duration._
@@ -14,7 +14,7 @@ import scala.concurrent.duration._
 class DetailTaskEnqueuerSpec extends AnyFlatSpec with Matchers {
 
   private def fixture = {
-    val cache    = new CaffeineMovieCache(new InMemoryMovieRepo(), new InProcessEventBus())
+    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
     val queue    = new InMemoryTaskQueue
     val fresh    = new InMemoryFreshnessStore
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo")

@@ -1,7 +1,7 @@
 package scripts
 
 import services.enrichment.MetacriticClient
-import services.movies.{MongoMovieRepo, StoredMovieRecord}
+import services.movies.{MongoMovieRepository, StoredMovieRecord}
 import tools.{DaemonExecutors, RealHttpFetch}
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -37,14 +37,14 @@ object MetacriticBackfill {
   private case class Unchanged(title: String, year: Option[Int], orig: Option[String])                                 extends Outcome
 
   def main(args: Array[String]): Unit = {
-    val repo = new MongoMovieRepo()
-    if (!repo.enabled) {
+    val repository = new MongoMovieRepository()
+    if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)
     }
     val mc = new MetacriticClient(new RealHttpFetch)
 
-    val rows = repo.findAll().sortBy(r => (r.title.toLowerCase, r.year))
+    val rows = repository.findAll().sortBy(r => (r.title.toLowerCase, r.year))
     val bogusCount = rows.count(_.record.metacriticUrl.exists(_.endsWith(BogusUrlSuffix)))
     // 10 workers is the upper end of CLAUDE.md's "5–10" range for
     // undocumented services. MC handles concurrent probes well in practice
@@ -81,21 +81,21 @@ object MetacriticBackfill {
         val outcome: Outcome = (e.metacriticUrl, fresh) match {
           // Bogus stored URL: always replace (clear or correct).
           case (Some(old), Some(url)) if old.endsWith(BogusUrlSuffix) && !url.endsWith(BogusUrlSuffix) =>
-            repo.upsert(title, year, e.copy(metacriticUrl = Some(url)))
+            repository.upsert(title, year, e.copy(metacriticUrl = Some(url)))
             Corrected(title, year, e.originalTitle, old, url)
           case (Some(old), None) if old.endsWith(BogusUrlSuffix) =>
-            repo.upsert(title, year, e.copy(metacriticUrl = None))
+            repository.upsert(title, year, e.copy(metacriticUrl = None))
             Cleared(title, year, e.originalTitle, old)
           // Stored URL is None → potential fill.
           case (None, Some(url)) if !url.endsWith(BogusUrlSuffix) =>
-            repo.upsert(title, year, e.copy(metacriticUrl = Some(url)))
+            repository.upsert(title, year, e.copy(metacriticUrl = Some(url)))
             Filled(title, year, e.originalTitle, url)
           // Stored URL exists and differs from new probe result → correct it.
           case (Some(old), Some(url)) if old != url =>
-            repo.upsert(title, year, e.copy(metacriticUrl = Some(url)))
+            repository.upsert(title, year, e.copy(metacriticUrl = Some(url)))
             Corrected(title, year, e.originalTitle, old, url)
           case (Some(old), None) =>
-            repo.upsert(title, year, e.copy(metacriticUrl = None))
+            repository.upsert(title, year, e.copy(metacriticUrl = None))
             Corrected(title, year, e.originalTitle, old, "None")
           // Same URL (or both None) — no write needed.
           case _ =>
@@ -123,7 +123,7 @@ object MetacriticBackfill {
 
     val outcomes = Await.result(Future.sequence(tasks), 30.minutes)
     ec.shutdown()
-    repo.close()
+    repository.close()
 
     val filled    = outcomes.collect { case f: Filled    => f }
     val corrected = outcomes.collect { case c: Corrected => c }

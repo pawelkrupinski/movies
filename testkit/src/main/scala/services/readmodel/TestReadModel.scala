@@ -21,7 +21,7 @@ object TestReadModel {
     ReadModelProjection.ratingsFor(record, title)
 
   def fromRecords(records: Seq[(String, Option[Int], MovieRecord)]): WebReadModel = {
-    val store = new InMemoryReadModelRepo()
+    val store = new InMemoryReadModelRepository()
     records.foreach { case (title, year, record) =>
       val stored = StoredMovieRecord(title, year, record)
       store.upsertMovie(ReadModelProjection.resolve(stored))

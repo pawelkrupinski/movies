@@ -1,6 +1,6 @@
 package scripts
 
-import services.movies.MongoMovieRepo
+import services.movies.MongoMovieRepository
 import tools.TextNormalization
 
 /**
@@ -20,13 +20,13 @@ object SynopsisHtmlBackfill {
   private val HtmlTagRe = "<[^>]+>".r
 
   def main(args: Array[String]): Unit = {
-    val repo = new MongoMovieRepo()
-    if (!repo.enabled) {
+    val repository = new MongoMovieRepository()
+    if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)
     }
 
-    val all     = repo.findAll().sortBy(r => (r.title.toLowerCase, r.year))
+    val all     = repository.findAll().sortBy(r => (r.title.toLowerCase, r.year))
     var updated = 0
 
     all.foreach { r =>
@@ -36,7 +36,7 @@ object SynopsisHtmlBackfill {
       }
       if (patches.nonEmpty) {
         val newData = r.record.data ++ patches
-        repo.upsert(r.title, r.year, r.record.copy(data = newData))
+        repository.upsert(r.title, r.year, r.record.copy(data = newData))
         val sources = patches.keys.mkString(", ")
         println(f"  ${r.title}%-60s [$sources]")
         updated += 1
@@ -49,6 +49,6 @@ object SynopsisHtmlBackfill {
       println("  curl -X POST http://localhost:9000/debug/rehydrate")
     }
 
-    repo.close()
+    repository.close()
   }
 }

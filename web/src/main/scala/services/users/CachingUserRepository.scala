@@ -6,7 +6,7 @@ import models.User
 import java.util.concurrent.TimeUnit
 
 /**
- * `UserRepo` decorator that caches positive `findById` lookups in a
+ * `UserRepository` decorator that caches positive `findById` lookups in a
  * Caffeine map. Every authenticated page request resolves the session
  * cookie's `userId` through `findById` — caching avoids the per-request
  * Frankfurt-Atlas round-trip (~50–150 ms apiece) once the user's row is
@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit
  * the OAuth callback at most once per login, not on the page-render hot
  * path.
  */
-class CachingUserRepo(inner: UserRepo) extends UserRepo {
+class CachingUserRepository(inner: UserRepository) extends UserRepository {
 
   private val byIdCache: Cache[String, User] =
     Caffeine.newBuilder()

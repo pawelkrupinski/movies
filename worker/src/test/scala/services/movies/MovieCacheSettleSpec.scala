@@ -17,13 +17,13 @@ import org.scalatest.matchers.should.Matchers
  * rows split by tmdbId, year-bearing unresolved rows attach within ±1 of a
  * resolved cluster, the rest pack into greedy 2-year windows, and yearless rows
  * fold into the canonical cluster. All deterministic — a pure function of the
- * row set. (`CaffeineMovieCache` + `InMemoryMovieRepo` live in worker test
+ * row set. (`CaffeineMovieCache` + `InMemoryMovieRepository` live in worker test
  * scope, beside `CanonicalSpellingSpec`/`CorpusSettleSpec`, so this spec sits
  * here rather than in common's testkit-less test config.)
  */
 class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
 
-  private def cache = new CaffeineMovieCache(new InMemoryMovieRepo)
+  private def cache = new CaffeineMovieCache(new InMemoryMovieRepository)
 
   // A cinema-only (unresolved) row: one cinema slot at the given year, no tmdbId.
   private def cinemaRow(c: MovieCache, title: String, cinema: Cinema, year: Option[Int]): Unit =

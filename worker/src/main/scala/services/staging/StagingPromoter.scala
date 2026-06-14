@@ -37,7 +37,7 @@ import services.movies.{MovieRecordMerge, MovieService, TitleNormalizer}
  * so the promoter depends on the abstraction, not the whole service.
  */
 class StagingPromoter(
-  stagingRepo:    StagingRepo,
+  stagingRepository:    StagingRepository,
   enrichers:      Seq[DetailEnricher],
   resolveStaging: (String, Option[Int], MovieRecord) => Option[MovieRecord],
   recoverImdbId:  (String, Option[Int]) => Option[String],
@@ -48,7 +48,7 @@ class StagingPromoter(
    *  across all its year-variants). Returns how many films concluded this pass
    *  (for logging). */
   def runOnce(): Int =
-    stagingRepo.findAll()
+    stagingRepository.findAll()
       .groupBy(r => TitleNormalizer.sanitize(r.title))
       .valuesIterator
       .count(promoteFilm)
@@ -78,7 +78,7 @@ class StagingPromoter(
     }
 
     // 2. Re-read the film's rows (every year-variant) with detail merged in.
-    val fresh = stagingRepo.findAll().filter(r => TitleNormalizer.sanitize(r.title) == norm)
+    val fresh = stagingRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == norm)
     if (fresh.isEmpty || fresh.exists(_.record.tmdbConcluded) || !detailReady) return false
 
     // 3. Resolve ONCE over the WHOLE film's merged view at its best year — the
@@ -115,7 +115,7 @@ class StagingPromoter(
             imdbId      = resolved.imdbId,
             tmdbNoMatch = resolved.tmdbNoMatch,
             data        = tmdbSlot.fold(r.record.data)(s => r.record.data + (Tmdb -> s)))
-          stagingRepo.upsert(r.cinema, r.title, r.year, stamped)
+          stagingRepository.upsert(r.cinema, r.title, r.year, stamped)
         }
         val concluded = resolved.tmdbConcluded
         // 5. Fold each year-variant separately — one event per distinct year.
@@ -138,7 +138,7 @@ class StagingPromoter(
       case Some(detail) =>
         val merged = row.record.copy(
           data = row.record.data + (target -> detail.mergeInto(row.record.data.getOrElse(target, models.SourceData()))))
-        stagingRepo.upsert(row.cinema, row.title, row.year, merged)
+        stagingRepository.upsert(row.cinema, row.title, row.year, merged)
         logger.info(s"Staging: '${row.title}' ← detail from ${row.cinema.displayName}")
         true
       case None =>

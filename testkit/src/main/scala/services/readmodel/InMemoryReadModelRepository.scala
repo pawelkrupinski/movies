@@ -7,11 +7,11 @@ import scala.collection.mutable
 /**
  * In-memory [[ReadModelReader]] + [[ReadModelWriter]] for tests — full
  * read/write/watch semantics without a real Mongo cluster. Mirrors
- * `InMemoryMovieRepo`: every write is recorded (for write-through assertions)
+ * `InMemoryMovieRepository`: every write is recorded (for write-through assertions)
  * and notified to any registered watcher, standing in for Mongo's change
  * stream (including deletes, which the read-model stream does deliver).
  */
-class InMemoryReadModelRepo extends ReadModelReader with ReadModelWriter {
+class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
 
   private val moviesStore     = mutable.LinkedHashMap.empty[String, ResolvedMovie]
   private val screeningsStore = mutable.LinkedHashMap.empty[String, CityScreening]

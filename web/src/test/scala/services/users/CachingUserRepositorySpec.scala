@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 
-class CachingUserRepoSpec extends AnyFlatSpec with Matchers {
+class CachingUserRepositorySpec extends AnyFlatSpec with Matchers {
 
   private val Alice = User(
     id          = "uuid-alice",
@@ -20,16 +20,16 @@ class CachingUserRepoSpec extends AnyFlatSpec with Matchers {
     lastSeenAt  = Instant.parse("2026-05-19T12:00:00Z")
   )
 
-  /** Counts how often each method on the inner repo gets hit so the
+  /** Counts how often each method on the inner repository gets hit so the
    *  spec can assert the cache short-circuits before the inner call. */
-  private class CountingUserRepo(seed: Seq[User] = Seq.empty) extends UserRepo {
+  private class CountingUserRepository(seed: Seq[User] = Seq.empty) extends UserRepository {
     val findByIdHits           = new AtomicInteger(0)
     val findByProviderSubHits  = new AtomicInteger(0)
     val findByEmailHits        = new AtomicInteger(0)
     val upsertHits             = new AtomicInteger(0)
     val deleteHits             = new AtomicInteger(0)
 
-    private val inner = new InMemoryUserRepo
+    private val inner = new InMemoryUserRepository
     seed.foreach(inner.upsert)
 
     def enabled: Boolean = inner.enabled
@@ -41,9 +41,9 @@ class CachingUserRepoSpec extends AnyFlatSpec with Matchers {
     def close(): Unit = inner.close()
   }
 
-  "CachingUserRepo.findById" should "hit the inner repo once and then serve subsequent calls from cache" in {
-    val inner  = new CountingUserRepo(Seq(Alice))
-    val cached = new CachingUserRepo(inner)
+  "CachingUserRepository.findById" should "hit the inner repository once and then serve subsequent calls from cache" in {
+    val inner  = new CountingUserRepository(Seq(Alice))
+    val cached = new CachingUserRepository(inner)
 
     cached.findById("uuid-alice") shouldBe Some(Alice)
     cached.findById("uuid-alice") shouldBe Some(Alice)
@@ -52,9 +52,9 @@ class CachingUserRepoSpec extends AnyFlatSpec with Matchers {
     inner.findByIdHits.get() shouldBe 1
   }
 
-  it should "not cache a miss — a later findById must still consult the inner repo" in {
-    val inner  = new CountingUserRepo()
-    val cached = new CachingUserRepo(inner)
+  it should "not cache a miss — a later findById must still consult the inner repository" in {
+    val inner  = new CountingUserRepository()
+    val cached = new CachingUserRepository(inner)
 
     cached.findById("ghost") shouldBe None
     cached.findById("ghost") shouldBe None
@@ -66,8 +66,8 @@ class CachingUserRepoSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "warm the cache on upsert so the next findById is a hit" in {
-    val inner  = new CountingUserRepo()
-    val cached = new CachingUserRepo(inner)
+    val inner  = new CountingUserRepository()
+    val cached = new CachingUserRepository(inner)
 
     cached.upsert(Alice)
     cached.findById("uuid-alice") shouldBe Some(Alice)
@@ -77,8 +77,8 @@ class CachingUserRepoSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "refresh the cached value on upsert so a renamed user surfaces immediately" in {
-    val inner  = new CountingUserRepo(Seq(Alice))
-    val cached = new CachingUserRepo(inner)
+    val inner  = new CountingUserRepository(Seq(Alice))
+    val cached = new CachingUserRepository(inner)
 
     cached.findById("uuid-alice")  // populate cache
     val renamed = Alice.copy(displayName = Some("Alice Renamed"))
@@ -89,8 +89,8 @@ class CachingUserRepoSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "invalidate the entry on delete so a re-create lookup hits Mongo" in {
-    val inner  = new CountingUserRepo(Seq(Alice))
-    val cached = new CachingUserRepo(inner)
+    val inner  = new CountingUserRepository(Seq(Alice))
+    val cached = new CachingUserRepository(inner)
 
     cached.findById("uuid-alice")  // populate
     cached.delete("uuid-alice")
@@ -100,9 +100,9 @@ class CachingUserRepoSpec extends AnyFlatSpec with Matchers {
     inner.findByIdHits.get() shouldBe 2
   }
 
-  "CachingUserRepo" should "delegate findByProviderSub and findByEmail straight through (cold paths, no cache)" in {
-    val inner  = new CountingUserRepo(Seq(Alice))
-    val cached = new CachingUserRepo(inner)
+  "CachingUserRepository" should "delegate findByProviderSub and findByEmail straight through (cold paths, no cache)" in {
+    val inner  = new CountingUserRepository(Seq(Alice))
+    val cached = new CachingUserRepository(inner)
 
     cached.findByProviderSub("google", "g-12345") shouldBe Some(Alice)
     cached.findByProviderSub("google", "g-12345") shouldBe Some(Alice)

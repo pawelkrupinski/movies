@@ -3,8 +3,8 @@ package scripts
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{InMemoryMovieRepo, StoredMovieRecord}
-import services.readmodel.{InMemoryReadModelRepo, ReadModelProjection}
+import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
+import services.readmodel.{InMemoryReadModelRepository, ReadModelProjection}
 
 import java.time.LocalDateTime
 
@@ -25,18 +25,18 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
 
   // Seed the read model with a film that no longer exists in `movies` — the
   // backfill must prune it.
-  private def seedStale(readModel: InMemoryReadModelRepo): Unit = {
+  private def seedStale(readModel: InMemoryReadModelRepository): Unit = {
     val stale = StoredMovieRecord("Stale", Some(2000), record("Stale", 2000))
     readModel.upsertMovie(ReadModelProjection.resolve(stale))
     ReadModelProjection.screenings(stale).foreach(readModel.upsertScreening)
   }
 
   "BackfillReadModel.run" should "populate the read model from movies and prune stale derived docs" in {
-    val movieRepo = new InMemoryMovieRepo(Seq(("Foo", Some(2024), record("Foo", 2024))))
-    val readModel = new InMemoryReadModelRepo()
+    val movieRepository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), record("Foo", 2024))))
+    val readModel = new InMemoryReadModelRepository()
     seedStale(readModel)
 
-    val (movies, screenings, prunedM, prunedS) = BackfillReadModel.run(movieRepo, readModel)
+    val (movies, screenings, prunedM, prunedS) = BackfillReadModel.run(movieRepository, readModel)
 
     movies     shouldBe 1
     screenings shouldBe 1
@@ -48,11 +48,11 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be idempotent — a second run writes the same docs and prunes nothing" in {
-    val movieRepo = new InMemoryMovieRepo(Seq(("Foo", Some(2024), record("Foo", 2024))))
-    val readModel = new InMemoryReadModelRepo()
+    val movieRepository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), record("Foo", 2024))))
+    val readModel = new InMemoryReadModelRepository()
 
-    BackfillReadModel.run(movieRepo, readModel)
-    val (movies, screenings, prunedM, prunedS) = BackfillReadModel.run(movieRepo, readModel)
+    BackfillReadModel.run(movieRepository, readModel)
+    val (movies, screenings, prunedM, prunedS) = BackfillReadModel.run(movieRepository, readModel)
 
     movies     shouldBe 1
     screenings shouldBe 1

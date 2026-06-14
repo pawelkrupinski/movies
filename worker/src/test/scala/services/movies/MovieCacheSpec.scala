@@ -11,23 +11,23 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   private def mkEnrichment(imdbId: String, rating: Option[Double] = None): MovieRecord =
     MovieRecord(imdbId = Some(imdbId), imdbRating = rating)
 
-  "MovieCache" should "hydrate from the repo on construction" in {
-    // Carry the title in a cinema slot, as a scraped row does: the repo
+  "MovieCache" should "hydrate from the repository on construction" in {
+    // Carry the title in a cinema slot, as a scraped row does: the repository
     // re-derives the display title from the record on read (like Mongo), so a
     // title-less record would surface its sanitized _id prefix, not "Drzewo Magii".
     val rec   = mkEnrichment("tt1").copy(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Drzewo Magii"))))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(("Drzewo Magii", Some(2024), rec))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Drzewo Magii", Some(2024), rec))))
 
     cache.get(cache.keyOf("Drzewo Magii", Some(2024))) shouldBe Some(rec)
     cache.snapshot().map(r => (r.title, r.year)) shouldBe Seq(("Drzewo Magii", Some(2024)))
   }
 
-  it should "not write to the repo when putIfPresent produces no change (kills the no-op re-scrape churn)" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+  it should "not write to the repository when putIfPresent produces no change (kills the no-op re-scrape churn)" in {
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val key   = cache.keyOf("Dune", Some(2024))
     cache.put(key, mkEnrichment("tt-dune", rating = Some(8.1)))
-    val writesAfterPut = repo.upserts.size
+    val writesAfterPut = repository.upserts.size
 
     // An unchanged re-scrape: the updater returns an identical record — the
     // per-tick common case for every already-listed film across ~50 cinemas.
@@ -35,34 +35,34 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // an oplog entry + a change-stream `updateLookup` full-doc read — the
     // dominant load on the shared-CPU Mongo. It must now be a true no-op.
     cache.putIfPresent(key, (r: MovieRecord) => r) shouldBe true // row present → still reports success
-    repo.upserts.size shouldBe writesAfterPut                    // ...but NO new write fired
+    repository.upserts.size shouldBe writesAfterPut                    // ...but NO new write fired
 
     // A genuine change still writes through.
     cache.putIfPresent(key, _.copy(imdbRating = Some(9.4))) shouldBe true
-    repo.upserts.size shouldBe writesAfterPut + 1
+    repository.upserts.size shouldBe writesAfterPut + 1
     cache.get(key).flatMap(_.imdbRating) shouldBe Some(9.4)
   }
 
-  // rehydrate(): reload from repo. Boot-time hydration goes through the same
+  // rehydrate(): reload from repository. Boot-time hydration goes through the same
   // method, so we cover the on-demand admin-endpoint behaviour here:
-  // (a) in-memory rows that aren't in Mongo get dropped, (b) repo-side edits
+  // (a) in-memory rows that aren't in Mongo get dropped, (b) repository-side edits
   // become visible, (c) the negative cache is orthogonal and survives.
-  "rehydrate" should "drop in-memory rows that aren't in the repo" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+  "rehydrate" should "drop in-memory rows that aren't in the repository" in {
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
 
-    // Two rows in cache + repo; delete one from the repo behind the cache's
-    // back so cache + repo diverge by exactly that row. Rehydrate should
+    // Two rows in cache + repository; delete one from the repository behind the cache's
+    // back so cache + repository diverge by exactly that row. Rehydrate should
     // evict the disappeared one and keep the rest.
     //
-    // (The 0-rows-in-repo case is deliberately NOT tested — `rehydrate`
-    // skips eviction on an empty `findAll()` because `MovieRepo.findAll`
+    // (The 0-rows-in-repository case is deliberately NOT tested — `rehydrate`
+    // skips eviction on an empty `findAll()` because `MovieRepository.findAll`
     // swallows every Mongo error into `Seq.empty`, so an empty result
     // can't reliably be distinguished from a transient TLS/pool race.
     // A real-world empty Mongo is a manual-wipe degenerate case.)
     cache.put(cache.keyOf("Ghost",  Some(2024)), mkEnrichment("tt-ghost"))
     cache.put(cache.keyOf("Keeper", Some(2024)), mkEnrichment("tt-keeper"))
-    repo.delete("Ghost", Some(2024))
+    repository.delete("Ghost", Some(2024))
     cache.get(cache.keyOf("Ghost",  Some(2024))) shouldBe defined  // still cached
     cache.get(cache.keyOf("Keeper", Some(2024))) shouldBe defined
 
@@ -76,15 +76,15 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   it should "leave the cache intact when findAll() returns empty (treats as transient Mongo failure)" in {
     // The real prod-bug regression: a 30-s rehydrate tick coinciding with a
     // Mongo TLS-selector race (driver retries internally; findAll surfaces
-    // it as `Seq.empty` via MovieRepo's swallow-on-error). Pre-fix,
+    // it as `Seq.empty` via MovieRepository's swallow-on-error). Pre-fix,
     // every cached row got evicted and the page rendered empty until the
     // next successful tick.
-    val repo  = new InMemoryMovieRepo()  // start empty
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository()  // start empty
+    val cache = new CaffeineMovieCache(repository)
     cache.put(cache.keyOf("Ghost", Some(2024)), mkEnrichment("tt1"))
-    // Mongo "lies" — write straight to the cache, then drop from the repo
+    // Mongo "lies" — write straight to the cache, then drop from the repository
     // so the next rehydrate's findAll returns empty.
-    repo.delete("Ghost", Some(2024))
+    repository.delete("Ghost", Some(2024))
 
     cache.rehydrate() shouldBe 0
     // Cache row survives; the user keeps seeing films through the next
@@ -92,20 +92,20 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Ghost", Some(2024))) shouldBe defined
   }
 
-  it should "make repo-side edits visible" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+  it should "make repository-side edits visible" in {
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     cache.put(cache.keyOf("X", Some(2024)), mkEnrichment("tt1", rating = Some(7.0)))
 
     // Edit Mongo out-of-band: replace the rating.
-    repo.upsert("X", Some(2024), mkEnrichment("tt1", rating = Some(9.5)))
+    repository.upsert("X", Some(2024), mkEnrichment("tt1", rating = Some(9.5)))
 
     cache.rehydrate() shouldBe 1
     cache.get(cache.keyOf("X", Some(2024))).flatMap(_.imdbRating) shouldBe Some(9.5)
   }
 
   it should "leave the negative cache alone" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     val key   = cache.keyOf("not-a-real-film", Some(2099))
     cache.markMissing(key)
     cache.isNegative(key) shouldBe true
@@ -117,63 +117,63 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   // ── incremental change-stream sync (start()) ───────────────────────────────
   // Once started, the cache applies out-of-band Mongo writes the moment they
-  // land via `repo.watchUpserts` — no full `findAll()` rehydrate. The
-  // InMemoryMovieRepo emulates Mongo's change stream by notifying the watcher
+  // land via `repository.watchUpserts` — no full `findAll()` rehydrate. The
+  // InMemoryMovieRepository emulates Mongo's change stream by notifying the watcher
   // on every write.
   "a started MovieCache" should "apply an out-of-band upsert via the change-stream watch, without a rehydrate" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val key   = cache.keyOf("Erupcja", Some(2024))
     cache.put(key, mkEnrichment("tt1", rating = Some(7.0)))
     cache.start()   // establishes the watch (the backstop interval won't fire in-test)
     try {
       // Another process edits Mongo directly. Crucially: no rehydrate() call.
-      repo.upsert(key.cleanTitle, key.year, mkEnrichment("tt1", rating = Some(9.5)))
+      repository.upsert(key.cleanTitle, key.year, mkEnrichment("tt1", rating = Some(9.5)))
       cache.get(key).flatMap(_.imdbRating) shouldBe Some(9.5)
     } finally cache.stop()
   }
 
   it should "stop applying changes once the watch is closed by stop()" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val key   = cache.keyOf("Erupcja", Some(2024))
     cache.put(key, mkEnrichment("tt1", rating = Some(7.0)))
     cache.start()
     cache.stop()    // closes the watch handle
-    repo.upsert(key.cleanTitle, key.year, mkEnrichment("tt1", rating = Some(9.5)))
+    repository.upsert(key.cleanTitle, key.year, mkEnrichment("tt1", rating = Some(9.5)))
     cache.get(key).flatMap(_.imdbRating) shouldBe Some(7.0)  // change not applied — watch is closed
   }
 
-  "InMemoryMovieRepo.watchUpserts" should "notify the watcher on every write until the handle is closed" in {
-    val repo   = new InMemoryMovieRepo()
+  "InMemoryMovieRepository.watchUpserts" should "notify the watcher on every write until the handle is closed" in {
+    val repository   = new InMemoryMovieRepository()
     val seen   = scala.collection.mutable.ListBuffer.empty[(String, Option[Int], Option[Double])]
-    val handle = repo.watchUpserts(r => seen.append((r.title, r.year, r.record.imdbRating)))
+    val handle = repository.watchUpserts(r => seen.append((r.title, r.year, r.record.imdbRating)))
     handle shouldBe defined
-    repo.upsert("A", Some(2024), mkEnrichment("tt-a"))
-    repo.updateIfPresent("A", Some(2024), mkEnrichment("tt-a"), mkEnrichment("tt-a", rating = Some(8.0)))
+    repository.upsert("A", Some(2024), mkEnrichment("tt-a"))
+    repository.updateIfPresent("A", Some(2024), mkEnrichment("tt-a"), mkEnrichment("tt-a", rating = Some(8.0)))
     handle.get.close()
-    repo.upsert("B", Some(2025), mkEnrichment("tt-b"))  // after close → not observed
-    // The repo re-derives the display title on read, as Mongo does — a record
+    repository.upsert("B", Some(2025), mkEnrichment("tt-b"))  // after close → not observed
+    // The repository re-derives the display title on read, as Mongo does — a record
     // with no title slot collapses to its sanitized _id prefix ("a"). What this
     // pins is that the watcher fires on each write until closed; title is incidental.
     seen.toList shouldBe List(("a", Some(2024), None), ("a", Some(2024), Some(8.0)))
   }
 
-  "InMemoryMovieRepo.findAll" should "re-derive title/year from the _id + record like Mongo, not return them verbatim" in {
-    // The fake must match `MongoMovieRepo`, which persists only `_id` +
+  "InMemoryMovieRepository.findAll" should "re-derive title/year from the _id + record like Mongo, not return them verbatim" in {
+    // The fake must match `MongoMovieRepository`, which persists only `_id` +
     // `sourceData` and re-derives the display title on read. Stored under an
     // English title whose record displays as Polish (a real title `_id` drift):
     // the read-back title MUST be the re-derived "Dziecko z pyłu", not the
     // verbatim "Child of Dust". The verbatim behaviour previously hid title
     // drift and the settle non-determinism from CI.
-    val repo = new InMemoryMovieRepo()
-    repo.upsert("Child of Dust", Some(2025),
+    val repository = new InMemoryMovieRepository()
+    repository.upsert("Child of Dust", Some(2025),
       MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Dziecko z pyłu")))))
-    repo.findAll().map(r => (r.title, r.year)) shouldBe Seq(("Dziecko z pyłu", Some(2025)))
+    repository.findAll().map(r => (r.title, r.year)) shouldBe Seq(("Dziecko z pyłu", Some(2025)))
   }
 
   it should "treat case + diacritics + whitespace differences as the same key" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.put(cache.keyOf("Drzewo Magii", Some(2024)), mkEnrichment("tt9"))
 
     val expected = mkEnrichment("tt9")
@@ -192,7 +192,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // own. Decoration stripping still happens for external lookups (apiQuery),
   // just not for identity.
   it should "key a decoration edition separately from the base film (no searchTitle in the merge key)" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.keyOf("Top Gun / 40th Anniversary", Some(2025)) should not be cache.keyOf("Top Gun",  Some(2025))
     cache.keyOf("Avatar - wersja polska",     Some(2025)) should not be cache.keyOf("Avatar",   Some(2025))
   }
@@ -201,17 +201,17 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // and " & "↔" i " still collapse, so the same film spelt differently across
   // cinemas keeps one identity. (`sanitize` applies `normalize` + `canonical`.)
   it should "still collapse global canonical folds (Roman numerals, & → i) into one key" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.keyOf("Mortal Kombat 2", Some(2026)) shouldBe cache.keyOf("Mortal Kombat II", Some(2026))
     cache.keyOf("Pizza & Pasta",   Some(2026)) shouldBe cache.keyOf("Pizza i Pasta",    Some(2026))
   }
 
-  "put" should "write through to the repo (cache + Mongo stay in lockstep)" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+  "put" should "write through to the repository (cache + Mongo stay in lockstep)" in {
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     cache.put(cache.keyOf("X", Some(2024)), mkEnrichment("tt1"))
 
-    repo.upserts.toList shouldBe List(("X", Some(2024), mkEnrichment("tt1")))
+    repository.upserts.toList shouldBe List(("X", Some(2024), mkEnrichment("tt1")))
   }
 
   // ── tmdbId identity gate ───────────────────────────────────────────────────
@@ -221,8 +221,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // create a *new* row carrying a tmdbId that another row already holds,
   // the write is folded onto that canonical row instead — same film at two
   // (title, year) keys can never produce two persisted rows. Both the prod
-  // path (MongoMovieRepo behind the cache) and the test path (this
-  // InMemoryMovieRepo behind the cache) inherit the gate automatically;
+  // path (MongoMovieRepository behind the cache) and the test path (this
+  // InMemoryMovieRepository behind the cache) inherit the gate automatically;
   // there's no duplicate logic to maintain.
 
   private def mkResolved(tmdbId: Int,
@@ -236,13 +236,13 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     )
 
   "put with tmdbId" should "fold onto an existing key carrying the same tmdbId" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val k1    = cache.keyOf("Viridiana", Some(1961))
     val k2    = cache.keyOf("Viridiana", Some(1962))
     cache.put(k1, mkResolved(4497, cinemaSlots = Map(KinoPalacowe -> SourceData(title = Some("Viridiana"), releaseYear = Some(1961)))))
-    repo.upserts.clear()
-    repo.deletes.clear()
+    repository.upserts.clear()
+    repository.deletes.clear()
 
     // Second write at K2 with same tmdbId — should NOT create a row at K2.
     cache.put(k2, mkResolved(4497, cinemaSlots = Map(KinoPalacowe -> SourceData(title = Some("Viridiana"), releaseYear = Some(1962)))))
@@ -253,7 +253,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "carry the victim's per-cinema slot onto the canonical row" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     val k1    = cache.keyOf("Viridiana", Some(1961))
     val k2    = cache.keyOf("Viridiana", Some(1962))
     cache.put(k1, mkResolved(4497, cinemaSlots = Map(KinoPalacowe -> SourceData(title = Some("Viridiana"), releaseYear = Some(1961)))))
@@ -276,7 +276,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // amd64 whole-corpus snapshot drift). The canonical must be a pure function
     // of the key set, not arrival order.
     def canonicalKeyFor(writeOrder: Seq[Option[Int]]): (String, Option[Int]) = {
-      val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
       writeOrder.foreach { year =>
         cache.put(cache.keyOf("Milcząca przyjaciółka", year),
           mkResolved(4497, cinemaSlots = Map(KinoPalacowe ->
@@ -291,40 +291,40 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "delete the victim from Mongo when the source key already held a row" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val k1    = cache.keyOf("Viridiana", Some(1961))
     val k2    = cache.keyOf("Viridiana", Some(1962))
     cache.put(k1, mkResolved(4497))
     // Source row exists with no tmdbId yet (e.g. fresh scrape).
     cache.put(k2, mkResolved(4497).copy(tmdbId = None))
-    repo.upserts.clear()
-    repo.deletes.clear()
+    repository.upserts.clear()
+    repository.deletes.clear()
 
     // TMDB resolution lands on K2 — gate folds onto K1, K2 must be deleted.
     cache.put(k2, mkResolved(4497))
 
-    repo.deletes.toList should contain (("Viridiana", Some(1962)))
+    repository.deletes.toList should contain (("Viridiana", Some(1962)))
     cache.snapshot().map(r => (r.title, r.year)) shouldBe Seq(("Viridiana", Some(1961)))
   }
 
-  it should "write through to the repo at the canonical key, not the source" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+  it should "write through to the repository at the canonical key, not the source" in {
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val k1    = cache.keyOf("Viridiana", Some(1961))
     val k2    = cache.keyOf("Viridiana", Some(1962))
     cache.put(k1, mkResolved(4497))
-    repo.upserts.clear()
+    repository.upserts.clear()
 
     cache.put(k2, mkResolved(4497, cinemaSlots = Map(KinoPalacowe -> SourceData(title = Some("Viridiana"), releaseYear = Some(1962)))))
 
-    val titles = repo.upserts.map { case (t, y, _) => (t, y) }
+    val titles = repository.upserts.map { case (t, y, _) => (t, y) }
     titles should contain (("Viridiana", Some(1961)))
     titles should not contain (("Viridiana", Some(1962)))
   }
 
   it should "NOT fold when tmdbId differs (two different films sharing a title)" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     val k1    = cache.keyOf("Wspinaczka", Some(2017))
     val k2    = cache.keyOf("Wspinaczka", Some(2025))
     cache.put(k1, mkResolved(111))  // film A
@@ -339,7 +339,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "NOT fold when the value has no tmdbId yet (pre-resolution scrape)" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     val k1    = cache.keyOf("Viridiana", Some(1961))
     val k2    = cache.keyOf("Viridiana", Some(1962))
     cache.put(k1, mkResolved(4497))
@@ -363,7 +363,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // Folding them would force one card's display title to be hidden. Each
   // variant gets its own row, its own per-cinema slot, and its own card.
   it should "NOT fold rows with the same tmdbId when their cleanTitles differ (cross-script)" in {
-    val cache    = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository())
     val latin    = cache.keyOf("Diabeł ubiera się u Prady 2", Some(2026))
     val cyrillic = cache.keyOf("ДИЯВОЛ НОСИТЬ ПРАДА 2",       Some(2026))
 
@@ -376,7 +376,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "NOT fold rows with the same tmdbId when their cleanTitles differ (suffix variants)" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository())
     val regular = cache.keyOf("Diabeł ubiera się u Prady 2",                 Some(2026))
     val dub     = cache.keyOf("Diabeł ubiera się u Prady 2 ukraiński dubbing", Some(2026))
 
@@ -388,17 +388,17 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the same key is re-written (regular update, not a fold)" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val k1    = cache.keyOf("Viridiana", Some(1961))
     cache.put(k1, mkResolved(4497))
-    repo.deletes.clear()
+    repository.deletes.clear()
 
     // Same key, same tmdbId — sibling check `k != key` excludes itself, no fold.
     cache.put(k1, mkResolved(4497).copy(imdbRating = Some(9.0)))
 
     cache.get(k1).get.imdbRating shouldBe Some(9.0)
-    repo.deletes shouldBe empty
+    repository.deletes shouldBe empty
   }
 
   // Rating sources occasionally hand us a literal zero — Metacritic / RT
@@ -408,8 +408,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // badge in the UI. Squash to None at the cache write boundary so neither
   // the in-memory positive cache nor Mongo holds a false zero.
   "put" should "squash zero ratings to None on the way into the cache" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val key   = cache.keyOf("Unrated", Some(2026))
 
     cache.put(key, MovieRecord(
@@ -427,7 +427,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cached.rottenTomatoes shouldBe None
 
     // Same guarantee on the write-through path: Mongo never sees the zero.
-    val (_, _, persisted) = repo.upserts.last
+    val (_, _, persisted) = repository.upserts.last
     persisted.imdbRating     shouldBe None
     persisted.metascore      shouldBe None
     persisted.filmwebRating  shouldBe None
@@ -435,7 +435,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   "putIfPresent" should "squash zero ratings produced by the updater to None" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     val key   = cache.keyOf("Unrated", Some(2026))
     cache.put(key, mkEnrichment("tt0", rating = Some(7.5)))
 
@@ -449,21 +449,21 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     row.metascore  shouldBe None
   }
 
-  "invalidate" should "remove from both positive cache and repo" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+  "invalidate" should "remove from both positive cache and repository" in {
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val key   = cache.keyOf("X", Some(2024))
     cache.put(key, mkEnrichment("tt1"))
-    repo.upserts.clear()
+    repository.upserts.clear()
 
     cache.invalidate(key)
 
     cache.get(key) shouldBe None
-    repo.deletes.toList shouldBe List(("X", Some(2024)))
+    repository.deletes.toList shouldBe List(("X", Some(2024)))
   }
 
   "markMissing + isNegative" should "let callers track known-non-films without polluting the positive cache" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     val key   = cache.keyOf("not-a-real-film", Some(2099))
 
     cache.isNegative(key) shouldBe false
@@ -475,8 +475,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // ── putIfPresent: no-resurrection writes ───────────────────────────────────
 
   "putIfPresent" should "update an existing row and return true" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     cache.put(cache.keyOf("Existing", Some(2024)), mkEnrichment("tt1"))
 
     val landed = cache.putIfPresent(cache.keyOf("Existing", Some(2024)), _.copy(imdbRating = Some(8.5)))
@@ -486,25 +486,25 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op and return false when the row was deleted" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val key   = cache.keyOf("Gone", Some(2024))
     cache.put(key, mkEnrichment("tt1"))
     cache.invalidate(key)
-    repo.upserts.clear()
+    repository.upserts.clear()
 
     val landed = cache.putIfPresent(key, _.copy(imdbRating = Some(8.5)))
 
     landed shouldBe false
     cache.get(key) shouldBe None
-    repo.upserts shouldBe empty
+    repository.upserts shouldBe empty
   }
 
   it should "operate on the current cached value, not a stale snapshot" in {
     // A rating listener that captured the row at T0, made a slow network
     // call, and now wants to update one field shouldn't clobber concurrent
     // updates to other fields. putIfPresent's updater receives the live row.
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     val key   = cache.keyOf("Foo", Some(2024))
     cache.put(key, mkEnrichment("tt1"))
 
@@ -525,9 +525,9 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // through MUST NOT carry the stale `filmwebUrl` along and clobber the
   // audit's None. Only `filmwebRating` changed in this update; only
   // `filmwebRating` should be persisted.
-  it should "only persist the fields the updater actually changed, leaving repo-side edits to other fields intact" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+  it should "only persist the fields the updater actually changed, leaving repository-side edits to other fields intact" in {
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val key   = cache.keyOf("Audit Race", Some(2024))
 
     // Cache state: stale filmwebUrl + old rating. Mongo gets the same on
@@ -540,7 +540,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // Out-of-band Mongo edit (mirrors what FilmwebUrlAudit does in a
     // separate process). Cache doesn't know — its in-memory snapshot
     // still has the stale URL.
-    repo.dropFilmwebUrl("Audit Race", Some(2024))
+    repository.dropFilmwebUrl("Audit Race", Some(2024))
 
     // Running app's rating tick: cache still has the stale URL, the
     // updater bumps just the rating.
@@ -548,7 +548,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
     // Mongo's audit-applied filmwebUrl=None MUST stay None — the cache
     // write only $set the field that changed (`filmwebRating`).
-    val mongoRow = repo.findAll().head.record  // the only row (its title-less record re-derives to "audit race")
+    val mongoRow = repository.findAll().head.record  // the only row (its title-less record re-derives to "audit race")
     mongoRow.filmwebUrl    shouldBe None
     mongoRow.filmwebRating shouldBe Some(7.5)
   }
@@ -593,7 +593,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // trigger better enrichment.
 
   "recordCinemaScrape" should "flag the first scrape of a (cinema, title, year) tuple as new" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     val touched = cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("Top Gun: Maverick", Multikino, Some(2022))
     ))
@@ -602,7 +602,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "flag a repeat scrape of the same (cinema, title, year) as not-new" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Top Gun: Maverick", Multikino, Some(2022))))
     val secondTick = cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("Top Gun: Maverick", Multikino, Some(2022))
@@ -612,7 +612,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "flag the second cinema as new when it scrapes a film already in the cache from another cinema" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Top Gun: Maverick", Multikino, Some(2022))))
     val helios = cache.recordCinemaScrape(Helios, Seq(
       cinemaMovie("Top Gun: Maverick", Helios, Some(2022))
@@ -621,7 +621,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "flag a year correction from the same cinema as new" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Bez wyjścia", Multikino, None)))
     // Same cinema now reports the same title with a year — a different scrape
     // tuple. The redirect routes it onto the same row, then `canonicalRank`
@@ -644,7 +644,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // keep the year and stay quiet. The within-pass dedup (mergeDuplicateFilms)
   // is orthogonal — it can't see a year that flakes only on a later pass.
   it should "not refire as new when a flaky year-source drops the year on a later tick" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Helios, Seq(cinemaMovie("Wicked", Helios, Some(2024))))
     // Next pass: REST enrichment flaked, so the scrape carries no year.
     val dropped = cache.recordCinemaScrape(Helios, Seq(cinemaMovie("Wicked", Helios, None)))
@@ -666,7 +666,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // showtimes and flipped isNew, the recurring "Refreshed Kino Kultura: …
   // (2 new)" worker log.
   it should "keep a '+ event' screening as its own row and not churn isNew on repeat passes" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     def pass() = cache.recordCinemaScrape(KinoKultura, Seq(
       cinemaMovie("Ojczyzna", KinoKultura, None, showtimes = Seq(showtime("2026-06-08T18:00"))),
       cinemaMovie("Ojczyzna + spotkanie z producentką Ewą Puszczyńską", KinoKultura, None,
@@ -688,7 +688,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "create a new record when no matching row exists yet" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("Top Gun: Maverick", Multikino, Some(2022), Some("multikino.jpg"), Seq(showtime("2026-06-01T18:00")))
     ))
@@ -700,7 +700,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "merge two cinemas' slots into the same record when their titles share a docId" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("Top Gun: Maverick", Multikino, Some(2022), Some("multikino.jpg"))
     ))
@@ -725,7 +725,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // re-scraping, and lets the merged MovieRecord.countries surface a union
   // across cinemas in priority order (Multikino first).
   it should "store production countries per cinema slot and union them on the merged record" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("Top Gun: Maverick", Multikino, Some(2022), countries = Seq.empty)
     ))
@@ -741,7 +741,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "union countries across cinemas in priority order on the merged record" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("Foo", Multikino, Some(2026), countries = Seq("Polska"))
     ))
@@ -759,7 +759,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // *and* "Stany Zjednoczone"). The cache folds every alias to a single
   // canonical name per `CountryNames` on the way into storage.
   it should "canonicalise country spellings on the way into the cache" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("Bar", Multikino, Some(2026), countries = Seq("Stany Zjednoczone", "UK"))
     ))
@@ -778,7 +778,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "preserve enrichment-side fields when only cinema data changes" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     // Seed with an enriched record (TMDB-resolved, no cinemas yet).
     val seed = MovieRecord(
       imdbId = Some("tt1745960"), imdbRating = Some(8.2), metascore = Some(78),
@@ -798,18 +798,18 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     row.cinemaData.keySet shouldBe Set(Multikino)
   }
 
-  // Backfills and `FilmwebUrlAudit` write to the repo directly; the running
+  // Backfills and `FilmwebUrlAudit` write to the repository directly; the running
   // cache learns about those edits via the 30-s rehydrate tick. Between the
   // write and the tick, `recordCinemaScrape` mustn't clobber the freshly
   // edited field with its own stale-cache view of the record. Concretely:
   // a scrape that only intends to refresh one cinema slot must not undo an
   // out-of-band update to a *different* field of the same row.
-  it should "preserve an out-of-band repo edit to a non-cinema field across a concurrent recordCinemaScrape" in {
-    val repo  = new InMemoryMovieRepo()
-    val cache = new CaffeineMovieCache(repo)
+  it should "preserve an out-of-band repository edit to a non-cinema field across a concurrent recordCinemaScrape" in {
+    val repository  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val key   = cache.keyOf("Top Gun: Maverick", Some(2022))
 
-    // Initial state — cache + repo agree (rating 7.0, Multikino slot present).
+    // Initial state — cache + repository agree (rating 7.0, Multikino slot present).
     cache.put(key, MovieRecord(
       imdbRating = Some(7.0),
       data       = Map[Source, SourceData](
@@ -818,19 +818,19 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     ))
 
     // Out-of-band edit (the FilmwebUrlAudit / one-shot backfill shape) — bumps
-    // the rating in the repo without touching the cache. Cache still holds 7.0;
-    // repo now holds 8.5.
-    val stored = repo.findAll().find(_.title == "Top Gun: Maverick").get
-    repo.upsert("Top Gun: Maverick", Some(2022), stored.record.copy(imdbRating = Some(8.5)))
+    // the rating in the repository without touching the cache. Cache still holds 7.0;
+    // repository now holds 8.5.
+    val stored = repository.findAll().find(_.title == "Top Gun: Maverick").get
+    repository.upsert("Top Gun: Maverick", Some(2022), stored.record.copy(imdbRating = Some(8.5)))
 
     // Concurrent scrape — repeats the same Multikino slot the cache already has.
     // No cinema-side state actually changes; the only thing the scrape's write
-    // could clobber is the out-of-band repo edit.
+    // could clobber is the out-of-band repository edit.
     cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("Top Gun: Maverick", Multikino, Some(2022), Some("multikino.jpg"))
     ))
 
-    repo.findAll().find(_.title == "Top Gun: Maverick").get.record.imdbRating shouldBe Some(8.5)
+    repository.findAll().find(_.title == "Top Gun: Maverick").get.record.imdbRating shouldBe Some(8.5)
   }
 
   // Muza is a two-stage scraper: every 5-min listing tick carries None for
@@ -841,7 +841,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // The next listing tick mustn't undo that upgrade: the merge rule keeps
   // the existing slot's value whenever the cinema reports `None`.
   it should "preserve detail-upgraded synopsis / trailerUrl / posterUrl across listing scrapes" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     val key   = cache.keyOf("Wolność po włosku", Some(2025))
 
     // Tick 1: listing scrape carries no detail-page fields.
@@ -872,7 +872,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "prune a cinema's slot from records that didn't appear in the fresh scrape" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     // Tick 1: Multikino reports A + B.
     cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("A", Multikino),
@@ -901,7 +901,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // tick. With `recordCinemaScrape`'s redirect, a fresh year=None scrape
   // onto an existing year=Some row gets folded onto that row.
   it should "redirect a fresh year=None scrape onto an existing year=Some row at the same cleanTitle" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     val survivor = MovieRecord(
       imdbId = Some("tt1527793"),
       tmdbId = Some(639988),
@@ -922,7 +922,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "record the incoming raw cinema title in the per-cinema slot (and the derived cinemaTitles view)" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     val survivor = MovieRecord(
       imdbId = Some("tt17490712"),
       tmdbId = Some(931285)
@@ -939,7 +939,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "fold a redirected scrape's slot onto the existing row without creating a duplicate" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.put(cache.keyOf("Bez wyjścia", Some(2025)),
               MovieRecord())
 
@@ -963,7 +963,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val title = "Diabeł ubiera się u Prady 2"
     val iterations = 100
     for (_ <- 1 to iterations) {
-      val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
       val latch = new java.util.concurrent.CountDownLatch(1)
       val ec    = tools.DaemonExecutors.virtualThreadEC("movie-cache-race")
       val t1 = scala.concurrent.Future {
@@ -1001,7 +1001,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val title = "Straszny film"
     val iterations = 100
     for (_ <- 1 to iterations) {
-      val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
 
       // Initial state: Helios scraped no-year. Row at (None).
       cache.recordCinemaScrape(Helios, Seq(cinemaMovie(title, Helios, year = None)))
@@ -1076,7 +1076,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val title      = "Władcy wszechświata"
     val iterations = 200
     for (_ <- 1 to iterations) {
-      val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
       // Seed: row at (Władcy, None) from a no-year scrape.
       cache.recordCinemaScrape(Multikino, Seq(cinemaMovie(title, Multikino, None)))
 
@@ -1125,7 +1125,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "NOT redirect across scripts — Cyrillic and Latin normalise differently" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.put(cache.keyOf("МОРТАЛ КОМБАТ ІІ", Some(2026)),
               MovieRecord(imdbId = Some("tt17490712"), tmdbId = Some(931285)))
 
@@ -1140,7 +1140,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "NOT redirect when two existing rows could both be the target (ambiguous)" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     // Two different films share the cinema-reported title "Wspinaczka" —
     // one row per year, each pinned to a different imdbId. Redirecting a
     // year=None scrape would be a coin-flip → keep them distinct.
@@ -1158,7 +1158,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // `hasResolvedSiblingByTitle` is what `needsTmdbResolution` consults to skip
   // a phantom TMDB call when a sibling row already resolved the same film.
   "hasResolvedSiblingByTitle" should "return true when a resolved row's cleanTitle normalises to the same form" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.put(cache.keyOf("Milcząca przyjaciółka", Some(2025)),
               MovieRecord(imdbId = Some("tt27811632"), tmdbId = Some(1168719)))
 
@@ -1166,7 +1166,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return false when the matching row has no tmdbId yet" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.put(cache.keyOf("Foo", None),
               MovieRecord())
 
@@ -1174,7 +1174,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return false when no row carries the title at all" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.put(cache.keyOf("Something else", Some(2024)),
               MovieRecord(tmdbId = Some(42)))
 
@@ -1182,7 +1182,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return false across scripts — Cyrillic cleanTitle doesn't satisfy a Latin lookup" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.put(cache.keyOf("МОРТАЛ КОМБАТ ІІ", Some(2026)),
               MovieRecord(imdbId = Some("tt17490712"), tmdbId = Some(931285)))
 
@@ -1209,7 +1209,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // Slots from previous ticks stay until the cinema's NEXT successful scrape
   // (which will prune anything genuinely dropped).
   it should "NOT prune when the scrape returned zero films (likely a scraper failure)" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     // Seed with a film the cinema was previously showing.
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Foo", Multikino, Some(2026))))
     cache.get(cache.keyOf("Foo", Some(2026))).get.cinemaData.keySet shouldBe Set(Multikino)
@@ -1221,7 +1221,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still prune a slot when the scrape returned other films but not this one" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("Foo", Multikino, Some(2026)),
       cinemaMovie("Bar", Multikino, Some(2026))
@@ -1241,7 +1241,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // merged survivor with slots from multiple cinemas should not lose ALL of
   // one cinema's slot just because that cinema's scrape blanked momentarily.
   it should "preserve all cinemas' slots on a survivor row when one cinema's scrape blanks" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Mortal Kombat", Multikino, Some(2026))))
     cache.recordCinemaScrape(Helios,    Seq(cinemaMovie("Mortal Kombat", Helios,    Some(2026))))
     val key = cache.keyOf("Mortal Kombat", Some(2026))
@@ -1259,7 +1259,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not prune other cinemas' slots when one cinema's tick lands" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     // Both cinemas report the same film initially.
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Shared", Multikino, Some(2026), Some("mu.jpg"))))
     cache.recordCinemaScrape(Helios,    Seq(cinemaMovie("Shared", Helios,    Some(2026), Some("he.jpg"))))
@@ -1276,7 +1276,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   "snapshot" should "return rows sorted by title (case-insensitive)" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.put(cache.keyOf("Zorro", None),   mkEnrichment("tt3"))
     cache.put(cache.keyOf("alpha", None),   mkEnrichment("tt1"))
     cache.put(cache.keyOf("Beta", None),    mkEnrichment("tt2"))
@@ -1285,7 +1285,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   "lastModified" should "advance on put" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     val before = cache.lastModified
     Thread.sleep(2)
     cache.put(cache.keyOf("X", Some(2024)), mkEnrichment("tt1"))
@@ -1293,7 +1293,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "advance on putIfPresent" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     val key = cache.keyOf("X", Some(2024))
     cache.put(key, mkEnrichment("tt1"))
     val before = cache.lastModified
@@ -1303,8 +1303,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "advance on rehydrate" in {
-    val repo = new InMemoryMovieRepo(Seq(("Film", Some(2024), mkEnrichment("tt1"))))
-    val cache = new CaffeineMovieCache(repo)
+    val repository = new InMemoryMovieRepository(Seq(("Film", Some(2024), mkEnrichment("tt1"))))
+    val cache = new CaffeineMovieCache(repository)
     val before = cache.lastModified
     Thread.sleep(2)
     cache.rehydrate()

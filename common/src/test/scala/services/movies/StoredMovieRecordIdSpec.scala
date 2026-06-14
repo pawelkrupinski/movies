@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * `StoredMovieRecord.idFor` is the one `_id` formula the repo, the change
+ * `StoredMovieRecord.idFor` is the one `_id` formula the repository, the change
  * stream, and the /debug live view all key rows on. The load-bearing property:
  * case- and diacritic-only variants of the same title fold to ONE id, so a
  * merge collapses them to a single row (and the live view's per-id DOM lookup

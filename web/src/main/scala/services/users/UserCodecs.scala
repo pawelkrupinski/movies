@@ -12,7 +12,7 @@ import org.mongodb.scala.bson.codecs.Macros
  * the macros derive everything from `User` / `UserState` directly —
  * there's no DTO indirection here, unlike `StoredMovieDto`. Domain
  * fields named `id` / `userId` end up as regular doc fields; the
- * `_id` is delegated to whichever field the repo chooses (it filters
+ * `_id` is delegated to whichever field the repository chooses (it filters
  * by `id` / `userId` explicitly so the auto-generated ObjectId never
  * surfaces in domain code).
  *

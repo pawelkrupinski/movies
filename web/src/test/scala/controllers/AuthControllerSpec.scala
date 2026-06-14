@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import services.auth.{OauthProfile, OauthProvider}
-import services.users.InMemoryUserRepo
+import services.users.InMemoryUserRepository
 
 import java.time.{Clock, Instant, ZoneOffset}
 
@@ -40,15 +40,15 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   private val NowMs    = Now.toEpochMilli
   private val fixedClk = Clock.fixed(Now, ZoneOffset.UTC)
 
-  private def fixture(providers: OauthProvider*): (AuthController, InMemoryUserRepo) = {
-    val repo = new InMemoryUserRepo
+  private def fixture(providers: OauthProvider*): (AuthController, InMemoryUserRepository) = {
+    val repository = new InMemoryUserRepository
     val ctl  = new AuthController(
       Helpers.stubControllerComponents(),
       providers.map(p => p.name -> p).toMap,
-      repo,
+      repository,
       clock = fixedClk
     )
-    (ctl, repo)
+    (ctl, repository)
   }
 
   // ── /auth/:provider/start ─────────────────────────────────────────────────
@@ -90,7 +90,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   "AuthController.callback" should "exchange code, create a new user, set userId in session, redirect to /" in {
     val provider = new FakeProvider("google", Profile)
-    val (ctl, repo) = fixture(provider)
+    val (ctl, repository) = fixture(provider)
 
     val request = FakeRequest("GET", "/auth/google/callback?code=AUTH_CODE&state=THE_STATE")
       .withSession("oauthState" -> "THE_STATE", "oauthProvider" -> "google", "oauthStateTs" -> NowMs.toString)
@@ -105,7 +105,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     sess.get("oauthState")    shouldBe empty   // one-shot CSRF drops after use
     sess.get("oauthProvider") shouldBe empty
 
-    val stored = repo.findById(userId).value
+    val stored = repository.findById(userId).value
     stored.provider    shouldBe "google"
     stored.providerSub shouldBe "G-1"
     stored.email       shouldBe Some("alice@example.com")
@@ -114,7 +114,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "update the existing user (not duplicate) when (provider, sub) is already known" in {
     val provider = new FakeProvider("google", Profile)
-    val (ctl, repo) = fixture(provider)
+    val (ctl, repository) = fixture(provider)
 
     // First login — creates the user.
     val firstSession = session(ctl.callback("google")(
@@ -127,21 +127,21 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     // upsert should refresh the row, not create a new one.
     val updatedProfile = Profile.copy(displayName = Some("Alice (married)"))
     val provider2     = new FakeProvider("google", updatedProfile)
-    val (ctl2, repo2) = (
-      new AuthController(Helpers.stubControllerComponents(), Map("google" -> provider2), repo, clock = fixedClk),
-      repo
+    val (ctl2, repository2) = (
+      new AuthController(Helpers.stubControllerComponents(), Map("google" -> provider2), repository, clock = fixedClk),
+      repository
     )
     val secondSession = session(ctl2.callback("google")(
       FakeRequest("GET", "/auth/google/callback?code=C2&state=S2")
         .withSession("oauthState" -> "S2", "oauthProvider" -> "google", "oauthStateTs" -> NowMs.toString)
     ))
     secondSession.get("userId").value shouldBe firstUserId   // same id, not a fresh signup
-    repo2.findById(firstUserId).value.displayName shouldBe Some("Alice (married)")
+    repository2.findById(firstUserId).value.displayName shouldBe Some("Alice (married)")
   }
 
   it should "bounce a mobile client back to the kinowo:// deep link with a one-shot code" in {
     val provider = new FakeProvider("google", Profile)
-    val (ctl, repo) = fixture(provider)
+    val (ctl, repository) = fixture(provider)
 
     val request = FakeRequest("GET", "/auth/google/callback?code=AUTH_CODE&state=THE_STATE")
       .withSession(
@@ -158,7 +158,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val code = location.stripPrefix("kinowo://auth-done?code=")
     val userId = session(result).get("userId").value
     AuthController.pendingExchangeCodes.getIfPresent(code) shouldBe userId
-    repo.findById(userId).value.email shouldBe Some("alice@example.com")
+    repository.findById(userId).value.email shouldBe Some("alice@example.com")
 
     // The mobile flag is consumed so it can't leak into a later web session.
     session(result).get("mobileClient") shouldBe empty
@@ -167,14 +167,14 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   // ── /auth/:provider/callback — sad paths ─────────────────────────────────
 
   it should "reject the callback when state doesn't match the session" in {
-    val (ctl, repo) = fixture(new FakeProvider("google", Profile))
+    val (ctl, repository) = fixture(new FakeProvider("google", Profile))
     val request = FakeRequest("GET", "/auth/google/callback?code=C&state=ATTACKER_GUESS")
       .withSession("oauthState" -> "THE_REAL_ONE", "oauthProvider" -> "google", "oauthStateTs" -> NowMs.toString)
     val result  = ctl.callback("google")(request)
 
     status(result) shouldBe BAD_REQUEST
     contentAsString(result) should include ("state mismatch")
-    repo.findById("anything") shouldBe empty
+    repository.findById("anything") shouldBe empty
   }
 
   it should "reject the callback when session has no state at all (no prior /start)" in {
@@ -206,13 +206,13 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
       def authUrl(s: String, r: String) = "https://x"
       def exchangeCode(c: String, r: String) = throw new RuntimeException("upstream blew up")
     }
-    val (ctl, repo) = fixture(brokenProvider)
+    val (ctl, repository) = fixture(brokenProvider)
     val request = FakeRequest("GET", "/auth/google/callback?code=C&state=S")
       .withSession("oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTs" -> NowMs.toString)
     val result  = ctl.callback("google")(request)
 
     status(result) shouldBe INTERNAL_SERVER_ERROR
-    repo.findById("anything") shouldBe empty   // nothing persisted
+    repository.findById("anything") shouldBe empty   // nothing persisted
   }
 
   // ── /auth/logout ─────────────────────────────────────────────────────────
@@ -274,7 +274,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val googleProvider = new FakeProvider("google",   Profile)
     val fbProfile      = OauthProfile(sub = "FB-99", email = Some("alice@example.com"), displayName = Some("Alice on FB"), avatarUrl = None)
     val fbProvider     = new FakeProvider("facebook", fbProfile)
-    val (ctl, repo)    = fixture(googleProvider, fbProvider)
+    val (ctl, repository)    = fixture(googleProvider, fbProvider)
 
     val googleSession = session(ctl.callback("google")(
       FakeRequest("GET", "/auth/google/callback?code=C1&state=S1")
@@ -289,7 +289,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     ))
     fbSession.get("userId").value shouldBe firstUserId
 
-    val linked = repo.findById(firstUserId).value
+    val linked = repository.findById(firstUserId).value
     linked.provider    shouldBe "facebook"
     linked.providerSub shouldBe "FB-99"
     linked.email       shouldBe Some("alice@example.com")

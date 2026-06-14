@@ -1,7 +1,7 @@
 package scripts
 
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
-import services.movies.MongoMovieRepo
+import services.movies.MongoMovieRepository
 import tools.Env
 
 import scala.concurrent.Await
@@ -32,8 +32,8 @@ object DropAllMovies {
     }
     val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
 
-    val repo   = new MongoMovieRepo()
-    val before = repo.findAll()
+    val repository   = new MongoMovieRepository()
+    val before = repository.findAll()
     println(s"$dbName.movies: ${before.size} row(s) currently stored.\n")
 
     val Sample = 20
@@ -43,7 +43,7 @@ object DropAllMovies {
               s"imdbId=${r.record.imdbId.getOrElse("—")}")
     }
     if (before.size > Sample) println(s"  (+ ${before.size - Sample} more)")
-    repo.close()
+    repository.close()
 
     // `deleteMany({})` rather than `drop()` — drop would also remove any
     // indexes we'd configured outside this codebase; deleteMany keeps the

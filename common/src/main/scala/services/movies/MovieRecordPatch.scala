@@ -6,7 +6,7 @@ import models.{MovieRecord, Source, SourceData}
  * Field-level diff between two `MovieRecord` snapshots — the minimal set of
  * per-field updates needed to turn `before` into `after`.
  *
- * Used by `MovieRepo.updateIfPresent` to drive a `$set`/`$unset` Mongo
+ * Used by `MovieRepository.updateIfPresent` to drive a `$set`/`$unset` Mongo
  * update instead of a full-doc `replaceOne`. Out-of-band edits to fields
  * the in-memory cache didn't touch then survive a concurrent write — the
  * audit-vs-rating-tick race that produced the wrong Filmweb URLs on
@@ -47,7 +47,7 @@ final case class MovieRecordPatch(
 
   /** Apply the patch to `current`, returning a new `MovieRecord` with the
    *  changed fields overwritten and everything else preserved. Used by
-   *  `InMemoryMovieRepo` to mirror Mongo's `$set`/`$unset` semantics.
+   *  `InMemoryMovieRepository` to mirror Mongo's `$set`/`$unset` semantics.
    */
   def applyTo(current: MovieRecord): MovieRecord = {
     def merge[A](u: FieldUpdate[A], existing: Option[A]): Option[A] = u match {

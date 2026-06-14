@@ -94,7 +94,7 @@ object TitleNormalizer {
   /** Corpus-independent stable key — the same collapse as `mergeKeyLookup`'s
    *  most-aggressive tier (`stripPunct` of `canonical`), applied
    *  unconditionally rather than gated on a sibling reducing to the same
-   *  form. Used as the persistent docId in `MovieRepo`/`MovieCache`
+   *  form. Used as the persistent docId in `MovieRepository`/`MovieCache`
    *  so the cache key is stable across refresh ticks and write sites: every
    *  cinema-reported variant of the same film (Arabic/Roman, colon-or-not,
    *  &/i, "Gwiezdne Wojny:" prefix) lands on the same key without needing to

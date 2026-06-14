@@ -4,8 +4,8 @@ import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.MongoConnection
-import services.movies.{InMemoryMovieRepo, StoredMovieRecord}
-import services.readmodel.{InMemoryReadModelRepo, ReadModelProjection, ReadModelReader}
+import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
+import services.readmodel.{InMemoryReadModelRepository, ReadModelProjection, ReadModelReader}
 import play.api.test.Helpers.stubControllerComponents
 
 /**
@@ -20,7 +20,7 @@ import play.api.test.Helpers.stubControllerComponents
  *      throwing and these tests fail.
  *   2. Booting the wiring with an empty data layer leaves the cache empty:
  *      nothing in the serving process fills it by scraping. It only ever holds
- *      what the repo (Mongo, here an in-memory stand-in) already has.
+ *      what the repository (Mongo, here an in-memory stand-in) already has.
  */
 class WebServingWiringSpec extends AnyFlatSpec with Matchers {
 
@@ -45,23 +45,23 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   // ── 2. Warm-cache-without-scrape ─────────────────────────────────────────
-  // A minimal `Wiring` wired against a DISABLED Mongo + an in-memory repo, so
+  // A minimal `Wiring` wired against a DISABLED Mongo + an in-memory repository, so
   // `boot()` exercises the real start path (`mongoConnection.database`,
   // `movieCache.start()`) without touching a cluster. Whatever the cache holds
-  // after boot came from the repo alone — there is no scrape path to add more.
+  // after boot came from the repository alone — there is no scrape path to add more.
 
   private class TestWiring(seed: Seq[(String, Option[Int], MovieRecord)]) extends Wiring {
     // A connection with no URI never dials Mongo; `required = false` keeps the
     // disabled state a silent no-op rather than a boot failure.
     override lazy val mongoConnection: MongoConnection =
       new MongoConnection(uri = None, dbName = "kinowo", required = false)
-    override lazy val movieRepo = new InMemoryMovieRepo(seed)
-    // The serving read path is `webReadModel` over `readModelRepo` (the
+    override lazy val movieRepository = new InMemoryMovieRepository(seed)
+    // The serving read path is `webReadModel` over `readModelRepository` (the
     // worker-populated web_movies / web_screenings). Seed that — projected
     // through the real `ReadModelProjection`, exactly as the worker writes it —
     // so boot's hydrate has the same single fill path production does.
-    override lazy val readModelRepo: ReadModelReader = {
-      val store = new InMemoryReadModelRepo()
+    override lazy val readModelRepository: ReadModelReader = {
+      val store = new InMemoryReadModelRepository()
       seed.foreach { case (title, year, rec) =>
         val stored = StoredMovieRecord(title, year, rec)
         store.upsertMovie(ReadModelProjection.resolve(stored))
@@ -80,9 +80,9 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
 
   private val seededRecord = MovieRecord(tmdbId = Some(42))
 
-  "The serving cache" should "hold exactly the rows already in the repo after boot" in {
+  "The serving cache" should "hold exactly the rows already in the repository after boot" in {
     // Seed one row, boot, and assert the cache surfaces it — proving boot
-    // hydrates from the repo (the only fill path the serving app has).
+    // hydrates from the repository (the only fill path the serving app has).
     val wiring = new TestWiring(Seq(("Drzewo Magii", Some(2024), seededRecord)))
     wiring.boot()
 
@@ -90,8 +90,8 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
     movies.map(_.title) should contain ("Drzewo Magii")
   }
 
-  it should "stay empty when the repo is empty — nothing scrapes to fill it" in {
-    // Empty repo → boot → empty cache. If the serving process had any scrape
+  it should "stay empty when the repository is empty — nothing scrapes to fill it" in {
+    // Empty repository → boot → empty cache. If the serving process had any scrape
     // path wired in, this is where it would surface a row out of nowhere. It
     // doesn't, so the cache stays empty.
     val wiring = new TestWiring(Seq.empty)

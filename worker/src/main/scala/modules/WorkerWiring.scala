@@ -9,12 +9,12 @@ import services.enrichment._
 import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
 import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete, StagingFilmEnriched}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
-import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, MongoNormalizationReportRepo, NormalizationRebuilder, NormalizationReport, NormalizationReportRepo, UnscreenedCleanup}
-import services.readmodel.{MongoReadModelRepo, ReadModelProjector, ReadModelReader, ReadModelWriter}
+import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepository, MovieService, MongoNormalizationReportRepository, NormalizationRebuilder, NormalizationReport, NormalizationReportRepository, UnscreenedCleanup}
+import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
-import services.staging.{MongoStagingFolder, MongoStagingRepo, StagingFolder, StagingPromoter, StagingRepo}
-import services.titlerules.{MongoTitleRulesRepo, TitleRuleSet, TitleRulesCache, TitleRulesRepo}
+import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingFolder, StagingPromoter, StagingRepository}
+import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
 import tools.{DaemonExecutors, Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
 import java.util.concurrent.TimeUnit
@@ -209,24 +209,24 @@ class WorkerWiring extends play.api.Logging {
   }
 
   // ── MovieRecord cache (write-through) ───────────────────────────────────────
-  lazy val movieRepo: MovieRepo = new MongoMovieRepo(mongoConnection.database, fallbackToOwnInit = false)
+  lazy val movieRepository: MovieRepository = new MongoMovieRepository(mongoConnection.database, fallbackToOwnInit = false)
 
   // Staging-ingest: a genuinely-new film incubates in `pending_movies`
   // (resolve-then-fold) instead of landing straight in `movies`; a film already
   // known to `movies` keeps the direct path. The `staging` sink is wired into the
   // cache, the promoter scheduled and the fold subscribed (below) unconditionally.
-  lazy val stagingRepo: StagingRepo = new MongoStagingRepo(mongoConnection.database)
+  lazy val stagingRepository: StagingRepository = new MongoStagingRepository(mongoConnection.database)
   lazy val movieCache: CaffeineMovieCache =
-    new CaffeineMovieCache(movieRepo, eventBus, staging = Some(stagingRepo))
+    new CaffeineMovieCache(movieRepository, eventBus, staging = Some(stagingRepository))
 
   // ── Denormalised read model (web_movies + web_screenings) ───────────────────
   // The worker projects every `movies` write into the two read-model collections
   // the serving app consumes. One impl is both reader (boot-seed the diff state)
   // and writer (upsert/delete the derived docs).
   // Typed as the read+write intersection so test wirings can swap in
-  // `InMemoryReadModelRepo` (Mongo-free fixture replay).
-  lazy val readModelRepo: ReadModelReader & ReadModelWriter = new MongoReadModelRepo(mongoConnection.database)
-  lazy val readModelProjector = new ReadModelProjector(movieRepo, readModelRepo, readModelRepo)
+  // `InMemoryReadModelRepository` (Mongo-free fixture replay).
+  lazy val readModelRepository: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(mongoConnection.database)
+  lazy val readModelProjector = new ReadModelProjector(movieRepository, readModelRepository, readModelRepository)
 
   // Title-stripping rules. The worker owns seeding: a fresh DB gets the migrated
   // defaults so behaviour is unchanged from the hardcoded baseline. When an edit
@@ -234,11 +234,11 @@ class WorkerWiring extends play.api.Logging {
   // retroactively, not just to future scrapes.
   lazy val normalizationRebuilder = new NormalizationRebuilder(movieCache,
     onSplitOff = (title, year) => eventBus.publish(MovieDetailsComplete(title, year)))
-  lazy val normalizationReportRepo: NormalizationReportRepo =
-    new MongoNormalizationReportRepo(mongoConnection.database, fallbackToOwnInit = false)
-  lazy val titleRulesRepo: TitleRulesRepo = new MongoTitleRulesRepo(mongoConnection.database, fallbackToOwnInit = false)
+  lazy val normalizationReportRepository: NormalizationReportRepository =
+    new MongoNormalizationReportRepository(mongoConnection.database, fallbackToOwnInit = false)
+  lazy val titleRulesRepository: TitleRulesRepository = new MongoTitleRulesRepository(mongoConnection.database, fallbackToOwnInit = false)
   lazy val titleRulesCache: TitleRulesCache =
-    new TitleRulesCache(titleRulesRepo, seedIfEmpty = true,
+    new TitleRulesCache(titleRulesRepository, seedIfEmpty = true,
       onRulesChanged = (oldRules, newRules) => {
         // Merge-key changes (per-cinema / structural / canonical) → re-merge /
         // un-merge existing rows.
@@ -248,7 +248,7 @@ class WorkerWiring extends play.api.Logging {
           TitleRuleSet(oldRules), TitleRuleSet(newRules),
           (title, year) => eventBus.publish(MovieDetailsComplete(title, year)))
         // Publish the realized outcome so the admin editor can show what happened.
-        normalizationReportRepo.writeLatest(
+        normalizationReportRepository.writeLatest(
           NormalizationReport.render(result, reEnriched, System.currentTimeMillis()))
       })
 
@@ -349,7 +349,7 @@ class WorkerWiring extends play.api.Logging {
   // flag is on (below) — otherwise these are dormant.
   lazy val stagingFolder: StagingFolder = new MongoStagingFolder(mongoConnection)
   lazy val stagingPromoter = new StagingPromoter(
-    stagingRepo, detailEnrichers, movieService.resolveStagingRecord, imdbIdResolver.findIdFor,
+    stagingRepository, detailEnrichers, movieService.resolveStagingRecord, imdbIdResolver.findIdFor,
     onConcluded = row => eventBus.publish(StagingFilmEnriched(row.title, row.year)))
   private val stagingPromoterScheduler = DaemonExecutors.scheduler("staging-promoter")
   private val StagingPromoterInitialDelay = Env.positiveLong("KINOWO_STAGING_PROMOTE_INITIAL_SECONDS", 30L)
@@ -368,7 +368,7 @@ class WorkerWiring extends play.api.Logging {
   } yield {
     val notifier = new TelegramNotifier(httoFetch, token, chatId,
       Env.get("KINOWO_STAGING_STUCK_TG_TOPIC_ID").flatMap(s => scala.util.Try(s.toLong).toOption))
-    new StagingStuckAlerter(stagingRepo, notifier.send,
+    new StagingStuckAlerter(stagingRepository, notifier.send,
       stuckThreshold = FiniteDuration(Env.positiveLong("KINOWO_STAGING_STUCK_MINUTES", 60L), TimeUnit.MINUTES),
       interval       = FiniteDuration(Env.positiveLong("KINOWO_STAGING_STUCK_SCAN_MINUTES", 10L), TimeUnit.MINUTES))
   }
@@ -509,9 +509,9 @@ class WorkerWiring extends play.api.Logging {
     readModelProjector.stop()
     movieCache.stop()
     titleRulesCache.stop()
-    readModelRepo.close()
-    movieRepo.close()
-    titleRulesRepo.close()
+    readModelRepository.close()
+    movieRepository.close()
+    titleRulesRepository.close()
     mongoConnection.close()
   }
 }

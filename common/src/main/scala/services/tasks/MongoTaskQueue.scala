@@ -225,7 +225,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
    *  insert event is exactly "new claimable work" — releases and reaps (updates)
    *  are left to the worker pool's own reaper-ring + idle backstop, which keeps a
    *  perpetually-failing task from waking the whole pool on every retry. Mirrors
-   *  [[services.movies.MovieRepo.watchUpserts]]: the driver auto-resumes across
+   *  [[services.movies.MovieRepository.watchUpserts]]: the driver auto-resumes across
    *  transient blips, and on a standalone (non-replica-set) Mongo the stream just
    *  errors out and the pool falls back to its backstop. */
   override def watchWaiting(onWaiting: () => Unit): Option[AutoCloseable] = coll.map { c =>

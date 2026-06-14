@@ -7,19 +7,19 @@ import org.mongodb.scala.model.Filters
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.users.{MongoUserRepo, MongoUserStateRepo}
+import services.users.{MongoUserRepository, MongoUserStateRepository}
 import tools.Env
 
 import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class UserRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
-  private val users  = new MongoUserRepo()
-  private val states = new MongoUserStateRepo()
+  private val users  = new MongoUserRepository()
+  private val states = new MongoUserStateRepository()
 
   override protected def afterAll(): Unit = try {
     val client = MongoClient(Env.get("MONGODB_URI").get)
@@ -48,7 +48,7 @@ class UserRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAf
 
   // ── User round-trip ──────────────────────────────────────────────────────
 
-  "MongoUserRepo" should "be enabled when MONGODB_URI is set" in {
+  "MongoUserRepository" should "be enabled when MONGODB_URI is set" in {
     users.enabled shouldBe true
   }
 
@@ -102,7 +102,7 @@ class UserRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAf
 
   // ── UserState round-trip ─────────────────────────────────────────────────
 
-  "MongoUserStateRepo" should "be enabled when MONGODB_URI is set" in {
+  "MongoUserStateRepository" should "be enabled when MONGODB_URI is set" in {
     states.enabled shouldBe true
   }
 

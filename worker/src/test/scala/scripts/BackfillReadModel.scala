@@ -1,8 +1,8 @@
 package scripts
 
 import org.mongodb.scala.MongoClient
-import services.movies.{MongoMovieRepo, MovieRepo}
-import services.readmodel.{MongoReadModelRepo, ReadModelProjection, ReadModelReader, ReadModelWriter}
+import services.movies.{MongoMovieRepository, MovieRepository}
+import services.readmodel.{MongoReadModelRepository, ReadModelProjection, ReadModelReader, ReadModelWriter}
 import tools.Env
 
 /**
@@ -25,11 +25,11 @@ import tools.Env
 object BackfillReadModel {
 
   /** Project every `movies` row into the read model and prune derived docs no
-   *  longer produced. Pure over the repo traits, so `BackfillReadModelSpec`
+   *  longer produced. Pure over the repository traits, so `BackfillReadModelSpec`
    *  exercises it with in-memory repos. Returns
    *  (moviesWritten, screeningsWritten, moviesPruned, screeningsPruned). */
-  def run(movieRepo: MovieRepo, readModel: ReadModelReader & ReadModelWriter): (Int, Int, Int, Int) = {
-    val projected = movieRepo.findAll().map(ReadModelProjection.project)
+  def run(movieRepository: MovieRepository, readModel: ReadModelReader & ReadModelWriter): (Int, Int, Int, Int) = {
+    val projected = movieRepository.findAll().map(ReadModelProjection.project)
     projected.foreach { case (movie, screenings) =>
       readModel.upsertMovie(movie)
       screenings.foreach(readModel.upsertScreening)
@@ -53,14 +53,14 @@ object BackfillReadModel {
     val client = MongoClient(uri)
     try {
       val db            = client.getDatabase(dbName)
-      val movieRepo     = new MongoMovieRepo(Some(db), fallbackToOwnInit = false)
-      val readModelRepo = new MongoReadModelRepo(Some(db))
-      require(movieRepo.enabled,     s"movies repo not enabled for $dbName")
-      require(readModelRepo.enabled, s"read-model repo not enabled for $dbName")
+      val movieRepository     = new MongoMovieRepository(Some(db), fallbackToOwnInit = false)
+      val readModelRepository = new MongoReadModelRepository(Some(db))
+      require(movieRepository.enabled,     s"movies repository not enabled for $dbName")
+      require(readModelRepository.enabled, s"read-model repository not enabled for $dbName")
 
       val started = System.nanoTime()
       println(s"@@ backfilling read model from $dbName.movies …")
-      val (movies, screenings, prunedM, prunedS) = run(movieRepo, readModelRepo)
+      val (movies, screenings, prunedM, prunedS) = run(movieRepository, readModelRepository)
       val secs = (System.nanoTime() - started) / 1e9
       println(f"@@ done in $secs%.1fs — wrote web_movies=$movies, web_screenings=$screenings" +
               s"${if (prunedM + prunedS > 0) s" (pruned $prunedM movie + $prunedS screening stale doc(s))" else ""}")

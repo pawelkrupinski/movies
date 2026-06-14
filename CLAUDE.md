@@ -15,9 +15,9 @@ layers and which kinds of changes they catch:
   `common/src/main/` that isn't pure view markup should run this.
 - **`sbt itAll`** (or `sbt web/IntegrationTest/test` /
   `worker/IntegrationTest/test`) — `*/src/it/scala/` specs that wire
-  fakes + the real cache/repo. Required for any change to enrichment
+  fakes + the real cache/repository. Required for any change to enrichment
   pipelines, cache layering, the read-model projection, or anything
-  that crosses the `MovieService` ↔ `MovieRepo` ↔ `MovieCache` seam.
+  that crosses the `MovieService` ↔ `MovieRepository` ↔ `MovieCache` seam.
 - **`sbt web/PageTest/test`** — `web/src/page/scala/views/PageJsBehaviourSpec`
   drives real Chrome over CDP against Twirl-rendered fixtures. Run on any
   change to `web/src/main/assets/js/`, the inline `<script>` blocks in
@@ -226,10 +226,10 @@ a smaller unit test instead — but don't skip testing the client.
 
 ## Never leave uncommitted changes stranded — and don't work in the root checkout
 
-This repo is worked by many agents in parallel. The root checkout
+This repository is worked by many agents in parallel. The root checkout
 (`/Users/pawel/projects/movies`, branch `main`) is shared and must end
 every session **clean** (`git status --porcelain` empty). Uncommitted
-WIP left in a working tree is the single most expensive mess this repo
+WIP left in a working tree is the single most expensive mess this repository
 hits: it strands work on a stale base, blocks the next agent's
 `git rebase`/`pull`, and gets silently swept or lost. One session found
 **92 files of uncommitted WIP sitting directly on the `main` checkout**
@@ -361,7 +361,7 @@ message so I don't have to ask "did you push?"
 ## Extract repeated patterns into a shared abstraction
 
 If you find yourself writing the same shape of code in a second place —
-a `FakeRepo extends MovieRepo` defined inside every spec, the same
+a `FakeRepository extends MovieRepository` defined inside every spec, the same
 regex+`replaceAll` chain across two parsers, a "load fixture and feed
 through this client" helper duplicated per spec — stop and extract it
 (a `private[services]` helper, a `*/src/test/scala/...` shared base, a method
@@ -385,7 +385,7 @@ When extracting:
   just for visibility.
 - Delete the inline copies in the same commit. Leaving one creates
   drift.
-- Name after the *concept* (`InMemoryMovieRepo`, not `FakeRepo`;
+- Name after the *concept* (`InMemoryMovieRepository`, not `FakeRepository`;
   `ProductionLineRegex`, not `parseHelper`) — generic names re-attract
   duplication.
 
@@ -584,12 +584,12 @@ Smells:
 - The `Square extends Rectangle` shape — setting width and height
   independently works on Rectangle and breaks on Square.
 - Callers have to know the concrete type
-  (`if (repo.isInstanceOf[InMemoryMovieRepo])`). Abstraction is leaking.
+  (`if (repository.isInstanceOf[InMemoryMovieRepository])`). Abstraction is leaking.
 
-In this codebase: `InMemoryMovieRepo` honours `MovieRepo`'s
+In this codebase: `InMemoryMovieRepository` honours `MovieRepository`'s
 write-through contract — `upsert` updates the store, `delete` removes
 from it, `findAll` returns current contents. A caller using the
-`MovieRepo` reference can't tell the difference.
+`MovieRepository` reference can't tell the difference.
 
 ### I — Interface Segregation
 
@@ -607,10 +607,10 @@ Smells:
 - Methods marked "callers should ignore this" or "only the X impl uses
   this".
 
-In this codebase: keep `MovieRepo` to the persistence contract
+In this codebase: keep `MovieRepository` to the persistence contract
 (`findAll`, `upsert`, `updateIfPresent`, `delete`, `enabled`, `close`).
 Don't bolt on enrichment, scheduling, or display. A new caller that
-needs only reads gets a `MovieRepoReader` sub-trait.
+needs only reads gets a `MovieRepositoryReader` sub-trait.
 
 ### D — Dependency Inversion
 
@@ -621,13 +621,13 @@ needs only reads gets a `MovieRepoReader` sub-trait.
 **This is the load-bearing principle for this codebase.** Every
 non-trivial collaboration is wired in `AppLoader` (the composition
 root); everything else sees only abstractions through constructor
-parameters. `MovieService` doesn't know whether `MovieRepo` is talking
+parameters. `MovieService` doesn't know whether `MovieRepository` is talking
 to Mongo, an in-memory map, or a flat file — it knows the trait.
 
 Smells:
 
 - High-level class imports a concrete low-level class directly
-  (`import services.movies.MongoMovieRepo` from inside `MovieService`).
+  (`import services.movies.MongoMovieRepository` from inside `MovieService`).
 - Constructors take concrete classes instead of traits.
 - Tests have to stand up real infrastructure (Mongo, HTTP server,
   filesystem) because there's no abstraction to swap.
@@ -648,13 +648,13 @@ Constructors and method parameters take the **abstraction**, never a
 concrete class. Production code never references a test subclass
 directly — tests swap in via the constructor parameter.
 
-**Never suffix a class with `Impl`.** `MovieRepoImpl`,
+**Never suffix a class with `Impl`.** `MovieRepositoryImpl`,
 `FilmwebClientImpl`, `EventBusImpl` are an anti-pattern — they tell you
 the class is "the implementation" without saying of *what kind*, and
 only exist because the writer ran out of names. Name after what makes
 the implementation distinct:
 
-- `MovieRepo` (trait) + `MongoMovieRepo` + `InMemoryMovieRepo`. Each
+- `MovieRepository` (trait) + `MongoMovieRepository` + `InMemoryMovieRepository`. Each
   name earns its keep.
 - `FilmwebClient` (trait) + `HttpFilmwebClient` if a second backend
   appears. Not `FilmwebClientImpl`.
@@ -665,7 +665,7 @@ the implementation distinct:
   trait".
 
 When in doubt: would a future reader of the class name guess what it
-*does*? `MongoMovieRepo` — yes. `MovieRepoImpl` — no.
+*does*? `MongoMovieRepository` — yes. `MovieRepositoryImpl` — no.
 
 ## Share business logic between real and fake implementations
 
@@ -687,8 +687,8 @@ How to push it up:
   the business logic; it depends on an inner trait that's a narrow
   infrastructure boundary. Only the inner trait gets a fake. Example:
   `MovieCache` (concrete — Caffeine, write-through, event publishing)
-  depends on `MovieRepo` (trait — Mongo or in-memory). Tests inject
-  `InMemoryMovieRepo` and get the real cache semantics for free.
+  depends on `MovieRepository` (trait — Mongo or in-memory). Tests inject
+  `InMemoryMovieRepository` and get the real cache semantics for free.
 - **Default methods on the trait.** `trait Foo { def primitive(): X;
   final def derived(): Y = ... }`. Real and fake implement primitives;
   derived behaviour is shared by construction.

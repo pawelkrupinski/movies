@@ -2,7 +2,7 @@ package scripts
 
 import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
-import services.movies.{CaffeineMovieCache, MongoMovieRepo, StoredMovieRecord}
+import services.movies.{CaffeineMovieCache, MongoMovieRepository, StoredMovieRecord}
 import tools.{DaemonExecutors, RealHttpFetch}
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -35,17 +35,17 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 object FilmwebUrlAudit {
 
   def main(args: Array[String]): Unit = {
-    val repo = new MongoMovieRepo()
-    if (!repo.enabled) {
+    val repository = new MongoMovieRepository()
+    if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to audit.")
       sys.exit(1)
     }
-    val cache   = new CaffeineMovieCache(repo)
+    val cache   = new CaffeineMovieCache(repository)
     val tmdb    = new TmdbClient(new RealHttpFetch)
     val filmweb = new FilmwebClient(new RealHttpFetch)
     val ratings = new FilmwebRatings(cache, tmdb, filmweb)
 
-    val candidates = repo.findAll()
+    val candidates = repository.findAll()
       .filter(_.record.filmwebUrl.isDefined)
       .sortBy(r => (r.title.toLowerCase, r.year))
     val Workers = 3  // CLAUDE.md: Filmweb soft-blocks above ~5.
@@ -76,7 +76,7 @@ object FilmwebUrlAudit {
 
     val outcomes = Await.result(Future.sequence(tasks), 60.minutes)
     ec.shutdown()
-    repo.close()
+    repository.close()
 
     val kept      = outcomes.collect { case (_, _, _: FilmwebRatings.Kept)      => () }
     val corrected = outcomes.collect { case (t, y, c: FilmwebRatings.Corrected) => (t, y, c) }

@@ -1,6 +1,6 @@
 package scripts
 
-import services.movies.{CaffeineMovieCache, MongoMovieRepo, UnscreenedCleanup}
+import services.movies.{CaffeineMovieCache, MongoMovieRepository, UnscreenedCleanup}
 
 /**
  * One-shot backfill: the new `UnscreenedCleanup` ticks every 24h, but the
@@ -18,10 +18,10 @@ import services.movies.{CaffeineMovieCache, MongoMovieRepo, UnscreenedCleanup}
 object UnscreenedRowsBackfill {
 
   def main(args: Array[String]): Unit = {
-    val repo = new MongoMovieRepo()
-    if (!repo.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
+    val repository = new MongoMovieRepository()
+    if (!repository.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
 
-    val before    = repo.findAll()
+    val before    = repository.findAll()
     val orphans   = before.filter(_.record.cinemaData.isEmpty)
     println(s"${before.size} row(s) in Mongo; ${orphans.size} have no current screenings — dropping…\n")
 
@@ -31,10 +31,10 @@ object UnscreenedRowsBackfill {
     }
     if (orphans.size > Sample) println(s"  (+ ${orphans.size - Sample} more)")
 
-    val cache   = new CaffeineMovieCache(repo)
+    val cache   = new CaffeineMovieCache(repository)
     val cleanup = new UnscreenedCleanup(cache)
     val removed = cleanup.removeUnscreened()
-    repo.close()
+    repository.close()
 
     println()
     println("════ Summary ════")

@@ -48,7 +48,7 @@ Live at **<https://kinowo.fly.dev>**.
 common/                   # Shared domain used by both apps
 │   └── src/main/scala/
 │       ├── models/           # Movie, MovieRecord, Showtime, Cinema, User, ...
-│       └── services/         # movies/ (cache/repo/merge), events/, cinemas/,
+│       └── services/         # movies/ (cache/repository/merge), events/, cinemas/,
 │                             #   readmodel/, titlerules/, freshness/, staging/, tasks/
 worker/                   # Scrape + enrich app (kinowo-worker Fly app)
 │   └── src/main/scala/services/
@@ -76,7 +76,7 @@ Prereqs: **JDK 17+** (25 recommended), **sbt 1.12**, and a local
 **MongoDB** (the local stack expects it on port **27018** as a
 single-node replica set — see below).
 
-The repo is two apps: **worker** scrapes + enriches into Mongo and
+The repository is two apps: **worker** scrapes + enriches into Mongo and
 projects a read model; **web** serves that read model. `sbt localStack`
 boots both against one local Mongo — the worker replays the checked-in
 fixtures (`test/resources/fixtures/today`) so you get a full corpus
@@ -95,7 +95,7 @@ To run just the serving app against an existing Mongo, use `sbt web/run`
 — it reads `MONGODB_URI` / `MONGODB_DB` (db defaults to `kinowo`) and
 serves whatever a worker has already projected into the read model. Web
 rehydrates its in-memory cache from Mongo via 4-way parallel cursors
-(see `MongoMovieRepo.findAll` and `MeasureStartup`).
+(see `MongoMovieRepository.findAll` and `MeasureStartup`).
 
 ### Useful local endpoints (city-scoped routes take a `:city` slug, e.g. `poznan`)
 

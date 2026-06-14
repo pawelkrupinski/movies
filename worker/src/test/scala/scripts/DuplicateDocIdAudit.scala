@@ -11,11 +11,11 @@ import scala.util.Try
 
 /**
  * Diagnostic: list every `(title, year)` in `movies` that has more than one
- * underlying `_id`. Confirms whether `MovieRepo.delete` is silently matching
+ * underlying `_id`. Confirms whether `MovieRepository.delete` is silently matching
  * zero docs because the `_id` formula at delete-time doesn't match the `_id`
  * legacy docs were inserted with.
  *
- * Also prints, per duplicate pair, what `MovieRepo.docId` would compute for
+ * Also prints, per duplicate pair, what `MovieRepository.docId` would compute for
  * the row right now — so we can see at a glance whether either of the
  * existing `_id`s matches the formula. If both diverge, the cleanup needs to
  * happen via a title+year filter instead.

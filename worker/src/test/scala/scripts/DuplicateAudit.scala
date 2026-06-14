@@ -1,6 +1,6 @@
 package scripts
 
-import services.movies.{MongoMovieRepo, MovieService, StoredMovieRecord}
+import services.movies.{MongoMovieRepository, MovieService, StoredMovieRecord}
 
 /**
  * Audit duplicate rows across alternative merge keys.
@@ -36,10 +36,10 @@ import services.movies.{MongoMovieRepo, MovieService, StoredMovieRecord}
  */
 object DuplicateAudit {
   def main(args: Array[String]): Unit = {
-    val repo = new MongoMovieRepo()
-    if (!repo.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
+    val repository = new MongoMovieRepository()
+    if (!repository.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
 
-    val rows: Seq[StoredMovieRecord] = repo.findAll()
+    val rows: Seq[StoredMovieRecord] = repository.findAll()
     println(s"@@ ${rows.size} rows read")
     println()
 
@@ -89,7 +89,7 @@ object DuplicateAudit {
       }
     }
 
-    repo.close()
+    repository.close()
   }
 
   private def auditStrategy(

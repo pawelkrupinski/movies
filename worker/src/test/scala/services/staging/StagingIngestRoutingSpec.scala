@@ -4,7 +4,7 @@ import models.{CinemaMovie, Helios, Movie, Multikino, MovieRecord, Showtime, Sou
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 
 import java.time.LocalDateTime
 
@@ -23,12 +23,12 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers {
       posterUrl = None, filmUrl = Some(s"https://example/$title"), synopsis = None,
       cast = Nil, director = Nil, showtimes = Seq(Showtime(When, bookingUrl = None)))
 
-  private def cacheWithStaging(repo: InMemoryMovieRepo, staging: InMemoryStagingRepo): CaffeineMovieCache =
-    new CaffeineMovieCache(repo, new InProcessEventBus, staging = Some(staging))
+  private def cacheWithStaging(repository: InMemoryMovieRepository, staging: InMemoryStagingRepository): CaffeineMovieCache =
+    new CaffeineMovieCache(repository, new InProcessEventBus, staging = Some(staging))
 
   "a genuinely-new film" should "be diverted to staging, not movies" in {
-    val staging = new InMemoryStagingRepo
-    val cache   = cacheWithStaging(new InMemoryMovieRepo, staging)
+    val staging = new InMemoryStagingRepository
+    val cache   = cacheWithStaging(new InMemoryMovieRepository, staging)
 
     cache.recordCinemaScrape(Helios, Seq(scrape("Brand New Film", Some(2026))))
 
@@ -37,8 +37,8 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers {
   }
 
   "a film already known to movies" should "stay on the direct path, not divert" in {
-    val staging = new InMemoryStagingRepo
-    val cache   = cacheWithStaging(new InMemoryMovieRepo, staging)
+    val staging = new InMemoryStagingRepository
+    val cache   = cacheWithStaging(new InMemoryMovieRepository, staging)
     // Seed a known film (any same-sanitize row in movies).
     cache.put(cache.keyOf("Kumotry", Some(2026)),
       MovieRecord(tmdbId = Some(1454157), data = Map[Source, SourceData](
@@ -51,8 +51,8 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers {
   }
 
   "a newcomer a cinema stops listing" should "be pruned from staging" in {
-    val staging = new InMemoryStagingRepo
-    val cache   = cacheWithStaging(new InMemoryMovieRepo, staging)
+    val staging = new InMemoryStagingRepository
+    val cache   = cacheWithStaging(new InMemoryMovieRepository, staging)
     cache.recordCinemaScrape(Helios, Seq(scrape("Film A", Some(2026))))
     staging.findAll().map(_.title) should contain("Film A")
 
@@ -62,7 +62,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers {
   }
 
   "no staging sink (default)" should "leave every scrape landing in movies" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepo, new InProcessEventBus) // staging = None
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, new InProcessEventBus) // staging = None
     cache.recordCinemaScrape(Helios, Seq(scrape("Brand New Film", Some(2026))))
     cache.entries should have size 1
   }

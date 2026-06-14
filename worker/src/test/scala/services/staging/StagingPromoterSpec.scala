@@ -38,18 +38,18 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
     MovieRecord(data = Map[Source, SourceData](
       cinema -> SourceData(title = Some(title), releaseYear = year, filmUrl = Some(s"https://x/$title"))))
 
-  private def seeded(cinema: Cinema, title: String, year: Option[Int]): (InMemoryStagingRepo, StagingRecord) = {
-    val repo = new InMemoryStagingRepo
-    repo.upsert(cinema, title, year, listingRow(cinema, title, year))
-    (repo, repo.findAll().head)
+  private def seeded(cinema: Cinema, title: String, year: Option[Int]): (InMemoryStagingRepository, StagingRecord) = {
+    val repository = new InMemoryStagingRepository
+    repository.upsert(cinema, title, year, listingRow(cinema, title, year))
+    (repository, repository.findAll().head)
   }
 
   "promote" should "fetch detail FIRST, then resolve with the detail hints, and conclude" in {
-    val (repo, row) = seeded(Helios, "Newcomer", Some(2026))
+    val (repository, row) = seeded(Helios, "Newcomer", Some(2026))
     val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("A plot"), director = Seq("Jane Doe"))))
     var resolveSawDirector = false
     val concluded = scala.collection.mutable.ListBuffer.empty[StagingRecord]
-    val promoter = new StagingPromoter(repo, Seq(enricher),
+    val promoter = new StagingPromoter(repository, Seq(enricher),
       resolveStaging = (_, _, rec) => {
         resolveSawDirector = rec.data.get(Helios).exists(_.director.contains("Jane Doe"))
         Some(rec.copy(tmdbId = Some(1275779)))
@@ -59,44 +59,44 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
 
     promoter.promote(row) shouldBe true
     resolveSawDirector shouldBe true                                   // detail ran before resolve
-    repo.findAll().head.record.data(Helios).synopsis shouldBe Some("A plot")
-    repo.findAll().head.record.tmdbId shouldBe Some(1275779)
+    repository.findAll().head.record.data(Helios).synopsis shouldBe Some("A plot")
+    repository.findAll().head.record.tmdbId shouldBe Some(1275779)
     concluded.map(_.title) shouldBe Seq("Newcomer")
   }
 
   it should "conclude a definitive no-match (tmdbNoMatch) and fire onConcluded" in {
-    val (repo, row) = seeded(Helios, "Obscure", Some(2026))
+    val (repository, row) = seeded(Helios, "Obscure", Some(2026))
     val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
     val concluded = scala.collection.mutable.ListBuffer.empty[StagingRecord]
-    val promoter = new StagingPromoter(repo, Seq(enricher),
+    val promoter = new StagingPromoter(repository, Seq(enricher),
       resolveStaging = (_, _, rec) => Some(rec.copy(tmdbNoMatch = true)),
       recoverImdbId = (_, _) => None,
       onConcluded = concluded += _)
 
     promoter.promote(row) shouldBe true
-    repo.findAll().head.record.tmdbNoMatch shouldBe true
+    repository.findAll().head.record.tmdbNoMatch shouldBe true
     concluded should have size 1
   }
 
   it should "NOT resolve a deferred cinema until its detail lands" in {
-    val (repo, row) = seeded(Helios, "Pending", Some(2026))
+    val (repository, row) = seeded(Helios, "Pending", Some(2026))
     val enricher = new FakeEnricher(Helios, detail = None) // detail fetch keeps failing
     var resolveCalled = false
-    val promoter = new StagingPromoter(repo, Seq(enricher),
+    val promoter = new StagingPromoter(repository, Seq(enricher),
       resolveStaging = (_, _, _) => { resolveCalled = true; None },
       recoverImdbId = (_, _) => None,
       onConcluded = _ => ())
 
     promoter.promote(row) shouldBe false
     resolveCalled shouldBe false
-    repo.findAll().head.record.tmdbConcluded shouldBe false
+    repository.findAll().head.record.tmdbConcluded shouldBe false
   }
 
   it should "leave a row unconcluded on a transient TMDB failure (retry next pass)" in {
-    val (repo, row) = seeded(Helios, "Flaky", Some(2026))
+    val (repository, row) = seeded(Helios, "Flaky", Some(2026))
     val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
     val concluded = scala.collection.mutable.ListBuffer.empty[StagingRecord]
-    val promoter = new StagingPromoter(repo, Seq(enricher),
+    val promoter = new StagingPromoter(repository, Seq(enricher),
       resolveStaging = (_, _, _) => None, // transient
       recoverImdbId = (_, _) => None,
       onConcluded = concluded += _)
@@ -106,9 +106,9 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "resolve a non-deferred cinema immediately (no detail enricher)" in {
-    val (repo, row) = seeded(Multikino, "Inline", Some(2026))
+    val (repository, row) = seeded(Multikino, "Inline", Some(2026))
     val concluded = scala.collection.mutable.ListBuffer.empty[StagingRecord]
-    val promoter = new StagingPromoter(repo, Seq.empty, // Multikino isn't a DetailEnricher
+    val promoter = new StagingPromoter(repository, Seq.empty, // Multikino isn't a DetailEnricher
       resolveStaging = (_, _, rec) => Some(rec.copy(tmdbId = Some(42))),
       recoverImdbId = (_, _) => None,
       onConcluded = concluded += _)
@@ -123,37 +123,37 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
     // async `ImdbIdMissing` chain; staging rows never enter the cache, so the
     // promoter must recover the id INLINE before folding (else the merged movies
     // row — and its IMDb/RT/Metacritic ratings — would be permanently id-less).
-    val (repo, row) = seeded(Helios, "Pucio", Some(2026))
+    val (repository, row) = seeded(Helios, "Pucio", Some(2026))
     val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
     var searchedFor = Option.empty[String]
-    val promoter = new StagingPromoter(repo, Seq(enricher),
+    val promoter = new StagingPromoter(repository, Seq(enricher),
       resolveStaging = (_, _, rec) => Some(rec.copy(tmdbId = Some(1645035))), // hit, but imdbId empty
       recoverImdbId = (search, _) => { searchedFor = Some(search); Some("tt42003604") },
       onConcluded = _ => ())
 
     promoter.promote(row) shouldBe true
     searchedFor shouldBe Some(MovieService.apiQuery("Pucio"))   // searched the (api-query'd) title
-    repo.findAll().head.record.imdbId shouldBe Some("tt42003604")
+    repository.findAll().head.record.imdbId shouldBe Some("tt42003604")
   }
 
   it should "not call the imdbId recovery when TMDB already shipped a cross-reference" in {
-    val (repo, row) = seeded(Helios, "HasImdb", Some(2026))
+    val (repository, row) = seeded(Helios, "HasImdb", Some(2026))
     val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
     var recoverCalled = false
-    val promoter = new StagingPromoter(repo, Seq(enricher),
+    val promoter = new StagingPromoter(repository, Seq(enricher),
       resolveStaging = (_, _, rec) => Some(rec.copy(tmdbId = Some(7), imdbId = Some("tt0000007"))),
       recoverImdbId = (_, _) => { recoverCalled = true; None },
       onConcluded = _ => ())
 
     promoter.promote(row) shouldBe true
     recoverCalled shouldBe false
-    repo.findAll().head.record.imdbId shouldBe Some("tt0000007")
+    repository.findAll().head.record.imdbId shouldBe Some("tt0000007")
   }
 
   it should "log each promotion step at INFO (the formerly-silent path is now traceable)" in {
-    val (repo, row) = seeded(Helios, "Loggable", Some(2026))
+    val (repository, row) = seeded(Helios, "Loggable", Some(2026))
     val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"), director = Seq("Dir"))))
-    val promoter = new StagingPromoter(repo, Seq(enricher),
+    val promoter = new StagingPromoter(repository, Seq(enricher),
       resolveStaging = (_, _, rec) => Some(rec.copy(tmdbId = Some(99))),
       recoverImdbId = (_, _) => None,
       onConcluded = _ => ())

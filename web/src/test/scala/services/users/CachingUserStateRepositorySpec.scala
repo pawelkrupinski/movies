@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 
-class CachingUserStateRepoSpec extends AnyFlatSpec with Matchers {
+class CachingUserStateRepositorySpec extends AnyFlatSpec with Matchers {
 
   private val AliceState = UserState(
     userId          = "uuid-alice",
@@ -18,12 +18,12 @@ class CachingUserStateRepoSpec extends AnyFlatSpec with Matchers {
     favouriteRooms  = Set("Cinema City Poznań Plaza|Sala IMAX")
   )
 
-  private class CountingUserStateRepo(seed: Seq[UserState] = Seq.empty) extends UserStateRepo {
+  private class CountingUserStateRepository(seed: Seq[UserState] = Seq.empty) extends UserStateRepository {
     val findHits   = new AtomicInteger(0)
     val upsertHits = new AtomicInteger(0)
     val deleteHits = new AtomicInteger(0)
 
-    private val inner = new InMemoryUserStateRepo
+    private val inner = new InMemoryUserStateRepository
     seed.foreach(inner.upsert)
 
     def enabled: Boolean = inner.enabled
@@ -33,9 +33,9 @@ class CachingUserStateRepoSpec extends AnyFlatSpec with Matchers {
     def close(): Unit = inner.close()
   }
 
-  "CachingUserStateRepo.find" should "hit the inner repo once and serve subsequent calls from cache" in {
-    val inner  = new CountingUserStateRepo(Seq(AliceState))
-    val cached = new CachingUserStateRepo(inner)
+  "CachingUserStateRepository.find" should "hit the inner repository once and serve subsequent calls from cache" in {
+    val inner  = new CountingUserStateRepository(Seq(AliceState))
+    val cached = new CachingUserStateRepository(inner)
 
     cached.find("uuid-alice") shouldBe Some(AliceState)
     cached.find("uuid-alice") shouldBe Some(AliceState)
@@ -43,8 +43,8 @@ class CachingUserStateRepoSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not cache a miss — every find on an unknown user round-trips" in {
-    val inner  = new CountingUserStateRepo()
-    val cached = new CachingUserStateRepo(inner)
+    val inner  = new CountingUserStateRepository()
+    val cached = new CachingUserStateRepository(inner)
 
     cached.find("ghost") shouldBe None
     cached.find("ghost") shouldBe None
@@ -52,8 +52,8 @@ class CachingUserStateRepoSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "warm the cache on upsert so the next find is a hit" in {
-    val inner  = new CountingUserStateRepo()
-    val cached = new CachingUserStateRepo(inner)
+    val inner  = new CountingUserStateRepository()
+    val cached = new CachingUserStateRepository(inner)
 
     cached.upsert(AliceState)
     cached.find("uuid-alice") shouldBe Some(AliceState)
@@ -63,8 +63,8 @@ class CachingUserStateRepoSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "refresh the cached value on a follow-up upsert" in {
-    val inner  = new CountingUserStateRepo(Seq(AliceState))
-    val cached = new CachingUserStateRepo(inner)
+    val inner  = new CountingUserStateRepository(Seq(AliceState))
+    val cached = new CachingUserStateRepository(inner)
 
     cached.find("uuid-alice")  // populate cache
     val updated = AliceState.copy(hiddenFilms = Set("Bad Movie", "Other Bad Movie"))
@@ -75,8 +75,8 @@ class CachingUserStateRepoSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "invalidate the entry on delete" in {
-    val inner  = new CountingUserStateRepo(Seq(AliceState))
-    val cached = new CachingUserStateRepo(inner)
+    val inner  = new CountingUserStateRepository(Seq(AliceState))
+    val cached = new CachingUserStateRepository(inner)
 
     cached.find("uuid-alice")  // populate
     cached.delete("uuid-alice")

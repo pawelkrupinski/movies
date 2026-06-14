@@ -61,7 +61,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
 
   // A resolved 2022 sibling + an unresolved 2026 row that carries its own
   // Helios cinema slot — the exact prod shape read off `movies`.
-  private def seededRepo(): InMemoryMovieRepo = new InMemoryMovieRepo(Seq(
+  private def seededRepository(): InMemoryMovieRepository = new InMemoryMovieRepository(Seq(
     (Title, Some(2022), MovieRecord(imdbId = Some("tt12873562"), tmdbId = Some(Sibling2022))),
     (Title, Some(2026), MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some(Title)))))
@@ -69,7 +69,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
 
   "needsTmdbResolution" should
     "resolve a different-year film that carries its own cinema slots, despite a resolved same-title sibling" in {
-    val cache = new CaffeineMovieCache(seededRepo())
+    val cache = new CaffeineMovieCache(seededRepository())
     val bus   = new InProcessEventBus()
     val svc   = new MovieService(cache, bus, inviteTmdb())
     bus.subscribe(svc.onMovieDetailsComplete)
@@ -93,10 +93,10 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
   // the resolved sibling, the Mortal Kombat II collapse), resolution stays
   // short-circuited and TMDB is never called.
   it should "still short-circuit when the key has no cinema slots of its own" in {
-    val repo = new InMemoryMovieRepo(Seq(
+    val repository = new InMemoryMovieRepository(Seq(
       (Title, Some(2022), MovieRecord(imdbId = Some("tt12873562"), tmdbId = Some(Sibling2022)))
     ))
-    val cache = new CaffeineMovieCache(repo)
+    val cache = new CaffeineMovieCache(repository)
     val bus   = new InProcessEventBus()
     // TMDB stub that throws on any access — proves we never tried.
     val tmdb = new TmdbClient(http = new GetOnlyHttpFetch {

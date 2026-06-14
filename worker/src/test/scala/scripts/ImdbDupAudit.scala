@@ -1,16 +1,16 @@
 package scripts
 
-import services.movies.{MongoMovieRepo, StoredMovieRecord}
+import services.movies.{MongoMovieRepository, StoredMovieRecord}
 
 /** Quick report: rows that share an imdbId — i.e. TMDB+IMDb resolved
  *  them as the same film but they live under different (title, year)
  *  cache keys. Pure read; no mutation. */
 object ImdbDupAudit {
   def main(args: Array[String]): Unit = {
-    val repo = new MongoMovieRepo()
-    if (!repo.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
+    val repository = new MongoMovieRepository()
+    if (!repository.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
 
-    val rows: Seq[StoredMovieRecord] = repo.findAll()
+    val rows: Seq[StoredMovieRecord] = repository.findAll()
     val byImdb = rows.filter(_.record.imdbId.isDefined).groupBy(_.record.imdbId.get)
     val dups = byImdb.filter(_._2.size > 1)
 
@@ -29,6 +29,6 @@ object ImdbDupAudit {
       println("-" * 110)
     }
 
-    repo.close()
+    repository.close()
   }
 }

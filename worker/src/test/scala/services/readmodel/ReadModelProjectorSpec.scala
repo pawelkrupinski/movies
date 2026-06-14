@@ -3,7 +3,7 @@ package services.readmodel
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{InMemoryMovieRepo, StoredMovieRecord, TitleNormalizer}
+import services.movies.{InMemoryMovieRepository, StoredMovieRecord, TitleNormalizer}
 
 import java.time.LocalDateTime
 
@@ -29,10 +29,10 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
   private def stored(rec: MovieRecord): StoredMovieRecord = StoredMovieRecord("Foo", Some(2024), rec)
 
-  private def fixture(): (ReadModelProjector, InMemoryMovieRepo, InMemoryReadModelRepo) = {
-    val repo = new InMemoryMovieRepo()
-    val rm   = new InMemoryReadModelRepo()
-    (new ReadModelProjector(repo, rm, rm), repo, rm)
+  private def fixture(): (ReadModelProjector, InMemoryMovieRepository, InMemoryReadModelRepository) = {
+    val repository = new InMemoryMovieRepository()
+    val rm   = new InMemoryReadModelRepository()
+    (new ReadModelProjector(repository, rm, rm), repository, rm)
   }
 
   "the first projection of a row" should "write the movie doc before its screenings" in {
@@ -72,9 +72,9 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   }
 
   "reconcile" should "skip held-back rows while still projecting ready ones" in {
-    val (projector, repo, rm) = fixture()
-    repo.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))   // ready (tmdbId)
-    repo.upsert("Bar", Some(2024), unresolved(Seq(at("2026-06-12T20:00"))).copy(
+    val (projector, repository, rm) = fixture()
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))   // ready (tmdbId)
+    repository.upsert("Bar", Some(2024), unresolved(Seq(at("2026-06-12T20:00"))).copy(
       data = Map[Source, SourceData](Multikino ->
         SourceData(title = Some("Bar"), releaseYear = Some(2024), showtimes = Seq(at("2026-06-12T20:00"))))))
     projector.reconcile()
@@ -115,8 +115,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   // tick — so no source row is projected synchronously. (Before, the boot reconcile
   // projected "Foo" at start(), making movieUpserts size 1 and failing this.)
   "start" should "not reconcile synchronously (defer the full scan off the boot path)" in {
-    val (projector, repo, rm) = fixture()
-    repo.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    val (projector, repository, rm) = fixture()
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.start()
     rm.movieUpserts     shouldBe empty
     rm.screeningUpserts shouldBe empty
@@ -124,12 +124,12 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   }
 
   "reconcile" should "prune derived docs whose source film vanished" in {
-    val (projector, repo, rm) = fixture()
-    repo.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    val (projector, repository, rm) = fixture()
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.reconcile()
     rm.movieUpserts should have size 1
 
-    repo.delete("Foo", Some(2024))
+    repository.delete("Foo", Some(2024))
     projector.reconcile()
     rm.movieDeletes     should contain(fid)
     rm.screeningDeletes should contain(s"$fid|poznan|Multikino Stary Browar")
@@ -143,8 +143,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   // card persists forever. `reconcile` must therefore diff the *actual read
   // model* against the live source, not this process's memory.
   "reconcile after a restart" should "prune a stale film a prior process left in the read model" in {
-    val repo = new InMemoryMovieRepo()
-    val rm   = new InMemoryReadModelRepo()
+    val repository = new InMemoryMovieRepository()
+    val rm   = new InMemoryReadModelRepository()
     def yearKey(y: Int) = s"${TitleNormalizer.sanitize("Foo")}|$y"
     // A film whose reported year was 2025 when an earlier projector ran.
     def recYear(y: Int) =
@@ -152,19 +152,19 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
         SourceData(title = Some("Foo"), releaseYear = Some(y),
           filmUrl = Some("https://mk/foo"), showtimes = Seq(at("2026-06-12T20:00")))))
 
-    val p1 = new ReadModelProjector(repo, rm, rm)
-    repo.upsert("Foo", Some(2025), recYear(2025))
+    val p1 = new ReadModelProjector(repository, rm, rm)
+    repository.upsert("Foo", Some(2025), recYear(2025))
     p1.reconcile()
     rm.findAllMovies().map(_._id) should contain(yearKey(2025))
     p1.stop()  // the worker dies, taking its in-memory state with it
 
     // `settle` re-keys the source row onto the (now resolved) year — old gone,
     // new live.
-    repo.delete("Foo", Some(2025))
-    repo.upsert("Foo", Some(2026), recYear(2026))
+    repository.delete("Foo", Some(2025))
+    repository.upsert("Foo", Some(2026), recYear(2026))
 
     // A fresh projector boots with an empty `lastMovie` and reconciles.
-    val p2 = new ReadModelProjector(repo, rm, rm)
+    val p2 = new ReadModelProjector(repository, rm, rm)
     rm.movieDeletes.clear(); rm.screeningDeletes.clear()
     p2.reconcile()
 

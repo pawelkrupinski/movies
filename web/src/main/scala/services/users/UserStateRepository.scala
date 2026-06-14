@@ -18,9 +18,9 @@ import scala.util.Try
  * server-side state, not stale localStorage); written when they hide a
  * film / disable a cinema / change their /plan state.
  *
- * Trait + Mongo impl + in-memory impl mirror `UserRepo`.
+ * Trait + Mongo impl + in-memory impl mirror `UserRepository`.
  */
-trait UserStateRepo {
+trait UserStateRepository {
   def enabled: Boolean
 
   /** State for `userId`, or `None` when nothing's been persisted yet —
@@ -31,21 +31,21 @@ trait UserStateRepo {
   def upsert(state: UserState): Unit
 
   /** Remove this user's state row entirely. Used by the account-deletion
-   *  endpoint alongside `UserRepo.delete`. */
+   *  endpoint alongside `UserRepository.delete`. */
   def delete(userId: String): Unit
 
   def close(): Unit
 }
 
-class MongoUserStateRepo(
+class MongoUserStateRepository(
   sharedDb: Option[MongoDatabase] = None,
   fallbackToOwnInit: Boolean = true
-) extends UserStateRepo with Logging {
+) extends UserStateRepository with Logging {
 
   // Shares its MongoClient with the rest of the app via the
-  // `MongoConnection` passed by Wiring. See MongoUserRepo for the
+  // `MongoConnection` passed by Wiring. See MongoUserRepository for the
   // sharedDb / legacy-init dual-path rationale. `fallbackToOwnInit`
-  // exists for the same reason as on MongoMovieRepo: production sets
+  // exists for the same reason as on MongoMovieRepository: production sets
   // it false so a failed shared connection doesn't trigger a duplicate
   // 15s init timeout here.
   private lazy val initResult: (Option[MongoClient], Option[MongoCollection[UserState]]) =
@@ -67,7 +67,7 @@ class MongoUserStateRepo(
       Await.result(c.find(Filters.eq("userId", userId)).headOption(), 10.seconds)
     }.recover {
       case ex: Throwable =>
-        logger.warn(s"UserStateRepo.find($userId) failed: ${ex.getMessage}")
+        logger.warn(s"UserStateRepository.find($userId) failed: ${ex.getMessage}")
         None
     }.getOrElse(None)
   }
@@ -79,7 +79,7 @@ class MongoUserStateRepo(
       ()
     }.recover {
       case ex: Throwable =>
-        logger.warn(s"UserStateRepo.upsert(${state.userId}) failed: ${ex.getMessage}")
+        logger.warn(s"UserStateRepository.upsert(${state.userId}) failed: ${ex.getMessage}")
     }
   }
 
@@ -88,7 +88,7 @@ class MongoUserStateRepo(
       Await.result(c.deleteOne(Filters.eq("userId", userId)).toFuture(), 10.seconds)
       ()
     }.recover {
-      case ex: Throwable => logger.warn(s"UserStateRepo.delete($userId) failed: ${ex.getMessage}")
+      case ex: Throwable => logger.warn(s"UserStateRepository.delete($userId) failed: ${ex.getMessage}")
     }
   }
 
@@ -97,7 +97,7 @@ class MongoUserStateRepo(
   private def init(): (Option[MongoClient], Option[MongoCollection[UserState]]) =
     Env.get("MONGODB_URI") match {
       case None =>
-        logger.info("MONGODB_URI not set — MongoUserStateRepo disabled.")
+        logger.info("MONGODB_URI not set — MongoUserStateRepository disabled.")
         (None, None)
       case Some(uri) =>
         Try {
@@ -107,11 +107,11 @@ class MongoUserStateRepo(
           val coll   = db.getCollection[UserState]("userStates")
           Await.result(coll.countDocuments().toFuture(), 10.seconds)
           Await.result(coll.createIndex(org.mongodb.scala.model.Indexes.ascending("userId")).toFuture(), 10.seconds)
-          logger.info(s"MongoUserStateRepo connected to $dbName.userStates")
+          logger.info(s"MongoUserStateRepository connected to $dbName.userStates")
           (client, coll)
         }.recover {
           case ex: Throwable =>
-            logger.error(s"MongoUserStateRepo init failed (${ex.getMessage}) — disabled.")
+            logger.error(s"MongoUserStateRepository init failed (${ex.getMessage}) — disabled.")
             null
         }.toOption.filter(_ != null) match {
           case Some((c, coll)) => (Some(c), Some(coll))
@@ -120,7 +120,7 @@ class MongoUserStateRepo(
     }
 }
 
-class InMemoryUserStateRepo extends UserStateRepo {
+class InMemoryUserStateRepository extends UserStateRepository {
   private val store = scala.collection.mutable.Map.empty[String, UserState]
 
   def enabled: Boolean = true

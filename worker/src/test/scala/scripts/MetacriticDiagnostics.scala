@@ -1,7 +1,7 @@
 package scripts
 
 import services.enrichment.MetacriticClient
-import services.movies.{MongoMovieRepo, StoredMovieRecord}
+import services.movies.{MongoMovieRepository, StoredMovieRecord}
 import tools.DaemonExecutors
 
 import java.net.URI
@@ -56,13 +56,13 @@ object MetacriticDiagnostics {
   }
 
   def main(args: Array[String]): Unit = {
-    val repo = new MongoMovieRepo()
-    if (!repo.enabled) {
+    val repository = new MongoMovieRepository()
+    if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to diagnose.")
       sys.exit(1)
     }
 
-    val rows = repo.findAll()
+    val rows = repository.findAll()
     val missing = rows
       .filter(_.record.metacriticUrl.isEmpty)
       .sortBy(r => (r.title.toLowerCase, r.year))
@@ -154,6 +154,6 @@ object MetacriticDiagnostics {
     val rps        = if (elapsedSec > 0) f"${httpProbes.get() / elapsedSec}%.1f" else "—"
     println(f"\nDone in $elapsedSec%.1fs · ${httpProbes.get()} MC probes total · ~$rps req/s across $Workers workers.")
 
-    repo.close()
+    repository.close()
   }
 }

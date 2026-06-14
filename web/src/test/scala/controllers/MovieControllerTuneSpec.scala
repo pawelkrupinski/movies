@@ -11,7 +11,7 @@ import play.api.test.Helpers._
  * Dev/Test mode and 404 in Prod — the same `devOnly` gate as `/debug`. The
  * sample films are built in-process (`MovieController.tuneSampleFilms`), so the
  * page renders without any cache contents; the controller below is wired with
- * an empty repo on purpose to prove that.
+ * an empty repository on purpose to prove that.
  */
 class MovieControllerTuneSpec extends AnyFlatSpec with Matchers {
 

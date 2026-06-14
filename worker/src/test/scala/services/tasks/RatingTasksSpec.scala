@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
 import services.events.{ImdbIdMissing, ImdbIdResolved, TmdbResolved}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.events.InProcessEventBus
 import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
 
@@ -41,7 +41,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers with Eventually {
 
   // ── RatingEnqueuer (bus subscribers enqueue) ──────────────────────────────
 
-  private def newCache() = new CaffeineMovieCache(new InMemoryMovieRepo(), new InProcessEventBus())
+  private def newCache() = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
 
   "RatingEnqueuer" should "enqueue all four rating tasks on TmdbResolved" in {
     val queue = new InMemoryTaskQueue

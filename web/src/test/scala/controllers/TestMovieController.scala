@@ -2,7 +2,7 @@ package controllers
 
 import play.api.Mode
 import play.api.test.Helpers
-import services.movies.InMemoryMovieRepo
+import services.movies.InMemoryMovieRepository
 import services.readmodel.{TestReadModel, WebReadModel}
 import services.tasks.{InMemoryTaskQueue, TaskQueue}
 
@@ -25,9 +25,9 @@ object TestMovieController {
       movieControllerService = new MovieControllerService(readModel),
       readModel              = readModel,
       // On-demand corpus dump only (dev /debug); holds the same rows.
-      movieRepo              = new InMemoryMovieRepo(records),
+      movieRepository              = new InMemoryMovieRepository(records),
       taskQueue              = taskQueue,
-      userRepo               = new services.users.InMemoryUserRepo,
+      userRepository               = new services.users.InMemoryUserRepository,
       adminAction            = adminAction,
       oauthProviders         = Set.empty,
       environment            = mode,

@@ -62,19 +62,19 @@ class TitleRuleRecordSpec extends AnyFlatSpec with Matchers {
 
 /** The in-memory store is a plain map keyed by record id; the business logic
  *  (flattening to `findAll`) lives above the seam on the trait. */
-class InMemoryTitleRulesRepoSpec extends AnyFlatSpec with Matchers {
-  "InMemoryTitleRulesRepo" should "round-trip records and derive findAll by flattening" in {
-    val repo = new InMemoryTitleRulesRepo()
+class InMemoryTitleRulesRepositorySpec extends AnyFlatSpec with Matchers {
+  "InMemoryTitleRulesRepository" should "round-trip records and derive findAll by flattening" in {
+    val repository = new InMemoryTitleRulesRepository()
     val rec = TitleRuleRecord("Search", RuleScope.Search, None,
       rules     = Seq(TitleRule("a", RuleScope.Search, None, "x", "", applyAll = false, order = 0)),
       lastRules = Seq(TitleRule("b", RuleScope.Search, None, "y", "", applyAll = false, order = 0, last = true)))
-    repo.upsertRecord(rec)
+    repository.upsertRecord(rec)
 
-    repo.loadRecords().map(_.id) shouldBe Seq("Search")
-    repo.findAll().map(r => (r.id, r.last)) shouldBe Seq(("a", false), ("b", true))
+    repository.loadRecords().map(_.id) shouldBe Seq("Search")
+    repository.findAll().map(r => (r.id, r.last)) shouldBe Seq(("a", false), ("b", true))
 
-    repo.deleteRecord("Search")
-    repo.loadRecords() shouldBe empty
-    repo.findAll() shouldBe empty
+    repository.deleteRecord("Search")
+    repository.loadRecords() shouldBe empty
+    repository.findAll() shouldBe empty
   }
 }
