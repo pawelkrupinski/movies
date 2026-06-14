@@ -6,7 +6,10 @@
 //   • Web    — shared by the two server actions; KEEPS its scrollback across
 //              runs (long-lived servers you want to keep watching).
 //   • Device — shared by Android + iOS; CLEARED at the start of each run.
-// Each console is independently collapsible and has its own Stop button.
+// Each console is independently collapsible. When BOTH are collapsed the panel
+// shrinks to a fixed narrow size (just the buttons); when one is open the panel
+// is freely resizable by hand, and its width is remembered. Log text is
+// selectable and ⌘C copies it.
 //
 // Long-press (or right-click) any button to pick which git worktree to run the
 // task in; the chosen path is handed to the script via DEVPANEL_REPO_ROOT.
@@ -73,19 +76,42 @@ final class CommandRunner {
     }
 }
 
+// MARK: - Log text view (selectable, ⌘C / ⌘A even from a floating panel)
+
+final class LogTextView: NSTextView {
+    // A nonactivating panel won't get keyboard events unless the app is active,
+    // so clicking the log activates DevPanel and makes this view first responder.
+    override func mouseDown(with event: NSEvent) {
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeFirstResponder(self)
+        super.mouseDown(with: event)
+    }
+
+    // Backstop in case the menu's key equivalents don't fire for an accessory app.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.contains(.command) {
+            switch event.charactersIgnoringModifiers {
+            case "c": if NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: self) { return true }
+            case "a": if NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: self) { return true }
+            default: break
+            }
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+}
+
 // MARK: - A collapsible console (controls row + log view + a runner)
 
-private let panelWidth: CGFloat = 340
-private let logHeight: CGFloat = 220
+private let minLogHeight: CGFloat = 180
 
 final class ConsoleView: NSObject {
     let container = NSStackView()
     private let disclosure = NSButton()
     private let status = NSTextField(labelWithString: "idle")
     private let stopButton = NSButton()
-    private let textView = NSTextView()
+    private let textView = LogTextView()
     private let scroll = NSScrollView()
-    private var expanded = false
+    private(set) var isExpanded = false
     private var runner: CommandRunner?
 
     private let clearsOnRun: Bool
@@ -100,9 +126,11 @@ final class ConsoleView: NSObject {
         disclosure.setButtonType(.pushOnPushOff)
         disclosure.target = self
         disclosure.action = #selector(toggle)
+        disclosure.setContentHuggingPriority(.required, for: .horizontal)
 
         status.font = .systemFont(ofSize: 10)
         status.textColor = .secondaryLabelColor
+        status.setContentHuggingPriority(.required, for: .horizontal)
 
         stopButton.title = "Stop"
         stopButton.bezelStyle = .inline
@@ -111,31 +139,44 @@ final class ConsoleView: NSObject {
         stopButton.target = self
         stopButton.action = #selector(stopRunning)
         stopButton.isHidden = true
+        stopButton.setContentHuggingPriority(.required, for: .horizontal)
 
-        let controls = NSStackView(views: [disclosure, status, NSView(), stopButton])
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let controls = NSStackView(views: [disclosure, status, spacer, stopButton])
         controls.orientation = .horizontal
         controls.distribution = .fill
-        controls.widthAnchor.constraint(equalToConstant: panelWidth - 24).isActive = true
+        controls.alignment = .centerY
 
         textView.isEditable = false
-        textView.isRichText = false
+        textView.isSelectable = true
         textView.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
         textView.backgroundColor = NSColor(white: 0.10, alpha: 1)
         textView.textColor = NSColor(white: 0.92, alpha: 1)
         textView.textContainerInset = NSSize(width: 6, height: 6)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(width: 1e7, height: 1e7)
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(width: 0, height: 1e7)
 
         scroll.documentView = textView
         scroll.hasVerticalScroller = true
         scroll.borderType = .bezelBorder
-        scroll.widthAnchor.constraint(equalToConstant: panelWidth - 24).isActive = true
-        scroll.heightAnchor.constraint(equalToConstant: logHeight).isActive = true
+        scroll.setContentHuggingPriority(.defaultLow, for: .vertical)
+        scroll.heightAnchor.constraint(greaterThanOrEqualToConstant: minLogHeight).isActive = true
 
         container.orientation = .vertical
-        container.alignment = .leading
+        container.alignment = .leading     // overridden to .fill by the parent stack
         container.spacing = 6
         container.addArrangedSubview(controls)
         container.addArrangedSubview(scroll)
+        controls.leadingAnchor.constraint(equalTo: container.leadingAnchor).isActive = true
+        controls.trailingAnchor.constraint(equalTo: container.trailingAnchor).isActive = true
+        scroll.leadingAnchor.constraint(equalTo: container.leadingAnchor).isActive = true
+        scroll.trailingAnchor.constraint(equalTo: container.trailingAnchor).isActive = true
         scroll.isHidden = true
     }
 
@@ -165,10 +206,10 @@ final class ConsoleView: NSObject {
 
     @objc private func stopRunning() { runner?.stop() }
 
-    @objc private func toggle() { setExpanded(!expanded) }
+    @objc private func toggle() { setExpanded(!isExpanded) }
 
     private func setExpanded(_ on: Bool) {
-        expanded = on
+        isExpanded = on
         disclosure.state = on ? .on : .off
         scroll.isHidden = !on
         onLayoutChange?()
@@ -209,9 +250,11 @@ private let actions: [Action] = [
            script: "run-local-stack.sh", console: .web),
 ]
 
+private let defaultExpandedWidth: CGFloat = 380
+
 // MARK: - App
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var panel: NSPanel!
     private let scriptsDir: String =
         (Bundle.main.object(forInfoDictionaryKey: "DevPanelScriptsDir") as? String) ?? ""
@@ -223,11 +266,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let webConsole = ConsoleView(title: "Web output", clearsOnRun: false)
     private let deviceConsole = ConsoleView(title: "Device output", clearsOnRun: true)
     private var suppressClick: Set<String> = []
+    private var expandedWidth = defaultExpandedWidth
+    private var relayouting = false
 
     func applicationDidFinishLaunching(_ note: Notification) {
+        installMenu()
+
         let content = NSStackView()
         content.orientation = .vertical
-        content.alignment = .leading
+        content.alignment = .width        // children fill the panel width
         content.spacing = 8
         content.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         content.translatesAutoresizingMaskIntoConstraints = false
@@ -239,18 +286,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         webConsole.onLayoutChange = { [weak self] in self?.relayout() }
         deviceConsole.onLayoutChange = { [weak self] in self?.relayout() }
 
+        let root = NSView()
+        root.addSubview(content)
+        NSLayoutConstraint.activate([
+            content.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            content.topAnchor.constraint(equalTo: root.topAnchor),
+            content.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+        ])
+
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: panelWidth, height: 10),
-            styleMask: [.titled, .nonactivatingPanel, .utilityWindow, .hudWindow],
+            contentRect: NSRect(x: 0, y: 0, width: defaultExpandedWidth, height: 10),
+            styleMask: [.titled, .resizable, .nonactivatingPanel, .utilityWindow, .hudWindow],
             backing: .buffered, defer: false)
         panel.title = "movies"
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.hidesOnDeactivate = false
+        panel.becomesKeyOnlyIfNeeded = false
         panel.isMovableByWindowBackground = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.contentView = content
-        content.widthAnchor.constraint(equalToConstant: panelWidth).isActive = true
+        panel.delegate = self
+        panel.contentView = root
         self.panel = panel
 
         relayout()
@@ -264,17 +321,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let label = NSTextField(labelWithString: "kinowo dev")
         label.font = .systemFont(ofSize: 11, weight: .semibold)
         label.textColor = .secondaryLabelColor
+        label.setContentHuggingPriority(.required, for: .horizontal)
 
         let quit = NSButton(title: "✕", target: self, action: #selector(quit))
         quit.bezelStyle = .inline
         quit.isBordered = false
         quit.font = .systemFont(ofSize: 11)
         quit.toolTip = "Quit DevPanel"
+        quit.setContentHuggingPriority(.required, for: .horizontal)
 
-        let row = NSStackView(views: [label, NSView(), quit])
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let row = NSStackView(views: [label, spacer, quit])
         row.orientation = .horizontal
         row.distribution = .fill
-        row.widthAnchor.constraint(equalToConstant: panelWidth - 24).isActive = true
         return row
     }
 
@@ -295,13 +355,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         b.alignment = .left
         b.imagePosition = .noImage
         b.toolTip = "Click to run · long-press or right-click to pick a worktree"
-        b.widthAnchor.constraint(equalToConstant: panelWidth - 24).isActive = true
         b.heightAnchor.constraint(equalToConstant: 44).isActive = true
 
         let lp = NSPressGestureRecognizer(target: self, action: #selector(longPress(_:)))
         lp.minimumPressDuration = 0.4
         b.addGestureRecognizer(lp)
         return b
+    }
+
+    private func installMenu() {
+        let main = NSMenu()
+
+        let appItem = NSMenuItem()
+        main.addItem(appItem)
+        let appMenu = NSMenu()
+        appMenu.addItem(withTitle: "Quit DevPanel", action: #selector(quit), keyEquivalent: "q")
+        appItem.submenu = appMenu
+
+        let editItem = NSMenuItem()
+        main.addItem(editItem)
+        let edit = NSMenu(title: "Edit")
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = edit
+
+        NSApp.mainMenu = main
     }
 
     // MARK: running
@@ -326,8 +406,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func longPress(_ gr: NSPressGestureRecognizer) {
         guard gr.state == .began, let button = gr.view as? NSButton,
               let script = button.identifier?.rawValue else { return }
-        // Swallow the click that may follow the press; auto-clear so a later
-        // genuine click isn't eaten.
         suppressClick.insert(script)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.suppressClick.remove(script) }
         worktreeMenu(forScript: script).popUp(positioning: nil, at: gr.location(in: button), in: button)
@@ -383,11 +461,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return String(decoding: data, as: UTF8.self)
     }
 
-    // MARK: chrome
+    // MARK: sizing
 
+    /// Folded (both consoles closed) → fixed narrow size that just fits the
+    /// buttons. Expanded → freely resizable, width remembered.
     private func relayout() {
-        guard let content = panel.contentView else { return }
-        panel.setContentSize(NSSize(width: panelWidth, height: content.fittingSize.height))
+        guard let root = panel.contentView else { return }
+        let anyExpanded = webConsole.isExpanded || deviceConsole.isExpanded
+        let fit = root.fittingSize
+        relayouting = true
+        if anyExpanded {
+            panel.contentMinSize = NSSize(width: fit.width, height: fit.height)
+            panel.contentMaxSize = NSSize(width: 4000, height: 4000)
+            let w = max(expandedWidth, fit.width)
+            let h = max(root.frame.height, fit.height)
+            panel.setContentSize(NSSize(width: w, height: h))
+        } else {
+            panel.contentMinSize = fit               // lock to the narrow size
+            panel.contentMaxSize = fit
+            panel.setContentSize(fit)
+        }
+        relayouting = false
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        guard !relayouting, webConsole.isExpanded || deviceConsole.isExpanded,
+              let w = panel.contentView?.frame.width else { return }
+        expandedWidth = w                            // remember the hand-set width
     }
 
     @objc private func quit() {

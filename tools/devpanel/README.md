@@ -19,7 +19,10 @@ Two collapsible consoles, each with its own **Stop** button:
   runs (long-lived servers you want to keep watching).
 - **Device** — shared by Android + iOS; **cleared** at the start of each run.
 
-Toggle either with its disclosure triangle; the panel resizes to fit.
+Toggle either with its disclosure triangle. When **both** are collapsed the
+panel shrinks to a fixed narrow size that just fits the button labels; when one
+is open the panel is **resizable by hand** (drag any edge) and remembers the
+width you set. Log text is selectable and **⌘C** copies it (⌘A selects all).
 
 ## Run on a worktree
 
