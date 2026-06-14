@@ -27,9 +27,20 @@ object TaskType {
   case object RefreshAllMetacritic extends TaskType { val name = "RefreshAllMetacritic" }
   case object RefreshAllRt         extends TaskType { val name = "RefreshAllRt"         }
 
+  // Staging incubation: a newcomer in `pending_movies` walks these the same way
+  // the direct path walks EnrichDetails → ResolveTmdb → ResolveImdbId, but pointed
+  // at staging rows and ending in a fold into `movies`. Each step is its own task
+  // so it retries/backs off independently; `StagingReaper` chains them (off the
+  // generic `TaskFinished` event) and is the periodic backstop. See StagingSteps.
+  case object StagingDetail        extends TaskType { val name = "StagingDetail"        }
+  case object StagingResolveTmdb   extends TaskType { val name = "StagingResolveTmdb"   }
+  case object StagingResolveImdbId extends TaskType { val name = "StagingResolveImdbId" }
+  case object StagingFold          extends TaskType { val name = "StagingFold"          }
+
   val all: Seq[TaskType] =
     Seq(ScrapeCinema, EnrichDetails, ResolveTmdb, ResolveImdbId, ImdbRating, FilmwebRating, RtRating, McRating,
-        RefreshAllTmdb, RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt)
+        RefreshAllTmdb, RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt,
+        StagingDetail, StagingResolveTmdb, StagingResolveImdbId, StagingFold)
 
   def byName(s: String): Option[TaskType] = all.find(_.name == s)
 }

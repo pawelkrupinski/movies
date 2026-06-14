@@ -1,0 +1,153 @@
+package services.staging
+
+import models.{MovieRecord, Source, SourceData, Tmdb}
+import play.api.Logging
+import services.cinemas.DetailEnricher
+import services.freshness.{FreshnessKind, FreshnessStore}
+import services.movies.{MovieRecordMerge, MovieService, TitleNormalizer}
+import services.tasks.StagingTaskKeys
+
+/**
+ * The shared business logic for incubating a `pending_movies` newcomer — the
+ * four enrichment steps the old monolithic `StagingPromoter.promoteFilm` ran
+ * inline, factored out so the queue handlers (one task per step) and the
+ * `StagingReaper` (which decides what to enqueue next) share ONE implementation
+ * of each rule. None of it duplicates logic the direct path owns: it points the
+ * SAME detail-fetch + `resolveStagingRecord` + IMDb-recovery at staging rows.
+ *
+ * Everything is keyed PER FILM by `anchor` = `sanitize(title)`, across every
+ * cinema and year-variant — resolution is per-film (over the union of every
+ * cinema's hints), folding is per-year (each variant lands its own `movies`
+ * row). See the original `StagingPromoter` doc for why.
+ *
+ * `resolveStaging` is `MovieService.resolveStagingRecord`, `recoverImdbId` is
+ * `ImdbIdResolver.findIdFor` — injected as functions so this depends on the
+ * abstractions, not the whole services.
+ */
+class StagingSteps(
+  stagingRepository: StagingRepository,
+  enrichers:         Seq[DetailEnricher],
+  resolveStaging:    (String, Option[Int], MovieRecord) => Option[MovieRecord],
+  recoverImdbId:     (String, Option[Int]) => Option[String],
+  freshness:         FreshnessStore
+) extends Logging {
+  import StagingSteps._
+
+  /** Every staging row of the film whose title sanitizes to `anchor`, `_id`-sorted
+   *  (so `head` is deterministic), across all cinemas + year-variants. */
+  def rowsFor(anchor: String): Seq[StagingRecord] =
+    stagingRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == anchor)
+
+  def enricherFor(cinema: Source): Option[DetailEnricher] = enrichers.find(_.cinema == cinema)
+
+  /** Whether the staging detail step has run for this row's cinema. Gates BOTH
+   *  the move to TMDB resolution AND the eventual fold, so a cinema's detail
+   *  (synopsis/poster/director) is on the row before it graduates — exactly like
+   *  the promoter, which fetched detail for EVERY enricher cinema (deferring or
+   *  not) before resolving. Readiness is "the fetch RAN" (marked fresh), not "the
+   *  slot has content", since a detail page may carry none (Kino Rialto). A
+   *  non-deferring cinema (display-only, e.g. Kino Muza) marks fresh even if its
+   *  fetch failed — its detail never BLOCKS, but it's still fetched first. A cinema
+   *  with no enricher at all has no detail to wait for. */
+  def detailReady(row: StagingRecord): Boolean = enricherFor(row.cinema) match {
+    case Some(_) => freshness.isFresh(StagingTaskKeys.detailKey(TitleNormalizer.sanitize(row.title), row.cinema.displayName), FreshnessKind.DetailEnrich)
+    case None    => true
+  }
+
+  /** STEP 1 (per film + cinema): fetch + merge this cinema's per-film detail into
+   *  EVERY one of its year-variant rows for the film, then mark the fetch fresh so
+   *  `detailReady` lets resolution proceed. Returns true once the fetch has landed
+   *  (or the cinema doesn't defer) — false when a deferred fetch still hasn't, so
+   *  the task reschedules + retries. `mergeInto` is idempotent, so a re-fetch only
+   *  fills gaps. */
+  def fetchDetailFor(cinema: Source, anchor: String): Boolean = enricherFor(cinema) match {
+    case None    => true                                                  // not a detail cinema — nothing owed
+    case Some(e) =>
+      val ready = rowsFor(anchor).filter(_.cinema == cinema).forall(r => fetchDetailRow(r, e) || !e.defersTmdbResolution)
+      if (ready) freshness.markFresh(StagingTaskKeys.detailKey(anchor, cinema.displayName), FreshnessKind.DetailEnrich)
+      ready
+  }
+
+  private def fetchDetailRow(row: StagingRecord, enricher: DetailEnricher): Boolean = {
+    val target = enricher.detailTarget
+    row.record.data.get(row.cinema).flatMap(_.filmUrl).flatMap(enricher.fetchFilmDetail) match {
+      case Some(detail) =>
+        val merged = row.record.copy(
+          data = row.record.data + (target -> detail.mergeInto(row.record.data.getOrElse(target, SourceData()))))
+        stagingRepository.upsert(row.cinema, row.title, row.year, merged)
+        logger.info(s"Staging: '${row.title}' ← detail from ${row.cinema.displayName}")
+        true
+      case None => detailPresent(row, target)                            // no filmUrl / fetch failed — already-merged still counts
+    }
+  }
+
+  private def detailPresent(row: StagingRecord, target: Source): Boolean =
+    row.record.data.get(target).exists(s => s.synopsis.isDefined || s.cast.nonEmpty || s.director.nonEmpty)
+
+  /** STEP 2 (per film): resolve ONCE over the union of every cinema's hints at the
+   *  best (lowest present) year, then stamp `tmdbId` / `tmdbNoMatch` / the `Tmdb`
+   *  slot — and any IMDb id TMDB itself shipped — onto every row. The result tells
+   *  the caller what to do next (advance, retry, or stop). */
+  def resolveAndStamp(anchor: String): ResolveResult = {
+    val fresh = rowsFor(anchor)
+    if (fresh.isEmpty || fresh.exists(_.record.tmdbConcluded)) AlreadyDone
+    else if (!fresh.forall(detailReady)) DetailNotReady
+    else {
+      val resolveYear = fresh.flatMap(_.year).minOption
+      val mergedHints = MovieRecordMerge.unionAll(fresh.map(_.record))
+      resolveStaging(fresh.head.title, resolveYear, mergedHints) match {
+        case None => TransientFailure
+        case Some(resolved) =>
+          val tmdbSlot = resolved.data.get(Tmdb)
+          fresh.foreach { r =>
+            val stamped = r.record.copy(
+              tmdbId      = resolved.tmdbId,
+              imdbId      = resolved.imdbId,
+              tmdbNoMatch = resolved.tmdbNoMatch,
+              data        = tmdbSlot.fold(r.record.data)(s => r.record.data + (Tmdb -> s)))
+            stagingRepository.upsert(r.cinema, r.title, r.year, stamped)
+          }
+          logger.info(s"Staging: '${fresh.head.title}' → resolved (tmdbId=${resolved.tmdbId.getOrElse("—")}, noMatch=${resolved.tmdbNoMatch})")
+          Resolved
+      }
+    }
+  }
+
+  /** STEP 3 (per film): recover a missing IMDb cross-reference and stamp it onto
+   *  every row — the promoter's inline recovery, now its own retryable task. A
+   *  staging row never enters the cache, so the event-driven `ImdbIdResolver`
+   *  can't reach it. No-ops (returns true) when there's nothing to recover (no
+   *  tmdbId, or imdbId already present); on a miss it gives up and lets the film
+   *  fold with just the TMDB id, exactly as the promoter did. */
+  def recoverImdbFor(anchor: String): Unit = {
+    val fresh = rowsFor(anchor)
+    fresh.headOption.foreach { head =>
+      if (head.record.tmdbId.isDefined && head.record.imdbId.isEmpty) {
+        val search = head.record.originalTitle.getOrElse(MovieService.apiQuery(head.title))
+        recoverImdbId(search, fresh.flatMap(_.year).minOption) match {
+          case Some(id) =>
+            fresh.foreach(r => stagingRepository.upsert(r.cinema, r.title, r.year, r.record.copy(imdbId = Some(id))))
+            logger.info(s"Staging: '${head.title}' ← recovered imdbId=$id")
+          case None => ()                                                // fold without it, like the promoter
+        }
+        // Recovery is best-effort + one-shot: mark it done (found OR not) so the
+        // film folds rather than re-enqueuing the step on a permanent no-match.
+        freshness.markFresh(StagingTaskKeys.imdbKey(anchor), FreshnessKind.ImdbRating)
+      }
+    }
+  }
+
+  /** Whether IMDb recovery has already been attempted for this film — so the
+   *  reaper folds instead of re-enqueuing the (best-effort) step forever. */
+  def imdbRecoveryDone(anchor: String): Boolean =
+    freshness.isFresh(StagingTaskKeys.imdbKey(anchor), FreshnessKind.ImdbRating)
+}
+
+object StagingSteps {
+  /** What `resolveAndStamp` decided — drives the handler's outcome + the reaper. */
+  sealed trait ResolveResult
+  case object Resolved         extends ResolveResult  // stamped a hit or tmdbNoMatch — film is concluded
+  case object DetailNotReady   extends ResolveResult  // a deferred cinema still owes detail (safety net) — retry
+  case object TransientFailure extends ResolveResult  // TMDB returned None — retry with backoff
+  case object AlreadyDone      extends ResolveResult  // gone, or already concluded — nothing to do
+}

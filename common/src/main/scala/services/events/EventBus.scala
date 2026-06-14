@@ -1,6 +1,7 @@
 package services.events
 
 import play.api.Logging
+import services.tasks.TaskType
 
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -104,6 +105,14 @@ case class ImdbIdResolved(title: String, year: Option[Int], imdbId: String) exte
  *  group-scoped fold settles across years itself, and the promoter may publish
  *  one of these per concluded year — `foldGroup` is idempotent. */
 case class StagingFilmEnriched(cleanTitle: String) extends DomainEvent
+
+/** A queue task ran to a successful conclusion (`Done`/`Skipped` — NOT a
+ *  reschedule). Published by `TaskWorker` (via an injected hook) the moment a
+ *  task completes, so a consumer can chain follow-up work off it without the
+ *  handler having to know what comes next. `StagingReaper` subscribes to advance
+ *  the staging pipeline (detail → resolve → imdb → fold) one step per completion;
+ *  every other task type's `TaskFinished` is simply ignored. */
+case class TaskFinished(taskType: TaskType, dedupKey: String, payload: Map[String, String]) extends DomainEvent
 
 /**
  * Publish/subscribe bus carrying `DomainEvent`s. Per CLAUDE.md DIP guidance,

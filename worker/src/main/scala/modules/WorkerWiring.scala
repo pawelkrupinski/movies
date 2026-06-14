@@ -7,15 +7,15 @@ import services.alerts.{FallbackAlert, FilmwebDropAlerter, StagingStuckAlerter, 
 import services.cinemas._
 import services.enrichment._
 import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
-import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete, StagingFilmEnriched}
+import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete, StagingFilmEnriched, TaskFinished}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepository, MovieService, MongoNormalizationReportRepository, NormalizationRebuilder, NormalizationReport, NormalizationReportRepository, UnscreenedCleanup}
 import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
-import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingFolder, StagingPromoter, StagingRepository}
+import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
-import tools.{DaemonExecutors, Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
+import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
@@ -341,19 +341,29 @@ class WorkerWiring extends play.api.Logging {
     runStore = scheduledRunStore)
 
   // ── Staging incubation (resolve-then-fold) ──────────────────────────────────
-  // The promoter walks `pending_movies` each tick: detail-enrich (reusing the
-  // same DetailEnrichers), then TMDB-resolve via the cache-free
-  // `resolveStagingRecord`; on conclusion it publishes `StagingFilmEnriched`. The
-  // transactional folder (replica-set Mongo) merges the concluded film into
-  // `movies` and deletes its staging rows. Only scheduled/subscribed when the
-  // flag is on (below) — otherwise these are dormant.
+  // A newcomer in `pending_movies` walks the SAME steps the direct path runs,
+  // but each is now a durable queue task (StagingDetail → StagingResolveTmdb →
+  // StagingResolveImdbId → StagingFold) so it retries/backs off + dedups like
+  // every other task. `StagingSteps` holds the shared logic (detail-enrich,
+  // cache-free `resolveStagingRecord`, IMDb recovery); `StagingReaper` chains the
+  // steps (off `TaskFinished`) and is the periodic backstop. On the fold step a
+  // `StagingFilmEnriched` event drives the transactional folder, which merges the
+  // concluded film into `movies` and deletes its staging rows.
   lazy val stagingFolder: StagingFolder = new MongoStagingFolder(mongoConnection)
-  lazy val stagingPromoter = new StagingPromoter(
-    stagingRepository, detailEnrichers, movieService.resolveStagingRecord, imdbIdResolver.findIdFor,
-    onConcluded = row => eventBus.publish(StagingFilmEnriched(row.title)))
-  private val stagingPromoterScheduler = DaemonExecutors.scheduler("staging-promoter")
-  private val StagingPromoterInitialDelay = Env.positiveLong("KINOWO_STAGING_PROMOTE_INITIAL_SECONDS", 30L)
-  private val StagingPromoterInterval     = Env.positiveLong("KINOWO_STAGING_PROMOTE_SECONDS", 120L)
+  lazy val stagingSteps = new StagingSteps(
+    stagingRepository, detailEnrichers, movieService.resolveStagingRecord, imdbIdResolver.findIdFor, freshnessStore)
+  lazy val stagingHandlers: Seq[services.tasks.TaskHandler] = Seq(
+    new StagingDetailHandler(stagingSteps),
+    new StagingResolveTmdbHandler(stagingSteps),
+    new StagingResolveImdbIdHandler(stagingSteps),
+    new StagingFoldHandler(title => eventBus.publish(StagingFilmEnriched(title)))
+  )
+  private val StagingReaperInitialDelay = Env.positiveLong("KINOWO_STAGING_PROMOTE_INITIAL_SECONDS", 30L)
+  private val StagingReaperInterval     = Env.positiveLong("KINOWO_STAGING_PROMOTE_SECONDS", 120L)
+  lazy val stagingReaper = new StagingReaper(stagingSteps, taskQueue, stagingRepository,
+    interval     = FiniteDuration(StagingReaperInterval, TimeUnit.SECONDS),
+    initialDelay = FiniteDuration(StagingReaperInitialDelay, TimeUnit.SECONDS),
+    runStore     = scheduledRunStore)
 
   // Telegram alerter for newcomers the promoter can't conclude: a row sitting in
   // `pending_movies` TMDB-unresolved for over an hour never folds into `movies`, so
@@ -409,8 +419,11 @@ class WorkerWiring extends play.api.Logging {
   // poller that claimed up to 20 tasks per tick onto a shared-budget EC.)
   def workerPoolSize: Int = Env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4)
   lazy val taskWorker = new TaskWorker(
-    taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler) ++ ratingHandlers ++ operatorHandlers,
-    poolSize = workerPoolSize
+    taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler) ++ ratingHandlers ++ operatorHandlers ++ stagingHandlers,
+    poolSize = workerPoolSize,
+    // Each completed task announces itself so StagingReaper can chain the next
+    // staging step; non-staging completions are ignored by its subscriber.
+    onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload))
   )
   lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, initialDelay = initialScrapeDelaySeconds.seconds,
@@ -436,9 +449,12 @@ class WorkerWiring extends play.api.Logging {
   eventBus.subscribe(ratingEnqueuer.onTmdbResolved)
   eventBus.subscribe(ratingEnqueuer.onImdbIdResolved)
   eventBus.subscribe(ratingEnqueuer.onImdbIdMissing)
-  // A concluded newcomer folds into `movies` (transactionally) the moment the
-  // promoter publishes.
+  // A concluded newcomer folds (group-scoped, settling as it goes) into `movies`
+  // the moment the StagingFold handler publishes.
   eventBus.subscribe { case StagingFilmEnriched(title) => stagingFolder.foldGroup(title) }
+  // The reaper advances the staging chain (detail → resolve → imdb → fold) one
+  // step per finished staging task.
+  eventBus.subscribe(stagingReaper.onTaskFinished)
 
   def start(): Unit = {
     // Force Mongo at boot so connection errors surface in the boot timeline.
@@ -479,13 +495,9 @@ class WorkerWiring extends play.api.Logging {
     enrichmentReaper.start()
     detailReaper.start()
     scrapeReaper.start()
-    logger.info(s"Staging promoter scheduled — incubating newcomers in pending_movies " +
-      s"(every ${StagingPromoterInterval}s, first in ${StagingPromoterInitialDelay}s).")
-    stagingPromoterScheduler.scheduleAtFixedRate(
-      () => scala.util.Try(stagingPromoter.runOnce()).recover {
-        case e => logger.warn(s"Staging promoter tick failed: ${e.getMessage}")
-      },
-      StagingPromoterInitialDelay, StagingPromoterInterval, TimeUnit.SECONDS)
+    // Incubate pending_movies through the queue: the reaper kicks new newcomers
+    // and backstops stalled chains; the TaskWorker (above) drains the steps.
+    stagingReaper.start()
     stagingStuckAlerter.foreach(_.start())
   }
 
@@ -496,7 +508,7 @@ class WorkerWiring extends play.api.Logging {
 
   def stop(): Unit = {
     stagingStuckAlerter.foreach(_.stop())
-    stagingPromoterScheduler.shutdown()
+    stagingReaper.stop()
     scrapeReaper.stop()
     enrichmentReaper.stop()
     detailReaper.stop()

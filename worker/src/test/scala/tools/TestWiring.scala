@@ -7,7 +7,7 @@ import services.{MongoConnection, Stoppable}
 import services.events.{DomainEvent, EventBus}
 import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
 import services.movies.MovieService
-import services.tasks.{EnrichDetailsHandler, InMemoryTaskQueue, TaskQueue, TaskType}
+import services.tasks.{EnrichDetailsHandler, HandlerOutcome, InMemoryTaskQueue, TaskQueue, TaskType}
 
 import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 import scala.concurrent.duration._
@@ -199,13 +199,17 @@ trait TestWiring extends WorkerWiring {
   def drainServices(): Unit =
     quiesce(cascadeDrainOrder*)
 
-  /** Drive the staging incubation the worker's promoter scheduler runs in prod:
-   *  promote each `pending_movies` row (detail-enrich then TMDB-resolve); a
-   *  concluded row auto-folds into `movies` via the `StagingFilmEnriched`
-   *  subscription. Loop until no further fold, then FORCE-fold any leftover
-   *  (TMDB-fixture-less) rows — `concludeEnrichment` then marks those still-
-   *  unresolved `movies` rows `tmdbNoMatch`, the same end state a no-fixture film
-   *  reaches on the direct route. The harness has no `movies` change stream, so
+  /** Drive the staging incubation the worker's `StagingReaper` + `TaskWorker` run
+   *  in prod — synchronously, the same way `enrichDetailsSync` drives the detail
+   *  tasks: each pass, `stagingReaper.tick()` enqueues every pending film's next
+   *  step, then we drain those staging tasks through the real handlers. Completing
+   *  a step advances the reaper (`onTaskFinished`), which enqueues the next step
+   *  for the same claim-loop to pick up — so a film flows detail → resolve → imdb
+   *  → fold within the drain, and a concluded film auto-folds into `movies` via the
+   *  `StagingFilmEnriched` subscription. Loop until no further fold, then FORCE-fold
+   *  any leftover (TMDB-fixture-less) GROUP — `concludeEnrichment` then marks those
+   *  still-unresolved `movies` rows `tmdbNoMatch`, the same end state a no-fixture
+   *  film reaches on the direct route. The harness has no `movies` change stream, so
    *  finally rehydrate the cache from the repository (prod's stream does this) —
    *  `rehydrate` re-settles the corpus, so the fold's own settle has a backstop.
    *
@@ -219,7 +223,8 @@ trait TestWiring extends WorkerWiring {
       val before = stagingRepository.findAll().size
       if (before == 0) folded = false
       else {
-        try stagingPromoter.runOnce() catch { case _: Exception => () }
+        stagingReaper.tick()
+        drainStagingQueueOnce()
         folded = stagingRepository.findAll().size < before
       }
     }
@@ -235,6 +240,33 @@ trait TestWiring extends WorkerWiring {
       try stagingFolder.foldGroup(title) catch { case _: Exception => () }
     }
     movieCache.rehydrate()
+  }
+
+  private lazy val stagingHandlerByType = stagingHandlers.map(h => h.taskType -> h).toMap
+
+  /** Drain every staging task currently claimable through the real handlers — the
+   *  synchronous stand-in for the prod `TaskWorker`. Completing a step advances
+   *  `StagingReaper` (which enqueues the next step for this same loop to pick up),
+   *  so a film flows detail → resolve → imdb → fold in one drain. A transient step
+   *  (Reschedule — e.g. a TMDB-fixture-less film) is completed-and-dropped so it
+   *  can't spin this drain; `drainStaging`'s force-fold handles the leftover. A
+   *  stray non-staging task is completed too, matching `enrichDetailsSync`. */
+  private def drainStagingQueueOnce(): Unit = {
+    val workerId = "staging-sync"
+    Iterator.continually(taskQueue.claim(workerId, 5.minutes))
+      .takeWhile(_.isDefined).flatten
+      .foreach { task =>
+        val advance = stagingHandlerByType.get(task.taskType).exists { h =>
+          (try h.handle(task) catch { case _: Exception => HandlerOutcome.Reschedule(None) }) match {
+            case HandlerOutcome.Done | HandlerOutcome.Skipped => true
+            case _: HandlerOutcome.Reschedule                 => false
+          }
+        }
+        taskQueue.complete(task.id, workerId)
+        if (advance)
+          stagingReaper.onTaskFinished.applyOrElse(
+            services.events.TaskFinished(task.taskType, task.dedupKey, task.payload), (_: DomainEvent) => ())
+      }
   }
 
   /** Scrape every cinema once in parallel, blocking until all have settled.

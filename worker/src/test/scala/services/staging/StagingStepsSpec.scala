@@ -1,0 +1,147 @@
+package services.staging
+
+import models.{Cinema, Helios, Multikino, MovieRecord, Source, SourceData}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import services.cinemas.{DetailEnricher, FilmDetail}
+import services.freshness.InMemoryFreshnessStore
+import services.movies.{MovieService, TitleNormalizer}
+
+/** Unit specs for the staging enrichment steps factored out of the old
+ *  `StagingPromoter` — the same scenarios, now exercised per discrete step (the
+ *  shape the queue handlers + reaper consume). */
+class StagingStepsSpec extends AnyFlatSpec with Matchers {
+
+  private class FakeEnricher(val cinema: Cinema, detail: Option[FilmDetail], defer: Boolean = true)
+    extends DetailEnricher {
+    def detailGroup = "fake"
+    override def defersTmdbResolution: Boolean = defer
+    def fetchFilmDetail(ref: String): Option[FilmDetail] = detail
+  }
+
+  private def listingRow(cinema: Cinema, title: String, year: Option[Int]): MovieRecord =
+    MovieRecord(data = Map[Source, SourceData](
+      cinema -> SourceData(title = Some(title), releaseYear = year, filmUrl = Some(s"https://x/$title"))))
+
+  private def seeded(cinema: Cinema, title: String, year: Option[Int]): (InMemoryStagingRepository, String) = {
+    val repository = new InMemoryStagingRepository
+    repository.upsert(cinema, title, year, listingRow(cinema, title, year))
+    (repository, TitleNormalizer.sanitize(title))
+  }
+
+  private def steps(repository: InMemoryStagingRepository, enrichers: Seq[DetailEnricher],
+                    resolve: (String, Option[Int], MovieRecord) => Option[MovieRecord],
+                    recover: (String, Option[Int]) => Option[String] = (_, _) => None) =
+    new StagingSteps(repository, enrichers, resolve, recover, new InMemoryFreshnessStore)
+
+  "fetchDetailFor" should "fetch + merge a deferred cinema's detail into its row" in {
+    val (repository, anchor) = seeded(Helios, "Newcomer", Some(2026))
+    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("A plot"), director = Seq("Jane Doe"))))
+    val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))
+
+    s.fetchDetailFor(Helios, anchor) shouldBe true
+    repository.findAll().head.record.data(Helios).synopsis shouldBe Some("A plot")
+  }
+
+  "resolveAndStamp" should "resolve with the merged detail hints and stamp the hit on every row" in {
+    val (repository, anchor) = seeded(Helios, "Newcomer", Some(2026))
+    val enricher = new FakeEnricher(Helios, Some(FilmDetail(director = Seq("Jane Doe"))))
+    var sawDirector = false
+    val s = steps(repository, Seq(enricher), (_, _, record) => {
+      sawDirector = record.data.get(Helios).exists(_.director.contains("Jane Doe"))
+      Some(record.copy(tmdbId = Some(1275779)))
+    })
+
+    s.fetchDetailFor(Helios, anchor) shouldBe true                    // detail FIRST
+    s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved
+    sawDirector shouldBe true                                          // resolve saw the detail hint
+    repository.findAll().head.record.tmdbId shouldBe Some(1275779)
+  }
+
+  it should "stamp a definitive no-match (tmdbNoMatch)" in {
+    val (repository, anchor) = seeded(Helios, "Obscure", Some(2026))
+    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
+    val s = steps(repository, Seq(enricher), (_, _, r) => Some(r.copy(tmdbNoMatch = true)))
+
+    s.fetchDetailFor(Helios, anchor)
+    s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved
+    repository.findAll().head.record.tmdbNoMatch shouldBe true
+  }
+
+  it should "report DetailNotReady (and NOT call resolve) for a deferred cinema whose detail hasn't landed" in {
+    val (repository, anchor) = seeded(Helios, "Pending", Some(2026))
+    val enricher = new FakeEnricher(Helios, detail = None)            // detail keeps failing
+    var resolveCalled = false
+    val s = steps(repository, Seq(enricher), (_, _, _) => { resolveCalled = true; None })
+
+    s.resolveAndStamp(anchor) shouldBe StagingSteps.DetailNotReady
+    resolveCalled shouldBe false
+  }
+
+  it should "report TransientFailure on a transient TMDB miss (retry next pass)" in {
+    val (repository, anchor) = seeded(Helios, "Flaky", Some(2026))
+    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
+    val s = steps(repository, Seq(enricher), (_, _, _) => None)
+
+    s.fetchDetailFor(Helios, anchor)
+    s.resolveAndStamp(anchor) shouldBe StagingSteps.TransientFailure
+    repository.findAll().head.record.tmdbConcluded shouldBe false
+  }
+
+  it should "resolve a non-deferred cinema immediately (no detail enricher)" in {
+    val (repository, anchor) = seeded(Multikino, "Inline", Some(2026))
+    val s = steps(repository, Seq.empty, (_, _, r) => Some(r.copy(tmdbId = Some(42))))
+
+    s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved
+    repository.findAll().head.record.tmdbId shouldBe Some(42)
+  }
+
+  it should "wait for a NON-deferring enricher's detail to be fetched before resolving (so display synopsis lands before the fold)" in {
+    // Kino Muza-style: display-only detail (defersTmdbResolution = false). The
+    // promoter fetched it before folding; the queue path must too, or the folded
+    // movies row loses its synopsis.
+    val (repository, anchor) = seeded(Helios, "Display", Some(2026))
+    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("syn"))), defer = false)
+    val s = steps(repository, Seq(enricher), (_, _, r) => Some(r.copy(tmdbId = Some(1))))
+
+    s.resolveAndStamp(anchor) shouldBe StagingSteps.DetailNotReady          // detail step hasn't run yet
+    s.fetchDetailFor(Helios, anchor) shouldBe true
+    repository.findAll().head.record.data(Helios).synopsis shouldBe Some("syn")
+    s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved               // now it resolves
+  }
+
+  it should "report AlreadyDone for an already-concluded film" in {
+    val (repository, anchor) = seeded(Multikino, "Done", Some(2026))
+    val s = steps(repository, Seq.empty, (_, _, r) => Some(r.copy(tmdbId = Some(1))))
+    s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved          // first pass concludes it
+    s.resolveAndStamp(anchor) shouldBe StagingSteps.AlreadyDone       // second pass is a no-op
+  }
+
+  "recoverImdbFor" should "recover a missing imdbId when TMDB resolved without a cross-reference" in {
+    val (repository, anchor) = seeded(Helios, "Pucio", Some(2026))
+    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
+    var searchedFor = Option.empty[String]
+    val s = steps(repository, Seq(enricher),
+      resolve = (_, _, r) => Some(r.copy(tmdbId = Some(1645035))),    // hit, but imdbId empty
+      recover = (search, _) => { searchedFor = Some(search); Some("tt42003604") })
+
+    s.fetchDetailFor(Helios, anchor); s.resolveAndStamp(anchor)
+    s.recoverImdbFor(anchor)
+    searchedFor shouldBe Some(MovieService.apiQuery("Pucio"))
+    repository.findAll().head.record.imdbId shouldBe Some("tt42003604")
+  }
+
+  it should "not call recovery when TMDB already shipped a cross-reference" in {
+    val (repository, anchor) = seeded(Helios, "HasImdb", Some(2026))
+    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
+    var recoverCalled = false
+    val s = steps(repository, Seq(enricher),
+      resolve = (_, _, r) => Some(r.copy(tmdbId = Some(7), imdbId = Some("tt0000007"))),
+      recover = (_, _) => { recoverCalled = true; None })
+
+    s.fetchDetailFor(Helios, anchor); s.resolveAndStamp(anchor)
+    s.recoverImdbFor(anchor)
+    recoverCalled shouldBe false
+    repository.findAll().head.record.imdbId shouldBe Some("tt0000007")
+  }
+}

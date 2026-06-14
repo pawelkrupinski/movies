@@ -68,7 +68,12 @@ class TaskWorker(
   retryBackoff:      FiniteDuration = 2.seconds,
   idleBackstop:      FiniteDuration = 30.seconds,
   poolSize:          Int            = 4,
-  reapInterval:      FiniteDuration = 30.seconds
+  reapInterval:      FiniteDuration = 30.seconds,
+  // Invoked with the task the instant it completes successfully (Done/Skipped),
+  // never on a reschedule. The composition root wires this to publish a
+  // `TaskFinished` event so consumers (e.g. StagingReaper) can chain follow-up
+  // work; default no-op keeps the worker decoupled from the bus.
+  onCompleted:       Task => Unit   = _ => ()
 ) extends Stoppable with Logging {
   import HandlerOutcome._
   import TaskWorker._
@@ -158,7 +163,10 @@ class TaskWorker(
       PollResult.Returned
     case Some(h) =>
       Try(h.handle(task)) match {
-        case Success(Done) | Success(Skipped) => queue.complete(task.id, workerId); PollResult.Completed
+        case Success(Done) | Success(Skipped) =>
+          queue.complete(task.id, workerId)
+          Try(onCompleted(task))   // a buggy chain hook must not fail the completed task
+          PollResult.Completed
         case Success(Reschedule(err)) =>
           queue.release(task.id, workerId, err, Some(backoffUntil(task.attempts)))
           PollResult.Returned
