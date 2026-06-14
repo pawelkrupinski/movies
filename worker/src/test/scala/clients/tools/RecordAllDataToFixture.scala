@@ -99,28 +99,16 @@ object RecordAllDataToFixture extends TestWiring {
   override lazy val tmdbClient: clients.TmdbClient =
     new clients.TmdbClient(httoFetch, apiKey = sys.env.get("TMDB_API_KEY"))
 
-  /** Scrape every cinema once in parallel, blocking until all have settled.
-   *  Each scraper runs the shared `cinemaScrapeRunner` (record + publish), so
-   *  every `MovieDetailsComplete` is published synchronously before this returns
-   *  and the caller can drain the downstream pools without racing the scrape. */
-  private def scrapeAllOnce(): Unit = {
-    val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("record-scrape", 8)
-    try Await.ready(
-      Future.sequence(cinemaScrapers.map(s =>
-        Future(scala.util.Try(cinemaScrapeRunner.run(s)))(using ec)))(using implicitly, ec),
-      Duration.Inf)
-    finally ec.shutdown()
-    ()
-  }
-
   def main(args: Array[String]): Unit = {
   // 1. Production-shape pass: every cinema scrape fires (bare), the enqueued
   //    EnrichDetails tasks are drained so each film's detail page is fetched +
-  //    recorded, then every bus event cascades through the worker pools and the
-  //    cascade drains in producer→consumer order.
-  scrapeAllOnce()
-  enrichDetailsSync()
-  drainServices()
+  //    recorded, every bus event cascades through the worker pools, the cascade
+  //    drains in producer→consumer order, and newcomers graduate out of the
+  //    always-on staging sink into `movies`. That last step (`drainStaging`,
+  //    inside `scrapeAndDrainToCache`) is what makes the sync-pass below have
+  //    anything to enrich — without it the cold cache diverts every film to
+  //    `pending_movies` and the recorder captures only cinema scrapes.
+  scrapeAndDrainToCache()
 
   // 2. Safety-net pass: synchronously force every cache row through the
   //    full pipeline. Belt-and-braces against the async path dropping

@@ -9,6 +9,7 @@ import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
 import services.movies.MovieService
 import services.tasks.{EnrichDetailsHandler, InMemoryTaskQueue, TaskQueue, TaskType}
 
+import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 import scala.concurrent.duration._
 
 /** Test seam over the worker's [[WorkerWiring]] composition root: pins a
@@ -197,4 +198,75 @@ trait TestWiring extends WorkerWiring {
    *  alongside every other `DetailEnricher` before the snapshot is taken. */
   def drainServices(): Unit =
     quiesce(cascadeDrainOrder*)
+
+  /** Drive the staging incubation the worker's promoter scheduler runs in prod:
+   *  promote each `pending_movies` row (detail-enrich then TMDB-resolve); a
+   *  concluded row auto-folds into `movies` via the `StagingFilmEnriched`
+   *  subscription. Loop until no further fold, then FORCE-fold any leftover
+   *  (TMDB-fixture-less) rows — `concludeEnrichment` then marks those still-
+   *  unresolved `movies` rows `tmdbNoMatch`, the same end state a no-fixture film
+   *  reaches on the direct route. The harness has no `movies` change stream, so
+   *  finally rehydrate the cache from the repo (prod's stream does this), which
+   *  also re-settles the freshly-folded rows.
+   *
+   *  Staging ingest is always-on in prod, so EVERY newcomer is diverted to
+   *  `pending_movies` on a cold cache. Both the replay harness (bootStartup /
+   *  converge) and the fixture recorder must drive this, or the `movies` cache
+   *  stays empty and no TMDB/IMDb/rating enrichment ever runs. */
+  def drainStaging(): Unit = {
+    var folded = true
+    while (folded) {
+      val before = stagingRepo.findAll().size
+      if (before == 0) folded = false
+      else {
+        try stagingPromoter.runOnce() catch { case _: Exception => () }
+        folded = stagingRepo.findAll().size < before
+      }
+    }
+    stagingRepo.findAll().map(r => (r.title, r.year)).distinct.foreach { case (t, y) =>
+      try stagingFolder.foldFilm(t, y) catch { case _: Exception => () }
+    }
+    movieCache.rehydrate()
+    // Settle the freshly-folded rows the way prod's PERIODIC settle does once the
+    // change stream catches the fold up: the fold keeps each variant's OWN year
+    // (so the CC ±1 split lands two rows), and `canonicalizeBySanitize` then
+    // collapses them AND re-keys the resolved cluster to its TMDB year — exactly
+    // what the direct path's `settleResolved` does inline at resolution. Without
+    // this the folded row keeps its lower cinema-reported key year, which only
+    // shows up downstream as a different Filmweb year-tie-break (a film resolving
+    // to a different / no Filmweb entry).
+    movieService.settle()
+  }
+
+  /** Scrape every cinema once in parallel, blocking until all have settled.
+   *  Each scraper runs the shared `cinemaScrapeRunner` (record + publish), so
+   *  every `MovieDetailsComplete` is published synchronously before this returns
+   *  and the caller can drain the downstream pools without racing the scrape. */
+  def scrapeAllOnce(): Unit = {
+    val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("record-scrape", 8)
+    try Await.ready(
+      Future.sequence(cinemaScrapers.map(s =>
+        Future(scala.util.Try(cinemaScrapeRunner.run(s)))(using ec)))(using implicitly, ec),
+      Duration.Inf)
+    finally ec.shutdown()
+    ()
+  }
+
+  /** Cold cache → fully-scraped, staging-drained `movies` cache: the boot
+   *  sequence the fixture recorder shares with its regression spec
+   *  (`RecorderStagingDrainSpec`). Scrape every cinema, apply deferred detail,
+   *  drain the async cascade, THEN graduate newcomers out of always-on staging.
+   *
+   *  The `drainStaging` step is load-bearing: staging ingest is always-on, so on
+   *  a cold cache `recordCinemaScrape` diverts every scraped film to
+   *  `pending_movies`. Omit the drain and `movies` stays EMPTY — nothing
+   *  downstream (TMDB/IMDb/MC/RT/Filmweb) has a row to enrich, and a fixture
+   *  recording captures only the cinema scrapes. Keeping the sequence here, not
+   *  inline in the recorder, is what lets the spec catch a dropped stage. */
+  def scrapeAndDrainToCache(): Unit = {
+    scrapeAllOnce()
+    enrichDetailsSync()
+    drainServices()
+    drainStaging()
+  }
 }
