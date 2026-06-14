@@ -78,6 +78,15 @@ android {
             initWith(getByName("release"))
             buildConfigField("boolean", "ENABLE_TUNING", "true")
         }
+        // The build `runOnDevice` installs: the public, tuning-free `release`
+        // (signed, same applicationId) but with R8 minification + resource
+        // shrinking OFF — those add ~tens of seconds and aren't worth it for a
+        // local on-device smoke test. Prod `release` keeps minifying.
+        create("releaseFast") {
+            initWith(getByName("release"))
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
     }
 
     // The tweak-screen launcher (TuningLauncherActivity + its manifest entry)
@@ -499,14 +508,15 @@ tasks.register("debugOnEmulator") {
     }
 }
 
-// ── Physical-device run (release / non-debug) ────────────────────────────────
-// `./gradlew runOnDevice` — build the minified, signed `release` APK (the
-// public, tuning-free build — NOT the debug build the emulator tasks use),
-// install it on a cable-connected phone, and launch it. Needs release signing
-// (a gitignored `keystore.properties` or the KINOWO_RELEASE_* env vars), the
-// same creds `assembleRelease` uses for Play — an unsigned `release` can't be
-// installed. Targets the one physical device by default; with more than one
-// attached, pick it with `-Pserial=<serial>` (emulators are ignored).
+// ── Physical-device run (releaseFast / non-debug) ────────────────────────────
+// `./gradlew runOnDevice` — build the signed `releaseFast` APK (the public,
+// tuning-free `release` but with R8 minification OFF so it builds fast — NOT
+// the debug build the emulator tasks use), install it on a cable-connected
+// phone, and launch it. Prod `release` stays minified; this is just for a quick
+// on-device smoke test. Needs release signing (a gitignored `keystore.properties`
+// or the KINOWO_RELEASE_* env vars), the same creds Play uses — an unsigned
+// build can't be installed. Targets the one physical device by default; with
+// more than one attached, pick it with `-Pserial=<serial>` (emulators ignored).
 //
 // We `adb install` the assembled APK ourselves rather than depend on AGP's
 // `installRelease`, so we can (a) install only to the chosen device and (b)
@@ -516,10 +526,10 @@ tasks.register("debugOnEmulator") {
 // uninstalling the old copy and reinstalling.
 tasks.register("runOnDevice") {
     group = "device"
-    description = "Install the signed release build on a cable-connected device and launch it. Pick a device with -Pserial=<serial>."
+    description = "Install the signed, unminified release build (releaseFast) on a cable-connected device and launch it. Pick a device with -Pserial=<serial>."
     // Only build the APK when it can be signed; otherwise the doLast below
     // explains the missing-signing case instead of installing an unsigned APK.
-    if (hasReleaseSigning) dependsOn("assembleRelease")
+    if (hasReleaseSigning) dependsOn("assembleReleaseFast")
     val adb = adbExe
     val appPkg = appId
     val component = mainComponent
@@ -527,8 +537,8 @@ tasks.register("runOnDevice") {
     val serialOverride = (findProperty("serial") as String?)
     val noSdk = noSdkMessage
     // Captured at configuration time (a plain File) so the action stays
-    // config-cache clean. assembleRelease writes app-release.apk here.
-    val apkDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
+    // config-cache clean. assembleReleaseFast writes app-releaseFast.apk here.
+    val apkDir = layout.buildDirectory.dir("outputs/apk/releaseFast").get().asFile
     doLast {
         fun sh(vararg args: String): String {
             val p = ProcessBuilder(*args).redirectErrorStream(true).start()
@@ -558,7 +568,7 @@ tasks.register("runOnDevice") {
         )
 
         val apk = apkDir.listFiles { f -> f.isFile && f.extension == "apk" }?.firstOrNull()
-            ?: throw GradleException("No release APK in $apkDir — did assembleRelease run?")
+            ?: throw GradleException("No APK in $apkDir — did assembleReleaseFast run?")
 
         fun install() = sh(adb, "-s", serial, "install", "-r", "-d", apk.absolutePath)
 
