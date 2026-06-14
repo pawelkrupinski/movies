@@ -99,8 +99,11 @@ case class ImdbIdResolved(title: String, year: Option[Int], imdbId: String) exte
 /** A newcomer film incubating in the `pending_movies` staging collection has
  *  reached a definitive TMDB conclusion (a hit, or `tmdbNoMatch`). The
  *  `StagingFolder` listens for this to fold the film's per-cinema staging rows
- *  into the merged `movies` collection (in a transaction) and delete them. */
-case class StagingFilmEnriched(cleanTitle: String, year: Option[Int]) extends DomainEvent
+ *  (every year-variant of the `sanitize(title)` group) into the merged `movies`
+ *  collection (in a transaction) and delete them. Carries only the title: the
+ *  group-scoped fold settles across years itself, and the promoter may publish
+ *  one of these per concluded year — `foldGroup` is idempotent. */
+case class StagingFilmEnriched(cleanTitle: String) extends DomainEvent
 
 /**
  * Publish/subscribe bus carrying `DomainEvent`s. Per CLAUDE.md DIP guidance,

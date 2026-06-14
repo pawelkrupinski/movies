@@ -1,58 +1,57 @@
 package services.staging
 
 import models.MovieRecord
-import services.movies.{CacheKey, FilmCanonicalizer, StoredMovieRecord}
+import services.movies.{CacheKey, FilmCanonicalizer, MovieRecordMerge, StoredMovieRecord}
 
 /**
- * The PURE decision half of folding ONE `(sanitize(title), year)` VARIANT's
- * staging rows into `movies`, shared by every `StagingFolder` impl.
+ * The PURE decision half of folding a newcomer's staging rows into `movies`,
+ * shared by every `StagingFolder` impl.
  *
- * It unions the variant's per-cinema rows (+ any existing `movies` row at the
- * SAME exact `(sanitize, year)`) into one record per film (using
- * `clusterByFilm`/`canonical` only to split the rare same-year distinct-tmdbId
- * remake and pick the spelling), and **keeps the variant's OWN year** as the
- * key — it does NOT rekey to the TMDB year. That last point is load-bearing:
- * Cinema City reports a film at 2025 while everyone else reports 2026, so the
- * fold must leave `zawodowcy|2025` and `zawodowcy|2026` as two `movies` rows and
- * let the existing `canonicalizeBySanitize` ±1 settle merge them. Rekeying to the
- * TMDB year here made the 2025 fold overwrite the 2026 row (its movies lookup,
- * scoped to year 2025, never saw the 2026 row), silently dropping its cinemas.
+ * It folds the WHOLE `sanitize(title)` GROUP — every year-variant at once — and
+ * runs the SAME `clusterByFilm`/`canonical` collapse the cache's
+ * `canonicalizeBySanitize` runs, so the folded `movies` state is already the
+ * settled steady state: ±1-year variants merged into one row, each resolved
+ * cluster re-keyed to its TMDB year, the canonical spelling chosen. This replaces
+ * the old fold-per-year + periodic-settle split — Cinema City reports a film at
+ * `zawodowcy|2025` while everyone else reports `zawodowcy|2026`, and both variants
+ * now collapse HERE instead of landing as two `movies` rows for a separate settle
+ * pass to merge later.
  */
 object StagingFold {
 
-  /** What to write to bring `movies` to its folded state, and which staging rows
-   *  were consumed (all of them). `moviesDeletes` are existing `movies` rows at
-   *  this variant that lost the spelling tie-break (folded away); usually empty. */
+  /** What to write to bring `movies` to its folded+settled state, and which
+   *  staging rows were consumed (all of them). `moviesDeletes` are existing
+   *  `movies` rows in the group whose key the collapse retired (re-keyed to a
+   *  TMDB year, or merged into a sibling). */
   case class Plan(
     moviesUpserts:  Seq[(CacheKey, MovieRecord)],
     moviesDeletes:  Seq[CacheKey],
     stagingDeletes: Seq[StagingRecord]
   )
 
-  /** `stagingRows` all share one `(sanitize, year)` variant (the folder scopes
-   *  them); `moviesRows` are any existing `movies` rows at that exact variant. */
-  def plan(stagingRows: Seq[StagingRecord], moviesRows: Seq[StoredMovieRecord]): Plan = {
-    val variantYear  = stagingRows.headOption.map(_.year).getOrElse(None)
-    val stagingPairs = stagingRows.map(r => CacheKey(r.title, r.year) -> r.record)
-    val moviesPairs  = moviesRows.map(r => CacheKey(r.title, r.year) -> r.record)
-    // Every row here is the SAME film-variant (one sanitize + one year), just one
-    // per cinema, so the only split that can be needed is a genuine distinct-tmdbId
-    // remake — group by tmdbId (all unresolved rows share the `None` group and so
-    // merge into ONE row). Do NOT use `clusterByFilm` here: it assumes the cache's
-    // one-row-per-key invariant and would turn N separate YEARLESS cinema rows into
-    // N singleton clusters (rule 4), which then collapse onto the same `(sanitize,
-    // None)` key and clobber each other — dropping every cinema but one (the
-    // all-yearless events: Maraton Horrorów, Filmowe Poranki). `canonical` then
-    // picks the cinema spelling + unions; force the key year to the variant's own.
-    val upserts = (stagingPairs ++ moviesPairs).groupBy(_._2.tmdbId).valuesIterator.map { cluster =>
+  /** `stagingRows` are every per-cinema row of ONE `sanitize(title)` group (all
+   *  its year-variants); `moviesRows` are the existing `movies` rows in that same
+   *  group. */
+  def planGroup(stagingRows: Seq[StagingRecord], moviesRows: Seq[StoredMovieRecord]): Plan = {
+    // Union the per-cinema staging rows to ONE row per (sanitize, year) key FIRST,
+    // restoring the one-row-per-key invariant `clusterByFilm` assumes. Without it,
+    // N separate YEARLESS cinema rows would each become a rule-4 singleton cluster
+    // that then collapses onto the same `(sanitize, None)` key and clobbers all but
+    // one — dropping every cinema's slot but one for the all-yearless events
+    // (Maraton Horrorów, Filmowe Poranki).
+    val stagingByKey = stagingRows.groupBy(r => CacheKey(r.title, r.year)).toSeq.map {
+      case (key, rows) => key -> MovieRecordMerge.unionAll(rows.map(_.record))
+    }
+    val moviesByKey = moviesRows.map(r => CacheKey(r.title, r.year) -> r.record)
+    val upserts = FilmCanonicalizer.clusterByFilm(stagingByKey ++ moviesByKey).map { cluster =>
       val (canonKey, merged) = FilmCanonicalizer.canonical(cluster)
       // Drop the staging-only `searchTitle`: a `movies` row queries external
       // services off its canonical title, so it never carries the (order-pinned)
       // staging search title — movies stay a deterministic function of the corpus.
-      CacheKey(canonKey.cleanTitle, variantYear) -> merged.copy(searchTitle = None)
-    }.toSeq
+      canonKey -> merged.copy(searchTitle = None)
+    }
     val canonicalKeys = upserts.map(_._1).toSet
-    val moviesDeletes = moviesPairs.map(_._1).distinct.filterNot(canonicalKeys.contains)
+    val moviesDeletes = moviesByKey.map(_._1).distinct.filterNot(canonicalKeys.contains)
     Plan(upserts, moviesDeletes, stagingRows)
   }
 }

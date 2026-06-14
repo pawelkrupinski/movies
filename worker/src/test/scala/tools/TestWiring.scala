@@ -206,8 +206,8 @@ trait TestWiring extends WorkerWiring {
    *  (TMDB-fixture-less) rows — `concludeEnrichment` then marks those still-
    *  unresolved `movies` rows `tmdbNoMatch`, the same end state a no-fixture film
    *  reaches on the direct route. The harness has no `movies` change stream, so
-   *  finally rehydrate the cache from the repository (prod's stream does this), which
-   *  also re-settles the freshly-folded rows.
+   *  finally rehydrate the cache from the repository (prod's stream does this) —
+   *  `rehydrate` re-settles the corpus, so the fold's own settle has a backstop.
    *
    *  Staging ingest is always-on in prod, so EVERY newcomer is diverted to
    *  `pending_movies` on a cold cache. Both the replay harness (bootStartup /
@@ -223,19 +223,18 @@ trait TestWiring extends WorkerWiring {
         folded = stagingRepository.findAll().size < before
       }
     }
-    stagingRepository.findAll().map(r => (r.title, r.year)).distinct.foreach { case (t, y) =>
-      try stagingFolder.foldFilm(t, y) catch { case _: Exception => () }
+    // Fold each remaining staging GROUP (sanitize title). `foldGroup` settles as
+    // it folds (`StagingFold.planGroup` runs the same `canonicalizeBySanitize`
+    // collapse over staging+movies), so the production-year and release-year
+    // variants merge into ONE deterministically-keyed `movies` row and the
+    // resolved cluster is already re-keyed to its TMDB year — no separate settle
+    // pass needed. The trailing `rehydrate` re-settles the loaded cache anyway.
+    // One `foldGroup` per distinct staging title graduates the whole sanitize
+    // group; a second title sharing that group then no-ops (rows already folded).
+    stagingRepository.findAll().map(_.title).distinct.foreach { title =>
+      try stagingFolder.foldGroup(title) catch { case _: Exception => () }
     }
     movieCache.rehydrate()
-    // Settle the freshly-folded rows the way prod's PERIODIC settle does once the
-    // change stream catches the fold up: the fold keeps each variant's OWN year
-    // (so the CC ±1 split lands two rows), and `canonicalizeBySanitize` then
-    // collapses them AND re-keys the resolved cluster to its TMDB year — exactly
-    // what the direct path's `settleResolved` does inline at resolution. Without
-    // this the folded row keeps its lower cinema-reported key year, which only
-    // shows up downstream as a different Filmweb year-tie-break (a film resolving
-    // to a different / no Filmweb entry).
-    movieService.settle()
   }
 
   /** Scrape every cinema once in parallel, blocking until all have settled.

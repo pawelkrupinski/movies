@@ -3,20 +3,22 @@ package services.staging
 import models.{Cinema, Helios, Multikino, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.StoredMovieRecord
+import services.movies.{CacheKey, StoredMovieRecord}
 
 class StagingFoldSpec extends AnyFlatSpec with Matchers {
 
-  private def resolved(cinema: Source, title: String, year: Int, tmdbId: Int): StagingRecord =
-    StagingRecord(cinema, title, Some(year), MovieRecord(
+  /** A per-cinema staging row resolved to `tmdbId`, with the cinema-reported year
+   *  on its own slot and `tmdbYear` on the Tmdb slot (they can differ). */
+  private def staging(cinema: Source, title: String, cinemaYear: Int, tmdbId: Int, tmdbYear: Int): StagingRecord =
+    StagingRecord(cinema, title, Some(cinemaYear), MovieRecord(
       tmdbId = Some(tmdbId),
       data = Map[Source, SourceData](
-        cinema -> SourceData(title = Some(title), releaseYear = Some(year)),
-        Tmdb   -> SourceData(title = Some(title), releaseYear = Some(year)))))
+        cinema -> SourceData(title = Some(title), releaseYear = Some(cinemaYear)),
+        Tmdb   -> SourceData(title = Some(title), releaseYear = Some(tmdbYear)))))
 
-  "plan" should "merge same-film staging rows from several cinemas into one movies row" in {
-    val rows = Seq(resolved(Helios, "Kumotry", 2026, 1454157), resolved(Multikino, "Kumotry", 2026, 1454157))
-    val plan = StagingFold.plan(rows, moviesRows = Seq.empty)
+  "planGroup" should "merge same-film staging rows from several cinemas into one movies row" in {
+    val rows = Seq(staging(Helios, "Kumotry", 2026, 1454157, 2026), staging(Multikino, "Kumotry", 2026, 1454157, 2026))
+    val plan = StagingFold.planGroup(rows, moviesRows = Seq.empty)
 
     plan.moviesUpserts should have size 1
     val (key, record) = plan.moviesUpserts.head
@@ -27,37 +29,76 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     plan.moviesDeletes shouldBe empty
   }
 
-  it should "keep the variant's own year (NOT rekey to the TMDB year) — settle does the cross-year merge" in {
-    // Cinema City reports 'Zawodowcy' at the production year 2025; TMDB's release
-    // year is 2026. The fold must keep 2025 so the row sits beside the 2026
-    // variant and the movies-side ±1 settle merges them — rekeying to 2026 here
-    // made the 2025 fold overwrite the 2026 row and drop its cinemas.
-    val cc2025 = StagingRecord(Multikino, "Zawodowcy", Some(2025), MovieRecord(
+  it should "collapse ±1-year variants into ONE row re-keyed to the TMDB year (the absorbed settle)" in {
+    // Cinema City reports 'Zawodowcy' at the production year 2025, everyone else at
+    // the release year 2026 — both resolved to the same tmdbId (tmdbYear 2026). The
+    // OLD per-year fold left these as two `movies` rows for a later settle pass;
+    // the group-scoped fold must now collapse them HERE into one row keyed to the
+    // TMDB year 2026, carrying both cinemas.
+    val cc2025  = staging(Multikino, "Zawodowcy", 2025, 1122573, 2026)
+    val rest26  = staging(Helios,    "Zawodowcy", 2026, 1122573, 2026)
+
+    val plan = StagingFold.planGroup(Seq(cc2025, rest26), Seq.empty)
+
+    plan.moviesUpserts should have size 1
+    val (key, record) = plan.moviesUpserts.head
+    key.year shouldBe Some(2026)                            // re-keyed to the TMDB year
+    record.data.keySet shouldBe Set(Multikino, Helios, Tmdb) // no cinema dropped
+  }
+
+  it should "re-key an existing movies row to the TMDB year and retire its old key" in {
+    // A previously-folded `zawodowcy|2025` movies row (resolved, tmdbYear 2026)
+    // plus a fresh 2026 staging row: the settle re-keys onto 2026 and DELETES the
+    // stale 2025 key (the group-scoped movies lookup sees it, so nothing is
+    // silently overwritten — the bug the old per-year fold guarded against).
+    val existing2025 = StoredMovieRecord("Zawodowcy", Some(2025), MovieRecord(
       tmdbId = Some(1122573),
       data = Map[Source, SourceData](
         Multikino -> SourceData(title = Some("Zawodowcy"), releaseYear = Some(2025)),
-        Tmdb      -> SourceData(title = Some("Zawodowcy"), releaseYear = Some(2026))))) // tmdbYear = 2026
+        Tmdb      -> SourceData(title = Some("Zawodowcy"), releaseYear = Some(2026)))))
+    val fresh2026 = staging(Helios, "Zawodowcy", 2026, 1122573, 2026)
 
-    val plan = StagingFold.plan(Seq(cc2025), Seq.empty)
+    val plan = StagingFold.planGroup(Seq(fresh2026), Seq(existing2025))
 
     plan.moviesUpserts should have size 1
-    plan.moviesUpserts.head._1.year shouldBe Some(2025) // variant year kept, not the TMDB 2026
+    plan.moviesUpserts.head._1.year shouldBe Some(2026)
+    plan.moviesUpserts.head._2.data.keySet shouldBe Set(Multikino, Helios, Tmdb)
+    plan.moviesDeletes shouldBe Seq(CacheKey("Zawodowcy", Some(2025)))
+  }
+
+  it should "fold a yearless+idless staging stray onto a resolved movies sibling (Dzień objawienia)" in {
+    // The stranded-duplicate shape `canonicalizeBySanitize` exists to fix, now
+    // healed by the fold: a yearless, unresolved staging row beside an existing
+    // resolved yeared movies row collapses onto the resolved row.
+    val stray = StagingRecord(Multikino, "Dzień objawienia", None,
+      MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Dzień objawienia")))))
+    val resolvedSibling = StoredMovieRecord("Dzień objawienia", Some(2026), MovieRecord(
+      tmdbId = Some(1275779), imdbId = Some("tt15047880"),
+      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Dzień objawienia"), releaseYear = Some(2026)))))
+
+    val plan = StagingFold.planGroup(Seq(stray), Seq(resolvedSibling))
+
+    plan.moviesUpserts should have size 1
+    val (key, record) = plan.moviesUpserts.head
+    key.year shouldBe Some(2026)                     // year-bearing resolved key wins
+    record.tmdbId shouldBe Some(1275779)             // enrichment preserved
+    record.data.keySet shouldBe Set(Helios, Multikino)
+    plan.moviesDeletes shouldBe empty                // resolved row kept its key
   }
 
   it should "fold MANY yearless+idless per-cinema rows of one event into a single all-cinema row (no clobber)" in {
     // A festival/event film (e.g. 'Maraton Horrorów') that ~50 cinemas report
     // YEARLESS and UNRESOLVED. Each per-cinema row shares the same (sanitize, None)
     // variant key. The fold MUST union them into ONE movies row carrying every
-    // cinema — the regression this guards: feeding them through `clusterByFilm`
-    // turned each yearless+idless row into its OWN singleton cluster (rule 4), so
-    // all N upserts landed on the same (sanitize, None) key and clobbered down to a
-    // single cinema, silently dropping the other ~49. Grouping by tmdbId (all None
-    // here → one group) is what keeps them together.
+    // cinema — the regression this guards: feeding the per-cinema rows straight
+    // through `clusterByFilm` turned each into its OWN singleton cluster (rule 4),
+    // collapsing them all onto the same (sanitize, None) key and dropping every
+    // cinema but one. `planGroup` unions per-key FIRST, restoring the invariant.
     val cinemas = Cinema.all.take(8)
     val rows = cinemas.map(c => StagingRecord(c, "Maraton Horrorów", None, MovieRecord(
       data = Map[Source, SourceData](c -> SourceData(title = Some("Maraton Horrorów"))))))
 
-    val plan = StagingFold.plan(rows, moviesRows = Seq.empty)
+    val plan = StagingFold.planGroup(rows, moviesRows = Seq.empty)
 
     plan.moviesUpserts should have size 1
     val (key, record) = plan.moviesUpserts.head
@@ -66,20 +107,26 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     plan.stagingDeletes should have size cinemas.size
   }
 
-  it should "keep distinct-tmdbId remakes that share title+year as two movies rows" in {
-    val rows = Seq(resolved(Helios, "Diuna", 2024, 841), resolved(Multikino, "Diuna", 2024, 438631))
-    val plan = StagingFold.plan(rows, Seq.empty)
-    plan.moviesUpserts.map(_._2.tmdbId).toSet shouldBe Set(Some(841), Some(438631))
+  it should "keep distinct-tmdbId remakes at different years as two movies rows" in {
+    // 'Diuna' 1984 (Lynch) vs 2021 (Villeneuve) — distinct tmdbIds, years far
+    // apart, so `clusterByFilm` keeps them as two clusters → two `movies` rows.
+    // (Two SAME-year distinct-tmdbId rows share one `movies` _id `diuna|YYYY` and
+    // can't coexist there at all, so the fold legitimately collapses those — the
+    // cache's one-row-per-key invariant, which `planGroup` mirrors.)
+    val rows = Seq(staging(Helios, "Diuna", 1984, 841, 1984), staging(Multikino, "Diuna", 2021, 438631, 2021))
+    val plan = StagingFold.planGroup(rows, Seq.empty)
+    plan.moviesUpserts.map(u => (u._1.year, u._2.tmdbId)).toSet shouldBe
+      Set((Some(1984), Some(841)), (Some(2021), Some(438631)))
     plan.stagingDeletes should have size 2
   }
 
   it should "fold staging onto an existing movies sibling without deleting it spuriously" in {
-    val staging = resolved(Multikino, "Kumotry", 2026, 1454157)
+    val stagingRow = staging(Multikino, "Kumotry", 2026, 1454157, 2026)
     val existing = StoredMovieRecord("Kumotry", Some(2026), MovieRecord(
       tmdbId = Some(1454157),
       data = Map[Source, SourceData](Helios -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026)))))
 
-    val plan = StagingFold.plan(Seq(staging), Seq(existing))
+    val plan = StagingFold.planGroup(Seq(stagingRow), Seq(existing))
 
     plan.moviesUpserts should have size 1
     plan.moviesUpserts.head._2.data.keySet shouldBe Set(Helios, Multikino, Tmdb)

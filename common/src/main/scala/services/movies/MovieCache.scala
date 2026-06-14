@@ -392,7 +392,8 @@ class CaffeineMovieCache(
       import scala.jdk.CollectionConverters._
       // TMDB's resolved year re-keys a YEARLESS row onto it; a row that already
       // carries a year keeps its key — re-keying a yeared row across the async
-      // resolve races `canonicalRank` (the periodic settle owns that migration).
+      // resolve races `canonicalRank` (`canonicalizeBySanitize` owns that
+      // migration — run by the staging fold and on every rehydrate).
       val target =
         if (oldKey.year.isEmpty && resolved.resolvedYear.isDefined)
           keyOf(oldKey.cleanTitle, resolved.resolvedYear)
@@ -435,8 +436,8 @@ class CaffeineMovieCache(
    *  (`CinemaScrapeRunner.classify` short-circuits on `tmdbConcluded`) and no
    *  held-back variant is spawned beside it. None when no concluded match exists.
    *
-   *  Year matching mirrors `clusterByFilm`'s ±1 adjacency, so the duplicate the
-   *  periodic settle would later fold is never spawned: a yearless scrape lands
+   *  Year matching mirrors `clusterByFilm`'s ±1 adjacency, so the duplicate
+   *  `canonicalizeBySanitize` would later fold is never spawned: a yearless scrape lands
    *  on any concluded same-title row; a year-bearing scrape prefers the concluded
    *  row at the SAME year, else the nearest within ±1 (a cinema reporting the
    *  production year 2025 lands on the row TMDB resolved to the release year
@@ -957,11 +958,11 @@ class CaffeineMovieCache(
     // rows that different cinemas reported under different years (`Kumotry|2025`
     // + `Kumotry|2026`, both resolved to one tmdbId) land as separate entries.
     // Collapse them right here on every load — at boot and on the 30-s sync tick.
-    // The periodic `settle` is supposed to, but the worker's restart loop keeps
-    // resetting its cadence, so duplicates persist for hours, each independently
-    // re-enriched (double rating runs) and projected as a second card. Folding on
-    // hydrate (which demonstrably runs) makes convergence independent of settle.
-    // No-op on an already-canonical corpus — it only writes when a group needs
+    // The staging fold (`StagingFold.planGroup`) already writes settled `movies`
+    // rows, but a direct-path scrape/enrich can still transiently split a film
+    // across two years between writes; folding on hydrate (which demonstrably
+    // runs) re-asserts the invariant without relying on any periodic pass. No-op
+    // on an already-canonical corpus — it only writes when a group needs
     // collapsing.
     if (rows.nonEmpty) canonicalizeBySanitize()
     val tPopulateMs = (System.nanoTime() - tPostFetch) / 1000000

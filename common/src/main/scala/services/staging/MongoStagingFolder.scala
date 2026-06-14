@@ -19,8 +19,9 @@ import scala.util.{Failure, Success, Try}
  * `pending_movies` rows into `movies` inside ONE Mongo transaction — the movies
  * upserts + the staging deletes commit atomically, and the driver's transient-
  * error label drives a bounded retry, so a concurrent `movies` write can't be
- * lost (the user's "prevent overwrites"). The merge DECISION is `StagingFold.plan`
- * (identical to the in-cache settle); only the I/O is session-aware here.
+ * lost (the user's "prevent overwrites"). The merge+settle DECISION is
+ * `StagingFold.planGroup` (identical to the in-cache `canonicalizeBySanitize`
+ * settle); only the I/O is session-aware here.
  *
  * Requires a replica set (prod `kinowo-mongo` is one — change streams already
  * depend on it). On a standalone Mongo `startSession`/transactions error out; the
@@ -42,10 +43,10 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
   private val moviesColl  = collection("movies")
   private val stagingColl = collection("pending_movies")
 
-  def foldFilm(cleanTitle: String, year: Option[Int]): Unit =
+  def foldGroup(cleanTitle: String): Unit =
     (connection.startSession(), moviesColl, stagingColl) match {
       case (Some(session), Some(movies), Some(staging)) =>
-        try foldWithRetry(session, movies, staging, cleanTitle, year)
+        try foldWithRetry(session, movies, staging, cleanTitle)
         finally session.close()
       case _ => () // Mongo disabled — nothing to fold
     }
@@ -54,8 +55,7 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
     session: ClientSession,
     movies:  MongoCollection[StoredMovieDto],
     staging: MongoCollection[StoredMovieDto],
-    cleanTitle: String,
-    year:       Option[Int]
+    cleanTitle: String
   ): Unit = {
     val sanitize = TitleNormalizer.sanitize(cleanTitle)
     var attempt  = 0
@@ -63,7 +63,7 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
     while (!settled) {
       attempt += 1
       session.startTransaction()
-      Try(foldOnce(session, movies, staging, sanitize, year)) match {
+      Try(foldOnce(session, movies, staging, sanitize)) match {
         case Success(_) =>
           await(publisherToFuture(session.commitTransaction())); settled = true
         case Failure(e: MongoException)
@@ -72,32 +72,32 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
           logger.warn(s"Staging fold '$cleanTitle' hit a transient txn error (attempt $attempt) — retrying.")
         case Failure(e) =>
           Try(await(publisherToFuture(session.abortTransaction())))
-          logger.warn(s"Staging fold '$cleanTitle' (${year.getOrElse("—")}) aborted: ${e.getMessage}")
+          logger.warn(s"Staging fold '$cleanTitle' aborted: ${e.getMessage}")
           settled = true
       }
     }
   }
 
-  /** One transaction body: read the `(sanitize, year)` VARIANT's staging + movies
-   *  rows, compute the plan, and apply the upserts/deletes — all on `session`.
-   *  Scoped to one year so each variant folds to its own `movies` row and the
-   *  periodic ±1 settle merges them (see `StagingFolder.foldFilm`). */
+  /** One transaction body: read the WHOLE `sanitize(title)` GROUP's staging +
+   *  movies rows (every year-variant), compute the settled plan, and apply the
+   *  upserts/deletes — all on `session`. Group-scoped so `planGroup` can collapse
+   *  the ±1-year variants and re-key to the TMDB year inside the transaction,
+   *  exactly as the cache settle does (see `StagingFolder.foldGroup`). */
   private def foldOnce(
     session:  ClientSession,
     movies:   MongoCollection[StoredMovieDto],
     staging:  MongoCollection[StoredMovieDto],
-    sanitize: String,
-    year:     Option[Int]
+    sanitize: String
   ): Unit = {
-    val yearStr = year.map(_.toString).getOrElse("")
-    // Staging `_id` = cinema|sanitize|year — match middle + exact year (anchored).
-    val stagingRows = await(staging.find(session, Filters.regex("_id", s"^[^|]+\\|$sanitize\\|$yearStr$$")).toFuture())
+    // Staging `_id` = cinema|sanitize|year — match the middle sanitize segment,
+    // any cinema, any year.
+    val stagingRows = await(staging.find(session, Filters.regex("_id", s"^[^|]+\\|$sanitize\\|")).toFuture())
       .flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record))
     if (stagingRows.nonEmpty) {
-      // Movies `_id` = sanitize|year — match exact (sanitize, year).
-      val moviesRows = await(movies.find(session, Filters.regex("_id", s"^$sanitize\\|$yearStr$$")).toFuture())
+      // Movies `_id` = sanitize|year — match the sanitize group, any year.
+      val moviesRows = await(movies.find(session, Filters.regex("_id", s"^$sanitize\\|")).toFuture())
         .map(StoredMovieDto.toDomain)
-      val plan = StagingFold.plan(stagingRows, moviesRows)
+      val plan = StagingFold.planGroup(stagingRows, moviesRows)
       plan.moviesUpserts.foreach { case (k, record) =>
         val id = StoredMovieRecord.idFor(k.cleanTitle, k.year)
         await(movies.replaceOne(session, Filters.eq("_id", id),

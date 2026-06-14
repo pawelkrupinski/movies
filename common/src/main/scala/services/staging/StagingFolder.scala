@@ -6,18 +6,21 @@ import services.movies.{MovieRepository, TitleNormalizer}
 /**
  * Folds a concluded newcomer's per-cinema staging rows into the merged `movies`
  * collection and deletes them — the graduation step. The merge decision is
- * `StagingFold.plan` (the exact current movies merge); impls differ only in how
- * they apply it: `MongoStagingFolder` in a transaction (so a concurrent `movies`
- * write can't be lost), `InMemoryStagingFolder` under a lock (tests / no-Mongo).
+ * `StagingFold.planGroup` (the exact `canonicalizeBySanitize` settle, applied to
+ * the staging + movies rows); impls differ only in how they apply it:
+ * `MongoStagingFolder` in a transaction (so a concurrent `movies` write can't be
+ * lost), `InMemoryStagingFolder` under a lock (tests / no-Mongo).
  */
 trait StagingFolder {
-  /** Fold the `(sanitize(title), year)` VARIANT's per-cinema staging rows into a
-   *  single `movies` row at that year, then delete them. Scoped to ONE year (not
-   *  the whole sanitize group) so the production-year and release-year variants
-   *  each land as their own `movies` row — the existing `canonicalizeBySanitize`
-   *  ±1 settle then merges them deterministically, exactly as for the direct
-   *  path. No-op when no staging rows match (already folded). */
-  def foldFilm(cleanTitle: String, year: Option[Int]): Unit
+  /** Fold the WHOLE `sanitize(title)` GROUP's per-cinema staging rows (every
+   *  year-variant) into `movies` and delete them, settling as it goes:
+   *  `StagingFold.planGroup` runs the same `clusterByFilm`/`canonical` collapse
+   *  the cache's `canonicalizeBySanitize` does, so the production-year and
+   *  release-year variants merge into ONE deterministically-keyed `movies` row
+   *  rather than waiting for a separate settle pass. Idempotent and group-scoped,
+   *  so re-firing as each year concludes converges. No-op when no staging rows
+   *  match (already folded). */
+  def foldGroup(cleanTitle: String): Unit
 }
 
 /**
@@ -30,17 +33,16 @@ trait StagingFolder {
 class InMemoryStagingFolder(stagingRepository: StagingRepository, movieRepository: MovieRepository) extends StagingFolder with Logging {
   private val lock = new AnyRef
 
-  def foldFilm(cleanTitle: String, year: Option[Int]): Unit = lock.synchronized {
+  def foldGroup(cleanTitle: String): Unit = lock.synchronized {
     val key         = TitleNormalizer.sanitize(cleanTitle)
-    val stagingRows = stagingRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key && r.year == year)
+    val stagingRows = stagingRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key)
     if (stagingRows.nonEmpty) {
-      val moviesRows = movieRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key && r.year == year)
-      val plan       = StagingFold.plan(stagingRows, moviesRows)
+      val moviesRows = movieRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key)
+      val plan       = StagingFold.planGroup(stagingRows, moviesRows)
       plan.moviesUpserts.foreach { case (k, record) => movieRepository.upsert(k.cleanTitle, k.year, record) }
       plan.moviesDeletes.foreach(k => movieRepository.delete(k.cleanTitle, k.year))
       plan.stagingDeletes.foreach(r => stagingRepository.delete(r.cinema, r.title, r.year))
-      logger.info(s"Folded '$cleanTitle' (${year.getOrElse("—")}): ${stagingRows.size} staging row(s) → " +
-        s"${plan.moviesUpserts.size} movies row(s).")
+      logger.info(s"Folded group '$cleanTitle': ${stagingRows.size} staging row(s) → ${plan.moviesUpserts.size} movies row(s).")
     }
   }
 }

@@ -17,11 +17,11 @@ import tools.GetOnlyHttpFetch
  * carries no tmdbId. The pair is therefore stuck — two cards for one film.
  *
  * `MovieCache.canonicalizeBySanitize` collapses exactly this (same normalised
- * title, a single distinct tmdbId across the group → union onto the yeared key),
- * but for a long time it was only ever called from the fixture test harness —
- * never in production — so the suite was green while the live corpus kept the
- * dup forever. `MovieService.settle()` is the production caller; this pins that
- * it collapses the pair.
+ * title, a single distinct tmdbId across the group → union onto the yeared key).
+ * In production it now runs inside the staging fold (`StagingFold.planGroup`) and
+ * on every `MovieCache.rehydrate`; `MovieService.settle()` is the thin wrapper the
+ * determinism harness still drives over the direct-scrape cache. This pins that
+ * the collapse merges the pair through that wrapper.
  */
 class CorpusSettleSpec extends AnyFlatSpec with Matchers {
 

@@ -16,7 +16,7 @@ import java.time.LocalDateTime
  * their own `(title, None)` cache row beside the resolved `(title, Some(year))`
  * one; the yearless row is unresolved so the read-model projector holds it back
  * (`readyToProject == false`) — its cinemas vanish and the page shows only
- * Helios, until the periodic settle folds them back (then the next scrape
+ * Helios, until a later settle folds them back (then the next scrape
  * re-strands them → the flicker).
  *
  * Two fixes, both exercised here:
@@ -103,7 +103,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   // own year differs by one from the concluded row, and with several same-title
   // year-variants present the unique-match redirect gives up — so `concludedKeyFor`
   // is the only thing that can land the slot on the resolved row. It must match
-  // within ±1 (the same adjacency the periodic settle uses), else every tick
+  // within ±1 (the same adjacency `clusterByFilm` uses), else every tick
   // re-spawns a held-back `kumotry|2025` beside the resolved `kumotry|2026`.
   "a later ±1-year scrape" should "fold into the concluded sibling instead of spawning an off-by-one duplicate" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository)

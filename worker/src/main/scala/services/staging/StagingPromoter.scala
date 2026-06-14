@@ -19,19 +19,20 @@ import services.movies.{MovieRecordMerge, MovieService, TitleNormalizer}
  *   2. TMDB resolve ONCE per film, over the UNION of every cinema's hints at the
  *      film's best year — a hit writes tmdbId + the Tmdb slot onto every row, a
  *      definitive miss sets `tmdbNoMatch`.
- *   3. On conclusion, publish one `StagingFilmEnriched(title, year)` PER distinct
- *      year so the folder merges each year-variant into `movies` separately and
- *      deletes its staging rows.
+ *   3. On conclusion, publish `StagingFilmEnriched(title)` so the folder graduates
+ *      the whole `sanitize(title)` group into `movies` and deletes its staging
+ *      rows. (Published once per concluded year; the fold is group-scoped and
+ *      idempotent, so a re-fire just re-settles the same group.)
  *
  * Resolution is per-FILM, not per-`(title,year)`-variant: a film whose cinemas
  * disagree on the year (some yearless, some at the production year) must resolve
  * with the UNION of every cinema's director/originalTitle hints — the same hints
  * the direct path's scrape-redirect gives it by merging the yearless + yeared
  * cinemas onto one row before TMDB runs. Resolving each year alone starved the
- * main variant of hints and made it miss. Folding stays per-VARIANT (one event
- * per distinct year) so the production-year and release-year rows both land in
- * `movies` and the existing `canonicalizeBySanitize` ±1 settle collapses them
- * deterministically — the exact mechanism the direct path relies on.
+ * main variant of hints and made it miss. The fold is then group-scoped
+ * (`StagingFold.planGroup`): the production-year and release-year rows collapse
+ * into one `movies` row via the same `canonicalizeBySanitize` ±1 settle the direct
+ * path relies on, run inside the fold rather than by a separate pass.
  *
  * `resolveStaging` is `MovieService.resolveStagingRecord`, injected as a function
  * so the promoter depends on the abstraction, not the whole service.

@@ -127,8 +127,9 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     //    re-enrich. Otherwise the title-keyed enrichment (esp. Filmweb's fuzzy
     //    title/director SEARCH) would run against an order-dependent spelling
     //    and land an order-dependent result. `movieService.settle()` is the SAME
-    //    canonicalisation the worker now runs on a timer — so this harness
-    //    exercises the production settle path, not a test-only copy of it.
+    //    `canonicalizeBySanitize` collapse the staging fold and every rehydrate
+    //    run — here it settles the DIRECT-scrape cache, which (unlike the staging
+    //    path) has no Mongo rehydrate round-trip in this harness to lean on.
     movieService.settle()
     // 1b. Graduate newcomers out of staging into `movies` (resolve-then-fold),
     //     the same pipeline the worker's promoter scheduler runs in prod, before
@@ -151,7 +152,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     }
     // 3. Re-collapse: the TMDB stage can rekey a no-year row onto a resolved
     //    year, briefly re-introducing a spelling/year variant — exactly the
-    //    "Dzień objawienia" shape the worker's periodic settle exists to fix.
+    //    "Dzień objawienia" shape `canonicalizeBySanitize` exists to fix.
     movieService.settle()
   }
 }

@@ -350,7 +350,7 @@ class WorkerWiring extends play.api.Logging {
   lazy val stagingFolder: StagingFolder = new MongoStagingFolder(mongoConnection)
   lazy val stagingPromoter = new StagingPromoter(
     stagingRepository, detailEnrichers, movieService.resolveStagingRecord, imdbIdResolver.findIdFor,
-    onConcluded = row => eventBus.publish(StagingFilmEnriched(row.title, row.year)))
+    onConcluded = row => eventBus.publish(StagingFilmEnriched(row.title)))
   private val stagingPromoterScheduler = DaemonExecutors.scheduler("staging-promoter")
   private val StagingPromoterInitialDelay = Env.positiveLong("KINOWO_STAGING_PROMOTE_INITIAL_SECONDS", 30L)
   private val StagingPromoterInterval     = Env.positiveLong("KINOWO_STAGING_PROMOTE_SECONDS", 120L)
@@ -438,7 +438,7 @@ class WorkerWiring extends play.api.Logging {
   eventBus.subscribe(ratingEnqueuer.onImdbIdMissing)
   // A concluded newcomer folds into `movies` (transactionally) the moment the
   // promoter publishes.
-  eventBus.subscribe { case StagingFilmEnriched(title, year) => stagingFolder.foldFilm(title, year) }
+  eventBus.subscribe { case StagingFilmEnriched(title) => stagingFolder.foldGroup(title) }
 
   def start(): Unit = {
     // Force Mongo at boot so connection errors surface in the boot timeline.

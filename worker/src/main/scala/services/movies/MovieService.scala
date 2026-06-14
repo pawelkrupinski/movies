@@ -5,7 +5,7 @@ import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete, TmdbResolved}
-import tools.{DaemonExecutors, Env}
+import tools.DaemonExecutors
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import models.{MovieRecord, Source, SourceData, Tmdb}
@@ -66,20 +66,10 @@ class MovieService(
   // lives in `ImdbRatings`.
   private val tmdbRetryScheduler = DaemonExecutors.scheduler("tmdb-retry")
 
-  // Periodic-tick scheduler for `settle()` — re-asserting the cache's
-  // one-row-per-film invariant (see `settle`). Separate from the daily TMDB
-  // retry: collapsing a no-year row onto its resolved-year sibling shouldn't
-  // wait a full day.
-  private val settleScheduler = DaemonExecutors.scheduler("corpus-settle")
-
   // First run fires shortly after startup so Mongo hydration has time to
   // populate the cache and we don't race app boot.
   private val StartupDelaySeconds = 10L
   private val TmdbRetryHours      = 24L
-  // Cadence of the corpus settle. canonicalizeBySanitize is an in-memory O(N)
-  // cache scan that only writes when it finds a variant to collapse, so a
-  // few-minute cadence is cheap; tunable for prod load. Default 10 min.
-  private val SettleIntervalSeconds = Env.positiveLong("KINOWO_CORPUS_SETTLE_SECONDS", 600L)
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -94,35 +84,26 @@ class MovieService(
       },
       StartupDelaySeconds, tmdbInterval, TimeUnit.SECONDS
     )
-    logger.info(s"Corpus settle scheduled every ${SettleIntervalSeconds}s (first run in ${StartupDelaySeconds}s).")
-    settleScheduler.scheduleAtFixedRate(
-      () => Try(settle()).recover {
-        case exception => logger.warn(s"Corpus settle tick failed: ${exception.getMessage}")
-      },
-      StartupDelaySeconds, SettleIntervalSeconds, TimeUnit.SECONDS
-    )
   }
 
   /** Re-assert the cache's one-row-per-film invariant: collapse same-title
    *  spelling/year variants — most importantly a no-year row that a later TMDB
    *  resolve re-keyed onto a resolved year, leaving the original yearless,
    *  unresolved row stranded beside it (the "Dzień objawienia" duplicate). The
-   *  collapse logic lives in `MovieCache.canonicalizeBySanitize`; this is the
-   *  PRODUCTION caller of it.
+   *  collapse logic lives in `MovieCache.canonicalizeBySanitize`.
    *
    *  Deliberately IN-MEMORY, not corpus-scoped: collapsing over `repository.findAll()`
    *  re-keys rows by their re-derived display title, which runs DURING the
    *  enrichment cascade and races in-flight Filmweb/TMDB writes — a non-
    *  determinism the order guard (`ScrapeOrderDeterminismSpec`) catches. The
    *  in-memory pass is a pure function of the cache, so it's order-independent.
-   *  Cache completeness (the reason a corpus pass was tried) is instead
-   *  guaranteed by the boot-hydrate retry, so a quiescent row is in the cache
-   *  for this pass to see.
    *
-   *  For a long time the only caller was the fixture test harness's
-   *  `converge()`, so the suite stayed green while prod never collapsed these —
-   *  the duplicate lived forever in the live corpus. The harness now delegates
-   *  to THIS method, so test and prod settle through one code path. */
+   *  There is no longer a periodic production caller: newcomers settle as they
+   *  graduate (`StagingFold.planGroup` runs this collapse over the staging+movies
+   *  rows inside the fold), and `MovieCache.rehydrate` re-settles the cache on
+   *  every Mongo load. This method survives as the determinism harness's
+   *  direct-scrape settle (`FixtureTestWiring.converge`), which has no rehydrate
+   *  round-trip to lean on. */
   def settle(): Unit = cache.canonicalizeBySanitize()
 
   /** Drain the INLINE enrichment pool (`executionContext`) so any in-flight inline TMDB
@@ -140,7 +121,6 @@ class MovieService(
   def stop(): Unit = {
     executionContext.shutdown()
     tmdbRetryScheduler.shutdown()
-    settleScheduler.shutdown()
     while (!executionContext.isTerminated) executionContext.awaitTermination(1, TimeUnit.HOURS)
   }
 
@@ -332,7 +312,7 @@ class MovieService(
         // Conclude as a definitive miss AND fold a stranded yearless+idless
         // sibling onto the now-concluded row in one write (same rationale as the
         // hit path), instead of leaving it held back from the read model until
-        // the periodic settle.
+        // a later settle.
         val liveKey = cache.canonicalKeyFor(key).getOrElse(key)
         cache.get(liveKey) match {
           case Some(record) => cache.settleResolved(liveKey, record.copy(tmdbNoMatch = true))
@@ -446,7 +426,8 @@ class MovieService(
         // prior narrow re-key of a yearless row onto its resolved TMDB year.
         // `settleResolved` stays on the resolved row's own key and folds only the
         // unambiguous rule-(4) strays, so it's order-independent (the broader
-        // ±1-year / remake clustering is owned by the periodic settle).
+        // ±1-year / remake clustering is owned by `canonicalizeBySanitize` — run
+        // by the staging fold and on every rehydrate).
         val finalKey = cache.settleResolved(writeKey, enr)
         (finalKey, cache.get(finalKey).getOrElse(enr))
       }
