@@ -53,6 +53,21 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     ) finally client.close()
   }
 
+  // Purge at the START too, not only at the end: a run interrupted before its
+  // `afterAll` (a killed `IntegrationTest/test`, a CI timeout, an OOM) leaves
+  // its sentinels behind and nothing else removes them — they strand on /debug
+  // as stuck "Dotted (1902)" rows (`dotted|1892` + `integrationtestdotted…`
+  // were found sitting in prod). `purgeSentinels` keys off the stable imdbId +
+  // sanitized _id, so the next run sweeps a PRIOR run's residue regardless of
+  // how that one ended. NOTE: this guards the interrupted-run case, which a
+  // completing test can't reach (the assertion that would catch it is in the
+  // run that died); the purge mechanism itself is covered by the
+  // "purge its sentinels by the sanitized _id" test below.
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+    purgeSentinels()
+  }
+
   // Tidy sentinel rows so they don't leak into the production positive cache
   // at the next app startup (the service hydrates *everything* from Mongo).
   override protected def afterAll(): Unit = try {
