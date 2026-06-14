@@ -8,6 +8,23 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+// Release signing is wired only when credentials are present — from CI env
+// vars (the workflow decodes the base64 keystore secret to a file and exports
+// the three passwords) or a local, gitignored `keystore.properties`. With
+// neither, `release` stays unsigned so `assembleRelease` still builds locally
+// for a smoke test; only signed builds are uploadable to Play (and only a
+// signed `release` is installable by `runOnDevice`). Hoisted to script scope so
+// both the `signingConfigs` block and the `runOnDevice` task can read it.
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun signingValue(envName: String, propName: String): String? =
+    (System.getenv(envName) ?: keystoreProps.getProperty(propName))?.takeIf { it.isNotBlank() }
+val releaseStorePath = signingValue("KINOWO_RELEASE_STORE_FILE", "storeFile")
+    ?.let { rootProject.file(it) }
+val hasReleaseSigning = releaseStorePath?.exists() == true
+
 android {
     namespace = "pl.kinowo"
     compileSdk = 34
@@ -20,21 +37,6 @@ android {
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-
-    // Release signing is wired only when credentials are present — from CI env
-    // vars (the workflow decodes the base64 keystore secret to a file and exports
-    // the three passwords) or a local, gitignored `keystore.properties`. With
-    // neither, `release` stays unsigned so `assembleRelease` still builds locally
-    // for a smoke test; only signed builds are uploadable to Play.
-    val keystoreProps = Properties().apply {
-        val f = rootProject.file("keystore.properties")
-        if (f.exists()) f.inputStream().use { load(it) }
-    }
-    fun signingValue(envName: String, propName: String): String? =
-        (System.getenv(envName) ?: keystoreProps.getProperty(propName))?.takeIf { it.isNotBlank() }
-    val releaseStorePath = signingValue("KINOWO_RELEASE_STORE_FILE", "storeFile")
-        ?.let { rootProject.file(it) }
-    val hasReleaseSigning = releaseStorePath?.exists() == true
 
     signingConfigs {
         if (hasReleaseSigning) {
@@ -494,5 +496,59 @@ tasks.register("debugOnEmulator") {
             |        ${adb} -s $serial forward --remove tcp:$port
             """.trimMargin()
         )
+    }
+}
+
+// ── Physical-device run (release / non-debug) ────────────────────────────────
+// `./gradlew runOnDevice` — build the minified, signed `release` APK (the
+// public, tuning-free build — NOT the debug build the emulator tasks use),
+// install it on a cable-connected phone, and launch it. Needs release signing
+// (a gitignored `keystore.properties` or the KINOWO_RELEASE_* env vars), the
+// same creds `assembleRelease` uses for Play — an unsigned `release` can't be
+// installed. Targets the one physical device by default; with more than one
+// attached, pick it with `-Pserial=<serial>` (emulators are ignored).
+tasks.register("runOnDevice") {
+    group = "device"
+    description = "Install the signed release build on a cable-connected device and launch it. Pick a device with -Pserial=<serial>."
+    // Only wire the install when it can succeed; otherwise the doLast below
+    // explains the missing-signing case instead of a cryptic "task not found".
+    if (hasReleaseSigning) dependsOn("installRelease")
+    val adb = adbExe
+    val appPkg = appId
+    val component = mainComponent
+    val signed = hasReleaseSigning
+    val serialOverride = (findProperty("serial") as String?)
+    val noSdk = noSdkMessage
+    doLast {
+        fun sh(vararg args: String): String {
+            val p = ProcessBuilder(*args).redirectErrorStream(true).start()
+            val out = p.inputStream.bufferedReader().use { it.readText() }
+            p.waitFor()
+            return out.trim()
+        }
+        if (adb == null) throw GradleException(noSdk)
+        if (!signed) throw GradleException(
+            "`release` is unsigned locally, so it can't be installed. Add a gitignored " +
+                "keystore.properties (storeFile/storePassword/keyAlias/keyPassword) or set the " +
+                "KINOWO_RELEASE_* env vars — see the signingConfigs block."
+        )
+
+        // Connected, ready devices that aren't emulators — `runOnDevice` is the
+        // cable-attached-phone counterpart to the emulator tasks.
+        val ready = sh(adb, "devices").lines().drop(1)
+            .filter { it.endsWith("\tdevice") }
+            .map { it.substringBefore("\t") }
+        val physical = ready.filter { !it.startsWith("emulator-") }
+        val serial = serialOverride ?: physical.singleOrNull() ?: throw GradleException(
+            if (physical.isEmpty())
+                "No cable-connected device found (adb sees: ${ready.joinToString(", ").ifEmpty { "nothing" }}). " +
+                    "Enable USB debugging and accept the on-device prompt."
+            else
+                "More than one device attached (${physical.joinToString(", ")}). Pick one with -Pserial=<serial>."
+        )
+
+        logger.lifecycle("Launching $component on $serial…")
+        sh(adb, "-s", serial, "shell", "am", "start", "-n", component)
+        logger.lifecycle("✓ Launched the release build on $serial.")
     }
 }
