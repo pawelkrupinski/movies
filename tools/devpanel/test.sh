@@ -85,6 +85,24 @@ echo "▶ android unlock wait (adb resolution)"
   [[ $rc -eq 0 ]] && echo "  ok   proceeds when device reports unlocked" || { echo "  FAIL unlocked rc=$rc out=$out"; exit 9; }
 ) || fails=$((fails + 1))
 
+echo "▶ ios unlock wait message"
+(
+  SCRIPT_DIR="$SCRIPTS"; source "$SCRIPTS/lib.sh"
+  cnt="$(mktemp)"; echo 0 > "$cnt"
+  fake="$(mktemp)"
+  cat > "$fake" <<FAKE
+#!/bin/sh
+n=\$(( \$(cat "$cnt") + 1 )); echo \$n > "$cnt"
+[ "\$n" -eq 1 ] && { echo "BSErrorCodeDescription = Locked"; exit 1; }
+echo "Launched application"; exit 0
+FAKE
+  chmod +x "$fake"
+  out="$(ios_run_unlocked "$fake" 2>&1)"; rc=$?    # ~2s: one lock retry
+  rm -f "$fake" "$cnt"
+  [[ $rc -eq 0 && "$out" == *"the app will launch as soon as you unlock it"* ]] \
+    && echo "  ok   announces the app will launch on unlock" || { echo "  FAIL rc=$rc out=$out"; exit 9; }
+) || fails=$((fails + 1))
+
 echo "▶ runDevPanel.sh"
 contains "runDevPanel → calls build.sh" "tools/devpanel/build.sh" "$(cat "$ROOT/runDevPanel.sh")"
 

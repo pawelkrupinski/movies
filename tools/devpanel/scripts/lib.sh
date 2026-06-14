@@ -160,7 +160,7 @@ ios_run_unlocked() {
     printf '%s\n' "$out"
     [[ $rc -eq 0 ]] && { [[ -n "$announced" ]] && echo "  unlocked."; return 0; }
     if ios_is_lock_error "$out"; then
-      if [[ -z "$announced" ]]; then echo "🔒 waiting for iPhone unlock…"; announced=1; fi
+      if [[ -z "$announced" ]]; then echo "🔒 iPhone is locked — the app will launch as soon as you unlock it…"; announced=1; fi
       sleep 2
     else
       return $rc
