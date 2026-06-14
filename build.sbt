@@ -270,7 +270,14 @@ lazy val localStack = Command.command("localStack") { state =>
   // the SAME defaults itself, so both land on the same db.
   System.setProperty("MONGODB_URI", uri)
   System.setProperty("MONGODB_DB", db)
-  state.log.info(s"[localStack] worker replays fixtures/$fixtureDir, web hits the internet — both on Mongo $uri db=$db")
+  // Point the web app's /debug read-mirror at the SAME local db. Without this it
+  // falls through to .env.local's MONGODB_MOVIES_MIRROR_URI (the prod-synced
+  // kinowo_prod_mirror), so /debug would show the prod corpus instead of what the
+  // local worker projects into `db`. The mirror only exists to dodge the slow prod
+  // tunnel; on a local Mongo it's pointless, so just aim it at `db`. Set to a
+  // non-empty value because Env falls back to .env.local when the property is blank.
+  System.setProperty("MONGODB_MOVIES_MIRROR_URI", uri)
+  state.log.info(s"[localStack] worker replays fixtures/$fixtureDir, web hits the internet — both on Mongo $uri db=$db (mirror→$db too, not prod)")
   "worker/Test/bgRunMain modules.LocalFixtureWorkerMain" :: "web/run" :: state
 }
 
