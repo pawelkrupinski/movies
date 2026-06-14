@@ -6,23 +6,26 @@ name: Daily country fixture artifact
 # the result as the artifact `country-fixture`, kept for one day so only the
 # latest run's capture is ever available.
 #
-# ── Scheduling at 00:01 Europe/Warsaw, year-round ───────────────────────────
+# ── Scheduling: once a day, after midnight Warsaw, year-round ────────────────
 #
-# GitHub cron is UTC-only and DST-unaware, while Warsaw is UTC+1 in winter (CET)
-# and UTC+2 in summer (CEST). 00:01 Warsaw is therefore 23:01 UTC in winter and
-# 22:01 UTC in summer. We register BOTH instants and let a guard step run the
-# body only when it is actually the 00:00 hour in Warsaw — so exactly one of the
-# two fires per day, in whichever DST regime is current. (We gate on the hour,
-# not the exact minute, because GitHub can delay a scheduled run by several
-# minutes under load; the hour check tolerates that, an exact-minute check would
-# silently skip a delayed run.)
+# All that matters is the run lands after midnight Warsaw so it captures the new
+# day. GitHub cron is UTC-only and DST-unaware, and Warsaw is UTC+1 in winter
+# (CET) / UTC+2 in summer (CEST), so a single fixed UTC time maps to two
+# different local times across the year. 23:01 UTC is the latest-firing instant
+# that is still 00:0x Warsaw in winter:
+#
+#   • winter (CET, UTC+1): 00:01 Warsaw
+#   • summer (CEST, UTC+2): 01:01 Warsaw
+#
+# Both are after midnight, so one plain cron covers the whole year — no DST gate,
+# no second cron. (An earlier version registered two crons + a wall-clock-hour
+# gate to hit 00:01 exactly; GitHub's 30–70 min scheduling delay pushed every run
+# past the gated hour and it recorded nothing. Dropping the exact-minute goal
+# removes the gate entirely — a delayed run is still after midnight.)
 
 on:
     schedule:
-        - cron: '1 22 * * *'   # 00:01 Warsaw during CEST (summer, UTC+2)
-        - cron: '1 23 * * *'   # 00:01 Warsaw during CET  (winter, UTC+1)
-    # Manual trigger ignores the Warsaw-hour guard so you can grab a fresh
-    # capture on demand.
+        - cron: '1 23 * * *'   # 00:01 Warsaw (CET) / 01:01 Warsaw (CEST)
     workflow_dispatch:
 
 jobs:
@@ -33,45 +36,22 @@ jobs:
         # headroom over the default.
         timeout-minutes: 90
         steps:
-            # Run the body only when it is the 00:xx hour in Warsaw, so the two
-            # cron instants above collapse to a single daily 00:01-local run
-            # regardless of DST. Skipped entirely on manual dispatch.
-            - name: Gate on Warsaw local hour
-              id: gate
-              run: |
-                  set -euo pipefail
-                  if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-                      echo "run=true" >> "$GITHUB_OUTPUT"
-                      exit 0
-                  fi
-                  HOUR="$(TZ=Europe/Warsaw date +%H)"
-                  if [ "$HOUR" = "00" ]; then
-                      echo "run=true" >> "$GITHUB_OUTPUT"
-                  else
-                      echo "run=false" >> "$GITHUB_OUTPUT"
-                      echo "Warsaw hour is $HOUR, not 00 — this cron instant is the off-DST one; skipping."
-                  fi
-
-            - if: steps.gate.outputs.run == 'true'
-              uses: actions/checkout@v4
+            - uses: actions/checkout@v4
 
             # Same Scala toolchain as every other sbt job in this repo
             # (ci.yml / filmweb-diff.yml): Temurin JDK 25
             # with sbt dependency caching.
-            - if: steps.gate.outputs.run == 'true'
-              uses: actions/setup-java@v4
+            - uses: actions/setup-java@v4
               with:
                   distribution: temurin
                   java-version: 25
                   cache: sbt
 
-            - if: steps.gate.outputs.run == 'true'
-              uses: sbt/setup-sbt@v1
+            - uses: sbt/setup-sbt@v1
 
             # Share the same zinc/target cache shape as ci.yml so a cold compile
             # is the exception, not the rule.
-            - if: steps.gate.outputs.run == 'true'
-              uses: actions/cache@v4
+            - uses: actions/cache@v4
               with:
                   path: |
                       target
@@ -81,13 +61,14 @@ jobs:
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
-            # Point the recorder at a dir named for today's UTC date, then run it.
-            # `RecordAllDataToFixture` is a worker TEST-scope `runMain` that runs
-            # the real cinema scrape + full enrichment cascade
-            # (TMDB → IMDb → Metacritic → RT → Filmweb) against live upstreams,
-            # writing one fixture file per unique URL under
-            # `test/resources/fixtures/<date>/`. The target date is a hard-coded
-            # literal in the source, so we rewrite it to today before running.
+            # Record + verify + zip the corpus via the shared script, so a local
+            # `.github/scripts/record-country-fixture.sh` run does exactly what CI
+            # does. The script runs `RecordAllDataToFixture` (a worker TEST-scope
+            # runMain — the real cinema scrape + full TMDB → IMDb → Metacritic →
+            # RT → Filmweb cascade against live upstreams, one fixture file per
+            # unique URL under test/resources/fixtures/today/), refuses an empty
+            # capture, and — given a zip path — wraps the tree in one colon-free
+            # zip for upload.
             #
             # Secrets are the two keyed upstreams the recorder hits — TMDB
             # (enrichment) and Zyte (the Multikino/biletyna scrapes that route
@@ -95,7 +76,6 @@ jobs:
             # passed for parity with ci.yml even though the recorder uses an
             # in-memory repo and writes no Mongo.
             - name: Record the country's fixture corpus
-              if: steps.gate.outputs.run == 'true'
               id: record
               env:
                   ZYTE_API_KEY: ${{ secrets.ZYTE_API_KEY }}
@@ -104,32 +84,9 @@ jobs:
                   MONGODB_DB:   ${{ secrets.MONGODB_DB }}
               run: |
                   set -euo pipefail
-
-                  # The recorder writes to test/resources/fixtures/today by
-                  # default (KINOWO_FIXTURE_DIR unset → "today"). No date in the
-                  # dir name, no source rewrite — the real capture date is stamped
-                  # into today/CAPTURE_DATE by the recorder itself.
-                  sbt "worker/Test/runMain clients.tools.RecordAllDataToFixture"
-
-                  # Sanity-check the capture isn't empty before we upload it.
-                  DIR="test/resources/fixtures/today"
-                  COUNT="$(find "$DIR" -type f | wc -l | tr -d ' ')"
-                  echo "Captured $COUNT fixture files into $DIR ($(cat "$DIR/CAPTURE_DATE" 2>/dev/null | tr '\n' ' '))"
-                  if [ "$COUNT" -eq 0 ]; then
-                      echo "::error::Recorder produced no fixture files — refusing to upload an empty artifact."
-                      exit 1
-                  fi
-
-                  # Zip the corpus ourselves rather than handing the raw tree to
-                  # upload-artifact. The recorder names per-URL fixture files after
-                  # the URL, so some contain a colon (e.g. `…,ts:1781388000`) —
-                  # which upload-artifact@v4 rejects as an NTFS-unsafe path char.
-                  # Inside a zip those names are just bytes, so we wrap the tree in
-                  # a single colon-free `country-fixture.zip` and upload that.
                   ZIP="${GITHUB_WORKSPACE}/country-fixture.zip"
-                  ( cd test/resources/fixtures && zip -q -r -X "$ZIP" "today" )
+                  bash .github/scripts/record-country-fixture.sh "$ZIP"
                   echo "zip_path=$ZIP" >> "$GITHUB_OUTPUT"
-                  echo "Wrote $(du -h "$ZIP" | cut -f1) zip with $COUNT fixtures"
 
             # Upload the single zip under a FIXED artifact name so the "latest" is
             # always fetchable by the same name, with a one-day retention so
@@ -137,7 +94,6 @@ jobs:
             # only the last run's capture is ever kept. The downloaded artifact is
             # itself a zip wrapping `country-fixture.zip` (the actual corpus).
             - name: Upload country fixture artifact
-              if: steps.gate.outputs.run == 'true'
               uses: actions/upload-artifact@v4
               with:
                   name: country-fixture
