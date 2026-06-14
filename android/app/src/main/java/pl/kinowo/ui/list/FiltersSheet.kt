@@ -1,8 +1,7 @@
 package pl.kinowo.ui.list
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,8 +60,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -161,22 +158,20 @@ private fun FiltersList(
     // at the top. Otherwise a downward swipe to scroll back up — which rolls the
     // list to its top mid-gesture — would spill its leftover into the
     // ModalBottomSheet's own nested-scroll drag and yank the sheet closed instead
-    // of scrolling (see FiltersSheetDragDismissTest). We snapshot "was the list at
-    // the top when the finger went down?" and, when it wasn't, swallow the leftover
-    // drag/fling before the sheet's connection can act on it.
+    // of scrolling (see FiltersSheetDragDismissTest). The gate snapshots "was the
+    // list at the top when this drag began?" from the connection's own scroll
+    // events — NOT a separate pointerInput, which shadowed the rows' taps (a swipe
+    // near a section header was read as a tap that collapsed it, and the first tap
+    // after a scroll was swallowed).
     val listState = rememberLazyListState()
     val gate = remember(listState) { TopOnlyDismissScrollGate(atTop = { !listState.canScrollBackward }) }
+    LaunchedEffect(gate, listState) {
+        listState.interactionSource.interactions.collect { interaction ->
+            if (interaction is DragInteraction.Start) gate.onDragStart()
+        }
+    }
 
-    Box(
-        Modifier
-            .nestedScroll(gate.connection)
-            .pointerInput(Unit) {
-                awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                    gate.onDragStart()
-                }
-            },
-    ) {
+    Box(Modifier.nestedScroll(gate.connection)) {
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -652,7 +647,10 @@ private val MenuAnchorGap = 4.dp
 internal class TopOnlyDismissScrollGate(private val atTop: () -> Boolean) {
     private var atTopAtDragStart = true
 
-    /** Snapshot, at finger-down, whether the list was already at the top. */
+    /** Snapshot, when a drag begins, whether the list was already at the top.
+     *  Driven by the list's own [DragInteraction.Start] (see FiltersList) — that
+     *  fires once per real drag and ignores programmatic scrolls, so the snapshot
+     *  is taken at the true gesture start, not on a stray earlier scroll event. */
     fun onDragStart() {
         atTopAtDragStart = atTop()
     }

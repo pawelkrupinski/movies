@@ -53,10 +53,21 @@ class TopOnlyDismissScrollGateTest {
     fun snapshotIsTakenAtDragStartNotLater() {
         var atTop = false
         val gate = TopOnlyDismissScrollGate(atTop = { atTop })
-        gate.onDragStart() // finger went down below the top
+        gate.onDragStart() // drag began below the top
         atTop = true        // list then scrolled to the top mid-gesture
         // The gesture started below the top, so the leftover stays swallowed —
         // the sheet must not close just because the list reached the top.
         assertEquals(downScroll, gate.swallowedPostScroll(downScroll))
+    }
+
+    @Test
+    fun eachDragReSnapshotsAtItsStart() {
+        var atTop = false
+        val gate = TopOnlyDismissScrollGate(atTop = { atTop })
+        gate.onDragStart()                                  // drag 1: below the top
+        assertEquals(downScroll, gate.swallowedPostScroll(downScroll))
+        atTop = true
+        gate.onDragStart()                                  // drag 2: at the top
+        assertEquals(Offset.Zero, gate.swallowedPostScroll(downScroll))
     }
 }
