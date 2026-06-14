@@ -1,6 +1,8 @@
 package pl.kinowo.ui.list
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
@@ -54,6 +57,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -62,6 +71,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -147,8 +157,29 @@ private fun FiltersList(
     val allDirectors = remember(films) { vm.allDirectors(films) }
     val allCast = remember(films) { vm.allCast(films) }
 
+    // Drag-to-close must only fire when the gesture STARTS with the list already
+    // at the top. Otherwise a downward swipe to scroll back up — which rolls the
+    // list to its top mid-gesture — would spill its leftover into the
+    // ModalBottomSheet's own nested-scroll drag and yank the sheet closed instead
+    // of scrolling (see FiltersSheetDragDismissTest). We snapshot "was the list at
+    // the top when the finger went down?" and, when it wasn't, swallow the leftover
+    // drag/fling before the sheet's connection can act on it.
+    val listState = rememberLazyListState()
+    val gate = remember(listState) { TopOnlyDismissScrollGate(atTop = { !listState.canScrollBackward }) }
+
+    Box(
+        Modifier
+            .nestedScroll(gate.connection)
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    gate.onDragStart()
+                }
+            },
+    ) {
     LazyColumn(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        state = listState,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
             item {
@@ -250,6 +281,7 @@ private fun FiltersList(
 
             item { Column(Modifier.padding(bottom = 24.dp)) {} }
         }
+    }
 }
 
 /**
@@ -606,6 +638,41 @@ private fun <T> Dropdown(
 }
 
 private val MenuAnchorGap = 4.dp
+
+/**
+ * Gates the Filtry [ModalBottomSheet]'s drag-to-close so it only fires when a
+ * downward drag STARTS with the list already at the top. [onDragStart] snapshots
+ * whether the list was at the top at finger-down; while it wasn't, [connection]
+ * swallows the leftover downward drag ([NestedScrollConnection.onPostScroll]) and
+ * fling ([NestedScrollConnection.onPostFling]) — so the sheet's own nested-scroll
+ * connection never receives it and can't yank the sheet closed mid-scroll. The
+ * decision is a pure function of the snapshot + the leftover's direction, so it's
+ * unit-tested directly (TopOnlyDismissScrollGateTest).
+ */
+internal class TopOnlyDismissScrollGate(private val atTop: () -> Boolean) {
+    private var atTopAtDragStart = true
+
+    /** Snapshot, at finger-down, whether the list was already at the top. */
+    fun onDragStart() {
+        atTopAtDragStart = atTop()
+    }
+
+    /** Leftover downward scroll the sheet must not see (positive Y), else [Offset.Zero]. */
+    fun swallowedPostScroll(available: Offset): Offset =
+        if (!atTopAtDragStart && available.y > 0f) Offset(0f, available.y) else Offset.Zero
+
+    /** Leftover downward fling the sheet must not see (positive Y), else [Velocity.Zero]. */
+    fun swallowedPostFling(available: Velocity): Velocity =
+        if (!atTopAtDragStart && available.y > 0f) Velocity(0f, available.y) else Velocity.Zero
+
+    val connection: NestedScrollConnection = object : NestedScrollConnection {
+        override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset =
+            swallowedPostScroll(available)
+
+        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity =
+            swallowedPostFling(available)
+    }
+}
 
 /**
  * Positions a popup horizontally centred in the window, dropping below the
