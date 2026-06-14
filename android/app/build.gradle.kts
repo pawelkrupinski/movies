@@ -51,6 +51,14 @@ android {
 
     buildTypes {
         debug {
+            // On-device instrumented tests (connectedDebugAndroidTest) install
+            // the debug APK as pl.kinowo, which collides with a release-signed
+            // pl.kinowo already on the device (runOnDevice installs releaseFast) —
+            // the install fails with a signature mismatch. Pass -PdebugSuffix
+            // (android/scripts/devtest.sh does) to install the debug/test build as
+            // pl.kinowo.debug so it coexists. Off by default, so a plain debug
+            // build keeps the prod applicationId.
+            if (project.hasProperty("debugSuffix")) applicationIdSuffix = ".debug"
             // Tuning (the tweak screen + "Kinowo Tune" launcher icon) is on in
             // debug builds.
             buildConfigField("boolean", "ENABLE_TUNING", "true")
