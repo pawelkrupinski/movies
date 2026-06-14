@@ -235,7 +235,7 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
     val id  = idGen.incrementAndGet()
     val fut = new CompletableFuture[JsValue]()
     pending.put(id, fut)
-    val message = Json.obj("id" -> id, "method" -> method, "parameters" -> parameters).toString
+    val message = Json.obj("id" -> id, "method" -> method, "params" -> parameters).toString
     ws.sendText(message, true).get(5, TimeUnit.SECONDS)
     val reply = fut.get(30, TimeUnit.SECONDS)
     (reply \ "error").asOpt[JsValue].foreach { err =>
