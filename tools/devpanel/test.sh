@@ -42,6 +42,25 @@ contains "ios → xcodebuild build install" "xcodebuild" "$ios"
 contains "ios → Kinowo scheme"       "-scheme Kinowo" "$ios"
 contains "ios → device destination"  "platform=iOS,id=" "$ios"
 
+echo "▶ free_port kills a listener"
+tport=9099
+python3 -m http.server "$tport" --bind 127.0.0.1 >/dev/null 2>&1 &
+tpid=$!
+disown "$tpid" 2>/dev/null || true
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  sleep 0.2
+  [[ -n "$(lsof -ti "tcp:$tport" -sTCP:LISTEN 2>/dev/null)" ]] && break
+done
+before="$(lsof -ti "tcp:$tport" -sTCP:LISTEN 2>/dev/null)"
+( SCRIPT_DIR="$SCRIPTS"; source "$SCRIPTS/lib.sh"; free_port "$tport" >/dev/null )
+after="$(lsof -ti "tcp:$tport" -sTCP:LISTEN 2>/dev/null)"
+kill "$tpid" 2>/dev/null || true
+if [[ -n "$before" && -z "$after" ]]; then
+  printf '  ok   freed the listener (pid %s)\n' "$before"
+else
+  printf '  FAIL before=%q after=%q\n' "$before" "$after"; fails=$((fails + 1))
+fi
+
 echo "▶ bash syntax"
 for f in "$SCRIPTS"/*.sh; do
   if bash -n "$f"; then printf '  ok   %s\n' "$(basename "$f")"

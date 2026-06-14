@@ -4,6 +4,29 @@
 # Repo root is three levels up from tools/devpanel/scripts.
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
+# free_port <port>
+#
+# Kill whatever is LISTENing on <port> so a fresh `sbt web/run` can bind it
+# (Play refuses to start if :9000 is already taken). SIGTERM first, escalate
+# to SIGKILL if it's still holding the port. No-op under DEVPANEL_PRINT_ONLY.
+free_port() {
+  local port="$1"
+  [[ "${DEVPANEL_PRINT_ONLY:-}" == "1" ]] && return 0
+
+  local pids
+  pids="$(lsof -ti "tcp:$port" -sTCP:LISTEN 2>/dev/null || true)"
+  [[ -z "$pids" ]] && return 0
+
+  echo "  freeing :$port (killing $(echo "$pids" | tr '\n' ' '))"
+  kill $pids 2>/dev/null || true
+  for _ in 1 2 3 4 5 6; do
+    sleep 0.3
+    pids="$(lsof -ti "tcp:$port" -sTCP:LISTEN 2>/dev/null || true)"
+    [[ -z "$pids" ]] && return 0
+  done
+  kill -9 $pids 2>/dev/null || true
+}
+
 # dispatch <workdir> <label> <cmd...>
 #
 # Normal mode: announce, cd into <workdir>, and `exec` the command so a

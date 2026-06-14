@@ -6,4 +6,5 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib.sh"
 
+free_port 9000
 dispatch "$REPO_ROOT" "Local web + worker (fixtures)" sbt localStack
