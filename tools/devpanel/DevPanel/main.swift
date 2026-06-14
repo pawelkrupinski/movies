@@ -240,9 +240,9 @@ private struct Action {
 }
 
 private let actions: [Action] = [
-    Action(title: "Android → device", subtitle: "unlock · build · install · launch",
+    Action(title: "Android → device", subtitle: "build · install · launch",
            script: "deploy-android.sh", console: .device),
-    Action(title: "iOS → device", subtitle: "unlock · build · install · launch",
+    Action(title: "iOS → device", subtitle: "build · install · launch",
            script: "deploy-ios.sh", console: .device),
     Action(title: "Web server", subtitle: "sbt web/run · :9000",
            script: "run-web.sh", console: .web),
@@ -339,20 +339,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func button(for action: Action) -> NSButton {
+        // Centred text → left padding always equals right padding, and stays
+        // symmetric as the button stretches with the window.
+        let para = NSMutableParagraphStyle()
+        para.alignment = .center
         let title = NSMutableAttributedString(
             string: action.title + "\n",
             attributes: [.font: NSFont.systemFont(ofSize: 13, weight: .medium),
-                         .foregroundColor: NSColor.labelColor])
+                         .foregroundColor: NSColor.labelColor,
+                         .paragraphStyle: para])
         title.append(NSAttributedString(
             string: action.subtitle,
             attributes: [.font: NSFont.systemFont(ofSize: 10),
-                         .foregroundColor: NSColor.secondaryLabelColor]))
+                         .foregroundColor: NSColor.secondaryLabelColor,
+                         .paragraphStyle: para]))
 
         let b = NSButton(title: "", target: self, action: #selector(run(_:)))
         b.attributedTitle = title
         b.identifier = NSUserInterfaceItemIdentifier(action.script)
         b.bezelStyle = .regularSquare
-        b.alignment = .left
+        b.alignment = .center
         b.imagePosition = .noImage
         b.toolTip = "Click to run · long-press or right-click to pick a worktree"
         b.heightAnchor.constraint(equalToConstant: 44).isActive = true
