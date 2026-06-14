@@ -14,10 +14,11 @@
 # Env:
 #   KINOWO_FIXTURE_DIR  fixture subdir under test/resources/fixtures
 #                       (default `today`; the recorder reads this var itself).
-#   TMDB_API_KEY        real TMDB key — enrichment 401s and captures nothing
-#                       without it.
-#   ZYTE_API_KEY        Zyte key for the Multikino / biletyna scrapes.
-# (Locally these are auto-sourced from .env.local if not already set.)
+#   TMDB_API_KEY        REQUIRED — real TMDB key; the whole enrichment cascade
+#                       401s and captures nothing without it.
+#   ZYTE_API_KEY        REQUIRED — Zyte key for the Multikino / biletyna scrapes.
+# Both keys are auto-loaded from .env.local locally; the script exits 1 if either
+# is still missing rather than recording a silently-partial corpus.
 #
 # Args:
 #   $1  optional path for a zip of the corpus. When given, the recorded tree is
@@ -50,8 +51,17 @@ if [ -f "$REPO_ROOT/.env.local" ]; then
     [ -n "${ZYTE_API_KEY:-}" ] || load_env_key ZYTE_API_KEY
 fi
 
-if [ -z "${TMDB_API_KEY:-}" ]; then
-    echo "Warning: TMDB_API_KEY is not set — TMDB enrichment will 401 and the corpus will be sparse." >&2
+# Both keys are required: without TMDB_API_KEY the whole enrichment cascade
+# (TMDB → IMDb → MC → RT → Filmweb) 401s and captures nothing; without
+# ZYTE_API_KEY the Multikino / biletyna scrapes never reach their sites. A
+# partial capture is worse than no capture — it looks complete but silently
+# omits whole cinemas/ratings — so fail loudly rather than record a sparse one.
+missing=""
+[ -n "${TMDB_API_KEY:-}" ] || missing="$missing TMDB_API_KEY"
+[ -n "${ZYTE_API_KEY:-}" ] || missing="$missing ZYTE_API_KEY"
+if [ -n "$missing" ]; then
+    echo "::error::Missing required key(s):$missing — set them in the environment or .env.local before recording." >&2
+    exit 1
 fi
 
 DIR_NAME="${KINOWO_FIXTURE_DIR:-today}"
