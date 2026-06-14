@@ -31,20 +31,20 @@ struct RatingBadgesView: View {
                     style:    style
                 )
             }
-            if let mc = ratings.metascore {
+            if let metascore = ratings.metascore {
                 Badge.solid(
-                    value: "\(mc)",
+                    value: "\(metascore)",
                     url:   ratings.metacriticURL,
-                    bg:    metacriticColor(mc),
+                    bg:    metacriticColor(metascore),
                     fg:    Color(red: 0.0, green: 0.13, blue: 0.0),           // #002200
                     style: style
                 )
             }
-            if let rt = ratings.rottenTomatoes {
-                let fresh = rt >= 60
+            if let rottenTomatoes = ratings.rottenTomatoes {
+                let fresh = rottenTomatoes >= 60
                 Badge.twoTone(
                     label:    "RT",
-                    value:    "\(rt)%",
+                    value:    "\(rottenTomatoes)%",
                     url:      ratings.rottenTomatoesURL,
                     labelBg:  fresh ? Color(red: 0.980, green: 0.196, blue: 0.039)
                                     : Color(red: 0.102, green: 0.561, blue: 0.102),  // #fa320a / #1a8f1a
@@ -54,10 +54,10 @@ struct RatingBadgesView: View {
                     style:    style
                 )
             }
-            if let fw = ratings.filmweb {
+            if let filmweb = ratings.filmweb {
                 Badge.twoTone(
                     label:    "FW",
-                    value:    Film.Ratings.scoreText(fw),
+                    value:    Film.Ratings.scoreText(filmweb),
                     url:      ratings.filmwebURL,
                     labelBg:  Color(red: 1.0,   green: 0.424, blue: 0.0),    // #ff6c00
                     labelFg:  .white,

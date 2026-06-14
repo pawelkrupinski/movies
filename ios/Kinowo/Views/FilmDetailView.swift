@@ -309,8 +309,8 @@ private struct DetailPosterImage<NoPoster: View>: View {
             : (index - 1 < fallbacks.count ? fallbacks[index - 1] : nil)
         AsyncImage(url: url) { phase in
             switch phase {
-            case .success(let img):
-                img.resizable().aspectRatio(contentMode: .fit)
+            case .success(let image):
+                image.resizable().aspectRatio(contentMode: .fit)
             case .empty:
                 Rectangle()
                     .fill(Color(red: 0.165, green: 0.165, blue: 0.243))

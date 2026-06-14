@@ -14,7 +14,7 @@ enum RatingsParser {
                           .flatMap { URL(string: $0) }
         let imdb    = HTMLPrimitives.capture(chunk, #"class="rating-imdb-value">([^<]+)</span>"#)
                           .flatMap { Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
-        let mcURL   = HTMLPrimitives.capture(chunk, #"<a href="([^"]+)"[^>]*class="rating-meta""#)
+        let metacriticURL   = HTMLPrimitives.capture(chunk, #"<a href="([^"]+)"[^>]*class="rating-meta""#)
                           .flatMap { URL(string: $0) }
         // rating-meta wraps the score in the anchor body directly. Match up
         // to the closing `>` of the `<a>` open tag, then take the body.
@@ -22,21 +22,21 @@ enum RatingsParser {
         // — that attribute was removed from the template (commit 6372afc),
         // so the regex silently stopped matching and MC pills disappeared
         // from every card.
-        let mc      = HTMLPrimitives.capture(chunk, #"class="rating-meta"[^>]*>([^<]+)</a>"#)
+        let metascore      = HTMLPrimitives.capture(chunk, #"class="rating-meta"[^>]*>([^<]+)</a>"#)
                           .flatMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
-        let rtURL   = HTMLPrimitives.capture(chunk, #"<a href="([^"]+)"[^>]*class="rating-rt[^"]*""#)
+        let rottenTomatoesURL   = HTMLPrimitives.capture(chunk, #"<a href="([^"]+)"[^>]*class="rating-rt[^"]*""#)
                           .flatMap { URL(string: $0) }
-        let rt      = HTMLPrimitives.capture(chunk, #"class="rating-rt-value">([0-9]+)%</span>"#)
+        let rottenTomatoes      = HTMLPrimitives.capture(chunk, #"class="rating-rt-value">([0-9]+)%</span>"#)
                           .flatMap { Int($0) }
-        let fwURL   = HTMLPrimitives.capture(chunk, #"<a href="([^"]+)"[^>]*class="rating-fw""#)
+        let filmwebURL   = HTMLPrimitives.capture(chunk, #"<a href="([^"]+)"[^>]*class="rating-fw""#)
                           .flatMap { URL(string: $0) }
-        let fw      = HTMLPrimitives.capture(chunk, #"class="rating-fw-value">([^<]+)</span>"#)
+        let filmweb      = HTMLPrimitives.capture(chunk, #"class="rating-fw-value">([^<]+)</span>"#)
                           .flatMap { Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
         return Film.Ratings(
             imdb: imdb, imdbURL: imdbURL,
-            metascore: mc, metacriticURL: mcURL,
-            rottenTomatoes: rt, rottenTomatoesURL: rtURL,
-            filmweb: fw, filmwebURL: fwURL
+            metascore: metascore, metacriticURL: metacriticURL,
+            rottenTomatoes: rottenTomatoes, rottenTomatoesURL: rottenTomatoesURL,
+            filmweb: filmweb, filmwebURL: filmwebURL
         )
     }
 }

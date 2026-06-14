@@ -243,8 +243,8 @@ private struct PosterImage<NoPoster: View>: View {
         // failure).
         CachedAsyncImage(url: baseURL) { phase in
             switch phase {
-            case .success(let img):
-                img.resizable().aspectRatio(contentMode: .fill)
+            case .success(let image):
+                image.resizable().aspectRatio(contentMode: .fill)
             case .empty:
                 Rectangle()
                     .fill(Color(red: 0.16, green: 0.16, blue: 0.24))

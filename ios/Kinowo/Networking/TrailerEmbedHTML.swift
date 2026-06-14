@@ -15,7 +15,7 @@ enum TrailerEmbedHTML {
     }
 
     static func embedPage(videoURL: URL) -> String {
-        let src = videoURL.absoluteString
+        let source = videoURL.absoluteString
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "\"", with: "&quot;")
         return """
@@ -25,7 +25,7 @@ enum TrailerEmbedHTML {
         <style>*{margin:0;padding:0;overflow:hidden}body{background:#000}\
         iframe{width:100%;height:100%;position:absolute;top:0;left:0;border:0}</style>\
         </head><body>\
-        <iframe src="\(src)" \
+        <iframe src="\(source)" \
         allow="autoplay; encrypted-media; picture-in-picture" \
         allowfullscreen></iframe>\
         </body></html>
