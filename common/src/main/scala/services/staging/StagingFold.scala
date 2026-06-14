@@ -22,11 +22,16 @@ object StagingFold {
   /** What to write to bring `movies` to its folded+settled state, and which
    *  staging rows were consumed (all of them). `moviesDeletes` are existing
    *  `movies` rows in the group whose key the collapse retired (re-keyed to a
-   *  TMDB year, or merged into a sibling). */
+   *  TMDB year, or merged into a sibling). `newPromotions` is the subset of
+   *  `moviesUpserts` that is a BRAND-NEW film — a cluster no pre-existing
+   *  `movies` row joined — so the folder can schedule its first-time rating
+   *  enrichment; a fold that merely merges into an existing `movies` row is not
+   *  listed (that row already carries its ratings). */
   case class Plan(
     moviesUpserts:  Seq[(CacheKey, MovieRecord)],
     moviesDeletes:  Seq[CacheKey],
-    stagingDeletes: Seq[StagingRecord]
+    stagingDeletes: Seq[StagingRecord],
+    newPromotions:  Seq[(CacheKey, MovieRecord)]
   )
 
   /** `stagingRows` are every per-cinema row of ONE `sanitize(title)` group (all
@@ -43,15 +48,22 @@ object StagingFold {
       case (key, rows) => key -> MovieRecordMerge.unionAll(rows.map(_.record))
     }
     val moviesByKey = moviesRows.map(r => CacheKey(r.title, r.year) -> r.record)
-    val upserts = FilmCanonicalizer.clusterByFilm(stagingByKey ++ moviesByKey).map { cluster =>
+    val moviesKeys  = moviesByKey.map(_._1).toSet
+    val planned = FilmCanonicalizer.clusterByFilm(stagingByKey ++ moviesByKey).map { cluster =>
       val (canonKey, merged) = FilmCanonicalizer.canonical(cluster)
+      // A cluster is a brand-new promotion iff no existing `movies` row joined it
+      // (all members came from staging) — a merge into an existing row, or a
+      // re-key of one, does NOT count: that row already owns its ratings.
+      val isNewFilm = !cluster.exists { case (k, _) => moviesKeys.contains(k) }
       // Drop the staging-only `searchTitle`: a `movies` row queries external
       // services off its canonical title, so it never carries the (order-pinned)
       // staging search title — movies stay a deterministic function of the corpus.
-      canonKey -> merged.copy(searchTitle = None)
+      (canonKey -> merged.copy(searchTitle = None), isNewFilm)
     }
+    val upserts       = planned.map(_._1)
+    val newPromotions = planned.collect { case (upsert, true) => upsert }
     val canonicalKeys = upserts.map(_._1).toSet
     val moviesDeletes = moviesByKey.map(_._1).distinct.filterNot(canonicalKeys.contains)
-    Plan(upserts, moviesDeletes, stagingRows)
+    Plan(upserts, moviesDeletes, stagingRows, newPromotions)
   }
 }

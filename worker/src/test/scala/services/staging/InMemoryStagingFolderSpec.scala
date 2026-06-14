@@ -3,7 +3,7 @@ package services.staging
 import models.{Helios, Multikino, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.InMemoryMovieRepository
+import services.movies.{CacheKey, InMemoryMovieRepository}
 
 class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
 
@@ -49,7 +49,30 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
   it should "be a no-op when no staging rows match (already folded)" in {
     val staging = new InMemoryStagingRepository
     val movies  = new InMemoryMovieRepository
-    new InMemoryStagingFolder(staging, movies).foldGroup("Ghost")
+    new InMemoryStagingFolder(staging, movies).foldGroup("Ghost") shouldBe empty
     movies.findAll() shouldBe empty
+  }
+
+  it should "return the brand-new film as a promotion so its ratings can be scheduled" in {
+    val staging = new InMemoryStagingRepository
+    val movies  = new InMemoryMovieRepository
+    staging.upsert(Helios, "Kumotry", Some(2026), resolved(Helios, 2026))
+
+    val promotions = new InMemoryStagingFolder(staging, movies).foldGroup("Kumotry")
+
+    promotions.map(_._1) shouldBe Seq(CacheKey("Kumotry", Some(2026)))
+    promotions.head._2.tmdbId shouldBe Some(1454157)
+  }
+
+  it should "NOT return a promotion when the staging row merges into an existing movie" in {
+    val staging = new InMemoryStagingRepository
+    val movies  = new InMemoryMovieRepository
+    movies.upsert("Kumotry", Some(2026), resolved(Helios, 2026))   // already in movies
+    staging.upsert(Multikino, "Kumotry", Some(2026), resolved(Multikino, 2026))
+
+    val promotions = new InMemoryStagingFolder(staging, movies).foldGroup("Kumotry")
+
+    promotions shouldBe empty                                       // merged, not promoted
+    movies.findAll().head.record.data.keySet shouldBe Set(Helios, Multikino, Tmdb)  // merge still happened
   }
 }

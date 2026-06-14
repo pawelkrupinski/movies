@@ -6,9 +6,10 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.{DetailEnricher, FilmDetail}
 import services.events.{DomainEvent, InProcessEventBus, StagingFilmEnriched, TaskFinished}
 import services.freshness.InMemoryFreshnessStore
-import services.movies.InMemoryMovieRepository
+import services.movies.{CacheKey, InMemoryMovieRepository}
 import services.tasks.{HandlerOutcome, InMemoryTaskQueue, TaskHandler}
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 
 /**
@@ -32,7 +33,11 @@ class StagingQueueEndToEndSpec extends AnyFlatSpec with Matchers {
     val queue     = new InMemoryTaskQueue
     val bus       = new InProcessEventBus
     val folder    = new InMemoryStagingFolder(staging, movies)
-    bus.subscribe { case StagingFilmEnriched(t) => folder.foldGroup(t) }
+    // Wired the production way (see WorkerWiring): the fold returns the brand-new
+    // films it introduced, and the subscriber schedules their ratings. Here we
+    // capture the keys to prove the newcomer graduates as a promotion.
+    val promoted  = ListBuffer.empty[CacheKey]
+    bus.subscribe { case StagingFilmEnriched(t) => promoted ++= folder.foldGroup(t).map(_._1) }
 
     // A deferred-detail cinema (Helios) scrapes the film bare with a filmUrl; its
     // detail page supplies a director hint; TMDB resolves to a tmdbId but ships no
@@ -72,5 +77,6 @@ class StagingQueueEndToEndSpec extends AnyFlatSpec with Matchers {
     folded.head.record.imdbId shouldBe Some("tt1275779")
     folded.head.record.director should contain("Jane Doe")           // detail hint carried through the fold
     staging.findAll() shouldBe empty                                  // graduated out of pending_movies
+    promoted shouldBe Seq(CacheKey("Newcomer", Some(2026)))           // surfaced as a promotion → ratings scheduled
   }
 }

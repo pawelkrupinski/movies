@@ -450,8 +450,15 @@ class WorkerWiring extends play.api.Logging {
   eventBus.subscribe(ratingEnqueuer.onImdbIdResolved)
   eventBus.subscribe(ratingEnqueuer.onImdbIdMissing)
   // A concluded newcomer folds (group-scoped, settling as it goes) into `movies`
-  // the moment the StagingFold handler publishes.
-  eventBus.subscribe { case StagingFilmEnriched(title) => stagingFolder.foldGroup(title) }
+  // the moment the StagingFold handler publishes. Each BRAND-NEW film the fold
+  // introduces (no pre-existing `movies` row merged in) gets its first-time
+  // ratings scheduled right away; a merge into an existing row keeps that row's
+  // ratings, so it isn't re-enqueued.
+  eventBus.subscribe { case StagingFilmEnriched(title) =>
+    stagingFolder.foldGroup(title).foreach { case (key, record) =>
+      movieService.scheduleRatingsForNewMovie(key, record)
+    }
+  }
   // The reaper advances the staging chain (detail → resolve → imdb → fold) one
   // step per finished staging task.
   eventBus.subscribe(stagingReaper.onTaskFinished)

@@ -132,4 +132,43 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     plan.moviesUpserts.head._2.data.keySet shouldBe Set(Helios, Multikino, Tmdb)
     plan.moviesDeletes shouldBe empty                  // same canonical key → no delete
   }
+
+  it should "list a brand-new film (no pre-existing movies row) in newPromotions" in {
+    // Nothing in `movies` for this sanitize group → the folded row is a genuine
+    // promotion, so the folder can schedule its first-time ratings.
+    val rows = Seq(staging(Helios, "Kumotry", 2026, 1454157, 2026), staging(Multikino, "Kumotry", 2026, 1454157, 2026))
+    val plan = StagingFold.planGroup(rows, moviesRows = Seq.empty)
+
+    plan.newPromotions shouldBe plan.moviesUpserts
+    plan.newPromotions.map(_._1) shouldBe Seq(CacheKey("Kumotry", Some(2026)))
+  }
+
+  it should "NOT list a film that merely merges into an existing movies row in newPromotions" in {
+    // An existing `movies` row joins the cluster → not a new film; it already owns
+    // its ratings, so it must not be re-enqueued as a promotion.
+    val stagingRow = staging(Multikino, "Kumotry", 2026, 1454157, 2026)
+    val existing = StoredMovieRecord("Kumotry", Some(2026), MovieRecord(
+      tmdbId = Some(1454157),
+      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026)))))
+
+    val plan = StagingFold.planGroup(Seq(stagingRow), Seq(existing))
+
+    plan.moviesUpserts should have size 1                // the merged row IS written
+    plan.newPromotions shouldBe empty                    // but it is not a fresh promotion
+  }
+
+  it should "list only the brand-new remake when one variant merges and another is new" in {
+    // 'Diuna' 1984 already lives in `movies`; the 2021 remake arrives via staging.
+    // Distinct tmdbIds, far-apart years → two clusters: 1984 merges (not new), 2021
+    // is brand new → only 2021 is a promotion.
+    val existing1984 = StoredMovieRecord("Diuna", Some(1984), MovieRecord(
+      tmdbId = Some(841),
+      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Diuna"), releaseYear = Some(1984)))))
+    val staging1984 = staging(Multikino, "Diuna", 1984, 841, 1984)
+    val staging2021 = staging(Multikino, "Diuna", 2021, 438631, 2021)
+
+    val plan = StagingFold.planGroup(Seq(staging1984, staging2021), Seq(existing1984))
+
+    plan.newPromotions.map(u => (u._1.year, u._2.tmdbId)) shouldBe Seq((Some(2021), Some(438631)))
+  }
 }

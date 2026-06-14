@@ -1,7 +1,8 @@
 package services.staging
 
+import models.MovieRecord
 import play.api.Logging
-import services.movies.{MovieRepository, TitleNormalizer}
+import services.movies.{CacheKey, MovieRepository, TitleNormalizer}
 
 /**
  * Folds a concluded newcomer's per-cinema staging rows into the merged `movies`
@@ -19,8 +20,13 @@ trait StagingFolder {
    *  release-year variants merge into ONE deterministically-keyed `movies` row
    *  rather than waiting for a separate settle pass. Idempotent and group-scoped,
    *  so re-firing as each year concludes converges. No-op when no staging rows
-   *  match (already folded). */
-  def foldGroup(cleanTitle: String): Unit
+   *  match (already folded).
+   *
+   *  Returns the BRAND-NEW films this fold introduced (`Plan.newPromotions`):
+   *  upserted `movies` rows that no pre-existing row merged into, so the caller
+   *  can schedule their first-time rating enrichment. Empty when nothing folded
+   *  or every row merged into an existing movie. */
+  def foldGroup(cleanTitle: String): Seq[(CacheKey, MovieRecord)]
 }
 
 /**
@@ -33,16 +39,18 @@ trait StagingFolder {
 class InMemoryStagingFolder(stagingRepository: StagingRepository, movieRepository: MovieRepository) extends StagingFolder with Logging {
   private val lock = new AnyRef
 
-  def foldGroup(cleanTitle: String): Unit = lock.synchronized {
+  def foldGroup(cleanTitle: String): Seq[(CacheKey, MovieRecord)] = lock.synchronized {
     val key         = TitleNormalizer.sanitize(cleanTitle)
     val stagingRows = stagingRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key)
-    if (stagingRows.nonEmpty) {
+    if (stagingRows.isEmpty) Seq.empty
+    else {
       val moviesRows = movieRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key)
       val plan       = StagingFold.planGroup(stagingRows, moviesRows)
       plan.moviesUpserts.foreach { case (k, record) => movieRepository.upsert(k.cleanTitle, k.year, record) }
       plan.moviesDeletes.foreach(k => movieRepository.delete(k.cleanTitle, k.year))
       plan.stagingDeletes.foreach(r => stagingRepository.delete(r.cinema, r.title, r.year))
       logger.info(s"Folded group '$cleanTitle': ${stagingRows.size} staging row(s) → ${plan.moviesUpserts.size} movies row(s).")
+      plan.newPromotions
     }
   }
 }

@@ -334,8 +334,9 @@ class MovieService(
    *    - `Some(existing.copy(tmdbNoMatch = true))` on a DEFINITIVE MISS;
    *      (both conclude the row → ready to fold into `movies`)
    *    - `None` on a TRANSIENT failure — leave the row for the promoter to retry.
-   *  Publishes no events: rating enrichment runs on the merged `movies` row after
-   *  the fold, not on the per-cinema staging rows. */
+   *  Publishes no events: rating enrichment is scheduled on the merged `movies`
+   *  row at fold time (`scheduleRatingsForNewMovie`, driven by the folder's
+   *  `newPromotions`), not on the per-cinema staging rows. */
   def resolveStagingRecord(cleanTitle: String, year: Option[Int], existing: MovieRecord): Option[MovieRecord] = {
     val (origHint, directoryHint) = tmdbHints(existing)
     val label = s"'$cleanTitle' (${year.getOrElse("?")})"
@@ -352,6 +353,16 @@ class MovieService(
         None
     }
   }
+
+  /** Schedule first-time rating enrichment for a brand-new movie just promoted
+   *  out of staging (`StagingFolder.foldGroup`'s `newPromotions`). Re-publishes
+   *  the SAME resolution event the direct scrape path fires on a TMDB hit, so the
+   *  existing `RatingEnqueuer` queues IMDb/Filmweb/RT/Metacritic — no new code
+   *  path. Only resolved promotions (a TMDB id) qualify, mirroring the direct
+   *  path: a `tmdbNoMatch` promotion has nothing to query ratings against, so it
+   *  publishes nothing and waits for the periodic backstop like before. */
+  def scheduleRatingsForNewMovie(key: CacheKey, record: MovieRecord): Unit =
+    if (record.tmdbId.isDefined) publishTmdbOutcome(key, record)
 
   // Publish the post-resolution event so the rating refreshers re-run for the
   // row off the existing event chain.

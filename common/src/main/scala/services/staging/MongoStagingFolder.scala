@@ -5,9 +5,10 @@ import com.mongodb.client.model.ReplaceOptions
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{ClientSession, MongoCollection, ObservableFuture, SingleObservableFuture}
 import org.reactivestreams.{Publisher, Subscriber, Subscription}
+import models.MovieRecord
 import play.api.Logging
 import services.MongoConnection
-import services.movies.{MovieCodecs, StoredMovieDto, StoredMovieRecord, TitleNormalizer}
+import services.movies.{CacheKey, MovieCodecs, StoredMovieDto, StoredMovieRecord, TitleNormalizer}
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -43,12 +44,12 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
   private val moviesColl  = collection("movies")
   private val stagingColl = collection("pending_movies")
 
-  def foldGroup(cleanTitle: String): Unit =
+  def foldGroup(cleanTitle: String): Seq[(CacheKey, MovieRecord)] =
     (connection.startSession(), moviesColl, stagingColl) match {
       case (Some(session), Some(movies), Some(staging)) =>
         try foldWithRetry(session, movies, staging, cleanTitle)
         finally session.close()
-      case _ => () // Mongo disabled — nothing to fold
+      case _ => Seq.empty // Mongo disabled — nothing to fold
     }
 
   private def foldWithRetry(
@@ -56,16 +57,16 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
     movies:  MongoCollection[StoredMovieDto],
     staging: MongoCollection[StoredMovieDto],
     cleanTitle: String
-  ): Unit = {
+  ): Seq[(CacheKey, MovieRecord)] = {
     val sanitize = TitleNormalizer.sanitize(cleanTitle)
     var attempt  = 0
-    var settled  = false
-    while (!settled) {
+    var result   = Option.empty[Seq[(CacheKey, MovieRecord)]]
+    while (result.isEmpty) {
       attempt += 1
       session.startTransaction()
       Try(foldOnce(session, movies, staging, sanitize)) match {
-        case Success(_) =>
-          await(publisherToFuture(session.commitTransaction())); settled = true
+        case Success(newPromotions) =>
+          await(publisherToFuture(session.commitTransaction())); result = Some(newPromotions)
         case Failure(e: MongoException)
           if e.hasErrorLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL) && attempt < maxRetries =>
           Try(await(publisherToFuture(session.abortTransaction())))
@@ -73,9 +74,10 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
         case Failure(e) =>
           Try(await(publisherToFuture(session.abortTransaction())))
           logger.warn(s"Staging fold '$cleanTitle' aborted: ${e.getMessage}")
-          settled = true
+          result = Some(Seq.empty)
       }
     }
+    result.getOrElse(Seq.empty)
   }
 
   /** One transaction body: read the WHOLE `sanitize(title)` GROUP's staging +
@@ -88,12 +90,13 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
     movies:   MongoCollection[StoredMovieDto],
     staging:  MongoCollection[StoredMovieDto],
     sanitize: String
-  ): Unit = {
+  ): Seq[(CacheKey, MovieRecord)] = {
     // Staging `_id` = cinema|sanitize|year — match the middle sanitize segment,
     // any cinema, any year.
     val stagingRows = await(staging.find(session, Filters.regex("_id", s"^[^|]+\\|$sanitize\\|")).toFuture())
       .flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record))
-    if (stagingRows.nonEmpty) {
+    if (stagingRows.isEmpty) Seq.empty
+    else {
       // Movies `_id` = sanitize|year — match the sanitize group, any year.
       val moviesRows = await(movies.find(session, Filters.regex("_id", s"^$sanitize\\|")).toFuture())
         .map(StoredMovieDto.toDomain)
@@ -108,6 +111,7 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
       plan.stagingDeletes.foreach(r =>
         await(staging.deleteOne(session, Filters.eq("_id", StagingRecord.idFor(r.cinema, r.title, r.year))).toFuture()))
       logger.info(s"Folded staging group '$sanitize': ${stagingRows.size} row(s) → ${plan.moviesUpserts.size} movies row(s).")
+      plan.newPromotions
     }
   }
 
