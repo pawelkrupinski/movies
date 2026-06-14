@@ -2689,13 +2689,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   }
 
   // A film reported by several cinemas folds into ONE row whose "Cinemas" cell is
-  // the count; the hidden source tbody keeps every per-cinema row. The fixture's
-  // "Staging Film" is reported by two cinemas, "Done Newcomer" by one.
-  it should "fold a film's cinema rows into one row showing the cinema count" in {
+  // the count; a single-cinema film shows that cinema's name instead. The hidden
+  // source tbody keeps every per-cinema row. The fixture's "Staging Film" is
+  // reported by two cinemas, "Done Newcomer" by one (Cinema City Wroclavia).
+  it should "fold cinema rows into one row — count for many, the name for one" in {
     onDebug { page =>
       page.waitFor("""document.querySelectorAll('#staging-folded tr.data').length === 2""") // 2 films
       page.evalString(foldedRow("stagingfilm")  + """.querySelector('td.cinemas').textContent""") shouldBe "2"
-      page.evalString(foldedRow("donenewcomer") + """.querySelector('td.cinemas').textContent""") shouldBe "1"
+      page.evalString(foldedRow("donenewcomer") + """.querySelector('td.cinemas').textContent""") shouldBe CinemaCityWroclavia.displayName
       // All three per-cinema source rows are still present (hidden).
       page.evalInt("""document.querySelectorAll('#staging-src tr.data').length""") shouldBe 3
     }
@@ -2710,6 +2711,17 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.waitFor(s"""(function(){var r=${foldedRow("donenewcomer")};return r && r.querySelector('.stage-detail .stage-done');})()""")
       page.evalBool(s"""!!${cell(".stage-detail .stage-done")} && !!${cell(".stage-tmdb .stage-done")}""") shouldBe true
       page.evalBool(s"""!${cell(".stage-imdb .stage-done")}""") shouldBe true
+    }
+  }
+
+  // Only the tick columns are centred (header + cells); the rest stay left.
+  it should "centre the tick columns and leave the others left-aligned" in {
+    onDebug { page =>
+      page.waitFor(s"""(function(){var r=${foldedRow("donenewcomer")};return r && r.querySelector('td.stage-detail');})()""")
+      def align(sel: String) = s"""getComputedStyle(document.querySelector('$sel')).textAlign"""
+      page.evalString(align("#staging-t th.tick")) shouldBe "center"          // Detail header
+      page.evalString(align("""#staging-folded tr.data[data-anchor="donenewcomer"] td.stage-detail""")) shouldBe "center"
+      page.evalString(align("""#staging-folded tr.data[data-anchor="donenewcomer"] td.title""")) should not be "center"
     }
   }
 
@@ -2729,19 +2741,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       def films = page.evalInt("""document.querySelectorAll('#staging-folded tr.data').length""")
       def liveCinemas = page.evalString(foldedRow("liveone") + """.querySelector('td.cinemas').textContent""")
 
-      // A newcomer film arrives (one cinema) → 3 films, count "3", its cell shows 1.
+      // A newcomer film arrives (one cinema) → 3 films, count "3", its cell shows the name.
       upsert("A|liveone|2031", "Cinema A")
       films shouldBe 3
       page.evalString("""document.getElementById('staging-count').textContent""") shouldBe "3"
-      liveCinemas shouldBe "1"
-      // A SECOND cinema reports the same film → still 3 films, but its count is 2.
+      liveCinemas shouldBe "Cinema A"
+      // A SECOND cinema reports the same film → still 3 films, but its cell shows the count.
       upsert("B|liveone|2031", "Cinema B")
       films shouldBe 3
       liveCinemas shouldBe "2"
-      // That cinema drops out → back to 1; the film survives.
+      // That cinema drops out → back to one, so the name returns; the film survives.
       page.eval("""applySse(JSON.stringify({type:'staging-delete', id:'B|liveone|2031'})); flushSse();""")
       films shouldBe 3
-      liveCinemas shouldBe "1"
+      liveCinemas shouldBe "Cinema A"
       // The last cinema graduates → the film vanishes, count back to 2.
       page.eval("""applySse(JSON.stringify({type:'staging-delete', id:'A|liveone|2031'})); flushSse();""")
       films shouldBe 2

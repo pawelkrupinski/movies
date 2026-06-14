@@ -36,9 +36,9 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
     val html = views.html.debug(Seq.empty, Map.empty[String, String]).body
     html should include ("Pending enrichment (staging)")
     html should include ("<th>Cinemas</th>")
-    html should include ("<th>Detail</th>")
-    html should include ("<th>TMDB</th>")
-    html should include ("<th>IMDb</th>")
+    html should include ("""<th class="tick">Detail</th>""")
+    html should include ("""<th class="tick">TMDB</th>""")
+    html should include ("""<th class="tick">IMDb</th>""")
     html should include ("<th>Queue #</th>")
     // The hidden source tbody + the visible folded tbody both render…
     html should include ("""id="staging-src"""")

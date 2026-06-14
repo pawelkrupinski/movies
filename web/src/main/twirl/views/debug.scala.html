@@ -116,8 +116,9 @@
        `#staging-folded` the one-row-per-film projection the JS builds. */
     #staging-src { display: none; }
     #staging-t .stage-done { background: #1f6b2e; color: #eafff0; border-radius: 3px; padding: 0 .35rem; font-weight: bold; }
-    #staging-t td.stage-detail, #staging-t td.stage-tmdb, #staging-t td.stage-imdb { text-align: center; }
-    #staging-t td.cinemas { text-align: right; font-variant-numeric: tabular-nums; }
+    /* Centre only the tick (stage) columns — header + cells — so the ✓ sits under
+       a centred heading. The other columns keep their default left alignment. */
+    #staging-t th.tick, #staging-t td.stage-detail, #staging-t td.stage-tmdb, #staging-t td.stage-imdb { text-align: center; }
     #staging-t .badge { font-size: 10px; border-radius: 3px; padding: 0 .3rem; font-variant-numeric: tabular-nums; }
     .badge.q-none { color: #555; }
     .badge.q-wait { color: #aad4ff; background: #16263a; border: 1px solid #244a6e; }
@@ -140,7 +141,7 @@
 <div class="summary">Newcomer films incubating in <code>pending_movies</code> — folded across cinemas (Cinemas = how many report the film). Each walks Detail → TMDB → IMDb → fold; a ✓ marks a concluded stage (Detail only once all cinemas are done), the last column its place in the durable task queue. Showing the first @MovieController.StagingRowLimit films, re-sorted live by queue place (most imminent first).</div>
 <table id="staging-t">
   <thead>
-    <tr><th>Cinemas</th><th>Title</th><th>Year</th><th>Detail</th><th>TMDB</th><th>IMDb</th><th>Queue #</th></tr>
+    <tr><th>Cinemas</th><th>Title</th><th>Year</th><th class="tick">Detail</th><th class="tick">TMDB</th><th class="tick">IMDb</th><th>Queue #</th></tr>
   </thead>
   <tbody id="staging-src">
   @for(r <- staging) {
@@ -348,12 +349,13 @@
     if (cnt) cnt.textContent = groups.size; // the film total (folded), not the cinema total
   }
 
-  // Build one folded film row. Cinemas cell = the count (names in its tooltip).
+  // Build one folded film row. Cinemas cell shows the single cinema's name when
+  // only one reports the film, else the count (full list in its tooltip).
   function renderFoldedRow(g, badge) {
     const tr = document.createElement('tr');
     tr.className = 'data';
     tr.dataset.anchor = g.anchor;
-    const cinemas = td('cinemas', String(g.cinemas.length));
+    const cinemas = td('cinemas', g.cinemas.length === 1 ? g.cinemas[0] : String(g.cinemas.length));
     cinemas.title = g.cinemas.join(', ');
     tr.appendChild(cinemas);
     tr.appendChild(td('title', g.title));
@@ -413,7 +415,7 @@
   // unresponsive" kill dialog). So we COALESCE frames by id into a buffer and
   // apply the batch on a 1s timer: per-frame cost is O(1) (a Map write, last write
   // wins), and the O(corpus) re-filter / re-fold run once per flush, not per frame.
-  const SSE_FLUSH_MS = 1000;
+  const SSE_FLUSH_MS = 500;
   const moviePending  = new Map(); // id -> html (upsert) | null (delete)
   const stagingPending = new Map();
   let sseFlushTimer = null;
