@@ -41,13 +41,13 @@ class MovieService(
   // so enrichment shares one concurrency cap with the scrape + rating
   // refreshers and can't peg the box on the hourly walk. See
   // `SharedExecutionBudget`.
-  ec:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("enrichment-worker"),
+  executionContext:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("enrichment-worker"),
   // How a needed single-movie TMDB resolution is DISPATCHED. Production injects
   // an enqueue of a `ResolveTmdb` task: the worker pool drains it, the task
   // queue retries (`Reschedule`) + dedups it, and `/debug` shows its queue
   // place — single-movie resolution is a first-class worker task, not a hidden
   // side-effect of the bus event. Left `None`, the stage resolves INLINE on the
-  // `ec` pool (unit specs, scripts, Mongo-less dev). Either way the resolution
+  // `executionContext` pool (unit specs, scripts, Mongo-less dev). Either way the resolution
   // WORK is the shared `resolveTmdbOnce`; only this dispatch seam differs.
   enqueueResolveTmdb: Option[(String, Option[Int], Option[String], Option[String]) => Unit] = None
 ) extends Stoppable with Logging {
@@ -125,7 +125,7 @@ class MovieService(
    *  to THIS method, so test and prod settle through one code path. */
   def settle(): Unit = cache.canonicalizeBySanitize()
 
-  /** Drain the INLINE enrichment pool (`ec`) so any in-flight inline TMDB
+  /** Drain the INLINE enrichment pool (`executionContext`) so any in-flight inline TMDB
    *  resolution finishes — its upserts hit Mongo and its TmdbResolved /
    *  ImdbIdMissing events fire (downstream listeners dispatch synchronously on
    *  this thread) — before `MovieRepository` closes its client. The caller
@@ -138,10 +138,10 @@ class MovieService(
    *  to drain rather than a fixed window — a fixed cap returned before lookups
    *  against real upstreams finished. */
   def stop(): Unit = {
-    ec.shutdown()
+    executionContext.shutdown()
     tmdbRetryScheduler.shutdown()
     settleScheduler.shutdown()
-    while (!ec.isTerminated) ec.awaitTermination(1, TimeUnit.HOURS)
+    while (!executionContext.isTerminated) executionContext.awaitTermination(1, TimeUnit.HOURS)
   }
 
   // ── Event listeners ───────────────────────────────────────────────────────
@@ -259,7 +259,7 @@ class MovieService(
 
   /** Dispatch a needed single-movie TMDB resolution. Production enqueues a
    *  `ResolveTmdb` task (worker-pool drained, retried, deduped, shown on
-   *  `/debug`); the inline default runs it on the `ec` pool, deduped by the
+   *  `/debug`); the inline default runs it on the `executionContext` pool, deduped by the
    *  in-memory `pending` set (the task queue's job in production). */
   private def dispatchResolve(
     title:         String,
@@ -272,7 +272,7 @@ class MovieService(
       val key = cache.keyOf(title, year)
       if (pending.add(key)) {
         Future(try { resolveTmdbOnce(title, year, originalTitle, director, force = false); () }
-               finally pending.remove(key))(using ec)
+               finally pending.remove(key))(using executionContext)
         ()
       }
   }
@@ -288,7 +288,7 @@ class MovieService(
   /** Resolve ONE film's TMDB id, synchronously on the calling thread, and bring
    *  the row to a definitive TMDB state. This is the shared work both dispatch
    *  seams run — the worker's `ResolveTmdb` task handler in production, the
-   *  inline `ec` pool otherwise.
+   *  inline `executionContext` pool otherwise.
    *
    *    - HIT: `runTmdbStageSync` writes the TMDB-side fields, then we publish
    *      `TmdbResolved` (TMDB had an IMDb id → drives the IMDb rating + RT

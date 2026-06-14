@@ -26,7 +26,7 @@ class GzipFilterSpec extends AnyFlatSpec with Matchers {
 
   private implicit val sys: ActorSystem     = ActorSystem("gzip-filter-spec")
   private implicit val mat: Materializer    = Materializer(sys)
-  private implicit val ec: ExecutionContext = sys.dispatcher
+  private implicit val executionContext: ExecutionContext = sys.dispatcher
 
   private val gzip = new GzipFilter(GzipFilterConfig())
 

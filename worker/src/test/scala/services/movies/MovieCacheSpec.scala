@@ -965,18 +965,18 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     for (_ <- 1 to iterations) {
       val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
       val latch = new java.util.concurrent.CountDownLatch(1)
-      val ec    = tools.DaemonExecutors.virtualThreadEC("movie-cache-race")
+      val executionContext    = tools.DaemonExecutors.virtualThreadEC("movie-cache-race")
       val t1 = scala.concurrent.Future {
         latch.await()
         cache.recordCinemaScrape(Multikino, Seq(cinemaMovie(title, Multikino, None)))
-      }(using ec)
+      }(using executionContext)
       val t2 = scala.concurrent.Future {
         latch.await()
         cache.recordCinemaScrape(Helios, Seq(cinemaMovie(title, Helios, Some(2026))))
-      }(using ec)
+      }(using executionContext)
       latch.countDown()
-      scala.concurrent.Await.ready(scala.concurrent.Future.sequence(Seq(t1, t2))(using implicitly, ec), scala.concurrent.duration.Duration.Inf)
-      ec.shutdown()
+      scala.concurrent.Await.ready(scala.concurrent.Future.sequence(Seq(t1, t2))(using implicitly, executionContext), scala.concurrent.duration.Duration.Inf)
+      executionContext.shutdown()
 
       withClue(s"snapshot after iteration: ${cache.snapshot().map(r => s"(${r.title}, ${r.year})").mkString(", ")} ") {
         cache.snapshot().size shouldBe 1
@@ -1015,7 +1015,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       )
 
       val latch = new java.util.concurrent.CountDownLatch(1)
-      val ec    = tools.DaemonExecutors.virtualThreadEC("rekey-race")
+      val executionContext    = tools.DaemonExecutors.virtualThreadEC("rekey-race")
 
       // Thread A: the TMDB stage's re-key, mirroring `runTmdbStageSync`'s
       // canonical-key resolution — it addresses the row by its LIVE canonical
@@ -1028,7 +1028,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
           val live = cache.canonicalKeyFor(keyNone).getOrElse(keyNone)
           cache.rekey(live, key2000, _ => resolved)
         }
-      }(using ec)
+      }(using executionContext)
       // Thread B: a concurrent cinema scrape with year=2026. Contends for
       // the same lock — must either see the old (None) row (before the
       // re-key) and redirect onto it, or see the new (Some(2000)) row
@@ -1038,14 +1038,14 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
         cache.recordCinemaScrape(CinemaCityPoznanPlaza, Seq(
           cinemaMovie(title, CinemaCityPoznanPlaza, year = Some(2026))
         ))
-      }(using ec)
+      }(using executionContext)
 
       latch.countDown()
       scala.concurrent.Await.ready(
-        scala.concurrent.Future.sequence(Seq(tmdbStage, ccScrape))(using implicitly, ec),
+        scala.concurrent.Future.sequence(Seq(tmdbStage, ccScrape))(using implicitly, executionContext),
         scala.concurrent.duration.Duration.Inf
       )
-      ec.shutdown()
+      executionContext.shutdown()
 
       withClue(s"snapshot after iteration: ${cache.snapshot().map(r => s"(${r.title}, ${r.year}, tmdb=${r.record.tmdbId.getOrElse("—")})").mkString(", ")} ") {
         cache.snapshot().size shouldBe 1
@@ -1081,7 +1081,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       cache.recordCinemaScrape(Multikino, Seq(cinemaMovie(title, Multikino, None)))
 
       val latch = new java.util.concurrent.CountDownLatch(1)
-      val ec    = tools.DaemonExecutors.virtualThreadEC("prune-rekey-race")
+      val executionContext    = tools.DaemonExecutors.virtualThreadEC("prune-rekey-race")
 
       // Thread A: CC Plaza scrape. Lands on (None) via redirect, then
       // enters the prune loop. The buggy path: between the per-movie
@@ -1093,7 +1093,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
         cache.recordCinemaScrape(CinemaCityPoznanPlaza, Seq(
           cinemaMovie(title, CinemaCityPoznanPlaza, year = None)
         ))
-      }(using ec)
+      }(using executionContext)
       // Thread B: rekey (None) → (Some(2026)). The updater reads the
       // row's CURRENT state under the title lock — mirrors
       // `MovieService.runTmdbStageSync`'s carry-forward shape — so CC
@@ -1103,14 +1103,14 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
         cache.rekey(cache.keyOf(title, None), cache.keyOf(title, Some(2026)),
           current => current.copy(tmdbId = Some(454639))
         )
-      }(using ec)
+      }(using executionContext)
 
       latch.countDown()
       scala.concurrent.Await.ready(
-        scala.concurrent.Future.sequence(Seq(ccScrape, rekey))(using implicitly, ec),
+        scala.concurrent.Future.sequence(Seq(ccScrape, rekey))(using implicitly, executionContext),
         scala.concurrent.duration.Duration.Inf
       )
-      ec.shutdown()
+      executionContext.shutdown()
 
       // The CC Plaza slot must end up somewhere in the cache —
       // whichever key the row eventually settles on after the rekey

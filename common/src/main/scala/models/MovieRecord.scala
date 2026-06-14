@@ -147,7 +147,7 @@ case class MovieRecord(
     val perCinema = cinemaData.values.flatMap(_.title).toSeq
     val votePool  = if (perCinema.nonEmpty) perCinema else Seq(cleanTitle)
     val dominantKey =
-      votePool.groupBy(sanitize).toSeq.sortBy { case (k, ts) => (-ts.size, k) }.head._1
+      votePool.groupBy(sanitize).toSeq.sortBy { case (k, timestamp) => (-timestamp.size, k) }.head._1
     data.get(Tmdb).flatMap(_.title)
       .filter(t => sanitize(t) == dominantKey && wellFormedTitle(t))
       .getOrElse {

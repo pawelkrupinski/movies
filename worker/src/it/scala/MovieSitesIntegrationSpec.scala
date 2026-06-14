@@ -11,7 +11,7 @@ import tools.RealHttpFetch
  * Rotten Tomatoes change their slug conventions / start blocking our UA /
  * route the canonical path through Cloudflare instead of returning 404.
  *
- * No keys / no auth — both sites answer plain GETs. Tests are independent
+ * No keys / no auth — both sites answer plain GETimestamp. Tests are independent
  * (each builds its own client + probe) so `ParallelTestExecution` runs the
  * 12 network probes concurrently.
  *

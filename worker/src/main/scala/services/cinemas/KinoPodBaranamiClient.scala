@@ -97,11 +97,11 @@ object KinoPodBaranamiClient {
     val slots = collection.mutable.ArrayBuffer.empty[RawSlot]
     var currentDate: Option[LocalDate] = None
 
-    document.select("p.rep_date, ul.program_list").asScala.foreach { el =>
-      el.tagName match {
-        case "p" if el.hasClass("rep_date") =>
+    document.select("p.rep_date, ul.program_list").asScala.foreach { element =>
+      element.tagName match {
+        case "p" if element.hasClass("rep_date") =>
           // "Niedziela 7 czerwca // Sunday, June 7"
-          val text = el.text.trim
+          val text = element.text.trim
           currentDate = DayMonthPat.findFirstMatchIn(text).flatMap { m =>
             val day   = m.group(1).toInt
             val month = ScraperParse.PolishMonths.get(m.group(2).toLowerCase)
@@ -111,9 +111,9 @@ object KinoPodBaranamiClient {
             }
           }
 
-        case "ul" if el.hasClass("program_list") =>
+        case "ul" if element.hasClass("program_list") =>
           currentDate.foreach { date =>
-            el.select("li").asScala.foreach { li =>
+            element.select("li").asScala.foreach { li =>
               val titleAnchor = Option(li.selectFirst("a[href^=\"film.php\"]"))
               val title       = titleAnchor.map(_.text.trim).filter(_.nonEmpty).getOrElse("")
               val filmUrl     = titleAnchor.map(a => s"$BaseUrl/${a.attr("href").trim}").filter(_.nonEmpty)

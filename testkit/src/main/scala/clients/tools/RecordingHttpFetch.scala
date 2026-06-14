@@ -13,7 +13,7 @@ import java.nio.file.Files
  *  `FakeHttpFetch`.
  *
  *  POST is supported (not just GET) so the IMDb GraphQL endpoint —
- *  `ImdbClient.lookup` POSTs to caching.graphql.imdb.com — gets
+ *  `ImdbClient.lookup` POSTimestamp to caching.graphql.imdb.com — gets
  *  recorded too. POST bodies don't fit naturally into the URL-keyed
  *  fixture tree, so we key the POST file by the URL plus a body hash;
  *  in practice the GraphQL endpoint's POST body uniquely identifies

@@ -178,8 +178,8 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     var notified = List.empty[String]
     monitor.addListener((s, _) => notified = s :: notified)
 
-    val ts = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
-    monitor.applyExternalUpdate("TMDB", ts,
+    val timestamp = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    monitor.applyExternalUpdate("TMDB", timestamp,
       successes = 7, failures = 2, zeroes = 1, durationSumMs = 1400L, durationCount = 7, errors = Seq("HTTP 503"))
 
     val h = monitor.history("TMDB")
@@ -198,9 +198,9 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // re-delivery (driver resume) or the web app's own echoed writes double-count.
   it should "replace (not add to) the bucket's counts when applied repeatedly" in {
     val monitor = new UptimeMonitor()
-    val ts = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
-    monitor.applyExternalUpdate("IMDb", ts, successes = 3, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
-    monitor.applyExternalUpdate("IMDb", ts, successes = 5, failures = 1, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq("boom"))
+    val timestamp = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    monitor.applyExternalUpdate("IMDb", timestamp, successes = 3, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    monitor.applyExternalUpdate("IMDb", timestamp, successes = 5, failures = 1, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq("boom"))
 
     monitor.history("IMDb").head.successes shouldBe 5
     monitor.history("IMDb").head.failures shouldBe 1
@@ -215,18 +215,18 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     val monitor = new UptimeMonitor()
     var notifications = 0
     monitor.addListener((_, _) => notifications += 1)
-    val ts = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val timestamp = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
 
-    monitor.applyExternalUpdate("RT", ts, successes = 4, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    monitor.applyExternalUpdate("RT", timestamp, successes = 4, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
     notifications shouldBe 1
     // Same snapshot again (next poll, no new worker activity) → no listener fire.
-    monitor.applyExternalUpdate("RT", ts, successes = 4, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    monitor.applyExternalUpdate("RT", timestamp, successes = 4, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
     notifications shouldBe 1
     // A real change (worker recorded more) → fires.
-    monitor.applyExternalUpdate("RT", ts, successes = 5, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    monitor.applyExternalUpdate("RT", timestamp, successes = 5, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
     notifications shouldBe 2
     // A change confined to the zeroes dimension also counts as a change → fires.
-    monitor.applyExternalUpdate("RT", ts, successes = 5, failures = 0, zeroes = 1, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    monitor.applyExternalUpdate("RT", timestamp, successes = 5, failures = 0, zeroes = 1, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
     notifications shouldBe 3
   }
 
@@ -366,16 +366,16 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     val monitor = new UptimeMonitor()
     var notifications = 0
     monitor.addListener((_, _) => notifications += 1)
-    val ts = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val timestamp = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
 
-    monitor.applyExternalUpdate("Kino Praha", ts,
+    monitor.applyExternalUpdate("Kino Praha", timestamp,
       successes = 2, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty, fallback = true)
     monitor.history("Kino Praha").head.fallback shouldBe true
     notifications shouldBe 1
 
     // Same counts, fallback flipped off (primary recovered) — the flag change
     // alone must register as a change and fire.
-    monitor.applyExternalUpdate("Kino Praha", ts,
+    monitor.applyExternalUpdate("Kino Praha", timestamp,
       successes = 2, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty, fallback = false)
     monitor.history("Kino Praha").head.fallback shouldBe false
     notifications shouldBe 2

@@ -92,7 +92,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     // hint the prior attempt never had. With the bug this is dropped on the
     // isNegative early-return; with the fix `directorWalk` resolves it.
     bus.publish(MovieDetailsComplete(Title, Year, originalTitle = None, director = Some(Director)))
-    service.stop()  // drains the inline ec pool — sync wait for resolveTmdbOnce to land
+    service.stop()  // drains the inline executionContext pool — sync wait for resolveTmdbOnce to land
 
     val row = cache.get(key)
     row.flatMap(_.tmdbId) shouldBe Some(TmdbId)

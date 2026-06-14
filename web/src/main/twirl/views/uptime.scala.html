@@ -282,7 +282,7 @@
     </div>
     <div class="bars">
       @for(b <- s.bars) {
-        <div class="bar @b.status@if(b.fallback){ fallback}" data-ts="@b.bucketTs" data-info="@{Json.toJson(b)(BarData.writes).toString}"></div>
+        <div class="bar @b.status@if(b.fallback){ fallback}" data-ts="@b.bucketTimestamp" data-info="@{Json.toJson(b)(BarData.writes).toString}"></div>
       }
     </div>
     <div class="latency" title="avg successful call latency — last 1h / all retained">
@@ -306,7 +306,7 @@
     <div class="name" title="@s.name">↳ enrichment</div>
     <div class="bars">
       @for(b <- s.bars) {
-        <div class="bar @b.status@if(b.fallback){ fallback}" data-ts="@b.bucketTs" data-info="@{Json.toJson(b)(BarData.writes).toString}"></div>
+        <div class="bar @b.status@if(b.fallback){ fallback}" data-ts="@b.bucketTimestamp" data-info="@{Json.toJson(b)(BarData.writes).toString}"></div>
       }
     </div>
     <div class="latency" title="avg successful detail-fetch latency — last 1h / all retained">

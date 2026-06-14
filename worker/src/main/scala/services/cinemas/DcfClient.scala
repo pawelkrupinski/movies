@@ -48,11 +48,11 @@ class DcfClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
     // A film can repeat under several date sections; each repeat is its own
     // `.film__item` block. Group by the numeric film id so all its slots merge.
     case class Block(filmId: String, title: String, poster: Option[String], slots: Seq[RawSlot])
-    val blocks = document.select("div.film__item").asScala.toSeq.flatMap { el =>
-      val filmId = el.classNames().asScala.collectFirst { case FilmIdPat(id) => id }
-      val title  = Option(el.selectFirst("h3.film__title")).map(_.text.trim).filter(_.nonEmpty)
+    val blocks = document.select("div.film__item").asScala.toSeq.flatMap { element =>
+      val filmId = element.classNames().asScala.collectFirst { case FilmIdPat(id) => id }
+      val title  = Option(element.selectFirst("h3.film__title")).map(_.text.trim).filter(_.nonEmpty)
       for { id <- filmId; t <- title } yield
-        Block(id, t, posterOf(el), slotsOf(el))
+        Block(id, t, posterOf(element), slotsOf(element))
     }
 
     // The same film recurs under several film ids when it plays in more than

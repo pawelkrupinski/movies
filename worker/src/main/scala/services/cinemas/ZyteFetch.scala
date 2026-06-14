@@ -3,7 +3,7 @@ package services.cinemas
 import tools.GetOnlyHttpFetch
 
 /**
- * Thin `HttpFetch` shim that routes GETs through `ZyteClient` so the caller
+ * Thin `HttpFetch` shim that routes GETimestamp through `ZyteClient` so the caller
  * never has to know which proxy sits behind the `HttpFetch` it was given.
  *
  * `cookieSource` picks the fetch shape:

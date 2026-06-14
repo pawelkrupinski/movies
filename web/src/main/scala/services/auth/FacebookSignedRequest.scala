@@ -23,7 +23,7 @@ object FacebookSignedRequest {
 
   /**
    * Parse and cryptographically verify a Facebook `signed_request` —
-   * the `<base64url-signature>.<base64url-payload>` blob Facebook POSTs
+   * the `<base64url-signature>.<base64url-payload>` blob Facebook POSTimestamp
    * to the data-deletion and deauthorize callbacks. The payload is
    * returned only when an HMAC-SHA256 over the raw payload segment,
    * keyed by `appSecret`, matches the provided signature; otherwise

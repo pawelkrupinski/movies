@@ -70,7 +70,7 @@ class AuthController(
           .withSession(request.session
             + ("oauthState"     -> state)
             + ("oauthProvider"  -> provider)
-            + ("oauthStateTs"   -> clock.instant().toEpochMilli.toString)
+            + ("oauthStateTimestamp"   -> clock.instant().toEpochMilli.toString)
             ++ (if (isMobile) Seq("mobileClient" -> "1") else Seq.empty))
     }
   }
@@ -82,7 +82,7 @@ class AuthController(
       state         <- request.getQueryString("state").toRight("Missing state")
       expectedState <- request.session.get("oauthState").toRight("Missing session state — start over from /auth")
       sessionProv   <- request.session.get("oauthProvider").toRight("Missing session provider")
-      issuedMs      <- request.session.get("oauthStateTs").flatMap(_.toLongOption).toRight("Missing or unparseable oauthStateTs")
+      issuedMs      <- request.session.get("oauthStateTimestamp").flatMap(_.toLongOption).toRight("Missing or unparseable oauthStateTimestamp")
       _             <- Either.cond(state == expectedState, (), "OAuth state mismatch (possible CSRF)")
       _             <- Either.cond(sessionProv == provider, (), s"Provider mismatch: session=$sessionProv, callback=$provider")
       _             <- Either.cond(
@@ -107,7 +107,7 @@ class AuthController(
             InternalServerError("Couldn't complete sign-in. Please try again.")
           case Success(user) =>
             val nextSession = request.session
-              - "oauthState" - "oauthProvider" - "oauthStateTs" - "mobileClient"
+              - "oauthState" - "oauthProvider" - "oauthStateTimestamp" - "mobileClient"
               + ("userId" -> user.id)
             if (request.session.get("mobileClient").contains("1")) {
               val code = UUID.randomUUID().toString
@@ -185,7 +185,7 @@ class AuthController(
   }
 
   def logout(): Action[AnyContent] = Action { request =>
-    Redirect("/").withSession(request.session - "userId" - "oauthState" - "oauthProvider" - "oauthStateTs")
+    Redirect("/").withSession(request.session - "userId" - "oauthState" - "oauthProvider" - "oauthStateTimestamp")
   }
 
   private def upsertUser(provider: String, profile: OauthProfile): User = {

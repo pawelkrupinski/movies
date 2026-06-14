@@ -18,7 +18,7 @@ import scala.concurrent.duration._
  */
 class HeliosClientDetailDedupSpec extends AnyFlatSpec with Matchers {
 
-  /** Counts GETs that hit the per-film detail endpoint, delegating everything
+  /** Counts GETimestamp that hit the per-film detail endpoint, delegating everything
    *  else to the fixture fetch. */
   private class CountingFetch(delegate: HttpFetch) extends HttpFetch {
     val movieGets = new AtomicInteger(0)
@@ -44,7 +44,7 @@ class HeliosClientDetailDedupSpec extends AnyFlatSpec with Matchers {
     afterFirst should be > 0 // the first location actually fetched details
 
     locationB.fetch()
-    // The second location reused the shared cache — no new detail GETs.
+    // The second location reused the shared cache — no new detail GETimestamp.
     http.movieGets.get() shouldBe afterFirst
   }
 

@@ -84,27 +84,27 @@ object PionierClient {
       .map(_.children.asScala.toSeq)
       .getOrElse(Seq.empty)
 
-    nodes.flatMap { el =>
-      if (el.hasClass("naglowek")) {
-        carriedDate = headingDate(el)
+    nodes.flatMap { element =>
+      if (element.hasClass("naglowek")) {
+        carriedDate = headingDate(element)
         None
-      } else if (el.hasClass("event_box")) {
+      } else if (element.hasClass("event_box")) {
         for {
           date  <- carriedDate
-          title <- Option(el.selectFirst("h3 a span")).map(_.text.trim).filter(_.nonEmpty)
-          time  <- Option(el.selectFirst("h2")).flatMap(h => ScraperParse.parseHHmm(h.text))
+          title <- Option(element.selectFirst("h3 a span")).map(_.text.trim).filter(_.nonEmpty)
+          time  <- Option(element.selectFirst("h2")).flatMap(h => ScraperParse.parseHHmm(h.text))
         } yield {
-          val room    = Option(el.selectFirst("small.sala")).map(_.text.trim).filter(_.nonEmpty)
-          val booking = Option(el.selectFirst("a.bilet[href]")).map(_.attr("href"))
+          val room    = Option(element.selectFirst("small.sala")).map(_.text.trim).filter(_.nonEmpty)
+          val booking = Option(element.selectFirst("a.bilet[href]")).map(_.attr("href"))
             .filter(h => h.nonEmpty && h != "#")
-          val filmUrl = Option(el.selectFirst("h3 a[href]")).map(_.attr("href")).filter(_.nonEmpty)
+          val filmUrl = Option(element.selectFirst("h3 a[href]")).map(_.attr("href")).filter(_.nonEmpty)
           RawSlot(title, LocalDateTime.of(date, time), room, booking, filmUrl)
         }
       } else None
     }
   }
 
-  private def headingDate(el: Element): Option[LocalDate] =
-    DayIdPat.findFirstMatchIn(el.id)
+  private def headingDate(element: Element): Option[LocalDate] =
+    DayIdPat.findFirstMatchIn(element.id)
       .flatMap(m => Try(LocalDate.parse(m.group(1))).toOption)
 }

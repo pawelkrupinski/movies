@@ -68,7 +68,7 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
     val document = Jsoup.parse(html)
 
     val screenings = document.select("script[type=application/ld+json]").asScala
-      .flatMap(el => Try(Json.parse(el.data())).toOption)
+      .flatMap(element => Try(Json.parse(element.data())).toOption)
       .flatMap(parseScreeningEvent)
       .toSeq
 
@@ -80,7 +80,7 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
           hall.foreach { hallName =>
             row.select("button.btn-showtime").asScala.foreach { btn =>
               val time = Option(btn.selectFirst("span.time")).map(_.text().trim)
-              val date = Option(btn.selectFirst("span.price")).flatMap(el => normalizeDateKey(el.text()))
+              val date = Option(btn.selectFirst("span.price")).flatMap(element => normalizeDateKey(element.text()))
               for (t <- time; d <- date)
                 roomMap((title.toLowerCase, d, t)) = hallName
             }

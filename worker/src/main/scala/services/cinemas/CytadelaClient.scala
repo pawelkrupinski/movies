@@ -42,9 +42,9 @@ class CytadelaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
     val document = Jsoup.parse(html)
 
     var date: Option[LocalDate] = None
-    val slots = document.select("time.repertoire-list__title, div.repertoire-item").asScala.toSeq.flatMap { el =>
-      if (el.hasClass("repertoire-list__title")) { date = Try(LocalDate.parse(el.attr("datetime"))).toOption; Seq.empty }
-      else date.toSeq.flatMap(d => rowSlot(el, d))
+    val slots = document.select("time.repertoire-list__title, div.repertoire-item").asScala.toSeq.flatMap { element =>
+      if (element.hasClass("repertoire-list__title")) { date = Try(LocalDate.parse(element.attr("datetime"))).toOption; Seq.empty }
+      else date.toSeq.flatMap(d => rowSlot(element, d))
     }
 
     val bySlug = slots.groupBy(_.slug)

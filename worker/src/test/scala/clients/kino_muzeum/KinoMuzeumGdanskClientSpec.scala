@@ -15,7 +15,7 @@ import java.time.LocalDateTime
  * test/resources/fixtures/kino-muzeum/www.muzeum1939.pl/kino-muzeum/). The
  * listing renders one day at a time; the client walks the calendar's day links
  * and stitches the multi-day programme together, deriving each screening's year
- * from the day link's `ts` epoch.
+ * from the day link's `timestamp` epoch.
  */
 class KinoMuzeumGdanskClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
@@ -51,7 +51,7 @@ class KinoMuzeumGdanskClientSpec extends AnyFlatSpec with Matchers with OptionVa
 
   it should "derive the year from the day-link epoch, not the displayed DD.MM" in {
     // MIKEY I NICKY screens once, on 6 June 2026 — the listing date string is
-    // bare "06.06"; the 2026 comes from the day link's `ts`.
+    // bare "06.06"; the 2026 comes from the day link's `timestamp`.
     byTitle("MIKEY I NICKY").showtimes.map(_.dateTime) shouldBe
       Seq(LocalDateTime.of(2026, 6, 6, 15, 15))
   }

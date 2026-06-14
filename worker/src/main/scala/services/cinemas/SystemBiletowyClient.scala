@@ -49,8 +49,8 @@ object SystemBiletowyClient {
       // Only rows that are a real screening carry a repertoire/booking link.
       if (tr.selectFirst("a[href*=repertoire.html]") == null) None
       else for {
-        titleEl <- Option(tr.selectFirst("td.title a"))
-        title    = cleanTitle(titleEl.text) if title.nonEmpty
+        titleElement <- Option(tr.selectFirst("td.title a"))
+        title    = cleanTitle(titleElement.text) if title.nonEmpty
         dayText <- Option(tr.selectFirst("td.date span.day")).map(_.text)
         d       <- DatePat.findFirstMatchIn(dayText)
         month   <- ScraperParse.PolishMonths.get(d.group(2).toLowerCase)
@@ -60,7 +60,7 @@ object SystemBiletowyClient {
         title    = title,
         dateTime = dt,
         booking  = Option(tr.selectFirst("td.link a[href]")).map(_.attr("abs:href"))
-                     .filter(_.nonEmpty).orElse(Option(titleEl.attr("abs:href")).filter(_.nonEmpty))
+                     .filter(_.nonEmpty).orElse(Option(titleElement.attr("abs:href")).filter(_.nonEmpty))
       )
     }
 
@@ -70,8 +70,8 @@ object SystemBiletowyClient {
     // in `div.title a`.
     val altSlots = document.select("div.event-item:has(a[href*=repertoire.html])").asScala.toSeq.flatMap { item =>
       for {
-        titleEl <- Option(item.selectFirst("div.title a"))
-        title    = cleanTitle(titleEl.text) if title.nonEmpty
+        titleElement <- Option(item.selectFirst("div.title a"))
+        title    = cleanTitle(titleElement.text) if title.nonEmpty
         dateText <- Option(item.selectFirst("div.date")).map(_.text)
         d       <- DatePat.findFirstMatchIn(dateText)
         month   <- ScraperParse.PolishMonths.get(d.group(2).toLowerCase)
@@ -80,7 +80,7 @@ object SystemBiletowyClient {
       } yield RawSlot(
         title    = title,
         dateTime = dt,
-        booking  = Option(titleEl.attr("abs:href")).filter(_.nonEmpty)
+        booking  = Option(titleElement.attr("abs:href")).filter(_.nonEmpty)
       )
     }
 

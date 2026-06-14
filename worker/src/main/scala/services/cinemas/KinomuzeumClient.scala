@@ -40,9 +40,9 @@ class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.
     val document = Jsoup.parse(http.get(ListingUrl))
 
     var date: Option[LocalDate] = None
-    val slots = document.select("div.section_title_small, h3.h4").asScala.toSeq.flatMap { el =>
-      if (el.hasClass("section_title_small")) { date = KinomuzeumClient.parseDate(el.text, today); Seq.empty }
-      else date.toSeq.flatMap(d => cardSlot(el, d))
+    val slots = document.select("div.section_title_small, h3.h4").asScala.toSeq.flatMap { element =>
+      if (element.hasClass("section_title_small")) { date = KinomuzeumClient.parseDate(element.text, today); Seq.empty }
+      else date.toSeq.flatMap(d => cardSlot(element, d))
     }
 
     // A film can recur under several slugs (a plain screening + a "+ spotkanie"
@@ -90,9 +90,9 @@ class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.
       )
     }
 
-  private def cardSlot(titleEl: Element, date: LocalDate): Option[RawSlot] = {
-    val link  = Option(titleEl.selectFirst("a[href*=/wydarzenia/]"))
-    val card  = titleEl.parents().asScala.find(p => p.selectFirst("p.allcaps") != null)
+  private def cardSlot(titleElement: Element, date: LocalDate): Option[RawSlot] = {
+    val link  = Option(titleElement.selectFirst("a[href*=/wydarzenia/]"))
+    val card  = titleElement.parents().asScala.find(p => p.selectFirst("p.allcaps") != null)
     for {
       a    <- link
       slug <- SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1))

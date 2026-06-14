@@ -185,15 +185,15 @@ object FilmwebShowtimesClient extends play.api.Logging {
    *  Filmweb from stalling worker boot (the unresolved venues fall back). */
   def resolveAll(clients: Seq[FilmwebShowtimesClient], maxConcurrent: Int = 5): Map[String, String] = {
     if (clients.isEmpty) return Map.empty
-    val ec = DaemonExecutors.boundedEC("filmweb-source-urls", maxConcurrent)
+    val executionContext = DaemonExecutors.boundedEC("filmweb-source-urls", maxConcurrent)
     try {
-      val futures = clients.map(c => Future(c.cinema.displayName -> c.resolveSourceUrl())(using ec))
-      val pairs   = Try(Await.result(Future.sequence(futures)(using implicitly, ec), 60.seconds))
+      val futures = clients.map(c => Future(c.cinema.displayName -> c.resolveSourceUrl())(using executionContext))
+      val pairs   = Try(Await.result(Future.sequence(futures)(using implicitly, executionContext), 60.seconds))
         .getOrElse { logger.warn("filmweb source-url resolve timed out; using fallbacks"); Seq.empty }
       val resolved = pairs.collect { case (name, Some(url)) => name -> url }.toMap
       logger.debug(s"filmweb source URLs: resolved ${resolved.size}/${clients.size} canonical links")
       resolved
-    } finally ec.shutdown()
+    } finally executionContext.shutdown()
   }
   private val HourPat     = """^(\d{1,2})\.(\d{2})$""".r
   private val DateParameter   = """[?&]date=(\d{4}-\d{2}-\d{2})""".r

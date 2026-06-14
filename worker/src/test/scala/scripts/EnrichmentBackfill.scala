@@ -52,7 +52,7 @@ object EnrichmentBackfill {
     val Workers = 5
     println(s"${rows.size} rows in Mongo · re-enriching in parallel ($Workers workers)…\n")
 
-    implicit val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("enrichment-backfill", Workers)
+    implicit val executionContext: ExecutionContextExecutorService = DaemonExecutors.boundedEC("enrichment-backfill", Workers)
     val done           = new AtomicInteger(0)
     val refreshedShown = new AtomicInteger(0)
     val total          = rows.size
@@ -110,7 +110,7 @@ object EnrichmentBackfill {
     }
 
     val outcomes = Await.result(Future.sequence(tasks), 30.minutes)
-    ec.shutdown()
+    executionContext.shutdown()
     service.stop()
     repository.close()
 

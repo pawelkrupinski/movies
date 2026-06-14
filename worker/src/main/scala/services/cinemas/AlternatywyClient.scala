@@ -70,11 +70,11 @@ class AlternatywyClient(
       .select("span.elementor-heading-title, div.elementor-widget-theme-post-featured-image img").asScala
     val headings = mutable.ArrayBuffer.empty[String]
     val out      = mutable.ArrayBuffer.empty[Screening]
-    nodes.foreach { el =>
-      if (el.tagName == "span") headings += el.text().trim
+    nodes.foreach { element =>
+      if (element.tagName == "span") headings += element.text().trim
       else {
         if (headings.length >= 4)
-          screeningFrom(headings.takeRight(4).toSeq, el).foreach(out += _)
+          screeningFrom(headings.takeRight(4).toSeq, element).foreach(out += _)
         headings.clear()
       }
     }

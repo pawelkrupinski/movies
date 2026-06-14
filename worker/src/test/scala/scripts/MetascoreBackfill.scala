@@ -43,7 +43,7 @@ object MetascoreBackfill {
     val Workers = 3
     println(s"Probing MC with $Workers workers in parallel…\n")
 
-    implicit val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("metascore-backfill", Workers)
+    implicit val executionContext: ExecutionContextExecutorService = DaemonExecutors.boundedEC("metascore-backfill", Workers)
     val done        = new AtomicInteger(0)
     val total       = rows.size
     val startedAtMs = System.currentTimeMillis()
@@ -76,8 +76,8 @@ object MetascoreBackfill {
     }
 
     val outcomes = Await.result(Future.sequence(tasks), 60.minutes)
-    ec.shutdown()
-    ec.awaitTermination(30, TimeUnit.SECONDS)
+    executionContext.shutdown()
+    executionContext.awaitTermination(30, TimeUnit.SECONDS)
     repository.close()
 
     val filled    = outcomes.collect { case f: Filled    => f }

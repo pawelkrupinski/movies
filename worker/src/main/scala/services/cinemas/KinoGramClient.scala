@@ -37,7 +37,7 @@ class KinoGramClient(http: HttpFetch) extends CinemaScraper {
       else {
         val movie = group.head \ "movie"
         val showtimes = group.flatMap { s =>
-          (s \ "screeningTimeFrom").asOpt[String].flatMap(ts => Try(Instant.parse(ts)).toOption).map { inst =>
+          (s \ "screeningTimeFrom").asOpt[String].flatMap(timestamp => Try(Instant.parse(timestamp)).toOption).map { inst =>
             val dt = inst.atZone(WarsawZone).toLocalDateTime
             val id = (s \ "id").asOpt[String]
             Showtime(dt, id.map(BookingBase + _), (s \ "screen" \ "name").asOpt[String].filter(_.nonEmpty), Nil)

@@ -53,7 +53,7 @@ object RottenTomatoesBackfill {
     val bogusUrlCount = rows.count(_.record.rottenTomatoesUrl.exists(_.endsWith(BogusUrlSuffix)))
     val missingScore = rows.count(_.record.rottenTomatoes.isEmpty)
     // 10 workers per CLAUDE.md ("5–10 for undocumented services"). Each row
-    // makes at most 3 GETs: slug probe → optional search scrape → score page.
+    // makes at most 3 GETimestamp: slug probe → optional search scrape → score page.
     // Halve if RT starts returning 429/503.
     val Workers = 10
     println(s"${rows.size} rows in Mongo · revalidating RT URL + score · " +
@@ -61,7 +61,7 @@ object RottenTomatoesBackfill {
             s"$missingScore score None")
     println(s"Probing RT with $Workers workers in parallel…\n")
 
-    implicit val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("rt-backfill", Workers)
+    implicit val executionContext: ExecutionContextExecutorService = DaemonExecutors.boundedEC("rt-backfill", Workers)
     val started = new AtomicInteger(0)
     val done    = new AtomicInteger(0)
     val total   = rows.size
@@ -128,7 +128,7 @@ object RottenTomatoesBackfill {
     }
 
     val outcomes = Await.result(Future.sequence(tasks), 30.minutes)
-    ec.shutdown()
+    executionContext.shutdown()
     repository.close()
 
     val urlChanges   = outcomes.count { case (u, _) => u != NoChange }

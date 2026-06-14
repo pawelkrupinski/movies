@@ -70,7 +70,7 @@ object MetacriticDiagnostics {
     println(s"${rows.size} rows in Mongo · ${missing.size} missing Metacritic URL · probing variants…\n")
 
     val Workers = 4
-    implicit val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("mc-diag", Workers)
+    implicit val executionContext: ExecutionContextExecutorService = DaemonExecutors.boundedEC("mc-diag", Workers)
     val done        = new AtomicInteger(0)
     val httpProbes  = new AtomicInteger(0)
     val startedAtMs = System.currentTimeMillis()
@@ -116,7 +116,7 @@ object MetacriticDiagnostics {
     }
 
     val all = Await.result(Future.sequence(tasks), 10.minutes)
-    ec.shutdown()
+    executionContext.shutdown()
 
     // Group: which label "won" (first 200)?
     val grouped = mutable.LinkedHashMap.empty[String, mutable.ArrayBuffer[(String, Option[Int], Option[String], Probe)]]

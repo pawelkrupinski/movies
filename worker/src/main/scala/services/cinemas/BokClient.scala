@@ -71,7 +71,7 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
     val tabs = document.select("div.calendar-submenu-week a.day[href]").asScala.toList
     val parsed = tabs.flatMap { a =>
       val href = a.attr("href")
-      BokClient.TsPat.findFirstMatchIn(href) match {
+      BokClient.TimestampPat.findFirstMatchIn(href) match {
         case Some(m) =>
           val date = Instant.ofEpochSecond(m.group(1).toLong).atZone(Warsaw).toLocalDate
           Some(date -> s"$BaseUrl$href")
@@ -151,7 +151,7 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
 
 object BokClient {
   private val DatePat = """(\d{1,2})\.(\d{1,2})""".r
-  private val TsPat   = """ts:(\d+)""".r
+  private val TimestampPat   = """ts:(\d+)""".r
   // BoK piles two kinds of `|`-delimited decoration onto a title:
   //  - a trailing ALL-CAPS promo tag ("Drzewo magii | PREMIERA"), and
   //  - a leading recurring-programme banner ("Kino dla Seniora | Tajny agent",

@@ -30,7 +30,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       }
 
     override lazy val movieService: MovieService = new MovieService(
-      movieCache, eventBus, tmdbClient, backgroundBudget.ec("enrichment-worker")
+      movieCache, eventBus, tmdbClient, backgroundBudget.executionContext("enrichment-worker")
     ) {
       override def start(): Unit = movieServiceStarted = true
     }

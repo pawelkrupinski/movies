@@ -62,18 +62,18 @@ object KinoSpojniaClient {
 
     val slots = document.select("table:has(span.godzina):has(a.tytul)").asScala.toSeq.flatMap { t =>
       for {
-        titleEl <- Option(t.selectFirst("a.tytul"))
-        title    = titleEl.text.replace(' ', ' ').trim if title.nonEmpty
+        titleElement <- Option(t.selectFirst("a.tytul"))
+        title    = titleElement.text.replace(' ', ' ').trim if title.nonEmpty
         timeStr <- Option(t.selectFirst("span.godzina")).map(_.text.trim)
         time    <- Try(LocalTime.parse(timeStr)).toOption
-        bookEl   = Option(t.selectFirst("a.kupbilet"))
-        date    <- bookEl.flatMap(b => BookingDatePat.findFirstMatchIn(b.attr("href")))
+        bookElement   = Option(t.selectFirst("a.kupbilet"))
+        date    <- bookElement.flatMap(b => BookingDatePat.findFirstMatchIn(b.attr("href")))
                      .flatMap(m => Try(LocalDate.parse(m.group(1))).toOption)
       } yield RawSlot(
         title    = title,
         dateTime = LocalDateTime.of(date, time),
-        booking  = bookEl.map(_.attr("abs:href")).filter(_.nonEmpty),
-        filmUrl  = Option(titleEl.attr("abs:href")).filter(_.nonEmpty),
+        booking  = bookElement.map(_.attr("abs:href")).filter(_.nonEmpty),
+        filmUrl  = Option(titleElement.attr("abs:href")).filter(_.nonEmpty),
         // Gray metadata line e.g. "135', USA, 2026, Sci-fi" → release year.
         year     = Option(t.selectFirst("div[style*=808080]"))
                      .flatMap(d => YearPat.findFirstMatchIn(d.text)).map(_.group(0).toInt)

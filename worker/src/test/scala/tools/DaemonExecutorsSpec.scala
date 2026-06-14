@@ -24,17 +24,17 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
   // `dropRejectedAfterShutdown` (wired into every DaemonExecutors EC) must drop
   // the submit at its source so nothing is ever reported: stderr stays clean.
   "an EC handed out by DaemonExecutors" should "not print a RejectedExecutionException when a Future stage completes after shutdown" in {
-    val ec      = DaemonExecutors.boundedEC("storm", 1)
+    val executionContext      = DaemonExecutors.boundedEC("storm", 1)
     val running = new CountDownLatch(1)
     val release = new CountDownLatch(1)
     val printed = captureStdErr {
       val p      = Promise[Int]()
-      val stage1 = p.future.map { x => running.countDown(); release.await(); x }(using ec)
-      stage1.onComplete(_ => ())(using ec) // terminal: submit fires from stage1's run(), no
+      val stage1 = p.future.map { x => running.countDown(); release.await(); x }(using executionContext)
+      stage1.onComplete(_ => ())(using executionContext) // terminal: submit fires from stage1's run(), no
                                            // downstream to capture the failure → it's reported
-      p.success(1)                         // schedules stage1 onto ec
+      p.success(1)                         // schedules stage1 onto executionContext
       running.await(5, TimeUnit.SECONDS) shouldBe true
-      ec.shutdown()                        // pool drained while stage1 is still running
+      executionContext.shutdown()                        // pool drained while stage1 is still running
       release.countDown()                  // stage1 finishes → notifies the callback → submit rejected
       Thread.sleep(300)                    // let the reported/uncaught rejection surface
     }

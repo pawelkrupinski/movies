@@ -42,14 +42,14 @@ object UptimeBucketsMigration {
 
   /** One raw uptime document, as read from Mongo. */
   case class RawBucket(
-    service: String, bucketTs: Long,
+    service: String, bucketTimestamp: Long,
     successes: Int, failures: Int,
     durationSumMs: Long, durationCount: Int,
     errors: Seq[String])
 
   /** One merged document, keyed at the 15-min boundary. */
   case class MergedBucket(
-    service: String, bucketTs: Long,
+    service: String, bucketTimestamp: Long,
     successes: Int, failures: Int,
     durationSumMs: Long, durationCount: Int,
     errors: Seq[String])
@@ -60,11 +60,11 @@ object UptimeBucketsMigration {
    *  hydrate. */
   def merge15Min(rows: Seq[RawBucket]): Seq[MergedBucket] =
     rows
-      .groupBy(r => (r.service, UptimeMonitor.bucketTimestamp(r.bucketTs)))
-      .map { case ((service, ts), group) =>
-        val ordered = group.sortBy(_.bucketTs)
+      .groupBy(r => (r.service, UptimeMonitor.bucketTimestamp(r.bucketTimestamp)))
+      .map { case ((service, timestamp), group) =>
+        val ordered = group.sortBy(_.bucketTimestamp)
         MergedBucket(
-          service, ts,
+          service, timestamp,
           ordered.map(_.successes).sum,
           ordered.map(_.failures).sum,
           ordered.map(_.durationSumMs).sum,
@@ -101,13 +101,13 @@ object UptimeBucketsMigration {
           Try(document.getList("errors", classOf[String])).toOption.fold(Seq.empty[String])(_.asScala.toSeq))
       }.toSeq
 
-      val frozen = rows.filter(r => UptimeMonitor.bucketTimestamp(r.bucketTs) < cutoff)
+      val frozen = rows.filter(r => UptimeMonitor.bucketTimestamp(r.bucketTimestamp) < cutoff)
       val merged = merge15Min(frozen)
       println(s"Read ${rows.size} document(s); ${frozen.size} in frozen slots collapse to ${merged.size} 15-min bucket(s).")
 
       var collapsed = 0
       merged.foreach { m =>
-        val boundary = new java.util.Date(m.bucketTs)
+        val boundary = new java.util.Date(m.bucketTimestamp)
         // Persist the merged total at the boundary FIRST (upsert), so the data
         // survives before any delete; then drop the redundant sub-boundary documents
         // in this 15-min window. Crash-safe: a re-run reconciles.
@@ -125,7 +125,7 @@ object UptimeBucketsMigration {
         val del = Await.result(coll.deleteMany(Filters.and(
           Filters.eq("service", m.service),
           Filters.gte("bucket", boundary),
-          Filters.lt("bucket", new java.util.Date(m.bucketTs + UptimeMonitor.BucketDurationMs)),
+          Filters.lt("bucket", new java.util.Date(m.bucketTimestamp + UptimeMonitor.BucketDurationMs)),
           Filters.ne("bucket", boundary)
         )).toFuture(), 30.seconds)
         collapsed += del.getDeletedCount.toInt

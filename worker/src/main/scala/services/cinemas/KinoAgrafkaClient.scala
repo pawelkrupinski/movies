@@ -118,22 +118,22 @@ object KinoAgrafkaClient {
     // Each day block is a <div> wrapping an <h3> date header and a <table>.
     // Alternatively the h3 and tables are siblings. We walk ALL elements in
     // document order to carry the last-seen date forward across rows.
-    document.select("h3, table.repertoire tbody tr").asScala.foreach { el =>
-      el.tagName match {
+    document.select("h3, table.repertoire tbody tr").asScala.foreach { element =>
+      element.tagName match {
         case "h3" =>
-          currentDate = parseDate(el.text.trim)
+          currentDate = parseDate(element.text.trim)
         case "tr" =>
           currentDate.foreach { date =>
-            val timeText  = Option(el.selectFirst("td.hour")).map(_.text.trim).getOrElse("")
-            val titleEl   = Option(el.selectFirst("td.title a"))
-            val meta      = parseMeta(Option(el.selectFirst("td.title")).map(_.text).getOrElse(""))
+            val timeText  = Option(element.selectFirst("td.hour")).map(_.text.trim).getOrElse("")
+            val titleElement   = Option(element.selectFirst("td.title a"))
+            val meta      = parseMeta(Option(element.selectFirst("td.title")).map(_.text).getOrElse(""))
             val time      = ScraperParse.parseHHmm(timeText)
-            val rawTitle  = titleEl.map(_.text.trim).getOrElse("")
+            val rawTitle  = titleElement.map(_.text.trim).getOrElse("")
             // Titles are ALL-CAPS on the page; normalise to title-case.
             val title     = tools.TextNormalization.titleCaseIfAllLower(rawTitle)
-            val filmHref  = titleEl.map(_.attr("href").trim).filter(_.nonEmpty)
+            val filmHref  = titleElement.map(_.attr("href").trim).filter(_.nonEmpty)
             val filmUrl   = filmHref.map(h => if (h.startsWith("http")) h else s"$BaseUrl/$h")
-            val bookingUrl = Option(el.selectFirst("td.link a[href]"))
+            val bookingUrl = Option(element.selectFirst("td.link a[href]"))
               .map(_.attr("href").trim).filter(_.nonEmpty)
               .map(h => if (h.startsWith("http")) h else s"$BaseUrl/$h")
 

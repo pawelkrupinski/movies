@@ -124,7 +124,7 @@ object OkfIluzjaClient {
   private def parseBoxes(block: org.jsoup.nodes.Element, date: LocalDate): Seq[RawSlot] =
     block.select("div.box").asScala.toSeq.flatMap { box =>
       val timeOpt  = Option(box.selectFirst("span.time-f"))
-        .flatMap(el => ScraperParse.parseHHmm(el.text.trim))
+        .flatMap(element => ScraperParse.parseHHmm(element.text.trim))
       // Title: use the h3's own text only (ownText strips inner <span> labels)
       val titleOpt = Option(box.selectFirst("div.right h3"))
         .map(_.ownText().trim)

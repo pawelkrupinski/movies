@@ -101,7 +101,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
       favouriteRooms  = Set("Helios|Sala 1")
     )
     val (ctl, repository, _) = fixture(Some(initial))
-    // A mobile client PUTs only the two sets it models — the web-only /plan
+    // A mobile client PUTimestamp only the two sets it models — the web-only /plan
     // picks must survive untouched.
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")

@@ -72,7 +72,7 @@ object FilmwebReset {
     val service     = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val Workers = 5  // CLAUDE.md: Filmweb soft-blocks above ~5.
-    implicit val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("filmweb-reset", Workers)
+    implicit val executionContext: ExecutionContextExecutorService = DaemonExecutors.boundedEC("filmweb-reset", Workers)
     val done       = new AtomicInteger(0)
     val total      = before.size
     val startedAt  = System.currentTimeMillis()
@@ -124,7 +124,7 @@ object FilmwebReset {
     }
 
     val outcomes = Await.result(Future.sequence(tasks), 60.minutes)
-    ec.shutdown()
+    executionContext.shutdown()
     repository.close()
 
     val kept       = outcomes.count(_._3.isInstanceOf[ReplacedSame])

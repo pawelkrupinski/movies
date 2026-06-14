@@ -17,7 +17,7 @@ import java.time.{LocalDate, LocalDateTime}
  *  Głębocka — with booking links merged back in from the detail pages. */
 class BokClientSpec extends AnyFlatSpec with Matchers {
 
-  // The recording's "today" — the base `/<prefix>` page is that day; the ts day
+  // The recording's "today" — the base `/<prefix>` page is that day; the timestamp day
   // tabs run 07.06–12.06.
   private val today = LocalDate.of(2026, 6, 6)
 
@@ -37,7 +37,7 @@ class BokClientSpec extends AnyFlatSpec with Matchers {
 
   it should "aggregate a film's showtimes across multiple days" in {
     // Zawodowcy screens five times across four distinct days (06-11 twice) —
-    // proof the client reads the ts day pages, not just the listing's single day.
+    // proof the client reads the timestamp day pages, not just the listing's single day.
     val zawodowcy = naBokuByT("Zawodowcy")
     zawodowcy.showtimes.size shouldBe 5
     zawodowcy.showtimes.map(_.dateTime.toLocalDate).distinct.size shouldBe 4

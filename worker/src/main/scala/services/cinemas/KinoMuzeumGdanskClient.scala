@@ -22,7 +22,7 @@ import scala.util.Try
  * NoveKino's day-walk.
  *
  * The per-screening date is rendered as `DD.MM` with no year, so the year is
- * taken from the day link's `ts` (the day-start Unix epoch in Europe/Warsaw),
+ * taken from the day link's `timestamp` (the day-start Unix epoch in Europe/Warsaw),
  * which avoids any new-year wraparound guesswork. Runtime/genres/country/director
  * are read off the listing; TMDB still enriches the rest downstream.
  *
@@ -50,13 +50,13 @@ class KinoMuzeumGdanskClient(http: HttpFetch, override val cinema: Cinema) exten
     group(slots, cinema)
   }
 
-  /** Calendar `a.day.has-events` links, each with the day-start epoch (`ts`)
+  /** Calendar `a.day.has-events` links, each with the day-start epoch (`timestamp`)
    *  that fixes the screening year. The base page is itself one requested day,
    *  but we walk every linked day uniformly rather than special-casing it. */
   def parseDayLinks(html: String): Seq[DayLink] =
     DayLinkPat.findAllMatchIn(html).map { m =>
-      val ts   = m.group(2).toLong
-      val date = Instant.ofEpochSecond(ts).atZone(Warsaw).toLocalDate
+      val timestamp   = m.group(2).toLong
+      val date = Instant.ofEpochSecond(timestamp).atZone(Warsaw).toLocalDate
       DayLink(m.group(1), date)
     }.toList.distinctBy(_.href)
 }
@@ -143,8 +143,8 @@ object KinoMuzeumGdanskClient {
       }
     }.sortBy(_.movie.title)
 
-  private def text(el: Element, selector: String): Option[String] =
-    Option(el.selectFirst(selector)).map(_.text.trim).filter(_.nonEmpty)
+  private def text(element: Element, selector: String): Option[String] =
+    Option(element.selectFirst(selector)).map(_.text.trim).filter(_.nonEmpty)
 
   // `screening-meta-duration` reads "106 min." — pull the leading integer,
   // bounded to a sane feature-length window.

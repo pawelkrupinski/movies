@@ -133,10 +133,10 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
     val block = document.select("h3").asScala
       .find(h => SeansHeading.contains(h.text.trim))
       .flatMap(h => Option(h.parent))
-    val seans = block.toSeq.flatMap { el =>
+    val seans = block.toSeq.flatMap { element =>
       // The block holds one or more lines separated by <br>; jsoup's
       // wholeText keeps the line breaks the <br>s introduce.
-      el.wholeText.split("\n").map(_.trim).filter(_.nonEmpty).toSeq.flatMap(parseSeansLine)
+      element.wholeText.split("\n").map(_.trim).filter(_.nonEmpty).toSeq.flatMap(parseSeansLine)
     }
     // `text()` decodes the `&nbsp;` after "reż." to a plain space, so the
     // credits parser sees "reż. <name>" regardless of the source entity.

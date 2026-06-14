@@ -256,7 +256,7 @@ class WorkerWiring extends play.api.Logging {
   // operator bulk walk), so they own no EC — only imdbIdResolver still runs
   // async off the bus and draws a shared-budget EC.
   lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient)
-  lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient, eventBus, backgroundBudget.ec("imdb-id-resolver"))
+  lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient, eventBus, backgroundBudget.executionContext("imdb-id-resolver"))
   lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient)
   lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient)
   lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient)
@@ -265,7 +265,7 @@ class WorkerWiring extends play.api.Logging {
   // and shown with a live queue place on `/debug`. `taskQueue` is a lazy val
   // declared below; the closure defers reading it, so there's no init cycle.
   lazy val movieService = new MovieService(
-    movieCache, eventBus, tmdbClient, backgroundBudget.ec("enrichment-worker"),
+    movieCache, eventBus, tmdbClient, backgroundBudget.executionContext("enrichment-worker"),
     enqueueResolveTmdb = Some((title, year, originalTitle, director) => {
       taskQueue.enqueue(
         TaskType.ResolveTmdb,

@@ -111,7 +111,7 @@ class HeliosClient(
         } yield {
           val release  = (s \ "release").asOpt[String].getOrElse("")
           val dateTime = (s \ "screeningTimeFrom").asOpt[String]
-            .flatMap(ts => Try(ZonedDateTime.parse(ts, OffsetDtf).withZoneSameInstant(WarsawZone).toLocalDateTime).toOption)
+            .flatMap(timestamp => Try(ZonedDateTime.parse(timestamp, OffsetDtf).withZoneSameInstant(WarsawZone).toLocalDateTime).toOption)
           id -> ApiScreening(id, movieId, screenId, release, dateTime)
         }
       }.toMap
@@ -131,7 +131,7 @@ class HeliosClient(
         } yield {
           val release  = (e \ "release").asOpt[String].getOrElse("")
           val dateTime = (e \ "timeFrom").asOpt[String]
-            .flatMap(ts => Try(ZonedDateTime.parse(ts, OffsetDtf).withZoneSameInstant(WarsawZone).toLocalDateTime).toOption)
+            .flatMap(timestamp => Try(ZonedDateTime.parse(timestamp, OffsetDtf).withZoneSameInstant(WarsawZone).toLocalDateTime).toOption)
           id -> ApiScreening(id, movieId = "", screenId, release, dateTime)
         }
       }.toMap

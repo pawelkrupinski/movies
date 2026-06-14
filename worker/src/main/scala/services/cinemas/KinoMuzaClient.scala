@@ -149,7 +149,7 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
 
       title.map { title =>
         val showtimes = preview.select(".table-row").asScala.flatMap { row =>
-          val dateOpt = Option(row.selectFirst(".day")).flatMap(el => parseDate(el.text()))
+          val dateOpt = Option(row.selectFirst(".day")).flatMap(element => parseDate(element.text()))
           val items   = row.select(".ticket-list-item").asScala
 
           dateOpt.toSeq.flatMap { date =>

@@ -55,7 +55,7 @@ class FakeHttpFetch(fixtureDirectory: String) extends HttpFetch {
     //   - URLs with `?api_key=…` only → stripped to "" → hashCode 0
     //     → fixture written as `<path>.0` (TMDB `/external_ids`, etc.).
     //   - URLs with no query at all  → suffix omitted entirely → fixture
-    //     written as `<path>` (IMDb GraphQL POSTs at the root path).
+    //     written as `<path>` (IMDb GraphQL POSTimestamp at the root path).
     // After the v4-bearer TMDB move the URLs now match the second
     // shape, so emit BOTH candidate sets when there's no raw query —
     // one with the `.0` suffix (existing TMDB fixtures) and one bare

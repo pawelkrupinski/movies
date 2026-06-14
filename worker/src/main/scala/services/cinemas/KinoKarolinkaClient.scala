@@ -75,9 +75,9 @@ object KinoKarolinkaClient {
     for {
       heading <- Option(card.selectFirst("h2[class*=--heading]")).map(_.text.trim)
       if heading.contains(FilmMarker)
-      timeEl  <- Option(card.selectFirst("time[class*=--date]"))
-      date    <- Try(LocalDate.parse(timeEl.attr("datetime"))).toOption
-      time    <- TimePat.findFirstMatchIn(timeEl.text).flatMap(m => ScraperParse.parseHHmm(m.group(1)))
+      timeElement  <- Option(card.selectFirst("time[class*=--date]"))
+      date    <- Try(LocalDate.parse(timeElement.attr("datetime"))).toOption
+      time    <- TimePat.findFirstMatchIn(timeElement.text).flatMap(m => ScraperParse.parseHHmm(m.group(1)))
       // Headings are "<Film Title> | Kino Karolinka [| <series>]" — the film
       // title is the first pipe-segment; the rest are venue/series tags.
       title    = heading.split("\\|").head.trim if title.nonEmpty

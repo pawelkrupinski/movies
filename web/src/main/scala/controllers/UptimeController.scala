@@ -53,12 +53,12 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
 
   /** One rendered bar, with its bucket window stamped in Warsaw time. Shared by
    *  the full-page render and the live SSE feed so both label a bucket the same. */
-  private def barData(service: String, bucketTs: Long, status: String,
+  private def barData(service: String, bucketTimestamp: Long, status: String,
                       successes: Int, failures: Int, zeroes: Int, errors: Seq[String],
                       fallback: Boolean = false): BarData = {
-    val from = Instant.ofEpochMilli(bucketTs)
-    val to   = Instant.ofEpochMilli(bucketTs + BucketDurationMs)
-    BarData(service, bucketTs, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
+    val from = Instant.ofEpochMilli(bucketTimestamp)
+    val to   = Instant.ofEpochMilli(bucketTimestamp + BucketDurationMs)
+    BarData(service, bucketTimestamp, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
       status, successes, failures, zeroes, errors, fallback)
   }
 
@@ -70,10 +70,10 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
 
     def barsFor(serviceName: String): Seq[BarData] = {
       val history = monitor.history(serviceName).map(b => b.timestamp -> b).toMap
-      slots.map { ts =>
-        history.get(ts) match {
-          case Some(b) => barData(serviceName, ts, b.status, b.successes, b.failures, b.zeroes, b.errors, b.fallback)
-          case None    => barData(serviceName, ts, "empty", 0, 0, 0, Seq.empty)
+      slots.map { timestamp =>
+        history.get(timestamp) match {
+          case Some(b) => barData(serviceName, timestamp, b.status, b.successes, b.failures, b.zeroes, b.errors, b.fallback)
+          case None    => barData(serviceName, timestamp, "empty", 0, 0, 0, Seq.empty)
         }
       }
     }
@@ -186,7 +186,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
   }
 
   /** Browser-reported image load outcomes. The page's tracker batches
-   *  ~10s of img onload/onerror events and POSTs them here so the
+   *  ~10s of img onload/onerror events and POSTimestamp them here so the
    *  uptime page sees per-host image-fetch reliability (the
    *  `images.weserv.nl` proxy that fronts every cinema poster, the
    *  origin CDNs we link directly, etc.). */
@@ -233,7 +233,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
 
 case class BarData(
   service: String,
-  bucketTs: Long,
+  bucketTimestamp: Long,
   timeFrom: String,
   timeTo: String,
   dateLabel: String,
@@ -248,7 +248,7 @@ case class BarData(
 object BarData {
   implicit val writes: Writes[BarData] = (b: BarData) => Json.obj(
     "service"   -> b.service,
-    "bucketTs"  -> b.bucketTs,
+    "bucketTs"  -> b.bucketTimestamp,
     "timeFrom"  -> b.timeFrom,
     "timeTo"    -> b.timeTo,
     "dateLabel" -> b.dateLabel,

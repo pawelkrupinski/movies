@@ -122,8 +122,8 @@ object KinoZorzaClient {
     // The first child is fullrepertoire-desktop (the header); skip divs without
     // a repertoire-title inside.
     contentDiv.children.asScala.toSeq.flatMap { row =>
-      val titleEl = Option(row.selectFirst("div.repertoire-title a.on-repertoire"))
-      titleEl match {
+      val titleElement = Option(row.selectFirst("div.repertoire-title a.on-repertoire"))
+      titleElement match {
         case None => Seq.empty
         case Some(anchor) =>
           val title   = anchor.attr("title").trim

@@ -23,7 +23,7 @@ class UptimeBucketsMigrationSpec extends AnyFlatSpec with Matchers {
     merged should have size 1
     val m = merged.head
     m.service shouldBe "TMDB"
-    m.bucketTs shouldBe slot
+    m.bucketTimestamp shouldBe slot
     m.successes shouldBe 60
     m.failures shouldBe 3
     m.durationSumMs shouldBe 6000L
@@ -42,9 +42,9 @@ class UptimeBucketsMigrationSpec extends AnyFlatSpec with Matchers {
 
     val merged = UptimeBucketsMigration.merge15Min(rows)
     merged should have size 3
-    merged.find(m => m.service == "TMDB" && m.bucketTs == slot).get.successes shouldBe 12
-    merged.find(m => m.service == "TMDB" && m.bucketTs == nextSlot).get.successes shouldBe 9
-    merged.find(m => m.service == "IMDb" && m.bucketTs == slot).get.failures shouldBe 1
+    merged.find(m => m.service == "TMDB" && m.bucketTimestamp == slot).get.successes shouldBe 12
+    merged.find(m => m.service == "TMDB" && m.bucketTimestamp == nextSlot).get.successes shouldBe 9
+    merged.find(m => m.service == "IMDb" && m.bucketTimestamp == slot).get.failures shouldBe 1
   }
 
   it should "cap concatenated errors at MaxErrorsPerBucket" in {
@@ -66,7 +66,7 @@ class UptimeBucketsMigrationSpec extends AnyFlatSpec with Matchers {
       RawBucket("TMDB", slot + fiveMin, successes = 7, failures = 0, durationSumMs = 0L, durationCount = 0, errors = Nil)
     ))
     val twice = UptimeBucketsMigration.merge15Min(once.map(m =>
-      RawBucket(m.service, m.bucketTs, m.successes, m.failures, m.durationSumMs, m.durationCount, m.errors)))
+      RawBucket(m.service, m.bucketTimestamp, m.successes, m.failures, m.durationSumMs, m.durationCount, m.errors)))
 
     twice shouldBe once
     twice.head.successes shouldBe 12

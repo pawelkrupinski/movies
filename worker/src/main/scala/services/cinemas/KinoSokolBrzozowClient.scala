@@ -70,8 +70,8 @@ object KinoSokolBrzozowClient {
 
   private def parseEvent(ev: Element): Option[RawSlot] =
     for {
-      titleEl <- Option(ev.selectFirst(".wp_theatre_event_title a"))
-      title    = titleEl.text.trim if title.nonEmpty
+      titleElement <- Option(ev.selectFirst(".wp_theatre_event_title a"))
+      title    = titleElement.text.trim if title.nonEmpty
       dateText <- Option(ev.selectFirst(".wp_theatre_event_startdate")).map(_.text)
       d        <- DatePat.findFirstMatchIn(dateText)
       month    <- ScraperParse.PolishMonths.get(d.group(2).toLowerCase)
@@ -81,6 +81,6 @@ object KinoSokolBrzozowClient {
       title    = title,
       dateTime = dt,
       booking  = Option(ev.selectFirst("a.wp_theatre_event_tickets_url")).map(_.attr("abs:href")).filter(_.nonEmpty),
-      filmUrl  = Option(titleEl.attr("abs:href")).filter(_.nonEmpty)
+      filmUrl  = Option(titleElement.attr("abs:href")).filter(_.nonEmpty)
     )
 }

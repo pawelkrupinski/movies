@@ -30,10 +30,10 @@ object BoundedParallel extends Logging {
   def foreach[A](label: String, items: Iterable[A], maxConcurrent: Int)(f: A => Unit): Unit = {
     val seq = items.toSeq
     if (seq.isEmpty) return
-    val ec = DaemonExecutors.boundedEC(label, maxConcurrent)
+    val executionContext = DaemonExecutors.boundedEC(label, maxConcurrent)
     try {
-      val futures = seq.map(a => Future(f(a))(using ec))
-      Await.result(Future.sequence(futures)(using implicitly, ec), Duration.Inf)
-    } finally ec.shutdown()
+      val futures = seq.map(a => Future(f(a))(using executionContext))
+      Await.result(Future.sequence(futures)(using implicitly, executionContext), Duration.Inf)
+    } finally executionContext.shutdown()
   }
 }

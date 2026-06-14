@@ -32,9 +32,9 @@ class ProdTitlesNormalizationSpec extends AnyFlatSpec with Matchers {
     else Files.readAllLines(fixture).asScala.toSeq.filter(_.nonEmpty)
 
   "the default rules" should "match the frozen legacy normalisation for every prod title" in {
-    val ts = titles
-    if (ts.isEmpty) cancel("prod-movies fixture absent — run tools.SnapshotProdTitlesToFixture")
-    ts.foreach { t =>
+    val timestamp = titles
+    if (timestamp.isEmpty) cancel("prod-movies fixture absent — run tools.SnapshotProdTitlesToFixture")
+    timestamp.foreach { t =>
       withClue(s"searchTitle('$t'): ")(rs.structural(t) shouldBe FrozenLegacyNormalizer.searchTitle(t))
       withClue(s"apiQuery('$t'): ")(rs.search(t) shouldBe FrozenLegacyNormalizer.apiQuery(t))
       withClue(s"sanitize('$t'): ")(sanitize(t) shouldBe FrozenLegacyNormalizer.sanitize(t))

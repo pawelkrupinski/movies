@@ -97,8 +97,8 @@ class KinoBulgarskaClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
           val filmUrl = link.attr("href")
           val title   = normalizeTitle(link.text())
 
-          val timeOpt = Option(section.selectFirst(".start-info.clock")).flatMap { clockEl =>
-            val text = clockEl.text().replaceAll("\\s+", "")
+          val timeOpt = Option(section.selectFirst(".start-info.clock")).flatMap { clockElement =>
+            val text = clockElement.text().replaceAll("\\s+", "")
             Try {
               val parts = text.split(":")
               LocalDateTime.of(date, LocalTime.of(parts(0).toInt, parts(1).toInt))

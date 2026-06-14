@@ -247,10 +247,10 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
   }.recover { case exception => logger.debug(s"Uptime tag load failed: ${exception.getMessage}") }
 
   private def currentBucket(service: String): Bucket = {
-    val ts = bucketTimestamp(System.currentTimeMillis())
+    val timestamp = bucketTimestamp(System.currentTimeMillis())
     val buckets = data.computeIfAbsent(service, _ => new java.util.concurrent.ConcurrentSkipListMap[Long, Bucket]())
-    val bucket = buckets.computeIfAbsent(ts, t => Bucket(t))
-    val cutoff = ts - MaxBuckets * BucketDurationMs
+    val bucket = buckets.computeIfAbsent(timestamp, t => Bucket(t))
+    val cutoff = timestamp - MaxBuckets * BucketDurationMs
     buckets.headMap(cutoff).clear()
     bucket
   }
@@ -290,7 +290,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
   // throw from killing the scheduled flush.
   private def writeBucket(c: MongoCollection[Document], bw: BucketWrite): Unit = Try {
     c.updateOne(
-      Filters.and(Filters.eq("service", bw.service), Filters.eq("bucket", new java.util.Date(bw.bucketTs))),
+      Filters.and(Filters.eq("service", bw.service), Filters.eq("bucket", new java.util.Date(bw.bucketTimestamp))),
       Updates.combine(
         Updates.set("successes", bw.successes),
         Updates.set("failures", bw.failures),
@@ -331,11 +331,11 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
         service    <- Option(document.getString("service"))
         bucketDate <- Option(document.getDate("bucket"))
       } {
-        val ts = bucketTimestamp(bucketDate.getTime)
+        val timestamp = bucketTimestamp(bucketDate.getTime)
         // Don't clobber a bucket this process has un-flushed local changes for
         // (its own recorded services, e.g. web's OAuth fetches) — the next flush
         // will reconcile it. External (worker) buckets are never locally dirty.
-        val locallyDirty = Option(data.get(service)).flatMap(b => Option(b.get(ts))).exists(_.dirty.get())
+        val locallyDirty = Option(data.get(service)).flatMap(b => Option(b.get(timestamp))).exists(_.dirty.get())
         if (!locallyDirty)
           applyExternalUpdate(
             service, bucketDate.getTime,
@@ -383,9 +383,9 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
         service <- Option(document.getString("service"))
         bucketDate <- Option(document.getDate("bucket"))
       } {
-        val ts = bucketTimestamp(bucketDate.getTime)
+        val timestamp = bucketTimestamp(bucketDate.getTime)
         val buckets = data.computeIfAbsent(service, _ => new java.util.concurrent.ConcurrentSkipListMap[Long, Bucket]())
-        val bucket = buckets.computeIfAbsent(ts, t => Bucket(t))
+        val bucket = buckets.computeIfAbsent(timestamp, t => Bucket(t))
         bucket.successes.addAndGet(document.getInteger("successes", 0))
         bucket.failures.addAndGet(document.getInteger("failures", 0))
         bucket.zeroes.addAndGet(document.getInteger("zeroes", 0))
@@ -408,14 +408,14 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
    *  actually changed, so an unchanged poll doesn't spam the /uptime SSE.
    *  Package-private: the only callers are the poller and its test. */
   private[services] def applyExternalUpdate(
-    service: String, bucketTs: Long,
+    service: String, rawTimestamp: Long,
     successes: Int, failures: Int, zeroes: Int,
     durationSumMs: Long, durationCount: Int,
     errors: Seq[String], fallback: Boolean = false
   ): Unit = {
-    val ts = bucketTimestamp(bucketTs)
+    val timestamp = bucketTimestamp(rawTimestamp)
     val buckets = data.computeIfAbsent(service, _ => new java.util.concurrent.ConcurrentSkipListMap[Long, Bucket]())
-    val bucket = buckets.computeIfAbsent(ts, t => Bucket(t))
+    val bucket = buckets.computeIfAbsent(timestamp, t => Bucket(t))
     val cappedErrors = errors.take(MaxErrorsPerBucket)
     val changed =
       bucket.successes.get() != successes ||
@@ -433,7 +433,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
     bucket.fallback.set(fallback)
     bucket.errors.clear()
     cappedErrors.foreach(bucket.errors.add)
-    val cutoff = ts - MaxBuckets * BucketDurationMs
+    val cutoff = timestamp - MaxBuckets * BucketDurationMs
     buckets.headMap(cutoff).clear()
     if (changed) notifyListeners(service, bucket)
   }
@@ -532,7 +532,7 @@ object UptimeMonitor {
 
   /** A bucket's cumulative counts captured for one flush. */
   case class BucketWrite(
-    service: String, bucketTs: Long,
+    service: String, bucketTimestamp: Long,
     successes: Int, failures: Int, zeroes: Int,
     durationSumMs: Long, durationCount: Int,
     errors: List[String], fallback: Boolean = false

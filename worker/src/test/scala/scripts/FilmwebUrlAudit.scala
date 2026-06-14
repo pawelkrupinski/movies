@@ -51,7 +51,7 @@ object FilmwebUrlAudit {
     val Workers = 3  // CLAUDE.md: Filmweb soft-blocks above ~5.
     println(s"${candidates.size} row(s) carry a filmwebUrl — auditing with $Workers workers.\n")
 
-    implicit val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("fw-audit", Workers)
+    implicit val executionContext: ExecutionContextExecutorService = DaemonExecutors.boundedEC("fw-audit", Workers)
     val done       = new AtomicInteger(0)
     val total      = candidates.size
     val startedAt  = System.currentTimeMillis()
@@ -75,7 +75,7 @@ object FilmwebUrlAudit {
     }
 
     val outcomes = Await.result(Future.sequence(tasks), 60.minutes)
-    ec.shutdown()
+    executionContext.shutdown()
     repository.close()
 
     val kept      = outcomes.collect { case (_, _, _: FilmwebRatings.Kept)      => () }

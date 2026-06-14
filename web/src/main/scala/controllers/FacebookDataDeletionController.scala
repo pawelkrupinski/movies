@@ -11,7 +11,7 @@ import services.users.{AccountDeletion, UserRepository}
  * Facebook Login → Settings → User Data Deletion).
  *
  * When a user removes our app from their Facebook account, Facebook
- * POSTs a `signed_request` to `POST /facebook/data-deletion`. We verify
+ * POSTimestamp a `signed_request` to `POST /facebook/data-deletion`. We verify
  * it against the app secret, look up the local user by their Facebook
  * id (`provider=facebook`, `providerSub=<user_id>`), delete their row +
  * state, and return the JSON receipt Meta requires:

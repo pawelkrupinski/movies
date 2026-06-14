@@ -63,7 +63,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     val service   = new MovieService(cache, bus, tmdbStub())
 
     // The async path goes through `MovieDetailsComplete` → needsTmdbResolution →
-    // dispatchResolve → ec pool → resolveTmdbOnce, which publishes the event on
+    // dispatchResolve → executionContext pool → resolveTmdbOnce, which publishes the event on
     // success (this spec has no enqueue wired, so dispatch runs inline).
     service.onMovieDetailsComplete(MovieDetailsComplete("Mortal Kombat II", Some(2026)))
 

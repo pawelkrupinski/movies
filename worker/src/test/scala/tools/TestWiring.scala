@@ -83,13 +83,13 @@ trait TestWiring extends WorkerWiring {
   // harness never runs the worker — it drives enrichment synchronously
   // (`drainServices` / `converge`) and relies on `taskQueue` staying drained.
   // Overriding the production `enqueueResolveTmdb` seam back to None makes a
-  // `MovieDetailsComplete` resolve on the `ec` pool exactly as before, so the
+  // `MovieDetailsComplete` resolve on the `executionContext` pool exactly as before, so the
   // determinism + snapshot harness is unchanged. The shared `resolveTmdbOnce`
   // is the same work either way; the enqueue seam is covered by the unit +
   // WorkerWiring specs. A missing fixture is a permanent miss (the inline path
   // drops a transient failure without retrying — no cascade churn).
   override lazy val movieService =
-    new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.ec("enrichment-worker"))
+    new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.executionContext("enrichment-worker"))
 
   // Staging repository/folder are Mongo-backed in prod; pin in-memory here — TestWiring's
   // Mongo is disabled, so the inherited MongoStagingRepository would silently drop the
@@ -243,12 +243,12 @@ trait TestWiring extends WorkerWiring {
    *  every `MovieDetailsComplete` is published synchronously before this returns
    *  and the caller can drain the downstream pools without racing the scrape. */
   def scrapeAllOnce(): Unit = {
-    val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("record-scrape", 8)
+    val executionContext: ExecutionContextExecutorService = DaemonExecutors.boundedEC("record-scrape", 8)
     try Await.ready(
       Future.sequence(cinemaScrapers.map(s =>
-        Future(scala.util.Try(cinemaScrapeRunner.run(s)))(using ec)))(using implicitly, ec),
+        Future(scala.util.Try(cinemaScrapeRunner.run(s)))(using executionContext)))(using implicitly, executionContext),
       Duration.Inf)
-    finally ec.shutdown()
+    finally executionContext.shutdown()
     ()
   }
 

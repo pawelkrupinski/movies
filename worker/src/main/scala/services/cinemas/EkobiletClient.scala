@@ -99,8 +99,8 @@ object EkobiletClient {
    *  `pointer-events-none` instead. Returned as `yyyy-MM-dd` for the `?date=`
    *  query, de-duplicated. */
   private[cinemas] def availableDates(html: String): Seq[String] =
-    Jsoup.parse(html, BaseUrl).select("div.card-date.available-color[data-date]").asScala.toSeq.flatMap { el =>
-      el.attr("data-date") match {
+    Jsoup.parse(html, BaseUrl).select("div.card-date.available-color[data-date]").asScala.toSeq.flatMap { element =>
+      element.attr("data-date") match {
         case PickerDate(d, m, y) => Some(s"$y-$m-$d")
         case _                   => None
       }
@@ -113,11 +113,11 @@ object EkobiletClient {
     document.select("div.event-card a[href]").asScala.toSeq.flatMap { a =>
       val url = a.attr("abs:href").takeWhile(_ != '?')
       // The card's title is the nearest following `p.overme`.
-      val titleEl = Option(a.closest("div.event-card")).flatMap(c =>
+      val titleElement = Option(a.closest("div.event-card")).flatMap(c =>
         Option(c.parent).flatMap(p => Option(p.selectFirst("p.overme"))))
         .orElse(Option(document.selectFirst("p.overme")))
       for {
-        t <- titleEl.map(e => ScraperParse.stripFormatTags(e.text)).filter(_.nonEmpty)
+        t <- titleElement.map(e => ScraperParse.stripFormatTags(e.text)).filter(_.nonEmpty)
         if url.nonEmpty
       } yield (t, url)
     }.distinctBy(_._2)

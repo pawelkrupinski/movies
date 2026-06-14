@@ -18,7 +18,7 @@ import tools.HttpFetch
  */
 class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
 
-  // Minimal stub: route GETs (and POSTs) to canned bodies by URL substring.
+  // Minimal stub: route GETimestamp (and POSTimestamp) to canned bodies by URL substring.
   class StubFetch(routes: Map[String, String]) extends HttpFetch {
     override def get(url: String): String =
       routes.collectFirst { case (frag, body) if url.contains(frag) => body }

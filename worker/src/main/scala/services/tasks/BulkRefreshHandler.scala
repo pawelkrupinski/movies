@@ -27,7 +27,7 @@ class BulkRefreshHandler(
   import HandlerOutcome._
 
   private val running = new AtomicBoolean(false)
-  private val ec      = DaemonExecutors.virtualThreadEC(s"bulk-$label")
+  private val executionContext      = DaemonExecutors.virtualThreadEC(s"bulk-$label")
 
   override def handle(task: Task): HandlerOutcome =
     if (!running.compareAndSet(false, true)) {
@@ -39,7 +39,7 @@ class BulkRefreshHandler(
         try run()
         catch { case e: Throwable => logger.error(s"Bulk $label refresh failed", e) }
         finally running.set(false)
-      }(using ec)
+      }(using executionContext)
       Done
     }
 }

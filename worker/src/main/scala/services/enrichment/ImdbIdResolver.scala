@@ -32,7 +32,7 @@ class ImdbIdResolver(
   // cap, if any, sits at the HTTP layer. Defaults to a dedicated unbounded
   // pool (tests/scripts unchanged); `Wiring` injects a shared-budget EC. See
   // `SharedExecutionBudget`.
-  ec:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("imdb-id-resolver")
+  executionContext:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("imdb-id-resolver")
 ) extends Stoppable with Logging {
 
   /** Bus listener: when the TMDB stage resolved a film but TMDB has no IMDb
@@ -45,7 +45,7 @@ class ImdbIdResolver(
    *  the row imdbId-less than guess a wrong id. */
   val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
     case ImdbIdMissing(title, year, searchTitle) =>
-      Future(resolve(title, year, searchTitle, publishEvent = true))(using ec)
+      Future(resolve(title, year, searchTitle, publishEvent = true))(using executionContext)
       ()
   }
 
@@ -102,7 +102,7 @@ class ImdbIdResolver(
    *  `cascadeDrainOrder`'s next entry was shutting down a pool that
    *  still had inbound work coming. */
   def stop(): Unit = {
-    ec.shutdown()
-    while (!ec.isTerminated) ec.awaitTermination(1, TimeUnit.HOURS)
+    executionContext.shutdown()
+    while (!executionContext.isTerminated) executionContext.awaitTermination(1, TimeUnit.HOURS)
   }
 }

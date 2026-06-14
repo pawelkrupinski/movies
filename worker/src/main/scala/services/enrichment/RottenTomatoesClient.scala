@@ -28,7 +28,7 @@ import scala.util.Try
  *      best `/m/{slug}` link by exact-title match (year as tie-breaker).
  *      Same conservative bar as MC — partial matches lose to None.
  *
- * `scoreFor(url)` GETs the canonical movie page and parses the schema.org
+ * `scoreFor(url)` GETimestamp the canonical movie page and parses the schema.org
  * `aggregateRating.ratingValue` out of the embedded
  * `<script type="application/ld+json">` block. That JSON is RT's published
  * structured-data signal for the Tomatometer percentage and is more stable

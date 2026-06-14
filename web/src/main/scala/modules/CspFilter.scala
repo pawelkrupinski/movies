@@ -39,7 +39,7 @@ import scala.concurrent.{ExecutionContext, Future}
  */
 class CspFilter @Inject() (implicit
   override val mat: Materializer,
-  ec: ExecutionContext,
+  executionContext: ExecutionContext,
 ) extends Filter {
 
   private val csp: String = Seq(
@@ -78,5 +78,5 @@ class CspFilter @Inject() (implicit
         // and log a permissions-policy violation to the console.
         "Permissions-Policy"     -> "camera=(), microphone=(), geolocation=(self), interest-cohort=()",
       )
-    }(using ec)
+    }(using executionContext)
 }

@@ -78,7 +78,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
     // — exactly what a director-less venue (Spójnia/Charlie) re-emits. With the
     // year-blind guard this was dropped; with the fix it resolves on its own.
     bus.publish(MovieDetailsComplete(Title, Some(2026), originalTitle = None, director = None))
-    service.stop() // drain the inline ec pool
+    service.stop() // drain the inline executionContext pool
 
     val row2026 = cache.get(cache.keyOf(Title, Some(2026)))
     row2026.flatMap(_.tmdbId) shouldBe Some(Invite2026)

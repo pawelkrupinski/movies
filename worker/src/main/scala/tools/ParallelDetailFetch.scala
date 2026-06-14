@@ -55,7 +55,7 @@ object ParallelDetailFetch extends Logging {
     val distinct = keys.distinct
     if (distinct.isEmpty) return Map.empty
     logger.debug(s"$label: fetching ${distinct.size} detail pages (≤$maxConcurrent at once)")
-    val ec = DaemonExecutors.boundedEC(label, maxConcurrent)
+    val executionContext = DaemonExecutors.boundedEC(label, maxConcurrent)
     val t0 = System.currentTimeMillis()
     val completed = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
     try {
@@ -65,7 +65,7 @@ object ParallelDetailFetch extends Logging {
           val result = key -> fetch(url)
           completed.add(url)
           result
-        }(using ec)
+        }(using executionContext)
       }
       // No batch timeout: each `fetch` is bounded by the HTTP layer's own
       // per-request timeout (and the caller's `fetch` swallows its failures),
@@ -73,10 +73,10 @@ object ParallelDetailFetch extends Logging {
       // monitor instead of cut off here. `timeout` is kept on the signature for
       // call-site compatibility but no longer gates the wait.
       val _ = timeout
-      val result = Await.result(Future.sequence(futures)(using implicitly, ec), Duration.Inf).toMap
+      val result = Await.result(Future.sequence(futures)(using implicitly, executionContext), Duration.Inf).toMap
       val elapsed = System.currentTimeMillis() - t0
       logger.debug(s"$label: fetched ${result.size} detail pages in ${elapsed}ms")
       result
-    } finally ec.shutdown()
+    } finally executionContext.shutdown()
   }
 }

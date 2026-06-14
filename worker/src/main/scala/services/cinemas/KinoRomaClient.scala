@@ -87,9 +87,9 @@ object KinoRomaClient {
     document.select("div.poster-box").asScala.toSeq.flatMap { box =>
       val dateText  = Option(box.selectFirst("div.big-date")).map(_.text.trim).getOrElse("")
       val hourText  = Option(box.selectFirst("div.hour")).map(_.text.trim).getOrElse("")
-      val titleEl   = Option(box.selectFirst("a.film-title"))
-      val title     = titleEl.map(_.text.trim).filter(_.nonEmpty)
-      val filmSlug  = titleEl.flatMap(a => SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1)))
+      val titleElement   = Option(box.selectFirst("a.film-title"))
+      val title     = titleElement.map(_.text.trim).filter(_.nonEmpty)
+      val filmSlug  = titleElement.flatMap(a => SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1)))
       val posterUrl = Option(box.selectFirst("img.img-responsive[src]")).map(_.attr("src")).filter(_.nonEmpty)
 
       for {

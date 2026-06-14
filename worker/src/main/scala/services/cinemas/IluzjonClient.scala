@@ -49,9 +49,9 @@ class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
     // h3 date headers and screening rows in document order; fold to attach each
     // row to the most recent date.
     var currentDate: Option[LocalDate] = None
-    val slots = document.select("h3, tr:has(span.hour)").asScala.toSeq.flatMap { el =>
-      if (el.tagName == "h3") { currentDate = IluzjonClient.parseDate(el.text, today); Seq.empty }
-      else currentDate.toSeq.flatMap(d => rowSlot(el, d))
+    val slots = document.select("h3, tr:has(span.hour)").asScala.toSeq.flatMap { element =>
+      if (element.tagName == "h3") { currentDate = IluzjonClient.parseDate(element.text, today); Seq.empty }
+      else currentDate.toSeq.flatMap(d => rowSlot(element, d))
     }
 
     val byFilm = slots.groupBy(_.filmId)

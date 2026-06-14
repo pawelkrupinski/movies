@@ -84,12 +84,12 @@ object KinoKikaClient {
       val classes = row.attr("class")
       val date = DateClassPat.findFirstIn(classes).flatMap(s => Try(LocalDate.parse(s)).toOption)
 
-      val titleEl = Option(row.selectFirst("div.title a[href]"))
-      val title   = titleEl.map(_.text.trim.replaceAll("\\s+", " ")).filter(_.nonEmpty)
+      val titleElement = Option(row.selectFirst("div.title a[href]"))
+      val title   = titleElement.map(_.text.trim.replaceAll("\\s+", " ")).filter(_.nonEmpty)
 
       // Booking link is the anchor in div.title itself (the one inside div.link
       // is a duplicate "kup bilet" button)
-      val bookingHref = titleEl.map(_.attr("href").trim).filter(_.nonEmpty)
+      val bookingHref = titleElement.map(_.attr("href").trim).filter(_.nonEmpty)
       val bookingUrl  = bookingHref.map(h => if (h.startsWith("http")) h else s"$BaseUrl$h")
 
       val dateDiv = Option(row.selectFirst("div.date"))

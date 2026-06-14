@@ -744,8 +744,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.setDesktopViewport(1280, 900)
       val failures = filmVisibleElements.flatMap { case (label, sel) =>
         val visible = page.evalBool(
-          s"(function(){ var el = document.querySelector('$sel');" +
-          "if (!el) return false; var r = el.getBoundingClientRect();" +
+          s"(function(){ var element = document.querySelector('$sel');" +
+          "if (!element) return false; var r = element.getBoundingClientRect();" +
           "return r.width > 0 && r.height > 0; })()"
         )
         if (visible) None else Some(label)
@@ -762,8 +762,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.setViewport(375, 800)
       val failures = filmVisibleElements.flatMap { case (label, sel) =>
         val visible = page.evalBool(
-          s"(function(){ var el = document.querySelector('$sel');" +
-          "if (!el) return false; var r = el.getBoundingClientRect();" +
+          s"(function(){ var element = document.querySelector('$sel');" +
+          "if (!element) return false; var r = element.getBoundingClientRect();" +
           "return r.width > 0 && r.height > 0; })()"
         )
         if (visible) None else Some(label)
@@ -1544,15 +1544,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         """(() => {
           |  const root = document.getElementById('view-root');
           |  if (!root) return null;
-          |  let el = root.nextElementSibling;
-          |  while (el && !el.classList.contains('day-col')) el = el.nextElementSibling;
-          |  return el;
+          |  let element = root.nextElementSibling;
+          |  while (element && !element.classList.contains('day-col')) element = element.nextElementSibling;
+          |  return element;
           |})()""".stripMargin
       val neighbourOrder = page.evalString(
         s"""(() => {
-          |  const el = $neighbourSel;
-          |  if (!el) return '';
-          |  return [...el.querySelectorAll('.col[data-title]')]
+          |  const element = $neighbourSel;
+          |  if (!element) return '';
+          |  return [...element.querySelectorAll('.col[data-title]')]
           |    .filter(c => c.style.display !== 'none')
           |    .map(c => c.dataset.title).join('|');
           |})()""".stripMargin
@@ -1773,7 +1773,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool("ALL_CINEMAS.length > 1") shouldBe true
       page.evalBool("document.getElementById('film-grid').classList.contains('single-cinema')") shouldBe false
       page.evalBool(
-        "[...document.querySelectorAll('.cinema-label')].some(el => el.offsetParent !== null)"
+        "[...document.querySelectorAll('.cinema-label')].some(element => element.offsetParent !== null)"
       ) shouldBe true
 
       // Disable every cinema except the first → one enabled cinema remains.
@@ -1785,8 +1785,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Every `.cinema-label` is now hidden (display:none → offsetParent null).
       page.evalBool(
         "(() => { const labels = [...document.querySelectorAll('.cinema-label')];" +
-        "  return labels.length > 0 && labels.every(el =>" +
-        "    el.offsetParent === null || getComputedStyle(el).display === 'none'); })()"
+        "  return labels.length > 0 && labels.every(element =>" +
+        "    element.offsetParent === null || getComputedStyle(element).display === 'none'); })()"
       ) shouldBe true
     }
   }
@@ -2556,9 +2556,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         |  const root = document.getElementById('view-root');
         |  if (!root) return '';
         |  const popOn = (directoryProp) => {
-        |    let el = root[directoryProp];
-        |    while (el && !el.classList.contains('day-col')) el = el[directoryProp];
-        |    return !!(el && el.querySelector('.col[data-title]'));
+        |    let element = root[directoryProp];
+        |    while (element && !element.classList.contains('day-col')) element = element[directoryProp];
+        |    return !!(element && element.querySelector('.col[data-title]'));
         |  };
         |  if (popOn('nextElementSibling'))     return 'next';
         |  if (popOn('previousElementSibling')) return 'previous';

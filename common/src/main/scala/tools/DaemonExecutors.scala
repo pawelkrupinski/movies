@@ -10,7 +10,7 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
  * thread dumps and logs stay readable.
  *
  * `virtualThreadEC` returns an [[ExecutionContextExecutorService]] — a Scala
- * `ExecutionContext` (for `Future { … }(ec)` call sites) that's also a
+ * `ExecutionContext` (for `Future { … }(executionContext)` call sites) that's also a
  * lifecycle-bearing `ExecutorService` (`shutdown()` / `awaitTermination(...)`
  * for `Stoppable.stop`). Backed by `newThreadPerTaskExecutor` with a virtual-
  * thread factory: every task gets its own virtual thread, the JVM scheduler
@@ -54,9 +54,9 @@ object DaemonExecutors {
    *
    *  This is the single-consumer shortcut for [[SharedExecutionBudget]] —
    *  when several services need to share ONE cap across them all, build a
-   *  `SharedExecutionBudget` and call `.ec(...)` per service instead. */
+   *  `SharedExecutionBudget` and call `.executionContext(...)` per service instead. */
   def boundedEC(name: String, maxConcurrent: Int): ExecutionContextExecutorService =
-    new SharedExecutionBudget(maxConcurrent).ec(name)
+    new SharedExecutionBudget(maxConcurrent).executionContext(name)
 
   /** Wrap `underlying` so every submitted task acquires a permit from
    *  `permits` before running and releases it after — capping how many run at
@@ -77,8 +77,8 @@ object DaemonExecutors {
    *  `name`. Schedulers stay platform-threaded — their job is firing a
    *  Runnable on a timer, and `Future`/EC has no stdlib equivalent for
    *  `scheduleAtFixedRate`. The scheduled Runnable typically just hands work
-   *  back to a `virtualThreadEC` (`ec.execute(() => …)` or
-   *  `Future(...)(ec)`), so the scheduler thread doesn't block on the work
+   *  back to a `virtualThreadEC` (`executionContext.execute(() => …)` or
+   *  `Future(...)(executionContext)`), so the scheduler thread doesn't block on the work
    *  itself. */
   def scheduler(name: String): ScheduledExecutorService =
     Executors.newSingleThreadScheduledExecutor { r =>
@@ -105,7 +105,7 @@ private[tools] abstract class DelegatingExecutorService(delegate: ExecutorServic
 
 /**
  * A concurrency budget shared across several execution contexts. Every EC
- * handed out by [[ec]] is an independent, separately-shutdownable virtual-
+ * handed out by [[executionContext]] is an independent, separately-shutdownable virtual-
  * thread `ExecutorService`, but they all draw their run permits from ONE
  * shared [[Semaphore]] — so the total number of tasks running at once across
  * *every* EC built from this budget never exceeds `maxConcurrent`.
@@ -136,13 +136,13 @@ final class SharedExecutionBudget(maxConcurrent: Int) {
   /** A fresh virtual-thread EC named `${name}-N`, gated by this budget's shared
    *  permits. Shut it down independently of any sibling EC from the same
    *  budget. */
-  def ec(name: String): ExecutionContextExecutorService = {
+  def executionContext(name: String): ExecutionContextExecutorService = {
     val underlying = DaemonExecutors.virtualThreadExecutor(name)
     val gated      = permits.fold(underlying)(p => DaemonExecutors.semaphoreGated(underlying, p))
     ExecutionContext.fromExecutorService(DaemonExecutors.dropRejectedAfterShutdown(gated))
   }
 
-  /** Like [[ec]], but this EC additionally caps ITS OWN tasks at `subLimit`
+  /** Like [[executionContext]], but this EC additionally caps ITS OWN tasks at `subLimit`
    *  running at once — so it shares the budget with its siblings yet never uses
    *  more than `subLimit` of the budget's permits simultaneously. Use for a
    *  lower-priority consumer (e.g. the cinema scrape) that should get only a
@@ -152,7 +152,7 @@ final class SharedExecutionBudget(maxConcurrent: Int) {
    *  task waiting for a sub-slot doesn't sit holding a budget permit (which would
    *  let `subLimit` parked tasks starve the other consumers). The sub-semaphore
    *  is private to this EC, so there's no cross-consumer deadlock. */
-  def ec(name: String, subLimit: Int): ExecutionContextExecutorService = {
+  def executionContext(name: String, subLimit: Int): ExecutionContextExecutorService = {
     val underlying  = DaemonExecutors.virtualThreadExecutor(name)
     val subGated    = DaemonExecutors.semaphoreGated(underlying, new Semaphore(subLimit.max(1)))
     val budgetGated = permits.fold(subGated)(p => DaemonExecutors.semaphoreGated(subGated, p))

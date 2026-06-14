@@ -12,14 +12,14 @@ class SharedExecutionBudgetSpec extends AnyFlatSpec with Matchers {
     val budget = new SharedExecutionBudget(2)
     // Two distinct ECs from the same budget — work submitted to either still
     // shares the one permit pool, so the combined peak can't exceed 2.
-    val peak = ExecutorProbes.peakConcurrency(12, IndexedSeq(budget.ec("a"), budget.ec("b")))
+    val peak = ExecutorProbes.peakConcurrency(12, IndexedSeq(budget.executionContext("a"), budget.executionContext("b")))
     peak should be <= 2
   }
 
   it should "run unbounded when maxConcurrent <= 0" in {
     val budget = new SharedExecutionBudget(0)
     // No permit gate: all 8 overlapping tasks run at once.
-    val peak = ExecutorProbes.peakConcurrency(8, IndexedSeq(budget.ec("unbounded")))
+    val peak = ExecutorProbes.peakConcurrency(8, IndexedSeq(budget.executionContext("unbounded")))
     peak should be > 2
   }
 
@@ -27,7 +27,7 @@ class SharedExecutionBudgetSpec extends AnyFlatSpec with Matchers {
     val budget = new SharedExecutionBudget(8)
     // subLimit=2: this EC alone never runs more than 2 at once, though the
     // budget would allow up to 8.
-    val peak = ExecutorProbes.peakConcurrency(10, IndexedSeq(budget.ec("scrape", subLimit = 2)))
+    val peak = ExecutorProbes.peakConcurrency(10, IndexedSeq(budget.executionContext("scrape", subLimit = 2)))
     peak should be <= 2
   }
 
@@ -35,7 +35,7 @@ class SharedExecutionBudgetSpec extends AnyFlatSpec with Matchers {
     val budget = new SharedExecutionBudget(3)
     // scrape capped at 2, plus a normal sibling EC; combined they can't exceed
     // the budget of 3 (and scrape's own share never exceeds 2).
-    val peak = ExecutorProbes.peakConcurrency(12, IndexedSeq(budget.ec("scrape", subLimit = 2), budget.ec("other")))
+    val peak = ExecutorProbes.peakConcurrency(12, IndexedSeq(budget.executionContext("scrape", subLimit = 2), budget.executionContext("other")))
     peak should be <= 3
   }
 }

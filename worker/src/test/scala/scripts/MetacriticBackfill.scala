@@ -48,7 +48,7 @@ object MetacriticBackfill {
     val bogusCount = rows.count(_.record.metacriticUrl.exists(_.endsWith(BogusUrlSuffix)))
     // 10 workers is the upper end of CLAUDE.md's "5–10" range for
     // undocumented services. MC handles concurrent probes well in practice
-    // — `urlFor` issues at most 2-3 GETs per row (slug probe + de-articled
+    // — `urlFor` issues at most 2-3 GETimestamp per row (slug probe + de-articled
     // probe + optional search scrape), so 10 workers means ~20-30 in-flight
     // requests against MC at peak. Halve to 5 if we ever see 429/503 back.
     val Workers = 10
@@ -56,7 +56,7 @@ object MetacriticBackfill {
             s"${rows.count(_.record.metacriticUrl.isEmpty)} currently None · $bogusCount currently bogus /movie/")
     println(s"Probing MC with $Workers workers in parallel…\n")
 
-    implicit val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("mc-backfill", Workers)
+    implicit val executionContext: ExecutionContextExecutorService = DaemonExecutors.boundedEC("mc-backfill", Workers)
     val started     = new AtomicInteger(0)
     val done        = new AtomicInteger(0)
     val total       = rows.size
@@ -122,7 +122,7 @@ object MetacriticBackfill {
     }
 
     val outcomes = Await.result(Future.sequence(tasks), 30.minutes)
-    ec.shutdown()
+    executionContext.shutdown()
     repository.close()
 
     val filled    = outcomes.collect { case f: Filled    => f }
