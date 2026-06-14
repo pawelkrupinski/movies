@@ -119,8 +119,9 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
 
   // The /debug live view needs the change stream to surface DELETEs (a merge
   // removes the losing row), not just upserts. A delete carries no post-image,
-  // so the impl reads its `documentKey._id` — exercised here against a real
-  // replica set (Atlas), the one place this path is reachable.
+  // so the impl reads its `documentKey._id` — exercised here against a replica
+  // set (CI starts Mongo as a single-node RS; `$changeStream` needs one),
+  // the only shape this path is reachable in.
   it should "surface an out-of-band upsert AND delete (by _id) on the change stream" in {
     import java.util.concurrent.{CountDownLatch, TimeUnit}
     import services.movies.StoredMovieRecord
@@ -135,7 +136,7 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
       onUpsert = r   => if (StoredMovieRecord.idOf(r) == id) gotUpsert.countDown(),
       onDelete = did => if (did == id) gotDelete.countDown()
     )
-    handle should not be empty // a replica set is required; Atlas is one
+    handle should not be empty // requires a replica set (a single-node RS counts)
 
     try {
       Thread.sleep(1500) // let the stream establish before the writes
