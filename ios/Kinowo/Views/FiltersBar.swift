@@ -399,9 +399,14 @@ struct FiltersSheet: View {
     @EnvironmentObject var details: DetailsStore
     @Environment(\.dismiss) private var dismiss
 
+    // ScrollViewReader anchor for the account section (Konto / Zaloguj się) —
+    // shared across both branches so a sign-in can scroll it into view.
+    private let accountAnchor = "account"
+
     var body: some View {
         NavigationStack {
-            Form {
+            ScrollViewReader { proxy in
+                Form {
                 // Sortowanie leads the sheet (above Ukryte filmy, matching
                 // Android). Mirrors the web's `#sort-by` dropdown: earliest
                 // showtime (default) or weighted rating.
@@ -545,6 +550,7 @@ struct FiltersSheet: View {
                             }
                         }
                     }
+                    .id(accountAnchor)
                 } else {
                     Section("Zaloguj się") {
                         Button { Task { await authService.signInWithGoogle() } } label: {
@@ -554,6 +560,15 @@ struct FiltersSheet: View {
                             Label("Zaloguj przez Facebook", systemImage: "f.circle.fill")
                         }
                     }
+                    .id(accountAnchor)
+                }
+            }
+            // After a successful sign-in (user goes nil → set), scroll the sheet
+            // down to the freshly-revealed Konto section so the result of logging
+            // in lands in view rather than off the bottom.
+            .onChange(of: authService.user != nil) { loggedIn in
+                if loggedIn {
+                    withAnimation { proxy.scrollTo(accountAnchor, anchor: .bottom) }
                 }
             }
             .navigationTitle("Filtry")
@@ -565,6 +580,7 @@ struct FiltersSheet: View {
                 }
             }
             .accessibilityIdentifier(A11y.FiltersSheet.root)
+            }
         }
     }
 
