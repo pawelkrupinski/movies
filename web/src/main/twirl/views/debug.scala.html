@@ -392,11 +392,11 @@
   }
 
   // ── Staging table queue columns ────────────────────────────────────────────
-  // The "Pending enrichment (staging)" table carries the same queue-place badges
-  // the corpus pending sections show, but as two per-row columns: "Enrich q#"
-  // (this title|year's EnrichDetails task) and "TMDB q#" (its ResolveTmdb task).
-  // Filled off the same /debug/queue poll as rebuildPending, so the places tick
-  // live as the worker drains the queue — no page refresh.
+  // The staging table (pending_movies, rendered above) carries the same queue-
+  // place badges the corpus pending sections show, but as two per-row columns:
+  // "Enrich q#" (this title|year's EnrichDetails task) and "TMDB q#" (its
+  // ResolveTmdb task). Filled off the same /debug/queue poll as rebuildPending,
+  // so the places tick live as the worker drains the queue — no page refresh.
   function rebuildStagingQueue() {
     const staging = document.getElementById('staging-t');
     if (!staging) return;
