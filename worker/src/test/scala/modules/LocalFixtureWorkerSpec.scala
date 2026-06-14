@@ -37,6 +37,16 @@ class LocalFixtureWorkerSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     FixtureWorkerWiring.captureDate("definitely-not-a-fixture-directory") shouldBe None
   }
 
+  // The local stack must target the native brew Mongo (:28017) the rest of the
+  // local tooling shares (the /debug mirror, scripts/reset-corpus.sh --local),
+  // NOT the retired Docker instance (:27018). A regression here silently splits
+  // the worker onto a second mongo — the bug that prompted this.
+  "LocalFixtureWorkerMain's Mongo defaults" should "point at the brew :28017 local Mongo, not Docker :27018" in {
+    LocalFixtureWorkerMain.DefaultMongoUri should include ("28017")
+    LocalFixtureWorkerMain.DefaultMongoUri should not include "27018"
+    LocalFixtureWorkerMain.DefaultMongoDb shouldBe "kinowo_local"
+  }
+
   // The forked bg worker's CWD isn't the repository root, so FakeHttpFetch must be
   // able to resolve the corpus under an absolute KINOWO_FIXTURE_ROOT base.
   "FakeHttpFetch.rootFor" should "default to the repository-relative fixtures path" in {

@@ -22,11 +22,13 @@ import scala.concurrent.duration._
  */
 object LocalFixtureWorkerMain {
   // Defaults MUST match the `localStack` command in build.sbt so the worker
-  // (this forked JVM) and `web/run` (the sbt JVM) land on the SAME local db.
-  // Port 27018, NOT 27017 — 27017 is commonly the `flyctl proxy` to prod Mongo,
-  // and this stack must never touch the prod db.
-  private val DefaultMongoUri = "mongodb://127.0.0.1:27018"
-  private val DefaultMongoDb  = "kinowo_local"
+  // (this forked JVM) and `web/run` (the sbt JVM) land on the SAME local db: the
+  // native brew Mongo on :28017 (scripts/local-mirror/start-local-mongo.sh), the
+  // same instance the /debug mirror + scripts/reset-corpus.sh --local use. NOT
+  // :27017 — that's the `flyctl proxy` to prod, and this stack must never touch
+  // the prod db.
+  private[modules] val DefaultMongoUri = "mongodb://127.0.0.1:28017/?directConnection=true"
+  private[modules] val DefaultMongoDb  = "kinowo_local"
 
   def main(args: Array[String]): Unit = {
     forceLocalMongo()

@@ -251,17 +251,18 @@ lazy val root = (project in file("."))
 //     process-env > -D > .env.local, so this beats .env.local's prod URI.
 //
 // Override via env: KINOWO_LOCAL_MONGO_URI, KINOWO_LOCAL_MONGO_DB, KINOWO_FIXTURE_DIR.
-// Needs a local Mongo on port 27018 (NOT 27017 — that's usually the `flyctl
-// proxy` to prod Mongo; this stack must never touch prod), e.g.:
-//   docker run -d -p 27018:27017 --name kinowo-local-mongo mongo --replSet rs0
-//   docker exec kinowo-local-mongo mongosh --quiet --eval 'rs.initiate()'
-// (A single-node replica set gives web instant change-stream updates; a plain
-// standalone also works — web falls back to its periodic full reload.)
+// Uses the native brew Mongo on port 28017 (NOT 27017 — that's the `flyctl proxy`
+// to prod Mongo; this stack must never touch prod): the same single-node-replica-
+// set instance scripts/local-mirror/start-local-mongo.sh sets up and the /debug
+// mirror + scripts/reset-corpus.sh --local share. `ensureLocalMongo` runs that
+// script if :28017 isn't already up. (The replica set gives web instant
+// change-stream updates; a standalone also works — web falls back to its
+// periodic full reload.)
 //
 // Stop: quit `web/run` (Enter), then `bgStop <id>` for the worker (`jobs` lists
 // it), or just exit sbt.
 lazy val localStack = Command.command("localStack") { state =>
-  val uri        = sys.env.getOrElse("KINOWO_LOCAL_MONGO_URI", "mongodb://127.0.0.1:27018")
+  val uri        = sys.env.getOrElse("KINOWO_LOCAL_MONGO_URI", "mongodb://127.0.0.1:28017/?directConnection=true")
   val db         = sys.env.getOrElse("KINOWO_LOCAL_MONGO_DB", "kinowo_local")
   val fixtureDir = sys.env.getOrElse("KINOWO_FIXTURE_DIR", "today")
   ensureLocalMongo(state, uri)
@@ -273,41 +274,29 @@ lazy val localStack = Command.command("localStack") { state =>
   "worker/Test/bgRunMain modules.LocalFixtureWorkerMain" :: "web/run" :: state
 }
 
-/** Make sure a Mongo is listening for the local stack. For a LOCAL uri whose
- *  port is closed, start a single-node-replica-set docker mongo (replica set so
- *  web's change streams deliver live, not just the 30-min reload backstop) and
- *  wait for it. Never touches a remote/custom uri; degrades to a clear hint if
- *  docker is absent. */
+/** Make sure the local Mongo is listening for the stack. For a LOCAL uri whose
+ *  port is closed, start the native brew Mongo via
+ *  scripts/local-mirror/start-local-mongo.sh (a single-node replica set, so web's
+ *  change streams deliver live, not just the 30-min reload backstop) and wait for
+ *  it. Never touches a remote/custom uri. */
 def ensureLocalMongo(state: State, uri: String): Unit = {
   val log = state.log
   val (host, port) = """mongodb://([^:/]+):(\d+)""".r.findFirstMatchIn(uri)
-    .map(m => (m.group(1), m.group(2).toInt)).getOrElse(("127.0.0.1", 27018))
+    .map(m => (m.group(1), m.group(2).toInt)).getOrElse(("127.0.0.1", 28017))
   val isLocal = host == "127.0.0.1" || host == "localhost"
   def portOpen: Boolean =
     try { val s = new java.net.Socket(); s.connect(new java.net.InetSocketAddress(host, port), 500); s.close(); true }
     catch { case _: Throwable => false }
   if (!isLocal || portOpen) return
-  def sh(cmd: String): Int = scala.sys.process.Process(Seq("sh", "-c", cmd)).!(scala.sys.process.ProcessLogger(_ => ()))
-  val haveDocker = sh("command -v docker >/dev/null 2>&1") == 0
-  if (!haveDocker) {
-    log.warn(s"[localStack] no Mongo on $host:$port and docker not found. Start one yourself: " +
-      s"docker run -d -p $port:27017 --name kinowo-local-mongo mongo --replSet rs0  &&  " +
-      s"docker exec kinowo-local-mongo mongosh --quiet --eval 'rs.initiate()'")
-    return
-  }
-  val name = "kinowo-local-mongo"
-  log.info(s"[localStack] no Mongo on $host:$port — starting docker '$name'…")
-  val exists = scala.sys.process.Process(Seq("sh", "-c", s"docker ps -aq -f name=^$name$$")).!!.trim.nonEmpty
-  if (exists) sh(s"docker start $name")
-  else sh(s"docker run -d -p $port:27017 --name $name mongo --replSet rs0")
+  log.info(s"[localStack] no Mongo on $host:$port — starting the brew Mongo (scripts/local-mirror/start-local-mongo.sh)…")
+  val rc = scala.sys.process.Process(Seq("bash", "scripts/local-mirror/start-local-mongo.sh"))
+    .!(scala.sys.process.ProcessLogger(line => log.info(s"[start-local-mongo] $line")))
+  if (rc != 0)
+    log.warn("[localStack] start-local-mongo.sh failed — start it yourself, then re-run `sbt localStack`.")
   var waited = 0
   while (!portOpen && waited < 40) { Thread.sleep(1000); waited += 1 }
-  // Idempotent: a fresh container needs rs.initiate(); a restarted one already
-  // has it (try/catch swallows "already initialized").
-  sh(s"docker exec $name mongosh --quiet --eval 'try { rs.initiate() } catch (e) {}'")
-  Thread.sleep(2000) // let the single node elect itself primary before web connects
   if (portOpen) log.info(s"[localStack] local mongo ready on $host:$port")
-  else log.warn(s"[localStack] mongo didn't come up on $host:$port — check 'docker logs $name'")
+  else log.warn(s"[localStack] mongo didn't come up on $host:$port — see scripts/local-mirror/start-local-mongo.sh")
 }
 
 // One sbt invocation, every module's unit tests, no fail-fast: `all` runs each
