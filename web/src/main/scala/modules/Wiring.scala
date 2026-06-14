@@ -67,10 +67,18 @@ trait Wiring {
   // ALWAYS read that local mirror and never fall back to the prod tunnel: an
   // unreachable mirror just disables movieRepository (an empty /debug) instead
   // of silently dumping the prod corpus over the slow tunnel.
+  // Short timeouts on the mirror connection (`LocalMirrorTimeout`): it's a
+  // loopback Mongo that answers in ~ms when healthy, so a few seconds of silence
+  // means it's down. Capping the boot probe and the driver's per-request
+  // server-selection makes a down/unreachable mirror disable fast (→ empty
+  // /debug, per `movieConnection`'s no-fallback rule) instead of wedging boot
+  // and every /debug load on the driver's 30s default.
   lazy val movieMirrorConnection: MongoConnection =
     Wiring.movieConnection(
       Env.get("MONGODB_MOVIES_MIRROR_URI"),
-      MongoConnection.fromUri(_, required = false),
+      MongoConnection.fromUri(_, required = false,
+        probeTimeout           = MongoConnection.LocalMirrorTimeout,
+        serverSelectionTimeout = Some(MongoConnection.LocalMirrorTimeout)),
       mongoConnection)
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(movieMirrorConnection.database, fallbackToOwnInit = false)
   lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database)

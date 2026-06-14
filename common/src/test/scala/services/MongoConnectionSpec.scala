@@ -3,6 +3,7 @@ package services
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import java.util.concurrent.TimeUnit.MILLISECONDS
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
@@ -82,6 +83,29 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
       .getCompressorList.asScala.map(_.getName)
     names should contain ("snappy")
     names should not contain "zlib"
+  }
+
+  // Server-selection cap: the loopback /debug read-mirror passes a short timeout
+  // so a down mirror fails fast instead of wedging every read on the driver's
+  // 30s default. Prod passes none and keeps that default (the 2026-06-06 incident
+  // wants prod tolerant of a slow/recovering node).
+  it should "cap server-selection at the given timeout (the /debug mirror) when one is passed" in {
+    val timeoutMs = MongoConnection
+      .clientSettings(ValidUri, serverSelectionTimeout = Some(3.seconds))
+      .getClusterSettings.getServerSelectionTimeout(MILLISECONDS)
+    timeoutMs shouldBe 3000L
+  }
+
+  it should "leave the driver-default server-selection timeout (30s) when none is passed (prod)" in {
+    val timeoutMs = MongoConnection
+      .clientSettings(ValidUri)
+      .getClusterSettings.getServerSelectionTimeout(MILLISECONDS)
+    timeoutMs shouldBe 30000L
+  }
+
+  "MongoConnection.LocalMirrorTimeout" should "be far below the prod default so a dead mirror fails fast" in {
+    MongoConnection.LocalMirrorTimeout should be < MongoConnection.DefaultProbeTimeout
+    MongoConnection.LocalMirrorTimeout.toSeconds should be <= 5L
   }
 
   // The mode/opt-out → required policy used by Wiring.

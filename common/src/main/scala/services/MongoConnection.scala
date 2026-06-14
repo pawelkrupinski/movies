@@ -49,7 +49,12 @@ class MongoConnection(
     uri: Option[String],
     dbName: String,
     required: Boolean,
-    probeTimeout: FiniteDuration = MongoConnection.DefaultProbeTimeout) extends Logging {
+    probeTimeout: FiniteDuration = MongoConnection.DefaultProbeTimeout,
+    // Caps the driver's per-request server-selection wait. `None` keeps the
+    // driver default (30s) — what the prod cluster wants, to ride out a slow /
+    // recovering node. The loopback `/debug` mirror passes a short cap so a dead
+    // mirror fails fast instead of wedging every read on the 30s default.
+    serverSelectionTimeout: Option[FiniteDuration] = None) extends Logging {
 
   // Eager — connecting now (at construction) surfaces wiring / network
   // problems at boot rather than at the first request. `Wiring` touches
@@ -82,7 +87,7 @@ class MongoConnection(
         (None, None)
       case Some(connectionString) =>
         Try {
-          val client = MongoClient(MongoConnection.clientSettings(connectionString))
+          val client = MongoClient(MongoConnection.clientSettings(connectionString, serverSelectionTimeout))
           val db     = client.getDatabase(dbName)
           // Touch the database to surface connectivity errors at boot
           // (same `countDocuments`-against-a-known-collection probe the
@@ -128,6 +133,15 @@ object MongoConnection {
    *  `MONGODB_PROBE_TIMEOUT_SECONDS`. */
   val DefaultProbeTimeout: FiniteDuration = 30.seconds
 
+  /** Boot-probe + server-selection cap for the loopback `/debug` read-mirror.
+   *  The mirror is a LAN Mongo that answers in ~ms when healthy, so — unlike the
+   *  prod cluster, which keeps the tolerant 30s `DefaultProbeTimeout` — a mirror
+   *  that doesn't respond within a few seconds is simply down. The short cap
+   *  turns a down/unreachable mirror into a fast fall-back-to-prod at boot AND a
+   *  fast-fail (empty, logged) per request, instead of wedging every `/debug`
+   *  load on the driver's 30s default server-selection timeout. */
+  val LocalMirrorTimeout: FiniteDuration = 3.seconds
+
   /** Parse `MONGODB_PROBE_TIMEOUT_SECONDS` into a positive second count,
    *  falling back to `DefaultProbeTimeout` on absent / non-numeric /
    *  non-positive input. Pure (takes the raw string, not the env) so it's
@@ -154,12 +168,17 @@ object MongoConnection {
    *  `fromEnv`'s db-name + probe-timeout resolution; `required` is the caller's
    *  to decide (the mirror is a soft optimisation, so the caller passes
    *  `false` and degrades to the primary connection when it's absent). */
-  def fromUri(uri: String, required: Boolean): MongoConnection =
+  def fromUri(
+      uri: String,
+      required: Boolean,
+      probeTimeout: FiniteDuration = parseProbeTimeout(Env.get("MONGODB_PROBE_TIMEOUT_SECONDS")),
+      serverSelectionTimeout: Option[FiniteDuration] = None): MongoConnection =
     new MongoConnection(
       Some(uri),
       Env.get("MONGODB_DB").getOrElse("kinowo"),
       required,
-      parseProbeTimeout(Env.get("MONGODB_PROBE_TIMEOUT_SECONDS")))
+      probeTimeout,
+      serverSelectionTimeout)
 
   /** Driver settings for a connection string, defaulting wire compression to
    *  zlib. The wire payload is uncompressed BSON regardless of WiredTiger's
@@ -169,11 +188,18 @@ object MongoConnection {
    *  0.65MB), turning a ~36s tunnel hydrate into ~5s. zlib is built into the
    *  JDK (no extra dependency); we only force it when the URI hasn't already
    *  named its own `compressors=`, so an explicit choice (e.g. zstd) wins. */
-  private[services] def clientSettings(connectionString: String): MongoClientSettings = {
+  private[services] def clientSettings(
+      connectionString: String,
+      serverSelectionTimeout: Option[FiniteDuration] = None): MongoClientSettings = {
     val cs      = new ConnectionString(connectionString)
     val builder = MongoClientSettings.builder().applyConnectionString(cs)
     if (cs.getCompressorList == null || cs.getCompressorList.isEmpty)
       builder.compressorList(java.util.List.of(MongoCompressor.createZlibCompressor()))
+    serverSelectionTimeout.foreach { timeout =>
+      builder.applyToClusterSettings { b =>
+        b.serverSelectionTimeout(timeout.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); ()
+      }
+    }
     builder.build()
   }
 }
