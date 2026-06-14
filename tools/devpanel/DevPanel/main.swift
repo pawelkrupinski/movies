@@ -474,11 +474,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: sizing
 
     /// Folded (both consoles closed) → fixed narrow size that just fits the
-    /// buttons. Expanded → freely resizable, width remembered.
+    /// buttons. Expanded → freely resizable, width remembered. The panel grows
+    /// downward from its top-left and is kept within the visible screen.
     private func relayout() {
         guard let root = panel.contentView else { return }
         let anyExpanded = webConsole.isExpanded || deviceConsole.isExpanded
         let fit = root.fittingSize
+        let topLeft = NSPoint(x: panel.frame.minX, y: panel.frame.maxY)
         relayouting = true
         if anyExpanded {
             panel.contentMinSize = NSSize(width: fit.width, height: fit.height)
@@ -491,7 +493,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             panel.contentMaxSize = fit
             panel.setContentSize(fit)
         }
+        panel.setFrameTopLeftPoint(topLeft)          // grow downward, not upward
+        clampToScreen()
         relayouting = false
+    }
+
+    /// Slide (and if necessary shrink) the panel so it stays fully on screen.
+    private func clampToScreen() {
+        guard let vf = (panel.screen ?? NSScreen.main)?.visibleFrame else { return }
+        var f = panel.frame
+        f.size.width = min(f.size.width, vf.width)
+        f.size.height = min(f.size.height, vf.height)
+        if f.maxX > vf.maxX { f.origin.x = vf.maxX - f.width }
+        if f.minX < vf.minX { f.origin.x = vf.minX }
+        if f.maxY > vf.maxY { f.origin.y = vf.maxY - f.height }
+        if f.minY < vf.minY { f.origin.y = vf.minY }
+        if f != panel.frame { panel.setFrame(f, display: true) }
     }
 
     func windowDidResize(_ notification: Notification) {
