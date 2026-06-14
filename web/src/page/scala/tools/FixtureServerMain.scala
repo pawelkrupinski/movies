@@ -49,7 +49,7 @@ object FixtureServerMain {
 
     // The read transform is the web app's, built from the read model the worker
     // projected (the seam the two apps share in production).
-    val svc = new controllers.MovieControllerService(wiring.webReadModel)
+    val service = new controllers.MovieControllerService(wiring.webReadModel)
 
     val anon    = Option.empty[models.User]
     // Render with a non-empty oauthProviders set so the Twirl
@@ -66,7 +66,7 @@ object FixtureServerMain {
     // as production serves a not-yet-populated city. The listing page (`/`,
     // `/filmy`) steps the selected day on a horizontal swipe — there's no
     // longer a separate Kina page or in-place view swap.
-    def schedulesFor(c: City) = svc.toSchedules(c, now)
+    def schedulesFor(c: City) = service.toSchedules(c, now)
 
     def indexPageFor(c: City): String = {
       implicit val ci: City = c

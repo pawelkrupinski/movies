@@ -46,8 +46,8 @@ object RecordNewCities {
       report(s"Multikino ${c.displayName} ($id)")(new MultikinoClient(rec, id, c).fetch().size)
     }
 
-    Seq(HeliosNuxt.Radom, HeliosNuxt.Sosnowiec, HeliosNuxt.Kielce, HeliosNuxt.Rzeszow).foreach { cfg =>
-      report(s"Helios ${cfg.cinema.displayName}")(new HeliosClient(rec, cfg).fetch().size)
+    Seq(HeliosNuxt.Radom, HeliosNuxt.Sosnowiec, HeliosNuxt.Kielce, HeliosNuxt.Rzeszow).foreach { config =>
+      report(s"Helios ${config.cinema.displayName}")(new HeliosClient(rec, config).fetch().size)
     }
 
     report("Kino Zorza (Rzeszów)")(

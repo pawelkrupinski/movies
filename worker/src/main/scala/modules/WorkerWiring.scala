@@ -142,7 +142,7 @@ class WorkerWiring extends play.api.Logging {
   // (put() runs before onEvent), so no store round-trip is needed.
   protected def filmwebFallbackOnEvent: (FilmwebFallbackState, FallbackEvent) => Unit =
     (state, event) => {
-      FallbackAlert.messageFor(state, event).foreach(msg => fallbackTelegramNotifier.foreach(_.send(msg)))
+      FallbackAlert.messageFor(state, event).foreach(message => fallbackTelegramNotifier.foreach(_.send(message)))
       uptimeMonitor.tagService(state.cinema, CinemaClientMarkers.tagsFor(clientMarkers.get(state.cinema), sourceUrls.get(state.cinema), state.active))
     }
 

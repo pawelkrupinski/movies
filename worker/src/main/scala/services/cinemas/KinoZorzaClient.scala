@@ -136,8 +136,8 @@ object KinoZorzaClient {
             val hallDivs = row.select("div.repertoire-hall:not(.repertoire-mobile)").asScala.toSeq
             hallDivs.flatMap { hallDiv =>
               val columns = hallDiv.children.asScala.toSeq
-              columns.zipWithIndex.flatMap { case (col, idx) =>
-                val hallName = if (idx < Halls.length) Halls(idx) else s"Sala ${idx + 1}"
+              columns.zipWithIndex.flatMap { case (col, index) =>
+                val hallName = if (index < Halls.length) Halls(index) else s"Sala ${index + 1}"
                 col.select("span.timeItem").asScala.toSeq.flatMap { span =>
                   ScraperParse.parseHHmm(span.text.trim).map { time =>
                     RawSlot(title, filmUrl, LocalDateTime.of(date, time), hallName)

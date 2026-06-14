@@ -107,8 +107,8 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
       val genres = parseGenres(html)
       val synopsisOpt = Option(doc.selectFirst("span.text")).flatMap { span =>
         val lines   = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
-        val emptyIdx = lines.indexWhere(_.isEmpty)
-        val synLines = if (emptyIdx >= 0) lines.drop(emptyIdx + 1) else Array.empty[String]
+        val emptyIndex = lines.indexWhere(_.isEmpty)
+        val synLines = if (emptyIndex >= 0) lines.drop(emptyIndex + 1) else Array.empty[String]
         val synText  = synLines.filter(_.nonEmpty).mkString(" ").trim
         Option(synText).filter(_.nonEmpty)
       }
@@ -162,8 +162,8 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
           case Some(span) =>
             val lines    = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
             val dir      = lines.find(_.startsWith("Reż. ")).map(_.stripPrefix("Reż. ").trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-            val emptyIdx = lines.indexWhere(_.isEmpty)
-            val synLines = if (emptyIdx >= 0) lines.drop(emptyIdx + 1) else Array.empty[String]
+            val emptyIndex = lines.indexWhere(_.isEmpty)
+            val synLines = if (emptyIndex >= 0) lines.drop(emptyIndex + 1) else Array.empty[String]
             val synText  = synLines.filter(_.nonEmpty).mkString(" ").trim
             val fullText = lines.mkString(" ")
             val rt       = RuntimePat.findFirstMatchIn(fullText).flatMap(m => Try(m.group(1).toInt).toOption)
@@ -235,11 +235,11 @@ object RialtoClient {
   // is listed separately. Matched on the registered programme set so the row
   // still enriches off the clean base title (see TitleNormalizer.ProgrammePrefix).
   private def stripCyclePrefix(title: String): String = {
-    val colonIdx = title.indexOf(": ")
-    if (colonIdx > 0 && colonIdx < 30) {
-      val prefix = title.substring(0, colonIdx)
+    val colonIndex = title.indexOf(": ")
+    if (colonIndex > 0 && colonIndex < 30) {
+      val prefix = title.substring(0, colonIndex)
       if (prefix.equalsIgnoreCase("Filmowy Klub Seniora")) title
-      else if (prefix != prefix.toUpperCase) title.substring(colonIdx + 2) else title
+      else if (prefix != prefix.toUpperCase) title.substring(colonIndex + 2) else title
     } else title
   }
 
@@ -275,16 +275,16 @@ object RialtoClient {
     new String(chars)
   }
 
-  /** True if the character run ending at index `dotIdx - 1` looks like a
+  /** True if the character run ending at index `dotIndex - 1` looks like a
    *  sentence-ending token: a digit (sequel/chapter number) or a 4+ letter
-   *  word. Counts contiguous letters/digits backwards from `dotIdx - 1`. */
-  private def precedingTokenEndsSentence(chars: Array[Char], dotIdx: Int): Boolean = {
-    if (dotIdx == 0) return false
-    val prev = chars(dotIdx - 1)
-    if (prev.isDigit) return true
-    if (!prev.isLetter) return false
+   *  word. Counts contiguous letters/digits backwards from `dotIndex - 1`. */
+  private def precedingTokenEndsSentence(chars: Array[Char], dotIndex: Int): Boolean = {
+    if (dotIndex == 0) return false
+    val previous = chars(dotIndex - 1)
+    if (previous.isDigit) return true
+    if (!previous.isLetter) return false
     var letters = 0
-    var j = dotIdx - 1
+    var j = dotIndex - 1
     while (j >= 0 && chars(j).isLetter) { letters += 1; j -= 1 }
     letters >= 4
   }

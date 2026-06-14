@@ -44,9 +44,9 @@ object RecordWroclawWarszawaChains {
       println(s"  ${Try(new MultikinoClient(mkFetch, id, cinema).fetch().size).fold(e => s"FAIL ${e.getMessage}", n => s"$n films")}")
     }
 
-    Seq(HeliosNuxt.Magnolia, HeliosNuxt.AlejaBielany, HeliosNuxt.BlueCity).foreach { cfg =>
-      println(s"Helios ${cfg.cinema.displayName}…")
-      println(s"  ${Try(new HeliosClient(rec, cfg).fetch().size).fold(e => s"FAIL ${e.getMessage}", n => s"$n films")}")
+    Seq(HeliosNuxt.Magnolia, HeliosNuxt.AlejaBielany, HeliosNuxt.BlueCity).foreach { config =>
+      println(s"Helios ${config.cinema.displayName}…")
+      println(s"  ${Try(new HeliosClient(rec, config).fetch().size).fold(e => s"FAIL ${e.getMessage}", n => s"$n films")}")
     }
   }
 }

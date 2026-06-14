@@ -71,7 +71,7 @@ object EnrichmentBackfill {
         rtRatings.refreshOneSync(title, year)
         fwRatings.refreshOneSync(title, year)
         val after = service.get(title, year)
-        val idx   = done.incrementAndGet()
+        val index   = done.incrementAndGet()
         val outcome: Outcome = after match {
           case Some(e) if e.imdbId != before.imdbId =>
             Changed(title, year, before, e)
@@ -85,7 +85,7 @@ object EnrichmentBackfill {
             // The interesting case: TMDB now resolves the (title, year) to a
             // different film than the previous enrichment. Show BEFORE → AFTER
             // so the user can verify the new pick is correct.
-            println(f"[$idx%3d/$total%3d] CHANGED $t (${y.getOrElse("?")})")
+            println(f"[$index%3d/$total%3d] CHANGED $t (${y.getOrElse("?")})")
             println(s"             was:  imdbId=${b.imdbId}  orig=${b.originalTitle.getOrElse("—")}")
             println(s"             now:  imdbId=${a.imdbId}  orig=${a.originalTitle.getOrElse("—")}" +
                     s"  imdb=${a.imdbRating.map(r => f"$r%.1f").getOrElse("—")}" +
@@ -95,14 +95,14 @@ object EnrichmentBackfill {
             // imdbId unchanged — just refreshed the ratings/URLs. Print the
             // first N for spot-check; the rest get summarised.
             if (refreshedShown.incrementAndGet() <= RefreshedSampleSize) {
-              println(f"[$idx%3d/$total%3d] refreshed $t (${y.getOrElse("?")}) " +
+              println(f"[$index%3d/$total%3d] refreshed $t (${y.getOrElse("?")}) " +
                       s"imdb=${a.imdbRating.map(r => f"$r%.1f").getOrElse("—")} " +
                       s"fw=${a.filmwebRating.map(r => f"$r%.1f").getOrElse("—")} " +
                       s"mc=${if (a.metacriticUrl.isDefined) "✓" else "—"} " +
                       s"rt=${if (a.rottenTomatoesUrl.isDefined) "✓" else "—"}")
             }
           case Failed(t, y, b) =>
-            println(f"[$idx%3d/$total%3d] FAILED  $t (${y.getOrElse("?")}) — TMDB no longer resolves" +
+            println(f"[$index%3d/$total%3d] FAILED  $t (${y.getOrElse("?")}) — TMDB no longer resolves" +
                     s" (was imdbId=${b.imdbId})")
         }
         outcome

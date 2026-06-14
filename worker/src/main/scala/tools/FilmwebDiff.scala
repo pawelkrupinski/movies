@@ -315,10 +315,10 @@ object FilmwebDiff {
   ): CinemaDiff = (oursTry, fwTry) match {
     case (Failure(e), _) =>
       CinemaDiff(cinema, filmwebId, source, 0, 0, 0, 0, 0, OUR_FETCH_FAILED,
-        s"  OUR fetch failed: ${msg(e)}", Map.empty, Map.empty)
+        s"  OUR fetch failed: ${message(e)}", Map.empty, Map.empty)
     case (_, Failure(e)) =>
       CinemaDiff(cinema, filmwebId, source, 0, 0, 0, 0, 0, FW_FETCH_FAILED,
-        s"  Filmweb fetch failed: ${msg(e)}", Map.empty, Map.empty)
+        s"  Filmweb fetch failed: ${message(e)}", Map.empty, Map.empty)
     case (Success(ours), Success(fw)) =>
       val oursByFilm = withinWindow(ours, today, windowEnd)
       val fwByFilm   = withinWindow(fw, today, windowEnd)
@@ -391,6 +391,6 @@ object FilmwebDiff {
     case NO_FILMWEB_ID    => "NO_FILMWEB_ID"
   }
 
-  private def msg(e: Throwable): String =
+  private def message(e: Throwable): String =
     Option(e.getMessage).getOrElse(e.getClass.getSimpleName)
 }

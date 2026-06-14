@@ -51,10 +51,10 @@ object MobileScreenshots {
     try {
       val wiring = new FixtureTestWiring("08-06-2026")
       wiring.bootStartup()
-      val svc = new controllers.MovieControllerService(wiring.webReadModel)
+      val service = new controllers.MovieControllerService(wiring.webReadModel)
       implicit val city: models.City = Poznan
       val cinemas  = city.cinemaDisplayNames
-      val schedules       = svc.toSchedules(city, now)
+      val schedules       = service.toSchedules(city, now)
       val anon    = Option.empty[models.User]
       val noOauth = Set.empty[String]
 

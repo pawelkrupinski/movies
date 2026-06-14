@@ -77,9 +77,9 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
       ("Powrót do przyszłości", Some(2026), mkEnrichment("tt-old-wrong-id"))
     ))
     val cache = new CaffeineMovieCache(repository)
-    val svc   = new MovieService(cache, new InProcessEventBus(), tmdb)
+    val service   = new MovieService(cache, new InProcessEventBus(), tmdb)
 
-    val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
+    val result = service.reEnrichSync("Powrót do przyszłości", Some(2026))
 
     // The new TMDB hit replaces the stale id.
     result.flatMap(_.imdbId) shouldBe Some("tt0088763")
@@ -98,9 +98,9 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val repository     = new InMemoryMovieRepository()
     val cache    = new CaffeineMovieCache(repository)
-    val svc      = new MovieService(cache, new InProcessEventBus(), tmdb)
+    val service      = new MovieService(cache, new InProcessEventBus(), tmdb)
 
-    val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
+    val result = service.reEnrichSync("Powrót do przyszłości", Some(2026))
 
     result.flatMap(_.imdbId)        shouldBe Some("tt0088763")
     result.flatMap(_.originalTitle) shouldBe Some("Back to the Future")
@@ -117,9 +117,9 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val original = mkEnrichment("tt-original", orig = Some("Keep me"))
     val repository     = new InMemoryMovieRepository(Seq(("Title", Some(2024), original)))
     val cache    = new CaffeineMovieCache(repository)
-    val svc      = new MovieService(cache, new InProcessEventBus(), tmdb)
+    val service      = new MovieService(cache, new InProcessEventBus(), tmdb)
 
-    val result = svc.reEnrichSync("Title", Some(2024))
+    val result = service.reEnrichSync("Title", Some(2024))
 
     // Re-enrich returns None when TMDB can't resolve, AND the existing row
     // stays in the cache (the old `invalidate-first` semantics would have
@@ -133,9 +133,9 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val repository     = new InMemoryMovieRepository()  // empty
     val cache    = new CaffeineMovieCache(repository)
-    val svc      = new MovieService(cache, new InProcessEventBus(), tmdb)
+    val service      = new MovieService(cache, new InProcessEventBus(), tmdb)
 
-    val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
+    val result = service.reEnrichSync("Powrót do przyszłości", Some(2026))
 
     result.flatMap(_.imdbId) shouldBe Some("tt0088763")
   }
@@ -152,11 +152,11 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val bus      = new InProcessEventBus()
     val cache    = new CaffeineMovieCache(new InMemoryMovieRepository())
-    val svc      = new MovieService(cache, bus, tmdb)
+    val service      = new MovieService(cache, bus, tmdb)
     val resolved = ListBuffer.empty[TmdbResolved]
     bus.subscribe { case e: TmdbResolved => resolved += e }
 
-    svc.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, force = true) shouldBe true
+    service.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, force = true) shouldBe true
 
     eventually(resolved.map(_.imdbId).toList shouldBe List("tt0088763"))
   }

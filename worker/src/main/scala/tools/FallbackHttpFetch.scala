@@ -41,9 +41,9 @@ class FallbackHttpFetch(backends: Seq[(String, HttpFetch)]) extends HttpFetch wi
       try result = Some(call(backend))
       catch {
         case t: Throwable =>
-          val msg = s"$name: ${t.getClass.getSimpleName}: ${t.getMessage}"
-          logger.warn(s"FallbackHttpFetch $verb $url — $msg; trying next backend")
-          failures += msg
+          val message = s"$name: ${t.getClass.getSimpleName}: ${t.getMessage}"
+          logger.warn(s"FallbackHttpFetch $verb $url — $message; trying next backend")
+          failures += message
       }
     }
     result.getOrElse {

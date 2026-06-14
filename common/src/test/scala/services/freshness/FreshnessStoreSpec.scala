@@ -55,14 +55,14 @@ class FreshnessStoreSpec extends AnyFlatSpec with Matchers {
 
   it should "let KINOWO_SCRAPE_FRESHNESS_MINUTES override the scrape TTL" in {
     val key = "KINOWO_SCRAPE_FRESHNESS_MINUTES"
-    val prev = Option(System.getProperty(key))
+    val previous = Option(System.getProperty(key))
     try {
       System.setProperty(key, "45")
       Freshness.ttlFor(CinemaScrape) shouldBe Some(45.minutes)
       // a non-positive / unparseable value falls back to the 30min default
       System.setProperty(key, "0")
       Freshness.ttlFor(CinemaScrape) shouldBe Some(30.minutes)
-    } finally prev match {
+    } finally previous match {
       case Some(v) => System.setProperty(key, v)
       case None    => System.clearProperty(key)
     }

@@ -57,8 +57,8 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
     sent shouldBe empty
 
     clock.advance(2.minutes)               // now 61m unresolved
-    val msg = a.runOnce()
-    msg should not be empty
+    val message = a.runOnce()
+    message should not be empty
     sent.size shouldBe 1
     sent.head should include ("Brand New Film")
     sent.head should include ("(2026)")
@@ -111,10 +111,10 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
     a.runOnce()
 
     sent.size shouldBe 1
-    val msg = sent.head
-    msg.linesIterator.count(_.startsWith("•")) shouldBe 2   // Alpha + Bravo, not 3 rows
-    msg should include (s"Alpha (2026) — ${Helios.displayName}, ${Multikino.displayName}")
-    msg should include (s"Bravo (2025) — ${Helios.displayName}")
+    val message = sent.head
+    message.linesIterator.count(_.startsWith("•")) shouldBe 2   // Alpha + Bravo, not 3 rows
+    message should include (s"Alpha (2026) — ${Helios.displayName}, ${Multikino.displayName}")
+    message should include (s"Bravo (2025) — ${Helios.displayName}")
   }
 
   it should "re-arm a film that vanishes then reappears" in {

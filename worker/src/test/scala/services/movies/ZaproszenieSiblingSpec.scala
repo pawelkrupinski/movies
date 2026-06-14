@@ -71,14 +71,14 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
     "resolve a different-year film that carries its own cinema slots, despite a resolved same-title sibling" in {
     val cache = new CaffeineMovieCache(seededRepository())
     val bus   = new InProcessEventBus()
-    val svc   = new MovieService(cache, bus, inviteTmdb())
-    bus.subscribe(svc.onMovieDetailsComplete)
+    val service   = new MovieService(cache, bus, inviteTmdb())
+    bus.subscribe(service.onMovieDetailsComplete)
 
     // A re-scrape of the 2026 film: same key, no director / originalTitle hint
     // — exactly what a director-less venue (Spójnia/Charlie) re-emits. With the
     // year-blind guard this was dropped; with the fix it resolves on its own.
     bus.publish(MovieDetailsComplete(Title, Some(2026), originalTitle = None, director = None))
-    svc.stop() // drain the inline ec pool
+    service.stop() // drain the inline ec pool
 
     val row2026 = cache.get(cache.keyOf(Title, Some(2026)))
     row2026.flatMap(_.tmdbId) shouldBe Some(Invite2026)
@@ -103,11 +103,11 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
       override def get(url: String): String =
         throw new RuntimeException(s"TMDB should not be called: $url")
     }, apiKey = Some("stub"))
-    val svc = new MovieService(cache, bus, tmdb)
-    bus.subscribe(svc.onMovieDetailsComplete)
+    val service = new MovieService(cache, bus, tmdb)
+    bus.subscribe(service.onMovieDetailsComplete)
 
     noException should be thrownBy bus.publish(MovieDetailsComplete(Title, Some(2026), None, None))
-    svc.stop()
+    service.stop()
 
     cache.get(cache.keyOf(Title, Some(2026))).flatMap(_.tmdbId) shouldBe None
   }

@@ -59,33 +59,33 @@ class FilmwebFallbackScraper(
   private val service          = cinema.displayName
 
   def fetch(): Seq[CinemaMovie] = {
-    val prev   = store.get(service)
-    val active = prev.exists(_.active)
+    val previous   = store.get(service)
+    val active = previous.exists(_.active)
     val nowI   = now()
-    val withinBackoff = active && prev.flatMap(_.nextPrimaryProbeAt).exists(nowI.isBefore)
+    val withinBackoff = active && previous.flatMap(_.nextPrimaryProbeAt).exists(nowI.isBefore)
 
     if (withinBackoff) {
       // On fallback, not yet time to re-probe → skip the broken primary entirely.
       val (fwMovies, fwMs, fwServed) = tryFilmweb()
-      prev.foreach(p => touchAndMaybeAlert(p, nowI))
+      previous.foreach(p => touchAndMaybeAlert(p, nowI))
       if (fwServed) { monitor.recordFallbackSuccess(service, fwMs); fwMovies }
       else { monitor.recordEmpty(service, fwMs); Seq.empty }
     } else {
       runPrimary() match {
         case PrimaryOutcome.Healthy(movies, ms) =>
-          if (active) recover(prev, nowI)
+          if (active) recover(previous, nowI)
           monitor.recordSuccess(service, ms)
           movies
         case down =>
           val (fwMovies, fwMs, fwServed) = tryFilmweb()
           if (active) {
             // Re-probed, primary still down → failed probe; extend backoff.
-            markPrimaryDown(prev, nowI, reasonOf(down))
+            markPrimaryDown(previous, nowI, reasonOf(down))
             if (fwServed) { monitor.recordFallbackSuccess(service, fwMs); fwMovies }
             else recordPrimaryOutcome(down)
           } else if (fwServed) {
             // First fall: enter fallback only because Filmweb actually has data.
-            markPrimaryDown(prev, nowI, reasonOf(down))
+            markPrimaryDown(previous, nowI, reasonOf(down))
             monitor.recordFallbackSuccess(service, fwMs)
             fwMovies
           } else {
@@ -131,9 +131,9 @@ class FilmwebFallbackScraper(
    *  /uptime FtFW chip lights immediately) but does NOT page: the page is delayed
    *  by [[alertAfter]] (see [[touchAndMaybeAlert]]), so a blip that recovers
    *  quickly stays silent. A re-probe that crosses the threshold pages here too. */
-  private def markPrimaryDown(prev: Option[FilmwebFallbackState], nowI: Instant, reason: String): Unit = {
-    val wasActive   = prev.exists(_.active)
-    val base        = prev.getOrElse(initialState)
+  private def markPrimaryDown(previous: Option[FilmwebFallbackState], nowI: Instant, reason: String): Unit = {
+    val wasActive   = previous.exists(_.active)
+    val base        = previous.getOrElse(initialState)
     val consecutive = if (wasActive) base.consecutiveFailures + 1 else 1
     val event       = FallbackEvent(nowI, if (wasActive) FallbackEvent.ProbeFailed else FallbackEvent.Enter, reason)
     val next = base.copy(
@@ -164,7 +164,7 @@ class FilmwebFallbackScraper(
     if (due) onEvent(next, FallbackEvent(nowI, FallbackEvent.Enter, next.lastReason.getOrElse("")))
   }
 
-  private def recover(prev: Option[FilmwebFallbackState], nowI: Instant): Unit = prev.foreach { p =>
+  private def recover(previous: Option[FilmwebFallbackState], nowI: Instant): Unit = previous.foreach { p =>
     val event = FallbackEvent(nowI, FallbackEvent.Recovered, "primary recovered")
     // `alerted` is carried over (not reset) so the RECOVERED page fires only when
     // we paged the entry — i.e. it recovered MORE than alertAfter after falling

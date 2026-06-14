@@ -44,9 +44,9 @@ object UptimeCinemaHostCleanup {
 
   def main(args: Array[String]): Unit = {
     val hosts = cinemaHosts
-    val conn = MongoConnection.fromEnv(required = false)
+    val connection = MongoConnection.fromEnv(required = false)
     try {
-      val db = conn.database.getOrElse {
+      val db = connection.database.getOrElse {
         println("MONGODB_URI not set — nothing to do.")
         sys.exit(1)
       }
@@ -60,6 +60,6 @@ object UptimeCinemaHostCleanup {
         coll.deleteMany(Filters.in("service", matched.toSeq*)).toFuture(),
         120.seconds)
       println(s"Deleted ${del.getDeletedCount} redundant per-host uptime doc(s) across ${matched.size} host(s).")
-    } finally conn.close()
+    } finally connection.close()
   }
 }

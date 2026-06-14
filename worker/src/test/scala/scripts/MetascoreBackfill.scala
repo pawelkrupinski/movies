@@ -51,7 +51,7 @@ object MetascoreBackfill {
     val tasks = rows.map { case StoredMovieRecord(title, year, e) =>
       Future {
         val freshScore = e.metacriticUrl.flatMap(url => Try(mc.metascoreFor(url)).toOption.flatten)
-        val idx = done.incrementAndGet()
+        val index = done.incrementAndGet()
 
         val outcome: Outcome = (e.metascore, freshScore) match {
           case (None, Some(s)) =>
@@ -66,9 +66,9 @@ object MetascoreBackfill {
 
         outcome match {
           case Filled(t, y, orig, after) =>
-            println(f"[$idx%3d/$total%3d] FILLED    $t (${y.getOrElse("?")})${orig.fold("")(o => s" [orig=$o]")}  None → $after")
+            println(f"[$index%3d/$total%3d] FILLED    $t (${y.getOrElse("?")})${orig.fold("")(o => s" [orig=$o]")}  None → $after")
           case Corrected(t, y, orig, before, after) =>
-            println(f"[$idx%3d/$total%3d] CORRECTED $t (${y.getOrElse("?")})${orig.fold("")(o => s" [orig=$o]")}  $before → $after")
+            println(f"[$index%3d/$total%3d] CORRECTED $t (${y.getOrElse("?")})${orig.fold("")(o => s" [orig=$o]")}  $before → $after")
           case _: Unchanged => ()  // sampled below
         }
         outcome

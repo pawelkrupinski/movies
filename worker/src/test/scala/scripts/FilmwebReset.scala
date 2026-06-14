@@ -69,7 +69,7 @@ object FilmwebReset {
     val ratings = new FilmwebRatings(cache, tmdb, filmweb)
     // `MovieService.get` is the only public window into the cache from a
     // script — used post-refresh to read back the newly-resolved values.
-    val svc     = new MovieService(cache, new InProcessEventBus(), tmdb)
+    val service     = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val Workers = 5  // CLAUDE.md: Filmweb soft-blocks above ~5.
     implicit val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("filmweb-reset", Workers)
@@ -87,8 +87,8 @@ object FilmwebReset {
         // FilmwebRatings.refreshOneSync write-throughs to both cache and
         // Mongo, so this reflects the fresh resolution.
         val after: Option[(String, Option[Double])] =
-          svc.get(r.title, r.year).flatMap(e => e.filmwebUrl.map(u => u -> e.filmwebRating))
-        val idx = done.incrementAndGet()
+          service.get(r.title, r.year).flatMap(e => e.filmwebUrl.map(u => u -> e.filmwebRating))
+        val index = done.incrementAndGet()
 
         val outcome: Outcome = (r.record.filmwebUrl, after) match {
           case (Some(beforeUrl), Some((afterUrl, afterRating))) if beforeUrl == afterUrl =>
@@ -107,15 +107,15 @@ object FilmwebReset {
         val beforeStr = s"${r.record.filmwebUrl.getOrElse("—")}  ${ratingStr(r.record.filmwebRating)}"
         outcome match {
           case ReplacedSame(_, ar) =>
-            println(f"[$idx%4d/$total%4d] KEPT      ${r.title} (${yearLabel(r.year)})  ${ratingStr(r.record.filmwebRating)} → ${ratingStr(ar)}")
+            println(f"[$index%4d/$total%4d] KEPT      ${r.title} (${yearLabel(r.year)})  ${ratingStr(r.record.filmwebRating)} → ${ratingStr(ar)}")
           case ReplacedDifferent(b, a, ar) =>
-            println(f"[$idx%4d/$total%4d] CHANGED   ${r.title} (${yearLabel(r.year)})")
+            println(f"[$index%4d/$total%4d] CHANGED   ${r.title} (${yearLabel(r.year)})")
             println(s"             before: $b")
             println(s"             after : $a  rating=${ratingStr(ar)}")
           case FilledFresh(a, ar) =>
-            println(f"[$idx%4d/$total%4d] FILLED    ${r.title} (${yearLabel(r.year)})  → $a  rating=${ratingStr(ar)}")
+            println(f"[$index%4d/$total%4d] FILLED    ${r.title} (${yearLabel(r.year)})  → $a  rating=${ratingStr(ar)}")
           case Cleared =>
-            println(f"[$idx%4d/$total%4d] CLEARED   ${r.title} (${yearLabel(r.year)})  was: $beforeStr")
+            println(f"[$index%4d/$total%4d] CLEARED   ${r.title} (${yearLabel(r.year)})  was: $beforeStr")
           case NoChangeAlreadyClear =>
             ()  // counted in summary; not interesting per-row.
         }

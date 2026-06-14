@@ -97,10 +97,10 @@ object KinoAgrafkaClient {
   private val DirMarker = "reż."
 
   private[cinemas] def parseMeta(cellText: String): MetaInfo = {
-    val idx = cellText.indexOf(DirMarker)
-    if (idx < 0) MetaInfo.empty
+    val index = cellText.indexOf(DirMarker)
+    if (index < 0) MetaInfo.empty
     else {
-      val tail = cellText.substring(idx + DirMarker.length)
+      val tail = cellText.substring(index + DirMarker.length)
       val directors = tail.split(",").iterator.map(_.trim)
         .takeWhile(seg => !seg.exists(_.isDigit) && !seg.contains("/") && !CountryNames.isPolish(seg))
         .flatMap(_.split(";")).map(_.trim)   // some films join co-directors with ';'

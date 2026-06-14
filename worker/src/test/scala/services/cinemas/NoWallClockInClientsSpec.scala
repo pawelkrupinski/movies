@@ -41,9 +41,9 @@ class NoWallClockInClientsSpec extends AnyFlatSpec with Matchers {
         .sortBy(_.getFileName.toString)
         .flatMap { path =>
           Files.readAllLines(path).asScala.zipWithIndex.collect {
-            case (line, idx)
+            case (line, index)
                 if NowCall.findFirstIn(line).isDefined && AllowedDefault.findFirstIn(line).isEmpty =>
-              s"${path.getFileName}:${idx + 1}: $line"
+              s"${path.getFileName}:${index + 1}: $line"
           }
         }
 

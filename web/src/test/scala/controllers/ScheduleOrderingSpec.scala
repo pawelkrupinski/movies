@@ -33,10 +33,10 @@ class ScheduleOrderingSpec extends AnyFlatSpec with Matchers {
       KinoApollo -> slot(),
       Helios     -> slot(),
     ))
-    val svc = new MovieControllerService(
+    val service = new MovieControllerService(
       TestReadModel.fromRecords(Seq(("Milcząca przyjaciółka", Some(2026), record))))
 
-    val schedules = svc.toSchedules(Poznan, now)
+    val schedules = service.toSchedules(Poznan, now)
     schedules should have size 1
     val firstDayCinemas = schedules.head.showings.head._2.map(_.cinema.displayName)
     firstDayCinemas shouldBe Seq("Helios Posnania", "Kino Apollo", "Kino Rialto")

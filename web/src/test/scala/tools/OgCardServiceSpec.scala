@@ -51,18 +51,18 @@ class OgCardServiceSpec extends AnyFlatSpec with Matchers {
 
   it should "memoise per identical inputs — second call neither re-fetches nor re-renders" in {
     val fetch = new CountingFetch(jpeg)
-    val svc   = new OgCardService(fetch)
-    val a = svc.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
-    val b = svc.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
+    val service   = new OgCardService(fetch)
+    val a = service.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
+    val b = service.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
     b should be theSameInstanceAs a
     fetch.calls.get shouldBe 1
   }
 
   it should "re-render when an input changes (e.g. a refreshed rating)" in {
     val fetch = new CountingFetch(jpeg)
-    val svc   = new OgCardService(fetch)
-    svc.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
-    svc.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.9), None, None, None), Some("https://cdn/x.jpg"))
+    val service   = new OgCardService(fetch)
+    service.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
+    service.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.9), None, None, None), Some("https://cdn/x.jpg"))
     fetch.calls.get shouldBe 2
   }
 
@@ -83,9 +83,9 @@ class OgCardServiceSpec extends AnyFlatSpec with Matchers {
     // (the second card's origin attempt) succeeds. If the failure were cached,
     // the second card would be served from the cache and never re-fetch.
     val fetch  = new FlakyFetch(jpeg, failFirst = 2)
-    val svc    = new OgCardService(fetch)
-    val first  = svc.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
-    val second = svc.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
+    val service    = new OgCardService(fetch)
+    val first  = service.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
+    val second = service.card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
     posterRed(first)  should be < 60   // text-only fallback (dark slot)
     posterRed(second) should be > 150  // retry loaded the poster
     fetch.calls.get   should be > 2    // proves the second card re-fetched, not a cache hit

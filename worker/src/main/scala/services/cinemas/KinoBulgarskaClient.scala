@@ -55,10 +55,10 @@ class KinoBulgarskaClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
       else {
         val afterRez  = text.stripPrefix("reż. ")
         val parts     = afterRez.split(",\\s*").map(_.trim)
-        val yearIdx   = parts.indexWhere(_.matches("\\d{4} r\\."))
-        val director  = if (yearIdx >= 1) parts(0).split(",").map(_.trim).filter(_.nonEmpty).toSeq else Seq.empty
-        val countries = if (yearIdx > 1) parts.slice(1, yearIdx).filter(_.nonEmpty).toSeq else Seq.empty
-        val year      = if (yearIdx >= 0) Try(parts(yearIdx).replaceAll("[^0-9]", "").toInt).toOption else None
+        val yearIndex   = parts.indexWhere(_.matches("\\d{4} r\\."))
+        val director  = if (yearIndex >= 1) parts(0).split(",").map(_.trim).filter(_.nonEmpty).toSeq else Seq.empty
+        val countries = if (yearIndex > 1) parts.slice(1, yearIndex).filter(_.nonEmpty).toSeq else Seq.empty
+        val year      = if (yearIndex >= 0) Try(parts(yearIndex).replaceAll("[^0-9]", "").toInt).toOption else None
         val runtime   = RuntimePat.findFirstMatchIn(text).flatMap(m => Try(m.group(1).toInt).toOption)
         (director, countries, year, runtime)
       }

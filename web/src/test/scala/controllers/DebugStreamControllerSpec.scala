@@ -58,10 +58,10 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
     val frames = Await.result(collecting, 3.seconds)
     frames should have size 1
-    val msg = Json.parse(frames.head.stripPrefix("data: ").trim)
-    (msg \ "type").as[String] shouldBe "upsert"
-    (msg \ "id").as[String]   shouldBe StoredMovieRecord.idFor("Belle", Some(2021))
-    val html = (msg \ "html").as[String]
+    val message = Json.parse(frames.head.stripPrefix("data: ").trim)
+    (message \ "type").as[String] shouldBe "upsert"
+    (message \ "id").as[String]   shouldBe StoredMovieRecord.idFor("Belle", Some(2021))
+    val html = (message \ "html").as[String]
     html should include("""data-id="""" + StoredMovieRecord.idFor("Belle", Some(2021)))
     html should include("Belle")
     html should include("class=\"reenrich\"") // the row's re-enrich button is present
@@ -76,9 +76,9 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
     val frames = Await.result(collecting, 3.seconds)
     frames should have size 1
-    val msg = Json.parse(frames.head.stripPrefix("data: ").trim)
-    (msg \ "type").as[String] shouldBe "delete"
-    (msg \ "id").as[String]   shouldBe StoredMovieRecord.idFor("Belle", Some(2021))
+    val message = Json.parse(frames.head.stripPrefix("data: ").trim)
+    (message \ "type").as[String] shouldBe "delete"
+    (message \ "id").as[String]   shouldBe StoredMovieRecord.idFor("Belle", Some(2021))
   }
 
   it should "emit nothing while the collection is idle" in {

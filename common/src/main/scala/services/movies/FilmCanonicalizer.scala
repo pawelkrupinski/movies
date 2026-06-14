@@ -84,13 +84,13 @@ object FilmCanonicalizer {
       val y = row._1.year.get
       resolvedClusters.zipWithIndex
         .filter { case (c, _) => c.refYear.exists(ry => math.abs(y - ry) <= 1) }
-        .minByOption { case (c, idx) => (c.minRank, idx) } match {
-        case Some((_, idx)) => adjacent.getOrElseUpdate(idx, scala.collection.mutable.ListBuffer.empty) += row
+        .minByOption { case (c, index) => (c.minRank, index) } match {
+        case Some((_, index)) => adjacent.getOrElseUpdate(index, scala.collection.mutable.ListBuffer.empty) += row
         case None           => orphans += row
       }
     }
-    val resolvedWithAdjacent: Seq[Cluster] = resolvedClusters.zipWithIndex.map { case (c, idx) =>
-      c.copy(rows = c.rows ++ adjacent.getOrElse(idx, Nil).toSeq)
+    val resolvedWithAdjacent: Seq[Cluster] = resolvedClusters.zipWithIndex.map { case (c, index) =>
+      c.copy(rows = c.rows ++ adjacent.getOrElse(index, Nil).toSeq)
     }
 
     // (3) Orphaned year-bearing rows → greedy 2-year windows from the lowest
@@ -115,9 +115,9 @@ object FilmCanonicalizer {
     val clusters: Seq[Cluster] =
       if (seeded.isEmpty) yearlessRows.map(r => Cluster(refYear = None, rows = Seq(r)))
       else {
-        val canonicalIdx = seeded.zipWithIndex.minBy { case (c, idx) => (c.minRank, idx) }._2
-        seeded.zipWithIndex.map { case (c, idx) =>
-          if (idx == canonicalIdx) c.copy(rows = c.rows ++ yearlessRows) else c
+        val canonicalIndex = seeded.zipWithIndex.minBy { case (c, index) => (c.minRank, index) }._2
+        seeded.zipWithIndex.map { case (c, index) =>
+          if (index == canonicalIndex) c.copy(rows = c.rows ++ yearlessRows) else c
         }
       }
 

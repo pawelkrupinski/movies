@@ -44,11 +44,11 @@ object Env {
             .map(_.trim)
             .filterNot(line => line.isEmpty || line.startsWith("#"))
             .flatMap { line =>
-              val idx = line.indexOf('=')
-              if (idx <= 0) None
+              val index = line.indexOf('=')
+              if (index <= 0) None
               else {
-                val k = line.take(idx).trim
-                val v = line.drop(idx + 1).trim
+                val k = line.take(index).trim
+                val v = line.drop(index + 1).trim
                   .stripPrefix("\"").stripSuffix("\"")
                   .stripPrefix("'").stripSuffix("'")
                 Some(k -> v)

@@ -79,8 +79,8 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     val repository  = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository)
     val bus   = new InProcessEventBus()
-    val svc   = new MovieService(cache, bus, kurozajacTmdb())
-    bus.subscribe(svc.onMovieDetailsComplete)
+    val service   = new MovieService(cache, bus, kurozajacTmdb())
+    bus.subscribe(service.onMovieDetailsComplete)
 
     val key = cache.keyOf(Title, Year)
     // Simulate the state a CC-first scrape leaves behind: cache says we've
@@ -92,7 +92,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     // hint the prior attempt never had. With the bug this is dropped on the
     // isNegative early-return; with the fix `directorWalk` resolves it.
     bus.publish(MovieDetailsComplete(Title, Year, originalTitle = None, director = Some(Director)))
-    svc.stop()  // drains the inline ec pool — sync wait for resolveTmdbOnce to land
+    service.stop()  // drains the inline ec pool — sync wait for resolveTmdbOnce to land
 
     val row = cache.get(key)
     row.flatMap(_.tmdbId) shouldBe Some(TmdbId)
@@ -111,8 +111,8 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
       override def get(url: String): String =
         throw new RuntimeException(s"TMDB should not be called: $url")
     }, apiKey = Some("stub"))
-    val svc   = new MovieService(cache, bus, tmdb)
-    bus.subscribe(svc.onMovieDetailsComplete)
+    val service   = new MovieService(cache, bus, tmdb)
+    bus.subscribe(service.onMovieDetailsComplete)
 
     val key = cache.keyOf(Title, Year)
     cache.markMissing(key)
@@ -120,7 +120,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     // No director, no originalTitle — re-publish under the same conditions
     // that produced the miss. Must short-circuit, NOT hammer TMDB.
     noException should be thrownBy bus.publish(MovieDetailsComplete(Title, Year, None, None))
-    svc.stop()
+    service.stop()
   }
 
   // ── Fix 2 — retry path: hints must be sourced from cinemaShowings ─────────
@@ -135,10 +135,10 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     )
     val repository  = new InMemoryMovieRepository(Seq((Title, Year, seeded)))
     val cache = new CaffeineMovieCache(repository)
-    val svc   = new MovieService(cache, new InProcessEventBus(), kurozajacTmdb())
+    val service   = new MovieService(cache, new InProcessEventBus(), kurozajacTmdb())
 
-    svc.retryUnresolvedTmdb()
-    svc.stop()  // drain the worker pool
+    service.retryUnresolvedTmdb()
+    service.stop()  // drain the worker pool
 
     val row = cache.get(cache.keyOf(Title, Year))
     row.flatMap(_.tmdbId) shouldBe Some(TmdbId)
@@ -182,11 +182,11 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
       "/search/movie"             -> """{"results":[]}""",
       "/movie/21484/external_ids" -> """{"id":21484,"imdb_id":"tt0082933"}"""
     )), apiKey = Some("stub"))
-    val svc = new MovieService(cache, bus, tmdb)
-    bus.subscribe(svc.onMovieDetailsComplete)
+    val service = new MovieService(cache, bus, tmdb)
+    bus.subscribe(service.onMovieDetailsComplete)
 
     bus.publish(MovieDetailsComplete("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some(2026), originalTitle = Some("Possession"), director = None))
-    svc.stop()
+    service.stop()
 
     val row = cache.get(cache.keyOf("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some(2026)))
     row.flatMap(_.tmdbId) shouldBe Some(21484)
@@ -210,13 +210,13 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
       "/search/movie"             -> """{"results":[]}""",
       "/movie/1083381/external_ids" -> """{"id":1083381,"imdb_id":"tt9999999"}"""
     )), apiKey = Some("stub"))
-    val svc = new MovieService(cache, new InProcessEventBus(), tmdb)
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     // The staging row's key title ("Premiera") misses TMDB; only the Helios slot's
     // reported title ("Backrooms") matches. The row is NOT written to the cache.
     val existing = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("Backrooms"))))
-    val resolved = svc.resolveStagingRecord("Premiera", Some(2026), existing)
+    val resolved = service.resolveStagingRecord("Premiera", Some(2026), existing)
 
     resolved.flatMap(_.tmdbId) shouldBe Some(1083381)
     resolved.flatMap(_.imdbId) shouldBe Some("tt9999999")

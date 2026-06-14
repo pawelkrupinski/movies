@@ -109,15 +109,15 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
     s"scrape order $label" should "leave exactly one visible Diabeł u Prady 2 row carrying every cinema's showtimes" in {
       val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
       val bus   = new InProcessEventBus
-      val svc   = new MovieService(cache, bus, tmdbStub())
+      val service   = new MovieService(cache, bus, tmdbStub())
 
       // First scrape resolves the row synchronously so subsequent
       // cinemas' MovieDetailsComplete events find a sibling with a tmdbId.
       val first = ordering.head
       cache.recordCinemaScrape(first.cinema, Seq(first.cm))
-      svc.reEnrichSync(first.title, first.year)
+      service.reEnrichSync(first.title, first.year)
 
-      bus.subscribe(svc.onMovieDetailsComplete)
+      bus.subscribe(service.onMovieDetailsComplete)
       for (s <- ordering.tail) {
         cache.recordCinemaScrape(s.cinema, Seq(s.cm))
         bus.publish(MovieDetailsComplete(s.title, s.year, s.cm.movie.originalTitle, if (s.cm.director.nonEmpty) Some(s.cm.director.mkString(", ")) else None))
@@ -255,12 +255,12 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   // End-to-end via the bus-driven pipeline: confirms that publishing events
   // with the canonical keys (returned by recordCinemaScrape) prevents the
   // TMDB stage from creating a second row for the year=Some(2026) variant.
-  // svc.stop() drains the worker pool so the assertion is deterministic.
+  // service.stop() drains the worker pool so the assertion is deterministic.
   "bus-driven scrape pipeline" should "produce exactly one TMDB-resolved row when two cinemas report Diabeł Prada with different years" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
     val bus   = new InProcessEventBus
-    val svc   = new MovieService(cache, bus, tmdbStub())
-    bus.subscribe(svc.onMovieDetailsComplete)
+    val service   = new MovieService(cache, bus, tmdbStub())
+    bus.subscribe(service.onMovieDetailsComplete)
 
     // Drive the same flow `cinemaScrapeRunner.run` does: publish a
     // MovieDetailsComplete for each canonical key returned by recordCinemaScrape.
@@ -280,7 +280,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
     scrape(Helios,    heliosPrada)
 
     // Drain the TMDB worker so any in-flight resolutions land before we read.
-    svc.stop()
+    service.stop()
 
     val pradaRows = cache.snapshot().filter { case StoredMovieRecord(_, _, e) =>
       e.tmdbId.contains(928344) || e.imdbId.contains("tt12340108")

@@ -109,7 +109,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
 
   it should "preserve Multikino's slot when the TMDB stage resolves the row" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
-    val svc   = new MovieService(cache, new InProcessEventBus, tmdbStub())
+    val service   = new MovieService(cache, new InProcessEventBus, tmdbStub())
 
     cache.recordCinemaScrape(Multikino, Seq(multikinoMk))
 
@@ -118,7 +118,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
 
     // Same code path the MovieDetailsComplete-driven async wrapper invokes — bypasses
     // the worker pool for a deterministic single-thread reproduction.
-    svc.reEnrichSync("Mortal Kombat 2", None)
+    service.reEnrichSync("Mortal Kombat 2", None)
 
     // TMDB's release_date (2026-05-06) re-keys the no-year cinema scrape onto
     // (title, Some(2026)) — `runTmdbStageSync` invalidates the original
@@ -154,14 +154,14 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
     s"scrape order $label" should "leave exactly one visible Mortal Kombat II row (no merger run)" in {
       val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
       val bus   = new InProcessEventBus
-      val svc   = new MovieService(cache, bus, tmdbStub())
+      val service   = new MovieService(cache, bus, tmdbStub())
 
       // First scrape resolves the row synchronously so subsequent cinemas
       // can find a sibling with a tmdbId — that's what
       // `hasResolvedSiblingByTitle` needs to short-circuit the TMDB stage.
       val first = ordering.head
       cache.recordCinemaScrape(first.cinema, Seq(first.cm))
-      svc.reEnrichSync(first.title, first.year)
+      service.reEnrichSync(first.title, first.year)
 
       // Subsequent cinemas follow the production flow: recordCinemaScrape
       // first (redirect folds the slot into the existing sibling row),
@@ -169,7 +169,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
       // bus listener's `needsTmdbResolution` must short-circuit via
       // `hasResolvedSiblingByTitle` (normalize-match) so no phantom row
       // is created at the raw (title, year) key.
-      bus.subscribe(svc.onMovieDetailsComplete)
+      bus.subscribe(service.onMovieDetailsComplete)
       for (s <- ordering.tail) {
         cache.recordCinemaScrape(s.cinema, Seq(s.cm))
         bus.publish(MovieDetailsComplete(s.title, s.year, s.cm.movie.originalTitle, if (s.cm.director.nonEmpty) Some(s.cm.director.mkString(", ")) else None))

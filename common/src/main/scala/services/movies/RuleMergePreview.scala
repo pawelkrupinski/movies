@@ -56,7 +56,7 @@ object RuleMergePreview {
   def newMerges(current: TitleRuleSet, draft: TitleRuleSet, entries: Seq[Entry]): Seq[Group] = {
     val before = groups(current, entries).map(g => (g.key, g.year) -> g.titles.toSet).toMap
     groups(draft, entries).filter { g =>
-      before.get((g.key, g.year)).forall(prev => g.titles.toSet != prev)
+      before.get((g.key, g.year)).forall(previous => g.titles.toSet != previous)
     }
   }
 

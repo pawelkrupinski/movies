@@ -21,10 +21,10 @@ class StagingPromoterSpec extends AnyFlatSpec with Matchers {
     val appender = new ListAppender[ILoggingEvent]
     appender.start()
     lb.addAppender(appender)
-    val prevLevel = lb.getLevel
+    val previousLevel = lb.getLevel
     lb.setLevel(Level.INFO)
     try { body; appender.list.asScala.toSeq.map(_.getFormattedMessage) }
-    finally { lb.detachAppender(appender); lb.setLevel(prevLevel) }
+    finally { lb.detachAppender(appender); lb.setLevel(previousLevel) }
   }
 
   private class FakeEnricher(val cinema: Cinema, detail: Option[FilmDetail], defer: Boolean = true)

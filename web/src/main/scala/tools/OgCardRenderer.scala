@@ -168,10 +168,10 @@ object OgCardRenderer {
     val sh    = math.round(p.getHeight * scale).toInt
     val dx    = -(sw - PosterW) / 2
     val dy    = -(sh - PosterH) / 2
-    val prev  = g.getClip
+    val previous  = g.getClip
     g.setClip(0, 0, PosterW, PosterH)
     g.drawImage(p, dx, dy, sw, sh, null)
-    g.setClip(prev)
+    g.setClip(previous)
   }
 
   /** A row (wrapping to a second row if needed) of two-segment rating badges.

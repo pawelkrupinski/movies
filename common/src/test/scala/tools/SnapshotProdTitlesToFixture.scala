@@ -23,8 +23,8 @@ object SnapshotProdTitlesToFixture {
   private val Out = Paths.get("common/src/test/resources/fixtures/prod-movies/titles.txt")
 
   def main(args: Array[String]): Unit = {
-    val conn = MongoConnection.fromEnv(required = true)
-    val repository = new MongoMovieRepository(conn.database, fallbackToOwnInit = false)
+    val connection = MongoConnection.fromEnv(required = true)
+    val repository = new MongoMovieRepository(connection.database, fallbackToOwnInit = false)
     try {
       val records = repository.findAll()
       val titles = records
@@ -35,7 +35,7 @@ object SnapshotProdTitlesToFixture {
       println(s"Wrote ${titles.size} distinct prod titles from ${records.size} records to $Out")
     } finally {
       repository.close()
-      conn.close()
+      connection.close()
     }
   }
 }

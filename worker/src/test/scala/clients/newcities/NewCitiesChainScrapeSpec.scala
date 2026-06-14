@@ -55,7 +55,7 @@ class NewCitiesChainScrapeSpec extends AnyFlatSpec with Matchers {
 
   // ── Helios venues (today pinned to the fixture capture date) ─────────────────
   Seq(HeliosNuxt.Radom, HeliosNuxt.Sosnowiec, HeliosNuxt.Kielce, HeliosNuxt.Rzeszow)
-    .foreach { cfg =>
-      check(s"HeliosClient (${cfg.cinema.displayName})", cfg.cinema)(new HeliosClient(http, cfg, captureDate).fetch())
+    .foreach { config =>
+      check(s"HeliosClient (${config.cinema.displayName})", config.cinema)(new HeliosClient(http, config, captureDate).fetch())
     }
 }

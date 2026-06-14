@@ -138,8 +138,8 @@ object NckfClient {
     val room: Option[String] = {
       val textAfterAnchor = anchor.flatMap { a =>
         val siblings = a.parent.childNodes.asScala.toList
-        val aIdx     = siblings.indexOf(a)
-        siblings.drop(aIdx + 1)
+        val aIndex     = siblings.indexOf(a)
+        siblings.drop(aIndex + 1)
           .collect { case tn: TextNode => tn.text.trim }
           .find(_.nonEmpty)
       }

@@ -164,13 +164,13 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
 
   "a TMDB HIT" should "fold a stranded yearless sibling onto the resolved row at conclusion" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
-    val svc   = service(cache, tmdbHit())
+    val movieService = service(cache, tmdbHit())
 
     // Unresolved pair, as a concurrent scrape leaves it: yeared Helios + yearless Multikino.
     cache.put(cache.keyOf(Title, Some(2026)), MovieRecord(data = Map(slot(Helios, Some(2026)))))
     cache.put(cache.keyOf(Title, None),       MovieRecord(data = Map(slot(Multikino, None))))
 
-    svc.reEnrichSync(Title, Some(2026))
+    movieService.reEnrichSync(Title, Some(2026))
 
     val rows = cache.snapshot()
     withClue(s"expected ONE row after conclusion, got ${rows.map(r => (r.title, r.year))}\n") {
@@ -183,14 +183,14 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
 
   "a TMDB MISS" should "still fold a stranded yearless sibling onto the concluded row" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
-    val svc   = service(cache, tmdbMiss())
+    val movieService = service(cache, tmdbMiss())
 
     cache.put(cache.keyOf(Title, Some(2026)), MovieRecord(data = Map(slot(Helios, Some(2026)))))
     cache.put(cache.keyOf(Title, None),       MovieRecord(data = Map(slot(Multikino, None))))
 
     // The miss conclusion (tmdbNoMatch) lives in `resolveTmdbOnce`, the
     // production ResolveTmdb handler path — `reEnrichSync` only handles hits.
-    svc.resolveTmdbOnce(Title, Some(2026), None, None, force = true)
+    movieService.resolveTmdbOnce(Title, Some(2026), None, None, force = true)
 
     val rows = cache.snapshot()
     withClue(s"expected ONE row after a concluded miss, got ${rows.map(r => (r.title, r.year))}\n") {

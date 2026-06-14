@@ -84,9 +84,9 @@ object TlsTrust extends Logging {
   def augmentedTrustManager: X509TrustManager = compositeTrustManager(bundledCerts)
 
   private def build(): Try[SSLContext] = Try {
-    val ctx = SSLContext.getInstance("TLS")
-    ctx.init(null, Array[TrustManager](compositeTrustManager(bundledCerts)), null)
-    ctx
+    val context = SSLContext.getInstance("TLS")
+    context.init(null, Array[TrustManager](compositeTrustManager(bundledCerts)), null)
+    context
   }
 
   private def loadCerts(resources: Seq[String]): Seq[X509Certificate] = {

@@ -220,9 +220,9 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
         if (last) {
           val text = buffer.toString
           buffer.setLength(0)
-          val msg = Json.parse(text)
-          (msg \ "id").asOpt[Int].foreach { id =>
-            Option(pending.remove(id)).foreach(_.complete(msg))
+          val message = Json.parse(text)
+          (message \ "id").asOpt[Int].foreach { id =>
+            Option(pending.remove(id)).foreach(_.complete(message))
           }
         }
         null
@@ -235,8 +235,8 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
     val id  = idGen.incrementAndGet()
     val fut = new CompletableFuture[JsValue]()
     pending.put(id, fut)
-    val msg = Json.obj("id" -> id, "method" -> method, "params" -> params).toString
-    ws.sendText(msg, true).get(5, TimeUnit.SECONDS)
+    val message = Json.obj("id" -> id, "method" -> method, "params" -> params).toString
+    ws.sendText(message, true).get(5, TimeUnit.SECONDS)
     val reply = fut.get(30, TimeUnit.SECONDS)
     (reply \ "error").asOpt[JsValue].foreach { err =>
       throw new RuntimeException(s"CDP error from $method: ${Json.stringify(err)}")

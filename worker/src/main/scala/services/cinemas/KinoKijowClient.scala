@@ -128,8 +128,8 @@ object KinoKijowClient {
     * Returns text after the first " - " separator, or the whole string if
     * no separator is found. */
   private def h2Title(h2: String): Option[String] = {
-    val idx = h2.indexOf(" - ")
-    if (idx >= 0) Some(h2.substring(idx + 3).trim)
+    val index = h2.indexOf(" - ")
+    if (index >= 0) Some(h2.substring(index + 3).trim)
     else if (h2.nonEmpty) Some(h2.trim)
     else None
   }

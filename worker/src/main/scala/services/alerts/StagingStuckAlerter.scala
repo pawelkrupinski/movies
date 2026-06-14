@@ -88,10 +88,10 @@ class StagingStuckAlerter(
 
     if (newlyStuck.isEmpty) None
     else {
-      val msg = alertText(newlyStuck)
-      notify(msg)
+      val message = alertText(newlyStuck)
+      notify(message)
       logger.warn(s"StagingStuckAlerter: ${newlyStuck.size} film(s) unresolved in staging > ${stuckThreshold.toMinutes}m.")
-      Some(msg)
+      Some(message)
     }
   }
 

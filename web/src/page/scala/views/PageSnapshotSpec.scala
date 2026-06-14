@@ -37,11 +37,11 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
   }
   // The web read transform, built from the worker-projected read model (the seam
   // the two apps share in production — web reads what worker projected).
-  private def svc = new controllers.MovieControllerService(wiring.webReadModel)
+  private def service = new controllers.MovieControllerService(wiring.webReadModel)
 
   "the / page (repertoire view)" should "render the same HTML as the checked-in snapshot" in {
     val html = views.html.repertoire(
-      svc.toSchedules(city, now), city.cinemaDisplayNames, city.cinemaPillMap,
+      service.toSchedules(city, now), city.cinemaDisplayNames, city.cinemaPillMap,
       devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
     ).body
     assertSnapshot(snapshotDir.resolve("expected-index.html"), html)
@@ -51,7 +51,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
   // cinemas, so each city's index renders its own scoped repertoire.
   "the Wrocław index" should "render the same HTML as the checked-in snapshot" in {
     val html = views.html.repertoire(
-      svc.toSchedules(models.Wroclaw, now), models.Wroclaw.cinemaDisplayNames, models.Wroclaw.cinemaPillMap,
+      service.toSchedules(models.Wroclaw, now), models.Wroclaw.cinemaDisplayNames, models.Wroclaw.cinemaPillMap,
       devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
     )(models.Wroclaw).body
     assertSnapshot(snapshotDir.resolve("expected-wroclaw-index.html"), html)
@@ -59,14 +59,14 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
 
   "the Warszawa index" should "render the same HTML as the checked-in snapshot" in {
     val html = views.html.repertoire(
-      svc.toSchedules(models.Warszawa, now), models.Warszawa.cinemaDisplayNames, models.Warszawa.cinemaPillMap,
+      service.toSchedules(models.Warszawa, now), models.Warszawa.cinemaDisplayNames, models.Warszawa.cinemaPillMap,
       devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
     )(models.Warszawa).body
     assertSnapshot(snapshotDir.resolve("expected-warszawa-index.html"), html)
   }
 
   "the /plan page" should "render the same HTML as the checked-in snapshot" in {
-    val data = controllers.PlanController.viewData(city, svc.toSchedules(city, now))
+    val data = controllers.PlanController.viewData(city, service.toSchedules(city, now))
     val html = views.html.plan(
       data, city.cinemaDisplayNames, city.cinemaPillMap,
       devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders

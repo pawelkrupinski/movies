@@ -66,7 +66,7 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   import clients.TmdbClient
   import models.{MovieRecord, Source, SourceData, Tmdb}
 
-  private def svc(seed: (String, Option[Int], MovieRecord)*): MovieService = {
+  private def service(seed: (String, Option[Int], MovieRecord)*): MovieService = {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(seed))
     new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None))
   }
@@ -84,13 +84,13 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   // Under the new docId rule both produce the same key, so `get` works
   // regardless of which form is asked for.
   "get" should "find a row regardless of Arabic vs Roman variant of the title" in {
-    val s = svc(("Diabeł ubiera się u Prady 2", Some(2026), pradyEnrichment))
+    val s = service(("Diabeł ubiera się u Prady 2", Some(2026), pradyEnrichment))
     s.get("Diabeł ubiera się u Prady II", Some(2026)).flatMap(_.imdbId) shouldBe Some("tt33612209")
     s.get("Diabeł ubiera się u Prady 2",  Some(2026)).flatMap(_.imdbId) shouldBe Some("tt33612209")
   }
 
   it should "find a row regardless of colon-or-not punctuation" in {
-    val s = svc(("Top Gun Maverick", Some(2022), pradyEnrichment.copy(imdbId = Some("tt1745960"))))
+    val s = service(("Top Gun Maverick", Some(2022), pradyEnrichment.copy(imdbId = Some("tt1745960"))))
     s.get("Top Gun: Maverick", Some(2022)).flatMap(_.imdbId) shouldBe Some("tt1745960")
     s.get("Top Gun Maverick",  Some(2022)).flatMap(_.imdbId) shouldBe Some("tt1745960")
   }

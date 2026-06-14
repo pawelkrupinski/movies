@@ -168,8 +168,8 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     // Sorted by city slug for a stable, order-independent capture.
     w.readModelProjector.reconcile()
     w.webReadModel.reload()
-    val svc = new MovieControllerService(w.webReadModel)
-    val rows = City.all.sortBy(_.slug).flatMap(c => svc.toSchedules(c, Now))
+    val service = new MovieControllerService(w.webReadModel)
+    val rows = City.all.sortBy(_.slug).flatMap(c => service.toSchedules(c, Now))
     (record, rows)
   }
 
@@ -256,8 +256,8 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     // web's read seam (webReadModel), not the raw worker cache.
     w.readModelProjector.reconcile()
     w.webReadModel.reload()
-    val svc = new MovieControllerService(w.webReadModel)
-    val rows = City.all.sortBy(_.slug).flatMap(c => svc.toSchedules(c, Now))
+    val service = new MovieControllerService(w.webReadModel)
+    val rows = City.all.sortBy(_.slug).flatMap(c => service.toSchedules(c, Now))
     (record, rows)
   }
 
@@ -350,7 +350,7 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
   }
 
   // Distinct, reproducible seed per (film, iteration) so a divergence replays.
-  private def seed(movieIdx: Int, iter: Int): Long = movieIdx.toLong * 1000L + iter
+  private def seed(movieIndex: Int, iter: Int): Long = movieIndex.toLong * 1000L + iter
 
   /** Concise field-level diff of two persisted record sets — pinpoints the
    *  exact (record, source, field) that diverged instead of dumping the whole

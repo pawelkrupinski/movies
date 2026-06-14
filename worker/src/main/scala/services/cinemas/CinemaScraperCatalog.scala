@@ -57,8 +57,8 @@ class CinemaScraperCatalog(
   val cinemaCityDetailTtl: FiniteDuration = 6.hours
   private val heliosDetailHttp:     HttpFetch = chainDetailCache(http, heliosDetailTtl)
   private val cinemaCityDetailHttp: HttpFetch = chainDetailCache(http, cinemaCityDetailTtl)
-  private def helios(cfg: HeliosCinema): HeliosClient =
-    new HeliosClient(http, cfg, today, Some(heliosDetailHttp))
+  private def helios(config: HeliosCinema): HeliosClient =
+    new HeliosClient(http, config, today, Some(heliosDetailHttp))
 
   // Shared per-source helper clients the scrapers below reuse.
   val cinemaCityClient: CinemaCityClient = new CinemaCityClient(http, Some(cinemaCityDetailHttp))

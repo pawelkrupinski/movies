@@ -25,8 +25,8 @@ object RecordReplaceBatch {
 
     // ── Chains: Helios (native REST) + Cinema City ──
     Seq(HeliosNuxt.Starachowice, HeliosNuxt.Krosno, HeliosNuxt.Tczew, HeliosNuxt.Zory,
-        HeliosNuxt.Lubin, HeliosNuxt.OstrowWielkopolski, HeliosNuxt.KedzierzynKozle).foreach { cfg =>
-      rep(cfg.cinema.displayName)(new HeliosClient(corpus, cfg, today).fetch().size)
+        HeliosNuxt.Lubin, HeliosNuxt.OstrowWielkopolski, HeliosNuxt.KedzierzynKozle).foreach { config =>
+      rep(config.cinema.displayName)(new HeliosClient(corpus, config, today).fetch().size)
     }
     rep("Cinema City Ruda Śląska")(
       new CinemaCityScraper(new CinemaCityClient(corpus), "1062", CinemaCity).fetch().size)

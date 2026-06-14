@@ -98,8 +98,8 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
   private[controllers] def groupRows(active: Set[String], row: String => ServiceRow)
       : (Seq[FlaggedRow], Seq[FlaggedRow], Seq[(String, Seq[ServiceRow])], Seq[ServiceRow], Seq[ServiceRow]) = {
     def cinemaRow(displayName: String): ServiceRow = {
-      val enrichSvc = UptimeMonitor.enrichmentService(displayName)
-      row(displayName).copy(enrichment = Option.when(active.contains(enrichSvc))(row(enrichSvc)))
+      val enrichService = UptimeMonitor.enrichmentService(displayName)
+      row(displayName).copy(enrichment = Option.when(active.contains(enrichService))(row(enrichService)))
     }
 
     // Built once, in city order; reused for both the triage split and the

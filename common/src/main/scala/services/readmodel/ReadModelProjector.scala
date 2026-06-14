@@ -79,9 +79,9 @@ class ReadModelProjector(
 
   private def diffScreenings(filmId: String, next: Seq[CityScreening]): Unit = {
     val nextById = next.map(s => s._id -> s).toMap
-    val prev     = lastScreenings.getOrElse(filmId, Map.empty)
-    nextById.foreach { case (id, s) => if (!prev.get(id).contains(s)) writer.upsertScreening(s) }
-    prev.keysIterator.filterNot(nextById.contains).foreach(writer.deleteScreening)
+    val previous     = lastScreenings.getOrElse(filmId, Map.empty)
+    nextById.foreach { case (id, s) => if (!previous.get(id).contains(s)) writer.upsertScreening(s) }
+    previous.keysIterator.filterNot(nextById.contains).foreach(writer.deleteScreening)
     if (nextById.isEmpty) lastScreenings.remove(filmId) else lastScreenings.update(filmId, nextById)
   }
 

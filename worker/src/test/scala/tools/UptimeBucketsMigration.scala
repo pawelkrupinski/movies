@@ -74,9 +74,9 @@ object UptimeBucketsMigration {
       .toSeq
 
   def main(args: Array[String]): Unit = {
-    val conn = MongoConnection.fromEnv(required = false)
+    val connection = MongoConnection.fromEnv(required = false)
     try {
-      val db = conn.database.getOrElse {
+      val db = connection.database.getOrElse {
         println("MONGODB_URI not set — nothing to do.")
         sys.exit(1)
       }
@@ -131,6 +131,6 @@ object UptimeBucketsMigration {
         collapsed += del.getDeletedCount.toInt
       }
       println(s"Done: wrote ${merged.size} boundary doc(s), deleted $collapsed redundant sub-bucket doc(s).")
-    } finally conn.close()
+    } finally connection.close()
   }
 }

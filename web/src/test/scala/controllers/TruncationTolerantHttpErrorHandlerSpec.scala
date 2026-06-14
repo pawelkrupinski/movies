@@ -21,8 +21,8 @@ class TruncationTolerantHttpErrorHandlerSpec extends AnyFlatSpec with Matchers {
     router       = None
   )
 
-  private def truncation(msg: String = "truncated"): EntityStreamException =
-    EntityStreamException(new ErrorInfo(msg))
+  private def truncation(message: String = "truncated"): EntityStreamException =
+    EntityStreamException(new ErrorInfo(message))
 
   "isClientTruncation" should "match a bare EntityStreamException cause" in {
     handler.isClientTruncation(truncation()) shouldBe true

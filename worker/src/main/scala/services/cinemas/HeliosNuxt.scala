@@ -91,8 +91,8 @@ object HeliosNuxt {
   def cleanTitle(title: String): String =
     services.movies.TitleNormalizer.cinemaClean("helios", title)
 
-  def buildMovies(html: String, cfg: HeliosCinema = Poznan): Seq[CinemaMovie] = {
-    val parsed   = parseNuxtPage(html, cfg.baseUrl)
+  def buildMovies(html: String, config: HeliosCinema = Poznan): Seq[CinemaMovie] = {
+    val parsed   = parseNuxtPage(html, config.baseUrl)
     val nuxtRows = parsed.showtimesByMovie.toSeq.flatMap { case (movieId, slots) =>
       parsed.movies.get(movieId).map(movie => movie -> slots)
     }
@@ -110,7 +110,7 @@ object HeliosNuxt {
         CinemaMovie(
           movie = Movie(title = title, runtimeMinutes = movie.runtimeMinutes, releaseYear = None,
             rawTitle = movies.map(_.title).headOption),
-          cinema    = cfg.cinema,
+          cinema    = config.cinema,
           posterUrl = movies.flatMap(_.posterUrl).headOption,
           filmUrl   = urls.find(_.contains("/filmy/")).orElse(urls.headOption),
           synopsis  = None,
@@ -119,7 +119,7 @@ object HeliosNuxt {
           showtimes = slots.map { case (dateTime, screeningId, format) =>
             Showtime(
               dateTime   = dateTime,
-              bookingUrl = Some(s"$BookingBase/$screeningId?cinemaId=${cfg.sourceId}").filter(_ => screeningId.nonEmpty),
+              bookingUrl = Some(s"$BookingBase/$screeningId?cinemaId=${config.sourceId}").filter(_ => screeningId.nonEmpty),
               room       = None,
               format     = format
             )
@@ -147,7 +147,7 @@ object HeliosNuxt {
   // Bundles the three things every internal parser needs: the slice of the IIFE
   // body that contains film metadata, the slice that contains screenings, and
   // the resolver that turns a param-name token into its string value.
-  private case class NuxtCtx(
+  private case class NuxtContext(
     movieBody:      String,
     screeningsBody: String,
     resolve:        String => Option[String],
@@ -169,18 +169,18 @@ object HeliosNuxt {
     val empty = NuxtPage(Map.empty, Map.empty)
     (for {
       iife <- extractIifeBody(html)
-      ctx  <- splitBody(iife._2, makeResolver(iife._1), baseUrl)
+      context  <- splitBody(iife._2, makeResolver(iife._1), baseUrl)
     } yield NuxtPage(
-      movies           = parseNuxtMovies(ctx),
-      showtimesByMovie = parseNuxtShowtimes(ctx).groupMap(_._1)(_._2)
+      movies           = parseNuxtMovies(context),
+      showtimesByMovie = parseNuxtShowtimes(context).groupMap(_._1)(_._2)
     )).getOrElse(empty)
   }
 
   // Locate the `(function(params){body}(values))` IIFE and return (paramMap, body).
   private def extractIifeBody(html: String): Option[(Map[String, JsValue], String)] = {
-    val idx = html.lastIndexOf("window.__NUXT__")
-    if (idx < 0) return None
-    val script      = html.substring(idx)
+    val index = html.lastIndexOf("window.__NUXT__")
+    if (index < 0) return None
+    val script      = html.substring(index)
     val paramsStart = script.indexOf("(function(") + "(function(".length
     val paramsEnd   = script.indexOf("){", paramsStart)
     val bodyEnd     = script.indexOf("}(")
@@ -216,18 +216,18 @@ object HeliosNuxt {
 
   // The IIFE body has two regions back-to-back: film metadata first, then a
   // per-day screenings map. The screenings region starts at `screenings:{"YYYY-…`.
-  private def splitBody(body: String, resolve: String => Option[String], baseUrl: String): Option[NuxtCtx] =
-    ScreeningsStart.findFirstMatchIn(body).map(m => NuxtCtx(
+  private def splitBody(body: String, resolve: String => Option[String], baseUrl: String): Option[NuxtContext] =
+    ScreeningsStart.findFirstMatchIn(body).map(m => NuxtContext(
       movieBody      = body.substring(0, m.start),
       screeningsBody = body.substring(m.start + "screenings:".length),
       resolve        = resolve,
       baseUrl        = baseUrl
     ))
 
-  private def parseNuxtMovies(ctx: NuxtCtx): Map[String, NuxtMovie] = {
-    val normal   = parseNormalNuxtMovies(ctx)
-    val embedded = parseEmbeddedScreeningNuxtMovies(ctx)
-    val events   = parseEventNuxtMovies(ctx)
+  private def parseNuxtMovies(context: NuxtContext): Map[String, NuxtMovie] = {
+    val normal   = parseNormalNuxtMovies(context)
+    val embedded = parseEmbeddedScreeningNuxtMovies(context)
+    val events   = parseEventNuxtMovies(context)
     // When an event is tied to a parent film (e.g. "Billie Eilish - … Live in 3D"
     // → the base Tour entry), prefer the parent film's poster/runtime. Sports
     // and concert-only events have no embedded block, so we fall back to the
@@ -241,12 +241,12 @@ object HeliosNuxt {
     normal ++ embedded ++ enrichedEvents
   }
 
-  private def parseEmbeddedScreeningNuxtMovies(ctx: NuxtCtx): Map[String, NuxtMovie] =
-    MovieGroupStart.findAllMatchIn(ctx.screeningsBody).flatMap { gm =>
+  private def parseEmbeddedScreeningNuxtMovies(context: NuxtContext): Map[String, NuxtMovie] =
+    MovieGroupStart.findAllMatchIn(context.screeningsBody).flatMap { gm =>
       val movieId = gm.group(1)
-      val arr     = bracketedArrayContent(ctx.screeningsBody, gm.end)
+      val arr     = bracketedArrayContent(context.screeningsBody, gm.end)
       EmbeddedMovieBlk.findFirstMatchIn(arr)
-        .flatMap(m => parseNuxtEmbeddedMovieBlock(m.group(1), ctx.resolve, ctx.baseUrl).map(movieId -> _))
+        .flatMap(m => parseNuxtEmbeddedMovieBlock(m.group(1), context.resolve, context.baseUrl).map(movieId -> _))
     }.toMap
 
   private def parseNuxtEmbeddedMovieBlock(block: String, resolve: String => Option[String], baseUrl: String): Option[NuxtMovie] =
@@ -262,39 +262,39 @@ object HeliosNuxt {
       runtimeMinutes = nuxtRuntime(block, resolve)
     )
 
-  private def parseNormalNuxtMovies(ctx: NuxtCtx): Map[String, NuxtMovie] =
-    TopLevelMovie.findAllMatchIn(ctx.movieBody).flatMap { m =>
+  private def parseNormalNuxtMovies(context: NuxtContext): Map[String, NuxtMovie] =
+    TopLevelMovie.findAllMatchIn(context.movieBody).flatMap { m =>
       val numericId = Some(m.group(1)).flatMap(id =>
-        if (id.forall(_.isDigit)) Some(id) else ctx.resolve(id).filter(_.forall(_.isDigit)))
-      val title     = Option(m.group(2)).orElse(ctx.resolve(m.group(3)))
-      val slug      = Option(m.group(4)).orElse(ctx.resolve(m.group(5)))
+        if (id.forall(_.isDigit)) Some(id) else context.resolve(id).filter(_.forall(_.isDigit)))
+      val title     = Option(m.group(2)).orElse(context.resolve(m.group(3)))
+      val slug      = Option(m.group(4)).orElse(context.resolve(m.group(5)))
       for {
         nid <- numericId
         t   <- title
         s   <- slug
       } yield {
-        val nearby = ctx.movieBody.substring(m.start, math.min(m.start + 1500, ctx.movieBody.length))
-        s"m$nid" -> NuxtMovie(t, s, nuxtPoster(nearby, ctx.resolve), Some(s"${ctx.baseUrl}/filmy/$s-$nid"), nuxtRuntime(nearby, ctx.resolve))
+        val nearby = context.movieBody.substring(m.start, math.min(m.start + 1500, context.movieBody.length))
+        s"m$nid" -> NuxtMovie(t, s, nuxtPoster(nearby, context.resolve), Some(s"${context.baseUrl}/filmy/$s-$nid"), nuxtRuntime(nearby, context.resolve))
       }
     }.toMap
 
-  private def parseEventNuxtMovies(ctx: NuxtCtx): Map[String, NuxtMovie] = {
-    val eventIds = MovieGroupStart.findAllMatchIn(ctx.screeningsBody)
+  private def parseEventNuxtMovies(context: NuxtContext): Map[String, NuxtMovie] = {
+    val eventIds = MovieGroupStart.findAllMatchIn(context.screeningsBody)
                      .map(_.group(1)).filter(_.startsWith("e")).toSet
     eventIds.flatMap { eventId =>
       val numericId = eventId.stripPrefix("e")
-      findEventMetaInMovieBody(eventId, ctx)
-        .map(movie => eventId -> movie.copy(filmUrl = Some(s"${ctx.baseUrl}/wydarzenie/${movie.slug}-$numericId")))
+      findEventMetaInMovieBody(eventId, context)
+        .map(movie => eventId -> movie.copy(filmUrl = Some(s"${context.baseUrl}/wydarzenie/${movie.slug}-$numericId")))
     }.toMap
   }
 
-  private def findEventMetaInMovieBody(eventId: String, ctx: NuxtCtx): Option[NuxtMovie] =
-    s"""_id:"$eventId"""".r.findFirstMatchIn(ctx.movieBody).flatMap { m =>
-      val before = ctx.movieBody.substring(math.max(0, m.start - 1000), m.start)
+  private def findEventMetaInMovieBody(eventId: String, context: NuxtContext): Option[NuxtMovie] =
+    s"""_id:"$eventId"""".r.findFirstMatchIn(context.movieBody).flatMap { m =>
+      val before = context.movieBody.substring(math.max(0, m.start - 1000), m.start)
       EventEntryAnchor.findAllMatchIn(before).toSeq.lastOption.flatMap { nm =>
         for {
-          title <- ctx.resolve(nm.group(1))
-          slug  <- ctx.resolve(nm.group(2))
+          title <- context.resolve(nm.group(1))
+          slug  <- context.resolve(nm.group(2))
         } yield {
           // The event entry continues from the name/slug anchor through to _id —
           // pull poster and runtime out of that slice the same way film entries do.
@@ -302,23 +302,23 @@ object HeliosNuxt {
           NuxtMovie(
             title          = title,
             slug           = slug,
-            posterUrl      = nuxtPoster(entryBlock, ctx.resolve),
+            posterUrl      = nuxtPoster(entryBlock, context.resolve),
             filmUrl        = None,
-            runtimeMinutes = nuxtRuntime(entryBlock, ctx.resolve)
+            runtimeMinutes = nuxtRuntime(entryBlock, context.resolve)
           )
         }
       }
     }
 
-  private def parseNuxtShowtimes(ctx: NuxtCtx): Seq[(String, (LocalDateTime, String, List[String]))] =
-    dayBlocks(ctx.screeningsBody).flatMap { dayBlock =>
+  private def parseNuxtShowtimes(context: NuxtContext): Seq[(String, (LocalDateTime, String, List[String]))] =
+    dayBlocks(context.screeningsBody).flatMap { dayBlock =>
       MovieGroupStart.findAllMatchIn(dayBlock).flatMap { gm =>
         val movieId = gm.group(1)
         val arr     = bracketedArrayContent(dayBlock, gm.end)
         ScreeningEntry.findAllMatchIn(arr).flatMap { sm =>
           for {
-            timeStr <- ctx.resolve(sm.group(1)) if timeStr.length == 19
-            sid     <- resolveSourceId(sm.group(2), ctx.resolve)
+            timeStr <- context.resolve(sm.group(1)) if timeStr.length == 19
+            sid     <- resolveSourceId(sm.group(2), context.resolve)
           } yield {
             // printRelease lives inside `moviePrint:{…}`. For regular film entries it's
             // a few fields after sourceId; for event entries it's deeper because of the
@@ -327,7 +327,7 @@ object HeliosNuxt {
             // is always the current entry's release.
             val tail   = arr.substring(sm.end, math.min(sm.end + 2000, arr.length))
             val format = PrintRelease.findFirstMatchIn(tail)
-              .flatMap(m => ctx.resolve(m.group(1)))
+              .flatMap(m => context.resolve(m.group(1)))
               .map(_.split("/").toList.filter(_.nonEmpty))
               .getOrElse(Nil)
             movieId -> (LocalDateTime.parse(timeStr.replace(' ', 'T')), sid, format)

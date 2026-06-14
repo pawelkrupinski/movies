@@ -11,11 +11,11 @@ object ScrapeErrors {
     case _: IOException      => true // timeouts, SSL, connection errors
     case _: TimeoutException => true // Future timeouts
     case e: RuntimeException =>
-      val msg = Option(e.getMessage).getOrElse("")
+      val message = Option(e.getMessage).getOrElse("")
       // "HTTP <code> for <method> <url>"          — RealHttpFetch.checkStatus
       // "All N backends failed for <verb> <url>"  — FallbackHttpFetch.tryEach
-      msg.startsWith("HTTP ") ||
-        (msg.startsWith("All ") && msg.contains(" backends failed for "))
+      message.startsWith("HTTP ") ||
+        (message.startsWith("All ") && message.contains(" backends failed for "))
     case _ => false
   }
 }

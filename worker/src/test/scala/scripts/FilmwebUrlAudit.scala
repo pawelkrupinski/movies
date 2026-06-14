@@ -59,14 +59,14 @@ object FilmwebUrlAudit {
     val tasks = candidates.map { case StoredMovieRecord(title, year, _) =>
       Future {
         val outcome = ratings.auditOneSync(title, year)
-        val idx = done.incrementAndGet()
+        val index = done.incrementAndGet()
         outcome match {
           case FilmwebRatings.Corrected(before, after) =>
-            println(f"[$idx%4d/$total%4d] CORRECTED $title (${yearLabel(year)})")
+            println(f"[$index%4d/$total%4d] CORRECTED $title (${yearLabel(year)})")
             println(s"             before: $before")
             println(s"             after : $after")
           case FilmwebRatings.Dropped(before) =>
-            println(f"[$idx%4d/$total%4d] DROPPED   $title (${yearLabel(year)})")
+            println(f"[$index%4d/$total%4d] DROPPED   $title (${yearLabel(year)})")
             println(s"             was: $before")
           case FilmwebRatings.Kept(_) | FilmwebRatings.NoUrl => () // silent; counted in summary.
         }

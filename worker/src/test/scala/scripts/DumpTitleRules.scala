@@ -69,8 +69,8 @@ object DumpTitleRules {
   }
 
   def main(args: Array[String]): Unit = {
-    val conn = MongoConnection.fromEnv(required = true)
-    val repository = new MongoTitleRulesRepository(conn.database, fallbackToOwnInit = false)
+    val connection = MongoConnection.fromEnv(required = true)
+    val repository = new MongoTitleRulesRepository(connection.database, fallbackToOwnInit = false)
     try {
       val rules = ordered(repository.findAll())
       // A seeded prod always has the full seed (~50 rules) plus the operator
@@ -85,7 +85,7 @@ object DumpTitleRules {
       println(s"Wrote ${rules.size} prod title rules to $Out")
     } finally {
       repository.close()
-      conn.close()
+      connection.close()
     }
   }
 }

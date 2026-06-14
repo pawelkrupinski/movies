@@ -67,8 +67,8 @@ class MonitoringHttpFetch(
 
   private def errorDescription(e: Throwable): String = {
     val name = e.getClass.getSimpleName
-    val msg  = Option(e.getMessage).getOrElse("")
-    s"$name: $msg".take(200)
+    val message  = Option(e.getMessage).getOrElse("")
+    s"$name: $message".take(200)
   }
 
   private def monitored[T](url: String)(block: => T): T = {

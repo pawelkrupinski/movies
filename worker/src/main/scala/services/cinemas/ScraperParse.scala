@@ -136,10 +136,10 @@ private[cinemas] object ScraperParse {
    *  words with no version meaning (dolby, atmos, premiera, …) yield no token. */
   def extractFormatTags(raw: String): (String, List[String]) = {
     var t    = raw.replaceAll("\\s+", " ").trim
-    var prev = ""
+    var previous = ""
     val dropped = scala.collection.mutable.Set.empty[String]
-    while (t != prev) {
-      prev = t
+    while (t != previous) {
+      previous = t
       // Tokens peeled inside a [..]/(..) tag also carry version meaning, so
       // capture them before the regex deletes the whole tag.
       FormatBracketTag.findFirstIn(t).foreach(captureTagWords(_, dropped))
@@ -174,13 +174,13 @@ private[cinemas] object ScraperParse {
       .filter(FormatToken.contains)
       .foreach(out.add)
 
-  private def precedingTokenEndsSentence(chars: Array[Char], dotIdx: Int): Boolean = {
-    if (dotIdx == 0) return false
-    val prev = chars(dotIdx - 1)
-    if (prev.isDigit) return true
-    if (!prev.isLetter) return false
+  private def precedingTokenEndsSentence(chars: Array[Char], dotIndex: Int): Boolean = {
+    if (dotIndex == 0) return false
+    val previous = chars(dotIndex - 1)
+    if (previous.isDigit) return true
+    if (!previous.isLetter) return false
     var len = 0
-    var j = dotIdx - 1
+    var j = dotIndex - 1
     while (j >= 0 && chars(j).isLetter) { len += 1; j -= 1 }
     len >= 4
   }

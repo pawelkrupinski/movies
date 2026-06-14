@@ -26,24 +26,24 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "render each venue's row under its city" in {
-    val poznanIdx   = html.indexOf("<h3>Poznań</h3>")
-    val warszawaIdx = html.indexOf("<h3>Warszawa</h3>")
+    val poznanIndex   = html.indexOf("<h3>Poznań</h3>")
+    val warszawaIndex = html.indexOf("<h3>Warszawa</h3>")
 
-    val apolloIdx   = html.indexOf("data-service=\"Kino Apollo\"")
-    val muzaIdx     = html.indexOf("data-service=\"Kino Muza\"")
-    val muranowIdx  = html.indexOf("data-service=\"Kino Muranów\"")
+    val apolloIndex   = html.indexOf("data-service=\"Kino Apollo\"")
+    val muzaIndex     = html.indexOf("data-service=\"Kino Muza\"")
+    val muranowIndex  = html.indexOf("data-service=\"Kino Muranów\"")
 
     // Poznań venues sit between the Poznań and Warszawa headers.
-    apolloIdx should (be > poznanIdx and be < warszawaIdx)
-    muzaIdx should (be > poznanIdx and be < warszawaIdx)
+    apolloIndex should (be > poznanIndex and be < warszawaIndex)
+    muzaIndex should (be > poznanIndex and be < warszawaIndex)
     // The Warszawa venue sits after the Warszawa header.
-    muranowIdx should be > warszawaIdx
+    muranowIndex should be > warszawaIndex
   }
 
   it should "still show the single Cinemas section header above the city groups" in {
-    val cinemasHeaderIdx = html.indexOf("<h2>Cinemas</h2>")
-    cinemasHeaderIdx should be >= 0
-    cinemasHeaderIdx should be < html.indexOf("<h3>Poznań</h3>")
+    val cinemasHeaderIndex = html.indexOf("<h2>Cinemas</h2>")
+    cinemasHeaderIndex should be >= 0
+    cinemasHeaderIndex should be < html.indexOf("<h3>Poznań</h3>")
   }
 
   it should "link the cinema name to its source page when a url: tag is present" in {

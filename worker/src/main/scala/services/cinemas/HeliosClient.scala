@@ -17,7 +17,7 @@ import scala.util.Try
 // wirings pass the fixture's capture date so the recorded URLs still match.
 class HeliosClient(
   http:  HttpFetch    = HeliosFetch,
-  cfg:   HeliosCinema = HeliosNuxt.Poznan,
+  config:   HeliosCinema = HeliosNuxt.Poznan,
   today: LocalDate    = LocalDate.now(ZoneId.of("Europe/Warsaw")),
   // Per-film detail (`/api/movie/{id}`) + screen-name fetch path. Defaults to
   // `http`; the composition root injects ONE CachingDetailFetch shared across
@@ -27,12 +27,12 @@ class HeliosClient(
   detailHttp: Option[HttpFetch] = None
 ) extends CinemaScraper {
 
-  override val cinema: Cinema = cfg.cinema
+  override val cinema: Cinema = config.cinema
   override def chain: Boolean = true
   private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
-  private val sourceId   = cfg.sourceId
-  private val PageUrl     = cfg.pageUrl
+  private val sourceId   = config.sourceId
+  private val PageUrl     = config.pageUrl
   private val ApiBase    = "https://restapi.helios.pl/api"
   private val WarsawZone = ZoneId.of("Europe/Warsaw")
   private val OffsetDtf  = DateTimeFormatter.ISO_OFFSET_DATE_TIME
@@ -41,13 +41,13 @@ class HeliosClient(
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl, ApiBase, BookingBase)
 
-  // `cfg.baseUrl` (`helios.pl/<citySlug>/<cinemaSlug>`) is the venue's public
+  // `config.baseUrl` (`helios.pl/<citySlug>/<cinemaSlug>`) is the venue's public
   // repertoire page — the same URL the NUXT scrape fetches `/repertuar` from.
-  override def sourceUrl: Option[String] = Some(cfg.baseUrl)
+  override def sourceUrl: Option[String] = Some(config.baseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
     val rest     = fetchRestData()
-    val enriched = enrichFromRest(HeliosNuxt.buildMovies(http.get(PageUrl), cfg), rest)
+    val enriched = enrichFromRest(HeliosNuxt.buildMovies(http.get(PageUrl), config), rest)
     mergeDuplicateFilms(removeLessSpecificOverlaps(enriched ++ restOnlyMovies(enriched, rest))).sortBy(_.movie.title)
   }
 
@@ -253,9 +253,9 @@ class HeliosClient(
               genres         = info.genres,
               rawTitle       = Some(info.title.getOrElse(movieId))
             ),
-            cinema    = cfg.cinema,
+            cinema    = config.cinema,
             posterUrl = info.posterUrl,
-            filmUrl   = info.slug.map(s => s"${cfg.baseUrl}/filmy/$s"),
+            filmUrl   = info.slug.map(s => s"${config.baseUrl}/filmy/$s"),
             synopsis   = info.description,
             cast       = info.cast,
             director   = info.director,

@@ -109,8 +109,8 @@ object MetacriticDiagnostics {
           probe(label, slug)
         }.toList
 
-        val finishedIdx = done.incrementAndGet()
-        if (finishedIdx % 20 == 0) println(s"  … $finishedIdx/${missing.size}")
+        val finishedIndex = done.incrementAndGet()
+        if (finishedIndex % 20 == 0) println(s"  … $finishedIndex/${missing.size}")
         (title, year, e.originalTitle, probes)
       }
     }

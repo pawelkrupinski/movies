@@ -47,11 +47,11 @@ class TitleRulesCache(
       else "TitleRulesCache: store empty — using in-code default rules.")
 
     val current = effective.toSet
-    val prev    = lastRules
+    val previous    = lastRules
     lastRules = Some(current)
-    if (prev.exists(_ != current)) {
+    if (previous.exists(_ != current)) {
       logger.info("TitleRulesCache: rules changed — running the change hook.")
-      try onRulesChanged(prev.get.toSeq, current.toSeq)
+      try onRulesChanged(previous.get.toSeq, current.toSeq)
       catch { case ex: Throwable => logger.warn(s"onRulesChanged failed: ${ex.getMessage}") }
     }
   }

@@ -79,13 +79,13 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     val repository  = new InMemoryMovieRepository(Seq((Title, Year, seed)))
     val cache = new CaffeineMovieCache(repository)
     val bus   = new InProcessEventBus()
-    val svc   = new MovieService(cache, bus, visitorTmdb())
+    val service   = new MovieService(cache, bus, visitorTmdb())
     val key   = cache.keyOf(Title, Year)
 
     // 1. Resolve against the director-less row → mis-resolves to the popular
     //    same-year decoy. `reEnrichSync` force-resolves (bypasses the guard) so
     //    the setup is deterministic.
-    svc.reEnrichSync(Title, Year)
+    service.reEnrichSync(Title, Year)
     cache.get(key).flatMap(_.tmdbId) shouldBe Some(Decoy) // mis-resolved, as expected
 
     // 2. Helios now reports the real director "Itay Gordon".
@@ -93,10 +93,10 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
       r.copy(data = r.data + (Helios -> SourceData(title = Some(Title), director = Seq(Director)))))
 
     // 3. Helios's MovieDetailsComplete fires — the hint that would fix the row.
-    //    The async TMDB stage runs on `svc`'s pool; `svc.stop()` drains it.
-    bus.subscribe(svc.onMovieDetailsComplete)
+    //    The async TMDB stage runs on `service`'s pool; `service.stop()` drains it.
+    bus.subscribe(service.onMovieDetailsComplete)
     bus.publish(MovieDetailsComplete(Title, Year, originalTitle = None, director = Some(Director)))
-    svc.stop()
+    service.stop()
 
     // The row SHOULD now point at Itay Gordon's "The Visitor" — but the
     // already-resolved guard dropped the director hint, so it's still wrong.

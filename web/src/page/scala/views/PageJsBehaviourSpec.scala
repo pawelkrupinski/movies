@@ -55,11 +55,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val wiring = new FixtureTestWiring("08-06-2026")
       wiring.bootStartup()
       // Web read transform over the worker-projected read model (the shared seam).
-      val svc     = new controllers.MovieControllerService(wiring.webReadModel)
+      val service     = new controllers.MovieControllerService(wiring.webReadModel)
       val anon    = Option.empty[models.User]
       val noOauth = Set.empty[String]
       val cinemas = city.cinemaDisplayNames
-      val schedules       = svc.toSchedules(city, now)
+      val schedules       = service.toSchedules(city, now)
 
       val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(
@@ -1325,7 +1325,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // ── Day carousel (three-column slide) ───────────────────────────────────────
   //
-  // The films grid is the centre column of a prev|current|next carousel inside
+  // The films grid is the centre column of a previous|current|next carousel inside
   // `#day-track`. A swipe (and the arrow buttons / Left-Right keys / the
   // `#date-filter` dropdown) slides the track to reveal a neighbour day's grid —
   // a clone of `#film-grid` filtered to that day — then commits the day change
@@ -1470,7 +1470,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // A dropdown pick is a LINEAR list choice: the target's position in the option
   // list (today, tomorrow, week, anytime, …, with 'anytime' LAST) decides the
   // slide direction — AFTER the current option → enter from the right (next),
-  // BEFORE it → enter from the left (prev). This differs from the wrap-shortest
+  // BEFORE it → enter from the left (previous). This differs from the wrap-shortest
   // direction the arrows/keyboard/swipe use, and the two disagree at the ends:
   // today → anytime is the longest forward jump but wrap-shortest would slide it
   // LEFT (the short way back round the ring). The dropdown must still go right.
@@ -1500,13 +1500,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("document.getElementById('date-filter').value = 'anytime'; onDateChange()")
       page.waitFor("document.querySelector('.col[data-title]') !== null")
 
-      // anytime (last) → today (first). Linear: BEFORE → left/prev. Wrap-shortest
+      // anytime (last) → today (first). Linear: BEFORE → left/previous. Wrap-shortest
       // would have gone right, so this side assertion FAILS before the fix.
       page.eval(
         "const s = document.getElementById('date-filter'); s.value = 'today'; onDateSelect()"
       )
       page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
-      armedSlideSide(page) shouldBe "prev"
+      armedSlideSide(page) shouldBe "previous"
 
       page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
       page.evalString("document.getElementById('date-filter').value") shouldBe "today"
@@ -2271,9 +2271,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val targetPair = page.evalString(
         "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').value"
       )
-      val pipeIdx = targetPair.indexOf('|')
-      val cinema  = targetPair.substring(0, pipeIdx)
-      val room    = targetPair.substring(pipeIdx + 1)
+      val pipeIndex = targetPair.indexOf('|')
+      val cinema  = targetPair.substring(0, pipeIndex)
+      val room    = targetPair.substring(pipeIndex + 1)
 
       page.eval(
         "(() => { const boxes = [...document.querySelectorAll('#room-list input[type=\"checkbox\"]:not(.submenu-all)')];" +
@@ -2546,8 +2546,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   /** While a directed slide is armed, `animateToDay` mounts the TARGET day's
    *  populated `.day-col` on just one flank of `#view-root` (the other flank is
-   *  an empty spacer) — the right/next side for `dir > 0`, the left/prev side
-   *  for `dir < 0`. Returns "next" or "prev" for whichever side holds the
+   *  an empty spacer) — the right/next side for `dir > 0`, the left/previous side
+   *  for `dir < 0`. Returns "next" or "previous" for whichever side holds the
    *  populated column, or "" if neither is populated (no slide in flight). This
    *  is the deterministic read of the slide direction the dropdown picked. */
   private def armedSlideSide(page: CdpPage): String =
@@ -2561,7 +2561,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         |    return !!(el && el.querySelector('.col[data-title]'));
         |  };
         |  if (popOn('nextElementSibling'))     return 'next';
-        |  if (popOn('previousElementSibling')) return 'prev';
+        |  if (popOn('previousElementSibling')) return 'previous';
         |  return '';
         |})()""".stripMargin
     )

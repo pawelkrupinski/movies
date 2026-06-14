@@ -36,15 +36,15 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   }
 
   "MongoConnection with required = false" should "disable (database None) when MONGODB_URI is absent" in {
-    val conn = new MongoConnection(uri = None, dbName = "kinowo", required = false)
-    conn.database shouldBe None
-    conn.close()  // idempotent no-op when nothing was opened
+    val connection = new MongoConnection(uri = None, dbName = "kinowo", required = false)
+    connection.database shouldBe None
+    connection.close()  // idempotent no-op when nothing was opened
   }
 
   it should "disable (database None) when the connection can't be established" in {
-    val conn = new MongoConnection(uri = Some(MalformedUri), dbName = "kinowo", required = false)
-    conn.database shouldBe None
-    conn.close()
+    val connection = new MongoConnection(uri = Some(MalformedUri), dbName = "kinowo", required = false)
+    connection.database shouldBe None
+    connection.close()
   }
 
   // fromUri builds a SECOND connection from an explicit URI (the /debug local
@@ -53,9 +53,9 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   // prod connection (database None → fall back) instead of blocking boot — only
   // /debug needs it.
   "MongoConnection.fromUri with required = false" should "disable (database None) on an unusable URI instead of throwing" in {
-    val conn = MongoConnection.fromUri(MalformedUri, required = false)
-    conn.database shouldBe None
-    conn.close()
+    val connection = MongoConnection.fromUri(MalformedUri, required = false)
+    connection.database shouldBe None
+    connection.close()
   }
 
   "MongoConnection.fromUri with required = true" should "throw on an unusable URI" in {

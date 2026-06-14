@@ -19,9 +19,9 @@ class FallbackAlertSpec extends AnyFlatSpec with Matchers with OptionValues {
   private def event(kind: String, reason: String = "down") = FallbackEvent(Instant.EPOCH, kind, reason)
 
   "FallbackAlert" should "alert on ENTER with the cinema and reason once the spell is alerted" in {
-    val msg = FallbackAlert.messageFor(state, event(FallbackEvent.Enter, "HTTP 503")).value
-    msg should include ("Kino Praha")
-    msg should include ("HTTP 503")
+    val message = FallbackAlert.messageFor(state, event(FallbackEvent.Enter, "HTTP 503")).value
+    message should include ("Kino Praha")
+    message should include ("HTTP 503")
   }
 
   it should "alert on RECOVERED once the spell is alerted" in {

@@ -238,10 +238,10 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
   private def loadTags(c: MongoCollection[Document]): Unit = Try {
     val docs = Await.result(c.find().toFuture(), HydrateTimeout)
     docs.foreach { doc =>
-      Option(doc.getString("service")).foreach { svc =>
+      Option(doc.getString("service")).foreach { service =>
         val tags = Try(doc.getList("tags", classOf[String])).toOption.flatMap(Option(_))
           .map(_.asScala.toSet).getOrElse(Set.empty[String])
-        if (tags.nonEmpty) serviceTags.put(svc, tags) else serviceTags.remove(svc)
+        if (tags.nonEmpty) serviceTags.put(service, tags) else serviceTags.remove(service)
       }
     }
   }.recover { case ex => logger.debug(s"Uptime tag load failed: ${ex.getMessage}") }

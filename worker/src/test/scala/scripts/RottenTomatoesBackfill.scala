@@ -69,8 +69,8 @@ object RottenTomatoesBackfill {
 
     val tasks = rows.map { case StoredMovieRecord(title, year, e) =>
       Future {
-        val sIdx = started.incrementAndGet()
-        println(f"[$sIdx%3d/$total%3d] STARTED   $title (${year.getOrElse("?")})")
+        val sIndex = started.incrementAndGet()
+        println(f"[$sIndex%3d/$total%3d] STARTED   $title (${year.getOrElse("?")})")
 
         val linkTitle = e.originalTitle.getOrElse(title)
         val fallback  = if (linkTitle != title) Some(title) else None
@@ -109,18 +109,18 @@ object RottenTomatoesBackfill {
           ))
         }
 
-        val idx = done.incrementAndGet()
+        val index = done.incrementAndGet()
         val orig = e.originalTitle.fold("")(o => s" [orig=$o]")
         urlChange match {
-          case UrlFilled(after)             => println(f"[$idx%3d/$total%3d] URL.FILLED    $title (${year.getOrElse("?")})$orig\n             was: None\n             now: $after")
-          case UrlCorrected(before, after) => println(f"[$idx%3d/$total%3d] URL.CORRECTED $title (${year.getOrElse("?")})$orig\n             was: $before\n             now: $after")
-          case UrlCleared(before)          => println(f"[$idx%3d/$total%3d] URL.CLEARED   $title (${year.getOrElse("?")})$orig\n             was: $before  (bogus empty-slug)\n             now: None")
+          case UrlFilled(after)             => println(f"[$index%3d/$total%3d] URL.FILLED    $title (${year.getOrElse("?")})$orig\n             was: None\n             now: $after")
+          case UrlCorrected(before, after) => println(f"[$index%3d/$total%3d] URL.CORRECTED $title (${year.getOrElse("?")})$orig\n             was: $before\n             now: $after")
+          case UrlCleared(before)          => println(f"[$index%3d/$total%3d] URL.CLEARED   $title (${year.getOrElse("?")})$orig\n             was: $before  (bogus empty-slug)\n             now: None")
           case _                            => ()
         }
         scoreChange match {
-          case ScoreFilled(after)             => println(f"[$idx%3d/$total%3d] RT.FILLED     $title (${year.getOrElse("?")})$orig  None → $after%%")
-          case ScoreCorrected(before, after) => println(f"[$idx%3d/$total%3d] RT.CORRECTED  $title (${year.getOrElse("?")})$orig  $before%% → $after%%")
-          case ScoreCleared(before)          => println(f"[$idx%3d/$total%3d] RT.CLEARED    $title (${year.getOrElse("?")})$orig  $before%% → None")
+          case ScoreFilled(after)             => println(f"[$index%3d/$total%3d] RT.FILLED     $title (${year.getOrElse("?")})$orig  None → $after%%")
+          case ScoreCorrected(before, after) => println(f"[$index%3d/$total%3d] RT.CORRECTED  $title (${year.getOrElse("?")})$orig  $before%% → $after%%")
+          case ScoreCleared(before)          => println(f"[$index%3d/$total%3d] RT.CLEARED    $title (${year.getOrElse("?")})$orig  $before%% → None")
           case _                              => ()
         }
         (urlChange, scoreChange)

@@ -68,15 +68,15 @@ object MetacriticBackfill {
         // flight when something stalls (a slow MC search-scrape, a 503
         // backoff, a flaky DNS lookup). The matching DONE line below pairs
         // with this so the worker activity is auditable.
-        val sIdx = started.incrementAndGet()
-        println(f"[$sIdx%3d/$total%3d] STARTED   $title (${year.getOrElse("?")})")
+        val sIndex = started.incrementAndGet()
+        println(f"[$sIndex%3d/$total%3d] STARTED   $title (${year.getOrElse("?")})")
 
         val linkTitle = e.originalTitle.getOrElse(title)
         val fallback  = if (linkTitle != title) Some(title) else None
         // Pass the row's year so MC's search-scrape fallback can disambiguate
         // by release year (e.g. "Annie (2014)" vs older "Annie" entries).
         val fresh = Try(mc.urlFor(linkTitle, fallback, year)).toOption.flatten
-        val idx = done.incrementAndGet()
+        val index = done.incrementAndGet()
 
         val outcome: Outcome = (e.metacriticUrl, fresh) match {
           // Bogus stored URL: always replace (clear or correct).
@@ -104,15 +104,15 @@ object MetacriticBackfill {
 
         outcome match {
           case Filled(t, y, orig, after) =>
-            println(f"[$idx%3d/$total%3d] FILLED    $t (${y.getOrElse("?")})${orig.fold("")(o => s" [orig=$o]")}")
+            println(f"[$index%3d/$total%3d] FILLED    $t (${y.getOrElse("?")})${orig.fold("")(o => s" [orig=$o]")}")
             println(s"             was: None")
             println(s"             now: $after")
           case Corrected(t, y, orig, before, after) =>
-            println(f"[$idx%3d/$total%3d] CORRECTED $t (${y.getOrElse("?")})${orig.fold("")(o => s" [orig=$o]")}")
+            println(f"[$index%3d/$total%3d] CORRECTED $t (${y.getOrElse("?")})${orig.fold("")(o => s" [orig=$o]")}")
             println(s"             was: $before")
             println(s"             now: $after")
           case Cleared(t, y, orig, before) =>
-            println(f"[$idx%3d/$total%3d] CLEARED   $t (${y.getOrElse("?")})${orig.fold("")(o => s" [orig=$o]")}")
+            println(f"[$index%3d/$total%3d] CLEARED   $t (${y.getOrElse("?")})${orig.fold("")(o => s" [orig=$o]")}")
             println(s"             was: $before  (bogus empty-slug)")
             println(s"             now: None")
           case _: Unchanged => ()  // summarised below

@@ -103,6 +103,6 @@ object TextNormalization {
     if (s.length < threshold) s
     else s.lastIndexOf(',') match {
       case -1  => s
-      case idx => s.substring(0, idx).trim
+      case index => s.substring(0, index).trim
     }
 }

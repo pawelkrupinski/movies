@@ -131,8 +131,8 @@ object MultikinoParser {
   private def normaliseCase(title: String): String =
     if (title.exists(_.isLower)) title
     else {
-      val idx = title.indexWhere(_.isLetter)
-      if (idx < 0) title
-      else title.substring(0, idx) + title.charAt(idx).toUpper + title.substring(idx + 1).toLowerCase
+      val index = title.indexWhere(_.isLetter)
+      if (index < 0) title
+      else title.substring(0, index) + title.charAt(index).toUpper + title.substring(index + 1).toLowerCase
     }
 }

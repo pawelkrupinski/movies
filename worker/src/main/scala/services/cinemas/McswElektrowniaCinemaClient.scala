@@ -117,8 +117,8 @@ object McswElektrowniaCinemaClient {
    *  catalogue code ("2026D2D2251"). */
   private[cinemas] def extractTitle(raw: String): String = {
     val trimmed = raw.trim
-    val commaIdx = trimmed.indexOf(", ")
-    val base = if (commaIdx > 0) trimmed.substring(0, commaIdx)
+    val commaIndex = trimmed.indexOf(", ")
+    val base = if (commaIndex > 0) trimmed.substring(0, commaIndex)
                else {
                  // No ", " separator — try a bare comma
                  val bare = trimmed.indexOf(',')
