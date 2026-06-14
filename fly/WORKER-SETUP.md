@@ -32,11 +32,3 @@ flyctl status -a kinowo-worker
 After this, the normal CI pipeline (`flyctl deploy -c fly.worker.toml
 --build-arg BIN=worker`) takes over on every `main` push.
 
-## Cutover note
-
-Merging the `split-read-write` branch to `main` is the cutover: the moment the
-worker app goes live and starts scraping into Mongo, `kinowo` stops scraping
-(its `Wiring` is serving-only) and serves the worker's writes via the Mongo
-change stream. A brief scrape gap during the cutover is acceptable (see the
-project's "Short prod downtime is fine" convention). Do the manual setup above
-**before** merging so the worker is ready to take over.

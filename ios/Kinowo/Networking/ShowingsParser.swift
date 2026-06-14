@@ -1,15 +1,15 @@
 import Foundation
 
 /// Parses the `<div class="date-group">` → `<div class="cinema-group">`
-/// → `<a class="badge-time">` tree that both the listing card
-/// (`_filmShowings` inside a film card) and the detail page
-/// (`/film`'s `showtimes-section`) emit verbatim. Identical DOM on
-/// both pages, so one parser serves both.
+/// → `<a class="badge-time">` tree that the listing card
+/// (`_filmShowings` inside a film card) emits. Used by `HTMLParser`
+/// for the home listing; the production detail screen uses the JSON
+/// `/api/details` endpoint instead.
 enum ShowingsParser {
 
-    /// Every `date-group` in the chunk, in source order. The chunk can
-    /// be a per-film card slice (listing) or the whole `/film` body
-    /// (detail) — `ranges(of:)` finds the anchors regardless.
+    /// Every `date-group` in the chunk, in source order. The chunk is
+    /// a per-film card slice from the listing HTML — `ranges(of:)` finds
+    /// the anchors regardless of surrounding markup.
     static func parseShowings(in chunk: String) -> [DayShowings] {
         let dayStarts = HTMLPrimitives.ranges(of: "<div class=\"date-group\" data-date=\"", in: chunk)
         var days: [DayShowings] = []

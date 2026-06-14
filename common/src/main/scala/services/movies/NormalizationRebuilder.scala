@@ -59,7 +59,7 @@ class NormalizationRebuilder(
     if (byKey.sizeIs <= 1) {
       Seq(Frag(byKey.keys.headOption.getOrElse(oldKey), rec, oldKey, fresh = false))
     } else {
-      // Non-cinema (Tmdb/Imdb) slots + the record's top-level enrichment stay
+      // Non-cinema (Tmdb/Imdb/Filmweb) slots + the record's top-level enrichment stay
       // with the remnant: the fragment under the original key, else the largest.
       val nonCinema: Map[Source, SourceData] = rec.data -- rec.cinemaData.keys
       val remnant   = if (byKey.contains(oldKey)) oldKey else byKey.maxBy(_._2.size)._1

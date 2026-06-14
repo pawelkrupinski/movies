@@ -12,11 +12,11 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 /**
- * Per-user state store — favourites + hidden + disabled-cinemas, one
- * document per user. Read on every page load for authenticated users
- * (so the rendered page reflects their server-side state, not stale
- * localStorage); written when they toggle a favourite / hide a film /
- * disable a cinema.
+ * Per-user state store — hidden films + disabled cinemas + /plan picks
+ * (selectedMovies, favouriteRooms), one document per user. Read on every
+ * page load for authenticated users (so the rendered page reflects their
+ * server-side state, not stale localStorage); written when they hide a
+ * film / disable a cinema / change their /plan state.
  *
  * Trait + Mongo impl + in-memory impl mirror `UserRepo`.
  */

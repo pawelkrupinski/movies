@@ -28,8 +28,8 @@
     .plan-section h5 { color: #aad4ff; font-weight: 600; margin: 0 0 .5rem 0; }
     .plan-section .help { color: #8888aa; font-size: .85rem; margin: 0 0 .75rem 0; }
 
-    /* Cinema pills — same visual language as /kina, but multi-select
-       (a pill stays inactive when the cinema is in `disabledCinemas`).
+    /* Cinema pills — same visual language as the repertoire listing, but
+       multi-select (a pill stays inactive when the cinema is in `disabledCinemas`).
        Active = the cinema is enabled. */
     .cinema-pill {
       background: transparent;
@@ -274,7 +274,7 @@
   const SHOWINGS = window.SHOWINGS;
 
   // ── Cinema picker pills ───────────────────────────────────────────────────
-  // Same `disabledCinemas` localStorage axis as /kina and /, but the UI is
+  // Same `disabledCinemas` localStorage axis as the repertoire listing (/), but the UI is
   // multi-select: every cinema not in `disabledCinemas` is active. Toggling
   // mirrors the change through `setDisabledCinemas` so the picker is in
   // lockstep with whatever the other pages already had.

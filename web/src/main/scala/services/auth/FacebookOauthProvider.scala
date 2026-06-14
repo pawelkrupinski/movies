@@ -19,7 +19,7 @@ import services.auth.GoogleOauthProvider.{formEncode, urlEncode}
  * Email scope must be explicitly requested AND the user has to accept
  * it on the consent screen. About a third of FB users decline; that's
  * why `OauthProfile.email` is `Option`. We don't fail without email —
- * we just store `None` and the user can still favourite / hide.
+ * we just store `None` and the user can still hide films / disable cinemas.
  *
  * `formEncode` + `urlEncode` come from `GoogleOauthProvider`'s
  * companion — these two providers are the only OAuth callers and

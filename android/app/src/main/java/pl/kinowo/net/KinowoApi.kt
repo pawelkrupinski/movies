@@ -22,11 +22,11 @@ interface DetailsApi {
 }
 
 /**
- * Talks to the kinowo backend. The grid + detail screen read one endpoint —
- * `GET /{city}/api/repertoire` — which carries every field both need (incl.
- * synopsis + trailer embed URLs); the city slug prefixes the path. Mirrors iOS
- * `RepertoireStore` transport: a `KinowoAndroid/1.0` User-Agent, a
- * conditional GET via `If-Modified-Since`, and no on-disk URLCache.
+ * Talks to the kinowo backend via two endpoints: `GET /{city}/api/repertoire`
+ * (grid listing) and `GET /{city}/api/details` (synopsis, trailers, cast).
+ * The city slug prefixes the path. Mirrors iOS `RepertoireStore` transport:
+ * a `KinowoAndroid/1.0` User-Agent, conditional GET via `If-Modified-Since`,
+ * and no on-disk URLCache.
  */
 class KinowoApi(
     private val baseUrl: String = "https://kinowo.fly.dev",

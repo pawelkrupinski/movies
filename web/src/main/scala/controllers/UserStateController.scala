@@ -9,12 +9,15 @@ import java.time.Instant
 
 /**
  * REST endpoint for the authenticated user's personalization state —
- * hidden films + disabled cinemas. The browser-side JS (Phase D) uses
- * this to sync localStorage with the server on login.
+ * hidden films, disabled cinemas, /plan picks (selectedMovies,
+ * favouriteRooms). The browser-side JS (Phase D) uses this to sync
+ * localStorage with the server on login.
  *
  * Shape (both directions):
  *   { "hiddenFilms":     [titles…],
- *     "disabledCinemas": [cinema display names…] }
+ *     "disabledCinemas": [cinema display names…],
+ *     "selectedMovies":  [titles…],
+ *     "favouriteRooms":  ["<Cinema displayName>|<Room>"…] }
  */
 class UserStateController(
   cc:              ControllerComponents,

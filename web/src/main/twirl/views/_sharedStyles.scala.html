@@ -189,14 +189,13 @@
      centres the content inside the box — particularly the dynamic
      "X ukrytych" label on the hidden-films flyout, which used to
      sit at the top of the button. */
-  /* `.refresh-btn` (Filtry) + `.filter-select` (date dropdown) sit
-     shoulder-to-shoulder on every page — the date select on row 2 of
-     the mobile navbar, the Wyczyść/Filtry pair in the desktop cluster.
-     A native `<select>` carries OS-painted chrome (the dropdown
-     caret, a 1-2 px top/bottom inset on iOS Safari) that pushed it a
-     hair taller than a sibling `<button class="refresh-btn">` with
-     just `min-height: 35px`. Pin both to a concrete `height` +
-     `box-sizing: border-box` so the row is uniform regardless of UA. */
+  /* `.refresh-btn` (Filtry icon button) + `.filter-select` (the selects inside
+     the Filtry dropdown: sort-by, from-hour, from-minute, city). A native
+     `<select>` carries OS-painted chrome (the dropdown caret, a 1-2 px
+     top/bottom inset on iOS Safari) that pushed it a hair taller than a sibling
+     `<button class="refresh-btn">` with just `min-height: 35px`. Pin both to a
+     concrete `height` + `box-sizing: border-box` so the row is uniform
+     regardless of UA. */
   .refresh-btn { background: #3a3a6e; border: none; color: #aad4ff; white-space: nowrap; flex-shrink: 0; height: 35px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; }
   .refresh-btn:hover { background: #5a5a9e; color: #fff; }
   /* Filtry trigger: a square, icon-only button (mirrors the mobile apps' funnel
@@ -420,7 +419,7 @@
        then locks it to the same 14 px size as sibling `.nav-tab`
        links — without it the pill would render at the navbar's
        1 rem (16 px) default and the test in
-       `navbar-uniformity.spec.ts` flags the size mismatch.
+       `navbar-layout.spec.ts` flags the size mismatch.
        `.nav-tab` already sets min-height: 35px + inline-flex
        centering; login pill picks both up via the shared class. */
     font: inherit;
@@ -775,7 +774,7 @@
        `input, select { font-size: 16px }` rule further down keeps
        non-navbar inputs at the iOS auto-zoom floor; this scoped
        override drops the navbar pair below that floor on purpose
-       — `navbar-uniformity.spec.ts` locks the contract in. Visual
+       — `navbar-layout.spec.ts` locks the contract in. Visual
        uniformity won the trade-off vs the auto-zoom hop on
        Mobile Safari focus. */
     .navbar .search-input, .navbar .filter-select {

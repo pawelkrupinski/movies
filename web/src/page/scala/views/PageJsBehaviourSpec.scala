@@ -306,12 +306,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // ONLY on the search input. The page's default `<select>` value
       // is "Dzisiaj" (today, the first <option>), which makes
       // visibility a function of the browser's wall-clock — a card
-      // whose last showing is on the fixture's 2026-05-21 falls out
-      // of the visible set once the wall clock passes that date. The
-      // fixture's screenings are anchored to a fixed `now =
-      // 2026-05-17`, but `dateBounds()` reads the live `new Date()`,
-      // so without this pin the test silently regresses each day past
-      // a fixture-card's last showtime.
+      // whose last showing falls before the live wall-clock date drops
+      // out of the visible set. The fixture's screenings are anchored
+      // to a fixed `now = 2026-06-08`, but `dateBounds()` reads the
+      // live `new Date()`, so without this pin the test silently
+      // regresses each day past a fixture-card's last showtime.
       pinDateFilterAnytime(page)
 
       val totalCards = page.evalInt("document.querySelectorAll('.col[data-title]').length")

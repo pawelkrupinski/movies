@@ -23,7 +23,7 @@ import scala.concurrent.{Await, Future}
 object ParallelDetailFetch extends Logging {
 
   /** `maxConcurrent` caps how many detail pages fetch at once within this one
-   *  call (default 6). Each call still gets its OWN pool — it must not share
+   *  call (default 2). Each call still gets its OWN pool — it must not share
    *  the scrape/enrichment budget, since the caller `Await`s on these futures
    *  while itself holding a scrape permit (sharing would self-deadlock). The
    *  cap stops a single cinema with 30+ films from spinning up 30+ parsing

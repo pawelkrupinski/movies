@@ -1,8 +1,9 @@
 import Foundation
 
 /// Parses the `<div class="ratings">` block emitted by
-/// `_ratingBadges.scala.html`. Identical markup on the listing card
-/// and on `/film`, so the same parser serves both pages.
+/// `_ratingBadges.scala.html` on the listing card. Used by `HTMLParser`
+/// for the home listing; ratings on the detail screen come from the
+/// listing `Film`'s `ratings` field (populated by `/api/repertoire`).
 enum RatingsParser {
 
     static func parseRatings(in chunk: String) -> Film.Ratings {

@@ -15,13 +15,14 @@ import scala.util.{Failure, Try}
 
 /**
  * Periodically enqueues a `ScrapeCinema` task for every cinema whose last
- * successful scrape is older than the 15-minute freshness window (or that has
- * never been scraped). Enqueue is deduped by the queue, so a cinema with a task
- * already waiting/working isn't queued twice; the handler re-checks freshness and
- * skips if a concurrent run already refreshed it.
+ * successful scrape is older than the freshness window (default 30min,
+ * `KINOWO_SCRAPE_FRESHNESS_MINUTES`) or that has never been scraped. Enqueue
+ * is deduped by the queue, so a cinema with a task already waiting/working
+ * isn't queued twice; the handler re-checks freshness and skips if a
+ * concurrent run already refreshed it.
  *
  * Instead of re-scraping every cinema back-to-back in a continuous loop, the
- * worker scrapes a cinema at most once per 15 minutes, and a failed scrape
+ * worker scrapes a cinema at most once per freshness window, and a failed scrape
  * (which doesn't mark freshness) is naturally retried on the next reaper tick.
  *
  * On a multi-machine worker each tick is gated by a cluster-wide occurrence

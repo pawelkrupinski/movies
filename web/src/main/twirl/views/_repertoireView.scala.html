@@ -1,8 +1,7 @@
 @import controllers.FilmSchedule
 @(films: Seq[FilmSchedule], devMode: Boolean)(implicit city: models.City)
-@* The swappable Filmy view-root. Rendered inside `#view-pager` on the full
-   page, and returned on its own by the controller for a view-swap fetch
-   (X-Requested-With: view-swap) so the swap transfers just this fragment. *@
+@* The Filmy view-root. Rendered inside `#view-pager` (the day carousel
+   viewport) on the full repertoire page. *@
 <main id="view-root" data-view="films">
 <div class="container-fluid py-4 px-4">
   <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>

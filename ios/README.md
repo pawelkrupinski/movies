@@ -3,10 +3,10 @@
 SwiftUI client for [kinowo.fly.dev](https://kinowo.fly.dev) — the same repertuar
 ("/" page) the web app shows, on an iPhone.
 
-The app fetches the production HTML and parses the film grid directly. There is
-no JSON API yet — if the web template changes shape (`<div class="col"
-data-title=…>`, `data-date=`, `data-cinema=`, `data-time=`, `data-format=`,
-`class="rating-…"`), the parser will need to be updated to match.
+The app calls `/{city}/api/repertoire` (film grid) and `/{city}/api/details`
+(synopsis, trailers) as JSON. `HTMLParser` is still used for the LocalServer
+fixture tests (it parses listing HTML produced by the fixture server), but the
+production app fetches JSON, not HTML.
 
 ## Open & run
 
@@ -23,15 +23,9 @@ your team's namespace before signing.
 * Film grid (poster, title, runtime, IMDb / Metacritic / RT / Filmweb badges)
 * Showings grouped by day → cinema → time, with booking-URL deep-link
 * Search by title, date filter (anytime / today / tomorrow / week)
-* Favourite a whole film (★ on the poster) or a single screening (★ on the
-  time badge) — persists in `UserDefaults` per device
 * Hide a film from the grid (✕ on the poster); manage hidden films via the
   toolbar `eye.slash` button
-* Pull-to-refresh re-fetches the kinowo HTML
-
-Favourite-screening ids match the web app's format
-(`title|cinema|YYYY-MM-DDTHH:MM`) so a future server-sync feature can reuse
-them without translation.
+* Pull-to-refresh re-fetches repertoire from the JSON API
 
 ## Layout
 
@@ -49,14 +43,13 @@ ios/
 │   │   ├── HTMLParser.swift        Slice-and-regex extractor
 │   │   └── HTMLDecoding.swift      Cheap `&amp;`/`&#39;`/… decoder
 │   ├── Storage/
-│   │   └── UserPreferences.swift   UserDefaults-backed favourites/hidden state
+│   │   └── UserPreferences.swift   UserDefaults-backed hidden-films state
 │   ├── Views/
 │   │   ├── FilmGridView.swift      LazyVGrid container
 │   │   ├── FilmCardView.swift      Poster + title + actions
 │   │   ├── ShowingsView.swift      Per-day / per-cinema / per-time layout
 │   │   ├── RatingBadgesView.swift  IMDb / Metacritic / RT / Filmweb pills
 │   │   ├── FiltersBar.swift        Search field + date pills
-│   │   ├── HiddenFilmsView.swift   Manage hidden films
 │   │   └── FlowLayout.swift        Wrapping-row `Layout` (flex-wrap)
 │   └── Assets.xcassets/
 ├── Package.swift                  SPM manifest — KinowoCore library + tests
@@ -92,17 +85,16 @@ CI runs the same three lanes (`.github/workflows/ios.yml`): unit + integration
 on every PR (Linux Docker, swift:5.10), UI tests on every PR (macos-latest
 runner), smoke nightly at 04:00 UTC against production.
 
-The HTML parser is fragile by construction — any change to the kinowo template
-markup can break it. The smoke tests catch that drift; the unit/integration
-tests catch parser regressions against pinned fixtures so the parser doesn't
-quietly rot between live-site changes.
+The smoke tests catch API drift against the live site; the unit/integration
+tests catch parser/decoder regressions against pinned fixtures so the client
+doesn't quietly rot between live-site changes.
 
 ## Known gaps
 
 * The app loads the full grid in one fetch (≈1.5 MB) and re-parses it on every
   pull-to-refresh; no incremental updates.
-* No authenticated login (the web app's Google/Facebook OAuth is server-side
-  only). Favourites/hidden are local-device only.
+* Hidden-film state syncs server-side when signed in; local-device state
+  is the fallback when not authenticated.
 * No per-film detail page; tapping a poster does nothing (yet). Tap a showtime
   badge to open the booking URL; tap a rating badge to open the rating page.
 * iPad runs the same layout; not optimised for iPad split-view yet.

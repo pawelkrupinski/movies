@@ -14,7 +14,7 @@ import Foundation
 ///     <div class="cinema-group" data-cinema="...">
 ///       <a class="cinema-label-link" href="...">Cinema ↗</a>
 ///       <a class="badge-time" href="..." data-room="..." data-format="..." data-time="HH:MM">
-///         HH:MM <span class="badge-fmt">FMT</span><span class="fav-star">★</span>
+///         HH:MM <span class="badge-fmt">FMT</span>
 ///       </a>
 ///     </div>
 ///   </div>
@@ -22,9 +22,8 @@ import Foundation
 /// ```
 ///
 /// We slice the document by the `<div class="col" data-title="` anchor
-/// and then delegate to `RatingsParser` / `ShowingsParser` (shared with
-/// the `/film` page) for the sub-blocks. Primitive regex helpers live
-/// in `HTMLPrimitives`.
+/// and then delegate to `RatingsParser` / `ShowingsParser` for the
+/// sub-blocks. Primitive regex helpers live in `HTMLPrimitives`.
 enum HTMLParser {
 
     static func parse(html: String) -> [Film] {

@@ -15,19 +15,24 @@ external cinema scrape targets, not our own VMs).
   an external account + series caps. Self-hosting keeps everything as code here.
 
 Everything is **config-as-code** under `provisioning/` — a fresh machine comes up
-fully wired (datasource, 7 alert rules, Telegram contact point, overview
+fully wired (datasource, 12 alert rules, Telegram contact point, overview
 dashboard). No click-ops.
 
 ## What it watches (each rule maps to a real past incident)
 
 | Rule | Fires when | Incident it would have caught |
 |------|-----------|-------------------------------|
-| CPU credit exhausted | `fly_instance_cpu_balance < 500` (web/mongo) 10m | 2026-06-07 web 93% steal |
-| CPU throttled | `rate(fly_instance_cpu_throttle) > 0.2` 10m | 2026-06-07 web 93% steal |
+| CPU credit exhausted (serving app) | `fly_instance_cpu_balance < 500` (web/mongo) 10m | 2026-06-07 web 93% steal |
+| CPU throttled (serving app) | `rate(fly_instance_cpu_throttle) > 0.2` 10m | 2026-06-07 web 93% steal |
 | CPU steal high | steal share `> 25%` 10m | host contention |
-| Memory pressure | `mem_available/total < 8%` 15m | 2026-06-06 Mongo OOM cascade (pre-OOM) |
-| HTTP 5xx high | `> 5%` 5xx 5m | 502/503 boot-crash-loop outage |
-| HTTP p95 high | p95 `> 2s` 10m | "percentiles suddenly increasing" |
+| Worker CPU starved (sustained throttle) | worker throttled long-term | continuous-scrape credit drain |
+| Memory pressure (pre-OOM) | `mem_available/total < 8%` 15m | 2026-06-06 Mongo OOM cascade (pre-OOM) |
+| Disk space low (persistent volume) | volume `> 80%` full | 2026-06-10 Mongo disk-full crash |
+| Disk projected to fill within 7 days | linear fill-rate projection | early disk warning |
+| Memory pressure building (PSI) | PSI stall rising | early OOM runway |
+| Mongo down | Mongo instance absent 3m | Mongo crash cascading to web outage |
+| HTTP 5xx rate high | `> 5%` 5xx 5m | 502/503 boot-crash-loop outage |
+| HTTP p95 latency high | p95 `> 2s` 10m | "percentiles suddenly increasing" |
 | Serving app down | `fly_instance_up{app=kinowo}` 0/absent 3m | web outage |
 
 Notes grounded in the live metrics (verified against `api.fly.io/prometheus`):
@@ -99,7 +104,7 @@ dashboard (the `Deploys` annotation query). Until the secrets exist, the
 fly/grafana/smoke-test.sh      # needs Docker
 ```
 Boots the real Grafana image with this provisioning and asserts the datasource,
-all 7 alert rules, the Telegram contact point and the dashboard load cleanly. No
+all 12 alert rules, the Telegram contact point and the dashboard load cleanly. No
 network to Fly needed (dummy token). Break any provisioning file and it fails —
 this is the test gate for changes here.
 

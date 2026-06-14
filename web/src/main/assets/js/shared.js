@@ -15,9 +15,8 @@
     const dim  = (document.querySelector('input[name="format-dim"]:checked')  || {}).value || '';
     const lang = (document.querySelector('input[name="format-lang"]:checked') || {}).value || '';
     // The Filtry panel (and the `#format-imax` checkbox inside it) isn't
-    // rendered on /ulubione — the page intentionally has no filter UI.
-    // Treat a missing checkbox as "unchecked / no IMAX filter applied"
-    // rather than throwing.
+    // rendered on all pages — treat a missing checkbox as "unchecked / no
+    // IMAX filter applied" rather than throwing.
     const imaxEl = document.getElementById('format-imax');
     const imax = imaxEl && imaxEl.checked ? 'IMAX' : '';
     return [dim, lang, imax].filter(Boolean);
@@ -141,14 +140,14 @@
     if (getSubmenuFilter('director') !== null) return true;
     if (getSubmenuFilter('cast')     !== null) return true;
     if (getSubmenuFilter('room')     !== null) return true;
-    // Cinema picker (absent on /ulubione): any cinema in THIS city switched off.
+    // Cinema picker (absent on pages without the Filtry UI): any cinema in THIS city switched off.
     if (document.getElementById('cinema-list') && disabledCinemasInCity().length > 0) return true;
     return false;
   }
 
   function updateFormatBtn() {
     const btn = document.getElementById('format-filter-btn');
-    if (!btn) return;  // /ulubione: Filtry button not rendered.
+    if (!btn) return;  // Filtry button not rendered on this page.
     btn.classList.toggle('filters-active', filtersActive());
   }
 
@@ -375,7 +374,7 @@
     var cinemas = Object.keys(byCinema).sort(function(a, b) { return a.localeCompare(b, 'pl'); });
 
     // Hide the Sale row entirely when no badge on the page carries `data-room`
-    // (e.g. /ulubione, or a fixture day where the scrapers returned no rooms).
+    // (e.g. a fixture day where the scrapers returned no rooms).
     var row = document.getElementById('room-row');
     if (row) row.style.display = cinemas.length === 0 ? 'none' : '';
 
@@ -553,7 +552,7 @@
   // (titles to schedule, not titles to skip). `favouriteRooms` are
   // composite `"<Cinema displayName>|<Room>"` keys — same shape the
   // grid pages' `data-room` badges and the Filtry → Sale list use, so
-  // a future "carry /plan's room picks into / and /kina" cross-page
+  // a future "carry /plan's room picks into /" cross-page
   // affordance can read the same set without a translation step.
   function getSelectedMovies()   { return _lsGet('selectedMovies') || []; }
   function setSelectedMovies(l)  { _lsSet('selectedMovies', l);    scheduleServerSync(); }
@@ -589,7 +588,7 @@
   // rows. Hides overflow at cinema-group boundaries and shows a
   // "… +N seansów" link to the /film page. Mirrors the iOS app's collapse.
   //
-  // Called from applyFilters() in repertoire + kina after visibility has
+  // Called from applyFilters() in the repertoire view after visibility has
   // been set on badges / groups. Walks the already-computed visibility —
   // no extra DOM measurement. The /film page has no applyFilters and
   // doesn't call this, so it renders everything.
@@ -710,7 +709,7 @@
     const divider = document.getElementById('hidden-row-divider');
     const count   = document.getElementById('hidden-row-count');
     const list    = document.getElementById('hidden-modal-list');
-    if (!row || !list) return;  // /ulubione: hidden-films UI not rendered.
+    if (!row || !list) return;  // hidden-films UI not rendered on this page.
     if (hidden.length > 0) {
       row.style.display = 'flex';
       if (divider) divider.style.display = '';
@@ -873,8 +872,8 @@
 
   function buildCinemaPanel() {
     const list = document.getElementById('cinema-list');
-    // Pages without the picker (e.g. /ulubione) have no `#cinema-list` — bail
-    // instead of throwing on the null `list`.
+    // Pages without the picker have no `#cinema-list` — bail instead of
+    // throwing on the null `list`.
     if (!list) return;
     const disabled = getDisabledCinemas();
     list.innerHTML = '';

@@ -13,19 +13,19 @@ Live at **<https://kinowo.fly.dev>**.
 - **Scrapes showtimes** from Cinema City, Multikino, Helios, Kino
   Apollo, Kino Bułgarska, Kino Muza, Kino Pałacowe, Rialto, and
   Charlie Monroe. Each cinema has its own client under
-  `app/services/cinemas/`.
+  `worker/src/main/scala/services/cinemas/`.
 - **Enriches** every film with posters, synopses, trailers, and
   ratings from TMDB, IMDb, Filmweb, Metacritic, Rotten Tomatoes,
-  OMDb and Cinemeta (`app/services/enrichment/`).
+  OMDb and Cinemeta (`worker/src/main/scala/services/enrichment/`).
 - **Caches** the resolved film records in memory (Caffeine) with
   MongoDB as the write-through store, so a cold start rehydrates
   from Mongo and a refresh tick fans out to the cinemas.
 - **Authenticates** users via Google or Facebook OAuth2 and stores
-  per-user hidden films, disabled cinemas, plan picks, and favourite
-  rooms server-side. Anonymous visitors fall back to `localStorage`.
-- **iOS app** (`ios/Kinowo/`) renders the same data — talks to the
-  website directly and parses its HTML rather than calling a
-  separate JSON API.
+  per-user hidden films and disabled cinemas server-side. Anonymous
+  visitors fall back to `localStorage`.
+- **iOS and Android apps** (`ios/Kinowo/`, `android/`) render the
+  same data — they call the `/api/repertoire` and `/api/details`
+  JSON endpoints.
 
 ## Stack
 
@@ -40,34 +40,35 @@ Live at **<https://kinowo.fly.dev>**.
 | DI          | Guice                                       |
 | Build       | sbt 1.12, JDK 25 → Java 21 bytecode         |
 | iOS         | SwiftUI                                     |
-| Hosting     | Fly.io (`kinowo` app, region `arn`)         |
+| Hosting     | Fly.io (`kinowo` + `kinowo-worker` apps, region `arn`) |
 
 ## Repository layout
 
 ```
-app/
-├── controllers/          # MovieController, AuthController, UserStateController, ...
-├── models/               # Movie, MovieRecord, Showtime, Cinema, User, UserState
-├── modules/              # Guice wiring
-├── services/
-│   ├── cinemas/          # One client per cinema chain / venue
-│   ├── enrichment/       # TMDB / IMDb / Filmweb / Metacritic / RT clients + ratings
-│   ├── movies/           # MovieCache, MovieRepo, MovieService, merge/patch logic
-│   ├── events/           # In-process event bus (cache → enrichment listeners)
-│   ├── auth/             # OAuth2 providers
-│   ├── users/            # User + per-user state persistence
-│   └── lock/             # Mongo-backed distributed lock
-├── views/                # Twirl templates
-└── tools/                # Test wiring + dev utilities
+common/                   # Shared models, utilities
+worker/                   # Scrape + enrich app (kinowo-worker Fly app)
+│   └── src/main/scala/
+│       └── services/
+│           ├── cinemas/      # One client per cinema chain / venue
+│           └── enrichment/   # TMDB / IMDb / Filmweb / Metacritic / RT clients + ratings
+web/                      # Play serving app (kinowo Fly app)
+│   └── src/main/
+│       ├── scala/
+│       │   ├── controllers/  # MovieController, AuthController, UserStateController, ...
+│       │   ├── models/       # Movie, MovieRecord, Showtime, Cinema, User, UserState
+│       │   ├── modules/      # Guice wiring
+│       │   └── services/     # movies/, events/, auth/, users/, lock/
+│       ├── twirl/views/      # Twirl templates
+│       └── assets/js/        # Vanilla JS assets
+testkit/                  # Shared test helpers
+e2e/                      # End-to-end specs
+android/                  # Native Compose Android app
+ios/Kinowo/               # SwiftUI iOS app (uses /api/repertoire + /api/details)
 conf/
 ├── application.conf
 ├── logback.xml
 └── routes
-ios/Kinowo/               # SwiftUI iOS app (scrapes the website's HTML)
-test/scala/               # Unit tests (sbt test)
-it/scala/                 # Integration tests (sbt IntegrationTest/test)
-page/scala/               # Browser-driven page-regression tests (sbt PageTest/test)
-fly.toml, Dockerfile      # Fly.io deploy
+fly.toml, fly.worker.toml, Dockerfile   # Fly.io deploy (two apps, one image)
 ```
 
 ## Running locally
@@ -108,20 +109,21 @@ immediately.
 Three separate sbt configurations so CI can fan them out:
 
 ```bash
-sbt test                     # unit tests          → test/scala/
-sbt IntegrationTest/test     # integration tests   → it/scala/
-sbt PageTest/test            # browser/page tests  → page/scala/ (needs Chrome)
+sbt testUnit                 # unit tests          → <module>/src/test/scala/
+sbt itAll                    # integration tests   → <module>/src/it/scala/
+sbt web/PageTest/test        # browser/page tests  → web/src/page/scala/ (needs Chrome)
 ```
 
 `PageTest` drives a real Chrome over CDP, so it lives in its own
-configuration and stays out of the default `sbt test` so non-browser
+configuration and stays out of the default unit run so non-browser
 CI runners don't need a Chrome install.
 
 ## Deploying
 
-Fly.io. One machine in `arn` (Stockholm — nearest Fly region to Polish
-users, no `waw` exists), 1 GB shared-CPU. Mongo is self-hosted on Fly
-too — `kinowo-mongo` app, same region, `fly/mongo/`.
+Fly.io. Two apps in `arn` (Stockholm — nearest Fly region to Polish
+users, no `waw` exists): `kinowo` (serving, 1 GB shared-CPU) and
+`kinowo-worker` (scrape/enrich). Mongo is self-hosted on Fly too —
+`kinowo-mongo` app, same region, `fly/mongo/`.
 
 ```bash
 flyctl deploy
