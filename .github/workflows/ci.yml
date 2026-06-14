@@ -394,9 +394,19 @@ jobs:
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
-            # Both apps' integration suites in one run (web + worker now each have
-            # an `it` config); `all` keeps going across them. Still one GH job.
-            - run: sbt itAll
+            # Both apps' IT suites + the `e2e` module in ONE sbt run. `e2e` rides
+            # this job rather than `test`: its whole-corpus staging specs
+            # (ScrapeOrderDeterminismSpec drains the staging pipeline per shuffled
+            # replay) doubled the `test` job's wall-clock when staging ingest went
+            # always-on — and `test` gates deploy. This is the shortest sbt job, so
+            # e2e fits here under the 20-runner cap without adding a GH job that
+            # would just queue. `itAndE2e` runs all three in one JVM (`all`, no
+            # fail-fast) so e2e compiles with the build already loaded and overlaps
+            # the IT tests' Mongo I/O — a separate sbt step paid a second cold boot
+            # + e2e recompile (~4 min overhead, measured). e2e uses FixtureTestWiring
+            # (no Mongo) so it ignores the container above; reports split by config
+            # (it → it/, e2e Test config → unit/).
+            - run: sbt itAndE2e
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
@@ -411,17 +421,6 @@ jobs:
                   check_name: integration tests
                   detailed_summary: true
                   include_passed: false
-
-            # The `e2e` module rides this job rather than `test`. Its
-            # whole-corpus staging specs (ScrapeOrderDeterminismSpec drains the
-            # staging pipeline per shuffled replay) doubled the `test` job's
-            # wall-clock when staging ingest went always-on — and `test` gates
-            # deploy. This job is the shortest sbt job, so e2e fits here under
-            # the 20-runner cap without adding a new GH job that would just queue.
-            # e2e uses FixtureTestWiring (no Mongo), so it ignores the container
-            # above. Reports land in the same root `target/test-reports/unit` dir
-            # (unitReportSettings) — a distinct check name keeps the signal clear.
-            - run: sbt e2e/Test/test
 
             - name: Publish e2e test report
               if: always()
