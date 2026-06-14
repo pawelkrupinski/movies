@@ -586,17 +586,16 @@ struct FiltersSheet: View {
 struct HiddenFilmsList: View {
     @ObservedObject var prefs: UserPreferences
     @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
 
-    private var sortedTitles: [String] {
-        Array(prefs.hiddenFilms).sorted {
-            $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
-        }
+    private var visibleTitles: [String] {
+        HiddenFilmsFilter.visibleTitles(in: prefs.hiddenFilms, query: query)
     }
 
     var body: some View {
         Form {
             Section {
-                ForEach(sortedTitles, id: \.self) { title in
+                ForEach(visibleTitles, id: \.self) { title in
                     HiddenFilmRow(title: title, prefs: prefs)
                 }
             }
@@ -610,6 +609,7 @@ struct HiddenFilmsList: View {
                 }
             }
         }
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Szukaj filmu")
         .navigationTitle("Ukryte filmy")
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: prefs.hiddenFilms) { new in
