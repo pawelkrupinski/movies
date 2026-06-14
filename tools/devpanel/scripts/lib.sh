@@ -1,6 +1,17 @@
 # Shared helpers for the DevPanel action scripts.
 # Sourced (not executed) by each script; expects SCRIPT_DIR to be set first.
 
+# A GUI-launched .app inherits a minimal PATH (no Homebrew, no Android SDK),
+# so sbt / adb / gradle aren't found the way they are in a terminal. Append the
+# usual dev-tool locations (existing dirs not already on PATH).
+_devpanel_extra_paths=(/opt/homebrew/bin /usr/local/bin "$HOME/Library/Android/sdk/platform-tools")
+[[ -n "${ANDROID_HOME:-}" ]] && _devpanel_extra_paths+=("$ANDROID_HOME/platform-tools")
+[[ -n "${ANDROID_SDK_ROOT:-}" ]] && _devpanel_extra_paths+=("$ANDROID_SDK_ROOT/platform-tools")
+for _p in "${_devpanel_extra_paths[@]}"; do
+  [[ -d "$_p" && ":$PATH:" != *":$_p:"* ]] && PATH="$PATH:$_p"
+done
+export PATH
+
 # Repo root: a worktree path the panel passes via DEVPANEL_REPO_ROOT (the
 # long-press "run on worktree" menu), else three levels up from this script.
 REPO_ROOT="${DEVPANEL_REPO_ROOT:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
@@ -74,10 +85,15 @@ step() {
 # rather than hang forever. No-op under DEVPANEL_PRINT_ONLY.
 wait_for_android_unlock() {
   [[ "${DEVPANEL_PRINT_ONLY:-}" == "1" ]] && { echo "wait_for_android_unlock"; return 0; }
-  adb wait-for-device
+  local adb="${DEVPANEL_ADB:-adb}"
+  if ! command -v "$adb" >/dev/null 2>&1; then
+    echo "  (adb not on PATH — skipping unlock wait; set ANDROID_HOME if your SDK is elsewhere)"
+    return 0
+  fi
+  "$adb" wait-for-device
   local announced= win lock
   while :; do
-    win="$(adb shell dumpsys window 2>/dev/null)"
+    win="$("$adb" shell dumpsys window 2>/dev/null)"
     lock="$(printf '%s' "$win" | grep -oE 'mDreamingLockscreen=(true|false)' | head -1)"
     [[ -z "$lock" ]] && lock="$(printf '%s' "$win" | grep -oE 'mKeyguardShowing=(true|false)' | head -1)"
     case "$lock" in

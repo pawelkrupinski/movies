@@ -274,25 +274,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         let content = NSStackView()
         content.orientation = .vertical
-        content.alignment = .width        // children fill the panel width
+        content.alignment = .leading
         content.spacing = 8
-        content.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         content.translatesAutoresizingMaskIntoConstraints = false
 
         content.addArrangedSubview(headerRow())
         for action in actions { content.addArrangedSubview(button(for: action)) }
         content.addArrangedSubview(deviceConsole.container)
         content.addArrangedSubview(webConsole.container)
+        // Every row fills the content width, so buttons stay equal and stretch
+        // when the window is resized (instead of floating at intrinsic width).
+        for v in content.arrangedSubviews {
+            v.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
+        }
         webConsole.onLayoutChange = { [weak self] in self?.relayout() }
         deviceConsole.onLayoutChange = { [weak self] in self?.relayout() }
 
         let root = NSView()
         root.addSubview(content)
         NSLayoutConstraint.activate([
-            content.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            content.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            content.topAnchor.constraint(equalTo: root.topAnchor),
-            content.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            content.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
+            content.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -12),
+            content.topAnchor.constraint(equalTo: root.topAnchor, constant: 12),
+            content.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -12),
         ])
 
         let panel = NSPanel(

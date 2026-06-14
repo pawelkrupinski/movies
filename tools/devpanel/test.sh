@@ -71,6 +71,20 @@ echo "▶ ios lock detection"
   ios_unlocked_enough /tmp/devpanel-ls-locked.json && { echo "  FAIL locked-since-boot not blocked"; exit 9; } || echo "  ok   locked-since-boot ⇒ wait"
 ) || fails=$((fails + 1))
 
+echo "▶ android unlock wait (adb resolution)"
+(
+  SCRIPT_DIR="$SCRIPTS"; source "$SCRIPTS/lib.sh"
+  out="$(DEVPANEL_ADB=/no/such/adb wait_for_android_unlock 2>&1)"; rc=$?
+  [[ $rc -eq 0 && "$out" == *"skipping unlock wait"* ]] \
+    && echo "  ok   skips gracefully when adb is missing" || { echo "  FAIL adb-missing rc=$rc out=$out"; exit 9; }
+  fake="$(mktemp)"
+  printf '#!/bin/sh\ncase "$1" in wait-for-device) exit 0;; shell) echo "mDreamingLockscreen=false";; esac\n' > "$fake"
+  chmod +x "$fake"
+  out="$(DEVPANEL_ADB="$fake" wait_for_android_unlock 2>&1)"; rc=$?
+  rm -f "$fake"
+  [[ $rc -eq 0 ]] && echo "  ok   proceeds when device reports unlocked" || { echo "  FAIL unlocked rc=$rc out=$out"; exit 9; }
+) || fails=$((fails + 1))
+
 echo "▶ runDevPanel.sh"
 contains "runDevPanel → calls build.sh" "tools/devpanel/build.sh" "$(cat "$ROOT/runDevPanel.sh")"
 
