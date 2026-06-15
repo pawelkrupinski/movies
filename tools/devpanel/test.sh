@@ -37,6 +37,9 @@ check "web → sbt web/run" \
 check "local stack → sbt localStack" \
   "cd $ROOT && sbt localStack" \
   "$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/run-local-stack.sh")"
+check "kill stack → free_port 9000 + reap worker" \
+  "$(printf 'free_port 9000\nkill_stale_worker')" \
+  "$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/kill-stack.sh")"
 check "reset local corpus → reset-corpus.sh --local --yes" \
   "cd $ROOT && scripts/reset-corpus.sh --local --yes" \
   "$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/reset-local-corpus.sh")"
