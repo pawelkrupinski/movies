@@ -19,7 +19,14 @@ import scala.collection.mutable
  * construction so misconfigured chains don't fail silently in
  * production on the first request.
  */
-class FallbackHttpFetch(backends: Seq[(String, HttpFetch)]) extends HttpFetch with Logging {
+class FallbackHttpFetch(
+  backends:  Seq[(String, HttpFetch)],
+  // Fired per backend attempt with (name, error): None on success, Some(message)
+  // on failure. Lets a caller meter which leg served vs fell through — the worker
+  // records the "proxy" leg's outcome to the UptimeMonitor so /uptime shows when
+  // the residential proxy served vs fell back to Zyte. Must not throw (guarded).
+  onOutcome: (String, Option[String]) => Unit = FallbackHttpFetch.NoOutcome
+) extends HttpFetch with Logging {
   require(backends.nonEmpty, "FallbackHttpFetch needs at least one backend")
 
   override def get(url: String): String = tryEach("get", url, _.get(url))
@@ -38,10 +45,13 @@ class FallbackHttpFetch(backends: Seq[(String, HttpFetch)]) extends HttpFetch wi
     val it              = backends.iterator
     while (result.isEmpty && it.hasNext) {
       val (name, backend) = it.next()
-      try result = Some(call(backend))
-      catch {
+      try {
+        result = Some(call(backend))
+        safeOutcome(name, None)
+      } catch {
         case t: Throwable =>
           val message = s"$name: ${t.getClass.getSimpleName}: ${t.getMessage}"
+          safeOutcome(name, Some(message))
           logger.warn(s"FallbackHttpFetch $verb $url — $message; trying next backend")
           failures += message
       }
@@ -53,4 +63,12 @@ class FallbackHttpFetch(backends: Seq[(String, HttpFetch)]) extends HttpFetch wi
       )
     }
   }
+
+  // A metering callback must never break the fetch it's observing.
+  private def safeOutcome(name: String, error: Option[String]): Unit =
+    try onOutcome(name, error) catch { case _: Throwable => () }
+}
+
+object FallbackHttpFetch {
+  val NoOutcome: (String, Option[String]) => Unit = (_, _) => ()
 }

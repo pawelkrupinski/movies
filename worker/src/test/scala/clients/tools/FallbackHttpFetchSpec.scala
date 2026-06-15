@@ -79,4 +79,33 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
   it should "refuse to construct with an empty backend list — wiring bug, not runtime fallback" in {
     intercept[IllegalArgumentException] { new FallbackHttpFetch(Seq.empty) }
   }
+
+  // ── onOutcome metering (powers the /uptime "Residential proxy" row) ─────────
+
+  it should "report a failed primary then the served fallback (proxy failed → Zyte used)" in {
+    val outcomes = mutable.ListBuffer.empty[(String, Option[String])]
+    val chain = new FallbackHttpFetch(
+      Seq("proxy" -> boom("HTTP 407"), "fallback" -> ok("served")),
+      onOutcome = (name, error) => outcomes += (name -> error))
+    chain.get("https://x") shouldBe "served"
+    outcomes.toList shouldBe List(
+      "proxy"    -> Some("proxy: RuntimeException: HTTP 407"),
+      "fallback" -> None)
+  }
+
+  it should "report only the primary when it succeeds (proxy served, fallback untouched)" in {
+    val outcomes = mutable.ListBuffer.empty[(String, Option[String])]
+    val chain = new FallbackHttpFetch(
+      Seq("proxy" -> ok("served"), "fallback" -> boom("unused")),
+      onOutcome = (name, error) => outcomes += (name -> error))
+    chain.get("https://x") shouldBe "served"
+    outcomes.toList shouldBe List("proxy" -> None)
+  }
+
+  it should "not let an onOutcome that throws break the fetch" in {
+    val chain = new FallbackHttpFetch(
+      Seq("proxy" -> ok("served")),
+      onOutcome = (_, _) => throw new RuntimeException("listener boom"))
+    chain.get("https://x") shouldBe "served"
+  }
 }

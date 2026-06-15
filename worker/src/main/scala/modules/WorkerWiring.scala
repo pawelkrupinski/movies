@@ -67,7 +67,20 @@ class WorkerWiring extends play.api.Logging {
   // Proxy primary → existing chain (Zyte then direct) as fallback, so a proxy IP
   // that's ever unreachable/burned silently rolls over and scraping never breaks.
   private def proxyPrimary(fallback: HttpFetch): HttpFetch =
-    residentialProxy.fold(fallback)(p => new FallbackHttpFetch(Seq("proxy" -> p, "fallback" -> fallback)))
+    residentialProxy.fold(fallback)(p =>
+      new FallbackHttpFetch(Seq("proxy" -> p, "fallback" -> fallback), onOutcome = recordProxyOutcome))
+
+  // Meter the residential-proxy leg to /uptime: a green "Residential proxy" bar
+  // means the proxy served, a red one means it failed and we fell back to Zyte
+  // (so red-bar frequency = how often Zyte is still used). Aggregated across all
+  // proxied cinemas into one row. Only the outer chain's "proxy" leg is metered;
+  // the inner Zyte/direct chain runs with the default no-op.
+  private val ResidentialProxyService = "Residential proxy"
+  private def recordProxyOutcome(backend: String, error: Option[String]): Unit =
+    if (backend == "proxy") error match {
+      case None        => uptimeMonitor.recordSuccess(ResidentialProxyService)
+      case Some(label) => uptimeMonitor.recordFailure(ResidentialProxyService, label)
+    }
 
   lazy val multikinoFetch: HttpFetch = proxyPrimary(MultikinoClient.fetchFor(httoFetch))
   // biletyna.pl 403s our datacenter IP; residential proxy primary, Zyte fallback.
