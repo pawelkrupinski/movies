@@ -57,7 +57,7 @@ class KinoSpektrumClient(http: HttpFetch, override val cinema: Cinema) extends C
         filmUrl   = None,
         synopsis  = None,
         cast      = Seq.empty,
-        director  = Seq.empty,
+        director  = group.map(_.director).find(_.nonEmpty).getOrElse(Seq.empty),
         showtimes = showtimes
       ))
     }.sortBy(_.movie.title)
@@ -74,14 +74,29 @@ object KinoSpektrumClient {
   // `…/kup-bilet/<slug>-YYYY-MM-DD-HH-MM` — the trailing date+time is the exact
   // start; the leading slug is decoration we ignore in favour of the anchor text.
   private val BookingTailPat = """-(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})$""".r
+  // The event-item's `div.description` carries a labelled `Reżyseria: <names>`
+  // line (then `Scenariusz…`, `Obsada…` on following `<br>` lines). Anchored on
+  // the explicit label and bounded by the next tag, so the surrounding synopsis
+  // prose can't leak in. The director list is comma-separated.
+  private val DirectorPat = """(?iu)reżyseria\s*:?\s*([^<\n]+)""".r
 
   private case class RawSlot(
     title:    String,
     dateTime: LocalDateTime,
     booking:  Option[String],
     poster:   Option[String],
-    room:     Option[String]
+    room:     Option[String],
+    director: Seq[String]
   )
+
+  /** Director(s) from the `Reżyseria:` line of the event-item description,
+   *  comma-split. Empty when the description carries no such line. */
+  private[cinemas] def parseDirector(item: Element): Seq[String] =
+    Option(item.selectFirst("div.description")).map(_.html()).toSeq
+      .flatMap(DirectorPat.findFirstMatchIn(_).map(_.group(1)))
+      .flatMap(_.split(","))
+      .map(_.trim.stripSuffix(".").trim)
+      .filter(_.nonEmpty)
 
   private def parseEvent(item: Element): Option[RawSlot] = {
     val link     = Option(item.selectFirst("div.title a[href]"))
@@ -95,7 +110,7 @@ object KinoSpektrumClient {
           .map(_.attr("src")).filter(_.nonEmpty).map(absolute)
         val room    = Option(item.selectFirst("i.fa-map-marker-alt"))
           .flatMap(i => Option(i.nextSibling)).map(_.toString.trim).filter(_.nonEmpty)
-        Some(RawSlot(t, dt, booking, poster, room))
+        Some(RawSlot(t, dt, booking, poster, room, parseDirector(item)))
       case _ => None
     }
   }

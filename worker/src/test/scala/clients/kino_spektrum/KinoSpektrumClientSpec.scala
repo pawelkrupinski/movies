@@ -40,4 +40,14 @@ class KinoSpektrumClientSpec extends AnyFlatSpec with Matchers with OptionValues
     slot.bookingUrl.value should startWith("https://bilety.kinospektrum.pl/index.php/kup-bilet/")
     slot.room.value shouldBe "Sala Duża"
   }
+
+  it should "attach the director from the description's 'Reżyseria:' line" in {
+    val movies = new KinoSpektrumClient(http, KinoSpektrum).fetch()
+    // Only films whose description carries a labelled `Reżyseria:` line get a
+    // director; the captured fixture has "Propozycja" (reż. John Hillcoat).
+    movies.filter(_.director.nonEmpty).flatMap(_.director) should contain("John Hillcoat")
+    // The labelled line is the only source — a film with a plain synopsis and no
+    // `Reżyseria:` label keeps an empty director (no prose leakage).
+    movies.find(_.movie.title == "Zimna wojna").value.director shouldBe empty
+  }
 }
