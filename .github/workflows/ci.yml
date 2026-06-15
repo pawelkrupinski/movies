@@ -192,8 +192,16 @@ jobs:
                   restore-keys: |
                       spm-build-${{ runner.os }}-
 
+            # `packages: platform-tools` instead of the action's default
+            # `tools platform-tools`: the deprecated `tools` meta-package drags
+            # in the Android Emulator, which this JVM-only `testDebugUnitTest` +
+            # swift LocalServer job never uses and whose download flakily corrupts
+            # ("Error on ZipFile unknown archive"), failing the whole job before a
+            # single test runs. AGP auto-fetches platform-34 / build-tools.
             - name: Set up Android SDK
               uses: android-actions/setup-android@v3
+              with:
+                  packages: platform-tools
 
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4

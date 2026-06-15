@@ -60,9 +60,16 @@ jobs:
 
             # Provisions cmdline-tools + accepts SDK licenses so AGP can
             # auto-fetch platform-34 / build-tools 34.0.0 if the runner image
-            # doesn't already carry them.
+            # doesn't already carry them. `packages: platform-tools` pins the
+            # install to a minimal set instead of the action's default
+            # `tools platform-tools` — the deprecated `tools` meta-package drags
+            # in the Android Emulator (~hundreds of MB), which this JVM-only
+            # `testDebugUnitTest` lane never uses and whose download flakily
+            # corrupts ("Error on ZipFile unknown archive"), failing the job.
             - name: Set up Android SDK
               uses: android-actions/setup-android@v3
+              with:
+                  packages: platform-tools
 
             # Caches ~/.gradle (wrapper dist + dependency + build caches),
             # keyed on the build scripts and wrapper version.
