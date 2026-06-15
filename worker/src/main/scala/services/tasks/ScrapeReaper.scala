@@ -3,7 +3,7 @@ package services.tasks
 import play.api.Logging
 import services.Stoppable
 import services.cinemas.CinemaScraper
-import services.freshness.{FreshnessKind, FreshnessStore}
+import services.freshness.{Freshness, FreshnessKind, FreshnessStore}
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
 import tools.DaemonExecutors
 
@@ -43,7 +43,12 @@ class ScrapeReaper(
   // behaviour — rather than never scraping if a hydrate wedges.
   readyTimeout: FiniteDuration = 30.seconds,
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
-  clock:    Clock = Clock.systemUTC()
+  clock:    Clock = Clock.systemUTC(),
+  // Per-cinema freshness window keyed by the scrape dedup key, so a metered
+  // source (Multikino → 60min) and an ordinary venue (→ 20min) can run on
+  // different cadences. Defaults to the kind-level default for every cinema;
+  // `WorkerWiring` supplies the real per-scraper windows.
+  scrapeWindow: String => FiniteDuration = _ => Freshness.defaultScrapeTtl
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("scrape-reaper")
@@ -83,7 +88,7 @@ class ScrapeReaper(
     var enqueued = 0
     scrapers.foreach { s =>
       val key = ScrapeCinemaHandler.dedupKey(s.cinema)
-      if (!freshness.isFresh(key, FreshnessKind.CinemaScrape)) {
+      if (!freshness.isFreshWithin(key, Some(scrapeWindow(key)))) {
         if (queue.enqueue(TaskType.ScrapeCinema, key,
               Map(ScrapeCinemaHandler.CinemaKey -> s.cinema.displayName)) == EnqueueResult.Added)
           enqueued += 1

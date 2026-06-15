@@ -8,7 +8,7 @@ import services.cinemas._
 import services.enrichment._
 import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
 import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete, StagingFilmEnriched, TaskFinished}
-import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
+import services.freshness.{Freshness, FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepository, MovieService, MongoNormalizationReportRepository, NormalizationRebuilder, NormalizationReport, NormalizationReportRepository, UnscreenedCleanup}
 import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
@@ -174,10 +174,27 @@ class WorkerWiring extends play.api.Logging {
   protected lazy val scrapeOutcomeListener: ScrapeOutcomeListener =
     filmwebDropAlerter.getOrElse(ScrapeOutcomeListener.NoOp)
 
-  lazy val cinemaScrapers: Seq[CinemaScraper] =
+  // The raw per-cinema scrapers before the retry/uptime/fallback decorators.
+  // Kept separate because per-scraper metadata read at wiring time (here, the
+  // freshness window; elsewhere `chain`/`maxFetchAttempts`) lives on the raw
+  // scraper — the decorators don't forward it.
+  lazy val rawCinemaScrapers: Seq[CinemaScraper] =
     City.all
       .filter(c => scrapeCities(c.slug))
       .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
+
+  // Per-cinema scrape freshness window, keyed by the scrape dedup key. Multikino
+  // declares 60min (metered Zyte proxy); ordinary venues default to 20min. The
+  // reaper AND the handler share this so a cinema isn't enqueued then re-skipped
+  // under a mismatched window.
+  lazy val scrapeWindows: Map[String, FiniteDuration] =
+    rawCinemaScrapers.map(s => ScrapeCinemaHandler.dedupKey(s.cinema) -> s.scrapeFreshness).toMap
+
+  private def scrapeWindowFor(key: String): FiniteDuration =
+    scrapeWindows.getOrElse(key, Freshness.defaultScrapeTtl)
+
+  lazy val cinemaScrapers: Seq[CinemaScraper] =
+    rawCinemaScrapers
       .map { raw =>
         val retried = new RetryingCinemaScraper(raw, maxAttempts = math.min(raw.maxFetchAttempts, scrapeAttemptCeiling))
         if (FallbackEligibility.eligible(raw))
@@ -327,7 +344,7 @@ class WorkerWiring extends play.api.Logging {
 
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
-    cinemaScrapeRunner, freshnessStore
+    cinemaScrapeRunner, freshnessStore, scrapeWindowFor
   )
   lazy val enrichDetailsHandler = new EnrichDetailsHandler(
     detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache, freshnessStore, uptimeMonitor, eventBus
@@ -427,7 +444,7 @@ class WorkerWiring extends play.api.Logging {
   )
   lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, initialDelay = initialScrapeDelaySeconds.seconds,
-      runStore = scheduledRunStore)
+      runStore = scheduledRunStore, scrapeWindow = scrapeWindowFor)
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing
   // when the 2026-06-12 worker-steal episode had to be reconstructed from metrics).

@@ -40,14 +40,25 @@ object FreshnessKind {
  * introduces. The scrape TTL is the dominant lever on the worker's Mongo write
  * rate (each pass that finds a real change writes through to `movies` and
  * cascades to the read model), so it's tunable via `KINOWO_SCRAPE_FRESHNESS_MINUTES`
- * and defaults to 30min — long enough to keep the shared-CPU Mongo within its
- * CPU-credit budget, short enough that showtimes stay current.
+ * and defaults to 20min — short enough that showtimes stay current.
+ *
+ * The scrape window is applied PER-SCRAPER, not purely per-kind: the scrape
+ * scheduler reads each scraper's [[services.cinemas.CinemaScraper.scrapeFreshness]]
+ * (default [[defaultScrapeTtl]]) so a metered source can run on a longer cadence —
+ * Multikino, served through the paid Zyte residential proxy, refreshes every 60min
+ * while ordinary directly-scraped venues stay at 20min. [[ttlFor]]'s `CinemaScrape`
+ * case is the kind-level default/fallback used when no per-scraper window applies.
  */
 object Freshness {
   import FreshnessKind._
 
+  /** The default cinema-scrape freshness window for an ordinary venue, tunable
+   *  via `KINOWO_SCRAPE_FRESHNESS_MINUTES` (default 20min). The scrape scheduler
+   *  applies this unless the scraper declares a longer per-source window. */
+  def defaultScrapeTtl: FiniteDuration = Env.positiveLong("KINOWO_SCRAPE_FRESHNESS_MINUTES", 20L).minutes
+
   def ttlFor(kind: FreshnessKind): Option[FiniteDuration] = kind match {
-    case CinemaScrape  => Some(Env.positiveLong("KINOWO_SCRAPE_FRESHNESS_MINUTES", 30L).minutes)
+    case CinemaScrape  => Some(defaultScrapeTtl)
     case DetailEnrich  => Some(6.hours)
     case ImdbRating    => Some(4.hours)
     case FilmwebRating => Some(4.hours)

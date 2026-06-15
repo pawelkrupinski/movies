@@ -1,8 +1,10 @@
 package services.cinemas
 
 import models.{Cinema, CinemaCityChain, CinemaMovie, Source}
+import services.freshness.Freshness
 
 import java.net.URI
+import scala.concurrent.duration.FiniteDuration
 
 /**
  * Single contract every cinema-source obeys: a name (`cinema`), a thunk
@@ -46,6 +48,18 @@ trait CinemaScraper {
    *  ceiling, so the fixture-replay test wiring can still force a single
    *  no-retry attempt for every cinema. */
   def maxFetchAttempts: Int = 3
+
+  /** How long a successful scrape of this cinema stays fresh — the scrape
+   *  scheduler ([[services.tasks.ScrapeReaper]] / `ScrapeCinemaHandler`) skips a
+   *  re-scrape inside this window. Defaults to [[Freshness.defaultScrapeTtl]]
+   *  (20min) for an ordinary directly-scraped venue. A source served through a
+   *  *metered* backend overrides it longer to cut request cost: Multikino runs
+   *  through the paid Zyte residential proxy (its site Cloudflare-blocks our
+   *  datacenter IP), so it refreshes on a 60min cadence — showtimes for a large
+   *  reliable chain barely move within the hour, and halving its scrape count
+   *  halves its proxy bill. Read off the RAW scraper at wiring time (like
+   *  `chain`/`maxFetchAttempts`); the decorators don't forward it. */
+  def scrapeFreshness: FiniteDuration = Freshness.defaultScrapeTtl
 
   /** Whether this scraper is a *chain* (Cinema City, Helios, Multikino) rather
    *  than a single independent venue. Chains are excluded from the Filmweb

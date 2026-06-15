@@ -1,7 +1,9 @@
 package services.cinemas
 
 import models.{Cinema, CinemaMovie, Multikino}
-import tools.HttpFetch
+import tools.{Env, HttpFetch}
+
+import scala.concurrent.duration._
 
 /**
  * Multikino fetches `microservice/showings/cinemas/0011/films` and hands the
@@ -10,14 +12,20 @@ import tools.HttpFetch
  *
  *   Zyte (if `ZYTE_API_KEY` set) → `direct`
  *
- * Each link tries the next on any exception, so Zyte going down silently
- * rolls over to direct without code changes.
+ * Each link tries the next on any exception, so Zyte going down rolls over to
+ * `direct` without code changes. In production Zyte is REQUIRED, not an
+ * optimisation: Multikino sits behind Cloudflare and 403s our Fly datacenter IP
+ * on the homepage itself — proven 2026-06-15, the `direct` leg never even
+ * reaches the API, so it's a last-resort that only succeeds from a
+ * residential/dev IP. (See the `reference_multikino_fly_ip_cloudflare_block`
+ * memory.)
  *
- * Session-handling retry stays in the client: optimistic API call,
- * homepage warm-up on failure, retry. With Zyte in front the first call
- * always succeeds (it does its own cookie carryover) and the retry never
- * fires; with a direct fetch the retry recovers the 401-without-session-
- * cookie response that Multikino's API returns on a cold connection.
+ * Session-handling retry stays in the client: optimistic API call, homepage
+ * warm-up on failure, retry. That recovers the 401-without-session-cookie the
+ * API returns on a cold connection — which is the second wall, *behind* the IP
+ * block. With Zyte in front the first call already succeeds (it does its own
+ * cookie carryover, shared across cinemas — see [[ZyteFallback]]) so the retry
+ * rarely fires.
  */
 class MultikinoClient(
   http:              HttpFetch,
@@ -30,6 +38,12 @@ class MultikinoClient(
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def chain: Boolean = true
+
+  // Served through the metered Zyte residential proxy (above), so refresh on a
+  // longer cadence than ordinary directly-scraped venues to cut the proxy bill —
+  // see CinemaScraper.scrapeFreshness. Tunable via KINOWO_MULTIKINO_FRESHNESS_MINUTES.
+  override def scrapeFreshness: FiniteDuration =
+    Env.positiveLong(MultikinoClient.FreshnessMinutesKey, 60L).minutes
 
   def fetch(): Seq[CinemaMovie] = MultikinoParser.parse(getApiWithRetry(), cinema)
 
@@ -56,6 +70,11 @@ object MultikinoClient {
    *  spec drives `fetch()` against it directly. */
   val ApiUrl  = apiUrl(PoznanStaryBrowarId)
   val HomeUrl = s"$BaseUrl/"
+
+  /** Env knob for the per-source scrape cadence (minutes). Longer than the
+   *  ordinary-venue default because every Multikino scrape is a paid Zyte
+   *  residential-proxy call — see `scrapeFreshness`. */
+  val FreshnessMinutesKey = "KINOWO_MULTIKINO_FRESHNESS_MINUTES"
 
   /** Build the `HttpFetch` to pass into `MultikinoClient` at the
    *  composition root. A Zyte-primary → direct fallback chain (see

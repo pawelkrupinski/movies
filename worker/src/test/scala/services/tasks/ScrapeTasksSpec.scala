@@ -5,11 +5,12 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{CinemaScrapeRunner, CinemaScraper, FakeDetailEnricher}
 import services.events.InProcessEventBus
-import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
+import services.freshness.{Freshness, FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
 
-import java.time.LocalDateTime
+import java.time.{Instant, LocalDateTime}
+import scala.concurrent.duration._
 
 class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
 
@@ -86,6 +87,28 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     fresh.markFresh(ScrapeCinemaHandler.dedupKey(KinoApollo), FreshnessKind.CinemaScrape)
     val reaper  = new ScrapeReaper(Seq(scraper), new InMemoryTaskQueue, fresh)
     reaper.tick() shouldBe 0
+  }
+
+  it should "honour the per-source freshness window — a 60min source stays fresh where a 20min one is stale" in {
+    val fresh     = new InMemoryFreshnessStore
+    val mkKey     = ScrapeCinemaHandler.dedupKey(Multikino)
+    val apolloKey = ScrapeCinemaHandler.dedupKey(KinoApollo)
+    // One shared timestamp 25min in the past: stale for a 20min window, fresh
+    // for a 60min one. This is Multikino (60) vs an ordinary venue (20).
+    val twentyFiveAgo = Instant.now().minusSeconds(25 * 60)
+    fresh.markFresh(mkKey, FreshnessKind.CinemaScrape, twentyFiveAgo)
+    fresh.markFresh(apolloKey, FreshnessKind.CinemaScrape, twentyFiveAgo)
+    val windows = Map(mkKey -> 60.minutes, apolloKey -> 20.minutes)
+    val queue   = new InMemoryTaskQueue
+    val reaper  = new ScrapeReaper(
+      Seq(new FakeScraper(Multikino, movieAt(Multikino)), new FakeScraper(KinoApollo, movieAt(KinoApollo))),
+      queue, fresh, scrapeWindow = k => windows.getOrElse(k, Freshness.defaultScrapeTtl))
+    reaper.tick() shouldBe 1 // only KinoApollo (20min) is stale; Multikino (60min) still fresh
+    queue.enqueue(TaskType.ScrapeCinema, apolloKey) shouldBe EnqueueResult.Duplicate // it's the one already queued
+  }
+
+  it should "default a scraper's freshness window to 20min and let Multikino override to 60" in {
+    new FakeScraper(KinoApollo, Nil).scrapeFreshness shouldBe 20.minutes
   }
 
   it should "enqueue each of several stale cinemas once" in {
