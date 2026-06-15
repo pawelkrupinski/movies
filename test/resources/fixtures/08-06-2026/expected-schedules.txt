@@ -480,7 +480,7 @@ countries:         Korea Południowa, Francja
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/Bez-wyjscia_plakat_B1_HQ-po-zmniejszeniu-200x288.jpg
 synopsis.length:   408
 cast:              Lee Byung-hun, Son Ye-jin, Park Hee-soon, Lee Sung-min, Yeom Hye-ran, Cha Seung-won
-director:          Park Chan-wook
+director:          Chan-wook Park
 tmdbId:            639988
 imdbId:            tt1527793
 originalTitle:     어쩔수가없다
@@ -490,7 +490,7 @@ rottenTomatoes:    97
 filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/no-other-choice
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/no_other_choice
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Bez+wyj%C5%9Bcia-2025-10058716
 cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/bez-wyjscia
 cinemaScrapes:
@@ -616,15 +616,15 @@ posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8240O
 synopsis.length:   1358
 cast:              RM, 진, 슈가, 제이홉, 지민
 director:          Jungjae Ha
-tmdbId:            1640663
-imdbId:            tt39950539
-originalTitle:     BTS World Tour ‘Arirang’ in Goyang: Live Viewing
-imdbRating:        7.6
+tmdbId:            1701849
+imdbId:            tt42867738
+originalTitle:     BTS World Tour ‘Arirang’ in Busan: Live Viewing
+imdbRating:        —
 metascore:         —
-rottenTomatoes:    98
+rottenTomatoes:    —
 filmwebRating:     —
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/bts_world_tour_arirang_in_goyang_live_viewing
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/bts_world_tour_arirang_in_busan_live_viewing
 filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/bts-world-tour-arirang-in-busan-live-viewing-encore/8240o2r1
@@ -5443,22 +5443,22 @@ showings:
 displayTitle:      Pianista
 cinemaTitles:      Pianista
 runtimeMinutes:    149
-releaseYear:       —
-countries:         —
+releaseYear:       2002
+countries:         Francja, Niemcy, Polska, Wielka Brytania, USA
 posterUrl:         https://img.helios.pl/pliki/film/pianista/pianista-plakat-769.png
-synopsis.length:   —
-cast:              —
-director:          —
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+synopsis.length:   579
+cast:              Adrien Brody, Thomas Kretschmann, Frank Finlay, Maureen Lipman, Emilia Fox
+director:          Roman Polański
+tmdbId:            423
+imdbId:            tt0253474
+originalTitle:     The Pianist
+imdbRating:        8.5
+metascore:         85
+rottenTomatoes:    29
+filmwebRating:     8.2702
+metacriticUrl:     https://www.metacritic.com/movie/the-pianist
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_pianist
+filmwebUrl:        https://www.filmweb.pl/film/Pianista-2002-32225
 cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/pianista-w-helios-replay-2610
 cinemaScrapes:
@@ -6049,18 +6049,18 @@ runtimeMinutes:    115
 releaseYear:       2025
 countries:         Francja, Hiszpania
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Sirat-FB-1080x1080-plakat_OOYdBVY.jpg
-synopsis.length:   116
-cast:              —
+synopsis.length:   376
+cast:              Sergi López, Bruno Núñez, Stefania Gadda, Joshua Liam Henderson, Richard Bellamy
 director:          Oliver Laxe
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
+tmdbId:            1151272
+imdbId:            tt32298285
+originalTitle:     Sirāt
+imdbRating:        7.0
+metascore:         84
+rottenTomatoes:    90
 filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
+metacriticUrl:     https://www.metacritic.com/movie/sirat
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/sirat
 filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14611-plenerowe-paacowe-sirat/
@@ -6417,22 +6417,22 @@ showings:
 displayTitle:      Powrót do przyszłości II
 cinemaTitles:      Powrót do przyszłości II
 runtimeMinutes:    108
-releaseYear:       —
-countries:         —
+releaseYear:       1989
+countries:         USA
 posterUrl:         https://img.helios.pl/pliki/film/powrot-do-przyszlosci-ii/powrot-do-przyszlosci-ii-plakat-70759.jpg
-synopsis.length:   —
-cast:              —
-director:          —
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+synopsis.length:   555
+cast:              Michael J. Fox, Christopher Lloyd, Lea Thompson, Thomas F. Wilson, Elisabeth Shue
+director:          Robert Zemeckis
+tmdbId:            165
+imdbId:            tt0096874
+originalTitle:     Back to the Future Part II
+imdbRating:        7.8
+metascore:         57
+rottenTomatoes:    63
+filmwebRating:     7.50205
+metacriticUrl:     https://www.metacritic.com/movie/back-to-the-future-part-ii
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/back_to_the_future_part_ii
+filmwebUrl:        https://www.filmweb.pl/film/Powr%C3%B3t+do+przysz%C5%82o%C5%9Bci+II-1989-8824
 cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/powrot-do-przyszlosci-ii-w-helios-replay-2577
 cinemaScrapes:
@@ -6626,22 +6626,22 @@ showings:
 displayTitle:      Prosta historia
 cinemaTitles:      Prosta historia
 runtimeMinutes:    113
-releaseYear:       —
+releaseYear:       1999
 countries:         USA, Wielka Brytania, Francja
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/06/prosta-historia-WEB_01_680-x-980-1-200x288.webp
-synopsis.length:   280
-cast:              —
-director:          —
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+synopsis.length:   328
+cast:              Richard Farnsworth, Sissy Spacek, Jane Galloway Heitz, Joseph A. Carpenter, Donald Wiegert
+director:          David Lynch
+tmdbId:            404
+imdbId:            tt0166896
+originalTitle:     The Straight Story
+imdbRating:        8.0
+metascore:         86
+rottenTomatoes:    95
+filmwebRating:     7.68003
+metacriticUrl:     https://www.metacritic.com/movie/the-straight-story
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/straight_story
+filmwebUrl:        https://www.filmweb.pl/film/Prosta+historia-1999-821
 cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/prosta-historia
 cinemaScrapes:
@@ -6793,22 +6793,22 @@ showings:
 displayTitle:      Rocznica
 cinemaTitles:      Rocznica
 runtimeMinutes:    112
-releaseYear:       —
-countries:         USA
+releaseYear:       2025
+countries:         USA, Irlandia
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/rocznica-rocznica-plakat-finalny-scaled-1-200x288.webp
-synopsis.length:   287
-cast:              —
-director:          —
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+synopsis.length:   509
+cast:              Diane Lane, Kyle Chandler, Madeline Brewer, Zoey Deutch, Phoebe Dynevor
+director:          Jan Komasa
+tmdbId:            1126336
+imdbId:            tt12583926
+originalTitle:     Anniversary
+imdbRating:        6.7
+metascore:         57
+rottenTomatoes:    67
+filmwebRating:     6.57635
+metacriticUrl:     https://www.metacritic.com/movie/anniversary
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/anniversary_2025
+filmwebUrl:        https://www.filmweb.pl/film/Rocznica-2025-856239
 cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/rocznica
 cinemaScrapes:
