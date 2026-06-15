@@ -15,7 +15,7 @@ import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, 
 import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
-import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
+import tools.{Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SharedExecutionBudget}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
@@ -55,9 +55,23 @@ class WorkerWiring extends play.api.Logging {
   // `httoFetch`, the Zyte-routed `multikinoFetch` / `biletynaFetch`, and Helios's REST date — and
   // wraps each raw scraper in RetryingCinemaScraper (retry) + UptimeRecordingScraper
   // (record the outcome) for production ticks.
-  lazy val multikinoFetch: HttpFetch = MultikinoClient.fetchFor(httoFetch)
-  // biletyna.pl 403s our datacenter IP; route Kino Kameralne through Zyte.
-  lazy val biletynaFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch)
+  // Residential-proxy egress (Decodo static-ISP, PL Netia) for the cinema sites
+  // that Cloudflare-block our Fly datacenter IP. Non-secret host+ports come from
+  // the committed residential-proxy.properties; the KINOWO_PROXY_USER/PASS secrets
+  // come from Env (env -> .env.local). Some only when both are present — absent in
+  // local/test, where the chain collapses to the existing Zyte/direct path. See
+  // the `reference_decodo_isp_proxy` memory.
+  lazy val residentialProxy: Option[HttpFetch] =
+    ResidentialProxy.fromEnv().map(config => new RealHttpFetch(Some(config)))
+
+  // Proxy primary → existing chain (Zyte then direct) as fallback, so a proxy IP
+  // that's ever unreachable/burned silently rolls over and scraping never breaks.
+  private def proxyPrimary(fallback: HttpFetch): HttpFetch =
+    residentialProxy.fold(fallback)(p => new FallbackHttpFetch(Seq("proxy" -> p, "fallback" -> fallback)))
+
+  lazy val multikinoFetch: HttpFetch = proxyPrimary(MultikinoClient.fetchFor(httoFetch))
+  // biletyna.pl 403s our datacenter IP; residential proxy primary, Zyte fallback.
+  lazy val biletynaFetch: HttpFetch = proxyPrimary(ZyteFallback.fetchFor(httoFetch))
   lazy val cinemaScraperCatalog = new CinemaScraperCatalog(
     httoFetch, multikinoFetch, biletynaFetch, heliosToday,
     // Mongo-backed chain detail cache so Helios / Cinema City detail is deduped

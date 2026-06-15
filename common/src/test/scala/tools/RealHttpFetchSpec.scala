@@ -3,6 +3,7 @@ package tools
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import java.net.{InetSocketAddress, URI}
 import java.time.Duration
 
 /**
@@ -44,5 +45,31 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
       .connectTimeout().orElseThrow() shouldBe RealHttpFetch.SlowTlsConnectTimeout
     http.clientFor("https://www.multikino.pl/repertuar")
       .connectTimeout().orElseThrow() shouldBe RealHttpFetch.DefaultConnectTimeout
+  }
+
+  // ── Residential-proxy egress (Decodo static ISP) ──────────────────────────
+
+  private def selectedPort(pc: RealHttpFetch.ProxyConfig): Int =
+    pc.selector.select(URI.create("https://www.multikino.pl/api/x")).get(0)
+      .address().asInstanceOf[InetSocketAddress].getPort
+
+  "RealHttpFetch.ProxyConfig" should "round-robin the selector across the configured ports" in {
+    val pc = RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001, 10002, 10003), "u", "p")
+    // Each request rotates to the next IP; one IP suffices but spreading load
+    // across the dedicated pool hedges per-IP rate-limit/burn risk.
+    (1 to 7).map(_ => selectedPort(pc)).toList shouldBe
+      List(10001, 10002, 10003, 10001, 10002, 10003, 10001)
+  }
+
+  it should "clear jdk.http.auth.tunneling.disabledSchemes so Basic proxy auth works over HTTPS CONNECT" in {
+    // The JDK default is "Basic", which 407s every HTTPS fetch through the proxy
+    // — the gotcha that makes the worker's proxied egress fail without this.
+    RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001), "u", "p")
+    System.getProperty("jdk.http.auth.tunneling.disabledSchemes") shouldBe ""
+  }
+
+  it should "reject an empty port list (a misconfigured proxy)" in {
+    an[IllegalArgumentException] should be thrownBy
+      RealHttpFetch.ProxyConfig("isp.decodo.com", Seq.empty, "u", "p")
   }
 }

@@ -2,14 +2,16 @@ package tools
 
 import play.api.Logging
 
+import java.io.IOException
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse, HttpTimeoutException}
-import java.net.{CookieManager, CookiePolicy}
+import java.net.{Authenticator, CookieManager, CookiePolicy, InetSocketAddress, PasswordAuthentication, Proxy, ProxySelector, SocketAddress}
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicInteger
 
-class RealHttpFetch extends HttpFetch with Logging {
+class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends HttpFetch with Logging {
   // Connect + per-request timeouts so a hung upstream (MC search HTML
   // sometimes streams forever, Filmweb soft-blocks by holding the socket
   // open, …) can't pin a worker thread indefinitely. Production was
@@ -36,17 +38,26 @@ class RealHttpFetch extends HttpFetch with Logging {
   // depends on it — the homepage hands out a session cookie that the
   // API call must carry — and other clients are unaffected (cookies
   // are domain-scoped, and the APIs we talk to are otherwise stateless).
-  private def buildClient(connectTimeout: Duration): HttpClient = HttpClient.newBuilder()
-    .version(HttpClient.Version.HTTP_1_1)
-    .followRedirects(HttpClient.Redirect.NORMAL)
-    .connectTimeout(connectTimeout)
-    // Trust the JDK defaults PLUS the Certum root that OpenJDK's cacerts omits,
-    // so the Certum-rooted cinema sites (Kinomuzeum/artmuseum.pl, Kino
-    // Muranów/kinomuranow.pl, sdk.waw.pl) stop failing PKIX path building. See
-    // TlsTrust — touching it here also enables AIA intermediate fetching.
-    .sslContext(TlsTrust.augmentedContext)
-    .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
-    .build()
+  private def buildClient(connectTimeout: Duration): HttpClient = {
+    val builder = HttpClient.newBuilder()
+      .version(HttpClient.Version.HTTP_1_1)
+      .followRedirects(HttpClient.Redirect.NORMAL)
+      .connectTimeout(connectTimeout)
+      // Trust the JDK defaults PLUS the Certum root that OpenJDK's cacerts omits,
+      // so the Certum-rooted cinema sites (Kinomuzeum/artmuseum.pl, Kino
+      // Muranów/kinomuranow.pl, sdk.waw.pl) stop failing PKIX path building. See
+      // TlsTrust — touching it here also enables AIA intermediate fetching.
+      .sslContext(TlsTrust.augmentedContext)
+      .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
+    // Route through an authenticated residential proxy when configured (the
+    // Decodo static-ISP egress for the cinema sites that Cloudflare-block our
+    // datacenter IP). Only the proxied instance carries this; everything else
+    // fetches direct.
+    proxy.foreach { p =>
+      builder.proxy(p.selector).authenticator(p.authenticator)
+    }
+    builder.build()
+  }
 
   private val underlying   = buildClient(RealHttpFetch.DefaultConnectTimeout)
   // A second client with a much longer connect budget for the handful of hosts
@@ -180,6 +191,44 @@ class RealHttpFetch extends HttpFetch with Logging {
 }
 
 object RealHttpFetch {
+
+  /** Routes a `RealHttpFetch`'s outbound requests through an authenticated HTTP
+   *  proxy — the Decodo static-residential (ISP) egress used for cinema sites
+   *  that Cloudflare-block our Fly datacenter IP at the ASN level (Multikino,
+   *  biletyna). The proxy IPs are genuine PL ISP (Netia, AS12741), so the target
+   *  sees a residential egress and returns 200. Rotates across `ports` (each =
+   *  a distinct dedicated IP) for resilience; low volume so any one IP suffices.
+   *  See the `reference_decodo_isp_proxy` memory. */
+  case class ProxyConfig(host: String, ports: Seq[Int], user: String, password: String) {
+    require(ports.nonEmpty, "ProxyConfig needs at least one port")
+
+    // java.net.http disables Basic auth on HTTPS CONNECT tunnels by default
+    // (`jdk.http.auth.tunneling.disabledSchemes` = "Basic"). Both our targets are
+    // HTTPS, so without clearing it every proxied request 407s. Set before the
+    // proxied HttpClient issues its first request. The worker also passes
+    // `-Djdk.http.auth.tunneling.disabledSchemes=` as a belt-and-suspenders.
+    System.setProperty("jdk.http.auth.tunneling.disabledSchemes", "")
+
+    val selector: ProxySelector = new RotatingProxySelector(host, ports)
+
+    val authenticator: Authenticator = new Authenticator {
+      override protected def getPasswordAuthentication: PasswordAuthentication =
+        if (getRequestorType == Authenticator.RequestorType.PROXY)
+          new PasswordAuthentication(user, password.toCharArray)
+        else null // server (non-proxy) auth is none of this proxy's business
+    }
+  }
+
+  /** Round-robins a fixed proxy host across `ports` (one dedicated IP each), so
+   *  load and any per-IP rate-limit risk spread across the pool. Thread-safe. */
+  private class RotatingProxySelector(host: String, ports: Seq[Int]) extends ProxySelector {
+    private val counter = new AtomicInteger(0)
+    override def select(uri: URI): java.util.List[Proxy] = {
+      val port = ports(Math.floorMod(counter.getAndIncrement(), ports.size))
+      java.util.List.of(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(host, port)))
+    }
+    override def connectFailed(uri: URI, sa: SocketAddress, e: IOException): Unit = ()
+  }
 
   /** The tight default: a live host's TCP+TLS handshake finishes in well under a
    *  second, so 5s frees a stalled fan-out slot fast. See the comment on the
