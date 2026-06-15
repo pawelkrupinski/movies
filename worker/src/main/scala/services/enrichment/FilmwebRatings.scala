@@ -3,6 +3,7 @@ package services.enrichment
 import clients.TmdbClient
 import models.{Filmweb, Source, SourceData}
 import services.movies.{CacheKey, MovieCache, MovieService}
+import services.resolution.{ResolutionCache, ResolutionKeys}
 import tools.BoundedParallel
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -33,7 +34,12 @@ import scala.util.{Failure, Success, Try}
 class FilmwebRatings(
   cache:   MovieCache,
   tmdb:    TmdbClient,
-  filmweb: FilmwebClient
+  filmweb: FilmwebClient,
+  // Caches the Filmweb url discovery keyed by (title, year, fallback, directors),
+  // so the same film's search + /info + /preview probes run once for 24h. Only
+  // the url is cached; on a cache hit the rating + genres are rebuilt from the
+  // url. Passthrough by default (tests).
+  filmwebLinkCache: ResolutionCache = ResolutionCache.passthrough
 ) extends CacheRefresher(cache) {
 
   override protected def sourceName: String = "Filmweb"
@@ -157,7 +163,19 @@ class FilmwebRatings(
     val cinemaDirectors = e.cinemaData.values.flatMap(_.director).toSet
     val directors       = tmdbDirectors ++ cinemaDirectors
 
-    Try(filmweb.lookup(linkTitle, key.year, fallback, directors)).toOption.flatten
+    // Cache the url discovery (the expensive search + /info + /preview probes)
+    // keyed by the Filmweb hints. `fresh` carries the full FilmwebInfo on a
+    // cache MISS so the rating + genres are kept exactly as before; on a cache
+    // HIT only the url is known, so rebuild the rating + genres from it.
+    var fresh: Option[FilmwebClient.FilmwebInfo] = None
+    val cachedUrl = filmwebLinkCache.getOrResolve(ResolutionKeys.filmweb(linkTitle, key.year, fallback, directors)) {
+      val info = Try(filmweb.lookup(linkTitle, key.year, fallback, directors)).toOption.flatten
+      fresh = info
+      info.map(_.url)
+    }
+    cachedUrl.map { url =>
+      fresh.getOrElse(FilmwebClient.FilmwebInfo(url, filmweb.ratingFor(url), filmweb.genresFor(url)))
+    }
   }
 
   // ── Full-corpus walk ───────────────────────────────────────────────────────

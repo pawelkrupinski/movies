@@ -261,9 +261,11 @@ class WorkerWiring extends play.api.Logging {
     new WriteThroughResolutionCache(new MongoResolutionStore(mongoConnection.database, "resolve_imdb"))
   lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient, eventBus,
     backgroundBudget.executionContext("imdb-id-resolver"), imdbIdCache = imdbIdCache)
-  lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient)
-  lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient)
-  lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient)
+  private def linkCache(collection: String): ResolutionCache =
+    new WriteThroughResolutionCache(new MongoResolutionStore(mongoConnection.database, collection))
+  lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, linkCache("resolve_rt"))
+  lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient, linkCache("resolve_mc"))
+  lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient, linkCache("resolve_filmweb"))
   // Single-movie TMDB resolution is dispatched as a `ResolveTmdb` worker task:
   // drained by the TaskWorker, retried (`Reschedule`) + deduped by the queue,
   // and shown with a live queue place on `/debug`. `taskQueue` is a lazy val

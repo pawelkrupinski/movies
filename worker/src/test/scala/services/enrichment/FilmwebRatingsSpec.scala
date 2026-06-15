@@ -304,4 +304,47 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     after.filmwebRating shouldBe Some(7.0)
   }
 
+  // ── hint-keyed url cache ─────────────────────────────────────────────────────
+
+  // `auditOneSync` re-resolves the url on every call, so two audits of the same
+  // row exercise url discovery twice. The cache should make the SECOND audit
+  // skip the Filmweb `/live/search` (the expensive discovery), rebuilding the
+  // rating/genres from the cached url instead.
+  private def countingFilmweb(searches: java.util.concurrent.atomic.AtomicInteger): FilmwebClient = {
+    val routes = Map(
+      "/live/search"     -> """{"searchHits":[{"id":555,"type":"film","matchedTitle":"Foo"}]}""",
+      "/film/555/info"   -> """{"title":"Foo","year":2024}""",
+      "/film/555/rating" -> """{"rate":7.2,"count":500}"""
+    )
+    new FilmwebClient(new GetOnlyHttpFetch {
+      def get(url: String): String = {
+        if (url.contains("/live/search")) searches.incrementAndGet()
+        routes.collectFirst { case (frag, body) if url.contains(frag) => body }
+          .getOrElse(throw new RuntimeException(s"unstubbed Filmweb url: $url"))
+      }
+    })
+  }
+
+  "the Filmweb url cache" should "search once across two audits of the same row" in {
+    val searches = new java.util.concurrent.atomic.AtomicInteger(0)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1")))))
+    val ratings = new FilmwebRatings(cache, disabledTmdb, countingFilmweb(searches),
+      new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore()))
+
+    ratings.auditOneSync("Foo", Some(2024))
+    ratings.auditOneSync("Foo", Some(2024))
+    searches.get() shouldBe 1
+  }
+
+  it should "search on every audit without the cache (control)" in {
+    val searches = new java.util.concurrent.atomic.AtomicInteger(0)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1")))))
+    val ratings = new FilmwebRatings(cache, disabledTmdb, countingFilmweb(searches),
+      services.resolution.ResolutionCache.passthrough)
+
+    ratings.auditOneSync("Foo", Some(2024))
+    ratings.auditOneSync("Foo", Some(2024))
+    searches.get() shouldBe 2
+  }
+
 }

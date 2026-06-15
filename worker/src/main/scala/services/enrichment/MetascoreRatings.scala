@@ -2,6 +2,7 @@ package services.enrichment
 
 import clients.TmdbClient
 import services.movies.{CacheKey, MovieCache, MovieService}
+import services.resolution.{ResolutionCache, ResolutionKeys}
 import tools.BoundedParallel
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -24,7 +25,10 @@ import scala.util.{Failure, Success, Try}
 class MetascoreRatings(
   cache:      MovieCache,
   tmdb:       TmdbClient,
-  metacritic: MetacriticClient
+  metacritic: MetacriticClient,
+  // Caches the MC url discovery keyed by (title, fallback, year), so the same
+  // film's slug probe runs once for 24h. Passthrough by default (tests).
+  mcLinkCache: ResolutionCache = ResolutionCache.passthrough
 ) extends CacheRefresher(cache) {
 
   override protected def sourceName: String = "Metacritic"
@@ -59,7 +63,6 @@ class MetascoreRatings(
       val details    = tmdb.details(tmdbId)
       val year       = details.flatMap(_.releaseYear)
 
-      val primary = Try(metacritic.urlFor(linkTitle, mcFallback, year)).toOption.flatten
       // englishTitle fallback for non-English films (TMDB's en-US `title`).
       // usTitle fallback for UK/US release-title divergence (HP1 etc.) — TMDB
       // keeps the British title in the en-US locale, but the US alternative
@@ -71,9 +74,13 @@ class MetascoreRatings(
         .filterNot(_.equalsIgnoreCase(linkTitle))
         .filterNot(t => mcFallback.exists(_.equalsIgnoreCase(t)))
         .filterNot(t => englishTitle.exists(_.equalsIgnoreCase(t)))
-      val resolved = primary
-        .orElse(englishTitle.flatMap(t => Try(metacritic.urlFor(t, None, year)).toOption.flatten))
-        .orElse(usTitle.flatMap(t => Try(metacritic.urlFor(t, None, year)).toOption.flatten))
+      // Cache the whole slug-probe chain keyed by the primary identity, so a
+      // cache hit skips the MC HTTP probes entirely (hits-only).
+      val resolved = mcLinkCache.getOrResolve(ResolutionKeys.mc(linkTitle, mcFallback, year)) {
+        Try(metacritic.urlFor(linkTitle, mcFallback, year)).toOption.flatten
+          .orElse(englishTitle.flatMap(t => Try(metacritic.urlFor(t, None, year)).toOption.flatten))
+          .orElse(usTitle.flatMap(t => Try(metacritic.urlFor(t, None, year)).toOption.flatten))
+      }
 
       resolved.foreach { url =>
         logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → URL discovered $url")

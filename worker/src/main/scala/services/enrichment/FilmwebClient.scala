@@ -119,9 +119,16 @@ class FilmwebClient(http: HttpFetch) {
    *  on first enrichment. Returns None when the URL doesn't look like a
    *  Filmweb canonical or the rating fetch fails. */
   def ratingFor(url: String): Option[Double] =
-    FilmwebClient.IdFromUrl.findFirstMatchIn(url)
-      .flatMap(m => Try(m.group(1).toInt).toOption)
-      .flatMap(rating)
+    idFromUrl(url).flatMap(rating)
+
+  /** Genres for a stored canonical Filmweb URL — the `/preview` half of what
+   *  `lookup` returns, recovered from the URL alone (no search round-trips).
+   *  Used when a cached url-discovery hit needs to rebuild the Filmweb slot. */
+  def genresFor(url: String): Seq[String] =
+    idFromUrl(url).flatMap(preview).map(_.genres).getOrElse(Seq.empty)
+
+  private def idFromUrl(url: String): Option[Int] =
+    FilmwebClient.IdFromUrl.findFirstMatchIn(url).flatMap(m => Try(m.group(1).toInt).toOption)
 
   def parseSearch(body: String): Seq[SearchHit] =
     (Json.parse(body) \ "searchHits").asOpt[JsArray].map(_.value).getOrElse(Nil).flatMap { js =>

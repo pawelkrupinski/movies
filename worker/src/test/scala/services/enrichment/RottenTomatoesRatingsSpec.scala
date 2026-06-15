@@ -146,4 +146,43 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("B", None)).flatMap(_.rottenTomatoes) shouldBe None
   }
 
+  // ── hint-keyed url cache ─────────────────────────────────────────────────────
+
+  // Two rows that share the RT hint key (same cleanTitle → same title/fallback,
+  // year None via the apiKey-less TMDB) but stay DISTINCT cache rows — distinct
+  // tmdbIds keep them as separate same-title "remakes" rather than collapsing.
+  // Each fetch of /m/foo is counted; discovery probes it once, the score scrape
+  // once. With the cache the SECOND row's probe is skipped (one fewer GET).
+  private def twoFooRows() = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(
+    ("Foo", Some(2024), MovieRecord(tmdbId = Some(42))),
+    ("Foo", Some(2025), MovieRecord(tmdbId = Some(99)))
+  )))
+  private def countingRt(gets: java.util.concurrent.atomic.AtomicInteger): RottenTomatoesClient =
+    new RottenTomatoesClient(http = new GetOnlyHttpFetch {
+      def get(url: String): String = { gets.incrementAndGet(); pageWithScore(80) }
+    })
+
+  "the RT url cache" should "probe the slug once across two rows sharing the hints" in {
+    val gets = new java.util.concurrent.atomic.AtomicInteger(0)
+    val cache = twoFooRows()
+    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), countingRt(gets),
+      new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore()))
+
+    ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
+    ratings.refreshOneSync(cache.keyOf("Foo", Some(2025)))
+    // row1: probe + score = 2; row2: score only (probe cached) = 1.
+    gets.get() shouldBe 3
+  }
+
+  it should "probe again for each row without the cache (control)" in {
+    val gets = new java.util.concurrent.atomic.AtomicInteger(0)
+    val cache = twoFooRows()
+    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), countingRt(gets),
+      services.resolution.ResolutionCache.passthrough)
+
+    ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
+    ratings.refreshOneSync(cache.keyOf("Foo", Some(2025)))
+    gets.get() shouldBe 4
+  }
+
 }
