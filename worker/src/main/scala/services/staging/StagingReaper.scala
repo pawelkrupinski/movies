@@ -84,8 +84,11 @@ class StagingReaper(
     rows.headOption.map(_.title) match {
       case None => 0
       case Some(title) =>
-        if (!rows.exists(_.record.tmdbConcluded)) {
-          // Not resolved yet: finish detail first, then resolve.
+        if (!rows.forall(_.record.tmdbConcluded)) {
+          // Some hint-combination still unresolved: finish its detail first, then
+          // resolve. `forall` (not `exists`) so a partially-resolved anchor — one
+          // group concluded, another not — keeps advancing the unconcluded group
+          // instead of jumping to fold and stranding it.
           val notReady = rows.filterNot(steps.detailReady)
           if (notReady.nonEmpty)
             notReady.map(_.cinema).distinct.count(c =>

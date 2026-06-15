@@ -7,6 +7,7 @@ import services.{MongoConnection, Stoppable}
 import services.events.{DomainEvent, EventBus}
 import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
 import services.movies.MovieService
+import services.resolution.ResolutionCache
 import services.tasks.{EnrichDetailsHandler, HandlerOutcome, InMemoryTaskQueue, TaskQueue, TaskType}
 
 import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
@@ -36,6 +37,13 @@ trait TestWiring extends WorkerWiring {
   // wiring deterministic regardless of the local environment.
   override lazy val mongoConnection: MongoConnection =
     new MongoConnection(uri = None, dbName = "kinowo", required = false)
+
+  // Passthrough resolution caches: the fixture harness proves the pipeline is a
+  // pure function of the corpus, and a shared stateful cache (whose value for a
+  // hint key is fixed by whichever row populates it first) would make a shuffled
+  // re-enrich sweep order-dependent — exactly what `ScrapeOrderDeterminismSpec`
+  // guards against. The caches' own behaviour is covered by their unit specs.
+  override protected def resolutionCache(collection: String): ResolutionCache = ResolutionCache.passthrough
 
   // In-memory task queue + freshness store so the queue-driven wiring boots
   // without Mongo: the bus enqueuers (ratingEnqueuer, and the detail enqueuers

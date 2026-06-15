@@ -197,4 +197,46 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     row.metascore     shouldBe Some(64)
   }
 
+  // ── hint-keyed url cache ─────────────────────────────────────────────────────
+
+  // Same shape as the RT cache test: two rows sharing the MC hints (same
+  // cleanTitle, year None via the apiKey-less TMDB) but distinct tmdbIds keep
+  // them as separate rows. /movie/foo is probed by discovery and scraped for
+  // the score; the cache saves the second row's probe.
+  private def twoFooRows() = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(
+    ("Foo", Some(2024), MovieRecord(tmdbId = Some(42))),
+    ("Foo", Some(2025), MovieRecord(tmdbId = Some(99)))
+  )))
+  private def countingMc(gets: java.util.concurrent.atomic.AtomicInteger): MetacriticClient =
+    new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String = {
+        gets.incrementAndGet()
+        """<html><head><script type="application/ld+json">
+          |{"@type":"Movie","aggregateRating":{"@type":"AggregateRating","ratingValue":70,"bestRating":100,"worstRating":0,"reviewCount":10}}
+          |</script></head><body></body></html>""".stripMargin
+      }
+    })
+
+  "the MC url cache" should "probe the slug once across two rows sharing the hints" in {
+    val gets = new java.util.concurrent.atomic.AtomicInteger(0)
+    val cache = twoFooRows()
+    val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), countingMc(gets),
+      new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore()))
+
+    rates.refreshOneSync(cache.keyOf("Foo", Some(2024)))
+    rates.refreshOneSync(cache.keyOf("Foo", Some(2025)))
+    gets.get() shouldBe 3
+  }
+
+  it should "probe again for each row without the cache (control)" in {
+    val gets = new java.util.concurrent.atomic.AtomicInteger(0)
+    val cache = twoFooRows()
+    val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), countingMc(gets),
+      services.resolution.ResolutionCache.passthrough)
+
+    rates.refreshOneSync(cache.keyOf("Foo", Some(2024)))
+    rates.refreshOneSync(cache.keyOf("Foo", Some(2025)))
+    gets.get() shouldBe 4
+  }
+
 }

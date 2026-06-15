@@ -11,6 +11,7 @@ import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete, Stagi
 import services.freshness.{Freshness, FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepository, MovieService, MongoNormalizationReportRepository, NormalizationRebuilder, NormalizationReport, NormalizationReportRepository, UnscreenedCleanup}
 import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
+import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
@@ -307,14 +308,23 @@ class WorkerWiring extends play.api.Logging {
   // operator bulk walk), so they own no EC — only imdbIdResolver still runs
   // async off the bus and draws a shared-budget EC.
   lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient)
-  lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient, eventBus, backgroundBudget.executionContext("imdb-id-resolver"))
-  lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient)
-  lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient)
-  lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient)
+  lazy val imdbIdCache: ResolutionCache = resolutionCache("resolve_imdb")
+  lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient, eventBus,
+    backgroundBudget.executionContext("imdb-id-resolver"), imdbIdCache = imdbIdCache)
+  lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, resolutionCache("resolve_rt"))
+  lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient, resolutionCache("resolve_mc"))
+  lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient, resolutionCache("resolve_filmweb"))
   // Single-movie TMDB resolution is dispatched as a `ResolveTmdb` worker task:
   // drained by the TaskWorker, retried (`Reschedule`) + deduped by the queue,
   // and shown with a live queue place on `/debug`. `taskQueue` is a lazy val
   // declared below; the closure defers reading it, so there's no init cycle.
+  // Hint-keyed resolution caches (Caffeine + per-source Mongo collection, 24h
+  // TTL): the same hints resolve once instead of hitting the upstream each cycle.
+  // One factory so the test wiring can swap in a passthrough (the fixture harness
+  // proves the pipeline is a pure function of the corpus, with no shared cache).
+  protected def resolutionCache(collection: String): ResolutionCache =
+    new WriteThroughResolutionCache(new MongoResolutionStore(mongoConnection.database, collection))
+  lazy val tmdbIdCache: ResolutionCache = resolutionCache("resolve_tmdb")
   lazy val movieService = new MovieService(
     movieCache, eventBus, tmdbClient, backgroundBudget.executionContext("enrichment-worker"),
     enqueueResolveTmdb = Some((title, year, originalTitle, director) => {
@@ -323,7 +333,8 @@ class WorkerWiring extends play.api.Logging {
         EnrichTaskKeys.resolveTmdbDedup(title, year),
         EnrichTaskKeys.resolveTmdbPayload(title, year, director, originalTitle))
       ()
-    }))
+    }),
+    tmdbIdCache = tmdbIdCache)
   lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache)
 
   // ── Task queue (scrape scheduling) ──────────────────────────────────────────

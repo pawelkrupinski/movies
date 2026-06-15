@@ -2,6 +2,7 @@ package services.enrichment
 
 import clients.TmdbClient
 import services.movies.{CacheKey, MovieCache, MovieService}
+import services.resolution.{ResolutionCache, ResolutionKeys}
 import tools.BoundedParallel
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -23,7 +24,10 @@ import scala.util.{Failure, Success, Try}
 class RottenTomatoesRatings(
   cache: MovieCache,
   tmdb:  TmdbClient,
-  rt:    RottenTomatoesClient
+  rt:    RottenTomatoesClient,
+  // Caches the RT url discovery keyed by (title, fallback, year), so the same
+  // film's slug probe runs once for 24h. Passthrough by default (tests).
+  rtLinkCache: ResolutionCache = ResolutionCache.passthrough
 ) extends CacheRefresher(cache) {
 
   override protected def sourceName: String = "RT"
@@ -55,7 +59,6 @@ class RottenTomatoesRatings(
       val details    = tmdb.details(tmdbId)
       val year       = details.flatMap(_.releaseYear)
 
-      val primary = Try(rt.urlFor(linkTitle, rtFallback, year)).toOption.flatten
       // englishTitle fallback for non-English films (TMDB's en-US `title`).
       // usTitle fallback for UK/US release-title divergence (HP1 etc.) — TMDB
       // keeps the British title in the en-US locale, but the US alternative
@@ -67,9 +70,13 @@ class RottenTomatoesRatings(
         .filterNot(_.equalsIgnoreCase(linkTitle))
         .filterNot(t => rtFallback.exists(_.equalsIgnoreCase(t)))
         .filterNot(t => englishTitle.exists(_.equalsIgnoreCase(t)))
-      val resolved = primary
-        .orElse(englishTitle.flatMap(t => Try(rt.urlFor(t, None, year)).toOption.flatten))
-        .orElse(usTitle.flatMap(t => Try(rt.urlFor(t, None, year)).toOption.flatten))
+      // Cache the whole slug-probe chain keyed by the primary identity, so a
+      // cache hit skips the RT HTTP probes entirely (hits-only).
+      val resolved = rtLinkCache.getOrResolve(ResolutionKeys.rt(linkTitle, rtFallback, year)) {
+        Try(rt.urlFor(linkTitle, rtFallback, year)).toOption.flatten
+          .orElse(englishTitle.flatMap(t => Try(rt.urlFor(t, None, year)).toOption.flatten))
+          .orElse(usTitle.flatMap(t => Try(rt.urlFor(t, None, year)).toOption.flatten))
+      }
 
       resolved.foreach { url =>
         logger.info(s"RT: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → URL discovered $url")

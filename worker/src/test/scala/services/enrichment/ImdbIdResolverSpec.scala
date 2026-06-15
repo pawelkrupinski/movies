@@ -118,4 +118,38 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     repository.upserts shouldBe empty
     emitted      shouldBe empty
   }
+
+  // ── hint-keyed cache ─────────────────────────────────────────────────────────
+
+  private def countingImdb(calls: java.util.concurrent.atomic.AtomicInteger): ImdbClient =
+    new ImdbClient(http = new HttpFetch {
+      def get(url: String): String = {
+        calls.incrementAndGet()
+        loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
+      }
+      override def post(url: String, body: String, contentType: String): String =
+        throw new RuntimeException("ImdbIdResolver should not POST")
+    })
+
+  "the IMDb id cache" should "look up the same search once for two findIdFor calls" in {
+    val calls = new java.util.concurrent.atomic.AtomicInteger(0)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val resolver = new ImdbIdResolver(cache, countingImdb(calls), new InProcessEventBus(),
+      imdbIdCache = new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore()))
+
+    resolver.findIdFor("Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")
+    resolver.findIdFor("Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")
+    calls.get() shouldBe 1
+  }
+
+  it should "look up on every call without a cache (control)" in {
+    val calls = new java.util.concurrent.atomic.AtomicInteger(0)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val resolver = new ImdbIdResolver(cache, countingImdb(calls), new InProcessEventBus(),
+      imdbIdCache = services.resolution.ResolutionCache.passthrough)
+
+    resolver.findIdFor("Mortal Kombat II", Some(2026))
+    resolver.findIdFor("Mortal Kombat II", Some(2026))
+    calls.get() shouldBe 2
+  }
 }
