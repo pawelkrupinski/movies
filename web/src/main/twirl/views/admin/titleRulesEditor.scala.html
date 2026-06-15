@@ -45,7 +45,7 @@
     .rows.last { border-color: var(--border); background: rgba(210,153,34,.05); }
     .rows.dragover { border-color: var(--accent); background: rgba(68,147,248,.08); }
     .row { display: grid; align-items: center; gap: 5px;
-           grid-template-columns: 18px 1.6fr 1.2fr 34px 34px 0.7fr 1fr 26px; }
+           grid-template-columns: 18px 1.6fr 1.2fr 34px 34px 0.7fr 1fr 26px 26px 26px; }
     .row.dragging { opacity: .4; }
     .handle { cursor: grab; color: var(--muted); text-align: center; user-select: none; }
     input[type=text] { width: 100%; font: inherit; padding: 3px 5px; border-radius: 5px;
@@ -232,6 +232,12 @@
         h("span", { class: "check" }, [chk("enabled")]),
         txt("tag"),
         txt("note"),
+        // Jump the rule to the top / bottom of its OWN list (the keyboard-free
+        // alternative to dragging it the whole way). Disabled at the ends.
+        h("button", { class: "icon", title: "move to top", disabled: idx === 0,
+          onclick: () => { moveBetween(rec, listName, idx, listName, 0); render(); } }, ["⇈"]),
+        h("button", { class: "icon", title: "move to bottom", disabled: idx === list.length - 1,
+          onclick: () => { moveBetween(rec, listName, idx, listName, list.length); render(); } }, ["⇊"]),
         h("button", { class: "icon", title: "remove rule",
           onclick: () => { list.splice(idx, 1); render(); } }, ["✕"])
       ]);
@@ -345,7 +351,7 @@
 
     function colHeads() {
       return h("div", { class: "row" },
-        ["", "pattern", "replacement", "all", "on", "tag", "note", ""]
+        ["", "pattern", "replacement", "all", "on", "tag", "note", "", "", ""]
           .map(t => h("span", { class: "col-head" }, [t])));
     }
 

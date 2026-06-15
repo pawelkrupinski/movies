@@ -122,6 +122,32 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     }
   }
 
+  it should "give each rule row ⇈/⇊ buttons that jump it to the top / bottom of its list" in {
+    onEditor { page =>
+      // The GlobalStructural card seeds rules in array order: ab, a, (?i)^Klub: , (oops.
+      def rulesOrder(): String = page.evalString(
+        "[...document.querySelector('.card .rows:not(.last)').querySelectorAll('.row')]" +
+          ".map(r => r.querySelector('input.mono').value).join('|')")
+      rulesOrder() shouldBe "ab|a|(?i)^Klub: |(oops"
+      // Every row gains the two controls; the top row can't go up, the bottom can't go down.
+      page.evalInt("document.querySelectorAll('.rule-wrap .row button[title=\"move to top\"]').length") should be > 0
+      page.evalBool(
+        """(() => { const rows = [...document.querySelector('.card .rows:not(.last)').querySelectorAll('.row')];
+          |  return rows[0].querySelector('button[title="move to top"]').disabled
+          |      && rows[rows.length-1].querySelector('button[title="move to bottom"]').disabled; })()""".stripMargin) shouldBe true
+      // Click the first row's ⇊ → it drops to the end of the list.
+      page.evalString(
+        """(() => { const rows = document.querySelector('.card .rows:not(.last)');
+          |  rows.querySelector('.row button[title="move to bottom"]').click(); return ""; })()""".stripMargin)
+      rulesOrder() shouldBe "a|(?i)^Klub: |(oops|ab"
+      // Click the (now-last) row's ⇈ → it jumps back to the top.
+      page.evalString(
+        """(() => { const rows = [...document.querySelector('.card .rows:not(.last)').querySelectorAll('.row')];
+          |  rows[rows.length-1].querySelector('button[title="move to top"]').click(); return ""; })()""".stripMargin)
+      rulesOrder() shouldBe "ab|a|(?i)^Klub: |(oops"
+    }
+  }
+
   it should "render one tier-level 'all affected films' rollup at the end of the transient (Global structural) section only" in {
     onEditor { page =>
       // Exactly one rollup — for the single transient scope (Global structural).
