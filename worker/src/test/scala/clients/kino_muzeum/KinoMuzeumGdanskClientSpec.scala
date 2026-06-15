@@ -42,6 +42,7 @@ class KinoMuzeumGdanskClientSpec extends AnyFlatSpec with Matchers with OptionVa
   it should "pin MILCZĄCA PRZYJACIÓŁKA's 6 June 17:00 screening with its booking link and listing metadata" in {
     val m = byTitle("MILCZĄCA PRZYJACIÓŁKA")
     m.movie.runtimeMinutes shouldBe Some(143)
+    m.movie.releaseYear    shouldBe Some(2025)
     m.movie.countries      shouldBe Seq("Francja", "Niemcy", "Węgry")
     m.movie.genres         shouldBe Seq("Dramat")
     m.director             shouldBe Seq("Ildikó Enyedi")
@@ -54,5 +55,11 @@ class KinoMuzeumGdanskClientSpec extends AnyFlatSpec with Matchers with OptionVa
     // bare "06.06"; the 2026 comes from the day link's `timestamp`.
     byTitle("MIKEY I NICKY").showtimes.map(_.dateTime) shouldBe
       Seq(LocalDateTime.of(2026, 6, 6, 15, 15))
+  }
+
+  it should "read the production year from the 'Rok produkcji' meta cell" in {
+    // The cell text is "Rok produkcji 1976"; the displayed screening date is
+    // 2026, so this must be the production year, not the screening year.
+    byTitle("MIKEY I NICKY").movie.releaseYear shouldBe Some(1976)
   }
 }

@@ -84,6 +84,7 @@ object KinoMuzeumGdanskClient {
     genres:    Seq[String],
     director:  Seq[String],
     runtime:   Option[Int],
+    year:      Option[Int],
     filmUrl:   Option[String]
   )
 
@@ -110,6 +111,7 @@ object KinoMuzeumGdanskClient {
             genres    = splitField(text(li, "span.movie-meta-categories")).map(tools.TextNormalization.titleCaseIfAllLower),
             director  = splitField(text(li, "span.movie-meta-director").map(stripDirectorLabel)),
             runtime   = text(li, "span.movie-meta-duration").flatMap(parseRuntime),
+            year      = text(li, "span.movie-meta-year").flatMap(parseYear),
             filmUrl   = filmUrl
           ))
         case _ => Seq.empty
@@ -129,6 +131,7 @@ object KinoMuzeumGdanskClient {
           movie     = Movie(
             title          = title,
             runtimeMinutes = rows.flatMap(_.runtime).headOption,
+            releaseYear    = primary.year,
             countries      = primary.countries,
             genres         = primary.genres
           ),
@@ -150,6 +153,11 @@ object KinoMuzeumGdanskClient {
   // bounded to a sane feature-length window.
   private def parseRuntime(s: String): Option[Int] =
     """(\d+)""".r.findFirstMatchIn(s).flatMap(m => Try(m.group(1).toInt).toOption).filter(n => n >= 30 && n <= 300)
+
+  // `span.movie-meta-year` folds in its `Rok produkcji` label, so `.text()`
+  // reads "Rok produkcji 1976" — pull the 4-digit production year out of it.
+  private[cinemas] def parseYear(s: String): Option[Int] =
+    """\b(?:19|20)\d{2}\b""".r.findFirstMatchIn(s).map(_.matched.toInt)
 
   // Director is rendered as "Reż.: Elaine May"; drop the label.
   private def stripDirectorLabel(s: String): String =

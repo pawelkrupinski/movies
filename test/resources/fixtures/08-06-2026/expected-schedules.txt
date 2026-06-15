@@ -3722,7 +3722,7 @@ cinemaScrapes:
   KINOMUZEUM / Mikey i Nicky / 1976
   Kino Iluzjon / Mikey i Nicky / 1976
   Kino KDK / Mikey i Nicky / —
-  Kino Muzeum / MIKEY I NICKY / —
+  Kino Muzeum / MIKEY I NICKY / 1976
   Kino Nowe Horyzonty / Mikey i Nicky / 1976
   Kino Paradox / Mikey i Nicky / 1976
   Kino Pałacowe / Mikey i Nicky / 1976
@@ -3890,7 +3890,7 @@ cinemaScrapes:
   Kino Mikro / Milcząca przyjaciółka / —
   Kino Muranów / Milcząca przyjaciółka / 2025
   Kino Muza / Milcząca przyjaciółka / 2025
-  Kino Muzeum / MILCZĄCA PRZYJACIÓŁKA / —
+  Kino Muzeum / MILCZĄCA PRZYJACIÓŁKA / 2025
   Kino NCKF EC1 / Milcząca przyjaciółka / —
   Kino Narie / Milcząca przyjaciółka / —
   Kino Nowe Horyzonty / Milcząca przyjaciółka / 2025
@@ -5096,7 +5096,7 @@ cinemaScrapes:
   Kino Lot / Ojczyzna / —
   Kino Muranów / Ojczyzna / 2026
   Kino Muza / Ojczyzna / 2026
-  Kino Muzeum / OJCZYZNA / —
+  Kino Muzeum / OJCZYZNA / 2026
   Kino Nowe Horyzonty / Ojczyzna / 2026
   Kino Orzeł / Ojczyzna / —
   Kino Oskard / Ojczyzna / —
@@ -7045,7 +7045,7 @@ cinemaScrapes:
   Kino Iluzjon / Sny o słoniach / 2025
   Kino Mikro / Sny o słoniach / —
   Kino Muranów / Sny o słoniach / 2025
-  Kino Muzeum / SNY O SŁONIACH / —
+  Kino Muzeum / SNY O SŁONIACH / 2025
   Kino Pionier 1907 / SNY O SŁONIACH / —
   Kino Praha / Sny o słoniach / —
   Kino Spektrum / Sny o słoniach / —
@@ -8753,7 +8753,7 @@ cinemaScrapes:
   Kino Mikro / Zawieście Czerwone Latarnie / —
   Kino Muranów / Zawieście czerwone latarnie / 1991
   Kino Muza / Zawieście czerwone latarnie / 1991
-  Kino Muzeum / ZAWIEŚCIE CZERWONE LATARNIE / —
+  Kino Muzeum / ZAWIEŚCIE CZERWONE LATARNIE / 1989
   Kino Nowe Horyzonty / Zawieście czerwone latarnie / 1991
   Kino Paradox / Zawieście czerwone latarnie / 1991
   Kino Pałacowe / Zawieście czerwone latarnie / 1991
