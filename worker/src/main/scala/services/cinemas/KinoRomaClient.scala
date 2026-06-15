@@ -54,7 +54,7 @@ class KinoRomaClient(
       else {
         val head = group.head
         Some(CinemaMovie(
-          movie     = Movie(head.title),
+          movie     = Movie(head.title, releaseYear = head.year),
           cinema    = cinema,
           posterUrl = head.posterUrl,
           filmUrl   = Some(BaseUrl + "/repertuar/" + head.filmSlug),
@@ -75,12 +75,14 @@ object KinoRomaClient {
 
   private val DayMonthPat = """(\d{1,2})\.(\d{1,2})""".r
   private val SlugPat     = """/repertuar/([^/?]+)""".r
+  private val YearPat     = """\b(?:19|20)\d{2}\b""".r
 
   private[cinemas] case class RawSlot(
     title:     String,
     filmSlug:  String,
     dateTime:  LocalDateTime,
-    posterUrl: Option[String]
+    posterUrl: Option[String],
+    year:      Option[Int]
   )
 
   private[cinemas] def parseDocument(document: Document, today: LocalDate): Seq[RawSlot] =
@@ -91,13 +93,17 @@ object KinoRomaClient {
       val title     = titleElement.map(_.text.trim).filter(_.nonEmpty)
       val filmSlug  = titleElement.flatMap(a => SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1)))
       val posterUrl = Option(box.selectFirst("img.img-responsive[src]")).map(_.attr("src")).filter(_.nonEmpty)
+      // Each card carries the production year in its own `div.year` cell,
+      // separate from the screening's `div.big-date` (which has no year).
+      val year      = Option(box.selectFirst("div.year")).map(_.text.trim)
+                        .flatMap(t => YearPat.findFirstMatchIn(t).map(_.matched.toInt))
 
       for {
         t    <- title
         slug <- filmSlug
         date <- parseDate(dateText, today)
         time <- ScraperParse.parseHHmm(hourText)
-      } yield RawSlot(t, slug, LocalDateTime.of(date, time), posterUrl)
+      } yield RawSlot(t, slug, LocalDateTime.of(date, time), posterUrl, year)
     }
 
   /** "DD.MM" → LocalDate; if the date would be more than 60 days in the past,

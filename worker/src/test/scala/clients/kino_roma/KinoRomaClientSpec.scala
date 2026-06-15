@@ -43,4 +43,12 @@ class KinoRomaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val film   = movies.find(_.movie.title == "Tom i Jerry: Przygoda w muzeum").value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 15, 0))
   }
+
+  it should "read the production year from the card's div.year cell" in {
+    // The card's `div.year` is 2025, distinct from the 2026 screening date the
+    // DD.MM inference produces — so this is the production year, not a re-parse.
+    val movies = client.fetch()
+    movies.find(_.movie.title == "Tom i Jerry: Przygoda w muzeum").value
+      .movie.releaseYear shouldBe Some(2025)
+  }
 }

@@ -1357,7 +1357,7 @@ cinemaScrapes:
   Kino PCA / Diabeł ubiera się u Prady 2 / —
   Kino Pionier 1907 / Diabeł ubiera się u Prady 2 / —
   Kino Przedwiośnie / Diabeł ubiera się u Prady 2 / 2026
-  Kino Roma / Diabeł ubiera się u Prady 2 / —
+  Kino Roma / Diabeł ubiera się u Prady 2 / 2026
   Kino Sokół / DIABEŁ UBIERA SIĘ U PRADY 2 / —
   Kino Wisła / Diabeł ubiera się u Prady 2 / 2026
   Kino Świt / Diabeł ubiera się u Prady 2 / 2026
@@ -2661,7 +2661,7 @@ cinemaScrapes:
   Kino Nowe Horyzonty / K-popowe łowczynie demonów / 2025
   Kino PCKul / K-popowe łowczynie demonów / —
   Kino Rialto / K-POPOWE ŁOWCZYNIE DEMONÓW / 2025
-  Kino Roma / K-POPOWE ŁOWCZYNIE DEMONÓW / —
+  Kino Roma / K-POPOWE ŁOWCZYNIE DEMONÓW / 2025
   Kino Twierdza / K-popowe łowczynie demonów / —
   Kino Śnieżka / K-popowe łowczynie demonów / —
   Kinoteatr Rondo / K-popowe łowczynie demonów / —
@@ -5106,7 +5106,7 @@ cinemaScrapes:
   Kino Pionier 1907 / OJCZYZNA / —
   Kino Pod Baranami / Ojczyzna / —
   Kino Rialto / OJCZYZNA / 2026
-  Kino Roma / Ojczyzna / —
+  Kino Roma / Ojczyzna / 2026
   Kino Sfinks / OJCZYZNA / —
   Kino Stary Młyn / Ojczyzna / —
   Kino Twierdza / Ojczyzna / —
@@ -7903,7 +7903,7 @@ cinemaScrapes:
   Kino Planeta / Tom i jerry: przygoda w muzeum / —
   Kino Promień / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Przedwiośnie / Tom i Jerry: Przygoda w muzeum / 2025
-  Kino Roma / Tom i Jerry: Przygoda w muzeum / —
+  Kino Roma / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Scena Kultura / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Sokół / TOM I JERRY: PRZYGODA W MUZEUM / —
   Kino Sokół Dąbrowa Tarnowska / Tom i Jerry: Przygoda w muzeum / —
@@ -8063,7 +8063,7 @@ cinemaScrapes:
   Kino ODEON / Toy story 5 / —
   Kino Oskard / Toy Story 5 / —
   Kino Przedwiośnie / Toy Story 5 / 2026
-  Kino Roma / Toy Story 5 / —
+  Kino Roma / Toy Story 5 / 2026
   Kino Sokół / TOY STORY 5 / —
   Kino Sokół Dąbrowa Tarnowska / Toy Story 5 / —
   Kino Stary Młyn / Toy Story 5 / —
