@@ -82,6 +82,18 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper with DetailEnriche
   // line; Wajda cycle pages don't carry per-film director info (it's the
   // cycle's namesake). Anchor on `Reżyseria:` followed by an `<a>` wrapper.
   private val DirectorPat  = """Reżyseria:\s*<a[^>]*>([^<]+)""".r
+  // Production year. Apollo's `Producent:` value comes in three shapes:
+  //   - `Francja, USA, Wielka Brytania | 2026`              (countries | year)
+  //   - `reżyseria Paolo Genovese, Włochy 2025`             (… country year)
+  //   - `Zespół Autorów Filmowych „Kadr” | Produced by: …`  (studio, NO year)
+  // Capture the whole value up to the next tag, then take the last in-range
+  // 4-digit run within it: the studio forms carry none, so they yield None.
+  private val ProducentValuePat = """Producent:\s*</span>\s*([^<]+)""".r
+  private val YearTokenPat       = """\b(?:19|20)\d{2}\b""".r
+  // Original/foreign title — `Oryginalny tytuł: THE MAGIC FARAWAY TREE<br />`,
+  // modern-film layout only (Wajda-cycle pages omit it). A useful TMDB-search
+  // hint when the Polish display title doesn't match TMDB's record.
+  private val OriginalTitlePat = """Oryginalny tytuł:\s*([^<]+)""".r
   // Cast — two layouts:
   //   - Modern films:  `Obsada: <a>name1, name2, …</a>`
   //   - Wajda cycle:   `<strong>obsada/cast:</strong> name1, name2, …`
@@ -117,6 +129,8 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper with DetailEnriche
         cast           = m.cast,
         director       = m.director,
         runtimeMinutes = m.runtime,
+        releaseYear    = m.year,
+        originalTitle  = m.originalTitle,
         countries      = m.countries,
         genres         = m.genres,
         trailerUrl     = m.trailerUrl
@@ -124,13 +138,15 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper with DetailEnriche
     }
 
   case class DetailMeta(
-    runtime:    Option[Int],
-    synopsis:   Option[String],
-    director:   Seq[String],
-    cast:       Seq[String],
-    countries:  Seq[String],
-    genres:     Seq[String],
-    trailerUrl: Option[String]
+    runtime:       Option[Int],
+    synopsis:      Option[String],
+    director:      Seq[String],
+    cast:          Seq[String],
+    year:          Option[Int],
+    originalTitle: Option[String],
+    countries:     Seq[String],
+    genres:        Seq[String],
+    trailerUrl:    Option[String]
   )
 
   def parseDetail(html: String): DetailMeta = {
@@ -146,15 +162,25 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper with DetailEnriche
     val firstEditorHtml = Option(document.select("div.elementor-widget-text-editor div.elementor-widget-container").first())
       .map(_.html()).getOrElse("")
     DetailMeta(
-      runtime    = parseRuntime(html),
-      synopsis   = parseSynopsis(html),
-      director   = DirectorPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      cast       = CastPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim.stripSuffix(",").trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      countries  = parseCountries(html),
-      genres     = parseGenres(html),
-      trailerUrl = parseTrailer(html)
+      runtime       = parseRuntime(html),
+      synopsis      = parseSynopsis(html),
+      director      = DirectorPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      cast          = CastPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim.stripSuffix(",").trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      year          = parseYear(html),
+      originalTitle = OriginalTitlePat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim).filter(_.nonEmpty),
+      countries     = parseCountries(html),
+      genres        = parseGenres(html),
+      trailerUrl    = parseTrailer(html)
     )
   }
+
+  /** Production year from the `Producent:` line — the last 4-digit year token in
+   *  its value. None for the studio layout (`… | Produced by: …`), which carries
+   *  no year. */
+  def parseYear(html: String): Option[Int] =
+    ProducentValuePat.findFirstMatchIn(html).flatMap { m =>
+      YearTokenPat.findAllMatchIn(m.group(1)).map(_.matched.toInt).toList.lastOption
+    }
 
   /** Genres from the `Uwagi: Gatunek: <list>` line, when present. Returns
    *  the empty list for Wajda-cycle pages and other layouts that don't

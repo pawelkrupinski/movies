@@ -291,6 +291,38 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
     detailOf(niewinniTitle).map(_.genres) shouldBe Some(Seq.empty)
   }
 
+  // ── Production year + original title (TMDB-identity hints) ─────────────────
+
+  it should "extract the production year from the modern 'Producent: … | YYYY' line" in {
+    detailOf("Drzewo Magii").flatMap(_.releaseYear) shouldBe Some(2026)
+  }
+
+  // Wajda-cycle pages put a studio + `| Produced by: …` after the bar, not a
+  // year. The year pattern must reject that rather than parse a stray number.
+  it should "not read a year from the Wajda-cycle 'Producent: … | Produced by:' line" in {
+    detailOf(niewinniTitle).flatMap(_.releaseYear) shouldBe None
+  }
+
+  // The 08-06 corpus also carries a no-pipe layout
+  // (`Producent:</span> reżyseria Paolo Genovese, Włochy 2025`) and a studio
+  // layout with no year. parseYear must read the trailing year from the former
+  // and stay None on the latter.
+  it should "read the trailing year from the no-pipe 'Producent: … Country YYYY' layout" in {
+    client.parseYear("""<span>Producent:</span> reżyseria Paolo Genovese, Włochy 2025</div>""") shouldBe Some(2025)
+  }
+
+  it should "stay None on a studio 'Producent: … | Produced by:' layout with no year" in {
+    client.parseYear("""<span>Producent:</span> Zespół Autorów Filmowych „Kadr” | Produced by: Film Unit</div>""") shouldBe None
+  }
+
+  it should "extract the original title from the 'Oryginalny tytuł:' line" in {
+    detailOf("Drzewo Magii").flatMap(_.originalTitle) shouldBe Some("THE MAGIC FARAWAY TREE")
+  }
+
+  it should "leave originalTitle empty when the detail page has no 'Oryginalny tytuł:' marker" in {
+    detailOf(niewinniTitle).flatMap(_.originalTitle) shouldBe None
+  }
+
   it should "extract YouTube trailer URLs from detail-page Elementor blocks" in {
     detailOf("Znaki Pana Śliwki").flatMap(_.trailerUrl) shouldBe Some("https://www.youtube.com/watch?v=VJflATrYhU0")
     detailOf("Drzewo Magii").flatMap(_.trailerUrl)      shouldBe Some("https://www.youtube.com/watch?v=gzRz4XpyKCY")

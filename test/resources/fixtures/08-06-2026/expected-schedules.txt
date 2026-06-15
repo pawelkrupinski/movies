@@ -1181,7 +1181,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Follemente.+W+tym+szale%C5%84stwi
 cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/cykl-zawsze-osmego-follemente-w-tym-szalenstwie-jest-metoda/
 cinemaScrapes:
-  Kino Apollo / Cykl "Zawsze Ósmego" - Follemente. W tym szaleństwie jest metoda / —
+  Kino Apollo / Cykl "Zawsze Ósmego" - Follemente. W tym szaleństwie jest metoda / 2025
 showings:
   2026-06-08  Kino Apollo                   18:30
 
