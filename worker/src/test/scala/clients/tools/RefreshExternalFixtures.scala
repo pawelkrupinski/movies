@@ -27,7 +27,11 @@ import scala.util.Try
 object RefreshExternalFixtures extends tools.FixtureTestWiring("08-06-2026") {
   // Live-record on a fixture miss ONLY for these external-metadata hosts; every
   // cinema host stays strict replay (a miss throws), pinning the corpus.
-  private val ExternalHosts = Set(
+  // A `def`, not a `val`: `httoFetch` (overriding the parent's lazy val) is forced
+  // during the parent `WorkerWiring` construction — before this subclass's vals
+  // initialize — so a `val` here would still be null when `RecordMissingFetch`
+  // captures it, and `recordable` would NPE on the first fixture miss.
+  private def ExternalHosts = Set(
     "themoviedb.org", "filmweb.pl", "rottentomatoes.com", "imdb.com", "metacritic.com"
   )
 

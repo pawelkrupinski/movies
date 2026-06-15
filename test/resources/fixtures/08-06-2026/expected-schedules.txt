@@ -3551,22 +3551,22 @@ showings:
 displayTitle:      Mi Amor
 cinemaTitles:      Mi Amor
 runtimeMinutes:    113
-releaseYear:       2025
+releaseYear:       2026
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/2163993.entity.jpg
 synopsis.length:   564
-cast:              Pom Klementieff, Benoît Magimel, Freya Mavor
+cast:              Pom Klementieff, Benoît Magimel, Freya Mavor, Astrid Bergès-Frisbey, Anaël Snoek
 director:          Guillaume Nicloux
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
+tmdbId:            1432817
+imdbId:            tt35675616
+originalTitle:     Mi Amor
+imdbRating:        6.2
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     —
+filmwebRating:     6.0
 metacriticUrl:     —
 rottenTomatoesUrl: —
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Mi+amor-2025-10101051
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/mi-amor/
 cinemaScrapes:
