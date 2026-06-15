@@ -150,7 +150,34 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     s.recoverImdbFor(anchor)
     searched should not be empty                                       // recovered from the needy (non-head) row
     s.imdbRecoveryDone(anchor) shouldBe true                          // one-shot mark set → reaper can't re-loop
-    repository.findAll().foreach(_.record.imdbId shouldBe Some("tt1277047"))   // stamped on every row
+    // Per-combination: only the needy group (Multikino, year=None) is stamped.
+    // The Helios row is a different hint-combination (year 2025, no tmdbId) — it
+    // recovers its own id once it resolves; never cross-stamped here.
+    val rows = repository.findAll()
+    rows.find(_.cinema == Multikino).flatMap(_.record.imdbId) shouldBe Some("tt1277047")
+    rows.find(_.cinema == Helios).flatMap(_.record.imdbId)    shouldBe None
+  }
+
+  it should "resolve each cinema's hint-combination independently (no merge before settle)" in {
+    // Two cinemas show the same title+year but report DIFFERENT directors, so they
+    // are two hint-combinations. The OLD code unioned both directors and resolved
+    // ONCE, stamping a single tmdbId on both rows; per-combination resolution
+    // stamps each row with the film ITS hints resolve to. Fails before, passes now.
+    val repository = new InMemoryStagingRepository
+    val title = "Twins"; val year = Some(2026)
+    val anchor = TitleNormalizer.sanitize(title)
+    repository.upsert(Helios, title, year,
+      MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some(title), releaseYear = year, director = Seq("Dir A")))))
+    repository.upsert(Multikino, title, year,
+      MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some(title), releaseYear = year, director = Seq("Dir B")))))
+
+    val s = steps(repository, Seq.empty,
+      (_, _, r) => Some(r.copy(tmdbId = Some(if (r.director.contains("Dir A")) 111 else 222))))
+    s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved
+
+    val rows = repository.findAll()
+    rows.find(_.cinema == Helios).flatMap(_.record.tmdbId)    shouldBe Some(111)
+    rows.find(_.cinema == Multikino).flatMap(_.record.tmdbId) shouldBe Some(222)
   }
 
   it should "mark recovery done even when there is nothing to recover (no needy row)" in {

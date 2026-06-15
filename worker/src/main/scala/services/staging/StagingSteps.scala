@@ -5,6 +5,7 @@ import play.api.Logging
 import services.cinemas.DetailEnricher
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.{MovieRecordMerge, MovieService, TitleNormalizer}
+import services.resolution.ResolutionKeys
 import services.tasks.StagingTaskKeys
 
 /**
@@ -16,9 +17,13 @@ import services.tasks.StagingTaskKeys
  * SAME detail-fetch + `resolveStagingRecord` + IMDb-recovery at staging rows.
  *
  * Everything is keyed PER FILM by `anchor` = `sanitize(title)`, across every
- * cinema and year-variant — resolution is per-film (over the union of every
- * cinema's hints), folding is per-year (each variant lands its own `movies`
- * row). See the original `StagingPromoter` doc for why.
+ * cinema and year-variant. Within an anchor, resolution runs PER DISTINCT
+ * HINT-COMBINATION (title + year + director set + original title): rows sharing
+ * the same hints resolve once and stamp together; rows with different hints
+ * resolve independently — no cross-combination merge before settle. Merging
+ * across combinations happens later, at fold/settle (`FilmCanonicalizer`), which
+ * clusters the independently-resolved rows by tmdbId / ±1-year. Folding is
+ * per-year (each variant lands its own `movies` row).
  *
  * `resolveStaging` is `MovieService.resolveStagingRecord`, `recoverImdbId` is
  * `ImdbIdResolver.findIdFor` — injected as functions so this depends on the
@@ -84,34 +89,55 @@ class StagingSteps(
   private def detailPresent(row: StagingRecord, target: Source): Boolean =
     row.record.data.get(target).exists(s => s.synopsis.isDefined || s.cast.nonEmpty || s.director.nonEmpty)
 
-  /** STEP 2 (per film): resolve ONCE over the union of every cinema's hints at the
-   *  best (lowest present) year, then stamp `tmdbId` / `tmdbNoMatch` / the `Tmdb`
-   *  slot — and any IMDb id TMDB itself shipped — onto every row. The result tells
-   *  the caller what to do next (advance, retry, or stop). */
+  /** STEP 2 (per film): resolve each still-unconcluded HINT-COMBINATION among the
+   *  anchor's rows independently — each group at its own lowest-present year over
+   *  the union of just that group's slots — then stamp `tmdbId` / `tmdbNoMatch` /
+   *  the `Tmdb` slot (and any IMDb id TMDB shipped) onto that group's rows only.
+   *  No cross-combination merge: two cinemas reporting different directors/years
+   *  resolve to whatever each one's hints say, and the fold reconciles them.
+   *
+   *  `AlreadyDone` only when EVERY row is concluded (so a partially-resolved
+   *  anchor keeps getting re-enqueued for its remaining groups); `TransientFailure`
+   *  if any group's resolve fails (already-stamped groups stay concluded, the
+   *  reaper retries the rest). */
   def resolveAndStamp(anchor: String): ResolveResult = {
     val fresh = rowsFor(anchor)
-    if (fresh.isEmpty || fresh.exists(_.record.tmdbConcluded)) AlreadyDone
+    if (fresh.isEmpty || fresh.forall(_.record.tmdbConcluded)) AlreadyDone
     else if (!fresh.forall(detailReady)) DetailNotReady
     else {
-      val resolveYear = fresh.flatMap(_.year).minOption
-      val mergedHints = MovieRecordMerge.unionAll(fresh.map(_.record))
-      resolveStaging(fresh.head.title, resolveYear, mergedHints) match {
-        case None => TransientFailure
-        case Some(resolved) =>
-          val tmdbSlot = resolved.data.get(Tmdb)
-          fresh.foreach { r =>
-            val stamped = r.record.copy(
-              tmdbId      = resolved.tmdbId,
-              imdbId      = resolved.imdbId,
-              tmdbNoMatch = resolved.tmdbNoMatch,
-              data        = tmdbSlot.fold(r.record.data)(s => r.record.data + (Tmdb -> s)))
-            stagingRepository.upsert(r.cinema, r.title, r.year, stamped)
-          }
-          logger.info(s"Staging: '${fresh.head.title}' → resolved (tmdbId=${resolved.tmdbId.getOrElse("—")}, noMatch=${resolved.tmdbNoMatch})")
-          Resolved
-      }
+      val outcomes = fresh.filterNot(_.record.tmdbConcluded)
+        .groupBy(hintGroupKey).values.toSeq
+        .map(resolveAndStampGroup)
+      if (outcomes.contains(TransientFailure)) TransientFailure else Resolved
     }
   }
+
+  /** Resolve + stamp one hint-combination's rows. */
+  private def resolveAndStampGroup(group: Seq[StagingRecord]): ResolveResult = {
+    val resolveYear = group.flatMap(_.year).minOption
+    val mergedHints = MovieRecordMerge.unionAll(group.map(_.record))
+    resolveStaging(group.head.title, resolveYear, mergedHints) match {
+      case None => TransientFailure
+      case Some(resolved) =>
+        val tmdbSlot = resolved.data.get(Tmdb)
+        group.foreach { r =>
+          val stamped = r.record.copy(
+            tmdbId      = resolved.tmdbId,
+            imdbId      = resolved.imdbId,
+            tmdbNoMatch = resolved.tmdbNoMatch,
+            data        = tmdbSlot.fold(r.record.data)(s => r.record.data + (Tmdb -> s)))
+          stagingRepository.upsert(r.cinema, r.title, r.year, stamped)
+        }
+        logger.info(s"Staging: '${group.head.title}' (${resolveYear.getOrElse("?")}) → resolved (tmdbId=${resolved.tmdbId.getOrElse("—")}, noMatch=${resolved.tmdbNoMatch})")
+        Resolved
+    }
+  }
+
+  /** The hint-combination a row resolves under — title + year + director set +
+   *  original title, the same hints the TMDB resolver and its cache key use, so
+   *  rows that would resolve identically group together. */
+  private def hintGroupKey(r: StagingRecord): String =
+    ResolutionKeys.tmdb(r.title, r.year, r.record.director, r.record.cinemaOriginalTitle)
 
   /** STEP 3 (per film): recover a missing IMDb cross-reference and stamp it onto
    *  every row — the promoter's inline recovery, now its own retryable task. A
@@ -129,11 +155,16 @@ class StagingSteps(
   def recoverImdbFor(anchor: String): Unit = {
     val fresh = rowsFor(anchor)
     if (fresh.isEmpty) return
-    fresh.find(r => r.record.tmdbId.isDefined && r.record.imdbId.isEmpty).foreach { needy =>
-      val search = needy.record.originalTitle.getOrElse(MovieService.apiQuery(needy.title))
-      recoverImdbId(search, fresh.flatMap(_.year).minOption).foreach { id =>
-        fresh.foreach(r => stagingRepository.upsert(r.cinema, r.title, r.year, r.record.copy(imdbId = Some(id))))
-        logger.info(s"Staging: '${needy.title}' ← recovered imdbId=$id")
+    // Per hint-group: a group resolved to its own tmdbId, so recover + stamp
+    // each group's imdbId independently — never cross-stamp one group's id onto
+    // another that resolved to a different film.
+    fresh.groupBy(hintGroupKey).values.foreach { group =>
+      group.find(r => r.record.tmdbId.isDefined && r.record.imdbId.isEmpty).foreach { needy =>
+        val search = needy.record.originalTitle.getOrElse(MovieService.apiQuery(needy.title))
+        recoverImdbId(search, group.flatMap(_.year).minOption).foreach { id =>
+          group.foreach(r => stagingRepository.upsert(r.cinema, r.title, r.year, r.record.copy(imdbId = Some(id))))
+          logger.info(s"Staging: '${needy.title}' ← recovered imdbId=$id")
+        }
       }
     }
     // Best-effort + one-shot: mark done whenever the step runs (recovered,
