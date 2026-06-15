@@ -1528,7 +1528,7 @@ cinemaScrapes:
   Kino Ikar / Drugie życie / —
   Kino Iluzjon / Drugie życie / 2025
   Kino Kika / DRUGIE ŻYCIE / —
-  Kino Kinematograf / Drugie życie / —
+  Kino Kinematograf / Drugie życie / 2025
   Kino Kolory / Drugie życie / —
   Kino Kryterium / Drugie życie / —
   Kino Lot / Drugie życie / —
@@ -3882,7 +3882,7 @@ cinemaScrapes:
   Kino Fenomen (WDK) / „Milcząca przyjaciółka” / 2025
   Kino Forum / Milcząca przyjaciółka / —
   Kino Kika / MILCZĄCA PRZYJACIÓŁKA / —
-  Kino Kinematograf / Milcząca przyjaciółka / —
+  Kino Kinematograf / Milcząca przyjaciółka / 2025
   Kino Kultura / Milcząca przyjaciółka / —
   Kino Luna / Milcząca przyjaciółka / —
   Kino Malta Charlie Monroe / Milcząca przyjaciółka / —
@@ -5090,7 +5090,7 @@ cinemaScrapes:
   Kino Bajka Kluczbork / Ojczyzna / —
   Kino Kijów / Ojczyzna / —
   Kino Kika / OJCZYZNA / —
-  Kino Kinematograf / Ojczyzna / —
+  Kino Kinematograf / Ojczyzna / 2026
   Kino Kolory / Ojczyzna / —
   Kino Kultura / Ojczyzna / —
   Kino Lot / Ojczyzna / —
@@ -8746,7 +8746,7 @@ cinemaScrapes:
   Kino CK Lublin / Zawieście czerwone latarnie / —
   Kino Centrum CSW Toruń / Zawieście czerwone latarnie / —
   Kino Iluzjon / Zawieście czerwone latarnie / 1991
-  Kino Kinematograf / Zawieście czerwone latarnie / —
+  Kino Kinematograf / Zawieście czerwone latarnie / 1991
   Kino Kultura / Zawieście czerwone latarnie / —
   Kino Luna / Zawieście czerwone latarnie / —
   Kino Malta Charlie Monroe / Zawieście czerwone latarnie / —
@@ -9020,7 +9020,7 @@ cinemaScrapes:
   Kino Amok / Znaki Pana Śliwki / —
   Kino IKM / Znaki Pana Śliwki / —
   Kino Kika / ZNAKI PANA ŚLIWKI / —
-  Kino Kinematograf / Znaki Pana Śliwki / —
+  Kino Kinematograf / Znaki Pana Śliwki / 2025
   Kino Kultura / Znaki Pana Śliwki / —
   Kino Malta Charlie Monroe / Znaki Pana Śliwki / —
   Kino Mikro / Znaki Pana Śliwki / —

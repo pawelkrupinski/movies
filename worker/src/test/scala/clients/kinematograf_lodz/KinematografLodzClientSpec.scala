@@ -108,4 +108,35 @@ class KinematografLodzClientSpec extends AnyFlatSpec with Matchers with OptionVa
     val movies = client.fetch()
     movies.exists(_.movie.title.contains("Stary Film")) shouldBe false
   }
+
+  // ── Year + director extracted off the raw title before the strip ───────────
+
+  it should "surface the production year and director(s) on the film" in {
+    val znaki = client.fetch().find(_.movie.title == "Znaki Pana Śliwki").value
+    znaki.movie.releaseYear shouldBe Some(2025)
+    znaki.director          shouldBe Seq("Urszula Morga", "Bartosz Mikołajczyk")
+  }
+
+  it should "set the year but no director for a title with no 'reż.' suffix" in {
+    val rozmowa = client.fetch().find(_.movie.title == "Klasyk w kinie: Rozmowa").value
+    rozmowa.movie.releaseYear shouldBe Some(1973)
+    rozmowa.director          shouldBe empty
+  }
+
+  it should "bound the director list at a trailing year or event suffix" in {
+    // Real-fixture shapes: director then ", (2026)"; director then ". • <event>".
+    KinematografLodzClient.parseDirectors(
+      "Mały Kinematograf: Baczne oczka reż. Katarzyna Agopsowicz, (2026)"
+    ) shouldBe Seq("Katarzyna Agopsowicz")
+    KinematografLodzClient.parseDirectors(
+      "DKF Człowiek w Zagrożeniu: Pociągi (2024), reż. Maciej Drygas. • Spotkanie z autorem"
+    ) shouldBe Seq("Maciej Drygas")
+  }
+
+  it should "not mistake the prose 'reżyserką' mention for a director marker" in {
+    // No `reż.` token → no director (the word "reżyserką" must not match).
+    KinematografLodzClient.parseDirectors(
+      "Mały Kinematograf: premiera animacji i spotkanie z reżyserką Aleksandrą Chrapowicką"
+    ) shouldBe empty
+  }
 }
