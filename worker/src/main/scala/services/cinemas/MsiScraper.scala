@@ -48,8 +48,50 @@ private[cinemas] object MsiScraper {
 
   private val EventTimePat = """(\d{1,2})\s+(\w+)\s+(\d{2}):(\d{2})""".r
 
+  // The MSI page also embeds full film metadata in a `var RepertoireEvents = [
+  // {…} ]` JS array (one flat object per screening) that Jsoup doesn't surface.
+  // Each object carries a `Name` (identical to the rendered block's `title`
+  // attribute) and a `Description` whose first line is the director. We mine the
+  // director out of there and join it back to the rendered blocks by name.
+  private val JsObjectPat = """(?s)\{[^{}]*\}""".r
+  private val JsNamePat   = """'Name'\s*:\s*'((?:[^'\\]|\\.)*)'""".r
+  private val JsDescPat   = """'Description'\s*:\s*'((?:[^'\\]|\\.)*)'""".r
+  // Director line of a Description, anchored at the start of a `<br>`-delimited
+  // segment so a mid-sentence mention can't match. Accepts the label variants
+  // the portals actually emit: `REŻYSERIA:`, `REŻYSERIA ` (no colon) and the
+  // `Reżysera` genitive typo. The Polish genitive/instrumental "reżyserii"/
+  // "reżyserią" end past `(?:ia|a)` so prose like "w reżyserii X" won't match.
+  private val DirectorLinePat = """(?iu)(?:^|<br>)\s*re[żz]yser(?:ia|a)\s*:?\s*([^<]+)""".r
+
   private[cinemas] case class RawSlot(title: String, rawTitle: String, dateTime: LocalDateTime,
-                                      booking: Option[String], format: List[String])
+                                      booking: Option[String], format: List[String],
+                                      director: Seq[String] = Seq.empty)
+
+  /** Map every `RepertoireEvents` entry's name → its director list, mined from
+   *  the entry's `Description`. Names with no director line are omitted. The
+   *  name is matched against the rendered block's (Jsoup-decoded) title attr. */
+  private[cinemas] def directorsByName(html: String): Map[String, Seq[String]] =
+    JsObjectPat.findAllMatchIn(html).flatMap { obj =>
+      val block = obj.matched
+      for {
+        name <- JsNamePat.findFirstMatchIn(block).map(m => unescapeJs(m.group(1)))
+        desc <- JsDescPat.findFirstMatchIn(block).map(m => unescapeJs(m.group(1)))
+        dirs = parseDescriptionDirector(desc) if dirs.nonEmpty
+      } yield name -> dirs
+    }.toMap
+
+  /** Director names from a Description's `REŻYSERIA …` line — comma-split, with
+   *  trailing sentence punctuation dropped. Empty when there's no director line
+   *  (kids-film synopses and other Descriptions carry none). */
+  private[cinemas] def parseDescriptionDirector(description: String): Seq[String] =
+    DirectorLinePat.findFirstMatchIn(description).map(_.group(1)).toSeq
+      .flatMap(_.split(","))
+      .map(_.trim.stripSuffix(".").trim)
+      .filter(_.nonEmpty)
+
+  /** Undo the JS single-quoted-string escapes that matter for our fields. */
+  private def unescapeJs(s: String): String =
+    s.replace("\\'", "'").replace("\\\"", "\"").replace("\\/", "/").replace("\\\\", "\\")
 
   /**
    * Parse one MSI month page with full year context.  Returns one `RawSlot`
@@ -67,12 +109,14 @@ private[cinemas] object MsiScraper {
   def parseMonthWithYear(html: String, yearMonth: YearMonth, baseUrl: String,
                          cleanTitle: String => (String, List[String])): Seq[RawSlot] = {
     val document = Jsoup.parse(html, baseUrl)
+    val directors = directorsByName(html)
     document.select("div.movies-movie__single").asScala.toSeq.flatMap { movieDiv =>
       val rawTitle = Option(movieDiv.selectFirst(".movies-movie__single__title"))
         .map(_.attr("title").trim)
         .filter(_.nonEmpty)
         .getOrElse("")
       val (title, format) = cleanTitle(rawTitle)
+      val director = directors.getOrElse(rawTitle, Seq.empty)
       if (title.isEmpty) Seq.empty
       else {
         // Only the desktop showtime list — the mobile duplicate has no extra `d-none`
@@ -86,7 +130,7 @@ private[cinemas] object MsiScraper {
             val text    = a.text.trim
             val href    = a.attr("abs:href")
             val booking = if (href.nonEmpty) Some(href) else None
-            parseEventTime(text, yearMonth).map { dt => RawSlot(title, rawTitle, dt, booking, format) }
+            parseEventTime(text, yearMonth).map { dt => RawSlot(title, rawTitle, dt, booking, format, director) }
           }
         }
       }
@@ -127,7 +171,7 @@ private[cinemas] object MsiScraper {
           filmUrl   = None,
           synopsis  = None,
           cast      = Seq.empty,
-          director  = Seq.empty,
+          director  = group.map(_.director).find(_.nonEmpty).getOrElse(Seq.empty),
           showtimes = showtimes
         ))
       }

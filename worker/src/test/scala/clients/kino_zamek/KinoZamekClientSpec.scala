@@ -50,6 +50,14 @@ class KinoZamekClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 19, 0))
   }
 
+  it should "attach the director mined from the MSI RepertoireEvents Description" in {
+    // The rendered HTML table carries no director; it lives in the page's
+    // `RepertoireEvents` JS array ("REŻYSERIA Luis Buñuel."), joined back to the
+    // film by its name. Confirms the JS-array mining + name join end to end.
+    val film = client.fetch().find(_.movie.title.toLowerCase.startsWith("viridiana")).value
+    film.director shouldBe Seq("Luis Buñuel")
+  }
+
   it should "build the date-scoped /MSI/mvc/pl month URL, not the parameter-dropping /MSI redirect" in {
     // `/MSI?…&date=…` 301→302 redirects to a bare `/MSI/mvc/pl`, dropping the
     // `date` parameter, so the month was never actually selected. Hit `/MSI/mvc/pl`
