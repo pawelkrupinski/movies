@@ -52,10 +52,18 @@ case class TitleRule(
   val isPrefixAnchored: Boolean =
     pattern.replaceFirst("""^\(\?[a-zA-Z]+\)""", "").startsWith("^")
 
-  /** Apply this rule to `in`. No-op when disabled or the pattern didn't compile. */
+  /** Apply this rule to `in`. No-op when disabled or the pattern didn't compile.
+   *
+   *  The replace itself is also guarded: a `replacement` carrying a bare `$` or a
+   *  trailing `\` is, to Java's `Matcher`, an illegal group reference and throws
+   *  `IllegalArgumentException` (or `IndexOutOfBoundsException` for a `$N` past the
+   *  group count). A malformed editor-entered replacement must degrade to a no-op,
+   *  same as a malformed pattern — never throw inside the hot normalisation path
+   *  or the admin "affected" preview (Sentry KINOWO-Y). */
   def apply(in: String): String = compiled match {
     case Some(re) if enabled =>
-      if (applyAll) re.replaceAllIn(in, replacement) else re.replaceFirstIn(in, replacement)
+      try if (applyAll) re.replaceAllIn(in, replacement) else re.replaceFirstIn(in, replacement)
+      catch { case _: IllegalArgumentException | _: IndexOutOfBoundsException => in }
     case _ => in
   }
 }

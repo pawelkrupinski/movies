@@ -55,6 +55,27 @@ class TitleRuleSetSpec extends AnyFlatSpec with Matchers {
     rs.invalidRules.map(_.id) shouldBe Seq("bad")
   }
 
+  // A replacement with a bare `$` (or trailing `\`) is, to Java's Matcher, an
+  // illegal group reference and throws IllegalArgumentException mid-replace. Like
+  // an invalid pattern, it must degrade to a no-op rather than take down the
+  // normalisation hot path and the admin "affected" preview. See Sentry KINOWO-Y.
+  "an invalid replacement" should "be a no-op rather than throw (replaceFirstIn)" in {
+    val rs = TitleRuleSet(Seq(rule("price", GlobalStructural, "Me", "$")))
+    noException should be thrownBy rs.structural("Strip Me")
+    rs.structural("Strip Me") shouldBe "Strip Me"
+  }
+
+  it should "be a no-op rather than throw (replaceAllIn)" in {
+    val rs = TitleRuleSet(Seq(rule("price", GlobalStructural, "x", "$9.99 $", applyAll = true)))
+    noException should be thrownBy rs.structural("xx")
+    rs.structural("xx") shouldBe "xx"
+  }
+
+  it should "still honour valid group references" in {
+    val rs = TitleRuleSet(Seq(rule("grp", GlobalStructural, """(\d+)D""", "$1 D", applyAll = true)))
+    rs.structural("Avatar 3D") shouldBe "Avatar 3 D"
+  }
+
   "ordering" should "respect the order field (lower runs first)" in {
     // Rule 1 turns "AB" → "B" (strip A); rule 2 turns "B" → "" (strip B). Order
     // matters only in that both must run; assert the composed result.
