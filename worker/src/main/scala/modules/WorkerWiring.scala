@@ -16,7 +16,7 @@ import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, 
 import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
-import tools.{Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SharedExecutionBudget}
+import tools.{Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
@@ -67,9 +67,17 @@ class WorkerWiring extends play.api.Logging {
 
   // Proxy primary → existing chain (Zyte then direct) as fallback, so a proxy IP
   // that's ever unreachable/burned silently rolls over and scraping never breaks.
-  private def proxyPrimary(fallback: HttpFetch): HttpFetch =
-    residentialProxy.fold(fallback)(p =>
-      new FallbackHttpFetch(Seq("proxy" -> p, "fallback" -> fallback), onOutcome = recordProxyOutcome))
+  private def proxyPrimary(fallback: HttpFetch): HttpFetch = proxyPrimary(fallback, warmUrl = None)
+
+  // `warmUrl` wraps the proxy leg in SessionWarmingHttpFetch — for Multikino,
+  // whose films API 401s on a cold call from the proxy IP until the homepage warms
+  // a session cookie (verified 2026-06-16). Stateless venues (biletyna, ck105)
+  // pass None.
+  private def proxyPrimary(fallback: HttpFetch, warmUrl: Option[String]): HttpFetch =
+    residentialProxy.fold(fallback) { p =>
+      val proxyLeg = warmUrl.fold(p)(u => new SessionWarmingHttpFetch(p, u))
+      new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), onOutcome = recordProxyOutcome)
+    }
 
   // Meter the residential-proxy leg to /uptime: a green "Residential proxy" bar
   // means the proxy served, a red one means it failed and we fell back to Zyte
@@ -83,7 +91,8 @@ class WorkerWiring extends play.api.Logging {
       case Some(label) => uptimeMonitor.recordFailure(ResidentialProxyService, label)
     }
 
-  lazy val multikinoFetch: HttpFetch = proxyPrimary(MultikinoClient.fetchFor(httoFetch))
+  lazy val multikinoFetch: HttpFetch =
+    proxyPrimary(MultikinoClient.fetchFor(httoFetch), warmUrl = Some(MultikinoClient.HomeUrl))
   // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set).
   lazy val zyteFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch)
   // biletyna.pl 403s our datacenter IP; residential proxy primary, Zyte fallback.

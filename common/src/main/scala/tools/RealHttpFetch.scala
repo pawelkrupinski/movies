@@ -2,14 +2,12 @@ package tools
 
 import play.api.Logging
 
-import java.io.IOException
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse, HttpTimeoutException}
-import java.net.{Authenticator, CookieManager, CookiePolicy, InetSocketAddress, PasswordAuthentication, Proxy, ProxySelector, SocketAddress}
+import java.net.{Authenticator, CookieManager, CookiePolicy, InetSocketAddress, PasswordAuthentication, ProxySelector}
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.atomic.AtomicInteger
 
 class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends HttpFetch with Logging {
   // Connect + per-request timeouts so a hung upstream (MC search HTML
@@ -196,9 +194,13 @@ object RealHttpFetch {
    *  proxy — the Decodo static-residential (ISP) egress used for cinema sites
    *  that Cloudflare-block our Fly datacenter IP at the ASN level (Multikino,
    *  biletyna). The proxy IPs are genuine PL ISP (Netia, AS12741), so the target
-   *  sees a residential egress and returns 200. Rotates across `ports` (each =
-   *  a distinct dedicated IP) for resilience; low volume so any one IP suffices.
-   *  See the `reference_decodo_isp_proxy` memory. */
+   *  sees a residential egress and returns 200.
+   *
+   *  Pins to ONE sticky IP (`ports.head`), NOT round-robin: Multikino's session
+   *  cookie is bound to the egress IP, so the homepage-warm + API retry must share
+   *  an IP (rotation warmed on one IP, retried on another → still 401, verified
+   *  2026-06-16). Low volume, so one IP is plenty; the remaining `ports` are spares
+   *  to switch to if it's ever burned. See the `reference_decodo_isp_proxy` memory. */
   case class ProxyConfig(host: String, ports: Seq[Int], user: String, password: String) {
     require(ports.nonEmpty, "ProxyConfig needs at least one port")
 
@@ -209,7 +211,10 @@ object RealHttpFetch {
     // `-Djdk.http.auth.tunneling.disabledSchemes=` as a belt-and-suspenders.
     System.setProperty("jdk.http.auth.tunneling.disabledSchemes", "")
 
-    val selector: ProxySelector = new RotatingProxySelector(host, ports)
+    /** The single sticky egress (first port). */
+    val port: Int = ports.head
+    val selector: ProxySelector =
+      ProxySelector.of(new InetSocketAddress(host, port))
 
     val authenticator: Authenticator = new Authenticator {
       override protected def getPasswordAuthentication: PasswordAuthentication =
@@ -217,17 +222,6 @@ object RealHttpFetch {
           new PasswordAuthentication(user, password.toCharArray)
         else null // server (non-proxy) auth is none of this proxy's business
     }
-  }
-
-  /** Round-robins a fixed proxy host across `ports` (one dedicated IP each), so
-   *  load and any per-IP rate-limit risk spread across the pool. Thread-safe. */
-  private class RotatingProxySelector(host: String, ports: Seq[Int]) extends ProxySelector {
-    private val counter = new AtomicInteger(0)
-    override def select(uri: URI): java.util.List[Proxy] = {
-      val port = ports(Math.floorMod(counter.getAndIncrement(), ports.size))
-      java.util.List.of(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(host, port)))
-    }
-    override def connectFailed(uri: URI, sa: SocketAddress, e: IOException): Unit = ()
   }
 
   /** The tight default: a live host's TCP+TLS handshake finishes in well under a

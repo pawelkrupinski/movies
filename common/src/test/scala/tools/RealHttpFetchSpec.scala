@@ -53,12 +53,13 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
     pc.selector.select(URI.create("https://www.multikino.pl/api/x")).get(0)
       .address().asInstanceOf[InetSocketAddress].getPort
 
-  "RealHttpFetch.ProxyConfig" should "round-robin the selector across the configured ports" in {
+  "RealHttpFetch.ProxyConfig" should "pin to ONE sticky IP (the first port), not rotate" in {
     val pc = RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001, 10002, 10003), "u", "p")
-    // Each request rotates to the next IP; one IP suffices but spreading load
-    // across the dedicated pool hedges per-IP rate-limit/burn risk.
-    (1 to 7).map(_ => selectedPort(pc)).toList shouldBe
-      List(10001, 10002, 10003, 10001, 10002, 10003, 10001)
+    // Sticky, NOT round-robin: Multikino's session cookie is IP-bound, so the
+    // homepage-warm + API retry must share an egress IP. The other ports are
+    // spares to switch to manually if the active one is burned.
+    pc.port shouldBe 10001
+    (1 to 5).map(_ => selectedPort(pc)).distinct shouldBe List(10001)
   }
 
   it should "clear jdk.http.auth.tunneling.disabledSchemes so Basic proxy auth works over HTTPS CONNECT" in {
