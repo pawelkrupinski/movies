@@ -16,17 +16,19 @@ import java.util.{Base64, UUID}
  *   - [[get]] — a single extract call. For stateless pages that just need the
  *     residential egress to clear an IP block (biletyna's server-rendered
  *     venue page).
- *   - [[getWithCookies]] — the cookie-carryover pattern below, for upstreams
- *     with a session-cookie wall (Multikino's API).
+ *   - [[warm]] + [[fetchWithSession]] — the cookie-carryover pattern below, for
+ *     upstreams with a session-cookie wall (Multikino's API). Split into two
+ *     primitives so [[SharedZyteSession]] can warm ONCE and reuse the session
+ *     across many fetches (every warm is a paid request).
  *
  * Cookie-carryover pattern:
  *
- *   1. POST `cookieSourceUrl` (homepage) with a fresh `session.id` UUID.
+ *   1. [[warm]]: POST `cookieSourceUrl` (homepage) with a `session.id` UUID.
  *      Zyte fetches the homepage, parks the upstream's Set-Cookie in a
  *      server-side session keyed by that id.
- *   2. POST `targetUrl` with the same `session.id`. Zyte reuses the
- *      session — same egress IP, same cookie jar — and the upstream's
- *      session-cookie wall is already past.
+ *   2. [[fetchWithSession]]: POST `targetUrl` with the same `session.id`. Zyte
+ *      reuses the session — same egress IP, same cookie jar — and the
+ *      upstream's session-cookie wall is already past.
  *
  * Default mode is `httpResponseBody: true` (raw HTTP, no headless
  * browser). It's the cheapest tier (~1 credit/request) and it's what
@@ -46,26 +48,27 @@ class ZyteClient(httpClient: HttpClient, apiKey: String) extends Logging {
   def get(targetUrl: String): String =
     bodyOrThrow(post(targetUrl, UUID.randomUUID().toString), targetUrl)
 
-  /** GET `targetUrl` via Zyte, harvesting a session from
-   *  `cookieSourceUrl` first. Returns the upstream response body as
-   *  UTF-8. Throws on any non-2xx upstream status or non-2xx Zyte
-   *  status, with diagnostics in the exception message.
+  /** Warm a Zyte session: fetch `cookieSourceUrl` (the homepage) under
+   *  `sessionId` so Zyte parks the upstream's Set-Cookie in the server-side
+   *  session keyed by that id. We don't read the body — only that the fetch
+   *  succeeded. A non-2xx upstream here usually means the homepage itself is
+   *  blocked (a strong signal the target's hostile), so throw and let the
+   *  caller fall back to direct without burning a credit on a doomed API call.
    */
-  def getWithCookies(targetUrl: String, cookieSourceUrl: String): String = {
-    val sessionId = UUID.randomUUID().toString
-
-    // Warm-up: fetch the cookie source. We don't read its body — only
-    // care that Zyte successfully fetched it and parked cookies in the
-    // session. A non-2xx upstream here usually means the homepage itself
-    // is blocked, which is a strong signal the target's hostile; bail
-    // early so the caller falls back to direct without burning a
-    // second credit on a doomed API call.
+  def warm(cookieSourceUrl: String, sessionId: String): Unit = {
     val warmupStatus = extractStatus(post(cookieSourceUrl, sessionId))
     if (warmupStatus < 200 || warmupStatus >= 300)
       throw new RuntimeException(s"Zyte warm-up returned upstream status=$warmupStatus for $cookieSourceUrl")
-
-    bodyOrThrow(post(targetUrl, sessionId), targetUrl)
   }
+
+  /** GET `targetUrl` under an already-[[warm]]ed `sessionId` — a single extract
+   *  call reusing the session's parked cookies + sticky egress. Returns the
+   *  upstream body as UTF-8. Throws on a non-2xx upstream status or missing body
+   *  (e.g. the session expired and the API answered 401), which the caller
+   *  ([[SharedZyteSession]]) treats as "re-warm and retry once".
+   */
+  def fetchWithSession(targetUrl: String, sessionId: String): String =
+    bodyOrThrow(post(targetUrl, sessionId), targetUrl)
 
   /** Single POST to Zyte's /extract. Returns the raw JSON body or throws
    *  if Zyte itself failed (network error, 4xx/5xx from Zyte).
@@ -115,7 +118,7 @@ object ZyteClient {
 
   /** Decode the upstream body from one Zyte extract response, or throw with
    *  diagnostics: a non-2xx upstream status, or a response that carried no
-   *  `httpResponseBody`. Shared by `get` and `getWithCookies` so both fetch
+   *  `httpResponseBody`. Shared by `get` and `fetchWithSession` so both fetch
    *  shapes agree on what counts as a usable result. */
   def bodyOrThrow(zyteJson: String, targetUrl: String): String = {
     val status = extractStatus(zyteJson)

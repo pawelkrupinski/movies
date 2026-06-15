@@ -79,8 +79,9 @@ object MultikinoClient {
   /** Build the `HttpFetch` to pass into `MultikinoClient` at the
    *  composition root. A Zyte-primary → direct fallback chain (see
    *  [[ZyteFallback]]); Multikino's API sits behind a session-cookie wall, so
-   *  the Zyte leg warms a session from `HomeUrl` first. Tests override
-   *  `Wiring.multikinoFetch` directly with `FakeHttpFetch`.
+   *  the Zyte leg warms a session from `HomeUrl` — once, then reused across all
+   *  the cinema clients sharing this fetch (see [[SharedZyteSession]]). Tests
+   *  override `Wiring.multikinoFetch` directly with `FakeHttpFetch`.
    */
   def fetchFor(direct: HttpFetch): HttpFetch =
     ZyteFallback.fetchFor(direct, cookieSource = Some(HomeUrl))

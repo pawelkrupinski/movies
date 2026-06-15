@@ -9,11 +9,10 @@ import java.util.Base64
 
 /**
  * Unit tests for ZyteClient's pure response-parsing primitives. The
- * over-the-wire `getWithCookies` is exercised by the integration spec
- * with a real key; here we just pin the bits that decoded the probe
- * response — so a future Zyte API change (different field name, body
- * not base64) breaks here loudly rather than silently emptying the
- * Multikino cinema slot.
+ * over-the-wire `warm` / `fetchWithSession` calls are exercised against a
+ * real key out of band; here we just pin the bits that decode the response —
+ * so a future Zyte API change (different field name, body not base64) breaks
+ * here loudly rather than silently emptying the Multikino cinema slot.
  */
 class ZyteClientSpec extends AnyFlatSpec with Matchers {
 
