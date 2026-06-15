@@ -4,6 +4,7 @@ import play.api.Logging
 import services.Stoppable
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, ImdbIdResolved}
 import services.movies.MovieCache
+import services.resolution.{ResolutionCache, ResolutionKeys}
 import tools.DaemonExecutors
 
 import java.util.concurrent.TimeUnit
@@ -32,8 +33,17 @@ class ImdbIdResolver(
   // cap, if any, sits at the HTTP layer. Defaults to a dedicated unbounded
   // pool (tests/scripts unchanged); `Wiring` injects a shared-budget EC. See
   // `SharedExecutionBudget`.
-  executionContext:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("imdb-id-resolver")
+  executionContext:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("imdb-id-resolver"),
+  // Caches the IMDb suggestion lookup keyed by (search title, year), so the same
+  // search resolves once for 24h across the staging and event-driven paths.
+  // Defaults to passthrough so unit specs resolve live unless they wire one.
+  imdbIdCache: ResolutionCache = ResolutionCache.passthrough
 ) extends Stoppable with Logging {
+
+  /** Cached IMDb-id lookup shared by both call sites. Hits-only — a no-match
+   *  re-queries next time. */
+  private def cachedFindId(searchTitle: String, year: Option[Int]): Option[String] =
+    imdbIdCache.getOrResolve(ResolutionKeys.imdb(searchTitle, year))(Try(imdb.findId(searchTitle, year)).toOption.flatten)
 
   /** Bus listener: when the TMDB stage resolved a film but TMDB has no IMDb
    *  cross-reference for it, recover the id via IMDb's suggestion endpoint
@@ -67,7 +77,7 @@ class ImdbIdResolver(
    *  id, the same end state the direct path's `ImdbIdMissing` chain produces. */
   def findIdFor(searchTitle: String, year: Option[Int]): Option[String] = {
     logger.info(s"IMDb-id (staging): looking up [search='$searchTitle'] (${year.getOrElse("?")})")
-    val id = Try(imdb.findId(searchTitle, year)).toOption.flatten
+    val id = cachedFindId(searchTitle, year)
     logger.info(s"IMDb-id (staging): [search='$searchTitle'] (${year.getOrElse("?")}) → ${id.getOrElse("no match")}")
     id
   }
@@ -81,7 +91,7 @@ class ImdbIdResolver(
     val key = cache.keyOf(title, year)
     cache.get(key).filter(_.imdbId.isEmpty).foreach { _ =>
       logger.info(s"IMDb-id: looking up '${key.cleanTitle}' (${key.year.getOrElse("?")}) [search='$searchTitle']")
-      Try(imdb.findId(searchTitle, year)).toOption.flatten match {
+      cachedFindId(searchTitle, year) match {
         case Some(id) =>
           logger.info(s"IMDb-id: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → resolved $id")
           // putIfPresent so a concurrent `cache.invalidate` happening between

@@ -257,7 +257,10 @@ class WorkerWiring extends play.api.Logging {
   // operator bulk walk), so they own no EC — only imdbIdResolver still runs
   // async off the bus and draws a shared-budget EC.
   lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient)
-  lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient, eventBus, backgroundBudget.executionContext("imdb-id-resolver"))
+  lazy val imdbIdCache: ResolutionCache =
+    new WriteThroughResolutionCache(new MongoResolutionStore(mongoConnection.database, "resolve_imdb"))
+  lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient, eventBus,
+    backgroundBudget.executionContext("imdb-id-resolver"), imdbIdCache = imdbIdCache)
   lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient)
   lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient)
   lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient)
