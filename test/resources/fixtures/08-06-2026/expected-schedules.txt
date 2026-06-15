@@ -3879,7 +3879,7 @@ cinemaScrapes:
   Kino Atlantic / Milcząca przyjaciółka / 2025
   Kino Bajka / Milcząca przyjaciółka / —
   Kino Bułgarska 19 / MILCZĄCA PRZYJACIÓŁKA / 2025
-  Kino Fenomen (WDK) / „Milcząca przyjaciółka” / —
+  Kino Fenomen (WDK) / „Milcząca przyjaciółka” / 2025
   Kino Forum / Milcząca przyjaciółka / —
   Kino Kika / MILCZĄCA PRZYJACIÓŁKA / —
   Kino Kinematograf / Milcząca przyjaciółka / —

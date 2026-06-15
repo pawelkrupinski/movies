@@ -53,13 +53,13 @@ class KinoFenomenClient(
       else {
         val head = group.head
         Some(CinemaMovie(
-          movie     = Movie(title),
+          movie     = Movie(title, releaseYear = head.year),
           cinema    = cinema,
           posterUrl = head.poster,
           filmUrl   = head.booking.map(u => if (u.startsWith("http")) u else BaseUrl + u),
           synopsis  = None,
           cast      = Seq.empty,
-          director  = Seq.empty,
+          director  = head.directors,
           showtimes = showtimes
         ))
       }
@@ -75,13 +75,41 @@ object KinoFenomenClient {
   private val DateFmt   = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
   // Format tag at the end of artist names: "(2D/napisy)", "(3D/dubbing)", etc.
   private val FormatPat = """\s*\((\d[Dd]/[^)]+)\)\s*$""".r
+  // The `| reżyseria: <names> |` segment of the artist-link text; names are a
+  // comma-separated list bounded by the next pipe (or the end).
+  private val DirectorPat = """(?i)reżyseria:\s*([^|]+)""".r
+  // A `(YYYY)` paren year in the title itself (e.g. "Mikey i Nicky (1976)").
+  private val ParenYearPat = """\((?:19|20)\d{2}\)""".r
+  // Any in-range 4-digit year token (used inside the trailing metadata segment,
+  // where it follows the production countries: "… Węgry 2025").
+  private val YearTokenPat = """\b(?:19|20)\d{2}\b""".r
+
+  /** Director(s) from the `| reżyseria: … |` metadata segment, comma-split.
+   *  Empty when the listing carries no director metadata for the film. */
+  def parseDirectors(rawTitle: String): Seq[String] =
+    DirectorPat.findFirstMatchIn(rawTitle).map(_.group(1).trim).toSeq
+      .flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+
+  /** Production year — from the trailing `| … Country YYYY` metadata segment, or
+   *  a `(YYYY)` paren in the title. Only these two structured positions count, so
+   *  a stray number in a bare title (no pipe metadata, no paren) is not mistaken
+   *  for a year. None when neither is present. */
+  def parseYear(rawTitle: String): Option[Int] = {
+    val parts    = rawTitle.split('|')
+    val metaYear = if (parts.length > 1)
+      YearTokenPat.findFirstMatchIn(parts.drop(1).mkString(" ")).map(_.matched.toInt)
+    else None
+    metaYear.orElse(ParenYearPat.findFirstMatchIn(rawTitle).map(_.matched.filter(_.isDigit).toInt))
+  }
 
   private[cinemas] case class RawSlot(
-    title:    String,
-    dateTime: LocalDateTime,
-    booking:  Option[String],
-    poster:   Option[String],
-    format:   List[String]
+    title:     String,
+    dateTime:  LocalDateTime,
+    booking:   Option[String],
+    poster:    Option[String],
+    format:    List[String],
+    directors: Seq[String],
+    year:      Option[Int]
   )
 
   private[cinemas] def parseSlot(row: org.jsoup.nodes.Element): Option[RawSlot] = {
@@ -120,9 +148,12 @@ object KinoFenomenClient {
     val poster = Option(row.selectFirst("img.img-responsive[src^=\"/file/get/\"]"))
       .map(img => BaseUrl + img.attr("src"))
 
+    val directors = rawTitle.toSeq.flatMap(parseDirectors)
+    val year      = rawTitle.flatMap(parseYear)
+
     for {
       t  <- title
       ldt <- dt
-    } yield RawSlot(t, ldt, booking, poster, format)
+    } yield RawSlot(t, ldt, booking, poster, format, directors, year)
   }
 }

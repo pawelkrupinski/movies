@@ -51,4 +51,37 @@ class KinoFenomenClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     val movies = client.fetch()
     movies.map(_.movie.title) should contain("Niesamowite przygody skarpetek 3. Ale kosmos!")
   }
+
+  // ── Director + production year from the artist-link metadata ───────────────
+
+  it should "extract director(s) from the '| reżyseria: … |' segment" in {
+    KinoFenomenClient.parseDirectors(
+      "„Milcząca przyjaciółka” | reżyseria: Ildikó Enyedi | Francja, Niemcy, Węgry 2025 (2D/napisy)"
+    ) shouldBe Seq("Ildikó Enyedi")
+    KinoFenomenClient.parseDirectors("Film | reżyseria: A. Kowalski, B. Nowak | Polska 2024") shouldBe
+      Seq("A. Kowalski", "B. Nowak")
+    KinoFenomenClient.parseDirectors("Orły Republiki (2D/napisy)") shouldBe Seq.empty
+  }
+
+  it should "extract the production year from the metadata segment or a (YYYY) paren" in {
+    // Trailing "Country YYYY" metadata, ignoring the "(2D/napisy)" format tag.
+    KinoFenomenClient.parseYear(
+      "„Milcząca przyjaciółka” | reżyseria: Ildikó Enyedi | Francja, Niemcy, Węgry 2025 (2D/napisy)"
+    ) shouldBe Some(2025)
+    // Year carried in a paren in the title itself.
+    KinoFenomenClient.parseYear("Mikey i Nicky (1976) (2D/oryginalny)") shouldBe Some(1976)
+    // A bare title with no pipe metadata and no paren-year yields None.
+    KinoFenomenClient.parseYear("Orły Republiki (2D/napisy)") shouldBe None
+  }
+
+  it should "surface the director and year on the fetched film" in {
+    val movies   = client.fetch()
+    val milczaca = movies.find(_.movie.title.contains("Milcząca przyjaciółka")).value
+    milczaca.director            shouldBe Seq("Ildikó Enyedi")
+    milczaca.movie.releaseYear   shouldBe Some(2025)
+    // A film whose listing carries no metadata keeps both empty.
+    val orly = movies.find(_.movie.title == "Orły Republiki").value
+    orly.director          shouldBe empty
+    orly.movie.releaseYear shouldBe None
+  }
 }
