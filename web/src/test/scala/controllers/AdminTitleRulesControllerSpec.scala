@@ -161,6 +161,26 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     (s1 \ "changes" \ 0 \ "result").as[String] shouldBe "Vertigo"
   }
 
+  it should "also report the tier-level net rollup of all films the transient tier rewrites" in {
+    val corpus = repositoryWith("Klub: Top Gun - Restored", "Anora")
+    val body = Json.obj("rules" -> Json.arr(
+      Json.obj("id" -> "g1", "scope" -> "GlobalStructural",
+        "pattern" -> "(?i)\\s*-\\s*restored$", "replacement" -> "", "order" -> 1),
+      Json.obj("id" -> "g2", "scope" -> "GlobalStructural",
+        "pattern" -> "(?i)^Klub:\\s*", "replacement" -> "", "order" -> 2),
+      // A record-changing rule contributes nothing to the transient rollup.
+      Json.obj("id" -> "p1", "scope" -> "PerCinema", "cinemaId" -> "cinema-city",
+        "pattern" -> "^X ", "replacement" -> "", "order" -> 1)))
+    val result = controller(movies = corpus).affected().apply(jsonRequest(session = true, body))
+    status(result) shouldBe OK
+    val tiers = (contentAsJson(result) \ "tiers").as[Seq[play.api.libs.json.JsValue]]
+    tiers.map(t => (t \ "scope").as[String]) should contain theSameElementsAs Seq("GlobalStructural")
+    val gs = tiers.find(t => (t \ "scope").as[String] == "GlobalStructural").get
+    (gs \ "count").as[Int] shouldBe 1                                   // "Anora" untouched, omitted
+    (gs \ "changes" \ 0 \ "title").as[String] shouldBe "Klub: Top Gun - Restored"
+    (gs \ "changes" \ 0 \ "result").as[String] shouldBe "Top Gun"      // net of BOTH rules in order
+  }
+
   it should "400 a malformed rule body" in {
     val body = Json.obj("rules" -> Json.arr(Json.obj("scope" -> "GlobalStructural"))) // no pattern
     status(controller().affected().apply(jsonRequest(session = true, body))) shouldBe BAD_REQUEST

@@ -104,7 +104,9 @@ class AdminTitleRulesController(
           case None =>
             val draft  = TitleRuleSet(parsed.collect { case Right(r) => r })
             val titles = movieRepository.findAll().map(_.title).filter(_.nonEmpty)
-            Ok(Json.obj("affected" -> JsArray(draft.transientAffected(titles).map(affectedToJson))))
+            Ok(Json.obj(
+              "affected" -> JsArray(draft.transientAffected(titles).map(affectedToJson)),
+              "tiers"    -> JsArray(draft.transientTierAffected(titles).map(tierAffectedToJson))))
         }
     }
   }
@@ -139,6 +141,14 @@ object AdminTitleRulesController {
     "scope"  -> a.scope.name,
     "count"  -> a.changes.size,
     "changes" -> a.changes.take(AffectedSampleCap).map(c =>
+      Json.obj("title" -> c.original, "result" -> c.result)))
+
+  /** Tier-level affected payload for the editor — the whole transient tier's net
+   *  (original → final) rewrites, capped like the per-rule payload. */
+  def tierAffectedToJson(t: TitleRuleSet.TierAffected): JsObject = Json.obj(
+    "scope"  -> t.scope.name,
+    "count"  -> t.changes.size,
+    "changes" -> t.changes.take(AffectedSampleCap).map(c =>
       Json.obj("title" -> c.original, "result" -> c.result)))
 
   private val AffectedSampleCap = 500

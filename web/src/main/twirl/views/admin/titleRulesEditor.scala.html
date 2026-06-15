@@ -66,7 +66,13 @@
       list-style-position: outside; }
     details.affected > summary:hover { color: var(--accent); }
     details.affected[open] > summary { color: var(--text); }
-    details.affected .aff-count { color: var(--accent); font-weight: 600; }
+    /* Tier-level rollup: one "all affected films" list under the whole scope's
+       rules, at the section level (not indented under a single rule). */
+    details.tier-affected { margin: .5rem 0 .35rem; font-size: .82rem; }
+    details.tier-affected > summary { cursor: pointer; color: var(--muted); }
+    details.tier-affected > summary:hover { color: var(--accent); }
+    details.tier-affected[open] > summary { color: var(--text); }
+    details.affected .aff-count, details.tier-affected .aff-count { color: var(--accent); font-weight: 600; }
     .affected-body { margin: .35rem 0 .2rem; padding: .35rem .5rem; background: var(--panel2);
       border: 1px solid var(--border); border-radius: 6px;
       max-height: 16rem; overflow: auto; }
@@ -127,6 +133,9 @@
     // ruleId → { count, changes: [{title, result}] } from the last /affected run.
     // Survives re-render so unfolded lists stay populated while editing other rules.
     let affected = {};
+    // scope name → { count, changes } — the tier-level net rollup (all films the
+    // whole transient tier rewrites in order), from the same /affected run.
+    let tierAffected = {};
 
     // ---- pure helpers (also exercised by the page test) ----
     // Move a rule within or BETWEEN a record's two lists. Drag is the only way
@@ -252,19 +261,20 @@
       affectedInner(r.id).forEach(n => det.appendChild(n));
       return det;
     }
-    // The summary + body nodes for a rule id, from the current `affected` map.
-    function affectedInner(id) {
-      const data = id ? affected[id] : null;
+    // The summary + body nodes for one affected list (a single rule's or the
+    // whole tier's), from a `{ count, changes }` record. The lead text + count
+    // label differ between the two; the original → result body is identical.
+    function affectedNodes(data, notComputedLead, countLabel, emptyLabel) {
       const sum = h("summary", {});
       if (!data) {
-        sum.appendChild(document.createTextNode("affected titles — "));
+        sum.appendChild(document.createTextNode(notComputedLead));
         sum.appendChild(h("span", { class: "muted" }, ["not computed yet (click “Show affected titles”)"]));
         return [sum];
       }
       sum.appendChild(h("span", { class: "aff-count" }, [String(data.count)]));
-      sum.appendChild(document.createTextNode(" affected " + (data.count === 1 ? "title" : "titles")));
+      sum.appendChild(document.createTextNode(countLabel(data.count)));
       if (!data.changes || !data.changes.length)
-        return [sum, h("div", { class: "affected-body muted" }, ["No corpus titles affected."])];
+        return [sum, h("div", { class: "affected-body muted" }, [emptyLabel])];
       const body = h("div", { class: "affected-body" },
         data.changes.map(c => h("div", { class: "affected-row" }, [
           h("span", { class: "aff-from" }, [c.title]),
@@ -279,6 +289,29 @@
           ["… and " + (data.count - data.changes.length) + " more"]));
       return out;
     }
+    // The summary + body nodes for a rule id, from the current `affected` map.
+    function affectedInner(id) {
+      return affectedNodes(id ? affected[id] : null,
+        "affected titles — ",
+        n => " affected " + (n === 1 ? "title" : "titles"),
+        "No corpus titles affected.");
+    }
+    // The summary + body nodes for a transient SCOPE's net rollup, from the
+    // current `tierAffected` map — every film the whole tier rewrites, in order.
+    function tierAffectedInner(scope) {
+      return affectedNodes(tierAffected[scope],
+        "all affected films — ",
+        n => " film" + (n === 1 ? "" : "s") + " rewritten by these rules in order",
+        "No corpus films affected.");
+    }
+    // The tier rollup <details> for a transient scope — sits at the section level,
+    // after the scope's rules card. `data-scope` lets `applyTierAffectedToDom`
+    // refresh just this element when a live edit lands new data.
+    function tierAffectedDetails(scope) {
+      const det = h("details", { class: "tier-affected", "data-scope": scope });
+      tierAffectedInner(scope).forEach(n => det.appendChild(n));
+      return det;
+    }
 
     // Refresh every affected <details> in place from the current `affected` map —
     // used after a load so a focused input the user is typing in isn't torn down
@@ -287,6 +320,15 @@
       document.querySelectorAll("details.affected[data-rule-id]").forEach(det => {
         const id = det.getAttribute("data-rule-id");
         det.replaceChildren(...affectedInner(id));
+      });
+    }
+
+    // The tier-rollup twin of `applyAffectedToDom` — refresh each scope's
+    // "all affected films" <details> in place, preserving its open/closed state.
+    function applyTierAffectedToDom() {
+      document.querySelectorAll("details.tier-affected[data-scope]").forEach(det => {
+        const scope = det.getAttribute("data-scope");
+        det.replaceChildren(...tierAffectedInner(scope));
       });
     }
 
@@ -368,6 +410,9 @@
           h("p", { class: "desc" }, [s.desc])
         ]);
         sec.appendChild(card(findOrCreateGlobal(s.name)));
+        // Transient scopes (external-lookup only) get a tier-level rollup of every
+        // corpus film their rules rewrite, in order — at the end of the scope.
+        if (isTransientScope(s.name)) sec.appendChild(tierAffectedDetails(s.name));
         root.appendChild(sec);
       });
       // Per-cinema section
@@ -470,7 +515,11 @@
           const next = {};
           body.affected.forEach(a => { next[a.ruleId] = { count: a.count, changes: a.changes || [] }; });
           affected = next;
+          const tiers = {};
+          (body.tiers || []).forEach(t => { tiers[t.scope] = { count: t.count, changes: t.changes || [] }; });
+          tierAffected = tiers;
           applyAffectedToDom();
+          applyTierAffectedToDom();
         }
       } catch (e) { /* leave the placeholders — server may be serving non-JSON (tests) */ }
       finally {

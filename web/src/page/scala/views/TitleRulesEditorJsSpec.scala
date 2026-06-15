@@ -98,6 +98,20 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     }
   }
 
+  it should "render one tier-level 'all affected films' rollup at the end of the transient (Global structural) section only" in {
+    onEditor { page =>
+      // Exactly one rollup — for the single transient scope (Global structural).
+      // Canonical changes the record and per-cinema is not global, so neither gets one.
+      page.evalInt("document.querySelectorAll('details.tier-affected').length") shouldBe 1
+      page.evalBool(
+        "!!document.querySelector('details.tier-affected[data-scope=\"GlobalStructural\"]')") shouldBe true
+      // It sits at the SECTION level after the rules card, not nested inside a rule row.
+      page.evalInt("document.querySelectorAll('.rule-wrap details.tier-affected').length") shouldBe 0
+      page.evalBool(
+        "document.querySelector('details.tier-affected').closest('section.scope') != null") shouldBe true
+    }
+  }
+
   it should "re-run the affected preview as the user edits a transient rule, but only once the regex compiles" in {
     onEditor { page =>
       // `scheduleAffected` is the debounced edit→refresh hook. It must fire for a

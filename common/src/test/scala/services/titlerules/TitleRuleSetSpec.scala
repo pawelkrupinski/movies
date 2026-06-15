@@ -117,4 +117,29 @@ class TitleRuleSetSpec extends AnyFlatSpec with Matchers {
     byId("a") shouldBe Seq(TitleRuleSet.Change("A Film B", "Film B")) // original, after rule a
     byId("b") shouldBe Seq(TitleRuleSet.Change("A Film B", "Film"))   // original, after rule b
   }
+
+  // ── transientTierAffected: the tier-level "all affected films" rollup ───────
+  private def tierFor(scope: RuleScope) =
+    previewSet.transientTierAffected(previewTitles).find(_.scope == scope).get
+
+  "transientTierAffected" should "only cover the scopes that don't rewrite the stored record" in {
+    previewSet.transientTierAffected(previewTitles).map(_.scope) should contain theSameElementsAs
+      Seq(GlobalStructural)     // no Canonical, no PerCinema
+  }
+
+  it should "map each affected film to its FINAL form after the whole tier folds, dropping untouched titles" in {
+    // "Top Gun" is untouched → omitted; "Batman & Robin" is Canonical-only → not
+    // in the structural tier. Only the two structural strips remain.
+    tierFor(GlobalStructural).changes should contain theSameElementsAs Seq(
+      TitleRuleSet.Change("Top Gun - Restored", "Top Gun"),
+      TitleRuleSet.Change("Klub: Vertigo", "Vertigo"))
+  }
+
+  it should "collapse a chain of rules on one title to a single original → final pair" in {
+    val rs = TitleRuleSet(Seq(
+      rule("a", GlobalStructural, "^A ", "", order = 10),
+      rule("b", GlobalStructural, " B$", "", order = 20)))
+    rs.transientTierAffected(Seq("A Film B")).find(_.scope == GlobalStructural).get.changes shouldBe
+      Seq(TitleRuleSet.Change("A Film B", "Film")) // net of both rules, not one pair per rule
+  }
 }

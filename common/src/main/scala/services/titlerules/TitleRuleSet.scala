@@ -117,6 +117,25 @@ case class TitleRuleSet(rules: Seq[TitleRule]) {
     }
   }
 
+  /** For every tier that DOESN'T rewrite the stored record (`GlobalStructural`),
+   *  the NET effect of the whole tier on the corpus: each corpus title the tier
+   *  changes, paired with its FINAL form after all the tier's rules have folded
+   *  in order. The tier-level rollup that complements [[transientAffected]]'s
+   *  per-rule attribution — what the editor shows as one "all affected films"
+   *  list at the end of the scope's rules. A title the tier leaves untouched is
+   *  omitted. Pure — the caller supplies the corpus display titles. */
+  def transientTierAffected(titles: Seq[String]): Seq[TitleRuleSet.TierAffected] = {
+    val distinct = titles.distinct
+    RuleScope.all.filterNot(_.changesRecord).map { scope =>
+      val tierRules = tier(scope)
+      val changes = distinct.flatMap { title =>
+        val result = fold(tierRules, title)
+        if (result != title) Some(TitleRuleSet.Change(title, result)) else None
+      }
+      TitleRuleSet.TierAffected(scope, changes)
+    }
+  }
+
   /** Patterns that failed to compile — surfaced to the editor so a typo can't
    *  silently no-op. */
   def invalidRules: Seq[TitleRule] = rules.filterNot(_.patternValid)
@@ -133,4 +152,9 @@ object TitleRuleSet {
    *  rewrites, in the corpus order they were folded. Empty when the rule touches
    *  nothing currently in the corpus. */
   final case class RuleAffected(ruleId: String, scope: RuleScope, changes: Seq[Change])
+
+  /** A whole transient TIER's net effect on the corpus — every (original →
+   *  final) pair the tier's rules produce when folded in order. Empty when the
+   *  tier touches nothing currently in the corpus. */
+  final case class TierAffected(scope: RuleScope, changes: Seq[Change])
 }
