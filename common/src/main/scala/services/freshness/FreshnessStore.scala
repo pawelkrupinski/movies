@@ -39,7 +39,7 @@ trait FreshnessStore {
 
   /** True when `key` was marked fresh within an explicit `ttl` window — the
    *  per-caller variant of [[isFresh]], used by the scrape scheduler to apply a
-   *  PER-SCRAPER window (Multikino's 60min vs an ordinary venue's 20min) that a
+   *  PER-SCRAPER window (Multikino's 60min vs an ordinary venue's 15min) that a
    *  single per-kind TTL can't express. `None` ttl means permanent (fresh
    *  whenever any timestamp exists); an unknown key is always stale. */
   final def isFreshWithin(key: String, ttl: Option[FiniteDuration], now: Instant = Instant.now()): Boolean =

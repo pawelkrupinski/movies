@@ -34,7 +34,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
   }
 
   // Multikino runs through the metered Zyte residential proxy, so it refreshes on
-  // a longer cadence than the 20min default to cut the proxy bill.
+  // a longer cadence than the 15min default to cut the proxy bill.
   it should "declare a 60min scrape freshness window (metered Zyte proxy)" in {
     client.scrapeFreshness shouldBe 60.minutes
   }

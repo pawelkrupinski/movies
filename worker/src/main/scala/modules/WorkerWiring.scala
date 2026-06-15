@@ -198,7 +198,7 @@ class WorkerWiring extends play.api.Logging {
       .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
 
   // Per-cinema scrape freshness window, keyed by the scrape dedup key. Multikino
-  // declares 60min (metered Zyte proxy); ordinary venues default to 20min. The
+  // declares 60min (metered Zyte proxy); ordinary venues default to 15min. The
   // reaper AND the handler share this so a cinema isn't enqueued then re-skipped
   // under a mismatched window.
   lazy val scrapeWindows: Map[String, FiniteDuration] =

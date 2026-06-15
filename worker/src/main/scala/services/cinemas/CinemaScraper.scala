@@ -52,7 +52,7 @@ trait CinemaScraper {
   /** How long a successful scrape of this cinema stays fresh — the scrape
    *  scheduler ([[services.tasks.ScrapeReaper]] / `ScrapeCinemaHandler`) skips a
    *  re-scrape inside this window. Defaults to [[Freshness.defaultScrapeTtl]]
-   *  (20min) for an ordinary directly-scraped venue. A source served through a
+   *  (15min) for an ordinary directly-scraped venue. A source served through a
    *  *metered* backend overrides it longer to cut request cost: Multikino runs
    *  through the paid Zyte residential proxy (its site Cloudflare-blocks our
    *  datacenter IP), so it refreshes on a 60min cadence — showtimes for a large

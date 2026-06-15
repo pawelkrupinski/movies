@@ -45,7 +45,7 @@ class ScrapeReaper(
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:    Clock = Clock.systemUTC(),
   // Per-cinema freshness window keyed by the scrape dedup key, so a metered
-  // source (Multikino → 60min) and an ordinary venue (→ 20min) can run on
+  // source (Multikino → 60min) and an ordinary venue (→ 15min) can run on
   // different cadences. Defaults to the kind-level default for every cinema;
   // `WorkerWiring` supplies the real per-scraper windows.
   scrapeWindow: String => FiniteDuration = _ => Freshness.defaultScrapeTtl
