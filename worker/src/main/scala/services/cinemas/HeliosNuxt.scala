@@ -107,9 +107,12 @@ object HeliosNuxt {
         // When both a regular film and an event share the same cleaned title (e.g. "Diabeł" + "Diabeł - KNT"),
         // prefer the /filmy/ URL — it points to the canonical movie page rather than a specific event.
         val urls   = movies.flatMap(_.filmUrl)
+        // Keep the raw titleOriginal (e.g. "The Pianist (re-release)") as a TMDB
+        // resolution hint — downstream de-decoration strips the suffix itself.
+        val originalTitle = movies.flatMap(_.originalTitle).map(_.trim).find(_.nonEmpty)
         CinemaMovie(
           movie = Movie(title = title, runtimeMinutes = movie.runtimeMinutes, releaseYear = None,
-            rawTitle = movies.map(_.title).headOption),
+            rawTitle = movies.map(_.title).headOption, originalTitle = originalTitle),
           cinema    = config.cinema,
           posterUrl = movies.flatMap(_.posterUrl).headOption,
           filmUrl   = urls.find(_.contains("/filmy/")).orElse(urls.headOption),
@@ -141,7 +144,8 @@ object HeliosNuxt {
     slug:           String,
     posterUrl:      Option[String],
     filmUrl:        Option[String],
-    runtimeMinutes: Option[Int]
+    runtimeMinutes: Option[Int],
+    originalTitle:  Option[String]
   )
 
   // Bundles the three things every internal parser needs: the slice of the IIFE
@@ -163,7 +167,7 @@ object HeliosNuxt {
   private val ScreeningEntry    = """\{timeFrom:("[\d :.-]+"|[^,{]+),saleTimeTo:[^,]+,sourceId:("[\w-]+"|\w+),""".r
   private val PrintRelease      = """printRelease:([^,}]+)""".r
   // Top-level film: ,id:N,sourceId:X,title:Y,titleOriginal:Z,slug:W in order.
-  private val TopLevelMovie     = """,id:(\d{3,}|[\w$]+),sourceId:(?:"[^"]+"|[\w$]+),title:(?:"([^"]+)"|([\w$]+)),titleOriginal:(?:"[^"]*"|[\w$]+),slug:(?:"([^"]+)"|([\w$]+))""".r
+  private val TopLevelMovie     = """,id:(\d{3,}|[\w$]+),sourceId:(?:"[^"]+"|[\w$]+),title:(?:"([^"]+)"|([\w$]+)),titleOriginal:(?:"([^"]*)"|([\w$]+)),slug:(?:"([^"]+)"|([\w$]+))""".r
 
   private def parseNuxtPage(html: String, baseUrl: String): NuxtPage = {
     val empty = NuxtPage(Map.empty, Map.empty)
@@ -228,14 +232,17 @@ object HeliosNuxt {
     val normal   = parseNormalNuxtMovies(context)
     val embedded = parseEmbeddedScreeningNuxtMovies(context)
     val events   = parseEventNuxtMovies(context)
-    // When an event is tied to a parent film (e.g. "Billie Eilish - … Live in 3D"
-    // → the base Tour entry), prefer the parent film's poster/runtime. Sports
-    // and concert-only events have no embedded block, so we fall back to the
-    // poster/runtime extracted directly from the event entry.
+    // When an event is tied to a parent film (e.g. "Pianista w Helios RePlay"
+    // → the embedded "Pianista" movie block), prefer the parent film's
+    // poster/runtime/titleOriginal. The event entry itself carries no
+    // titleOriginal, so this is the only place a RePlay/event row gets one.
+    // Sports and concert-only events have no embedded block, so we fall back to
+    // the poster/runtime extracted directly from the event entry.
     val enrichedEvents = events.map { case (id, ev) =>
       id -> embedded.get(id).map(em => ev.copy(
         posterUrl      = em.posterUrl.orElse(ev.posterUrl),
-        runtimeMinutes = em.runtimeMinutes.orElse(ev.runtimeMinutes)
+        runtimeMinutes = em.runtimeMinutes.orElse(ev.runtimeMinutes),
+        originalTitle  = em.originalTitle.orElse(ev.originalTitle)
       )).getOrElse(ev)
     }
     normal ++ embedded ++ enrichedEvents
@@ -259,7 +266,8 @@ object HeliosNuxt {
       posterUrl      = nuxtPoster(block, resolve),
       filmUrl        = nuxtDigits(block, "id", resolve).map(id => s"$baseUrl/filmy/$slug-$id")
                          .orElse(Some(s"$baseUrl/filmy/$slug")),
-      runtimeMinutes = nuxtRuntime(block, resolve)
+      runtimeMinutes = nuxtRuntime(block, resolve),
+      originalTitle  = nuxtField(block, "titleOriginal", resolve)
     )
 
   private def parseNormalNuxtMovies(context: NuxtContext): Map[String, NuxtMovie] =
@@ -267,14 +275,16 @@ object HeliosNuxt {
       val numericId = Some(m.group(1)).flatMap(id =>
         if (id.forall(_.isDigit)) Some(id) else context.resolve(id).filter(_.forall(_.isDigit)))
       val title     = Option(m.group(2)).orElse(context.resolve(m.group(3)))
-      val slug      = Option(m.group(4)).orElse(context.resolve(m.group(5)))
+      // titleOriginal may be a "literal" (group 4) or a reference token (group 5).
+      val original  = Option(m.group(4)).orElse(Option(m.group(5)).flatMap(context.resolve))
+      val slug      = Option(m.group(6)).orElse(context.resolve(m.group(7)))
       for {
         nid <- numericId
         t   <- title
         s   <- slug
       } yield {
         val nearby = context.movieBody.substring(m.start, math.min(m.start + 1500, context.movieBody.length))
-        s"m$nid" -> NuxtMovie(t, s, nuxtPoster(nearby, context.resolve), Some(s"${context.baseUrl}/filmy/$s-$nid"), nuxtRuntime(nearby, context.resolve))
+        s"m$nid" -> NuxtMovie(t, s, nuxtPoster(nearby, context.resolve), Some(s"${context.baseUrl}/filmy/$s-$nid"), nuxtRuntime(nearby, context.resolve), original)
       }
     }.toMap
 
@@ -304,7 +314,8 @@ object HeliosNuxt {
             slug           = slug,
             posterUrl      = nuxtPoster(entryBlock, context.resolve),
             filmUrl        = None,
-            runtimeMinutes = nuxtRuntime(entryBlock, context.resolve)
+            runtimeMinutes = nuxtRuntime(entryBlock, context.resolve),
+            originalTitle  = None
           )
         }
       }
