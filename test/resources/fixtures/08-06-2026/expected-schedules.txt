@@ -3547,26 +3547,26 @@ cinemaScrapes:
 showings:
   2026-06-14  Kino Rialto                   15:30
 
-=== Mi amor ===
-displayTitle:      Mi amor
+=== Mi Amor ===
+displayTitle:      Mi Amor
 cinemaTitles:      Mi Amor
 runtimeMinutes:    113
 releaseYear:       2025
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/2163993.entity.jpg
 synopsis.length:   564
-cast:              Pom Klementieff, Benoît Magimel, Freya Mavor, Astrid Bergès-Frisbey
+cast:              Pom Klementieff, Benoît Magimel, Freya Mavor
 director:          Guillaume Nicloux
-tmdbId:            1302640
-imdbId:            tt35675616
-originalTitle:     Mi amor
-imdbRating:        6.2
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     6.0
+filmwebRating:     —
 metacriticUrl:     —
 rottenTomatoesUrl: —
-filmwebUrl:        https://www.filmweb.pl/film/Mi+amor-2025-10101051
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/mi-amor/
 cinemaScrapes:
@@ -5443,22 +5443,22 @@ showings:
 displayTitle:      Pianista
 cinemaTitles:      Pianista
 runtimeMinutes:    149
-releaseYear:       2002
-countries:         Francja, Niemcy, Polska, Wielka Brytania, USA
+releaseYear:       —
+countries:         —
 posterUrl:         https://img.helios.pl/pliki/film/pianista/pianista-plakat-769.png
-synopsis.length:   579
-cast:              Adrien Brody, Thomas Kretschmann, Frank Finlay, Maureen Lipman, Emilia Fox
-director:          Roman Polański
-tmdbId:            423
-imdbId:            tt0253474
-originalTitle:     The Pianist
-imdbRating:        8.5
-metascore:         85
-rottenTomatoes:    29
-filmwebRating:     8.2702
-metacriticUrl:     https://www.metacritic.com/movie/the-pianist
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_pianist
-filmwebUrl:        https://www.filmweb.pl/film/Pianista-2002-32225
+synopsis.length:   —
+cast:              —
+director:          —
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/pianista-w-helios-replay-2610
 cinemaScrapes:
@@ -6417,22 +6417,22 @@ showings:
 displayTitle:      Powrót do przyszłości II
 cinemaTitles:      Powrót do przyszłości II
 runtimeMinutes:    108
-releaseYear:       1989
-countries:         USA
+releaseYear:       —
+countries:         —
 posterUrl:         https://img.helios.pl/pliki/film/powrot-do-przyszlosci-ii/powrot-do-przyszlosci-ii-plakat-70759.jpg
-synopsis.length:   555
-cast:              Michael J. Fox, Christopher Lloyd, Lea Thompson, Thomas F. Wilson, Elisabeth Shue
-director:          Robert Zemeckis
-tmdbId:            165
-imdbId:            tt0096874
-originalTitle:     Back to the Future Part II
-imdbRating:        7.8
-metascore:         57
-rottenTomatoes:    63
-filmwebRating:     7.50205
-metacriticUrl:     https://www.metacritic.com/movie/back-to-the-future-part-ii
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/back_to_the_future_part_ii
-filmwebUrl:        https://www.filmweb.pl/film/Powr%C3%B3t+do+przysz%C5%82o%C5%9Bci+II-1989-8824
+synopsis.length:   —
+cast:              —
+director:          —
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/powrot-do-przyszlosci-ii-w-helios-replay-2577
 cinemaScrapes:
@@ -6626,22 +6626,22 @@ showings:
 displayTitle:      Prosta historia
 cinemaTitles:      Prosta historia
 runtimeMinutes:    113
-releaseYear:       1999
+releaseYear:       —
 countries:         USA, Wielka Brytania, Francja
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/06/prosta-historia-WEB_01_680-x-980-1-200x288.webp
-synopsis.length:   328
-cast:              Richard Farnsworth, Sissy Spacek, Jane Galloway Heitz, Joseph A. Carpenter, Donald Wiegert
-director:          David Lynch
-tmdbId:            404
-imdbId:            tt0166896
-originalTitle:     The Straight Story
-imdbRating:        8.0
-metascore:         86
-rottenTomatoes:    95
-filmwebRating:     7.68003
-metacriticUrl:     https://www.metacritic.com/movie/the-straight-story
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/straight_story
-filmwebUrl:        https://www.filmweb.pl/film/Prosta+historia-1999-821
+synopsis.length:   280
+cast:              —
+director:          —
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/prosta-historia
 cinemaScrapes:
@@ -6793,22 +6793,22 @@ showings:
 displayTitle:      Rocznica
 cinemaTitles:      Rocznica
 runtimeMinutes:    112
-releaseYear:       2025
-countries:         USA, Irlandia
+releaseYear:       —
+countries:         USA
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/rocznica-rocznica-plakat-finalny-scaled-1-200x288.webp
-synopsis.length:   509
-cast:              Diane Lane, Kyle Chandler, Madeline Brewer, Zoey Deutch, Phoebe Dynevor
-director:          Jan Komasa
-tmdbId:            1126336
-imdbId:            tt12583926
-originalTitle:     Anniversary
-imdbRating:        6.7
-metascore:         57
-rottenTomatoes:    67
-filmwebRating:     6.57635
-metacriticUrl:     https://www.metacritic.com/movie/anniversary
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/anniversary_2025
-filmwebUrl:        https://www.filmweb.pl/film/Rocznica-2025-856239
+synopsis.length:   287
+cast:              —
+director:          —
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/rocznica
 cinemaScrapes:
@@ -8686,22 +8686,22 @@ showings:
 displayTitle:      Zaproszenie
 cinemaTitles:      ZAPROSZENIE | Zaproszenie
 runtimeMinutes:    108
-releaseYear:       2022
-countries:         USA, Węgry
+releaseYear:       2026
+countries:         USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg
 synopsis.length:   649
-cast:              Nathalie Emmanuel, Thomas Doherty, Sean Pertwee, Hugh Skinner, Carol Ann Crawford
+cast:              Olivia Wilde, Seth Rogen, Penélope Cruz, Edward Norton
 director:          Olivia Wilde
-tmdbId:            830788
-imdbId:            tt12873562
-originalTitle:     The Invitation
-imdbRating:        5.3
-metascore:         74
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     https://www.metacritic.com/movie/the-invitation
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_invitation_2022
-filmwebUrl:        https://www.filmweb.pl/film/Zaproszenie-2022-10014473
+tmdbId:            950028
+imdbId:            tt14173636
+originalTitle:     The Invite
+imdbRating:        6.7
+metascore:         77
+rottenTomatoes:    92
+filmwebRating:     6.09091
+metacriticUrl:     https://www.metacritic.com/movie/the-invite
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_invite
+filmwebUrl:        https://www.filmweb.pl/film/Zaproszenie-2026-10109168
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14519-zaproszenie-przedpremiera/
 cinemaScrapes:

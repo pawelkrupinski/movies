@@ -694,20 +694,30 @@ class MovieService(
     // this thread), so the caller keeps the hit's title/year as a fallback when
     // the full-details fetch fails. On a cache HIT the loader doesn't run and it
     // stays None — only the id is cached.
+    // When the SEARCH TITLE is the only signal — no year, no director, no
+    // original-title hint — a title search that returns several same-title films
+    // would resolve via the popularity tie-break, i.e. a guess (the "Zaproszenie"
+    // class: a bare title with two same-title TMDB entries). Refuse rather than
+    // guess: resolve only when the search is unambiguous (exactly one result).
+    val titleOnly = year.isEmpty && rowDirectors.isEmpty && originalTitle.isEmpty && slotOriginals.isEmpty
     var freshHit: Option[TmdbClient.SearchResult] = None
     val resolvedId = tmdbIdCache.getOrResolve(hintKey) {
-      // Resolve from this row's own titles only — no sister-row shortcut. Copying
-      // a tmdbId from an already-resolved relative was order-dependent (it could
-      // only borrow once the relative had resolved), which is what made
-      // whole-corpus snapshots flaky. Own-title search + director-walk are
-      // order-independent, so the row resolves to the same film every run.
-      // Director-walk each reported director in turn (sorted) so a row whose
-      // first-sorted director name happens to miss still recovers via the others.
-      val searchHit = candidates.iterator
-        .flatMap(q => verifyByDirector(tmdb.search(q, year), Some(rowDirectors.mkString(",")).filter(_.nonEmpty)))
-        .nextOption()
-      val hit = searchHit
-        .orElse(rowDirectors.iterator.flatMap(d => directorWalk(Some(d), year)).nextOption())
+      val hit =
+        if (titleOnly)
+          candidates.iterator.flatMap(q => tmdb.searchUnique(q, year)).nextOption()
+        else {
+          // Resolve from this row's own titles only — no sister-row shortcut. Copying
+          // a tmdbId from an already-resolved relative was order-dependent (it could
+          // only borrow once the relative had resolved), which is what made
+          // whole-corpus snapshots flaky. Own-title search + director-walk are
+          // order-independent, so the row resolves to the same film every run.
+          // Director-walk each reported director in turn (sorted) so a row whose
+          // first-sorted director name happens to miss still recovers via the others.
+          val searchHit = candidates.iterator
+            .flatMap(q => verifyByDirector(tmdb.search(q, year), Some(rowDirectors.mkString(",")).filter(_.nonEmpty)))
+            .nextOption()
+          searchHit.orElse(rowDirectors.iterator.flatMap(d => directorWalk(Some(d), year)).nextOption())
+        }
       freshHit = hit
       hit.map(_.id.toString)
     }.map(_.toInt)

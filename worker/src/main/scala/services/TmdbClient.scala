@@ -54,13 +54,13 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    * year-less search and picks the candidate whose own year is closest to the
    * requested one. Ties broken by popularity.
    */
-  def search(title: String, year: Option[Int]): Option[TmdbClient.SearchResult] = authHeader.flatMap { auth =>
-    def searchOnce(yearParameter: Option[Int]): Seq[TmdbClient.SearchResult] = {
-      val yp = yearParameter.map(y => s"&year=$y&primary_release_year=$y").getOrElse("")
-      val url = s"$ApiBase/search/movie?language=pl-PL&include_adult=false&query=${urlEncode(title)}$yp${apiKeyParameter("&")}"
-      parseSearchResults(http.get(url, auth))
-    }
+  private def searchOnce(title: String, yearParameter: Option[Int], auth: Map[String, String]): Seq[TmdbClient.SearchResult] = {
+    val yp = yearParameter.map(y => s"&year=$y&primary_release_year=$y").getOrElse("")
+    val url = s"$ApiBase/search/movie?language=pl-PL&include_adult=false&query=${urlEncode(title)}$yp${apiKeyParameter("&")}"
+    parseSearchResults(http.get(url, auth))
+  }
 
+  def search(title: String, year: Option[Int]): Option[TmdbClient.SearchResult] = authHeader.flatMap { auth =>
     // Try year-restricted first (more precise when TMDB has the film for that
     // year), then year-less fallback. pickBest runs at BOTH levels so we don't
     // silently grab the most popular film that merely contains the query word:
@@ -68,8 +68,21 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
     //   - "Odlot"  (year=None) → would otherwise pick Pixar's "Up" (pop 21)
     //   - "Rocznica" (year=None) → would otherwise pick "Harry Potter 20th
     //     Anniversary: Return to Hogwarts"
-    val yearScoped = if (year.isDefined) pickBest(searchOnce(year), title, year) else None
-    yearScoped.orElse(pickBest(searchOnce(None), title, year))
+    val yearScoped = if (year.isDefined) pickBest(searchOnce(title, year, auth), title, year) else None
+    yearScoped.orElse(pickBest(searchOnce(title, None, auth), title, year))
+  }
+
+  /** Resolve ONLY when the title search is unambiguous — exactly one result.
+   *  Used when the title is the only signal we have (no year / director /
+   *  original-title hint): with several same-title films we'd otherwise fall to
+   *  the popularity tie-break and guess (the "Zaproszenie" class of
+   *  mis-resolution), so refuse rather than guess. Mirrors `search`'s
+   *  year-restricted-then-yearless preference, checking uniqueness on whichever
+   *  tier returns results. */
+  def searchUnique(title: String, year: Option[Int]): Option[TmdbClient.SearchResult] = authHeader.flatMap { auth =>
+    val scoped  = if (year.isDefined) searchOnce(title, year, auth) else Seq.empty
+    val results = if (scoped.nonEmpty) scoped else searchOnce(title, None, auth)
+    if (results.lengthCompare(1) == 0) results.headOption else None
   }
 
   /**
