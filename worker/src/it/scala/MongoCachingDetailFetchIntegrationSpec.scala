@@ -1,6 +1,7 @@
 package integration
 
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
+import org.mongodb.scala.model.Filters
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -35,6 +36,17 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     override def get(url: String): String = { gets += 1; s"<html>$url</html>" }
   }
 
+  /** Wait until the fire-and-forget store has landed in Mongo (the doc is keyed
+   *  by `_id == url`), polling rather than racing a fixed sleep — a 300ms sleep
+   *  lost the race on a slow CI Mongo, so the second instance missed the cache
+   *  and re-fetched, failing `gets == 1` intermittently. */
+  private def awaitStored(url: String): Unit = {
+    val deadline = System.currentTimeMillis() + 10.seconds.toMillis
+    while (System.currentTimeMillis() < deadline &&
+           Await.result(db.getCollection(collName).find(Filters.eq("_id", url)).headOption(), 5.seconds).isEmpty)
+      Thread.sleep(25)
+  }
+
   "Two MongoCachingDetailFetch instances sharing a collection" should "fetch the underlying only once for the same URL" in {
     val url   = s"https://chain/film/${System.nanoTime()}"
     val under = new CountingFetch
@@ -42,7 +54,7 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val serverB = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName)
 
     serverA.get(url) shouldBe s"<html>$url</html>" // fetches + stores
-    Thread.sleep(300) // let the fire-and-forget store land
+    awaitStored(url)                               // wait out the fire-and-forget store (no race)
     serverB.get(url) shouldBe s"<html>$url</html>" // served from Mongo — no new underlying fetch
 
     under.gets shouldBe 1
