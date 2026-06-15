@@ -51,7 +51,15 @@ primary_region = 'arn'
   # monolith sizing — 384m heap + non-heap caps fit the 1 GB cgroup with
   # ~100 MB headroom. If the 3-city load OOM-kills or GC-thrashes, the fix is a
   # bigger [[vm]] (2 GB) + larger heap, not just bumping heap inside 1 GB.
-  JAVA_OPTS = '-Xms384m -Xmx384m -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication -XX:ReservedCodeCacheSize=96m -XX:MaxMetaspaceSize=160m -XX:MaxDirectMemorySize=96m'
+  #
+  # LOAD-BEARING trailing flag `-Djdk.http.auth.tunneling.disabledSchemes=` (empty):
+  # re-enables Basic auth on HTTPS CONNECT tunnels, which the JDK disables by
+  # default. WITHOUT it every fetch through the residential proxy (Decodo ISP, for
+  # the Cloudflare-blocked cinemas) 407s and silently falls back to Zyte — the proxy
+  # never serves. MUST be a JVM startup flag, not a runtime System.setProperty: the
+  # property is cached at the first HttpClient build, before app code can set it.
+  # See reference_decodo_isp_proxy.
+  JAVA_OPTS = '-Xms384m -Xmx384m -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication -XX:ReservedCodeCacheSize=96m -XX:MaxMetaspaceSize=160m -XX:MaxDirectMemorySize=96m -Djdk.http.auth.tunneling.disabledSchemes='
 
 # NO [http_service]: the worker serves no user traffic, so it gets no public
 # IP / edge routing. Its only inbound HTTP is the Fly machine health check
