@@ -716,7 +716,7 @@ class MovieService(
           val searchHit = candidates.iterator
             .flatMap(q => verifyByDirector(tmdb.search(q, year), Some(rowDirectors.mkString(",")).filter(_.nonEmpty)))
             .nextOption()
-          searchHit.orElse(rowDirectors.iterator.flatMap(d => directorWalk(Some(d), year)).nextOption())
+          searchHit.orElse(rowDirectors.iterator.flatMap(d => directorWalk(Some(d), year, candidates)).nextOption())
         }
       freshHit = hit
       hit.map(_.id.toString)
@@ -752,23 +752,43 @@ class MovieService(
       }
     }
 
-  /** Walk a cinema-reported director's TMDB filmography and pick the entry
-   *  whose release year matches the cinema's reported year. Needed when the
-   *  title search lands on the wrong film (different decade, different
-   *  language, popularity tie-break gone wrong). Year is required — without
-   *  it we can't reliably disambiguate among the director's films. */
+  /** Walk a cinema-reported director's TMDB filmography and pick the entry the
+   *  cinema is actually showing. Needed when the title search lands on the wrong
+   *  film (different decade, different language, popularity tie-break gone wrong).
+   *
+   *  Two ways to pick, in order:
+   *    1. TITLE match — a credit whose (clean) title equals one of the cinema's
+   *       search candidates. Cinemas routinely report a PRODUCTION year that
+   *       drifts ±1 from TMDB's first-release year ("Mi Amor": cinema 2025, TMDB
+   *       dates Nicloux's film 2026-05-06), so an exact-year walk would miss it.
+   *       The title is the unambiguous signal — a director's two same-year films
+   *       almost never share a title — so prefer it, and accept a ±1-year window
+   *       to absorb the production/release drift without matching an unrelated
+   *       decade's remake.
+   *    2. EXACT year — the original behaviour, for the case where the cinema's
+   *       title doesn't match TMDB's spelling but the year pins the film. Still
+   *       requires a year; without one we can't disambiguate among the director's
+   *       films at all. */
   private def directorWalk(
-    director: Option[String],
-    year:     Option[Int]
+    director:   Option[String],
+    year:       Option[Int],
+    candidates: Seq[String] = Nil
   ): Option[TmdbClient.SearchResult] = {
-    for {
-      directory      <- director
-      y        <- year
-      personId <- tmdb.findPerson(directory.split(",").head.trim)
-      film     <- tmdb.personDirectorCredits(personId).find(_.releaseYear.contains(y))
-    } yield {
-      logger.info(s"Director-walk: '$directory' year=$y → tmdbId=${film.id} '${film.originalTitle.getOrElse(film.title)}'")
-      film
+    director.flatMap { directory =>
+      tmdb.findPerson(directory.split(",").head.trim).flatMap { personId =>
+        val credits = tmdb.personDirectorCredits(personId)
+        val wanted  = candidates.iterator.map(MovieService.normalize).filter(_.nonEmpty).toSet
+        def titleOf(f: TmdbClient.SearchResult): Set[String] =
+          (Seq(f.title) ++ f.originalTitle.toSeq).map(MovieService.normalize).filter(_.nonEmpty).toSet
+        // Title match first (±1-year-tolerant); fall back to an exact-year match.
+        val byTitle = if (wanted.isEmpty) None else credits.find { f =>
+          titleOf(f).exists(wanted.contains) && year.forall(y => f.releaseYear.forall(fy => math.abs(fy - y) <= 1))
+        }
+        byTitle.orElse(year.flatMap(y => credits.find(_.releaseYear.contains(y)))).map { film =>
+          logger.info(s"Director-walk: '$directory' year=${year.getOrElse("?")} → tmdbId=${film.id} '${film.originalTitle.getOrElse(film.title)}'")
+          film
+        }
+      }
     }
   }
 
