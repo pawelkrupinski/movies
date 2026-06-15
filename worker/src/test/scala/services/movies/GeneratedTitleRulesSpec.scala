@@ -37,8 +37,9 @@ class GeneratedTitleRulesSpec extends AnyFlatSpec with Matchers {
   // The real prod rules on real decorated titles — strips to the bare film for
   // the external-API query while the screening keeps its banner row. Spans the
   // breadth of the prod set: seed programme prefix + accessibility, the curated
-  // ExtraTitleRules cycles (Konesera / DKF / senior / przedpremiera), and the
-  // festival banners (WTF Fest / 6 razy Pedro / Kino cyrkularne / Fellini).
+  // ExtraTitleRules cycles (Konesera / DKF / senior / przedpremiera), the
+  // festival banners (WTF Fest / 6 razy Pedro / Kino cyrkularne / Fellini), and
+  // the global trailing-year strip (the bare film, not the cinema's "(1957)").
   private val cases = Seq(
     "Kino bez barier: Freak Show (AD + CC + PJM)"           -> "Freak Show",
     "Klub Konesera: Ojczyzna"                               -> "Ojczyzna",
@@ -50,7 +51,8 @@ class GeneratedTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Ból i blask | 6 razy Pedro"                            -> "Ból i blask",
     "Lawrence z Arabii | Kino cyrkularne EXTRA"             -> "Lawrence z Arabii",
     "Federico Fellini: ciao a tutti! – Osiem i pół"         -> "Osiem i pół",
-    "Noce Cabirii (1957) | FEDERICO FELLINI: ciao a tutti!" -> "Noce Cabirii (1957)"
+    // Fellini-suffix strips the banner, then the global year rule drops " (1957)".
+    "Noce Cabirii (1957) | FEDERICO FELLINI: ciao a tutti!" -> "Noce Cabirii"
   )
 
   it should "strip every known prod banner for the external-API query" in {
