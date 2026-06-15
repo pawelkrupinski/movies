@@ -27,6 +27,15 @@ trait ResolutionCache {
   def getOrResolve(hintKey: String)(resolve: => Option[String]): Option[String]
 }
 
+object ResolutionCache {
+  /** A cache that never stores — every call resolves live. The default for
+   *  tests/scripts that don't wire a real cache, so behaviour is identical to
+   *  the pre-cache code path. */
+  val passthrough: ResolutionCache = new ResolutionCache {
+    def getOrResolve(hintKey: String)(resolve: => Option[String]): Option[String] = resolve
+  }
+}
+
 /**
  * In-memory (Caffeine, 24h `expireAfterWrite`) write-through to a
  * [[ResolutionStore]]. The Caffeine layer absorbs the hot path; the store gives

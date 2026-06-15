@@ -11,6 +11,7 @@ import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete, Stagi
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepository, MovieService, MongoNormalizationReportRepository, NormalizationRebuilder, NormalizationReport, NormalizationReportRepository, UnscreenedCleanup}
 import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
+import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
@@ -264,6 +265,10 @@ class WorkerWiring extends play.api.Logging {
   // drained by the TaskWorker, retried (`Reschedule`) + deduped by the queue,
   // and shown with a live queue place on `/debug`. `taskQueue` is a lazy val
   // declared below; the closure defers reading it, so there's no init cycle.
+  // Hint-keyed resolution caches (Caffeine + per-source Mongo collection, 24h
+  // TTL): the same hints resolve once instead of hitting the upstream each cycle.
+  lazy val tmdbIdCache: ResolutionCache =
+    new WriteThroughResolutionCache(new MongoResolutionStore(mongoConnection.database, "resolve_tmdb"))
   lazy val movieService = new MovieService(
     movieCache, eventBus, tmdbClient, backgroundBudget.executionContext("enrichment-worker"),
     enqueueResolveTmdb = Some((title, year, originalTitle, director) => {
@@ -272,7 +277,8 @@ class WorkerWiring extends play.api.Logging {
         EnrichTaskKeys.resolveTmdbDedup(title, year),
         EnrichTaskKeys.resolveTmdbPayload(title, year, director, originalTitle))
       ()
-    }))
+    }),
+    tmdbIdCache = tmdbIdCache)
   lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache)
 
   // ── Task queue (scrape scheduling) ──────────────────────────────────────────

@@ -5,6 +5,7 @@ import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete, TmdbResolved}
+import services.resolution.{ResolutionCache, ResolutionKeys}
 import tools.DaemonExecutors
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -49,7 +50,13 @@ class MovieService(
   // side-effect of the bus event. Left `None`, the stage resolves INLINE on the
   // `executionContext` pool (unit specs, scripts, Mongo-less dev). Either way the resolution
   // WORK is the shared `resolveTmdbOnce`; only this dispatch seam differs.
-  enqueueResolveTmdb: Option[(String, Option[Int], Option[String], Option[String]) => Unit] = None
+  enqueueResolveTmdb: Option[(String, Option[Int], Option[String], Option[String]) => Unit] = None,
+  // Caches the expensive TMDB-id resolution (the search + director-verify +
+  // director-walk) keyed by the film's hints, so two cinema rows reporting the
+  // same hints resolve once. `fullDetails`/`imdbId` are still fetched per hit
+  // (cheap single round-trips) — only the search loop is cached. Defaults to a
+  // passthrough so unit specs/scripts keep resolving live unless they wire one.
+  tmdbIdCache: ResolutionCache = ResolutionCache.passthrough
 ) extends Stoppable with Logging {
 
   // Active or queued INLINE TMDB-stage lookups, so the inline-default dispatch
@@ -341,8 +348,8 @@ class MovieService(
     val (origHint, directoryHint) = tmdbHints(existing)
     val label = s"'$cleanTitle' (${year.getOrElse("?")})"
     Try(lookupTmdb(cleanTitle, year, existing, origHint, directoryHint)) match {
-      case Success(Some((hit, imdbId, detailsOpt))) =>
-        val resolved = buildResolvedRecord(hit, imdbId, detailsOpt, existing)
+      case Success(Some((tmdbId, hit, imdbId, detailsOpt))) =>
+        val resolved = buildResolvedRecord(tmdbId, hit, imdbId, detailsOpt, existing)
         logger.info(s"TMDB (staging): $label → matched tmdbId=${resolved.tmdbId.getOrElse("—")} imdbId=${resolved.imdbId.getOrElse("—")}")
         Some(resolved)
       case Success(None) =>
@@ -409,7 +416,7 @@ class MovieService(
     // internally before `row` was passed in) — outside the lock, like the slow
     // lookup it feeds.
     val candidateRow = cache.get(cache.keyOf(key.cleanTitle, key.year)).getOrElse(MovieRecord())
-    lookupTmdb(key.cleanTitle, key.year, candidateRow, originalTitleHint, directorHint).map { case (hit, imdbId, detailsOpt) =>
+    lookupTmdb(key.cleanTitle, key.year, candidateRow, originalTitleHint, directorHint).map { case (tmdbId, hit, imdbId, detailsOpt) =>
       // Read → modify → write under the per-title lock so a cinema scrape's
       // freshly-written slot, landing just before this thread enters the
       // critical section, is visible to the carry-forward below — and so
@@ -427,7 +434,7 @@ class MovieService(
         // `canonicalKeyFor` shares this row's sanitize (so the same title lock),
         // and falls back to `key` only when no live row exists yet (first resolve).
         val writeKey = cache.canonicalKeyFor(rawKey).getOrElse(key)
-        val enr      = buildResolvedRecord(hit, imdbId, detailsOpt, cache.get(writeKey).getOrElse(MovieRecord()))
+        val enr      = buildResolvedRecord(tmdbId, hit, imdbId, detailsOpt, cache.get(writeKey).getOrElse(MovieRecord()))
         // Settle this film at conclusion: write the resolved record AND fold any
         // yearless+idless sibling a concurrent scrape stranded (the "Dzień
         // objawienia" Multikino row) onto it in ONE merged write — so the row's
@@ -457,9 +464,9 @@ class MovieService(
     row:               MovieRecord,
     originalTitleHint: Option[String],
     directorHint:      Option[String]
-  ): Option[(TmdbClient.SearchResult, Option[String], Option[TmdbClient.FullDetails])] =
-    resolveTmdb(cleanTitle, year, row, originalTitleHint, directorHint).map { case (hit, imdbId) =>
-      (hit, imdbId, tmdb.fullDetails(hit.id))
+  ): Option[(Int, Option[TmdbClient.SearchResult], Option[String], Option[TmdbClient.FullDetails])] =
+    resolveTmdbId(cleanTitle, year, row, originalTitleHint, directorHint).map { case (tmdbId, hit) =>
+      (tmdbId, hit, tmdb.imdbId(tmdbId), tmdb.fullDetails(tmdbId))
     }
 
   /** Build the resolved `MovieRecord` from a TMDB hit + the row's `existing`
@@ -468,7 +475,8 @@ class MovieService(
    *  how a resolution writes the TMDB-side fields + `Tmdb` slot while carrying the
    *  cinema-side data and score fields forward. */
   private def buildResolvedRecord(
-    hit:        TmdbClient.SearchResult,
+    tmdbId:     Int,
+    hit:        Option[TmdbClient.SearchResult],
     imdbId:     Option[String],
     detailsOpt: Option[TmdbClient.FullDetails],
     existing:   MovieRecord
@@ -477,7 +485,7 @@ class MovieService(
     // (same `tmdbId`) but momentarily dropped the cross-reference — happens for
     // very recent releases and occasional TMDB data hiccups. A DIFFERENT tmdbId
     // accepts the new film's imdbId (even None) so a stale id can't leak across.
-    val preserveImdbId = existing.tmdbId.contains(hit.id)
+    val preserveImdbId = existing.tmdbId.contains(tmdbId)
     val resolvedImdbId = imdbId.orElse(if (preserveImdbId) existing.imdbId else None)
     // Carry the cinema-side fields forward — the TMDB stage doesn't own cinema
     // data; without this a fresh resolve would wipe every cinema's slot.
@@ -487,15 +495,20 @@ class MovieService(
     // and poster — not just the search-hit-shape fields. On a fetch failure fall
     // back to the search-hit shape so the row at least keeps title + year.
     val existingTmdbSlot = carriedData.getOrElse(Tmdb, SourceData())
+    // The search hit's title/originalTitle/year are the fallback when the full
+    // details fetch fails. `hit` is present on a fresh resolution and None on a
+    // cache hit (the cache stores only the id) — in that rare double case the
+    // slot keeps whatever it already had, and the next resolution fills it.
+    val hitTitle = hit.map(_.title).filter(_.nonEmpty)
     val tmdbSlot = detailsOpt match {
       case Some(d) => SourceData(
-        title          = d.title.orElse(Some(hit.title).filter(_.nonEmpty)).orElse(existingTmdbSlot.title),
-        originalTitle  = d.originalTitle.orElse(hit.originalTitle).orElse(existingTmdbSlot.originalTitle),
+        title          = d.title.orElse(hitTitle).orElse(existingTmdbSlot.title),
+        originalTitle  = d.originalTitle.orElse(hit.flatMap(_.originalTitle)).orElse(existingTmdbSlot.originalTitle),
         synopsis       = d.synopsis.orElse(existingTmdbSlot.synopsis),
         cast           = if (d.cast.nonEmpty) d.cast else existingTmdbSlot.cast,
         director       = if (d.director.nonEmpty) d.director else existingTmdbSlot.director,
         runtimeMinutes = d.runtimeMinutes.orElse(existingTmdbSlot.runtimeMinutes),
-        releaseYear    = d.releaseYear.orElse(hit.releaseYear).orElse(existingTmdbSlot.releaseYear),
+        releaseYear    = d.releaseYear.orElse(hit.flatMap(_.releaseYear)).orElse(existingTmdbSlot.releaseYear),
         // Canonicalise TMDB's English country names ("United States of America" →
         // "USA") so the merged-record dedup operates on the same strings cinemas
         // already write.
@@ -505,9 +518,9 @@ class MovieService(
         posterUrl      = d.posterUrl.orElse(existingTmdbSlot.posterUrl)
       )
       case None => existingTmdbSlot.copy(
-        title         = Some(hit.title).filter(_.nonEmpty).orElse(existingTmdbSlot.title),
-        originalTitle = hit.originalTitle.orElse(existingTmdbSlot.originalTitle),
-        releaseYear   = hit.releaseYear.orElse(existingTmdbSlot.releaseYear)
+        title         = hitTitle.orElse(existingTmdbSlot.title),
+        originalTitle = hit.flatMap(_.originalTitle).orElse(existingTmdbSlot.originalTitle),
+        releaseYear   = hit.flatMap(_.releaseYear).orElse(existingTmdbSlot.releaseYear)
       )
     }
     MovieRecord(
@@ -517,7 +530,7 @@ class MovieService(
       filmwebUrl        = existing.filmwebUrl,
       filmwebRating     = existing.filmwebRating,
       rottenTomatoes    = existing.rottenTomatoes,
-      tmdbId            = Some(hit.id),
+      tmdbId            = Some(tmdbId),
       metacriticUrl     = existing.metacriticUrl,
       rottenTomatoesUrl = existing.rottenTomatoesUrl,
       // A resolve clears any prior `tmdbNoMatch` (default `false` here); carry a
@@ -616,16 +629,13 @@ class MovieService(
   // with `originalTitle` set but no `director` — i.e. every film the
   // fallback could uniquely help was also reachable via director-walk.
   // Dropped to keep the chain minimal.
-  private def resolveTmdb(
+  private def resolveTmdbId(
     title:         String,
     year:          Option[Int],
     row:           MovieRecord,
     originalTitle: Option[String] = None,
     director:      Option[String] = None
-  ): Option[(TmdbClient.SearchResult, Option[String])] = {
-    def viaTmdb(hit: TmdbClient.SearchResult): (TmdbClient.SearchResult, Option[String]) =
-      hit -> tmdb.imdbId(hit.id)
-
+  ): Option[(Int, Option[TmdbClient.SearchResult])] = {
     // Resolve from the row's OWN reported titles. A decorated festival/preview
     // row whose own title doesn't match TMDB ("Opętanie | ŻUŁAWSKI. KINO
     // EKSTAZY", "Ojczyzna (pokaz przedpremierowy)") must still resolve on its
@@ -672,19 +682,36 @@ class MovieService(
     val rowDirectors = (director.toSeq.flatMap(_.split(",")) ++
       row.data.values.flatMap(_.director).toSeq)
       .map(_.trim).filter(_.nonEmpty).distinct.sorted
-    val searchHit = candidates.iterator
-      .flatMap(q => verifyByDirector(tmdb.search(q, year), Some(rowDirectors.mkString(",")).filter(_.nonEmpty)))
-      .nextOption()
 
-    // Resolve from this row's own titles only — no sister-row shortcut. Copying
-    // a tmdbId from an already-resolved relative was order-dependent (it could
-    // only borrow once the relative had resolved), which is what made
-    // whole-corpus snapshots flaky. Own-title search + director-walk are
-    // order-independent, so the row resolves to the same film every run.
-    // Director-walk each reported director in turn (sorted) so a row whose
-    // first-sorted director name happens to miss still recovers via the others.
-    searchHit.map(viaTmdb)
-      .orElse(rowDirectors.iterator.flatMap(d => directorWalk(Some(d), year)).nextOption().map(viaTmdb))
+    // Cache the id resolution per hint-combination: two cinema rows (or two
+    // scrape cycles) with the same title + year + director set + original-title
+    // hint resolve to the same film, so the search loop + director-walk runs
+    // once and the answer is reused for 24h. The key is built from exactly those
+    // hints (sorted, so it's order-independent — see `ResolutionKeys`). Only a
+    // HIT is cached; a no-match re-resolves next cycle.
+    val hintKey = ResolutionKeys.tmdb(title, year, rowDirectors, originalTitle)
+    // `freshHit` captures the SearchResult on a cache MISS (the loader runs on
+    // this thread), so the caller keeps the hit's title/year as a fallback when
+    // the full-details fetch fails. On a cache HIT the loader doesn't run and it
+    // stays None — only the id is cached.
+    var freshHit: Option[TmdbClient.SearchResult] = None
+    val resolvedId = tmdbIdCache.getOrResolve(hintKey) {
+      // Resolve from this row's own titles only — no sister-row shortcut. Copying
+      // a tmdbId from an already-resolved relative was order-dependent (it could
+      // only borrow once the relative had resolved), which is what made
+      // whole-corpus snapshots flaky. Own-title search + director-walk are
+      // order-independent, so the row resolves to the same film every run.
+      // Director-walk each reported director in turn (sorted) so a row whose
+      // first-sorted director name happens to miss still recovers via the others.
+      val searchHit = candidates.iterator
+        .flatMap(q => verifyByDirector(tmdb.search(q, year), Some(rowDirectors.mkString(",")).filter(_.nonEmpty)))
+        .nextOption()
+      val hit = searchHit
+        .orElse(rowDirectors.iterator.flatMap(d => directorWalk(Some(d), year)).nextOption())
+      freshHit = hit
+      hit.map(_.id.toString)
+    }.map(_.toInt)
+    resolvedId.map(id => (id, freshHit))
   }
 
   /** When the cinema reports a director, drop title-search candidates whose
