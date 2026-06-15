@@ -15,14 +15,16 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
   val cinema: Cinema = CharlieMonroe
   private val PageUrl = "https://kinomalta.pl/seanse"
 
-  // Per-film detail page carries production countries in a
+  // Per-film detail page carries production countries and the director in
   //   `<span class="wpmoly … meta label">Kraj:&nbsp;</span><span … meta value">
   //    <a …>Country</a><a …>Other</a></span>`
-  // block (one `<a>` per country for co-productions). The listing doesn't
-  // expose it, so we fetch each film page in parallel and gracefully fall
-  // back to an empty list on any failure.
+  // blocks (one `<a>` per country/director for co-productions and
+  // co-directors). The listing exposes neither, so we fetch each film page
+  // once in parallel and gracefully fall back to empty on any failure.
   private val CountryAnchorPat =
     """(?s)class="wpmoly[^"]*meta label[^"]*">Kraj:.*?class="wpmoly[^"]*meta value[^"]*">(.*?)</span>""".r
+  private val DirectorAnchorPat =
+    """(?s)class="wpmoly[^"]*meta label[^"]*">Reżyseria:.*?class="wpmoly[^"]*meta value[^"]*">(.*?)</span>""".r
   private val AnchorTextPat    = """<a[^>]*>([^<]+)</a>""".r
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl)
@@ -33,24 +35,33 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
     val urls   = movies.flatMap(_.filmUrl).distinct
     if (urls.isEmpty) movies
     else {
-      val countries = fetchCountries(urls)
+      val details = fetchDetails(urls)
       movies.map { m =>
-        val cs = m.filmUrl.flatMap(countries.get).getOrElse(Seq.empty)
-        if (cs.isEmpty) m else m.copy(movie = m.movie.copy(countries = cs))
+        val d = m.filmUrl.flatMap(details.get).getOrElse(DetailFacts.empty)
+        val withCountries =
+          if (d.countries.isEmpty) m else m.copy(movie = m.movie.copy(countries = d.countries))
+        if (d.director.isEmpty || withCountries.director.nonEmpty) withCountries
+        else withCountries.copy(director = d.director)
       }
     }
   }
 
-  private def fetchCountries(urls: Seq[String]): Map[String, Seq[String]] =
-    ParallelDetailFetch("charlie-monroe-countries", urls, 1.minute)(fetchCountriesFor)
+  private def fetchDetails(urls: Seq[String]): Map[String, DetailFacts] =
+    ParallelDetailFetch("charlie-monroe-detail", urls, 1.minute)(fetchDetailFactsFor)
 
-  private def fetchCountriesFor(detailUrl: String): Seq[String] =
-    Try(http.get(detailUrl)).toOption.map(parseCountries).getOrElse(Seq.empty)
+  private def fetchDetailFactsFor(detailUrl: String): DetailFacts =
+    Try(http.get(detailUrl)).toOption
+      .map(html => DetailFacts(parseCountries(html), parseDirector(html)))
+      .getOrElse(DetailFacts.empty)
 
-  def parseCountries(html: String): Seq[String] =
-    CountryAnchorPat.findFirstMatchIn(html).toSeq.flatMap { m =>
+  private def parseAnchorBlock(html: String, blockPat: scala.util.matching.Regex): Seq[String] =
+    blockPat.findFirstMatchIn(html).toSeq.flatMap { m =>
       AnchorTextPat.findAllMatchIn(m.group(1)).map(_.group(1).trim).filter(_.nonEmpty).toSeq
     }
+
+  def parseCountries(html: String): Seq[String] = parseAnchorBlock(html, CountryAnchorPat)
+
+  def parseDirector(html: String): Seq[String] = parseAnchorBlock(html, DirectorAnchorPat)
 
   /** Genres from a listing card's `div.meta` line, which reads
    *  "Czarna komedia, Thriller / 139 min" — the comma-separated genre list
@@ -132,6 +143,12 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
     "%02d.%02d.%d".format(day, month, year)
 
   private case class ArticleDetails(filmUrl: Option[String], synopsis: Option[String], posterUrl: Option[String], genres: Seq[String])
+
+  /** Facts the per-film detail page yields in one fetch. */
+  private case class DetailFacts(countries: Seq[String], director: Seq[String])
+  private object DetailFacts {
+    val empty: DetailFacts = DetailFacts(Seq.empty, Seq.empty)
+  }
 
   private case class ScreeningEntry(
     movie:      Movie,
