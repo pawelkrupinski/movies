@@ -30,8 +30,8 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
 
   // Route Multikino through the same `FakeHttpFetch` as every other cinema —
   // single override point. The base `TestWiring` inherits production's
-  // `MultikinoClient.fetchFor(httoFetch)` so `ClientIntegrationSpec`'s
-  // live-network smoke still goes through Zyte.
+  // `MultikinoClient.fetchFor(httoFetch)` so the live-network fixture
+  // recorders still go through Zyte.
   override lazy val multikinoFetch: HttpFetch = httoFetch
 
   // Same single override point for biletyna (Kino Kameralne): replay the
