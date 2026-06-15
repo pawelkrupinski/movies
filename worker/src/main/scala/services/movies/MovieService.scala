@@ -729,10 +729,13 @@ class MovieService(
    *  title-different-film hit. When no director is reported, pass the
    *  candidate through unchanged.
    *
-   *  Director-name comparison is normalize-then-substring: cinemas often
-   *  comma-list a single name ("Asgeir Helgestad") while some films have
-   *  multiple credited directors, so any TMDB director containing the
-   *  cinema's name (or vice versa) counts as a match. */
+   *  Director-name comparison (`MovieService.directorNameMatches`) is
+   *  substring-OR-token-set: cinemas often comma-list a single name ("Asgeir
+   *  Helgestad") while some films have multiple credited directors, so any TMDB
+   *  director containing the cinema's name (or vice versa) counts — AND the two
+   *  names match when they share the same word-token set in any order, so a
+   *  cinema reporting "Yimou Zhang" (Western given-first) still verifies against
+   *  TMDB's "Zhang Yimou" (native family-first). */
   private def verifyByDirector(
     candidate: Option[TmdbClient.SearchResult],
     director:  Option[String]
@@ -741,12 +744,11 @@ class MovieService(
       director match {
         case None => Some(hit)   // no hint → can't verify, accept
         case Some(directory) =>
-          val cinemaNames = directory.split(",").iterator.map(_.trim).filter(_.nonEmpty)
-            .map(MovieService.normalize).toSet
+          val cinemaNames = directory.split(",").iterator.map(_.trim).filter(_.nonEmpty).toSeq
           if (cinemaNames.isEmpty) Some(hit)
           else {
-            val tmdbNames = tmdb.directorsFor(hit.id).map(MovieService.normalize)
-            val matches = tmdbNames.exists(t => cinemaNames.exists(c => t.contains(c) || c.contains(t)))
+            val tmdbNames = tmdb.directorsFor(hit.id)
+            val matches = tmdbNames.exists(t => cinemaNames.exists(c => MovieService.directorNameMatches(c, t)))
             if (matches) Some(hit) else None
           }
       }
@@ -806,6 +808,35 @@ object MovieService {
   // cache lookups + Mongo upserts are stable across refresh ticks regardless
   // of which other films happen to be in the cache at the moment.
   def normalize(title: String): String = TitleNormalizer.sanitize(title)
+
+  /** Does a cinema-reported director name refer to the same person as a
+   *  TMDB-credited one? Two independent signals, EITHER suffices:
+   *   1. Substring on the collapsed (`normalize`d) forms — a single surname
+   *      vs the full name, or one of a film's several credited directors.
+   *   2. Word-token-set containment — `nameTokens` splits each name on word
+   *      boundaries (BEFORE `normalize` collapses whitespace away), so the same
+   *      name in a different order matches: a cinema reporting a Chinese /
+   *      Hungarian / Korean name given-first ("Yimou Zhang") verifies against
+   *      TMDB's native family-first credit ("Zhang Yimou"). Order-sensitive
+   *      substring alone rejected that correct hit, stranding the row as a
+   *      no-match that only recovered if a SIBLING cinema happened to report the
+   *      canonical order — an arrival-order dependence. Set containment (not
+   *      strict equality) keeps signal 1's partial-name tolerance. */
+  def directorNameMatches(cinemaName: String, tmdbName: String): Boolean = {
+    val (a, b) = (normalize(cinemaName), normalize(tmdbName))
+    if (a.nonEmpty && b.nonEmpty && (a.contains(b) || b.contains(a))) true
+    else {
+      val (ca, ct) = (nameTokens(cinemaName), nameTokens(tmdbName))
+      ca.nonEmpty && ct.nonEmpty && (ca.subsetOf(ct) || ct.subsetOf(ca))
+    }
+  }
+
+  /** The set of word tokens in a person name, each `normalize`d (diacritics
+   *  folded, lowercased), split on any non-letter/digit FIRST so the word
+   *  boundaries survive — unlike `normalize`, which collapses the whole string
+   *  to one alphanumeric token. "Zhang Yimou" → {"zhang", "yimou"}. */
+  private[movies] def nameTokens(name: String): Set[String] =
+    name.split("[^\\p{L}\\p{N}]+").iterator.map(normalize).filter(_.nonEmpty).toSet
 
   /** Aggressive stripping for external-API queries: the anniversary / restored /
    *  wersja / Cykl / slash decoration PLUS the accessibility-programme decoration

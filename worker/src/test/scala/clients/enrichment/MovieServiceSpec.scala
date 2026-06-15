@@ -54,6 +54,28 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
     k2 shouldBe k3
   }
 
+  // ── verifyByDirector name matching ───────────────────────────────────────────
+  // A cinema reporting a Chinese/Hungarian/Korean director given-name-first must
+  // still verify against TMDB's native family-first credit. The old collapsed
+  // substring test ("yimouzhang".contains("zhangyimou")) rejected it, stranding
+  // the row as a no-match — the order-dependent root cause of the "Zawieście
+  // czerwone latarnie" (Zhang Yimou) snapshot fragmentation.
+  "directorNameMatches" should "match the same name in swapped token order (Yimou Zhang ↔ Zhang Yimou)" in {
+    assert(MovieService.directorNameMatches("Yimou Zhang", "Zhang Yimou"))
+    assert(MovieService.directorNameMatches("Zhang Yimou", "Yimou Zhang"))
+  }
+
+  it should "tolerate diacritics and a comma-free single surname (partial name)" in {
+    assert(MovieService.directorNameMatches("Helgestad", "Asgeir Helgestad"))
+    assert(MovieService.directorNameMatches("Pedro Almodovar", "Pedro Almodóvar"))
+  }
+
+  it should "reject two genuinely different directors" in {
+    assert(!MovieService.directorNameMatches("Christopher Nolan", "Steven Spielberg"))
+    // Shares one token but not the other — not the same person.
+    assert(!MovieService.directorNameMatches("John Smith", "John Doe"))
+  }
+
   // ── Cross-variant lookups via the stable documentId ──────────────────────────
   //
   // Phase 2.3 made the documentId corpus-independent and aggressive enough that
