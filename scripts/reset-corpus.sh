@@ -175,6 +175,21 @@ if [ "$MODE" = "prod" ] && [ -z "$DRY" ]; then
   start_app "$WORKER_APP"
 fi
 
+# Local resets preserve the admin-curated titleRules (deliberately not in
+# COLLECTIONS), but a fresh kinowo_local has none and falls back to the frozen
+# TitleRuleDefaults — so re-pull prod's live set with the one-way sync (it opens
+# its OWN read-only flyctl tunnel to prod; prod is never written). Non-fatal: a
+# failed sync (offline / no flyctl auth) must not fail the corpus reset.
+if [ "$MODE" = "local" ]; then
+  if [ -n "$DRY" ]; then
+    echo "[reset] [dry-run] would sync admin-curated titleRules prod → '$DB' (scripts/local-mirror/sync-title-rules.sh)"
+  else
+    echo "[reset] syncing admin-curated titleRules prod → '$DB'…"
+    "$HERE/local-mirror/sync-title-rules.sh" \
+      || echo "[reset] WARN: title-rules sync failed — run scripts/local-mirror/sync-title-rules.sh once prod is reachable."
+  fi
+fi
+
 if [ -n "$DRY" ]; then
   echo "[reset] dry-run only — nothing changed."
 else

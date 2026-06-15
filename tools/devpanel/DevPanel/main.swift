@@ -298,6 +298,8 @@ private let actions: [Action] = [
            script: "kill-stack.sh", console: .web),
     Action(title: "Reset local corpus", subtitle: "drop kinowo_local · re-scrape",
            script: "reset-local-corpus.sh", console: .web),
+    Action(title: "Sync title rules", subtitle: "prod titleRules → kinowo_local",
+           script: "sync-title-rules.sh", console: .web),
 ]
 
 private let defaultExpandedWidth: CGFloat = 380

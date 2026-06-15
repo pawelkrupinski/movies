@@ -43,6 +43,9 @@ check "kill stack → free_port 9000 + reap worker" \
 check "reset local corpus → reset-corpus.sh --local --yes" \
   "cd $ROOT && scripts/reset-corpus.sh --local --yes" \
   "$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/reset-local-corpus.sh")"
+check "sync title rules → local-mirror/sync-title-rules.sh" \
+  "cd $ROOT && scripts/local-mirror/sync-title-rules.sh" \
+  "$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/sync-title-rules.sh")"
 
 ios="$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/deploy-ios.sh")"
 contains "ios → waits for unlock"        "wait_for_ios_unlock <connected-device-udid>" "$ios"
