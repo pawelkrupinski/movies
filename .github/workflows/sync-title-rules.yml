@@ -16,11 +16,13 @@ on:
     # Manual trigger for an on-demand refresh.
     workflow_dispatch:
 
-    # Daily at 04:17 UTC. Cheap (one Mongo read + a file write + a compile) and
-    # only opens a PR when prod actually changed, so a daily cadence is just a
-    # tight drift detector, not noise. GitHub cron is UTC-only.
+    # Every 6 hours, starting at midnight UTC (00:17, 06:17, 12:17, 18:17).
+    # Cheap (one Mongo read + a file write + a compile) and only opens a PR when
+    # prod actually changed, so a 6-hourly cadence is just a tight drift
+    # detector, not noise. The :17 offset avoids the top-of-hour spike where
+    # GitHub delays/drops scheduled runs. GitHub cron is UTC-only.
     schedule:
-        - cron: '17 4 * * *'
+        - cron: '17 0,6,12,18 * * *'
 
 # Author/commit the regenerated mirror into the PR branch.
 permissions:
