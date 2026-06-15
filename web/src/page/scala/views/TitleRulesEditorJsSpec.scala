@@ -122,7 +122,7 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     }
   }
 
-  it should "give each rule row ⇈/⇊ buttons that jump it to the top / bottom of its list" in {
+  it should "give each rule row up/down double-chevron buttons that jump it to the top / bottom of its list" in {
     onEditor { page =>
       // The GlobalStructural card seeds rules in array order: ab, a, (?i)^Klub: , (oops.
       def rulesOrder(): String = page.evalString(
