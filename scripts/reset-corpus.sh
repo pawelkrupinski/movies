@@ -23,7 +23,9 @@
 #        alongside `movies`). --local ALSO drops scheduled_runs (see below).
 #   NOT dropped — operational state, curated config, and accounts the worker does
 #   not rebuild: uptimeBuckets, uptimeServiceTags (monitoring history), titleRules
-#   (admin-curated), users, userStates (accounts). Add filmwebFallback /
+#   (admin-curated — seed it locally from prod with
+#   scripts/local-mirror/sync-title-rules.sh), users, userStates (accounts). Add
+#   filmwebFallback /
 #   filmwebFallbackMeta (per-cinema fallback prober state) and/or
 #   normalizationReports (a backfill report) to COLLECTIONS below if you want a
 #   fully-clean slate that re-derives those too.

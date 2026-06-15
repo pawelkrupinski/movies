@@ -98,6 +98,34 @@ and `mirror.sh` does a full re-seed.
 - The initial seed is a zlib-compressed cursor copy over the tunnel (~50s for
   ~1300 docs); the continuous tailer is incremental and cheap.
 
+## Sync the admin-curated `titleRules` into `kinowo_local`
+
+`titleRules` is the live rule set `TitleNormalizer` runs (edited from the admin
+UI). It's admin-curated, so `reset-corpus.sh` deliberately leaves it alone and
+nothing else seeds it — a fresh `kinowo_local` starts with an **empty**
+collection and the local stack falls back to the frozen `TitleRuleDefaults`,
+diverging from prod's normalisation. Pull the live prod set across:
+
+```
+scripts/local-mirror/sync-title-rules.sh            # one-way prod → kinowo_local
+scripts/local-mirror/sync-title-rules.sh --dry-run  # dump + count only, change nothing
+```
+
+One-shot and on-demand (title rules change rarely) — re-run after admin edits.
+It `mongodump`s the one collection from prod over the tunnel, guards on the
+record count (≥10, same floor as `scripts.DumpTitleRules`), then
+`mongorestore --drop`s it into `kinowo_local` — a true one-way mirror, so a rule
+deleted in prod also disappears locally. The local web+worker watch
+`kinowo_local`'s `titleRules` change stream, so re-running against a **live**
+local stack hot-swaps the rules. Reads `MONGODB_URI`/`MONGODB_DB` (prod source)
+and `LOCAL_MONGO_URI`/`LOCAL_MONGO_DB` (default `kinowo_local`) from `.env.local`.
+
+> This is the DB→DB (prod → local) direction. Two other syncs touch the same
+> collection and aren't this: `scripts.DumpTitleRules` (DB→**code**, refreshing
+> the `GeneratedTitleRules.scala` test mirror via
+> `.github/workflows/sync-title-rules.yml`), and `scripts.ApplyExtraTitleRules`
+> (code→prod-DB, proposing new rules).
+
 ## Teardown
 
 ```
