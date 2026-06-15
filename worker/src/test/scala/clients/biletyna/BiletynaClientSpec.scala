@@ -36,7 +36,14 @@ class BiletynaClientSpec
       "https://biletyna.pl/film/Mikey-i-Nicky-1976?eid=667728#opis"),
     ("Kino Pegaz Wodzisław", "kino-pegaz", "https://biletyna.pl/Wodzislaw-Slaski/Wodzislawskie-Centrum-Kultury",
       KinoPegaz, "Piękność dnia", LocalDateTime.of(2026, 6, 9, 20, 0),
-      "https://biletyna.pl/film/Pieknosc-dnia?eid=666810#opis")
+      "https://biletyna.pl/film/Pieknosc-dnia?eid=666810#opis"),
+    // Kinoteatr Rondo publishes the descriptive title form
+    // `„Title" | reżyseria: Director | Country Year`; the pinned title is the
+    // clean form the client splits out of it (metadata lifted out in the test
+    // below). Replays the recorded 08-06-2026 snapshot page.
+    ("Kinoteatr Rondo Chełmno", "08-06-2026", "https://biletyna.pl/Chelmno/Kinoteatr-Rondo",
+      KinoRondo, "Dyrygent", LocalDateTime.of(2026, 6, 26, 20, 0),
+      "https://biletyna.pl/film/Dyrygent-rezyseria-Ondej-Provaznk-Czechy-2025?eid=668818#opis")
   )
 
   forAll(venues) { (label, directory, pageUrl, cinema, title, when, booking) =>
@@ -53,5 +60,32 @@ class BiletynaClientSpec
       val slot = film.showtimes.find(_.dateTime == when).value
       slot.bookingUrl.value shouldBe booking
     }
+  }
+
+  // Some venues (Kinoteatr Rondo here) publish the descriptive title form
+  // `„Title" | reżyseria: Director | Country Year` in the JSON-LD `name`. The
+  // client must split off the clean title and lift the director / countries /
+  // year — which are all present in the string, no detail fetch — into their
+  // own fields, keeping the raw string as `rawTitle`.
+  it should "lift director, countries and year out of the descriptive title — Kinoteatr Rondo" in {
+    val movies = new BiletynaClient(
+      new FakeHttpFetch("08-06-2026"), "https://biletyna.pl/Chelmno/Kinoteatr-Rondo", KinoRondo
+    ).fetch()
+    val film = movies.find(_.movie.title == "Dyrygent").value
+    film.movie.rawTitle.value shouldBe "„Dyrygent\" | reżyseria: Ondřej Provazník | Czechy 2025"
+    film.director shouldBe Seq("Ondřej Provazník")
+    film.movie.countries shouldBe Seq("Czechy")
+    film.movie.releaseYear.value shouldBe 2025
+  }
+
+  // A bare film title with no `reżyseria:` marker is left untouched — no
+  // false-positive splitting on a pipe that isn't a metadata separator.
+  it should "leave a plain title (no reżyseria marker) untouched — Kino Kameralne" in {
+    val movies = new BiletynaClient(
+      new FakeHttpFetch("kino-kameralne"), "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe", KinoKameralne
+    ).fetch()
+    val film = movies.find(_.movie.title == "Mikey i Nicky (1976)").value
+    film.movie.rawTitle shouldBe None
+    film.director shouldBe empty
   }
 }
