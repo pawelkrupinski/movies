@@ -83,19 +83,20 @@ class WorkerWiring extends play.api.Logging {
     }
 
   lazy val multikinoFetch: HttpFetch = proxyPrimary(MultikinoClient.fetchFor(httoFetch))
+  // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set).
+  lazy val zyteFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch)
   // biletyna.pl 403s our datacenter IP; residential proxy primary, Zyte fallback.
-  lazy val biletynaFetch: HttpFetch = proxyPrimary(ZyteFallback.fetchFor(httoFetch))
-  // Kino Kryterium (bilety.ck105.koszalin.pl) drops our Fly egress IP at the TCP
-  // layer (the connection times out from Fly, serves fine from a residential IP),
-  // so every direct scrape came back empty → a permanent white /uptime bar. Route
-  // it through the residential proxy; direct httoFetch stays the fallback.
-  lazy val proxiedFetch: HttpFetch = proxyPrimary(httoFetch)
+  lazy val biletynaFetch: HttpFetch = proxyPrimary(zyteFetch)
   lazy val cinemaScraperCatalog = new CinemaScraperCatalog(
     httoFetch, multikinoFetch, biletynaFetch, heliosToday,
     // Mongo-backed chain detail cache so Helios / Cinema City detail is deduped
     // across worker servers, not just within one process.
     (h, ttl) => new MongoCachingDetailFetch(h, mongoConnection.database, ttl),
-    proxiedFetch = proxiedFetch)
+    // Kino Kryterium (bilety.ck105.koszalin.pl) times out our Fly egress IP AND
+    // every Decodo proxy IP at the TCP layer, so a direct scrape came back empty
+    // → a permanent white /uptime bar. Only Zyte's true-residential network
+    // reaches it, so route it straight through Zyte (the Decodo proxy can't help).
+    zyteFetch = zyteFetch)
 
   // Scrape every modelled city by default; KINOWO_SCRAPE_CITIES (comma-separated
   // slugs) only NARROWS the set, e.g. to shed load if the worker throttles/OOMs.

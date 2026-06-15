@@ -17,8 +17,9 @@ import scala.concurrent.duration._
  * seam — NOT the shared `http` — or the live scrape regresses:
  *   - biletyna.pl 403s our IP (Cloudflare waiting-room) → Kino Kameralne /
  *     ADA Kino Studyjne fetch through `bnFetch` (Zyte in prod, fixture fake here).
- *   - bilety.ck105.koszalin.pl (Kino Kryterium) drops our IP at the TCP layer
- *     → fetches through `proxiedFetch` (Decodo residential proxy in prod).
+ *   - bilety.ck105.koszalin.pl (Kino Kryterium) times out our IP AND every Decodo
+ *     proxy IP at the TCP layer → fetches through `zyteFetch` (Zyte's
+ *     true-residential network in prod, the one egress that reaches it).
  * Each seam's fixture-less `http` makes a leaked fetch throw / come back empty,
  * so a refactor that re-buries the fetch on `http` is caught here. (CI also sets
  * ZYTE_API_KEY, so a leak onto `http` would route biletyna through real Zyte.)
@@ -34,11 +35,11 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
    *  fixture-less `http` by default); a cinema that leaks onto the wrong seam
    *  throws / returns empty. */
   private def catalog(biletyna: String = "does-not-exist",
-                      proxied:  String = "does-not-exist"): CinemaScraperCatalog =
+                      zyte:     String = "does-not-exist"): CinemaScraperCatalog =
     new CinemaScraperCatalog(
       http, mkFetch = http, bnFetch = new FakeHttpFetch(biletyna), today = LocalDate.of(2026, 6, 6),
       chainDetailCache = (h, ttl) => new CachingDetailFetch(h, ttl),
-      proxiedFetch = new FakeHttpFetch(proxied)
+      zyteFetch = new FakeHttpFetch(zyte)
     )
 
   "CinemaScraperCatalog" should "route Kino Kameralne through the injected biletyna seam, not the shared http" in {
@@ -56,14 +57,14 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   // Kino Kryterium's origin (bilety.ck105.koszalin.pl) silently times out our Fly
-  // egress IP at the TCP layer, so a direct scrape came back empty → a permanent
-  // white /uptime bar. It must fetch through the residential-proxy seam. The
-  // shared `http` has no ck105 fixture, so a fetch that leaked onto it returns
-  // empty and this fails. Fixture captured 2026-06-15 from the live month pages
-  // `/MSI/mvc/pl?sort=Name&date=2026-06` (+ 2026-07).
-  it should "route Kino Kryterium through the injected residential-proxy seam, not the shared http" in {
-    val scraper = catalog(proxied = "kino-kryterium").all.find(_.cinema == KinoKryterium).value
-    val movies  = scraper.fetch()  // reads the kino-kryterium fixture via proxiedFetch
+  // egress IP AND every Decodo proxy IP at the TCP layer, so a direct scrape came
+  // back empty → a permanent white /uptime bar. It must fetch through the Zyte
+  // seam (the one egress that reaches it). The shared `http` has no ck105 fixture,
+  // so a fetch that leaked onto it returns empty and this fails. Fixture captured
+  // 2026-06-15 from the live month pages `/MSI/mvc/pl?sort=Name&date=2026-06` (+ 2026-07).
+  it should "route Kino Kryterium through the injected Zyte seam, not the shared http" in {
+    val scraper = catalog(zyte = "kino-kryterium").all.find(_.cinema == KinoKryterium).value
+    val movies  = scraper.fetch()  // reads the kino-kryterium fixture via zyteFetch
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(KinoKryterium)
   }

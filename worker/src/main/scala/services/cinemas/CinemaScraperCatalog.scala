@@ -20,12 +20,14 @@ import scala.concurrent.duration._
  *                  fixture wiring overrides it back to `http`). A diagnostic that
  *                  doesn't care uses the secondary constructor below, which
  *                  defaults `mkFetch` to the Zyte-routed path.
- *   - `proxiedFetch` — residential-proxy egress for the few venues whose origin
- *                  firewall drops our Fly datacenter IP outright (Kino Kryterium /
- *                  bilety.ck105.koszalin.pl times out the connection from Fly but
- *                  serves a residential IP fine). `WorkerWiring` routes it through
- *                  the Decodo proxy; the diagnostic ctor + fixture wiring default
- *                  it back to `http`.
+ *   - `zyteFetch` — Zyte residential egress for venues whose origin firewall
+ *                  blocks BOTH our Fly datacenter IP AND the Decodo proxy's
+ *                  (datacenter-flavoured) ISP IPs. Kino Kryterium /
+ *                  bilety.ck105.koszalin.pl times out the connection from Fly and
+ *                  from every Decodo IP, but Zyte's true-residential network gets
+ *                  through. `WorkerWiring` routes it through Zyte; the diagnostic
+ *                  ctor defaults it to `ZyteFallback.fetchFor(http)`, and the
+ *                  fixture wiring overrides it back to `http`.
  *   - `today`    — the date Helios bakes into its REST URLs.
  *
  * Returns RAW scrapers. `WorkerWiring` wraps each in a `RetryingCinemaScraper`
@@ -41,10 +43,10 @@ class CinemaScraperCatalog(
   // injects a Mongo-backed cache so chain detail is deduped across servers; the
   // diagnostic ctor + tests default to the in-process CachingDetailFetch.
   chainDetailCache: (HttpFetch, FiniteDuration) => HttpFetch,
-  // Residential-proxy egress for venues whose origin firewall blocks our Fly IP
-  // (see the ctor doc). No primary-ctor default — Scala can't reference `http`
-  // here — so the secondary ctor and WorkerWiring supply it explicitly.
-  proxiedFetch: HttpFetch
+  // Zyte residential egress for venues whose firewall blocks both our Fly IP and
+  // the Decodo proxy (see the ctor doc). No primary-ctor default — Scala can't
+  // reference `http` here — so the secondary ctor and WorkerWiring supply it.
+  zyteFetch: HttpFetch
 ) {
 
   /** Diagnostic ctor: the Zyte-routed fetches (Multikino's API, biletyna's venue
@@ -55,7 +57,7 @@ class CinemaScraperCatalog(
    *  fixture-overridden) `multikinoFetch` / `biletynaFetch`. */
   def this(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) =
     this(http, MultikinoClient.fetchFor(http), ZyteFallback.fetchFor(http), today,
-      (h, ttl) => new CachingDetailFetch(h, ttl), proxiedFetch = http)
+      (h, ttl) => new CachingDetailFetch(h, ttl), zyteFetch = ZyteFallback.fetchFor(http))
 
   // Per-film detail bodies are static between passes and IDENTICAL across a
   // chain's locations, so each chain shares ONE CachingDetailFetch: a film's
@@ -288,7 +290,7 @@ class CinemaScraperCatalog(
   private val rybnikScrapers       = Seq(new MultikinoClient(mkFetch, "0014", MultikinoRybnik), cinemaCity("1082", CinemaCityRybnik))
   private val gorzowScrapers       = Seq(helios(HeliosNuxt.Gorzow), new MultikinoClient(mkFetch, "0047", MultikinoGorzow), new Bilety24OrganizerClient(http, "https://www.bilety24.pl/kino/organizator/miejski-osrodek-sztuki-kino-60-krzesel-dkf-megaron-776", Kino60Krzesel))
   private val elblagScrapers       = Seq(new MultikinoClient(mkFetch, "0037", MultikinoElblag), cinemaCity("1099", CinemaCityElblag))
-  private val koszalinScrapers     = Seq(helios(HeliosNuxt.Koszalin), new MultikinoClient(mkFetch, "0015", MultikinoKoszalin), new MsiClient(proxiedFetch, "https://bilety.ck105.koszalin.pl", KinoKryterium, today))
+  private val koszalinScrapers     = Seq(helios(HeliosNuxt.Koszalin), new MultikinoClient(mkFetch, "0015", MultikinoKoszalin), new MsiClient(zyteFetch, "https://bilety.ck105.koszalin.pl", KinoKryterium, today))
   private val kaliszScrapers       = Seq(helios(HeliosNuxt.Kalisz), new MultikinoClient(mkFetch, "0042", MultikinoKalisz))
   private val zielonaGoraScrapers  = Seq(cinemaCity("1087", CinemaCityZielonaGora))
   private val tychyScrapers        = Seq(new MultikinoClient(mkFetch, "0053", MultikinoTychy))
