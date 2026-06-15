@@ -2,8 +2,8 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
-import tools.{HttpFetch, ParallelDetailFetch}
+import org.jsoup.nodes.{Document, Element}
+import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
@@ -28,18 +28,44 @@ import scala.util.Try
  *   - `td.kategorie` → category labels. Film screenings carry the `Seanse`
  *     category; this is the discriminator that drops non-film events.
  *   - `a.bilety` → the booking URL on the ticketing host (systembiletowy.pl).
+ *   - `tr[onclick="location.href=('…szczegoly….html')"]` → the per-screening
+ *     detail page. The listing carries title + showtime only; the detail page
+ *     adds runtime, genres, production country/year, director and cast (in a
+ *     `div.box-iobiekt.<field>` block). Those are deferred to an `EnrichDetails`
+ *     task via [[fetchFilmDetail]].
  *
- * The listing alone has everything we surface; TMDB enriches the rest
- * downstream, so there's no per-film detail fetch. Pagination is followed by
- * the "next page" link, each extra page fetched tolerantly — a missing page
- * just contributes nothing (the recorded fixture is page 1 only).
+ * Pagination is followed by the "next page" link, each extra page fetched
+ * tolerantly — a missing page just contributes nothing (the recorded fixture
+ * is page 1 only).
+ *
+ * `defersTmdbResolution = false`: the row resolves straight from its clean
+ * title (the listing carries no identity hints), and the detail metadata —
+ * including the production year — merges in asynchronously when the detail
+ * fetch lands. We don't gate the read model on a per-film fetch here: the
+ * detail pages are per-screening and short-lived (past screenings 404), so a
+ * blocking dependency would strand rows whenever a page expired.
  */
-class KinoSfinksClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper {
+class KinoSfinksClient(http: HttpFetch, override val cinema: Cinema)
+    extends CinemaScraper with DetailEnricher {
 
   import KinoSfinksClient._
 
+  // Detail pages are static across passes for a live screening, so cache them.
+  private val detailHttp = new CachingDetailFetch(http)
+
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(PageUrl)
+
+  override val detailGroup: String = "kino-sfinks"
+  // The listing has no identity hints; resolve from the title and merge the
+  // detail (year/director/…) in asynchronously rather than blocking on it.
+  override def defersTmdbResolution: Boolean = false
+
+  /** Deferred per-film detail — runtime, genres, country, production year,
+   *  director and cast off the `box-iobiekt` block. None on a fetch failure so
+   *  the task stays stale and retries rather than recording an empty result. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(detailHttp.get(ref)).toOption.map(html => parseDetail(Jsoup.parse(html)))
 
   def fetch(): Seq[CinemaMovie] = {
     val firstHtml = http.get(PageUrl)
@@ -58,16 +84,18 @@ class KinoSfinksClient(http: HttpFetch, override val cinema: Cinema) extends Cin
     val byTitle = slots.groupBy(_.title)
 
     byTitle.toSeq.flatMap { case (title, group) =>
-      val showtimes = group
+      val ordered = group.sortBy(_.dateTime)
+      val showtimes = ordered
         .map(s => Showtime(s.dateTime, s.booking))
         .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
       if (showtimes.isEmpty) None
       else Some(CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = None,
-        filmUrl   = None,
+        // The earliest screening's detail page — the metadata is film-level, so
+        // any one screening's page serves; pick deterministically.
+        filmUrl   = ordered.flatMap(_.detailUrl).headOption,
         synopsis  = None,
         cast      = Seq.empty,
         director  = Seq.empty,
@@ -89,8 +117,13 @@ object KinoSfinksClient {
   private val DateFmt = DateTimeFormatter.ofPattern("dd-MM-yyyy")
   private val DatePat = """(\d{2}-\d{2}-\d{4})""".r
   private val NextPagePat = """/wydarzenia-harmonogram-strona-\d+\.html""".r
+  // The row's `onclick="location.href = ('/wydarzenie-…-szczegoly-….html')"`.
+  private val DetailHrefPat = """location\.href\s*=\s*\(?\s*'([^']+szczegoly[^']+)'""".r
+  // Any in-range 4-digit production year (trailing token of "USA 1999").
+  private val YearTokenPat  = """\b(?:19|20)\d{2}\b""".r
 
-  private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String])
+  private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String],
+                             detailUrl: Option[String])
 
   /** Distinct "next page" listing paths reachable from a page — the paginator
     * links every page (`-strona-2…6.html`), so collecting them off page 1
@@ -115,10 +148,47 @@ object KinoSfinksClient {
       (if (isFilm) title else None, carriedDate, time) match {
         case (Some(t), Some(date), Some(lt)) =>
           val booking = Option(row.selectFirst("a.bilety")).map(_.attr("href")).filter(_.nonEmpty)
-          Some(RawSlot(t, LocalDateTime.of(date, lt), booking))
+          val detail  = DetailHrefPat.findFirstMatchIn(row.attr("onclick")).map { m =>
+            val href = m.group(1)
+            if (href.startsWith("http")) href else BaseUrl + href
+          }
+          Some(RawSlot(t, LocalDateTime.of(date, lt), booking, detail))
         case _ => None
       }
     }
+  }
+
+  // The detail page renders each metadata field as
+  // `<div class="box-iobiekt <field>"><div class="obiekt_typ">Label:</div>
+  //  <div class="obiekt_dane">VALUE</div></div>`. Read the value cell by the
+  // field's class so the surrounding "related screenings" listing (which has no
+  // such block) can't bleed in.
+  private def fieldValue(document: Document, field: String): Option[String] =
+    Option(document.selectFirst(s"div.box-iobiekt.$field div.obiekt_dane"))
+      .map(_.text.trim).filter(_.nonEmpty)
+
+  private def splitList(s: Option[String]): Seq[String] =
+    s.toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
+
+  /** Parse a screening detail page into its film-level metadata. `Produkcja /
+   *  rok` folds country + year ("USA 1999") — the trailing 4-digit run is the
+   *  year, the rest the production countries. */
+  private[cinemas] def parseDetail(document: Document): FilmDetail = {
+    val prod      = fieldValue(document, "produkcja_rok")
+    val year      = prod.flatMap(p => YearTokenPat.findFirstMatchIn(p).map(_.matched.toInt))
+    val countries = splitList(prod.map(p => YearTokenPat.replaceAllIn(p, "").trim))
+    val runtime   = fieldValue(document, "czas_trwania")
+      .flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)).filter(n => n >= 30 && n <= 300)
+    val poster    = Option(document.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty)
+    FilmDetail(
+      cast           = splitList(fieldValue(document, "obsada_wykonawcy")),
+      director       = splitList(fieldValue(document, "rezyseria")),
+      runtimeMinutes = runtime,
+      releaseYear    = year,
+      countries      = countries,
+      genres         = splitList(fieldValue(document, "gatunek")),
+      posterUrl      = poster
+    )
   }
 
   /** First `td.info` carrying a `DD-MM-YYYY` date-caption, parsed. */
