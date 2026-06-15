@@ -40,6 +40,10 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // breaking hermetic end-to-end specs (FilmScheduleEndToEndSpec).
   override lazy val biletynaFetch: HttpFetch = httoFetch
 
+  // Same single override point for the residential-proxy seam (Kino Kryterium /
+  // ck105): replay the fixture rather than hitting the Decodo proxy.
+  override lazy val proxiedFetch: HttpFetch = httoFetch
+
   /** Record EVERY cinema first, THEN publish all the create events — load-bearing
    *  for a deterministic single-pass snapshot, not arbitrary scaffolding.
    *  Production publishes `MovieDetailsComplete` INLINE as each cinema lands and

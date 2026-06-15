@@ -1,7 +1,7 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, Cinema, KinoKameralne, KinoPort}
+import models.{AdaKinoStudyjne, Cinema, KinoKameralne, KinoKryterium, KinoPort}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -12,41 +12,60 @@ import java.time.LocalDate
 import scala.concurrent.duration._
 
 /**
- * Guards the per-cinema fetch seams the catalog wires. biletyna.pl 403s our
- * datacenter IP (Cloudflare waiting-room), so its venues — Kino Kameralne and
- * ADA Kino Studyjne — must fetch through the injected `bnFetch` (Zyte in prod,
- * the fixture fake in tests), NOT the shared `http`. If a refactor re-buries
- * the fetch on `http`, the live scrape regresses (CI sets ZYTE_API_KEY, so
- * `http` would route through real Zyte → biletyna) and these tests catch it:
- * the `http` here has no biletyna fixture, so a scrape that leaked onto it
- * throws instead of returning the recorded programme.
+ * Guards the per-cinema fetch seams the catalog wires for venues whose origin
+ * blocks our Fly datacenter IP, so they must fetch through their own injected
+ * seam — NOT the shared `http` — or the live scrape regresses:
+ *   - biletyna.pl 403s our IP (Cloudflare waiting-room) → Kino Kameralne /
+ *     ADA Kino Studyjne fetch through `bnFetch` (Zyte in prod, fixture fake here).
+ *   - bilety.ck105.koszalin.pl (Kino Kryterium) drops our IP at the TCP layer
+ *     → fetches through `proxiedFetch` (Decodo residential proxy in prod).
+ * Each seam's fixture-less `http` makes a leaked fetch throw / come back empty,
+ * so a refactor that re-buries the fetch on `http` is caught here. (CI also sets
+ * ZYTE_API_KEY, so a leak onto `http` would route biletyna through real Zyte.)
  */
 class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  // `http` deliberately points at a fixture directory without any biletyna capture, so
-  // any cinema that wrongly fetches through it (instead of its own seam) fails.
+  // `http` deliberately points at a fixture directory without any biletyna/ck105
+  // capture, so any cinema that wrongly fetches through it (instead of its own
+  // seam) fails.
   private val http = new FakeHttpFetch("does-not-exist")
 
-  /** Catalog whose biletyna seam reads `fixtureDirectory`; `http`/`mkFetch` are the
-   *  fixture-less fake so a leaked fetch onto the shared path throws. */
-  private def catalogWithBiletyna(fixtureDirectory: String): CinemaScraperCatalog =
+  /** Catalog with each Fly-IP-blocked seam pointed at a fixture directory (or the
+   *  fixture-less `http` by default); a cinema that leaks onto the wrong seam
+   *  throws / returns empty. */
+  private def catalog(biletyna: String = "does-not-exist",
+                      proxied:  String = "does-not-exist"): CinemaScraperCatalog =
     new CinemaScraperCatalog(
-      http, mkFetch = http, bnFetch = new FakeHttpFetch(fixtureDirectory), today = LocalDate.of(2026, 6, 6),
-      chainDetailCache = (h, ttl) => new CachingDetailFetch(h, ttl)
+      http, mkFetch = http, bnFetch = new FakeHttpFetch(biletyna), today = LocalDate.of(2026, 6, 6),
+      chainDetailCache = (h, ttl) => new CachingDetailFetch(h, ttl),
+      proxiedFetch = new FakeHttpFetch(proxied)
     )
 
   "CinemaScraperCatalog" should "route Kino Kameralne through the injected biletyna seam, not the shared http" in {
-    val scraper = catalogWithBiletyna("kino-kameralne").all.find(_.cinema == KinoKameralne).value
+    val scraper = catalog(biletyna = "kino-kameralne").all.find(_.cinema == KinoKameralne).value
     val movies  = scraper.fetch()  // reads the kino-kameralne fixture via bnFetch
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(KinoKameralne)
   }
 
   it should "route ADA Kino Studyjne through the injected biletyna seam, not the shared http" in {
-    val scraper = catalogWithBiletyna("ada-kino-studyjne").all.find(_.cinema == AdaKinoStudyjne).value
+    val scraper = catalog(biletyna = "ada-kino-studyjne").all.find(_.cinema == AdaKinoStudyjne).value
     val movies  = scraper.fetch()  // reads the ada-kino-studyjne fixture via bnFetch
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(AdaKinoStudyjne)
+  }
+
+  // Kino Kryterium's origin (bilety.ck105.koszalin.pl) silently times out our Fly
+  // egress IP at the TCP layer, so a direct scrape came back empty → a permanent
+  // white /uptime bar. It must fetch through the residential-proxy seam. The
+  // shared `http` has no ck105 fixture, so a fetch that leaked onto it returns
+  // empty and this fails. Fixture captured 2026-06-15 from the live month pages
+  // `/MSI/mvc/pl?sort=Name&date=2026-06` (+ 2026-07).
+  it should "route Kino Kryterium through the injected residential-proxy seam, not the shared http" in {
+    val scraper = catalog(proxied = "kino-kryterium").all.find(_.cinema == KinoKryterium).value
+    val movies  = scraper.fetch()  // reads the kino-kryterium fixture via proxiedFetch
+    movies should not be empty
+    movies.map(_.cinema).toSet shouldBe Set(KinoKryterium)
   }
 
   // KinoPort lost its gcsw.pl/kino/ programme alias in a 2026-06 site rebuild
@@ -54,7 +73,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // seances API for the Gdańsk venue. Guard the seam: it must read filmweb.pl,
   // never the retired gcsw.pl host.
   it should "scrape KinoPort off Filmweb, not the retired gcsw.pl alias" in {
-    val scraper = catalogWithBiletyna("kino-kameralne").all.find(_.cinema == KinoPort).value
+    val scraper = catalog(biletyna = "kino-kameralne").all.find(_.cinema == KinoPort).value
     scraper.scrapeHosts should contain ("www.filmweb.pl")
     scraper.scrapeHosts should not contain "gcsw.pl"
   }
@@ -64,7 +83,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // also catches a `City.slug` ↔ `byCity` key mismatch: `catalog.all` resolves
   // scrapers by `c.slug`, so a typo drops that city's cinemas out of `all`.
   it should "wire a scraper for every modelled cinema" in {
-    val scraped  = catalogWithBiletyna("kino-kameralne").all.map(_.cinema).toSet
+    val scraped  = catalog(biletyna = "kino-kameralne").all.map(_.cinema).toSet
     val modelled = Cinema.all.toSet
     withClue(s"modelled but unscraped: ${(modelled diff scraped).map(_.displayName).toSeq.sorted}") {
       (modelled diff scraped) shouldBe empty
@@ -77,7 +96,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // bug this guards. The abstract `CinemaScraper.scrapeHosts` makes the compiler
   // demand the method; this makes the runtime demand it be non-trivial.
   it should "declare a non-empty scrapeHosts for every scraper" in {
-    val leaking = catalogWithBiletyna("kino-kameralne").all.filter(_.scrapeHosts.isEmpty).map(_.cinema.displayName)
+    val leaking = catalog(biletyna = "kino-kameralne").all.filter(_.scrapeHosts.isEmpty).map(_.cinema.displayName)
     withClue(s"scrapers with empty scrapeHosts: ${leaking.sorted}") { leaking shouldBe empty }
   }
 
@@ -85,7 +104,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // bespoke per-cinema domains, shared national-chain hosts, and the per-venue
   // bilety24 subdomains. A missed client or a re-spelled host fails here.
   it should "cover representative bespoke, shared-chain and per-venue hosts" in {
-    val hosts = catalogWithBiletyna("kino-kameralne").scrapeHosts
+    val hosts = catalog(biletyna = "kino-kameralne").scrapeHosts
     val expected = Set(
       "kinomuranow.pl", "amok.gliwice.pl", "stacjafalenica.pl",   // bespoke per-cinema
       "www.multikino.pl", "www.cinema-city.pl", "restapi.helios.pl", "www.filmweb.pl", "www.novekino.pl", // shared chains
@@ -100,13 +119,13 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // shared through one chain cache; it refreshes more eagerly than Cinema City's
   // film page so ratings/runtime changes surface within 2h, not 6h.
   it should "cache Helios chain detail for 2h and Cinema City for 6h" in {
-    val catalog = catalogWithBiletyna("kino-kameralne")
-    catalog.heliosDetailTtl shouldBe 2.hours
-    catalog.cinemaCityDetailTtl shouldBe 6.hours
+    val built = catalog(biletyna = "kino-kameralne")
+    built.heliosDetailTtl shouldBe 2.hours
+    built.cinemaCityDetailTtl shouldBe 6.hours
   }
 
   it should "expose only bare lower-case hosts (no scheme, port or path)" in {
-    catalogWithBiletyna("kino-kameralne").scrapeHosts.foreach { h =>
+    catalog(biletyna = "kino-kameralne").scrapeHosts.foreach { h =>
       withClue(s"malformed host: '$h'") {
         h shouldBe h.toLowerCase
         h should not include "/"
