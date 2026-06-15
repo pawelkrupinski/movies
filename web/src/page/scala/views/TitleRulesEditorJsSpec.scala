@@ -148,6 +148,26 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     }
   }
 
+  it should "draw the move buttons as a white double-chevron SVG, flipped between top and bottom" in {
+    onEditor { page =>
+      // Each move button holds a 2-path <svg>, not a text glyph.
+      page.evalInt(
+        "document.querySelector('.rule-wrap .row button[title=\"move to top\"] svg').querySelectorAll('path').length"
+      ) shouldBe 2
+      // The strokes are white.
+      page.evalString(
+        "document.querySelector('.rule-wrap .row button[title=\"move to top\"] svg path').getAttribute('stroke')"
+      ) shouldBe "#ffffff"
+      // The "to bottom" icon is the "to top" icon flipped — different path data.
+      page.evalBool(
+        """(() => {
+          |  const row = document.querySelector('.rule-wrap .row');
+          |  const up   = row.querySelector('button[title="move to top"] svg path').getAttribute('d');
+          |  const down = row.querySelector('button[title="move to bottom"] svg path').getAttribute('d');
+          |  return up.length > 0 && down.length > 0 && up !== down; })()""".stripMargin) shouldBe true
+    }
+  }
+
   it should "render one tier-level 'all affected films' rollup at the end of the transient (Global structural) section only" in {
     onEditor { page =>
       // Exactly one rollup — for the single transient scope (Global structural).

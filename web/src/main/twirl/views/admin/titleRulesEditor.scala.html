@@ -27,8 +27,9 @@
     button:hover { border-color: var(--accent); }
     button.primary { background: var(--accent-soft); border-color: var(--accent); }
     button.icon { padding: 2px 8px; }
-    /* The two doubled chevrons sit tight so they read as one ">>"-style icon. */
-    button.icon.move { padding: 2px 4px; letter-spacing: -3px; font-weight: 700; }
+    /* The white double-chevron SVG is centred in a tight square button. */
+    button.icon.move { padding: 2px 4px; line-height: 0; }
+    button.icon.move:disabled { opacity: .35; }
     section.scope { margin: 1.25rem 0; }
     .desc { color: var(--muted); margin: .15rem 0 .6rem; max-width: 60rem; }
     .card {
@@ -197,6 +198,26 @@
       return e;
     }
 
+    // A white double-chevron (svgrepo "double-up"), pointing up for "move to
+    // top" and the same icon flipped (y -> 48-y) for "move to bottom".
+    function chevrons(down) {
+      const NS = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(NS, "svg");
+      svg.setAttribute("viewBox", "0 0 48 48");
+      svg.setAttribute("width", "15"); svg.setAttribute("height", "15");
+      svg.setAttribute("fill", "none"); svg.setAttribute("aria-hidden", "true");
+      const ds = down ? ["M12 24L24 36L36 24", "M12 12L24 24L36 12"]
+                      : ["M12 24L24 12L36 24", "M12 36L24 24L36 36"];
+      for (const d of ds) {
+        const p = document.createElementNS(NS, "path");
+        p.setAttribute("d", d);
+        p.setAttribute("stroke", "#ffffff"); p.setAttribute("stroke-width", "4");
+        p.setAttribute("stroke-linecap", "round"); p.setAttribute("stroke-linejoin", "round");
+        svg.appendChild(p);
+      }
+      return svg;
+    }
+
     let dragCtx = null; // { rec, listName, from }
 
     function ruleRow(rec, listName, r, idx) {
@@ -236,11 +257,11 @@
         txt("note"),
         // Jump the rule to the top / bottom of its OWN list (the keyboard-free
         // alternative to dragging it the whole way). Disabled at the ends. The
-        // doubled chevrons read as ">>" rotated to point up / down.
+        // white double-chevron points up for "to top", flipped for "to bottom".
         h("button", { class: "icon move", title: "move to top", disabled: idx === 0,
-          onclick: () => { moveBetween(rec, listName, idx, listName, 0); render(); } }, ["⌃⌃"]),
+          onclick: () => { moveBetween(rec, listName, idx, listName, 0); render(); } }, [chevrons(false)]),
         h("button", { class: "icon move", title: "move to bottom", disabled: idx === list.length - 1,
-          onclick: () => { moveBetween(rec, listName, idx, listName, list.length); render(); } }, ["⌄⌄"]),
+          onclick: () => { moveBetween(rec, listName, idx, listName, list.length); render(); } }, [chevrons(true)]),
         h("button", { class: "icon", title: "remove rule",
           onclick: () => { list.splice(idx, 1); render(); } }, ["✕"])
       ]);
