@@ -50,10 +50,10 @@ jobs:
             run:
                 working-directory: android
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
 
             - name: Set up JDK 17
-              uses: actions/setup-java@v4
+              uses: actions/setup-java@v5
               with:
                   distribution: temurin
                   java-version: '17'
@@ -96,7 +96,7 @@ jobs:
               run: ./gradlew --no-daemon assembleDebug
 
             - name: Upload debug APK
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               if: success()
               with:
                   name: kinowo-debug-apk
@@ -128,7 +128,7 @@ jobs:
               run: ./gradlew --no-daemon assembleRelease bundleRelease assembleTuneRelease
 
             - name: Upload release APK
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               if: success()
               with:
                   name: kinowo-release-apk
@@ -138,7 +138,7 @@ jobs:
                   if-no-files-found: error
 
             - name: Upload release AAB
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               if: success()
               with:
                   name: kinowo-release-aab
@@ -146,7 +146,7 @@ jobs:
                   if-no-files-found: error
 
             - name: Upload tune APK
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               if: success()
               with:
                   name: kinowo-tune-apk
@@ -213,7 +213,7 @@ jobs:
                       "$RUNNER_TEMP/kinowo-tune.apk"
 
             - name: Upload test report
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               if: failure()
               with:
                   name: unit-test-report

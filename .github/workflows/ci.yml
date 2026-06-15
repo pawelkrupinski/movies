@@ -49,9 +49,9 @@ jobs:
             contents: read
             checks: write
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
 
-            - uses: actions/setup-java@v4
+            - uses: actions/setup-java@v5
               with:
                   distribution: temurin
                   java-version: 25
@@ -62,7 +62,7 @@ jobs:
             # Warm zinc state across pushes so an unchanged push is near-
             # instant. Same key as `integration-test` so both jobs share the
             # cache.
-            - uses: actions/cache@v4
+            - uses: actions/cache@v5
               with:
                   path: |
                       target
@@ -106,14 +106,14 @@ jobs:
             # staged dist links, then expire after a day.
             - run: sbt "web/stage" "worker/stage"
 
-            - uses: actions/upload-artifact@v4
+            - uses: actions/upload-artifact@v6
               with:
                   name: stage-web
                   path: web/target/universal/stage
                   retention-days: 1
                   if-no-files-found: error
 
-            - uses: actions/upload-artifact@v4
+            - uses: actions/upload-artifact@v6
               with:
                   name: stage-worker
                   path: worker/target/universal/stage
@@ -128,7 +128,7 @@ jobs:
             # globals (constants from `_sharedJsConfig`, functions called from
             # inline `<script>` blocks) are listed in `eslint.config.js` so
             # `no-undef` stays meaningful.
-            - uses: actions/setup-node@v4
+            - uses: actions/setup-node@v5
               with:
                   node-version: '22'
                   cache: 'npm'
@@ -157,9 +157,9 @@ jobs:
             contents: read
             checks: write
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
 
-            - uses: actions/setup-java@v4
+            - uses: actions/setup-java@v5
               with:
                   distribution: temurin
                   java-version: 21
@@ -167,7 +167,7 @@ jobs:
 
             - uses: sbt/setup-sbt@v1
 
-            - uses: actions/cache@v4
+            - uses: actions/cache@v5
               with:
                   path: |
                       target
@@ -185,7 +185,7 @@ jobs:
               with:
                   swift-version: '5.10'
 
-            - uses: actions/cache@v4
+            - uses: actions/cache@v5
               with:
                   path: ios/.build
                   key: spm-build-${{ runner.os }}-${{ hashFiles('ios/Package.swift', 'ios/Package.resolved') }}
@@ -278,7 +278,7 @@ jobs:
 
             - name: Upload fixture-server log on failure
               if: failure()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               with:
                   name: fixture-server-log-mobile
                   path: fixture-server.log
@@ -305,7 +305,7 @@ jobs:
         # need `mongod --replSet`, but GitHub `services:` can't override the
         # container command, so start Mongo by hand as a single-node RS instead.
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
 
             - name: Start MongoDB (single-node replica set, for change streams)
               run: |
@@ -314,7 +314,7 @@ jobs:
                   docker exec mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
                   until docker exec mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; do sleep 1; done
 
-            - uses: actions/setup-java@v4
+            - uses: actions/setup-java@v5
               with:
                   distribution: temurin
                   java-version: 25
@@ -322,7 +322,7 @@ jobs:
 
             - uses: sbt/setup-sbt@v1
 
-            - uses: actions/cache@v4
+            - uses: actions/cache@v5
               with:
                   path: |
                       target
@@ -368,9 +368,9 @@ jobs:
             contents: read
             checks: write
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
 
-            - uses: actions/setup-java@v4
+            - uses: actions/setup-java@v5
               with:
                   distribution: temurin
                   java-version: 25
@@ -378,7 +378,7 @@ jobs:
 
             - uses: sbt/setup-sbt@v1
 
-            - uses: actions/cache@v4
+            - uses: actions/cache@v5
               with:
                   path: |
                       target
@@ -469,7 +469,7 @@ jobs:
             contents: read
             checks: write
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
             - uses: ./.github/actions/run-page-test
               with:
                   kind:          ${{ matrix.kind }}
@@ -513,7 +513,7 @@ jobs:
             contents: read
             checks: write
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
             - uses: ./.github/actions/run-page-test
               with:
                   kind:          ${{ matrix.kind }}

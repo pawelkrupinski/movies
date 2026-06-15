@@ -19,11 +19,11 @@ jobs:
     filmweb-diff:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
 
             # Mirror the repo's Scala CI toolchain (see ci.yml): Temurin JDK 25
             # with sbt dependency caching.
-            - uses: actions/setup-java@v4
+            - uses: actions/setup-java@v5
               with:
                   distribution: temurin
                   java-version: 25
@@ -53,7 +53,7 @@ jobs:
             # committing to the repo (out of scope unless asked).
             - name: Upload diff artifacts
               if: always()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               with:
                   name: filmweb-diff-${{ steps.stamp.outputs.date }}
                   path: |
