@@ -220,8 +220,12 @@
         e.onchange = () => { r[field] = e.checked; refresh(); };
         return e;
       };
-      const row = h("div", { class: "row", draggable: "true" }, [
-        h("span", { class: "handle", title: "drag to reorder, or into the Last list" }, ["⠿"]),
+      // The handle is the ONLY grab point: the row starts non-draggable (so a
+      // click / text-selection in its inputs doesn't start a drag) and is armed
+      // draggable just for the duration of a handle press.
+      const handle = h("span", { class: "handle", title: "drag to reorder, or into the Last list" }, ["⠿"]);
+      const row = h("div", { class: "row", draggable: "false" }, [
+        handle,
         txt("pattern", "mono"),
         txt("replacement", "mono"),
         h("span", { class: "check" }, [chk("applyAll")]),
@@ -231,8 +235,15 @@
         h("button", { class: "icon", title: "remove rule",
           onclick: () => { list.splice(idx, 1); render(); } }, ["✕"])
       ]);
+      const arm    = () => row.setAttribute("draggable", "true");
+      const disarm = () => row.setAttribute("draggable", "false");
+      // Arm on press over the handle (fires before the browser decides to drag);
+      // disarm on release-without-drag and on dragend so the row never stays
+      // draggable between gestures.
+      handle.onpointerdown = arm;
+      handle.onpointerup   = disarm;
       row.ondragstart = (ev) => { dragCtx = { rec, listName, from: idx }; row.classList.add("dragging"); ev.dataTransfer.effectAllowed = "move"; };
-      row.ondragend   = () => { row.classList.remove("dragging"); };
+      row.ondragend   = () => { row.classList.remove("dragging"); disarm(); };
       row.ondragover  = (ev) => { if (sameRec(rec)) ev.preventDefault(); };
       // Drop ONTO a row: move the dragged rule (from either list) to this row's
       // position in this row's list. stopPropagation so the list-container drop

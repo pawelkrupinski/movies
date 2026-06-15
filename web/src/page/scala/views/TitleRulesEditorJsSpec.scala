@@ -98,6 +98,30 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     }
   }
 
+  it should "arm a rule row for dragging only via its ⠿ handle, not anywhere on the row" in {
+    onEditor { page =>
+      // A freshly rendered rule row is NOT draggable — so a click or text
+      // selection in its inputs can't start a drag.
+      page.evalBool("document.querySelector('.rule-wrap .row').draggable") shouldBe false
+      // A pointerdown on the handle arms the row (the grab the browser then turns
+      // into a drag); a pointerdown elsewhere on the row does not.
+      page.evalBool(
+        """(() => {
+          |  const row = document.querySelector('.rule-wrap .row');
+          |  row.querySelector('input').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+          |  const afterInput = row.draggable;
+          |  row.querySelector('.handle').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+          |  return !afterInput && row.draggable; })()""".stripMargin) shouldBe true
+      // It disarms again once the drag ends, so it never stays draggable between gestures.
+      page.evalBool(
+        """(() => {
+          |  const row = document.querySelector('.rule-wrap .row');
+          |  row.querySelector('.handle').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+          |  row.dispatchEvent(new Event('dragend'));
+          |  return row.draggable; })()""".stripMargin) shouldBe false
+    }
+  }
+
   it should "render one tier-level 'all affected films' rollup at the end of the transient (Global structural) section only" in {
     onEditor { page =>
       // Exactly one rollup — for the single transient scope (Global structural).
