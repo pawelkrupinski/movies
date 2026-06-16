@@ -4,7 +4,7 @@
   "tags": ["fly", "kinowo"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "refresh": "1m",
   "time": { "from": "now-6h", "to": "now" },
   "annotations": {
@@ -129,6 +129,19 @@
       "fieldConfig": { "defaults": { "min": 0, "max": 1, "custom": { "drawStyle": "line", "fillOpacity": 20, "lineInterpolation": "stepAfter" } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "max by (app) (fly_instance_up)", "legendFormat": "{{app}}" }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Residential proxy — fetches served vs failed (recent 30 min, from web /metrics)",
+      "description": "The Decodo residential-proxy leg of the cinema scrape, surfaced from the in-app /uptime health (Mongo) via web's /metrics scrape. A flip from all-green 'served by proxy' to all-red 'failed → Zyte fallback' is a silent cost regression — scraping keeps working via Zyte, so no cinema bar goes red. Drives the 'Residential proxy failing' alert.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 39 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 15 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(kinowo_uptime_recent_successes{service=\"Residential proxy\"})", "legendFormat": "served by proxy" },
+        { "refId": "B", "expr": "sum(kinowo_uptime_recent_failures{service=\"Residential proxy\"})", "legendFormat": "failed → Zyte fallback" }
       ]
     }
   ]

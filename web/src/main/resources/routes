@@ -84,6 +84,9 @@ DELETE  /api/me                     controllers.UserStateController.deleteAccoun
 
 # ── Health / Uptime ───────────────────────────────────────────────────────────
 GET     /health                     controllers.HealthController.check
+# Prometheus exposition of the in-app /uptime health, scraped by Fly's managed
+# Prometheus (see the [[metrics]] block in fly.toml) for the self-hosted Grafana.
+GET     /metrics                    controllers.MetricsController.metrics
 GET     /uptime                     controllers.UptimeController.index()
 GET     /uptime/fallback            controllers.UptimeController.fallback()
 GET     /uptime/stream              controllers.UptimeController.stream()

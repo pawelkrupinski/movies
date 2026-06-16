@@ -71,3 +71,13 @@ primary_region = 'arn'
     port = 9000
     timeout = '10s'
     type = 'http'
+
+# Fly's managed Prometheus scrapes this over the private network and ships the
+# series to api.fly.io/prometheus/personal — the same datasource the self-hosted
+# Grafana (fly/grafana) already reads. MetricsController serves it on the app's
+# own internal port (9000), exposing the in-app /uptime health (Mongo, invisible
+# to Fly's host-only metrics) so Grafana can alert on a service failing silently
+# behind a fallback — the residential-proxy → Zyte case.
+[[metrics]]
+  port = 9000
+  path = '/metrics'

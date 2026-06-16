@@ -15,8 +15,16 @@ external cinema scrape targets, not our own VMs).
   an external account + series caps. Self-hosting keeps everything as code here.
 
 Everything is **config-as-code** under `provisioning/` — a fresh machine comes up
-fully wired (datasource, 12 alert rules, Telegram contact point, overview
+fully wired (datasource, 13 alert rules, Telegram contact point, overview
 dashboard). No click-ops.
+
+Most rules read Fly's host metrics. The **app-uptime** group is different: it
+reads the in-app `/uptime` health (the Mongo `uptimeBuckets` data the public
+page shows), which Fly's host metrics can't see. The `kinowo` web app exposes it
+as Prometheus gauges (`kinowo_uptime_recent_*`) from its `MetricsController`
+(`GET /metrics`), and Fly's managed Prometheus scrapes it via the `[[metrics]]`
+block in the root `fly.toml` — so these rules land in the SAME `fly-prometheus`
+datasource as the host metrics, no extra datasource needed.
 
 ## What it watches (each rule maps to a real past incident)
 
@@ -34,6 +42,7 @@ dashboard). No click-ops.
 | HTTP 5xx rate high | `> 5%` 5xx 5m | 502/503 boot-crash-loop outage |
 | HTTP p95 latency high | p95 `> 2s` 10m | "percentiles suddenly increasing" |
 | Serving app down | `fly_instance_up{app=kinowo}` 0/absent 3m | web outage |
+| Residential proxy failing | recent failure ratio `> 0.5` 15m (app-uptime) | 2026-06-16 Decodo "Limit: 3" rolled all scrapes to Zyte for hours, unnoticed |
 
 Notes grounded in the live metrics (verified against `api.fly.io/prometheus`):
 - `fly_instance_exit_oom` from the docs **does not exist** in this org — the OOM
@@ -83,7 +92,7 @@ fly deploy --remote-only -c fly/grafana/fly.toml -a kinowo-grafana
 ```
 Or push any change under `fly/grafana/**` to `main` — `.github/workflows/deploy-grafana.yml`
 deploys it. Log in at `https://kinowo-grafana.fly.dev` (admin + the password above).
-Confirm under **Alerting → Alert rules** that 7 rules are `Normal`, and open each
+Confirm under **Alerting → Alert rules** that all 13 rules are `Normal`, and open each
 rule's query in **Explore** to confirm it returns data.
 
 ### 6. Deploy markers (commit hash on the timeline)
@@ -104,7 +113,7 @@ dashboard (the `Deploys` annotation query). Until the secrets exist, the
 fly/grafana/smoke-test.sh      # needs Docker
 ```
 Boots the real Grafana image with this provisioning and asserts the datasource,
-all 12 alert rules, the Telegram contact point and the dashboard load cleanly. No
+all 13 alert rules, the Telegram contact point and the dashboard load cleanly. No
 network to Fly needed (dummy token). Break any provisioning file and it fails —
 this is the test gate for changes here.
 

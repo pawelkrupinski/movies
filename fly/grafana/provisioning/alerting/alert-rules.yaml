@@ -553,3 +553,65 @@ groups:
                   query: { params: [] }
                   reducer: { type: last, params: [] }
               refId: C
+
+  # ── App uptime (the in-app /uptime health, via the web /metrics scrape) ───────
+  # These watch the SAME data the public /uptime page shows — the Mongo
+  # `uptimeBuckets` health that Fly's host metrics can't see — exposed as
+  # Prometheus gauges by web's MetricsController (kinowo_uptime_recent_* over a
+  # 30-min window) and scraped via the [[metrics]] block in fly.toml.
+  - orgId: 1
+    name: app-uptime
+    folder: Fly Alerts
+    interval: 1m
+    rules:
+      # ---- Residential (Decodo) proxy failing -----------------------------
+      # The proxy egress for the Cloudflare-blocked cinemas (Multikino, biletyna)
+      # sits behind a Zyte/direct fallback, so when it dies EVERY cinema bar stays
+      # green and only the "Residential proxy" /uptime row goes red — a silent
+      # failure nobody watches while the Zyte bill (~$25/mo vs the proxy's ~$2)
+      # quietly returns. This is exactly the 2026-06-16 incident (Decodo's per-IP
+      # "Limit: 3" concurrent-auth cap rolled everything to Zyte for hours,
+      # unnoticed). Alert on the recent failure RATIO: failures /
+      # (failures+successes) over the last 30 min. clamp_min keeps an idle/low-
+      # volume window from dividing by zero; an absent series (proxy disabled, no
+      # KINOWO_PROXY_* secrets) yields no data → no alarm. Warning, not critical:
+      # scraping never breaks (the fallback serves), it's a cost + capability
+      # regression, so 15m of sustained majority-failure is the right trip.
+      - uid: kinowo-residential-proxy-failing
+        title: Residential proxy failing (falling back to Zyte)
+        condition: C
+        for: 15m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: 'The Decodo residential proxy is mostly failing — cinema scrapes are falling back to Zyte'
+          description: 'Over half of the residential-proxy fetches in the last 30 min failed (kinowo_uptime_recent_failures vs _recent_successes for service "Residential proxy"). Scraping still works via the Zyte/direct fallback so no cinema is down — but the flat-fee Decodo proxy is not serving and the per-request Zyte egress is back in use. Check the "Residential proxy" row on https://kinowo.fly.dev/uptime for the error text (per-IP "Limit: 3" auth cap, 401/407, or a burned IP), and the Decodo dashboard. See reference_decodo_isp_proxy.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'sum(kinowo_uptime_recent_failures{service="Residential proxy"}) / clamp_min(sum(kinowo_uptime_recent_failures{service="Residential proxy"}) + sum(kinowo_uptime_recent_successes{service="Residential proxy"}), 1)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.5] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
