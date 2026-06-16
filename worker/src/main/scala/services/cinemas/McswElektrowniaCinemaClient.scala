@@ -21,7 +21,8 @@ import scala.util.Try
  * lists all currently-running films as `div.js-event-details-filter.movies-movie__single`
  * blocks.  Within each block:
  *
- *   - `h2.movies-movie__single__title` — a composite string:
+ *   - `.movies-movie__single__title` (an `h2` or, since 2026-06-16, an `h3`) —
+ *     a composite string:
  *     "CLEAN TITLE, Country, genres, rating   INTERNAL-CODE".
  *     The clean film title is the segment before the FIRST comma (the rest
  *     carries locale / genre metadata that we discard).
@@ -130,7 +131,10 @@ object McswElektrowniaCinemaClient {
   private[cinemas] def parseDayPage(html: String, date: LocalDate): Seq[RawSlot] = {
     val document = Jsoup.parse(html)
     document.select("div.js-event-details-filter.movies-movie__single").asScala.toSeq.flatMap { block =>
-      val rawTitle = Option(block.selectFirst("h2.movies-movie__single__title"))
+      // The title sits on `.movies-movie__single__title`; the site has rendered
+      // this as both `h2` (2026-06 capture) and `h3` (2026-06-16 onward), so
+      // match on the class alone rather than pinning the heading level.
+      val rawTitle = Option(block.selectFirst(".movies-movie__single__title"))
         .map(_.text.trim).getOrElse("")
       if (rawTitle.isEmpty) Seq.empty
       else {

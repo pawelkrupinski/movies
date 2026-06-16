@@ -510,7 +510,7 @@
                             </div>
                     </div>
                     <div class="col-lg-9 col-sm-12 movies-movie__single__info" style="display: flex; flex-direction: column">
-                        <h2 class="movies-movie__single__title">DRZEWO MAGII, Wlk. Brytania , dubbing, familijny, od 8 lat KS N                                            2026D2D2251</h2>
+                        <h3 class="movies-movie__single__title">DRZEWO MAGII, Wlk. Brytania , dubbing, familijny, od 8 lat KS N                                            2026D2D2251</h3>
                         <ul class="movies-movie__single__moreinfo">
                                 <br>
                             <li>czas: 110 min.</li>
@@ -584,7 +584,7 @@
                             </div>
                     </div>
                     <div class="col-lg-9 col-sm-12 movies-movie__single__info" style="display: flex; flex-direction: column">
-                        <h2 class="movies-movie__single__title">ORŁY REPUBLIKI, thriller, polityczny, od 15lat N       2025T2D8330</h2>
+                        <h3 class="movies-movie__single__title">ORŁY REPUBLIKI, thriller, polityczny, od 15lat N       2025T2D8330</h3>
                         <ul class="movies-movie__single__moreinfo">
                                 <br>
                             <li>czas: 127 min.</li>
@@ -658,7 +658,7 @@
                             </div>
                     </div>
                     <div class="col-lg-9 col-sm-12 movies-movie__single__info" style="display: flex; flex-direction: column">
-                        <h2 class="movies-movie__single__title">DKF - ZAWIEŚCIE CZERWONE LATARNIE, dramat,od 15 lat (kopia cyfrowa 4K, z cyklu Mądrość Wschodu – filmowe medytacje)                     1991T2D722</h2>
+                        <h3 class="movies-movie__single__title">DKF - ZAWIEŚCIE CZERWONE LATARNIE, dramat,od 15 lat (kopia cyfrowa 4K, z cyklu Mądrość Wschodu – filmowe medytacje)                     1991T2D722</h3>
                         <ul class="movies-movie__single__moreinfo">
                                 <br>
                             <li>czas: 125 min.</li>
@@ -732,7 +732,7 @@
                             </div>
                     </div>
                     <div class="col-lg-9 col-sm-12 movies-movie__single__info" style="display: flex; flex-direction: column">
-                        <h2 class="movies-movie__single__title">DRAMA, USA,dramat, komedia, romans, od 15 lat                    2026T2D2283</h2>
+                        <h3 class="movies-movie__single__title">DRAMA, USA,dramat, komedia, romans, od 15 lat                    2026T2D2283</h3>
                         <ul class="movies-movie__single__moreinfo">
                                 <br>
                             <li>czas: 105 min.</li>

@@ -54,7 +54,7 @@ class McswElektrowniaCinemaClientSpec extends AnyFlatSpec with Matchers with Opt
 
   it should "strip metadata from MSI composite titles" in {
     val movies = client.fetch()
-    // The raw h2 is 'DRZEWO MAGII, Wlk. Brytania , dubbing, familijny, od 8 lat KS N…'
+    // The raw title is 'DRZEWO MAGII, Wlk. Brytania , dubbing, familijny, od 8 lat KS N…'
     // The client must return just 'DRZEWO MAGII'.
     movies.map(_.movie.title) should contain("DRZEWO MAGII")
     movies.map(_.movie.title).foreach { t =>

@@ -498,7 +498,7 @@
                             </div>
                     </div>
                     <div class="col-lg-9 col-sm-12 movies-movie__single__info" style="display: flex; flex-direction: column">
-                        <h2 class="movies-movie__single__title">DRZEWO MAGII, Wlk. Brytania , dubbing, familijny, od 8 lat KS N                                            2026D2D2251</h2>
+                        <h3 class="movies-movie__single__title">DRZEWO MAGII, Wlk. Brytania , dubbing, familijny, od 8 lat KS N                                            2026D2D2251</h3>
                         <ul class="movies-movie__single__moreinfo">
                                 <br>
                             <li>czas: 110 min.</li>
@@ -572,7 +572,7 @@
                             </div>
                     </div>
                     <div class="col-lg-9 col-sm-12 movies-movie__single__info" style="display: flex; flex-direction: column">
-                        <h2 class="movies-movie__single__title">M&#211;W MI JIMPA, Australia, Finlandia, Holandia, dramat, komedia , od 15 lat  N                     2025T2D8267</h2>
+                        <h3 class="movies-movie__single__title">M&#211;W MI JIMPA, Australia, Finlandia, Holandia, dramat, komedia , od 15 lat  N                     2025T2D8267</h3>
                         <ul class="movies-movie__single__moreinfo">
                                 <br>
                             <li>czas: 113 min.</li>
@@ -646,7 +646,7 @@
                             </div>
                     </div>
                     <div class="col-lg-9 col-sm-12 movies-movie__single__info" style="display: flex; flex-direction: column">
-                        <h2 class="movies-movie__single__title">DKF - WAŁKONIE, dramat obyczajowy, od 15 lat (inauguracja przeglądu filmowego - „FEDERICO FELLINI: ciao a tutti!” w programie 6 film&#243;w z kopii cyfrowych 4K,) N                19532DT0004</h2>
+                        <h3 class="movies-movie__single__title">DKF - WAŁKONIE, dramat obyczajowy, od 15 lat (inauguracja przeglądu filmowego - „FEDERICO FELLINI: ciao a tutti!” w programie 6 film&#243;w z kopii cyfrowych 4K,) N                19532DT0004</h3>
                         <ul class="movies-movie__single__moreinfo">
                                 <br>
                             <li>czas: 100 min.</li>
@@ -720,7 +720,7 @@
                             </div>
                     </div>
                     <div class="col-lg-9 col-sm-12 movies-movie__single__info" style="display: flex; flex-direction: column">
-                        <h2 class="movies-movie__single__title">DRAMA, USA,dramat, komedia, romans, od 15 lat                    2026T2D2283</h2>
+                        <h3 class="movies-movie__single__title">DRAMA, USA,dramat, komedia, romans, od 15 lat                    2026T2D2283</h3>
                         <ul class="movies-movie__single__moreinfo">
                                 <br>
                             <li>czas: 105 min.</li>
