@@ -50,12 +50,13 @@ object FilmCanonicalizer {
    *       are two films, never merged. Each resolved cluster's reference year is
    *       its `tmdbYear`.
    *    2. Unresolved rows that HAVE a year attach to the NEAREST resolved cluster
-   *       (by `|year − tmdbYear|`) whenever any resolved cluster exists — even at a
-   *       gap wider than ±1, since an unresolved same-title row can't be a known
-   *       distinct remake (those are resolved, rule 1), so the gap is just a
-   *       production-vs-release-year disagreement. Ties break on the cluster's
-   *       smallest `canonicalRank` then index. Only a group with NO resolved
-   *       cluster leaves these rows to rule 3.
+   *       (by `|year − tmdbYear|`) within ±2 of its tmdbYear — wide enough to
+   *       absorb a cinema's production-vs-release-year disagreement (a film shot
+   *       in year Y but released Y+1/Y+2), but NOT so wide that a genuinely
+   *       different same-title film still awaiting its own tmdbId gets swallowed.
+   *       Ties (equidistant between two resolved remakes) break on the cluster's
+   *       smallest `canonicalRank` then index. Rows beyond ±2 of every resolved
+   *       cluster fall through to rule 3.
    *    3. The remaining year-bearing unresolved rows form their OWN clusters by
    *       a greedy 2-year window from the lowest year — {y, y+1} absorbs all
    *       rows at y or y+1, the next window opens at the next distinct year
@@ -78,25 +79,25 @@ object FilmCanonicalizer {
     val unresolved         = group.filter(_._2.tmdbId.isEmpty)
     val (yeared, yearless) = unresolved.partition(_._1.year.isDefined)
 
-    // (2) Year-bearing unresolved rows attach to a resolved cluster's tmdbYear.
-    // An unresolved row sharing the sanitize group can't be a known distinct
-    // remake — those are RESOLVED, each with its OWN tmdbId (step 1) — so a
-    // same-title unresolved row beside a resolved one is the SAME film, the gap
-    // just a cinema's production-vs-release-year disagreement (Kino Muzeum reports
-    // "Zawieście czerwone latarnie" at its 1989 production year while TMDB resolved
-    // it to 1991, two years off). It therefore attaches to the NEAREST resolved
-    // cluster by |year − tmdbYear| even when that gap exceeds ±1; only when the
-    // group has NO resolved cluster at all does it fall through to the greedy
-    // window in (3). Ties (equidistant between two resolved remakes, or several
-    // candidates) break on the cluster's smallest canonicalRank then its index, so
-    // the attachment is a pure function of the row set, not arrival order. Iterate
-    // in canonicalRank order for the same reason.
+    // (2) Year-bearing unresolved rows attach to the NEAREST resolved cluster
+    // within ±2 of its tmdbYear. The ±1 window this widened from was too tight:
+    // Kino Muzeum reports "Zawieście czerwone latarnie" at its 1989 PRODUCTION
+    // year while TMDB resolved the film to its 1991 release — two years off — so
+    // the unresolved 1989 row orphaned into its own cluster and only merged when
+    // its own TMDB lookup happened to land before this pass (a race that left the
+    // corpus, and the rendered snapshot, nondeterministic). ±2 covers the usual
+    // production-vs-release gap; staying bounded (not "nearest at any distance")
+    // keeps a genuinely different same-title film still awaiting its tmdbId — a
+    // remake decades apart — from being swallowed into the wrong cluster. Pick the
+    // nearest by |year − tmdbYear|, ties on the cluster's smallest canonicalRank
+    // then index, so the attachment is a pure function of the row set, not arrival
+    // order. Iterate in canonicalRank order for the same reason.
     val adjacent = scala.collection.mutable.LinkedHashMap.empty[Int, scala.collection.mutable.ListBuffer[Row]]
     val orphans  = scala.collection.mutable.ListBuffer.empty[Row]
     yeared.sortBy(rank).foreach { row =>
       val year = row._1.year.get
       resolvedClusters.zipWithIndex
-        .filter { case (c, _) => c.refYear.isDefined }
+        .filter { case (c, _) => c.refYear.exists(ry => math.abs(year - ry) <= 2) }
         .minByOption { case (c, index) => (math.abs(year - c.refYear.get), c.minRank, index) } match {
         case Some((_, index)) => adjacent.getOrElseUpdate(index, scala.collection.mutable.ListBuffer.empty) += row
         case None           => orphans += row

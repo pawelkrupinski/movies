@@ -81,15 +81,14 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     canonicalKey.year shouldBe None
   }
 
-  "clusterByFilm" should "fold an unresolved same-title row into a resolved sibling even when its (production) year is more than ±1 off" in {
+  "clusterByFilm" should "fold an unresolved same-title row into a resolved sibling a full two years off" in {
     // The "Zawieście czerwone latarnie" flake: every cinema's row resolves to one
     // TMDB film at year 1991, but Kino Muzeum reports it uppercase with the
-    // PRODUCTION year 1989 — two years off the resolved year. While that row is
-    // still unresolved (its TMDB lookup hasn't landed yet, or never will in a
-    // hermetic run), it must STILL fold into the resolved 1991 cluster: an
-    // unresolved row sharing the sanitize group can't be a known distinct remake
-    // (those are resolved with their OWN tmdbId), so a >±1 year gap is just a
-    // cinema's production-vs-release-year disagreement, not a second film.
+    // PRODUCTION year 1989 — two years off the resolved year, just past the old ±1
+    // window. While that row is still unresolved (its TMDB lookup hasn't landed
+    // yet, or never will in a hermetic run), it must STILL fold into the resolved
+    // 1991 cluster: a ±2 gap is a cinema's production-vs-release-year
+    // disagreement, not a second film.
     val rows = Seq(
       resolved  ("Zawieście czerwone latarnie", tmdbId = 31273, tmdbYear = 1991, cinema = KinoMuza),
       unresolved("ZAWIEŚCIE CZERWONE LATARNIE", Some(1989), cinema = KinoMuzeumGdansk)
@@ -104,7 +103,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "still keep two DISTINCT resolved tmdbIds at a >±1 gap as separate films" in {
+  it should "still keep two DISTINCT resolved tmdbIds far apart as separate films" in {
     // The over-merge guard: a real remake carrying the same title (each resolved
     // to its OWN tmdbId, years far apart) must stay two clusters. The fold above
     // only pulls in UNRESOLVED rows, never two resolved films.
