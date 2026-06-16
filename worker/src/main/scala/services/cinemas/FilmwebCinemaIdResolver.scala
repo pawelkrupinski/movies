@@ -96,6 +96,13 @@ object FilmwebCinemaIdResolver {
    *   - Kino Apollo: SUPPRESSED — Filmweb lists "Kino Teatr Apollo" (3025) but
    *     its seances API returns empty across the whole window (verified
    *     2026-06), so the old 3025 produced only noise. No usable Filmweb data.
+   *   - Kinoteka ← Filmweb "Kinoteka" (55). The fuzzy match is exact, so this
+   *     pin is about reliability, not name divergence: kinoteka.pl is down at the
+   *     TCP layer (verified globally 2026-06-16), so the venue now depends on the
+   *     Filmweb fallback every tick. Pinning the verified id removes that
+   *     dependence on a single boot-time `/showtimes/Warszawa` GET succeeding —
+   *     a blip there would otherwise leave the venue with no fallback id and a
+   *     red /uptime bar while its own site stays dead.
    */
   val overrides: Map[Cinema, Option[Int]] = Map(
     models.MultikinoReduta   -> Some(2119),
@@ -103,6 +110,7 @@ object FilmwebCinemaIdResolver {
     models.KinoAmondo        -> Some(2077),
     models.HeliosRiviera     -> Some(1775),
     models.KinoMuzeumGdansk  -> Some(2042),
+    models.Kinoteka          -> Some(55),
     models.KinoApollo        -> None,
   )
 

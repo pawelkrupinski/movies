@@ -67,6 +67,15 @@ class FilmwebCinemaIdResolverSpec extends AnyFlatSpec with Matchers with OptionV
       Resolution(KinoAmondo, Some(2077), Override)
   }
 
+  it should "pin Kinoteka to 55 even when the city listing is unavailable" in {
+    // kinoteka.pl is down at the TCP layer, so the venue lives on the Filmweb
+    // fallback. The override must resolve its id WITHOUT a successful
+    // /showtimes/Warszawa fetch — an empty listing (the boot-time blip that
+    // produced the red /uptime bar) must still yield id 55, not Unmatched.
+    resolver.resolveOne(Kinoteka, Nil) shouldBe
+      Resolution(Kinoteka, Some(55), Override)
+  }
+
   it should "suppress Kino Apollo to NO_FILMWEB_ID despite a (empty) Filmweb listing" in {
     val r = resolver.resolveOne(KinoApollo, poznanListing)
     r.filmwebId shouldBe None
