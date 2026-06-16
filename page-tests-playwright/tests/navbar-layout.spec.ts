@@ -662,14 +662,67 @@ test.describe('day pills (390×844)', () => {
   });
 });
 
+// ── Day pills: the row spreads to fill the logo→search span ────────
+//
+// The day-pill row fans out across the whole span between the logo (the 🎬
+// "camera" mark) and the search box — like the iOS/Android day-chip row —
+// rather than packing tight against the search with empty space on the logo
+// side. Pre-change `.navbar-date` was `margin-left:auto; flex-shrink:0`, so
+// on a wider phone the free space pooled into a wide gap LEFT of the first
+// pill (≈60px at 440px); the row now grows (`flex:1`, pills `flex:1 0 auto`)
+// to absorb it, leaving only the small navbar inter-item gap. The viewport is
+// 440px on purpose: it has real horizontal slack, so the old packed-right CSS
+// shows the big gap (test fails) and the spread layout closes it (test
+// passes). At 390px a search-width step happens to leave almost no slack, so
+// that width can't tell the two layouts apart.
+test.describe('day pills spread to fill the bar (440×956)', () => {
+  test.use({ viewport: { width: 440, height: 956 } });
+
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name.includes('desktop'), 'mobile-class projects only');
+    await page.goto('/poznan/');
+    await waitForCards(page);
+  });
+
+  test('the day-pill row fills the gap between the logo and the search box', async ({ page }) => {
+    const m = await page.evaluate(() => {
+      const logo   = document.querySelector('.navbar-logo')   as HTMLElement | null;
+      const date   = document.querySelector('.navbar-date')   as HTMLElement | null;
+      const search = document.querySelector('.navbar-search') as HTMLElement | null;
+      const visible = (el: HTMLElement | null) =>
+        !!el && el.offsetParent !== null && el.getBoundingClientRect().width > 0;
+      if (!visible(logo) || !visible(date) || !visible(search)) return null;
+      return {
+        logoRight:   logo!.getBoundingClientRect().right,
+        dateLeft:    date!.getBoundingClientRect().left,
+        dateRight:   date!.getBoundingClientRect().right,
+        searchLeft:  search!.getBoundingClientRect().left,
+      };
+    });
+    expect(m, 'logo / day-pill row / search not all visible').not.toBeNull();
+    // The row starts right after the logo — the old wide margin-left:auto gap
+    // (≈60px here) is gone, leaving only the small navbar inter-item gap.
+    expect(
+      m!.dateLeft - m!.logoRight,
+      `gap between logo (right ${m!.logoRight.toFixed(1)}) and day-pill row (left ${m!.dateLeft.toFixed(1)}) is too wide — pills still packed to the right`,
+    ).toBeLessThanOrEqual(24);
+    // …and it reaches the search box: the row spans essentially the whole span.
+    expect(
+      m!.searchLeft - m!.dateRight,
+      `day-pill row right (${m!.dateRight.toFixed(1)}) does not reach the search box (left ${m!.searchLeft.toFixed(1)})`,
+    ).toBeLessThanOrEqual(8);
+  });
+});
+
 // ── Horizontal order: day pills sit to the LEFT of the search box ──
 //
 // The search input lives to the RIGHT of the day-pill row at every width
-// where both are visible (CSS `order` on `.navbar-date` / `.navbar-search`,
-// with `margin-left:auto` on the day pills holding the whole cluster to the
-// right of the logo). Pre-change the search box sat to the LEFT of the pills,
-// so this asserts `search.left >= dayPills.right`: the two never overlap and
-// the search box is entirely past the pill row.
+// where both are visible (CSS `order` on `.navbar-date` / `.navbar-search`;
+// on desktop `margin-left:auto` holds the cluster right, on mobile the day
+// pills grow to fill the span up to the search box). Pre-change the search
+// box sat to the LEFT of the pills, so this asserts `search.left >=
+// dayPills.right`: the two never overlap and the search box is entirely past
+// the pill row.
 
 test.describe('navbar order — day pills left of search', () => {
   for (const [label, viewport] of [

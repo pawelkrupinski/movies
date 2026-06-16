@@ -784,25 +784,29 @@
     }
     /* Priority 1 — the city title is the first thing to go as the row tightens. */
     .navbar-title { display: none; }
-    /* One row, ordered: [logo] … [day pills] [search] [Filtry] [auth].
-       `margin-left:auto` on the day pills pushes the whole control cluster to
-       the right of the logo; from there everything packs together. Shrink
-       priority as the row narrows is expressed through `flex-shrink`: search
-       gives way first and most (priority 2, plus the width steps above), then
-       the day pills shrink their font/padding (priority 3); the day pill ROW
-       itself never shrinks (`.navbar-date` is `flex-shrink:0`) so a pill can't
-       be clipped under Filtry. The ‹ › arrows drop on portrait phones (above)
-       to make room; search itself only drops at the ≤290px emergency
-       breakpoint. */
-    .navbar-date      { order: 2; margin-left: auto; min-width: 0; flex-shrink: 0; }
+    /* One row, ordered: [logo] [day pills] [search] [Filtry] [auth]. The
+       day-pill row (`.navbar-date`) is `flex:1`, so it stretches to fill the
+       whole span between the logo and the search box; its pills (`flex:1 0
+       auto`) fan out across that span instead of packing tight against the
+       search — the same full-width day-chip row the iOS/Android apps show.
+       Shrink priority as the row narrows is expressed through `flex-shrink`:
+       search gives way first and most (priority 2, plus the width steps
+       above), then the day pills shrink their font/padding (priority 3); the
+       pills never shrink below their labels (`flex-shrink:0` via `flex:1 0
+       auto`) so none can be clipped under Filtry. Search itself only drops at
+       the ≤290px emergency breakpoint. */
+    .navbar-date      { order: 2; flex: 1 1 auto; min-width: 0; }
     .navbar-search    { order: 3; min-width: 0; flex-shrink: 6; }
     .navbar-filtry    { order: 4; margin-left: 0; max-width: 45%; min-width: 0; flex-shrink: 1; }
     .navbar-auth      { order: 5; flex-shrink: 0; }
     /* Priority 3 — the day pills shrink their font + padding with the viewport
-       so the four-pill row stays narrow enough to fit beside the logo, arrows,
-       Filtry and auth. */
-    .navbar .day-pills { gap: 1px; }
+       so the four-pill row stays narrow enough to fit beside the logo,
+       Filtry and auth. The row fills `.navbar-date` (`width:100%`) and each
+       pill grows to share it (`flex:1 0 auto`) — spreading the pills across
+       the bar — while `flex-shrink:0` keeps every label from being clipped. */
+    .navbar .day-pills { gap: 1px; width: 100%; }
     .navbar .day-pill {
+      flex: 1 0 auto;
       font-size: calc(.82 * var(--mobile-scale));
       padding-left:  min(calc(.34 * var(--mobile-scale)), 1.3vw);
       padding-right: min(calc(.34 * var(--mobile-scale)), 1.3vw);
