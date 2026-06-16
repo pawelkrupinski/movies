@@ -1710,7 +1710,6 @@ cinemaScrapes:
   Kino PCKul / Drzewo magii / —
   Kino Planeta / Drzewo magii / —
   Kino Przedwiośnie / Drzewo magii / 2026
-  Kino Scena Kultura / Drzewo magii / 2026
   Kino Sokół / DRZEWO MAGII / —
   Kino Twierdza / Drzewo magii / —
   Kino Wawel / Drzewo magii / —
@@ -1883,7 +1882,7 @@ cinemaScrapes:
   Janosik / Dzień Objawienia / —
   Kino Amok / Dzień objawienia / —
   Kino Apollo Wałbrzych / Dzień objawienia / —
-  Kino Astra / Dzień objawienia / 2026
+  Kino Astra / Dzień objawienia / —
   Kino Atlantic / Dzień objawienia / 2026
   Kino Awangarda 2 / Dzień objawienia / 2026
   Kino Bajka / Dzień Objawienia / —
@@ -1911,6 +1910,7 @@ cinemaScrapes:
   Kino Planeta / Dzień objawienia / —
   Kino Przedwiośnie / Dzień objawienia / 2026
   Kino Rialto / DZIEŃ OBJAWIENIA / 2026
+  Kino Scena Kultura / Dzień objawienia / —
   Kino Sokół / DZIEŃ OBJAWIENIA / —
   Kino Wawel / Dzień Objawienia / —
   Kino Wisła / Dzień objawienia / 2026
@@ -3253,7 +3253,7 @@ cinemaScrapes:
   Kino Na Biegunach / Kurozając i świątynia świstaka / —
   Kino Promień / Kurozając i świątynia Świstaka / 2025
   Kino Przedwiośnie / Kurozając i świątynia Świstaka / 2026
-  Kino SDK / Kurozając i świątynia Świstaka / 2025
+  Kino Scena Kultura / Kurozając i świątynia Świstaka / —
   Kino Sokół / KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA / —
   Na Starówce / Kurozając i świątynia świstaka / —
 showings:
@@ -3718,6 +3718,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14242-spoilermaster-tour-mikey-i-nicky/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157442
 cinemaScrapes:
+  DKF Rumcajs / Mikey i Nicky / —
   Gdyńskie Centrum Filmowe / Mikey i Nicky / —
   KINOMUZEUM / Mikey i Nicky / 1976
   Kino Iluzjon / Mikey i Nicky / 1976
@@ -4079,6 +4080,7 @@ cinemaScrapes:
   Helios Żory / Minionki i straszydła / —
   Kino Goplana / Minionki i straszydła / —
   Kino MOK Centrum / MINIONKI I STRASZYDŁA / —
+  Kino Scena Kultura / Minionki i straszydła / —
   Wybrzeże / Minionki i straszydła / —
 showings:
   2026-06-26  Cinema City Kinepolis         10:10 Sala 13 2D/DUB · 11:30 Sala 17 2D/DUB · 12:20 Sala 13 2D/DUB · 13:40 Sala 17 2D/DUB · 14:30 Sala 13 2D/DUB · 15:50 Sala 17 2D/DUB · 16:40 Sala 13 2D/DUB · 18:50 Sala 13 2D/DUB
@@ -4644,6 +4646,7 @@ cinemaScrapes:
   Kino Planeta / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Praha / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Przedwiośnie / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
+  Kino SDK / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Sokół / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / —
   Kino Stary Młyn / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Twierdza / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -4702,7 +4705,6 @@ cinemaScrapes:
   Helios Magnolia Park / Niezwykły chłopak / —
   Helios Metropolia / Niezwykły chłopak / —
   Helios Ostrów Wlkp. / Niezwykły chłopak / —
-  Kino SDK / Niezwykły chłopak / 2025
 showings:
   2026-06-10  Cinema City Poznań Plaza      10:00 Sala 2 2D/DUB
 
@@ -5085,7 +5087,6 @@ cinemaScrapes:
   Kino Agrafka / OJCZYZNA / 2026
   Kino Apollo / Ojczyzna / —
   Kino Apollo Wałbrzych / Ojczyzna / —
-  Kino Astra / Ojczyzna / 2026
   Kino Bajka / Ojczyzna / —
   Kino Bajka Kluczbork / Ojczyzna / —
   Kino Kijów / Ojczyzna / —
@@ -7874,7 +7875,6 @@ cinemaScrapes:
   Jaworzyna / Tom i Jerry: Przygoda w muzeum / —
   Jutrzenka / Tom i jerry: przygoda w muzeum / —
   KINOkawiarnia Stacja Falenica / TOM I JERRY: PRZYGODA W MUZEUM / —
-  Kino Astra / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Atlantic / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Bajka / Tom i Jerry: Przygoda w muzeum / —
   Kino Bajka Kluczbork / Tom i Jerry: Przygoda w muzeum / —
@@ -7904,7 +7904,6 @@ cinemaScrapes:
   Kino Promień / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Przedwiośnie / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Roma / Tom i Jerry: Przygoda w muzeum / 2025
-  Kino Scena Kultura / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Sokół / TOM I JERRY: PRZYGODA W MUZEUM / —
   Kino Sokół Dąbrowa Tarnowska / Tom i Jerry: Przygoda w muzeum / —
   Kino Twierdza / Tom i jerry: przygoda w muzeum / —
@@ -8064,6 +8063,7 @@ cinemaScrapes:
   Kino Oskard / Toy Story 5 / —
   Kino Przedwiośnie / Toy Story 5 / 2026
   Kino Roma / Toy Story 5 / 2026
+  Kino Scena Kultura / Toy Story 5 / —
   Kino Sokół / TOY STORY 5 / —
   Kino Sokół Dąbrowa Tarnowska / Toy Story 5 / —
   Kino Stary Młyn / Toy Story 5 / —
@@ -8758,7 +8758,6 @@ cinemaScrapes:
   Kino Paradox / Zawieście czerwone latarnie / 1991
   Kino Pałacowe / Zawieście czerwone latarnie / 1991
   Kino Rialto / ZAWIEŚCIE CZERWONE LATARNIE / 1991
-  Kino SDK / Zawieście czerwone latarnie / 1991
   Kino U-jazdowski / Zawieście czerwone latarnie / 1991
   Kino Żak / Zawieście czerwone latarnie / 1991
   Kinoteka / Zawieście czerwone latarnie / 2026
@@ -8912,7 +8911,6 @@ cinemaScrapes:
   Kino Pod Baranami / Zawodowcy / —
   Kino Przedwiośnie / Zawodowcy / 2026
   Kino Rialto / ZAWODOWCY / 2026
-  Kino Scena Kultura / Zawodowcy / 2026
   Kino Sokół / ZAWODOWCY / —
   Kino Stary Młyn / ZAWODOWCY / —
   Kino Tur / Zawodowcy / —
@@ -9046,7 +9044,7 @@ runtimeMinutes:    116
 releaseYear:       2025
 countries:         Wielka Brytania
 posterUrl:         https://img.helios.pl/pliki/film/sciezki-zycia/sciezki-zycia-plakat-23717.jpg
-synopsis.length:   657
+synopsis.length:   691
 cast:              Gillian Anderson, Jason Isaacs, James Lance, Hermione Norris, Rebecca Ineson
 director:          Marianne Elliott
 tmdbId:            1127625
@@ -9062,6 +9060,7 @@ filmwebUrl:        https://www.filmweb.pl/film/%C5%9Acie%C5%BCki+%C5%BCycia-2024
 cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/sciezki-zycia-salon-kultury-helios-2607
 cinemaScrapes:
+  DKF Rumcajs / Ścieżki życia / —
   Helios Aleja Bielany / Ścieżki życia / —
   Helios Alfa / Ścieżki życia / —
   Helios Biała / Ścieżki życia / —

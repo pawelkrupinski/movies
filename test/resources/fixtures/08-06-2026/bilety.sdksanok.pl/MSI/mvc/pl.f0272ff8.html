@@ -1,0 +1,465 @@
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="version" content="1.7.31.0 | 03.12.2025 09:21:36">
+
+    <link href="/MSI/Themes/Default/Vendors/bundle/style?v=" rel="stylesheet"/>
+
+
+             <link rel="stylesheet" href="/MSI/Themes/msidemo1/Vendors/Styles/normalize-3.0.2.css?v=020822122031"/>
+         <link rel="stylesheet" href="/MSI/Themes/msidemo1/Vendors/Styles/bootstrap-3.3.1.min.css?v=020822122031"/>
+         <link rel="stylesheet" href="/MSI/Themes/msidemo1/Vendors/Styles/jquery.fancybox.css?v=020822122031"/>
+         <link rel="stylesheet" href="/MSI/Themes/msidemo1/Vendors/Styles/font-awesome-ie7.min.css?v=020822122031"/>
+         <link rel="stylesheet" href="/MSI/Themes/msidemo1/Vendors/Styles/font-awesome.min.css?v=020822122031"/>
+
+             <link rel="stylesheet" href="/MSI/Themes/msidemo1/Styles/global.css?v=120325093638"/>
+
+    <link href='https://fonts.googleapis.com/css?family=Duru+Sans&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
+             <script type="text/javascript" src="/MSI/Themes/msidemo1/Vendors/Scripts/jquery-1.11.2.min.js?v=020822122031"></script>
+         <script type="text/javascript" src="/MSI/Themes/msidemo1/Vendors/Scripts/handlebars-v2.0.0.js?v=020822122031"></script>
+         <script type="text/javascript" src="/MSI/Themes/msidemo1/Vendors/Scripts/modernizr.js?v=020822122031"></script>
+
+
+<title>
+     Sanocki Dom Kultury
+</title>
+</head>
+<body>
+
+    <div class="skip-links">
+      
+    </div>
+            <div id="preloader" class="preloader"></div>
+
+    
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-default navbar-fixed-top navbar-top-color navbar-expand-xl">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed  " data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand pull-left" href="/MSI/">
+                    <img src="/MSI/Themes/msidemo1/images/logo.png" alt="Sanocki Dom Kultury" title="Sanocki Dom Kultury" class="brand img-responsive">
+                </a>
+            </div>
+            <div id="navbar" class="navbar-collapse collapse">
+                
+                <ul class="nav navbar-nav navbar-right">
+                        <li><a class="text-uppercase" href="/MSI/getticket.aspx"><span class="fa fa-ticket"></span> Pobierz swoje bilety</a></li>
+                    <li><input id="serverShoppingCartEndDateTime" type="hidden" value="" />
+<input id="serverShoppingCartLifeTimeInMinutes" type="hidden" value="10" />
+<div class="shopping-cart-expired-modal recomendedeventmodal-modal modal recomendedeventmodal-fade fade" id="shoppingCartExpiredModal" tabindex="-1" role="dialog">
+    <div class="modal-backdrop fade in" style="bottom: 0"></div>
+    <div class="recomendedeventmodal-modal-dialog" style="max-width: 560px; word-wrap: break-word;">
+        <div class="recomendedeventmodal-modal-content">
+
+            <div class="recomendedeventmodal-modal-header text-center">
+                <span class="fa fa-warning"></span> Zakończył się czas koszyka!
+                <button class="close" onclick=" closeShoppingCart() " type="button"><span aria-hidden="true">×</span></button>
+            </div>
+            <div class="recomendedeventmodal-modal-body modal-body text-center">
+                Czas na zrealizowanie zam&#243;wienia niestety dobiegł końca. Prosimy o ponowne wybranie bilet&#243;w i dodanie ich do koszyka.
+                <p>
+                    <button onclick=" closeShoppingCart() " class="btn btn-warning" type="button"><span aria-hidden="true">Zamknij</span></button>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="cart-timer1-tick">
+
+    <div id="timer-alert" class="timer-alert" role="alert" style="display: none;">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close" onclick=" window.location.reload(); ">
+            <span aria-hidden="true">&times;</span>
+            Zakończył się czas koszyka!
+        </button>
+    </div>
+
+    <h3 id="timer-window" class="timer-window" style="display: none;">
+        Koszyk wygaśnie za: <strong id="timer"></strong>
+    </h3>
+</div>
+
+<script type="text/javascript">
+    function closeShoppingCart() {
+        $(function () {
+            $.ajax({
+                type: "POST",
+                url: "../Ajax.aspx/CloseShoppingCart",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (response) {
+                    var names = response.d;
+                    console.log(names);
+                    window.location.reload();
+                },
+                error: function (response) {
+                    console.log(response);
+                    window.location.reload();
+                }
+            });
+        });
+    }
+</script></li>
+
+                        <li>
+                            <a href="/MSI/ShoppingCart.aspx" data-toggle="tooltip" data-original-title="koszyk: pusty">
+                                <i class="fa fa-shopping-cart"></i>
+                                koszyk: pusty
+                            </a>
+                        </li>
+
+                    
+
+                    <li>
+                        <a class="aFontImage" href="#none" onclick="changeFontSize();" data-toggle="tooltip" data-original-title="Zmień rozmiar czcionki">
+                            <span class="nav-supp-icon fontImage"></span>
+                            <span class="sr-only">Zmień kontrast</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="aContrastImage" href="#none" onclick="changeContrast();" data-toggle="tooltip" data-original-title="Zmień kontrast">
+                            <span class="nav-supp-icon contrastImage">
+                                <span class="sr-only">Zmień rozmiar czcionki</span>
+
+                            </span>
+                        </a>
+                    </li>
+                </ul>
+            </div><!--/.nav-collapse -->
+        </div>
+    </nav>
+
+
+
+
+
+
+
+    <div id="body" class="container container-site">
+
+        <input type="hidden" id="randomWindowName" value="1674c0f444494e489c9068b790fad594" />
+        <input type="hidden" id="isNewSessionWindowName" value="True" />
+        <input type="hidden" id="sessionWindowName" value="1674c0f444494e489c9068b790fad594" />
+        <input type="hidden" id="absoluteHomeUrl" value="/MSI/" />
+
+        <div class="row">
+
+
+            
+
+
+
+
+
+</script>
+    <div class="row">
+        <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+            
+
+        <div class="skip-link" id="choose-date-content-skip-link"> Przejdź do wyboru dnia </div>
+        <div>
+            <div class="col-xs-12">
+                <div class="dates-box">
+                    Wybierz dzień:
+                </div>
+            </div>
+            <div class="col-xs-12">
+                <nav>
+                    <ul class="options-list">
+                            <li>
+                                <a href="/MSI/mvc/pl?sort=Flow&amp;date=2026-06-19&amp;datestart=0">
+                                    <time datetime="2026-06-19" class="icon">
+                                            <em class="">piątek</em>
+                                            <strong class="">czerwiec</strong>
+                                            <span class="">19</span>
+
+                                    </time>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="/MSI/mvc/pl?sort=Flow&amp;date=2026-06-21&amp;datestart=0">
+                                    <time datetime="2026-06-21" class="icon">
+                                            <em class="">niedziela</em>
+                                            <strong class="">czerwiec</strong>
+                                            <span class="">21</span>
+
+                                    </time>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="/MSI/mvc/pl?sort=Flow&amp;date=2026-06-22&amp;datestart=0">
+                                    <time datetime="2026-06-22" class="icon">
+                                            <em class="">poniedziałek</em>
+                                            <strong class="">czerwiec</strong>
+                                            <span class="">22</span>
+
+                                    </time>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="/MSI/mvc/pl?sort=Flow&amp;date=2026-06-28&amp;datestart=0">
+                                    <time datetime="2026-06-28" class="icon">
+                                            <em class="">niedziela</em>
+                                            <strong class="">czerwiec</strong>
+                                            <span class="">28</span>
+
+                                    </time>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="/MSI/mvc/pl?sort=Flow&amp;date=2026-06-29&amp;datestart=0">
+                                    <time datetime="2026-06-29" class="icon">
+                                            <em class="">poniedziałek</em>
+                                            <strong class="">czerwiec</strong>
+                                            <span class="">29</span>
+
+                                    </time>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="/MSI/mvc/pl?sort=Flow&amp;date=2026-07-12&amp;datestart=0">
+                                    <time datetime="2026-07-12" class="icon">
+                                            <em class="">niedziela</em>
+                                            <strong class="">lipiec</strong>
+                                            <span class="">12</span>
+
+                                    </time>
+                                </a>
+                            </li>
+                        <li>
+                            
+
+
+    <a class="dropdown-toggle" data-toggle="dropdown" href="#n">
+
+        <span class="sr-only">Wyb&#243;r dnia w harmonogramie wydarzeń za pomocą kalendarza.</span>
+        <time datetime="" class="icon">
+            <em>więcej dni</em>
+            <strong>KALENDARZ</strong>
+            <span><i class="fa fa-calendar fa-3"></i></span>
+        </time>
+    </a>
+    <ul class="dropdown-menu pull-right">
+        <li class="noborder calendar-test" data-date="16/06/2026"></li>
+    </ul>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+        </div>
+            <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+                
+      <div class="col-xs-12">
+          <!-- Static navbar -->
+          <nav class="navbar navbar-sorting">
+              <div class="navbar-left">
+                  <h1>Lista wydarzeń: wtorek, 16 czerwca 2026</h1>
+              </div>
+              <div class="navbar-right sorting-buttons">
+                  Sortowanie:
+                  <div class="btn-group" role="group" aria-label="">
+                          <a href="?sort=Date&amp;date=2026-06-16&amp;datestart=0" class="btn btn-anuluj " data-toggle="tooltip" data-original-title="Data/godzina"><i class="fa fa-sort-numeric-asc"></i>
+</a>
+                          <a href="?sort=Flow&amp;date=2026-06-16&amp;datestart=0" class="btn btn-anuluj  active" data-toggle="tooltip" data-original-title="Tytuł"><i class="fa fa-sort-alpha-asc"></i>
+</a>
+                  </div>
+                      
+              </div>
+          </nav>
+      </div>
+
+            </div>
+
+        </div>
+
+<div class="col-xs-5 pull-right panel panel-default event-background hidden-xs hidden-sm">
+    <h2>
+        <span class="fa fa-arrow-circle-o-down"></span> Wybierz godzinę wydarzenia i kup bilet. <span class="fa fa-arrow-circle-o-down"></span>
+    </h2>
+</div>
+
+<div class="skip-link" id="list-Of-events-content-skip-link"> Przejdź do listy wydarzeń </div>
+<div>
+</div>
+
+
+
+
+<script>
+    $(document).ready(function () {
+        console.log("docready from scroll script")
+
+    });
+</script>
+
+        </div>
+    </div>
+
+    
+    <div class="skip-link" id="footer-skip-link"> Przejdź do stopki </div>
+        <footer class="footer">
+            <div class="container">
+                <div class="col-sm-3 hidden-sm hidden-xs">
+                        <div class="col-sm-12">
+                            <div class="footer-container footer-text text-muted text-center">
+
+                                <p class="footer-title">Rozliczenia transakcji kartą płatniczą i e-przelewem są wykonywane za pośrednictwem Dotpay.pl</p>
+                            </div>
+                        </div>
+                    <div class="col-sm-12">
+                        <a class="" href="/MSI/" style="padding-top: 20px;)">
+                            <img src="/MSI/Themes/msidemo1/images/logo-vectorsoft.png" class="img-responsive center-block" alt="" title="" width="80">
+                        </a>
+                    </div>
+                </div>
+                <div class="col-sm-5 hidden-sm hidden-xs">
+                    <div class="footer-container footer-text text-muted text-left">
+                        <div class="col-sm-7">
+                            <p class="footer-title">Kontakt</p>
+                                <div>
+                                    <span class="fa fa-phone text-color"></span>
+                                    +48 (13) 463 10 42
+                                </div>
+                                                                                                                    <div>
+                                    <span class="fa fa-envelope text-color"></span>
+                                    <span class="word-wrap" style="word-wrap: break-word;"><a href="mailto:biuro@sdksanok.pl">biuro@sdksanok.pl</a></span>
+                                </div>
+							<a href="http://bilet.gcf.org.pl/MSI/images/Cennik.pdf" target="_blank">Cennik</a>
+                        </div>
+                        <div class="col-sm-5">
+                            <p class="footer-title">Social media</p>
+                                <a target="_blank" href="https://www.facebook.com/pages/Sanocki-Dom-Kultury/185482261575712" title="facebook" class="fa fa-facebook-square fa-2x text-color"></a>
+                                                                                                                                                                    </div>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="footer-container footer-text text-muted text-left">
+                        <div class="col-sm-12">
+                            <p class="footer-title word-wrap">
+                                Sanocki Dom Kultury
+                            </p>
+                            <p class="word-wrap">
+                                <span class="fa fa-map-marker text-color"></span>
+                                ul. A. Mickiewicza 24,
+                                38-500 
+                                Sanok
+                            </p>
+                        </div>
+
+                            <div class="col-sm-12">
+                                <p class="text-left">
+                                    <span class="fa fa-book text-color"></span>&nbsp;687-14-37-507
+                                </p>
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+
+
+
+
+    <script src="/MSI/bundle/default/scripts?v="></script>
+
+
+  <script>
+    $(document).ready(function () {
+        $("#RepoModal").on('shown.bs.modal', function () {
+            $(this).find('#closeModalBtn').focus();
+        });
+    });
+</script>
+
+
+            <script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/jquery.countdown.js?v=020822122031"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/jquery.fancybox.js?v=020822122031"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/bootstrap.min.js?v=020822122031"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/cookies.js?v=020822122031"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/calendar.js?v=020822122031"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/repertoire.js?v=020822122031"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/main.js?v=020822122031"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/tips.js?v=020822122031"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/timeline.js?v=020822122031"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/jquery.tinycarousel.js?v=020822122031"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/jquery-cookie.js?v=020822122031"></script>
+
+
+
+    <script type="text/javascript">
+        jQuery(document).ready(function ($) {
+            displayContrast();
+            // site preloader -- also uncomment the div in the header and the css style for #preloader
+            $(window).load(function () {
+                $('#preloader').fadeOut('slow', function () { $(this).remove(); });
+                console.log("preloader");
+            });
+            $("#scrollToVodButton").click(function () {
+                console.log("scroll");
+                $([document.documentElement, document.body]).animate({
+                    scrollTop: $("#eventsVod").offset().top
+                }, 2000);
+            });
+        });
+    </script>
+
+    <script type="text/javascript">
+    (function($) {
+        var lng = "pl";
+        var theMonths;
+        var theDays;
+
+        //console.log(lng);
+/*
+        if (lng === "pl") {
+            theMonths = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+            theDays = ["P", "W", "Ś", "C", "P", "S", "N"];
+
+        }
+        if (lng === "en") {
+            theMonths = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            theDays = ["M", "T", "W", "T", "F", "S", "S"];
+        }
+*/
+
+        theMonths = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+
+        theDays = ["P", "W", "Ś", "C", "P", "S", "N"];
+
+        var alldatesurl = window.location.protocol + "//" + window.location.host + "/MSI/mvc/pl/AllDates";
+        console.log(window.location.host);
+
+        $('.calendar-test').calendar({
+            months: theMonths,
+            days: theDays,
+            req_ajax: {
+                type: 'get',
+                url: alldatesurl
+            }
+        });
+    })(jQuery);
+    </script>
+
+    <script type="text/javascript">
+        (function ($) {
+            $(".fancybox").fancybox({
+                openEffect: 'none',
+                closeEffect: 'none',
+                type: "image"
+            });
+        })(jQuery);
+    </script>
+</body>
+
+</html>
