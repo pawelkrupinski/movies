@@ -130,7 +130,10 @@ object KinotekaClient {
   def parseDetail(html: String): Detail = {
     val document = Jsoup.parse(html)
     Detail(
-      runtime       = dd(document, "czas trwania").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
+      // "Czas trwania filmu" is the film; the page also carries a "Czas trwania
+      // reklam" (ad/trailer block) row — match the film one so we never read the
+      // ad length as the runtime regardless of which row comes first.
+      runtime       = dd(document, "czas trwania filmu").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
       year          = dd(document, "data premiery").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
       originalTitle = dd(document, "oryginalny tytuł").filter(_.nonEmpty),
       countries     = dd(document, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
@@ -138,7 +141,10 @@ object KinotekaClient {
       cast          = dd(document, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       synopsis      = Option(document.selectFirst("div.mce-content-body")).map(_.text.trim)
                         .orElse(Option(document.selectFirst("meta[property=og:description]")).map(_.attr("content").trim)).filter(_.length > 20),
-      poster        = Option(document.selectFirst("div.p-movie-details__hero-poster img[src]")).map(_.attr("src")).filter(_.nonEmpty)
+      // The hero poster is a `<picture class="p-movie-details__hero-poster">`
+      // (not a `<div>`) wrapping the real film `<img>`; match by class on any
+      // element so we don't fall through to the generic site og:image logo.
+      poster        = Option(document.selectFirst(".p-movie-details__hero-poster img[src]")).map(_.attr("src")).filter(_.nonEmpty)
                         .orElse(Option(document.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty)),
       // The trailer is a YouTube `/embed/` iframe in the content figure; skip
       // the GTM/analytics iframes by taking the first src that canonicalises.

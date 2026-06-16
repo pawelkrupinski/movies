@@ -38,16 +38,32 @@ class KinotekaClientSpec extends AnyFlatSpec with Matchers {
 
   it should "enrich runtime / year / countries / original title from the detail page" in {
     val d = detailFor("Zawodowcy")
+    // The detail page lists two durations — "Czas trwania filmu" (the film) and
+    // "Czas trwania reklam" (the trailer/ad block). Runtime must be the film's
+    // 100 min, never the 15-min ad row.
     d.runtimeMinutes shouldBe Some(100)
     d.releaseYear    shouldBe Some(2026)
     d.countries      shouldBe Seq("USA", "Wielka Brytania")
     d.originalTitle  shouldBe Some("In the Grey")
   }
 
+  it should "take the film poster from the hero <picture>, not the generic site og:image" in {
+    detailFor("Zawodowcy").posterUrl shouldBe Some("https://medstore.kinoteka.pl/image001(1).jpg")
+  }
+
   it should "read the cast list and the YouTube trailer off the detail page" in {
     val d = detailFor("Zawodowcy")
     d.cast       shouldBe Seq("Henry Cavill", "Rosamund Pike", "Jake Gyllenhaal")
     d.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=AYq1ljpbNfA")
+  }
+
+  it should "read the film runtime even when the ad-block duration row comes first" in {
+    val html =
+      """<dl class="p-movie-details__general-info">
+        |  <dt>Czas trwania reklam:</dt><dd>15 min</dd>
+        |  <dt>Czas trwania filmu:</dt><dd>137 min</dd>
+        |</dl>""".stripMargin
+    KinotekaClient.parseDetail(html).runtime shouldBe Some(137)
   }
 
   it should "carry the screening booking URL with absolute date" in {
