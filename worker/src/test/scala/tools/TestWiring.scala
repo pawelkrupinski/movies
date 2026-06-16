@@ -250,6 +250,18 @@ trait TestWiring extends WorkerWiring {
     movieCache.rehydrate()
   }
 
+  /** Advance staging by ONE prod-like pass: enqueue the next step for every
+   *  pending film, then drain those tasks. Unlike `drainStaging` (which loops to
+   *  quiescence with every cinema already present), this resolves against
+   *  WHATEVER has arrived so far — used to interleave reaper ticks with cinema
+   *  arrival, reproducing prod's always-on reaper firing between 2-min ticks
+   *  while cinemas trickle in (a film's hint group can resolve before its last
+   *  cinema — and its director spelling — has landed). */
+  def advanceStagingOnce(): Unit = {
+    stagingReaper.tick()
+    drainStagingQueueOnce()
+  }
+
   private lazy val stagingHandlerByType = stagingHandlers.map(h => h.taskType -> h).toMap
 
   /** Drain every staging task currently claimable through the real handlers — the

@@ -49,7 +49,19 @@ object StagingFold {
     }
     val moviesByKey = moviesRows.map(r => CacheKey(r.title, r.year) -> r.record)
     val moviesKeys  = moviesByKey.map(_._1).toSet
-    val planned = FilmCanonicalizer.clusterByFilm(stagingByKey ++ moviesByKey).map { cluster =>
+    // Union ACROSS the staging↔movies boundary too: `CacheKey` is case-insensitive,
+    // so a staging "iron maiden" row and an already-promoted movies "Iron Maiden"
+    // row share a key but sit in SEPARATE entries above. Left un-unioned they each
+    // become a rule-4 singleton cluster that re-collapses onto the one
+    // (sanitize, None) key and clobbers a cinema's slot — the same loss the
+    // all-staging union guards against, across the boundary (a yearless event whose
+    // first cinema promoted before the rest arrived). Merge by key, canonicalRank
+    // order so the union base is deterministic.
+    val byKey = (stagingByKey ++ moviesByKey).groupBy(_._1).toSeq.map { case (_, entries) =>
+      val sorted = entries.sortBy { case (k, _) => FilmCanonicalizer.canonicalRank(k) }
+      sorted.head._1 -> MovieRecordMerge.unionAll(sorted.map(_._2))
+    }
+    val planned = FilmCanonicalizer.clusterByFilm(byKey).map { cluster =>
       val (canonKey, merged) = FilmCanonicalizer.canonical(cluster)
       // A cluster is a brand-new promotion iff no existing `movies` row joined it
       // (all members came from staging) — a merge into an existing row, or a
