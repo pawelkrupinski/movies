@@ -1709,6 +1709,7 @@ cinemaScrapes:
   Kino PCA / Drzewo magii / —
   Kino PCKul / Drzewo magii / —
   Kino Planeta / Drzewo magii / —
+  Kino Promień / Drzewo magii / —
   Kino Przedwiośnie / Drzewo magii / 2026
   Kino Sokół / DRZEWO MAGII / —
   Kino Twierdza / Drzewo magii / —
@@ -3251,7 +3252,6 @@ cinemaScrapes:
   Kino MCK / Kurozając i świątynia świstaka / —
   Kino MOKiS / Kurozając i świątynia Świstaka / —
   Kino Na Biegunach / Kurozając i świątynia świstaka / —
-  Kino Promień / Kurozając i świątynia Świstaka / 2025
   Kino Przedwiośnie / Kurozając i świątynia Świstaka / 2026
   Kino Scena Kultura / Kurozając i świątynia Świstaka / —
   Kino Sokół / KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA / —
@@ -3677,6 +3677,7 @@ cinemaScrapes:
   Kino Atlantic / Michael / 2026
   Kino Charlie / Michael / —
   Kino Nowe Horyzonty / Michael / 2026
+  Kino Promień / Michael / —
   Kino Wisła / Michael / 2026
   Planet Cinema / Michael / 2026
   Teatr Elektryczny / Michael / —
@@ -4264,6 +4265,7 @@ cinemaScrapes:
   Kino Ignacy / Mortal kombat ii / —
   Kino MOKiS / Mortal Kombat II / —
   Kino Nawojka / Mortal Kombat II / —
+  Kino Promień / Mortal Kombat II / —
 showings:
   2026-06-08  Cinema City Kinepolis         15:50 Sala 5 2D/NAP
   2026-06-09  Cinema City Kinepolis         15:50 Sala 5 2D/NAP
@@ -6403,7 +6405,6 @@ cinemaScrapes:
   Kino MOKiS / Posłani / —
   Kino Moskwa / POSŁANI / —
   Kino PCKul / Posłani / —
-  Kino Promień / Posłani / 2026
   Kino Sokół / POSŁANI / —
   Kino Stary Młyn / Posłani / —
   Kino Zdrój / Posłani / —
@@ -7901,7 +7902,6 @@ cinemaScrapes:
   Kino ODEON / Tom i jerry. Przygoda w muzeum / —
   Kino Oskard / Tom i Jerry: Przygoda w muzeum / —
   Kino Planeta / Tom i jerry: przygoda w muzeum / —
-  Kino Promień / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Przedwiośnie / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Roma / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Sokół / TOM I JERRY: PRZYGODA W MUZEUM / —
@@ -8061,6 +8061,7 @@ cinemaScrapes:
   Kino Na Biegunach / Toy story 5 / —
   Kino ODEON / Toy story 5 / —
   Kino Oskard / Toy Story 5 / —
+  Kino Promień / Toy Story 5 / —
   Kino Przedwiośnie / Toy Story 5 / 2026
   Kino Roma / Toy Story 5 / 2026
   Kino Scena Kultura / Toy Story 5 / —
