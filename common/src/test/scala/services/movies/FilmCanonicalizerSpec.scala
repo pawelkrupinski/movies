@@ -114,6 +114,37 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     clusters should have size 2
   }
 
+  it should "keep a yearless-key unresolved row yearless, ignoring its deferred-detail slot year" in {
+    // A deferred-detail cinema scrapes a film YEARLESS (yearless key); its detail
+    // later adds a production year to the SLOT only. Folding alone, the row must
+    // NOT adopt that provisional slot year as its key — that would make it a
+    // year-bearing movies row its resolved siblings can no longer absorb (the
+    // order-dependent "Głos Hind Rajab" / Kino Amondo split). It stays yearless.
+    val row = key("Głos Hind Rajab", None) -> MovieRecord(
+      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Głos Hind Rajab"), releaseYear = Some(2022))))
+    val (canonicalKey, _) = FilmCanonicalizer.canonical(Seq(row))
+    canonicalKey.year shouldBe None
+  }
+
+  it should "fold a yearless-key slot-yeared unresolved row into a resolved sibling, not split it off by its slot year" in {
+    // Kino Amondo reports "Głos Hind Rajab" yearless; its detail adds a 2022
+    // production year to the slot — Δ3 from the resolved 2025 film, which would
+    // split if that slot year keyed the row. Yearless, it folds in (rule 4),
+    // regardless of insertion (fold) order.
+    val group = Seq(
+      resolved("Głos Hind Rajab", tmdbId = 1480382, tmdbYear = 2025, cinema = KinoMuza),
+      key("Głos Hind Rajab", None) -> MovieRecord(
+        data = Map[Source, SourceData](KinoMuzeumGdansk -> SourceData(title = Some("Głos Hind Rajab"), releaseYear = Some(2022))))
+    )
+    Seq(group, group.reverse).foreach { ordered =>
+      val clusters = FilmCanonicalizer.clusterByFilm(ordered)
+      withClue(s"clusters: ${clusters.map(_.map(c => (c._1.cleanTitle, c._1.year)))}\n") {
+        clusters should have size 1
+        clusters.head.flatMap(_._2.cinemaData.keySet).toSet shouldBe Set(KinoMuza, KinoMuzeumGdansk)
+      }
+    }
+  }
+
   it should "keep a decorated variant's own spelling, not the base title its Tmdb slot carries" in {
     // A dubbed variant resolved to the base film's tmdbId, so its Tmdb slot
     // title is the BARE base "Straszny film" — a DIFFERENT sanitize. Canonicalising
