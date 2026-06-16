@@ -54,7 +54,7 @@ class KinoPodBaranamiClient(
         .sortBy(_.dateTime)
       if (showtimes.isEmpty) None
       else Some(CinemaMovie(
-        movie     = Movie(title),
+        movie     = Movie(title, originalTitle = group.flatMap(_.originalTitle).headOption),
         cinema    = cinema,
         posterUrl = None,
         filmUrl   = filmUrl,
@@ -76,10 +76,11 @@ object KinoPodBaranamiClient {
   private val DayMonthPat = """(\d{1,2})\s+(\w+)""".r
 
   private[cinemas] case class RawSlot(
-    title:      String,
-    filmUrl:    Option[String],
-    dateTime:   LocalDateTime,
-    bookingUrl: Option[String]
+    title:         String,
+    originalTitle: Option[String],
+    filmUrl:       Option[String],
+    dateTime:      LocalDateTime,
+    bookingUrl:    Option[String]
   )
 
   /** Infer year: if the date falls more than 60 days in the past relative to
@@ -117,6 +118,15 @@ object KinoPodBaranamiClient {
               val titleAnchor = Option(li.selectFirst("a[href^=\"film.php\"]"))
               val title       = titleAnchor.map(_.text.trim).filter(_.nonEmpty).getOrElse("")
               val filmUrl     = titleAnchor.map(a => s"$BaseUrl/${a.attr("href").trim}").filter(_.nonEmpty)
+              // The anchor's `title=` attribute carries the film's original
+              // (usually international/English) title — "Gourou" for "Guru",
+              // "Fight Club" for "Podziemny krąg". The cinema exposes it for
+              // every film; we keep it (when it actually differs from the
+              // displayed Polish title) as a TMDB-search hint, which lets a
+              // same-Polish-title film resolve to the right TMDB entry instead
+              // of an arrival-order-dependent guess between same-title candidates.
+              val originalTitle = titleAnchor.map(_.attr("title").trim)
+                .filter(_.nonEmpty).filterNot(_.equalsIgnoreCase(title))
 
               if (title.nonEmpty) {
                 // One or more time links inside <span>
@@ -125,7 +135,7 @@ object KinoPodBaranamiClient {
                   val bookingUrl = Some(a.attr("href").trim).filter(_.nonEmpty)
                     .map(h => if (h.startsWith("http")) h else s"$BaseUrl$h")
                   time.foreach { t =>
-                    slots += RawSlot(title, filmUrl, LocalDateTime.of(date, t), bookingUrl)
+                    slots += RawSlot(title, originalTitle, filmUrl, LocalDateTime.of(date, t), bookingUrl)
                   }
                 }
               }

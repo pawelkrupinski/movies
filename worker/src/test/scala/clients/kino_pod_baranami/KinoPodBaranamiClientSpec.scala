@@ -36,4 +36,20 @@ class KinoPodBaranamiClientSpec extends AnyFlatSpec with Matchers with OptionVal
     diabel.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 10, 30))
     diabel.showtimes.flatMap(_.bookingUrl).head should include("/rezerwacja_start.php?event_id=")
   }
+
+  it should "capture the anchor's original (international) title as a TMDB-search hint" in {
+    // The cinema exposes the original title in the link's `title=` attribute
+    // ("The Devil Wears Prada 2", "Fight Club"); we keep it so a same-Polish-title
+    // film disambiguates to the right TMDB entry deterministically.
+    val movies = client.fetch()
+    movies.find(_.movie.title.contains("Diabe")).value.movie.originalTitle.value shouldBe "The Devil Wears Prada 2"
+    movies.find(_.movie.title.contains("Podziemny")).value.movie.originalTitle.value shouldBe "Fight Club"
+  }
+
+  it should "leave originalTitle empty when the original equals the displayed title" in {
+    // A film whose `title=` attribute just repeats the visible title carries no
+    // distinct original — don't store a redundant one.
+    client.fetch().find(_.movie.title.equalsIgnoreCase("Hamnet"))
+      .foreach(_.movie.originalTitle shouldBe None)
+  }
 }
