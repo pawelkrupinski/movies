@@ -100,6 +100,32 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     webReadModel.reload()
   }
 
+  /** Like `bootStartup`, but drives the staging path the way PROD does rather
+   *  than the deterministic record-all-then-drain shape `bootStartup`/
+   *  `runOneScrapeTick` use: cinemas arrive in a SHUFFLED order and the reaper
+   *  fires (`advanceStagingOnce`) BETWEEN arrivals, so a film's hint group can
+   *  resolve before its last cinema — and that cinema's director spelling — has
+   *  landed. This is the disorder that `bootStartup`'s "record every cinema,
+   *  THEN publish/drain" deliberately removes; `StagingOrderDeterminismSpec`
+   *  uses it to prove the staging resolve+fold is order-independent (the path
+   *  the whole-corpus `ScrapeOrderDeterminismSpec` skips — it harvests with
+   *  `staging = None` and settles via `converge`, both of which absorb every
+   *  director hint before resolving, masking an arrival-order resolution race). */
+  def bootStartupInterleaved(rnd: scala.util.Random, cinemaFilter: models.Cinema => Boolean = _ => true): Unit = {
+    rnd.shuffle(cinemaScrapers.filter(s => cinemaFilter(s.cinema)).toSeq).foreach { scraper =>
+      try cinemaScrapeRunner.run(scraper) catch { case _: Exception => () }
+      advanceStagingOnce()
+    }
+    // Deferred-detail cinemas published their bare row above; fill each detail and
+    // publish the TMDB trigger, then drain the async cascade. This is only the
+    // CONCURRENT, disorder-prone phase — the caller settles to the deterministic
+    // steady state with `converge(Some(rnd))` (re-resolve + re-fold + collapse,
+    // exactly as `ScrapeOrderDeterminismSpec.replayCorpus` does), so the assertion
+    // is about the SETTLED corpus, not this transient.
+    enrichDetailsSync()
+    drainServices()
+  }
+
   /** In production every row's TMDB enrichment eventually concludes — the
    *  boot/daily retry sweep resolves it or records a definitive no-match — and
    *  only a concluded row is published by the projector. A one-shot fixture run

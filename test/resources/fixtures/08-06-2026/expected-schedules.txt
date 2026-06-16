@@ -2080,22 +2080,22 @@ showings:
 displayTitle:      Fałszerz stulecia
 cinemaTitles:      Fałszerz stulecia
 runtimeMinutes:    128
-releaseYear:       2025
+releaseYear:       2026
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/8210752.3.jpg
 synopsis.length:   389
 cast:              Reda Kateb, Sara Giraudeau, Bastien Bouillon
 director:          Jean-Paul Salomé
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
+tmdbId:            1376415
+imdbId:            tt35495035
+originalTitle:     L’affaire Bojarski
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     —
+filmwebRating:     7.14286
 metacriticUrl:     —
 rottenTomatoesUrl: —
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Fa%C5%82szerz+stulecia-2025-10099990
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/falszerz-stulecia/
 cinemaScrapes:
@@ -2445,10 +2445,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Guru-2026-10081716
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/guru/
 cinemaScrapes:
-  Kino 60 Krzeseł / Guru / —
-  Kino Muranów / Guru / 2025
   Kino Muza / Guru / 2025
-  Kino Pod Baranami / Guru / —
 showings:
   2026-06-12  Kino Muza                     21:00 Sala 1
 
@@ -4679,22 +4676,22 @@ showings:
 displayTitle:      Niezwykły chłopak
 cinemaTitles:      Niezwykły chłopak
 runtimeMinutes:    110
-releaseYear:       2026
+releaseYear:       2025
 countries:         Hiszpania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8191D2R.jpg
 synopsis.length:   331
 cast:              Miki Esparbé, Jordi Catalán, Àngels Gonyalons
 director:          Javier Ruiz Caldera
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
+tmdbId:            1306284
+imdbId:            tt32676674
+originalTitle:     Wolfgang (Extraordinari)
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     —
+filmwebRating:     6.13103
 metacriticUrl:     —
 rottenTomatoesUrl: —
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Niezwyk%C5%82y+ch%C5%82opak-2025-10067696
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/niezwykly-chlopak/8191d2r
 cinemaScrapes:
@@ -6157,22 +6154,22 @@ showings:
 displayTitle:      Poczta głosowa
 cinemaTitles:      Poczta głosowa
 runtimeMinutes:    102
-releaseYear:       2024
+releaseYear:       2025
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/MV5BZWI5MWI1NGEtMzJkMC00NWE5LTlmZDgtNTE3NmMwZDhiZWJkXkEyXkFqcGc@._V1_FMjpg_UX1000_-590x800.jpg
 synopsis.length:   469
 cast:              Salif Cissé, Denis Podalydès, Aure Atika
 director:          Fabienne Godet
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
+tmdbId:            1158616
+imdbId:            tt29291318
+originalTitle:     Le Répondeur
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     —
+filmwebRating:     7.0
 metacriticUrl:     —
 rottenTomatoesUrl: —
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Poczta+g%C5%82osowa-2025-10069879
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/le-repondeur/
 cinemaScrapes:
@@ -6683,22 +6680,22 @@ showings:
 displayTitle:      Przeżyj to sam
 cinemaTitles:      Przeżyj to sam
 runtimeMinutes:    116
-releaseYear:       2025
+releaseYear:       2026
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/8236185.3.jpg
 synopsis.length:   460
 cast:              Louis Garrel, Camille Cottin, Pierre Lottin
 director:          Olivier Nakache, Eric Toledano
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
+tmdbId:            1404684
+imdbId:            tt36842933
+originalTitle:     Juste une illusion
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     —
+filmwebRating:     6.6
 metacriticUrl:     —
 rottenTomatoesUrl: —
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Prze%C5%BCyj+to+sam-2026-10110008
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/juste-une-illusion/
 cinemaScrapes:
