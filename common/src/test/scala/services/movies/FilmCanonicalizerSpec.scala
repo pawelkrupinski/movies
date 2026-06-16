@@ -81,6 +81,40 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     canonicalKey.year shouldBe None
   }
 
+  "clusterByFilm" should "fold an unresolved same-title row into a resolved sibling even when its (production) year is more than ±1 off" in {
+    // The "Zawieście czerwone latarnie" flake: every cinema's row resolves to one
+    // TMDB film at year 1991, but Kino Muzeum reports it uppercase with the
+    // PRODUCTION year 1989 — two years off the resolved year. While that row is
+    // still unresolved (its TMDB lookup hasn't landed yet, or never will in a
+    // hermetic run), it must STILL fold into the resolved 1991 cluster: an
+    // unresolved row sharing the sanitize group can't be a known distinct remake
+    // (those are resolved with their OWN tmdbId), so a >±1 year gap is just a
+    // cinema's production-vs-release-year disagreement, not a second film.
+    val rows = Seq(
+      resolved  ("Zawieście czerwone latarnie", tmdbId = 31273, tmdbYear = 1991, cinema = KinoMuza),
+      unresolved("ZAWIEŚCIE CZERWONE LATARNIE", Some(1989), cinema = KinoMuzeumGdansk)
+    )
+    // Both insertion orders must land on ONE cluster carrying both cinemas.
+    Seq(rows, rows.reverse).foreach { ordered =>
+      val clusters = FilmCanonicalizer.clusterByFilm(ordered)
+      withClue(s"clusters for order ${ordered.map(_._1.year)}: ${clusters.map(_.map(_._1))}\n") {
+        clusters should have size 1
+        clusters.head.flatMap(_._2.cinemaData.keySet).toSet shouldBe Set(KinoMuza, KinoMuzeumGdansk)
+      }
+    }
+  }
+
+  it should "still keep two DISTINCT resolved tmdbIds at a >±1 gap as separate films" in {
+    // The over-merge guard: a real remake carrying the same title (each resolved
+    // to its OWN tmdbId, years far apart) must stay two clusters. The fold above
+    // only pulls in UNRESOLVED rows, never two resolved films.
+    val clusters = FilmCanonicalizer.clusterByFilm(Seq(
+      resolved("Diuna", tmdbId = 100, tmdbYear = 1984, cinema = KinoMuza),
+      resolved("Diuna", tmdbId = 200, tmdbYear = 2021, cinema = KinoMuzeumGdansk)
+    ))
+    clusters should have size 2
+  }
+
   it should "keep a decorated variant's own spelling, not the base title its Tmdb slot carries" in {
     // A dubbed variant resolved to the base film's tmdbId, so its Tmdb slot
     // title is the BARE base "Straszny film" — a DIFFERENT sanitize. Canonicalising
