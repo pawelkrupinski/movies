@@ -18,6 +18,7 @@ object FrozenLegacyNormalizer {
   private val RestoredSuffix    = """(?i)\s*[-–—|.]?\s*\d+\s*k\s+(?:restored|remaster(?:ed)?)\s*$""".r
   private val WersjaSuffix      = """(?i)\s*[-–—.]\s+wersja\s+\p{L}+\s*$""".r
   private val PlusSuffix        = """\s+\+\s+\p{L}[^)]*$""".r
+  private val WithEventSuffix   = """(?i)\s*[-–—]?\s*z\s+(?:autorską\s+narracją|prelekcj[ąae]|wprowadzeniem|udziałem)\S*.*$""".r
   private val ProgrammePrefix   =
     ("""(?i)^(?:Kino\s+bez\s+barier|""" +
      """Pokaz\s+sensorycznie\s+przyjazny|""" +
@@ -42,7 +43,8 @@ object FrozenLegacyNormalizer {
     val stripped  = ProgrammePrefix.replaceFirstIn(display, "")
     val tagless   = AccessibilityTag.replaceFirstIn(stripped, "")
     val eventless = PlusSuffix.replaceFirstIn(tagless, "")
-    searchTitle(eventless)
+    val narrationless = WithEventSuffix.replaceFirstIn(eventless, "")
+    searchTitle(narrationless)
   }
   def programmePrefix(title: String): Option[String] =
     ProgrammePrefix.findPrefixMatchOf(title).map(_.matched)
