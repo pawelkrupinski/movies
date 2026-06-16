@@ -3,6 +3,8 @@ package tools
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import java.util.Locale
+
 class TextNormalizationSpec extends AnyFlatSpec with Matchers {
 
   "titleCaseIfAllCaps" should "leave properly-cased strings alone" in {
@@ -120,5 +122,24 @@ class TextNormalizationSpec extends AnyFlatSpec with Matchers {
 
   it should "return empty when the text is nothing but a URL" in {
     TextNormalization.stripUrls("https://www.youtube.com/watch?v=ERysio3sHjw") shouldBe ""
+  }
+
+  // ── sentenceCase ────────────────────────────────────────────────────────────
+
+  "sentenceCase" should "lowercase the rest and keep sentence-ending capitals" in {
+    TextNormalization.sentenceCase("MAVKA. PRAWDZIWY MIT") shouldBe "Mavka. Prawdziwy mit"
+  }
+
+  it should "be independent of the JVM default locale (no Turkish dotless-i)" in {
+    // Regression: `sentenceCase` used the no-arg `String.toLowerCase`, which folds
+    // case against the DEFAULT locale. Under a Turkish default the ASCII 'I' maps
+    // to dotless 'ı', so "FILMOWE SPOTKANIA" came out "Fılmowe spotkanıa" — a
+    // platform-dependent title that diverged between dev (en) and any tr-locale
+    // JVM. Every sibling helper here pins `Locale.ROOT`; this one must too.
+    val original = Locale.getDefault
+    try {
+      Locale.setDefault(Locale.forLanguageTag("tr"))
+      TextNormalization.sentenceCase("FILMOWE SPOTKANIA") shouldBe "Filmowe spotkania"
+    } finally Locale.setDefault(original)
   }
 }

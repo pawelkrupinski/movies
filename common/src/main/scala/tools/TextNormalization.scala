@@ -75,7 +75,7 @@ object TextNormalization {
    *  (was duplicated in RialtoClient / MultikinoParser / ScraperParse). */
   def sentenceCase(s: String): String = {
     if (s.isEmpty) return s
-    val chars = s.toLowerCase.toCharArray
+    val chars = s.toLowerCase(Locale.ROOT).toCharArray
     chars(0) = chars(0).toUpper
     var i = 0
     while (i + 2 < chars.length) {
