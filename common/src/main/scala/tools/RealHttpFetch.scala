@@ -196,15 +196,17 @@ object RealHttpFetch {
    *  biletyna). The proxy IPs are genuine PL ISP (Netia, AS12741), so the target
    *  sees a residential egress and returns 200.
    *
-   *  Holds the full egress pool — `ports` is one Decodo IP each. A client pins to
-   *  ONE of them via [[pinnedTo]] and stays on it for life (sticky): Multikino's
-   *  session cookie is bound to the egress IP, so the homepage-warm + API retry
-   *  must share an IP (rotation warmed on one IP, retried on another → still 401,
-   *  verified 2026-06-16). `StickyProxyPool` hands each proxied client a distinct
-   *  pinned config, round-robin across the pool, so concurrent auth load spreads
-   *  across the IPs instead of funnelling through one and tripping Decodo's
-   *  "too many authentication attempts. Limit: 3" cap (which rolled all proxied
-   *  traffic to Zyte on 2026-06-16). See the `reference_decodo_isp_proxy` memory. */
+   *  Holds the full egress pool — `ports` is one Decodo IP each. [[perPort]]
+   *  yields a config pinned to each ([[pinnedTo]]); `StickyShardHttpFetch` fans a
+   *  client's venues across those per-IP shards, keyed by venue URL so each venue
+   *  sticks to one IP. Stickiness matters because Multikino's session cookie is
+   *  bound to the egress IP — a venue's homepage-warm + API retry must share an
+   *  IP (rotation warmed on one IP, retried on another → still 401, verified
+   *  2026-06-16) — and each IP warms its own session once, reused across the
+   *  venues routed to it. Spreading matters because funnelling all proxied auth
+   *  through one IP tripped Decodo's "too many authentication attempts. Limit: 3"
+   *  cap and rolled all proxied traffic to Zyte on 2026-06-16. See the
+   *  `reference_decodo_isp_proxy` memory. */
   case class ProxyConfig(host: String, ports: Seq[Int], user: String, password: String) {
     require(ports.nonEmpty, "ProxyConfig needs at least one port")
 
@@ -222,15 +224,18 @@ object RealHttpFetch {
     val selector: ProxySelector =
       ProxySelector.of(new InetSocketAddress(host, port))
 
-    /** A copy pinned to a single egress IP from this pool — one sticky client's
-     *  egress. Each proxied client gets its own pinned config (own sticky IP, and
-     *  via its own [[RealHttpFetch]] its own cookie jar) so concurrent auth load
-     *  spreads across the pool rather than hammering one IP past Decodo's
-     *  "Limit: 3" concurrent-auth cap. */
+    /** A copy pinned to a single egress IP from this pool — one shard's egress.
+     *  Its own [[RealHttpFetch]] gives it its own cookie jar, so a sharded proxy
+     *  can warm + reuse one Multikino session per IP while spreading venues across
+     *  the pool rather than hammering one IP past Decodo's "Limit: 3" cap. */
     def pinnedTo(port: Int): ProxyConfig = {
       require(ports.contains(port), s"port $port is not one of the pool ports $ports")
       copy(ports = Seq(port))
     }
+
+    /** One pinned config per pool port — the per-IP egresses a sharded proxy
+     *  (see `StickyShardHttpFetch`) fans venues across. */
+    def perPort: Seq[ProxyConfig] = ports.map(pinnedTo)
 
     val authenticator: Authenticator = new Authenticator {
       override protected def getPasswordAuthentication: PasswordAuthentication =

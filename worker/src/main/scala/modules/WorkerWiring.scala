@@ -16,7 +16,7 @@ import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, 
 import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
-import tools.{Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyProxyPool}
+import tools.{Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
@@ -62,28 +62,33 @@ class WorkerWiring extends play.api.Logging {
   // come from Env (env -> .env.local). Some only when both are present — absent in
   // local/test, where the chain collapses to the existing Zyte/direct path. See
   // the `reference_decodo_isp_proxy` memory.
-  // The Decodo egress pool (host + the 7 sticky IPs); None where the
-  // KINOWO_PROXY_* secrets aren't set (local/CI/fixture-replay → Zyte/direct).
-  lazy val proxyPool: Option[StickyProxyPool] =
-    ResidentialProxy.fromEnv().map(new StickyProxyPool(_))
+  // One RealHttpFetch per Decodo pool IP (each pinned, own cookie jar), built
+  // once and shared by the proxied clients; None where the KINOWO_PROXY_* secrets
+  // aren't set (local/CI/fixture-replay → Zyte/direct). Sharing the shards means
+  // each IP warms its Multikino session at most once and reuses it across the
+  // venues routed there.
+  private lazy val proxyShards: Option[IndexedSeq[RealHttpFetch]] =
+    ResidentialProxy.fromEnv().map(_.perPort.map(cfg => new RealHttpFetch(Some(cfg))).toIndexedSeq)
 
   // Proxy primary → existing chain (Zyte then direct) as fallback, so a proxy IP
   // that's ever unreachable/burned silently rolls over and scraping never breaks.
   //
-  // Each proxied client draws its OWN sticky egress IP from the pool
-  // (`StickyProxyPool.nextEgress`, round-robin) via its own RealHttpFetch — own
-  // cookie jar, own IP — so proxied traffic spreads across the Decodo IPs instead
-  // of funnelling through one and tripping its "Limit: 3" concurrent-auth cap
-  // (which rolled everything to Zyte on 2026-06-16).
+  // StickyShardHttpFetch fans each client's venues across all the pool IPs, keyed
+  // by venue URL so a given venue always egresses via the same IP. That spreads
+  // the proxied auth load across the IPs (no single endpoint past Decodo's
+  // "Limit: 3" cap, which rolled everything to Zyte on 2026-06-16) while keeping
+  // each venue STICKY to one IP.
   //
-  // `warmUrl` wraps the proxy leg in SessionWarmingHttpFetch — for Multikino,
+  // `warmUrl` wraps EACH shard in its own SessionWarmingHttpFetch — for Multikino,
   // whose films API 401s on a cold call from the proxy IP until the homepage warms
-  // a session cookie (verified 2026-06-16). The per-client IP is sticky, so the
-  // warm's cookie rides the retry. Stateless venues (biletyna, ck105) pass None.
+  // a session cookie (verified 2026-06-16). Per-venue stickiness means the warm
+  // and the API retry share an IP, and each IP warms once then reuses the cookie.
+  // Stateless venues (biletyna, ck105) pass None.
   private def proxyPrimary(fallback: HttpFetch, warmUrl: Option[String] = None): HttpFetch =
-    proxyPool.fold(fallback) { pool =>
-      val proxied  = new RealHttpFetch(Some(pool.nextEgress()))
-      val proxyLeg = warmUrl.fold[HttpFetch](proxied)(u => new SessionWarmingHttpFetch(proxied, u))
+    proxyShards.fold(fallback) { shards =>
+      val legs: IndexedSeq[HttpFetch] =
+        warmUrl.fold[IndexedSeq[HttpFetch]](shards)(u => shards.map(new SessionWarmingHttpFetch(_, u)))
+      val proxyLeg = new StickyShardHttpFetch(legs)
       new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), onOutcome = recordProxyOutcome)
     }
 

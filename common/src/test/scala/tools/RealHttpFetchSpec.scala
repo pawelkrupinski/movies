@@ -72,6 +72,11 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
       RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001, 10002), "u", "p").pinnedTo(10099)
   }
 
+  "ProxyConfig.perPort" should "yield one config pinned to each pool port (the shard egresses)" in {
+    val pool = RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001, 10002, 10003), "u", "p")
+    pool.perPort.map(selectedPort) shouldBe List(10001, 10002, 10003)
+  }
+
   it should "clear jdk.http.auth.tunneling.disabledSchemes so Basic proxy auth works over HTTPS CONNECT" in {
     // The JDK default is "Basic", which 407s every HTTPS fetch through the proxy
     // — the gotcha that makes the worker's proxied egress fail without this.
