@@ -805,61 +805,12 @@
     .navbar-date      { order: 2; flex: 1 1 auto; min-width: 0; }
     .navbar-filtry    { order: 3; margin-left: 0; max-width: 45%; min-width: 0; flex-shrink: 1; }
     .navbar-auth      { order: 4; flex-shrink: 0; }
-    /* Floating search pill — frosted, translucent, capsule, pinned to the
-       bottom of the viewport over the scrolling grid, matching the iOS/Android
-       floating search field. The same `#search-input` still drives the live
-       filter, so no JS changes. `position:fixed` lifts it out of the navbar
-       flex flow (freeing the row for the day pills) while keeping it a DOM
-       child of `.navbar`. `display:flex` also overrides the ≤290px emergency
-       `display:none` below — the row no longer competes for width, so search
-       stays available at every portrait width. */
-    .navbar-search {
-      position: fixed;
-      left: 50%;
-      transform: translateX(-50%);
-      bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-      z-index: 30;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: calc(100% - 32px);
-      max-width: 440px;
-      padding: 9px 16px;
-      border-radius: 28px;
-      background: rgba(26, 26, 46, .55);
-      border: 1px solid rgba(255, 255, 255, .22);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, .38);
-      -webkit-backdrop-filter: blur(16px) saturate(1.3);
-      backdrop-filter: blur(16px) saturate(1.3);
-    }
-    .navbar-search .search-icon {
-      display: block;
-      flex: 0 0 auto;
-      width: 18px;
-      height: 18px;
-      color: rgba(255, 255, 255, .72);
-    }
-    /* The input fills the pill and is fully transparent — the frosted glass IS
-       its background. `.navbar-search .search-input` outranks the base
-       `.search-input` width/background and `:focus` box-shadow rules up top by
-       specificity, so it wins without `!important`. */
-    .navbar-search .search-input,
-    .navbar-search .search-input:focus {
-      flex: 1 1 auto;
-      width: auto;
-      min-width: 0;
-      /* Height stays the shared 28px control pin (see the `.navbar
-         .search-input` height rule lower in this block); the pill's
-         `align-items:center` centres that 28px input in the taller capsule. */
-      padding: 2px 0;
-      background: transparent;
-      box-shadow: none;
-      color: #fff;
-    }
-    .navbar-search .search-input::placeholder { color: rgba(255, 255, 255, .6); }
-    /* Reserve room at the end of the scroll so the bottom-floating search pill
-       never parks over the last row of cards. */
-    #view-root { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+    /* Search itself is pulled out of this row into a bottom-floating pill —
+       but ONLY in PORTRAIT (see the `(max-width:575px) and
+       (orientation:portrait)` block lower down). Narrow LANDSCAPE phones
+       (e.g. a 150%-zoomed handset at 563×260) are also ≤575px wide yet must
+       keep search inline in the compact one-row navbar, so the floating rules
+       deliberately don't live in this width-only block. */
     /* Priority 3 — the day pills shrink their font + padding with the viewport
        so the four-pill row stays narrow enough to fit beside the logo,
        Filtry and auth. The row fills `.navbar-date` (`width:100%`) and each
@@ -1088,13 +1039,12 @@
   /* First-run swipe hint (phones). shared.js adds `.visible` once per day until
      the first swipe; base state is `visibility:hidden` so it never intercepts a
      tap and reads as hidden to assistive tech / tests. Centred near the bottom,
-     above the cards — and stacked ABOVE the bottom-floating search pill (which
-     owns the same bottom-centre spot on portrait phones) so the two never
-     overlap, with a soft frosted pill. */
+     above the cards, with a soft frosted pill. (In portrait it's lifted higher
+     to clear the bottom-floating search pill — see the portrait block below.) */
   #swipe-hint {
     position: fixed;
     left: 50%;
-    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
     transform: translateX(-50%) translateY(6px);
     z-index: 30;
     pointer-events: none;
@@ -1148,6 +1098,72 @@
      `--mobile-scale` so it tracks the card text on narrow phones. */
   @@media (max-width: 575px) {
     .cinema-label { font-size: calc(.65 * var(--mobile-scale)); }
+  }
+
+  /* ── Floating search pill — PORTRAIT phones only ───────────────────────────
+     The search box leaves the navbar row and floats as a frosted, translucent
+     capsule pinned to the bottom of the viewport, over the scrolling grid —
+     matching the iOS/Android apps. The same `#search-input` still drives the
+     live filter, so no JS changes. `position:fixed` lifts it out of the navbar
+     flex flow (the day pills reclaim the row) while it stays a DOM child of
+     `.navbar`.
+
+     Scoped to `(orientation: portrait)` on purpose: a narrow LANDSCAPE phone
+     (e.g. a 150%-zoomed handset at 563×260) is also ≤575px wide, but its
+     compact one-row navbar keeps search INLINE — the floating treatment must
+     not leak there. This block sits after the base `#swipe-hint` rule so its
+     bottom-offset override wins by source order. */
+  @@media (max-width: 575px) and (orientation: portrait) {
+    .navbar-search {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: calc(100% - 32px);
+      max-width: 440px;
+      padding: 9px 16px;
+      border-radius: 28px;
+      background: rgba(26, 26, 46, .55);
+      border: 1px solid rgba(255, 255, 255, .22);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .38);
+      -webkit-backdrop-filter: blur(16px) saturate(1.3);
+      backdrop-filter: blur(16px) saturate(1.3);
+    }
+    .navbar-search .search-icon {
+      display: block;
+      flex: 0 0 auto;
+      width: 18px;
+      height: 18px;
+      color: rgba(255, 255, 255, .72);
+    }
+    /* The input fills the pill and is fully transparent — the frosted glass IS
+       its background. `.navbar-search .search-input` outranks the base
+       `.search-input` width/background and `:focus` box-shadow rules by
+       specificity, so it wins without `!important`. Height stays the shared
+       28px control pin (the `.navbar .search-input` height rule in the
+       width-only portrait block); the pill's `align-items:center` centres that
+       28px input in the taller capsule. */
+    .navbar-search .search-input,
+    .navbar-search .search-input:focus {
+      flex: 1 1 auto;
+      width: auto;
+      min-width: 0;
+      padding: 2px 0;
+      background: transparent;
+      box-shadow: none;
+      color: #fff;
+    }
+    .navbar-search .search-input::placeholder { color: rgba(255, 255, 255, .6); }
+    /* Reserve room at the end of the scroll so the floating pill never parks
+       over the last row of cards. */
+    #view-root { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+    /* Lift the first-run swipe hint above the search pill so they never overlap
+       (both own the bottom-centre spot). */
+    #swipe-hint { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
   }
 
 </style>

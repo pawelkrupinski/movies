@@ -464,7 +464,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // `getBoundingClientRect()` on each navbar item to assert the
   // physical layout matches the spec:
   //
-  //   one row: [logo+tabs] … [day pills] [search] [filtry] [auth]
+  //   one row: [logo+tabs] … [day pills] [filtry] [auth]
+  //
+  // Search is NOT on this row on portrait phones — it floats as a pill pinned
+  // to the bottom of the viewport (see the portrait floating-pill CSS), so the
+  // test asserts it sits BELOW the navbar instead of between day pills and
+  // Filtry.
   //
   // Why this test exists: the orders + `margin-left: auto` + the
   // `flex-wrap: nowrap` single-row layout are subtle — easy to break with
@@ -472,7 +477,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // that snapshot diffs alone wouldn't (the markup can look fine but
   // the visual layout flips).
 
-  "the mobile navbar (≤ 575 px)" should "keep day pills, search, filtry and auth on one row in that order" in {
+  "the mobile navbar (≤ 575 px)" should "keep day pills, filtry and auth on one row, with search floating below" in {
     onPath("/") { page =>
       // 500 × 896 — widest mobile viewport (below the 576 px breakpoint
       // where the mobile media-query stops applying). Picked because
@@ -521,23 +526,27 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         ).split('|') match {
           case Array(t, l) => (t.toDouble, l.toDouble)
         }
-      val (searchTop, searchLeft) = rect(".navbar-search")
+      val (searchTop, _         ) = rect(".navbar-search")
       val (authTop,   authLeft  ) = rect(".navbar-auth")
       val (dateTop,   dateLeft  ) = rect(".navbar-date")
       val (filtryTop, filtryLeft) = rect(".navbar-filtry")
+      val navBottom = page.evalString(
+        "String(document.querySelector('.navbar').getBoundingClientRect().bottom)"
+      ).toDouble
 
       val viewportWidth = page.evalInt("window.innerWidth")
-      // One row: day pills, search, filtry and auth all share the same top
+      // The in-row controls — day pills, Filtry and auth — share one row
       // (4 px tolerance for sub-pixel + line-height variance), laid out
-      // left-to-right: day pills → search → filtry → auth.
-      withClue(s"viewport=$viewportWidth search=($searchTop,$searchLeft) auth=($authTop,$authLeft) date=($dateTop,$dateLeft) filtry=($filtryTop,$filtryLeft) ") {
+      // left-to-right: day pills → Filtry → auth. Search is NOT in this row:
+      // on portrait it floats as a pill pinned to the bottom of the viewport,
+      // below the navbar.
+      withClue(s"viewport=$viewportWidth searchTop=$searchTop navBottom=$navBottom auth=($authTop,$authLeft) date=($dateTop,$dateLeft) filtry=($filtryTop,$filtryLeft) ") {
         viewportWidth shouldBe 500
-        math.abs(searchTop - authTop) should be < 4.0
         math.abs(dateTop   - authTop) should be < 4.0
         math.abs(filtryTop - authTop) should be < 4.0
-        dateLeft   should be < searchLeft
-        searchLeft should be < filtryLeft
+        dateLeft   should be < filtryLeft
         filtryLeft should be < authLeft
+        searchTop  should be > navBottom
       }
 
       // Filtry icon is fixed-width — piling on every active filter the
@@ -595,8 +604,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // mobile rules hand back to the desktop defaults.
   //
   // 320 px (iPhone SE 1st gen) is included: the single-row navbar fits
-  // even there because the search input is dropped ≤ 480 px, leaving the
-  // logo, day pills + arrows, Filtry and auth to share the one row.
+  // even there because search floats out of the row into the bottom pill
+  // (portrait), leaving the logo, day pills + arrows, Filtry and auth to
+  // share the one row.
   private val MobileViewports = Seq(320, 360, 375, 390, 412, 430, 540, 575)
 
   for (path <- Seq("/")) {
@@ -624,12 +634,18 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // second tick. A short pause + a forced reflow read is enough.
           Thread.sleep(60L)
 
+          // Skip zero-size slots (empty anonymous auth) AND the floating
+          // search pill: on portrait it's `position:fixed`, lifted out of the
+          // navbar flow as a bottom overlay, so it's not a row member and its
+          // top sits well below the row — counting it would always read as a
+          // second row.
           val rowCount = page.evalInt(
             "(() => { const nav = document.querySelector('.navbar');" +
             "          const tops = new Set();" +
             "          for (const c of nav.children) {" +
             "            const r = c.getBoundingClientRect();" +
             "            if (r.width === 0 || r.height === 0) continue;" +
+            "            if (getComputedStyle(c).position === 'fixed') continue;" +
             "            tops.add(Math.round(r.top));" +
             "          }" +
             "          return tops.size; })()"
@@ -641,6 +657,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
             "          for (const c of nav.children) {" +
             "            const r = c.getBoundingClientRect();" +
             "            if (r.width === 0 || r.height === 0) continue;" +
+            "            if (getComputedStyle(c).position === 'fixed') continue;" +
             "            const over = Math.ceil(r.right - navRight);" +
             "            if (over > maxOver) maxOver = over;" +
             "          }" +
