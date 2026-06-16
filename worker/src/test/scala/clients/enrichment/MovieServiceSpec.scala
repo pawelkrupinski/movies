@@ -131,6 +131,18 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
     MovieService.apiQuery("Bez znieczulenia / Rough Treatment (1978)") shouldBe "Bez znieczulenia"
   }
 
+  it should "strip a 'z autorską narracją <person>' narration-event suffix (en-dash or bare)" in {
+    // A live-narrated special screening: the suffix must not reach TMDB, or the row
+    // resolves order-dependently (only when a sibling cinema's bare-title hint had
+    // already merged in) — the Klątwa doliny węży split.
+    MovieService.apiQuery("Klątwa doliny węży – z autorską narracją Łony") shouldBe "Klątwa doliny węży"
+    MovieService.apiQuery("\"Klątwa doliny węży\" z autorską narracją Łony") shouldBe "\"Klątwa doliny węży\""
+  }
+
+  it should "strip a 'z prelekcją' lecture-event suffix" in {
+    MovieService.apiQuery("Człowiek z marmuru z prelekcją filmoznawcy") shouldBe "Człowiek z marmuru"
+  }
+
   it should "strip a ' + prelekcja…' event suffix for upstream lookups" in {
     // The "+ <event>" suffix marks a screening with an associated event (a
     // lecture + meeting). The display row keeps it (sanitize keeps the suffix)
