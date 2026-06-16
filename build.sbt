@@ -191,6 +191,7 @@ lazy val web = (project in file("web"))
     // mongo-scala-driver, caffeine and jsoup come transitively via `common`.
     libraryDependencies ++= Seq(
       jsoup,                 // also used directly in views/helpers
+      imageioWebp,           // webp ImageReader for the OG-card compositor
       sentryLogback,         // error reporting
       scalatestPlay % Test
     ),

@@ -71,10 +71,9 @@ object PosterProxy {
   //      63  ✗ 404 (weserv reported origin 403)
   //          → 62 of those were www.multikino.pl
   //          → 1 was a stale cinema-city URL (origin 404, scrape bug)
-  // multikino origins are already HTTPS and serve ~150-300 KB JPEGs,
-  // so skipping the proxy loses the webp/resize win but not the
-  // mixed-content fix (there's no mixed content to fix) and not the
-  // "actually displays" property the user reported.
+  // multikino origins are already HTTPS, so skipping the proxy loses the
+  // resize win but not the mixed-content fix (there's no mixed content to
+  // fix) and not the "actually displays" property the user reported.
   private val SkipHosts = Set(
     "www.multikino.pl",
     "multikino.pl"
@@ -88,12 +87,14 @@ object PosterProxy {
     weserv(url, TargetWidth, TargetHeight, "webp").getOrElse(url)
 
   /** A poster URL sized + re-encoded for the server-side OG-card compositor
-   *  ([[OgCardService]]). Unlike [[proxy]] (webp, for the browser) this asks
-   *  weserv for JPEG, because `javax.imageio` can't decode webp — a webp body
-   *  would silently fail to read and drop the card to text-only. Targets a
+   *  ([[OgCardService]]). Used only as a *fallback* — [[OgCardService]] now
+   *  decodes the origin directly (the TwelveMonkeys imageio-webp reader handles
+   *  the webp that cinema CDNs serve), and reaches here for the rare origin
+   *  ImageIO still can't read. Asks weserv for JPEG to be safe, and targets a
    *  higher resolution than the browser card since the poster renders at up to
-   *  ~520px tall on the 1200×630 card. SkipHosts (multikino) fall back to the
-   *  origin URL, which already serves a JPEG `imageio` reads fine. */
+   *  ~520px tall on the 1200×630 card. SkipHosts (multikino) yield the origin
+   *  URL — but multikino's webp decodes directly now, so the direct fetch wins
+   *  before this fallback ever matters. */
   def posterForCard(url: String): String =
     weserv(url, 440, 660, "jpg").getOrElse(url)
 

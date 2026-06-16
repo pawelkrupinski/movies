@@ -50,8 +50,10 @@ class OgCardService(posters: PosterFetch) {
    *
    *  Fetches the origin URL directly ([[PosterFetch]] gives it the generous
    *  connect budget slow cinema origins need, which the scraper's tight 5s
-   *  budget denied). Falls back to the weserv JPEG for the rare webp-only
-   *  origin ImageIO can't decode natively. */
+   *  budget denied). The TwelveMonkeys imageio-webp reader lets ImageIO decode
+   *  the webp these origins now serve — including Multikino, which weserv 403s,
+   *  so the direct fetch is the only working path there. Falls back to the
+   *  weserv JPEG only for the rare origin ImageIO still can't read. */
   private def loadPoster(posterUrl: Option[String]): Option[BufferedImage] =
     posterUrl.filter(_.nonEmpty).flatMap { url =>
       decode(url).orElse(decode(PosterProxy.posterForCard(url)))

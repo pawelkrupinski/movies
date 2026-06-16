@@ -17,6 +17,10 @@ object Dependencies {
   private val mongoScalaVersion    = "5.8.0"
   private val caffeineVersion      = "3.2.4"
   private val jsoupVersion         = "1.22.2"
+  // Pure-Java webp ImageReader (no native libs), so the OG-card compositor can
+  // decode the webp posters cinema CDNs now serve. imageio-core is the shared
+  // runtime the format plugin needs.
+  private val twelveMonkeysVersion = "3.12.0"
   private val sentryVersion        = "8.43.2"
   // Pinned to the version Play uses so logback.xml + the sentry-logback appender
   // stay compatible across the web app (gets it via play-logback) and the
@@ -29,6 +33,7 @@ object Dependencies {
   val mongoScalaDriver = "org.mongodb.scala"             %% "mongo-scala-driver" % mongoScalaVersion
   val caffeine         = "com.github.ben-manes.caffeine" %  "caffeine"           % caffeineVersion
   val jsoup            = "org.jsoup"                      %  "jsoup"              % jsoupVersion
+  val imageioWebp      = "com.twelvemonkeys.imageio"      %  "imageio-webp"       % twelveMonkeysVersion
   val sentryLogback    = "io.sentry"                      %  "sentry-logback"     % sentryVersion
   val logbackClassic   = "ch.qos.logback"                %  "logback-classic"    % logbackVersion
   val scalatestPlay    = "org.scalatestplus.play"        %% "scalatestplus-play" % scalatestPlayVersion

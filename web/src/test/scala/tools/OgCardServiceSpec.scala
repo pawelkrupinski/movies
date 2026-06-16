@@ -19,6 +19,15 @@ class OgCardServiceSpec extends AnyFlatSpec with Matchers {
     val baos = new ByteArrayOutputStream(); ImageIO.write(p, "jpg", baos); baos.toByteArray
   }
 
+  // A real lossy-VP8 webp poster (a solid red 400×600), the format Multikino's
+  // CDN now serves at its `.jpg` origin URLs. `javax.imageio` has no native webp
+  // reader, so decoding it depends on the TwelveMonkeys imageio-webp plugin
+  // registering via the ServiceLoader SPI — without it the card drops the poster.
+  private val webp: Array[Byte] = {
+    val in = getClass.getResourceAsStream("/fixtures/ogcard/red-poster.webp")
+    try in.readAllBytes() finally in.close()
+  }
+
   private class CountingFetch(payload: Array[Byte]) extends PosterFetch {
     val calls = new AtomicInteger(0)
     override def bytes(url: String): Option[Array[Byte]] = { calls.incrementAndGet(); Some(payload) }
@@ -46,6 +55,15 @@ class OgCardServiceSpec extends AnyFlatSpec with Matchers {
     val fetch = new CountingFetch(jpeg)
     val bytes = new OgCardService(fetch).card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://cdn/x.jpg"))
     dimensions(bytes) shouldBe (1200, 630)
+    fetch.calls.get shouldBe 1
+  }
+
+  it should "decode a webp poster fetched straight from the origin (e.g. Multikino's webp CDN)" in {
+    // The origin serves webp directly and weserv 403s Multikino, so the card's
+    // only working path is decoding the origin's webp itself. Regression guard
+    // for the TwelveMonkeys webp reader: without it this slot stays dark.
+    val fetch = new CountingFetch(webp)
+    posterRed(new OgCardService(fetch).card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some("https://www.multikino.pl/x.jpg"))) should be > 150
     fetch.calls.get shouldBe 1
   }
 
