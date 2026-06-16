@@ -226,7 +226,13 @@
     display: inline-flex; align-items: center; justify-content: center;
     transition: background-color .15s ease, color .15s ease;
   }
-  .day-pill:hover { background: #3a3a6e; color: #fff; }
+  /* Gate `:hover` behind `hover: hover` so a tap on a phone doesn't park a
+     sticky dark-blue hover on the pill the user picked — which then sits there
+     next to the light-blue `.active` highlight as they swipe to other days
+     (same fix as the nav tabs below). */
+  @@media (hover: hover) and (pointer: fine) {
+    .day-pill:hover { background: #3a3a6e; color: #fff; }
+  }
   .day-pill.active { background: #aad4ff; color: #1a1a2e; font-weight: 600; }
   .day-pill:focus-visible { outline: none; box-shadow: 0 0 0 2px #5a5a9e; }
   /* Hide an element visually while keeping it for assistive tech + form state —
