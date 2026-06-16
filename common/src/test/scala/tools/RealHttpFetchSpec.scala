@@ -53,13 +53,23 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
     pc.selector.select(URI.create("https://www.multikino.pl/api/x")).get(0)
       .address().asInstanceOf[InetSocketAddress].getPort
 
-  "RealHttpFetch.ProxyConfig" should "pin to ONE sticky IP (the first port), not rotate" in {
-    val pc = RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001, 10002, 10003), "u", "p")
-    // Sticky, NOT round-robin: Multikino's session cookie is IP-bound, so the
-    // homepage-warm + API retry must share an egress IP. The other ports are
-    // spares to switch to manually if the active one is burned.
-    pc.port shouldBe 10001
-    (1 to 5).map(_ => selectedPort(pc)).distinct shouldBe List(10001)
+  "ProxyConfig.pinnedTo" should "pin the selector to the chosen pool port, stickily" in {
+    val pool = RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001, 10002, 10003), "u", "p")
+    val pinned = pool.pinnedTo(10002)
+    // Sticky: every selection resolves to the one pinned IP — Multikino's session
+    // cookie is IP-bound, so the homepage-warm + API retry must share an egress.
+    pinned.port shouldBe 10002
+    (1 to 5).map(_ => selectedPort(pinned)).distinct shouldBe List(10002)
+  }
+
+  it should "give distinct pool ports distinct selectors (so clients spread across IPs)" in {
+    val pool = RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001, 10002, 10003), "u", "p")
+    pool.ports.map(p => selectedPort(pool.pinnedTo(p))) shouldBe List(10001, 10002, 10003)
+  }
+
+  it should "reject a port that isn't one of the pool's ports" in {
+    an[IllegalArgumentException] should be thrownBy
+      RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001, 10002), "u", "p").pinnedTo(10099)
   }
 
   it should "clear jdk.http.auth.tunneling.disabledSchemes so Basic proxy auth works over HTTPS CONNECT" in {

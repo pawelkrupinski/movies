@@ -16,7 +16,7 @@ import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, 
 import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
-import tools.{Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget}
+import tools.{Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyProxyPool}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
@@ -62,20 +62,28 @@ class WorkerWiring extends play.api.Logging {
   // come from Env (env -> .env.local). Some only when both are present — absent in
   // local/test, where the chain collapses to the existing Zyte/direct path. See
   // the `reference_decodo_isp_proxy` memory.
-  lazy val residentialProxy: Option[HttpFetch] =
-    ResidentialProxy.fromEnv().map(config => new RealHttpFetch(Some(config)))
+  // The Decodo egress pool (host + the 7 sticky IPs); None where the
+  // KINOWO_PROXY_* secrets aren't set (local/CI/fixture-replay → Zyte/direct).
+  lazy val proxyPool: Option[StickyProxyPool] =
+    ResidentialProxy.fromEnv().map(new StickyProxyPool(_))
 
   // Proxy primary → existing chain (Zyte then direct) as fallback, so a proxy IP
   // that's ever unreachable/burned silently rolls over and scraping never breaks.
-  private def proxyPrimary(fallback: HttpFetch): HttpFetch = proxyPrimary(fallback, warmUrl = None)
-
+  //
+  // Each proxied client draws its OWN sticky egress IP from the pool
+  // (`StickyProxyPool.nextEgress`, round-robin) via its own RealHttpFetch — own
+  // cookie jar, own IP — so proxied traffic spreads across the Decodo IPs instead
+  // of funnelling through one and tripping its "Limit: 3" concurrent-auth cap
+  // (which rolled everything to Zyte on 2026-06-16).
+  //
   // `warmUrl` wraps the proxy leg in SessionWarmingHttpFetch — for Multikino,
   // whose films API 401s on a cold call from the proxy IP until the homepage warms
-  // a session cookie (verified 2026-06-16). Stateless venues (biletyna, ck105)
-  // pass None.
-  private def proxyPrimary(fallback: HttpFetch, warmUrl: Option[String]): HttpFetch =
-    residentialProxy.fold(fallback) { p =>
-      val proxyLeg = warmUrl.fold(p)(u => new SessionWarmingHttpFetch(p, u))
+  // a session cookie (verified 2026-06-16). The per-client IP is sticky, so the
+  // warm's cookie rides the retry. Stateless venues (biletyna, ck105) pass None.
+  private def proxyPrimary(fallback: HttpFetch, warmUrl: Option[String] = None): HttpFetch =
+    proxyPool.fold(fallback) { pool =>
+      val proxied  = new RealHttpFetch(Some(pool.nextEgress()))
+      val proxyLeg = warmUrl.fold[HttpFetch](proxied)(u => new SessionWarmingHttpFetch(proxied, u))
       new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), onOutcome = recordProxyOutcome)
     }
 
