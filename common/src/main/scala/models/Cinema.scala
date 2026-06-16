@@ -386,7 +386,7 @@ case object KinoMok             extends Cinema("Kino MOK", "MOK")               
 // Each is served by FilmwebShowtimesClient via its Filmweb internal cinema id
 // (verified non-empty seances 2026-06). Wired in CinemaScraperCatalog.filmwebExtra.
 // wroclaw
-case object KinoAstra extends Cinema("Kino Astra", "Astra")   // Oborniki Śląskie — filmweb 2328
+case object KinoAstra extends Cinema("Kino Astra", "Astra")   // Oborniki Śląskie — kulturalne-oborniki.bilety24.pl
 case object KinoDyskusyjnyKlubFilmowyPolitechnika extends Cinema("Dyskusyjny Klub Filmowy Politechnika", "Wrocław")   // Wrocław — filmweb 1645
 // warszawa
 case object KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha extends Cinema("Kino Praha", "Praha")   // Warszawa — filmweb 2180
@@ -413,7 +413,7 @@ case object KinoRondo extends Cinema("Kinoteatr Rondo", "Rondo")   // Chełmno �
 case object KinoLewart extends Cinema("Kino Lewart", "Lewart")   // Lubartów — filmweb 1697
 case object KinoMetalowiec extends Cinema("Metalowiec", "Metalowiec")   // Kraśnik — filmweb 285
 // czestochowa
-case object KinoDKFRumcajs extends Cinema("DKF Rumcajs", "DKF Rumcajs")   // Częstochowa — filmweb 1714
+case object KinoDKFRumcajs extends Cinema("DKF Rumcajs", "DKF Rumcajs")   // Częstochowa — rumcajs.czest.pl
 case object KinoKarolinka extends Cinema("Kino Karolinka", "Karolinka")   // Lubliniec — filmweb 1719
 case object KinoMDK extends Cinema("Kino MDK", "MDK")   // Radomsko — filmweb 1732
 case object KinoMOKCentrum extends Cinema("Kino MOK Centrum", "MOK Centrum")   // Zawiercie — filmweb 1525
@@ -440,7 +440,7 @@ case object KinoSniezka extends Cinema("Kino Śnieżka", "Śnieżka")   // Dębi
 case object KinoSokolBrzozow extends Cinema("Kino Sokół Brzozów", "Sokół")   // Brzozów — filmweb 1477
 case object KinoWarszawa extends Cinema("Kino Warszawa", "Warszawa")   // Przeworsk — filmweb 2346
 // gliwice
-case object KinoScenaKultura extends Cinema("Kino Scena Kultura", "Scena Kultura")   // Knurów — filmweb 1494
+case object KinoScenaKultura extends Cinema("Kino Scena Kultura", "Scena Kultura")   // Knurów — kinoscenakultura.pl
 // olsztyn
 case object KinoCinemaLumiere extends Cinema("Cinema Lumiere", "Cinema Lumiere")   // Szczytno — filmweb 2357
 case object KinoIgnacy extends Cinema("Kino Ignacy", "Ignacy")   // Lidzbark Warmiński — filmweb 2354
@@ -505,7 +505,7 @@ case object KinoFarys extends Cinema("Farys", "Farys")   // Biecz — filmweb 23
 case object KinoGCK extends Cinema("Kino GCK", "GCK")   // Solec-Zdrój — filmweb 2411
 case object KinoKolory extends Cinema("Kino Kolory", "Kolory")   // Gorlice — filmweb 2404
 case object KinoPlaneta extends Cinema("Kino Planeta", "Planeta")   // Brzesko — filmweb 1481
-case object KinoPromien extends Cinema("Kino Promień", "Promień")   // Tuchów — filmweb 2419
+case object KinoPromien extends Cinema("Kino Promień", "Promień")   // Tuchów — kinotuchow.pl
 case object KinoRegis extends Cinema("Regis", "Regis")   // Bochnia — filmweb 1294
 case object KinoSokolDabrowaTarnowska extends Cinema("Kino Sokół Dąbrowa Tarnowska", "Sokół")   // Dąbrowa Tarnowska — filmweb 1488
 // wloclawek
@@ -535,7 +535,7 @@ case object KinoWawel extends Cinema("Kino Wawel", "Wawel")   // Lubań — film
 case object KinoCentrum3DPrzemysl extends Cinema("Centrum 3D Przemyśl", "Centrum 3D")   // Przemyśl — filmweb 1786
 case object KinoIkar extends Cinema("Kino Ikar", "Ikar")   // Jarosław — filmweb 1707
 case object KinoNaBiegunach extends Cinema("Kino Na Biegunach", "Na Biegunach")   // Jarosław — filmweb 2172
-case object KinoSDK extends Cinema("Kino SDK", "SDK")   // Sanok — filmweb 2118
+case object KinoSDK extends Cinema("Kino SDK", "SDK")   // Sanok — bilety.sdksanok.pl
 
 // ── Network-level detail sources ──────────────────────────────────────────────
 // Not a physical venue: a synthetic source that holds the per-film detail
