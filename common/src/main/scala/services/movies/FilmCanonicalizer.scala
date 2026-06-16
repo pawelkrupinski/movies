@@ -25,13 +25,21 @@ object FilmCanonicalizer {
 
   /** Year a cluster collapses to — TMDB's resolved year if any member carries
    *  one (all resolved members of a cluster share a tmdbId hence a tmdbYear),
-   *  else the lowest present key/slot year, else yearless. */
+   *  else the lowest present KEY year, else yearless.
+   *
+   *  Deliberately NOT a fallback to slot `releaseYear`: a deferred-detail cinema
+   *  scrapes a film YEARLESS (yearless key) and its detail later adds a production
+   *  year to the SLOT only. If that provisional slot year promoted the row's key
+   *  here, a row that folds ALONE (before its resolved siblings — the interleaved
+   *  arrival the reaper folds one cinema at a time) would become a year-bearing
+   *  movies row that the siblings can no longer absorb (Δ>window) — the order-
+   *  dependent "Głos Hind Rajab" / Kino Amondo (slot 2022 vs resolved 2025) split.
+   *  Keeping a yearless-key cluster yearless leaves it a rule-(4) row the settle
+   *  folds into the resolved film, regardless of fold order. A row whose KEY
+   *  carries a year (a non-deferred year-bearing scrape) still windows normally. */
   private[services] def clusterYear(cluster: Seq[(CacheKey, MovieRecord)]): Option[Int] =
-    cluster.flatMap { case (_, e) => e.tmdbYear }.minOption.orElse {
-      val present = (cluster.iterator.map(_._1.year) ++
-                     cluster.iterator.flatMap { case (_, e) => e.data.values.iterator.map(_.releaseYear) }).flatten.toSeq
-      if (present.isEmpty) None else Some(present.min)
-    }
+    cluster.flatMap { case (_, e) => e.tmdbYear }.minOption
+      .orElse(cluster.flatMap { case (k, _) => k.year }.minOption)
 
   /** One per-film cluster within a `sanitize(title)` group — its member rows and
    *  the reference year used for ±1 adjacency. `minRank` is the cluster's
