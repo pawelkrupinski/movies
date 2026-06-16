@@ -16,7 +16,7 @@ import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, 
 import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
-import tools.{Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch}
+import tools.{ConcurrencyLimitedHttpFetch, Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
@@ -70,25 +70,36 @@ class WorkerWiring extends play.api.Logging {
   private lazy val proxyShards: Option[IndexedSeq[RealHttpFetch]] =
     ResidentialProxy.fromEnv().map(_.perPort.map(cfg => new RealHttpFetch(Some(cfg))).toIndexedSeq)
 
+  // Decodo caps SIMULTANEOUS authentications per account ("too many
+  // authentication attempts. Limit: 3", 2026-06-16) — separate from, and lower
+  // than, the plan's overall concurrency limit. Spreading venues across IPs
+  // didn't clear it (it's not per-IP), so a shared fair semaphore throttles the
+  // burst of new proxy tunnels a scrape tick opens to this many at once,
+  // ACROSS all proxied clients. Set to the observed cap; drop to 2 if 3 still
+  // trips. Background scraping tolerates the queueing.
+  private val ProxyMaxConcurrentAuth = 3
+  private lazy val proxyAuthLimiter   = new java.util.concurrent.Semaphore(ProxyMaxConcurrentAuth, /* fair */ true)
+
   // Proxy primary → existing chain (Zyte then direct) as fallback, so a proxy IP
   // that's ever unreachable/burned silently rolls over and scraping never breaks.
   //
   // StickyShardHttpFetch fans each client's venues across all the pool IPs, keyed
-  // by venue URL so a given venue always egresses via the same IP. That spreads
-  // the proxied auth load across the IPs (no single endpoint past Decodo's
-  // "Limit: 3" cap, which rolled everything to Zyte on 2026-06-16) while keeping
-  // each venue STICKY to one IP.
+  // by venue URL so a given venue always egresses via the same IP (sticky, so a
+  // venue's warm cookie stays coherent; each IP warms once then reuses it).
+  // ConcurrencyLimitedHttpFetch then bounds concurrent proxy calls to the auth
+  // cap by WAITING on `proxyAuthLimiter` — the wait sits inside the proxy leg, so
+  // contention queues on the proxy rather than spilling to the paid Zyte egress
+  // (Zyte stays for genuine proxy failures only).
   //
   // `warmUrl` wraps EACH shard in its own SessionWarmingHttpFetch — for Multikino,
   // whose films API 401s on a cold call from the proxy IP until the homepage warms
-  // a session cookie (verified 2026-06-16). Per-venue stickiness means the warm
-  // and the API retry share an IP, and each IP warms once then reuses the cookie.
-  // Stateless venues (biletyna, ck105) pass None.
+  // a session cookie (verified 2026-06-16). Stateless venues (biletyna, ck105)
+  // pass None.
   private def proxyPrimary(fallback: HttpFetch, warmUrl: Option[String] = None): HttpFetch =
     proxyShards.fold(fallback) { shards =>
       val legs: IndexedSeq[HttpFetch] =
         warmUrl.fold[IndexedSeq[HttpFetch]](shards)(u => shards.map(new SessionWarmingHttpFetch(_, u)))
-      val proxyLeg = new StickyShardHttpFetch(legs)
+      val proxyLeg = new ConcurrencyLimitedHttpFetch(new StickyShardHttpFetch(legs), proxyAuthLimiter)
       new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), onOutcome = recordProxyOutcome)
     }
 
