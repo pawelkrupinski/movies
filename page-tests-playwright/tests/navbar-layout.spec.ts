@@ -146,6 +146,73 @@ test.describe('navbar uniformity — mobile portrait', () => {
   });
 });
 
+// ── Mobile portrait: search is a bottom-floating frosted pill ─────
+//
+// On portrait phones the search box is NOT an inline navbar control — it's a
+// translucent, blurred, capsule "pill" pinned to the bottom of the viewport,
+// floating over the scrolling grid, mirroring the iOS/Android apps. This locks
+// the design in: position, placement, capsule radius, translucent + blurred
+// background, and the magnifier glyph that only surfaces inside the pill.
+
+test.describe('mobile portrait — floating search pill', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    const name = testInfo.project.name;
+    const isPortraitMobile = !name.includes('desktop') && !name.includes('landscape');
+    test.skip(!isPortraitMobile, 'mobile portrait only');
+    await page.goto('/poznan/');
+    await waitForCards(page);
+  });
+
+  test('the search box floats as a translucent, blurred capsule at the bottom', async ({ page }) => {
+    const m = await page.evaluate(() => {
+      const navbar = document.querySelector('.navbar')!.getBoundingClientRect();
+      const pill   = document.querySelector('.navbar-search') as HTMLElement | null;
+      const icon   = document.querySelector('.navbar-search .search-icon') as HTMLElement | null;
+      const input  = document.querySelector('.navbar-search .search-input') as HTMLElement | null;
+      if (!pill || !input) return null;
+      const cs = getComputedStyle(pill);
+      const ics = getComputedStyle(input);
+      const pr = pill.getBoundingClientRect();
+      const ir = icon ? icon.getBoundingClientRect() : null;
+      return {
+        position:   cs.position,
+        radius:     parseFloat(cs.borderTopLeftRadius),
+        bg:         cs.backgroundColor,
+        backdrop:   cs.backdropFilter || (cs as unknown as Record<string, string>).webkitBackdropFilter || '',
+        inputBg:    ics.backgroundColor,
+        navBottom:  navbar.bottom,
+        pillTop:    pr.top,
+        pillBottom: pr.bottom,
+        vh:         window.innerHeight,
+        iconW:      ir ? ir.width : -1,
+      };
+    });
+    expect(m, 'floating search pill not rendered').not.toBeNull();
+    // Floats out of the navbar flow…
+    expect(m!.position, 'search pill must be position:fixed').toBe('fixed');
+    // …pinned near the BOTTOM of the viewport, below the navbar.
+    expect(m!.pillTop, 'pill should sit below the navbar').toBeGreaterThan(m!.navBottom);
+    expect(m!.pillTop, 'pill should be in the lower half of the viewport').toBeGreaterThan(m!.vh / 2);
+    expect(m!.pillBottom, 'pill should not run off the bottom of the viewport').toBeLessThanOrEqual(m!.vh + 1);
+    // Capsule shape.
+    expect(m!.radius, `pill border-radius ${m!.radius}px should be a capsule (≥20px)`).toBeGreaterThanOrEqual(20);
+    // Translucent frosted glass: the pill has a semi-transparent background
+    // (alpha < 1) AND a blur backdrop-filter; the input itself is transparent
+    // (the pill IS the background).
+    const alpha = (color: string) => {
+      const m4 = color.match(/rgba?\(([^)]+)\)/);
+      if (!m4) return 1;
+      const parts = m4[1].split(',').map((s) => parseFloat(s));
+      return parts.length >= 4 ? parts[3] : 1;
+    };
+    expect(alpha(m!.bg), `pill background ${m!.bg} should be translucent (alpha < 1)`).toBeLessThan(1);
+    expect(m!.backdrop, `pill backdrop-filter "${m!.backdrop}" should blur the content behind it`).toContain('blur');
+    expect(alpha(m!.inputBg), `input background ${m!.inputBg} should be transparent`).toBe(0);
+    // The magnifier glyph surfaces inside the pill.
+    expect(m!.iconW, 'search magnifier icon should be visible inside the pill').toBeGreaterThan(0);
+  });
+});
+
 // ── Logged-in avatar pill: matches navbar control height ──────────
 //
 // The live/fixture server renders the navbar logged-OUT (a "Zaloguj"
@@ -224,20 +291,23 @@ test.describe('logged-in avatar pill height', () => {
       const navbar = document.querySelector('.navbar')!;
       const image = navbar.querySelector('.auth-menu .auth-avatar') as HTMLElement | null;
       const pill = navbar.querySelector('.auth-menu') as HTMLElement | null;
-      const search = navbar.querySelector('.search-input') as HTMLElement | null;
+      // Day pill is the navbar-row reference control. (Search used to be it,
+      // but on portrait it floats at the bottom of the viewport, so it's no
+      // longer on this row — the day pills are the stable in-row yardstick.)
+      const ref = navbar.querySelector('.day-pill') as HTMLElement | null;
       if (!image || !pill) return null;
       const cs = getComputedStyle(image);
       const ir = image.getBoundingClientRect();
       const pr = pill.getBoundingClientRect();
-      const sr = search ? search.getBoundingClientRect() : null;
+      const sr = ref ? ref.getBoundingClientRect() : null;
       return {
         w: ir.width, h: ir.height, top: ir.top,
         minW: cs.minWidth, minH: cs.minHeight,
         maxW: cs.maxWidth, maxH: cs.maxHeight,
         pillH: pr.height,
         pillMid: pr.top + pr.height / 2,
-        searchH: sr ? sr.height : -1,
-        searchMid: sr ? sr.top + sr.height / 2 : null,
+        refH: sr ? sr.height : -1,
+        refMid: sr ? sr.top + sr.height / 2 : null,
         imgMid: ir.top + ir.height / 2,
       };
     });
@@ -263,20 +333,20 @@ test.describe('logged-in avatar pill height', () => {
       Math.abs(m!.imgMid - m!.pillMid),
       `avatar mid ${m!.imgMid.toFixed(1)} not centred in pill mid ${m!.pillMid.toFixed(1)} (pill ${m!.pillH.toFixed(1)}px tall)`,
     ).toBeLessThanOrEqual(1.5);
-    // When the search box is visible: never taller than it, and centred on the
-    // same row (no vertical misalignment).
-    if (m!.searchH > 0) {
-      expect(m!.h, `avatar ${m!.h}px taller than search ${m!.searchH}px`).toBeLessThanOrEqual(m!.searchH + 1);
-      // The pill must share the search box's MIDLINE, not merely be "roughly on
-      // the same row". A ~1.5px offset — the avatar pill riding above the search
-      // box because its block wrapper (`.navbar-auth`) reserved line-height
+    // Against the day-pill row reference: never taller than it, and centred on
+    // the same row (no vertical misalignment).
+    if (m!.refH > 0) {
+      expect(m!.h, `avatar ${m!.h}px taller than day pill ${m!.refH}px`).toBeLessThanOrEqual(m!.refH + 1);
+      // The pill must share the row's MIDLINE, not merely be "roughly on the
+      // same row". A ~1.5px offset — the avatar pill riding above the row
+      // because its block wrapper (`.navbar-auth`) reserved line-height
       // descender space below the inline-flex pill, pinning the pill to the
       // wrapper's top — is invisible at 100% but glaring under the pinch-zoom a
       // phone user applies. A 1px bound catches it; the old 6px bound let it
       // through. Fixed by `.navbar-auth { display:flex; align-items:center }`.
       expect(
-        Math.abs(m!.pillMid - (m!.searchMid as number)),
-        `pill mid ${m!.pillMid.toFixed(1)} not on search mid ${(m!.searchMid as number).toFixed(1)} — avatar pill vertically misaligned vs the search box`,
+        Math.abs(m!.pillMid - (m!.refMid as number)),
+        `pill mid ${m!.pillMid.toFixed(1)} not on day-pill mid ${(m!.refMid as number).toFixed(1)} — avatar pill vertically misaligned vs the navbar row`,
       ).toBeLessThanOrEqual(1);
     }
   });
@@ -662,19 +732,19 @@ test.describe('day pills (390×844)', () => {
   });
 });
 
-// ── Day pills: the row spreads to fill the logo→search span ────────
+// ── Day pills: the row spreads to fill the logo→Filtry span ────────
 //
 // The day-pill row fans out across the whole span between the logo (the 🎬
-// "camera" mark) and the search box — like the iOS/Android day-chip row —
-// rather than packing tight against the search with empty space on the logo
-// side. Pre-change `.navbar-date` was `margin-left:auto; flex-shrink:0`, so
-// on a wider phone the free space pooled into a wide gap LEFT of the first
-// pill (≈60px at 440px); the row now grows (`flex:1`, pills `flex:1 0 auto`)
-// to absorb it, leaving only the small navbar inter-item gap. The viewport is
-// 440px on purpose: it has real horizontal slack, so the old packed-right CSS
-// shows the big gap (test fails) and the spread layout closes it (test
-// passes). At 390px a search-width step happens to leave almost no slack, so
-// that width can't tell the two layouts apart.
+// "camera" mark) and the Filtry button — like the iOS/Android day-chip row —
+// rather than packing tight against Filtry with empty space on the logo side.
+// (Search used to bound the right of this span; on portrait it now floats at
+// the bottom of the viewport, so the day row runs logo→Filtry.) Pre-change
+// `.navbar-date` was `margin-left:auto; flex-shrink:0`, so on a wider phone the
+// free space pooled into a wide gap LEFT of the first pill (≈60px at 440px);
+// the row now grows (`flex:1`, pills `flex:1 0 auto`) to absorb it, leaving
+// only the small navbar inter-item gap. The viewport is 440px on purpose: it
+// has real horizontal slack, so the old packed-right CSS shows the big gap
+// (test fails) and the spread layout closes it (test passes).
 test.describe('day pills spread to fill the bar (440×956)', () => {
   test.use({ viewport: { width: 440, height: 956 } });
 
@@ -684,52 +754,51 @@ test.describe('day pills spread to fill the bar (440×956)', () => {
     await waitForCards(page);
   });
 
-  test('the day-pill row fills the gap between the logo and the search box', async ({ page }) => {
+  test('the day-pill row fills the gap between the logo and the Filtry button', async ({ page }) => {
     const m = await page.evaluate(() => {
       const logo   = document.querySelector('.navbar-logo')   as HTMLElement | null;
       const date   = document.querySelector('.navbar-date')   as HTMLElement | null;
-      const search = document.querySelector('.navbar-search') as HTMLElement | null;
+      const filtry = document.querySelector('.navbar-filtry') as HTMLElement | null;
       const visible = (el: HTMLElement | null) =>
         !!el && el.offsetParent !== null && el.getBoundingClientRect().width > 0;
-      if (!visible(logo) || !visible(date) || !visible(search)) return null;
+      if (!visible(logo) || !visible(date) || !visible(filtry)) return null;
       return {
         logoRight:   logo!.getBoundingClientRect().right,
         dateLeft:    date!.getBoundingClientRect().left,
         dateRight:   date!.getBoundingClientRect().right,
-        searchLeft:  search!.getBoundingClientRect().left,
+        filtryLeft:  filtry!.getBoundingClientRect().left,
       };
     });
-    expect(m, 'logo / day-pill row / search not all visible').not.toBeNull();
+    expect(m, 'logo / day-pill row / Filtry not all visible').not.toBeNull();
     // The row starts right after the logo — the old wide margin-left:auto gap
     // (≈60px here) is gone, leaving only the small navbar inter-item gap.
     expect(
       m!.dateLeft - m!.logoRight,
       `gap between logo (right ${m!.logoRight.toFixed(1)}) and day-pill row (left ${m!.dateLeft.toFixed(1)}) is too wide — pills still packed to the right`,
     ).toBeLessThanOrEqual(24);
-    // …and it reaches the search box: the row spans essentially the whole span.
+    // …and it reaches the Filtry button: the row spans essentially the whole span.
     expect(
-      m!.searchLeft - m!.dateRight,
-      `day-pill row right (${m!.dateRight.toFixed(1)}) does not reach the search box (left ${m!.searchLeft.toFixed(1)})`,
+      m!.filtryLeft - m!.dateRight,
+      `day-pill row right (${m!.dateRight.toFixed(1)}) does not reach the Filtry button (left ${m!.filtryLeft.toFixed(1)})`,
     ).toBeLessThanOrEqual(8);
   });
 });
 
-// ── Horizontal order: day pills sit to the LEFT of the search box ──
+// ── Horizontal order: where the search box sits relative to the pills ──
 //
-// The search input lives to the RIGHT of the day-pill row at every width
-// where both are visible (CSS `order` on `.navbar-date` / `.navbar-search`;
-// on desktop `margin-left:auto` holds the cluster right, on mobile the day
-// pills grow to fill the span up to the search box). Pre-change the search
-// box sat to the LEFT of the pills, so this asserts `search.left >=
-// dayPills.right`: the two never overlap and the search box is entirely past
-// the pill row.
+// On the DESKTOP navbar layout the inline search input lives to the RIGHT of
+// the day-pill row (CSS `order` on `.navbar-date` / `.navbar-search`, with
+// `margin-left:auto` holding the cluster right). On the ≤575px PORTRAIT layout
+// search leaves the row entirely — it's the bottom-floating frosted pill — so
+// "to the right of the pills" no longer applies; instead the pill must sit
+// BELOW the navbar, over the scrolling grid, like the iOS/Android apps.
 
-test.describe('navbar order — day pills left of search', () => {
+test.describe('navbar order — search position vs the day pills', () => {
   for (const [label, viewport] of [
     ['desktop width', { width: 1280, height: 800 }],
     ['phone width',   { width: 390,  height: 844 }],
   ] as const) {
-    test(`search box is to the right of the day pills at ${label}`, async ({ page }, testInfo) => {
+    test(`search is correctly placed relative to the day pills at ${label}`, async ({ page }, testInfo) => {
       // Desktop-class (non-emulated, resizable) projects only — they run both
       // the desktop and the ≤575px layouts as we size them down, without the
       // mobile-emulation projects' fixed viewports fighting `setViewportSize`.
@@ -738,6 +807,30 @@ test.describe('navbar order — day pills left of search', () => {
       await page.goto('/poznan/');
       await waitForCards(page);
 
+      if (viewport.width <= 575) {
+        // Portrait: search is the bottom-floating pill — not a row control. It
+        // must float below the navbar, in the lower half of the viewport.
+        const m = await page.evaluate(() => {
+          const nav    = document.querySelector('.navbar')!.getBoundingClientRect();
+          const search = document.querySelector('.navbar-search') as HTMLElement | null;
+          const sr = search ? search.getBoundingClientRect() : null;
+          return sr && sr.width > 0
+            ? { navBottom: nav.bottom, searchTop: sr.top, vh: window.innerHeight }
+            : null;
+        });
+        expect(m, 'floating search pill not rendered').not.toBeNull();
+        expect(
+          m!.searchTop,
+          `floating search top ${m!.searchTop.toFixed(1)}px should be below the navbar bottom ${m!.navBottom.toFixed(1)}px`,
+        ).toBeGreaterThan(m!.navBottom);
+        expect(
+          m!.searchTop,
+          `floating search top ${m!.searchTop.toFixed(1)}px should sit in the lower half of the ${m!.vh}px viewport`,
+        ).toBeGreaterThan(m!.vh / 2);
+        return;
+      }
+
+      // Desktop: the inline search input is entirely to the right of the pills.
       const m = await page.evaluate(() => {
         const date   = document.querySelector('.navbar-date')   as HTMLElement | null;
         const search = document.querySelector('.navbar-search') as HTMLElement | null;
@@ -749,8 +842,6 @@ test.describe('navbar order — day pills left of search', () => {
           searchLeft:  search!.getBoundingClientRect().left,
         };
       });
-      // Both must be on-screen for the order to be meaningful (search drops
-      // out entirely below ~290px, never at these widths).
       expect(m, 'day pills / search box not both visible').not.toBeNull();
       expect(
         m!.searchLeft,

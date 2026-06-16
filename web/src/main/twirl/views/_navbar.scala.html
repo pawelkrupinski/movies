@@ -202,6 +202,10 @@
       </select>
     </div>
     <div class="navbar-search">
+      @* Magnifier only surfaces inside the mobile-portrait floating pill (hidden
+         on desktop via `.search-icon { display:none }`), mirroring the iOS/Android
+         search pill. *@
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()" onfocus="lockSearchZoom()" onblur="unlockSearchZoom()">
     </div>
   }
