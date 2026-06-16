@@ -6,7 +6,7 @@ import play.api.libs.json.{JsString, Json}
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.nio.charset.StandardCharsets
-import java.util.{Base64, UUID}
+import java.util.Base64
 
 /**
  * Wrapper around Zyte API's `/v1/extract` endpoint, used as a proxy backend
@@ -46,7 +46,7 @@ class ZyteClient(httpClient: HttpClient, apiKey: String) extends Logging {
    *  Throws on non-2xx upstream status or a missing body.
    */
   def get(targetUrl: String): String =
-    bodyOrThrow(post(targetUrl, UUID.randomUUID().toString), targetUrl)
+    bodyOrThrow(post(targetUrl, sessionId = None), targetUrl)
 
   /** Warm a Zyte session: fetch `cookieSourceUrl` (the homepage) under
    *  `sessionId` so Zyte parks the upstream's Set-Cookie in the server-side
@@ -56,7 +56,7 @@ class ZyteClient(httpClient: HttpClient, apiKey: String) extends Logging {
    *  caller fall back to direct without burning a credit on a doomed API call.
    */
   def warm(cookieSourceUrl: String, sessionId: String): Unit = {
-    val warmupStatus = extractStatus(post(cookieSourceUrl, sessionId))
+    val warmupStatus = extractStatus(post(cookieSourceUrl, Some(sessionId)))
     if (warmupStatus < 200 || warmupStatus >= 300)
       throw new RuntimeException(s"Zyte warm-up returned upstream status=$warmupStatus for $cookieSourceUrl")
   }
@@ -68,17 +68,13 @@ class ZyteClient(httpClient: HttpClient, apiKey: String) extends Logging {
    *  ([[SharedZyteSession]]) treats as "re-warm and retry once".
    */
   def fetchWithSession(targetUrl: String, sessionId: String): String =
-    bodyOrThrow(post(targetUrl, sessionId), targetUrl)
+    bodyOrThrow(post(targetUrl, Some(sessionId)), targetUrl)
 
   /** Single POST to Zyte's /extract. Returns the raw JSON body or throws
    *  if Zyte itself failed (network error, 4xx/5xx from Zyte).
    */
-  private def post(targetUrl: String, sessionId: String): String = {
-    val body = Json.obj(
-      "url"              -> targetUrl,
-      "httpResponseBody" -> true,
-      "session"          -> Json.obj("id" -> JsString(sessionId))
-    ).toString
+  private def post(targetUrl: String, sessionId: Option[String]): String = {
+    val body = requestBody(targetUrl, sessionId)
 
     val request = HttpRequest.newBuilder()
       .uri(URI.create(Endpoint))
@@ -99,6 +95,20 @@ class ZyteClient(httpClient: HttpClient, apiKey: String) extends Logging {
 
 object ZyteClient {
   private val Endpoint = "https://api.zyte.com/v1/extract"
+
+  /** The Zyte `/extract` request body. The `session` field is included ONLY for
+   *  the cookie-carryover path ([[ZyteClient.warm]] + [[ZyteClient.fetchWithSession]]),
+   *  where it pins a sticky egress IP so the upstream's Set-Cookie survives
+   *  across calls. The stateless [[ZyteClient.get]] path passes `None`: a one-shot
+   *  session carries no cookies (nothing to gain), and Zyte's sticky-session IP
+   *  is ban-prone on some hosts — bilety.ck105.koszalin.pl answers `520
+   *  /download/website-ban` WITH a session but `200` (full programme) WITHOUT,
+   *  so a stray session id was exactly what left Kino Kryterium a permanent white
+   *  /uptime bar. */
+  def requestBody(targetUrl: String, sessionId: Option[String]): String = {
+    val base = Json.obj("url" -> targetUrl, "httpResponseBody" -> true)
+    sessionId.fold(base)(id => base + ("session" -> Json.obj("id" -> JsString(id)))).toString
+  }
 
   /** Pull the upstream HTTP status code from a Zyte extract response.
    *  Defaults to -1 when absent (treated by callers as an error).

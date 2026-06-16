@@ -62,6 +62,22 @@ class ZyteClientSpec extends AnyFlatSpec with Matchers {
       "Zyte response missing httpResponseBody for x"
   }
 
+  "requestBody" should "OMIT the session field on the stateless get path (None)" in {
+    // Regression: a stray per-call session id pinned a sticky Zyte egress IP that
+    // bilety.ck105.koszalin.pl banned (520 /download/website-ban) → Kino Kryterium
+    // showed a permanent white /uptime bar. The cookie-less get path must send no
+    // session so Zyte picks a fresh IP each call.
+    val body = ZyteClient.requestBody("https://bilety.ck105.koszalin.pl/MSI/mvc/pl", None)
+    body should include(""""url":"https://bilety.ck105.koszalin.pl/MSI/mvc/pl"""")
+    body should include(""""httpResponseBody":true""")
+    body should not include "session"
+  }
+
+  it should "INCLUDE the session id on the cookie-carryover path (Some) — Multikino needs it" in {
+    val body = ZyteClient.requestBody("https://multikino.pl/api/x", Some("sess-123"))
+    body should include(""""session":{"id":"sess-123"}""")
+  }
+
   "basicAuth" should "format Authorization as 'Basic <b64(key:)>' per Zyte's auth spec" in {
     // Zyte uses Basic auth with the API key as username and an empty
     // password — verify the encoding shape so a refactor can't quietly
