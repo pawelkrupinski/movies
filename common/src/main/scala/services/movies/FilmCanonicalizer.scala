@@ -49,9 +49,14 @@ object FilmCanonicalizer {
    *    1. Resolved rows (carry a `tmdbId`) cluster BY tmdbId — two distinct ids
    *       are two films, never merged. Each resolved cluster's reference year is
    *       its `tmdbYear`.
-   *    2. Unresolved rows that HAVE a year attach to a resolved cluster iff the
-   *       year is within ±1 of that cluster's tmdbYear; ties (adjacent to
-   *       several) break on the cluster's smallest `canonicalRank`.
+   *    2. Unresolved rows that HAVE a year attach to the NEAREST resolved cluster
+   *       (by `|year − tmdbYear|`) within ±2 of its tmdbYear — wide enough to
+   *       absorb a cinema's production-vs-release-year disagreement (a film shot
+   *       in year Y but released Y+1/Y+2), but NOT so wide that a genuinely
+   *       different same-title film still awaiting its own tmdbId gets swallowed.
+   *       Ties (equidistant between two resolved remakes) break on the cluster's
+   *       smallest `canonicalRank` then index. Rows beyond ±2 of every resolved
+   *       cluster fall through to rule 3.
    *    3. The remaining year-bearing unresolved rows form their OWN clusters by
    *       a greedy 2-year window from the lowest year — {y, y+1} absorbs all
    *       rows at y or y+1, the next window opens at the next distinct year
@@ -74,17 +79,26 @@ object FilmCanonicalizer {
     val unresolved         = group.filter(_._2.tmdbId.isEmpty)
     val (yeared, yearless) = unresolved.partition(_._1.year.isDefined)
 
-    // (2) Year-bearing unresolved rows adjacent (±1) to a resolved cluster's
-    // tmdbYear attach to it (nearest by canonicalRank on tie). The rest fall
-    // through to the greedy window in (3). Iterate in canonicalRank order so the
-    // attachment is order-independent.
+    // (2) Year-bearing unresolved rows attach to the NEAREST resolved cluster
+    // within ±2 of its tmdbYear. The ±1 window this widened from was too tight:
+    // Kino Muzeum reports "Zawieście czerwone latarnie" at its 1989 PRODUCTION
+    // year while TMDB resolved the film to its 1991 release — two years off — so
+    // the unresolved 1989 row orphaned into its own cluster and only merged when
+    // its own TMDB lookup happened to land before this pass (a race that left the
+    // corpus, and the rendered snapshot, nondeterministic). ±2 covers the usual
+    // production-vs-release gap; staying bounded (not "nearest at any distance")
+    // keeps a genuinely different same-title film still awaiting its tmdbId — a
+    // remake decades apart — from being swallowed into the wrong cluster. Pick the
+    // nearest by |year − tmdbYear|, ties on the cluster's smallest canonicalRank
+    // then index, so the attachment is a pure function of the row set, not arrival
+    // order. Iterate in canonicalRank order for the same reason.
     val adjacent = scala.collection.mutable.LinkedHashMap.empty[Int, scala.collection.mutable.ListBuffer[Row]]
     val orphans  = scala.collection.mutable.ListBuffer.empty[Row]
     yeared.sortBy(rank).foreach { row =>
       val year = row._1.year.get
       resolvedClusters.zipWithIndex
-        .filter { case (c, _) => c.refYear.exists(ry => math.abs(year - ry) <= 1) }
-        .minByOption { case (c, index) => (c.minRank, index) } match {
+        .filter { case (c, _) => c.refYear.exists(ry => math.abs(year - ry) <= 2) }
+        .minByOption { case (c, index) => (math.abs(year - c.refYear.get), c.minRank, index) } match {
         case Some((_, index)) => adjacent.getOrElseUpdate(index, scala.collection.mutable.ListBuffer.empty) += row
         case None           => orphans += row
       }

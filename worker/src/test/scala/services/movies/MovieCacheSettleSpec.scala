@@ -6,15 +6,15 @@ import org.scalatest.matchers.should.Matchers
 
 /**
  * Drives `MovieCache.canonicalizeBySanitize` directly over hand-built corpora
- * to pin the ±1-year film-identity collapse the settle/hydrate pass performs.
+ * to pin the ±2-year film-identity collapse the settle/hydrate pass performs.
  *
  * A single `sanitize(title)` group can legitimately cover several films — a
- * remake carrying the original's name, or one film cinemas date a year apart
- * (production vs theatrical). The old rule BAILED on any group holding >1
+ * remake carrying the original's name, or one film cinemas date a couple of years
+ * apart (production vs theatrical). The old rule BAILED on any group holding >1
  * distinct tmdbId (left it fully split) and otherwise collapsed the WHOLE group
  * to one row — so it could neither separate two genuine films nor cap an
  * unbounded run of adjacent years. The new rule sub-clusters per film: resolved
- * rows split by tmdbId, year-bearing unresolved rows attach within ±1 of a
+ * rows split by tmdbId, year-bearing unresolved rows attach within ±2 of a
  * resolved cluster, the rest pack into greedy 2-year windows, and yearless rows
  * fold into the canonical cluster. All deterministic — a pure function of the
  * row set. (`CaffeineMovieCache` + `InMemoryMovieRepository` live in worker test
@@ -76,7 +76,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     rows(c) shouldBe Set(("Festiwal", Some(2024)), ("Festiwal", Some(2026)))
   }
 
-  it should "absorb a no-tmdbId year-bearing row within ±1 of a resolved cluster's TMDB year" in {
+  it should "absorb a no-tmdbId year-bearing row within ±2 of a resolved cluster's TMDB year" in {
     val c = cache
     resolvedRow(c, "Erupcja", Helios,   2026, 555)
     cinemaRow (c, "Erupcja", KinoMuza, Some(2025))  // production year, ±1 of 2026
@@ -88,7 +88,22 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     r.head.record.cinemaData.keySet shouldBe Set(Helios, KinoMuza)
   }
 
-  it should "NOT absorb a no-tmdbId year-bearing row two or more years off a resolved cluster" in {
+  it should "absorb a no-tmdbId production-year row a FULL two years off a resolved cluster" in {
+    // The "Zawieście czerwone latarnie" flake: Kino Muzeum reports the film at its
+    // 1989 production year while TMDB resolved it to the 1991 release — a 2-year
+    // gap that the old ±1 window orphaned (so the row's visibility hinged on a
+    // TMDB-resolution race). ±2 folds it onto the resolved cluster every time.
+    val c = cache
+    resolvedRow(c, "Zawieście czerwone latarnie", Helios,   1991, 31273)
+    cinemaRow (c, "Zawieście czerwone latarnie", KinoMuza, Some(1989))  // 2 years off
+    c.canonicalizeBySanitize()
+    val r = c.snapshot()
+    withClue(s"expected ONE row, got ${r.map(x => (x.title, x.year))}\n")(r.size shouldBe 1)
+    r.head.year shouldBe Some(1991)
+    r.head.record.cinemaData.keySet shouldBe Set(Helios, KinoMuza)
+  }
+
+  it should "NOT absorb a no-tmdbId year-bearing row three or more years off a resolved cluster" in {
     val c = cache
     resolvedRow(c, "Sny o słoniach", Helios,   2026, 777)
     cinemaRow (c, "Sny o słoniach", KinoMuza, Some(2023))  // 3 years off → its own cluster
