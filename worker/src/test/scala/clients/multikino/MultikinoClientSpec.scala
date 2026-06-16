@@ -8,7 +8,6 @@ import services.cinemas.{MultikinoClient, MultikinoParser}
 import services.movies.TitleNormalizer
 
 import java.time.LocalDateTime
-import scala.concurrent.duration._
 
 class MultikinoClientSpec extends AnyFlatSpec with Matchers {
 
@@ -31,12 +30,6 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
 
   it should "assign Multikino cinema to all entries" in {
     results.map(_.cinema).toSet shouldBe Set(Multikino)
-  }
-
-  // Multikino runs through the metered Zyte residential proxy, so it refreshes on
-  // a longer cadence than the 15min default to cut the proxy bill.
-  it should "declare a 60min scrape freshness window (metered Zyte proxy)" in {
-    client.scrapeFreshness shouldBe 60.minutes
   }
 
   // ── Complete title set ────────────────────────────────────────────────────

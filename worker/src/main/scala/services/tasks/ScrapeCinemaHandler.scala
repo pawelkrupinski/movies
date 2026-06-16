@@ -3,9 +3,7 @@ package services.tasks
 import models.Cinema
 import play.api.Logging
 import services.cinemas.{CinemaScrapeRunner, CinemaScraper, ScrapeErrors}
-import services.freshness.{Freshness, FreshnessKind, FreshnessStore}
-
-import scala.concurrent.duration.FiniteDuration
+import services.freshness.{FreshnessKind, FreshnessStore}
 
 /**
  * Handles a `ScrapeCinema` task: scrape one cinema, unless it was scraped within
@@ -26,12 +24,7 @@ import scala.concurrent.duration.FiniteDuration
 class ScrapeCinemaHandler(
   scrapersByKey: Map[String, CinemaScraper],
   runner:        CinemaScrapeRunner,
-  freshness:     FreshnessStore,
-  // Per-cinema freshness window keyed by the scrape dedup key — must match the
-  // reaper's so a cinema the reaper deemed stale isn't re-skipped here under a
-  // different window. Defaults to the kind-level default; `WorkerWiring` passes
-  // the real per-scraper windows.
-  scrapeWindow:  String => FiniteDuration = _ => Freshness.defaultScrapeTtl
+  freshness:     FreshnessStore
 ) extends TaskHandler with Logging {
   import ScrapeCinemaHandler._
   import HandlerOutcome._
@@ -40,7 +33,7 @@ class ScrapeCinemaHandler(
 
   override def handle(task: Task): HandlerOutcome = {
     val key = task.dedupKey
-    if (freshness.isFreshWithin(key, Some(scrapeWindow(key)))) return Skipped
+    if (freshness.isFresh(key, FreshnessKind.CinemaScrape)) return Skipped
 
     scrapersByKey.get(task.payload.getOrElse(CinemaKey, "")) match {
       case None =>

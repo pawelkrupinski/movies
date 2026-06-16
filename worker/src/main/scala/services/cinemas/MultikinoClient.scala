@@ -1,9 +1,7 @@
 package services.cinemas
 
 import models.{Cinema, CinemaMovie, Multikino}
-import tools.{Env, HttpFetch}
-
-import scala.concurrent.duration._
+import tools.HttpFetch
 
 /**
  * Multikino fetches `microservice/showings/cinemas/0011/films` and hands the
@@ -39,12 +37,6 @@ class MultikinoClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def chain: Boolean = true
 
-  // Served through the metered Zyte residential proxy (above), so refresh on a
-  // longer cadence than ordinary directly-scraped venues to cut the proxy bill —
-  // see CinemaScraper.scrapeFreshness. Tunable via KINOWO_MULTIKINO_FRESHNESS_MINUTES.
-  override def scrapeFreshness: FiniteDuration =
-    Env.positiveLong(MultikinoClient.FreshnessMinutesKey, 60L).minutes
-
   def fetch(): Seq[CinemaMovie] = MultikinoParser.parse(getApiWithRetry(), cinema)
 
   private def getApiWithRetry(): String =
@@ -70,11 +62,6 @@ object MultikinoClient {
    *  spec drives `fetch()` against it directly. */
   val ApiUrl  = apiUrl(PoznanStaryBrowarId)
   val HomeUrl = s"$BaseUrl/"
-
-  /** Env knob for the per-source scrape cadence (minutes). Longer than the
-   *  ordinary-venue default because every Multikino scrape is a paid Zyte
-   *  residential-proxy call — see `scrapeFreshness`. */
-  val FreshnessMinutesKey = "KINOWO_MULTIKINO_FRESHNESS_MINUTES"
 
   /** Build the `HttpFetch` to pass into `MultikinoClient` at the
    *  composition root. A Zyte-primary → direct fallback chain (see

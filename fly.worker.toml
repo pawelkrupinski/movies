@@ -36,11 +36,12 @@ primary_region = 'arn'
   # watch Mongo CPU-credit/throttle after raising this. Pairs with the 30min scrape
   # freshness TTL below, which bounds the per-pass write volume.
   KINOWO_WORKER_POOL_SIZE = '4'
-  # Cinema-scrape freshness window. Raised from the 15min code default to 30min to
-  # ~halve the re-scrape pass rate (each pass that finds a real change writes through
-  # to `movies` + cascades to the read model) so the worker's write load stays within
-  # Mongo's CPU-credit budget. Lower it again once Mongo has headroom / more CPU.
-  KINOWO_SCRAPE_FRESHNESS_MINUTES = '30'
+  # Cinema-scrape freshness window — uniform across ALL venues (Multikino's
+  # separate 60min path was removed once it moved onto the flat-fee residential
+  # proxy). 15min for fresher showtimes; this is the dominant lever on the worker's
+  # Mongo write rate (each pass that finds a change writes through to `movies` +
+  # cascades to the read model), so if Mongo CPU-credit/throttle climbs, raise it.
+  KINOWO_SCRAPE_FRESHNESS_MINUTES = '15'
   # No KINOWO_SCRAPE_CITIES: the worker now scrapes EVERY modelled city by
   # default (ScrapeCities.allCities). The var still exists as a load-shedding
   # escape hatch — `fly secrets set KINOWO_SCRAPE_CITIES=poznan,wroclaw` NARROWS

@@ -35,20 +35,12 @@ trait FreshnessStore {
    *  skipped. A permanent kind (None TTL) is fresh whenever any timestamp
    *  exists; an unknown key is always stale. */
   final def isFresh(key: String, kind: FreshnessKind, now: Instant = Instant.now()): Boolean =
-    isFreshWithin(key, Freshness.ttlFor(kind), now)
-
-  /** True when `key` was marked fresh within an explicit `ttl` window — the
-   *  per-caller variant of [[isFresh]], used by the scrape scheduler to apply a
-   *  PER-SCRAPER window (Multikino's 60min vs an ordinary venue's 15min) that a
-   *  single per-kind TTL can't express. `None` ttl means permanent (fresh
-   *  whenever any timestamp exists); an unknown key is always stale. */
-  final def isFreshWithin(key: String, ttl: Option[FiniteDuration], now: Instant = Instant.now()): Boolean =
     lastFetchedAt(key) match {
       case None => false
       case Some(t) =>
-        ttl match {
-          case None    => true
-          case Some(d) => t.isAfter(now.minusMillis(d.toMillis))
+        Freshness.ttlFor(kind) match {
+          case None      => true
+          case Some(ttl) => t.isAfter(now.minusMillis(ttl.toMillis))
         }
     }
 

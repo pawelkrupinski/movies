@@ -23,24 +23,6 @@ class FreshnessStoreSpec extends AnyFlatSpec with Matchers {
     store.isFresh("scrape|kino-x", CinemaScrape, t0.plusSeconds(16 * 60)) shouldBe false
   }
 
-  "isFreshWithin" should "apply an explicit per-caller window — the scrape scheduler's per-source lever" in {
-    val store = new InMemoryFreshnessStore
-    store.markFresh("scrape|kino-x", CinemaScrape, t0)
-    // Same stamp, two windows: a 60min source is still fresh at 30min where a
-    // 15min source is already stale. This is exactly Multikino (60) vs an
-    // ordinary venue (15) under one timestamp.
-    val at30 = t0.plusSeconds(30 * 60)
-    store.isFreshWithin("scrape|kino-x", Some(60.minutes), at30) shouldBe true
-    store.isFreshWithin("scrape|kino-x", Some(15.minutes), at30) shouldBe false
-  }
-
-  it should "be false for a never-marked key, and permanent (None ttl) once stamped" in {
-    val store = new InMemoryFreshnessStore
-    store.isFreshWithin("k", Some(20.minutes), t0) shouldBe false
-    store.markFresh("k", CinemaScrape, t0)
-    store.isFreshWithin("k", None, t0.plus(3650, java.time.temporal.ChronoUnit.DAYS)) shouldBe true
-  }
-
   it should "use the per-kind TTL — a 4h rating stays fresh long after a 15min scrape would be stale" in {
     val store = new InMemoryFreshnessStore
     store.markFresh("imdb|movie", ImdbRating, t0) // 4h TTL
