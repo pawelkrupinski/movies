@@ -8,6 +8,8 @@ import play.api.Mode
 import services.movies.{MovieRepository, TitleNormalizer}
 import services.readmodel.WebReadModel
 
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
 import scala.concurrent.{Await, Future}
@@ -196,8 +198,20 @@ class MovieControllerService(readModel: WebReadModel) {
   }
 
   def film(city: City, title: String): Option[FilmSchedule] = {
-    val needle = normalizeTitle(title)
-    toSchedules(city).find(s => normalizeTitle(s.movie.title) == needle)
+    def lookup(t: String): Option[FilmSchedule] = {
+      val needle = normalizeTitle(t)
+      toSchedules(city).find(s => normalizeTitle(s.movie.title) == needle)
+    }
+    // Telegram (and some other chat apps) re-percent-encode a pasted URL whose
+    // query already carries %XX escapes: our `%20` becomes `%2520`, `%C5%BC`
+    // becomes `%25C5%25BC`. Play decodes that once, so `title` arrives with a
+    // literal `%20` / `%C5%BC` still in it and the direct match misses. On a
+    // miss, decode the residual escapes once more and retry.
+    lookup(title).orElse {
+      Option(title)
+        .filter(MovieControllerService.looksPercentEncoded)
+        .flatMap(t => lookup(URLDecoder.decode(t, StandardCharsets.UTF_8)))
+    }
   }
 
   private def normalizeTitle(title: String): String = TitleNormalizer.normalize(title)
@@ -207,6 +221,14 @@ object MovieControllerService {
   /** displayName → Cinema (cinemas are `Source`s, so reuse the shared map). */
   private def cinemaByName(name: String): Option[Cinema] =
     Source.byDisplayName.get(name).collect { case c: Cinema => c }
+
+  private val PercentEscape = "%[0-9A-Fa-f]{2}".r
+
+  /** Does the string still contain an unresolved `%XX` escape? Used to spot a
+   *  doubly-encoded title (see [[MovieControllerService.film]]) without
+   *  touching the normal, already-decoded path. */
+  private def looksPercentEncoded(s: String): Boolean =
+    PercentEscape.findFirstIn(s).isDefined
 }
 
 class MovieController( cc: ControllerComponents,
