@@ -25,6 +25,58 @@
 
 import AppKit
 
+// MARK: - LAN IP
+
+/// The Mac's LAN IPv4, shown in the header so the local dev server can be
+/// reached from another device (a phone on the same Wi-Fi). Loopback is useless
+/// for that, so a site-local address (`192.168.x`, `10.x`, `172.16–31.x`) wins
+/// when one exists.
+enum LocalHostIp {
+
+    /// RFC-1918 private ranges — the addresses a phone on the same network can
+    /// actually reach.
+    static func isSiteLocal(_ ip: String) -> Bool {
+        if ip.hasPrefix("10.") || ip.hasPrefix("192.168.") { return true }
+        if ip.hasPrefix("172.") {
+            let octets = ip.split(separator: ".")
+            if octets.count >= 2, let second = Int(octets[1]) { return (16...31).contains(second) }
+        }
+        return false
+    }
+
+    /// Pure selection rule (unit-testable, no IO): a site-local IPv4 if any,
+    /// else the first non-loopback IPv4, else `nil`.
+    static func pick(_ candidates: [String]) -> String? {
+        let usable = candidates.filter { !$0.hasPrefix("127.") }
+        return usable.first(where: isSiteLocal) ?? usable.first
+    }
+
+    /// Every IPv4 address bound to an up interface (loopback included — `pick`
+    /// drops it), in the order `getifaddrs` reports them.
+    static func ipv4Addresses() -> [String] {
+        var out: [String] = []
+        var head: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&head) == 0 else { return out }
+        defer { freeifaddrs(head) }
+        var cursor = head
+        while let cur = cursor {
+            defer { cursor = cur.pointee.ifa_next }
+            let flags = Int32(cur.pointee.ifa_flags)
+            guard (flags & IFF_UP) == IFF_UP, let sa = cur.pointee.ifa_addr,
+                  sa.pointee.sa_family == UInt8(AF_INET) else { continue }
+            var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            if getnameinfo(sa, socklen_t(sa.pointee.sa_len), &host, socklen_t(host.count),
+                           nil, 0, NI_NUMERICHOST) == 0 {
+                out.append(String(cString: host))
+            }
+        }
+        return out
+    }
+
+    /// The best LAN IPv4 for this Mac right now, or `nil` if none is bound.
+    static func current() -> String? { pick(ipv4Addresses()) }
+}
+
 // MARK: - Command runner (streams a subprocess)
 
 /// Runs a shell script as a child process, streaming merged stdout+stderr to
@@ -445,10 +497,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        let row = NSStackView(views: [label, spacer])
+        var views: [NSView] = [label, spacer]
+
+        // The Mac's LAN IP + a copy button, so the dev server running here is one
+        // glance away from being opened on a phone on the same Wi-Fi. Hidden when
+        // no LAN address is bound (e.g. Wi-Fi off).
+        if let ip = LocalHostIp.current() {
+            let ipField = NSTextField(labelWithString: ip)
+            ipField.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+            ipField.textColor = .secondaryLabelColor
+            ipField.isSelectable = true
+            ipField.toolTip = "LAN IP of this Mac — open the dev server from your phone"
+            ipField.setContentHuggingPriority(.required, for: .horizontal)
+
+            let copy = NSButton(title: "⧉", target: self, action: #selector(copyLanIp(_:)))
+            copy.bezelStyle = .roundRect
+            copy.font = .systemFont(ofSize: 11)
+            copy.identifier = NSUserInterfaceItemIdentifier(ip)
+            copy.toolTip = "Copy IP to clipboard"
+            copy.setContentHuggingPriority(.required, for: .horizontal)
+            copy.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+            views.append(ipField)
+            views.append(copy)
+        }
+
+        let row = NSStackView(views: views)
         row.orientation = .horizontal
         row.distribution = .fill
+        row.spacing = 6
         return row
+    }
+
+    /// Copy the LAN IP (carried on the button's identifier) to the clipboard,
+    /// flashing a ✓ for a beat as confirmation.
+    @objc private func copyLanIp(_ sender: NSButton) {
+        guard let ip = sender.identifier?.rawValue else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(ip, forType: .string)
+        let original = sender.title
+        sender.title = "✓"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak sender] in
+            sender?.title = original
+        }
     }
 
     // The close traffic-light quits the app (accessory app — no Dock icon to
@@ -813,9 +904,22 @@ if ProcessInfo.processInfo.environment["DEVPANEL_SELFTEST"] == "1" {
         && db.label(forSelectedScript: ud.string(forKey: "group.database")).title == "Sync title rules"
     UserDefaults.standard.removePersistentDomain(forName: suite)
 
-    let ok = streamOK && labelOK && persistOK
-    print(ok ? "SELFTEST_OK stream+env+groups status=\(s1),\(s2)"
-             : "SELFTEST_FAIL stream=\(streamOK) label=\(labelOK) persist=\(persistOK) "
+    // LAN-IP selection rule: site-local wins over a public address regardless of
+    // order, loopback is never offered, and a lone non-loopback is the fallback.
+    let ipOK =
+        LocalHostIp.pick(["8.8.8.8", "192.168.1.5"]) == "192.168.1.5"
+        && LocalHostIp.pick(["8.8.8.8", "10.0.0.4"]) == "10.0.0.4"
+        && LocalHostIp.pick(["172.20.0.3"]) == "172.20.0.3"
+        && LocalHostIp.pick(["172.32.0.1"]) == "172.32.0.1"   // 172.32 isn't site-local → fallback
+        && LocalHostIp.pick(["8.8.8.8"]) == "8.8.8.8"
+        && LocalHostIp.pick(["127.0.0.1", "127.0.0.53"]) == nil
+        && LocalHostIp.pick([]) == nil
+        && LocalHostIp.isSiteLocal("172.16.0.1") && LocalHostIp.isSiteLocal("172.31.9.9")
+        && !LocalHostIp.isSiteLocal("172.15.0.1") && !LocalHostIp.isSiteLocal("172.32.0.1")
+
+    let ok = streamOK && labelOK && persistOK && ipOK
+    print(ok ? "SELFTEST_OK stream+env+groups+ip status=\(s1),\(s2)"
+             : "SELFTEST_FAIL stream=\(streamOK) label=\(labelOK) persist=\(persistOK) ip=\(ipOK) "
                + "o1=\(o1.debugDescription) o2=\(o2.debugDescription) st=\(s1),\(s2)")
     exit(ok ? 0 : 1)
 }
