@@ -425,6 +425,7 @@ cinemaScrapes:
   Kino Wawel / Backrooms. Bez wyjścia / —
   Kinoteka / Backrooms. Bez wyjścia / 2026
   Koneckie Centrum Kultury / Backrooms. Bez wyjścia / —
+  Regis / Backrooms. Bez wyjścia / —
   Wybrzeże / Backrooms bez wyjścia / —
 showings:
   2026-06-19  Cinema City Kinepolis         12:30 Sala 13 2D/NAP · 15:00 Sala 13 2D/NAP · 16:00 Sala 14 2D/NAP · 17:30 Sala 13 2D/NAP · 18:30 Sala 14 2D/NAP · 20:00 Sala 13 2D/NAP · 21:00 Sala 14 2D/NAP · 22:30 Sala 13 2D/NAP
@@ -1459,6 +1460,7 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/drugie-zycie/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157167
 cinemaScrapes:
+  Centrum 3D / Drugie życie / —
   Cinema City / — / —
   Cinema City Arkadia / Drugie życie / 2025
   Cinema City Bonarka / Drugie życie / 2025
@@ -1598,7 +1600,6 @@ cinemaScrapes:
   Baszta / Drzewo magii / —
   Bałtyk / Drzewo magii / —
   Centrum / Drzewo magii / —
-  Centrum 3D / Drzewo magii / 2026
   Cinema City / — / —
   Cinema City Arkadia / Drzewo magii / 2025
   Cinema City Bemowo / Drzewo magii / 2025
@@ -1892,6 +1893,7 @@ cinemaScrapes:
   Kino Iluzjon / Dzień objawienia / 2026
   Kino KDK / DZIEŃ OBJAWIENIA / —
   Kino Kalejdoskop / Dzień objawienia / —
+  Kino Kawiarnia / Dzień objawienia / —
   Kino Kijów / Dzień objawienia / —
   Kino Kultura / Dzień objawienia / —
   Kino Lewart / Dzień Objawienia / —
@@ -1925,6 +1927,7 @@ cinemaScrapes:
   Muza / Dzień Objawienia / —
   Pionier / Dzień objawienia / —
   Przedwiośnie / Dzień Objawienia / —
+  Regis / Dzień objawienia / —
   Teatr Elektryczny / Dzień objawienia / —
   Wybrzeże / Dzień objawienia / —
   Świt Zwoleń / Dzień objawienia / —
@@ -3164,6 +3167,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Kumotry-2025-10077201
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14405-kumotry-seans-i-spotkanie-z-rezyserka/
 cinemaScrapes:
+  Centrum 3D / Kumotry / —
   KINOMUZEUM / Kumotry / 2025
   Kino 60 Krzeseł / Kumotry / —
   Kino Amok / Kumotry / —
@@ -3181,6 +3185,7 @@ cinemaScrapes:
   Kino U-jazdowski / Kumotry / 2025
   Kozienicki Dom Kultury / Kumotry / —
   OKF Iluzja / Kumotry / —
+  Regis / Kumotry / —
 showings:
   2026-06-12  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
@@ -3253,6 +3258,7 @@ cinemaScrapes:
   Kino Scena Kultura / Kurozając i świątynia Świstaka / —
   Kino Sokół / KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA / —
   Na Starówce / Kurozając i świątynia świstaka / —
+  Regis / Kurozając i świątynia świstaka / —
 showings:
   2026-06-08  Cinema City Poznań Plaza      10:00 Sala 4 2D/DUB
   2026-06-09  Cinema City Poznań Plaza      10:00 Sala 4 2D/DUB
@@ -4077,8 +4083,10 @@ cinemaScrapes:
   Helios Łódź / Minionki i straszydła / —
   Helios Żory / Minionki i straszydła / —
   Kino Goplana / Minionki i straszydła / —
+  Kino Kawiarnia / Minionki i straszydła / —
   Kino MOK Centrum / MINIONKI I STRASZYDŁA / —
   Kino Scena Kultura / Minionki i straszydła / —
+  Regis / Minionki i straszydła / —
   Wybrzeże / Minionki i straszydła / —
 showings:
   2026-06-26  Cinema City Kinepolis         10:10 Sala 13 2D/DUB · 11:30 Sala 17 2D/DUB · 12:20 Sala 13 2D/DUB · 13:40 Sala 17 2D/DUB · 14:30 Sala 13 2D/DUB · 15:50 Sala 17 2D/DUB · 16:40 Sala 13 2D/DUB · 18:50 Sala 13 2D/DUB
@@ -5066,6 +5074,7 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/ojczyzna/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157098
 cinemaScrapes:
+  Centrum 3D / Ojczyzna / —
   Cinema City / — / —
   Cinema City Arkadia / Ojczyzna / 2026
   Cinema City Bonarka / Ojczyzna / 2026
@@ -5112,6 +5121,7 @@ cinemaScrapes:
   Kino Twierdza / Ojczyzna / —
   KinoGram / Ojczyzna / —
   Kinomax / Ojczyzna / —
+  Regis / Ojczyzna / —
   Świt / Ojczyzna / —
 showings:
   2026-06-11  Kino Muza                     17:15 Sala 1
@@ -6208,7 +6218,6 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14418-podziemny-krag-repremiera-w-4k/
 cinemaScrapes:
   Centrum / Podziemny krąg / —
-  Centrum 3D / Podziemny krąg / 1999
   Cinema City / — / —
   Cinema City Arkadia / Podziemny krąg / 1999
   Cinema City Bemowo / Podziemny krąg / 1999
@@ -7265,7 +7274,6 @@ cinemaScrapes:
   Pionier / Straszny film / —
   Planet Cinema / Straszny film / 2026
   Przedwiośnie / Straszny film / —
-  Regis / Straszny film / 2026
 showings:
   2026-06-08  Cinema City Kinepolis         12:50 Sala 11 2D/NAP · 14:10 Sala 14 2D/DUB · 15:10 Sala 11 2D/DUB · 16:30 Sala 14 2D/NAP · 17:30 Sala 11 2D/NAP · 18:50 Sala 14 2D/NAP · 19:50 Sala 11 2D/NAP · 21:10 Sala 14 2D/NAP
   2026-06-08  Cinema City Poznań Plaza      11:40 Sala 8 2D/DUB · 14:00 Sala 8 2D/NAP · 16:20 Sala 8 2D/DUB · 18:40 Sala 8 2D/NAP · 21:00 Sala 8 2D/NAP
@@ -7885,7 +7893,6 @@ cinemaScrapes:
   Kino Ignacy / Tom i jerry: przygoda w muzeum / —
   Kino KDK / Tom i Jerry: Przygoda w muzeum / —
   Kino Kalejdoskop / Tom i jerry: przygoda w muzeum / —
-  Kino Kawiarnia / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Lewart / Tom i Jerry: Przygoda w muzeum / —
   Kino Luna / Tom i Jerry: Przygoda w muzeum / —
   Kino MOK / Tom i Jerry: Przygoda w muzeum / —
@@ -7919,7 +7926,6 @@ cinemaScrapes:
   Piast / TOM I JERRY:PRZYGODA W MUZEUM / —
   Pionier / Tom i Jerry: Przygoda w muzeum / —
   Planet Cinema / Tom i Jerry: Przygoda w muzeum / 2025
-  Regis / Tom i Jerry: Przygoda w muzeum / 2025
   Wybrzeże / Tom i jerry: przygoda w muzeum / —
 showings:
   2026-06-08  Cinema City Kinepolis         12:50 Sala 15 2D/DUB · 17:40 Sala 9 2D/DUB
@@ -8050,6 +8056,7 @@ cinemaScrapes:
   Kino Ignacy / Toy story 5 / —
   Kino KDK / TOY STORY 5 / —
   Kino Kalejdoskop / Toy story 5 / —
+  Kino Kawiarnia / Toy story 5 / —
   Kino Kolory / Toy story 5 / —
   Kino Lewart / Toy Story 5 / —
   Kino MOK / Toy Story 5 / —
@@ -8073,6 +8080,7 @@ cinemaScrapes:
   Muza / Toy Story 5 / —
   Na Starówce / Toy story 5 / —
   Pionier / Toy Story 5 / —
+  Regis / Toy story 5 / —
   Teatr Elektryczny / Toy Story 5 / —
   Wybrzeże / Toy story 5 / —
   Świt Zwoleń / Toy story 5 / —
@@ -8316,7 +8324,7 @@ showings:
 
 === Wielki Łuk ===
 displayTitle:      Wielki Łuk
-cinemaTitles:      Wielki Łuk
+cinemaTitles:      Wielki Łuk | Wielki łuk
 runtimeMinutes:    106
 releaseYear:       2025
 countries:         Francja, Dania
@@ -8337,6 +8345,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Wielki+%C5%81uk-2025-10078595
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/wielki-luk/
 cinemaScrapes:
+  Centrum 3D / Wielki łuk / —
   Kino Muranów / Wielki Łuk / 2025
   Kino Muza / Wielki Łuk / 2025
   Kino Nowe Horyzonty / Wielki Łuk / 2025
@@ -8514,7 +8523,6 @@ filmwebUrl:        https://www.filmweb.pl/film/Wypadek+fortepianowy-2025-1006993
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/wypadek-fortepianowy/
 cinemaScrapes:
-  Centrum 3D / Wypadek fortepianowy / 2025
   KINOMUZEUM / Wypadek fortepianowy / 2025
   Kino Muranów / Wypadek fortepianowy / 2025
   Kino Muza / Wypadek fortepianowy / 2025
@@ -8796,7 +8804,6 @@ cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157065
 cinemaScrapes:
   Centrum / Zawodowcy / —
-  Centrum 3D / Zawodowcy / 2026
   Cinema City / — / —
   Cinema City Arkadia / Zawodowcy / 2025
   Cinema City Bemowo / Zawodowcy / 2025

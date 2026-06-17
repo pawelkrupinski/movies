@@ -1,7 +1,7 @@
 package clients.kino_kuznica
 
 import clients.tools.FakeHttpFetch
-import models.{KinoFarys, KinoKuznica, KinoPckulKino}
+import models.{KinoCentrum3D, KinoFarys, KinoKawiarnia, KinoKuznica, KinoPckulKino, KinoRegis}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -63,5 +63,43 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
     pckul.map(_.cinema).toSet shouldBe Set(KinoPckulKino)
     val film = pckul.find(_.movie.title.toLowerCase.contains("mumbo jumbo")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 10, 13, 30))
+  }
+
+  // ── Current `/css/visual9` skin: div.event-item[data-date][data-time] ─────────
+  // The vendor's latest UI carries the ISO date + time as data attributes and the
+  // title in `h3.event-title`. These three venues were each previously scraped
+  // from Filmweb (cinema ids 117 / 1513 / 1294) — the fixtures (recorded into the
+  // 08-06-2026 corpus, replayed here) prove each programme is real and reachable
+  // on its own VisualSoft portal, served under both the vendor subdomain
+  // (kgl/kck.systembiletowy.pl) and a venue's own domain (bilety.kino.bochnia.pl).
+  private def visual9(base: String, cinema: models.Cinema) =
+    new SystemBiletowyClient(new FakeHttpFetch("08-06-2026"), base, cinema).fetch()
+
+  "SystemBiletowyClient (visual9 skin)" should "parse Kino Kawiarnia (kgl.systembiletowy.pl)" in {
+    val movies = visual9("https://kgl.systembiletowy.pl", KinoKawiarnia)
+    movies should not be empty
+    movies.map(_.cinema).toSet shouldBe Set(KinoKawiarnia)
+    val film = movies.find(_.movie.title.toLowerCase.contains("toy story")).value
+    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 17, 17, 0))
+  }
+
+  it should "parse Centrum 3D Kalisz (kck.systembiletowy.pl)" in {
+    val movies = visual9("https://kck.systembiletowy.pl", KinoCentrum3D)
+    movies should not be empty
+    movies.map(_.cinema).toSet shouldBe Set(KinoCentrum3D)
+    val film = movies.find(_.movie.title.toLowerCase.contains("kumotry")).value
+    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 17, 18, 0))
+  }
+
+  it should "parse Regis Bochnia on a venue's own domain + strip the /napisy/ tag" in {
+    val movies = visual9("https://bilety.kino.bochnia.pl", KinoRegis)
+    movies should not be empty
+    movies.map(_.cinema).toSet shouldBe Set(KinoRegis)
+    // "STRASZNY FILM /napisy/" → version tag stripped, sentence-cased, so the
+    // dubbed + subtitled screenings of one film fold into a single row.
+    val film = movies.find(_.movie.title.toLowerCase.contains("dzień objawienia")).value
+    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 17, 17, 0))
+    // booking link is the VisualSoft kup-bilet deep link
+    film.showtimes.flatMap(_.bookingUrl).head should include("kup-bilet")
   }
 }

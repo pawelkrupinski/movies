@@ -4,23 +4,28 @@ import models._
 import org.jsoup.Jsoup
 import tools.HttpFetch
 
-import java.time.LocalDateTime
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
- * Generic client for cinemas ticketed through the systembiletowy.pl platform
- * (each venue gets its own subdomain, e.g. `shd.systembiletowy.pl` for the
- * Suchedniów cultural centre's Kino Kuźnica). The instance homepage
- * (`<base>/index.php`) is server-rendered: one `table.tbl_repertoire` whose
- * rows each carry a single screening —
- *   - `td.title a`      → film title (a trailing `dubbing`/`napisy` version tag)
- *   - `td.date span.day`  → Polish-text date ("12 czerwca 2026")
- *   - `td.date span.hour` → time ("16:00")
- *   - `td.link a`       → the per-screening booking link (`repertoire.html?id=N`)
+ * Generic client for cinemas ticketed through the VisualSoft ticketing platform
+ * — branded `systembiletowy.pl` when a venue takes the vendor's subdomain (e.g.
+ * `shd.systembiletowy.pl` for the Suchedniów cultural centre's Kino Kuźnica),
+ * but the SAME software is also white-labelled onto venues' own domains
+ * (`bilety.kino.bochnia.pl`, `kgl.systembiletowy.pl`, …). The instance homepage
+ * (`<base>/index.php`) is server-rendered in one of three skins:
+ *
+ *   1. `table.tbl_repertoire` rows — `td.title a` / `td.date span.day|hour` /
+ *      `td.link a` (`repertoire.html?id=N` booking link).
+ *   2. Bootstrap `div.event-item` rows — `div.title a` / `div.date`
+ *      ("… 10 czerwca 2026 … godz. 13:30") with a `repertoire.html` link.
+ *   3. The current `/css/visual9` skin — `div.event-item[data-date][data-time]`
+ *      carrying the ISO date + time as attributes, an `h3.event-title`, and a
+ *      `/index.php/kup-bilet/…` booking link.
  *
  * One instance per venue, captured by its `baseUrl` + `cinema`, so adding a
- * systembiletowy-hosted cinema is a catalog line, not a new client (OCP).
+ * VisualSoft-hosted cinema is a catalog line, not a new client (OCP).
  *
  * Previously scraped from Filmweb, which had silently gone empty for the venue
  * (every poll returned `[]`) though the cinema is open and screening.
@@ -84,7 +89,25 @@ object SystemBiletowyClient {
       )
     }
 
-    (tblSlots ++ altSlots).distinctBy(s => (s.title, s.dateTime, s.booking))
+    // Current `/css/visual9` skin (kgl/kck.systembiletowy.pl, bilety.kino.bochnia.pl):
+    // one `div.event-item` per screening with the ISO date + time as data
+    // attributes, the title in `h3.event-title`, and a `kup-bilet` booking link.
+    // The booking-link slug embeds the FIRST screening's date, not this row's, so
+    // the showtime is read from the attributes — never parsed out of the href.
+    val attrSlots = document.select("div.event-item[data-date]").asScala.toSeq.flatMap { item =>
+      for {
+        titleElement <- Option(item.selectFirst("h3.event-title"))
+        title    = cleanTitle(titleElement.text) if title.nonEmpty
+        day     <- Try(LocalDate.parse(item.attr("data-date"))).toOption
+        time    <- ScraperParse.parseHHmm(item.attr("data-time"))
+      } yield RawSlot(
+        title    = title,
+        dateTime = day.atTime(time),
+        booking  = Option(item.selectFirst("a[href*=kup-bilet]")).map(_.attr("abs:href")).filter(_.nonEmpty)
+      )
+    }
+
+    (tblSlots ++ altSlots ++ attrSlots).distinctBy(s => (s.title, s.dateTime, s.booking))
       .groupBy(_.title).toSeq.flatMap { case (title, group) =>
       val showtimes = group
         .map(s => Showtime(s.dateTime, s.booking))
