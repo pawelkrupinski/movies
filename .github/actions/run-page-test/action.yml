@@ -71,10 +71,17 @@ runs:
           project/target
           project/project/target
         # web/PageTest/test + FixtureServerMain → page scope (every module's
-        # main + test + the web page sources). restore-keys falls back to any
-        # recent sbt-target cache.
-        key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
+        # main + test + the web page sources). DEDICATED `sbt-target-page-` key
+        # so page-tests PERSIST their own zinc state including the compiled
+        # `src/page` classes: on the shared `sbt-target-` key they raced the
+        # `test` job (unit scope — never compiles `src/page`), so a page-test job
+        # could restore the unit cache and recompile every page source cold,
+        # non-deterministically. restore-keys still falls back to the shared
+        # cache on a first miss so web+worker main come in warm. Mirrors the
+        # `sbt-target-e2e-` split.
+        key: sbt-target-page-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
         restore-keys: |
+          sbt-target-page-${{ runner.os }}-
           sbt-target-${{ runner.os }}-
 
     - uses: actions/setup-node@v4
@@ -118,12 +125,13 @@ runs:
         rm -f /tmp/kinowo-port.txt
         sbt 'web/PageTest/runMain tools.FixtureServerMain /tmp/kinowo-port.txt' > /tmp/sbt-fixture.log 2>&1 &
         echo "FIXTURE_PID=$!" >> $GITHUB_ENV
-        # 300s ceiling: on a cold sbt-target cache the row recompiles every
-        # module (~120s) before bootStartup even begins, and bootStartup grew
-        # with the corpus (Kraków + Trójmiasto cinemas, several still missing
-        # fixtures → 3x retry-with-backoff each). 120s timed out before the
-        # server could bind. A healthy boot still writes the port in seconds
-        # and breaks early.
+        # 300s ceiling. Measured boot anatomy: ~110s is `bootStartup` itself —
+        # a CPU-bound run of the whole ~1000-film fixture corpus through
+        # scrape→enrich→stage→fold (in-memory FakeHttpFetch, so it's processing
+        # cost, not network/retries — there's at most one missing-fixture retry)
+        # — plus the sbt compile, which on a cold `sbt-target` cache recompiles
+        # every module before bootStartup begins. A healthy boot writes the port
+        # and breaks early; the ceiling only covers a cold-cache row.
         for _ in $(seq 1 150); do
             [ -f /tmp/kinowo-port.txt ] && break
             sleep 2

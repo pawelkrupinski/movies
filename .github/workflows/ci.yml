@@ -223,10 +223,10 @@ jobs:
                   nohup sbt "web/PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
                   echo "SERVER_PID=$!" >> "$GITHUB_ENV"
 
-                  # 300s ceiling: a cold sbt-target cache recompiles every
-                  # module (~120s) before bootStartup, which itself grew with
-                  # the corpus (Kraków + Trójmiasto cinemas, several missing
-                  # fixtures → retry-with-backoff). 120s was timing out.
+                  # 300s ceiling: ~110s of CPU-bound bootStartup (the whole
+                  # ~1000-film fixture corpus through scrape→enrich→fold against
+                  # in-memory fixtures — processing cost, not retries) plus, on a
+                  # cold sbt-target cache, a full recompile before bootStartup.
                   for _ in $(seq 1 150); do
                       if [ -s "$PORT_FILE" ]; then break; fi
                       sleep 2
