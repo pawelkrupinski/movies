@@ -18,6 +18,10 @@ object FrozenLegacyNormalizer {
   private val RestoredSuffix    = """(?i)\s*[-–—|.]?\s*\d+\s*k\s+(?:restored|remaster(?:ed)?)\s*$""".r
   private val WersjaSuffix      = """(?i)\s*[-–—.]\s+wersja\s+\p{L}+\s*$""".r
   private val PlusSuffix        = """\s+\+\s+\p{L}[^)]*$""".r
+  // Mirrors `TitleRuleDefaults`' `search-pipe-spotkanie-suffix` (order 15,
+  // between the plus-event order 14 and the with-event order 16) — kept in
+  // lockstep so this reference reproduces the engine on the prod corpus.
+  private val PipeSpotkanieSuffix = """(?i)\s*\|\s*spotkani\p{L}*.*$""".r
   private val WithEventSuffix   = """(?i)\s*[-–—]?\s*z\s+(?:autorską\s+narracją|prelekcj[ąae]|wprowadzeniem|udziałem)\S*.*$""".r
   private val ProgrammePrefix   =
     ("""(?i)^(?:Kino\s+bez\s+barier|""" +
@@ -43,7 +47,8 @@ object FrozenLegacyNormalizer {
     val stripped  = ProgrammePrefix.replaceFirstIn(display, "")
     val tagless   = AccessibilityTag.replaceFirstIn(stripped, "")
     val eventless = PlusSuffix.replaceFirstIn(tagless, "")
-    val narrationless = WithEventSuffix.replaceFirstIn(eventless, "")
+    val meetingless = PipeSpotkanieSuffix.replaceFirstIn(eventless, "")
+    val narrationless = WithEventSuffix.replaceFirstIn(meetingless, "")
     searchTitle(narrationless)
   }
   def programmePrefix(title: String): Option[String] =
