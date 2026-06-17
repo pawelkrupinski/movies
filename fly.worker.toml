@@ -63,6 +63,14 @@ primary_region = 'arn'
   #     per-thread malloc arenas (default 8×nCPU → fragmentation that shows as
   #     RSS far above the JVM's own committed pools) and make glibc hand freed
   #     memory back to the OS sooner.
+  #   - Xms=Xmx=320m (was 384): NMT + a forced full GC on the live worker (JDK
+  #     base, 2026-06-17) measured the actual live working set — the whole
+  #     in-memory movie/showtime corpus — at only ~108 MB tenured, so a 384m
+  #     heap committed ~280 MB it never used (Xms=Xmx pre-commits and SerialGC
+  #     doesn't uncommit). 320m leaves ~2× headroom over the live set while
+  #     handing ~64 MB of committed RSS back. NMT breakdown of the rest:
+  #     metaspace ~67 MB (≈13.8k Scala/Play/Pekko classes), code cache ~45 MB,
+  #     symbols/threads/shared-class ~30 MB, + ~80 MB glibc/RSS overhead.
   # If it still OOM-restarts after this, the next lever is bumping [[vm]] to 2 GB
   # (~+$5.19/mo) — see below.
   #
@@ -73,7 +81,7 @@ primary_region = 'arn'
   # never serves. MUST be a JVM startup flag, not a runtime System.setProperty: the
   # property is cached at the first HttpClient build, before app code can set it.
   # See reference_decodo_isp_proxy.
-  JAVA_OPTS = '-Xms384m -Xmx384m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=96m -XX:MaxMetaspaceSize=160m -XX:MaxDirectMemorySize=96m -Djdk.http.auth.tunneling.disabledSchemes='
+  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=96m -XX:MaxMetaspaceSize=160m -XX:MaxDirectMemorySize=96m -Djdk.http.auth.tunneling.disabledSchemes='
   # glibc allocator caps (read at process start, inherited by the JVM): bound the
   # arena count and trim freed heap back to the OS. See the JAVA_OPTS note above.
   MALLOC_ARENA_MAX = '2'
