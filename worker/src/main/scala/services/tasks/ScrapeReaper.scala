@@ -42,6 +42,15 @@ class ScrapeReaper(
   // scrape stamps. Past it we tick anyway — degrading to the old re-scrape-all
   // behaviour — rather than never scraping if a hydrate wedges.
   readyTimeout: FiniteDuration = 30.seconds,
+  // Cap on how many stale cinemas a single tick enqueues. After a restart every
+  // cinema can be stale at once; enqueuing all ~300 lets the TaskWorker pool
+  // drain flat-out for minutes with no idle gap, exhausting the shared-CPU
+  // credit balance (the boot-storm throttle spike). Capping the per-tick batch
+  // so it drains inside the tick interval leaves the pool idle between minutes,
+  // letting credit recover — the backlog clears over a few ticks instead. The
+  // queue dedups, so already-in-flight cinemas don't re-count against the cap.
+  // Default unbounded so the tests that drive `tick()` directly are unaffected.
+  maxEnqueuePerTick: Int = Int.MaxValue,
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:    Clock = Clock.systemUTC()
 ) extends Stoppable with Logging {
@@ -81,7 +90,7 @@ class ScrapeReaper(
    *  bypasses the occurrence claim. */
   private[tasks] def tick(): Int = {
     var enqueued = 0
-    scrapers.foreach { s =>
+    scrapers.iterator.takeWhile(_ => enqueued < maxEnqueuePerTick).foreach { s =>
       val key = ScrapeCinemaHandler.dedupKey(s.cinema)
       if (!freshness.isFresh(key, FreshnessKind.CinemaScrape)) {
         if (queue.enqueue(TaskType.ScrapeCinema, key,

@@ -352,6 +352,14 @@ class WorkerWiring extends play.api.Logging {
   // cold boot) for the TaskWorker to drain at once.
   def initialScrapeDelaySeconds: Long = Env.positiveLong("KINOWO_SCRAPE_INITIAL_DELAY_SECONDS", 45L)
 
+  // Cap on stale cinemas enqueued per reaper tick. A cold boot (or a long backlog)
+  // would otherwise queue every cinema at once and let the TaskWorker pool drain
+  // flat-out for minutes, exhausting the shared-CPU credit balance — the boot-storm
+  // throttle spike. ~25/min drains inside the 1-min tick, leaving idle gaps for
+  // credit to recover; the backlog clears over a handful of ticks. Tune down if a
+  // restart still throttles, up once Mongo/CPU have headroom.
+  def maxScrapeEnqueuePerTick: Int = Env.positiveLong("KINOWO_SCRAPE_MAX_ENQUEUE_PER_TICK", 25L).toInt
+
   // Cinema scraping is driven by a durable Mongo task queue: the ScrapeReaper
   // enqueues each cinema at most once per freshness window, and the TaskWorker
   // scrapes it (skipping if a concurrent run already refreshed it). Detail and
@@ -497,7 +505,7 @@ class WorkerWiring extends play.api.Logging {
   )
   lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, initialDelay = initialScrapeDelaySeconds.seconds,
-      runStore = scheduledRunStore)
+      maxEnqueuePerTick = maxScrapeEnqueuePerTick, runStore = scheduledRunStore)
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing
   // when the 2026-06-12 worker-steal episode had to be reconstructed from metrics).

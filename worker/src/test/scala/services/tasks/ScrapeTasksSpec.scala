@@ -1,6 +1,6 @@
 package services.tasks
 
-import models.{Cinema, CinemaMovie, KinoApollo, Movie, Multikino, Showtime}
+import models.{Cinema, CinemaMovie, Helios, KinoApollo, KinoMuza, Movie, Multikino, Rialto, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{CinemaScrapeRunner, CinemaScraper, FakeDetailEnricher}
@@ -94,6 +94,23 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val reaper   = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore)
     reaper.tick() shouldBe 2
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 2L
+  }
+
+  // Boot-storm guard: a cold worker sees every cinema stale at once. Enqueuing all
+  // of them lets the TaskWorker pool drain flat-out for minutes and exhaust the
+  // shared-CPU credit balance. The reaper caps the per-tick batch so it drains
+  // inside the tick interval (idle gaps let credit recover); the backlog clears
+  // over later ticks. The queue dedups, so in-flight cinemas don't re-count.
+  it should "enqueue at most maxEnqueuePerTick stale cinemas per tick and drain the rest on later ticks" in {
+    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios)
+      .map(c => new FakeScraper(c, movieAt(c)))
+    val queue  = new InMemoryTaskQueue
+    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore, maxEnqueuePerTick = 2)
+    reaper.tick() shouldBe 2            // first batch capped at 2
+    reaper.tick() shouldBe 2            // first 2 still in-flight (deduped) → next 2 enqueue
+    reaper.tick() shouldBe 1            // last stale cinema
+    reaper.tick() shouldBe 0            // nothing left to enqueue
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 5L
   }
 
   it should "not enqueue when another machine has claimed this minute's occurrence" in {

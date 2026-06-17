@@ -47,10 +47,24 @@ primary_region = 'arn'
   # the set — but the steady state is all ~19 cities on 2 shared vCPUs / 1 GB.
   # Watch this worker's RSS/CPU: if it throttles or OOMs, narrow via the secret
   # or bump the [[vm]] (see below).
-  # Per-app JVM sizing (moved out of the shared Dockerfile). Keeps the proven
-  # monolith sizing — 384m heap + non-heap caps fit the 1 GB cgroup with
-  # ~100 MB headroom. If the 3-city load OOM-kills or GC-thrashes, the fix is a
-  # bigger [[vm]] (2 GB) + larger heap, not just bumping heap inside 1 GB.
+  # Per-app JVM sizing (moved out of the shared Dockerfile), tuned for memory on
+  # the 1 GB cgroup. The old G1 config's committed ceiling (384 heap + 160 meta +
+  # 96 code + 96 direct + G1's own native bookkeeping + ~90 threads) crept past
+  # ~890 MB and the box OOM-restarted every 1-5h — and each reboot's hydrate +
+  # re-scrape boot storm spiked the shared-CPU throttle. Two memory levers, both
+  # also cutting CPU-credit burn (this worker has NO latency SLA, so trade pauses
+  # for footprint):
+  #   - SerialGC instead of G1: G1 keeps remembered-set / card-table native
+  #     structures and runs concurrent refinement threads (steady CPU + RSS);
+  #     a single-threaded STW collector on a 384m heap is leaner on both and
+  #     returns freed pages more readily. (StringDeduplication was a G1-only,
+  #     web-page-render optimisation that never applied to the worker — dropped.)
+  #   - MALLOC_ARENA_MAX / MALLOC_TRIM_THRESHOLD_ (in [env] below): cap glibc's
+  #     per-thread malloc arenas (default 8×nCPU → fragmentation that shows as
+  #     RSS far above the JVM's own committed pools) and make glibc hand freed
+  #     memory back to the OS sooner.
+  # If it still OOM-restarts after this, the next lever is bumping [[vm]] to 2 GB
+  # (~+$5.19/mo) — see below.
   #
   # LOAD-BEARING trailing flag `-Djdk.http.auth.tunneling.disabledSchemes=` (empty):
   # re-enables Basic auth on HTTPS CONNECT tunnels, which the JDK disables by
@@ -59,7 +73,11 @@ primary_region = 'arn'
   # never serves. MUST be a JVM startup flag, not a runtime System.setProperty: the
   # property is cached at the first HttpClient build, before app code can set it.
   # See reference_decodo_isp_proxy.
-  JAVA_OPTS = '-Xms384m -Xmx384m -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication -XX:ReservedCodeCacheSize=96m -XX:MaxMetaspaceSize=160m -XX:MaxDirectMemorySize=96m -Djdk.http.auth.tunneling.disabledSchemes='
+  JAVA_OPTS = '-Xms384m -Xmx384m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=96m -XX:MaxMetaspaceSize=160m -XX:MaxDirectMemorySize=96m -Djdk.http.auth.tunneling.disabledSchemes='
+  # glibc allocator caps (read at process start, inherited by the JVM): bound the
+  # arena count and trim freed heap back to the OS. See the JAVA_OPTS note above.
+  MALLOC_ARENA_MAX = '2'
+  MALLOC_TRIM_THRESHOLD_ = '131072'
 
 # NO [http_service]: the worker serves no user traffic, so it gets no public
 # IP / edge routing. Its only inbound HTTP is the Fly machine health check
@@ -79,7 +97,10 @@ primary_region = 'arn'
   # vCPU (load avg ~2.7), risking Fly's shared-CPU balance throttling. A second
   # vCPU halves per-core load to ~1.35 and doubles the throttle balance — and
   # it's ~free here (the second shared vCPU is ~$0.77/mo, covered by the web
-  # scale-down's ~$2.50/mo saving). Memory plateaus ~600 MB, so 1 GB stays.
+  # scale-down's ~$2.50/mo saving). Memory does NOT plateau at 600 MB as once
+  # assumed — under the all-cities load RSS crept to ~890 MB and OOM-restarted;
+  # the SerialGC + glibc-arena tuning in JAVA_OPTS / [env] above is the first fix.
+  # If it still OOMs, bump this to memory = '2048mb' (~+$5.19/mo on shared-cpu-2x).
   # (Scrape concurrency stays at its default 2 — the extra core is headroom,
   # not a reason to fan out wider.) Bump to performance-1x if it still throttles.
   memory = '1gb'
