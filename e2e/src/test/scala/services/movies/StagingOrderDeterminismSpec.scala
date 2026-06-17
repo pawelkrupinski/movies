@@ -70,10 +70,13 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
   "the staging path under shuffled, reaper-interleaved cinema arrival" should
     "persist an identical record set + rendered rows regardless of arrival order" in {
     val started = System.nanoTime()
-    val (record0, rows0) = replay(700000L)
+    // The Iterations replays are independent — run them concurrently (each in its
+    // own isolated wiring) instead of serially. See ParallelReplays.
+    val replays = ParallelReplays((0 until Iterations).map(700000L + _))(replay)
+    val (record0, rows0) = replays.head
     val divergences = mutable.ListBuffer.empty[String]
     (1 until Iterations).foreach { i =>
-      val (recordI, rowsI) = replay(700000L + i)
+      val (recordI, rowsI) = replays(i)
       if (recordI != record0) {
         val key = (r: StoredMovieRecord) => (r.title, r.year, r.record.tmdbId)
         val a = record0.map(key).toSet

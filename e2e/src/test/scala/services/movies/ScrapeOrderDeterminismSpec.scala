@@ -274,10 +274,13 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     "persist an identical record set + rendered rows regardless of cross-film scrape/enrichment order" in {
     harvestByCinema should not be empty
     val started = System.nanoTime()
-    val (record0, rows0) = replayCorpus(900000L)
+    // The CorpusIterations replays are independent — run them concurrently (each
+    // in its own isolated wiring) instead of serially. See ParallelReplays.
+    val replays = ParallelReplays((0 until CorpusIterations).map(900000L + _))(replayCorpus)
+    val (record0, rows0) = replays.head
     val divergences = mutable.ListBuffer.empty[String]
     (1 until CorpusIterations).foreach { i =>
-      val (recordI, rowsI) = replayCorpus(900000L + i)
+      val (recordI, rowsI) = replays(i)
       if (recordI != record0) divergences += s"RECORD iter $i:\n${recordDiff(record0, recordI)}"
       if (rowsI != rows0) {
         val d = rows0.zipAll(rowsI, null, null).collect { case (x, y) if x != y => s"  0=${String.valueOf(x).take(600)}\n  i=${String.valueOf(y).take(600)}" }

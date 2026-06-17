@@ -19,16 +19,18 @@ on:
 #   integration-test ─────────────┤
 #   e2e × 3 shards ───────────────┤  (all independent; deploy.yml's deploy job
 #   mobile-local-server (iOS+And) ┤   `needs` this whole workflow)
-#   page-tests × 10 ──────────────┘
+#   page-tests × 13 ──────────────┘
 #
 # Jobs are split to stay under the 20-runner cap WITHOUT any job queueing
-# (currently 16: 1 test + 1 integration + 3 e2e + 1 mobile + 10 page-tests).
+# (currently 19: 1 test + 1 integration + 3 e2e + 1 mobile + 13 page-tests).
 # eslint rides `test` (was its own job), and iOS + Android LocalServer share
 # one `mobile-local-server` job (one FixtureServerMain boot for both). The
-# deploy-gating long pole was the single `e2e` job (~13 min, two serial
-# whole-corpus determinism specs), so e2e is now fanned out across 3 parallel
-# shards; the slots come from un-sharding the (boot-bound) playwright phone
-# rows back to one runner per phone. See the e2e + page-tests jobs below.
+# original ~13-min long pole was the single `e2e` job (two serial whole-corpus
+# determinism specs); it's now (a) fanned out across 3 parallel shards and
+# (b) each heavy spec runs its replays CONCURRENTLY (see ParallelReplays), so
+# e2e drops well under the page-tests tier. The WebKit phone page-tests are
+# 2-way sharded (slow engine — the test run, not the boot, is the bulk); the
+# Chromium phones stay un-sharded (fast engine, boot-dominated). See below.
 #
 # All gating legs run independently. The sbt-driven ones share the
 # `actions/cache` keyed on hashed sources so later jobs find zinc state warm
@@ -504,7 +506,7 @@ jobs:
                   browser:       ${{ matrix.browser }}
 
     page-tests-safari:
-        name: page tests (safari / ${{ matrix.variant }})
+        name: page tests (safari / ${{ matrix.variant }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})
         strategy:
             fail-fast: false
             matrix:
@@ -516,17 +518,22 @@ jobs:
                     # bucket), so running them per-phone was a 3× re-run. They
                     # ride ONE `behaviour` job on iphone-13; each phone family runs
                     # only its viewport-SENSITIVE specs (navbar geometry, landscape,
-                    # zoomed-gaps), UN-sharded — one runner per phone. (Each row is
-                    # bound by the ~3-min FixtureServerMain boot, not the playwright
-                    # run, so the old 2-way shard paid the boot twice for ~1 min of
-                    # savings; the reclaimed slots feed the parallel `e2e` shards.)
-                    # Coverage of every width is unchanged (layout specs still run
-                    # on all phones/variants). Firefox stays dropped from CI (the
+                    # zoomed-gaps), 2-WAY SHARDED. Unlike the chromium phones below
+                    # (un-sharded — Chromium is fast enough that the ~3-min boot
+                    # dominates), WebKit is slow enough that the test run itself is
+                    # the bulk: un-sharded these phones were ~600s and the build's
+                    # long pole, so each is split across two runners (~400s). The
+                    # slots come from the e2e shards now finishing fast (their
+                    # replays run concurrently — see ParallelReplays). Coverage of
+                    # every width is unchanged. Firefox stays dropped from CI (the
                     # firefox-desktop project remains in playwright.config.ts for
                     # local runs).
-                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, grepInvert: 'axe-core|@agnostic' }
-                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, grepInvert: 'axe-core|@agnostic' }
-                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, grepInvert: 'axe-core|@agnostic' }
+                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '1/2' }
+                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '2/2' }
+                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '1/2' }
+                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '2/2' }
+                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '1/2' }
+                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '2/2' }
                     # Viewport-independent specs once, on the representative 390px
                     # portrait (matches the `iPhone 13` base in webkitUse).
                     - { variant: pw behaviour,         kind: playwright, project: webkit-iphone-13,            browser: webkit, grep: '@agnostic', grepInvert: 'axe-core' }
@@ -542,5 +549,6 @@ jobs:
                   kind:          ${{ matrix.kind }}
                   project:       ${{ matrix.project }}
                   browser:       ${{ matrix.browser }}
+                  shard:         ${{ matrix.shard }}
                   grep:          ${{ matrix.grep }}
                   grepInvert:    ${{ matrix.grepInvert }}
