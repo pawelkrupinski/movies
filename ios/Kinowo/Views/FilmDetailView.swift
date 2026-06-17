@@ -17,6 +17,9 @@ import SwiftUI
 struct FilmDetailView: View {
     let film: Film
     @EnvironmentObject var details: DetailsStore
+    // The share link is city-scoped (`/<city>/film?title=…`), so the detail
+    // screen needs the selected-city slug the same way the listing card does.
+    @EnvironmentObject var prefs: UserPreferences
     @Environment(\.filmDetailStyle) private var style
     @State private var playingTrailerIndex: Int? = nil
     @State private var showFullScreenPoster = false
@@ -55,11 +58,13 @@ struct FilmDetailView: View {
         .navigationTitle(film.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                // Shares the canonical `/film?title=…` link — same URL a
-                // user would copy from the website's address bar.
-                ShareLink(item: FilmShareLink.url(forTitle: film.title), subject: Text(film.title)) {
-                    Image(systemName: "square.and.arrow.up")
+            if let citySlug = prefs.selectedCity {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    // Shares the canonical `/<city>/film?title=…` link — same URL
+                    // a user would copy from the website's address bar.
+                    ShareLink(item: FilmShareLink.url(forTitle: film.title, citySlug: citySlug), subject: Text(film.title)) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
                 }
             }
         }

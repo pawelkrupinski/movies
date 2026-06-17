@@ -2,6 +2,7 @@ package pl.kinowo.ui.list
 
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -19,6 +20,7 @@ import org.robolectric.annotation.Config
 import pl.kinowo.TestData
 import pl.kinowo.model.Film
 import pl.kinowo.model.Showtime
+import pl.kinowo.ui.common.LocalCitySlug
 import pl.kinowo.ui.common.ShowtimeChipTestTag
 import pl.kinowo.ui.common.filmShareUrl
 
@@ -56,7 +58,11 @@ class FilmCardShareMenuTest {
 
     private fun render(film: Film = this.film, onOpen: () -> Unit = {}) {
         compose.setContent {
-            FilmCard(film = film, showCinemaHeaders = true, onOpen = onOpen, onHide = {})
+            // Mirror the production wiring: the city slug is provided once at the
+            // city-gate root (KinowoApp), so the share link is city-scoped.
+            CompositionLocalProvider(LocalCitySlug provides "poznan") {
+                FilmCard(film = film, showCinemaHeaders = true, onOpen = onOpen, onHide = {})
+            }
         }
     }
 
@@ -119,7 +125,7 @@ class FilmCardShareMenuTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         assertEquals(
-            filmShareUrl(film.title),
+            filmShareUrl("poznan", film.title),
             clipboard.primaryClip?.getItemAt(0)?.text?.toString(),
         )
     }

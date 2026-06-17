@@ -142,10 +142,15 @@ enum FilmShareLink {
         return set
     }()
 
-    static func url(forTitle title: String) -> URL {
+    /// The film page is city-scoped (`/<city>/film?title=…`), so the link must
+    /// carry the slug of the city the sharer is browsing — a city-less
+    /// `/film?title=…` has no server route and 404s. `citySlug` is already
+    /// URL-safe (lowercase ASCII + hyphens, e.g. `bielsko-biala`), so only the
+    /// title needs encoding.
+    static func url(forTitle title: String, citySlug: String) -> URL {
         let encoded = title.addingPercentEncoding(withAllowedCharacters: titleAllowed) ?? title
-        // Safe to force-unwrap: `encoded` contains only URL-safe characters
-        // and the surrounding string is a fixed, valid absolute URL.
-        return URL(string: "https://kinowo.fly.dev/film?title=\(encoded)")!
+        // Safe to force-unwrap: `encoded` and `citySlug` contain only URL-safe
+        // characters and the surrounding string is a fixed, valid absolute URL.
+        return URL(string: "https://kinowo.fly.dev/\(citySlug)/film?title=\(encoded)")!
     }
 }

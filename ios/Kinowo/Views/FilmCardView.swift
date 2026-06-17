@@ -20,18 +20,21 @@ struct FilmCardView: View {
             // long-press (their room tooltip), because both hold-gestures live
             // in the same subtree and the context menu wins. Scoping it to the
             // poster leaves the pills free. iOS has no address bar to copy from,
-            // so this menu is where the canonical `/film?title=…` URL surfaces —
-            // Udostępnij opens the system sheet, Skopiuj link drops it on the
-            // pasteboard.
+            // so this menu is where the canonical `/<city>/film?title=…` URL
+            // surfaces — Udostępnij opens the system sheet, Skopiuj link drops it
+            // on the pasteboard. The menu only appears once a city is selected
+            // (always true behind the city gate), since the link is city-scoped.
             PosterView(film: film)
                 .contextMenu {
-                    ShareLink(item: FilmShareLink.url(forTitle: film.title), subject: Text(film.title)) {
-                        Label("Udostępnij", systemImage: "square.and.arrow.up")
-                    }
-                    Button {
-                        UIPasteboard.general.string = FilmShareLink.url(forTitle: film.title).absoluteString
-                    } label: {
-                        Label("Skopiuj link", systemImage: "link")
+                    if let citySlug = prefs.selectedCity {
+                        ShareLink(item: FilmShareLink.url(forTitle: film.title, citySlug: citySlug), subject: Text(film.title)) {
+                            Label("Udostępnij", systemImage: "square.and.arrow.up")
+                        }
+                        Button {
+                            UIPasteboard.general.string = FilmShareLink.url(forTitle: film.title, citySlug: citySlug).absoluteString
+                        } label: {
+                            Label("Skopiuj link", systemImage: "link")
+                        }
                     }
                 }
             VStack(alignment: .leading, spacing: spacing.sectionSpacing) {

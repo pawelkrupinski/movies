@@ -9,6 +9,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -30,6 +31,7 @@ import pl.kinowo.location.LocationCityResolver
 import pl.kinowo.model.City
 import pl.kinowo.ui.city.CityChoiceScreen
 import pl.kinowo.ui.city.CityConfirmScreen
+import pl.kinowo.ui.common.LocalCitySlug
 import pl.kinowo.ui.detail.DetailScreen
 import pl.kinowo.ui.list.ListScreen
 
@@ -45,12 +47,16 @@ fun KinowoApp(viewModel: KinowoViewModel) {
     LaunchedEffect(Unit) { viewModel.start() }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onResume() }
 
-    val city by viewModel.selectedCity.collectAsState()
+    // A non-delegated `val` (not `by`) so the null check smart-casts it to a
+    // non-null slug inside the else branch, which scopes every film share link.
+    val city = viewModel.selectedCity.collectAsState().value
     if (city == null) {
         CityGate(viewModel)
     } else {
-        Repertoire(viewModel)
-        NearerCityPrompt(viewModel)
+        CompositionLocalProvider(LocalCitySlug provides city) {
+            Repertoire(viewModel)
+            NearerCityPrompt(viewModel)
+        }
     }
 }
 
