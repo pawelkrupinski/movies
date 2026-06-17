@@ -569,7 +569,10 @@ class MovieController( cc: ControllerComponents,
             schedule.movie.title,
             MovieController.cardSubtitle(schedule),
             MovieController.cardRatingBadges(schedule),
-            schedule.posterUrl
+            // Primary poster first, then the cinema fallbacks: the primary is
+            // often a Multikino origin Cloudflare 403s from our Fly IP, so the
+            // card must be free to walk to a reachable fallback (see OgCardService).
+            schedule.posterUrl.toSeq ++ schedule.resolved.fallbackPosterUrls
           )
           Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=86400")
         case None => NotFound(s"Film not found: $title")
