@@ -48,10 +48,25 @@ object TitleRuleDefaults {
     TitleRule("search-plus-event-suffix", GlobalStructural, None,
       """\s+\+\s+\p{L}[^)]*$""", "", applyAll = false, order = 14,
       note = Some("'+ <event>' suffix: '+ spotkanie z producentką'")),
-    TitleRule("search-pipe-spotkanie-suffix", GlobalStructural, None,
-      """(?i)\s*\|\s*spotkani\p{L}*.*$""", "", applyAll = false, order = 15,
-      note = Some("'| spotkanie <…>' pipe-separated meeting suffix: " +
-        "'… | spotkanie z reżyserem', '… | spotkanie Beaty Kwiatkowskiej'")),
+    // Case-insensitivity is scoped to the words ((?i:…)) — NOT global — because a
+    // global (?i) makes Java's \p{Lu} also match lowercase, which would let the
+    // lookahead accept 'spotkania trzeciego' and amputate 'Bliskie spotkania
+    // trzeciego stopnia'. \p{Lu} must stay case-sensitive.
+    TitleRule("search-meeting-suffix", GlobalStructural, None,
+      """\s*[-–—|+]\s*(?:[^|]*?\s)?(?i:spotkani)\p{L}*""" +
+        """(?=\s+(?i:z|ze|po|przed)\b|\s*[|+]|\s+\p{Lu}|\s*$).*$""",
+      "", applyAll = false, order = 15,
+      note = Some("'<sep> … spotkanie <…>' meeting suffix introduced by a separator " +
+        "(+ | – —): '… | spotkanie z reżyserem', 'Carmilla – pokaz … + spotkanie z X'. " +
+        "Lookahead (meeting tail = z/ze/po/przed, a pipe/plus, a Capitalised name, or " +
+        "end) keeps a real film whose title contains 'spotkania' intact " +
+        "(Bliskie spotkania trzeciego stopnia).")),
+    TitleRule("search-spotkanie-banner-prefix", GlobalStructural, None,
+      """(?i)^(?:Filmowe\s+)?spotkani\p{L}*[^:]*:\s*""", "", applyAll = false, order = 11,
+      note = Some("'Spotkanie/Spotkania …:' meeting-cycle banner prefix: " +
+        "'SPOTKANIA FILOZOFICZNE: Wędrówka na północ', 'FILMOWE SPOTKANIA Z PSYCHOLOGIĄ: " +
+        "Ojczyzna'. Anchored at start so a film with its own colon " +
+        "(SMOK (…). Trzy kolory: Czerwony) is left alone.")),
     TitleRule("search-with-event-suffix", GlobalStructural, None,
       """(?i)\s*[-–—]?\s*z\s+(?:autorską\s+narracją|prelekcj[ąae]|wprowadzeniem|udziałem)\S*.*$""",
       "", applyAll = false, order = 16,

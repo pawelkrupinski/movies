@@ -350,22 +350,49 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     apiQuery("Ojczyzna + spotkanie z producentką Ewą Puszczyńską") shouldBe "Ojczyzna"
   }
 
-  it should "strip a '| spotkanie <…>' pipe-separated meeting suffix (any case/declension/tail)" in {
-    // Same intent as the '+ <event>' rule, but for the pipe-separated meeting
-    // annotation cinemas append: the screening keeps its own display card while
-    // the external resolvers query the bare film. Generalised over the spotkani-
-    // stem (spotkanie / spotkania / spotkaniem) and an arbitrary trailing phrase.
-    apiQuery("Takie jest życie | spotkanie Beaty Kwiatkowskiej") shouldBe "Takie jest życie"
-    apiQuery("Ojczyzna | spotkanie z reżyserem")                 shouldBe "Ojczyzna"
-    apiQuery("Ujście | SPOTKANIE z twórcami")                    shouldBe "Ujście"
+  it should "strip a '<sep> … spotkanie <…>' meeting suffix introduced by any separator" in {
+    // One generalised rule for the 'spotkanie' (meeting) annotation cinemas append
+    // after a separator — pipe, plus, or dash — generalised over the spotkani- stem
+    // (spotkanie / spotkania / spotkaniem), an arbitrary leading annotation, and an
+    // arbitrary trailing phrase. The screening keeps its own display card; only the
+    // external resolvers query the bare film.
+    apiQuery("Takie jest życie | spotkanie Beaty Kwiatkowskiej")              shouldBe "Takie jest życie"
+    apiQuery("Ojczyzna | spotkanie z reżyserem")                             shouldBe "Ojczyzna"
+    apiQuery("Ujście | SPOTKANIE z twórcami")                                shouldBe "Ujście"
+    apiQuery("OJCZYZNA + spotkanie")                                         shouldBe "OJCZYZNA"
+    apiQuery("Znaki Pana Śliwki + spotkanie z reżyserami")                   shouldBe "Znaki Pana Śliwki"
+    // Dash-introduced, with annotation words between the separator and 'spotkanie'.
+    apiQuery("Carmilla – pokaz z muzyką na żywo + spotkanie z Izabelą Trojanowską | Kino (nie)jawne: queerowe kody PRL-u") shouldBe "Carmilla"
+    apiQuery("Wędrówka na północ – pokaz specjalny ze spotkaniem | gościni: podróżniczka Zuzanna Puchalska") shouldBe "Wędrówka na północ"
   }
 
-  it should "leave a pipe segment that merely contains 'spotkania' as a real film alone" in {
-    // 'Bliskie spotkania trzeciego stopnia' (Close Encounters) is a film, not a
-    // meeting annotation — the rule only strips when the segment *starts* with the
-    // spotkani- stem right after the pipe, so a cycle-prefixed listing is safe.
+  it should "not amputate a film whose own title contains 'i' or 'spotkania'" in {
+    // 'Piłat i inni' (Pilatus und andere): the conjunction 'i' must NOT be read as a
+    // separator — only punctuation introduces the meeting annotation, so the bare
+    // film survives.
+    apiQuery("Piłat i inni + spotkanie z prof. Anną Nacher") shouldBe "Piłat i inni"
+    // 'Bliskie spotkania trzeciego stopnia' (Close Encounters) is a film: 'spotkania'
+    // is followed by a lowercase ordinal, not a meeting tail (z / Capital / end), so
+    // the lookahead leaves it intact even when a cycle banner precedes it.
     apiQuery("Kino cyrkularne | Bliskie spotkania trzeciego stopnia") shouldBe
       "Kino cyrkularne | Bliskie spotkania trzeciego stopnia"
+  }
+
+  it should "strip a 'Spotkanie/Spotkania …:' meeting-cycle banner prefix" in {
+    // The mirror of the suffix rule for the colon-introduced banner form, where the
+    // film sits AFTER the colon. Anchored at start so a film carrying its own colon
+    // is safe (see the SMOK / 'Trzy kolory: Czerwony' guard below).
+    apiQuery("SPOTKANIA FILOZOFICZNE: Wędrówka na północ")       shouldBe "Wędrówka na północ"
+    apiQuery("Spotkanie filozoficzne: Wędrówka na północ")       shouldBe "Wędrówka na północ"
+    apiQuery("FILMOWE SPOTKANIA Z PSYCHOLOGIĄ: Ojczyzna")        shouldBe "Ojczyzna"
+    apiQuery("Spotkania Filmowe: Werdykt")                       shouldBe "Werdykt"
+  }
+
+  it should "leave a film whose own title carries a colon alone (no leading spotkani- banner)" in {
+    // 'SMOK (Spotkania Młodych Odkrywców Kina). Trzy kolory: Czerwony' — the banner
+    // does not START with a spotkani- word, so the colon prefix rule never fires and
+    // 'Trzy kolory: Czerwony' (Three Colours: Red) keeps its own colon.
+    apiQuery("Trzy kolory: Czerwony") shouldBe "Trzy kolory: Czerwony"
   }
 
   // ── recase — shared banner-aware display casing applied to every scraper ────
