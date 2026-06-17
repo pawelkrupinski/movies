@@ -66,8 +66,8 @@ object RecordGapCinemas {
     report("Kino CK (Jędrzejów)")(new Bilety24OrganizerClient(record("kino-ck"), s"$b24/centrum-kultury-w-jedrzejowie-1458", KinoCK).fetch().size)
     report("Metalowiec (Kraśnik)")(new Bilety24OrganizerClient(record("kino-metalowiec"), s"$b24/centrum-kultury-i-promocji-w-krasniku-1529", KinoMetalowiec).fetch().size)
     report("Kino Sokolnia (Słupca)")(new Bilety24OrganizerClient(record("kino-sokolnia"), s"$b24/miejski-dom-kultury-w-slupcy-1423", KinoSokolnia).fetch().size)
-    report("Kino Krapkowice")(new Bilety24OrganizerClient(record("kino-krapkowice"), s"$b24/krapkowicki-dom-kultury-1244", KinoKrapkowice).fetch().size)
     // ── Wave 3: bespoke own-site parsers ──
+    report("Kino Krapkowice")(new KdkKrapkowiceClient(record("kino-krapkowice"), KinoKrapkowice).fetch().size)
     report("Kino Aurum (Złotoryja)")(new KinoAurumClient(record("kino-aurum"), KinoAurum).fetch().size)
     report("Kino Sokół (Brzozów)")(new KinoSokolBrzozowClient(record("kino-sokol-brzozow"), KinoSokolBrzozow).fetch().size)
     report("Kino Karolinka (Lubliniec)")(new KinoKarolinkaClient(record("kino-karolinka"), KinoKarolinka).fetch().size)

@@ -36,9 +36,7 @@ class Bilety24OrganizerClientSpec
     ("Kino Metalowiec Kraśnik", "kino-metalowiec", "https://www.bilety24.pl/kino/organizator/centrum-kultury-i-promocji-w-krasniku-1529",
       KinoMetalowiec, "mandalorian i grogu", LocalDateTime.of(2026, 6, 12, 17, 0)),
     ("Kino Sokolnia Słupca", "kino-sokolnia", "https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-w-slupcy-1423",
-      KinoSokolnia, "dzień objawienia", LocalDateTime.of(2026, 6, 12, 19, 0)),
-    ("Kino Krapkowice", "kino-krapkowice", "https://www.bilety24.pl/kino/organizator/krapkowicki-dom-kultury-1244",
-      KinoKrapkowice, "drzewo magii", LocalDateTime.of(2026, 6, 12, 17, 0))
+      KinoSokolnia, "dzień objawienia", LocalDateTime.of(2026, 6, 12, 19, 0))
   )
 
   forAll(venues) { (label, directory, url, cinema, titleSub, when) =>
