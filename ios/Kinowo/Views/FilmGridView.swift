@@ -12,6 +12,10 @@ private let gridColumns = [
 /// bar. (See ContentView's VStack and InitialGapUITests.)
 private let pagedTabViewTopOverflow: CGFloat = 17
 
+/// Breathing gap between the top bar's bottom edge and the first poster row.
+/// A third of the former 10pt (≈3.3pt), to tighten the initial spacing.
+private let breathingGapBelowBar: CGFloat = 10.0 / 3
+
 /// Anchor id pinned to the first row of every grid. Changing a grid's
 /// `scrollResetToken` (e.g. picking a different day) scrolls back to this
 /// anchor so the user lands at row one of the new listing instead of being
@@ -58,9 +62,9 @@ struct FilmGridView: View {
     var pagedInTabView: Bool = true
 
     private var topInset: CGFloat {
-        // 10pt breathing gap below the bar; plus the paged overflow when the
-        // grid sits inside a paged TabView.
-        (pagedInTabView ? pagedTabViewTopOverflow : 0) + 10
+        // Breathing gap below the bar; plus the paged overflow when the grid
+        // sits inside a paged TabView.
+        (pagedInTabView ? pagedTabViewTopOverflow : 0) + breathingGapBelowBar
     }
 
     var body: some View {

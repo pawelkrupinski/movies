@@ -36,10 +36,10 @@ final class InitialGapUITests: XCTestCase {
         app = nil
     }
 
-    /// On a normal open the first poster row must rest a clear gap BELOW the
-    /// frosted bar (FilmGridView adds `.padding(.top, 10)`), not tucked under
-    /// it — at launch and after a pull-to-refresh (which the bug left
-    /// collapsed).
+    /// On a normal open the first poster row must rest a small gap BELOW the
+    /// frosted bar (FilmGridView adds `.padding(.top, breathingGapBelowBar)`,
+    /// ≈3.3pt), not tucked under it — at launch and after a pull-to-refresh
+    /// (which the bug left collapsed).
     func testFirstCardRestsBelowBarAtLaunchAndAfterPull() throws {
         let card = firstFilmCard()
         XCTAssertTrue(card.waitForExistence(timeout: 30), "Grid never mounted")
@@ -61,11 +61,22 @@ final class InitialGapUITests: XCTestCase {
     private func assertCardBelowBar(_ context: String) {
         let bar = barBottom()
         let minY = firstFilmCard().frame.minY
+        // Lower bound: a real gap below the bar — guards the original collapse
+        // (the bug parked the row ~7pt UNDER the bar). Upper bound: the gap is
+        // the tightened ≈3.3pt, NOT the former 10pt — so this fails if the old
+        // wider gap creeps back. Together they pin the resting position to the
+        // small breathing gap.
         XCTAssertGreaterThanOrEqual(
-            minY, bar + 6,
+            minY, bar + 1,
             "\(context): first poster row (minY=\(minY)) sits at/under the frosted "
             + "bar bottom (\(bar)) instead of a gap below it — the resting scroll "
-            + "inset collapsed (expected ~\(bar + 10))."
+            + "inset collapsed (expected ~\(bar + 3))."
+        )
+        XCTAssertLessThanOrEqual(
+            minY, bar + 6,
+            "\(context): first poster row (minY=\(minY)) sits too far below the "
+            + "bar bottom (\(bar)) — the gap is wider than the tightened ≈3.3pt "
+            + "breathing gap (expected ~\(bar + 3))."
         )
     }
 
