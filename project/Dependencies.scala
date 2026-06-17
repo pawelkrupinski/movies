@@ -20,7 +20,7 @@ object Dependencies {
   // Pure-Java webp ImageReader (no native libs), so the OG-card compositor can
   // decode the webp posters cinema CDNs now serve. imageio-core is the shared
   // runtime the format plugin needs.
-  private val twelveMonkeysVersion = "3.12.0"
+  private val twelveMonkeysVersion = "3.13.1"
   private val sentryVersion        = "8.43.2"
   // Pinned to the version Play uses so logback.xml + the sentry-logback appender
   // stay compatible across the web app (gets it via play-logback) and the
