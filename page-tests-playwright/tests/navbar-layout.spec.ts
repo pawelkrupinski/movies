@@ -163,7 +163,7 @@ test.describe('mobile portrait — floating search pill', () => {
     await waitForCards(page);
   });
 
-  test('the search box floats as a translucent, blurred capsule at the bottom', async ({ page }) => {
+  test('the search box floats as a near-transparent, barely-blurred capsule low at the bottom', async ({ page }) => {
     const m = await page.evaluate(() => {
       const navbar = document.querySelector('.navbar')!.getBoundingClientRect();
       const pill   = document.querySelector('.navbar-search') as HTMLElement | null;
@@ -190,23 +190,30 @@ test.describe('mobile portrait — floating search pill', () => {
     expect(m, 'floating search pill not rendered').not.toBeNull();
     // Floats out of the navbar flow…
     expect(m!.position, 'search pill must be position:fixed').toBe('fixed');
-    // …pinned near the BOTTOM of the viewport, below the navbar.
+    // …pinned LOW at the bottom of the viewport, below the navbar — hugging the
+    // bottom edge (only a few px of gap below it).
     expect(m!.pillTop, 'pill should sit below the navbar').toBeGreaterThan(m!.navBottom);
     expect(m!.pillTop, 'pill should be in the lower half of the viewport').toBeGreaterThan(m!.vh / 2);
     expect(m!.pillBottom, 'pill should not run off the bottom of the viewport').toBeLessThanOrEqual(m!.vh + 1);
+    expect(
+      m!.vh - m!.pillBottom,
+      `pill should hug the bottom edge — gap below it is ${(m!.vh - m!.pillBottom).toFixed(1)}px`,
+    ).toBeLessThanOrEqual(10);
     // Capsule shape.
     expect(m!.radius, `pill border-radius ${m!.radius}px should be a capsule (≥20px)`).toBeGreaterThanOrEqual(20);
-    // Translucent frosted glass: the pill has a semi-transparent background
-    // (alpha < 1) AND a blur backdrop-filter; the input itself is transparent
-    // (the pill IS the background).
+    // Near-transparent glass: the pill's background alpha is very low (the grid
+    // shows straight through) and the blur is just a whisper — not the heavy
+    // frosted look. The input itself is fully transparent (the pill IS the bg).
     const alpha = (color: string) => {
       const m4 = color.match(/rgba?\(([^)]+)\)/);
       if (!m4) return 1;
       const parts = m4[1].split(',').map((s) => parseFloat(s));
       return parts.length >= 4 ? parts[3] : 1;
     };
-    expect(alpha(m!.bg), `pill background ${m!.bg} should be translucent (alpha < 1)`).toBeLessThan(1);
-    expect(m!.backdrop, `pill backdrop-filter "${m!.backdrop}" should blur the content behind it`).toContain('blur');
+    const blurPx = parseFloat((m!.backdrop.match(/blur\(([\d.]+)px\)/) || [])[1] ?? 'NaN');
+    expect(alpha(m!.bg), `pill background ${m!.bg} should be almost transparent (alpha < 0.3)`).toBeLessThan(0.3);
+    expect(blurPx, `pill backdrop blur "${m!.backdrop}" should be a whisper (≤ 6px)`).toBeLessThanOrEqual(6);
+    expect(blurPx, `pill should still carry a hint of blur, got "${m!.backdrop}"`).toBeGreaterThan(0);
     expect(alpha(m!.inputBg), `input background ${m!.inputBg} should be transparent`).toBe(0);
     // The magnifier glyph surfaces inside the pill.
     expect(m!.iconW, 'search magnifier icon should be visible inside the pill').toBeGreaterThan(0);

@@ -1118,7 +1118,7 @@
       position: fixed;
       left: 50%;
       transform: translateX(-50%);
-      bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      bottom: calc(4px + env(safe-area-inset-bottom, 0px));
       z-index: 30;
       display: flex;
       align-items: center;
@@ -1127,11 +1127,14 @@
       max-width: 440px;
       padding: 9px 16px;
       border-radius: 28px;
-      background: rgba(26, 26, 46, .55);
-      border: 1px solid rgba(255, 255, 255, .22);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, .38);
-      -webkit-backdrop-filter: blur(16px) saturate(1.3);
-      backdrop-filter: blur(16px) saturate(1.3);
+      /* Almost entirely transparent with only a whisper of blur — the grid
+         shows straight through; the hairline border + faint shadow keep the
+         pill's edge legible. */
+      background: rgba(26, 26, 46, .14);
+      border: 1px solid rgba(255, 255, 255, .2);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .22);
+      -webkit-backdrop-filter: blur(2px);
+      backdrop-filter: blur(2px);
     }
     .navbar-search .search-icon {
       display: block;
