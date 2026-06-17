@@ -217,8 +217,8 @@ lazy val web = (project in file("web"))
 // FixtureTestWiring) and the web app's MovieControllerService / FilmSchedule
 // transform. Depending on web + worker here means neither app depends on the
 // other and no view code has to sink into common. Test-only — `publish / skip`,
-// never staged. CI runs its specs inside the existing unit `test` job via
-// aggregation, so it adds no deploy artifact and no CI job.
+// never staged. CI fans its specs out across three parallel `e2e` shards (see
+// the e2eScrape/e2eStaging/e2eRest aliases below); it ships no deploy artifact.
 lazy val e2e = (project in file("e2e"))
   .dependsOn(web, worker % "test->test", testkit % Test)
   .settings(
@@ -314,9 +314,17 @@ def ensureLocalMongo(state: State, uri: String): Unit = {
 // spawning new ones.
 addCommandAlias("testUnit", "all common/Test/test testkit/Test/test web/Test/test worker/Test/test e2e/Test/test")
 addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/test")
-// `testUnit` is the full local alias. In CI the modules are spread across THREE
+// `testUnit` is the full local alias. In CI the modules are spread across
 // parallel jobs to keep each off the deploy-gating critical path, all under the
 // 20-runner cap: `test` runs `testUnitNoE2e`, `integration-test` runs `itAll`,
-// and a dedicated `e2e` job runs `e2e/Test/test` (its whole-corpus staging specs
-// are ~6 min on their own). See .github/workflows/ci.yml.
+// and the `e2e` module is itself FANNED OUT across three parallel shards (the
+// two whole-corpus determinism specs each cost ~5 min, so on one runner the
+// module was the ~13-min long pole). See .github/workflows/ci.yml.
 addCommandAlias("testUnitNoE2e", "all common/Test/test testkit/Test/test web/Test/test worker/Test/test")
+
+// e2e CI shards. The two heavy whole-corpus specs run by name, one per runner;
+// `e2eRest` runs EVERYTHING ELSE in the module via tag-exclusion (-l) so a
+// newly-added e2e spec can never be silently dropped from CI — see CorpusReplay.java.
+addCommandAlias("e2eScrape",  "e2e/Test/testOnly services.movies.ScrapeOrderDeterminismSpec")
+addCommandAlias("e2eStaging", "e2e/Test/testOnly services.movies.StagingOrderDeterminismSpec")
+addCommandAlias("e2eRest",    "e2e/Test/testOnly * -- -l services.movies.CorpusReplay")

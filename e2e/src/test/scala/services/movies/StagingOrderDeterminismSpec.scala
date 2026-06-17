@@ -33,6 +33,7 @@ import scala.collection.mutable
  * an arrival-order dependence. The persisted corpus + every rendered city row
  * must now be byte-identical across arrival orders.
  */
+@CorpusReplay // CI runs this heavy spec on its own parallel e2e shard — see CorpusReplay.java
 class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
 
   private val Fixture        = "08-06-2026"

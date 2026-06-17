@@ -17,15 +17,18 @@ on:
 #
 #   test (unit + eslint + stage) ─┐
 #   integration-test ─────────────┤
-#   e2e ──────────────────────────┤  (all independent; deploy.yml's deploy job
+#   e2e × 3 shards ───────────────┤  (all independent; deploy.yml's deploy job
 #   mobile-local-server (iOS+And) ┤   `needs` this whole workflow)
-#   page-tests ───────────────────┘
+#   page-tests × 10 ──────────────┘
 #
-# Jobs are split to stay under the 20-runner cap WITHOUT any job queueing:
+# Jobs are split to stay under the 20-runner cap WITHOUT any job queueing
+# (currently 16: 1 test + 1 integration + 3 e2e + 1 mobile + 10 page-tests).
 # eslint rides `test` (was its own job), and iOS + Android LocalServer share
-# one `mobile-local-server` job (one FixtureServerMain boot for both) — the two
-# freed slots let `e2e` run as its own parallel job instead of weighing down
-# the deploy-gating `test`/`integration-test` jobs.
+# one `mobile-local-server` job (one FixtureServerMain boot for both). The
+# deploy-gating long pole was the single `e2e` job (~13 min, two serial
+# whole-corpus determinism specs), so e2e is now fanned out across 3 parallel
+# shards; the slots come from un-sharding the (boot-bound) playwright phone
+# rows back to one runner per phone. See the e2e + page-tests jobs below.
 #
 # All gating legs run independently. The sbt-driven ones share the
 # `actions/cache` keyed on hashed sources so later jobs find zinc state warm
@@ -355,14 +358,33 @@ jobs:
                   include_passed: false
 
 
-    # The `e2e` module (cross-app whole-corpus specs) in its own job. Its
-    # ScrapeOrderDeterminismSpec drains the always-on staging pipeline per
-    # shuffled replay, ~6 min of CI compute — too heavy to ride either the `test`
-    # job (it gates deploy) or `integration-test` (it became the gate when e2e
-    # rode it). A dedicated parallel job keeps the full spec coverage while taking
-    # e2e off the critical path. Uses FixtureTestWiring (no Mongo); reports go to
-    # the root unit/ dir (unitReportSettings) → its own `e2e tests` check.
+    # The `e2e` module (cross-app whole-corpus specs), FANNED OUT across three
+    # parallel shards. On one runner the module was the ~13-min pipeline long
+    # pole: its two whole-corpus determinism specs each drain the always-on
+    # staging pipeline per shuffled replay (~5 min apiece), and they ran serially.
+    # The shards (see the e2eScrape/e2eStaging/e2eRest aliases in build.sbt):
+    #
+    #   scrape  — ScrapeOrderDeterminismSpec  (run by name)
+    #   staging — StagingOrderDeterminismSpec (run by name)
+    #   rest    — every OTHER e2e spec, via `e2e/Test/test -- -l …CorpusReplay`
+    #             (tag-EXCLUSION of the two heavy specs), so a newly-added spec
+    #             auto-rides this shard and can't be silently dropped. See the
+    #             `@CorpusReplay` tag annotation in CorpusReplay.java.
+    #
+    # Same coverage as the old single job, ~half the wall-clock. Each shard pays
+    # its own compile, but they run in parallel; the freed runner slots come from
+    # un-sharding the (boot-bound, not test-bound) playwright phone jobs below.
+    # Uses FixtureTestWiring (no Mongo); reports go to the root unit/ dir
+    # (unitReportSettings) → a per-shard `e2e tests (<shard>)` check.
     e2e:
+        name: e2e (${{ matrix.shard }})
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { shard: scrape,  cmd: e2eScrape }
+                    - { shard: staging, cmd: e2eStaging }
+                    - { shard: rest,    cmd: e2eRest }
         runs-on: ubuntu-latest
         permissions:
             contents: read
@@ -384,17 +406,19 @@ jobs:
                       target
                       project/target
                       project/project/target
-                  # Dedicated key so this job PERSISTS its own e2e/Test compile
+                  # Dedicated key so these shards PERSIST the e2e/Test compile
                   # (the shared `sbt-target-` key is owned by `test`, which never
                   # compiles e2e — so on that key e2e recompiled cold every run,
-                  # ~100s). restore-keys falls back to the shared cache on a miss
-                  # so web+worker main still come in warm on the first run.
+                  # ~100s). All three shards share this one key: only the first to
+                  # finish writes it; the rest read it warm. restore-keys falls
+                  # back to the shared cache on a miss so web+worker main still
+                  # come in warm on the first run.
                   key: sbt-target-e2e-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}
                   restore-keys: |
                       sbt-target-e2e-${{ runner.os }}-
                       sbt-target-${{ runner.os }}-
 
-            - run: sbt e2e/Test/test
+            - run: sbt ${{ matrix.cmd }}
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
@@ -406,7 +430,7 @@ jobs:
               uses: mikepenz/action-junit-report@v5
               with:
                   report_paths: 'target/test-reports/unit/**/*.xml'
-                  check_name: e2e tests
+                  check_name: e2e tests (${{ matrix.shard }})
                   detailed_summary: true
                   include_passed: false
 
@@ -447,22 +471,24 @@ jobs:
     # bg) that aren't worth blocking deploys over.
 
     page-tests-chrome:
-        name: page tests (chrome / ${{ matrix.variant }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})
+        name: page tests (chrome / ${{ matrix.variant }})
         strategy:
             fail-fast: false
             matrix:
                 include:
+                    # Playwright phone rows run UN-sharded (one runner per phone):
+                    # each row is dominated by the ~3-min FixtureServerMain sbt
+                    # boot, not the <2-min playwright run, so a 2-way shard paid
+                    # the boot twice to save ~1 min — a poor trade. Un-sharded,
+                    # the freed runner slots go to the parallel `e2e` shards above.
                     - { variant: stable,         kind: chrome,     version: stable }
-                    - { variant: pw galaxy-s10,  kind: playwright, project: 'chromium-galaxy-s10*',  browser: chromium, shard: '1/2' }
-                    - { variant: pw galaxy-s10,  kind: playwright, project: 'chromium-galaxy-s10*',  browser: chromium, shard: '2/2' }
-                    - { variant: pw galaxy-s25,  kind: playwright, project: 'chromium-galaxy-s25*',  browser: chromium, shard: '1/2' }
-                    - { variant: pw galaxy-s25,  kind: playwright, project: 'chromium-galaxy-s25*',  browser: chromium, shard: '2/2' }
+                    - { variant: pw galaxy-s10,  kind: playwright, project: 'chromium-galaxy-s10*',  browser: chromium }
+                    - { variant: pw galaxy-s25,  kind: playwright, project: 'chromium-galaxy-s25*',  browser: chromium }
                     # chromium pixel-9 (360 px) intentionally dropped — same width
                     # as galaxy-s10; redundant for catching layout breaks. The
                     # project stays in playwright.config.ts so a local
                     # `npx playwright test --project chromium-pixel-9` still runs.
-                    - { variant: pw pixel-9-pro, kind: playwright, project: 'chromium-pixel-9-pro*', browser: chromium, shard: '1/2' }
-                    - { variant: pw pixel-9-pro, kind: playwright, project: 'chromium-pixel-9-pro*', browser: chromium, shard: '2/2' }
+                    - { variant: pw pixel-9-pro, kind: playwright, project: 'chromium-pixel-9-pro*', browser: chromium }
                     - { variant: pw desktop,     kind: playwright, project: chrome-desktop,          browser: chrome }
         runs-on: ubuntu-latest
         permissions:
@@ -476,10 +502,9 @@ jobs:
                   version:       ${{ matrix.version }}
                   project:       ${{ matrix.project }}
                   browser:       ${{ matrix.browser }}
-                  shard:         ${{ matrix.shard }}
 
     page-tests-safari:
-        name: page tests (safari / ${{ matrix.variant }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})
+        name: page tests (safari / ${{ matrix.variant }})
         strategy:
             fail-fast: false
             matrix:
@@ -488,22 +513,20 @@ jobs:
                     # round-trips, filter inclusion-sets, search, keyboard a11y —
                     # tagged `@agnostic`) assert byte-identically on all three
                     # portrait iPhone widths (375/390/440 all sit in one CSS
-                    # bucket), so running them per-phone was a 3× re-run. They now
+                    # bucket), so running them per-phone was a 3× re-run. They
                     # ride ONE `behaviour` job on iphone-13; each phone family runs
                     # only its viewport-SENSITIVE specs (navbar geometry, landscape,
-                    # zoomed-gaps) — still 2-sharded so each shard stays small and
-                    # the webkit gate drops. Coverage of every width is unchanged
-                    # (layout specs still run on all phones/variants). The slots for
-                    # the extra phone shards come from dropping the standalone
-                    # Firefox CI job (Gecko coverage traded for the lower gate; the
-                    # firefox-desktop project stays in playwright.config.ts for
+                    # zoomed-gaps), UN-sharded — one runner per phone. (Each row is
+                    # bound by the ~3-min FixtureServerMain boot, not the playwright
+                    # run, so the old 2-way shard paid the boot twice for ~1 min of
+                    # savings; the reclaimed slots feed the parallel `e2e` shards.)
+                    # Coverage of every width is unchanged (layout specs still run
+                    # on all phones/variants). Firefox stays dropped from CI (the
+                    # firefox-desktop project remains in playwright.config.ts for
                     # local runs).
-                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '1/2' }
-                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '2/2' }
-                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '1/2' }
-                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '2/2' }
-                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '1/2' }
-                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '2/2' }
+                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, grepInvert: 'axe-core|@agnostic' }
+                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, grepInvert: 'axe-core|@agnostic' }
+                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, grepInvert: 'axe-core|@agnostic' }
                     # Viewport-independent specs once, on the representative 390px
                     # portrait (matches the `iPhone 13` base in webkitUse).
                     - { variant: pw behaviour,         kind: playwright, project: webkit-iphone-13,            browser: webkit, grep: '@agnostic', grepInvert: 'axe-core' }
@@ -519,6 +542,5 @@ jobs:
                   kind:          ${{ matrix.kind }}
                   project:       ${{ matrix.project }}
                   browser:       ${{ matrix.browser }}
-                  shard:         ${{ matrix.shard }}
                   grep:          ${{ matrix.grep }}
                   grepInvert:    ${{ matrix.grepInvert }}

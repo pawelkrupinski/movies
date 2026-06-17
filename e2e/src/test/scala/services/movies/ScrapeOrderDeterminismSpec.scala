@@ -57,6 +57,7 @@ import scala.collection.mutable
  * are fed into a fresh cache, so the run is cheap (no full-corpus fetch beyond
  * the one-time harvest) and the captured record/row contain exactly that film.
  */
+@CorpusReplay // CI runs this heavy spec on its own parallel e2e shard — see CorpusReplay.java
 class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
 
   private val Fixture          = "08-06-2026"
