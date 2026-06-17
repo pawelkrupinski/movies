@@ -126,6 +126,40 @@
   window.lockSearchZoom   = lockSearchZoom;
   window.unlockSearchZoom = unlockSearchZoom;
 
+  // On mobile portrait the search field lives in a floating pill pinned to the
+  // bottom of the viewport, so when its keyboard is up the rest of the screen —
+  // film cards, poster/title links — sits right behind it. A tap "away" to
+  // dismiss the keyboard would otherwise also land on whatever is under the
+  // finger and navigate to /film. Make that first tap a pure dismiss: blur the
+  // field (which drops the keyboard) and swallow the click so nothing else acts
+  // on it. A second, deliberate tap then behaves normally.
+  //
+  // Keyed off `pointerdown`, not the `click` itself: by the time the click
+  // fires the browser has already moved focus off the field, so
+  // `document.activeElement` no longer points at it. `pointerdown` runs before
+  // that focus shift — the only place we can reliably tell the field WAS focused
+  // when the tap began. Scoped to the same breakpoint as the floating pill
+  // (`_sharedStyles`); on wider / landscape layouts the field is inline and
+  // outside taps behave normally. Both listeners are capture-phase so they
+  // pre-empt the card-tap and dropdown-dismiss handlers further down.
+  const _floatingSearchMq = window.matchMedia('(max-width: 575px) and (orientation: portrait)');
+  let _dismissSearchOnClick = false;
+  document.addEventListener('pointerdown', e => {
+    const search = document.getElementById('search-input');
+    _dismissSearchOnClick =
+      _floatingSearchMq.matches &&
+      !!search && document.activeElement === search &&
+      e.target instanceof Element && !e.target.closest('.navbar-search');
+  }, true);
+  document.addEventListener('click', e => {
+    if (!_dismissSearchOnClick) return;
+    _dismissSearchOnClick = false;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const search = document.getElementById('search-input');
+    if (search) search.blur();
+  }, true);
+
   // True when any filter the Filtry panel exposes is narrowed away from its
   // default — i.e. exactly the axes "Wyczyść" (`resetFormatFilter`) puts back.
   // Drives the funnel icon's active state, the web counterpart of the iOS
