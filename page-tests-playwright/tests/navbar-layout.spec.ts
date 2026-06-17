@@ -220,6 +220,61 @@ test.describe('mobile portrait — floating search pill', () => {
   });
 });
 
+// ── Mobile portrait: day-pill highlight hugs its text ─────────────
+//
+// The active day-pill's highlight is clipped to its content box (inset by the
+// pill's horizontal padding), NOT filling the whole flex cell to its edge.
+// Without this the active END pill — "Dziś" on the left, "Wszystkie" on the
+// right — slams its highlight up against the logo / Filtry while the opposite
+// (inactive) end shows only inset text, so the gap reads lopsided. Hugging the
+// text makes the highlight sit where the text does, so the row has the same gap
+// on both sides whichever day is selected.
+
+test.describe('mobile portrait — active day-pill highlight hugs its text', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    const name = testInfo.project.name;
+    const isPortraitMobile = !name.includes('desktop') && !name.includes('landscape');
+    test.skip(!isPortraitMobile, 'mobile portrait only');
+    await page.goto('/poznan/');
+    await waitForCards(page);
+  });
+
+  test('the active highlight is content-clipped, so end pills do not jam the logo or Filtry', async ({ page }) => {
+    // Activate the FIRST pill (Dziś) and measure its highlight's gap to the logo.
+    await page.locator('.day-pill[data-day="today"]').click();
+    const left = await page.evaluate(() => {
+      const p = document.querySelector('.day-pill.active') as HTMLElement;
+      const cs = getComputedStyle(p);
+      const logo = document.querySelector('.navbar-logo')!.getBoundingClientRect();
+      const b = p.getBoundingClientRect();
+      // background-clip:content-box paints the highlight inside the padding box.
+      return { clip: cs.backgroundClip, label: p.textContent,
+               hlGap: (b.left + parseFloat(cs.paddingLeft)) - logo.right };
+    });
+    // Activate the LAST pill (Wszystkie) and measure its highlight's gap to Filtry.
+    await page.locator('.day-pill[data-day="anytime"]').click();
+    const right = await page.evaluate(() => {
+      const p = document.querySelector('.day-pill.active') as HTMLElement;
+      const cs = getComputedStyle(p);
+      const filtry = document.querySelector('.navbar-filtry')!.getBoundingClientRect();
+      const b = p.getBoundingClientRect();
+      return { label: p.textContent,
+               hlGap: filtry.left - (b.right - parseFloat(cs.paddingRight)) };
+    });
+    // The mechanism: the active pill's background is clipped to its content box.
+    expect(left.clip, 'active day-pill highlight must be clipped to its content box').toBe('content-box');
+    // Neither end pill's highlight is jammed against its neighbour (the old
+    // cell-filling highlight sat ~3px from the edge; content-clipped is more)…
+    expect(left.hlGap, `"${left.label}" highlight gap to logo is ${left.hlGap.toFixed(1)}px`).toBeGreaterThanOrEqual(5);
+    expect(right.hlGap, `"${right.label}" highlight gap to Filtry is ${right.hlGap.toFixed(1)}px`).toBeGreaterThanOrEqual(5);
+    // …and the two end gaps match (the row reads the same on both sides).
+    expect(
+      Math.abs(left.hlGap - right.hlGap),
+      `left gap ${left.hlGap.toFixed(1)}px vs right gap ${right.hlGap.toFixed(1)}px — the day-pill row is lopsided`,
+    ).toBeLessThanOrEqual(6);
+  });
+});
+
 // ── Logged-in avatar pill: matches navbar control height ──────────
 //
 // The live/fixture server renders the navbar logged-OUT (a "Zaloguj"

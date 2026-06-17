@@ -805,6 +805,15 @@
     .navbar-date      { order: 2; flex: 1 1 auto; min-width: 0; }
     .navbar-filtry    { order: 3; margin-left: 0; max-width: 45%; min-width: 0; flex-shrink: 1; }
     .navbar-auth      { order: 4; flex-shrink: 0; }
+    /* The active day-pill's highlight hugs its text (clipped to the content
+       box, inset by the pill's horizontal padding) instead of filling the whole
+       flex cell to its edge. Without this the active END pill — "Dziś" on the
+       left, "Wszystkie" on the right — jams its highlight right up against the
+       logo / Filtry, while the opposite (inactive) end shows only inset text,
+       so the gap looked lopsided. Hugging the text makes the active highlight
+       sit exactly where the inactive text does, so the row reads with the same
+       gap on both sides whichever day is selected. */
+    .navbar .day-pill.active { background-clip: content-box; }
     /* Search itself is pulled out of this row into a bottom-floating pill —
        but ONLY in PORTRAIT (see the `(max-width:575px) and
        (orientation:portrait)` block lower down). Narrow LANDSCAPE phones
