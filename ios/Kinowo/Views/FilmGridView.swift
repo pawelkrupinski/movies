@@ -13,8 +13,8 @@ private let gridColumns = [
 private let pagedTabViewTopOverflow: CGFloat = 17
 
 /// Breathing gap between the top bar's bottom edge and the first poster row.
-/// A third of the former 10pt (≈3.3pt), to tighten the initial spacing.
-private let breathingGapBelowBar: CGFloat = 10.0 / 3
+/// Slashed to 1.5pt, so the first row sits almost flush under the bar.
+private let breathingGapBelowBar: CGFloat = 1.5
 
 /// Anchor id pinned to the first row of every grid. Changing a grid's
 /// `scrollResetToken` (e.g. picking a different day) scrolls back to this

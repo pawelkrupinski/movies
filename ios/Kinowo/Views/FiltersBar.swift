@@ -71,18 +71,17 @@ struct TopBar: View {
         }
         .padding(.horizontal, 10 * scale)
         // Tiny top padding so the pills hug the status bar; the
-        // safeAreaInset already reserves the strip above. Larger bottom
-        // padding keeps a small breathing buffer between the bar and the
+        // safeAreaInset already reserves the strip above. A small bottom
+        // padding keeps a slim breathing buffer between the bar and the
         // grid scrolling beneath it.
         .padding(.top, 2 * scale)
-        .padding(.bottom, 8 * scale)
-        // No background here on purpose — no frosted material. The bar's
-        // backing is a gradient *fade* (a scrim, not a frost) drawn in
-        // `ContentView`: opaque app-background behind the pills, fading to
-        // clear just below the bar, so the grid scrolling up gently fades out
-        // toward the bar instead of meeting a frosted strip.
+        .padding(.bottom, 4 * scale)
+        // No background here on purpose. The bar's backing is the opaque
+        // app-background drawn in `ContentView` (`.background(Color(
+        // .systemBackground)…)`); the grid meets it with a hard edge — no
+        // frosted material and no gradient fade.
         // Zero-visual automation anchor at the bar's true bottom edge. The
-        // pills / Filtry button sit on the row above, inside the 8pt bottom
+        // pills / Filtry button sit on the row above, inside the bottom
         // padding, so they can't stand in for the bar bottom in UI tests.
         .overlay(alignment: .bottom) {
             Color.clear
