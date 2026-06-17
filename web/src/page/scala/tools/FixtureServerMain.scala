@@ -45,7 +45,10 @@ object FixtureServerMain {
 
     System.err.println("[FixtureServerMain] booting FixtureTestWiring(\"08-06-2026\")…")
     val wiring = new FixtureTestWiring("08-06-2026")
-    wiring.bootStartup()
+    // Load the checked-in read-model snapshot (≈instant) instead of recomputing
+    // the ~110s corpus pipeline — see ReadModelSnapshot. Falls back to the full
+    // boot if the snapshot is missing.
+    wiring.bootFromSnapshotOrPipeline()
 
     // The read transform is the web app's, built from the read model the worker
     // projected (the seam the two apps share in production).

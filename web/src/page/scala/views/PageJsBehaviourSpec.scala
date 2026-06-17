@@ -55,7 +55,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     chrome = Chrome.tryStart()
     if (chrome.nonEmpty) {
       val wiring = new FixtureTestWiring("08-06-2026")
-      wiring.bootStartup()
+      // Load the read-model snapshot instead of the ~110s corpus boot (this spec
+      // exercises rendered-page JS, not the pipeline). See ReadModelSnapshot.
+      wiring.bootFromSnapshotOrPipeline()
       // Web read transform over the worker-projected read model (the shared seam).
       val service     = new controllers.MovieControllerService(wiring.webReadModel)
       val anon    = Option.empty[models.User]

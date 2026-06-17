@@ -5,7 +5,7 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.DomainEvent
-import tools.FixtureTestWiring
+import tools.{FixtureTestWiring, ReadModelSnapshot}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
@@ -341,6 +341,34 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     withClue(
       s"Whole-corpus snapshot mismatch. To regenerate after an intentional change:\n" +
         s"  rm $snapshotPath && sbt 'e2e/testOnly services.movies.FilmScheduleEndToEndSpec'\n"
+    ) {
+      actual shouldBe expected
+    }
+  }
+
+  // The page-test servers (FixtureServerMain → Playwright + mobile, plus the
+  // in-JVM PageSnapshotSpec / PageJsBehaviourSpec) no longer recompute the ~110s
+  // corpus pipeline on every boot — they LOAD the read-model snapshot this spec
+  // produces (see ReadModelSnapshot). This is the guard that keeps that snapshot
+  // honest: it asserts the REAL pipeline's projected read model (`wiring`, booted
+  // via the full bootStartup above) equals the checked-in JSON, regenerating on
+  // mismatch like `expected-schedules.txt`. Coverage is preserved across two
+  // legs: this guard proves pipeline → read model, and PageSnapshotSpec proves
+  // read model → rendered HTML, so pipeline → HTML stays covered end-to-end.
+  it should "match the checked-in read-model snapshot the page-test servers load" in {
+    val actual       = ReadModelSnapshot.render(ReadModelSnapshot.capture(wiring.readModelRepository))
+    val snapshotPath = ReadModelSnapshot.DefaultPath
+    if (!Files.exists(snapshotPath)) {
+      Files.createDirectories(snapshotPath.getParent)
+      Files.write(snapshotPath, actual.getBytes(StandardCharsets.UTF_8))
+      fail(s"Read-model snapshot didn't exist — wrote $snapshotPath. Review, commit, and re-run.")
+    }
+    val expected = new String(Files.readAllBytes(snapshotPath), StandardCharsets.UTF_8)
+    withClue(
+      "Read-model snapshot mismatch — the fixture page-test servers would serve stale data.\n" +
+        "To regenerate after an intentional pipeline/fixture change:\n" +
+        s"  rm $snapshotPath && sbt 'e2e/testOnly services.movies.FilmScheduleEndToEndSpec'\n" +
+        "(also regenerate expected-*.html / expected-schedules.txt if the rendered output changed)\n"
     ) {
       actual shouldBe expected
     }

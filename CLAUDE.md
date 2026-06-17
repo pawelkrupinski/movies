@@ -103,6 +103,45 @@ fields that surface in the view, CSS class or `data-*` attribute
 changes on rendered elements, inline `onerror`/`onclick` handler
 changes.
 
+## Regenerate the read-model snapshot when the PIPELINE changes
+
+The page-test servers no longer recompute the ~110s fixture corpus pipeline on
+every boot. `FixtureServerMain` (the Playwright + mobile fixture server) and the
+in-JVM `PageSnapshotSpec` / `PageJsBehaviourSpec` LOAD a checked-in projected
+read model — `test/resources/fixtures/08-06-2026/read-model-snapshot.json` — via
+`FixtureTestWiring.bootFromSnapshotOrPipeline` (see
+`worker/src/test/scala/tools/ReadModelSnapshot.scala`). The snapshot is the
+deterministic output of `bootStartup` (scrape → enrich → stage → fold →
+project), captured once instead of ~15× across the page-test runners.
+
+There are now TWO snapshot layers, regenerated for DIFFERENT changes:
+
+- **`read-model-snapshot.json`** — the pipeline's OUTPUT (what `web_movies` /
+  `web_screenings` hold). Regenerate when you change anything that alters that
+  output: a cinema scraper, the enrichment pipeline, `TitleNormalizer` rules,
+  the staging fold, `ReadModelProjector`/`ReadModelProjection`, model fields, or
+  the raw fixture files under `08-06-2026/`. A render-only Twirl/CSS change does
+  NOT touch it.
+- **`expected-*.html`** — the RENDERED output (above). A pipeline change usually
+  shifts BOTH (the new read model renders differently), so regenerate the HTML
+  too; a render-only change shifts only the HTML.
+
+The guard is `FilmScheduleEndToEndSpec` ("...match the checked-in read-model
+snapshot..."), which boots the REAL pipeline and diffs it against the file —
+so a stale snapshot fails CI loudly (in the `e2e (rest)` shard) with the exact
+regenerate command. To regenerate after an intentional change:
+
+```
+rm test/resources/fixtures/08-06-2026/read-model-snapshot.json
+sbt 'e2e/testOnly services.movies.FilmScheduleEndToEndSpec'   # writes it, fails "didn't exist"
+sbt 'e2e/testOnly services.movies.FilmScheduleEndToEndSpec'   # re-run: must pass (stable)
+```
+
+Then regenerate the `expected-*.html` per the section above if rendering shifted,
+and commit all of them together with the production change. Consumers fall back
+to the full pipeline boot when the file is absent, so a forgotten regen is slow,
+never wrong — but the guard still fails until you commit the fresh snapshot.
+
 ## Parallelize scripts, but don't get rate-limited
 
 Long-running scripts that hit external services (TMDB, IMDb, Filmweb,

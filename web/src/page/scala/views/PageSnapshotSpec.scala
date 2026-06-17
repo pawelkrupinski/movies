@@ -32,7 +32,11 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
   // because the boot is deterministic; the tick stays sequential.)
   private lazy val wiring: FixtureTestWiring = {
     val w = new FixtureTestWiring("08-06-2026")
-    w.bootStartup()
+    // Load the read-model snapshot instead of the ~110s corpus boot. This spec
+    // diffs the rendered HTML (read model → HTML); the snapshot's correctness
+    // (pipeline → read model) is guarded by FilmScheduleEndToEndSpec, so the two
+    // together still cover pipeline → HTML. See ReadModelSnapshot.
+    w.bootFromSnapshotOrPipeline()
     w
   }
   // The web read transform, built from the worker-projected read model (the seam

@@ -100,6 +100,27 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
     webReadModel.reload()
   }
 
+  /** Warm `webReadModel` the cheap way: load the checked-in read-model snapshot
+   *  (the deterministic output of `bootStartup`'s ~110s pipeline) straight into
+   *  the read-model repository, skipping scrape→enrich→fold→project entirely.
+   *  This is all the page-test servers (FixtureServerMain, PageSnapshotSpec,
+   *  PageJsBehaviourSpec) need — they only ever read through `webReadModel`.
+   *
+   *  Falls back to the full `bootStartup` when the snapshot is absent, so a fresh
+   *  fixture or a deleted snapshot is merely slow, never wrong. The snapshot's
+   *  correctness is guarded by `FilmScheduleEndToEndSpec` (boots the real
+   *  pipeline and asserts it equals the file). See `ReadModelSnapshot`. */
+  def bootFromSnapshotOrPipeline(): Unit =
+    if (ReadModelSnapshot.exists()) {
+      ReadModelSnapshot.loadInto(readModelRepository, ReadModelSnapshot.read())
+      webReadModel.reload()
+    } else {
+      System.err.println(
+        "[FixtureTestWiring] no read-model snapshot — booting the full pipeline " +
+          "(slow). Run FilmScheduleEndToEndSpec to (re)generate it.")
+      bootStartup()
+    }
+
   /** Like `bootStartup`, but drives the staging path the way PROD does rather
    *  than the deterministic record-all-then-drain shape `bootStartup`/
    *  `runOneScrapeTick` use: cinemas arrive in a SHUFFLED order and the reaper
