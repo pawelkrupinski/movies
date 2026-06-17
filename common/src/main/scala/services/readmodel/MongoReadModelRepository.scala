@@ -8,7 +8,7 @@ import org.mongodb.scala.model.{Filters, IndexOptions, Indexes}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import play.api.Logging
 
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
@@ -76,6 +76,22 @@ class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadMode
     case None => Seq.empty
   }
 
+  // Server-side document counts — the read model's cheap integrity probe. These
+  // count index entries (no payload decode), so the web's backstop can detect
+  // drift without re-reading the whole corpus. `-1` signals "unavailable".
+  def countMovies():     Long = count(movies, "countMovies")
+  def countScreenings(): Long = count(screenings, "countScreenings")
+
+  private def count[T](coll: Option[MongoCollection[T]], op: String): Long = coll match {
+    case Some(c) =>
+      Try(Await.result(c.countDocuments().toFuture(), 10.seconds)).recover {
+        case exception: Throwable =>
+          logger.warn(s"ReadModelRepository.$op failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+          -1L
+      }.getOrElse(-1L)
+    case None => -1L
+  }
+
   // ── Writes ──────────────────────────────────────────────────────────────────
 
   def upsertMovie(m: ResolvedMovie): Unit =
@@ -109,18 +125,19 @@ class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadMode
 
   // ── Change streams ──────────────────────────────────────────────────────────
 
-  def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit): Option[AutoCloseable] =
+  def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit): Option[StreamSubscription] =
     movies.map(watch(_, onUpsert, onDelete, "web_movies"))
 
-  def watchScreenings(onUpsert: CityScreening => Unit, onDelete: String => Unit): Option[AutoCloseable] =
+  def watchScreenings(onUpsert: CityScreening => Unit, onDelete: String => Unit): Option[StreamSubscription] =
     screenings.map(watch(_, onUpsert, onDelete, "web_screenings"))
 
   /** Route each insert / update / replace to `onUpsert` (full post-image via
    *  `UPDATE_LOOKUP`) and each delete to `onDelete(_id)`. The driver auto-
-   *  resumes across transient blips; a terminal error logs and leaves the
-   *  caller's periodic reload in charge. Requires a replica set. */
-  private def watch[T: ClassTag](coll: MongoCollection[T], onUpsert: T => Unit, onDelete: String => Unit, label: String): AutoCloseable = {
+   *  resumes across transient blips; a terminal error flips `live` to false so
+   *  the caller's periodic reload takes over. Requires a replica set. */
+  private def watch[T: ClassTag](coll: MongoCollection[T], onUpsert: T => Unit, onDelete: String => Unit, label: String): StreamSubscription = {
     val subRef = new AtomicReference[Subscription]()
+    val alive  = new AtomicBoolean(true)
     coll.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
       .subscribe(new Observer[ChangeStreamDocument[T]] {
         override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
@@ -132,12 +149,17 @@ class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadMode
             Option(change.getFullDocument)
               .foreach(d => try onUpsert(d) catch { case exception: Throwable => logger.warn(s"$label upsert-apply failed: ${exception.getMessage}") })
         }
-        override def onError(e: Throwable): Unit =
+        override def onError(e: Throwable): Unit = {
+          alive.set(false)
           logger.warn(s"$label change stream ended (${e.getMessage}) — relying on the periodic reload.")
-        override def onComplete(): Unit = ()
+        }
+        override def onComplete(): Unit = alive.set(false)
       })
     logger.info(s"MongoReadModelRepository: watching $label change stream.")
-    new AutoCloseable { override def close(): Unit = Option(subRef.get()).foreach(_.unsubscribe()) }
+    new StreamSubscription {
+      override def live: Boolean  = alive.get()
+      override def close(): Unit  = { alive.set(false); Option(subRef.get()).foreach(_.unsubscribe()) }
+    }
   }
 
   // Shared MongoClient owned by `MongoConnection`; this repository doesn't close it.

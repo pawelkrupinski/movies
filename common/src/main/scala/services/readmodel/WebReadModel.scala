@@ -14,8 +14,9 @@ import scala.util.Try
  * derived collections in memory — resolved movies by id, and screenings indexed
  * by city — and keeps them current from the `web_movies` / `web_screenings`
  * change streams (inserts/updates AND deletes, both of which those streams
- * deliver), with a periodic full reload as the backstop. The web never touches
- * the `movies` collection or a MovieRecord.
+ * deliver), with a periodic drift-checked reload as the backstop (a full reload
+ * only when a stream has died or a server-side count drifts — see `backstopTick`).
+ * The web never touches the `movies` collection or a MovieRecord.
  *
  * `lastModified` bumps on every applied change, so it's a *tight* cache-version
  * signal: it advances only when a resolved movie or a screening actually
@@ -95,19 +96,44 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
     ms.size
   }
 
+  private def liveScreeningCount: Int = byCity.values.asScala.iterator.map(_.size).sum
+
+  /** Periodic backstop tick. While both change streams are live they keep the
+   *  model current, so re-reading and re-decoding the whole corpus every tick is
+   *  wasted CPU on the single-vCPU serving box — and that decode burst is what
+   *  stalls a request that happens to land during it. So skip the reload when the
+   *  streams are live *and* the cheap server-side counts still match what we hold;
+   *  pay the O(corpus) reload only when a stream has died (full catch-up, the
+   *  original backstop behaviour) or a count has drifted (a delivered event we
+   *  failed to apply, or one missed by a silently-stalled stream). */
+  private[readmodel] def backstopTick(): Unit = {
+    val streamsLive = movieWatch.exists(_.live) && screeningWatch.exists(_.live)
+    if (!streamsLive) { reload(); return }
+    val dbMovies     = reader.countMovies()
+    val dbScreenings = reader.countScreenings()
+    val drifted =
+      dbMovies     < 0 || dbMovies     != movies.size.toLong ||
+      dbScreenings < 0 || dbScreenings != liveScreeningCount.toLong
+    if (drifted) {
+      logger.info(s"WebReadModel backstop: drift detected — reloading " +
+        s"(movies mem=${movies.size}/db=$dbMovies, screenings mem=$liveScreeningCount/db=$dbScreenings).")
+      reload()
+    }
+  }
+
   // ── Lifecycle ───────────────────────────────────────────────────────────────
 
   private val scheduler       = DaemonExecutors.scheduler("web-read-model")
   private val BackstopSeconds  = Env.positiveLong("KINOWO_READMODEL_RELOAD_SECONDS", 1800L)
-  @volatile private var movieWatch:     Option[AutoCloseable] = None
-  @volatile private var screeningWatch: Option[AutoCloseable] = None
+  @volatile private var movieWatch:     Option[StreamSubscription] = None
+  @volatile private var screeningWatch: Option[StreamSubscription] = None
 
   def start(): Unit = {
     reload()
     movieWatch     = reader.watchMovies(applyMovieUpsert, applyMovieDelete)
     screeningWatch = reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete)
     scheduler.scheduleAtFixedRate(
-      () => Try(reload()).recover { case exception => logger.warn(s"WebReadModel reload tick failed: ${exception.getMessage}") },
+      () => Try(backstopTick()).recover { case exception => logger.warn(s"WebReadModel backstop tick failed: ${exception.getMessage}") },
       BackstopSeconds, BackstopSeconds, TimeUnit.SECONDS)
     logger.info(s"WebReadModel started; backstop reload every ${BackstopSeconds}s; " +
       s"change-stream watches ${if (movieWatch.isDefined) "active" else "unavailable — backstop only"}.")
