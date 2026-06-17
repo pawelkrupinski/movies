@@ -100,19 +100,6 @@ struct ContentView: View {
                 .background(Color(.systemBackground).ignoresSafeArea(edges: .top))
 
                 content
-                    // Gradient FADE (a scrim, not a frost): the grid scrolling
-                    // up gently fades to the app-background over ~56pt as it
-                    // reaches the bar, so rows dissolve into the bar rather than
-                    // meeting a hard clip edge. Opaque at the bar's bottom edge
-                    // (top of the content), clear 56pt below.
-                    .overlay(alignment: .top) {
-                        LinearGradient(
-                            colors: [Color(.systemBackground), .clear],
-                            startPoint: .top, endPoint: .bottom
-                        )
-                        .frame(height: 56)
-                        .allowsHitTesting(false)
-                    }
             }
                 // Tap-to-dismiss: a transparent backdrop sits behind the
                 // grid content and only intercepts taps while the search
@@ -129,10 +116,10 @@ struct ContentView: View {
                 )
                 .ignoresSafeArea(edges: [.bottom, .horizontal])
                 .toolbar(.hidden, for: .navigationBar)
-                // No frost and no separate strip: the under-bar treatment is the
-                // gradient fade on the grid's top edge (see `content`). A true
-                // Settings-style *blur* (content gently blurred, not just
-                // dimmed) would need a variable-blur Metal shader (Variablur),
+                // No under-bar treatment: the grid meets the opaque app-background
+                // bar with a hard edge — no frost, no separate strip, no gradient
+                // fade. A true Settings-style *blur* (content gently blurred, not
+                // just dimmed) would need a variable-blur Metal shader (Variablur),
                 // which renders black in the Simulator and so can't be verified
                 // here without a device.
                 // Narrow screens float search at the bottom; wide screens

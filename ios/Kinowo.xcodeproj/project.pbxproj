@@ -62,6 +62,7 @@
 		DD00000000000000000204 /* PosterFullScreenUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000204 /* PosterFullScreenUITests.swift */; };
 		DD00000000000000000205 /* CardShareMenuUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000205 /* CardShareMenuUITests.swift */; };
 		DD00000000000000000305 /* RotationColumnsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000305 /* RotationColumnsUITests.swift */; };
+		DD00000000000000000306 /* NavbarFadeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000306 /* NavbarFadeUITests.swift */; };
 		DD0000000000000000001F /* AccessibilityIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001B /* AccessibilityIdentifiers.swift */; };
 
 		DD00000000000000000022 /* RetryBackoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000022 /* RetryBackoff.swift */; };
@@ -145,6 +146,7 @@
 		CC00000000000000000204 /* PosterFullScreenUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterFullScreenUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000205 /* CardShareMenuUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardShareMenuUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000305 /* RotationColumnsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RotationColumnsUITests.swift; sourceTree = "<group>"; };
+		CC00000000000000000306 /* NavbarFadeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavbarFadeUITests.swift; sourceTree = "<group>"; };
 
 		CC00000000000000000022 /* RetryBackoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetryBackoff.swift; sourceTree = "<group>"; };
 		CC00000000000000000044 /* SwipeHint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeHint.swift; sourceTree = "<group>"; };
@@ -319,6 +321,7 @@
 				CC00000000000000000204 /* PosterFullScreenUITests.swift */,
 				CC00000000000000000205 /* CardShareMenuUITests.swift */,
 				CC00000000000000000305 /* RotationColumnsUITests.swift */,
+				CC00000000000000000306 /* NavbarFadeUITests.swift */,
 			);
 			path = KinowoUITests;
 			sourceTree = "<group>";
@@ -487,6 +490,7 @@
 				DD00000000000000000204 /* PosterFullScreenUITests.swift in Sources */,
 				DD00000000000000000205 /* CardShareMenuUITests.swift in Sources */,
 				DD00000000000000000305 /* RotationColumnsUITests.swift in Sources */,
+				DD00000000000000000306 /* NavbarFadeUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
