@@ -164,59 +164,60 @@ test.describe('mobile portrait — floating search pill', () => {
   });
 
   test('the search box floats as a near-transparent, barely-blurred capsule low at the bottom', async ({ page }) => {
-    const m = await page.evaluate(() => {
+    const measurements = await page.evaluate(() => {
       const navbar = document.querySelector('.navbar')!.getBoundingClientRect();
       const pill   = document.querySelector('.navbar-search') as HTMLElement | null;
       const icon   = document.querySelector('.navbar-search .search-icon') as HTMLElement | null;
       const input  = document.querySelector('.navbar-search .search-input') as HTMLElement | null;
       if (!pill || !input) return null;
-      const cs = getComputedStyle(pill);
-      const ics = getComputedStyle(input);
-      const pr = pill.getBoundingClientRect();
-      const ir = icon ? icon.getBoundingClientRect() : null;
+      const pillStyle = getComputedStyle(pill);
+      const inputStyle = getComputedStyle(input);
+      const pillRect = pill.getBoundingClientRect();
+      const iconRect = icon ? icon.getBoundingClientRect() : null;
       return {
-        position:   cs.position,
-        radius:     parseFloat(cs.borderTopLeftRadius),
-        bg:         cs.backgroundColor,
-        backdrop:   cs.backdropFilter || (cs as unknown as Record<string, string>).webkitBackdropFilter || '',
-        inputBg:    ics.backgroundColor,
-        navBottom:  navbar.bottom,
-        pillTop:    pr.top,
-        pillBottom: pr.bottom,
-        vh:         window.innerHeight,
-        iconW:      ir ? ir.width : -1,
+        position:        pillStyle.position,
+        radius:          parseFloat(pillStyle.borderTopLeftRadius),
+        background:      pillStyle.backgroundColor,
+        backdrop:        pillStyle.backdropFilter || (pillStyle as unknown as Record<string, string>).webkitBackdropFilter || '',
+        inputBackground: inputStyle.backgroundColor,
+        navBottom:       navbar.bottom,
+        pillTop:         pillRect.top,
+        pillBottom:      pillRect.bottom,
+        viewportHeight:  window.innerHeight,
+        iconWidth:       iconRect ? iconRect.width : -1,
       };
     });
-    expect(m, 'floating search pill not rendered').not.toBeNull();
+    expect(measurements, 'floating search pill not rendered').not.toBeNull();
     // Floats out of the navbar flow…
-    expect(m!.position, 'search pill must be position:fixed').toBe('fixed');
+    expect(measurements!.position, 'search pill must be position:fixed').toBe('fixed');
     // …pinned LOW at the bottom of the viewport, below the navbar — hugging the
     // bottom edge (only a few px of gap below it).
-    expect(m!.pillTop, 'pill should sit below the navbar').toBeGreaterThan(m!.navBottom);
-    expect(m!.pillTop, 'pill should be in the lower half of the viewport').toBeGreaterThan(m!.vh / 2);
-    expect(m!.pillBottom, 'pill should not run off the bottom of the viewport').toBeLessThanOrEqual(m!.vh + 1);
+    expect(measurements!.pillTop, 'pill should sit below the navbar').toBeGreaterThan(measurements!.navBottom);
+    expect(measurements!.pillTop, 'pill should be in the lower half of the viewport').toBeGreaterThan(measurements!.viewportHeight / 2);
+    expect(measurements!.pillBottom, 'pill should not run off the bottom of the viewport').toBeLessThanOrEqual(measurements!.viewportHeight + 1);
     expect(
-      m!.vh - m!.pillBottom,
-      `pill should hug the bottom edge — gap below it is ${(m!.vh - m!.pillBottom).toFixed(1)}px`,
+      measurements!.viewportHeight - measurements!.pillBottom,
+      `pill should hug the bottom edge — gap below it is ${(measurements!.viewportHeight - measurements!.pillBottom).toFixed(1)}px`,
     ).toBeLessThanOrEqual(10);
     // Capsule shape.
-    expect(m!.radius, `pill border-radius ${m!.radius}px should be a capsule (≥20px)`).toBeGreaterThanOrEqual(20);
+    expect(measurements!.radius, `pill border-radius ${measurements!.radius}px should be a capsule (≥20px)`).toBeGreaterThanOrEqual(20);
     // Near-transparent glass: the pill's background alpha is very low (the grid
     // shows straight through) and the blur is just a whisper — not the heavy
-    // frosted look. The input itself is fully transparent (the pill IS the bg).
+    // frosted look. The input itself is fully transparent (the pill IS the
+    // background).
     const alpha = (color: string) => {
-      const m4 = color.match(/rgba?\(([^)]+)\)/);
-      if (!m4) return 1;
-      const parts = m4[1].split(',').map((s) => parseFloat(s));
+      const rgbaMatch = color.match(/rgba?\(([^)]+)\)/);
+      if (!rgbaMatch) return 1;
+      const parts = rgbaMatch[1].split(',').map((value) => parseFloat(value));
       return parts.length >= 4 ? parts[3] : 1;
     };
-    const blurPx = parseFloat((m!.backdrop.match(/blur\(([\d.]+)px\)/) || [])[1] ?? 'NaN');
-    expect(alpha(m!.bg), `pill background ${m!.bg} should be almost transparent (alpha < 0.3)`).toBeLessThan(0.3);
-    expect(blurPx, `pill backdrop blur "${m!.backdrop}" should be a whisper (≤ 6px)`).toBeLessThanOrEqual(6);
-    expect(blurPx, `pill should still carry a hint of blur, got "${m!.backdrop}"`).toBeGreaterThan(0);
-    expect(alpha(m!.inputBg), `input background ${m!.inputBg} should be transparent`).toBe(0);
+    const blurPx = parseFloat((measurements!.backdrop.match(/blur\(([\d.]+)px\)/) || [])[1] ?? 'NaN');
+    expect(alpha(measurements!.background), `pill background ${measurements!.background} should be almost transparent (alpha < 0.3)`).toBeLessThan(0.3);
+    expect(blurPx, `pill backdrop blur "${measurements!.backdrop}" should be a whisper (≤ 6px)`).toBeLessThanOrEqual(6);
+    expect(blurPx, `pill should still carry a hint of blur, got "${measurements!.backdrop}"`).toBeGreaterThan(0);
+    expect(alpha(measurements!.inputBackground), `input background ${measurements!.inputBackground} should be transparent`).toBe(0);
     // The magnifier glyph surfaces inside the pill.
-    expect(m!.iconW, 'search magnifier icon should be visible inside the pill').toBeGreaterThan(0);
+    expect(measurements!.iconWidth, 'search magnifier icon should be visible inside the pill').toBeGreaterThan(0);
   });
 });
 
@@ -243,34 +244,34 @@ test.describe('mobile portrait — active day-pill highlight hugs its text', () 
     // Activate the FIRST pill (Dziś) and measure its highlight's gap to the logo.
     await page.locator('.day-pill[data-day="today"]').click();
     const left = await page.evaluate(() => {
-      const p = document.querySelector('.day-pill.active') as HTMLElement;
-      const cs = getComputedStyle(p);
+      const activePill = document.querySelector('.day-pill.active') as HTMLElement;
+      const pillStyle = getComputedStyle(activePill);
       const logo = document.querySelector('.navbar-logo')!.getBoundingClientRect();
-      const b = p.getBoundingClientRect();
+      const pillRect = activePill.getBoundingClientRect();
       // background-clip:content-box paints the highlight inside the padding box.
-      return { clip: cs.backgroundClip, label: p.textContent,
-               hlGap: (b.left + parseFloat(cs.paddingLeft)) - logo.right };
+      return { clip: pillStyle.backgroundClip, label: activePill.textContent,
+               highlightGap: (pillRect.left + parseFloat(pillStyle.paddingLeft)) - logo.right };
     });
     // Activate the LAST pill (Wszystkie) and measure its highlight's gap to Filtry.
     await page.locator('.day-pill[data-day="anytime"]').click();
     const right = await page.evaluate(() => {
-      const p = document.querySelector('.day-pill.active') as HTMLElement;
-      const cs = getComputedStyle(p);
+      const activePill = document.querySelector('.day-pill.active') as HTMLElement;
+      const pillStyle = getComputedStyle(activePill);
       const filtry = document.querySelector('.navbar-filtry')!.getBoundingClientRect();
-      const b = p.getBoundingClientRect();
-      return { label: p.textContent,
-               hlGap: filtry.left - (b.right - parseFloat(cs.paddingRight)) };
+      const pillRect = activePill.getBoundingClientRect();
+      return { label: activePill.textContent,
+               highlightGap: filtry.left - (pillRect.right - parseFloat(pillStyle.paddingRight)) };
     });
     // The mechanism: the active pill's background is clipped to its content box.
     expect(left.clip, 'active day-pill highlight must be clipped to its content box').toBe('content-box');
     // Neither end pill's highlight is jammed against its neighbour (the old
     // cell-filling highlight sat ~3px from the edge; content-clipped is more)…
-    expect(left.hlGap, `"${left.label}" highlight gap to logo is ${left.hlGap.toFixed(1)}px`).toBeGreaterThanOrEqual(5);
-    expect(right.hlGap, `"${right.label}" highlight gap to Filtry is ${right.hlGap.toFixed(1)}px`).toBeGreaterThanOrEqual(5);
+    expect(left.highlightGap, `"${left.label}" highlight gap to logo is ${left.highlightGap.toFixed(1)}px`).toBeGreaterThanOrEqual(5);
+    expect(right.highlightGap, `"${right.label}" highlight gap to Filtry is ${right.highlightGap.toFixed(1)}px`).toBeGreaterThanOrEqual(5);
     // …and the two end gaps match (the row reads the same on both sides).
     expect(
-      Math.abs(left.hlGap - right.hlGap),
-      `left gap ${left.hlGap.toFixed(1)}px vs right gap ${right.hlGap.toFixed(1)}px — the day-pill row is lopsided`,
+      Math.abs(left.highlightGap - right.highlightGap),
+      `left gap ${left.highlightGap.toFixed(1)}px vs right gap ${right.highlightGap.toFixed(1)}px — the day-pill row is lopsided`,
     ).toBeLessThanOrEqual(6);
   });
 });
