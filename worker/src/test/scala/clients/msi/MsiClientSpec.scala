@@ -52,7 +52,12 @@ class MsiClientSpec
     // identical MSI month page — so the generic client reaches it off a base URL
     // too. Previously scraped from Filmweb, which had silently gone empty.
     ("Kino ODEON (Sochaczew)", "kino-odeon", "https://kinoodeon.eurobilet.pl",
-      KinoODEON, LocalDate.of(2026, 6, 8), "drzewo magii", LocalDateTime.of(2026, 6, 11, 10, 25))
+      KinoODEON, LocalDate.of(2026, 6, 8), "drzewo magii", LocalDateTime.of(2026, 6, 11, 10, 25)),
+    // Planet Cinema Oświęcim was previously scraped from Filmweb; its own MSI
+    // portal carries the full month (the fixtures live in the 08-06-2026 corpus,
+    // both months present, so today=2026-06-08 fetches June + July).
+    ("Planet Cinema Oświęcim", "08-06-2026", "https://oswiecim.planetcinema.pl",
+      KinoPlanetCinema, LocalDate.of(2026, 6, 8), "backrooms", LocalDateTime.of(2026, 6, 19, 18, 15))
   )
 
   forAll(venues) { (label, directory, baseUrl, cinema, today, titleSub, when) =>

@@ -425,6 +425,7 @@ cinemaScrapes:
   Kino Wawel / Backrooms. Bez wyjścia / —
   Kinoteka / Backrooms. Bez wyjścia / 2026
   Koneckie Centrum Kultury / Backrooms. Bez wyjścia / —
+  Planet Cinema / Backrooms. Bez wyjścia / —
   Regis / Backrooms. Bez wyjścia / —
   Wybrzeże / Backrooms bez wyjścia / —
 showings:
@@ -1366,7 +1367,6 @@ cinemaScrapes:
   Kinoteatr Rialto / Diabeł ubiera się u Prady 2 / —
   Kinoteatr Rondo / Diabeł ubiera się u Prady 2 / —
   Kinoteka / Diabeł ubiera się u Prady 2 / 2026
-  Planet Cinema / Diabeł ubiera się u Prady 2 / 2026
 showings:
   2026-06-08  Cinema City Kinepolis         16:30 Sala 6 2D/NAP · 18:40 Sala 16 2D/NAP · 19:10 Sala 6 2D/NAP · 21:50 Sala 6 2D/NAP · 21:50 Sala 13 2D/NAP
   2026-06-08  Cinema City Poznań Plaza      15:30 Sala 7 2D/NAP · 18:20 Sala 7 2D/NAP · 21:10 Sala 7 2D/NAP
@@ -1729,7 +1729,6 @@ cinemaScrapes:
   Patria / Drzewo magii / 2026
   Piast / DRZEWO MAGII / —
   Pionier / Drzewo magii / —
-  Planet Cinema / Drzewo magii / 2026
 showings:
   2026-06-08  Cinema City Kinepolis         12:00 Sala 13 2D/DUB · 16:00 Sala 1 2D/DUB · 18:40 Sala 8 2D/DUB
   2026-06-08  Cinema City Poznań Plaza      09:30 Sala 6 2D/DUB · 11:50 Sala 1 2D/DUB · 16:40 Sala 1 2D/DUB
@@ -1926,6 +1925,7 @@ cinemaScrapes:
   Kozienicki Dom Kultury / Dzień objawienia / —
   Muza / Dzień Objawienia / —
   Pionier / Dzień objawienia / —
+  Planet Cinema / Dzień objawienia / —
   Przedwiośnie / Dzień Objawienia / —
   Regis / Dzień objawienia / —
   Teatr Elektryczny / Dzień objawienia / —
@@ -3682,7 +3682,7 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Michael / 2026
   Kino Promień / Michael / —
   Kino Wisła / Michael / 2026
-  Planet Cinema / Michael / 2026
+  Planet Cinema / Michael / —
   Teatr Elektryczny / Michael / —
 showings:
   2026-06-08  Cinema City Kinepolis         16:40 Sala 18 2D/NAP · 19:30 Sala 18 2D/NAP · 20:10 Sala 9 2D/NAP
@@ -3840,6 +3840,7 @@ cinemaScrapes:
   Kino Pod Baranami / Milczenie owiec / —
   Kino Sfinks / MILCZENIE OWIEC / —
   OKF Iluzja / Milczenie owiec / —
+  Planet Cinema / Milczenie owiec / —
 showings:
   2026-06-12  Cinema City Poznań Plaza      19:00 Sala 7 2D/NAP
   2026-06-13  Cinema City Poznań Plaza      19:00 Sala 7 2D/NAP
@@ -4086,6 +4087,7 @@ cinemaScrapes:
   Kino Kawiarnia / Minionki i straszydła / —
   Kino MOK Centrum / MINIONKI I STRASZYDŁA / —
   Kino Scena Kultura / Minionki i straszydła / —
+  Planet Cinema / Minionki i straszydła / —
   Regis / Minionki i straszydła / —
   Wybrzeże / Minionki i straszydła / —
 showings:
@@ -4665,7 +4667,6 @@ cinemaScrapes:
   Mikro Bronowice / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Muza / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Piast / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS / —
-  Planet Cinema / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Służewski Dom Kultury / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Wybrzeże / Niesamowite przygody skarpetek 3. Ale kosmos / —
   Świt Zwoleń / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -5121,6 +5122,7 @@ cinemaScrapes:
   Kino Twierdza / Ojczyzna / —
   KinoGram / Ojczyzna / —
   Kinomax / Ojczyzna / —
+  Planet Cinema / Ojczyzna / —
   Regis / Ojczyzna / —
   Świt / Ojczyzna / —
 showings:
@@ -7272,7 +7274,7 @@ cinemaScrapes:
   Miejskie Centrum Kultury / Straszny film / —
   Piast / STRASZNY FILM / —
   Pionier / Straszny film / —
-  Planet Cinema / Straszny film / 2026
+  Planet Cinema / Straszny film / —
   Przedwiośnie / Straszny film / —
 showings:
   2026-06-08  Cinema City Kinepolis         12:50 Sala 11 2D/NAP · 14:10 Sala 14 2D/DUB · 15:10 Sala 11 2D/DUB · 16:30 Sala 14 2D/NAP · 17:30 Sala 11 2D/NAP · 18:50 Sala 14 2D/NAP · 19:50 Sala 11 2D/NAP · 21:10 Sala 14 2D/NAP
@@ -7572,6 +7574,7 @@ cinemaScrapes:
   Kino Kolory / Supergirl / —
   Kino PCKul / Supergirl / —
   Koneckie Centrum Kultury / Supergirl / —
+  Planet Cinema / Supergirl / —
   Świt Zwoleń / Supergirl / —
 showings:
   2026-06-26  Cinema City Kinepolis         10:30 Sala 12 2D/NAP · 11:00 Sala 14 2D/DUB · 11:30 Sala 11 2D/DUB · 13:00 Sala 12 2D/NAP · 13:30 Sala 14 2D/DUB · 14:00 Sala 11 2D/DUB · 15:30 Sala 12 2D/NAP · 16:00 Sala 14 2D/NAP · 16:30 Sala 11 2D/DUB · 17:00 Sala 4 3D/DUB · 18:00 Sala 12 2D/NAP · 18:30 Sala 14 2D/NAP · 19:00 Sala 11 2D/DUB · 20:30 Sala 12 2D/NAP · 21:00 Sala 14 2D/NAP
@@ -7925,7 +7928,7 @@ cinemaScrapes:
   Muza / Tom i Jerry: Przygoda w muzeum / —
   Piast / TOM I JERRY:PRZYGODA W MUZEUM / —
   Pionier / Tom i Jerry: Przygoda w muzeum / —
-  Planet Cinema / Tom i Jerry: Przygoda w muzeum / 2025
+  Planet Cinema / Tom i jerry: przygoda w muzeum / —
   Wybrzeże / Tom i jerry: przygoda w muzeum / —
 showings:
   2026-06-08  Cinema City Kinepolis         12:50 Sala 15 2D/DUB · 17:40 Sala 9 2D/DUB
@@ -8080,6 +8083,7 @@ cinemaScrapes:
   Muza / Toy Story 5 / —
   Na Starówce / Toy story 5 / —
   Pionier / Toy Story 5 / —
+  Planet Cinema / Toy story 5 / —
   Regis / Toy story 5 / —
   Teatr Elektryczny / Toy Story 5 / —
   Wybrzeże / Toy story 5 / —
@@ -8672,7 +8676,7 @@ cinemaScrapes:
   Kinomax / Władcy wszechświata / —
   Klaps / Władcy Wszechświata / —
   Max Kino / Władcy Wszechświata / 2026
-  Planet Cinema / Władcy Wszechświata / 2026
+  Planet Cinema / Władcy wszechświata / —
   Przedwiośnie / Władcy wszechświata / —
 showings:
   2026-06-08  Cinema City Kinepolis         14:00 Sala 10 2D/NAP · 15:20 Sala 15 2D/NAP · 17:00 Sala 10 2D/DUB · 18:20 Sala 15 2D/NAP · 20:00 Sala 10 2D/NAP · 21:20 Sala 15 2D/NAP
@@ -8937,7 +8941,6 @@ cinemaScrapes:
   Na Starówce / Zawodowcy / —
   Piast / ZAWODOWCY / —
   Pionier / Zawodowcy / —
-  Planet Cinema / Zawodowcy / 2026
   Teatr Elektryczny / Zawodowcy / —
   Teatr Ziemi Rybnickiej / Zawodowcy / 2025
   Wybrzeże / Zawodowcy / —

@@ -139,7 +139,11 @@ private[cinemas] object ScraperParse {
         captureTagWords(toks.last, dropped)
         toks = toks.dropRight(1)
       }
-      t = toks.mkString(" ").trim
+      // Some portals glue the format tag to the title with a separator and a
+      // space ("Straszny Film- 2D dubbing"): dropping "2D"/"dubbing" leaves a
+      // dangling "Film-". Trim a trailing separator so the variants collapse to
+      // the canonical title and merge across cinemas. Re-runs via the outer loop.
+      t = toks.mkString(" ").replaceAll("""\s*[-–—|/:]+\s*$""", "").trim
     }
     // Order the display tokens by where their word first appears in the raw
     // title (left-to-right), so "(2D NAPISY)" → List("2D","NAP") regardless of

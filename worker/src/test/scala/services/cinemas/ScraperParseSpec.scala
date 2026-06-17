@@ -75,6 +75,15 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.extractFormatTags("Film lektor")                shouldBe (("Film", List("LEK")))
   }
 
+  // Planet Cinema Oświęcim glues the separator to the LAST title word, then
+  // space-separates the format: "Straszny Film- 2D dubbing". Dropping the format
+  // words must not leave a dangling "Film-", or the dubbed/subtitled variants
+  // fragment into their own row instead of merging with the canonical title.
+  it should "trim a separator glued to the last title word (`Film- 2D dubbing`)" in {
+    ScraperParse.extractFormatTags("Straszny Film- 2D dubbing")      shouldBe (("Straszny Film", List("2D", "DUB")))
+    ScraperParse.extractFormatTags("Władcy Wszechświata- 2D napisy") shouldBe (("Władcy Wszechświata", List("2D", "NAP")))
+  }
+
   it should "strip non-version words (dolby, atmos) without emitting a token for them" in {
     ScraperParse.extractFormatTags("Dzień objawienia (2D NAPISY DOLBY ATMOS)") shouldBe
       (("Dzień objawienia", List("2D", "NAP")))

@@ -1,0 +1,2044 @@
+
+
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="version" content="1.8.70.0 | 07.05.2026 08:05:08">
+    <meta name="format-detection" content="telephone=no">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+             <link rel="stylesheet" href="/MSI/Themes/light/Styles/global.css?v=050526015232"/>
+
+             <link rel="stylesheet" href="/MSI/Themes/light/Vendors/Styles/font-awesome.min.css?v=033026114947"/>
+         <link rel="stylesheet" href="/MSI/Themes/light/Vendors/Styles/jquery.fancybox.min.css?v=033026114947"/>
+
+            <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery-3.7.1.min.js?v=033026114947"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/slick.min.js?v=033026114947"></script>
+
+             <script type="text/javascript" src="/MSI/Themes/light/Vendors/Scripts/handlebars.min-v4.7.7.js?v=033026114947"></script>
+         <script type="text/javascript" src="/MSI/Themes/light/Vendors/Scripts/jquery.fancybox.min.js?v=033026114947"></script>
+
+    <title>Planet Cinema Sp. z o.o. </title>
+
+    <script>
+        var hostUrl = '/MSI/';
+        var currentLanguage = 'pl';
+    </script>
+</head>
+
+<body>
+            <div id="preloader" class="preloader"></div>
+
+
+        <!-- Fixed navbar -->
+    <header class="navigation-bar">
+        <div class="position-fixed">
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-8 col-md-6 ">
+                        <a href="http://www.planetcinema.pl/oswiecim/" class="navigation-bar-logo">
+                            <img src="/MSI/Themes/light/images/logo.png" alt="Planet Cinema Sp. z o.o. " title="Planet Cinema Sp. z o.o. " class="navigation-bar-logo__image">
+                        </a>
+                    </div>
+                    <div class="col-4 col-md-6  navigation-bar-info justify-content-end">
+                        <app-header-menu class="order-12 order-lg-0">
+                            <nav class="navigation-bar-menu d-none d-lg-block">
+                                <ul>
+                                                                                                                                            </ul>
+                            </nav>
+                            <button class="navigation-bar-menu__button js-mobile-menu-open d-block d-lg-none">
+                                <svg-icon name="menu"></svg-icon>
+                            </button>
+                        </app-header-menu>
+                            <a href="/MSI/mvc/pl/Customer/Login?partnerMode=False" id="loginLink" class="navigation-bar-login" data-toggle="tooltip" data-original-title="Zaloguj" aria-label="Logowanie">
+        <span class="user fas fa-user-alt"></span>
+    </a>
+                        <a href="/MSI/ShoppingCart.aspx" class="navigation-bar-shop" data-toggle="tooltip" data-original-title="Wyświetl koszyk" aria-label="Koszyk">
+                            <div class="navigation-bar-shop__basket">
+                            </div>
+                                <span class="cart fas fa-shopping-cart"></span>
+                        </a>
+                        <div class="shopping_cart_preview">
+                        </div>
+                        <div class="navigation-bar-switches d-md-flex d-none">
+                            <button class="js-change-fontsize" data-toggle="tooltip" data-original-title="Zmień rozmiar czcionki" aria-label="Zmiana czcionki">
+                                <span class="fontSize fas fa-text-height"></span>
+                            </button>
+                            <button class="js-change-contrast" data-toggle="tooltip" data-original-title="Zmień kontrast" aria-label="Zmiana kontrastu">
+                                <span class="contrast fas fa-adjust"></span>
+                            </button>
+
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle" type="button" id="dropdownLanguage" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    pl
+                                </button>
+                                <div aria-labelledby="dropdownLanguage" class="dropdown-menu">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <menu class="navigation-mobile js-mobile-menu d-flex d-lg-none m-0 p-5 align-items-center">
+        <button class="position-absolute navigation-mobile--close js-mobile-menu-close">
+            <svg-icon name="filterXClose"></svg-icon>
+        </button>
+        <nav class="navigation-mobile-menu">
+            <ul>
+                    <li class="navigation-bar-menu__element navigation-bar-menu__element--active">
+                        <a href="http://www.planetcinema.pl/oswiecim/">
+                            <span>
+                                Zaplanuj wizytę
+                            </span>
+                        </a>
+                    </li>
+                
+
+            </ul>
+        </nav>
+        <div class="navigation-bar-switches mt-3 d-md-none d-flex row align-items-center justify-content-center text-center">
+            <div class="col-3 col-sm-2">
+                <button class="js-change-fontsize-mobile" data-toggle="tooltip" data-original-title="Zmień rozmiar czcionki">
+                    <span class="fontSize fas fa-text-height"></span>
+                </button>
+            </div>
+            <div class="col-3 col-sm-2">
+                <button class="js-change-contrast-mobile" data-toggle="tooltip" data-original-title="Zmień kontrast">
+                    <span class="contrast fas fa-adjust"></span>
+                </button>
+            </div>
+            <div class="col-3 col-sm-2">
+                <div class="dropdown">
+                    <button class="btn dropdown-toggle" type="button" id="dropdownLanguage" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        pl
+                    </button>
+
+                    <div aria-labelledby="dropdownLanguage" class="dropdown-menu">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </menu>
+    <div class="shopping-cart-expired-modal modal fade" id="shoppingCartExpiredModal" data-backdrop="static" data-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">
+                        <span class="fa fa-warning"></span>Zakończył się czas koszyka!
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div id="modalBody" class="modal-body">
+                    Czas na zrealizowanie zam&#243;wienia niestety dobiegł końca. Prosimy o ponowne wybranie bilet&#243;w i dodanie ich do koszyka.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="btnCloseModalCart" class="btn btn-warning" data-dismiss="modal">Zamknij</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        function closeShoppingCart() {
+            $(function () {
+                $.ajax({
+                    type: "POST",
+                    url: "../Ajax.aspx/CloseShoppingCart",
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (response) {
+                        var names = response.d;
+                        window.location.reload();
+                    },
+                    error: function (response) {
+                        window.location.reload();
+                    }
+                });
+            });
+        };
+
+        function handleToggleCheckboxState(checked) {
+            if (false) {
+                return;
+            }
+
+            if (checked && true) {
+                console.log('checked: window.location.href=' + window.location.href);
+                window.location.href = '/MSI/mvc/pl/Passes';
+            }
+            else if (!checked && false) {
+                console.log('unchecked: window.location.href=' + window.location.href);
+                window.location.href = '/MSI/';
+            }
+        }
+
+        const toggleCheckbox = document.getElementById('toggleCheckbox');
+        if (toggleCheckbox != null) {
+            toggleCheckbox.addEventListener('change', function () {
+                handleToggleCheckboxState(toggleCheckbox.checked);
+            });
+
+            handleToggleCheckboxState(toggleCheckbox.checked);
+        }
+
+    </script>
+
+
+    <div id="body">
+
+        <input type="hidden" id="randomWindowName" value="24cd9c2ab86f4aa19de1b80ee117cf42" />
+        <input type="hidden" id="isNewSessionWindowName" value="True" />
+        <input type="hidden" id="sessionWindowName" value="24cd9c2ab86f4aa19de1b80ee117cf42" />
+        <input type="hidden" id="absoluteHomeUrl" value="/MSI/" />
+
+        <div class="row">
+
+
+        </div>
+
+        
+
+<div class="row">
+    <div class="col-sm-12 no-gutter padding-0">
+        
+    <div class="movies-filters">
+        <div class="container movies-filters__bar">
+            <div class="row align-items-stretch">
+                <div class="col-xl-9 col-lg-9 col-9 col-md-9 js-slider-dates">
+                    <div class="container movies-filters__dates">
+                        <ul class="movies-filters__dates__list row flex-nowrap w-100">
+                                    <li class="js-filters-dates__27.06.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-06-27&amp;datestart=0" class="">
+                                                <div>
+                                                    <span class="d-none d-lg-inline daynumbertop ">sobota</span>
+                                                </div>
+                                                <div>
+                                                    <span class="daynumber ">27</span>
+                                                    <sup class="sup " style="top: 0 !important">cze</sup>
+                                                </div>
+                                            <div>
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__28.06.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-06-28&amp;datestart=0" class="">
+                                                <div>
+                                                    <span class="d-none d-lg-inline daynumbertop ">niedziela</span>
+                                                </div>
+                                                <div>
+                                                    <span class="daynumber ">28</span>
+                                                    <sup class="sup " style="top: 0 !important">cze</sup>
+                                                </div>
+                                            <div>
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__29.06.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-06-29&amp;datestart=0" class="">
+                                                <div>
+                                                    <span class="d-none d-lg-inline daynumbertop ">poniedziałek</span>
+                                                </div>
+                                                <div>
+                                                    <span class="daynumber ">29</span>
+                                                    <sup class="sup " style="top: 0 !important">cze</sup>
+                                                </div>
+                                            <div>
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__01.07.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-07-01&amp;datestart=0" class=" active">
+                                                <div>
+                                                    <span class="d-none d-lg-inline daynumbertop  active">środa</span>
+                                                </div>
+                                                <div>
+                                                    <span class="daynumber  active">01</span>
+                                                    <sup class="sup  active" style="top: 0 !important">lip</sup>
+                                                </div>
+                                            <div>
+                                                <span class="d-none d-lg-inline yearnumber  active">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__02.07.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-07-02&amp;datestart=0" class="">
+                                                <div>
+                                                    <span class="d-none d-lg-inline daynumbertop ">czwartek</span>
+                                                </div>
+                                                <div>
+                                                    <span class="daynumber ">02</span>
+                                                    <sup class="sup " style="top: 0 !important">lip</sup>
+                                                </div>
+                                            <div>
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__03.07.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-07-03&amp;datestart=0" class="">
+                                                <div>
+                                                    <span class="d-none d-lg-inline daynumbertop ">piątek</span>
+                                                </div>
+                                                <div>
+                                                    <span class="daynumber ">03</span>
+                                                    <sup class="sup " style="top: 0 !important">lip</sup>
+                                                </div>
+                                            <div>
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__10.07.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-07-10&amp;datestart=0" class="">
+                                                <div>
+                                                    <span class="d-none d-lg-inline daynumbertop ">piątek</span>
+                                                </div>
+                                                <div>
+                                                    <span class="daynumber ">10</span>
+                                                    <sup class="sup " style="top: 0 !important">lip</sup>
+                                                </div>
+                                            <div>
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-lg-3 col-3 col-md-3">
+                    <div class="d-flex align-items-stretch justify-content-end movies-filters__buttons">
+                            <div class="">
+                                <div class="movies-filters__calendar" id="datePickerMovieFilters">
+                                    <button class="movies-filters__button justify-content-start justify-content-md-center pr-lg-3 js-calendar-button" data-target="#datePickerMovieFilters" data-toggle="datetimepicker">
+                                        <span class="fas fa-calendar-alt mr-1"></span>
+                                        <span class="d-none d-lg-block movies-filters__button__label">KALENDARZ</span>
+                                    </button>
+                                </div>
+                            </div>
+                        <div class="movies-filters__filters">
+                            <button class="movies-filters__button justify-content-start justify-content-md-center pr-lg-3 js-filters-button">
+                                <span class="fas fa-filter mr-1"></span>
+                                <span class="d-none d-lg-block">Filtry</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container-max-width">
+        <div class="position-relative">
+<div class="movies-filters--opened position-absolute w-100">
+    <div class="row">
+        <div class="container">
+            <div class="col-12 position-relative flex-wrap js-filters d-none">
+                <button class="position-absolute movies-filters--close offset-11 mt-3 mt-md-5 js-filters-close" style="z-index:300;">
+                    <svg-icon name="filterXClose"></svg-icon>
+                </button>
+                    <div class="p-3 col-12 col-md-6 col-lg-4 col-xl-3 p-md-5  categories filter-container">
+                        <p><strong> Darmowe/Płatne:</strong></p>
+                        <ul>
+                                <li>
+                                    <button class="js-filter row w-100 js-filter-selection"  filter-type="free-event-filter" filter-value="1" filter-name="Darmowe">
+                                            <svg-icon name="filterDot" class=""></svg-icon>Darmowe
+                                    </button>
+                                </li>
+                                <li>
+                                    <button class="js-filter row w-100 js-filter-selection"  filter-type="free-event-filter" filter-value="0" filter-name="Płatne">
+                                            <svg-icon name="filterDot" class=""></svg-icon>Płatne
+                                    </button>
+                                </li>
+                        </ul>
+                    </div>
+                <div class="p-3 p-md-5 col-12 col-md-6 col-lg-4 col-xl-3 categories filter-container">
+
+                    <p><strong>Lokalizacja: </strong></p>
+                    <ul>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=localization-group-filter filter-type="localization-group-filter" filter-value="1" filter-name="Cinema Planet">
+                                        <svg-icon name="filterDot" class=""></svg-icon>
+                                        Cinema Planet
+                                </button>
+                            </li>
+                    </ul>
+                </div>
+                <div class="p-3 p-md-5 col-12 col-md-6 col-lg-4 col-xl-3 categories filter-container">
+
+                    <p><strong> Podkategoria: </strong></p>
+                    <ul>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="4" filter-name="Horror">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    Horror
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="2" filter-name="Dramat">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    Dramat
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="5" filter-name="Science-fiction">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    Science-fiction
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="19" filter-name="Biograficzny">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    Biograficzny
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="7" filter-name="Animowany">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    Animowany
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="1" filter-name="Akcja">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    Akcja
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="9" filter-name="Przygodowy">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    Przygodowy
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="3" filter-name="Komedia">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    Komedia
+                                </button>
+                            </li>
+                    </ul>
+                </div>
+                <div class="p-3 p-md-5 col-12 col-md-6 col-lg-4 col-xl-3 categories filter-container">
+
+                    <p><strong>Odbiorca</strong></p>
+                    <ul>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=age-group-filter filter-type="age-group-filter" filter-value="10" filter-name="bez ograniczeń">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    bez ograniczeń
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=age-group-filter filter-type="age-group-filter" filter-value="8" filter-name="15">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    15
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=age-group-filter filter-type="age-group-filter" filter-value="14" filter-name="13">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    13
+                                </button>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+        </div>
+        <div class="movies-selected">
+            <div class="container">
+                <div class="row">
+                    <div class="col-12 movies-selected__filters">
+                        <ul class="js-filters-selected">
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <template id="js-filters-selected-template">
+            <li>
+                <button>
+                    <span>{{name}}</span>
+                    <svg-icon name="filterX"></svg-icon>
+                </button>
+            </li>
+        </template>
+
+    </div>
+
+    </div>
+</div>
+<div class="repertoire main-container container-max-width">
+    <div class="wrapper">
+        <div class="container" style="display:flex; flex-direction:column;">
+            <div class="float-right">
+                
+        <div class="dropdown sorting-buttons float-right btn">
+            <button class="btn dropdown-toggle event-sort-btn" type="button" id="dropdownSort" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-exchange-alt fa-rotate-90">  </i>
+                Sortuj
+            </button>
+
+            <div class="dropdown-menu dropdown-menu-sort" aria-labelledby="dropdownMenuButton">
+                    <a href="?sort=Name&amp;date=2026-06-24&amp;datestart=0"
+                       class="dropdown-item"
+                       style="font-size: 1rem"
+                       data-toggle="tooltip"
+                       data-original-title="Tytuły rosnąco">
+                        Tytuły rosnąco
+                    </a>
+                    <a href="?sort=NameDesc&amp;date=2026-06-24&amp;datestart=0"
+                       class="dropdown-item"
+                       style="font-size: 1rem"
+                       data-toggle="tooltip"
+                       data-original-title="Tytuły malejąco">
+                        Tytuły malejąco
+                    </a>
+                    <a href="?sort=Date&amp;date=2026-06-24&amp;datestart=0"
+                       class="dropdown-item"
+                       style="font-size: 1rem"
+                       data-toggle="tooltip"
+                       data-original-title="Data/godzina">
+                        Data/godzina
+                    </a>
+            </div>
+        </div>
+
+            </div>
+
+
+
+    <div class="col-10">
+        <div class="row">
+            <div class="col-10">
+                <h2 class="movie-section">lipiec 2026</h2>
+            </div>
+        </div>
+    </div>
+
+<div class="movie-list">
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <img onclick="showEventDetails('3550')" src="/MSI/ImageData.ashx?id=1761&mode=thumb" alt="Backrooms. Bez wyjścia">
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h2 class="movies-movie__single__title" title="Backrooms. Bez wyjścia">Backrooms. Bez wyjścia</h2>
+                    <ul class="movies-movie__single__moreinfo">
+                            <li>wersja:  NAP  </li>
+                        <li>czas: 120 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button class="more js-more-info">
+                            <span class="more-text-more" onclick="showEventDetails('3550')">Więcej <i class="fas fa-caret-right"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3550)" event-filter="119098" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119098&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119098" class="js-link-popup js-repo-popup" data-event="119098" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 15:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3550)" event-filter="119108" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119108&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119108" class="js-link-popup js-repo-popup" data-event="119108" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 20:45    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3550)" event-filter="119116" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119116&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119116" class="js-link-popup js-repo-popup" data-event="119116" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 15:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3550)" event-filter="119126" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119126&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119126" class="js-link-popup js-repo-popup" data-event="119126" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 20:45    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3550">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwacja
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3550)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119098&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119098" class="js-link-popup js-repo-popup" data-event="119098" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 15:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3550)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119108&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119108" class="js-link-popup js-repo-popup" data-event="119108" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 20:45    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3550)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119116&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119116" class="js-link-popup js-repo-popup" data-event="119116" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 15:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3550)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119126&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119126" class="js-link-popup js-repo-popup" data-event="119126" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 20:45    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3550">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwacja
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <img onclick="showEventDetails('3583')" src="/MSI/Themes/light/images/placeholder-kino.png" alt="Drugie Życie- Kino dla Senior&#243;w">
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h2 class="movies-movie__single__title" title="Drugie Życie- Kino dla Senior&#243;w">Drugie Życie- Kino dla Senior&#243;w</h2>
+                    <ul class="movies-movie__single__moreinfo">
+                            <li>wersja:  NAP  </li>
+                        <li>czas: 150 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button class="more js-more-info">
+                            <span class="more-text-more" onclick="showEventDetails('3583')">Więcej <i class="fas fa-caret-right"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3583)" event-filter="119070" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119070&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119070" class="js-link-popup js-repo-popup" data-event="119070" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;197&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+15 lip 10:30    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3583">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwacja
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3583)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119070&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119070" class="js-link-popup js-repo-popup" data-event="119070" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;197&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+15 lip 10:30    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3583">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwacja
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <img onclick="showEventDetails('3562')" src="/MSI/ImageData.ashx?id=1770&mode=thumb" alt="Dzień objawienia">
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h2 class="movies-movie__single__title" title="Dzień objawienia">Dzień objawienia</h2>
+                    <ul class="movies-movie__single__moreinfo">
+                            <li>wersja:  NAP  </li>
+                        <li>czas: 160 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button class="more js-more-info">
+                            <span class="more-text-more" onclick="showEventDetails('3562')">Więcej <i class="fas fa-caret-right"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3562)" event-filter="119107" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119107&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119107" class="js-link-popup js-repo-popup" data-event="119107" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;144&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;144&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 20:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3562)" event-filter="119125" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119125&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119125" class="js-link-popup js-repo-popup" data-event="119125" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;144&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;144&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 20:30    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3562">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwacja
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3562)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119107&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119107" class="js-link-popup js-repo-popup" data-event="119107" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;144&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;144&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 20:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3562)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119125&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119125" class="js-link-popup js-repo-popup" data-event="119125" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;144&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;144&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 20:30    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3562">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwacja
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <img onclick="showEventDetails('3526')" src="/MSI/ImageData.ashx?id=1740&mode=thumb" alt="Michael">
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h2 class="movies-movie__single__title" title="Michael">Michael</h2>
+                    <ul class="movies-movie__single__moreinfo">
+                            <li>wersja:  NAP  </li>
+                        <li>czas: 142 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button class="more js-more-info">
+                            <span class="more-text-more" onclick="showEventDetails('3526')">Więcej <i class="fas fa-caret-right"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3526)" event-filter="119094" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119094&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119094" class="js-link-popup js-repo-popup" data-event="119094" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 12:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3526)" event-filter="119112" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119112&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119112" class="js-link-popup js-repo-popup" data-event="119112" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 12:30    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3526">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwacja
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3526)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119094&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119094" class="js-link-popup js-repo-popup" data-event="119094" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 12:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3526)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119112&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119112" class="js-link-popup js-repo-popup" data-event="119112" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 12:30    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3526">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwacja
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <img onclick="showEventDetails('3572')" src="/MSI/ImageData.ashx?id=1778&mode=thumb" alt="Minionki i straszydła">
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h2 class="movies-movie__single__title" title="Minionki i straszydła">Minionki i straszydła</h2>
+                    <ul class="movies-movie__single__moreinfo">
+                            <br>
+                        <li>czas: 97 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button class="more js-more-info">
+                            <span class="more-text-more" onclick="showEventDetails('3572')">Więcej <i class="fas fa-caret-right"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3572)" event-filter="118691" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=118691&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 118691" class="js-link-popup js-repo-popup" data-event="118691" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;194&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+03 lip 10:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3572)" event-filter="118692" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=118692&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 118692" class="js-link-popup js-repo-popup" data-event="118692" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;194&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+10 lip 10:00    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3572">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwacja
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3572)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=118691&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 118691" class="js-link-popup js-repo-popup" data-event="118691" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;194&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+03 lip 10:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3572)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=118692&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 118692" class="js-link-popup js-repo-popup" data-event="118692" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;194&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+10 lip 10:00    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3572">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwacja
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <img onclick="showEventDetails('3580')" src="/MSI/ImageData.ashx?id=1785&mode=thumb" alt="Ojczyzna">
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h2 class="movies-movie__single__title" title="Ojczyzna">Ojczyzna</h2>
+                    <ul class="movies-movie__single__moreinfo">
+                            <li>wersja:  NAP  </li>
+                        <li>czas: 93 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button class="more js-more-info">
+                            <span class="more-text-more" onclick="showEventDetails('3580')">Więcej <i class="fas fa-caret-right"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3580)" event-filter="119105" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119105&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119105" class="js-link-popup js-repo-popup" data-event="119105" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 19:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3580)" event-filter="119123" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119123&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119123" class="js-link-popup js-repo-popup" data-event="119123" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 19:10    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3580">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwacja
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3580)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119105&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119105" class="js-link-popup js-repo-popup" data-event="119105" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 19:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3580)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119123&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119123" class="js-link-popup js-repo-popup" data-event="119123" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 19:10    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3580">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwacja
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <img onclick="showEventDetails('3574')" src="/MSI/ImageData.ashx?id=1779&mode=thumb" alt="Robin Hood: Koniec Legendy">
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h2 class="movies-movie__single__title" title="Robin Hood: Koniec Legendy">Robin Hood: Koniec Legendy</h2>
+                    <ul class="movies-movie__single__moreinfo">
+                            <li>wersja:  NAP  </li>
+                        <li>czas: 135 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button class="more js-more-info">
+                            <span class="more-text-more" onclick="showEventDetails('3574')">Więcej <i class="fas fa-caret-right"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3574)" event-filter="119095" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119095&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119095" class="js-link-popup js-repo-popup" data-event="119095" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;144&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;144&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 13:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3574)" event-filter="119099" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119099&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119099" class="js-link-popup js-repo-popup" data-event="119099" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;144&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;144&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 16:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3574)" event-filter="119113" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119113&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119113" class="js-link-popup js-repo-popup" data-event="119113" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;144&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;144&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 13:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3574)" event-filter="119117" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119117&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119117" class="js-link-popup js-repo-popup" data-event="119117" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;144&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;144&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 16:00    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3574">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwacja
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3574)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119095&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119095" class="js-link-popup js-repo-popup" data-event="119095" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;144&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;144&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 13:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3574)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119099&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119099" class="js-link-popup js-repo-popup" data-event="119099" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;144&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;144&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 16:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3574)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119113&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119113" class="js-link-popup js-repo-popup" data-event="119113" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;144&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;144&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 13:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3574)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119117&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119117" class="js-link-popup js-repo-popup" data-event="119117" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;144&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;144&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 16:00    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3574">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwacja
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <img onclick="showEventDetails('3560')" src="/MSI/ImageData.ashx?id=1768&mode=thumb" alt="Straszny Film- 2D napisy">
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h2 class="movies-movie__single__title" title="Straszny Film- 2D napisy">Straszny Film- 2D napisy</h2>
+                    <ul class="movies-movie__single__moreinfo">
+                            <li>wersja:  NAP  </li>
+                        <li>czas: 100 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button class="more js-more-info">
+                            <span class="more-text-more" onclick="showEventDetails('3560')">Więcej <i class="fas fa-caret-right"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3560)" event-filter="119109" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119109&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119109" class="js-link-popup js-repo-popup" data-event="119109" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 21:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3560)" event-filter="119127" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119127&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119127" class="js-link-popup js-repo-popup" data-event="119127" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 21:00    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3560">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwacja
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3560)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119109&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119109" class="js-link-popup js-repo-popup" data-event="119109" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 21:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3560)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119127&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119127" class="js-link-popup js-repo-popup" data-event="119127" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 21:00    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3560">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwacja
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <img onclick="showEventDetails('3569')" src="/MSI/ImageData.ashx?id=1775&mode=thumb" alt="Supergirl - 2D dubbing">
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h2 class="movies-movie__single__title" title="Supergirl - 2D dubbing">Supergirl - 2D dubbing</h2>
+                    <ul class="movies-movie__single__moreinfo">
+                            <li>wersja:  DUB  </li>
+                        <li>czas: 122 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button class="more js-more-info">
+                            <span class="more-text-more" onclick="showEventDetails('3569')">Więcej <i class="fas fa-caret-right"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3569)" event-filter="119101" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119101&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119101" class="js-link-popup js-repo-popup" data-event="119101" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 16:15    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3569)" event-filter="119119" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119119&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119119" class="js-link-popup js-repo-popup" data-event="119119" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 16:15    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3569">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwacja
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3569)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119101&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119101" class="js-link-popup js-repo-popup" data-event="119101" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 16:15    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3569)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119119&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119119" class="js-link-popup js-repo-popup" data-event="119119" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 16:15    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3569">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwacja
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <img onclick="showEventDetails('3568')" src="/MSI/ImageData.ashx?id=1774&mode=thumb" alt="Supergirl - 2D napisy">
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h2 class="movies-movie__single__title" title="Supergirl - 2D napisy">Supergirl - 2D napisy</h2>
+                    <ul class="movies-movie__single__moreinfo">
+                            <li>wersja:  NAP  </li>
+                        <li>czas: 122 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button class="more js-more-info">
+                            <span class="more-text-more" onclick="showEventDetails('3568')">Więcej <i class="fas fa-caret-right"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3568)" event-filter="119106" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119106&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119106" class="js-link-popup js-repo-popup" data-event="119106" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 20:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3568)" event-filter="119124" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119124&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119124" class="js-link-popup js-repo-popup" data-event="119124" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 20:30    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3568">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwacja
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3568)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119106&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119106" class="js-link-popup js-repo-popup" data-event="119106" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 20:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3568)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119124&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119124" class="js-link-popup js-repo-popup" data-event="119124" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 20:30    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3568">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwacja
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <img onclick="showEventDetails('3570')" src="/MSI/ImageData.ashx?id=1776&mode=thumb" alt="Supergirl - 3D dubbing">
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h2 class="movies-movie__single__title" title="Supergirl - 3D dubbing">Supergirl - 3D dubbing</h2>
+                    <ul class="movies-movie__single__moreinfo">
+                            <li>wersja:  DUB  </li>
+                        <li>czas: 122 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button class="more js-more-info">
+                            <span class="more-text-more" onclick="showEventDetails('3570')">Więcej <i class="fas fa-caret-right"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3570)" event-filter="119096" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119096&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119096" class="js-link-popup js-repo-popup" data-event="119096" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 14:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3570)" event-filter="119104" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119104&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119104" class="js-link-popup js-repo-popup" data-event="119104" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 18:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3570)" event-filter="119114" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119114&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119114" class="js-link-popup js-repo-popup" data-event="119114" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 14:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3570)" event-filter="119122" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119122&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119122" class="js-link-popup js-repo-popup" data-event="119122" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 18:30    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3570">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwacja
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3570)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119096&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119096" class="js-link-popup js-repo-popup" data-event="119096" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 14:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3570)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119104&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119104" class="js-link-popup js-repo-popup" data-event="119104" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 18:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3570)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119114&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119114" class="js-link-popup js-repo-popup" data-event="119114" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 14:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3570)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119122&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119122" class="js-link-popup js-repo-popup" data-event="119122" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 18:30    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3570">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwacja
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <img onclick="showEventDetails('3539')" src="/MSI/ImageData.ashx?id=1753&mode=thumb" alt="Tom i Jerry: Przygoda w muzeum">
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h2 class="movies-movie__single__title" title="Tom i Jerry: Przygoda w muzeum">Tom i Jerry: Przygoda w muzeum</h2>
+                    <ul class="movies-movie__single__moreinfo">
+                            <li>wersja:  DUB  </li>
+                        <li>czas: 115 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button class="more js-more-info">
+                            <span class="more-text-more" onclick="showEventDetails('3539')">Więcej <i class="fas fa-caret-right"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3539)" event-filter="119093" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119093&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119093" class="js-link-popup js-repo-popup" data-event="119093" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 12:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3539)" event-filter="119111" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119111&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119111" class="js-link-popup js-repo-popup" data-event="119111" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 12:00    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3539">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwacja
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3539)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119093&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119093" class="js-link-popup js-repo-popup" data-event="119093" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 12:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3539)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119111&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119111" class="js-link-popup js-repo-popup" data-event="119111" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;141&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;141&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 12:00    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3539">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwacja
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <img onclick="showEventDetails('3554')" src="/MSI/ImageData.ashx?id=1766&mode=thumb" alt="Toy Story 5- 2D dubbing">
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h2 class="movies-movie__single__title" title="Toy Story 5- 2D dubbing">Toy Story 5- 2D dubbing</h2>
+                    <ul class="movies-movie__single__moreinfo">
+                            <li>wersja:  DUB  </li>
+                        <li>czas: 115 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button class="more js-more-info">
+                            <span class="more-text-more" onclick="showEventDetails('3554')">Więcej <i class="fas fa-caret-right"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3554)" event-filter="119092" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119092&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119092" class="js-link-popup js-repo-popup" data-event="119092" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 12:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3554)" event-filter="119097" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119097&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119097" class="js-link-popup js-repo-popup" data-event="119097" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 14:05    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3554)" event-filter="119100" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119100&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119100" class="js-link-popup js-repo-popup" data-event="119100" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 16:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3554)" event-filter="119102" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119102&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119102" class="js-link-popup js-repo-popup" data-event="119102" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 17:05    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3554)" event-filter="119103" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119103&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119103" class="js-link-popup js-repo-popup" data-event="119103" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 18:15    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3554)" event-filter="119110" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119110&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119110" class="js-link-popup js-repo-popup" data-event="119110" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 12:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3554)" event-filter="119115" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119115&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119115" class="js-link-popup js-repo-popup" data-event="119115" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 14:05    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3554)" event-filter="119118" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119118&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119118" class="js-link-popup js-repo-popup" data-event="119118" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 16:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3554)" event-filter="119120" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119120&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119120" class="js-link-popup js-repo-popup" data-event="119120" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 17:05    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3554)" event-filter="119121" class="js-event-filter " )">
+                                                        <a href="/MSI/Default.aspx?event_id=119121&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119121" class="js-link-popup js-repo-popup" data-event="119121" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 18:15    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3554">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwacja
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3554)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119092&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119092" class="js-link-popup js-repo-popup" data-event="119092" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 12:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3554)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119097&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119097" class="js-link-popup js-repo-popup" data-event="119097" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 14:05    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3554)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119100&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119100" class="js-link-popup js-repo-popup" data-event="119100" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 16:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3554)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119102&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119102" class="js-link-popup js-repo-popup" data-event="119102" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 17:05    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3554)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119103&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119103" class="js-link-popup js-repo-popup" data-event="119103" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+01 lip 18:15    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3554)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119110&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119110" class="js-link-popup js-repo-popup" data-event="119110" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 12:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3554)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119115&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119115" class="js-link-popup js-repo-popup" data-event="119115" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 14:05    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3554)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119118&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119118" class="js-link-popup js-repo-popup" data-event="119118" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 16:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3554)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119120&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119120" class="js-link-popup js-repo-popup" data-event="119120" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;143&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;143&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 17:05    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3554)" )">
+                                                        <a href="/MSI/Default.aspx?event_id=119121&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07" id="EventLH 119121" class="js-link-popup js-repo-popup" data-event="119121" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;216&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;216&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet.">
+
+02 lip 18:15    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3554">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwacja
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>
+
+
+            <div class="modal fade" id="eventDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered event-details">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div id="modalBody" class="modal-body">
+                <div class="container">
+                    <div class="row">
+                        <div class="poster col-12 col-md-4 col-lg-3 mb-3 mb-md-0">
+                            <div class="modalEventPoster text-center">
+                                <img id="modalEventPoster" src="" alt="" />
+                            </div>
+                            <p class="modalEventYtLink mt-3 mb-0 font-weight-bold text-uppercase d-flex justify-content-center align-items-center">
+                                <a id="modalEventYtLink" class="d-flex justify-content-center align-items-center" href="" target="_blank">
+                                    <span>Zobacz zwiastun:</span>
+                                    <i class="fa fa-play-circle ml-2"></i>
+                                </a>
+                            </p>
+                        </div>
+                        <div class="details col-12 col-md-8 col-lg-9">
+                            <h5 id="modalEventTitle" class="modal-title modalEventTitle"></h5>
+                            <div class="row mt-3 mb-4">
+                                <div class="modalEventPremiere col-12 col-md-6 mb-2 mb-md-0 d-flex align-items-center">
+                                    <div>
+                                        <i class="fa fa-calendar-alt"></i>
+                                    </div>
+                                    <div class="pl-2 font-weight-bold">
+                                        <p class="text-uppercase m-0">Data premiery:</p>
+                                        <p id="modalEventPremiere" class="m-0"></p>
+                                    </div>
+                                </div>
+                                <div class="modalEventLength col-12 col-md-6 d-flex align-items-center">
+                                    <div>
+                                        <i class="fa fa-clock"></i>
+                                    </div>
+                                    <div class="pl-2 font-weight-bold">
+                                        <p class="text-uppercase m-0">Czas trwania:</p>
+                                        <p id="modalEventLength" class="m-0"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="modalEventDescription"><span id="modalEventDescription"></span></p>
+                            <p class="modalEventType mb-0">Gatunek: <strong id="modalEventType"></strong></p>
+                            <p class="modalEventAgeCategory mb-0">Ograniczenia wiekowe: <span id="modalEventAgeCategory"></span></p>
+                            <p class="modalEventAdditionalInfo mb-0">Wersja: <span id="modalEventAdditionalInfo"></span></p>
+                            <p class="modalEventWwwLink mb-0">Strona www: <strong><a id="modalEventWwwLink" href="" target="_blank"></a></strong></p>
+                            <div class="col-xs-12 event-gallery-background" id="modalEventImageGallery">
+                                <h2 class=""><span class="fa fa-camera"></span> Galeria</h2>
+                                <div id="modalEventImageGalleryItems" style="display: flex; flex-wrap: wrap;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" data-dismiss="modal">Zamknij</button>
+            </div>
+        </div>
+    </div>
+</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        localStorage.removeItem('carouselIndex');
+    });
+</script>
+
+        <div class="row">
+        </div>
+    </div>
+
+    
+        <footer class="footer">
+            <div class="container">
+                <div class="row">
+                    <div class="col-12 col-md-4 col-lg-4 col-xl-4">
+                        <section id="cms" class="hidden">
+                            <h3 id="cmstitle" class="text-uppercase"></h3>
+                            <ul id="onas"></ul>
+                        </section>
+                    </div>
+                    <div class="col-12 col-md-4 col-lg-4 col-xl-4 offset-xl-12">
+                        <h3>Kontakt</h3>
+                        <ul>
+                                <li>
+                                    <span class="fa fa-phone text-color"></span>
+                                    Rezerwacja: +48 501 435 671
+                                </li>
+                                                            <li>
+                                    <span class="fa fa-phone text-color"></span>
+                                    Biuro kina: +48 501 435 463
+                                </li>
+                                                                                        <li>
+                                    <span class="fa fa-envelope text-color"></span>
+                                    <span class="word-wrap" style="word-wrap: break-word;"><a href="mailto:biuro@planet-cinema.pl">biuro@planet-cinema.pl</a></span>
+                                </li>
+                                                            <li class="get-ticket">
+                                    <a class="text-uppercase"><span class="fas fa-ticket-alt"/><a href="/MSI/mvc/pl/GetTicket">Pobierz swoje bilety</a></a>
+                                </li>
+                        </ul>
+                    </div>
+                    <div class="col-12 col-md-4 col-lg-3 col-xl-4 offset-xl-13">
+                        <ul class="footer__social">
+                                <li>
+                                    <a target="_blank" href="https://www.facebook.com/PlanetCinema?fref=ts" title="facebook" class="fab fa-facebook-square fa-2x text-color"></a>
+                                </li>
+                                                                                                                                                                    </ul>
+                        <address class="footer__address">
+                            <h3>Planet Cinema w Oświęcimiu<br></h3>
+                            <span class="fa fa-map-marker text-color"></span> ul. Powstańc&#243;w Śląskich 1,
+                            32-600
+                            Oświęcim<br>
+
+                                <span class="fa fa-book text-color"></span> 954-272-47-85<br>
+                        </address>
+                    </div>
+                </div>
+                <div class="row justify-content-center">
+                    <div class="col-12 footer__info">
+                        <div id="footer-logos"></div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+
+
+
+
+        <script id="repo-template" type="text/x-handlebars-template">
+        <div class="modal  fade in dialog" id="RepoModal" style="display: block">
+
+            <button id="trap-top-focus" href="#" title="Przycisk funkcyjny programu" style="opacity:0;cursor:pointer;" tabindex="0">
+                Początek treści
+            </button>
+            <div class="dialog-backdrop active fade in" style="bottom: 0">
+                <div class="modal-dialog" id="modalDialog" role="dialog" aria-modal="true">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close modal-Focus first-element-in-modal" data-dismiss="modal" aria-label="Close" title="Zamknij " id="closeModalBtn">
+                                <span class="sr-only">Zamknij </span>
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                            <h3 class="modal-title dialog-title " tabindex="0">
+                                <span class="glyphicon glyphicon-tag"></span>
+                                {{Name}}
+                            </h3>
+                        </div>
+                        <div class="modal-body" style=" word-wrap:break-word;">
+                            <div class="media">
+                                {{#ifCond PosterId '>' 0}}
+                                <div class="media-left hidden-xs" tabindex="0">
+                                    <a href="#" class="modal-Focus">
+                                        <img src="/MSI/ImageData.ashx?id={{PosterId}}&amp;mode=thumb" alt="{{Name}}" class="" />
+                                    </a>
+                                </div>
+                                {{/ifCond}}
+                                <div class="media-body" style=" word-wrap:break-word;" tabindex="0">
+                                    Data: <strong class="dialog-strong">{{Date}}</strong>
+                                    {{#if Hour}}
+                                    <div>Godzina: <strong class="dialog-strong">{{Hour}}</strong></div>
+                                    {{/if}}
+                                    {{#if Description}}
+                                    <br />
+                                    <div class="hidden-xs">{{{Description}}}</div>
+                                    {{/if}}
+                                </div>
+                                <div class="modal-footer">
+                                    <div class="row">
+                                        <div class="col-sm-3">
+                                            <button type="button" class="btn btn-anuluj btn-block modal-Focus" data-dismiss="modal" aria-label="Close" title="Zamknij">
+                                                <span class="sr-only">Zamknij  </span>
+                                                <span class="glyphicon glyphicon-remove"></span>ANULUJ
+                                            </button>
+                                        </div>
+
+                                        {{#if ShowFreeEventButton}}
+                                        <div class="col-sm-4">
+                                            <a href="{{ UrlBuy }}" class="btn btn-kup btn-block modal-Focus">
+                                                <span class="glyphicon glyphicon-star"></span>WYBIERAM
+                                            </a>
+                                        </div>
+                                        {{/if}}
+                                        {{#if ShowBuyButton}}
+                                        <div class="col-sm-4">
+                                            <a href="{{ UrlBuy }}" class="btn btn-kup btn-block  modal-Focus">
+                                                <span class="glyphicon glyphicon-credit-card"></span>KUP BILET
+                                            </a>
+                                        </div>
+                                        {{/if}}
+                                        {{#if ShowReservationButton}}
+                                        <div class="col-sm-5">
+                                            <a href="{{ UrlRez }}" class="btn btn-rezerwuj btn-block modal-Focus">
+                                                <span class="glyphicon glyphicon-star"></span>REZERWUJ MIEJSCE
+                                            </a>
+                                        </div>
+                                        {{/if}}
+
+                                    </div>
+                                    <div class="row" tabindex="0" id="modalLastItem">
+                                        <div class="col-12" style="margin-top: 15px; text-align: justify">
+                                            <div class="alert alert-warning last-element-on-modal" style="margin-bottom: 0">
+                                                Uwaga! W następnym kroku nie ma już możliwości wyboru pomiędzy Kupnem bilet&#243;w a Rezerwacją miejsc.
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="trap-down-focus" href="#" title="Przycisk funkcyjny programu" style="opacity:0;cursor:pointer;position:absolute;left:-100px;">
+                Koniec treści
+            </button>
+        </div>
+    </script>
+    <script type="text/javascript">
+        var RepertoireEvents = [{ 'Id': 119098, 'Name': 'Backrooms. Bez wyjścia', 'Date': '01.07.2026', 'Hour': '15:00', 'PosterId': '1761', 'Description': 'W piwnicy salonu meblowego pojawia się przejście do przerażającego, równoległego świata.<br><br>Jeden z największych fenomenów internetu, obejrzana ponad 100 milionów razy seria filmów grozy, wkracza na wielki ekran.<br><br>Kane Parsons znany też jako Kane Pixels, który jako 16-latek stworzył serię internetowych filmów grozy,...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119108, 'Name': 'Backrooms. Bez wyjścia', 'Date': '01.07.2026', 'Hour': '20:45', 'PosterId': '1761', 'Description': 'W piwnicy salonu meblowego pojawia się przejście do przerażającego, równoległego świata.<br><br>Jeden z największych fenomenów internetu, obejrzana ponad 100 milionów razy seria filmów grozy, wkracza na wielki ekran.<br><br>Kane Parsons znany też jako Kane Pixels, który jako 16-latek stworzył serię internetowych filmów grozy,...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119116, 'Name': 'Backrooms. Bez wyjścia', 'Date': '02.07.2026', 'Hour': '15:00', 'PosterId': '1761', 'Description': 'W piwnicy salonu meblowego pojawia się przejście do przerażającego, równoległego świata.<br><br>Jeden z największych fenomenów internetu, obejrzana ponad 100 milionów razy seria filmów grozy, wkracza na wielki ekran.<br><br>Kane Parsons znany też jako Kane Pixels, który jako 16-latek stworzył serię internetowych filmów grozy,...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119126, 'Name': 'Backrooms. Bez wyjścia', 'Date': '02.07.2026', 'Hour': '20:45', 'PosterId': '1761', 'Description': 'W piwnicy salonu meblowego pojawia się przejście do przerażającego, równoległego świata.<br><br>Jeden z największych fenomenów internetu, obejrzana ponad 100 milionów razy seria filmów grozy, wkracza na wielki ekran.<br><br>Kane Parsons znany też jako Kane Pixels, który jako 16-latek stworzył serię internetowych filmów grozy,...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119070, 'Name': 'Drugie Życie- Kino dla Seniorów', 'Date': '15.07.2026', 'Hour': '10:30', 'PosterId': '0', 'Description': '„Drugie życie” – zdobywca nagrody publiczności na festiwalu filmowym w Wenecji – to emanujący optymizmem i pogodą ducha portret dojrzałej kobiety, w którą wciela się Carmen Maura („Kobiety na skraju załamania nerwowego”, „Volver”).<br><br>María Ángeles od czterdziestu lat mieszka w słonecznym apartamencie w sercu marokańskiego...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119107, 'Name': 'Dzień objawienia', 'Date': '01.07.2026', 'Hour': '20:30', 'PosterId': '1770', 'Description': 'Gdybyś dowiedział się, że nie jesteśmy sami, gdyby ktoś ci to udowodnił, czy byś się przestraszył?<br><br>Universal Pictures z dumą przedstawia nowy film autorstwa Stevena Spielberga.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119125, 'Name': 'Dzień objawienia', 'Date': '02.07.2026', 'Hour': '20:30', 'PosterId': '1770', 'Description': 'Gdybyś dowiedział się, że nie jesteśmy sami, gdyby ktoś ci to udowodnił, czy byś się przestraszył?<br><br>Universal Pictures z dumą przedstawia nowy film autorstwa Stevena Spielberga.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119094, 'Name': 'Michael', 'Date': '01.07.2026', 'Hour': '12:30', 'PosterId': '1740', 'Description': 'Michael to filmowa opowieść o życiu i dziedzictwie jednego z najbardziej wpływowych artystów w historii.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119112, 'Name': 'Michael', 'Date': '02.07.2026', 'Hour': '12:30', 'PosterId': '1740', 'Description': 'Michael to filmowa opowieść o życiu i dziedzictwie jednego z najbardziej wpływowych artystów w historii.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 118691, 'Name': 'Minionki i straszydła', 'Date': '03.07.2026', 'Hour': '10:00', 'PosterId': '1778', 'Description': 'Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w nowym filmie „Minionki i straszydła”.<br><br>To zuchwała, absurdalna historia o tym, jak Minionki podbiły Hollywood, zostały gwiazdami...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 118692, 'Name': 'Minionki i straszydła', 'Date': '10.07.2026', 'Hour': '10:00', 'PosterId': '1778', 'Description': 'Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w nowym filmie „Minionki i straszydła”.<br><br>To zuchwała, absurdalna historia o tym, jak Minionki podbiły Hollywood, zostały gwiazdami...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119105, 'Name': 'Ojczyzna', 'Date': '01.07.2026', 'Hour': '19:10', 'PosterId': '1785', 'Description': '„Ojczyzna” to najnowszy, długo wyczekiwany film laureata Oscara®, Pawła Pawlikowskiego, twórcy „Idy” i „Zimnej wojny”, zdobywca nagrody za reżyserię na tegorocznym 79. Międzynarodowym Festiwalu Filmowym w Cannes. Poprzedni film Pawlikowskiego, „Zimna wojna”, również nagrodzony za reżyserię w Cannes, oprócz spektakularnego sukcesu...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119123, 'Name': 'Ojczyzna', 'Date': '02.07.2026', 'Hour': '19:10', 'PosterId': '1785', 'Description': '„Ojczyzna” to najnowszy, długo wyczekiwany film laureata Oscara®, Pawła Pawlikowskiego, twórcy „Idy” i „Zimnej wojny”, zdobywca nagrody za reżyserię na tegorocznym 79. Międzynarodowym Festiwalu Filmowym w Cannes. Poprzedni film Pawlikowskiego, „Zimna wojna”, również nagrodzony za reżyserię w Cannes, oprócz spektakularnego sukcesu...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119095, 'Name': 'Robin Hood: Koniec Legendy', 'Date': '01.07.2026', 'Hour': '13:30', 'PosterId': '1779', 'Description': 'Robin Hood (Hugh Jackman), który do tej pory wiódł życie bandyty – naznaczone przemocą, krwią i cierpieniem – pogodził się z tym, że każda kolejna bitwa może być jego ostatnią. Jednak los pisze dla niego inny scenariusz. Ciężko ranny trafia pod opiekę tajemniczej kobiety (Jodie Comer) oraz poznaje bezbronną dziewczynkę, której...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119099, 'Name': 'Robin Hood: Koniec Legendy', 'Date': '01.07.2026', 'Hour': '16:00', 'PosterId': '1779', 'Description': 'Robin Hood (Hugh Jackman), który do tej pory wiódł życie bandyty – naznaczone przemocą, krwią i cierpieniem – pogodził się z tym, że każda kolejna bitwa może być jego ostatnią. Jednak los pisze dla niego inny scenariusz. Ciężko ranny trafia pod opiekę tajemniczej kobiety (Jodie Comer) oraz poznaje bezbronną dziewczynkę, której...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119113, 'Name': 'Robin Hood: Koniec Legendy', 'Date': '02.07.2026', 'Hour': '13:30', 'PosterId': '1779', 'Description': 'Robin Hood (Hugh Jackman), który do tej pory wiódł życie bandyty – naznaczone przemocą, krwią i cierpieniem – pogodził się z tym, że każda kolejna bitwa może być jego ostatnią. Jednak los pisze dla niego inny scenariusz. Ciężko ranny trafia pod opiekę tajemniczej kobiety (Jodie Comer) oraz poznaje bezbronną dziewczynkę, której...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119117, 'Name': 'Robin Hood: Koniec Legendy', 'Date': '02.07.2026', 'Hour': '16:00', 'PosterId': '1779', 'Description': 'Robin Hood (Hugh Jackman), który do tej pory wiódł życie bandyty – naznaczone przemocą, krwią i cierpieniem – pogodził się z tym, że każda kolejna bitwa może być jego ostatnią. Jednak los pisze dla niego inny scenariusz. Ciężko ranny trafia pod opiekę tajemniczej kobiety (Jodie Comer) oraz poznaje bezbronną dziewczynkę, której...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119109, 'Name': 'Straszny Film- 2D napisy', 'Date': '01.07.2026', 'Hour': '21:00', 'PosterId': '1768', 'Description': 'Dwadzieścia sześć lat po tym, jak udało im się uciec przed podejrzanie znajomym zamaskowanym zabójcą, stała ekipa z serii STRASZNYCH FILMÓW znów znalazła się na celowniku mordercy i żadna seria horrorów nie jest bezpieczna. ', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119127, 'Name': 'Straszny Film- 2D napisy', 'Date': '02.07.2026', 'Hour': '21:00', 'PosterId': '1768', 'Description': 'Dwadzieścia sześć lat po tym, jak udało im się uciec przed podejrzanie znajomym zamaskowanym zabójcą, stała ekipa z serii STRASZNYCH FILMÓW znów znalazła się na celowniku mordercy i żadna seria horrorów nie jest bezpieczna. ', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119101, 'Name': 'Supergirl - 2D dubbing', 'Date': '01.07.2026', 'Hour': '16:15', 'PosterId': '1775', 'Description': 'Supergirl, najnowszy wielkoekranowy film DC Studios, trafi do kin całego świata tego lata za pośrednictwem Warner Bros. Pictures. Milly Alcock gra w nim podwójną rolę Supergirl i Kary Zor-El. Obraz reżyseruje Craig Gillespie na podstawie scenariusza Any Nogueiry. Kiedy nieoczekiwany i bezwzględny przeciwnik atakuje niebezpiecznie...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119119, 'Name': 'Supergirl - 2D dubbing', 'Date': '02.07.2026', 'Hour': '16:15', 'PosterId': '1775', 'Description': 'Supergirl, najnowszy wielkoekranowy film DC Studios, trafi do kin całego świata tego lata za pośrednictwem Warner Bros. Pictures. Milly Alcock gra w nim podwójną rolę Supergirl i Kary Zor-El. Obraz reżyseruje Craig Gillespie na podstawie scenariusza Any Nogueiry. Kiedy nieoczekiwany i bezwzględny przeciwnik atakuje niebezpiecznie...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119106, 'Name': 'Supergirl - 2D napisy', 'Date': '01.07.2026', 'Hour': '20:30', 'PosterId': '1774', 'Description': 'Supergirl, najnowszy wielkoekranowy film DC Studios, trafi do kin całego świata tego lata za pośrednictwem Warner Bros. Pictures. Milly Alcock gra w nim podwójną rolę Supergirl i Kary Zor-El. Obraz reżyseruje Craig Gillespie na podstawie scenariusza Any Nogueiry. Kiedy nieoczekiwany i bezwzględny przeciwnik atakuje niebezpiecznie...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119124, 'Name': 'Supergirl - 2D napisy', 'Date': '02.07.2026', 'Hour': '20:30', 'PosterId': '1774', 'Description': 'Supergirl, najnowszy wielkoekranowy film DC Studios, trafi do kin całego świata tego lata za pośrednictwem Warner Bros. Pictures. Milly Alcock gra w nim podwójną rolę Supergirl i Kary Zor-El. Obraz reżyseruje Craig Gillespie na podstawie scenariusza Any Nogueiry. Kiedy nieoczekiwany i bezwzględny przeciwnik atakuje niebezpiecznie...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119096, 'Name': 'Supergirl - 3D dubbing', 'Date': '01.07.2026', 'Hour': '14:00', 'PosterId': '1776', 'Description': 'Supergirl, najnowszy wielkoekranowy film DC Studios, trafi do kin całego świata tego lata za pośrednictwem Warner Bros. Pictures. Milly Alcock gra w nim podwójną rolę Supergirl i Kary Zor-El. Obraz reżyseruje Craig Gillespie na podstawie scenariusza Any Nogueiry. Kiedy nieoczekiwany i bezwzględny przeciwnik atakuje niebezpiecznie...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119104, 'Name': 'Supergirl - 3D dubbing', 'Date': '01.07.2026', 'Hour': '18:30', 'PosterId': '1776', 'Description': 'Supergirl, najnowszy wielkoekranowy film DC Studios, trafi do kin całego świata tego lata za pośrednictwem Warner Bros. Pictures. Milly Alcock gra w nim podwójną rolę Supergirl i Kary Zor-El. Obraz reżyseruje Craig Gillespie na podstawie scenariusza Any Nogueiry. Kiedy nieoczekiwany i bezwzględny przeciwnik atakuje niebezpiecznie...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119114, 'Name': 'Supergirl - 3D dubbing', 'Date': '02.07.2026', 'Hour': '14:00', 'PosterId': '1776', 'Description': 'Supergirl, najnowszy wielkoekranowy film DC Studios, trafi do kin całego świata tego lata za pośrednictwem Warner Bros. Pictures. Milly Alcock gra w nim podwójną rolę Supergirl i Kary Zor-El. Obraz reżyseruje Craig Gillespie na podstawie scenariusza Any Nogueiry. Kiedy nieoczekiwany i bezwzględny przeciwnik atakuje niebezpiecznie...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119122, 'Name': 'Supergirl - 3D dubbing', 'Date': '02.07.2026', 'Hour': '18:30', 'PosterId': '1776', 'Description': 'Supergirl, najnowszy wielkoekranowy film DC Studios, trafi do kin całego świata tego lata za pośrednictwem Warner Bros. Pictures. Milly Alcock gra w nim podwójną rolę Supergirl i Kary Zor-El. Obraz reżyseruje Craig Gillespie na podstawie scenariusza Any Nogueiry. Kiedy nieoczekiwany i bezwzględny przeciwnik atakuje niebezpiecznie...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119093, 'Name': 'Tom i Jerry: Przygoda w muzeum', 'Date': '01.07.2026', 'Hour': '12:00', 'PosterId': '1753', 'Description': 'Podczas pościgu w nowojorskim Metropolitan Museum Tom i Jerry przypadkowo uruchamiają mityczny Astralny Kompas, który przenosi ich do olśniewającego Złotego Miasta rodem ze starożytnych legend. Tom zostaje uznany za bóstwo i staje się ulubieńcem władcy oraz jego poddanych. Tymczasem niedoceniony i zazdrosny Jerry wpada w sidła...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119111, 'Name': 'Tom i Jerry: Przygoda w muzeum', 'Date': '02.07.2026', 'Hour': '12:00', 'PosterId': '1753', 'Description': 'Podczas pościgu w nowojorskim Metropolitan Museum Tom i Jerry przypadkowo uruchamiają mityczny Astralny Kompas, który przenosi ich do olśniewającego Złotego Miasta rodem ze starożytnych legend. Tom zostaje uznany za bóstwo i staje się ulubieńcem władcy oraz jego poddanych. Tymczasem niedoceniony i zazdrosny Jerry wpada w sidła...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119092, 'Name': 'Toy Story 5- 2D dubbing', 'Date': '01.07.2026', 'Hour': '12:00', 'PosterId': '1766', 'Description': 'Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia. Buzz, Chudy, Jessie i reszta ekipy mają trudne zadanie, gdy przychodzi im zmierzyć się z zupełnie nowym zagrożeniem. ', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119097, 'Name': 'Toy Story 5- 2D dubbing', 'Date': '01.07.2026', 'Hour': '14:05', 'PosterId': '1766', 'Description': 'Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia. Buzz, Chudy, Jessie i reszta ekipy mają trudne zadanie, gdy przychodzi im zmierzyć się z zupełnie nowym zagrożeniem. ', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119100, 'Name': 'Toy Story 5- 2D dubbing', 'Date': '01.07.2026', 'Hour': '16:10', 'PosterId': '1766', 'Description': 'Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia. Buzz, Chudy, Jessie i reszta ekipy mają trudne zadanie, gdy przychodzi im zmierzyć się z zupełnie nowym zagrożeniem. ', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119102, 'Name': 'Toy Story 5- 2D dubbing', 'Date': '01.07.2026', 'Hour': '17:05', 'PosterId': '1766', 'Description': 'Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia. Buzz, Chudy, Jessie i reszta ekipy mają trudne zadanie, gdy przychodzi im zmierzyć się z zupełnie nowym zagrożeniem. ', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119103, 'Name': 'Toy Story 5- 2D dubbing', 'Date': '01.07.2026', 'Hour': '18:15', 'PosterId': '1766', 'Description': 'Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia. Buzz, Chudy, Jessie i reszta ekipy mają trudne zadanie, gdy przychodzi im zmierzyć się z zupełnie nowym zagrożeniem. ', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119110, 'Name': 'Toy Story 5- 2D dubbing', 'Date': '02.07.2026', 'Hour': '12:00', 'PosterId': '1766', 'Description': 'Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia. Buzz, Chudy, Jessie i reszta ekipy mają trudne zadanie, gdy przychodzi im zmierzyć się z zupełnie nowym zagrożeniem. ', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119115, 'Name': 'Toy Story 5- 2D dubbing', 'Date': '02.07.2026', 'Hour': '14:05', 'PosterId': '1766', 'Description': 'Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia. Buzz, Chudy, Jessie i reszta ekipy mają trudne zadanie, gdy przychodzi im zmierzyć się z zupełnie nowym zagrożeniem. ', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119118, 'Name': 'Toy Story 5- 2D dubbing', 'Date': '02.07.2026', 'Hour': '16:10', 'PosterId': '1766', 'Description': 'Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia. Buzz, Chudy, Jessie i reszta ekipy mają trudne zadanie, gdy przychodzi im zmierzyć się z zupełnie nowym zagrożeniem. ', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119120, 'Name': 'Toy Story 5- 2D dubbing', 'Date': '02.07.2026', 'Hour': '17:05', 'PosterId': '1766', 'Description': 'Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia. Buzz, Chudy, Jessie i reszta ekipy mają trudne zadanie, gdy przychodzi im zmierzyć się z zupełnie nowym zagrożeniem. ', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 119121, 'Name': 'Toy Story 5- 2D dubbing', 'Date': '02.07.2026', 'Hour': '18:15', 'PosterId': '1766', 'Description': 'Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia. Buzz, Chudy, Jessie i reszta ekipy mają trudne zadanie, gdy przychodzi im zmierzyć się z zupełnie nowym zagrożeniem. ', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false}];
+    </script>
+<script>
+    $(document).ready(function () {
+        $("#RepoModal").on('shown.bs.modal', function () {
+            $(this).find('#closeModalBtn').focus();
+        });
+    });
+</script>
+
+            <script type="text/javascript" src="/MSI/Themes/light/Scripts/repertoire_filters.js?v=033026114947"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/glide.min.js?v=033026114947"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery.countdown.min.js?v=033026114947"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/moment-with-locales.min.js?v=033026114947"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/bootstrap.bundle.min.js?v=033026114946"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/tempusdominus-bootstrap-4.min.js?v=033026114947"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/repertoire.js?v=033026114947"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/passes.js?v=033026114947"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/svgicons.class.js?v=033026114947"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/global.js?v=033026114947"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/main.js?v=033026114947"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery-cookie.min.js?v=033026114947"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/calendar.min.js?v=033026114947"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/cms.js?v=033026114947"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery.inputmask.bundle.min.js?v=033026114947"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/slick.min.js?v=033026114947"></script>
+
+
+
+    <script>
+        getCms(currentLanguage);
+        getFooterImages();
+    </script>
+
+    <script type="text/javascript">
+        (function ($) {
+            $(window).on('load', function () {
+                $('#preloader').fadeOut('slow', function () { $(this).remove(); });
+            });
+            $("#scrollToVodButton").click(function () {
+                $([document.documentElement, document.body]).animate({
+                    scrollTop: $("#eventsVod").offset().top
+                }, 2000);
+            });
+        })(jQuery);
+    </script>
+
+    <script type="text/javascript">
+        (function ($) {
+            var lng = "pl";
+            var theMonths;
+            var theDays;
+
+            theMonths = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+
+            theDays = ["P", "W", "Ś", "C", "P", "S", "N"];
+
+            Global.init({
+                months: theMonths,
+                days: theDays,
+                allDatesUrl: window.location.protocol + "//" + window.location.host + "/MSI/mvc/pl/AllDates?sort=Name",
+                currentLocale: 'pl'
+            });
+
+            Filter.init({
+                currentLocale: 'pl',
+                getShortEventsWithFiltersUrl: window.location.protocol + "//" + window.location.host + "/MSI/mvc/pl/Repertoire/GetShortEventsWithFilters"
+            });
+        })(jQuery);
+    </script>
+
+    <script type="text/javascript">
+        $(window).on('load', function () {
+            $(".se-pre-con").fadeOut("slow");
+        });
+    </script>
+
+</body>
+</html>
