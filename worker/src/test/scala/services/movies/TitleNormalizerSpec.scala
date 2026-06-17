@@ -350,6 +350,24 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     apiQuery("Ojczyzna + spotkanie z producentką Ewą Puszczyńską") shouldBe "Ojczyzna"
   }
 
+  it should "strip a '| spotkanie <…>' pipe-separated meeting suffix (any case/declension/tail)" in {
+    // Same intent as the '+ <event>' rule, but for the pipe-separated meeting
+    // annotation cinemas append: the screening keeps its own display card while
+    // the external resolvers query the bare film. Generalised over the spotkani-
+    // stem (spotkanie / spotkania / spotkaniem) and an arbitrary trailing phrase.
+    apiQuery("Takie jest życie | spotkanie Beaty Kwiatkowskiej") shouldBe "Takie jest życie"
+    apiQuery("Ojczyzna | spotkanie z reżyserem")                 shouldBe "Ojczyzna"
+    apiQuery("Ujście | SPOTKANIE z twórcami")                    shouldBe "Ujście"
+  }
+
+  it should "leave a pipe segment that merely contains 'spotkania' as a real film alone" in {
+    // 'Bliskie spotkania trzeciego stopnia' (Close Encounters) is a film, not a
+    // meeting annotation — the rule only strips when the segment *starts* with the
+    // spotkani- stem right after the pipe, so a cycle-prefixed listing is safe.
+    apiQuery("Kino cyrkularne | Bliskie spotkania trzeciego stopnia") shouldBe
+      "Kino cyrkularne | Bliskie spotkania trzeciego stopnia"
+  }
+
   // ── recase — shared banner-aware display casing applied to every scraper ────
 
   "recase" should "sentence-case an all-UPPERCASE title" in {

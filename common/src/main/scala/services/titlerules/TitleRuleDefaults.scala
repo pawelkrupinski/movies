@@ -48,6 +48,10 @@ object TitleRuleDefaults {
     TitleRule("search-plus-event-suffix", GlobalStructural, None,
       """\s+\+\s+\p{L}[^)]*$""", "", applyAll = false, order = 14,
       note = Some("'+ <event>' suffix: '+ spotkanie z producentką'")),
+    TitleRule("search-pipe-spotkanie-suffix", GlobalStructural, None,
+      """(?i)\s*\|\s*spotkani\p{L}*.*$""", "", applyAll = false, order = 15,
+      note = Some("'| spotkanie <…>' pipe-separated meeting suffix: " +
+        "'… | spotkanie z reżyserem', '… | spotkanie Beaty Kwiatkowskiej'")),
     TitleRule("search-with-event-suffix", GlobalStructural, None,
       """(?i)\s*[-–—]?\s*z\s+(?:autorską\s+narracją|prelekcj[ąae]|wprowadzeniem|udziałem)\S*.*$""",
       "", applyAll = false, order = 16,
