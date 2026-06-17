@@ -31,15 +31,17 @@ class OgCardService(posters: PosterFetch) {
    *  film's *primary* poster is often a Multikino origin whose Cloudflare 403s
    *  our Fly datacenter IP (and weserv SkipHosts Multikino, so the proxy can't
    *  rescue it) — without the fallbacks ~a third of films rendered text-only. */
-  def card(title: String, subtitle: String, badges: Seq[OgCardRenderer.Badge], posterUrls: Seq[String]): Array[Byte] = {
+  def card(title: String, subtitle: String, badges: Seq[OgCardRenderer.Badge], posterUrls: Seq[String],
+           director: Option[String] = None, synopsis: Option[String] = None): Array[Byte] = {
     val candidates = posterUrls.filter(_.nonEmpty).take(OgCardService.MaxPosterCandidates)
     // Plain concatenation, not an s-interpolator: a nested double-quote (from
     // mkString) inside an interpolation block would close the string early.
     val ratingKey = badges.flatMap(_.segs.map(_.text)).mkString(",")
-    val key = Seq(title, subtitle, ratingKey, candidates.mkString("|")).mkString(" ")
+    val key = Seq(title, subtitle, ratingKey, candidates.mkString("|"),
+                  director.getOrElse(""), synopsis.getOrElse("")).mkString(" ")
     Option(cache.getIfPresent(key)).getOrElse {
       val poster = loadPoster(candidates)
-      val bytes  = OgCardRenderer.render(title, subtitle, badges, poster)
+      val bytes  = OgCardRenderer.render(title, subtitle, badges, poster, director, synopsis)
       // Only cache a *complete* card: one with no poster to show, or whose
       // poster actually loaded. A transient poster-fetch failure must NOT be
       // frozen for the cache's lifetime as a posterless card -- leave it

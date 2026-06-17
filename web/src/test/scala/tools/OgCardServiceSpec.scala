@@ -96,6 +96,15 @@ class OgCardServiceSpec extends AnyFlatSpec with Matchers {
     fetch.calls.get shouldBe 2
   }
 
+  it should "re-render when the synopsis changes (synopsis is part of the cache key)" in {
+    val fetch = new CountingFetch(jpeg)
+    val service = new OgCardService(fetch)
+    val badges = OgCardRenderer.ratingBadges(Some(8.8), None, None, None)
+    val a = service.card("Incepcja", "2010 · Sci-Fi", badges, Seq("https://cdn/x.jpg"), synopsis = Some("Sen we śnie."))
+    val b = service.card("Incepcja", "2010 · Sci-Fi", badges, Seq("https://cdn/x.jpg"), synopsis = Some("Inna treść."))
+    b should not be theSameInstanceAs(a)
+  }
+
   it should "degrade to a text-only card (still 1200×630) when the poster fetch fails" in {
     val fetch: PosterFetch = (_: String) => None
     dimensions(new OgCardService(fetch).card("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Seq("https://cdn/x.jpg"))) shouldBe (1200, 630)

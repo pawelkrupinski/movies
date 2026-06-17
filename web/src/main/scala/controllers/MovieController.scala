@@ -572,7 +572,9 @@ class MovieController( cc: ControllerComponents,
             // Primary poster first, then the cinema fallbacks: the primary is
             // often a Multikino origin Cloudflare 403s from our Fly IP, so the
             // card must be free to walk to a reachable fallback (see OgCardService).
-            schedule.posterUrl.toSeq ++ schedule.resolved.fallbackPosterUrls
+            schedule.posterUrl.toSeq ++ schedule.resolved.fallbackPosterUrls,
+            director = MovieController.cardDirector(schedule),
+            synopsis = schedule.synopsis
           )
           Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=86400")
         case None => NotFound(s"Film not found: $title")
@@ -863,4 +865,9 @@ object MovieController {
   private[controllers] def cardSubtitle(film: FilmSchedule): String =
     (film.movie.releaseYear.map(_.toString).toSeq ++ Seq(film.movie.genres.mkString(", ")).filter(_.nonEmpty))
       .mkString(" · ")
+
+  /** The directors as a single "Name, Name" string for the OG card's
+   *  "Reżyseria: …" line, or None when no director is known. */
+  private[controllers] def cardDirector(film: FilmSchedule): Option[String] =
+    Some(film.director.mkString(", ")).filter(_.nonEmpty)
 }

@@ -109,6 +109,44 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
     img.getWidth shouldBe 1200 // renders; the wrap/ellipsis logic kept it bounded
   }
 
+  // Count bright (text) pixels in the body band below the ratings, right of the
+  // poster — where the director + synopsis lines land.
+  private def brightBodyPixels(img: BufferedImage): Int = {
+    var bright = 0
+    for (x <- 460 until 1140; y <- 300 until 520)
+      if (new Color(img.getRGB(x, y)).getRed > 150) bright += 1
+    bright
+  }
+
+  it should "render the synopsis (and director) text in the space below the ratings" in {
+    val synopsis = (1 to 40).map(_ => "Bohaterka").mkString(" ")
+    val withBody = decode(OgCardRenderer.render(
+      "Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None),
+      Some(solidPoster(Color.RED)), director = Some("Christopher Nolan"), synopsis = Some(synopsis)))
+    val without  = decode(OgCardRenderer.render(
+      "Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None),
+      Some(solidPoster(Color.RED))))
+    // The body band is essentially empty without the new copy, and full of glyph
+    // pixels with it.
+    brightBodyPixels(without) should be < 50
+    brightBodyPixels(withBody) should be > 400
+  }
+
+  it should "keep the synopsis clear of the footer (no body text overwrites the footer line)" in {
+    // An absurdly long synopsis must be capped/ellipsised, never spilling onto
+    // the kinowo.fly.dev footer at the very bottom.
+    val flood = (1 to 400).map(_ => "Tekst").mkString(" ")
+    val img = decode(OgCardRenderer.render(
+      "Film", "2026 · Dramat", OgCardRenderer.ratingBadges(Some(7.1), None, None, None),
+      None, synopsis = Some(flood)))
+    // Band just above the footer baseline (Height-Margin = 574) must stay dark:
+    // the body copy stops short of it.
+    var bright = 0
+    for (x <- 60 until 1140; y <- 545 until 565)
+      if (new Color(img.getRGB(x, y)).getRed > 150) bright += 1
+    bright shouldBe 0
+  }
+
   // ── Rating badge brand colours mirror the web `_ratingStyles` exactly ──────
 
   it should "paint the IMDb badge label in its brand gold (#f5c518)" in {

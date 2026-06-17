@@ -40,11 +40,17 @@ object OgCardRenderer {
   private val Gutter  = 48
   private val PosterTextX = PosterW + Gutter // text column when a poster is shown
 
-  private val Bg        = new Color(0x14, 0x17, 0x1f)
-  private val BgBottom  = new Color(0x09, 0x0a, 0x0f)
-  private val TitleCol  = Color.WHITE
-  private val SubCol    = new Color(0x9a, 0xa3, 0xb2)
-  private val FooterCol = new Color(0x70, 0x78, 0x86)
+  private val Bg          = new Color(0x14, 0x17, 0x1f)
+  private val BgBottom    = new Color(0x09, 0x0a, 0x0f)
+  private val TitleCol    = Color.WHITE
+  private val SubCol      = new Color(0x9a, 0xa3, 0xb2)
+  private val SynopsisCol = new Color(0xc2, 0xca, 0xd6) // a touch brighter than SubCol so the body copy reads
+  private val FooterCol   = new Color(0x70, 0x78, 0x86)
+
+  // Cap on synopsis lines so a long plot summary fills the space below the
+  // ratings without crowding the footer; the available-height calc trims it
+  // further when the title wraps or there are two rows of rating pills.
+  private val MaxSynopsisLines = 6
 
   // ── Rating badges — mirror the web `_ratingStyles` two-segment pills (a
   //    coloured brand label + a dark value segment), so a shared card looks
@@ -100,8 +106,11 @@ object OgCardRenderer {
 
   /** Compose the card. `subtitle` is the year · genres line; `badges` are the
    *  rating pills from [[ratingBadges]]; `poster` is the decoded poster image or
-   *  None (text-only card for films with no poster). */
-  def render(title: String, subtitle: String, badges: Seq[Badge], poster: Option[BufferedImage]): Array[Byte] = {
+   *  None (text-only card for films with no poster). `director` (a pre-joined
+   *  "Name, Name" string) and `synopsis` fill the space below the ratings —
+   *  both optional, each omitted when absent. */
+  def render(title: String, subtitle: String, badges: Seq[Badge], poster: Option[BufferedImage],
+             director: Option[String] = None, synopsis: Option[String] = None): Array[Byte] = {
     val img = new BufferedImage(Width, Height, BufferedImage.TYPE_INT_RGB)
     val g   = img.createGraphics()
     try {
@@ -144,14 +153,44 @@ object OgCardRenderer {
 
       if (badges.nonEmpty) {
         yPosition += 36
-        drawBadges(g, badges, textLeft, yPosition, textRight)
+        yPosition = drawBadges(g, badges, textLeft, yPosition, textRight)
+      }
+
+      val footerBaseline = Height - Margin
+      // Keep the body copy just clear of the footer line (~its ascent).
+      val bodyBottom = footerBaseline - 30
+
+      director.map(_.trim).filter(_.nonEmpty).foreach { d =>
+        yPosition += 26
+        g.setFont(regular.deriveFont(27f))
+        g.setColor(SubCol)
+        val dfm = g.getFontMetrics
+        yPosition += dfm.getAscent
+        g.drawString(ellipsize(g, "Reżyseria: " + d, textW), textLeft, yPosition)
+        yPosition += dfm.getDescent
+      }
+
+      synopsis.map(_.trim).filter(_.nonEmpty).foreach { text =>
+        yPosition += 16
+        g.setFont(regular.deriveFont(29f))
+        g.setColor(SynopsisCol)
+        val pfm    = g.getFontMetrics
+        val lineH  = pfm.getAscent + pfm.getDescent + 6
+        val fits   = math.max(0, (bodyBottom - yPosition) / lineH)
+        val maxLines = math.min(MaxSynopsisLines, fits)
+        if (maxLines > 0)
+          for (line <- wrap(g, text, textW, maxLines)) {
+            yPosition += pfm.getAscent
+            g.drawString(line, textLeft, yPosition)
+            yPosition += pfm.getDescent + 6
+          }
       }
 
       g.setFont(regular.deriveFont(28f))
       g.setColor(FooterCol)
       val ffm    = g.getFontMetrics
       val footer = "kinowo.fly.dev"
-      g.drawString(footer, textRight - ffm.stringWidth(footer), Height - Margin)
+      g.drawString(footer, textRight - ffm.stringWidth(footer), footerBaseline)
     } finally g.dispose()
 
     val baos = new ByteArrayOutputStream()
@@ -177,8 +216,11 @@ object OgCardRenderer {
   /** A row (wrapping to a second row if needed) of two-segment rating badges.
    *  Each badge is filled segment-by-segment while clipped to its rounded outer
    *  rect, so the outer corners are rounded (radius like the web's 3px, scaled)
-   *  and the label/value seam stays square — exactly the web pill. */
-  private def drawBadges(g: Graphics2D, badges: Seq[Badge], x0: Int, top: Int, xMax: Int): Unit = {
+   *  and the label/value seam stays square — exactly the web pill.
+   *
+   *  Returns the y of the bottom edge of the last badge row, so the caller can
+   *  place the director/synopsis directly beneath however many rows wrapped. */
+  private def drawBadges(g: Graphics2D, badges: Seq[Badge], x0: Int, top: Int, xMax: Int): Int = {
     val fontSize = 30f
     val labelFont = bold.deriveFont(fontSize)
     val valueFont = regular.deriveFont(fontSize)
@@ -212,6 +254,7 @@ object OgCardRenderer {
       g.setClip(saved)
       xPosition += width + gap
     }
+    yPosition + height
   }
 
   /** Greedy word-wrap to `maxLines`; if more lines remain, the last kept line
