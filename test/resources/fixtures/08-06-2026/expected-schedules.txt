@@ -412,6 +412,7 @@ cinemaScrapes:
   Kino Kolory / Backrooms. Bez wyjścia / —
   Kino Lewart / Backrooms. Bez wyjścia / —
   Kino MOK Centrum / BACKROOMS. BEZ WYJŚCIA / —
+  Kino Millenium / Backrooms. Bez wyjścia / —
   Kino Na Biegunach / Backrooms. Bez wyjśćia / —
   Kino ODEON / Backrooms. Bez wyjścia / —
   Kino PCKul / Backrooms. Bez wyjścia / —
@@ -1536,6 +1537,7 @@ cinemaScrapes:
   Kino Lot / Drugie życie / —
   Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
   Kino Mikro / Drugie życie / —
+  Kino Millenium / Drugie życie / —
   Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
   Kino Oskard / Drugie życie / —
@@ -1700,7 +1702,6 @@ cinemaScrapes:
   Kino MDK / DRZEWO MAGII / —
   Kino MOK / Drzewo magii / —
   Kino Malta Charlie Monroe / Drzewo magii / —
-  Kino Millenium / Drzewo magii / 2026
   Kino Moskwa / DRZEWO MAGII / —
   Kino NCKF EC1 / Drzewo magii / —
   Kino Na Biegunach / Drzewo magii / —
@@ -4641,7 +4642,6 @@ cinemaScrapes:
   Kino MOK / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino MOK Centrum / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS ! / —
   Kino Malta Charlie Monroe / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Kino Millenium / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino Muranów / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino NCKF EC1 / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Na Biegunach / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -5104,6 +5104,7 @@ cinemaScrapes:
   Kino Kolory / Ojczyzna / —
   Kino Kultura / Ojczyzna / —
   Kino Lot / Ojczyzna / —
+  Kino Millenium / Ojczyzna / —
   Kino Muranów / Ojczyzna / 2026
   Kino Muza / Ojczyzna / 2026
   Kino Muzeum / OJCZYZNA / 2026
@@ -8065,6 +8066,7 @@ cinemaScrapes:
   Kino MOK / Toy Story 5 / —
   Kino MOK Centrum / TOY STORY 5 / —
   Kino MOKiS / Toy Story 5 / —
+  Kino Millenium / Toy story 5 / —
   Kino Na Biegunach / Toy story 5 / —
   Kino ODEON / Toy story 5 / —
   Kino Oskard / Toy Story 5 / —
@@ -8305,7 +8307,6 @@ cinemaScrapes:
   Kino Luna / Werdykt / —
   Kino Malta Charlie Monroe / Werdykt / —
   Kino Meduza / Werdykt / —
-  Kino Millenium / Werdykt / 2025
   Kino Muza / Werdykt / 2025
   Kino Nowe Horyzonty / Werdykt / 2025
   Kino Pałacowe / Werdykt / 2025
@@ -8908,7 +8909,6 @@ cinemaScrapes:
   Kino Luna / Zawodowcy / —
   Kino MCK / Zawodowcy / —
   Kino Malta Charlie Monroe / Zawodowcy / —
-  Kino Millenium / Zawodowcy / 2026
   Kino Moskwa / ZAWODOWCY / —
   Kino Na Biegunach / Zawodowcy / —
   Kino Nowe Horyzonty / Zawodowcy / —

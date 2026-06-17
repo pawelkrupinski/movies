@@ -295,7 +295,7 @@ class CinemaScraperCatalog(
   private val zielonaGoraScrapers  = Seq(cinemaCity("1087", CinemaCityZielonaGora))
   private val tychyScrapers        = Seq(new MultikinoClient(mkFetch, "0053", MultikinoTychy))
   private val walbrzychScrapers    = Seq(cinemaCity("1091", CinemaCityWalbrzych), new Bilety24Client(http, "https://kino-apollo.bilety24.pl", KinoApolloWalbrzych))
-  private val tarnowScrapers       = Seq(new MultikinoClient(mkFetch, "0050", MultikinoTarnow), new FilmwebShowtimesClient(http, 438, KinoMillenium, today = today))
+  private val tarnowScrapers       = Seq(new MultikinoClient(mkFetch, "0050", MultikinoTarnow), new MsiClient(http, "https://bilety.csm.tarnow.pl", KinoMillenium, today, mvcPath = "/Kino/mvc/pl"))
   private val wloclawekScrapers    = Seq(new MultikinoClient(mkFetch, "0008", MultikinoWloclawek))
   private val legnicaScrapers      = Seq(helios(HeliosNuxt.Legnica), new Bilety24Client(http, "https://kino-piast.bilety24.pl", KinoPiast))
   private val plockScrapers        = Seq(helios(HeliosNuxt.Plock), new NoveKinoClient(http, "przedwiosnie", KinoPrzedwiosnie))

@@ -127,6 +127,19 @@ class MsiClientSpec
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 11, 13, 50))
   }
 
+  // Kino Millenium Tarnów runs the same MSI software under a "CSM" brand, with
+  // the month page at /Kino/mvc/pl (the booking links are /Kino/Default.aspx).
+  // Previously scraped from Filmweb; the generic client reaches it off the base
+  // URL + mvcPath. Fixtures live in the 08-06-2026 corpus (both months present).
+  it should "scrape Kino Millenium Tarnów (CSM brand, /Kino/mvc/pl)" in {
+    val movies = new MsiClient(new FakeHttpFetch("08-06-2026"), "https://bilety.csm.tarnow.pl",
+      KinoMillenium, today = LocalDate.of(2026, 6, 8), mvcPath = "/Kino/mvc/pl").fetch()
+    movies should not be empty
+    movies.map(_.cinema).toSet shouldBe Set(KinoMillenium)
+    val film = movies.find(_.movie.title.toLowerCase.contains("backrooms")).value
+    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 19, 20, 0))
+  }
+
   // bilety.mok.com.pl hosts two cinemas (Chemik + Twierdza) on one MSI portal,
   // disambiguating by prefixing every title with "Chemik - " / "TWIERDZA - ".
   // `titlePrefix` splits that one feed into a per-cinema scraper: each instance
