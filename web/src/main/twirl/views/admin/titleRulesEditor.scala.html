@@ -90,7 +90,13 @@
     .affected-row.affected-head span { color: var(--muted); font-size: .72rem;
       text-transform: uppercase; letter-spacing: .03em; }
     code { font-family: ui-monospace, monospace; }
-    #placeholders-ref .ph-row { margin: .15rem 0; }
+    #placeholders-ref > summary { cursor: pointer; font-size: 1.05rem; font-weight: 600;
+      list-style-position: outside; }
+    #placeholders-ref > summary:hover { color: var(--accent); }
+    #placeholders-ref .ph-item { margin: .55rem 0; padding-left: .2rem;
+      border-left: 2px solid var(--border); }
+    #placeholders-ref .ph-head { margin: 0 0 .15rem .5rem; }
+    #placeholders-ref .ph-doc { margin: 0 0 0 .5rem; max-width: 60rem; font-size: .9rem; }
     #placeholders-ref .ph-tok { color: var(--accent); background: var(--panel2);
       border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; }
     #placeholders-ref .ph-exp { color: var(--good); }
@@ -106,13 +112,16 @@
   </div>
   <p class="muted" style="margin:.1rem 0 0">The structural and search rules don't rewrite the stored film — they only reshape the title sent to external lookups. Each shows an unfoldable list of the corpus films it currently rewrites, and what to.</p>
 
-  <section class="scope" id="placeholders-ref">
-    <h2>Placeholders</h2>
-    <p class="desc">Reusable regex snippets. Reference one inside a pattern as <code class="ph-tok">&#123;&#123;NAME&#125;&#125;</code> — it's expanded before the regex compiles, so a rule that writes <code class="ph-tok">&#123;&#123;SEP&#125;&#125;</code> matches any banner separator (<code>:&nbsp;|&nbsp;-&nbsp;–&nbsp;—&nbsp;/&nbsp;_</code>, spaces optional). Defined in code (<code>TitleRulePlaceholders</code>), shown here for reference — not editable on this page.</p>
-    @for((name, expansion) <- services.titlerules.TitleRulePlaceholders.all.toSeq.sortBy(_._1)) {
-      <div class="ph-row"><code class="ph-tok">&#123;&#123;@name&#125;&#125;</code> <span class="muted">=</span> <code class="mono ph-exp">@expansion</code></div>
+  <details class="scope" id="placeholders-ref">
+    <summary><b>Placeholders</b> <span class="muted">— @services.titlerules.TitleRulePlaceholders.defined.size reusable regex snippets you can reference in a pattern</span></summary>
+    <p class="desc">Reference a placeholder inside a pattern as <code class="ph-tok">&#123;&#123;NAME&#125;&#125;</code>; it's substituted before the regex compiles, so a rule is written once and works for every separator. Defined in code (<code>TitleRulePlaceholders</code>) and shown here for reference — not editable on this page.</p>
+    @for(p <- services.titlerules.TitleRulePlaceholders.defined) {
+      <div class="ph-item">
+        <div class="ph-head"><code class="ph-tok">&#123;&#123;@p.name&#125;&#125;</code> <span class="muted">=</span> <code class="mono ph-exp">@p.expansion</code></div>
+        <div class="ph-doc muted">@p.doc</div>
+      </div>
     }
-  </section>
+  </details>
 
   <div id="scopes"></div>
 

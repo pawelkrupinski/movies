@@ -106,13 +106,21 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     }
   }
 
-  it should "render a read-only placeholders reference listing {{SEP}} and its expansion" in {
+  it should "render a collapsible, documented placeholders reference for every placeholder" in {
     onEditor { page =>
-      page.evalBool("!!document.getElementById('placeholders-ref')") shouldBe true
+      // A collapsible <details> at the top, with a summary.
+      page.evalString("document.getElementById('placeholders-ref').tagName") shouldBe "DETAILS"
+      page.evalBool("!!document.querySelector('#placeholders-ref > summary')") shouldBe true
       val text = page.evalString("document.getElementById('placeholders-ref').textContent")
+      // Every placeholder token, its expansion, and a documentation line.
       text should include ("{{SEP}}")
-      // the separator class is shown verbatim as the expansion
-      text should include ("[:|/_")
+      text should include ("{{SEPD}}")
+      text should include ("{{NSEP}}")
+      text should include ("[:|/_")                 // SEP expansion shown verbatim
+      text should include ("banner separator")      // SEP's doc line
+      // One documented item per placeholder.
+      page.evalInt("document.querySelectorAll('#placeholders-ref .ph-item').length") shouldBe 3
+      page.evalInt("document.querySelectorAll('#placeholders-ref .ph-doc').length") shouldBe 3
     }
   }
 
