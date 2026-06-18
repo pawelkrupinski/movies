@@ -8,8 +8,9 @@ import java.util.concurrent.TimeoutException
  *  Sentry) rather than ERROR. Used by the queue-driven ScrapeCinemaHandler. */
 object ScrapeErrors {
   def isTransientHttpError(e: Throwable): Boolean = e match {
-    case _: IOException      => true // timeouts, SSL, connection errors
-    case _: TimeoutException => true // Future timeouts
+    case _: IOException          => true // timeouts, SSL, connection errors
+    case _: TimeoutException     => true // Future timeouts
+    case _: InterruptedException => true // worker cancelled / interrupted a blocking scrape Await (shutdown, deadline)
     case e: RuntimeException =>
       val message = Option(e.getMessage).getOrElse("")
       // "HTTP <code> for <method> <url>"          — RealHttpFetch.checkStatus
