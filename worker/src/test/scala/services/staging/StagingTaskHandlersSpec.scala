@@ -16,8 +16,8 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
     def fetchFilmDetail(ref: String): Option[FilmDetail] = detail
   }
 
-  private def task(taskType: TaskType, payload: Map[String, String]) =
-    Task(id = "t1", taskType = taskType, dedupKey = "k", payload = payload, attempts = 1)
+  private def task(taskType: TaskType, payload: Map[String, String], attempts: Int = 1) =
+    Task(id = "t1", taskType = taskType, dedupKey = "k", payload = payload, attempts = attempts)
 
   private def listingRow(title: String): MovieRecord =
     MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some(title), filmUrl = Some("u"))))
@@ -42,6 +42,18 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
     val handler = new StagingDetailHandler(steps(repository, Seq(new FakeEnricher(Helios, None)), (_, _, r) => Some(r)))
 
     handler.handle(task(TaskType.StagingDetail, StagingTaskKeys.detailPayload("Film", Helios.displayName))) shouldBe a[HandlerOutcome.Reschedule]
+  }
+
+  it should "give up and report Done once the retry budget is exhausted, marking detail ready so the film graduates" in {
+    val repository = new InMemoryStagingRepository
+    repository.upsert(Helios, "Film", Some(2026), listingRow("Film"))
+    val s = steps(repository, Seq(new FakeEnricher(Helios, None)), (_, _, r) => Some(r))
+    val handler = new StagingDetailHandler(s)
+    val payload = StagingTaskKeys.detailPayload("Film", Helios.displayName)
+
+    handler.handle(task(TaskType.StagingDetail, payload)) shouldBe a[HandlerOutcome.Reschedule]  // early attempt — retry
+    handler.handle(task(TaskType.StagingDetail, payload, attempts = StagingDetailHandler.MaxDetailAttempts)) shouldBe HandlerOutcome.Done
+    s.detailReady(repository.findAll().head) shouldBe true
   }
 
   it should "skip an orphaned task for an unknown cinema" in {

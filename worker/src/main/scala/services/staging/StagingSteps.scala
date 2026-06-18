@@ -64,11 +64,22 @@ class StagingSteps(
    *  `detailReady` lets resolution proceed. Returns true once the fetch has landed
    *  (or the cinema doesn't defer) — false when a deferred fetch still hasn't, so
    *  the task reschedules + retries. `mergeInto` is idempotent, so a re-fetch only
-   *  fills gaps. */
-  def fetchDetailFor(cinema: Source, anchor: String): Boolean = enricherFor(cinema) match {
+   *  fills gaps.
+   *
+   *  `giveUp` is the handler's "retry budget exhausted" signal: a deferred fetch
+   *  that can NEVER land (e.g. a Filmweb-fallback row whose filmUrl points at
+   *  Filmweb, which the cinema's own enricher can't parse) would otherwise
+   *  reschedule forever. When set, we mark the detail fresh anyway and report
+   *  ready, degrading the film to listing-only data — exactly what each
+   *  `DetailEnricher` promises a missing/slow detail does (and what
+   *  `EnrichDetailsHandler` already does on the direct path). */
+  def fetchDetailFor(cinema: Source, anchor: String, giveUp: Boolean = false): Boolean = enricherFor(cinema) match {
     case None    => true                                                  // not a detail cinema — nothing owed
     case Some(e) =>
-      val ready = rowsFor(anchor).filter(_.cinema == cinema).forall(r => fetchDetailRow(r, e) || !e.defersTmdbResolution)
+      val fetched = rowsFor(anchor).filter(_.cinema == cinema).forall(r => fetchDetailRow(r, e) || !e.defersTmdbResolution)
+      if (!fetched && giveUp)
+        logger.warn(s"Staging: giving up on ${cinema.displayName} detail for '$anchor' after repeated failures — degrading to listing-only")
+      val ready = fetched || giveUp
       if (ready) freshness.markFresh(StagingTaskKeys.detailKey(anchor, cinema.displayName), FreshnessKind.DetailEnrich)
       ready
   }

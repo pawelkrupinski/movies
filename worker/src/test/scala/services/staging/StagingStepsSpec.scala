@@ -43,6 +43,21 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     repository.findAll().head.record.data(Helios).synopsis shouldBe Some("A plot")
   }
 
+  it should "give up (degrade to listing-only) when told to, so a permanently-failing deferred fetch stops blocking the film" in {
+    // The DCF/Filmweb-fallback case: a deferring cinema whose detail fetch can
+    // never land (e.g. the row carries a Filmweb filmUrl the cinema's own
+    // enricher can't parse). Without a give-up the staging-detail step
+    // reschedules forever; with it the film graduates on listing-only data.
+    val (repository, anchor) = seeded(Helios, "Stuck", Some(2026))
+    val enricher = new FakeEnricher(Helios, detail = None)            // deferred fetch never lands
+    val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))
+
+    s.fetchDetailFor(Helios, anchor) shouldBe false                  // not ready yet — keep retrying
+    s.detailReady(repository.findAll().head) shouldBe false
+    s.fetchDetailFor(Helios, anchor, giveUp = true) shouldBe true    // budget exhausted — degrade
+    s.detailReady(repository.findAll().head) shouldBe true           // marked fresh → resolve can proceed
+  }
+
   "resolveAndStamp" should "resolve with the merged detail hints and stamp the hit on every row" in {
     val (repository, anchor) = seeded(Helios, "Newcomer", Some(2026))
     val enricher = new FakeEnricher(Helios, Some(FilmDetail(director = Seq("Jane Doe"))))
