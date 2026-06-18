@@ -320,7 +320,10 @@
       sum.appendChild(document.createTextNode(countLabel(data.count)));
       if (!data.changes || !data.changes.length)
         return [sum, h("div", { class: "affected-body muted" }, [emptyLabel])];
-      // original → search result → display title (the rendered, recased form).
+      // original → search result → display title. The search result is the
+      // structural rewrite (lookup key); the display title is the on-page form,
+      // which structural rules don't change — so it stays present even when the
+      // search result is removed.
       const head = h("div", { class: "affected-row affected-head" }, [
         h("span", {}, ["original"]), h("span", {}, [""]),
         h("span", {}, ["search"]),   h("span", {}, [""]),
@@ -334,8 +337,8 @@
             h("span", { class: "aff-arrow" }, ["→"]),
             removed ? h("span", { class: "aff-to empty" }, ["(removed)"])
                     : h("span", { class: "aff-to" }, [c.result]),
-            h("span", { class: "aff-arrow" }, [removed ? "" : "→"]),
-            h("span", { class: "aff-display" }, [removed ? "" : (c.display || c.result)])
+            h("span", { class: "aff-arrow" }, ["→"]),
+            h("span", { class: "aff-display" }, [c.display || c.title])
           ]);
         })));
       const out = [sum, body];

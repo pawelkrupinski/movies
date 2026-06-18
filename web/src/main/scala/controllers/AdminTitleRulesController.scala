@@ -106,8 +106,8 @@ class AdminTitleRulesController(
             val draft  = TitleRuleSet(parsed.collect { case Right(r) => r })
             val titles = movieRepository.findAll().map(_.title).filter(_.nonEmpty)
             Ok(Json.obj(
-              "affected" -> JsArray(draft.transientAffected(titles).map(affectedToJson)),
-              "tiers"    -> JsArray(draft.transientTierAffected(titles).map(tierAffectedToJson))))
+              "affected" -> JsArray(draft.transientAffected(titles).map(affectedToJson(draft, _))),
+              "tiers"    -> JsArray(draft.transientTierAffected(titles).map(tierAffectedToJson(draft, _)))))
         }
     }
   }
@@ -139,27 +139,31 @@ object AdminTitleRulesController {
    *  `changes` is capped so a broad rule can't bloat the response. Each change
    *  carries the original, the rewritten search `result`, and the `display` form
    *  the page would actually render (the third preview column). */
-  def affectedToJson(a: TitleRuleSet.RuleAffected): JsObject = Json.obj(
+  def affectedToJson(draft: TitleRuleSet, a: TitleRuleSet.RuleAffected): JsObject = Json.obj(
     "ruleId" -> a.ruleId,
     "scope"  -> a.scope.name,
     "count"  -> a.changes.size,
     "changes" -> a.changes.take(AffectedSampleCap).map(c =>
-      Json.obj("title" -> c.original, "result" -> c.result, "display" -> displayOf(c.result))))
+      Json.obj("title" -> c.original, "result" -> c.result, "display" -> displayOf(draft, c.original))))
 
   /** Tier-level affected payload for the editor — the whole transient tier's net
    *  (original → final) rewrites, capped like the per-rule payload. */
-  def tierAffectedToJson(t: TitleRuleSet.TierAffected): JsObject = Json.obj(
+  def tierAffectedToJson(draft: TitleRuleSet, t: TitleRuleSet.TierAffected): JsObject = Json.obj(
     "scope"  -> t.scope.name,
     "count"  -> t.changes.size,
     "changes" -> t.changes.take(AffectedSampleCap).map(c =>
-      Json.obj("title" -> c.original, "result" -> c.result, "display" -> displayOf(c.result))))
+      Json.obj("title" -> c.original, "result" -> c.result, "display" -> displayOf(draft, c.original))))
 
-  /** The on-page display title for an affected row's rewritten result — the same
-   *  shared display ladder the merge preview / live pipeline use, which for a
-   *  lone title reduces to its display casing (`recase`). Empty when the rule
-   *  removed the title outright. */
-  private def displayOf(result: String): String =
-    if (result.nonEmpty) TitleNormalizer.chooseDisplay(Seq(result), result) else ""
+  /** The on-page DISPLAY title for an affected row — computed from the ORIGINAL
+   *  title, NOT the search `result`. The affected list previews GlobalStructural
+   *  (transient, search-only) rules, which strip decorations for the lookup key
+   *  but deliberately leave the displayed title untouched; so display applies the
+   *  display chain (draft Canonical-scope rewrites + `recase`) to the original,
+   *  keeping the decoration the page actually shows. This makes the display
+   *  column genuinely differ from the structural search result instead of
+   *  re-casing the already-stripped form. */
+  private def displayOf(draft: TitleRuleSet, original: String): String =
+    TitleNormalizer.recase(draft.canonical(original))
 
   private val AffectedSampleCap = 500
 
