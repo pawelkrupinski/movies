@@ -74,6 +74,7 @@ object GeneratedTitleRules {
     TitleRule("r-onsvx1u5", GlobalStructural, None, "(?i)^\\s*SEANS PRZYJAZNY SENSORYCZNIE\\s*[:-]?\\s*", "", applyAll = false, order = 57, last = false, enabled = true, tag = None, note = None),
     TitleRule("r-0n35l4ll", GlobalStructural, None, "(?i)^\\s*SMOK\\s*\\(Spotkania Młodych Odkrywców Kina\\)\\.?\\s*", "", applyAll = false, order = 58, last = false, enabled = true, tag = None, note = None),
     TitleRule("r-0tvhk11j", GlobalStructural, None, "(?i)^\\s*Spektakl\\s*[-:]?\\s*", "", applyAll = false, order = 59, last = false, enabled = true, tag = None, note = None),
+    TitleRule("r-ectm6pbz", GlobalStructural, None, "(?i)\\s*UNLIMITED\\s+SHOW\\s*[-:]\\s*", "", applyAll = false, order = 60, last = false, enabled = true, tag = None, note = None),
     TitleRule("bok-ws", PerCinema, Some("bok"), "[\\s ]+", " ", applyAll = true, order = 0, last = false, enabled = true, tag = None, note = Some("BoK whitespace + nbsp collapse")),
     TitleRule("bok-promo", PerCinema, Some("bok"), "\\s*\\|\\s*[A-ZĄĆĘŁŃÓŚŹŻ0-9 ]{3,}\\s*$", "", applyAll = false, order = 1, last = false, enabled = true, tag = None, note = Some("BoK trailing ALL-CAPS promo tag")),
     TitleRule("bok-pipe-to-colon", PerCinema, Some("bok"), "\\s*\\|\\s*", ": ", applyAll = true, order = 2, last = false, enabled = true, tag = None, note = Some("BoK programme-banner '|' → ': '")),
