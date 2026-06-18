@@ -94,7 +94,10 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
     "Wielka Sztuka w Kinoteatrze Rialto - Velázquez i jego tajemnica",
     "Wielka Sztuka w Kinoteatrze Rialto - Świt impresjonizmu: Paryż 1874",
     // Real films whose title merely contains event vocabulary.
-    "Społeczeństwo spektaklu"
+    "Społeczeństwo spektaklu",
+    // A film screened under an award-gala banner ("Banner | Film") — the
+    // documentary "Pieśni lasu". The pipe keeps it; a bare "gala …" is dropped.
+    "Gala Wręczenia Nagrody Wolności | Pieśni lasu"
   )
 
   "isLiveEvent" should "flag every stray live stage/music event" in {

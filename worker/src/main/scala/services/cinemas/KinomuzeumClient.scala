@@ -16,7 +16,7 @@ import scala.util.Try
  * booking). Per-film detail pages add year / countries / director / synopsis.
  * Section headers omit the year, so `today` supplies it.
  */
-class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper with DetailEnricher {
+class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper with DetailEnricher with OnlyMovieEventsFilter {
 
   // Static detail pages cached across passes; the listing keeps the live `http`
   // since its showtimes change every pass.
@@ -34,7 +34,7 @@ class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  def fetch(): Seq[CinemaMovie] = fetchBare()
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
     val document = Jsoup.parse(http.get(ListingUrl))

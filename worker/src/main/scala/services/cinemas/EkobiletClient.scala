@@ -36,7 +36,7 @@ class EkobiletClient(
   slug:   String,
   override val cinema: Cinema,
   today:  LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-) extends CinemaScraper {
+) extends CinemaScraper with OnlyMovieEventsFilter {
 
   import EkobiletClient._
 
@@ -44,7 +44,7 @@ class EkobiletClient(
   // The venue's public landing page — the same URL fetch() reads its listing from.
   override def sourceUrl: Option[String] = Some(s"$BaseUrl/$slug")
 
-  def fetch(): Seq[CinemaMovie] = {
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     val landing = http.get(s"$BaseUrl/$slug")
     val dates   = availableDates(landing)
 

@@ -10,7 +10,7 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")))
-  extends CinemaScraper with DetailEnricher {
+  extends CinemaScraper with DetailEnricher with OnlyMovieEventsFilter {
 
   val cinema: Cinema = KinoMuza
   private val RepertoireUrl = "https://www.kinomuza.pl/repertuar/"
@@ -41,7 +41,7 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl)
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
-  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(RepertoireUrl))
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = parseHtml(http.get(RepertoireUrl))
 
   // Muza's detail pages render the synopsis in the first `paragraph`-classed
   // column of the film header — `div.col-lg-7.paragraph`. A second

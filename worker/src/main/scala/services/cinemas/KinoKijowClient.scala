@@ -37,14 +37,14 @@ class KinoKijowClient(
   http:             HttpFetch,
   override val cinema: Cinema,
   today:            LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-) extends CinemaScraper {
+) extends CinemaScraper with OnlyMovieEventsFilter {
 
   import KinoKijowClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  def fetch(): Seq[CinemaMovie] = {
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     val months = monthsToFetch(today)
     val pages  = ParallelDetailFetch.keyed("kino-kijow-months", months, 1.minute)(m => monthUrl(m)) { url =>
       Try(http.get(url)).toOption

@@ -65,7 +65,7 @@ class MsiClient(
   // buried (the bare `NAPISY`/`DUBBING` then becomes trailing and the normal
   // format extractor catches it).
   titleSuffix: Option[String] = None
-) extends CinemaScraper {
+) extends CinemaScraper with OnlyMovieEventsFilter {
 
   import MsiClient._
 
@@ -77,7 +77,7 @@ class MsiClient(
       .orElse(titleSuffix.map(cleanTitleStripSuffix))
       .getOrElse(cleanTitle)
 
-  def fetch(): Seq[CinemaMovie] = {
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     val thisMonth = YearMonth.from(today)
     val nextMonth = thisMonth.plusMonths(1)
 

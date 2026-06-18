@@ -20,9 +20,11 @@ class KinomuzeumClientSpec extends AnyFlatSpec with Matchers {
       byTitle(title).filmUrl.getOrElse(fail(s"no filmUrl for $title"))
     ).getOrElse(fail(s"no detail for $title"))
 
-  "KinomuzeumClient.fetch" should "return 16 films and 38 showtimes" in {
-    results.size shouldBe 16
-    results.flatMap(_.showtimes).size shouldBe 38
+  // The "Koncert i dyskusja …" listing is a live event, dropped by the mixed-in
+  // OnlyMovieEventsFilter — fetch() returns films only.
+  "KinomuzeumClient.fetch" should "return 15 films and 37 showtimes (the concert event is filtered)" in {
+    results.size shouldBe 15
+    results.flatMap(_.showtimes).size shouldBe 37
   }
 
   it should "assign KINOMUZEUM to every entry" in {

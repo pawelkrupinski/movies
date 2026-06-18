@@ -40,12 +40,12 @@ import scala.util.Try
  * @parameter cinema  The [[Cinema]] source tag attached to every [[CinemaMovie]].
  */
 class BiletynaClient(http: HttpFetch, pageUrl: String, override val cinema: Cinema)
-    extends CinemaScraper {
+    extends CinemaScraper with OnlyMovieEventsFilter {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(pageUrl)
   override def sourceUrl: Option[String] = Some(pageUrl)
 
-  def fetch(): Seq[CinemaMovie] = BiletynaClient.parse(http.get(pageUrl), cinema)
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = BiletynaClient.parse(http.get(pageUrl), cinema)
 }
 
 object BiletynaClient {

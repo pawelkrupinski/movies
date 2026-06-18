@@ -46,9 +46,17 @@ object NonMovieEventClassifier {
     """\boperetk""".r,    // operetka / operetki
     """\bkoncert""".r,    // koncert / koncertu
     """\bteatr""".r,      // teatr / teatru / teatrem / teatralne (NOT kinoteatr…)
-    """\bbalet""".r,      // baletowa (PL); English "Ballet" stays
-    """\bgala\b""".r
+    """\bbalet""".r       // baletowa (PL); English "Ballet" stays
   )
+
+  /** "gala" is handled separately from [[EventMarkers]]: it marks a live event
+   *  (Gala Baletowa, Światowa gala muzyczna, Gala Rozdania Nagród) EXCEPT a film
+   *  screened under a gala banner, which uses a "Banner | Film" title — e.g.
+   *  "Gala Wręczenia Nagrody Wolności | Pieśni lasu" (a real documentary). The
+   *  pipe distinguishes the two; `\bgala\b` also ignores "Galaxy"/"Galaktyki". */
+  private val GalaWord = """\bgala\b""".r
+  private def isStandaloneGala(t: String): Boolean =
+    GalaWord.findFirstIn(t).isDefined && !t.contains("|")
 
   /** Markers that this is screened cinema content (a broadcast or a film
    *  screening), which VETO an event verdict even when an event marker is
@@ -69,7 +77,7 @@ object NonMovieEventClassifier {
   /** True when `title` names a live stage/music event rather than a film. */
   def isLiveEvent(title: String): Boolean = {
     val t = title.toLowerCase
-    EventMarkers.exists(_.findFirstIn(t).isDefined) &&
-      !BroadcastMarkers.exists(t.contains)
+    if (BroadcastMarkers.exists(t.contains)) false
+    else EventMarkers.exists(_.findFirstIn(t).isDefined) || isStandaloneGala(t)
   }
 }

@@ -31,12 +31,12 @@ import scala.util.Try
  * (every poll returned `[]`) though the cinema is open and screening.
  */
 class SystemBiletowyClient(http: HttpFetch, baseUrl: String, override val cinema: Cinema)
-    extends CinemaScraper {
+    extends CinemaScraper with OnlyMovieEventsFilter {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
   override def sourceUrl: Option[String] = Some(baseUrl)
 
-  def fetch(): Seq[CinemaMovie] =
+  protected def fetchUnfiltered(): Seq[CinemaMovie] =
     SystemBiletowyClient.parse(http.get(s"$baseUrl/index.php"), cinema, baseUrl)
 }
 

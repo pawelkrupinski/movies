@@ -31,14 +31,14 @@ import scala.util.Try
  * `/repertuar` page is films only — non-film museum events live on a separate
  * `/wydarzenia` listing.
  */
-class KinoMuzeumGdanskClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper {
+class KinoMuzeumGdanskClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper with OnlyMovieEventsFilter {
 
   import KinoMuzeumGdanskClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  def fetch(): Seq[CinemaMovie] = {
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     val base     = http.get(RepertoireUrl)
     val dayLinks = parseDayLinks(base)
     val dayPages = ParallelDetailFetch.keyed("kino-muzeum-days", dayLinks, 1.minute)(l => s"$BaseUrl${l.href}") { url =>

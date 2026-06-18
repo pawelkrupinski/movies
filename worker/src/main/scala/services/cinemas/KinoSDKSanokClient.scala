@@ -46,12 +46,12 @@ class KinoSDKSanokClient(
   http:   HttpFetch,
   override val cinema: Cinema = KinoSDK,
   today:  LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-) extends CinemaScraper {
+) extends CinemaScraper with OnlyMovieEventsFilter {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoSDKSanokClient.BaseUrl)
   override def sourceUrl: Option[String] = Some(KinoSDKSanokClient.listingUrl(today))
 
-  def fetch(): Seq[CinemaMovie] = {
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     val entry = Jsoup.parse(http.get(KinoSDKSanokClient.listingUrl(today)), KinoSDKSanokClient.BaseUrl)
     val dates = (today +: KinoSDKSanokClient.pickerDates(entry)).distinct.sorted
 

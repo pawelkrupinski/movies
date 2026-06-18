@@ -35,7 +35,7 @@ import scala.util.Try
 class AlternatywyClient(
   http:  HttpFetch,
   today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-) extends CinemaScraper {
+) extends CinemaScraper with OnlyMovieEventsFilter {
   import AlternatywyClient._
 
   val cinema: Cinema = KinoAlternatywy
@@ -43,7 +43,7 @@ class AlternatywyClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl)
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
-  def fetch(): Seq[CinemaMovie] =
+  protected def fetchUnfiltered(): Seq[CinemaMovie] =
     parseRepertoire(http.get(RepertoireUrl))
       .groupBy(_.title)
       .toSeq
