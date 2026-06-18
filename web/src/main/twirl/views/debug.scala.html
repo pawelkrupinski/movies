@@ -119,6 +119,9 @@
     /* Centre only the tick (stage) columns — header + cells — so the ✓ sits under
        a centred heading. The other columns keep their default left alignment. */
     #staging-t th.tick, #staging-t td.stage-detail, #staging-t td.stage-tmdb, #staging-t td.stage-imdb { text-align: center; }
+    /* The Cinemas cell shows a name (single cinema) or a count; override the
+       shared `.cinemas` right-align so the name reads left-to-right. */
+    #staging-t td.cinemas { text-align: left; }
     #staging-t .badge { font-size: 10px; border-radius: 3px; padding: 0 .3rem; font-variant-numeric: tabular-nums; }
     .badge.q-none { color: #555; }
     .badge.q-wait { color: #aad4ff; background: #16263a; border: 1px solid #244a6e; }

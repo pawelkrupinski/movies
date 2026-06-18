@@ -2741,6 +2741,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalString(align("#staging-t th.tick")) shouldBe "center"          // Detail header
       page.evalString(align("""#staging-folded tr.data[data-anchor="donenewcomer"] td.stage-detail""")) shouldBe "center"
       page.evalString(align("""#staging-folded tr.data[data-anchor="donenewcomer"] td.title""")) should not be "center"
+      // The Cinemas cell carries the shared `.cinemas` class (right-aligned in the
+      // movie table); the staging table overrides it back to left so the name reads
+      // left-to-right.
+      page.evalString(align("""#staging-folded tr.data[data-anchor="donenewcomer"] td.cinemas""")) shouldBe "left"
     }
   }
 
