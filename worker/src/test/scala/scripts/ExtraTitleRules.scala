@@ -67,7 +67,13 @@ object ExtraTitleRules {
     prog("xtra-pp-psychologia",       """(?i)^Filmowe\s+spotkania\s+z\s+psycholog(?:ią|ia):\s+""", "Filmowe spotkania z psychologią"),
     prog("xtra-pp-filmoterapia",      """(?i)^Filmoterapia\s+z\s+Inspirą:\s+""",          "Filmoterapia z Inspirą"),
     prog("xtra-pp-portret-kobiety",   """(?i)^Portret\s+Kobiety:\s+""",                   "Portret Kobiety cycle"),
-    prog("xtra-pp-best-film-on-tour", """(?i)^Best\s+Film\s+on\s+Tour\s*[:|]\s*""",       "Best Film on Tour")
+    prog("xtra-pp-best-film-on-tour", """(?i)^Best\s+Film\s+on\s+Tour\s*[:|]\s*""",       "Best Film on Tour"),
+    // Second-wave (2026-06-18) audit: retrospective / classics banners that prefix
+    // the film (own display row, query stripped to the bare film so it enriches).
+    prog("xtra-pp-wajda-rewizje",     """(?i)^(?:Cykl\s+[„"]?\s*)?WAJDA:\s*re-?\s*wizje[^:]*:\s*""", "WAJDA: re-wizje retrospective prefix"),
+    prog("xtra-pp-klasyka-na-topie",  """(?i)^Klasyka\s+na\s+TOPie(?:\s+na\s+[^:]+)?:\s*""", "'Klasyka na TOPie [na …]:' classics strand"),
+    prog("xtra-pp-klasyka-atlantic",  """(?i)^Klasyka\s+w\s+kinie\s+Atlantic:\s*""",      "'Klasyka w kinie Atlantic:' classics strand"),
+    prog("xtra-pp-pnkf-prefix",       """(?i)^\d+\.\s*PRZEGLĄD\s+NOWEGO\s+KINA\s+FRANCUSKIEGO:\s*""", "'17. Przegląd Nowego Kina Francuskiego:' festival prefix")
   )
 
   /** Strips that fix enrichment without merging the row away — a premiere or a
@@ -86,7 +92,22 @@ object ExtraTitleRules {
     searchStrip("xtra-wtf-fest-prefix",            """(?i)^WTF\s+Fest\s*\|\s*""",                     "'WTF Fest | <film>' banner (film after the pipe)"),
     searchStrip("xtra-pipe-festival-suffix",       """(?i)\s*\|\s*(?:6\s+razy\s+Pedro|Kino\s+cyrkularne)\b.*$""", "'<film> | 6 razy Pedro / Kino cyrkularne …' (film before the pipe)"),
     searchStrip("xtra-fellini-prefix",             """(?i)^Federico\s+Fellini\s*:\s*(?:ciao\s+a?\s*tutti\s*!?)?\s*[:\-–—]?\s*""", "'Federico Fellini: ciao a tutti! …' retrospective prefix"),
-    searchStrip("xtra-fellini-suffix",             """(?i)\s*(?:\|\s*|[–—-]\s*przegl[ąa]d\s+)Federico\s+Fellini\b.*$""", "'… | / – przegląd FEDERICO FELLINI …' retrospective suffix")
+    searchStrip("xtra-fellini-suffix",             """(?i)\s*(?:\|\s*|[–—-]\s*przegl[ąa]d\s+)Federico\s+Fellini\b.*$""", "'… | / – przegląd FEDERICO FELLINI …' retrospective suffix"),
+    // Second-wave (2026-06-18) audit: classics / retrospective / cycle banners
+    // that SUFFIX the film (the screening keeps its decorated row, the query
+    // resolves the bare film). All cross-cinema or otherwise specific enough that
+    // no real film title collides.
+    searchStrip("xtra-10-10-klasyka",              """(?i)\s*\|\s*10/10\s+Klasyka\s+filmowa\s*$""",   "'| 10/10 Klasyka filmowa' classics-suffix (Piast, Apollo Wałbrzych, Lot)"),
+    searchStrip("xtra-wajda-rewizje-suffix",       """(?i)\s*[|\\]\s*[„"]?\s*WAJDA:\s*re-?\s*wizje.*$""", "'… | / \\ WAJDA: re-wizje …' retrospective suffix"),
+    searchStrip("xtra-pnkf-suffix-pipe",           """(?i)\s*\|\s*Przegląd\s+Nowego\s+Kina\s+Francuskiego\s*$""", "'… | Przegląd Nowego Kina Francuskiego' festival suffix"),
+    searchStrip("xtra-pnkf-suffix-edycja",         """(?i)\s*\(org\.[^)]*\)\s*\d+\.\s*edycja\s+Przeglądu\s+Nowego\s+Kina\s+Francuskiego\s*$""", "'(org. …) 17. edycja Przeglądu Nowego Kina Francuskiego' suffix"),
+    // `(?iu)` (not `(?i)`): the Kino Zamek raw is ALL-CAPS ("– AMERYKAŃSKA KLASYKA",
+    // "| ŻUŁAWSKI. KINO EKSTAZY"), so Unicode case folding is needed to fold Ż/Ł/Ń —
+    // plain `(?i)` is ASCII-only and won't match them (same gotcha as wybrzeze).
+    searchStrip("xtra-amerykanska-klasyka",        """(?iu)\s*[–—-]\s*amerykańska\s+klasyka(?:\s*/.*)?\s*$""", "'– amerykańska klasyka [/ N. rocznica]' suffix (Kino Zamek)"),
+    searchStrip("xtra-zulawski-kino-ekstazy",      """(?iu)\s*[|–—-]\s*żuławski\.?\s*kino\s+ekstazy\s*$""", "'… | / – żuławski. Kino ekstazy' retrospective suffix (Kino Zamek)"),
+    searchStrip("xtra-poniedzialki-konwicki",      """(?i)\s*\|\s*Poniedziałki\s+z\s+Konwickim\b.*$""", "'… | Poniedziałki z Konwickim …' cycle suffix (Kino Spektrum)"),
+    searchStrip("xtra-jim-jarmusch-suffix",        """(?i)\s*//\s*jim\s+jarmusch\s*$""",              "'// jim jarmusch' director-cycle suffix (Kino za Rogiem)")
   )
 
   /** Orders stamped by position so the additions fold AFTER the seed rules of

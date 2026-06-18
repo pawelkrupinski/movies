@@ -33,7 +33,14 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Klub Filmowy Żółty Fotel: Chronologia wody"     -> ("Klub Filmowy Żółty Fotel: ",       "Chronologia wody"),
     "Kino Dostępne: Drugie życie"                     -> ("Kino Dostępne: ",                  "Drugie życie"),
     "Filmoterapia z Inspirą: Drugie życie"            -> ("Filmoterapia z Inspirą: ",         "Drugie życie"),
-    "Portret Kobiety: Takie jest życie"               -> ("Portret Kobiety: ",               "Takie jest życie")
+    "Portret Kobiety: Takie jest życie"               -> ("Portret Kobiety: ",               "Takie jest życie"),
+    // Second-wave (2026-06-18) retrospective / classics prefixes.
+    "WAJDA: re-wizje: Brzezina"                        -> ("WAJDA: re-wizje: ",               "Brzezina"),
+    "WAJDA: re- wizje: CZŁOWIEK Z MARMURU"             -> ("WAJDA: re- wizje: ",              "CZŁOWIEK Z MARMURU"),
+    "Klasyka na TOPie: Podziemny krąg"                 -> ("Klasyka na TOPie: ",              "Podziemny krąg"),
+    "Klasyka na TOPie na Dzień Ojca: Rambo: Pierwsza krew." -> ("Klasyka na TOPie na Dzień Ojca: ", "Rambo: Pierwsza krew."),
+    "Klasyka w kinie Atlantic: Zawieście czerwone latarnie" -> ("Klasyka w kinie Atlantic: ", "Zawieście czerwone latarnie"),
+    "17. PRZEGLĄD NOWEGO KINA FRANCUSKIEGO: Fałszerz stulecia" -> ("17. PRZEGLĄD NOWEGO KINA FRANCUSKIEGO: ", "Fałszerz stulecia")
   )
 
   "ExtraTitleRules programme prefixes" should "extract the banner for the display row" in {
@@ -79,7 +86,20 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "FEDERICO FELLINI: ciao a tutti!: Wałkonie"                 -> "Wałkonie",
     "Federico Fellini: GIULIETTA I DUCHY"                       -> "GIULIETTA I DUCHY",
     "Noce Cabirii (1957) | FEDERICO FELLINI: ciao a tutti!"     -> "Noce Cabirii (1957)",
-    "WAŁKONIE – przegląd FEDERICO FELLINI: ciao a tutti!"       -> "WAŁKONIE"
+    "WAŁKONIE – przegląd FEDERICO FELLINI: ciao a tutti!"       -> "WAŁKONIE",
+    // Second-wave (2026-06-18) classics / retrospective / cycle suffixes.
+    "Chinatown | 10/10 Klasyka filmowa"                         -> "Chinatown",
+    "Stowarzyszenie Umarłych Poetów | 10/10 Klasyka filmowa"    -> "Stowarzyszenie Umarłych Poetów",
+    "CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin" -> "CZŁOWIEK Z MARMURU",
+    "CZŁOWIEK Z MARMURU\\ Wajda: re-wizje"                      -> "CZŁOWIEK Z MARMURU",
+    "Guru | Przegląd Nowego Kina Francuskiego"                  -> "Guru",
+    "Guru (org. Gourou) 17. edycja Przeglądu Nowego Kina Francuskiego" -> "Guru",
+    "Donnie darko – amerykańska klasyka"                        -> "Donnie darko",
+    "Co się zdarzyło baby jane? – amerykańska klasyka"          -> "Co się zdarzyło baby jane?",
+    "Najważniejsze to kochać – żuławski. Kino ekstazy"          -> "Najważniejsze to kochać",
+    "Opętanie | ŻUŁAWSKI. KINO EKSTAZY"                         -> "Opętanie",
+    "Salto | Poniedziałki z Konwickim: pisarz – scenarzysta – reżyser" -> "Salto",
+    "Truposz // JIM JARMUSCH"                                   -> "Truposz"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
@@ -101,7 +121,9 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Mufasa: Król Lew",
     "Diabeł ubiera się u Prady 2",
     "Ojczyzna",
-    "2001: Odyseja kosmiczna"
+    "2001: Odyseja kosmiczna",
+    "Trzy kolory: Czerwony",
+    "Rambo: Pierwsza krew"
   )
 
   it should "never touch a plain colon/word title" in {
