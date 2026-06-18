@@ -84,6 +84,22 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.extractFormatTags("Władcy Wszechświata- 2D napisy") shouldBe (("Władcy Wszechświata", List("2D", "NAP")))
   }
 
+  // Forum Bolesławiec (bilety24) glues the version word to the title with an
+  // underscore — "Supergirl_dubbing", "Spider-Man. Całkiem nowy dzień_3D" — so
+  // the dubbed/subtitled/3D variants must un-glue, merge to one title, and yield
+  // the format token; a non-version underscore must be left intact.
+  it should "un-glue an underscore-glued format word into clean title + token" in {
+    ScraperParse.extractFormatTags("Supergirl_dubbing") shouldBe (("Supergirl", List("DUB")))
+    ScraperParse.extractFormatTags("Supergirl_napisy")  shouldBe (("Supergirl", List("NAP")))
+    ScraperParse.extractFormatTags("Spider-Man. Całkiem nowy dzień_3D") shouldBe
+      (("Spider-Man. Całkiem nowy dzień", List("3D")))
+  }
+
+  it should "leave a non-version underscore (date, programme tag) intact" in {
+    ScraperParse.extractFormatTags("Seans w ciemno_7.26") shouldBe (("Seans w ciemno_7.26", Nil))
+    ScraperParse.extractFormatTags("Monterey Pop_DKF")    shouldBe (("Monterey Pop_DKF", Nil))
+  }
+
   it should "strip non-version words (dolby, atmos) without emitting a token for them" in {
     ScraperParse.extractFormatTags("Dzień objawienia (2D NAPISY DOLBY ATMOS)") shouldBe
       (("Dzień objawienia", List("2D", "NAP")))

@@ -54,4 +54,20 @@ class Bilety24OrganizerClientSpec
       slot.bookingUrl.value should startWith("https://www.bilety24.pl/kino/")
     }
   }
+
+  // Forum Bolesławiec glues the version word to the title with an underscore
+  // ("Supergirl_dubbing", "Supergirl_napisy"). Those must un-glue, merge into one
+  // film, and surface the version as a Showtime.format badge — otherwise each
+  // language variant fragments into its own card with no format info.
+  "Bilety24OrganizerClient.parse" should
+    "merge underscore-glued format variants into one film and surface the format tokens" in {
+    val html =
+      """<html><body>
+        |<a href="/kino/1-supergirl-10?id=1" title="Film: Supergirl_dubbing - 2026-06-19 18:00 - Bolesławiec">buy</a>
+        |<a href="/kino/1-supergirl-11?id=2" title="Film: Supergirl_napisy - 2026-06-20 20:30 - Bolesławiec">buy</a>
+        |</body></html>""".stripMargin
+    val movies = Bilety24OrganizerClient.parse(html, KinoForumBoleslawiec)
+    movies.map(_.movie.title) shouldBe Seq("Supergirl")
+    movies.head.showtimes.map(_.format).toSet shouldBe Set(List("DUB"), List("NAP"))
+  }
 }

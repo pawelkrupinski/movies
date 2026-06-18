@@ -47,7 +47,8 @@ object Bilety24OrganizerClient {
   private val SlotPat = """(?s)Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*-""".r
   private val Fmt     = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
-  private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String])
+  private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String],
+                            format: List[String])
 
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
@@ -56,14 +57,19 @@ object Bilety24OrganizerClient {
     val slots = document.select("a[title]").asScala.toSeq.flatMap { a =>
       SlotPat.findFirstMatchIn(a.attr("title")).flatMap { m =>
         Try(LocalDateTime.parse(s"${m.group(2)} ${m.group(3)}", Fmt)).toOption.map { dt =>
-          RawSlot(ScraperParse.stripFormatTags(m.group(1)), dt, Option(a.attr("abs:href")).filter(_.nonEmpty))
+          // extractFormatTags (not stripFormatTags): the format/version word a
+          // portal buries in the title — "Supergirl_dubbing", "…_3D" on Forum
+          // Bolesławiec — is peeled so the variants merge into one film AND
+          // surfaced as a `Showtime.format` badge instead of being discarded.
+          val (clean, format) = ScraperParse.extractFormatTags(m.group(1))
+          RawSlot(clean, dt, Option(a.attr("abs:href")).filter(_.nonEmpty), format)
         }
       }
     }
 
     slots.filter(_.title.nonEmpty).groupBy(_.title).toSeq.flatMap { case (title, group) =>
       val showtimes = group
-        .map(s => Showtime(s.dateTime, s.booking))
+        .map(s => Showtime(s.dateTime, s.booking, format = s.format))
         .distinctBy(s => (s.dateTime, s.bookingUrl))
         .sortBy(_.dateTime)
       if (showtimes.isEmpty) None

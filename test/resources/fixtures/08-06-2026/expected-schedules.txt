@@ -3339,6 +3339,7 @@ cinemaScrapes:
   Cinema Lumiere / Mandalorian i grogu / —
   Cinema1 / Mandalorian i grogu / —
   Europa / Mandalorian i Grogu / —
+  Forum / Mandalorian i Grogu / —
   Helios Aleja Bielany / Mandalorian & Grogu / 2025
   Helios Alfa / Mandalorian & Grogu / 2025
   Helios Biała / Mandalorian & Grogu / 2025
@@ -7195,6 +7196,7 @@ cinemaScrapes:
   Cinema City Zielona Góra / Straszny film / 2026
   Cinema Lumiere / Straszny film / —
   Cinema1 / Straszny film / —
+  Forum / Straszny film / —
   Fregata / Straszny film / —
   Helios Aleja Bielany / Straszny film / 2026
   Helios Alfa / Straszny film / 2026
@@ -7521,6 +7523,7 @@ cinemaScrapes:
   Cinema City Wroclavia / Supergirl / 2026
   Cinema City Zakopianka / Supergirl / 2026
   Cinema City Zielona Góra / Supergirl / 2026
+  Forum / Supergirl / —
   Helios Aleja Bielany / Supergirl / —
   Helios Alfa / Supergirl / —
   Helios Biała / Supergirl / —
@@ -8620,6 +8623,7 @@ cinemaScrapes:
   Cinema City Zakopianka / Władcy Wszechświata / 2026
   Cinema City Zielona Góra / Władcy Wszechświata / 2026
   Cinema1 / Władcy wszechświata / —
+  Forum / Władcy wszechświata / —
   Helios Aleja Bielany / Władcy wszechświata / 2026
   Helios Alfa / Władcy wszechświata / 2026
   Helios Biała / Władcy wszechświata / 2026

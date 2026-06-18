@@ -96,6 +96,13 @@ private[cinemas] object ScraperParse {
   private val FormatBracketTag = """\s*\[[^\]]*\]\s*$""".r
   private val FormatParenTag   =
     """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|4DX|dubbing|napisy|lektor|pokaz)\b[^)]*)\)\s*$""".r
+  // Underscore-glued format/version tag — some bilety24 portals (Forum Bolesławiec)
+  // join the version word straight to the title with an underscore:
+  // "Supergirl_dubbing", "Spider-Man. Całkiem nowy dzień_3D". Un-glue ONLY before a
+  // known format/version word so a legitimate underscore ("Seans w ciemno_7.26",
+  // the "_DKF"/"_FKS" programme tags) is left intact and those titles aren't re-split.
+  private val GluedFormatUnderscore =
+    ("(?i)_(?=(?:" + FormatVersionWords.toSeq.sortBy(-_.length).mkString("|") + """)\b)""").r
 
   /** The bare lower-cased word of a title token (paren/bracket/punctuation
    *  peeled), or `""` for an empty token. */
@@ -123,7 +130,7 @@ private[cinemas] object ScraperParse {
    *  the original title (e.g. "(2D NAPISY)" → `List("2D", "NAP")`). Stripped
    *  words with no version meaning (dolby, atmos, premiera, …) yield no token. */
   def extractFormatTags(raw: String): (String, List[String]) = {
-    var t    = raw.replaceAll("\\s+", " ").trim
+    var t    = GluedFormatUnderscore.replaceAllIn(raw.replaceAll("\\s+", " ").trim, " ")
     var previous = ""
     val dropped = scala.collection.mutable.Set.empty[String]
     while (t != previous) {
@@ -149,7 +156,7 @@ private[cinemas] object ScraperParse {
     // title (left-to-right), so "(2D NAPISY)" → List("2D","NAP") regardless of
     // the right-to-left order the strip loop peeled them off.
     val tokens = raw.toLowerCase(Locale.ROOT)
-      .split("""[\s\[\]().,/|:-]+""")
+      .split("""[\s\[\]().,/|:_-]+""")
       .iterator
       .filter(dropped.contains)
       .flatMap(FormatToken.get)
