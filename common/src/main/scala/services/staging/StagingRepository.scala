@@ -21,9 +21,24 @@ import scala.util.Try
  *  facts a newcomer arrives with. The `record` carries that one cinema's slot
  *  (plus a `Tmdb` slot once resolution runs); folding into `movies` unions the
  *  cinemas back together using the existing merge rules. */
-case class StagingRecord(cinema: Source, title: String, year: Option[Int], record: MovieRecord)
+/** `id` is the row's PERSISTED `_id`. It's normally `idFor(cinema, title, year)`,
+ *  but the two can DRIFT: a row is keyed once at creation, while `title` is
+ *  re-derived (`fromStorage` → `displayTitle`) on every read and re-cased by
+ *  `recase`. Because `sanitize` is not perfectly casing-invariant (e.g. the
+ *  case-sensitive "Gwiezdne Wojny: " strip), a re-cased title can sanitize to a
+ *  DIFFERENT key than the one baked into `id`. So mutations/deletes of an EXISTING
+ *  row MUST go through `id` (see `upsertRow`/`deleteRow`) — recomputing the id from
+ *  the drifted title would spawn a duplicate under the new key and strand the
+ *  original, which the staging reaper then re-resolves forever. */
+case class StagingRecord(cinema: Source, title: String, year: Option[Int], record: MovieRecord, id: String)
 
 object StagingRecord {
+  /** Build a row whose `id` is the canonical `idFor` of its fields — the right
+   *  default for a FRESH row (a scrape divert, a test seed). Rows read back from
+   *  storage carry their persisted `_id` instead (see `fromStorage`). */
+  def apply(cinema: Source, title: String, year: Option[Int], record: MovieRecord): StagingRecord =
+    StagingRecord(cinema, title, year, record, idFor(cinema, title, year))
+
   /** The Mongo `_id` for a staging row: `cinemaDisplayName|sanitize(title)|year`.
    *  A `Cinema.displayName` never contains `|` and `sanitize` never emits one, so
    *  the first `|` ends the cinema and the last `|` precedes the year — the middle
@@ -44,7 +59,7 @@ object StagingRecord {
       val cinemaName = id.substring(0, firstSep)
       val prefix     = id.substring(firstSep + 1, lastSep)
       val year       = id.substring(lastSep + 1).toIntOption
-      Source.byDisplayName.get(cinemaName).map(src => StagingRecord(src, record.displayTitle(prefix), year, record))
+      Source.byDisplayName.get(cinemaName).map(src => StagingRecord(src, record.displayTitle(prefix), year, record, id))
     }
   }
 }
@@ -64,11 +79,23 @@ trait StagingRepository {
   /** Every staging row, ordered by `_id`. Returns empty when disabled. */
   def findAll(): Seq[StagingRecord]
 
-  /** Write-through upsert of one cinema's row. Best-effort — never throws. */
+  /** Write-through upsert of one cinema's row, keyed by `idFor(cinema, title,
+   *  year)`. Use for FRESH rows (a scrape divert). Best-effort — never throws. */
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit
 
-  /** Remove one cinema's row. Best-effort — never throws. */
+  /** Write `row.record` back under the row's PERSISTED `id`. Use to re-stamp an
+   *  EXISTING row (detail/resolve/imdb) so a title whose casing drifted updates
+   *  the SAME row instead of spawning a duplicate. The real impls key by `row.id`;
+   *  this default delegation suffices for lightweight stubs and for rows that never
+   *  drift (`id == idFor(cinema, title, year)`). Best-effort — never throws. */
+  def upsertRow(row: StagingRecord): Unit = upsert(row.cinema, row.title, row.year, row.record)
+
+  /** Remove one cinema's row by `idFor(cinema, title, year)`. Best-effort. */
   def delete(cinema: Source, title: String, year: Option[Int]): Unit
+
+  /** Remove an EXISTING row by its persisted `id` (drift-proof in the real impls;
+   *  the default delegation is correct for non-drifting rows). Best-effort. */
+  def deleteRow(row: StagingRecord): Unit = delete(row.cinema, row.title, row.year)
 
   /** Stream inserts/updates (`onUpsert`) and deletes (`onDelete`, given the row's
    *  `_id`) so consumers can react as newcomers land and graduate. Best-effort;
@@ -127,8 +154,12 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
       }.getOrElse(Seq.empty)
   }
 
-  def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = coll.foreach { c =>
-    val id  = StagingRecord.idFor(cinema, title, year)
+  def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit =
+    upsertId(StagingRecord.idFor(cinema, title, year), record)
+
+  override def upsertRow(row: StagingRecord): Unit = upsertId(row.id, row.record)
+
+  private def upsertId(id: String, record: MovieRecord): Unit = coll.foreach { c =>
     val dto = StoredMovieDto.fromDomain(id, record, Instant.now())
     Try {
       Await.result(c.replaceOne(Filters.eq("_id", id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
@@ -138,8 +169,12 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
     }
   }
 
-  def delete(cinema: Source, title: String, year: Option[Int]): Unit = coll.foreach { c =>
-    val id = StagingRecord.idFor(cinema, title, year)
+  def delete(cinema: Source, title: String, year: Option[Int]): Unit =
+    deleteId(StagingRecord.idFor(cinema, title, year))
+
+  override def deleteRow(row: StagingRecord): Unit = deleteId(row.id)
+
+  private def deleteId(id: String): Unit = coll.foreach { c =>
     Try {
       Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
       ()

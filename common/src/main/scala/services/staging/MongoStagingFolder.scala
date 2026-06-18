@@ -109,7 +109,7 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
       plan.moviesDeletes.foreach(k =>
         await(movies.deleteOne(session, Filters.eq("_id", StoredMovieRecord.idFor(k.cleanTitle, k.year))).toFuture()))
       plan.stagingDeletes.foreach(r =>
-        await(staging.deleteOne(session, Filters.eq("_id", StagingRecord.idFor(r.cinema, r.title, r.year))).toFuture()))
+        await(staging.deleteOne(session, Filters.eq("_id", r.id)).toFuture()))
       logger.info(s"Folded staging group '$sanitize': ${stagingRows.size} row(s) → ${plan.moviesUpserts.size} movies row(s).")
       plan.newPromotions
     }

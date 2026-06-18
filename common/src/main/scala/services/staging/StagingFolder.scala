@@ -48,7 +48,7 @@ class InMemoryStagingFolder(stagingRepository: StagingRepository, movieRepositor
       val plan       = StagingFold.planGroup(stagingRows, moviesRows)
       plan.moviesUpserts.foreach { case (k, record) => movieRepository.upsert(k.cleanTitle, k.year, record) }
       plan.moviesDeletes.foreach(k => movieRepository.delete(k.cleanTitle, k.year))
-      plan.stagingDeletes.foreach(r => stagingRepository.delete(r.cinema, r.title, r.year))
+      plan.stagingDeletes.foreach(stagingRepository.deleteRow)
       logger.info(s"Folded group '$cleanTitle': ${stagingRows.size} staging row(s) → ${plan.moviesUpserts.size} movies row(s).")
       plan.newPromotions
     }

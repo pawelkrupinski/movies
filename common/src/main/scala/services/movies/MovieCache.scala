@@ -804,8 +804,7 @@ class CaffeineMovieCache(
     // one that simply stopped screening is removed here.
     staging.foreach { s =>
       (priorStagingRows.keySet -- divertedSanitized).foreach { stale =>
-        val row = priorStagingRows(stale)
-        s.delete(cinema, row.title, row.year)
+        s.deleteRow(priorStagingRows(stale))
       }
     }
 

@@ -93,7 +93,7 @@ class StagingSteps(
           case Some(detail) =>
             val merged = row.record.copy(
               data = row.record.data + (target -> detail.mergeInto(row.record.data.getOrElse(target, SourceData()))))
-            stagingRepository.upsert(row.cinema, row.title, row.year, merged)
+            stagingRepository.upsertRow(row.copy(record = merged))
             logger.info(s"Staging: '${row.title}' ← detail from ${row.cinema.displayName}")
             true
           case None => detailPresent(row, target)                       // fetch failed — already-merged still counts
@@ -140,7 +140,7 @@ class StagingSteps(
             imdbId      = resolved.imdbId,
             tmdbNoMatch = resolved.tmdbNoMatch,
             data        = tmdbSlot.fold(r.record.data)(s => r.record.data + (Tmdb -> s)))
-          stagingRepository.upsert(r.cinema, r.title, r.year, stamped)
+          stagingRepository.upsertRow(r.copy(record = stamped))
         }
         logger.info(s"Staging: '${group.head.title}' (${resolveYear.getOrElse("?")}) → resolved (tmdbId=${resolved.tmdbId.getOrElse("—")}, noMatch=${resolved.tmdbNoMatch})")
         Resolved
@@ -176,7 +176,7 @@ class StagingSteps(
       group.find(r => r.record.tmdbId.isDefined && r.record.imdbId.isEmpty).foreach { needy =>
         val search = needy.record.originalTitle.getOrElse(MovieService.apiQuery(needy.title))
         recoverImdbId(search, group.flatMap(_.year).minOption).foreach { id =>
-          group.foreach(r => stagingRepository.upsert(r.cinema, r.title, r.year, r.record.copy(imdbId = Some(id))))
+          group.foreach(r => stagingRepository.upsertRow(r.copy(record = r.record.copy(imdbId = Some(id)))))
           logger.info(s"Staging: '${needy.title}' ← recovered imdbId=$id")
         }
       }

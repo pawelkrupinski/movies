@@ -49,17 +49,27 @@ class InMemoryStagingRepository(seed: Seq[(Source, String, Option[Int], MovieRec
   }
 
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = lock.synchronized {
-    val id = StagingRecord.idFor(cinema, title, year)
-    val built = put(id, record)
+    val built = put(StagingRecord.idFor(cinema, title, year), record)
     upserts.append((cinema, title, year, record))
     upsertWatcher.foreach(w => built.foreach(w))
   }
 
+  override def upsertRow(row: StagingRecord): Unit = lock.synchronized {
+    val built = put(row.id, row.record)
+    upserts.append((row.cinema, row.title, row.year, row.record))
+    upsertWatcher.foreach(w => built.foreach(w))
+  }
+
   def delete(cinema: Source, title: String, year: Option[Int]): Unit = lock.synchronized {
-    val id = StagingRecord.idFor(cinema, title, year)
-    store.remove(id)
+    store.remove(StagingRecord.idFor(cinema, title, year))
     deletes.append((cinema, title, year))
-    deleteWatcher.foreach(_(id))
+    deleteWatcher.foreach(_(StagingRecord.idFor(cinema, title, year)))
+  }
+
+  override def deleteRow(row: StagingRecord): Unit = lock.synchronized {
+    store.remove(row.id)
+    deletes.append((row.cinema, row.title, row.year))
+    deleteWatcher.foreach(_(row.id))
   }
 
   override def watchChanges(onUpsert: StagingRecord => Unit, onDelete: String => Unit): Option[AutoCloseable] = {

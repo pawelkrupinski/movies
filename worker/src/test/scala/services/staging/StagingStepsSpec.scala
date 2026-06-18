@@ -100,6 +100,35 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     repository.findAll().head.record.tmdbNoMatch shouldBe true
   }
 
+  it should "conclude a row in place when its display title re-keys its sanitize (drift-proof, no duplicate)" in {
+    // Regression for the infinite staging loop: a row is keyed at creation under
+    // one sanitize ("GWIEZDNE WOJNY:" — the case-sensitive prefix strip rule
+    // leaves all-caps alone), but `recase` re-cases its display title to
+    // "Gwiezdne Wojny:" which sanitize DOES strip. So `sanitize(displayTitle)` no
+    // longer matches the persisted `_id` prefix. Stamping by a recomputed id then
+    // wrote a DUPLICATE under the new key and left the original unconcluded — the
+    // reaper re-resolved it forever (320k× observed). Stamping by the row's `id`
+    // updates it in place. Fails before, passes now.
+    val repository = new InMemoryStagingRepository
+    val slotTitle  = "Gwiezdne Wojny: Mandalorian i Grogu"            // recase output (capital W → sanitize strips)
+    // Persist under the NON-stripping all-caps spelling so the `_id` prefix and
+    // the re-derived display title sanitize to DIFFERENT keys.
+    repository.upsert(Helios, "GWIEZDNE WOJNY: Mandalorian i Grogu", None,
+      MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some(slotTitle)))))
+
+    val row    = repository.findAll().head
+    val anchor = TitleNormalizer.sanitize(row.title)
+    anchor should not be row.id.split('|')(1)                          // precondition: the drift exists
+
+    val s = steps(repository, Seq.empty, (_, _, r) => Some(r.copy(tmdbNoMatch = true)))
+    s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved
+    s.resolveAndStamp(anchor) shouldBe StagingSteps.AlreadyDone        // concluded in place — would LOOP if duplicated
+
+    val rows = repository.findAll()
+    rows.size                      shouldBe 1                          // no duplicate spawned under the re-keyed sanitize
+    rows.head.record.tmdbNoMatch   shouldBe true
+  }
+
   it should "report DetailNotReady (and NOT call resolve) for a deferred cinema whose detail hasn't landed" in {
     val (repository, anchor) = seeded(Helios, "Pending", Some(2026))
     val enricher = new FakeEnricher(Helios, detail = None)            // detail keeps failing
