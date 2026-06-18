@@ -524,7 +524,11 @@
       if (body.newMergeCount === 0) { box.innerHTML = "<span class='muted'>No new merges under this draft.</span>"; return; }
       const parts = ["<b>" + body.newMergeCount + " new merge(s)</b> vs the live rules:"];
       body.newMerges.forEach(g => {
-        parts.push("<div class='merge'>→ <b>" + esc(g.display) + (g.year ? " (" + g.year + ")" : "") + "</b>: " + g.titles.map(esc).join("  +  ") + "</div>");
+        // The merged row RENDERS the display title (after every replacement +
+        // display casing); the search title is the per-cinema merge anchor.
+        const yr = g.year ? " (" + g.year + ")" : "";
+        const search = "<span class='muted'> · search: " + esc(g.display) + "</span>";
+        parts.push("<div class='merge'>→ <b>" + esc(g.displayTitle) + "</b>" + yr + search + ": " + g.titles.map(esc).join("  +  ") + "</div>");
       });
       box.innerHTML = parts.join("");
     }

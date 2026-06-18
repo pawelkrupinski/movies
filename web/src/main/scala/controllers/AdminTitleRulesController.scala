@@ -82,9 +82,10 @@ class AdminTitleRulesController(
             val merges  = RuleMergePreview.newMerges(TitleNormalizer.currentRules, draft, entries)
             Ok(Json.obj(
               "newMerges" -> merges.take(200).map(g => Json.obj(
-                "display" -> g.display,
-                "year"    -> g.year,
-                "titles"  -> g.titles)),
+                "display"      -> g.display,
+                "displayTitle" -> g.displayTitle,
+                "year"         -> g.year,
+                "titles"       -> g.titles)),
               "newMergeCount" -> merges.size))
         }
     }

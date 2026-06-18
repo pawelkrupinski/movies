@@ -27,7 +27,22 @@ class RuleMergePreviewSpec extends AnyFlatSpec with Matchers {
     val gs = RuleMergePreview.groups(withLadiesNight, entries)
     gs should have size 1
     gs.head.titles shouldBe Seq("Anora", "Ladies Night - Anora") // the two raw rows that become one
-    gs.head.display shouldBe "Anora"                              // the merged row's display title
+    gs.head.display shouldBe "Anora"                              // search title (per-cinema merge anchor)
+    gs.head.displayTitle shouldBe "Anora"                        // rendered title (display ladder)
+  }
+
+  // A merge where the cleaned spellings differ in casing/diacritics: the
+  // rendered DISPLAY title runs the shared ladder, so the well-formed,
+  // diacritic-bearing spelling wins regardless of which slot anchors the search.
+  it should "render the well-formed display title even when a cinema ships an ALL-CAPS spelling" in {
+    val mixed = Seq(
+      Entry("multikino",   "DIABEL", Some(2025)), // ALL-CAPS, diacritic-flattened
+      Entry("cinema-city", "Diabeł", Some(2025))  // canonical spelling
+    )
+    val gs = RuleMergePreview.groups(noRules, mixed)
+    gs should have size 1
+    gs.head.titles shouldBe Seq("DIABEL", "Diabeł")
+    gs.head.displayTitle shouldBe "Diabeł" // ladder prefers diacritics + mixed case
   }
 
   "newMerges" should "report exactly the merge the added rule introduces" in {

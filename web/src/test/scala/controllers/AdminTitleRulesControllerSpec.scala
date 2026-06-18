@@ -1,6 +1,6 @@
 package controllers
 
-import models.{MovieRecord, User}
+import models.{Cinema, Helios, MovieRecord, Multikino, Source, SourceData, User}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
@@ -34,6 +34,21 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
   private def repositoryWith(titles: String*): MovieRepository = new MovieRepository {
     def enabled = true
     def findAll() = titles.map(t => StoredMovieRecord(t, None, MovieRecord()))
+    def delete(title: String, year: Option[Int]) = ()
+    def upsert(title: String, year: Option[Int], e: MovieRecord) = ()
+    def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord) = false
+    override def close() = ()
+  }
+
+  /** A corpus whose records carry cinema slots with rawTitles — what the merge
+   *  preview actually reads (via `cinemaData`). Each row is (cinema, rawTitle,
+   *  year). */
+  private def repositoryWithRaw(rows: (Cinema, String, Option[Int])*): MovieRepository = new MovieRepository {
+    def enabled = true
+    def findAll() = rows.map { case (cinema, raw, year) =>
+      StoredMovieRecord(raw, year,
+        MovieRecord(data = Map[Source, SourceData](cinema -> SourceData(title = Some(raw), rawTitle = Some(raw)))))
+    }
     def delete(title: String, year: Option[Int]) = ()
     def upsert(title: String, year: Option[Int], e: MovieRecord) = ()
     def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord) = false
@@ -131,6 +146,24 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     val result = controller().preview().apply(jsonRequest(session = true, body))
     status(result) shouldBe OK
     (contentAsJson(result) \ "newMergeCount").as[Int] shouldBe 0
+  }
+
+  it should "report both the search title and the rendered display title for a new merge" in {
+    // Two rows that only merge once the draft strips a decoration the live rules
+    // don't touch — so the diff vs the installed set reports it as a NEW merge.
+    val corpus = repositoryWithRaw(
+      (Multikino, "ZZZ Anora", Some(2099)),
+      (Helios,    "Anora",     Some(2099)))
+    val body = Json.obj("rules" -> Json.arr(
+      Json.obj("scope" -> "PerCinema", "cinemaId" -> "multikino",
+        "pattern" -> "^ZZZ ", "replacement" -> "", "order" -> 1)))
+    val result = controller(movies = corpus).preview().apply(jsonRequest(session = true, body))
+    status(result) shouldBe OK
+    val json  = contentAsJson(result)
+    (json \ "newMergeCount").as[Int] should be >= 1
+    val first = (json \ "newMerges")(0)
+    (first \ "display").as[String]      shouldBe "Anora" // search title (merge anchor)
+    (first \ "displayTitle").as[String] shouldBe "Anora" // rendered title (display ladder)
   }
 
   "affected" should "401 an anonymous request" in {

@@ -220,6 +220,35 @@ object TitleNormalizer {
     (-punct, -diacritic, -mixedCase, junk, c.length, c)
   }
 
+  /** The deterministic display-title ladder shared by the live merge
+   *  (`MovieRecord.displayTitle`) and the admin rule-merge preview
+   *  (`RuleMergePreview`): from the per-cinema cleaned spellings of one merged
+   *  row, pick the form to show (no scrape-order dependence).
+   *
+   *   A. **Dominant identity** — group the spellings by `sanitize` key and take
+   *      the key the most cinemas agree on (ties → lexicographically-smallest),
+   *      dropping minority misspellings + cross-script variants.
+   *   B. **TMDB Polish title** — when supplied and it shares that key and is
+   *      `wellFormedTitle`, prefer it (canonical casing / diacritics / punct).
+   *   C. **Cinema ladder** — otherwise pick among the dominant-identity
+   *      spellings via `preferredDisplay`.
+   *
+   *  The winner is finally `recase`d. `fallback` is the anchor used when there
+   *  are no spellings (a TMDB-only row in the live merge) and the last resort if
+   *  the ladder empties; callers pass the row's clean key / search title. */
+  def chooseDisplay(perCinemaTitles: Seq[String], fallback: String,
+                    tmdbTitle: Option[String] = None): String = {
+    val votePool    = if (perCinemaTitles.nonEmpty) perCinemaTitles else Seq(fallback)
+    val dominantKey = votePool.groupBy(sanitize).toSeq.sortBy { case (k, ts) => (-ts.size, k) }.head._1
+    val chosen = tmdbTitle
+      .filter(t => sanitize(t) == dominantKey && wellFormedTitle(t))
+      .getOrElse {
+        val variants = (perCinemaTitles :+ fallback).filter(t => sanitize(t) == dominantKey)
+        preferredDisplay(variants).getOrElse(fallback)
+      }
+    recase(chosen)
+  }
+
   /** Whether a title is clean enough to display verbatim. Used to gate the
    *  TMDB-Polish-title preference in `MovieRecord.displayTitle`: TMDB's
    *  crowd-sourced titles are usually the canonical form, but a minority are

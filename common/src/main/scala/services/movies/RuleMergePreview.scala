@@ -19,8 +19,14 @@ object RuleMergePreview {
   final case class Entry(ruleKey: String, rawTitle: String, year: Option[Int])
 
   /** A set of distinct RAW cinema titles that collapse onto one merge key — the
-   *  rows that become one. `display` is the title the merged row would show. */
-  final case class Group(key: String, year: Option[Int], titles: Seq[String], display: String)
+   *  rows that become one. `display` is the per-cinema-cleaned SEARCH title (the
+   *  merge anchor); `displayTitle` is what the merged row would actually RENDER —
+   *  the cleaned spellings run through the shared display ladder (dominant
+   *  identity → `preferredDisplay` → `recase`), i.e. after every replacement and
+   *  the display capitalisation. TMDB isn't reachable in the preview, so the
+   *  TMDB-Polish-title step of the live ladder is skipped. */
+  final case class Group(key: String, year: Option[Int], titles: Seq[String],
+                         display: String, displayTitle: String)
 
   /** The merge key a rule set assigns to a raw title — the `sanitize`-equivalent
    *  canonical string (year handled separately by the caller). Mirrors
@@ -33,7 +39,8 @@ object RuleMergePreview {
       .replaceAll("[^\\p{L}\\p{N}]+", "")
   }
 
-  /** Display title a rule set would show for a raw title (per-cinema cleanup). */
+  /** Search title (per-cinema cleanup) a rule set assigns to a raw title — the
+   *  merge anchor, before the display ladder / casing. */
   def display(rules: TitleRuleSet, ruleKey: String, rawTitle: String): String =
     rules.perCinema(ruleKey, rawTitle)
 
@@ -44,8 +51,12 @@ object RuleMergePreview {
       .groupBy(e => (mergeKey(rules, e.ruleKey, e.rawTitle), e.year))
       .iterator
       .map { case ((key, year), es) =>
-        val raws = es.map(_.rawTitle).distinct.sorted
-        Group(key, year, raws, display(rules, es.head.ruleKey, es.head.rawTitle))
+        val raws        = es.map(_.rawTitle).distinct.sorted
+        // One cleaned vote per cinema slot — mirrors MovieRecord.displayTitle's
+        // per-cinema vote pool — fed through the shared display ladder.
+        val cleaned     = es.map(e => display(rules, e.ruleKey, e.rawTitle))
+        val searchTitle = display(rules, es.head.ruleKey, es.head.rawTitle)
+        Group(key, year, raws, searchTitle, TitleNormalizer.chooseDisplay(cleaned, searchTitle))
       }
       .filter(_.titles.sizeIs > 1)
       .toSeq
