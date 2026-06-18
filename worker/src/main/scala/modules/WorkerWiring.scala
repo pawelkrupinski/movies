@@ -463,7 +463,8 @@ class WorkerWiring extends play.api.Logging {
 
   // Rating refresh as queue tasks. The handlers reuse each *Ratings class's
   // per-row refreshOneSync; the enqueuer turns the resolution bus events into
-  // rating tasks; the reaper is the periodic (staggered 4h) backstop.
+  // rating tasks; the reaper is the periodic backstop (each row refreshed once
+  // per 4h, phase-spread across frequent ticks rather than bursting).
   lazy val ratingEnqueuer = new RatingEnqueuer(movieCache, taskQueue)
   lazy val ratingHandlers: Seq[services.tasks.TaskHandler] = Seq(
     new RatingHandler(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    freshnessStore, imdbRatings.refreshOneSync),
@@ -471,10 +472,15 @@ class WorkerWiring extends play.api.Logging {
     new RatingHandler(TaskType.RtRating,      FreshnessKind.RtRating,      freshnessStore, rottenTomatoesRatings.refreshOneSync),
     new RatingHandler(TaskType.McRating,      FreshnessKind.McRating,      freshnessStore, metascoreRatings.refreshOneSync)
   )
+  // Cap on rating-refresh tasks the EnrichmentReaper enqueues per tick. The phase
+  // spread keeps steady-state ticks small (~N·tickInterval/period per source ≈ a
+  // few dozen across all four), so this only bites a cold/long-down corpus where
+  // every row is due at once — bounding that recovery burst, the same lever as
+  // the scrape reaper. Set comfortably above the steady-state so normal operation
+  // is never throttled; the leftover stays due and drains over the next ticks.
+  def maxEnrichmentEnqueuePerTick: Int = Env.positiveLong("KINOWO_ENRICHMENT_MAX_ENQUEUE_PER_TICK", 250L).toInt
   lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
-    bootSweepDelaySeconds = Env.positiveLong("KINOWO_ENRICHMENT_BOOT_SWEEP_DELAY_SECONDS",
-      EnrichmentReaper.DefaultBootSweepDelaySeconds),
-    runStore = scheduledRunStore)
+    maxEnqueuePerTick = maxEnrichmentEnqueuePerTick, runStore = scheduledRunStore)
 
   // Operator-triggered handlers — ALWAYS registered (not gated by
   // queueEnrichment): the web `/tasks` buttons enqueue a corpus-wide refresh and

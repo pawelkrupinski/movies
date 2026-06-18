@@ -25,8 +25,8 @@ object RatingTasks {
  * `kind`, and which `refreshOneSync` they call.
  *
  * A row is marked fresh after the refresh attempt (success or no-op), so the
- * staggered reaper won't re-enqueue it inside the 4h window — matching the old
- * 4h walk cadence, now deduped and shared across servers.
+ * phase-spreading reaper won't re-enqueue it inside the 4h window — matching the
+ * old 4h walk cadence, now deduped and shared across servers.
  */
 class RatingHandler(
   override val taskType: TaskType,
