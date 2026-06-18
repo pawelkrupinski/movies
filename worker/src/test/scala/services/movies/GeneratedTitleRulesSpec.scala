@@ -5,8 +5,6 @@ import org.scalatest.matchers.should.Matchers
 import scripts.GeneratedTitleRules
 import services.titlerules.TitleRuleSet
 
-import java.util.regex.Pattern
-
 /** Exercises the auto-dumped [[GeneratedTitleRules]] — the code mirror of the
  *  live prod `titleRules` set — so the suite runs EXACTLY what prod runs, not
  *  just the frozen seed. The scheduled `sync-title-rules` workflow refreshes the
@@ -25,9 +23,10 @@ class GeneratedTitleRulesSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "carry only valid regex patterns (a broken dump can't compile a bad regex away)" in {
-    GeneratedTitleRules.all.foreach { r =>
-      withClue(s"rule '${r.id}' pattern ${r.pattern}: ")(noException should be thrownBy Pattern.compile(r.pattern))
-    }
+    // Validity is judged on the placeholder-EXPANDED pattern — a rule may carry a
+    // raw `{{SEP}}` token that only compiles once the placeholder is substituted,
+    // and an unresolved/typo'd token is reported here too (see TitleRuleSet).
+    prod.invalidRules.map(r => s"${r.id}: ${r.pattern}") shouldBe empty
   }
 
   it should "be a non-trivial set (guards against an empty/failed dump landing)" in {
