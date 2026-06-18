@@ -21,7 +21,7 @@ object Dependencies {
   // decode the webp posters cinema CDNs now serve. imageio-core is the shared
   // runtime the format plugin needs.
   private val twelveMonkeysVersion = "3.12.0"
-  private val sentryVersion        = "8.43.2"
+  private val sentryVersion        = "8.44.0"
   // Pinned to the version Play uses so logback.xml + the sentry-logback appender
   // stay compatible across the web app (gets it via play-logback) and the
   // plain-`def main` worker (declares it directly — see build.sbt).
