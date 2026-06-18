@@ -76,7 +76,7 @@ class DetailReaper(
     var enqueued = 0
     cache.entries.foreach { case (key, record) =>
       enrichers.foreach { e =>
-        record.data.get(e.cinema).flatMap(_.filmUrl).foreach { ref =>
+        e.nativeDetailRef(record).foreach { ref =>
           if (EnrichDetailsTasks.enqueueIfStale(queue, freshness, e, key, ref)) enqueued += 1
         }
       }
@@ -109,11 +109,13 @@ class DetailReaper(
   }
 
   /** True when a deferred cinema still owes this row a detail fetch — it has a
-   *  `filmUrl` slot whose detail isn't fresh yet. While true the row legitimately
-   *  stays `detailPending` (and `tick` keeps the fetch enqueued). */
+   *  native (fetchable) `filmUrl` slot whose detail isn't fresh yet. While true
+   *  the row legitimately stays `detailPending` (and `tick` keeps the fetch
+   *  enqueued). A Filmweb-fallback row's filmweb.pl URL is NOT native, so such a
+   *  row is never "outstanding" and `reapStuckPending` releases it. */
   private def detailOutstanding(key: CacheKey, record: MovieRecord): Boolean =
     enrichers.exists { e =>
-      record.data.get(e.cinema).flatMap(_.filmUrl).isDefined &&
+      e.nativeDetailRef(record).isDefined &&
         !freshness.isFresh(EnrichDetailsTasks.dedupKey(e.detailGroup, key), FreshnessKind.DetailEnrich)
     }
 

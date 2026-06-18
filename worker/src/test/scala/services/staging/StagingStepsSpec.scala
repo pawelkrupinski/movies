@@ -3,7 +3,7 @@ package services.staging
 import models.{Cinema, Helios, Multikino, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{DetailEnricher, FilmDetail}
+import services.cinemas.{DetailEnricher, FilmDetail, FilmwebShowtimesClient}
 import services.freshness.InMemoryFreshnessStore
 import services.movies.{MovieService, TitleNormalizer}
 
@@ -43,10 +43,27 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     repository.findAll().head.record.data(Helios).synopsis shouldBe Some("A plot")
   }
 
+  it should "owe no native detail for a Filmweb-fallback row (filmweb.pl filmUrl) — ready at once, no native fetch, no loop" in {
+    // Root cause of the hot-loop: a cinema in Filmweb fallback stores Filmweb data
+    // under its OWN source slot with a filmweb.pl filmUrl. Its native enricher
+    // parses its own event page and can never fetch that URL, so the row owes no
+    // native detail — it must graduate on the listing/Filmweb data immediately
+    // rather than rescheduling until the give-up budget burns.
+    val repository = new InMemoryStagingRepository
+    repository.upsert(Helios, "Fallback", Some(2026), MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Fallback"), filmUrl = Some(FilmwebShowtimesClient.filmPageUrl(1089))))))
+    val anchor = TitleNormalizer.sanitize("Fallback")
+    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("native")))) // would merge if pointed at the URL
+    val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))
+
+    s.fetchDetailFor(Helios, anchor) shouldBe true                    // ready at once — no loop, no give-up needed
+    s.detailReady(repository.findAll().head) shouldBe true
+    repository.findAll().head.record.data(Helios).synopsis shouldBe None  // native enricher never fetched the filmweb URL
+  }
+
   it should "give up (degrade to listing-only) when told to, so a permanently-failing deferred fetch stops blocking the film" in {
-    // The DCF/Filmweb-fallback case: a deferring cinema whose detail fetch can
-    // never land (e.g. the row carries a Filmweb filmUrl the cinema's own
-    // enricher can't parse). Without a give-up the staging-detail step
+    // The safety net for a genuinely-dead NATIVE event page (a cinema's own
+    // filmUrl that 404s every pass): without a give-up the staging-detail step
     // reschedules forever; with it the film graduates on listing-only data.
     val (repository, anchor) = seeded(Helios, "Stuck", Some(2026))
     val enricher = new FakeEnricher(Helios, detail = None)            // deferred fetch never lands

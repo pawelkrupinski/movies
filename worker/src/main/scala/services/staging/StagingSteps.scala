@@ -84,18 +84,21 @@ class StagingSteps(
       ready
   }
 
-  private def fetchDetailRow(row: StagingRecord, enricher: DetailEnricher): Boolean = {
-    val target = enricher.detailTarget
-    row.record.data.get(row.cinema).flatMap(_.filmUrl).flatMap(enricher.fetchFilmDetail) match {
-      case Some(detail) =>
-        val merged = row.record.copy(
-          data = row.record.data + (target -> detail.mergeInto(row.record.data.getOrElse(target, SourceData()))))
-        stagingRepository.upsert(row.cinema, row.title, row.year, merged)
-        logger.info(s"Staging: '${row.title}' ← detail from ${row.cinema.displayName}")
-        true
-      case None => detailPresent(row, target)                            // no filmUrl / fetch failed — already-merged still counts
+  private def fetchDetailRow(row: StagingRecord, enricher: DetailEnricher): Boolean =
+    enricher.nativeDetailRef(row.record) match {
+      case None      => true                                             // nothing native to fetch (no filmUrl, or a Filmweb-fallback row) — not owed
+      case Some(ref) =>
+        val target = enricher.detailTarget
+        enricher.fetchFilmDetail(ref) match {
+          case Some(detail) =>
+            val merged = row.record.copy(
+              data = row.record.data + (target -> detail.mergeInto(row.record.data.getOrElse(target, SourceData()))))
+            stagingRepository.upsert(row.cinema, row.title, row.year, merged)
+            logger.info(s"Staging: '${row.title}' ← detail from ${row.cinema.displayName}")
+            true
+          case None => detailPresent(row, target)                       // fetch failed — already-merged still counts
+        }
     }
-  }
 
   private def detailPresent(row: StagingRecord, target: Source): Boolean =
     row.record.data.get(target).exists(s => s.synopsis.isDefined || s.cast.nonEmpty || s.director.nonEmpty)

@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.{Cinema, Source, SourceData}
+import models.{Cinema, MovieRecord, Source, SourceData}
 
 /**
  * The per-film detail fields a cinema fetches *separately* from its listing —
@@ -82,4 +82,15 @@ trait DetailEnricher {
    *  the movie (its `filmUrl`). None on failure/absence, so the task stays
    *  stale and is retried rather than recording an empty result as fresh. */
   def fetchFilmDetail(ref: String): Option[FilmDetail]
+
+  /** The per-film detail URL this enricher can actually fetch for `record` — the
+   *  cinema's own event-page reference from its source slot — or None when there
+   *  is nothing native to fetch: no slot/`filmUrl`, OR a Filmweb-FALLBACK row
+   *  whose `filmUrl` points at filmweb.pl (the cinema is passing Filmweb data
+   *  through, which only TMDB enrichment, not this cinema's parser, can read).
+   *  Pointing `fetchFilmDetail` at a fallback URL fails on every pass, so every
+   *  detail-driving site (scrape classify, the reaper, staging) gates on this
+   *  rather than the raw `filmUrl`. */
+  final def nativeDetailRef(record: MovieRecord): Option[String] =
+    record.data.get(cinema).flatMap(_.filmUrl).filterNot(FilmwebShowtimesClient.isFilmwebFilmUrl)
 }

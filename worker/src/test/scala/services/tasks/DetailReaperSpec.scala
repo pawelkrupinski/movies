@@ -3,7 +3,7 @@ package services.tasks
 import models.{CinemaMovie, KinoApollo, Movie, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.FakeDetailEnricher
+import services.cinemas.{FakeDetailEnricher, FilmwebShowtimesClient}
 import services.events.{DomainEvent, EventBus, InProcessEventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
@@ -45,6 +45,11 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   it should "skip a film with no filmUrl (no detail reference to fetch)" in {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     reaper(cacheWith(None), queue, fresh).tick() shouldBe 0
+  }
+
+  it should "skip a Filmweb-fallback row whose filmUrl is a filmweb.pl page the native enricher can't fetch" in {
+    val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    reaper(cacheWith(Some(FilmwebShowtimesClient.filmPageUrl(1089))), queue, fresh).tick() shouldBe 0
   }
 
   it should "skip a film whose detail is already fresh" in {
@@ -89,6 +94,15 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
 
   it should "release a detail-pending row with no deferred filmUrl to fetch (orphaned flag) and re-trigger TMDB" in {
     val (cache, queue, fresh) = (cacheWith(None), new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
+    val bus = new CapturingBus
+    reaper(cache, queue, fresh, bus).reapStuckPending() shouldBe 1
+    cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
+    bus.published.collect { case e: MovieDetailsComplete => e.title } shouldBe List("Dune")
+  }
+
+  it should "release a detail-pending Filmweb-fallback row (filmweb.pl filmUrl, no native detail to fetch) and re-trigger TMDB" in {
+    val (cache, queue, fresh) = (cacheWith(Some(FilmwebShowtimesClient.filmPageUrl(1089))), new InMemoryTaskQueue, new InMemoryFreshnessStore)
     cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
     val bus = new CapturingBus
     reaper(cache, queue, fresh, bus).reapStuckPending() shouldBe 1

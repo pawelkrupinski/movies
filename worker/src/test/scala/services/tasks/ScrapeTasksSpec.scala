@@ -3,7 +3,7 @@ package services.tasks
 import models.{Cinema, CinemaMovie, Helios, KinoApollo, KinoMuza, Movie, Multikino, Rialto, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{CinemaScrapeRunner, CinemaScraper, FakeDetailEnricher}
+import services.cinemas.{CinemaScrapeRunner, CinemaScraper, FakeDetailEnricher, FilmwebShowtimesClient}
 import services.events.InProcessEventBus
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
@@ -251,6 +251,18 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val touched = cache.recordCinemaScrape(KinoApollo, movieAt(KinoApollo)) // filmUrl = None
 
     runner.classify(KinoApollo, touched).map(_.title) shouldBe Seq("Dune")
+    cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
+  }
+
+  it should "enrich a deferred cinema's film immediately when its filmUrl is a Filmweb-fallback page (native enricher can't fetch it)" in {
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
+    val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set(KinoApollo))
+    val fallback = Seq(CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None,
+      filmUrl = Some(FilmwebShowtimesClient.filmPageUrl(1089)), synopsis = None, cast = Seq.empty, director = Seq.empty,
+      showtimes = Seq(Showtime(LocalDateTime.now(), Some("https://book")))))
+    val touched = cache.recordCinemaScrape(KinoApollo, fallback)
+
+    runner.classify(KinoApollo, touched).map(_.title) shouldBe Seq("Dune")  // not held — enriches now
     cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
   }
 }

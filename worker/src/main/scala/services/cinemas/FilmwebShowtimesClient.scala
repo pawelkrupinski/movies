@@ -214,6 +214,14 @@ object FilmwebShowtimesClient extends play.api.Logging {
 
   def filmPageUrl(filmId: Long): String = s"https://www.filmweb.pl/film/$filmId"
 
+  /** Whether `url` is one of the film pages `filmPageUrl` builds — i.e. a Filmweb
+   *  FALLBACK row's detail reference. A cinema in Filmweb fallback serves Filmweb
+   *  data under its OWN source slot with such a URL; the cinema's native
+   *  `DetailEnricher` parses its own event page and can never read filmweb.pl, so
+   *  no detail-fetch site may point `fetchFilmDetail` at one (the synopsis/cast/
+   *  hints those rows need come from TMDB enrichment, not the cinema). */
+  def isFilmwebFilmUrl(url: String): Boolean = url.contains("filmweb.pl/film/")
+
   /** Poster URL the way the old client built it: prepend the CDN base and
    *  swap the `$` size-placeholder for `2` (medium poster). */
   def posterUrlFor(posterPath: String): String =

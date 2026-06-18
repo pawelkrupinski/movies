@@ -56,9 +56,12 @@ class CinemaScrapeRunner(
     touched.collect { case (cm, key, true) => (cm, key) }.flatMap { case (cm, key) =>
       if (movieCache.get(key).exists(_.tmdbConcluded))
         None // already resolved / concluded no-match — a re-scrape needn't re-trigger
-      else if (deferredCinemas(cinema) && cm.filmUrl.isDefined) {
+      else if (deferredCinemas(cinema) && cm.filmUrl.exists(u => !FilmwebShowtimesClient.isFilmwebFilmUrl(u))) {
         // Wait for the EnrichDetails task to supply director/originalTitle/year;
-        // `EnrichDetailsHandler` publishes MovieDetailsComplete once it lands.
+        // `EnrichDetailsHandler` publishes MovieDetailsComplete once it lands. A
+        // Filmweb-FALLBACK row's filmweb.pl URL is excluded — the cinema's own
+        // enricher can't fetch it, so the row would hang `detailPending` forever;
+        // it enriches now from its listing/Filmweb data instead.
         movieCache.putIfPresent(key, _.copy(detailPending = true))
         None
       } else
