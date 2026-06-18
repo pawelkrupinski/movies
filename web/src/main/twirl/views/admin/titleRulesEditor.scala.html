@@ -500,9 +500,9 @@
       if (p == null || p === "") return false;
       let flags = "";
       const body = p.replace(/\(\?([a-zA-Z]+)\)/g, (m, f) => {
-        if (/[^imsxU]/.test(f)) return m;      // not a pure flag group (a real capture) — leave it
+        if (/[^imsxuU]/.test(f)) return m;     // not a pure flag group (a real capture) — leave it
         for (const ch of f) if ("ims".indexOf(ch) >= 0 && flags.indexOf(ch) < 0) flags += ch;
-        return "";                             // i/m/s mapped to JS flags; x/U have no JS equivalent
+        return "";                             // i/m/s mapped to JS flags; x/u/U have no JS equivalent
       });
       try { new RegExp(body, flags); return true; } catch (e) { return false; }
     }

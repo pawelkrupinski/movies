@@ -83,6 +83,29 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     }
   }
 
+  // `patternOk` is the validator behind the `.bad-pat` red flag above. Java inline-flag
+  // groups carry flags JS's RegExp can't (`(?iu)` = case-insensitive + UNICODE_CASE,
+  // `(?U)` = UNICODE_CHARACTER_CLASS); the live Polish suffix rules use `(?iu)` to fold
+  // Ż↔ż / Ń↔ń. The validator must strip those whole groups, not mistake them for a real
+  // capture and choke — otherwise two prod rules show a false "invalid" red.
+  it should "treat Java unicode inline-flag groups as valid, not as broken regex" in {
+    onEditor { page =>
+      def ok(p: String): Boolean = page.evalBool(s"patternOk(${jsLit(p)})")
+      withClue("`(?iu)…` (the live Polish suffix rules) must be valid: ") {
+        ok("(?iu)\\s*[|–—-]\\s*żuławski\\.?\\s*kino\\s+ekstazy\\s*$") shouldBe true
+      }
+      withClue("`(?iu)…` amerykańska-klasyka rule must be valid: ") {
+        ok("(?iu)\\s*[–—-]\\s*amerykańska\\s+klasyka(?:\\s*/.*)?\\s*$") shouldBe true
+      }
+      withClue("plain `(?i)` stays valid: ")            { ok("(?i)^Klub: ") shouldBe true  }
+      withClue("`(?U)` (uppercase) stays valid: ")      { ok("(?U)\\w+")    shouldBe true  }
+      withClue("a genuinely malformed regex is still flagged: ") { ok("(oops") shouldBe false }
+      withClue("a real capture group is not mistaken for a flag group: ") {
+        ok("(?<year>\\d{4})") shouldBe true
+      }
+    }
+  }
+
   it should "give every transient (external-lookup) rule an unfoldable affected-titles list, but not per-cinema rules" in {
     onEditor { page =>
       // GlobalStructural seeds 4 rules → 4 affected <details>; the Canonical
