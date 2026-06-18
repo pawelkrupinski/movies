@@ -1311,4 +1311,39 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.rehydrate()
     cache.lastModified.isAfter(before) shouldBe true
   }
+
+  // ── non-movie event filtering (NonMovieEventClassifier wired in) ────────────
+  "recordCinemaScrape" should "drop live-event rows and keep the films in the same tick" in {
+    def cm(title: String): CinemaMovie = CinemaMovie(
+      movie = Movie(title = title), cinema = Multikino,
+      posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 18, 20, 0), bookingUrl = None))
+    )
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+
+    cache.recordCinemaScrape(Multikino, Seq(
+      cm("Dune: Part Two"),
+      cm("Koncert Joscho Stephan Trio"),  // stray live event
+      cm("Piotr Bałtroczyk Stand-up"),    // stray live event
+      cm("Avatar")
+    ))
+
+    cache.snapshot().map(_.title).toSet shouldBe Set("Dune: Part Two", "Avatar")
+  }
+
+  it should "keep an all-events tick from pruning the cinema's existing film slots" in {
+    def event(title: String): CinemaMovie = CinemaMovie(
+      movie = Movie(title = title), cinema = Multikino,
+      posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 18, 20, 0), bookingUrl = None))
+    )
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    cache.put(cache.keyOf("Dune", Some(2024)),
+      mkEnrichment("tt-dune").copy(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Dune")))))
+
+    // A tick that contains ONLY events must behave like an empty (failed) tick:
+    // the existing film slot survives rather than being pruned away.
+    cache.recordCinemaScrape(Multikino, Seq(event("Kabaret Ani Mru Mru"))) shouldBe Seq.empty
+    cache.get(cache.keyOf("Dune", Some(2024))) shouldBe defined
+  }
 }

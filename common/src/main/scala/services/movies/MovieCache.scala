@@ -632,6 +632,17 @@ class CaffeineMovieCache(
     // and trust the slot data we have until the next non-empty tick.
     if (movies.isEmpty) return Seq.empty
 
+    // Drop non-film live events (concerts, stand-up, kabaret, recitals, theatre
+    // plays) that small venues mix into their film listings. This is the single
+    // point every cinema client's scrape converges on, so filtering here keeps
+    // every downstream stage (staging, enrichment, projection) film-only.
+    // High-precision by design — distributed "event cinema" broadcasts and art
+    // documentaries are deliberately kept; see NonMovieEventClassifier.
+    val films = movies.filterNot(cm => NonMovieEventClassifier.isLiveEvent(cm.movie.title))
+    // An all-events tick (a venue's film-dormant day) is treated like the empty
+    // safeguard above: keep the slots we already hold rather than pruning them.
+    if (films.isEmpty) return Seq.empty
+
     // Carry the freshly-written `SourceData` slot alongside the public
     // tuple so the prune below can identify "newly written this tick" by
     // slot reference rather than by cache key — keys can shift mid-tick
@@ -665,7 +676,7 @@ class CaffeineMovieCache(
     // union every screening's showtimes (deduped, ordered) so none is lost, and
     // keep a deterministic representative for the scalar film fields.
     val deduped: Seq[CinemaMovie] =
-      movies.groupBy(cm => (cleaned(cm), cm.movie.releaseYear)).toSeq
+      films.groupBy(cm => (cleaned(cm), cm.movie.releaseYear)).toSeq
         .sortBy { case ((t, y), _) => (t, y.getOrElse(Int.MinValue)) }
         .map { case (_, group) =>
           if (group.lengthCompare(1) == 0) group.head

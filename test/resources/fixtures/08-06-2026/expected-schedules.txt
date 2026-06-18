@@ -2341,33 +2341,6 @@ cinemaScrapes:
 showings:
   2026-06-18  Kino Pałacowe                 20:15 Sala 1 - Kinowa
 
-=== Gala rozdania nagród - 19. Mffa animator ===
-displayTitle:      Gala rozdania nagród - 19. Mffa animator
-cinemaTitles:      GALA ROZDANIA NAGRÓD - 19. MFFA ANIMATOR
-runtimeMinutes:    120
-releaseYear:       —
-countries:         —
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/kadry-4-800x450.jpg
-synopsis.length:   4839
-cast:              —
-director:          120’
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
-cinemaFilmUrls:
-  Kino Muza = https://www.kinomuza.pl/movie/gala-rozdania-nagrod-19-mffa-animator/
-cinemaScrapes:
-  Kino Muza / GALA ROZDANIA NAGRÓD - 19. MFFA ANIMATOR / —
-showings:
-  2026-07-11  Kino Muza                     18:00 Sala apollo
-
 === Giulietta i duchy ===
 displayTitle:      Giulietta i duchy
 cinemaTitles:      Giulietta i duchy
