@@ -94,16 +94,8 @@
     truncateAllShowings(true);
     updateEmptyState(visible);
   }
-
-  function toggleAuthMenu(event) {
-    event.stopPropagation();
-    var menu = document.getElementById('auth-menu');
-    if (menu) menu.classList.toggle('open');
-  }
-  document.addEventListener('click', function() {
-    var menu = document.getElementById('auth-menu');
-    if (menu) menu.classList.remove('open');
-  });
+  @* `toggleAuthMenu` + the click-outside close handler come from shared.js
+     (loaded above); no inline copy here, or the two drift apart. *@
 </script>
 }
 

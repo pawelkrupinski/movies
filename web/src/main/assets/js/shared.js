@@ -828,6 +828,15 @@
     const modal = document.getElementById('login-modal-backdrop');
     if (modal) modal.classList.remove('open');
   }
+  // shared.js runs inside an IIFE, so these are NOT globals by default; the
+  // navbar / login-modal partials call them from inline `onclick=` handlers,
+  // which resolve against `window`. Without these assignments the click throws
+  // `ReferenceError: toggleAuthMenu is not defined` on every page that gets its
+  // auth menu from shared.js (i.e. all but the self-contained `browse` view).
+  window.toggleAuthMenu = toggleAuthMenu;
+  window.closeAuthMenu  = closeAuthMenu;
+  window.openLoginModal = openLoginModal;
+  window.closeLoginModal = closeLoginModal;
   // ESC closes any open dropdown / modal / menu — same UX every other
   // modal in the world has. `closeOtherPanels(null)` collapses every
   // `.dropdown-panel` (Filtry today; any future dropdown automatically)

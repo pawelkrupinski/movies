@@ -254,6 +254,41 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // The navbar / login-modal partials wire their auth controls through inline
+  // `onclick="toggleAuthMenu(event)"` / `openLoginModal()` handlers, which
+  // resolve against `window`. shared.js runs inside an IIFE, so these functions
+  // are only reachable if explicitly hung off `window`. Regression for the
+  // Sentry `ReferenceError: toggleAuthMenu is not defined` fired on every
+  // auth-menu tap (the IIFE-local definitions weren't exported).
+  it should "expose the auth-menu / login-modal handlers as globals" in {
+    onPath("/") { page =>
+      page.evalBool("typeof toggleAuthMenu === 'function'") shouldBe true
+      page.evalBool("typeof closeAuthMenu === 'function'") shouldBe true
+      page.evalBool("typeof openLoginModal === 'function'") shouldBe true
+      page.evalBool("typeof closeLoginModal === 'function'") shouldBe true
+    }
+  }
+
+  // Drives the real inline-handler path the navbar uses: a `.auth-menu` div
+  // whose `onclick` attribute is exactly `toggleAuthMenu(event)`. A genuine
+  // click must toggle `.open` without throwing — before the fix this raised an
+  // uncaught ReferenceError and the menu never opened.
+  it should "toggle the auth menu open on a real click through the inline onclick" in {
+    onPath("/") { page =>
+      val opened = page.evalBool(
+        "(() => {" +
+        "  const m = document.createElement('div');" +
+        "  m.id = 'auth-menu'; m.className = 'auth-menu';" +
+        "  m.setAttribute('onclick', 'toggleAuthMenu(event)');" +
+        "  document.body.appendChild(m);" +
+        "  m.click();" +
+        "  return m.classList.contains('open');" +
+        "})()"
+      )
+      opened shouldBe true
+    }
+  }
+
   // ── Delegated event handlers tolerate non-Element targets ──────────────
   //
   // Regression for the Sentry-reported `e.target.closest is not a function`
