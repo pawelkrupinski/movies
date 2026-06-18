@@ -1,12 +1,11 @@
-package services.movies
+package services.cinemas
 
 /** Decides whether a scraped listing is a live STAGE/MUSIC event rather than a
  *  film. Small municipal & arthouse venues sell tickets to their own concerts,
  *  stand-up nights, kabaret shows, recitals and theatre plays through the same
  *  ticketing/listing surface their film repertoire comes from, so those rows
  *  leak into the scrape (e.g. "Koncert Joscho Stephan Trio", "Piotr Bałtroczyk
- *  Stand-up", "Edyta Geppert - recital"). They are not movies and shouldn't
- *  reach the read model.
+ *  Stand-up", "Edyta Geppert - recital").
  *
  *  This is deliberately HIGH-PRECISION, not high-recall: a stray event slipping
  *  through is cosmetic, but dropping a real film is a regression. So two whole
@@ -24,10 +23,11 @@ package services.movies
  *     venue's "Kino**teatr**ze" survives because [[EventMarkers]] anchors on a
  *     word boundary (`\bteatr`, not a bare substring).
  *
- *  Lives behind a pure boolean so `MovieCache.recordCinemaScrape` — the single
- *  point every cinema client's scrape converges on — can drop events for every
- *  client at once (cf. the per-client filters in `KinoSfinksClient` /
- *  `CharlieMonroeClient`, which this complements rather than replaces). */
+ *  Applied per cinema by [[NonMovieEventFilteringScraper]], which wraps every
+ *  client's `fetch()` at the scrape seam (cf. the per-client filters in
+ *  `KinoSfinksClient` / `CharlieMonroeClient`, which this complements rather
+ *  than replaces — those discriminate on a structured category the venue
+ *  exposes; this one works off the title for venues that expose none). */
 object NonMovieEventClassifier {
 
   /** Word-anchored markers of a live stage/music event. Anchored on `\b` so

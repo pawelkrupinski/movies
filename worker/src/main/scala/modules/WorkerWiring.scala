@@ -240,16 +240,21 @@ class WorkerWiring extends play.api.Logging {
       .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
       .map { raw =>
         val retried = new RetryingCinemaScraper(raw, maxAttempts = math.min(raw.maxFetchAttempts, scrapeAttemptCeiling))
-        if (FallbackEligibility.eligible(raw))
-          new FilmwebFallbackScraper(
-            retried,
-            () => filmwebFallbackFor(raw.cinema),
-            () => filmwebFallbackIds.get(raw.cinema),
-            uptimeMonitor,
-            filmwebFallbackStore,
-            onEvent = filmwebFallbackOnEvent)
-        else
-          new UptimeRecordingScraper(retried, uptimeMonitor, scrapeOutcomeListener)
+        val served  =
+          if (FallbackEligibility.eligible(raw))
+            new FilmwebFallbackScraper(
+              retried,
+              () => filmwebFallbackFor(raw.cinema),
+              () => filmwebFallbackIds.get(raw.cinema),
+              uptimeMonitor,
+              filmwebFallbackStore,
+              onEvent = filmwebFallbackOnEvent)
+          else
+            new UptimeRecordingScraper(retried, uptimeMonitor, scrapeOutcomeListener)
+        // Drop non-film live events (concerts, stand-up, kabaret, recitals,
+        // theatre) from whatever was finally served — own-site OR Filmweb
+        // fallback. Outermost so retry/uptime see the raw upstream outcome.
+        new NonMovieEventFilteringScraper(served)
       }
 
   // ── Background concurrency budget ───────────────────────────────────────────
