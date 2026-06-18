@@ -4,6 +4,7 @@ import tools.HttpFetch
 
 import java.io.File
 import java.net.URI
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 
 /** Pass-through `HttpFetch` that also writes every response body to a
@@ -29,15 +30,29 @@ import java.nio.file.Files
 class RecordingHttpFetch(fixtureDirectory: String, delegate: HttpFetch) extends HttpFetch {
   val fixtureRoot = "test/resources/fixtures/" + fixtureDirectory
 
+  // Record the RAW wire bytes, not the UTF-8-decoded String. A legacy
+  // single-byte page (Kino Charlie / Kino Pod Baranami ship raw ISO-8859-2
+  // with no charset declared) decodes lossily under UTF-8 — every Polish
+  // letter collapses to `U+FFFD` — so writing `delegate.get(url).getBytes`
+  // bakes that loss into the fixture and the scraper's `getBytes` decode of
+  // it can never recover the title. Going through `delegate.getBytes` keeps
+  // the wire bytes intact; the scraper applies the right charset on replay.
+  // For genuinely-UTF-8 upstreams this is identical to the old path.
   override def get(url: String): String = {
-    val content = delegate.get(url)
-    write(fileFor(url), content)
-    content
+    val bytes = delegate.getBytes(url)
+    write(fileFor(url), bytes)
+    new String(bytes, StandardCharsets.UTF_8)
+  }
+
+  override def getBytes(url: String): Array[Byte] = {
+    val bytes = delegate.getBytes(url)
+    write(fileFor(url), bytes)
+    bytes
   }
 
   override def post(url: String, body: String, contentType: String): String = {
     val content = delegate.post(url, body, contentType)
-    write(fileFor(url, Some(body)), content)
+    write(fileFor(url, Some(body)), content.getBytes(StandardCharsets.UTF_8))
     content
   }
 
@@ -84,12 +99,12 @@ class RecordingHttpFetch(fixtureDirectory: String, delegate: HttpFetch) extends 
    *  directory, write to `<x>.content` instead. `FakeHttpFetch.get` already
    *  tries `base`, `base.html`, `base.content` in order, so the read path
    *  finds the renamed file without any further change. */
-  private def write(file: File, content: String): Unit = {
+  private def write(file: File, content: Array[Byte]): Unit = {
     renameAncestorIfFile(file)
     file.getParentFile.mkdirs()
     val target = if (file.exists() && file.isDirectory) contentSibling(file) else file
     target.createNewFile()
-    Files.write(target.toPath, content.getBytes("UTF-8"))
+    Files.write(target.toPath, content)
   }
 
   /** Walk up from `file` to find the deepest existing ancestor. If it's
