@@ -136,13 +136,15 @@ object AdminTitleRulesController {
   }
 
   /** Per-rule affected-titles payload for the editor. `count` is the full tally;
-   *  `changes` is capped so a broad rule can't bloat the response. */
+   *  `changes` is capped so a broad rule can't bloat the response. Each change
+   *  carries the original, the rewritten search `result`, and the `display` form
+   *  the page would actually render (the third preview column). */
   def affectedToJson(a: TitleRuleSet.RuleAffected): JsObject = Json.obj(
     "ruleId" -> a.ruleId,
     "scope"  -> a.scope.name,
     "count"  -> a.changes.size,
     "changes" -> a.changes.take(AffectedSampleCap).map(c =>
-      Json.obj("title" -> c.original, "result" -> c.result)))
+      Json.obj("title" -> c.original, "result" -> c.result, "display" -> displayOf(c.result))))
 
   /** Tier-level affected payload for the editor — the whole transient tier's net
    *  (original → final) rewrites, capped like the per-rule payload. */
@@ -150,7 +152,14 @@ object AdminTitleRulesController {
     "scope"  -> t.scope.name,
     "count"  -> t.changes.size,
     "changes" -> t.changes.take(AffectedSampleCap).map(c =>
-      Json.obj("title" -> c.original, "result" -> c.result)))
+      Json.obj("title" -> c.original, "result" -> c.result, "display" -> displayOf(c.result))))
+
+  /** The on-page display title for an affected row's rewritten result — the same
+   *  shared display ladder the merge preview / live pipeline use, which for a
+   *  lone title reduces to its display casing (`recase`). Empty when the rule
+   *  removed the title outright. */
+  private def displayOf(result: String): String =
+    if (result.nonEmpty) TitleNormalizer.chooseDisplay(Seq(result), result) else ""
 
   private val AffectedSampleCap = 500
 

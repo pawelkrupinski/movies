@@ -79,12 +79,16 @@
     .affected-body { margin: .35rem 0 .2rem; padding: .35rem .5rem; background: var(--panel2);
       border: 1px solid var(--border); border-radius: 6px;
       max-height: 16rem; overflow: auto; }
-    .affected-row { display: grid; grid-template-columns: 1fr 14px 1fr; gap: 6px;
+    /* original → search result → display title (three columns). */
+    .affected-row { display: grid; grid-template-columns: 1fr 14px 1fr 14px 1fr; gap: 6px;
       align-items: baseline; padding: 1px 0; }
     .affected-row .aff-from { color: var(--text); }
     .affected-row .aff-arrow { color: var(--muted); text-align: center; }
     .affected-row .aff-to { color: var(--good); font-family: ui-monospace, monospace; }
     .affected-row .aff-to.empty { color: var(--bad); font-style: italic; }
+    .affected-row .aff-display { color: var(--accent); }
+    .affected-row.affected-head span { color: var(--muted); font-size: .72rem;
+      text-transform: uppercase; letter-spacing: .03em; }
   </style>
 </head>
 <body>
@@ -316,14 +320,24 @@
       sum.appendChild(document.createTextNode(countLabel(data.count)));
       if (!data.changes || !data.changes.length)
         return [sum, h("div", { class: "affected-body muted" }, [emptyLabel])];
+      // original → search result → display title (the rendered, recased form).
+      const head = h("div", { class: "affected-row affected-head" }, [
+        h("span", {}, ["original"]), h("span", {}, [""]),
+        h("span", {}, ["search"]),   h("span", {}, [""]),
+        h("span", {}, ["display"])
+      ]);
       const body = h("div", { class: "affected-body" },
-        data.changes.map(c => h("div", { class: "affected-row" }, [
-          h("span", { class: "aff-from" }, [c.title]),
-          h("span", { class: "aff-arrow" }, ["→"]),
-          c.result && c.result.length
-            ? h("span", { class: "aff-to" }, [c.result])
-            : h("span", { class: "aff-to empty" }, ["(removed)"])
-        ])));
+        [head].concat(data.changes.map(c => {
+          const removed = !(c.result && c.result.length);
+          return h("div", { class: "affected-row" }, [
+            h("span", { class: "aff-from" }, [c.title]),
+            h("span", { class: "aff-arrow" }, ["→"]),
+            removed ? h("span", { class: "aff-to empty" }, ["(removed)"])
+                    : h("span", { class: "aff-to" }, [c.result]),
+            h("span", { class: "aff-arrow" }, [removed ? "" : "→"]),
+            h("span", { class: "aff-display" }, [removed ? "" : (c.display || c.result)])
+          ]);
+        })));
       const out = [sum, body];
       if (data.count > data.changes.length)
         out.push(h("div", { class: "muted", style: "margin-top:.3rem" },

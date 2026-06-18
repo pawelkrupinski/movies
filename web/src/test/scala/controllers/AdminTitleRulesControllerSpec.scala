@@ -190,8 +190,24 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     (g1 \ "count").as[Int] shouldBe 1
     (g1 \ "changes" \ 0 \ "title").as[String] shouldBe "Top Gun - Restored"
     (g1 \ "changes" \ 0 \ "result").as[String] shouldBe "Top Gun"
+    (g1 \ "changes" \ 0 \ "display").as[String] shouldBe "Top Gun" // display column (already well-cased)
     val s1 = array.find(a => (a \ "ruleId").as[String] == "s1").get
     (s1 \ "changes" \ 0 \ "result").as[String] shouldBe "Vertigo"
+    (s1 \ "changes" \ 0 \ "display").as[String] shouldBe "Vertigo"
+  }
+
+  it should "carry a display-title column that recases the rewritten result" in {
+    // An ALL-CAPS corpus title: the rule strips the decoration to the search
+    // `result`, and the `display` column shows the on-page casing the page renders.
+    val corpus = repositoryWith("ANORA - GALA PREMIERE")
+    val body = Json.obj("rules" -> Json.arr(
+      Json.obj("id" -> "g1", "scope" -> "GlobalStructural",
+        "pattern" -> "(?i)\\s*-\\s*gala premiere$", "replacement" -> "", "order" -> 1)))
+    val result = controller(movies = corpus).affected().apply(jsonRequest(session = true, body))
+    status(result) shouldBe OK
+    val g1 = (contentAsJson(result) \ "affected").as[Seq[play.api.libs.json.JsValue]].head
+    (g1 \ "changes" \ 0 \ "result").as[String]  shouldBe "ANORA" // search result (rule output)
+    (g1 \ "changes" \ 0 \ "display").as[String] shouldBe "Anora" // display column (recased)
   }
 
   it should "also report the tier-level net rollup of all films the transient tier rewrites" in {
