@@ -30,8 +30,12 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "mark a widely-reused platform client as shared, naming the client" in {
-    // FilmwebShowtimesClient backs ~100 venues — unambiguously shared.
-    markers("Kino Tatry") shouldBe "shared:FilmwebShowtimesClient"
+    // FilmwebShowtimesClient still backs the venues Filmweb hasn't been migrated
+    // off (Kino Studyjne Kadr among them) — unambiguously shared.
+    markers("Kino Studyjne Kadr") shouldBe "shared:FilmwebShowtimesClient"
+    // Kino Tatry was migrated off Filmweb onto its own-site KinoTatryClient — a
+    // single-cinema client, so it flips to a custom marker.
+    markers("Kino Tatry") shouldBe "custom:KinoTatryClient"
   }
 
   it should "mark a bespoke single-cinema client as custom, naming the client" in {
@@ -57,7 +61,13 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
     // The PURE catalog map carries the no-network `/cinema/-<id>` fallback; the
     // worker upgrades it to the canonical `/showtimes/<City>/<Name>-<id>` at boot
     // (FilmwebShowtimesClient.resolveAll, covered in FilmwebShowtimesClientSpec).
-    sourceUrls("Kino Tatry") shouldBe "https://www.filmweb.pl/cinema/-2305"
+    sourceUrls("Kino Studyjne Kadr") shouldBe "https://www.filmweb.pl/cinema/-1140"
+  }
+
+  it should "link an own-site-migrated venue (Kino Tatry) to its own repertoire page" in {
+    // Tatry left Filmweb for its own WordPress site, so its source link is the
+    // venue's repertoire page, not a /cinema/-<id> Filmweb fallback.
+    sourceUrls("Kino Tatry") shouldBe "https://kinotatrylodz.pl/repertuar/"
   }
 
   it should "link a Cinema City venue to its public venue page by externalCode" in {

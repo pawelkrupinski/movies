@@ -164,7 +164,7 @@ class CinemaScraperCatalog(
     new CharlieClient(http, KinoCharlie),
     new KinematografLodzClient(http, KinematografLodz, today),
     new NckfClient(http, Nckf, today),
-    new FilmwebShowtimesClient(http, 2305, KinoTatry, today = today),
+    new KinoTatryClient(http, KinoTatry, today),
   )
 
   private val katowiceScrapers: Seq[CinemaScraper] = Seq(
