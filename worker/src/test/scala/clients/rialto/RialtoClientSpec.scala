@@ -56,7 +56,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
       "Niesamowite przygody skarpetek 3. Ale kosmos!",
       "Szepty lasu",
       "Sprawiedliwość owiec",
-      "TOP GUN | 40 rocznica",
+      "Top Gun | 40 rocznica",
       "Van gogh. Pola zbóż i zachmurzone niebiosa",
       "Znaki pana śliwki",
     )
@@ -77,7 +77,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     runtimes("Niesamowite przygody skarpetek 3. Ale kosmos!")        shouldBe Some(55)
     runtimes("Szepty lasu")                                          shouldBe Some(84)
     runtimes("Sprawiedliwość owiec")                                 shouldBe Some(105)
-    runtimes("TOP GUN | 40 rocznica")                                shouldBe Some(110)
+    runtimes("Top Gun | 40 rocznica")                                shouldBe Some(110)
     runtimes("Van gogh. Pola zbóż i zachmurzone niebiosa")          shouldBe Some(85)
     runtimes("Znaki pana śliwki")                                    shouldBe Some(72)
   }
@@ -96,7 +96,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Niesamowite przygody skarpetek 3. Ale kosmos!").movie.releaseYear        shouldBe Some(2026)
     byTitle("Szepty lasu").movie.releaseYear                                          shouldBe Some(2026)
     byTitle("Sprawiedliwość owiec").movie.releaseYear                                 shouldBe Some(2026)
-    byTitle("TOP GUN | 40 rocznica").movie.releaseYear                                shouldBe Some(1986)
+    byTitle("Top Gun | 40 rocznica").movie.releaseYear                                shouldBe Some(1986)
     byTitle("Van gogh. Pola zbóż i zachmurzone niebiosa").movie.releaseYear          shouldBe Some(2018)
     byTitle("Znaki pana śliwki").movie.releaseYear                                    shouldBe Some(2025)
   }
@@ -115,7 +115,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Niesamowite przygody skarpetek 3. Ale kosmos!").movie.countries shouldBe Seq("Polska", "Portugalia")
     byTitle("Sprawiedliwość owiec").movie.countries shouldBe Seq("Irlandia", "Niemcy", "USA", "Wielka Brytania")
     byTitle("Szepty lasu").movie.countries shouldBe Seq("Polska")
-    byTitle("TOP GUN | 40 rocznica").movie.countries shouldBe Seq("USA")
+    byTitle("Top Gun | 40 rocznica").movie.countries shouldBe Seq("USA")
     byTitle("Van gogh. Pola zbóż i zachmurzone niebiosa").movie.countries shouldBe Seq("Włochy")
     byTitle("Znaki pana śliwki").movie.countries shouldBe Seq("Polska")
   }
@@ -145,7 +145,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     posters("Niesamowite przygody skarpetek 3. Ale kosmos!")        shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/niesamowite-przygody-skarpetek-3-ale-kosmos-plakat-scaled.jpg")
     posters("Szepty lasu")                                          shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/szepty-lasu-plakat.jpg")
     posters("Sprawiedliwość owiec")                                 shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/plakat-sprawiedliwosc-owiec-internetjpg.jpg")
-    posters("TOP GUN | 40 rocznica")                                shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/top-gun-rocznica-tg40th.jpg")
+    posters("Top Gun | 40 rocznica")                                shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/top-gun-rocznica-tg40th.jpg")
     posters("Van gogh. Pola zbóż i zachmurzone niebiosa")          shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/vangogh-plakat.jpg")
     posters("Znaki pana śliwki")                                    shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/znaki-pana-sliwki-plakat.jpg")
   }
@@ -165,7 +165,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     filmUrls("Niesamowite przygody skarpetek 3. Ale kosmos!")        shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=155443")
     filmUrls("Szepty lasu")                                          shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=155439")
     filmUrls("Sprawiedliwość owiec")                                 shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=154188")
-    filmUrls("TOP GUN | 40 rocznica")                                shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=154207")
+    filmUrls("Top Gun | 40 rocznica")                                shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=154207")
     filmUrls("Van gogh. Pola zbóż i zachmurzone niebiosa")          shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=48676")
     filmUrls("Znaki pana śliwki")                                    shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=155877")
   }
@@ -183,7 +183,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Niesamowite przygody skarpetek 3. Ale kosmos!").director     shouldBe Seq("Paweł Wendorff", "Elżbieta Wąsik; Jarosław Szyszko", "Barbara Koniecka", "Mateusz Kmieć", "Natalia Bartska-Kmieć")
     byTitle("Szepty lasu").director                                       shouldBe Seq("Krzysztof Sarapata", "Tomasz Kotaś")
     byTitle("Sprawiedliwość owiec").director                              shouldBe Seq("Kyle Balda")
-    byTitle("TOP GUN | 40 rocznica").director                             shouldBe Seq("Tony Scott")
+    byTitle("Top Gun | 40 rocznica").director                             shouldBe Seq("Tony Scott")
     byTitle("Van gogh. Pola zbóż i zachmurzone niebiosa").director       shouldBe Seq("Giovanni Piscaglia")
     byTitle("Znaki pana śliwki").director                                 shouldBe Seq("Urszula Morga", "Bartosz Mikołajczyk")
   }
@@ -247,7 +247,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     counts("Niesamowite przygody skarpetek 3. Ale kosmos!")        shouldBe 22
     counts("Szepty lasu")                                          shouldBe 11
     counts("Sprawiedliwość owiec")                                 shouldBe 33
-    counts("TOP GUN | 40 rocznica")                                shouldBe 11
+    counts("Top Gun | 40 rocznica")                                shouldBe 11
     counts("Van gogh. Pola zbóż i zachmurzone niebiosa")          shouldBe 11
     counts("Znaki pana śliwki")                                    shouldBe 11
   }

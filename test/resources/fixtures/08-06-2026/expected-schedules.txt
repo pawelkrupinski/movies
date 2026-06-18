@@ -2117,8 +2117,8 @@ cinemaScrapes:
 showings:
   2026-06-17  Kino Muza                     18:45 Sala 1
 
-=== FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – 500 mil ===
-displayTitle:      FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – 500 mil
+=== Filmoczule Dla Edukacji z Odn i WZiSS Ump – 500 mil ===
+displayTitle:      Filmoczule Dla Edukacji z Odn i WZiSS Ump – 500 mil
 cinemaTitles:      FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – 500 mil
 runtimeMinutes:    102
 releaseYear:       2026
@@ -2209,8 +2209,8 @@ cinemaScrapes:
 showings:
   2026-06-21  Helios Posnania               10:30 2D/DUB
 
-=== Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE ===
-displayTitle:      Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE
+=== Filmowy Klub Seniora: 18 lecie - Takie Jest Życie ===
+displayTitle:      Filmowy Klub Seniora: 18 lecie - Takie Jest Życie
 cinemaTitles:      Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE
 runtimeMinutes:    118
 releaseYear:       2025
@@ -2378,8 +2378,8 @@ showings:
   2026-07-13  Kino Pałacowe                 20:00 Sala 1 - Kinowa
   2026-08-18  Kino Muza                     20:30 Sala 1
 
-=== GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego ===
-displayTitle:      GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego
+=== Giulietta I Duchy | przed filmem wykład prof. Marka Hendrykowskiego ===
+displayTitle:      Giulietta I Duchy | przed filmem wykład prof. Marka Hendrykowskiego
 cinemaTitles:      GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego
 runtimeMinutes:    148
 releaseYear:       1965
@@ -6341,8 +6341,8 @@ cinemaScrapes:
 showings:
   2026-06-11  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
-=== Poranek Rodzinny z książką "Myszonek leci samolotem" | FRAJDA W MUZIE! ===
-displayTitle:      Poranek Rodzinny z książką "Myszonek leci samolotem" | FRAJDA W MUZIE!
+=== Poranek Rodzinny z książką "Myszonek leci samolotem" | Frajda W Muzie! ===
+displayTitle:      Poranek Rodzinny z książką "Myszonek leci samolotem" | Frajda W Muzie!
 cinemaTitles:      Poranek Rodzinny z książką "Myszonek leci samolotem" | FRAJDA W MUZIE!
 runtimeMinutes:    45
 releaseYear:       —
@@ -7612,8 +7612,8 @@ showings:
   2026-06-28  Kino Pałacowe                 17:00 Sala 1 - Kinowa
   2026-08-11  Kino Muza                     20:30 Sala 1
 
-=== SŁODKIE ŻYCIE | przed filmem wykład prof. Marka Hendrykowskiego ===
-displayTitle:      SŁODKIE ŻYCIE | przed filmem wykład prof. Marka Hendrykowskiego
+=== Słodkie Życie | przed filmem wykład prof. Marka Hendrykowskiego ===
+displayTitle:      Słodkie Życie | przed filmem wykład prof. Marka Hendrykowskiego
 cinemaTitles:      SŁODKIE ŻYCIE | przed filmem wykład prof. Marka Hendrykowskiego
 runtimeMinutes:    176
 releaseYear:       1960
@@ -8142,8 +8142,8 @@ showings:
   2026-06-20  Cinema City Poznań Plaza      15:30 Sala 1 2D/DUB
   2026-06-21  Cinema City Poznań Plaza      15:30 Sala 1 2D/DUB
 
-=== UNLIMITED SHOW - Nowa Fala ===
-displayTitle:      UNLIMITED SHOW - Nowa Fala
+=== Unlimited Show - Nowa Fala ===
+displayTitle:      Unlimited Show - Nowa Fala
 cinemaTitles:      UNLIMITED SHOW - Nowa Fala
 runtimeMinutes:    106
 releaseYear:       2025

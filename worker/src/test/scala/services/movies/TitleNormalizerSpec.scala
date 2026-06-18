@@ -409,8 +409,37 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
   it should "leave an already-mixed-case title byte-identical (guardrail)" in {
     recase("Paris Saint-Germain") shouldBe "Paris Saint-Germain"
     recase("Moulin Rouge!")       shouldBe "Moulin Rouge!"
+    // A LONE all-caps word inside an otherwise-cased title is almost always a
+    // real acronym ("UEFA"), so it stays — only a run of 2+ shouted words is
+    // re-cased (see below).
     recase("Liga Mistrzów UEFA - Finał 2026: Paris Saint-Germain") shouldBe
       "Liga Mistrzów UEFA - Finał 2026: Paris Saint-Germain"
+  }
+
+  it should "down-case a run of 2+ shouted words inside an otherwise-cased title" in {
+    recase("FEDERICO FELLINI: Ciao a tutti! - Osiem i pół") shouldBe
+      "Federico Fellini: Ciao a tutti! - Osiem i pół"
+    // Two adjacent shouted words elsewhere in the title, too.
+    recase("Rocky BALBOA RETURNS dzisiaj") shouldBe "Rocky Balboa Returns dzisiaj"
+    // A pure roman numeral inside a shouted run keeps its caps.
+    recase("Rocky BALBOA II powraca") shouldBe "Rocky Balboa II powraca"
+  }
+
+  it should "down-case a word a lowercase connective stranded out of the shout run" in {
+    // "RYBKA ZWANA" is the run that flags the shout; "WANDA" is pulled in too
+    // rather than left half-shouted, even though a lowercase "i" strands it out of
+    // the run. (No identity-changing canonical strip here, so the guard adopts it.)
+    recase("RYBKA ZWANA i WANDA dzisiaj") shouldBe "Rybka Zwana i Wanda dzisiaj"
+  }
+
+  it should "keep the original casing when re-casing would re-key the row's identity" in {
+    // Down-casing "GWIEZDNE WOJNY:" → "Gwiezdne Wojny:" makes the case-sensitive
+    // "Gwiezdne Wojny: " canonical strip fire (it doesn't match the all-caps form),
+    // so the row would sanitize to a DIFFERENT key — scattering its merge and
+    // spinning the staging fold. recase must leave such a title as scraped.
+    val shout = "GWIEZDNE WOJNY: MANDALORIAN i GROGU"
+    recase(shout) shouldBe shout
+    TitleNormalizer.sanitize(recase(shout)) shouldBe TitleNormalizer.sanitize(shout)
   }
 
   it should "split a programme banner and case the banner and film independently" in {

@@ -72,7 +72,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
       "Klątwa doliny węży -  z autorską narracją Łony",
       "Kosmiczny mecz",
       "Kurozając i Świątynia Świstaka",
-      "LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC",
+      "Liga Mistrzów Uefa - Finał 2026: Paris Saint-Germain - Arsenal Fc",
       "La Traviata Verdiego z Arena di Verona",
       "Mandalorian i Grogu",
       "Maraton: Powrót do przyszłości",
@@ -172,7 +172,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     runtimes("O dziewczynie skaczącej przez czas")         shouldBe Some(98)
     runtimes("Kosmiczny mecz")                                                     shouldBe Some(0)
     runtimes("Kurozając i Świątynia Świstaka")                                     shouldBe Some(89)
-    runtimes("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC")  shouldBe Some(0)
+    runtimes("Liga Mistrzów Uefa - Finał 2026: Paris Saint-Germain - Arsenal Fc")  shouldBe Some(0)
     runtimes("La Traviata Verdiego z Arena di Verona")                             shouldBe Some(160)
     runtimes("Mandalorian i Grogu")                                                shouldBe Some(132)
     runtimes("Maraton: Powrót do przyszłości")                                     shouldBe Some(0)
@@ -303,7 +303,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     posters("O dziewczynie skaczącej przez czas")         shouldBe Some("https://www.multikino.pl/-/media/multikino/images/wydarzenia/anime/o-dziewczynie-skaczacej-przez-czas-plakat2.jpg?rev=125e66df557f4228bf3605103ca217f9")
     posters("Kosmiczny mecz")                                                     shouldBe Some("https://www.multikino.pl/-/media/multikino/images/kultowe-kino/kosmicznymecz96.jpg?rev=5cf7d42444434cff9f803083a634a9ee")
     posters("Kurozając i Świątynia Świstaka")                                     shouldBe Some("https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/kurozajac-i-swiatynia-swistaka/kurozajac_plakat.jpg?rev=8e07534364604957a7cfab295c1dc9ec")
-    posters("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC")  shouldBe Some("https://www.multikino.pl/-/media/multikino/images/euro/2026/plakat_30maja.jpg?rev=b087764f339d4085af181aa6fc494509")
+    posters("Liga Mistrzów Uefa - Finał 2026: Paris Saint-Germain - Arsenal Fc")  shouldBe Some("https://www.multikino.pl/-/media/multikino/images/euro/2026/plakat_30maja.jpg?rev=b087764f339d4085af181aa6fc494509")
     posters("La Traviata Verdiego z Arena di Verona")                             shouldBe Some("https://www.multikino.pl/-/media/multikino/images/wydarzenia/opera/latraviata2026_plakat.png?rev=d55bc88afb2b4c949d93ba3113f446ce")
     posters("Mandalorian i Grogu")                                                shouldBe Some("https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/mandalorian-grogu/mandalorian-plakat-fin.jpg?rev=90e8fd31606f41a0b6393770f3fe36d1")
     posters("Maraton: Powrót do przyszłości")                                     shouldBe Some("https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3")
@@ -383,7 +383,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     filmUrls("O dziewczynie skaczącej przez czas")         shouldBe Some("https://www.multikino.pl/filmy/kolekcja-mamoru-hosody-o-dziewczynie-skaczacej-przez-czas")
     filmUrls("Kosmiczny mecz")                                                     shouldBe Some("https://www.multikino.pl/filmy/kosmiczny-mecz")
     filmUrls("Kurozając i Świątynia Świstaka")                                     shouldBe Some("https://www.multikino.pl/filmy/kurozajac-i-swiatynia-swistaka")
-    filmUrls("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC")  shouldBe Some("https://www.multikino.pl/filmy/liga-mistrzow-uefa-final-2026-30052026")
+    filmUrls("Liga Mistrzów Uefa - Finał 2026: Paris Saint-Germain - Arsenal Fc")  shouldBe Some("https://www.multikino.pl/filmy/liga-mistrzow-uefa-final-2026-30052026")
     filmUrls("La Traviata Verdiego z Arena di Verona")                             shouldBe Some("https://www.multikino.pl/filmy/la-traviata-verdiego-z-arena-di-verona")
     filmUrls("Mandalorian i Grogu")                                                shouldBe Some("https://www.multikino.pl/filmy/mandalorian-grogu")
     filmUrls("Maraton: Powrót do przyszłości")                                     shouldBe Some("https://www.multikino.pl/filmy/maraton-powrot-do-przyszosci")
@@ -493,7 +493,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Drugie życie").director                                                       shouldBe empty
     byTitle("Drzewo magii").director                                                       shouldBe empty
     byTitle("Fantastyczne zwierzęta: zbrodnie grindelwalda").director                      shouldBe empty
-    byTitle("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC").director  shouldBe empty
+    byTitle("Liga Mistrzów Uefa - Finał 2026: Paris Saint-Germain - Arsenal Fc").director  shouldBe empty
     byTitle("Maraton: Powrót do przyszłości").director                                     shouldBe empty
     byTitle("NT Live: Audiencja").director                                                 shouldBe empty
     byTitle("NT Live: Niebezpieczne związki").director                                     shouldBe empty
@@ -542,7 +542,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     counts("O dziewczynie skaczącej przez czas")         shouldBe 2
     counts("Kosmiczny mecz")                                                     shouldBe 5
     counts("Kurozając i Świątynia Świstaka")                                     shouldBe 33
-    counts("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC")  shouldBe 1
+    counts("Liga Mistrzów Uefa - Finał 2026: Paris Saint-Germain - Arsenal Fc")  shouldBe 1
     counts("La Traviata Verdiego z Arena di Verona")                             shouldBe 1
     counts("Mandalorian i Grogu")                                                shouldBe 27
     counts("Maraton: Powrót do przyszłości")                                     shouldBe 1
@@ -647,7 +647,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     val titles = results.map(_.movie.title).toSet
     // This title has lowercase letters inside the team-names half, so it
     // is NOT all-uppercase by the rule — preserve verbatim.
-    titles should contain ("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC")
+    titles should contain ("Liga Mistrzów Uefa - Finał 2026: Paris Saint-Germain - Arsenal Fc")
   }
 
   // ── cleanTitle: strip cycle decoration ────────────────────────────────────

@@ -66,20 +66,77 @@ object TitleNormalizer {
    *  banner rule matches (any programme prefix, the Cykl prefix, …), split at
    *  its boundary and case the banner and the film independently so the film
    *  keeps its own capital ("FILMOWY KLUB SENIORA: OJCZYZNA" → "Filmowy klub
-   *  seniora: Ojczyzna"). Guardrailed: a segment is re-cased only when it is
-   *  all-UPPERCASE or all-lowercase; an already-mixed-case segment is left
-   *  byte-identical (so "Paris Saint-Germain", "Moulin Rouge!" are untouched).
-   *  Identity-invariant — `sanitize` lowercases, so casing never re-keys a row. */
-  def recase(title: String): String = active.leadingBannerBoundary(title) match {
-    case Some(n) => caseSegment(title.substring(0, n)) + caseSegment(title.substring(n))
-    case None    => caseSegment(title)
+   *  seniora: Ojczyzna"). A fully all-UPPERCASE or all-lowercase segment is
+   *  sentence-cased; a partly-shouted segment has only its run(s) of 2+
+   *  consecutive all-caps words down-cased ("FEDERICO FELLINI: Ciao a tutti!" →
+   *  "Federico Fellini: Ciao a tutti!"), leaving lone acronyms ("UEFA") and the
+   *  already-cased words alone (see `recaseShoutedRuns`). "Paris Saint-Germain",
+   *  "Moulin Rouge!" are untouched.
+   *
+   *  IDENTITY-INVARIANT BY CONSTRUCTION: casing must never re-key a row, but
+   *  `sanitize` is NOT perfectly casing-blind — the canonical strips include
+   *  case-sensitive prefixes (e.g. "Gwiezdne Wojny: " matches that exact casing
+   *  but not "GWIEZDNE WOJNY: "), so down-casing a shout COULD make it sanitize to
+   *  a different key, scattering the row's merge and spinning the staging fold. So
+   *  the re-cased form is only adopted when it sanitizes to the SAME key; otherwise
+   *  the original casing is kept (the franchise-prefixed shout stays as scraped). */
+  def recase(title: String): String = {
+    val recased = active.leadingBannerBoundary(title) match {
+      case Some(n) => caseSegment(title.substring(0, n)) + caseSegment(title.substring(n))
+      case None    => caseSegment(title)
+    }
+    // Fast path: the overwhelming majority of titles are already well-cased, so
+    // recasing is a no-op — skip the (relatively costly) identity check entirely.
+    // Only a title we actually re-cased pays for the `sanitize` round-trip guard.
+    if (recased == title) title
+    else if (sanitize(recased) == sanitize(title)) recased
+    else title
   }
 
   private def caseSegment(s: String): String = {
     val letters = s.filter(_.isLetter)
     if (letters.isEmpty) s
     else if (letters.forall(_.isUpper) || letters.forall(_.isLower)) tools.TextNormalization.sentenceCase(s)
-    else s // already mixed-case → leave byte-identical (guardrail)
+    else recaseShoutedRuns(s) // partly-shouted → down-case the shouted run(s)
+  }
+
+  // A token made only of roman-numeral letters — kept in caps when a shout is
+  // down-cased so "Rocky BALBOA II" cases the name but leaves the sequel ("II").
+  private val RomanNumeral = "^[IVXLCDM]+$".r
+
+  private def isAllCapsWord(token: String): Boolean = {
+    val ls = token.filter(_.isLetter)
+    ls.nonEmpty && ls.forall(_.isUpper)
+  }
+
+  /** Display-casing for a MIXED-case segment: when a scraper SHOUTS part of an
+   *  otherwise properly-cased title ("FEDERICO FELLINI: Ciao a tutti!"), down-case
+   *  the shouted words while leaving the already-cased words byte-identical.
+   *
+   *  The trigger is a RUN of two or more *consecutive* all-caps words — that's
+   *  what tells a shout ("FEDERICO FELLINI", "GWIEZDNE WOJNY: MANDALORIAN") apart
+   *  from a lone acronym/initialism that must stay ("Liga Mistrzów UEFA",
+   *  "NT Live"). Once a segment is found to be shouting, EVERY all-caps word in it
+   *  is down-cased — including ones a lowercase connective stranded out of the run
+   *  ("…MANDALORIAN i GROGU" → "…Mandalorian i Grogu", not a half-shouted
+   *  "…Mandalorian i GROGU" that would also key as a brand-new spelling and
+   *  churn the staging fold). Multi-letter roman numerals keep their caps
+   *  ("BALBOA II" → "Balboa II"). */
+  private def recaseShoutedRuns(s: String): String = {
+    // Alternating whitespace / non-whitespace tokens, preserved exactly so an
+    // untouched input round-trips byte-identical.
+    val tokens    = "\\s+|\\S+".r.findAllIn(s).toVector
+    val capsWords = tokens.indices.filter(i => isAllCapsWord(tokens(i)))
+    // A shout = at least one ADJACENT pair of all-caps words. Tokens strictly
+    // alternate whitespace/non-whitespace, so two consecutive caps words sit
+    // exactly two indices apart (one whitespace token between them).
+    val shouting  = capsWords.sliding(2).exists { case Seq(a, b) => b - a == 2; case _ => false }
+    if (!shouting) s
+    else tokens.zipWithIndex.map {
+      case (t, i) if isAllCapsWord(t) && RomanNumeral.findFirstIn(t.filter(_.isLetter)).isEmpty =>
+        tools.TextNormalization.titleCaseIfAllCaps(t)
+      case (t, _) => t
+    }.mkString
   }
 
   /** When `title` opens with a recognised programme prefix (Kino bez barier,
