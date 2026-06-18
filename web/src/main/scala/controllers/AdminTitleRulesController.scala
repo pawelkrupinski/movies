@@ -41,7 +41,10 @@ class AdminTitleRulesController(
     recordFromJson(request.body) match {
       case Left(err) => BadRequest(Json.obj("error" -> err))
       case Right(record) =>
-        (record.rules ++ record.lastRules).find(!_.patternValid) match {
+        // Validity is judged on the placeholder-EXPANDED pattern (a raw `{{SEP}}…`
+        // only compiles once the placeholder is substituted), so build a rule set
+        // — which expands — and ask it for invalid rules.
+        TitleRuleSet(record.toRules).invalidRules.headOption match {
           case Some(bad) => BadRequest(Json.obj("error" -> s"Invalid regex: ${bad.pattern}"))
           case None      => titleRulesRepository.upsertRecord(record); Ok(recordToJson(record))
         }

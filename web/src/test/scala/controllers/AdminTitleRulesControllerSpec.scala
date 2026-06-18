@@ -110,6 +110,21 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     status(controller().save().apply(jsonRequest(session = true, body))) shouldBe BAD_REQUEST
   }
 
+  it should "accept a rule that references the {{SEP}} placeholder (it expands to a valid regex)" in {
+    val repository = new InMemoryTitleRulesRepository()
+    val body = Json.obj("scope" -> "GlobalStructural",
+      "rules" -> Json.arr(Json.obj("pattern" -> "(?i){{SEP}}DKF\\b.*$", "replacement" -> "")))
+    status(controller(repository).save().apply(jsonRequest(session = true, body))) shouldBe OK
+    // Stored verbatim — the raw {{SEP}} token is preserved, not pre-expanded.
+    repository.findAll().map(_.pattern) shouldBe Seq("(?i){{SEP}}DKF\\b.*$")
+  }
+
+  it should "reject a rule that references an UNKNOWN placeholder" in {
+    val body = Json.obj("scope" -> "GlobalStructural",
+      "rules" -> Json.arr(Json.obj("pattern" -> "{{NOPE}}DKF$", "replacement" -> "")))
+    status(controller().save().apply(jsonRequest(session = true, body))) shouldBe BAD_REQUEST
+  }
+
   it should "reject a PerCinema record with no cinema" in {
     val body = Json.obj("scope" -> "PerCinema",
       "rules" -> Json.arr(Json.obj("pattern" -> "x")))
@@ -239,6 +254,22 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
   it should "400 a malformed rule body" in {
     val body = Json.obj("rules" -> Json.arr(Json.obj("scope" -> "GlobalStructural"))) // no pattern
     status(controller().affected().apply(jsonRequest(session = true, body))) shouldBe BAD_REQUEST
+  }
+
+  it should "expand a {{SEP}} placeholder rule so one rule rewrites every separator variant" in {
+    // One rule covers the colon, pipe and dash banners the corpus uses — the
+    // whole point of the placeholder: a single generalised rule, not three.
+    val corpus = repositoryWith("Ojczyzna: DKF KOT", "Ojczyzna | DKF", "Ojczyzna - DKF III W", "Anora")
+    val body = Json.obj("rules" -> Json.arr(
+      Json.obj("id" -> "dkf", "scope" -> "GlobalStructural",
+        "pattern" -> "(?i){{SEP}}DKF\\b.*$", "replacement" -> "", "order" -> 1)))
+    val result = controller(movies = corpus).affected().apply(jsonRequest(session = true, body))
+    status(result) shouldBe OK
+    val dkf = (contentAsJson(result) \ "affected").as[Seq[play.api.libs.json.JsValue]]
+      .find(a => (a \ "ruleId").as[String] == "dkf").get
+    (dkf \ "count").as[Int] shouldBe 3                                       // Anora untouched
+    (dkf \ "changes").as[Seq[play.api.libs.json.JsValue]]
+      .map(c => (c \ "result").as[String]) should contain only "Ojczyzna"    // all three → bare film
   }
 
   "report" should "surface the latest backfill outcome" in {

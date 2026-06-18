@@ -89,6 +89,11 @@
     .affected-row .aff-display { color: var(--accent); }
     .affected-row.affected-head span { color: var(--muted); font-size: .72rem;
       text-transform: uppercase; letter-spacing: .03em; }
+    code { font-family: ui-monospace, monospace; }
+    #placeholders-ref .ph-row { margin: .15rem 0; }
+    #placeholders-ref .ph-tok { color: var(--accent); background: var(--panel2);
+      border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; }
+    #placeholders-ref .ph-exp { color: var(--good); }
   </style>
 </head>
 <body>
@@ -100,6 +105,14 @@
     <button id="affected-btn" onclick="loadAffected()">Show affected titles</button>
   </div>
   <p class="muted" style="margin:.1rem 0 0">The structural and search rules don't rewrite the stored film — they only reshape the title sent to external lookups. Each shows an unfoldable list of the corpus films it currently rewrites, and what to.</p>
+
+  <section class="scope" id="placeholders-ref">
+    <h2>Placeholders</h2>
+    <p class="desc">Reusable regex snippets. Reference one inside a pattern as <code class="ph-tok">&#123;&#123;NAME&#125;&#125;</code> — it's expanded before the regex compiles, so a rule that writes <code class="ph-tok">&#123;&#123;SEP&#125;&#125;</code> matches any banner separator (<code>:&nbsp;|&nbsp;-&nbsp;–&nbsp;—&nbsp;/&nbsp;_</code>, spaces optional). Defined in code (<code>TitleRulePlaceholders</code>), shown here for reference — not editable on this page.</p>
+    @for((name, expansion) <- services.titlerules.TitleRulePlaceholders.all.toSeq.sortBy(_._1)) {
+      <div class="ph-row"><code class="ph-tok">&#123;&#123;@name&#125;&#125;</code> <span class="muted">=</span> <code class="mono ph-exp">@expansion</code></div>
+    }
+  </section>
 
   <div id="scopes"></div>
 
@@ -115,6 +128,9 @@
   <script type="application/json" id="seed-cinemas">@play.twirl.api.Html(
     play.api.libs.json.Json.stringify(play.api.libs.json.JsArray(
       cinemas.map { case (k, label) => play.api.libs.json.Json.arr(k, label) })))</script>
+  <script type="application/json" id="seed-placeholders">@play.twirl.api.Html(
+    play.api.libs.json.Json.stringify(
+      play.api.libs.json.Json.toJson(services.titlerules.TitleRulePlaceholders.all)))</script>
 
   <script>
     "use strict";
@@ -135,6 +151,10 @@
 
     let records = JSON.parse(document.getElementById("seed-records").textContent);
     const cinemas = JSON.parse(document.getElementById("seed-cinemas").textContent);
+    // name → regex snippet, mirroring the server's TitleRulePlaceholders. Used to
+    // expand `{{NAME}}` tokens before the client-side regex-validity hint, so a
+    // rule that references a placeholder isn't falsely red-flagged.
+    const PLACEHOLDERS = JSON.parse(document.getElementById("seed-placeholders").textContent);
     records.forEach(r => { r._persisted = true; });
 
     // ruleId → { count, changes: [{title, result}] } from the last /affected run.
@@ -496,8 +516,29 @@
     // a prefix, JS throws "Invalid group"), so translate standalone inline-flag
     // groups to JS flags before testing — otherwise every `(?i)…` rule would
     // show a false "invalid" red even though the server compiles it fine.
+    // Substitute every `{{NAME}}` token from PLACEHOLDERS (to a fixpoint, mirroring
+    // the server's PlaceholderExpander) so the validity hint tests the SAME regex
+    // the server will compile. An unknown token is left as-is — then it's correctly
+    // flagged invalid.
+    function expandPlaceholders(p) {
+      let out = p, depth = 0, changed = true;
+      while (changed && depth < 10) {
+        changed = false;
+        for (const name in PLACEHOLDERS) {
+          const tok = "{{" + name + "}}";
+          if (out.indexOf(tok) >= 0) { out = out.split(tok).join(PLACEHOLDERS[name]); changed = true; }
+        }
+        depth++;
+      }
+      return out;
+    }
+
     function patternOk(p) {
       if (p == null || p === "") return false;
+      p = expandPlaceholders(p);
+      // A residual {{NAME}} means an unknown placeholder — flag it invalid rather
+      // than let JS compile the braces as a literal (the server no-ops it too).
+      if (/\{\{[A-Za-z][A-Za-z0-9_]*\}\}/.test(p)) return false;
       let flags = "";
       const body = p.replace(/\(\?([a-zA-Z]+)\)/g, (m, f) => {
         if (/[^imsxuU]/.test(f)) return m;     // not a pure flag group (a real capture) — leave it

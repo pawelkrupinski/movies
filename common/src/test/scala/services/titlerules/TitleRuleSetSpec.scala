@@ -43,6 +43,27 @@ class TitleRuleSetSpec extends AnyFlatSpec with Matchers {
     rs.perCinema("wybrzeze", "Inny film") shouldBe "Inny film"
   }
 
+  // ── placeholders: a rule referencing {{SEP}} expands before it compiles ─────
+  "a rule using {{SEP}}" should "match any banner separator with optional spaces" in {
+    val rs = TitleRuleSet(Seq(rule("dkf", GlobalStructural, """(?i){{SEP}}DKF\b.*$""", "")))
+    rs.structural("Ojczyzna | DKF KOT")  shouldBe "Ojczyzna"   // pipe
+    rs.structural("Ojczyzna - DKF III W") shouldBe "Ojczyzna"  // hyphen
+    rs.structural("Ojczyzna_DKF")         shouldBe "Ojczyzna"  // underscore, no spaces
+    rs.structural("Ojczyzna : DKF")       shouldBe "Ojczyzna"  // colon
+  }
+
+  it should "be valid (NOT surface in invalidRules) — the raw {{SEP}} expands to a real regex" in {
+    val rs = TitleRuleSet(Seq(rule("dkf", GlobalStructural, """{{SEP}}DKF$""", "")))
+    rs.invalidRules shouldBe empty
+  }
+
+  "a rule referencing an UNKNOWN placeholder" should "surface in invalidRules with its RAW pattern" in {
+    val rs = TitleRuleSet(Seq(rule("oops", GlobalStructural, """{{NOPE}}DKF$""", "")))
+    rs.invalidRules.map(_.id)      shouldBe Seq("oops")
+    rs.invalidRules.map(_.pattern) shouldBe Seq("""{{NOPE}}DKF$""")   // raw token, for the editor
+    rs.structural("x {{NOPE}}DKF") shouldBe "x {{NOPE}}DKF"           // no-op, didn't throw
+  }
+
   "a disabled rule" should "be a no-op" in {
     val rs = TitleRuleSet(Seq(rule("x", GlobalStructural, "^Strip ", "", enabled = false)))
     rs.structural("Strip Me") shouldBe "Strip Me"

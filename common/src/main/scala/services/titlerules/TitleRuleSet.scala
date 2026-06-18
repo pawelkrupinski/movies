@@ -18,20 +18,40 @@ package services.titlerules
  *  it additionally locate banner boundaries for display casing
  *  (`leadingBannerBoundary`).
  */
-case class TitleRuleSet(rules: Seq[TitleRule]) {
+case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String] = TitleRulePlaceholders.all) {
   import RuleScope._
+
+  // Each raw rule paired with its placeholder-expanded form and whether a
+  // `{{NAME}}` token survived expansion (an unknown placeholder or a cycle). An
+  // unresolved rule is forced disabled so it's a genuine no-op in the fold — we
+  // do NOT let a literal `{{NAME}}` reach the regex engine — and is reported by
+  // `invalidRules` so the typo shows up in the editor.
+  private val expansions: Seq[(TitleRule, TitleRule)] =
+    if (placeholders.isEmpty) rules.map(r => (r, r))
+    else rules.map { raw =>
+      val expandedPattern = PlaceholderExpander.expand(raw.pattern, placeholders)
+      val unresolved      = PlaceholderExpander.containsToken(expandedPattern)
+      (raw, raw.copy(pattern = expandedPattern, enabled = raw.enabled && !unresolved))
+    }
+
+  /** Rules with their `{{NAME}}` placeholder tokens expanded — what actually
+   *  compiles and matches. Identity when there are no placeholders, so a set
+   *  built without them behaves exactly as before. The raw `rules` (carrying the
+   *  tokens) are preserved for storage and the editor; only the regex sees the
+   *  expansion. */
+  val effectiveRules: Seq[TitleRule] = expansions.map(_._2)
 
   // `last` rules fold after the non-last ones of the same scope/cinema:
   // `false < true`, so the tuple sort puts them at the end of the tier.
   private def ruleOrder(r: TitleRule): (Boolean, Int, String) = (r.last, r.order, r.id)
 
   private def tier(scope: RuleScope): Seq[TitleRule] =
-    rules.iterator.filter(_.scope == scope).toSeq.sortBy(ruleOrder)
+    effectiveRules.iterator.filter(_.scope == scope).toSeq.sortBy(ruleOrder)
 
   private val structuralRules = tier(GlobalStructural)
   private val canonicalRules  = tier(Canonical)
   private val perCinemaRules: Map[String, Seq[TitleRule]] =
-    rules.iterator.filter(_.scope == PerCinema).toSeq
+    effectiveRules.iterator.filter(_.scope == PerCinema).toSeq
       .groupBy(_.cinemaId.getOrElse(""))
       .view.mapValues(_.sortBy(ruleOrder)).toMap
 
@@ -136,9 +156,16 @@ case class TitleRuleSet(rules: Seq[TitleRule]) {
     }
   }
 
-  /** Patterns that failed to compile — surfaced to the editor so a typo can't
-   *  silently no-op. */
-  def invalidRules: Seq[TitleRule] = rules.filterNot(_.patternValid)
+  /** Patterns that failed to compile OR carry an unresolved `{{NAME}}` token —
+   *  surfaced to the editor so a typo can't silently no-op. Validity is judged on
+   *  the EXPANDED pattern (a raw `{{SEP}}…` doesn't compile until its placeholder
+   *  is substituted), but the RAW rule is returned so the editor shows the
+   *  `{{SEP}}` the author typed. */
+  def invalidRules: Seq[TitleRule] =
+    expansions.collect {
+      case (raw, effective)
+        if !effective.patternValid || PlaceholderExpander.containsToken(effective.pattern) => raw
+    }
 }
 
 object TitleRuleSet {

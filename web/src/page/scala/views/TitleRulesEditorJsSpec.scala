@@ -106,6 +106,30 @@ class TitleRulesEditorJsSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     }
   }
 
+  it should "render a read-only placeholders reference listing {{SEP}} and its expansion" in {
+    onEditor { page =>
+      page.evalBool("!!document.getElementById('placeholders-ref')") shouldBe true
+      val text = page.evalString("document.getElementById('placeholders-ref').textContent")
+      text should include ("{{SEP}}")
+      // the separator class is shown verbatim as the expansion
+      text should include ("[:|/_")
+    }
+  }
+
+  it should "treat a {{SEP}} placeholder reference as a VALID pattern, an unknown {{token}} as invalid" in {
+    onEditor { page =>
+      def ok(p: String): Boolean = page.evalBool(s"patternOk(${jsLit(p)})")
+      withClue("a rule referencing the known {{SEP}} placeholder must be valid: ") {
+        ok("(?i){{SEP}}DKF\\b.*$") shouldBe true
+      }
+      withClue("an unknown {{token}} leaves an unresolved brace → invalid: ") {
+        ok("{{NOPE}}DKF$") shouldBe false
+      }
+      // The client-side expander mirrors the server: {{SEP}} → the real separator class.
+      page.evalString("expandPlaceholders('a{{SEP}}b')") should (include ("[:|/_") and not include ("{{"))
+    }
+  }
+
   it should "give every transient (external-lookup) rule an unfoldable affected-titles list, but not per-cinema rules" in {
     onEditor { page =>
       // GlobalStructural seeds 4 rules → 4 affected <details>; the Canonical
