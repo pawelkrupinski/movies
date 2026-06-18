@@ -97,4 +97,47 @@ class MovieRecordPosterSpec extends AnyFlatSpec with Matchers {
     record.posterUrl          shouldBe None
     record.fallbackPosterUrls shouldBe empty
   }
+
+  // ── "Coming soon" placeholder demotion ────────────────────────────────────
+
+  it should "skip a Multikino 'wkrotce' placeholder in favour of TMDB cover art" in {
+    val placeholder = "https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg"
+    val tmdb        = "https://image.tmdb.org/t/p/w500/x.jpg"
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        Multikino -> SourceData(posterUrl = Some(placeholder)),
+        Tmdb      -> SourceData(posterUrl = Some(tmdb))
+      )
+    )
+    // TMDB wins the primary even though Multikino has higher source priority;
+    // the placeholder drops to the tail of the fallback chain.
+    record.posterUrl          shouldBe Some(tmdb)
+    record.fallbackPosterUrls shouldBe Seq(placeholder)
+  }
+
+  it should "prefer any real cinema poster over a placeholder, placeholder last" in {
+    val placeholder = "https://www.multikino.pl/-/media/.../wkrotce_2_plakat.jpg"
+    val cinemaCity  = "https://www.cinema-city.pl/y.jpg"
+    val tmdb        = "https://image.tmdb.org/t/p/w500/z.jpg"
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        Multikino           -> SourceData(posterUrl = Some(placeholder)),
+        CinemaCityKinepolis -> SourceData(posterUrl = Some(cinemaCity)),
+        Tmdb                -> SourceData(posterUrl = Some(tmdb))
+      )
+    )
+    record.posterUrl          shouldBe Some(cinemaCity)
+    record.fallbackPosterUrls shouldBe Seq(tmdb, placeholder)
+  }
+
+  it should "fall back to the placeholder when it's the only poster available" in {
+    val placeholder = "https://www.multikino.pl/-/media/.../wkrotce_1_plakat.jpg"
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        Multikino -> SourceData(posterUrl = Some(placeholder))
+      )
+    )
+    record.posterUrl          shouldBe Some(placeholder)
+    record.fallbackPosterUrls shouldBe empty
+  }
 }

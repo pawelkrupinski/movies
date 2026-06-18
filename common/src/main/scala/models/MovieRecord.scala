@@ -148,16 +148,28 @@ case class MovieRecord(
    *  hasn't filled this row yet. */
   def originalTitle: Option[String] = data.get(Tmdb).flatMap(_.originalTitle)
 
-  /** First non-empty poster URL across sources in priority order. */
-  def posterUrl: Option[String] =
-    prioritized.iterator.flatMap(_._2.posterUrl).nextOption()
+  /** Every poster URL we know about, de-duplicated, in source-priority order
+   *  — Multikino, the rest of `Cinema.all`, then `Tmdb`, then `Imdb` — except
+   *  that known "coming soon" placeholders (see [[PlaceholderPoster]]) are
+   *  demoted to the very end. So a placeholder is only ever picked when no
+   *  real poster (any cinema's or TMDB's) exists. `posterUrl` takes the head;
+   *  `fallbackPosterUrls` is the rest. */
+  private def postersByPreference: Seq[String] = {
+    val all = prioritized.iterator.flatMap(_._2.posterUrl).distinct.toSeq
+    val (placeholders, real) = all.partition(PlaceholderPoster.matches)
+    real ++ placeholders
+  }
 
-  /** Every poster URL we know about *except* the primary, in
-   *  source-priority order — Cinema City after Multikino, then Helios,
-   *  Apollo, …, then Tmdb, then Imdb. The view ships these as a
-   *  `data-fallbacks` chain; the client's `onerror` handler pops the
-   *  next URL until the list is empty, then falls through to
-   *  `.no-poster`. Empty when the primary is the only poster we have.
+  /** Best poster URL across sources: first real poster in priority order,
+   *  falling back to a "coming soon" placeholder only when that's all we have. */
+  def posterUrl: Option[String] = postersByPreference.headOption
+
+  /** Every poster URL we know about *except* the primary, in preference
+   *  order — Cinema City after Multikino, then Helios, Apollo, …, then Tmdb,
+   *  then Imdb (placeholders last). The view ships these as a `data-fallbacks`
+   *  chain; the client's `onerror` handler pops the next URL until the list is
+   *  empty, then falls through to `.no-poster`. Empty when the primary is the
+   *  only poster we have.
    *
    *  Why a chain rather than just TMDB: cinema CDNs intermittently
    *  403/404 (Multikino's CDN refuses cross-origin fetches at the
@@ -165,14 +177,7 @@ case class MovieRecord(
    *  hadn't uploaded yet — `8215S2R.jpg` for Drishyam 3). When the
    *  primary cinema fails we'd rather try another cinema's poster
    *  than jump straight to TMDB; the data already lives in `data`. */
-  def fallbackPosterUrls: Seq[String] = {
-    val primary = posterUrl
-    prioritized.iterator
-      .flatMap(_._2.posterUrl)
-      .filterNot(primary.contains)
-      .distinct
-      .toSeq
-  }
+  def fallbackPosterUrls: Seq[String] = postersByPreference.drop(1)
 
   /** First non-empty trailer URL across cinema sources in priority order.
    *  Cinema-only: Tmdb / Imdb slots currently don't carry trailers. */

@@ -2117,7 +2117,7 @@ cinemaTitles:      FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – 500 mil
 runtimeMinutes:    102
 releaseYear:       2026
 countries:         Irlandia, Wielka Brytania
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/500_MIL_wkrotce-w-kinach-1-557x800.jpg
+posterUrl:         https://image.tmdb.org/t/p/w500/FhRosui9MSdxdyD3h0skOFhqED.jpg
 synopsis.length:   2276
 cast:              Bill Nighy, Roman Griffin Davis, Dexter Sol Ansell, Clare Dunne, Michael Socha
 director:          Morgan Matthews
