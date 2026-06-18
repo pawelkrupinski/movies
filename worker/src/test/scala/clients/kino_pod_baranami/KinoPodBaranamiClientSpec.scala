@@ -33,6 +33,10 @@ class KinoPodBaranamiClientSpec extends AnyFlatSpec with Matchers with OptionVal
   it should "pin a concrete screening: Diabeł ubiera się u Prady 2 on 2026-06-07 at 10:30" in {
     val movies = client.fetch()
     val diabel = movies.find(_.movie.title.contains("Diabe")).value
+    // Full Polish title with all diacritics intact — proves the ISO-8859-2
+    // bytes survive the decode. The fixture used to be a lossy UTF-8 capture
+    // (every Polish letter → U+FFFD), so this exact-title match failed.
+    diabel.movie.title shouldBe "Diabeł ubiera się u Prady 2"
     diabel.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 10, 30))
     diabel.showtimes.flatMap(_.bookingUrl).head should include("/rezerwacja_start.php?event_id=")
   }

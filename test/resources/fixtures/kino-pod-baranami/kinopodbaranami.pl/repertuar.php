@@ -78,7 +78,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 	    }
     	function showInfo(){
         	jQuery('body').append('<div id="cookieBox">' +
-            	                    'Ta strona uï¿½ywa mechanizmu ciasteczek. Kontynuujï¿½c korzystanie ze strony zgadzasz na jego dziaï¿½anie.' +
+            	                    'Ta strona u¿ywa mechanizmu ciasteczek. Kontynuuj±c korzystanie ze strony zgadzasz na jego dzia³anie.' +
                 	                ' <button onclick="cookieOK();" tabindex="1" id="cookieOK">OK</button><div>');
 
 	        jQuery('#cookieBox').css({
@@ -122,24 +122,24 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <div id="body" class="fleft">
 	<div id="header">
 		<h1>
-			<a href="./" title="Kino Pod Baranami - strona gï¿½ï¿½wna"><span class="no">Kino Pod Baranami</span></a>
+			<a href="./" title="Kino Pod Baranami - strona g³ówna"><span class="no">Kino Pod Baranami</span></a>
 		</h1>
 		<!--
 		<div class="best"></div>
-    <a href="http://www.kinastudyjne.pl/" title="Sieï¿½ Kin Studyjnych" class="sks"></a>
+    <a href="http://www.kinastudyjne.pl/" title="Sieæ Kin Studyjnych" class="sks"></a>
 		<a href="http://www.europa-cinemas.com/" title="Europa Cinemas" class="europa-cinemas"></a>
 		-->
 	</div>
 	<div id="menubar">
 		<div id="menu">
 			<ul id="menuList" class="adxm">
-				<li id="home"><a href="index.php" class="disabled"><span class="no">strona gï¿½ï¿½wna</span></a></li>
+				<li id="home"><a href="index.php" class="disabled"><span class="no">strona g³ówna</span></a></li>
 				<li id="reper" class="submenu"><a href="repertuar.php"><span class="no">repertuar</span></a>
 					<ul>
 						<li class="wybierzfilm"><a href="repertuar.php?wersja=wg_filmow"><span class="no">wybierz film</span></a></li>
-						<li class="wybierzdzie"><a href="repertuar.php"><span class="no">wybierz dzieï¿½</span></a></li>
+						<li class="wybierzdzie"><a href="repertuar.php"><span class="no">wybierz dzieñ</span></a></li>
 						<li class="subskrypcja"><a href="rejestracja.php"><span class="no">subskrybuj</span></a></li>
-						<li class="cenybiletow"><a href="kino.php?txt_acro=ceny_biletow"><span class="no">ceny biletï¿½w</span></a></li>
+						<li class="cenybiletow"><a href="kino.php?txt_acro=ceny_biletow"><span class="no">ceny biletów</span></a></li>
 					</ul>
 				</li>
 				<li id="events"><a href="wydarzenia.php" class="disabled"><span class="no">wydarzenia</span></a></li>
@@ -149,11 +149,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 						<li class="zapowiedzi"><a href="filmy_baza.php?ktore=zapowiedzi"><span class="no">zapowiedzi</span></a></li>
 					</ul>
 				</li>
-				<li id="club"><a href="klub.php" class="disabled"><span class="no">klub przyjaciï¿½ KPB</span></a></li>
+				<li id="club"><a href="klub.php" class="disabled"><span class="no">klub przyjació³ KPB</span></a></li>
 				<li id="kino" class="submenu"><a href="#" onclick="return false;"><span class="no">kino</span></a>
 					<ul>
 						<li class="okinie"><a href="kino.php"><span class="no">o kinie</span></a></li>
-						<li class="jaktrafic"><a href="kino.php?txt_acro=kino_trafic"><span class="no">jak trafiï¿½</span></a></li>
+						<li class="jaktrafic"><a href="kino.php?txt_acro=kino_trafic"><span class="no">jak trafiæ</span></a></li>
 						<li class="historia"><a href="kino.php?txt_acro=kino_historia"><span class="no">historia</span></a></li>
 						<li class="galerie"><a href="galerie.php"><span class="no">galerie</span></a></li>
 						<li class="kontakt"><a href="kino.php?txt_acro=kino_kontakt"><span class="no">kontakt</span></a></li>
@@ -164,7 +164,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 					<ul>
 						<li class="eduoprog"><a href="edu.php?txt_acro=edu_oprogramie"><span class="no">o programach</span></a></li>
 						<li class="edupatro"><a href="edu.php?txt_acro=edu_patroni"><span class="no">Nowe Horyzonty Edukacji Filmowej</span></a></li>
-						<li class="eduofert"><a href="edu.php?txt_acro=edu_oferta"><span class="no">oferty edukacyjne dla szkï¿½</span></a></li>
+						<li class="eduofert"><a href="edu.php?txt_acro=edu_oferta"><span class="no">oferty edukacyjne dla szkó³</span></a></li>
 						<li class="edukonta"><a href="edu.php?txt_acro=edu_kontakt"><span class="no">kontakt</span></a></li>
 					</ul>
 				</li>
@@ -174,7 +174,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 	<!-- banner -->
 			<div class="banner-horizontal">
 		  <a href="http://www.europa-cinemas.com/" title="Europa Cinemas" class="europa-cinemas"></a>
-      <a href="http://www.kinastudyjne.pl/" title="Sieï¿½ Kin Studyjnych" class="sks"></a>
+      <a href="http://www.kinastudyjne.pl/" title="Sieæ Kin Studyjnych" class="sks"></a>
       <div id="bannter-horizontal">
 			 <A ><img src="/upload/BACKROOMS_750x100.jpg" width="750" height="100" border="0"title="od 19 czerwca"></A>		  </div>
 		</div>
@@ -191,7 +191,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 	</div>
 	<div id="column_wide" class="choose_movie">
 		<div style="margin:10px; 0px;text-align:center;">
-			<span style="font-weight:bold;">Aby kupiï¿½ bilet - kliknij na wybranï¿½ godzinï¿½ seansu</span>
+			<span style="font-weight:bold;">Aby kupiæ bilet - kliknij na wybran± godzinê seansu</span>
 			<span style="clear:both;display:block;font-style:italic;">// To buy the ticket, click on the time of the screening.</span>
 		</div>
 		
@@ -205,10 +205,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The Devil Wears Prada 2 -->
 							<a href="film.php?film_id=12826" title="The Devil Wears Prada 2">
 
-								Diabeï¿½ ubiera siï¿½ u Prady 2															</a>
+								Diabe³ ubiera siê u Prady 2															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124613" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124613,'Diabeï¿½ ubiera siï¿½ u Prady 2','2026','06','07','10:30','Niedziela, 7 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124613,'Diabe³ ubiera siê u Prady 2','2026','06','07','10:30','Niedziela, 7 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             10:30</a>
                                                             </span>
 						</li>
@@ -233,10 +233,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Silent Friend -->
 							<a href="film.php?film_id=12885" title="Silent Friend">
 
-								Milczï¿½ca przyjaciï¿½ka															</a>
+								Milcz±ca przyjació³ka															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124637" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124637,'Milczï¿½ca przyjaciï¿½ka','2026','06','07','12:15','Niedziela, 7 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124637,'Milcz±ca przyjació³ka','2026','06','07','12:15','Niedziela, 7 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             12:15</a>
                                                             </span>
 						</li>
@@ -248,9 +248,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<a href="film.php?film_id=12767" title="Project Hail Mary">
 
 								Projekt Hail Mary															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124667" title="kup bilet | Sala Biaï¿½a  "
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124667" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124667,'Projekt Hail Mary','2026','06','07','12:30','Niedziela, 7 czerwca 2026','Sala Biaï¿½a  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124667,'Projekt Hail Mary','2026','06','07','12:30','Niedziela, 7 czerwca 2026','Sala Bia³a  ', 0, 1, 0);" >
                                                             12:30</a>
                                                             </span>
 						</li>
@@ -261,7 +261,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Picasso. Un ribelle a Parigi. Storia di una vita e di un museo -->
 							<a href="film.php?film_id=12100" title="Picasso. Un ribelle a Parigi. Storia di una vita e di un museo">
 
-								Picasso. Buntownik w Paryï¿½u																	<small>
+								Picasso. Buntownik w Pary¿u																	<small>
 										<a href="wydarzenie.php?evnt_id=7042">
 
 										(Sztuka na ekranie: Picasso. Buntown...)
@@ -270,7 +270,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=123937" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(123937,'Picasso. Buntownik w Paryï¿½u','2026','06','07','13:00','Niedziela, 7 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(123937,'Picasso. Buntownik w Pary¿u','2026','06','07','13:00','Niedziela, 7 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             13:00</a>
                                                             </span>
 						</li>
@@ -301,10 +301,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The Devil Wears Prada 2 -->
 							<a href="film.php?film_id=12826" title="The Devil Wears Prada 2">
 
-								Diabeï¿½ ubiera siï¿½ u Prady 2															</a>
+								Diabe³ ubiera siê u Prady 2															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124636" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124636,'Diabeï¿½ ubiera siï¿½ u Prady 2','2026','06','07','15:15','Niedziela, 7 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124636,'Diabe³ ubiera siê u Prady 2','2026','06','07','15:15','Niedziela, 7 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             15:15</a>
                                                             </span>
 						</li>
@@ -336,9 +336,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<a href="film.php?film_id=12892" title="In the Grey">
 
 								Zawodowcy															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124668" title="kup bilet | Sala Biaï¿½a  "
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124668" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124668,'Zawodowcy','2026','06','07','15:30','Niedziela, 7 czerwca 2026','Sala Biaï¿½a  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124668,'Zawodowcy','2026','06','07','15:30','Niedziela, 7 czerwca 2026','Sala Bia³a  ', 0, 1, 0);" >
                                                             15:30</a>
                                                             </span>
 						</li>
@@ -363,10 +363,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Eagles of the republic -->
 							<a href="film.php?film_id=12832" title="Eagles of the republic">
 
-								Orï¿½y republiki 															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124669" title="kup bilet | Sala Biaï¿½a  "
+								Or³y republiki 															</a>
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124669" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124669,'Orï¿½y republiki ','2026','06','07','17:30','Niedziela, 7 czerwca 2026','Sala Biaï¿½a  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124669,'Or³y republiki ','2026','06','07','17:30','Niedziela, 7 czerwca 2026','Sala Bia³a  ', 0, 1, 0);" >
                                                             17:30</a>
                                                             </span>
 						</li>
@@ -377,16 +377,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Fight Club -->
 							<a href="film.php?film_id=188" title="Fight Club">
 
-								Podziemny krï¿½g																	<small>
+								Podziemny kr±g																	<small>
 										<a href="wydarzenie.php?evnt_id=7008">
 
-										(RE-PLAY &#9654;&#65038; Podziemny krï¿½g)
+										(RE-PLAY &#9654;&#65038; Podziemny kr±g)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124635" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124635,'Podziemny krï¿½g','2026','06','07','17:45','Niedziela, 7 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124635,'Podziemny kr±g','2026','06','07','17:45','Niedziela, 7 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             17:45</a>
                                                             </span>
 						</li>
@@ -397,7 +397,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The Devil Wears Prada 2 -->
 							<a href="film.php?film_id=12826" title="The Devil Wears Prada 2">
 
-								Diabeï¿½ ubiera siï¿½ u Prady 2																	<small>
+								Diabe³ ubiera siê u Prady 2																	<small>
 										<a href="wydarzenie.php?evnt_id=3120">
 
 										(seans w MOS)
@@ -406,7 +406,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124708" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124708,'Diabeï¿½ ubiera siï¿½ u Prady 2','2026','06','07','18:00','Niedziela, 7 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124708,'Diabe³ ubiera siê u Prady 2','2026','06','07','18:00','Niedziela, 7 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -437,16 +437,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Da hong deng long gao gao gua -->
 							<a href="film.php?film_id=6676" title="Da hong deng long gao gao gua">
 
-								Zawieï¿½cie czerwone latarnie																	<small>
+								Zawie¶cie czerwone latarnie																	<small>
 										<a href="wydarzenie.php?evnt_id=6990">
 
-										(RE-PLAY &#9654;&#65038; Zawieï¿½cie c...)
+										(RE-PLAY &#9654;&#65038; Zawie¶cie c...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124615" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124615,'Zawieï¿½cie czerwone latarnie','2026','06','07','20:00','Niedziela, 7 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124615,'Zawie¶cie czerwone latarnie','2026','06','07','20:00','Niedziela, 7 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             20:00</a>
                                                             </span>
 						</li>
@@ -458,9 +458,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<a href="film.php?film_id=12892" title="In the Grey">
 
 								Zawodowcy															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124670" title="kup bilet | Sala Biaï¿½a  "
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124670" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124670,'Zawodowcy','2026','06','07','20:05','Niedziela, 7 czerwca 2026','Sala Biaï¿½a  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124670,'Zawodowcy','2026','06','07','20:05','Niedziela, 7 czerwca 2026','Sala Bia³a  ', 0, 1, 0);" >
                                                             20:05</a>
                                                             </span>
 						</li>
@@ -471,10 +471,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The Devil Wears Prada 2 -->
 							<a href="film.php?film_id=12826" title="The Devil Wears Prada 2">
 
-								Diabeï¿½ ubiera siï¿½ u Prady 2															</a>
+								Diabe³ ubiera siê u Prady 2															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124634" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124634,'Diabeï¿½ ubiera siï¿½ u Prady 2','2026','06','07','20:30','Niedziela, 7 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124634,'Diabe³ ubiera siê u Prady 2','2026','06','07','20:30','Niedziela, 7 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             20:30</a>
                                                             </span>
 						</li>
@@ -501,7 +501,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
 																					</ul>
-														<p class="rep_date"><span>Poniedziaï¿½ek</span> 8 czerwca // <span>Monday</span>, June 8</p>
+														<p class="rep_date"><span>Poniedzia³ek</span> 8 czerwca // <span>Monday</span>, June 8</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -509,10 +509,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The Devil Wears Prada 2 -->
 							<a href="film.php?film_id=12826" title="The Devil Wears Prada 2">
 
-								Diabeï¿½ ubiera siï¿½ u Prady 2															</a>
+								Diabe³ ubiera siê u Prady 2															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124616" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124616,'Diabeï¿½ ubiera siï¿½ u Prady 2','2026','06','08','12:15','Poniedziaï¿½ek, 8 czerwca 2026','Sala Czerwona ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124616,'Diabe³ ubiera siê u Prady 2','2026','06','08','12:15','Poniedzia³ek, 8 czerwca 2026','Sala Czerwona ', 1, 1, 0);" >
                                                             12:15</a>
                                                             </span>
 						</li>
@@ -524,9 +524,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<a href="film.php?film_id=12767" title="Project Hail Mary">
 
 								Projekt Hail Mary															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124671" title="kup bilet | Sala Biaï¿½a  "
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124671" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124671,'Projekt Hail Mary','2026','06','08','12:30','Poniedziaï¿½ek, 8 czerwca 2026','Sala Biaï¿½a  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124671,'Projekt Hail Mary','2026','06','08','12:30','Poniedzia³ek, 8 czerwca 2026','Sala Bia³a  ', 1, 1, 0);" >
                                                             12:30</a>
                                                             </span>
 						</li>
@@ -540,7 +540,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Drama															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124640" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124640,'Drama','2026','06','08','13:00','Poniedziaï¿½ek, 8 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124640,'Drama','2026','06','08','13:00','Poniedzia³ek, 8 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             13:00</a>
                                                             </span>
 						</li>
@@ -551,10 +551,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Silent Friend -->
 							<a href="film.php?film_id=12885" title="Silent Friend">
 
-								Milczï¿½ca przyjaciï¿½ka															</a>
+								Milcz±ca przyjació³ka															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124617" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124617,'Milczï¿½ca przyjaciï¿½ka','2026','06','08','15:00','Poniedziaï¿½ek, 8 czerwca 2026','Sala Czerwona ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124617,'Milcz±ca przyjació³ka','2026','06','08','15:00','Poniedzia³ek, 8 czerwca 2026','Sala Czerwona ', 1, 1, 0);" >
                                                             15:00</a>
                                                             </span>
 						</li>
@@ -565,10 +565,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The Devil Wears Prada 2 -->
 							<a href="film.php?film_id=12826" title="The Devil Wears Prada 2">
 
-								Diabeï¿½ ubiera siï¿½ u Prady 2															</a>
+								Diabe³ ubiera siê u Prady 2															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124641" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124641,'Diabeï¿½ ubiera siï¿½ u Prady 2','2026','06','08','15:15','Poniedziaï¿½ek, 8 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124641,'Diabe³ ubiera siê u Prady 2','2026','06','08','15:15','Poniedzia³ek, 8 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
                                                             15:15</a>
                                                             </span>
 						</li>
@@ -588,7 +588,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124689" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124689,'Hamnet','2026','06','08','15:30','Poniedziaï¿½ek, 8 czerwca 2026','MOS - ul. Rajska 12 ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124689,'Hamnet','2026','06','08','15:30','Poniedzia³ek, 8 czerwca 2026','MOS - ul. Rajska 12 ', 1, 1, 0);" >
                                                             15:30</a>
                                                             </span>
 						</li>
@@ -600,9 +600,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<a href="film.php?film_id=12892" title="In the Grey">
 
 								Zawodowcy															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124672" title="kup bilet | Sala Biaï¿½a  "
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124672" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124672,'Zawodowcy','2026','06','08','15:30','Poniedziaï¿½ek, 8 czerwca 2026','Sala Biaï¿½a  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124672,'Zawodowcy','2026','06','08','15:30','Poniedzia³ek, 8 czerwca 2026','Sala Bia³a  ', 1, 1, 0);" >
                                                             15:30</a>
                                                             </span>
 						</li>
@@ -613,10 +613,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Eagles of the republic -->
 							<a href="film.php?film_id=12832" title="Eagles of the republic">
 
-								Orï¿½y republiki 															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124673" title="kup bilet | Sala Biaï¿½a  "
+								Or³y republiki 															</a>
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124673" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124673,'Orï¿½y republiki ','2026','06','08','17:30','Poniedziaï¿½ek, 8 czerwca 2026','Sala Biaï¿½a  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124673,'Or³y republiki ','2026','06','08','17:30','Poniedzia³ek, 8 czerwca 2026','Sala Bia³a  ', 0, 1, 0);" >
                                                             17:30</a>
                                                             </span>
 						</li>
@@ -627,16 +627,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Fight Club -->
 							<a href="film.php?film_id=188" title="Fight Club">
 
-								Podziemny krï¿½g																	<small>
+								Podziemny kr±g																	<small>
 										<a href="wydarzenie.php?evnt_id=7008">
 
-										(RE-PLAY &#9654;&#65038; Podziemny krï¿½g)
+										(RE-PLAY &#9654;&#65038; Podziemny kr±g)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124642" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124642,'Podziemny krï¿½g','2026','06','08','17:45','Poniedziaï¿½ek, 8 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124642,'Podziemny kr±g','2026','06','08','17:45','Poniedzia³ek, 8 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             17:45</a>
                                                             </span>
 						</li>
@@ -647,7 +647,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The Devil Wears Prada 2 -->
 							<a href="film.php?film_id=12826" title="The Devil Wears Prada 2">
 
-								Diabeï¿½ ubiera siï¿½ u Prady 2																	<small>
+								Diabe³ ubiera siê u Prady 2																	<small>
 										<a href="wydarzenie.php?evnt_id=3120">
 
 										(seans w MOS)
@@ -656,7 +656,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124690" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124690,'Diabeï¿½ ubiera siï¿½ u Prady 2','2026','06','08','18:00','Poniedziaï¿½ek, 8 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124690,'Diabe³ ubiera siê u Prady 2','2026','06','08','18:00','Poniedzia³ek, 8 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -676,7 +676,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124618" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124618,'Ojczyzna','2026','06','08','18:15','Poniedziaï¿½ek, 8 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124618,'Ojczyzna','2026','06','08','18:15','Poniedzia³ek, 8 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:15</a>
                                                             </span>
 						</li>
@@ -687,16 +687,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Da hong deng long gao gao gua -->
 							<a href="film.php?film_id=6676" title="Da hong deng long gao gao gua">
 
-								Zawieï¿½cie czerwone latarnie																	<small>
+								Zawie¶cie czerwone latarnie																	<small>
 										<a href="wydarzenie.php?evnt_id=6990">
 
-										(RE-PLAY &#9654;&#65038; Zawieï¿½cie c...)
+										(RE-PLAY &#9654;&#65038; Zawie¶cie c...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124619" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124619,'Zawieï¿½cie czerwone latarnie','2026','06','08','20:00','Poniedziaï¿½ek, 8 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124619,'Zawie¶cie czerwone latarnie','2026','06','08','20:00','Poniedzia³ek, 8 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             20:00</a>
                                                             </span>
 						</li>
@@ -708,9 +708,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<a href="film.php?film_id=12892" title="In the Grey">
 
 								Zawodowcy															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124674" title="kup bilet | Sala Biaï¿½a  "
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124674" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124674,'Zawodowcy','2026','06','08','20:05','Poniedziaï¿½ek, 8 czerwca 2026','Sala Biaï¿½a  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124674,'Zawodowcy','2026','06','08','20:05','Poniedzia³ek, 8 czerwca 2026','Sala Bia³a  ', 0, 1, 0);" >
                                                             20:05</a>
                                                             </span>
 						</li>
@@ -721,10 +721,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The Devil Wears Prada 2 -->
 							<a href="film.php?film_id=12826" title="The Devil Wears Prada 2">
 
-								Diabeï¿½ ubiera siï¿½ u Prady 2															</a>
+								Diabe³ ubiera siê u Prady 2															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124643" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124643,'Diabeï¿½ ubiera siï¿½ u Prady 2','2026','06','08','20:30','Poniedziaï¿½ek, 8 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124643,'Diabe³ ubiera siê u Prady 2','2026','06','08','20:30','Poniedzia³ek, 8 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             20:30</a>
                                                             </span>
 						</li>
@@ -744,7 +744,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124691" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124691,'Projekt Hail Mary','2026','06','08','20:30','Poniedziaï¿½ek, 8 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124691,'Projekt Hail Mary','2026','06','08','20:30','Poniedzia³ek, 8 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
                                                             20:30</a>
                                                             </span>
 						</li>
@@ -759,10 +759,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The Devil Wears Prada 2 -->
 							<a href="film.php?film_id=12826" title="The Devil Wears Prada 2">
 
-								Diabeï¿½ ubiera siï¿½ u Prady 2															</a>
+								Diabe³ ubiera siê u Prady 2															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124620" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124620,'Diabeï¿½ ubiera siï¿½ u Prady 2','2026','06','09','12:15','Wtorek, 9 czerwca 2026','Sala Czerwona ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124620,'Diabe³ ubiera siê u Prady 2','2026','06','09','12:15','Wtorek, 9 czerwca 2026','Sala Czerwona ', 1, 1, 0);" >
                                                             12:15</a>
                                                             </span>
 						</li>
@@ -774,9 +774,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<a href="film.php?film_id=12767" title="Project Hail Mary">
 
 								Projekt Hail Mary															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124677" title="kup bilet | Sala Biaï¿½a  "
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124677" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124677,'Projekt Hail Mary','2026','06','09','12:30','Wtorek, 9 czerwca 2026','Sala Biaï¿½a  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124677,'Projekt Hail Mary','2026','06','09','12:30','Wtorek, 9 czerwca 2026','Sala Bia³a  ', 1, 1, 0);" >
                                                             12:30</a>
                                                             </span>
 						</li>
@@ -801,10 +801,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Silent Friend -->
 							<a href="film.php?film_id=12885" title="Silent Friend">
 
-								Milczï¿½ca przyjaciï¿½ka															</a>
+								Milcz±ca przyjació³ka															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124621" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124621,'Milczï¿½ca przyjaciï¿½ka','2026','06','09','15:00','Wtorek, 9 czerwca 2026','Sala Czerwona ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124621,'Milcz±ca przyjació³ka','2026','06','09','15:00','Wtorek, 9 czerwca 2026','Sala Czerwona ', 1, 1, 0);" >
                                                             15:00</a>
                                                             </span>
 						</li>
@@ -815,10 +815,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The Devil Wears Prada 2 -->
 							<a href="film.php?film_id=12826" title="The Devil Wears Prada 2">
 
-								Diabeï¿½ ubiera siï¿½ u Prady 2															</a>
+								Diabe³ ubiera siê u Prady 2															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124645" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124645,'Diabeï¿½ ubiera siï¿½ u Prady 2','2026','06','09','15:15','Wtorek, 9 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124645,'Diabe³ ubiera siê u Prady 2','2026','06','09','15:15','Wtorek, 9 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
                                                             15:15</a>
                                                             </span>
 						</li>
@@ -850,9 +850,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<a href="film.php?film_id=12892" title="In the Grey">
 
 								Zawodowcy															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124678" title="kup bilet | Sala Biaï¿½a  "
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124678" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124678,'Zawodowcy','2026','06','09','15:30','Wtorek, 9 czerwca 2026','Sala Biaï¿½a  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124678,'Zawodowcy','2026','06','09','15:30','Wtorek, 9 czerwca 2026','Sala Bia³a  ', 1, 1, 0);" >
                                                             15:30</a>
                                                             </span>
 						</li>
@@ -863,10 +863,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Eagles of the republic -->
 							<a href="film.php?film_id=12832" title="Eagles of the republic">
 
-								Orï¿½y republiki 															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124679" title="kup bilet | Sala Biaï¿½a  "
+								Or³y republiki 															</a>
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124679" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124679,'Orï¿½y republiki ','2026','06','09','17:30','Wtorek, 9 czerwca 2026','Sala Biaï¿½a  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124679,'Or³y republiki ','2026','06','09','17:30','Wtorek, 9 czerwca 2026','Sala Bia³a  ', 1, 1, 0);" >
                                                             17:30</a>
                                                             </span>
 						</li>
@@ -877,16 +877,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Fight Club -->
 							<a href="film.php?film_id=188" title="Fight Club">
 
-								Podziemny krï¿½g																	<small>
+								Podziemny kr±g																	<small>
 										<a href="wydarzenie.php?evnt_id=7008">
 
-										(RE-PLAY &#9654;&#65038; Podziemny krï¿½g)
+										(RE-PLAY &#9654;&#65038; Podziemny kr±g)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124646" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124646,'Podziemny krï¿½g','2026','06','09','17:45','Wtorek, 9 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124646,'Podziemny kr±g','2026','06','09','17:45','Wtorek, 9 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
                                                             17:45</a>
                                                             </span>
 						</li>
@@ -894,19 +894,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 												<li class=""
 						title="">
-							<!-- // title Czï¿½owiek z marmuru -->
-							<a href="film.php?film_id=5520" title="Czï¿½owiek z marmuru">
+							<!-- // title Cz³owiek z marmuru -->
+							<a href="film.php?film_id=5520" title="Cz³owiek z marmuru">
 
-								Czï¿½owiek z marmuru (Man of Marble)																	<small>
+								Cz³owiek z marmuru (Man of Marble)																	<small>
 										<a href="wydarzenie.php?evnt_id=7011">
 
-										(WAJDA: re-wizje: Czï¿½owiek z ...)
+										(WAJDA: re-wizje: Cz³owiek z ...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=123349" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(123349,'Czï¿½owiek z marmuru (Man of Marble)','2026','06','09','18:00','Wtorek, 9 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(123349,'Cz³owiek z marmuru (Man of Marble)','2026','06','09','18:00','Wtorek, 9 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -917,7 +917,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The Devil Wears Prada 2 -->
 							<a href="film.php?film_id=12826" title="The Devil Wears Prada 2">
 
-								Diabeï¿½ ubiera siï¿½ u Prady 2																	<small>
+								Diabe³ ubiera siê u Prady 2																	<small>
 										<a href="wydarzenie.php?evnt_id=3120">
 
 										(seans w MOS)
@@ -926,7 +926,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124693" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124693,'Diabeï¿½ ubiera siï¿½ u Prady 2','2026','06','09','18:00','Wtorek, 9 czerwca 2026','MOS - ul. Rajska 12 ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124693,'Diabe³ ubiera siê u Prady 2','2026','06','09','18:00','Wtorek, 9 czerwca 2026','MOS - ul. Rajska 12 ', 1, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -938,9 +938,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<a href="film.php?film_id=12892" title="In the Grey">
 
 								Zawodowcy															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124680" title="kup bilet | Sala Biaï¿½a  "
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124680" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124680,'Zawodowcy','2026','06','09','20:05','Wtorek, 9 czerwca 2026','Sala Biaï¿½a  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124680,'Zawodowcy','2026','06','09','20:05','Wtorek, 9 czerwca 2026','Sala Bia³a  ', 1, 1, 0);" >
                                                             20:05</a>
                                                             </span>
 						</li>
@@ -951,10 +951,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The Devil Wears Prada 2 -->
 							<a href="film.php?film_id=12826" title="The Devil Wears Prada 2">
 
-								Diabeï¿½ ubiera siï¿½ u Prady 2															</a>
+								Diabe³ ubiera siê u Prady 2															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124647" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124647,'Diabeï¿½ ubiera siï¿½ u Prady 2','2026','06','09','20:30','Wtorek, 9 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124647,'Diabe³ ubiera siê u Prady 2','2026','06','09','20:30','Wtorek, 9 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
                                                             20:30</a>
                                                             </span>
 						</li>
@@ -1001,7 +1001,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
 																					</ul>
-														<p class="rep_date"><span>ï¿½roda</span> 10 czerwca // <span>Wednesday</span>, June 10</p>
+														<p class="rep_date"><span>¦roda</span> 10 czerwca // <span>Wednesday</span>, June 10</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -1012,13 +1012,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Ojczyzna																	<small>
 										<a href="wydarzenie.php?evnt_id=7048">
 
-										(Dojrzaï¿½e Kino: Ojczyzna - pokaz przedpremierowy)
+										(Dojrza³e Kino: Ojczyzna - pokaz przedpremierowy)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124624" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124624,'Ojczyzna','2026','06','10','11:00','ï¿½roda, 10 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124624,'Ojczyzna','2026','06','10','11:00','¦roda, 10 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             11:00</a>
                                                             </span>
 						</li>
@@ -1030,9 +1030,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<a href="film.php?film_id=12767" title="Project Hail Mary">
 
 								Projekt Hail Mary															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124685" title="kup bilet | Sala Biaï¿½a  "
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124685" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124685,'Projekt Hail Mary','2026','06','10','11:30','ï¿½roda, 10 czerwca 2026','Sala Biaï¿½a  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124685,'Projekt Hail Mary','2026','06','10','11:30','¦roda, 10 czerwca 2026','Sala Bia³a  ', 1, 1, 0);" >
                                                             11:30</a>
                                                             </span>
 						</li>
@@ -1046,7 +1046,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Drama															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124649" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124649,'Drama','2026','06','10','13:00','ï¿½roda, 10 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124649,'Drama','2026','06','10','13:00','¦roda, 10 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
                                                             13:00</a>
                                                             </span>
 						</li>
@@ -1058,9 +1058,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<a href="film.php?film_id=12892" title="In the Grey">
 
 								Zawodowcy															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124686" title="kup bilet | Sala Biaï¿½a  "
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124686" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124686,'Zawodowcy','2026','06','10','14:30','ï¿½roda, 10 czerwca 2026','Sala Biaï¿½a  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124686,'Zawodowcy','2026','06','10','14:30','¦roda, 10 czerwca 2026','Sala Bia³a  ', 1, 1, 0);" >
                                                             14:30</a>
                                                             </span>
 						</li>
@@ -1071,10 +1071,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Silent Friend -->
 							<a href="film.php?film_id=12885" title="Silent Friend">
 
-								Milczï¿½ca przyjaciï¿½ka															</a>
+								Milcz±ca przyjació³ka															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124625" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124625,'Milczï¿½ca przyjaciï¿½ka','2026','06','10','15:00','ï¿½roda, 10 czerwca 2026','Sala Czerwona ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124625,'Milcz±ca przyjació³ka','2026','06','10','15:00','¦roda, 10 czerwca 2026','Sala Czerwona ', 1, 1, 0);" >
                                                             15:00</a>
                                                             </span>
 						</li>
@@ -1085,10 +1085,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The Devil Wears Prada 2 -->
 							<a href="film.php?film_id=12826" title="The Devil Wears Prada 2">
 
-								Diabeï¿½ ubiera siï¿½ u Prady 2															</a>
+								Diabe³ ubiera siê u Prady 2															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124650" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124650,'Diabeï¿½ ubiera siï¿½ u Prady 2','2026','06','10','15:15','ï¿½roda, 10 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124650,'Diabe³ ubiera siê u Prady 2','2026','06','10','15:15','¦roda, 10 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
                                                             15:15</a>
                                                             </span>
 						</li>
@@ -1108,7 +1108,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124695" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124695,'Hamnet','2026','06','10','15:15','ï¿½roda, 10 czerwca 2026','MOS - ul. Rajska 12 ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124695,'Hamnet','2026','06','10','15:15','¦roda, 10 czerwca 2026','MOS - ul. Rajska 12 ', 1, 1, 0);" >
                                                             15:15</a>
                                                             </span>
 						</li>
@@ -1119,10 +1119,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Eagles of the republic -->
 							<a href="film.php?film_id=12832" title="Eagles of the republic">
 
-								Orï¿½y republiki 															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124687" title="kup bilet | Sala Biaï¿½a  "
+								Or³y republiki 															</a>
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124687" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124687,'Orï¿½y republiki ','2026','06','10','16:30','ï¿½roda, 10 czerwca 2026','Sala Biaï¿½a  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124687,'Or³y republiki ','2026','06','10','16:30','¦roda, 10 czerwca 2026','Sala Bia³a  ', 1, 1, 0);" >
                                                             16:30</a>
                                                             </span>
 						</li>
@@ -1133,16 +1133,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Disclosure Day -->
 							<a href="film.php?film_id=12942" title="Disclosure Day">
 
-								Dzieï¿½ objawienia																	<small>
+								Dzieñ objawienia																	<small>
 										<a href="wydarzenie.php?evnt_id=7035">
 
-										(Dzieï¿½ objawienia - przedsprzedaï¿½ biletï¿½w!)
+										(Dzieñ objawienia - przedsprzeda¿ biletów!)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124586" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124586,'Dzieï¿½ objawienia','2026','06','10','17:45','ï¿½roda, 10 czerwca 2026','MOS - ul. Rajska 12 ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124586,'Dzieñ objawienia','2026','06','10','17:45','¦roda, 10 czerwca 2026','MOS - ul. Rajska 12 ', 1, 1, 0);" >
                                                             17:45</a>
                                                             </span>
 						</li>
@@ -1153,7 +1153,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Fight Club -->
 							<a href="film.php?film_id=188" title="Fight Club">
 
-								Podziemny krï¿½g																	<small>
+								Podziemny kr±g																	<small>
 										<a href="wydarzenie.php?evnt_id=7050">
 
 										(Cinemino: Fight Club)
@@ -1162,7 +1162,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124651" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124651,'Podziemny krï¿½g','2026','06','10','17:45','ï¿½roda, 10 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124651,'Podziemny kr±g','2026','06','10','17:45','¦roda, 10 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
                                                             17:45</a>
                                                             </span>
 						</li>
@@ -1173,16 +1173,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Gentlemen Prefer Blondes -->
 							<a href="film.php?film_id=12918" title="Gentlemen Prefer Blondes">
 
-								Mï¿½czyï¿½ni wolï¿½ blondynki																	<small>
+								Mê¿czy¼ni wol± blondynki																	<small>
 										<a href="wydarzenie.php?evnt_id=7036">
 
-										(Filmy Wszech Czasï¿½w: Mï¿½czyï¿½ni wolï¿½ bl...)
+										(Filmy Wszech Czasów: Mê¿czy¼ni wol± bl...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124495" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124495,'Mï¿½czyï¿½ni wolï¿½ blondynki','2026','06','10','18:00','ï¿½roda, 10 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124495,'Mê¿czy¼ni wol± blondynki','2026','06','10','18:00','¦roda, 10 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -1194,9 +1194,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<a href="film.php?film_id=12892" title="In the Grey">
 
 								Zawodowcy															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124688" title="kup bilet | Sala Biaï¿½a  "
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124688" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124688,'Zawodowcy','2026','06','10','19:00','ï¿½roda, 10 czerwca 2026','Sala Biaï¿½a  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124688,'Zawodowcy','2026','06','10','19:00','¦roda, 10 czerwca 2026','Sala Bia³a  ', 1, 1, 0);" >
                                                             19:00</a>
                                                             </span>
 						</li>
@@ -1207,16 +1207,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Disclosure Day -->
 							<a href="film.php?film_id=12942" title="Disclosure Day">
 
-								Dzieï¿½ objawienia																	<small>
+								Dzieñ objawienia																	<small>
 										<a href="wydarzenie.php?evnt_id=7035">
 
-										(Dzieï¿½ objawienia - przedsprzedaï¿½ biletï¿½w!)
+										(Dzieñ objawienia - przedsprzeda¿ biletów!)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124588" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124588,'Dzieï¿½ objawienia','2026','06','10','20:15','ï¿½roda, 10 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124588,'Dzieñ objawienia','2026','06','10','20:15','¦roda, 10 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
                                                             20:15</a>
                                                             </span>
 						</li>
@@ -1236,7 +1236,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124697" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124697,'Hamnet','2026','06','10','20:30','ï¿½roda, 10 czerwca 2026','MOS - ul. Rajska 12 ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124697,'Hamnet','2026','06','10','20:30','¦roda, 10 czerwca 2026','MOS - ul. Rajska 12 ', 1, 1, 0);" >
                                                             20:30</a>
                                                             </span>
 						</li>
@@ -1271,10 +1271,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Disclosure Day -->
 							<a href="film.php?film_id=12942" title="Disclosure Day">
 
-								Dzieï¿½ objawienia															</a>
+								Dzieñ objawienia															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124653" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124653,'Dzieï¿½ objawienia','2026','06','11','12:15','Czwartek, 11 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124653,'Dzieñ objawienia','2026','06','11','12:15','Czwartek, 11 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
                                                             12:15</a>
                                                             </span>
 						</li>
@@ -1286,9 +1286,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<a href="film.php?film_id=12767" title="Project Hail Mary">
 
 								Projekt Hail Mary															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124681" title="kup bilet | Sala Biaï¿½a  "
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124681" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124681,'Projekt Hail Mary','2026','06','11','12:30','Czwartek, 11 czerwca 2026','Sala Biaï¿½a  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124681,'Projekt Hail Mary','2026','06','11','12:30','Czwartek, 11 czerwca 2026','Sala Bia³a  ', 1, 1, 0);" >
                                                             12:30</a>
                                                             </span>
 						</li>
@@ -1299,10 +1299,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Silent Friend -->
 							<a href="film.php?film_id=12885" title="Silent Friend">
 
-								Milczï¿½ca przyjaciï¿½ka															</a>
+								Milcz±ca przyjació³ka															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124629" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124629,'Milczï¿½ca przyjaciï¿½ka','2026','06','11','15:00','Czwartek, 11 czerwca 2026','Sala Czerwona ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124629,'Milcz±ca przyjació³ka','2026','06','11','15:00','Czwartek, 11 czerwca 2026','Sala Czerwona ', 1, 1, 0);" >
                                                             15:00</a>
                                                             </span>
 						</li>
@@ -1313,10 +1313,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The Devil Wears Prada 2 -->
 							<a href="film.php?film_id=12826" title="The Devil Wears Prada 2">
 
-								Diabeï¿½ ubiera siï¿½ u Prady 2															</a>
+								Diabe³ ubiera siê u Prady 2															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124654" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124654,'Diabeï¿½ ubiera siï¿½ u Prady 2','2026','06','11','15:15','Czwartek, 11 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124654,'Diabe³ ubiera siê u Prady 2','2026','06','11','15:15','Czwartek, 11 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
                                                             15:15</a>
                                                             </span>
 						</li>
@@ -1348,9 +1348,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<a href="film.php?film_id=12892" title="In the Grey">
 
 								Zawodowcy															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124682" title="kup bilet | Sala Biaï¿½a  "
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124682" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124682,'Zawodowcy','2026','06','11','15:30','Czwartek, 11 czerwca 2026','Sala Biaï¿½a  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124682,'Zawodowcy','2026','06','11','15:30','Czwartek, 11 czerwca 2026','Sala Bia³a  ', 1, 1, 0);" >
                                                             15:30</a>
                                                             </span>
 						</li>
@@ -1361,10 +1361,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Eagles of the republic -->
 							<a href="film.php?film_id=12832" title="Eagles of the republic">
 
-								Orï¿½y republiki 															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124683" title="kup bilet | Sala Biaï¿½a  "
+								Or³y republiki 															</a>
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124683" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124683,'Orï¿½y republiki ','2026','06','11','17:30','Czwartek, 11 czerwca 2026','Sala Biaï¿½a  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124683,'Or³y republiki ','2026','06','11','17:30','Czwartek, 11 czerwca 2026','Sala Bia³a  ', 1, 1, 0);" >
                                                             17:30</a>
                                                             </span>
 						</li>
@@ -1375,16 +1375,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Disclosure Day -->
 							<a href="film.php?film_id=12942" title="Disclosure Day">
 
-								Dzieï¿½ objawienia																	<small>
+								Dzieñ objawienia																	<small>
 										<a href="wydarzenie.php?evnt_id=7035">
 
-										(Dzieï¿½ objawienia - przedsprzedaï¿½ biletï¿½w!)
+										(Dzieñ objawienia - przedsprzeda¿ biletów!)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124587" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124587,'Dzieï¿½ objawienia','2026','06','11','17:45','Czwartek, 11 czerwca 2026','MOS - ul. Rajska 12 ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124587,'Dzieñ objawienia','2026','06','11','17:45','Czwartek, 11 czerwca 2026','MOS - ul. Rajska 12 ', 1, 1, 0);" >
                                                             17:45</a>
                                                             </span>
 						</li>
@@ -1415,16 +1415,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Da hong deng long gao gao gua -->
 							<a href="film.php?film_id=6676" title="Da hong deng long gao gao gua">
 
-								Zawieï¿½cie czerwone latarnie																	<small>
+								Zawie¶cie czerwone latarnie																	<small>
 										<a href="wydarzenie.php?evnt_id=6990">
 
-										(RE-PLAY &#9654;&#65038; Zawieï¿½cie c...)
+										(RE-PLAY &#9654;&#65038; Zawie¶cie c...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124631" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124631,'Zawieï¿½cie czerwone latarnie','2026','06','11','20:00','Czwartek, 11 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124631,'Zawie¶cie czerwone latarnie','2026','06','11','20:00','Czwartek, 11 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             20:00</a>
                                                             </span>
 						</li>
@@ -1436,9 +1436,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<a href="film.php?film_id=12892" title="In the Grey">
 
 								Zawodowcy															</a>
-							<span>                                                            <a href="/rezerwacja_start.php?event_id=124684" title="kup bilet | Sala Biaï¿½a  "
+							<span>                                                            <a href="/rezerwacja_start.php?event_id=124684" title="kup bilet | Sala Bia³a  "
 
-                                                            onclick="return validateAndShowOrderDialog(124684,'Zawodowcy','2026','06','11','20:05','Czwartek, 11 czerwca 2026','Sala Biaï¿½a  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124684,'Zawodowcy','2026','06','11','20:05','Czwartek, 11 czerwca 2026','Sala Bia³a  ', 1, 1, 0);" >
                                                             20:05</a>
                                                             </span>
 						</li>
@@ -1449,16 +1449,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Disclosure Day -->
 							<a href="film.php?film_id=12942" title="Disclosure Day">
 
-								Dzieï¿½ objawienia																	<small>
+								Dzieñ objawienia																	<small>
 										<a href="wydarzenie.php?evnt_id=7035">
 
-										(Dzieï¿½ objawienia - przedsprzedaï¿½ biletï¿½w!)
+										(Dzieñ objawienia - przedsprzeda¿ biletów!)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124589" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124589,'Dzieï¿½ objawienia','2026','06','11','20:15','Czwartek, 11 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124589,'Dzieñ objawienia','2026','06','11','20:15','Czwartek, 11 czerwca 2026','Sala Niebieska  ', 1, 1, 0);" >
                                                             20:15</a>
                                                             </span>
 						</li>
@@ -1489,23 +1489,23 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Disclosure Day -->
 							<a href="film.php?film_id=12942" title="Disclosure Day">
 
-								Dzieï¿½ objawienia																	<small>
+								Dzieñ objawienia																	<small>
 										<a href="wydarzenie.php?evnt_id=7049">
 
-										(Studencki Nocny Klub Filmowy: Dzieï¿½ objawienia)
+										(Studencki Nocny Klub Filmowy: Dzieñ objawienia)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124590" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124590,'Dzieï¿½ objawienia','2026','06','11','23:00','Czwartek, 11 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124590,'Dzieñ objawienia','2026','06','11','23:00','Czwartek, 11 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             23:00</a>
                                                             </span>
 						</li>
 
 
 																					</ul>
-														<p class="rep_date"><span>Piï¿½tek</span> 12 czerwca // <span>Friday</span>, June 12</p>
+														<p class="rep_date"><span>Pi±tek</span> 12 czerwca // <span>Friday</span>, June 12</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -1513,16 +1513,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Disclosure Day -->
 							<a href="film.php?film_id=12942" title="Disclosure Day">
 
-								Dzieï¿½ objawienia																	<small>
+								Dzieñ objawienia																	<small>
 										<a href="wydarzenie.php?evnt_id=7035">
 
-										(Dzieï¿½ objawienia - przedsprzedaï¿½ biletï¿½w!)
+										(Dzieñ objawienia - przedsprzeda¿ biletów!)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124591" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124591,'Dzieï¿½ objawienia','2026','06','12','17:45','Piï¿½tek, 12 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124591,'Dzieñ objawienia','2026','06','12','17:45','Pi±tek, 12 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             17:45</a>
                                                             </span>
 						</li>
@@ -1530,19 +1530,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 												<li class=""
 						title="">
-							<!-- // title L&#8217;ï¿½tranger -->
-							<a href="film.php?film_id=12895" title="L&#8217;ï¿½tranger">
+							<!-- // title L&#8217;étranger -->
+							<a href="film.php?film_id=12895" title="L&#8217;étranger">
 
 								Obcy																	<small>
 										<a href="wydarzenie.php?evnt_id=7005">
 
-										(17. Przeglï¿½d Nowego Kina Francuskiego)
+										(17. Przegl±d Nowego Kina Francuskiego)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124212" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124212,'Obcy','2026','06','12','18:00','Piï¿½tek, 12 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124212,'Obcy','2026','06','12','18:00','Pi±tek, 12 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -1553,16 +1553,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Disclosure Day -->
 							<a href="film.php?film_id=12942" title="Disclosure Day">
 
-								Dzieï¿½ objawienia																	<small>
+								Dzieñ objawienia																	<small>
 										<a href="wydarzenie.php?evnt_id=7035">
 
-										(Dzieï¿½ objawienia - przedsprzedaï¿½ biletï¿½w!)
+										(Dzieñ objawienia - przedsprzeda¿ biletów!)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124596" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124596,'Dzieï¿½ objawienia','2026','06','12','20:15','Piï¿½tek, 12 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124596,'Dzieñ objawienia','2026','06','12','20:15','Pi±tek, 12 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
                                                             20:15</a>
                                                             </span>
 						</li>
@@ -1582,7 +1582,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124598" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124598,'Felix, Dare to Dream','2026','06','12','20:30','Piï¿½tek, 12 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124598,'Felix, Dare to Dream','2026','06','12','20:30','Pi±tek, 12 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             20:30</a>
                                                             </span>
 						</li>
@@ -1602,7 +1602,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124226" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124226,'Milczenie owiec','2026','06','12','20:30','Piï¿½tek, 12 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124226,'Milczenie owiec','2026','06','12','20:30','Pi±tek, 12 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             20:30</a>
                                                             </span>
 						</li>
@@ -1614,19 +1614,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<ul class="program_list">
 												<li class="mos-warning"
 						title="Seans w innym obiekcie">
-							<!-- // title Calle Mï¿½laga -->
-							<a href="film.php?film_id=12770" title="Calle Mï¿½laga">
+							<!-- // title Calle Málaga -->
+							<a href="film.php?film_id=12770" title="Calle Málaga">
 
-								Drugie ï¿½ycie																	<small>
+								Drugie ¿ycie																	<small>
 										<a href="wydarzenie.php?evnt_id=7040">
 
-										(ï¿½niadanie z filmem: Drugie ï¿½ycie)
+										(¦niadanie z filmem: Drugie ¿ycie)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124605" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124605,'Drugie ï¿½ycie','2026','06','13','10:00','Sobota, 13 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124605,'Drugie ¿ycie','2026','06','13','10:00','Sobota, 13 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
                                                             10:00</a>
                                                             </span>
 						</li>
@@ -1657,16 +1657,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Hoppers -->
 							<a href="film.php?film_id=12858" title="Hoppers">
 
-								Hopniï¿½ci																	<small>
+								Hopniêci																	<small>
 										<a href="wydarzenie.php?evnt_id=7010">
 
-										(Mï¿½odzi w Kinie: Hopniï¿½ci - miï¿½dzypokoleniowy pokaz fil...)
+										(M³odzi w Kinie: Hopniêci - miêdzypokoleniowy pokaz fil...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124211" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124211,'Hopniï¿½ci','2026','06','13','11:00','Sobota, 13 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124211,'Hopniêci','2026','06','13','11:00','Sobota, 13 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             11:00</a>
                                                             </span>
 						</li>
@@ -1697,16 +1697,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Disclosure Day -->
 							<a href="film.php?film_id=12942" title="Disclosure Day">
 
-								Dzieï¿½ objawienia																	<small>
+								Dzieñ objawienia																	<small>
 										<a href="wydarzenie.php?evnt_id=7035">
 
-										(Dzieï¿½ objawienia - przedsprzedaï¿½ biletï¿½w!)
+										(Dzieñ objawienia - przedsprzeda¿ biletów!)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124592" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124592,'Dzieï¿½ objawienia','2026','06','13','17:45','Sobota, 13 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124592,'Dzieñ objawienia','2026','06','13','17:45','Sobota, 13 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             17:45</a>
                                                             </span>
 						</li>
@@ -1717,16 +1717,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title KPop Demon Hunters -->
 							<a href="film.php?film_id=12968" title="KPop Demon Hunters">
 
-								K-popowe ï¿½owczynie demonï¿½w																	<small>
+								K-popowe £owczynie demonów																	<small>
 										<a href="wydarzenie.php?evnt_id=7039">
 
-										(K-popowe ï¿½owczynie demonï¿½w - pokazy ...)
+										(K-popowe £owczynie demonów - pokazy ...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124603" title="kup bilet | Aula ASP - Plac  Matejki 13 "
 
-                                                            onclick="return validateAndShowOrderDialog(124603,'K-popowe ï¿½owczynie demonï¿½w','2026','06','13','18:00','Sobota, 13 czerwca 2026','Aula ASP - Plac  Matejki 13 ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124603,'K-popowe £owczynie demonów','2026','06','13','18:00','Sobota, 13 czerwca 2026','Aula ASP - Plac  Matejki 13 ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -1740,7 +1740,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Nowa fala																	<small>
 										<a href="wydarzenie.php?evnt_id=7005">
 
-										(17. Przeglï¿½d Nowego Kina Francuskiego)
+										(17. Przegl±d Nowego Kina Francuskiego)
 										</a>
 									</small>
 															</a>
@@ -1757,16 +1757,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Disclosure Day -->
 							<a href="film.php?film_id=12942" title="Disclosure Day">
 
-								Dzieï¿½ objawienia																	<small>
+								Dzieñ objawienia																	<small>
 										<a href="wydarzenie.php?evnt_id=7035">
 
-										(Dzieï¿½ objawienia - przedsprzedaï¿½ biletï¿½w!)
+										(Dzieñ objawienia - przedsprzeda¿ biletów!)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124595" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124595,'Dzieï¿½ objawienia','2026','06','13','20:15','Sobota, 13 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124595,'Dzieñ objawienia','2026','06','13','20:15','Sobota, 13 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
                                                             20:15</a>
                                                             </span>
 						</li>
@@ -1841,7 +1841,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The True Story of Tamara de Lempicka & The Art of Survival -->
 							<a href="film.php?film_id=12613" title="The True Story of Tamara de Lempicka & The Art of Survival">
 
-								Prawdziwa historia Tamary ï¿½empickiej																	<small>
+								Prawdziwa historia Tamary £empickiej																	<small>
 										<a href="wydarzenie.php?evnt_id=6991">
 
 										(Sztuka na ekranie - pokazy...)
@@ -1850,7 +1850,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=123938" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(123938,'Prawdziwa historia Tamary ï¿½empickiej','2026','06','14','13:00','Niedziela, 14 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(123938,'Prawdziwa historia Tamary £empickiej','2026','06','14','13:00','Niedziela, 14 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             13:00</a>
                                                             </span>
 						</li>
@@ -1881,16 +1881,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Disclosure Day -->
 							<a href="film.php?film_id=12942" title="Disclosure Day">
 
-								Dzieï¿½ objawienia																	<small>
+								Dzieñ objawienia																	<small>
 										<a href="wydarzenie.php?evnt_id=7035">
 
-										(Dzieï¿½ objawienia - przedsprzedaï¿½ biletï¿½w!)
+										(Dzieñ objawienia - przedsprzeda¿ biletów!)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124593" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124593,'Dzieï¿½ objawienia','2026','06','14','17:45','Niedziela, 14 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124593,'Dzieñ objawienia','2026','06','14','17:45','Niedziela, 14 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             17:45</a>
                                                             </span>
 						</li>
@@ -1901,16 +1901,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title KPop Demon Hunters -->
 							<a href="film.php?film_id=12968" title="KPop Demon Hunters">
 
-								K-popowe ï¿½owczynie demonï¿½w																	<small>
+								K-popowe £owczynie demonów																	<small>
 										<a href="wydarzenie.php?evnt_id=7039">
 
-										(K-popowe ï¿½owczynie demonï¿½w - pokazy ...)
+										(K-popowe £owczynie demonów - pokazy ...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124602" title="kup bilet | Aula ASP - Plac  Matejki 13 "
 
-                                                            onclick="return validateAndShowOrderDialog(124602,'K-popowe ï¿½owczynie demonï¿½w','2026','06','14','18:00','Niedziela, 14 czerwca 2026','Aula ASP - Plac  Matejki 13 ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124602,'K-popowe £owczynie demonów','2026','06','14','18:00','Niedziela, 14 czerwca 2026','Aula ASP - Plac  Matejki 13 ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -1921,16 +1921,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title La Petite Derni&#232;re -->
 							<a href="film.php?film_id=12897" title="La Petite Derni&#232;re">
 
-								Mï¿½odsza siostra																	<small>
+								M³odsza siostra																	<small>
 										<a href="wydarzenie.php?evnt_id=7005">
 
-										(17. Przeglï¿½d Nowego Kina Francuskiego)
+										(17. Przegl±d Nowego Kina Francuskiego)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124214" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124214,'Mï¿½odsza siostra','2026','06','14','18:00','Niedziela, 14 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124214,'M³odsza siostra','2026','06','14','18:00','Niedziela, 14 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -1941,16 +1941,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Disclosure Day -->
 							<a href="film.php?film_id=12942" title="Disclosure Day">
 
-								Dzieï¿½ objawienia																	<small>
+								Dzieñ objawienia																	<small>
 										<a href="wydarzenie.php?evnt_id=7035">
 
-										(Dzieï¿½ objawienia - przedsprzedaï¿½ biletï¿½w!)
+										(Dzieñ objawienia - przedsprzeda¿ biletów!)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124594" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124594,'Dzieï¿½ objawienia','2026','06','14','20:15','Niedziela, 14 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124594,'Dzieñ objawienia','2026','06','14','20:15','Niedziela, 14 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             20:15</a>
                                                             </span>
 						</li>
@@ -1977,7 +1977,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
 																					</ul>
-														<p class="rep_date"><span>Poniedziaï¿½ek</span> 15 czerwca // <span>Monday</span>, June 15</p>
+														<p class="rep_date"><span>Poniedzia³ek</span> 15 czerwca // <span>Monday</span>, June 15</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -1988,13 +1988,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Wypadek fortepianowy																	<small>
 										<a href="wydarzenie.php?evnt_id=7005">
 
-										(17. Przeglï¿½d Nowego Kina Francuskiego)
+										(17. Przegl±d Nowego Kina Francuskiego)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124215" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124215,'Wypadek fortepianowy','2026','06','15','18:00','Poniedziaï¿½ek, 15 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124215,'Wypadek fortepianowy','2026','06','15','18:00','Poniedzia³ek, 15 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -2008,13 +2008,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Kumotry																	<small>
 										<a href="wydarzenie.php?evnt_id=7009">
 
-										(Kumotry - pokaz filmu i spotkanie z reï¿½yserkï¿½)
+										(Kumotry - pokaz filmu i spotkanie z re¿yserk±)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124206" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124206,'Kumotry','2026','06','15','18:15','Poniedziaï¿½ek, 15 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124206,'Kumotry','2026','06','15','18:15','Poniedzia³ek, 15 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             18:15</a>
                                                             </span>
 						</li>
@@ -2028,13 +2028,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Mi Amor																	<small>
 										<a href="wydarzenie.php?evnt_id=7005">
 
-										(17. Przeglï¿½d Nowego Kina Francuskiego)
+										(17. Przegl±d Nowego Kina Francuskiego)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124216" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124216,'Mi Amor','2026','06','15','20:00','Poniedziaï¿½ek, 15 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124216,'Mi Amor','2026','06','15','20:00','Poniedzia³ek, 15 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             20:00</a>
                                                             </span>
 						</li>
@@ -2054,7 +2054,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124702" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124702,'Ojczyzna','2026','06','15','20:45','Poniedziaï¿½ek, 15 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124702,'Ojczyzna','2026','06','15','20:45','Poniedzia³ek, 15 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             20:45</a>
                                                             </span>
 						</li>
@@ -2089,16 +2089,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title L&#8217;Inconnu de la Grande Arche -->
 							<a href="film.php?film_id=12900" title="L&#8217;Inconnu de la Grande Arche">
 
-								Wielki ï¿½uk																	<small>
+								Wielki £uk																	<small>
 										<a href="wydarzenie.php?evnt_id=7005">
 
-										(17. Przeglï¿½d Nowego Kina Francuskiego)
+										(17. Przegl±d Nowego Kina Francuskiego)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124217" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124217,'Wielki ï¿½uk','2026','06','16','18:00','Wtorek, 16 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124217,'Wielki £uk','2026','06','16','18:00','Wtorek, 16 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -2112,7 +2112,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Guru																	<small>
 										<a href="wydarzenie.php?evnt_id=7005">
 
-										(17. Przeglï¿½d Nowego Kina Francuskiego)
+										(17. Przegl±d Nowego Kina Francuskiego)
 										</a>
 									</small>
 															</a>
@@ -2145,24 +2145,24 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
 																					</ul>
-														<p class="rep_date"><span>ï¿½roda</span> 17 czerwca // <span>Wednesday</span>, June 17</p>
+														<p class="rep_date"><span>¦roda</span> 17 czerwca // <span>Wednesday</span>, June 17</p>
 
 							<ul class="program_list">
 												<li class=""
 						title="">
-							<!-- // title L&#8217;ascenseur pour l&#8217;ï¿½chafaud -->
-							<a href="film.php?film_id=12901" title="L&#8217;ascenseur pour l&#8217;ï¿½chafaud">
+							<!-- // title L&#8217;ascenseur pour l&#8217;échafaud -->
+							<a href="film.php?film_id=12901" title="L&#8217;ascenseur pour l&#8217;échafaud">
 
-								Windï¿½ na szafot																	<small>
+								Wind± na szafot																	<small>
 										<a href="wydarzenie.php?evnt_id=7005">
 
-										(17. Przeglï¿½d Nowego Kina Francuskiego)
+										(17. Przegl±d Nowego Kina Francuskiego)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124219" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124219,'Windï¿½ na szafot','2026','06','17','18:00','ï¿½roda, 17 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124219,'Wind± na szafot','2026','06','17','18:00','¦roda, 17 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -2173,16 +2173,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title L&#8217;affaire Bojarski -->
 							<a href="film.php?film_id=12903" title="L&#8217;affaire Bojarski">
 
-								Faï¿½szerz stulecia																	<small>
+								Fa³szerz stulecia																	<small>
 										<a href="wydarzenie.php?evnt_id=7005">
 
-										(17. Przeglï¿½d Nowego Kina Francuskiego)
+										(17. Przegl±d Nowego Kina Francuskiego)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124220" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124220,'Faï¿½szerz stulecia','2026','06','17','20:00','ï¿½roda, 17 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124220,'Fa³szerz stulecia','2026','06','17','20:00','¦roda, 17 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             20:00</a>
                                                             </span>
 						</li>
@@ -2202,7 +2202,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124704" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124704,'Ojczyzna','2026','06','17','20:15','ï¿½roda, 17 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124704,'Ojczyzna','2026','06','17','20:15','¦roda, 17 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             20:15</a>
                                                             </span>
 						</li>
@@ -2214,19 +2214,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<ul class="program_list">
 												<li class=""
 						title="">
-							<!-- // title Le Rï¿½pondeur -->
-							<a href="film.php?film_id=12904" title="Le Rï¿½pondeur">
+							<!-- // title Le Répondeur -->
+							<a href="film.php?film_id=12904" title="Le Répondeur">
 
-								Poczta gï¿½osowa																	<small>
+								Poczta g³osowa																	<small>
 										<a href="wydarzenie.php?evnt_id=7005">
 
-										(17. Przeglï¿½d Nowego Kina Francuskiego)
+										(17. Przegl±d Nowego Kina Francuskiego)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124221" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124221,'Poczta gï¿½osowa','2026','06','18','18:00','Czwartek, 18 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124221,'Poczta g³osowa','2026','06','18','18:00','Czwartek, 18 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -2237,16 +2237,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Juste une illusion -->
 							<a href="film.php?film_id=12905" title="Juste une illusion">
 
-								Przeï¿½yj to sam																	<small>
+								Prze¿yj to sam																	<small>
 										<a href="wydarzenie.php?evnt_id=7005">
 
-										(17. Przeglï¿½d Nowego Kina Francuskiego)
+										(17. Przegl±d Nowego Kina Francuskiego)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124222" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124222,'Przeï¿½yj to sam','2026','06','18','20:00','Czwartek, 18 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124222,'Prze¿yj to sam','2026','06','18','20:00','Czwartek, 18 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             20:00</a>
                                                             </span>
 						</li>
@@ -2287,7 +2287,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
 																					</ul>
-														<p class="rep_date"><span>Piï¿½tek</span> 19 czerwca // <span>Friday</span>, June 19</p>
+														<p class="rep_date"><span>Pi±tek</span> 19 czerwca // <span>Friday</span>, June 19</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -2295,7 +2295,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Breve storia d'amore -->
 							<a href="film.php?film_id=12816" title="Breve storia d'amore">
 
-								Krï¿½tka historia o miï¿½oï¿½ci																	<small>
+								Krótka historia o mi³o¶ci																	<small>
 										<a href="wydarzenie.php?evnt_id=6954">
 
 										(Cinema Italia Oggi 2026)
@@ -2304,7 +2304,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=123504" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(123504,'Krï¿½tka historia o miï¿½oï¿½ci','2026','06','19','18:00','Piï¿½tek, 19 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(123504,'Krótka historia o mi³o¶ci','2026','06','19','18:00','Pi±tek, 19 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -2315,7 +2315,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title La vita va cos&#236; -->
 							<a href="film.php?film_id=12818" title="La vita va cos&#236;">
 
-								Takie jest ï¿½ycie																	<small>
+								Takie jest ¿ycie																	<small>
 										<a href="wydarzenie.php?evnt_id=6954">
 
 										(Cinema Italia Oggi 2026)
@@ -2324,7 +2324,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=123505" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(123505,'Takie jest ï¿½ycie','2026','06','19','20:00','Piï¿½tek, 19 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(123505,'Takie jest ¿ycie','2026','06','19','20:00','Pi±tek, 19 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             20:00</a>
                                                             </span>
 						</li>
@@ -2335,16 +2335,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Backrooms -->
 							<a href="film.php?film_id=12966" title="Backrooms">
 
-								Backrooms. Bez wyjï¿½cia																	<small>
+								Backrooms. Bez wyj¶cia																	<small>
 										<a href="wydarzenie.php?evnt_id=7038">
 
-										(Backrooms. Bez wyjï¿½cia - przedsprzedaï¿½ b...)
+										(Backrooms. Bez wyj¶cia - przedsprzeda¿ b...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124599" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124599,'Backrooms. Bez wyjï¿½cia','2026','06','19','20:15','Piï¿½tek, 19 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124599,'Backrooms. Bez wyj¶cia','2026','06','19','20:15','Pi±tek, 19 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
                                                             20:15</a>
                                                             </span>
 						</li>
@@ -2359,16 +2359,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Disclosure Day -->
 							<a href="film.php?film_id=12965" title="Disclosure Day">
 
-								Dzieï¿½ objawienia (SMAK)																	<small>
+								Dzieñ objawienia (SMAK)																	<small>
 										<a href="wydarzenie.php?evnt_id=7034">
 
-										(SMAK, czyli Spotkania Mï¿½odych Amatorï¿½w ...)
+										(SMAK, czyli Spotkania M³odych Amatorów ...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124597" title="kup bilet | Sala Niebieska  "
 
-                                                            onclick="return validateAndShowOrderDialog(124597,'Dzieï¿½ objawienia (SMAK)','2026','06','20','11:00','Sobota, 20 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124597,'Dzieñ objawienia (SMAK)','2026','06','20','11:00','Sobota, 20 czerwca 2026','Sala Niebieska  ', 0, 1, 0);" >
                                                             11:00</a>
                                                             </span>
 						</li>
@@ -2399,7 +2399,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title La valle dei sorrisi -->
 							<a href="film.php?film_id=12819" title="La valle dei sorrisi">
 
-								Przeklï¿½ty chï¿½opiec																	<small>
+								Przeklêty ch³opiec																	<small>
 										<a href="wydarzenie.php?evnt_id=6954">
 
 										(Cinema Italia Oggi 2026)
@@ -2408,7 +2408,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=123507" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(123507,'Przeklï¿½ty chï¿½opiec','2026','06','20','20:00','Sobota, 20 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(123507,'Przeklêty ch³opiec','2026','06','20','20:00','Sobota, 20 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             20:00</a>
                                                             </span>
 						</li>
@@ -2419,16 +2419,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Backrooms -->
 							<a href="film.php?film_id=12966" title="Backrooms">
 
-								Backrooms. Bez wyjï¿½cia																	<small>
+								Backrooms. Bez wyj¶cia																	<small>
 										<a href="wydarzenie.php?evnt_id=7038">
 
-										(Backrooms. Bez wyjï¿½cia - przedsprzedaï¿½ b...)
+										(Backrooms. Bez wyj¶cia - przedsprzeda¿ b...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124601" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124601,'Backrooms. Bez wyjï¿½cia','2026','06','20','20:15','Sobota, 20 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124601,'Backrooms. Bez wyj¶cia','2026','06','20','20:15','Sobota, 20 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
                                                             20:15</a>
                                                             </span>
 						</li>
@@ -2486,7 +2486,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Vermeer. Blisko mistrza																	<small>
 										<a href="wydarzenie.php?evnt_id=6991">
 
-										(Sztuka na ekranie - pokazy filmï¿½w o szt...)
+										(Sztuka na ekranie - pokazy filmów o szt...)
 										</a>
 									</small>
 															</a>
@@ -2503,7 +2503,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Le citt&#224; di pianura -->
 							<a href="film.php?film_id=12820" title="Le citt&#224; di pianura">
 
-								Miasta na rï¿½wninie																	<small>
+								Miasta na równinie																	<small>
 										<a href="wydarzenie.php?evnt_id=6954">
 
 										(Cinema Italia Oggi 2026)
@@ -2512,7 +2512,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=123508" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(123508,'Miasta na rï¿½wninie','2026','06','21','18:00','Niedziela, 21 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(123508,'Miasta na równinie','2026','06','21','18:00','Niedziela, 21 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -2523,16 +2523,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Backrooms -->
 							<a href="film.php?film_id=12966" title="Backrooms">
 
-								Backrooms. Bez wyjï¿½cia																	<small>
+								Backrooms. Bez wyj¶cia																	<small>
 										<a href="wydarzenie.php?evnt_id=7038">
 
-										(Backrooms. Bez wyjï¿½cia - przedsprzedaï¿½ b...)
+										(Backrooms. Bez wyj¶cia - przedsprzeda¿ b...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124600" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124600,'Backrooms. Bez wyjï¿½cia','2026','06','21','20:15','Niedziela, 21 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124600,'Backrooms. Bez wyj¶cia','2026','06','21','20:15','Niedziela, 21 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
                                                             20:15</a>
                                                             </span>
 						</li>
@@ -2543,23 +2543,23 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title The Virgin Suicides -->
 							<a href="film.php?film_id=2150" title="The Virgin Suicides">
 
-								Przekleï¿½stwa niewinnoï¿½ci																	<small>
+								Przekleñstwa niewinno¶ci																	<small>
 										<a href="wydarzenie.php?evnt_id=7044">
 
-										(RE-PLAY &#9654;&#65038; Przekleï¿½stwa n...)
+										(RE-PLAY &#9654;&#65038; Przekleñstwa n...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124712" title="kup bilet | Aula ASP - Plac  Matejki 13 "
 
-                                                            onclick="return validateAndShowOrderDialog(124712,'Przekleï¿½stwa niewinnoï¿½ci','2026','06','21','20:15','Niedziela, 21 czerwca 2026','Aula ASP - Plac  Matejki 13 ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124712,'Przekleñstwa niewinno¶ci','2026','06','21','20:15','Niedziela, 21 czerwca 2026','Aula ASP - Plac  Matejki 13 ', 0, 1, 0);" >
                                                             20:15</a>
                                                             </span>
 						</li>
 
 
 																					</ul>
-														<p class="rep_date"><span>Poniedziaï¿½ek</span> 22 czerwca // <span>Monday</span>, June 22</p>
+														<p class="rep_date"><span>Poniedzia³ek</span> 22 czerwca // <span>Monday</span>, June 22</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -2576,7 +2576,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=123509" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(123509,'Trener tenisa','2026','06','22','18:00','Poniedziaï¿½ek, 22 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(123509,'Trener tenisa','2026','06','22','18:00','Poniedzia³ek, 22 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -2627,7 +2627,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
 																					</ul>
-														<p class="rep_date"><span>ï¿½roda</span> 24 czerwca // <span>Wednesday</span>, June 24</p>
+														<p class="rep_date"><span>¦roda</span> 24 czerwca // <span>Wednesday</span>, June 24</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -2635,7 +2635,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Le cose non dette -->
 							<a href="film.php?film_id=12823" title="Le cose non dette">
 
-								O czym sobie nie mï¿½wimy																	<small>
+								O czym sobie nie mówimy																	<small>
 										<a href="wydarzenie.php?evnt_id=6954">
 
 										(Cinema Italia Oggi 2026)
@@ -2644,7 +2644,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=123511" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(123511,'O czym sobie nie mï¿½wimy','2026','06','24','18:00','ï¿½roda, 24 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(123511,'O czym sobie nie mówimy','2026','06','24','18:00','¦roda, 24 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -2679,16 +2679,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title La vita va cos&#236; -->
 							<a href="film.php?film_id=12818" title="La vita va cos&#236;">
 
-								Takie jest ï¿½ycie																	<small>
+								Takie jest ¿ycie																	<small>
 										<a href="wydarzenie.php?evnt_id=7046">
 
-										(Best Film on Tour: Takie jest ï¿½ycie - pokaz pr...)
+										(Best Film on Tour: Takie jest ¿ycie - pokaz pr...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124608" title="kup bilet | MOS - ul. Rajska 12 "
 
-                                                            onclick="return validateAndShowOrderDialog(124608,'Takie jest ï¿½ycie','2026','06','25','18:00','Czwartek, 25 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124608,'Takie jest ¿ycie','2026','06','25','18:00','Czwartek, 25 czerwca 2026','MOS - ul. Rajska 12 ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -2723,16 +2723,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title L&#8217;Enigme Velazquez -->
 							<a href="film.php?film_id=12612" title="L&#8217;Enigme Velazquez">
 
-								Velï¿½zquez i jego tajemnica																	<small>
+								Velázquez i jego tajemnica																	<small>
 										<a href="wydarzenie.php?evnt_id=6991">
 
-										(Sztuka na ekranie - pokazy filmï¿½w o ...)
+										(Sztuka na ekranie - pokazy filmów o ...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=123940" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(123940,'Velï¿½zquez i jego tajemnica','2026','06','28','13:00','Niedziela, 28 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(123940,'Velázquez i jego tajemnica','2026','06','28','13:00','Niedziela, 28 czerwca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             13:00</a>
                                                             </span>
 						</li>
@@ -2750,7 +2750,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Bliskie spotkania trzeciego stopnia																	<small>
 										<a href="wydarzenie.php?evnt_id=7021">
 
-										(Filmy Wszech Czasï¿½w - piï¿½ta...)
+										(Filmy Wszech Czasów - pi±ta...)
 										</a>
 									</small>
 															</a>
@@ -2763,7 +2763,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
 																					</ul>
-														<p class="rep_date"><span>ï¿½roda</span> 8 lipca // <span>Wednesday</span>, July 8</p>
+														<p class="rep_date"><span>¦roda</span> 8 lipca // <span>Wednesday</span>, July 8</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -2771,16 +2771,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title When Harry Met Sally -->
 							<a href="film.php?film_id=8893" title="When Harry Met Sally">
 
-								Kiedy Harry poznaï¿½ Sally																	<small>
+								Kiedy Harry pozna³ Sally																	<small>
 										<a href="wydarzenie.php?evnt_id=7021">
 
-										(Filmy Wszech Czasï¿½w - piï¿½ta edycja)
+										(Filmy Wszech Czasów - pi±ta edycja)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124497" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124497,'Kiedy Harry poznaï¿½ Sally','2026','07','08','18:00','ï¿½roda, 8 lipca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124497,'Kiedy Harry pozna³ Sally','2026','07','08','18:00','¦roda, 8 lipca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -2795,16 +2795,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title La caduta degli dei -->
 							<a href="film.php?film_id=12919" title="La caduta degli dei">
 
-								Zmierzch bogï¿½w																	<small>
+								Zmierzch bogów																	<small>
 										<a href="wydarzenie.php?evnt_id=7021">
 
-										(Filmy Wszech Czasï¿½w - piï¿½ta edycja)
+										(Filmy Wszech Czasów - pi±ta edycja)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124498" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124498,'Zmierzch bogï¿½w','2026','07','14','18:00','Wtorek, 14 lipca 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124498,'Zmierzch bogów','2026','07','14','18:00','Wtorek, 14 lipca 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -2822,7 +2822,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Brzezina (The Birch Wood)																	<small>
 										<a href="wydarzenie.php?evnt_id=6907">
 
-										(WAJDA: re-wizje - przeglï¿½d filmï¿½w And...)
+										(WAJDA: re-wizje - przegl±d filmów And...)
 										</a>
 									</small>
 															</a>
@@ -2835,7 +2835,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
 																					</ul>
-														<p class="rep_date"><span>ï¿½roda</span> 5 sierpnia // <span>Wednesday</span>, August 5</p>
+														<p class="rep_date"><span>¦roda</span> 5 sierpnia // <span>Wednesday</span>, August 5</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -2843,16 +2843,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Dead Poets Society -->
 							<a href="film.php?film_id=12920" title="Dead Poets Society">
 
-								Stowarzyszenie Umarï¿½ych Poetï¿½w																	<small>
+								Stowarzyszenie Umar³ych Poetów																	<small>
 										<a href="wydarzenie.php?evnt_id=7021">
 
-										(Filmy Wszech Czasï¿½w - piï¿½ta edyc...)
+										(Filmy Wszech Czasów - pi±ta edyc...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124499" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124499,'Stowarzyszenie Umarï¿½ych Poetï¿½w','2026','08','05','18:00','ï¿½roda, 5 sierpnia 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124499,'Stowarzyszenie Umar³ych Poetów','2026','08','05','18:00','¦roda, 5 sierpnia 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -2864,10 +2864,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<ul class="program_list">
 												<li class=""
 						title="">
-							<!-- // title Kronika wypadkï¿½w miï¿½osnych -->
-							<a href="film.php?film_id=5337" title="Kronika wypadkï¿½w miï¿½osnych">
+							<!-- // title Kronika wypadków mi³osnych -->
+							<a href="film.php?film_id=5337" title="Kronika wypadków mi³osnych">
 
-								Kronika wypadkï¿½w miï¿½osnych (A Chronicle of Amorous Accidents)																	<small>
+								Kronika wypadków mi³osnych (A Chronicle of Amorous Accidents)																	<small>
 										<a href="wydarzenie.php?evnt_id=6907">
 
 										(W...)
@@ -2876,7 +2876,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=123351" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(123351,'Kronika wypadkï¿½w miï¿½osnych (A Chronicle of Amorous Accidents)','2026','08','11','18:00','Wtorek, 11 sierpnia 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(123351,'Kronika wypadków mi³osnych (A Chronicle of Amorous Accidents)','2026','08','11','18:00','Wtorek, 11 sierpnia 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -2888,13 +2888,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<ul class="program_list">
 												<li class=""
 						title="">
-							<!-- // title Le Mï¿½pris -->
-							<a href="film.php?film_id=12911" title="Le Mï¿½pris">
+							<!-- // title Le Mépris -->
+							<a href="film.php?film_id=12911" title="Le Mépris">
 
 								Pogarda																	<small>
 										<a href="wydarzenie.php?evnt_id=7021">
 
-										(Filmy Wszech Czasï¿½w - piï¿½ta edycja)
+										(Filmy Wszech Czasów - pi±ta edycja)
 										</a>
 									</small>
 															</a>
@@ -2907,7 +2907,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
 																					</ul>
-														<p class="rep_date"><span>Wtorek</span> 8 wrzeï¿½nia // <span>Tuesday</span>, September 8</p>
+														<p class="rep_date"><span>Wtorek</span> 8 wrze¶nia // <span>Tuesday</span>, September 8</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -2915,23 +2915,23 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Tous les matins du monde -->
 							<a href="film.php?film_id=5812" title="Tous les matins du monde">
 
-								Wszystkie poranki ï¿½wiata																	<small>
+								Wszystkie poranki ¶wiata																	<small>
 										<a href="wydarzenie.php?evnt_id=7021">
 
-										(Filmy Wszech Czasï¿½w - piï¿½ta edycja)
+										(Filmy Wszech Czasów - pi±ta edycja)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124501" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124501,'Wszystkie poranki ï¿½wiata','2026','09','08','18:00','Wtorek, 8 wrzeï¿½nia 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124501,'Wszystkie poranki ¶wiata','2026','09','08','18:00','Wtorek, 8 wrze¶nia 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
 
 
 																					</ul>
-														<p class="rep_date"><span>ï¿½roda</span> 9 wrzeï¿½nia // <span>Wednesday</span>, September 9</p>
+														<p class="rep_date"><span>¦roda</span> 9 wrze¶nia // <span>Wednesday</span>, September 9</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -2948,14 +2948,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=123352" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(123352,'Krajobraz po bitwie (Landscape After the Battle)','2026','09','09','18:00','ï¿½roda, 9 wrzeï¿½nia 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(123352,'Krajobraz po bitwie (Landscape After the Battle)','2026','09','09','18:00','¦roda, 9 wrze¶nia 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
 
 
 																					</ul>
-														<p class="rep_date"><span>ï¿½roda</span> 23 wrzeï¿½nia // <span>Wednesday</span>, September 23</p>
+														<p class="rep_date"><span>¦roda</span> 23 wrze¶nia // <span>Wednesday</span>, September 23</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -2966,20 +2966,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Labirynt																	<small>
 										<a href="wydarzenie.php?evnt_id=7021">
 
-										(Filmy Wszech Czasï¿½w - piï¿½ta edycja)
+										(Filmy Wszech Czasów - pi±ta edycja)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124502" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124502,'Labirynt','2026','09','23','18:00','ï¿½roda, 23 wrzeï¿½nia 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124502,'Labirynt','2026','09','23','18:00','¦roda, 23 wrze¶nia 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
 
 
 																					</ul>
-														<p class="rep_date"><span>Wtorek</span> 6 paï¿½dziernika // <span>Tuesday</span>, October 6</p>
+														<p class="rep_date"><span>Wtorek</span> 6 pa¼dziernika // <span>Tuesday</span>, October 6</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -2990,20 +2990,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Bez znieczulenia (Rough Treatment)																	<small>
 										<a href="wydarzenie.php?evnt_id=6907">
 
-										(WAJDA: re-wizje - przeglï¿½d f...)
+										(WAJDA: re-wizje - przegl±d f...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=123353" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(123353,'Bez znieczulenia (Rough Treatment)','2026','10','06','18:00','Wtorek, 6 paï¿½dziernika 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(123353,'Bez znieczulenia (Rough Treatment)','2026','10','06','18:00','Wtorek, 6 pa¼dziernika 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
 
 
 																					</ul>
-														<p class="rep_date"><span>Wtorek</span> 13 paï¿½dziernika // <span>Tuesday</span>, October 13</p>
+														<p class="rep_date"><span>Wtorek</span> 13 pa¼dziernika // <span>Tuesday</span>, October 13</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -3014,20 +3014,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Kontrakt rysownika																	<small>
 										<a href="wydarzenie.php?evnt_id=7021">
 
-										(Filmy Wszech Czasï¿½w - piï¿½ta edycja)
+										(Filmy Wszech Czasów - pi±ta edycja)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124503" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124503,'Kontrakt rysownika','2026','10','13','18:00','Wtorek, 13 paï¿½dziernika 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124503,'Kontrakt rysownika','2026','10','13','18:00','Wtorek, 13 pa¼dziernika 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
 
 
 																					</ul>
-														<p class="rep_date"><span>ï¿½roda</span> 28 paï¿½dziernika // <span>Wednesday</span>, October 28</p>
+														<p class="rep_date"><span>¦roda</span> 28 pa¼dziernika // <span>Wednesday</span>, October 28</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -3038,20 +3038,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Romeo i Julia																	<small>
 										<a href="wydarzenie.php?evnt_id=7021">
 
-										(Filmy Wszech Czasï¿½w - piï¿½ta edycja)
+										(Filmy Wszech Czasów - pi±ta edycja)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124504" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124504,'Romeo i Julia','2026','10','28','18:00','ï¿½roda, 28 paï¿½dziernika 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124504,'Romeo i Julia','2026','10','28','18:00','¦roda, 28 pa¼dziernika 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
 
 
 																					</ul>
-														<p class="rep_date"><span>ï¿½roda</span> 4 listopada // <span>Wednesday</span>, November 4</p>
+														<p class="rep_date"><span>¦roda</span> 4 listopada // <span>Wednesday</span>, November 4</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -3062,20 +3062,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Requiem dla snu																	<small>
 										<a href="wydarzenie.php?evnt_id=7021">
 
-										(Filmy Wszech Czasï¿½w - piï¿½ta edycja)
+										(Filmy Wszech Czasów - pi±ta edycja)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124505" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124505,'Requiem dla snu','2026','11','04','18:00','ï¿½roda, 4 listopada 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124505,'Requiem dla snu','2026','11','04','18:00','¦roda, 4 listopada 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
 
 
 																					</ul>
-														<p class="rep_date"><span>ï¿½roda</span> 18 listopada // <span>Wednesday</span>, November 18</p>
+														<p class="rep_date"><span>¦roda</span> 18 listopada // <span>Wednesday</span>, November 18</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -3086,13 +3086,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Ziemia obiecana (The Promised Land)																	<small>
 										<a href="wydarzenie.php?evnt_id=6907">
 
-										(WAJDA: re-wizje - przeglï¿½d ...)
+										(WAJDA: re-wizje - przegl±d ...)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=123354" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(123354,'Ziemia obiecana (The Promised Land)','2026','11','18','18:00','ï¿½roda, 18 listopada 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(123354,'Ziemia obiecana (The Promised Land)','2026','11','18','18:00','¦roda, 18 listopada 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -3107,16 +3107,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<!-- // title Dog Day Afternoon -->
 							<a href="film.php?film_id=12922" title="Dog Day Afternoon">
 
-								Pieskie popoï¿½udnie																	<small>
+								Pieskie popo³udnie																	<small>
 										<a href="wydarzenie.php?evnt_id=7021">
 
-										(Filmy Wszech Czasï¿½w - piï¿½ta edycja)
+										(Filmy Wszech Czasów - pi±ta edycja)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124506" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124506,'Pieskie popoï¿½udnie','2026','12','01','18:00','Wtorek, 1 grudnia 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124506,'Pieskie popo³udnie','2026','12','01','18:00','Wtorek, 1 grudnia 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -3128,10 +3128,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 							<ul class="program_list">
 												<li class=""
 						title="">
-							<!-- // title Wszystko na sprzedaï¿½ -->
-							<a href="film.php?film_id=7962" title="Wszystko na sprzedaï¿½">
+							<!-- // title Wszystko na sprzeda¿ -->
+							<a href="film.php?film_id=7962" title="Wszystko na sprzeda¿">
 
-								Wszystko na sprzedaï¿½ (Everything for Sale)																	<small>
+								Wszystko na sprzeda¿ (Everything for Sale)																	<small>
 										<a href="wydarzenie.php?evnt_id=6907">
 
 										(WAJDA: re-wizje - pr...)
@@ -3140,14 +3140,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=123355" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(123355,'Wszystko na sprzedaï¿½ (Everything for Sale)','2026','12','08','18:00','Wtorek, 8 grudnia 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(123355,'Wszystko na sprzeda¿ (Everything for Sale)','2026','12','08','18:00','Wtorek, 8 grudnia 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
 
 
 																					</ul>
-														<p class="rep_date"><span>ï¿½roda</span> 16 grudnia // <span>Wednesday</span>, December 16</p>
+														<p class="rep_date"><span>¦roda</span> 16 grudnia // <span>Wednesday</span>, December 16</p>
 
 							<ul class="program_list">
 												<li class=""
@@ -3158,13 +3158,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 								Panienki z Rochefort																	<small>
 										<a href="wydarzenie.php?evnt_id=7021">
 
-										(Filmy Wszech Czasï¿½w - piï¿½ta edycja)
+										(Filmy Wszech Czasów - pi±ta edycja)
 										</a>
 									</small>
 															</a>
 							<span>                                                            <a href="/rezerwacja_start.php?event_id=124507" title="kup bilet | Sala Czerwona "
 
-                                                            onclick="return validateAndShowOrderDialog(124507,'Panienki z Rochefort','2026','12','16','18:00','ï¿½roda, 16 grudnia 2026','Sala Czerwona ', 0, 1, 0);" >
+                                                            onclick="return validateAndShowOrderDialog(124507,'Panienki z Rochefort','2026','12','16','18:00','¦roda, 16 grudnia 2026','Sala Czerwona ', 0, 1, 0);" >
                                                             18:00</a>
                                                             </span>
 						</li>
@@ -3181,15 +3181,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 			
 			<ul class="buttons buttons_iefix">
 				<li class="naekranach"><a href="repertuar.php?wersja=wg_filmow"><span class="no">wybierz film </span></a></li>
-				<li class="wybierzdzi"><a href="repertuar.php"><span class="no">wybierz dzieï¿½</span></a></li>
+				<li class="wybierzdzi"><a href="repertuar.php"><span class="no">wybierz dzieñ</span></a></li>
 				<li class="subskrybuj"><a href="rejestracja.php"><span class="no">subskrybuj repertuar</span></a></li>
-				<li class="cenybileto"><a href="kino.php?txt_acro=ceny_biletow"><span class="no">ceny biletï¿½w</span></a></li>
+				<li class="cenybileto"><a href="kino.php?txt_acro=ceny_biletow"><span class="no">ceny biletów</span></a></li>
 			</ul>
 
 						
 				</div>
 
-	<div class="clear" style="height: 20px;"><a class="goback" href="#"><span class="no">Powrï¿½t na gï¿½rï¿½ strony</span></a></div>
+	<div class="clear" style="height: 20px;"><a class="goback" href="#"><span class="no">Powrót na górê strony</span></a></div>
 	<div id="pfr"></div>
 		</div>
 
@@ -3213,7 +3213,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 	<a href="kino.php?txt_acro=kino_kontakt" title="kontakt">Kino Pod Baranami</a>
 
 	Projekt i wykonanie
-	<a href="http://www.kino.krakow.pl/" title="Krakï¿½w - repertuar kin" target="_blank">
+	<a href="http://www.kino.krakow.pl/" title="Kraków - repertuar kin" target="_blank">
 		kino.krakow.pl
 	</a>
 
@@ -3230,8 +3230,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 			<li class="myspace"><a href="http://www.myspace.com/kinopodbaranami"><span>myspace</span></a></li>-->
 			<li class="newsletter"><a href="rejestracja.php"><span>newsletter</span></a></li>
 			<li class="rezerwacja"><a href="repertuar.php"><span>rezerwacja</span></a></li>
-			<!--<li class="seanszhej"><a href="wydarzenie.php?evnt_id=11"><span>seans z hejnaï¿½em</span></a></li>-->
-			<li class="klub"><a href="klub.php"><span>klub przyjaciï¿½</span></a></li>
+			<!--<li class="seanszhej"><a href="wydarzenie.php?evnt_id=11"><span>seans z hejna³em</span></a></li>-->
+			<li class="klub"><a href="klub.php"><span>klub przyjació³</span></a></li>
 			<li class="findex"><a href="wiadomosc.php?news_id=2"><span>filmowy index</span></a></li>
 		</ul>
 	</div>
@@ -3254,7 +3254,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 		<span class="event-place"></span><br />
 		<span style="display: none;" class="warning event-warning-text">Uwaga! Seans w innym obiekcie.</span>
 		<span style="display: none;" class="warning event-sold-out">Bilety wyprzedane. Wybierz inny seans.</span>
-		<span style="display: none;" class="warning event-reservation-times-up">Do seansu pozostaï¿½o mniej niï¿½ 30 minut, rezerwacja i sprzedaï¿½ online sï¿½ niemoï¿½liwe. Zapraszamy do kas.</span>
+		<span style="display: none;" class="warning event-reservation-times-up">Do seansu pozosta³o mniej ni¿ 30 minut, rezerwacja i sprzeda¿ online s± niemo¿liwe. Zapraszamy do kas.</span>
 	</div>
 	<div class="links">
 		<a class="book"  target="_blank"><img src="img/rezerwuj.png" alt="Rezerwuj" /></a>
@@ -3262,15 +3262,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 		<a class="buy" target="_blank"><img src="img/kup_bilet.png" alt="Kup bilet" /></a>
 	</div>
 	<div class="disclaimer" style="font-size:10px;text-align:center;">
-		<!--<p>Ze wzglï¿½du na obowiï¿½zujï¿½ce obostrzenia, liczba dostï¿½pnych miejsc jest ograniczona.</p>
-		<p>W limity nie wliczajï¿½ siï¿½ osoby zaszczepione.</p>
-		<p>Jeï¿½li chcï¿½ Paï¿½stwo dobrowolnie poinformowaï¿½ nas o byciu zaszczepionym, prosimy o wybranie biletu z dopiskiem "mam certyfikat"</p>
-		<!/ -- Ze wzglï¿½du na obowiï¿½zujï¿½ce obostrzenia, liczba dostï¿½pnych miejsc jest ograniczona. W limity nie wliczajï¿½ siï¿½ osoby zaszczepione.
-		W przypadku braku miejsc, moï¿½na dobrowolnie poinformowaï¿½ nas o byciu zaszczepionym. Pozwoli to zwiï¿½kszyï¿½ pulï¿½ miejsc. Prosimy o kontakt z Kasï¿½ Kina. - - >
+		<!--<p>Ze wzglêdu na obowi±zuj±ce obostrzenia, liczba dostêpnych miejsc jest ograniczona.</p>
+		<p>W limity nie wliczaj± siê osoby zaszczepione.</p>
+		<p>Je¶li chc± Pañstwo dobrowolnie poinformowaæ nas o byciu zaszczepionym, prosimy o wybranie biletu z dopiskiem "mam certyfikat"</p>
+		<!/ -- Ze wzglêdu na obowi±zuj±ce obostrzenia, liczba dostêpnych miejsc jest ograniczona. W limity nie wliczaj± siê osoby zaszczepione.
+		W przypadku braku miejsc, mo¿na dobrowolnie poinformowaæ nas o byciu zaszczepionym. Pozwoli to zwiêkszyæ pulê miejsc. Prosimy o kontakt z Kas± Kina. - - >
 		-->
-		<strong>Kupujï¿½c</strong> bilet przez internet nie musisz czekaï¿½ w kolejkach. <br />
-		Wydrukuj bilet na drukarce lub okaï¿½ do kontroli na urzï¿½dzeniu mobilnym.<br />
-		<strong>Zarezerwowane</strong> bilety naleï¿½y odebraï¿½ w kasie najpï¿½niej 30 minut przed seansem
+		<strong>Kupuj±c</strong> bilet przez internet nie musisz czekaæ w kolejkach. <br />
+		Wydrukuj bilet na drukarce lub oka¿ do kontroli na urz±dzeniu mobilnym.<br />
+		<strong>Zarezerwowane</strong> bilety nale¿y odebraæ w kasie najpó¼niej 30 minut przed seansem
 		- po tym czasie rezerwacja zostanie automatycznie anulowana.
 	</div>
 </div>
