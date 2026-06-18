@@ -42,8 +42,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       "address": {
         "@type": "PostalAddress",
         "streetAddress": "ul. Piotrkowska 203/205",
-        "addressLocality": "ï¿½ï¿½dï¿½",
-        "addressRegion": "ï¿½ï¿½dzkie",
+        "addressLocality": "£ód¼",
+        "addressRegion": "³ódzkie",
         "postalCode": "90-451",
         "addressCountry": "PL"
       },
@@ -84,14 +84,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     }
     </script>
 
-<link rel="canonical" href="https://www.charlie.pl"><title>Kino CHARLIE w ï¿½odzi, ul. Piotrkowska 203/205</title>
-<meta name="Description" content="Kino Charlie w ï¿½odzi">
+<link rel="canonical" href="https://www.charlie.pl"><title>Kino CHARLIE w £odzi, ul. Piotrkowska 203/205</title>
+<meta name="Description" content="Kino Charlie w £odzi">
 
-<meta property="og:title" content="Kino Charlie w ï¿½odzi, ul. Piotrkowska 203/205">
+<meta property="og:title" content="Kino Charlie w £odzi, ul. Piotrkowska 203/205">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.charlie.pl">
 <meta property="og:image" content="https://www.charlie.pl/pliki/Kino_CHARLIE_logo_kina.jpg">
-<meta property="og:description" content="Kino-Galeria Charlie zaï¿½oï¿½one w 1994 roku specjalizuje siï¿½ w prezentacji filmï¿½w europejskich, ambitnych, niszowych oraz organizacji wydarzeï¿½ artystyczno-filmowych.">
+<meta property="og:description" content="Kino-Galeria Charlie za³o¿one w 1994 roku specjalizuje siê w prezentacji filmów europejskich, ambitnych, niszowych oraz organizacji wydarzeñ artystyczno-filmowych.">
 
 
 <style type="text/css">
@@ -251,7 +251,8 @@ border-color: #808080;
 
 
 .video-responsive { overflow: hidden; padding-bottom: 56.25%; position: relative; height: 0; }
-.video-responsive iframe { left: 0; top: 0; height: 100%; width: 100%; position: absolute; }
+.video-responsive iframe { left: 0; top: 0; height: 100%; width: 100%; position: absolute; }
+
 
 </style>
 
@@ -303,7 +304,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 
 
-<script type="text/javascript">
+<script type="text/javascript">
+
 function setCookie() {
 
     var el = document.getElementById('rododiv');
@@ -324,12 +326,12 @@ function setCookie() {
 <table width=1205 align=center cellpadding=0 cellspacing=0 border=0>
 <tr valign=middle>
 <td style="font-family: Arial; font-size: 11px; color: #c0c0e0; line-height: 17px;">
-Drogi Widzu, podczas ï¿½wiadczenia usï¿½ug przetwarzamy dostarczane przez Ciebie dane zgodnie z naszï¿½ <a href="index.php?pg=polityka-rodo" style="color: #e0e0f0;">Politykï¿½ RODO</a>.
-Kliknij aby dowiedzieï¿½ siï¿½ jakie dane przetwarzamy, jak je chronimy oraz o&nbsp;przysï¿½ugujï¿½cych Ci z tego tytuï¿½u prawach.
-Informujemy rï¿½wnieï¿½, ï¿½e nasza strona korzysta z&nbsp;plikï¿½w cookies zgodnie z <a href="index.php?pg=polityka-cookies" style="color: #e0e0f0;">Politykï¿½ cookies</a>.
-Podczas korzystania ze strony pliki cookies zapisywane sï¿½ zgodnie z&nbsp;aktualnymi ustawieniami przeglï¿½darki.
-W&nbsp;kaï¿½dej chwili moï¿½esz wycofaï¿½ zgodï¿½ na przetwarzanie danych oraz wyï¿½ï¿½czyï¿½ obsï¿½ugï¿½ plikï¿½w cookies, informacje
-jak to zrobiï¿½ przeczytasz <a href="index.php?pg=polityka-rodo" style="color: #e0e0f0;">tutaj</a> i <a href="index.php?pg=polityka-cookies" style="color: #e0e0f0;">tutaj</a>.
+Drogi Widzu, podczas ¶wiadczenia us³ug przetwarzamy dostarczane przez Ciebie dane zgodnie z nasz± <a href="index.php?pg=polityka-rodo" style="color: #e0e0f0;">Polityk± RODO</a>.
+Kliknij aby dowiedzieæ siê jakie dane przetwarzamy, jak je chronimy oraz o&nbsp;przys³uguj±cych Ci z tego tytu³u prawach.
+Informujemy równie¿, ¿e nasza strona korzysta z&nbsp;plików cookies zgodnie z <a href="index.php?pg=polityka-cookies" style="color: #e0e0f0;">Polityk± cookies</a>.
+Podczas korzystania ze strony pliki cookies zapisywane s± zgodnie z&nbsp;aktualnymi ustawieniami przegl±darki.
+W&nbsp;ka¿dej chwili mo¿esz wycofaæ zgodê na przetwarzanie danych oraz wy³±czyæ obs³ugê plików cookies, informacje
+jak to zrobiæ przeczytasz <a href="index.php?pg=polityka-rodo" style="color: #e0e0f0;">tutaj</a> i <a href="index.php?pg=polityka-cookies" style="color: #e0e0f0;">tutaj</a>.
 </td>
 <td align=center>
 
@@ -367,7 +369,7 @@ margin-left: 20px;
 <a href="https://www.charlie.pl/index.php?i=film&id=1775581104"><img src="g/banerytop/milczaca_przyjaciolka_baneryKinowe_950x200_160830.jpg" alt="Kino Charlie" width="100%" border=0 alt="" style="xmargin-bottom: 10px; -moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a><div style="height: 10px;"></div>
 <div style="margin-top: 6px; margin-bottom: 18px; padding-left: 6px; text-align: center; color: #b0b0b0;">
 
-<a href="./" class=newlayoutlink>STRONA Gï¿½ï¿½WNA</a>
+<a href="./" class=newlayoutlink>STRONA G£ÓWNA</a>
 <span class="newlayoutlink_kreska">/</span>
 <a href="index.php?i=r&id=08-06-2026" class=newlayoutlink>REPERTUAR</a>
 <span class="newlayoutlink_kreska">/</span>
@@ -385,7 +387,7 @@ margin-left: 20px;
 
 <a href="index.php?pg=fotorelacje" class=newlayoutlink>FOTORELACJE</a>
 <span class="newlayoutlink_kreska">/</span>
-<a href="index.php?i=k5" class=newlayoutlink>Zï¿½OTY GLAN</a>
+<a href="index.php?i=k5" class=newlayoutlink>Z£OTY GLAN</a>
 <span class="newlayoutlink_kreska">/</span>
 
 <a href="index.php?pg=charlie-outside" class=newlayoutlink>CHARLIE OUTSIDE</a>
@@ -408,7 +410,7 @@ margin-left: 20px;
 
 
 
-<div style=""><a href="//www.charlie.pl/index.php?i=film&id=1744021235"><img src="grafika/bannery/1275.png" width="100%" height="300 px" border=0 alt="CENNIK KINA" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">CENNIK KINA</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">bilety, zniï¿½ki, promocje</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1778852572"><img src="grafika/bannery/1632.jpg" width="100%" height="300 px" border=0 alt="POKAZ PRZEDPREMIEROWY FILMU PAWLIKOWSKIEGO OJCZYZNA Z&nbsp;UDZIAï¿½EM TWï¿½RCï¿½W" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">POKAZ PRZEDPREMIEROWY FILMU PAWLIKOWSKIEGO OJCZYZNA Z&nbsp;UDZIAï¿½EM TWï¿½RCï¿½W</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">11 CZERWCA GODZ 18:00</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1780846224"><img src="grafika/bannery/1633.jpg" width="100%" height="300 px" border=0 alt="Spoï¿½eczny Dom Kultury - Projekt L091" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">Spoï¿½eczny Dom Kultury - Projekt L091</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">Gï¿½osowanie do 30 czerwca!</div><div style="height: 30px;"></div><div style=""><img src="grafika/bannery/1630.jpg" width="100%" height="300 px" border=0 alt="NIE MASZ POMYSï¿½U NA PREZENT? MOï¿½E VOUCHER ? PODWï¿½JNY VOUCHER DO KINA CHARLIE JEDYNE 60 Zï¿½ PLUS KAWA GRATIS (do nabycia w kasie kina)" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">NIE MASZ POMYSï¿½U NA PREZENT? MOï¿½E VOUCHER ? PODWï¿½JNY VOUCHER DO KINA CHARLIE JEDYNE 60 Zï¿½ PLUS KAWA GRATIS (do nabycia w kasie kina)</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">OD DATY ZAKUPU MOï¿½NA GO WYKORZYSTAï¿½ NA DOWOLNY SEANS W CIï¿½GU 3 MIESIï¿½CY</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1778852572"><img src="grafika/bannery/1624.jpg" width="100%" height="300 px" border=0 alt="POKAZY PRZEDPREMIEROWE / OJCZYZNA" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">POKAZY PRZEDPREMIEROWE / OJCZYZNA</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;"> 4 -14 CZERWCA</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1778686417"><img src="grafika/bannery/1605.jpg" width="100%" height="300 px" border=0 alt="17. PRZEGLï¿½D NOWEGO KINA FRANCUSKIEGO" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">17. PRZEGLï¿½D NOWEGO KINA FRANCUSKIEGO</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">OD 12 DO 18 CZERWCA</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1769595119"><img src="grafika/bannery/1621.jpg" width="100%" height="300 px" border=0 alt="KINO Z&nbsp;DIANï¿½ Dï¿½BROWSKï¿½ - Z&nbsp;DYSKUSJï¿½ PO FILMIE / CZï¿½OWIEK Z&nbsp;MARMURU" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">KINO Z&nbsp;DIANï¿½ Dï¿½BROWSKï¿½ - Z&nbsp;DYSKUSJï¿½ PO FILMIE / CZï¿½OWIEK Z&nbsp;MARMURU</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">8 CZERWCA GODZ 18:30</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1758891764"><img src="grafika/bannery/1614.jpg" width="100%" height="300 px" border=0 alt="KINO SZEPTANE" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">KINO SZEPTANE</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">11 CZERWCA GODZ.18:30</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1778673996"><img src="grafika/bannery/1623.jpg" width="100%" height="300 px" border=0 alt="PRZEGLï¿½D NOWEGO KINA FRANCUSKIEGO / OBCY" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">PRZEGLï¿½D NOWEGO KINA FRANCUSKIEGO / OBCY</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">12 CZERWCA GODZ 18:00</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1780054810"><img src="grafika/bannery/1604.jpg" width="100%" height="300 px" border=0 alt="FEDERICO FELLINI: ciao a tutti! | PRZEGLï¿½D W KINIE CHARLIE" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">FEDERICO FELLINI: ciao a tutti! | PRZEGLï¿½D W KINIE CHARLIE</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">19 CZERWCA - 20 SIERPNIA</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1195160789"><img src="grafika/bannery/1622.jpg" width="100%" height="300 px" border=0 alt="KINO Z&nbsp;DIANï¿½ Dï¿½BROWSKï¿½ - Z&nbsp;DYSKUSJï¿½ PO FILMIE / 8 I PÓ£" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">KINO Z&nbsp;DIANï¿½ Dï¿½BROWSKï¿½ - Z&nbsp;DYSKUSJï¿½ PO FILMIE / 8 I PÓ£</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">19 CZERWCA GODZ 18:30</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1774614451"><img src="grafika/bannery/1631.jpg" width="100%" height="300 px" border=0 alt="KINO Z&nbsp;DIANï¿½ Dï¿½BROWSKï¿½ - Z&nbsp;DYSKUSJï¿½ PO FILMIE / TAKIE JEST ï¿½YCIE" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">KINO Z&nbsp;DIANï¿½ Dï¿½BROWSKï¿½ - Z&nbsp;DYSKUSJï¿½ PO FILMIE / TAKIE JEST ï¿½YCIE</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">22 CZERWCA GODZ 18:30</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1775575818"><img src="grafika/bannery/1628.jpg" width="100%" height="300 px" border=0 alt="CHARLIE KOCHA KOBIETY / POKAZ PRZEDPREMIEROWY/ ZAPROSZENIE ( bilety dla Paï¿½ po 19 zï¿½ tylko w kasie kina)" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">CHARLIE KOCHA KOBIETY / POKAZ PRZEDPREMIEROWY/ ZAPROSZENIE ( bilety dla Paï¿½ po 19 zï¿½ tylko w kasie kina)</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">24 CZERWCA GODZ 19:00</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1769967202"><img src="grafika/bannery/1484.jpg" width="100%" height="300 px" border=0 alt="WAJDA: re-wizje" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">WAJDA: re-wizje</div><div style="height: 30px;"></div><div style=""><img src="grafika/bannery/1403.jpg" width="100%" height="300 px" border=0 alt="STUDENCKIE CZWARTKI ( BILETY DLA STUDENTï¿½W PO 19 Zï¿½)" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">STUDENCKIE CZWARTKI ( BILETY DLA STUDENTï¿½W PO 19 Zï¿½)</div><div style="height: 30px;"></div><div style=""><a href="https://kinodostepne.pl/#o-aplikacji"><img src="grafika/bannery/1400.png" width="100%" height="300 px" border=0 alt="Oglï¿½daj filmy z audiodeskrypcjï¿½!" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">Oglï¿½daj filmy z audiodeskrypcjï¿½!</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">KINO DOSTï¿½PNE</div><div style="height: 30px;"></div><div style=""><a href="https://kartalodzianina.pl/"><img src="grafika/bannery/1111.png" width="100%" height="300 px" border=0 alt="KARTA ï¿½ODZIANINA" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">KARTA ï¿½ODZIANINA</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">oficjalny partner kina</div><div style="height: 30px;"></div><div style=""><a href="https://radiolodz.pl/"><img src="grafika/bannery/1221.png" width="100%" height="300 px" border=0 alt="RADIO ï¿½ï¿½Dï¿½" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">RADIO ï¿½ï¿½Dï¿½</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">oficjalny partner kina</div><div style="height: 30px;"></div><br>
+<div style=""><a href="//www.charlie.pl/index.php?i=film&id=1744021235"><img src="grafika/bannery/1275.png" width="100%" height="300 px" border=0 alt="CENNIK KINA" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">CENNIK KINA</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">bilety, zni¿ki, promocje</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1778852572"><img src="grafika/bannery/1632.jpg" width="100%" height="300 px" border=0 alt="POKAZ PRZEDPREMIEROWY FILMU PAWLIKOWSKIEGO OJCZYZNA Z&nbsp;UDZIA£EM TWÓRCÓW" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">POKAZ PRZEDPREMIEROWY FILMU PAWLIKOWSKIEGO OJCZYZNA Z&nbsp;UDZIA£EM TWÓRCÓW</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">11 CZERWCA GODZ 18:00</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1780846224"><img src="grafika/bannery/1633.jpg" width="100%" height="300 px" border=0 alt="Spo³eczny Dom Kultury - Projekt L091" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">Spo³eczny Dom Kultury - Projekt L091</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">G³osowanie do 30 czerwca!</div><div style="height: 30px;"></div><div style=""><img src="grafika/bannery/1630.jpg" width="100%" height="300 px" border=0 alt="NIE MASZ POMYS£U NA PREZENT? MO¯E VOUCHER ? PODWÓJNY VOUCHER DO KINA CHARLIE JEDYNE 60 Z£ PLUS KAWA GRATIS (do nabycia w kasie kina)" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">NIE MASZ POMYS£U NA PREZENT? MO¯E VOUCHER ? PODWÓJNY VOUCHER DO KINA CHARLIE JEDYNE 60 Z£ PLUS KAWA GRATIS (do nabycia w kasie kina)</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">OD DATY ZAKUPU MO¯NA GO WYKORZYSTAÆ NA DOWOLNY SEANS W CI¡GU 3 MIESIÊCY</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1778852572"><img src="grafika/bannery/1624.jpg" width="100%" height="300 px" border=0 alt="POKAZY PRZEDPREMIEROWE / OJCZYZNA" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">POKAZY PRZEDPREMIEROWE / OJCZYZNA</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;"> 4 -14 CZERWCA</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1778686417"><img src="grafika/bannery/1605.jpg" width="100%" height="300 px" border=0 alt="17. PRZEGL¡D NOWEGO KINA FRANCUSKIEGO" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">17. PRZEGL¡D NOWEGO KINA FRANCUSKIEGO</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">OD 12 DO 18 CZERWCA</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1769595119"><img src="grafika/bannery/1621.jpg" width="100%" height="300 px" border=0 alt="KINO Z&nbsp;DIAN¡ D¡BROWSK¡ - Z&nbsp;DYSKUSJ¡ PO FILMIE / CZ£OWIEK Z&nbsp;MARMURU" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">KINO Z&nbsp;DIAN¡ D¡BROWSK¡ - Z&nbsp;DYSKUSJ¡ PO FILMIE / CZ£OWIEK Z&nbsp;MARMURU</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">8 CZERWCA GODZ 18:30</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1758891764"><img src="grafika/bannery/1614.jpg" width="100%" height="300 px" border=0 alt="KINO SZEPTANE" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">KINO SZEPTANE</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">11 CZERWCA GODZ.18:30</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1778673996"><img src="grafika/bannery/1623.jpg" width="100%" height="300 px" border=0 alt="PRZEGL¡D NOWEGO KINA FRANCUSKIEGO / OBCY" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">PRZEGL¡D NOWEGO KINA FRANCUSKIEGO / OBCY</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">12 CZERWCA GODZ 18:00</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1780054810"><img src="grafika/bannery/1604.jpg" width="100%" height="300 px" border=0 alt="FEDERICO FELLINI: ciao a tutti! | PRZEGL¡D W KINIE CHARLIE" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">FEDERICO FELLINI: ciao a tutti! | PRZEGL¡D W KINIE CHARLIE</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">19 CZERWCA - 20 SIERPNIA</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1195160789"><img src="grafika/bannery/1622.jpg" width="100%" height="300 px" border=0 alt="KINO Z&nbsp;DIAN¡ D¡BROWSK¡ - Z&nbsp;DYSKUSJ¡ PO FILMIE / 8 I PÓ£" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">KINO Z&nbsp;DIAN¡ D¡BROWSK¡ - Z&nbsp;DYSKUSJ¡ PO FILMIE / 8 I PÓ£</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">19 CZERWCA GODZ 18:30</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1774614451"><img src="grafika/bannery/1631.jpg" width="100%" height="300 px" border=0 alt="KINO Z&nbsp;DIAN¡ D¡BROWSK¡ - Z&nbsp;DYSKUSJ¡ PO FILMIE / TAKIE JEST ¯YCIE" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">KINO Z&nbsp;DIAN¡ D¡BROWSK¡ - Z&nbsp;DYSKUSJ¡ PO FILMIE / TAKIE JEST ¯YCIE</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">22 CZERWCA GODZ 18:30</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1775575818"><img src="grafika/bannery/1628.jpg" width="100%" height="300 px" border=0 alt="CHARLIE KOCHA KOBIETY / POKAZ PRZEDPREMIEROWY/ ZAPROSZENIE ( bilety dla Pañ po 19 z³ tylko w kasie kina)" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">CHARLIE KOCHA KOBIETY / POKAZ PRZEDPREMIEROWY/ ZAPROSZENIE ( bilety dla Pañ po 19 z³ tylko w kasie kina)</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">24 CZERWCA GODZ 19:00</div><div style="height: 30px;"></div><div style=""><a href="//www.charlie.pl/index.php?i=film&id=1769967202"><img src="grafika/bannery/1484.jpg" width="100%" height="300 px" border=0 alt="WAJDA: re-wizje" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">WAJDA: re-wizje</div><div style="height: 30px;"></div><div style=""><img src="grafika/bannery/1403.jpg" width="100%" height="300 px" border=0 alt="STUDENCKIE CZWARTKI ( BILETY DLA STUDENTÓW PO 19 Z£)" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">STUDENCKIE CZWARTKI ( BILETY DLA STUDENTÓW PO 19 Z£)</div><div style="height: 30px;"></div><div style=""><a href="https://kinodostepne.pl/#o-aplikacji"><img src="grafika/bannery/1400.png" width="100%" height="300 px" border=0 alt="Ogl±daj filmy z audiodeskrypcj±!" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">Ogl±daj filmy z audiodeskrypcj±!</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">KINO DOSTÊPNE</div><div style="height: 30px;"></div><div style=""><a href="https://kartalodzianina.pl/"><img src="grafika/bannery/1111.png" width="100%" height="300 px" border=0 alt="KARTA £ODZIANINA" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">KARTA £ODZIANINA</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">oficjalny partner kina</div><div style="height: 30px;"></div><div style=""><a href="https://radiolodz.pl/"><img src="grafika/bannery/1221.png" width="100%" height="300 px" border=0 alt="RADIO £ÓD¬" style="-moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;"></a></div><div style="height: 3px;"></div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 13px; color: #000000; font-weight: bold;">RADIO £ÓD¬</div><div style="text-align: center; font-family: Tahoma,Arial; font-size: 11px; color: #808080;">oficjalny partner kina</div><div style="height: 30px;"></div><br>
 
 
 </td>
@@ -418,28 +420,28 @@ margin-left: 20px;
 
 <a href="https://www.charlie.pl/index.php?i=film&id=1778852572"><img src="grafika/bannery_main/163.jpg" width="100%"></a><br><br><a href="https://www.charlie.pl/index.php?i=film&id=1780054810"><img src="grafika/bannery_main/157.jpg" width="100%"></a><br><br>
 <div style="background-color: #f8f8f8; border: 1px solid #d0d0d0; padding: 10px; text-align: center; font-size: 13px; line-height: 130%;">
-Kasa Kina Charlie jest czynna na 40 minut<br>przed pierwszï¿½ projekcjï¿½ repertuarowï¿½.
+Kasa Kina Charlie jest czynna na 40 minut<br>przed pierwsz± projekcj± repertuarow±.
 </div><br>
 
 <div style="background-color: #f8f8f8; border: 1px solid #d0d0d0; padding: 10px; text-align: center; font-size: 13px; line-height: 130%;">
-Peï¿½ny repertuar na kolejny tydzieï¿½,<br>w kaï¿½dy wtorek o godz. 19:00.
+Pe³ny repertuar na kolejny tydzieñ,<br>w ka¿dy wtorek o godz. 19:00.
 </div><br>
 <iframe name=zwiastun style="padding: 0; margin: 0; border: 0px;" src="zwiastun_frame_new.php?id=1682238391" width=450 height=320 frameborder=0 scrolling=no marginwidth=0 marginheight=0></iframe>
-<div style="margin-bottom: 20px;"><a href="https://bilety.charlie.pl/msi"><img src="g/il/rezerwacja-przycisk.webp" width="100%"></a></div><div style="font-size: 13px;"><h1 style="display: block; font-family: Verdana,Arial,sans-serif; font-size: 13px; color: black; text-align: center;"><strong>Repertuar 8 czerwca 2026 r. (poniedziaï¿½ek)</strong></h1><br></div>
+<div style="margin-bottom: 20px;"><a href="https://bilety.charlie.pl/msi"><img src="g/il/rezerwacja-przycisk.webp" width="100%"></a></div><div style="font-size: 13px;"><h1 style="display: block; font-family: Verdana,Arial,sans-serif; font-size: 13px; color: black; text-align: center;"><strong>Repertuar 8 czerwca 2026 r. (poniedzia³ek)</strong></h1><br></div>
 
-<div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA STUDYJNA (DUï¿½A)</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIAï¿½EK </b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>15.10</b></div><a href="index.php?pg=zwiastun&id=1772640506"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89474&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA STUDYJNA (DU¯A)</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIA£EK </b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>15.10</b></div><a href="index.php?pg=zwiastun&id=1772640506"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89474&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
-<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1772640506"><img src="grafika/filmy/male/8285.jpg" border=0 alt="Diabeï¿½ ubiera siï¿½ u Prady 2"></a></td><td width=1 bgcolor=black></td></tr>
+<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1772640506"><img src="grafika/filmy/male/8285.jpg" border=0 alt="Diabe³ ubiera siê u Prady 2"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1772640506" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Diabeï¿½ ubiera siï¿½ u Prady 2</strong></h3></a><br>komedia, dramat<br>USA 2026<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1772640506" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Diabe³ ubiera siê u Prady 2</strong></h3></a><br>komedia, dramat<br>USA 2026<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table><br>
 
 <script type="application/ld+json">
 {
 "@context": "https://schema.org",
 "@type": "ScreeningEvent",
-"name": "Diabeï¿½ ubiera siï¿½ u Prady 2",
+"name": "Diabe³ ubiera siê u Prady 2",
 "url": "https://www.charlie.pl/index.php?i=film&id=1772640506",
 "startDate": "2026-06-08T15:10+01:00",
 "endDate": "2026-06-08T17:10+01:00",
@@ -449,24 +451,24 @@ Peï¿½ny repertuar na kolejny tydzieï¿½,<br>w kaï¿½dy wtorek o godz. 19:00.
   "dateCreated": "2026-06-08",
   "image": "https://www.charlie.pl/grafika/filmy/plakaty/8/8968.jpg",
   "director": "David Frankel",
-  "name": "Diabeï¿½ ubiera siï¿½ u Prady 2"
+  "name": "Diabe³ ubiera siê u Prady 2"
   }
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>17.35</b></div><a href="index.php?pg=zwiastun&id=1772640506"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89475&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>17.35</b></div><a href="index.php?pg=zwiastun&id=1772640506"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89475&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
-<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1772640506"><img src="grafika/filmy/male/8285.jpg" border=0 alt="Diabeï¿½ ubiera siï¿½ u Prady 2"></a></td><td width=1 bgcolor=black></td></tr>
+<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1772640506"><img src="grafika/filmy/male/8285.jpg" border=0 alt="Diabe³ ubiera siê u Prady 2"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1772640506" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Diabeï¿½ ubiera siï¿½ u Prady 2</strong></h3></a><br>komedia, dramat<br>USA 2026<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1772640506" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Diabe³ ubiera siê u Prady 2</strong></h3></a><br>komedia, dramat<br>USA 2026<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table><br>
 
 <script type="application/ld+json">
 {
 "@context": "https://schema.org",
 "@type": "ScreeningEvent",
-"name": "Diabeï¿½ ubiera siï¿½ u Prady 2",
+"name": "Diabe³ ubiera siê u Prady 2",
 "url": "https://www.charlie.pl/index.php?i=film&id=1772640506",
 "startDate": "2026-06-08T17:35+01:00",
 "endDate": "2026-06-08T19:35+01:00",
@@ -476,24 +478,24 @@ Peï¿½ny repertuar na kolejny tydzieï¿½,<br>w kaï¿½dy wtorek o godz. 19:00.
   "dateCreated": "2026-06-08",
   "image": "https://www.charlie.pl/grafika/filmy/plakaty/8/8968.jpg",
   "director": "David Frankel",
-  "name": "Diabeï¿½ ubiera siï¿½ u Prady 2"
+  "name": "Diabe³ ubiera siê u Prady 2"
   }
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>20.00</b></div><a href="index.php?pg=zwiastun&id=1772640506"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89476&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>20.00</b></div><a href="index.php?pg=zwiastun&id=1772640506"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89476&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
-<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1772640506"><img src="grafika/filmy/male/8285.jpg" border=0 alt="Diabeï¿½ ubiera siï¿½ u Prady 2"></a></td><td width=1 bgcolor=black></td></tr>
+<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1772640506"><img src="grafika/filmy/male/8285.jpg" border=0 alt="Diabe³ ubiera siê u Prady 2"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1772640506" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Diabeï¿½ ubiera siï¿½ u Prady 2</strong></h3></a><br>komedia, dramat<br>USA 2026<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table></div><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1772640506" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Diabe³ ubiera siê u Prady 2</strong></h3></a><br>komedia, dramat<br>USA 2026<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table></div><br>
 
 <script type="application/ld+json">
 {
 "@context": "https://schema.org",
 "@type": "ScreeningEvent",
-"name": "Diabeï¿½ ubiera siï¿½ u Prady 2",
+"name": "Diabe³ ubiera siê u Prady 2",
 "url": "https://www.charlie.pl/index.php?i=film&id=1772640506",
 "startDate": "2026-06-08T20:00+01:00",
 "endDate": "2026-06-08T22:00+01:00",
@@ -503,18 +505,18 @@ Peï¿½ny repertuar na kolejny tydzieï¿½,<br>w kaï¿½dy wtorek o godz. 19:00.
   "dateCreated": "2026-06-08",
   "image": "https://www.charlie.pl/grafika/filmy/plakaty/8/8968.jpg",
   "director": "David Frankel",
-  "name": "Diabeï¿½ ubiera siï¿½ u Prady 2"
+  "name": "Diabe³ ubiera siê u Prady 2"
   }
 }
 </script>
 
-<br><div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA KAMERALNA (ï¿½REDNIA)</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIAï¿½EK </b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>15.10</b></div><a href="index.php?pg=zwiastun&id=1771416863"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89501&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<br><div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA KAMERALNA (¦REDNIA)</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIA£EK </b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>15.10</b></div><a href="index.php?pg=zwiastun&id=1771416863"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89501&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 <tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1771416863"><img src="grafika/filmy/male/8272.jpg" border=0 alt="Drama"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1771416863" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Drama</strong></h3></a><br>komedia romantyczna<br>USA 2026<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table></div><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1771416863" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Drama</strong></h3></a><br>komedia romantyczna<br>USA 2026<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table></div><br>
 
 <script type="application/ld+json">
 {
@@ -536,19 +538,19 @@ Kristoffer Borgli",
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIAï¿½EK / CHARLIE DLA DZIECI, BILET DLA DZIECKA - 18 Zï¿½</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>17.20</b></div><a href="index.php?pg=zwiastun&id=1775580000"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89502&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIA£EK / CHARLIE DLA DZIECI, BILET DLA DZIECKA - 18 Z£</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>17.20</b></div><a href="index.php?pg=zwiastun&id=1775580000"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89502&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
-<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1775580000"><img src="grafika/filmy/male/8322.jpg" border=0 alt="Sprawiedliwoï¿½ï¿½ owiec"></a></td><td width=1 bgcolor=black></td></tr>
+<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1775580000"><img src="grafika/filmy/male/8322.jpg" border=0 alt="Sprawiedliwo¶æ owiec"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #107010; color: white; padding: 0px 4px 0px 4px;" title="dubbing">dubbing</span> <br><a href="index.php?i=film&id=1775580000" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Sprawiedliwoï¿½ï¿½ owiec</strong></h3></a><br><i>(The Sheep Detectives)</i><br>Komedia kryminalna<br>Irlandia, Niemcy, USA, Wielka Brytania 2026<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table></div><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #107010; color: white; padding: 0px 4px 0px 4px;" title="dubbing">dubbing</span> <br><a href="index.php?i=film&id=1775580000" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Sprawiedliwo¶æ owiec</strong></h3></a><br><i>(The Sheep Detectives)</i><br>Komedia kryminalna<br>Irlandia, Niemcy, USA, Wielka Brytania 2026<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table></div><br>
 
 <script type="application/ld+json">
 {
 "@context": "https://schema.org",
 "@type": "ScreeningEvent",
-"name": "Sprawiedliwoï¿½ï¿½ owiec",
+"name": "Sprawiedliwo¶æ owiec",
 "url": "https://www.charlie.pl/index.php?i=film&id=1775580000",
 "startDate": "2026-06-08T17:20+01:00",
 "endDate": "2026-06-08T19:00+01:00",
@@ -558,24 +560,24 @@ Kristoffer Borgli",
   "dateCreated": "2026-06-08",
   "image": "https://www.charlie.pl/grafika/filmy/plakaty/9/9027.jpg",
   "director": "Kyle Balda",
-  "name": "Sprawiedliwoï¿½ï¿½ owiec"
+  "name": "Sprawiedliwo¶æ owiec"
   }
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIAï¿½EK </b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>19.30</b></div><a href="index.php?pg=zwiastun&id=1775659255"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89503&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIA£EK </b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>19.30</b></div><a href="index.php?pg=zwiastun&id=1775659255"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89503&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
-<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1775659255"><img src="grafika/filmy/male/8325.jpg" border=0 alt="Podziemny krï¿½g"></a></td><td width=1 bgcolor=black></td></tr>
+<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1775659255"><img src="grafika/filmy/male/8325.jpg" border=0 alt="Podziemny kr±g"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><img src="g/il/ikona_hothit_60pxh.gif" border=0 alt="Hot Hit" align=right style="margin: 0px 0px 0px 5px;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1775659255" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Podziemny krï¿½g</strong></h3></a><br><i>(Fight Club)</i><br>thriller<br>Niemcy, USA 1999<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table></div><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><img src="g/il/ikona_hothit_60pxh.gif" border=0 alt="Hot Hit" align=right style="margin: 0px 0px 0px 5px;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1775659255" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Podziemny kr±g</strong></h3></a><br><i>(Fight Club)</i><br>thriller<br>Niemcy, USA 1999<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table></div><br>
 
 <script type="application/ld+json">
 {
 "@context": "https://schema.org",
 "@type": "ScreeningEvent",
-"name": "Podziemny krï¿½g",
+"name": "Podziemny kr±g",
 "url": "https://www.charlie.pl/index.php?i=film&id=1775659255",
 "startDate": "2026-06-08T19:30+01:00",
 "endDate": "2026-06-08T21:49+01:00",
@@ -585,24 +587,24 @@ Kristoffer Borgli",
   "dateCreated": "2026-06-08",
   "image": "https://www.charlie.pl/grafika/filmy/plakaty/9/9030.jpg",
   "director": "David Fincher",
-  "name": "Podziemny krï¿½g"
+  "name": "Podziemny kr±g"
   }
 }
 </script>
 
-<br><div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA KLUBOWA (MAï¿½A)</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIAï¿½EK</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>15.35</b></div><a href="index.php?pg=zwiastun&id=1775582210"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89704&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<br><div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA KLUBOWA (MA£A)</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIA£EK</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>15.35</b></div><a href="index.php?pg=zwiastun&id=1775582210"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89704&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
-<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1775582210"><img src="grafika/filmy/male/8324.jpg" border=0 alt="Znaki Pana ï¿½liwki"></a></td><td width=1 bgcolor=black></td></tr>
+<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1775582210"><img src="grafika/filmy/male/8324.jpg" border=0 alt="Znaki Pana ¦liwki"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><a href="index.php?i=film&id=1775582210" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Znaki Pana ï¿½liwki</strong></h3></a><br>dokumentalny, biograficzny<br>Polska 2025<br><font color="#909090">bilet 19 zï¿½</font></td></tr></table><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><a href="index.php?i=film&id=1775582210" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Znaki Pana ¦liwki</strong></h3></a><br>dokumentalny, biograficzny<br>Polska 2025<br><font color="#909090">bilet 19 z³</font></td></tr></table><br>
 
 <script type="application/ld+json">
 {
 "@context": "https://schema.org",
 "@type": "ScreeningEvent",
-"name": "Znaki Pana ï¿½liwki",
+"name": "Znaki Pana ¦liwki",
 "url": "https://www.charlie.pl/index.php?i=film&id=1775582210",
 "startDate": "2026-06-08T15:35+01:00",
 "endDate": "2026-06-08T16:47+01:00",
@@ -610,19 +612,19 @@ Kristoffer Borgli",
 "workPresented": {
   "@type": "Movie",
   "dateCreated": "2026-06-08",
-  "director": "Urszula Morga, Bartosz Mikoï¿½ajczyk",
-  "name": "Znaki Pana ï¿½liwki"
+  "director": "Urszula Morga, Bartosz Miko³ajczyk",
+  "name": "Znaki Pana ¦liwki"
   }
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>17.05</b></div><a href="index.php?pg=zwiastun&id=1774273226"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89706&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>17.05</b></div><a href="index.php?pg=zwiastun&id=1774273226"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89706&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 <tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1774273226"><img src="grafika/filmy/male/8300.jpg" border=0 alt="Kokuho"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1774273226" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Kokuho</strong></h3></a><br><i>(Kokuh&#333;)</i><br>dramat<br>Japonia 2025<br><font color="#909090">bilet 19 zï¿½</font></td></tr></table><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1774273226" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Kokuho</strong></h3></a><br><i>(Kokuh&#333;)</i><br>dramat<br>Japonia 2025<br><font color="#909090">bilet 19 z³</font></td></tr></table><br>
 
 <script type="application/ld+json">
 {
@@ -643,13 +645,13 @@ Kristoffer Borgli",
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>20.00</b></div><a href="index.php?pg=zwiastun&id=1735133433"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89705&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>20.00</b></div><a href="index.php?pg=zwiastun&id=1735133433"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89705&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 <tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1735133433"><img src="grafika/filmy/male/7823.jpg" border=0 alt="Flow"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><a href="index.php?i=film&id=1735133433" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Flow</strong></h3></a><br>animacja<br>ï¿½otwa, Francja, Belgia 2024<br><font color="#909090">bilet 19 zï¿½</font></td></tr></table></div><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><a href="index.php?i=film&id=1735133433" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Flow</strong></h3></a><br>animacja<br>£otwa, Francja, Belgia 2024<br><font color="#909090">bilet 19 z³</font></td></tr></table></div><br>
 
 <script type="application/ld+json">
 {
@@ -671,13 +673,13 @@ Gints Zilbalodis",
 }
 </script>
 
-<br><div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA ARTE</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIAï¿½EK / CHARLIE DLA DZIECI, BILET DLA DZIECKA - 18 Zï¿½</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>15.30</b></div><a href="index.php?pg=zwiastun&id=1776850816"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89699&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<br><div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA ARTE</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIA£EK / CHARLIE DLA DZIECI, BILET DLA DZIECKA - 18 Z£</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>15.30</b></div><a href="index.php?pg=zwiastun&id=1776850816"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89699&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 <tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1776850816"><img src="grafika/filmy/male/8341.jpg" border=0 alt="Niesamowite przygody skarpetek 3. Ale kosmos!"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><a href="index.php?i=film&id=1776850816" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Niesamowite przygody skarpetek 3. Ale kosmos!</strong></h3></a><br>animacja<br>Polska, Portugalia 2026<br><font color="#909090">bilet 19 zï¿½</font></td></tr></table></div><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><a href="index.php?i=film&id=1776850816" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Niesamowite przygody skarpetek 3. Ale kosmos!</strong></h3></a><br>animacja<br>Polska, Portugalia 2026<br><font color="#909090">bilet 19 z³</font></td></tr></table></div><br>
 
 <script type="application/ld+json">
 {
@@ -691,25 +693,25 @@ Gints Zilbalodis",
 "workPresented": {
   "@type": "Movie",
   "dateCreated": "2026-06-08",
-  "director": "Elï¿½bieta Wï¿½sik, Paweï¿½ Wendorff; Jarosï¿½aw Szyszko, Barbara Koniecka, Mateusz Kmieï¿½, Natalia Bartska-Kmieï¿½",
+  "director": "El¿bieta W±sik, Pawe³ Wendorff; Jaros³aw Szyszko, Barbara Koniecka, Mateusz Kmieæ, Natalia Bartska-Kmieæ",
   "name": "Niesamowite przygody skarpetek 3. Ale kosmos!"
   }
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIAï¿½EK</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>16.30</b></div><a href="index.php?pg=zwiastun&id=1780399324"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89700&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIA£EK</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>16.30</b></div><a href="index.php?pg=zwiastun&id=1780399324"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89700&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
-<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1780399324"><img src="grafika/filmy/male/8399.jpg" border=0 alt="Orï¿½y republiki"></a></td><td width=1 bgcolor=black></td></tr>
+<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1780399324"><img src="grafika/filmy/male/8399.jpg" border=0 alt="Or³y republiki"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1780399324" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Orï¿½y republiki</strong></h3></a><br><i>(Eagles of the Republic)</i><br>thriller<br>Dania, Francja, Szwecja 2025<br><font color="#909090">bilet 19 zï¿½</font></td></tr></table><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1780399324" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Or³y republiki</strong></h3></a><br><i>(Eagles of the Republic)</i><br>thriller<br>Dania, Francja, Szwecja 2025<br><font color="#909090">bilet 19 z³</font></td></tr></table><br>
 
 <script type="application/ld+json">
 {
 "@context": "https://schema.org",
 "@type": "ScreeningEvent",
-"name": "Orï¿½y republiki",
+"name": "Or³y republiki",
 "url": "https://www.charlie.pl/index.php?i=film&id=1780399324",
 "startDate": "2026-06-08T16:30+01:00",
 "endDate": "2026-06-08T18:37+01:00",
@@ -719,24 +721,24 @@ Gints Zilbalodis",
   "dateCreated": "2026-06-08",
   "director": "
 Tarik Saleh",
-  "name": "Orï¿½y republiki"
+  "name": "Or³y republiki"
   }
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>18.45</b></div><a href="index.php?pg=zwiastun&id=1775582210"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89702&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>18.45</b></div><a href="index.php?pg=zwiastun&id=1775582210"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89702&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
-<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1775582210"><img src="grafika/filmy/male/8324.jpg" border=0 alt="Znaki Pana ï¿½liwki"></a></td><td width=1 bgcolor=black></td></tr>
+<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1775582210"><img src="grafika/filmy/male/8324.jpg" border=0 alt="Znaki Pana ¦liwki"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><a href="index.php?i=film&id=1775582210" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Znaki Pana ï¿½liwki</strong></h3></a><br>dokumentalny, biograficzny<br>Polska 2025<br><font color="#909090">bilet 19 zï¿½</font></td></tr></table><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><a href="index.php?i=film&id=1775582210" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Znaki Pana ¦liwki</strong></h3></a><br>dokumentalny, biograficzny<br>Polska 2025<br><font color="#909090">bilet 19 z³</font></td></tr></table><br>
 
 <script type="application/ld+json">
 {
 "@context": "https://schema.org",
 "@type": "ScreeningEvent",
-"name": "Znaki Pana ï¿½liwki",
+"name": "Znaki Pana ¦liwki",
 "url": "https://www.charlie.pl/index.php?i=film&id=1775582210",
 "startDate": "2026-06-08T18:45+01:00",
 "endDate": "2026-06-08T19:57+01:00",
@@ -744,19 +746,19 @@ Tarik Saleh",
 "workPresented": {
   "@type": "Movie",
   "dateCreated": "2026-06-08",
-  "director": "Urszula Morga, Bartosz Mikoï¿½ajczyk",
-  "name": "Znaki Pana ï¿½liwki"
+  "director": "Urszula Morga, Bartosz Miko³ajczyk",
+  "name": "Znaki Pana ¦liwki"
   }
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>20.15</b></div><a href="index.php?pg=zwiastun&id=1776432692"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89701&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>20.15</b></div><a href="index.php?pg=zwiastun&id=1776432692"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89701&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 <tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1776432692"><img src="grafika/filmy/male/8334.jpg" border=0 alt="Erupcja"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><a href="index.php?i=film&id=1776432692" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Erupcja</strong></h3></a><br><i>(Erupcja)</i><br>dramat/romans<br>USA/Polska 2026<br><font color="#909090">bilet 19 zï¿½</font></td></tr></table></div><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><a href="index.php?i=film&id=1776432692" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Erupcja</strong></h3></a><br><i>(Erupcja)</i><br>dramat/romans<br>USA/Polska 2026<br><font color="#909090">bilet 19 z³</font></td></tr></table></div><br>
 
 <script type="application/ld+json">
 {
@@ -776,19 +778,19 @@ Tarik Saleh",
 }
 </script>
 
-<br><div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA AUDIOWIZUALNA</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIAï¿½EK </b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>15.30</b></div><a href="index.php?pg=zwiastun&id=1773230460"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89531&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<br><div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA AUDIOWIZUALNA</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIA£EK </b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>15.30</b></div><a href="index.php?pg=zwiastun&id=1773230460"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89531&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
-<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1773230460"><img src="grafika/filmy/male/8292.jpg" border=0 alt="Ostatnia sesja w Paryï¿½u"></a></td><td width=1 bgcolor=black></td></tr>
+<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1773230460"><img src="grafika/filmy/male/8292.jpg" border=0 alt="Ostatnia sesja w Pary¿u"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1773230460" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Ostatnia sesja w Paryï¿½u</strong></h3></a><br>Thriller, Psychologiczny<br>Francja 2025<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1773230460" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Ostatnia sesja w Pary¿u</strong></h3></a><br>Thriller, Psychologiczny<br>Francja 2025<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table><br>
 
 <script type="application/ld+json">
 {
 "@context": "https://schema.org",
 "@type": "ScreeningEvent",
-"name": "Ostatnia sesja w Paryï¿½u",
+"name": "Ostatnia sesja w Pary¿u",
 "url": "https://www.charlie.pl/index.php?i=film&id=1773230460",
 "startDate": "2026-06-08T15:30+01:00",
 "endDate": "2026-06-08T17:15+01:00",
@@ -799,18 +801,18 @@ Tarik Saleh",
   "image": "https://www.charlie.pl/grafika/filmy/plakaty/8/8975.jpg",
   "director": "
 Rebecca Zlotowski",
-  "name": "Ostatnia sesja w Paryï¿½u"
+  "name": "Ostatnia sesja w Pary¿u"
   }
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>17.40</b></div><a href="index.php?pg=zwiastun&id=1778149450"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89532&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>17.40</b></div><a href="index.php?pg=zwiastun&id=1778149450"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89532&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 <tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1778149450"><img src="grafika/filmy/male/8363.jpg" border=0 alt="Michael"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1778149450" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Michael</strong></h3></a><br><i>(Michael)</i><br>muzyczny , biograficzny<br>USA, Wielka Brytania 2026<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1778149450" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Michael</strong></h3></a><br><i>(Michael)</i><br>muzyczny , biograficzny<br>USA, Wielka Brytania 2026<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table><br>
 
 <script type="application/ld+json">
 {
@@ -830,19 +832,19 @@ Rebecca Zlotowski",
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>20.15</b></div><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89533&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>20.15</b></div><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89533&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
-<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1776866240"><img src="grafika/filmy/male/8343.jpg" border=0 alt="Zawieï¿½cie czerwone latarnie"></a></td><td width=1 bgcolor=black></td></tr>
+<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1776866240"><img src="grafika/filmy/male/8343.jpg" border=0 alt="Zawie¶cie czerwone latarnie"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1776866240" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Zawieï¿½cie czerwone latarnie</strong></h3></a><br><i>(Da hong deng long gao gao gua)</i><br>dramat<br>Chiny, Hongkong, Tajwan 1991<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table></div><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1776866240" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Zawie¶cie czerwone latarnie</strong></h3></a><br><i>(Da hong deng long gao gao gua)</i><br>dramat<br>Chiny, Hongkong, Tajwan 1991<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table></div><br>
 
 <script type="application/ld+json">
 {
 "@context": "https://schema.org",
 "@type": "ScreeningEvent",
-"name": "Zawieï¿½cie czerwone latarnie",
+"name": "Zawie¶cie czerwone latarnie",
 "url": "https://www.charlie.pl/index.php?i=film&id=1776866240",
 "startDate": "2026-06-08T20:15+01:00",
 "endDate": "2026-06-08T22:16+01:00",
@@ -852,18 +854,18 @@ Rebecca Zlotowski",
   "dateCreated": "2026-06-08",
   "image": "https://www.charlie.pl/grafika/filmy/plakaty/9/9047.jpg",
   "director": "Yimou Zhang",
-  "name": "Zawieï¿½cie czerwone latarnie"
+  "name": "Zawie¶cie czerwone latarnie"
   }
 }
 </script>
 
-<br><div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA WIDZï¿½W</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIAï¿½EK / CHARLIE DLA DZIECI, BILET DLA DZIECKA - 18 Zï¿½</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>13.55</b></div><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89563&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<br><div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA WIDZÓW</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIA£EK / CHARLIE DLA DZIECI, BILET DLA DZIECKA - 18 Z£</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>13.55</b></div><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89563&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 <tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1779376373"><img src="grafika/filmy/male/8392.jpg" border=0 alt="Drzewo Magii"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #107010; color: white; padding: 0px 4px 0px 4px;" title="dubbing">dubbing</span> <br><a href="index.php?i=film&id=1779376373" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Drzewo Magii</strong></h3></a><br><i>(The Magic Faraway Tree)</i><br>Familijny, Przygodowy<br>Francja, USA, Wielka Brytania 2026<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table></div><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #107010; color: white; padding: 0px 4px 0px 4px;" title="dubbing">dubbing</span> <br><a href="index.php?i=film&id=1779376373" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Drzewo Magii</strong></h3></a><br><i>(The Magic Faraway Tree)</i><br>Familijny, Przygodowy<br>Francja, USA, Wielka Brytania 2026<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table></div><br>
 
 <script type="application/ld+json">
 {
@@ -884,13 +886,13 @@ Rebecca Zlotowski",
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIAï¿½EK </b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>16.05</b></div><a href="index.php?pg=zwiastun&id=1776434624"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89564&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIA£EK </b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>16.05</b></div><a href="index.php?pg=zwiastun&id=1776434624"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89564&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 <tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1776434624"><img src="grafika/filmy/male/8336.jpg" border=0 alt="Zawodowcy"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1776434624" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Zawodowcy</strong></h3></a><br>dramat,akcja<br>USA, Wielka Brytania 2026<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table></div><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1776434624" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Zawodowcy</strong></h3></a><br>dramat,akcja<br>USA, Wielka Brytania 2026<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table></div><br>
 
 <script type="application/ld+json">
 {
@@ -912,13 +914,13 @@ Guy Ritchie",
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIAï¿½EK / CHARLIE DLA DZIECI, BILET DLA DZIECKA - 18 Zï¿½</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>18.10</b></div><a href="index.php?pg=zwiastun&id=1779210308"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89565&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIA£EK / CHARLIE DLA DZIECI, BILET DLA DZIECKA - 18 Z£</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>18.10</b></div><a href="index.php?pg=zwiastun&id=1779210308"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89565&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 <tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1779210308"><img src="grafika/filmy/male/8389.jpg" border=0 alt="Tom i Jerry: Przygoda w muzeum"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #107010; color: white; padding: 0px 4px 0px 4px;" title="dubbing">dubbing</span> <br><a href="index.php?i=film&id=1779210308" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Tom i Jerry: Przygoda w muzeum</strong></h3></a><br><i>(Tom & Jerry: Forbidden Compass)</i><br>Animacja, Familijny, Przygodowy<br>Chiny, USA 2025<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table></div><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #107010; color: white; padding: 0px 4px 0px 4px;" title="dubbing">dubbing</span> <br><a href="index.php?i=film&id=1779210308" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Tom i Jerry: Przygoda w muzeum</strong></h3></a><br><i>(Tom & Jerry: Forbidden Compass)</i><br>Animacja, Familijny, Przygodowy<br>Chiny, USA 2025<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table></div><br>
 
 <script type="application/ld+json">
 {
@@ -937,13 +939,13 @@ Guy Ritchie",
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIAï¿½EK </b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>20.15</b></div><a href="index.php?pg=zwiastun&id=1776434624"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89566&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIA£EK </b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>20.15</b></div><a href="index.php?pg=zwiastun&id=1776434624"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89566&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 <tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1776434624"><img src="grafika/filmy/male/8336.jpg" border=0 alt="Zawodowcy"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1776434624" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Zawodowcy</strong></h3></a><br>dramat,akcja<br>USA, Wielka Brytania 2026<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table></div><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1776434624" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Zawodowcy</strong></h3></a><br>dramat,akcja<br>USA, Wielka Brytania 2026<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table></div><br>
 
 <script type="application/ld+json">
 {
@@ -965,19 +967,19 @@ Guy Ritchie",
 }
 </script>
 
-<br><div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA ZIELONA</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIAï¿½EK </b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>13.25</b></div><a href="index.php?pg=zwiastun&id=1775581104"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89594&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<br><div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA ZIELONA</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIA£EK </b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>13.25</b></div><a href="index.php?pg=zwiastun&id=1775581104"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89594&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
-<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1775581104"><img src="grafika/filmy/male/8323.jpg" border=0 alt="Milczï¿½ca przyjaciï¿½ka"></a></td><td width=1 bgcolor=black></td></tr>
+<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1775581104"><img src="grafika/filmy/male/8323.jpg" border=0 alt="Milcz±ca przyjació³ka"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1775581104" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Milczï¿½ca przyjaciï¿½ka</strong></h3></a><br><i>(Stille Freundin)</i><br>dramat<br>Francja, Niemcy, Wï¿½gry 2025<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1775581104" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Milcz±ca przyjació³ka</strong></h3></a><br><i>(Stille Freundin)</i><br>dramat<br>Francja, Niemcy, Wêgry 2025<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table><br>
 
 <script type="application/ld+json">
 {
 "@context": "https://schema.org",
 "@type": "ScreeningEvent",
-"name": "Milczï¿½ca przyjaciï¿½ka",
+"name": "Milcz±ca przyjació³ka",
 "url": "https://www.charlie.pl/index.php?i=film&id=1775581104",
 "startDate": "2026-06-08T13:25+01:00",
 "endDate": "2026-06-08T15:50+01:00",
@@ -986,25 +988,25 @@ Guy Ritchie",
   "@type": "Movie",
   "dateCreated": "2026-06-08",
   "image": "https://www.charlie.pl/grafika/filmy/plakaty/9/9028.jpg",
-  "director": "Ildikï¿½ Enyedi",
-  "name": "Milczï¿½ca przyjaciï¿½ka"
+  "director": "Ildikó Enyedi",
+  "name": "Milcz±ca przyjació³ka"
   }
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>16.10</b></div><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89595&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>16.10</b></div><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89595&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
-<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1776866240"><img src="grafika/filmy/male/8343.jpg" border=0 alt="Zawieï¿½cie czerwone latarnie"></a></td><td width=1 bgcolor=black></td></tr>
+<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1776866240"><img src="grafika/filmy/male/8343.jpg" border=0 alt="Zawie¶cie czerwone latarnie"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1776866240" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Zawieï¿½cie czerwone latarnie</strong></h3></a><br><i>(Da hong deng long gao gao gua)</i><br>dramat<br>Chiny, Hongkong, Tajwan 1991<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table></div><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="napisy">napisy</span> <br><a href="index.php?i=film&id=1776866240" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Zawie¶cie czerwone latarnie</strong></h3></a><br><i>(Da hong deng long gao gao gua)</i><br>dramat<br>Chiny, Hongkong, Tajwan 1991<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table></div><br>
 
 <script type="application/ld+json">
 {
 "@context": "https://schema.org",
 "@type": "ScreeningEvent",
-"name": "Zawieï¿½cie czerwone latarnie",
+"name": "Zawie¶cie czerwone latarnie",
 "url": "https://www.charlie.pl/index.php?i=film&id=1776866240",
 "startDate": "2026-06-08T16:10+01:00",
 "endDate": "2026-06-08T18:11+01:00",
@@ -1014,24 +1016,24 @@ Guy Ritchie",
   "dateCreated": "2026-06-08",
   "image": "https://www.charlie.pl/grafika/filmy/plakaty/9/9047.jpg",
   "director": "Yimou Zhang",
-  "name": "Zawieï¿½cie czerwone latarnie"
+  "name": "Zawie¶cie czerwone latarnie"
   }
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>KINO Z DIANA Dï¿½BROWSKï¿½ - POKAZ Z DYSKUSJï¿½ PO FILMIE / TANI PONIEDZIAï¿½EK</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>18.30</b></div><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89406&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>KINO Z DIANA D¡BROWSK¡ - POKAZ Z DYSKUSJ¡ PO FILMIE / TANI PONIEDZIA£EK</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>18.30</b></div><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89406&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
-<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1769595119"><img src="grafika/filmy/male/8225.jpg" border=0 alt="Czï¿½owiek z marmuru"></a></td><td width=1 bgcolor=black></td></tr>
+<tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1769595119"><img src="grafika/filmy/male/8225.jpg" border=0 alt="Cz³owiek z marmuru"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><img src="g/il/arcydzielo.png" width=60 border=0 alt="Arcydzieï¿½o" align=right style="margin: 0px 0px 0px 5px;"><img src="g/il/ikona_hothit_60pxh.gif" border=0 alt="Hot Hit" align=right style="margin: 0px 0px 0px 5px;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <br><a href="index.php?i=film&id=1769595119" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Czï¿½owiek z marmuru</strong></h3></a><br><i>(Czï¿½owiek z marmuru)</i><br>polityczny<br>Polska 1973<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table></div><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><img src="g/il/arcydzielo.png" width=60 border=0 alt="Arcydzie³o" align=right style="margin: 0px 0px 0px 5px;"><img src="g/il/ikona_hothit_60pxh.gif" border=0 alt="Hot Hit" align=right style="margin: 0px 0px 0px 5px;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <br><a href="index.php?i=film&id=1769595119" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Cz³owiek z marmuru</strong></h3></a><br><i>(Cz³owiek z marmuru)</i><br>polityczny<br>Polska 1973<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table></div><br>
 
 <script type="application/ld+json">
 {
 "@context": "https://schema.org",
 "@type": "ScreeningEvent",
-"name": "Czï¿½owiek z marmuru",
+"name": "Cz³owiek z marmuru",
 "url": "https://www.charlie.pl/index.php?i=film&id=1769595119",
 "startDate": "2026-06-08T18:30+01:00",
 "endDate": "2026-06-08T21:03+01:00",
@@ -1042,18 +1044,18 @@ Guy Ritchie",
   "image": "https://www.charlie.pl/grafika/filmy/plakaty/8/8911.jpg",
   "director": "Andrzej Wajda
 ",
-  "name": "Czï¿½owiek z marmuru"
+  "name": "Cz³owiek z marmuru"
   }
 }
 </script>
 
-<br><div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA CZERWONY DYWAN</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIAï¿½EK / CHARLIE DLA DZIECI, BILET DLA DZIECKA - 18 Zï¿½</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>14.20</b></div><a href="index.php?pg=zwiastun&id=1776850816"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89625&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<br><div style="text-align: center; border-top: 1px solid #907050; border-bottom: 1px solid #907050; padding-top: 5px; padding-bottom: 5px; margin-bottom: 30px;"><h2 style="display: block; font-size: 13px; font-weight: bold; color: #907050; letter-spacing: 2px; xfont-family: Tahoma,sans-serif;">SALA CZERWONY DYWAN</h2></div><div style="background-color: #d8d8d8; padding: 10px 5px 10px 5px;"><center><b>TANI PONIEDZIA£EK / CHARLIE DLA DZIECI, BILET DLA DZIECKA - 18 Z£</b></center><table style="width: 100%; height: 1px; background-color: #a8a8a8; margin: 8px 0px 10px 0px;" cellpadding=0 cellspacing=0 border=0><tr><td></td></tr></table><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>14.20</b></div><a href="index.php?pg=zwiastun&id=1776850816"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89625&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 <tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1776850816"><img src="grafika/filmy/male/8341.jpg" border=0 alt="Niesamowite przygody skarpetek 3. Ale kosmos!"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <br><a href="index.php?i=film&id=1776850816" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Niesamowite przygody skarpetek 3. Ale kosmos!</strong></h3></a><br>animacja<br>Polska, Portugalia 2026<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <br><a href="index.php?i=film&id=1776850816" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Niesamowite przygody skarpetek 3. Ale kosmos!</strong></h3></a><br>animacja<br>Polska, Portugalia 2026<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table><br>
 
 <script type="application/ld+json">
 {
@@ -1067,19 +1069,19 @@ Guy Ritchie",
 "workPresented": {
   "@type": "Movie",
   "dateCreated": "2026-06-08",
-  "director": "Elï¿½bieta Wï¿½sik, Paweï¿½ Wendorff; Jarosï¿½aw Szyszko, Barbara Koniecka, Mateusz Kmieï¿½, Natalia Bartska-Kmieï¿½",
+  "director": "El¿bieta W±sik, Pawe³ Wendorff; Jaros³aw Szyszko, Barbara Koniecka, Mateusz Kmieæ, Natalia Bartska-Kmieæ",
   "name": "Niesamowite przygody skarpetek 3. Ale kosmos!"
   }
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>15.35</b></div><a href="index.php?pg=zwiastun&id=1779210308"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89626&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>15.35</b></div><a href="index.php?pg=zwiastun&id=1779210308"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89626&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 <tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1779210308"><img src="grafika/filmy/male/8389.jpg" border=0 alt="Tom i Jerry: Przygoda w muzeum"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #107010; color: white; padding: 0px 4px 0px 4px;" title="dubbing">dubbing</span> <br><a href="index.php?i=film&id=1779210308" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Tom i Jerry: Przygoda w muzeum</strong></h3></a><br><i>(Tom & Jerry: Forbidden Compass)</i><br>Animacja, Familijny, Przygodowy<br>Chiny, USA 2025<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #107010; color: white; padding: 0px 4px 0px 4px;" title="dubbing">dubbing</span> <br><a href="index.php?i=film&id=1779210308" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Tom i Jerry: Przygoda w muzeum</strong></h3></a><br><i>(Tom & Jerry: Forbidden Compass)</i><br>Animacja, Familijny, Przygodowy<br>Chiny, USA 2025<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table><br>
 
 <script type="application/ld+json">
 {
@@ -1098,13 +1100,13 @@ Guy Ritchie",
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>17.40</b></div><a href="index.php?pg=zwiastun&id=1779116711"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89627&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>17.40</b></div><a href="index.php?pg=zwiastun&id=1779116711"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89627&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 <tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1779116711"><img src="grafika/filmy/male/8385.jpg" border=0 alt="Gwiezdne wojny: Mandalorian i Grogu"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #107010; color: white; padding: 0px 4px 0px 4px;" title="dubbing">dubbing</span> <br><a href="index.php?i=film&id=1779116711" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Gwiezdne wojny: Mandalorian i Grogu</strong></h3></a><br><i>(The Mandalorian and Grogu)</i><br>sci-fi<br>USA 2026<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #107010; color: white; padding: 0px 4px 0px 4px;" title="dubbing">dubbing</span> <br><a href="index.php?i=film&id=1779116711" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Gwiezdne wojny: Mandalorian i Grogu</strong></h3></a><br><i>(The Mandalorian and Grogu)</i><br>sci-fi<br>USA 2026<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table><br>
 
 <script type="application/ld+json">
 {
@@ -1124,13 +1126,13 @@ Guy Ritchie",
 }
 </script>
 
-<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>20.20</b></div><a href="index.php?pg=zwiastun&id=1779116711"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89628&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamï¿½w bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
+<table width="100%" cellpadding=0 cellspacing=0 border=0><tr><td width="100%" height=1 bgcolor="#d0d0d0"></td></tr></table><br><table width="100%" cellpadding=0 cellspacing=0 border=0><tr valign=top><td width=40 nowrap align=center><div style="margin-top: 7px;"><b>20.20</b></div><a href="index.php?pg=zwiastun&id=1779116711"><img src="g/przycisk_zobacz_zwiastun2.gif" border=0 style="margin-top: 5px;" alt="zobacz zwiastun"></a><br><a href="https://bilety.charlie.pl/MSI/Default.aspx?event_id=89628&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06-08" target="_blank"><img src="g/zamowbilet.gif" border=0 alt="zamów bilet" style="margin-top: 5px;"></a></td><td width=10></td><td width=77>
 <table cellpadding=0 cellspacing=0 border=0>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 <tr><td width=1 bgcolor=black></td><td width=75 height=75><a href="index.php?i=film&id=1779116711"><img src="grafika/filmy/male/8385.jpg" border=0 alt="Gwiezdne wojny: Mandalorian i Grogu"></a></td><td width=1 bgcolor=black></td></tr>
 <tr><td width=1 height=1></td><td width=75 bgcolor=black></td><td width=1></td></tr>
 </table>
-</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #107010; color: white; padding: 0px 4px 0px 4px;" title="dubbing">dubbing</span> <br><a href="index.php?i=film&id=1779116711" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Gwiezdne wojny: Mandalorian i Grogu</strong></h3></a><br><i>(The Mandalorian and Grogu)</i><br>sci-fi<br>USA 2026<br><font color="#909090">bilet 23.99 zï¿½ ( w przedsprzedaï¿½y 19 zï¿½)</font></td></tr></table></div><br>
+</td><td width=10></td><td style="font-size: 13px; line-height: 140%;"><span style="font-family: Arial; font-size: 11px; background-color: #3090c0; color: white; padding: 0px 4px 0px 4px;" title="projekcja cyfrowa"><b>digital</b></span> <span style="font-family: Arial; font-size: 11px; background-color: #107010; color: white; padding: 0px 4px 0px 4px;" title="dubbing">dubbing</span> <br><a href="index.php?i=film&id=1779116711" class=tytul><h3 style="display: inline; font-size: 13px;"><strong>Gwiezdne wojny: Mandalorian i Grogu</strong></h3></a><br><i>(The Mandalorian and Grogu)</i><br>sci-fi<br>USA 2026<br><font color="#909090">bilet 23.99 z³ ( w przedsprzeda¿y 19 z³)</font></td></tr></table></div><br>
 
 <script type="application/ld+json">
 {
@@ -1174,7 +1176,7 @@ Guy Ritchie",
 <td width=4></td>
 <td><img src="g/il/ikona_monitoring2.gif" border=0 alt="monitoring" title="monitoring"></td>
 <td width=4></td>
-<td><img src="g/il/ikona_parking2.gif" border=0 alt="parking" title="parking od strony ul. Piotrkowskiej i ul. Koï¿½ciuszki"></td>
+<td><img src="g/il/ikona_parking2.gif" border=0 alt="parking" title="parking od strony ul. Piotrkowskiej i ul. Ko¶ciuszki"></td>
 <td width=4></td>
 <td><img src="g/il/ikona_zakazpalenia2.gif" border=0 alt="zakaz palenia" title="zakaz palenia na terenie kina"></td>
 </tr>
@@ -1183,7 +1185,7 @@ Guy Ritchie",
 <center>
 <table align=center cellpadding=0 cellspacing=0 border=0 style="margin-top: 5px; margin-bottom: 12px; margin-left: 1px;">
 <tr>
-<td width=27 align=center><a href="http://www.facebook.com/pages/Kino-Galeria-Charlie/105674927858"><img src="g/il/ikona_facebook.gif" border=0 alt="facebook" title="Doï¿½ï¿½cz do spoï¿½ecznoï¿½ci Kina CHARLIE w Facebooku"></a></td>
+<td width=27 align=center><a href="http://www.facebook.com/pages/Kino-Galeria-Charlie/105674927858"><img src="g/il/ikona_facebook.gif" border=0 alt="facebook" title="Do³±cz do spo³eczno¶ci Kina CHARLIE w Facebooku"></a></td>
 <td width=4></td>
 <td width=27 align=center><a href="gg:19293550"><img src="g/il/ikona_gg.gif" border=0 alt="gadu-gadu" title="Napisz do nas na gadu-gadu"></a></td>
 <td width=4></td>
@@ -1197,19 +1199,19 @@ Guy Ritchie",
 <div class="zakladka_naglowek">Repertuar</div>
 <div class="zakladka_box">
 <div class="zakladka_link_box"><a class="zakladka_link" href="https://bilety.charlie.pl/msi">Rezerwacja online</a></div>
-<a class=dzien href="index.php?i=r&id=08-06-2026"><b><u>08.06</u></b> - poniedziaï¿½ek</a>
+<a class=dzien href="index.php?i=r&id=08-06-2026"><b><u>08.06</u></b> - poniedzia³ek</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
 <a class=dzien href="index.php?i=r&id=09-06-2026"><b><u>09.06</u></b> - wtorek</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
-<a class=dzien href="index.php?i=r&id=10-06-2026"><b><u>10.06</u></b> - ï¿½roda</a>
+<a class=dzien href="index.php?i=r&id=10-06-2026"><b><u>10.06</u></b> - ¶roda</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
 <a class=dzien href="index.php?i=r&id=11-06-2026"><b><u>11.06</u></b> - czwartek</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
-<a class=dzien href="index.php?i=r&id=12-06-2026"><b><u>12.06</u></b> - piï¿½tek</a>
+<a class=dzien href="index.php?i=r&id=12-06-2026"><b><u>12.06</u></b> - pi±tek</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
 <a class=dzien href="index.php?i=r&id=13-06-2026"><b><u>13.06</u></b> - sobota</a>
@@ -1218,28 +1220,28 @@ Guy Ritchie",
 <a class=dzien href="index.php?i=r&id=14-06-2026"><b><u>14.06</u></b> - niedziela</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
-<a class=dzien href="index.php?i=r&id=15-06-2026"><b><u>15.06</u></b> - poniedziaï¿½ek</a>
+<a class=dzien href="index.php?i=r&id=15-06-2026"><b><u>15.06</u></b> - poniedzia³ek</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
 <a class=dzien href="index.php?i=r&id=16-06-2026"><b><u>16.06</u></b> - wtorek</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
-<a class=dzien href="index.php?i=r&id=17-06-2026"><b><u>17.06</u></b> - ï¿½roda</a>
+<a class=dzien href="index.php?i=r&id=17-06-2026"><b><u>17.06</u></b> - ¶roda</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
 <a class=dzien href="index.php?i=r&id=18-06-2026"><b><u>18.06</u></b> - czwartek</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
-<a class=dzien href="index.php?i=r&id=19-06-2026"><b><u>19.06</u></b> - piï¿½tek</a>
+<a class=dzien href="index.php?i=r&id=19-06-2026"><b><u>19.06</u></b> - pi±tek</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
 <a class=dzien href="index.php?i=r&id=20-06-2026"><b><u>20.06</u></b> - sobota</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
-<a class=dzien href="index.php?i=r&id=22-06-2026"><b><u>22.06</u></b> - poniedziaï¿½ek</a>
+<a class=dzien href="index.php?i=r&id=22-06-2026"><b><u>22.06</u></b> - poniedzia³ek</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
-<a class=dzien href="index.php?i=r&id=24-06-2026"><b><u>24.06</u></b> - ï¿½roda</a>
+<a class=dzien href="index.php?i=r&id=24-06-2026"><b><u>24.06</u></b> - ¶roda</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
 <a class=dzien href="index.php?i=r&id=28-06-2026"><b><u>28.06</u></b> - niedziela</a>
@@ -1251,7 +1253,7 @@ Guy Ritchie",
 <a class=dzien href="index.php?i=r&id=11-07-2026"><b><u>11.07</u></b> - sobota</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
-<a class=dzien href="index.php?i=r&id=17-07-2026"><b><u>17.07</u></b> - piï¿½tek</a>
+<a class=dzien href="index.php?i=r&id=17-07-2026"><b><u>17.07</u></b> - pi±tek</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
 <a class=dzien href="index.php?i=r&id=18-07-2026"><b><u>18.07</u></b> - sobota</a>
@@ -1260,20 +1262,20 @@ Guy Ritchie",
 <a class=dzien href="index.php?i=r&id=19-07-2026"><b><u>19.07</u></b> - niedziela</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
-<a class=dzien href="index.php?i=r&id=20-07-2026"><b><u>20.07</u></b> - poniedziaï¿½ek</a>
+<a class=dzien href="index.php?i=r&id=20-07-2026"><b><u>20.07</u></b> - poniedzia³ek</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
 <a class=dzien href="index.php?i=r&id=21-07-2026"><b><u>21.07</u></b> - wtorek</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
-<a class=dzien href="index.php?i=r&id=22-07-2026"><b><u>22.07</u></b> - ï¿½roda</a>
+<a class=dzien href="index.php?i=r&id=22-07-2026"><b><u>22.07</u></b> - ¶roda</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
 <a class=dzien href="index.php?i=r&id=23-07-2026"><b><u>23.07</u></b> - czwartek</a>
 <table cellpadding=0 cellspacing=0 border=0><tr><td height=4></td></tr></table>
 
 <div style="height: 4px;"></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=repertuargodzinowy">Repertuar godzinowy</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=f1">Filmy w repertuarze</a></div></div><br>
-<div class="zakladka_naglowek">Znajdï¿½ film</div>
+<div class="zakladka_naglowek">Znajd¼ film</div>
 <div class="zakladka_box">
 
 <form action="index.php?i=f3" method=post style="display: inline">
@@ -1283,17 +1285,17 @@ Guy Ritchie",
 </div><br>
 <div class="zakladka_naglowek">Wydarzenia</div>
 <div class="zakladka_box">
-<div style="height: 4px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">12-18 CZERWCA</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1778686417"><span style="color: #ff0000">17. PRZEGLï¿½D NOWEGO KINA FRANCUSKIEGO</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">DO 30 CZERWCA!</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1780846224"><span style="color: #ff0000">SPOï¿½ECZNY DOM KULTURY - L091 Gï¿½OSOWANIE NA BUDï¿½ET OBYWATELSKI</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">11 CZERWCA GODZ 18:00</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1778852572"><span style="color: #ff0000">POKAZ PRZEDPREMIEROWY FILMU PAWLIKOWSKIEGO OJCZYZNA Z&nbsp;UDZIAï¿½EM TWï¿½RCï¿½W</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">8 CZERWCA GODZ 18:30</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1769595119"><span style="color: #ff0000">KINO Z&nbsp;DIANï¿½ Dï¿½BROWSKï¿½ - Z&nbsp;DYSKUSJï¿½ PO FILMIE / CZï¿½OWIEK Z&nbsp;MARMURU</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">4-14 CZERWCA</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1778852572"><span style="color: #ff0000">POKAZY PRZEDPREMIEROWE / OJCZYZNA</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">11 CZERWCA GODZ.18:30</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1758891764"><span style="color: #ff0000">KINO SZEPTANE
-</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">12 CZERWCA GODZ 18:00</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1778673996"><span style="color: #ff0000">PRZEGLï¿½D NOWEGO KINA FRANCUSKIEGO / OBCY</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">19 CZERWCA- 20 SIERPNIA</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1780054810"><span style="color: #ff0000">FEDERICO FELLINI: ciao a&nbsp;tutti!, PRZEGLï¿½D W&nbsp;KINIE CHARLIE</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">19 CZERWCA GODZ 18:30</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1195160789"><span style="color: #ff0000">KINO Z&nbsp;DIANï¿½ Dï¿½BROWSKï¿½ - Z&nbsp;DYSKUSJï¿½ PO FILMIE / 8 I PÓ£</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">22 CZERWCA GODZ 18:30</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1774614451"><span style="color: #ff0000"> KINO Z&nbsp;DIANï¿½ Dï¿½BROWSKï¿½ - Z&nbsp;DYSKUSJï¿½ PO FILMIE / TAKIE JEST ï¿½YCIE</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">24 CZERWCA GODZ 19:00</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1775575818"><span style="color: #ff0000">CHARLIE KOCHA KOBIETY / POKAZ PRZEDPREMIEROWY/ ZAPROSZENIE ( bilety dla Paï¿½ po 19 zï¿½ tylko w&nbsp;kasie kina)</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">Szczegï¿½y i zapisy: https://panel.nhef.pl/zgloszenie</div><div class="zakladka_link_box"><a class="zakladka_link" href="https://panel.nhef.pl/zgloszenie"><span style="color: #ff0000">Edukacja filmowa na najwyï¿½szym poziomie &#129325;&#128071;/ &#128073; Zarezerwuj juï¿½ dziï¿½ i wprowadï¿½ dzieci w&nbsp;ï¿½wiat kina, jakiego jeszcze nie znaï¿½y! </span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">Waï¿½na informacja! </div><div class="zakladka_link_box"><a class="zakladka_link" href="https://drive.google.com/file/d/1hNDbx40YInMgssco2ij836Ltg48ZpJjF/view?usp=sharing"><span style="color: black">Standardy ochrony maï¿½oletnich</span></a></div></div><br>
+<div style="height: 4px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">12-18 CZERWCA</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1778686417"><span style="color: #ff0000">17. PRZEGL¡D NOWEGO KINA FRANCUSKIEGO</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">DO 30 CZERWCA!</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1780846224"><span style="color: #ff0000">SPO£ECZNY DOM KULTURY - L091 G£OSOWANIE NA BUD¯ET OBYWATELSKI</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">11 CZERWCA GODZ 18:00</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1778852572"><span style="color: #ff0000">POKAZ PRZEDPREMIEROWY FILMU PAWLIKOWSKIEGO OJCZYZNA Z&nbsp;UDZIA£EM TWÓRCÓW</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">8 CZERWCA GODZ 18:30</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1769595119"><span style="color: #ff0000">KINO Z&nbsp;DIAN¡ D¡BROWSK¡ - Z&nbsp;DYSKUSJ¡ PO FILMIE / CZ£OWIEK Z&nbsp;MARMURU</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">4-14 CZERWCA</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1778852572"><span style="color: #ff0000">POKAZY PRZEDPREMIEROWE / OJCZYZNA</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">11 CZERWCA GODZ.18:30</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1758891764"><span style="color: #ff0000">KINO SZEPTANE
+</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">12 CZERWCA GODZ 18:00</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1778673996"><span style="color: #ff0000">PRZEGL¡D NOWEGO KINA FRANCUSKIEGO / OBCY</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">19 CZERWCA- 20 SIERPNIA</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1780054810"><span style="color: #ff0000">FEDERICO FELLINI: ciao a&nbsp;tutti!, PRZEGL¡D W&nbsp;KINIE CHARLIE</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">19 CZERWCA GODZ 18:30</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1195160789"><span style="color: #ff0000">KINO Z&nbsp;DIAN¡ D¡BROWSK¡ - Z&nbsp;DYSKUSJ¡ PO FILMIE / 8 I PÓ£</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">22 CZERWCA GODZ 18:30</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1774614451"><span style="color: #ff0000"> KINO Z&nbsp;DIAN¡ D¡BROWSK¡ - Z&nbsp;DYSKUSJ¡ PO FILMIE / TAKIE JEST ¯YCIE</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">24 CZERWCA GODZ 19:00</div><div class="zakladka_link_box"><a class="zakladka_link" href="//www.charlie.pl/index.php?i=film&id=1775575818"><span style="color: #ff0000">CHARLIE KOCHA KOBIETY / POKAZ PRZEDPREMIEROWY/ ZAPROSZENIE ( bilety dla Pañ po 19 z³ tylko w&nbsp;kasie kina)</span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">Szczegó³y i zapisy: https://panel.nhef.pl/zgloszenie</div><div class="zakladka_link_box"><a class="zakladka_link" href="https://panel.nhef.pl/zgloszenie"><span style="color: #ff0000">Edukacja filmowa na najwy¿szym poziomie &#129325;&#128071;/ &#128073; Zarezerwuj ju¿ dzi¶ i wprowad¼ dzieci w&nbsp;¶wiat kina, jakiego jeszcze nie zna³y! </span></a></div><div style="height: 8px;"></div><div style="font-family: Arial; font-size: 9px; color: #808080; margin-bottom: 2px;">Wa¿na informacja! </div><div class="zakladka_link_box"><a class="zakladka_link" href="https://drive.google.com/file/d/1hNDbx40YInMgssco2ij836Ltg48ZpJjF/view?usp=sharing"><span style="color: black">Standardy ochrony ma³oletnich</span></a></div></div><br>
 <div class="zakladka_naglowek">Filmy</div>
 <div class="zakladka_box">
 <div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=f1">W repertuarze</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=f2">Zapowiedzi</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=f3">Filmy od A do Z</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=f7">Najnowsze opinie</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=f4">Zaproponuj film</a></div></div><br>
 <div class="zakladka_naglowek">Kino</div>
 <div class="zakladka_box">
-<div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k1">O kinie</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k0">Sale kinowe</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k10">Kawiarenka</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k17">OPEN CINEMA - oferta kina plenerowego</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?pg=wynajem">Wynajem kina</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k5">Zï¿½oty Glan</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k6">Charlie Chaplin</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k8">Kontakt</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k19">Pressroom</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?pg=ogloszenia">Ogï¿½oszenia i zamï¿½wienia publiczne</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?pg=multikultura">Multikultura</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?pg=polityka-cookies">Polityka cookies</a></div></div><br>
+<div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k1">O kinie</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k0">Sale kinowe</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k10">Kawiarenka</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k17">OPEN CINEMA - oferta kina plenerowego</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?pg=wynajem">Wynajem kina</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k5">Z³oty Glan</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k6">Charlie Chaplin</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k8">Kontakt</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=k19">Pressroom</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?pg=ogloszenia">Og³oszenia i zamówienia publiczne</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?pg=multikultura">Multikultura</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?pg=polityka-cookies">Polityka cookies</a></div></div><br>
 <div class="zakladka_naglowek">Galeria</div>
 <div class="zakladka_box">
-Wystawa "Butenko - pinxit - plakaty"<br><a href="index.php?pg=wystawa-butenko-pinxit-plakaty"><img src="g/il/2022-05-19_wystawa_butenko_small.jpg" alt="Galeria" border=0 style="width: 100%; margin-top: 5px; margin-bottom: 2px;"></a><br><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?pg=wystawa-butenko-pinxit-plakaty">O wystawie</a></div><div style="height: 16px;"></div>Co w kinie... terkocze? - wystawa projektorï¿½w z&nbsp;caï¿½ego ï¿½wiata<br><a href="index.php?pg=wystawa-co-w-kinie-terkocze"><img src="g/il/2021-05-21_wystawa_jek_9747_w156.jpg" alt="Galeria" border=0 style="width: 100%; margin-top: 5px; margin-bottom: 2px;"></a><br><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?pg=wystawa-co-w-kinie-terkocze">O wystawie</a></div><div style="height: 16px;"></div>Wystawa wyrï¿½nionych i&nbsp;nagrodzonych prac uczniï¿½w Szkoï¿½y Podstawowej nr 6 im. Szarych Szeregï¿½w w ï¿½odzi<br><a href="index.php?pg=wystawa-sp6"><img src="https://www.charlie.pl/g/il/wystawa-2021-04-12_IMG_20210331_094557_w156.jpg" alt="Galeria" border=0 style="width: 100%; margin-top: 5px; margin-bottom: 2px;"></a><br><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?pg=wystawa-sp6">O wystawie</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=g0">Archiwum</a></div></div><br>
+Wystawa "Butenko - pinxit - plakaty"<br><a href="index.php?pg=wystawa-butenko-pinxit-plakaty"><img src="g/il/2022-05-19_wystawa_butenko_small.jpg" alt="Galeria" border=0 style="width: 100%; margin-top: 5px; margin-bottom: 2px;"></a><br><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?pg=wystawa-butenko-pinxit-plakaty">O wystawie</a></div><div style="height: 16px;"></div>Co w kinie... terkocze? - wystawa projektorów z&nbsp;ca³ego ¶wiata<br><a href="index.php?pg=wystawa-co-w-kinie-terkocze"><img src="g/il/2021-05-21_wystawa_jek_9747_w156.jpg" alt="Galeria" border=0 style="width: 100%; margin-top: 5px; margin-bottom: 2px;"></a><br><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?pg=wystawa-co-w-kinie-terkocze">O wystawie</a></div><div style="height: 16px;"></div>Wystawa wyró¿nionych i&nbsp;nagrodzonych prac uczniów Szko³y Podstawowej nr 6 im. Szarych Szeregów w £odzi<br><a href="index.php?pg=wystawa-sp6"><img src="https://www.charlie.pl/g/il/wystawa-2021-04-12_IMG_20210331_094557_w156.jpg" alt="Galeria" border=0 style="width: 100%; margin-top: 5px; margin-bottom: 2px;"></a><br><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?pg=wystawa-sp6">O wystawie</a></div><div class="zakladka_link_box"><a class="zakladka_link" href="index.php?i=g0">Archiwum</a></div></div><br>
 
 <br><br>
 
@@ -1305,18 +1307,18 @@ Wystawa "Butenko - pinxit - plakaty"<br><a href="index.php?pg=wystawa-butenko-pi
 </tr>
 </table>
 </td><td width=15 rowspan=2></td>
-<td width=292 rowspan=2><div style="margin-bottom: 15px;"><a href="https://bilety.charlie.pl/msi"><img src="g/il/rezerwacja-przycisk.webp" width="100%" alt="Rezerwacja biletï¿½w"></a></div><div style="margin-bottom: 15px; background-color: white; padding-top: 8px; padding-bottom: 6px; text-align: center; font-family: Roboto,Arial; font-size: 14px; font-weight: 400; line-height: 130%; color: black; -moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;">Kupujesz bilet online? Moï¿½esz okazaï¿½ go na&nbsp;telefonie, przed wejï¿½ciem na salï¿½</div><div style="background-color: white;"><div class="fb-page" data-href="https://www.facebook.com/KinoCharlie" data-tabs="timeline" data-width="292" data-height="600" data-small-header="true" data-adapt-container-width="true" data-hide-cover="false" data-show-facepile="false"><blockquote cite="https://www.facebook.com/Kino-Charlie-2384876598400517/?__tn__=CH-R" class="fb-xfbml-parse-ignore"><a href="https://www.facebook.com/Kino-Charlie-2384876598400517/?__tn__=CH-R">Kino Charlie</a></blockquote></div></div><br><div style="background-color: white; padding: 15px; margin-bottom: 15px;"><a href="https://mojeekino.pl/show/kino-charlie-lodz" target="_blank"><img src="g/il/e-kino-charlie_w292.webp" width="100%" alt="e-Kino Charlie"></a></div><a href="index.php?i=w2864"><img src="g/il/zapros-kino-charlie-do-domu_w292.webp" width="100%" alt="Zaproï¿½ Kino Charlie do domu"></a><br><br><div style="margin-bottom: 15px;"><a href="index.php?pg=klub-charliego"><img src="g/il/klub-charliego-2021-03_w292.webp" width="100%" border=0 alt="Klub Charliego"></a></div>
+<td width=292 rowspan=2><div style="margin-bottom: 15px;"><a href="https://bilety.charlie.pl/msi"><img src="g/il/rezerwacja-przycisk.webp" width="100%" alt="Rezerwacja biletów"></a></div><div style="margin-bottom: 15px; background-color: white; padding-top: 8px; padding-bottom: 6px; text-align: center; font-family: Roboto,Arial; font-size: 14px; font-weight: 400; line-height: 130%; color: black; -moz-border-radius: 3px; -webkit-border-radius: 3px; -khtml-border-radius: 3px; border-radius: 3px;">Kupujesz bilet online? Mo¿esz okazaæ go na&nbsp;telefonie, przed wej¶ciem na salê</div><div style="background-color: white;"><div class="fb-page" data-href="https://www.facebook.com/KinoCharlie" data-tabs="timeline" data-width="292" data-height="600" data-small-header="true" data-adapt-container-width="true" data-hide-cover="false" data-show-facepile="false"><blockquote cite="https://www.facebook.com/Kino-Charlie-2384876598400517/?__tn__=CH-R" class="fb-xfbml-parse-ignore"><a href="https://www.facebook.com/Kino-Charlie-2384876598400517/?__tn__=CH-R">Kino Charlie</a></blockquote></div></div><br><div style="background-color: white; padding: 15px; margin-bottom: 15px;"><a href="https://mojeekino.pl/show/kino-charlie-lodz" target="_blank"><img src="g/il/e-kino-charlie_w292.webp" width="100%" alt="e-Kino Charlie"></a></div><a href="index.php?i=w2864"><img src="g/il/zapros-kino-charlie-do-domu_w292.webp" width="100%" alt="Zapro¶ Kino Charlie do domu"></a><br><br><div style="margin-bottom: 15px;"><a href="index.php?pg=klub-charliego"><img src="g/il/klub-charliego-2021-03_w292.webp" width="100%" border=0 alt="Klub Charliego"></a></div>
 <div style="margin-bottom: 15px; position: relative;" onClick="JavaScript:document.location.href='http://www.opencinema.pl'" class=pointer>
 <img src="g/il/open-cinema-zapraszamy_w292.webp" width="100%" border=0 alt="Open Cinema">
 <div style="position: absolute; width: 100%; top: 10px; text-align: center; font-family: Roboto,Arial; color: white; font-weight: 400; font-size: 15px; ">www.OpenCinema.pl</div>
-<div style="position: absolute; width: 100%; bottom: 15px; text-align: center; font-family: Roboto,Arial; color: white; font-weight: 400; font-size: 15px;">Zapraszamy do wspï¿½pracy przy<br>organizacji kina letniego</div>
+<div style="position: absolute; width: 100%; bottom: 15px; text-align: center; font-family: Roboto,Arial; color: white; font-weight: 400; font-size: 15px;">Zapraszamy do wspó³pracy przy<br>organizacji kina letniego</div>
 </div>
-<img src="g/il/wspolpracujemy-z-instytutem-etnologii_w292.webp" width="100%" border=0 alt="Instytut Etnologii i Antropologii Kulturowej Uï¿½"><br><br><a href="https://uml.lodz.pl/"><img src="g/il/lodzkreuje_banner_150px.webp" border=0 alt="ï¿½ï¿½dï¿½ Kreuje" style="border: 10px solid white;"></a><br><br><div style="display: inline-block; background-color: white; border: 10px solid white; font-family: Arial; text-align: center;"><a href="index.php?pg=pfr" style="color: black; text-decoration: none;">Subwencja</a><br><a href="index.php?pg=pfr"><img src="g/il/pfr-logo.webp" border=0 alt="pfr" style="margin-top: 8px;"></a></div><br><br><div style="background-color: white; border: 10px solid white; font-family: Arial; font-size: 14px;"><a href="index.php?pg=pfr" style="text-decoration: none; color: black;">Przedsiï¿½biorca uzyskaï¿½ subwencjï¿½ finansowï¿½ w ramach programu rzï¿½dowego "Tarcza Finansowa 2.0 oraz 6.0 Polskiego Funduszu Rozwoju dla Mikro, Maï¿½ych i&nbsp;ï¿½rednich Firm", udzielonï¿½ przez PFR S.A.</a></div><br><img src="g/il/dofinansowanie-pisf_w292.webp" border=0 alt="pisf" width="100%" style="border: 10px solid white;"></a><br><br><img src="g/il/kineo.png" border=0 alt="pisf" width="100%" style="border: 10px solid white;"></a><br><br><img src="g/il/cineo.png" border=0 alt="Cineo" width="100%" style="border: 10px solid white;"></a><br><br><img src="g/il/kpo_charlie.png" border=0 alt="KPO" width="100%" style="border: 10px solid white;"></a><br><br></td></tr>
+<img src="g/il/wspolpracujemy-z-instytutem-etnologii_w292.webp" width="100%" border=0 alt="Instytut Etnologii i Antropologii Kulturowej U£"><br><br><a href="https://uml.lodz.pl/"><img src="g/il/lodzkreuje_banner_150px.webp" border=0 alt="£ód¼ Kreuje" style="border: 10px solid white;"></a><br><br><div style="display: inline-block; background-color: white; border: 10px solid white; font-family: Arial; text-align: center;"><a href="index.php?pg=pfr" style="color: black; text-decoration: none;">Subwencja</a><br><a href="index.php?pg=pfr"><img src="g/il/pfr-logo.webp" border=0 alt="pfr" style="margin-top: 8px;"></a></div><br><br><div style="background-color: white; border: 10px solid white; font-family: Arial; font-size: 14px;"><a href="index.php?pg=pfr" style="text-decoration: none; color: black;">Przedsiêbiorca uzyska³ subwencjê finansow± w ramach programu rz±dowego "Tarcza Finansowa 2.0 oraz 6.0 Polskiego Funduszu Rozwoju dla Mikro, Ma³ych i&nbsp;¦rednich Firm", udzielon± przez PFR S.A.</a></div><br><img src="g/il/dofinansowanie-pisf_w292.webp" border=0 alt="pisf" width="100%" style="border: 10px solid white;"></a><br><br><img src="g/il/kineo.png" border=0 alt="pisf" width="100%" style="border: 10px solid white;"></a><br><br><img src="g/il/cineo.png" border=0 alt="Cineo" width="100%" style="border: 10px solid white;"></a><br><br><img src="g/il/kpo_charlie.png" border=0 alt="KPO" width="100%" style="border: 10px solid white;"></a><br><br></td></tr>
 <tr valign=bottom>
 <td style="background-color: white; padding: 10px;">
 <div style="width: 880px; text-align: justify; text-align-last: center;"><br><br><center>
 <div style="display: inline-block; width: 100px; vertical-align: top; margin-left: 6px; margin-right: 6px; margin-bottom: 25px;"><a href="index.php?pg=3-dzwieki-komedy"><img src="g/il/kwadrat_komeda.webp" border=0 style="width: 100%; -moz-border-radius: 5px; -webkit-border-radius: 5px; -khtml-border-radius: 5px; border-radius: 5px; "></a><br>
-<div style="font-family: Arial; font-size: 13px; color: #909090; line-height: 130%; text-align: center; margin-top: 5px; padding-left: 5px; padding-right: 5px;">3 Dï¿½wiï¿½ki Komedy</div>
+<div style="font-family: Arial; font-size: 13px; color: #909090; line-height: 130%; text-align: center; margin-top: 5px; padding-left: 5px; padding-right: 5px;">3 D¼wiêki Komedy</div>
 </div>
 
 <div style="display: inline-block; width: 100px; vertical-align: top; margin-left: 6px; margin-right: 6px; margin-bottom: 25px;"><a href="http://www.kulturazrzuty.pl/"><img src="g/il/kwadrat_kulturazrzuty.webp" border=0 style="width: 100%; -moz-border-radius: 5px; -webkit-border-radius: 5px; -khtml-border-radius: 5px; border-radius: 5px; "></a><br>
@@ -1328,11 +1330,11 @@ Wystawa "Butenko - pinxit - plakaty"<br><a href="index.php?pg=wystawa-butenko-pi
 </div>
 
 <div style="display: inline-block; width: 100px; vertical-align: top; margin-left: 6px; margin-right: 6px; margin-bottom: 25px;"><a href="index.php?pg=wyroznienie-rodzinnie-w-lodzi"><img src="g/il/kwadrat_wyroznienie2015.webp" border=0 style="width: 100%; -moz-border-radius: 5px; -webkit-border-radius: 5px; -khtml-border-radius: 5px; border-radius: 5px; "></a><br>
-<div style="font-family: Arial; font-size: 13px; color: #909090; line-height: 130%; text-align: center; margin-top: 5px; padding-left: 5px; padding-right: 5px;">Wyrï¿½nienie Rodzinnie w&nbsp;ï¿½odzi</div>
+<div style="font-family: Arial; font-size: 13px; color: #909090; line-height: 130%; text-align: center; margin-top: 5px; padding-left: 5px; padding-right: 5px;">Wyró¿nienie Rodzinnie w&nbsp;£odzi</div>
 </div>
 
 <div style="display: inline-block; width: 100px; vertical-align: top; margin-left: 6px; margin-right: 6px; margin-bottom: 25px;"><a href="index.php?i=w807"><img src="g/il/kwadrat_malkovich.webp" border=0 style="width: 100%; -moz-border-radius: 5px; -webkit-border-radius: 5px; -khtml-border-radius: 5px; border-radius: 5px; "></a><br>
-<div style="font-family: Arial; font-size: 13px; color: #909090; line-height: 130%; text-align: center; margin-top: 5px; padding-left: 5px; padding-right: 5px;">Byï¿½ jak John Malkovich</div>
+<div style="font-family: Arial; font-size: 13px; color: #909090; line-height: 130%; text-align: center; margin-top: 5px; padding-left: 5px; padding-right: 5px;">Byæ jak John Malkovich</div>
 </div>
 
 <div style="display: inline-block; width: 100px; vertical-align: top; margin-left: 6px; margin-right: 6px; margin-bottom: 25px;"><a href="index.php?pg=art-lokomotywa"><img src="g/il/kwadrat_lokomotywa.webp" border=0 style="width: 100%; -moz-border-radius: 5px; -webkit-border-radius: 5px; -khtml-border-radius: 5px; border-radius: 5px; "></a><br>
@@ -1340,7 +1342,7 @@ Wystawa "Butenko - pinxit - plakaty"<br><a href="index.php?pg=wystawa-butenko-pi
 </div>
 
 <div style="display: inline-block; width: 100px; vertical-align: top; margin-left: 6px; margin-right: 6px; margin-bottom: 25px;"><a href="https://pl-pl.facebook.com/LodzFilmowa/"><img src="g/il/kwadrat_lodzfilmowa.webp" border=0 style="width: 100%; -moz-border-radius: 5px; -webkit-border-radius: 5px; -khtml-border-radius: 5px; border-radius: 5px; border: 1px solid #e0e0e0;"></a><br>
-<div style="font-family: Arial; font-size: 13px; color: #909090; line-height: 130%; text-align: center; margin-top: 5px; padding-left: 5px; padding-right: 5px;">Stowarzyszenie ï¿½ï¿½dï¿½ Filmowa</div>
+<div style="font-family: Arial; font-size: 13px; color: #909090; line-height: 130%; text-align: center; margin-top: 5px; padding-left: 5px; padding-right: 5px;">Stowarzyszenie £ód¼ Filmowa</div>
 </div>
 
 <div style="display: inline-block; width: 100px; vertical-align: top; margin-left: 6px; margin-right: 6px; margin-bottom: 25px;"><a href="index.php?pg=pegaz"><img src="g/il/kwadrat_pegaz.webp" border=0 style="width: 100%; -moz-border-radius: 5px; -webkit-border-radius: 5px; -khtml-border-radius: 5px; border-radius: 5px; "></a><br>
@@ -1348,7 +1350,7 @@ Wystawa "Butenko - pinxit - plakaty"<br><a href="index.php?pg=wystawa-butenko-pi
 </div>
 
 <div style="display: inline-block; width: 100px; vertical-align: top; margin-left: 6px; margin-right: 6px; margin-bottom: 25px;"><a href="index.php?pg=przedsiebiorca-przyjazny-rodzinie"><img src="g/il/kwadrat_przyjaznerodzinie.webp" border=0 style="width: 100%; -moz-border-radius: 5px; -webkit-border-radius: 5px; -khtml-border-radius: 5px; border-radius: 5px; border: 1px solid #e0e0ff;"></a><br>
-<div style="font-family: Arial; font-size: 13px; color: #909090; line-height: 130%; text-align: center; margin-top: 5px; padding-left: 5px; padding-right: 5px;">Przedsiï¿½biorca Przyjazne Rodzinie</div>
+<div style="font-family: Arial; font-size: 13px; color: #909090; line-height: 130%; text-align: center; margin-top: 5px; padding-left: 5px; padding-right: 5px;">Przedsiêbiorca Przyjazne Rodzinie</div>
 </div>
 
 <div style="display: inline-block; width: 100px; vertical-align: top; margin-left: 6px; margin-right: 6px; margin-bottom: 25px;"><a href="index.php?pg=firma-dobra-dla-dzieci"><img src="g/il/kwadrat_dobrafirma.webp" border=0 style="width: 100%; -moz-border-radius: 5px; -webkit-border-radius: 5px; -khtml-border-radius: 5px; border-radius: 5px; "></a><br>
@@ -1368,11 +1370,12 @@ Wystawa "Butenko - pinxit - plakaty"<br><a href="index.php?pg=wystawa-butenko-pi
 
 <div style="text-align: center; font-family: Arial; font-size: 14px; color: #808080; margin-bottom: 40px;">PARTNERZY</div>
 
-<a href="https://www.europa-cinemas.org/en/" target="_blank"><img src="g/partnerzy/europacinemas-logo.webp" width=100 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Europa Cinemas"></a>
+<a href="https://www.europa-cinemas.org/en/" target="_blank"><img src="g/partnerzy/europacinemas-logo.webp" width=100 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Europa Cinemas"></a>
+
 <a href="http://www.stowarzyszeniekinstudyjnych.pl/" target="_blank"><img src="g/partnerzy/siec-kin-studyjnych_logo.webp" width=80 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Stowarzyszenie Kin Studyjnych"></a>
 <a href="http://www.c-kino.pl/" target="_blank"><img src="g/partnerzy/siecpolskichkincyfrowych_logo.webp" width=60 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="ckino"></a>
 <a href="http://www.pisf.pl/" target="_blank"><img src="g/partnerzy/pisf_logo2.webp" width=90 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="PISF"></a>
-<a href="http://www.uml.lodz.pl/" target="_blank"><img src="g/partnerzy/urzadmiastalodzi_logo.webp" width=80 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="UMï¿½"></a>
+<a href="http://www.uml.lodz.pl/" target="_blank"><img src="g/partnerzy/urzadmiastalodzi_logo.webp" width=80 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="UM£"></a>
 <a href="http://www.filmschool.lodz.pl/" target="_blank"><img src="g/partnerzy/szkolafilmowawlodzi_logo.webp" width=80 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Filmschool"></a>
 <a href="http://www.kinomuzeum.pl/" target="_blank"><img src="g/partnerzy/muzeumkinematografii_logo.webp" width=30 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Kino Muzeum"></a>
 
@@ -1384,32 +1387,32 @@ Wystawa "Butenko - pinxit - plakaty"<br><a href="index.php?pg=wystawa-butenko-pi
 
 <a href="http://lodzfilmcommission.pl/" target="_blank"><img src="g/partnerzy/lodzfilmcommision_logo.webp" width=100 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Lodz Film Commission"></a>
 <a href="http://www.megatotal.pl/" target="_blank"><img src="g/partnerzy/megatotal_logo.webp" width=70 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Mega Total"></a>
-<a href="http://www.teatr-muzyczny.lodz.pl/" target="_blank"><img src="g/partnerzy/teatrmuzyczny_logo.webp" width=70 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Teatr Muzyczny w ï¿½odzi"></a>
+<a href="http://www.teatr-muzyczny.lodz.pl/" target="_blank"><img src="g/partnerzy/teatrmuzyczny_logo.webp" width=70 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Teatr Muzyczny w £odzi"></a>
 <a href="http://www.pleuropa.pl/" target="_blank"><img src="g/partnerzy/pleuropa_logo.webp" width=90 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="PL Europa"></a>
 
 
-<a href="http://filmowalodz.pl/" target="_blank"><img src="g/partnerzy/szkaldziedzictwa_logo.webp" width=110 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Filmowa ï¿½ï¿½dï¿½"></a>
-<a href="http://www.lcf.pl/" target="_blank"><img src="g/partnerzy/lodzkiecentrumfilmowe_logo.webp" width=80 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="ï¿½ï¿½dzkie Centrum Filmowe"></a>
+<a href="http://filmowalodz.pl/" target="_blank"><img src="g/partnerzy/szkaldziedzictwa_logo.webp" width=110 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Filmowa £ód¼"></a>
+<a href="http://www.lcf.pl/" target="_blank"><img src="g/partnerzy/lodzkiecentrumfilmowe_logo.webp" width=80 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="£ódzkie Centrum Filmowe"></a>
 
 
 
-<a href="http://www.lakowa29.pl/" target="_blank"><img src="g/partnerzy/lakowa_logo.webp" width=50 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="ï¿½ï¿½kowa 29"></a>
-<a href="http://www.klub.lodzkaliska.pl/site.html" target="_blank"><img src="g/partnerzy/lodzkaliska_logo.webp" width=100 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="ï¿½ï¿½dï¿½ Kaliska"></a>
+<a href="http://www.lakowa29.pl/" target="_blank"><img src="g/partnerzy/lakowa_logo.webp" width=50 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="£±kowa 29"></a>
+<a href="http://www.klub.lodzkaliska.pl/site.html" target="_blank"><img src="g/partnerzy/lodzkaliska_logo.webp" width=100 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="£ód¼ Kaliska"></a>
 <a href="http://www.portalfilmowy.pl/" target="_blank"><img src="g/partnerzy/stowarzyszeniefilmowcow_logo.webp" width=90 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Portal Filmowy"></a>
 <a href="http://www.nowoczesnekino.pl/" target="_blank"><img src="g/partnerzy/nowoczesnekino_logo.webp" width=110 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Nowoczesne Kino"></a>
 <a href="http://www.radiowawa.pl/" target="_blank"><img src="g/partnerzy/radiowawa_logo.webp" width=60 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Radio wawa"></a>
 
 <a href="http://www.apgroup.pl/index.php?id=1" target="_blank"><img src="g/partnerzy/apgroup_logo.webp" width=130 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="apg group"></a>
-<a href="http://www.wytwornia.pl/" target="_blank"><img src="g/partnerzy/wytwornia_logo.webp" width=120 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Wytwï¿½rnia"></a>
+<a href="http://www.wytwornia.pl/" target="_blank"><img src="g/partnerzy/wytwornia_logo.webp" width=120 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Wytwórnia"></a>
 
-<a href="http://mlodziwlodzi.pl/" target="_blank"><img src="g/partnerzy/mlodziwlodzi_logo.webp" width=70 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Mï¿½odzi w ï¿½odzi"></a>
-<a href="http://www.mpk.lodz.pl/" target="_blank"><img src="g/partnerzy/mpklodz_logo.webp" width=40 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="MPK ï¿½ï¿½dï¿½"></a>
+<a href="http://mlodziwlodzi.pl/" target="_blank"><img src="g/partnerzy/mlodziwlodzi_logo.webp" width=70 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="M³odzi w £odzi"></a>
+<a href="http://www.mpk.lodz.pl/" target="_blank"><img src="g/partnerzy/mpklodz_logo.webp" width=40 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="MPK £ód¼"></a>
 <a href="http://ganesh.pl/" target="_blank"><img src="g/partnerzy/ganesh_logo.webp" width=90 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Ganesh"></a>
 <a href="http://www.selgros.pl/" target="_blank"><img src="g/partnerzy/selgros_logo.webp" width=50 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Selgros"></a>
 <a href="http://czasdzieci.pl/lodz/" target="_blank"><img src="g/partnerzy/czasdzieci_logo.webp" width=90 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Czas Dzieci"></a>
 <a href="http://www.punktdruku.com/" target="_blank"><img src="g/partnerzy/punktdruku_logo.webp" width=45 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Punkt druku"></a>
 
-<a href="http://www.kreatywna.lodz.pl/page/" target="_blank"><img src="g/partnerzy/lodzkreuje_logo.webp" width=60 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Kreatywna ï¿½ï¿½dï¿½"></a>
+<a href="http://www.kreatywna.lodz.pl/page/" target="_blank"><img src="g/partnerzy/lodzkreuje_logo.webp" width=60 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Kreatywna £ód¼"></a>
 <a href="pliki/BEIKS_MEDIA_SHOW_2016.pdf" target="_blank"><img src="g/partnerzy/beiks_logo.webp" width=70 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="beiks"></a>
 <a href="http://www.alliance-francaise.pl/lodz/" target="_blank"><img src="g/partnerzy/alliancefrancaise_logo.webp" width=50 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Alliance Francaise"></a>
 <a href="http://teatrarlekin.pl/" target="_blank"><img src="g/partnerzy/arlekin_logo.webp" width=60 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Teatr Arlekin"></a>
@@ -1430,17 +1433,17 @@ Wystawa "Butenko - pinxit - plakaty"<br><a href="index.php?pg=wystawa-butenko-pi
 <a href="http://www.egermanika.pl/" target="_blank"><img src="g/partnerzy/egermanika_logo.webp" width=80 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Egermanika"></a>
 
 <a href="http://www.purpose.com.pl/" target="_blank"><img src="g/partnerzy/purpose_logo.webp" width=80 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Purpose"></a>
-<a href="http://www.zak.lodz.pl/" target="_blank"><img src="g/partnerzy/radiozak_logo.webp" width=80 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="ï¿½ak"></a>
+<a href="http://www.zak.lodz.pl/" target="_blank"><img src="g/partnerzy/radiozak_logo.webp" width=80 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="¯ak"></a>
 <a href="http://www.alptech.com.pl/" target="_blank"><img src="g/partnerzy/alptech_logo.webp" width=80 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="lptech"></a>
 <a href="http://www.pandora.pl/" target="_blank"><img src="g/partnerzy/pandora_logo.webp" width=60 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Pandora"></a>
 <a href="http://www.lapis-bis.pl/" target="_blank"><img src="g/partnerzy/lapisbis_logo.webp" width=80 border=0 style="vertical-align: middle; margin: 8px; display: inline-block;" alt="Lapis bis"></a>
 
 <br><br><br>
 
-</div><table width="100%" cellpadding=0 cellspacing=0 border=0 style="margin-top: 40px;"><tr valign=top><td style="background-color: #d8d8d8; padding: 15px 8px 8px 20px;"><div class="menu_dolne_naglowek">NA SKRï¿½TY</div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=r&id=08-06-2026" class="menu_dolne_link">Repertuar</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="https://bilety.charlie.pl/msi" class="menu_dolne_link">Rezerwacja biletï¿½w</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=w0" class="menu_dolne_link">Wydarzenia</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=f1" class="menu_dolne_link">Filmy w repertuarze</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=f2" class="menu_dolne_link">Zapowiedzi filmï¿½w</a></div></td><td width="10"></td><td style="background-color: #d8d8d8; padding: 15px 8px 8px 20px;"><div class="menu_dolne_naglowek">DZIAï¿½ANIA</div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?pg=festiwale" class="menu_dolne_link">Festiwale</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="http://www.cinergiafestival.pl" class="menu_dolne_link">Cinergia</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=k5" class="menu_dolne_link">Zï¿½oty Glan</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?pg=edukacja-filmowa" class="menu_dolne_link">Edukacja filmowa</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=k17" class="menu_dolne_link">Open Cinema</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?pg=charlie-outside" class="menu_dolne_link">Charlie Outside</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?pg=fotorelacje" class="menu_dolne_link">Fotorelacje</a></div></td><td width="10"></td><td style="background-color: #d8d8d8; padding: 15px 8px 8px 20px;"><div class="menu_dolne_naglowek">KINO</div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=k1" class="menu_dolne_link">O kinie</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=k0" class="menu_dolne_link">Sale kinowe</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=k10" class="menu_dolne_link">Kawiarenka</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?pg=wynajem" class="menu_dolne_link">Wynajem kina</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=g0" class="menu_dolne_link">Galeria</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?pg=sklep" class="menu_dolne_link">Sklep</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=k8" class="menu_dolne_link">Kontakt</a></div></td></tr></table></td></tr>
+</div><table width="100%" cellpadding=0 cellspacing=0 border=0 style="margin-top: 40px;"><tr valign=top><td style="background-color: #d8d8d8; padding: 15px 8px 8px 20px;"><div class="menu_dolne_naglowek">NA SKRÓTY</div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=r&id=08-06-2026" class="menu_dolne_link">Repertuar</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="https://bilety.charlie.pl/msi" class="menu_dolne_link">Rezerwacja biletów</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=w0" class="menu_dolne_link">Wydarzenia</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=f1" class="menu_dolne_link">Filmy w repertuarze</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=f2" class="menu_dolne_link">Zapowiedzi filmów</a></div></td><td width="10"></td><td style="background-color: #d8d8d8; padding: 15px 8px 8px 20px;"><div class="menu_dolne_naglowek">DZIA£ANIA</div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?pg=festiwale" class="menu_dolne_link">Festiwale</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="http://www.cinergiafestival.pl" class="menu_dolne_link">Cinergia</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=k5" class="menu_dolne_link">Z³oty Glan</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?pg=edukacja-filmowa" class="menu_dolne_link">Edukacja filmowa</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=k17" class="menu_dolne_link">Open Cinema</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?pg=charlie-outside" class="menu_dolne_link">Charlie Outside</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?pg=fotorelacje" class="menu_dolne_link">Fotorelacje</a></div></td><td width="10"></td><td style="background-color: #d8d8d8; padding: 15px 8px 8px 20px;"><div class="menu_dolne_naglowek">KINO</div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=k1" class="menu_dolne_link">O kinie</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=k0" class="menu_dolne_link">Sale kinowe</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=k10" class="menu_dolne_link">Kawiarenka</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?pg=wynajem" class="menu_dolne_link">Wynajem kina</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=g0" class="menu_dolne_link">Galeria</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?pg=sklep" class="menu_dolne_link">Sklep</a></div><div class="menu_dolne_link_box"><span class="menu_dolne_strzalka">&#187;</span><a href="index.php?i=k8" class="menu_dolne_link">Kontakt</a></div></td></tr></table></td></tr>
 <tr>
 <td>
-<div align=center style="margin-top: 6px; color: #808080; font-family: Arial; font-size: 11px;">Copyright 2026 &copy; Kino Charlie - Wszelkie prawa zastrzeï¿½one
+<div align=center style="margin-top: 6px; color: #808080; font-family: Arial; font-size: 11px;">Copyright 2026 &copy; Kino Charlie - Wszelkie prawa zastrze¿one
 /
 <a href="index.php?pg=polityka-rodo" style="color: #808080;">Polityka RODO</a>
 /

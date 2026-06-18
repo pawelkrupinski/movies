@@ -418,6 +418,7 @@ cinemaScrapes:
   Kino PCKul / Backrooms. Bez wyjścia / —
   Kino Pałacowe / Backrooms. Bez wyjścia / 2026
   Kino Pionier 1907 / BACKROOMS. BEZ WYJŚCIA / —
+  Kino Pod Baranami / Backrooms. Bez wyjścia / —
   Kino Przedwiośnie / Backrooms. Bez wyjścia / 2026
   Kino Sokół / BACKROOMS. BEZ WYJŚCIA / —
   Kino Spektrum / Backrooms. Bez wyjścia / —
@@ -1350,6 +1351,7 @@ cinemaScrapes:
   Kino Amok / Diabeł ubiera się u Prady 2 / —
   Kino Atlantic / Diabeł ubiera się u Prady 2 / 2026
   Kino Awangarda 2 / Diabeł ubiera się u Prady 2 / 2026
+  Kino Charlie / Diabeł ubiera się u Prady 2 / —
   Kino Echo / Diabeł ubiera się u Prady 2 / —
   Kino GCK / Diabeł ubiera się u Prady 2 / —
   Kino Kępa / Diabeł ubiera się u Prady 2 / —
@@ -1359,6 +1361,7 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Diabeł ubiera się u Prady 2 / 2026
   Kino PCA / Diabeł ubiera się u Prady 2 / —
   Kino Pionier 1907 / Diabeł ubiera się u Prady 2 / —
+  Kino Pod Baranami / Diabeł ubiera się u Prady 2 / —
   Kino Przedwiośnie / Diabeł ubiera się u Prady 2 / 2026
   Kino Roma / Diabeł ubiera się u Prady 2 / 2026
   Kino Sokół / DIABEŁ UBIERA SIĘ U PRADY 2 / —
@@ -1543,6 +1546,7 @@ cinemaScrapes:
   Kino Oskard / Drugie życie / —
   Kino Piast / Drugie życie / —
   Kino Pionier 1907 / Drugie życie / —
+  Kino Pod Baranami / Drugie życie / —
   Kino Praha / Drugie życie / —
   Kino Przedwiośnie / Drugie życie / 2025
   Kino Rialto / DRUGIE ŻYCIE / 2025
@@ -1911,6 +1915,7 @@ cinemaScrapes:
   Kino PCA / Dzień objawienia / —
   Kino Piast / Dzień objawienia / —
   Kino Planeta / Dzień objawienia / —
+  Kino Pod Baranami / Dzień objawienia / —
   Kino Przedwiośnie / Dzień objawienia / 2026
   Kino Rialto / DZIEŃ OBJAWIENIA / 2026
   Kino Scena Kultura / Dzień objawienia / —
@@ -2107,6 +2112,7 @@ cinemaScrapes:
   Kino Muza / Fałszerz stulecia / 2025
   Kino Nowe Horyzonty / Fałszerz stulecia / 2025
   Kino Pionier 1907 / Fałszerz stulecia / —
+  Kino Pod Baranami / Fałszerz stulecia / —
   Kino Żak / Fałszerz stulecia / —
 showings:
   2026-06-17  Kino Muza                     18:45 Sala 1
@@ -2569,7 +2575,7 @@ showings:
 
 === K-popowe łowczynie demonów ===
 displayTitle:      K-popowe łowczynie demonów
-cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-Popowe Łowczynie Demonów | K-popowe łowczynie demonów
+cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-Popowe Łowczynie Demonów | K-popowe Łowczynie demonów | K-popowe łowczynie demonów
 runtimeMinutes:    96
 releaseYear:       2025
 countries:         USA, Kanada, Canada
@@ -2635,6 +2641,7 @@ cinemaScrapes:
   Kino NCKF EC1 / K-Popowe Łowczynie Demonów / —
   Kino Nowe Horyzonty / K-popowe łowczynie demonów / 2025
   Kino PCKul / K-popowe łowczynie demonów / —
+  Kino Pod Baranami / K-popowe Łowczynie demonów / —
   Kino Rialto / K-POPOWE ŁOWCZYNIE DEMONÓW / 2025
   Kino Roma / K-POPOWE ŁOWCZYNIE DEMONÓW / 2025
   Kino Twierdza / K-popowe łowczynie demonów / —
@@ -3859,6 +3866,7 @@ cinemaScrapes:
   Kino Atlantic / Milcząca przyjaciółka / 2025
   Kino Bajka / Milcząca przyjaciółka / —
   Kino Bułgarska 19 / MILCZĄCA PRZYJACIÓŁKA / 2025
+  Kino Charlie / Milcząca przyjaciółka / —
   Kino Fenomen (WDK) / „Milcząca przyjaciółka” / 2025
   Kino Forum / Milcząca przyjaciółka / —
   Kino Kika / MILCZĄCA PRZYJACIÓŁKA / —
@@ -3878,6 +3886,7 @@ cinemaScrapes:
   Kino PDK / Milcząca przyjaciółka / —
   Kino Pałacowe / Milcząca przyjaciółka / 2025
   Kino Pionier 1907 / MILCZĄCA PRZYJACIÓŁKA / —
+  Kino Pod Baranami / Milcząca przyjaciółka / —
   Kino Praha / Milcząca przyjaciółka / —
   Kino Spektrum / Milcząca przyjaciółka / —
   Kino Wisła / Milcząca przyjaciółka / 2025
@@ -4305,6 +4314,7 @@ cinemaScrapes:
   Kino Muranów / Młodsza siostra / 2025
   Kino Muza / Młodsza siostra / 2025
   Kino Pionier 1907 / Młodsza siostra / —
+  Kino Pod Baranami / Młodsza siostra / —
 showings:
   2026-06-13  Kino Muza                     19:00 Sala 1
 
@@ -5195,6 +5205,7 @@ cinemaScrapes:
   Kino Oskard / Orły republiki / —
   Kino Piast / Orły Republiki / —
   Kino Pionier 1907 / ORŁY REPUBLIKI / —
+  Kino Pod Baranami / Orły republiki / —
   Kino Praha / Orły republiki / —
   Kino Sfinks / ORŁY REPUBLIKI / —
   OKF Iluzja / Orły Republiki / —
@@ -6163,6 +6174,7 @@ cinemaScrapes:
   Kino Muza / Poczta głosowa / 2024
   Kino Nowe Horyzonty / Poczta głosowa / 2024
   Kino Pionier 1907 / Poczta głosowa / —
+  Kino Pod Baranami / Poczta głosowa / —
 showings:
   2026-06-15  Kino Muza                     17:00 Sala 1
 
@@ -6271,12 +6283,14 @@ cinemaScrapes:
   Helios Łódź / Podziemny krąg / —
   Helios Żory / Podziemny krąg / —
   Kino 60 Krzeseł / Podziemny krąg / —
+  Kino Charlie / Podziemny krąg / —
   Kino Fenomen (WDK) / Podziemny krąg / —
   Kino Kika / PODZIEMNY KRĄG / —
   Kino Kultura / Podziemny krąg / —
   Kino Malta Charlie Monroe / Podziemny krąg / —
   Kino Nowe Horyzonty / Podziemny krąg / 1999
   Kino Pałacowe / Podziemny krąg / 1999
+  Kino Pod Baranami / Podziemny krąg / —
   Kino Sfinks / PODZIEMNY KRĄG / —
   Kino Spektrum / Podziemny krąg / —
   Kinoteka / Podziemny krąg / 2026
@@ -6658,6 +6672,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Dolnośląskie Centrum Filmowe / Przekleństwa niewinności / 1999
   Kino Pałacowe / Przekleństwa niewinności / 1999
+  Kino Pod Baranami / Przekleństwa niewinności / —
 showings:
   2026-06-21  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
@@ -6687,6 +6702,7 @@ cinemaScrapes:
   Kino Muranów / Przeżyj to sam / 2025
   Kino Muza / Przeżyj to sam / 2025
   Kino Nowe Horyzonty / Przeżyj to sam / 2025
+  Kino Pod Baranami / Przeżyj to sam / —
 showings:
   2026-06-10  Kino Muza                     20:30 Sala 1
 
@@ -7101,6 +7117,7 @@ cinemaScrapes:
   Helios Forum / Sprawiedliwość owiec / 2026
   Helios Łódź / Sprawiedliwość owiec / 2026
   Kino Atlantic / Sprawiedliwość owiec / 2026
+  Kino Charlie / Sprawiedliwość owiec / —
   Kino Nowe Horyzonty / Sprawiedliwość owiec / 2026
   Kino Sokół / SPRAWIEDLIWOŚĆ OWIEC / —
   Kino Wawel / Sprawiedliwość owiec / —
@@ -7653,6 +7670,7 @@ cinemaScrapes:
   Kino Muranów / Takie jest życie / 2025
   Kino Pałacowe / Takie jest życie / 2025
   Kino Pionier 1907 / TAKIE JEST ŻYCIE / —
+  Kino Pod Baranami / Takie jest życie / —
 showings:
   2026-06-16  Kino Pałacowe                 19:00 Sala 1 - Kinowa
   2026-06-26  Kino Apollo                   20:15
@@ -8327,6 +8345,7 @@ cinemaScrapes:
   Kino Muranów / Wielki Łuk / 2025
   Kino Muza / Wielki Łuk / 2025
   Kino Nowe Horyzonty / Wielki Łuk / 2025
+  Kino Pod Baranami / Wielki Łuk / —
   Kino za Rogiem Cafe / Wielki Łuk / —
 showings:
   2026-06-14  Kino Muza                     19:00 Sala 1
@@ -8384,6 +8403,7 @@ cinemaScrapes:
   Kino Muranów / Windą na szafot / 1958
   Kino Muza / Windą na szafot / 1958
   Kino Pionier 1907 / Windą na szafot / —
+  Kino Pod Baranami / Windą na szafot / —
 showings:
   2026-06-16  Kino Muza                     18:00 Sala 1
 
@@ -8729,6 +8749,7 @@ cinemaScrapes:
   Kino Bułgarska 19 / ZAWIEŚCIE CZERWONE LATARNIE / 1991
   Kino CK Lublin / Zawieście czerwone latarnie / —
   Kino Centrum CSW Toruń / Zawieście czerwone latarnie / —
+  Kino Charlie / Zawieście czerwone latarnie / —
   Kino Iluzjon / Zawieście czerwone latarnie / 1991
   Kino Kinematograf / Zawieście czerwone latarnie / 1991
   Kino Kultura / Zawieście czerwone latarnie / —
@@ -8741,6 +8762,7 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Zawieście czerwone latarnie / 1991
   Kino Paradox / Zawieście czerwone latarnie / 1991
   Kino Pałacowe / Zawieście czerwone latarnie / 1991
+  Kino Pod Baranami / Zawieście czerwone latarnie / —
   Kino Rialto / ZAWIEŚCIE CZERWONE LATARNIE / 1991
   Kino U-jazdowski / Zawieście czerwone latarnie / 1991
   Kino Żak / Zawieście czerwone latarnie / 1991
@@ -8997,6 +9019,7 @@ cinemaScrapes:
   Kino 60 Krzeseł / Znaki Pana Śliwki / —
   Kino Agrafka / ZNAKI PANA ŚLIWKI / 2025
   Kino Amok / Znaki Pana Śliwki / —
+  Kino Charlie / Znaki Pana Śliwki / —
   Kino IKM / Znaki Pana Śliwki / —
   Kino Kika / ZNAKI PANA ŚLIWKI / —
   Kino Kinematograf / Znaki Pana Śliwki / 2025
