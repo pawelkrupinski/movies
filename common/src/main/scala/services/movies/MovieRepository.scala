@@ -19,8 +19,14 @@ import scala.util.Try
 
 /** One persisted (title, year) → MovieRecord row. Used as the return type
  *  of `MovieRepository.findAll` and `MovieCache.snapshot` so callers iterate
- *  named fields instead of destructuring an anonymous 3-tuple. */
-case class StoredMovieRecord(title: String, year: Option[Int], record: MovieRecord)
+ *  named fields instead of destructuring an anonymous 3-tuple.
+ *
+ *  `persistedId` carries the row's actual Mongo `_id` when it came from storage
+ *  (set by [[StoredMovieRecord.fromStorage]]); `None` for rows synthesized
+ *  in-memory (the cache snapshot, tests), where the canonical `idFor` form is
+ *  the id. [[idOf]] prefers it so two distinct documents can never share a DOM
+ *  id — see [[idOf]] for why re-deriving the id is not safe. */
+case class StoredMovieRecord(title: String, year: Option[Int], record: MovieRecord, persistedId: Option[String] = None)
 
 object StoredMovieRecord {
   /** The Mongo `_id` for a `(title, year)` row: `sanitize(title)|year`. The one
@@ -30,8 +36,15 @@ object StoredMovieRecord {
   def idFor(title: String, year: Option[Int]): String =
     s"${TitleNormalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
 
-  /** The `_id` of a stored row. */
-  def idOf(row: StoredMovieRecord): String = idFor(row.title, row.year)
+  /** The `_id` of a stored row. Prefers the actual `persistedId` over re-deriving
+   *  `idFor(title, year)`: the display `title` is derived from `sourceData`, so a
+   *  clean doc whose cinema reports the title WITH the year baked in (e.g.
+   *  "Zabriskie Point (1970)") re-sanitizes to a DIFFERENT prefix than its `_id`
+   *  — colliding with whatever doc that prefix actually belongs to. Two distinct
+   *  Mongo documents then render the same `data-id` and the /debug live view's
+   *  first-match DOM lookup opens whichever row is first. The persisted `_id` is
+   *  unique by construction, so keying on it keeps the rows independent. */
+  def idOf(row: StoredMovieRecord): String = row.persistedId.getOrElse(idFor(row.title, row.year))
 
   /** Rebuild a stored row from its persisted `_id` and `MovieRecord`, deriving
    *  the display `title` and `year` rather than reading pinned columns — used by
@@ -47,7 +60,7 @@ object StoredMovieRecord {
     val sep      = id.lastIndexOf('|')
     val idPrefix = if (sep >= 0) id.substring(0, sep) else id
     val year     = if (sep >= 0) id.substring(sep + 1).toIntOption else None
-    StoredMovieRecord(record.displayTitle(idPrefix), year, record)
+    StoredMovieRecord(record.displayTitle(idPrefix), year, record, persistedId = Some(id))
   }
 }
 

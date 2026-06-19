@@ -67,7 +67,7 @@ object RottenTomatoesBackfill {
     val total   = rows.size
     val t0      = System.currentTimeMillis()
 
-    val tasks = rows.map { case StoredMovieRecord(title, year, e) =>
+    val tasks = rows.map { case StoredMovieRecord(title, year, e, _) =>
       Future {
         val sIndex = started.incrementAndGet()
         println(f"[$sIndex%3d/$total%3d] STARTED   $title (${year.getOrElse("?")})")

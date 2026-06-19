@@ -59,7 +59,7 @@ object EnrichmentBackfill {
     val RefreshedSampleSize = 10
     val startedAtMs    = System.currentTimeMillis()
 
-    val tasks = rows.map { case StoredMovieRecord(title, year, before) =>
+    val tasks = rows.map { case StoredMovieRecord(title, year, before, _) =>
       Future {
         service.reEnrichSync(title, year)
         // Drive the per-row work for the ratings classes directly so a single

@@ -56,7 +56,7 @@ object FilmwebUrlAudit {
     val total      = candidates.size
     val startedAt  = System.currentTimeMillis()
 
-    val tasks = candidates.map { case StoredMovieRecord(title, year, _) =>
+    val tasks = candidates.map { case StoredMovieRecord(title, year, _, _) =>
       Future {
         val outcome = ratings.auditOneSync(title, year)
         val index = done.incrementAndGet()

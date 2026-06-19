@@ -62,7 +62,7 @@ object MetacriticBackfill {
     val total       = rows.size
     val startedAtMs = System.currentTimeMillis()
 
-    val tasks = rows.map { case StoredMovieRecord(title, year, e) =>
+    val tasks = rows.map { case StoredMovieRecord(title, year, e, _) =>
       Future {
         // Per-row trace so the user can see progress and which row is in
         // flight when something stalls (a slow MC search-scrape, a 503
