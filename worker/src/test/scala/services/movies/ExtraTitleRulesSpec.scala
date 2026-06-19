@@ -244,14 +244,33 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "merge parenthesised format / 'wersja oryginalna' / 'ORG' / parenthesised-year variants onto the base" in {
+    val cases = Seq(
+      "Toy Story 5 (Dubbing PL)"        -> "Toy Story 5",
+      "Toy Story 5 [dubbing PL]"        -> "Toy Story 5",
+      "Toy Story 5 (Napisy PL)"         -> "Toy Story 5",
+      "Toy Story 5 - wersja oryginalna" -> "Toy Story 5",
+      "Toy Story 5 - ORG"               -> "Toy Story 5",
+      "500 mil (lektor)"                -> "500 mil",
+      "Milczenie owiec (1991)"          -> "Milczenie owiec",
+      "Mikey i Nicky (1976)"            -> "Mikey i Nicky"
+    )
+    cases.foreach { case (variant, base) =>
+      withClue(s"mergeKey('$variant') vs '$base': ")(
+        mergeKey(withExtras, variant) shouldBe mergeKey(withExtras, base))
+    }
+  }
+
   // Negative controls: a real title that merely CONTAINS a digit+D or ends in an
-  // unrelated word must not be eaten by the trailing-format strip.
+  // unrelated word must not be eaten by the trailing-format / paren-year strips.
   it should "not strip format-shaped fragments from real titles" in {
     val unharmed = Seq(
       "Avatar 3D",            // bare 3D, no dub/napisy word behind it
       "2001: Odyseja kosmiczna",
       "Klub",                 // ends in 'b', must not look like 'dub'
       "Lektor",               // the bare word is a title here, not a suffix
+      "1917",                 // a bare year that IS the title — not parenthesised, must survive
+      "Blade Runner 2049",    // trailing year, but unparenthesised + part of the title
       "Top Gun: Maverick"
     )
     unharmed.foreach { t =>
