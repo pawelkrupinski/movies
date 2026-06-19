@@ -145,7 +145,11 @@ class CaffeineMovieCache(
   // `movies` cache; known films keep the direct path. The worker wires this
   // `Some(stagingRepository)`. `None` (the default, used by unit tests that exercise the
   // cache directly) disables diversion — every scrape lands in `movies`.
-  staging: Option[services.staging.StagingRepository] = None
+  staging: Option[services.staging.StagingRepository] = None,
+  // Called after a merge whose inputs changed an enrichment's resolution, to
+  // re-kick that enrichment as a worker task (per case). Default no-op for unit
+  // tests + non-worker builds; the worker wires `QueueEnrichmentRetrigger`.
+  retrigger: EnrichmentRetrigger = EnrichmentRetrigger.noop
 ) extends MovieCache with Stoppable with Logging {
 
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
@@ -374,6 +378,12 @@ class CaffeineMovieCache(
   private def collapseCluster(cluster: Seq[(CacheKey, MovieRecord)]): Unit = {
     val (canonical, merged) = FilmCanonicalizer.canonical(cluster)
     val keys = cluster.map(_._1)
+    // The union base `canonical()` merged onto — the row that would have stood
+    // without the merge (mirrors `MovieRecordMerge.unionAll`'s pick). Comparing
+    // the merged result against it tells us which enrichment inputs the merge
+    // changed (re-key, gained tmdbId/imdbId/searchTitle), to re-kick those.
+    val sorted              = cluster.sortBy { case (k, _) => canonicalRank(k) }
+    val (baseKey, baseRec)  = sorted.find { case (_, e) => e.tmdbId.isDefined }.getOrElse(sorted.head)
     // Every reported variant — each cinema slot's derived key plus the rows'
     // current keys — drives the "anything to fix?" guard (same set the
     // canonicaliser folds over).
@@ -396,7 +406,19 @@ class CaffeineMovieCache(
         keys.foreach(invalidate)
         put(canonical, merged)
       }
+      retriggerChangedEnrichments(baseRec, baseKey, merged, canonical)
     }
+  }
+
+  /** Re-kick (as worker tasks) the enrichments whose input fields a merge
+   *  changed — `before` is the pre-merge survivor, `after` the merged record now
+   *  stored under `afterKey`. Pure decision in [[MergeRetrigger]]; the injected
+   *  [[EnrichmentRetrigger]] does the freshness-invalidate + enqueue. */
+  private def retriggerChangedEnrichments(
+    before: MovieRecord, beforeKey: CacheKey, after: MovieRecord, afterKey: CacheKey
+  ): Unit = {
+    val kinds = MergeRetrigger.changedEnrichments(before, beforeKey, after, afterKey)
+    if (kinds.nonEmpty) retrigger.retrigger(afterKey, after, kinds)
   }
 
   def settleResolved(oldKey: CacheKey, resolved: MovieRecord): CacheKey =
@@ -493,9 +515,13 @@ class CaffeineMovieCache(
     // union(canonical, victim): per-source slots are unioned (no loss); the
     // shared top-level enrichment fields are identical between same-tmdbId
     // siblings, so the merged record doesn't depend on the union direction.
+    val canonicalRecord = if (newWins) newRecord else siblingRecord
     val merged = if (newWins) MovieRecordMerge.union(newRecord, siblingRecord)
                  else         MovieRecordMerge.union(siblingRecord, newRecord)
     persist(canonical, merged)
+    // The merge may have filled enrichment inputs the canonical lacked (e.g. an
+    // imdbId/searchTitle from the victim) — re-kick the affected enrichments.
+    retriggerChangedEnrichments(canonicalRecord, canonical, merged, canonical)
     if (victim != canonical) {
       positive.invalidate(victim)
       repository.delete(victim.cleanTitle, victim.year)

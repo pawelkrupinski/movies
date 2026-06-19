@@ -60,4 +60,18 @@ object EnrichTaskKeys {
     payload.get(OriginalTitleKey).filter(_.nonEmpty)
   def forceOf(payload: Map[String, String]): Boolean =
     payload.get(ForceKey).contains("true")
+
+  // Per-movie IMDb-id resolution (movies path). Distinct dedup key per (title,
+  // year) so different films resolve concurrently while a repeat for the same row
+  // collapses. Carries the search title the IMDb suggestion lookup queries with.
+  val SearchTitleKey = "searchTitle"
+
+  def resolveImdbIdDedup(title: String, year: Option[Int]): String =
+    s"resolve-imdbid|$title|${year.map(_.toString).getOrElse("")}"
+
+  def resolveImdbIdPayload(title: String, year: Option[Int], searchTitle: String): Map[String, String] =
+    Map(TitleKey -> title, YearKey -> year.map(_.toString).getOrElse(""), SearchTitleKey -> searchTitle)
+
+  def searchTitleOf(payload: Map[String, String]): Option[String] =
+    payload.get(SearchTitleKey).filter(_.nonEmpty)
 }

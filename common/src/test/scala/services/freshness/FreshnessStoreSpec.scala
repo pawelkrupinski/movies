@@ -43,6 +43,20 @@ class FreshnessStoreSpec extends AnyFlatSpec with Matchers {
     store.lastFetchedAt("k") shouldBe Some(t0)
   }
 
+  "invalidate" should "drop a stamp so the work reads as stale again" in {
+    val store = new InMemoryFreshnessStore
+    store.markFresh("imdb|tmdb:42", ImdbRating, t0)
+    store.isFresh("imdb|tmdb:42", ImdbRating, t0.plusSeconds(60)) shouldBe true
+    store.invalidate("imdb|tmdb:42")
+    store.lastFetchedAt("imdb|tmdb:42") shouldBe None
+    store.isFresh("imdb|tmdb:42", ImdbRating, t0.plusSeconds(60)) shouldBe false
+  }
+
+  it should "be a harmless no-op for an unknown key" in {
+    val store = new InMemoryFreshnessStore
+    noException should be thrownBy store.invalidate("never|stamped")
+  }
+
   "Freshness.ttlFor" should "give 4h for every rating source and a permanent (None) TMDB resolve" in {
     Freshness.ttlFor(ImdbRating)    shouldBe Some(4.hours)
     Freshness.ttlFor(FilmwebRating) shouldBe Some(4.hours)

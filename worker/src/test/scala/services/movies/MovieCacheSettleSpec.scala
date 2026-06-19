@@ -110,6 +110,25 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "re-kick the IMDb rating (as a retrigger) when a same-tmdbId merge fills a missing imdbId" in {
+    // The cache must announce, per case, the enrichment a merge invalidated by
+    // changing its input — here the imdbId, gained from the folded sibling.
+    val captured = scala.collection.mutable.ListBuffer[Set[RetriggerKind]]()
+    val recorder = new EnrichmentRetrigger {
+      def retrigger(key: CacheKey, record: MovieRecord, kinds: Set[RetriggerKind]): Unit = { captured += kinds; () }
+    }
+    val c = new CaffeineMovieCache(new InMemoryMovieRepository, retrigger = recorder)
+    // Same title + tmdbId under two YEARS (a production/theatrical drift) — distinct
+    // keys the put-time tmdbId gate folds. The lower year sorts first (canonicalRank),
+    // so the 2025 row — the one WITHOUT the imdb id — becomes canonical and gains the
+    // id from the 2026 victim.
+    c.put(c.keyOf("Film", Some(2025)), MovieRecord(tmdbId = Some(500),
+      data = Map[Source, SourceData]((Tmdb: Source) -> SourceData(title = Some("Film"), releaseYear = Some(2025)))))
+    c.put(c.keyOf("Film", Some(2026)), MovieRecord(tmdbId = Some(500), imdbId = Some("tt500"),
+      data = Map[Source, SourceData]((Tmdb: Source) -> SourceData(title = Some("Film"), releaseYear = Some(2026)))))
+    captured.flatten.toSet shouldBe Set(RetriggerKind.ImdbRating)
+  }
+
   it should "keep same-title rows resolved to DISTINCT tmdbIds as two separate rows" in {
     val c = cache
     resolvedRow(c, "Diuna", Helios,   1984, 100)  // the 1984 adaptation

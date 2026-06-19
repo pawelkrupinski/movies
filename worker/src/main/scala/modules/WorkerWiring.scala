@@ -14,7 +14,7 @@ import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadMod
 import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
-import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
+import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, QueueEnrichmentRetrigger, RatingEnqueuer, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
 import tools.{Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
@@ -282,7 +282,13 @@ class WorkerWiring extends play.api.Logging {
   // cache, the promoter scheduled and the fold subscribed (below) unconditionally.
   lazy val stagingRepository: StagingRepository = new MongoStagingRepository(mongoConnection.database)
   lazy val movieCache: CaffeineMovieCache =
-    new CaffeineMovieCache(movieRepository, eventBus, staging = Some(stagingRepository))
+    new CaffeineMovieCache(movieRepository, eventBus, staging = Some(stagingRepository),
+      retrigger = enrichmentRetrigger)
+
+  // After a merge changes an enrichment's input fields, re-kick that enrichment
+  // (per case) as a worker task — clearing its freshness stamp so the tmdbId-keyed
+  // dedup doesn't skip the re-fetch. See QueueEnrichmentRetrigger / MergeRetrigger.
+  lazy val enrichmentRetrigger = new QueueEnrichmentRetrigger(taskQueue, freshnessStore)
 
   // ── Denormalised read model (web_movies + web_screenings) ───────────────────
   // The worker projects every `movies` write into the two read-model collections
@@ -533,7 +539,11 @@ class WorkerWiring extends play.api.Logging {
     new BulkRefreshHandler(TaskType.RefreshAllFilmweb,    "Filmweb",    () => filmwebRatings.refreshAllNow()),
     new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => metascoreRatings.refreshAllNow()),
     new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => rottenTomatoesRatings.refreshAllNow()),
-    new ResolveTmdbHandler(movieService.resolveTmdbOnce)
+    new ResolveTmdbHandler(movieService.resolveTmdbOnce),
+    // Movies-path IMDb-id recovery as a task (was inline off ImdbIdMissing) — so
+    // the merge-retrigger path can re-kick it; resolveSync writes the id + publishes
+    // ImdbIdResolved, keeping the downstream IMDb rating on the event chain.
+    new ResolveImdbIdHandler(imdbIdResolver)
   )
 
   // A fixed pool of workers, each fetching and running ONE task at a time — so

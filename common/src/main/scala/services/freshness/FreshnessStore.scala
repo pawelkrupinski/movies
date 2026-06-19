@@ -44,6 +44,15 @@ trait FreshnessStore {
         }
     }
 
+  /** Drop `key`'s stamp so the work behind it reads as STALE again and a
+   *  re-enqueue is no longer deduped away by the freshness gate. Used when a row
+   *  MERGE changed an enrichment's input fields (see
+   *  [[services.movies.MergeRetrigger]]): the cached rating/id was computed for
+   *  the pre-merge inputs, so it must be re-fetched even though the tmdbId-keyed
+   *  stamp still looks fresh. Best-effort — never throws; a no-op for an unknown
+   *  key. */
+  def invalidate(key: String): Unit
+
   /** Completes once the mirror holds every persisted stamp of `kind`, so
    *  `isFresh(_, kind)` can't read a not-yet-loaded key as stale. A scheduler
    *  awaits this before its first tick, so a slow boot hydrate doesn't make
@@ -60,6 +69,7 @@ class InMemoryFreshnessStore extends FreshnessStore {
   private val stamps = new ConcurrentHashMap[String, Instant]()
   override def lastFetchedAt(key: String): Option[Instant] = Option(stamps.get(key))
   override def markFresh(key: String, kind: FreshnessKind, at: Instant): Unit = { stamps.put(key, at); () }
+  override def invalidate(key: String): Unit = { stamps.remove(key); () }
 }
 
 /**
@@ -126,6 +136,21 @@ class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessSto
           (exception: Throwable) => logger.debug(s"Freshness write failed for $key: ${exception.getMessage}")
         )
       }.recover { case exception => logger.debug(s"Freshness write failed for $key: ${exception.getMessage}") }
+    }
+  }
+
+  override def invalidate(key: String): Unit = {
+    mirror.remove(key)
+    coll.foreach { c =>
+      // Fire-and-forget like markFresh: the mirror is already cleared, so even if
+      // the Mongo delete is lost the next restart just re-hydrates a stale stamp
+      // that the merge will invalidate again. Never break the caller's loop.
+      Try {
+        c.deleteOne(Filters.eq("_id", key)).subscribe(
+          (_: org.mongodb.scala.result.DeleteResult) => (),
+          (exception: Throwable) => logger.debug(s"Freshness invalidate failed for $key: ${exception.getMessage}")
+        )
+      }.recover { case exception => logger.debug(s"Freshness invalidate failed for $key: ${exception.getMessage}") }
     }
   }
 
