@@ -101,7 +101,7 @@ class FixtureWorkerWiring(fixtureDirectory: String) extends WorkerWiring {
       interval = 24.hours, initialDelay = initialScrapeDelaySeconds.seconds, runStore = scheduledRunStore)
   override lazy val detailReaper =
     new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
-      interval = 24.hours, runStore = scheduledRunStore)
+      tickInterval = 24.hours, runStore = scheduledRunStore)
 
   // Helios bakes the scrape day into its REST URLs, so pin it to the captured
   // day or every Helios fixture misses. Prefer <directory>/CAPTURE_DATE (written by

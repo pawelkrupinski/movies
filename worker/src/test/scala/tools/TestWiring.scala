@@ -67,8 +67,14 @@ trait TestWiring extends WorkerWiring {
     def publish(event: DomainEvent): Unit = { detailEventBuffer += event; () }
   }
   override lazy val enrichDetailsHandler = new EnrichDetailsHandler(
-    detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache, freshnessStore, uptimeMonitor, detailCaptureBus
+    detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache, freshnessStore, uptimeMonitor, detailCaptureBus,
+    detailDueWindow
   )
+  // The fixture pipeline drives ONE `detailReaper.tick()` per pass and expects it
+  // to enqueue the whole deferred-detail corpus (the prod per-tick cap would
+  // truncate the snapshot). The cap is a prod burst-shedding lever, not a
+  // correctness gate, so the fixture runs it uncapped.
+  override def maxDetailEnqueuePerTick: Int = Int.MaxValue
 
   // No Filmweb fallback in tests: pin the id map empty so fixture replay never
   // resolves (one GET per Filmweb city) or fetches Filmweb live. Eligible scrapers

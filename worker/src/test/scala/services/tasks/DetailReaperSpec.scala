@@ -36,6 +36,19 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
                      bus: EventBus = new InProcessEventBus()) =
     new DetailReaper(Seq(enricher), cache, queue, fresh, bus)
 
+  /** Seed the cache with `n` distinct deferred films, each carrying a filmUrl —
+   *  a synchronized stale cohort, as a re-key / title-rule wave produces. */
+  private def cacheWithMany(n: Int) = {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
+    val films = (1 to n).map { i =>
+      CinemaMovie(Movie(s"Film $i"), KinoApollo, posterUrl = None, filmUrl = Some(s"http://ref/$i"),
+        synopsis = None, cast = Seq.empty, director = Seq.empty,
+        showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))
+    }
+    cache.recordCinemaScrape(KinoApollo, films)
+    cache
+  }
+
   "DetailReaper.tick" should "enqueue a detail task for each deferred film that has a filmUrl and isn't fresh" in {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     reaper(cacheWith(Some("http://ref")), queue, fresh).tick() shouldBe 1
@@ -64,6 +77,25 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     r.tick() shouldBe 1
     r.tick() shouldBe 0 // already waiting → unique index rejects the duplicate
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
+  }
+
+  it should "enqueue at most maxEnqueuePerTick details when a whole cohort is stale (anti-burst cap)" in {
+    val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    val r = new DetailReaper(Seq(enricher), cacheWithMany(5), queue, fresh, new InProcessEventBus(),
+      maxEnqueuePerTick = 2)
+    r.tick() shouldBe 2
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 2L
+  }
+
+  it should "drain the rest of the stale cohort over subsequent capped ticks" in {
+    val (cache, queue, fresh) = (cacheWithMany(5), new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    val r = new DetailReaper(Seq(enricher), cache, queue, fresh, new InProcessEventBus(),
+      maxEnqueuePerTick = 2)
+    r.tick() shouldBe 2 // films 1–2
+    r.tick() shouldBe 2 // 1–2 still waiting (deduped), next 2 fresh cohort members
+    r.tick() shouldBe 1 // last one
+    r.tick() shouldBe 0 // all five now waiting
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 5L
   }
 
   "DetailReaper.tickIfClaimed" should "not enqueue when another machine has claimed the occurrence" in {

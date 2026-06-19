@@ -10,9 +10,14 @@ import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 
 import java.time.LocalDateTime
+import scala.concurrent.duration._
 
 class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
   import HandlerOutcome._
+
+  // The shared schedule the reaper enqueues on and this handler re-gates on. A
+  // just-fetched detail is not yet due, so the "skip when fresh" case still holds.
+  private val dueWindow = new DueWindow(6.hours)
 
   /** Records what the handler publishes, so a test can assert the
    *  detail-complete → MovieDetailsComplete re-trigger (and its absence). */
@@ -49,7 +54,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val fresh    = new InMemoryFreshnessStore
     val uptime   = new UptimeMonitor()
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("A great film"), cast = Seq("Zendaya"))))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus)
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done
@@ -68,7 +73,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val bus      = new CapturingBus
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       Some(FilmDetail(synopsis = Some("..."), director = Seq("Chloé Zhao"), originalTitle = Some("Hamnet"))))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(), bus)
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(), bus, dueWindow)
 
     h.handle(taskFor("kino-apollo", cache, "Hamnet", enricher)) shouldBe Done
     // Released from the read-model / TMDB gate now that the detail is in.
@@ -82,7 +87,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val cache    = seededCache("Dune") // detailPending defaults false — a plain refresh
     val bus      = new CapturingBus
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("x"))))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(), bus)
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(), bus, dueWindow)
 
     h.handle(taskFor("kino-apollo", cache, "Dune", enricher)) shouldBe Done
     bus.published shouldBe empty // a periodic detail refresh mustn't churn the TMDB stage
@@ -104,7 +109,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     // network source, health under one global name.
     val enricher = new FakeDetailEnricher(CinemaCityPoznanPlaza, "cinema-city", Some(detail),
       target = Some(CinemaCityChain), uptimeOverride = Some("Cinema City Enrichment"))
-    val h        = new EnrichDetailsHandler(Map("cinema-city" -> enricher), cache, fresh, uptime, noBus)
+    val h        = new EnrichDetailsHandler(Map("cinema-city" -> enricher), cache, fresh, uptime, noBus, dueWindow)
     val task     = taskFor("cinema-city", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done
@@ -129,7 +134,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val fresh    = new InMemoryFreshnessStore
     val uptime   = new UptimeMonitor()
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("x"))))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus)
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
     fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich)
 
@@ -140,7 +145,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
 
   it should "drop a task whose detail group has no enricher" in {
     val cache = seededCache("Dune")
-    val h     = new EnrichDetailsHandler(Map.empty, cache, new InMemoryFreshnessStore, new UptimeMonitor(), noBus)
+    val h     = new EnrichDetailsHandler(Map.empty, cache, new InMemoryFreshnessStore, new UptimeMonitor(), noBus, dueWindow)
     val task  = taskFor("gone", cache, "Dune", new FakeDetailEnricher(KinoApollo, "gone", None))
     h.handle(task) shouldBe Done
   }
@@ -150,7 +155,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val fresh    = new InMemoryFreshnessStore
     val uptime   = new UptimeMonitor()
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", None) // fetch failed/absent
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus)
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done

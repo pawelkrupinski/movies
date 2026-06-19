@@ -422,16 +422,25 @@ class WorkerWiring extends play.api.Logging {
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
     cinemaScrapeRunner, freshnessStore, scrapeDueWindow
   )
+  // Shared detail refresh schedule. Its period is the DetailEnrich TTL (6h,
+  // `Freshness.ttlFor`); the SAME instance backs the reaper (enqueue gate) and the
+  // handler (pickup gate) so they agree on "due" — see [[services.tasks.DueWindow]].
+  val detailDueWindow = new services.tasks.DueWindow(6L.hours)
   lazy val enrichDetailsHandler = new EnrichDetailsHandler(
-    detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache, freshnessStore, uptimeMonitor, eventBus
+    detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache, freshnessStore, uptimeMonitor, eventBus,
+    detailDueWindow
   )
   // Detail enqueue is event-driven: one enqueuer per deferred cinema fires the
   // first detail fetch off CinemaMovieAdded; the reaper is the periodic
-  // refresh/retry backstop (CinemaMovieAdded fires only on first appearance).
+  // refresh/retry backstop (CinemaMovieAdded fires only on first appearance),
+  // phase-spread + capped so a re-key cohort trickles instead of dumping (~1k
+  // EnrichDetails in one tick, which cascaded into the ResolveTmdb/rating bursts
+  // that pinned the shared-CPU credit). Same lever as the scrape/rating reapers.
   lazy val detailEnqueuers: Seq[DetailTaskEnqueuer] =
     detailEnrichers.map(de => new DetailTaskEnqueuer(de, movieCache, taskQueue, freshnessStore))
+  def maxDetailEnqueuePerTick: Int = Env.positiveLong("KINOWO_DETAIL_MAX_ENQUEUE_PER_TICK", 50L).toInt
   lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
-    runStore = scheduledRunStore)
+    dueWindow = detailDueWindow, maxEnqueuePerTick = maxDetailEnqueuePerTick, runStore = scheduledRunStore)
 
   // ── Staging incubation (resolve-then-fold) ──────────────────────────────────
   // A newcomer in `pending_movies` walks the SAME steps the direct path runs,

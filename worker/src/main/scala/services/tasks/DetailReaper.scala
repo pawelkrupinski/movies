@@ -10,7 +10,7 @@ import services.movies.{CacheKey, MovieCache}
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
 import tools.DaemonExecutors
 
-import java.time.Clock
+import java.time.{Clock, Instant}
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
 import scala.util.Try
@@ -46,7 +46,30 @@ class DetailReaper(
   queue:     TaskQueue,
   freshness: FreshnessStore,
   bus:       EventBus,
-  interval:  FiniteDuration = 15.minutes,
+  // The shared per-row refresh schedule, phase-spread across its period (6h, the
+  // DetailEnrich TTL) exactly like [[EnrichmentReaper]] / [[ScrapeReaper]]. The
+  // SAME instance must back [[EnrichDetailsHandler]] so this enqueue gate and that
+  // pickup gate agree on "due" — otherwise the reaper re-enqueues every tick a
+  // task the handler skips as still-fresh, churning the queue (see [[DueWindow]]).
+  // The phase offset (hashed from each row's dedup key) is what stops a
+  // synchronized cohort — a re-key / title-rule wave that orphans a whole batch's
+  // freshness stamps at once — from all coming due in the SAME tick. Before this,
+  // DetailReaper gated on a raw rolling TTL with no phase offset, so such a cohort
+  // dumped its whole backlog in one tick (~1k `EnrichDetails` observed in prod),
+  // and each completion cascaded into `ResolveTmdb` + rating tasks, spiking the
+  // shared-CPU credit balance to zero.
+  dueWindow: DueWindow = new DueWindow(6.hours),
+  // How often the reaper wakes to enqueue the now-due slice — the spread
+  // granularity (smaller = flatter trickle, at the cost of cheap in-memory scans).
+  tickInterval: FiniteDuration = 5.minutes,
+  // A small spacing before the first tick (0 in tests that drive `tick` directly).
+  initialDelay: FiniteDuration = 0.seconds,
+  // Cap on enqueues per tick — the backstop the phase spread can't provide for a
+  // COLD cohort (every re-keyed row is "never refreshed" → due at once). Bounds
+  // that recovery burst the way every other reaper does; the leftover stays due
+  // and drains over the next ticks. Default unbounded so tests driving `tick` are
+  // unaffected; the wiring sets a finite cap.
+  maxEnqueuePerTick: Int = Int.MaxValue,
   runStore:  ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:     Clock = Clock.systemUTC()
 ) extends Stoppable with Logging {
@@ -55,8 +78,10 @@ class DetailReaper(
 
   def start(): Unit = {
     if (enrichers.isEmpty) { logger.info("DetailReaper: no deferred cinemas; not starting."); return }
-    scheduler.scheduleWithFixedDelay(() => Try(tickIfClaimed()), interval.toMillis, interval.toMillis, TimeUnit.MILLISECONDS)
-    logger.info(s"DetailReaper started over ${enrichers.size} deferred cinema(s), every ${interval.toMinutes}min.")
+    scheduler.scheduleWithFixedDelay(
+      () => Try(tickIfClaimed()), initialDelay.toMillis, tickInterval.toMillis, TimeUnit.MILLISECONDS)
+    logger.info(s"DetailReaper started over ${enrichers.size} deferred cinema(s): each detail refreshed once per " +
+                s"${dueWindow.period.toHours}h, phase-spread over ticks every ${tickInterval.toSeconds}s.")
   }
 
   /** Run the detail tick + stuck-pending release only if this machine wins the
@@ -64,24 +89,30 @@ class DetailReaper(
    *  this window, so skip. Returns the number of detail tasks enqueued (0 when
    *  the claim was lost). Package-private so tests can drive it directly. */
   private[tasks] def tickIfClaimed(): Int = {
-    val key = OccurrenceKey.at("detail", clock.millis(), interval, 0.seconds)
+    val key = OccurrenceKey.at("detail", clock.millis(), tickInterval, 0.seconds)
     if (runStore.claim(key)) { val n = tick(); reapStuckPending(); n } else 0
   }
 
-  /** Enqueue every stale `(deferred-cinema, film)` detail, keyed off the row's
+  /** Enqueue every now-due `(deferred-cinema, film)` detail, keyed off the row's
    *  CURRENT CacheKey (so it's robust to a row that was re-keyed since its
-   *  `CinemaMovieAdded` fired). Public so tests / the fixture harness can drive
-   *  one pass directly. Returns how many tasks were enqueued. */
-  def tick(): Int = {
+   *  `CinemaMovieAdded` fired), up to `maxEnqueuePerTick`. Public so tests / the
+   *  fixture harness can drive one pass directly, with an injectable `nowMillis`
+   *  so tests can advance time. Returns how many tasks were enqueued. */
+  def tick(nowMillis: Long = clock.millis()): Int = {
+    val now      = Instant.ofEpochMilli(nowMillis)
     var enqueued = 0
-    cache.entries.foreach { case (key, record) =>
-      enrichers.foreach { e =>
+    val rows = cache.entries.iterator
+    while (rows.hasNext && enqueued < maxEnqueuePerTick) {
+      val (key, record) = rows.next()
+      val es = enrichers.iterator
+      while (es.hasNext && enqueued < maxEnqueuePerTick) {
+        val e = es.next()
         e.nativeDetailRef(record).foreach { ref =>
-          if (EnrichDetailsTasks.enqueueIfStale(queue, freshness, e, key, ref)) enqueued += 1
+          if (EnrichDetailsTasks.enqueueIfDue(queue, freshness, dueWindow, e, key, ref, now)) enqueued += 1
         }
       }
     }
-    if (enqueued > 0) logger.info(s"DetailReaper enqueued $enqueued stale detail(s).")
+    if (enqueued > 0) logger.info(s"DetailReaper enqueued $enqueued due detail(s).")
     enqueued
   }
 

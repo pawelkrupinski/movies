@@ -8,6 +8,8 @@ import services.events.{EventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.{CacheKey, MovieCache}
 
+import java.time.{Clock, Instant}
+
 /** Builds the dedup key, freshness key, and payload for an `EnrichDetails` task.
  *  The dedup key encodes `(detailGroup, film)` so "enrich film F for group G"
  *  can exist at most once — the queue's unique index rejects a second. */
@@ -32,11 +34,27 @@ object EnrichDetailsTasks {
    *  detail-fresh. The freshness pre-check just avoids queue churn; the queue's
    *  unique index is the real cross-server guarantee that a `(group, film)`
    *  detail task can't be queued twice. Returns true iff newly enqueued. Shared
-   *  by every producer (the event enqueuer, the periodic reaper, the inline
-   *  scrape path) so the enqueue rule lives in exactly one place. */
+   *  by the ONE-SHOT producers (the event enqueuer on first appearance, the inline
+   *  scrape path) so the enqueue rule lives in one place. The PERIODIC reaper uses
+   *  [[enqueueIfDue]] instead — it must gate on the same [[DueWindow]] the handler
+   *  re-gates on, or it churns the queue. (`!isFresh ⟹ isDue`, so a task these
+   *  one-shot paths enqueue is always still due at the handler — never churned.) */
   def enqueueIfStale(queue: TaskQueue, freshness: FreshnessStore, enricher: DetailEnricher, key: CacheKey, ref: String): Boolean = {
     val dk = dedupKey(enricher.detailGroup, key)
     !freshness.isFresh(dk, FreshnessKind.DetailEnrich) &&
+      queue.enqueue(TaskType.EnrichDetails, dk, payload(enricher, key, ref)) == EnqueueResult.Added
+  }
+
+  /** Enqueue a detail task only when it's DUE under `dueWindow` — the phase-spread
+   *  gate the periodic [[DetailReaper]] enqueues on and [[EnrichDetailsHandler]]
+   *  re-gates on (shared instance). The phase offset, hashed from `dk`, scatters a
+   *  synchronized cohort (a re-key wave that orphans a whole batch's stamps at
+   *  once) across the period instead of dumping it in one tick. Returns true iff
+   *  newly enqueued. */
+  def enqueueIfDue(queue: TaskQueue, freshness: FreshnessStore, dueWindow: DueWindow,
+                   enricher: DetailEnricher, key: CacheKey, ref: String, now: Instant): Boolean = {
+    val dk = dedupKey(enricher.detailGroup, key)
+    dueWindow.isDue(dk, freshness.lastFetchedAt(dk), now) &&
       queue.enqueue(TaskType.EnrichDetails, dk, payload(enricher, key, ref)) == EnqueueResult.Added
   }
 }
@@ -48,16 +66,23 @@ object EnrichDetailsTasks {
  * slot's showtimes). A 1:1 cinema targets its own slot; a chain targets a
  * shared network source, so one fetch serves every venue.
  *
- * Freshness-gated: skips if the detail was fetched inside the window. A failed
- * fetch (`fetchFilmDetail` → None) is reported `Done` without marking fresh, so
- * the cinema's next scrape re-enqueues it rather than the worker spinning.
+ * Re-gated at pickup by the SAME [[DueWindow]] the [[DetailReaper]] enqueues on,
+ * not a separate rolling TTL: when it didn't, the reaper enqueued a row on its
+ * phase boundary while the handler skipped it as still-fresh, so the same row
+ * churned the queue every tick without ever refreshing (see [[DueWindow]]). A
+ * failed fetch (`fetchFilmDetail` → None) is reported `Done` without marking
+ * fresh, so the cinema's next scrape re-enqueues it rather than the worker
+ * spinning.
  */
 class EnrichDetailsHandler(
   enrichersByGroup: Map[String, DetailEnricher],
   cache:            MovieCache,
   freshness:        FreshnessStore,
   uptime:           UptimeMonitor,
-  bus:              EventBus
+  bus:              EventBus,
+  // SAME instance the DetailReaper enqueues on — see the class doc / [[DueWindow]].
+  dueWindow:        DueWindow,
+  clock:            Clock = Clock.systemUTC()
 ) extends TaskHandler with Logging {
   import HandlerOutcome._
 
@@ -65,7 +90,7 @@ class EnrichDetailsHandler(
 
   override def handle(task: Task): HandlerOutcome = {
     val key = task.dedupKey
-    if (freshness.isFresh(key, FreshnessKind.DetailEnrich)) return Skipped
+    if (!dueWindow.isDue(key, freshness.lastFetchedAt(key), clock.instant())) return Skipped
 
     enrichersByGroup.get(task.payload.getOrElse(EnrichDetailsTasks.GroupKey, "")) match {
       case None =>
