@@ -810,15 +810,15 @@
     .navbar-date      { order: 2; flex: 1 1 auto; min-width: 0; }
     .navbar-filtry    { order: 3; margin-left: 0; max-width: 45%; min-width: 0; flex-shrink: 1; }
     .navbar-auth      { order: 4; flex-shrink: 0; }
-    /* The active day-pill's highlight hugs its text (clipped to the content
-       box, inset by the pill's horizontal padding) instead of filling the whole
-       flex cell to its edge. Without this the active END pill — "Dziś" on the
-       left, "Wszystkie" on the right — jams its highlight right up against the
-       logo / Filtry, while the opposite (inactive) end shows only inset text,
-       so the gap looked lopsided. Hugging the text makes the active highlight
-       sit exactly where the inactive text does, so the row reads with the same
-       gap on both sides whichever day is selected. */
-    .navbar .day-pill.active { background-clip: content-box; }
+    /* The active day-pill's highlight fills its whole rounded border box, so it
+       reads as a full-size pill rounded on all four sides. Clipping it to the
+       content box (an earlier attempt to hug the text horizontally) flattened
+       the top/bottom corners on a short label like "Dziś" — with horizontal-only
+       padding the content-box clip eats the corner radius on the left/right but
+       leaves a flat stadium top/bottom, which on a real iPhone read as a pill
+       "cut off" at the top and bottom. Keeping the default border-box clip rounds
+       all four corners at full height; the flex row already leaves a gap on both
+       ends so the active END pill doesn't jam the logo / Filtry. */
     /* Search itself is pulled out of this row into a bottom-floating pill —
        but ONLY in PORTRAIT (see the `(max-width:575px) and
        (orientation:portrait)` block lower down). Narrow LANDSCAPE phones
@@ -836,15 +836,6 @@
       font-size: calc(.82 * var(--mobile-scale));
       padding-left:  min(calc(.34 * var(--mobile-scale)), 1.3vw);
       padding-right: min(calc(.34 * var(--mobile-scale)), 1.3vw);
-      /* Symmetric vertical padding insets the active highlight (which is
-         clipped to the content box, below) from the pill's top/bottom — without
-         it the text-hugging highlight on a short label like "Dziś" fills the
-         full 28px row height while hugging its sides, so its flat stadium
-         top/bottom read as "cut off". A plain px value (not a calc on
-         `--mobile-scale`) keeps the inset reliable even where a real mobile
-         Safari evaluates the scale calc differently than the WebKit test proxy. */
-      padding-top: 4px;
-      padding-bottom: 4px;
     }
 
     /* iOS Safari auto-zooms the viewport when focus lands on an
