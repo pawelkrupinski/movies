@@ -2,7 +2,7 @@ package services.staging
 
 import models.MovieRecord
 import play.api.Logging
-import services.movies.{CacheKey, MovieRepository, StoredMovieRecord, TitleNormalizer}
+import services.movies.{CacheKey, MovieRepository, TitleNormalizer}
 
 /**
  * Folds a concluded newcomer's per-cinema staging rows into the merged `movies`
@@ -46,15 +46,6 @@ class InMemoryStagingFolder(stagingRepository: StagingRepository, movieRepositor
     else {
       val moviesRows = movieRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key)
       val plan       = StagingFold.planGroup(stagingRows, moviesRows)
-      // Smoking-gun for "a movie re-entered staging": a brand-new promotion whose
-      // tmdbId is already on another `movies` row. Computed against the pre-upsert
-      // state (the new rows aren't written yet), across the WHOLE collection — not
-      // just this sanitize group — so a known film that re-incubated under a
-      // drifted key is caught.
-      StagingFold.detectReentries(plan.newPromotions, tmdb =>
-        movieRepository.findAll().collect {
-          case r if r.record.tmdbId.contains(tmdb) => StoredMovieRecord.idFor(r.title, r.year)
-        }).foreach(r => logger.warn(r.warning))
       plan.moviesUpserts.foreach { case (k, record) => movieRepository.upsert(k.cleanTitle, k.year, record) }
       plan.moviesDeletes.foreach(k => movieRepository.delete(k.cleanTitle, k.year))
       plan.stagingDeletes.foreach(stagingRepository.deleteRow)

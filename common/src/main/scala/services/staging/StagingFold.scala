@@ -78,35 +78,4 @@ object StagingFold {
     val moviesDeletes = moviesByKey.map(_._1).distinct.filterNot(canonicalKeys.contains)
     Plan(upserts, moviesDeletes, stagingRows, newPromotions)
   }
-
-  /** A brand-new promotion whose `tmdbId` ALREADY lives on one or more OTHER
-   *  `movies` rows: a film already known to `movies` (under a DIFFERENT
-   *  `sanitize(title)` key, so the divert gate's sanitize/alias check in
-   *  `MovieCache.recordCinemaScrape` missed it) that re-incubated through
-   *  staging instead of landing on its existing row. */
-  case class Reentry(promotedId: String, title: String, tmdbId: Int, existingIds: Seq[String]) {
-    def warning: String =
-      s"Staging RE-ENTRY: '$title' folded as a NEW movies row '$promotedId' (tmdbId=$tmdbId), but that " +
-        s"tmdbId already lives on ${existingIds.mkString(", ")} — a film already in `movies` (under a " +
-        s"different sanitize key) re-incubated through staging because the divert gate's sanitize/alias " +
-        s"check missed it. The settle will merge the duplicate; fix the missing TMDB alias / title " +
-        s"normalisation at source to stop the churn."
-  }
-
-  /** Flag the re-entries among a fold's `newPromotions`: each brand-new film whose
-   *  `tmdbId` is already carried by another `movies` row. `existingTmdbIds` looks
-   *  up the `_id`s of every CURRENT `movies` row holding a given tmdbId — call it
-   *  against the pre-fold `movies` state so the just-promoted row isn't its own
-   *  match (the promotion's own `_id` is filtered out defensively regardless).
-   *  Folds that merely merge into an existing row produce no promotion, so they're
-   *  never flagged. tmdbNoMatch promotions (no `tmdbId`) can't be detected this
-   *  way — their decorated-title keys are stable, so they rarely re-enter. */
-  def detectReentries(newPromotions: Seq[(CacheKey, MovieRecord)], existingTmdbIds: Int => Seq[String]): Seq[Reentry] =
-    newPromotions.flatMap { case (key, record) =>
-      record.tmdbId.flatMap { tmdb =>
-        val promotedId = StoredMovieRecord.idFor(key.cleanTitle, key.year)
-        val others     = existingTmdbIds(tmdb).filterNot(_ == promotedId).distinct
-        Option.when(others.nonEmpty)(Reentry(promotedId, key.cleanTitle, tmdb, others))
-      }
-    }
 }

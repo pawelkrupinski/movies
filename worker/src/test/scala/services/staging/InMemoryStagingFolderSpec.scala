@@ -1,15 +1,9 @@
 package services.staging
 
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.classic.{Level, Logger => LogbackLogger}
-import ch.qos.logback.core.read.ListAppender
 import models.{Helios, Multikino, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.slf4j.LoggerFactory
 import services.movies.{CacheKey, InMemoryMovieRepository}
-
-import scala.jdk.CollectionConverters._
 
 class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
 
@@ -80,32 +74,5 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
 
     promotions shouldBe empty                                       // merged, not promoted
     movies.findAll().head.record.data.keySet shouldBe Set(Helios, Multikino, Tmdb)  // merge still happened
-  }
-
-  it should "WARN when a known film (tmdbId already in movies) re-incubates and folds as a new row" in {
-    // 'Tangled' is already in `movies` as the Polish 'Zaplątani' (tmdbId 38757). A
-    // staging row of the English title sanitizes to a DIFFERENT key, so the divert
-    // gate missed it; it folds as a brand-new row carrying the SAME tmdbId — a
-    // re-entry the folder must flag (the duplicate the settle then merges).
-    val staging = new InMemoryStagingRepository
-    val movies  = new InMemoryMovieRepository
-    movies.upsert("Zaplątani", Some(2010), MovieRecord(tmdbId = Some(38757),
-      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Zaplątani"), releaseYear = Some(2010)))))
-    staging.upsert(Multikino, "Tangled", Some(2010), MovieRecord(tmdbId = Some(38757),
-      data = Map[Source, SourceData](
-        Multikino -> SourceData(title = Some("Tangled"), releaseYear = Some(2010)),
-        Tmdb      -> SourceData(title = Some("Tangled"), releaseYear = Some(2010)))))
-
-    val logger   = LoggerFactory.getLogger(classOf[InMemoryStagingFolder]).asInstanceOf[LogbackLogger]
-    val appender = new ListAppender[ILoggingEvent]
-    appender.start()
-    logger.addAppender(appender)
-    try new InMemoryStagingFolder(staging, movies).foldGroup("Tangled")
-    finally logger.detachAppender(appender)
-
-    val warnings = appender.list.asScala.filter(_.getLevel == Level.WARN).map(_.getFormattedMessage)
-    val reentry  = warnings.find(_.contains("Staging RE-ENTRY"))
-    reentry shouldBe defined
-    reentry.get should (include("tmdbId=38757") and include("zaplatani|2010"))
   }
 }
