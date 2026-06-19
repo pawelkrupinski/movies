@@ -55,7 +55,7 @@
       @film.synopsis match {
         case Some(text) => {
           <div class="meta-label">Opis</div>
-          <div class="meta-value">@text</div>
+          <div class="meta-value synopsis">@text</div>
         }
         case None => {}
       }

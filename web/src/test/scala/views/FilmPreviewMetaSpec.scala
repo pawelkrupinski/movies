@@ -67,4 +67,16 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
     html should not include "og:image"
     html should not include "twitter:image"
   }
+
+  // Synopses now carry \n\n paragraph breaks from the scraper
+  // (ScraperParse.blockText); the detail page renders them via a dedicated
+  // `.synopsis` class with `white-space: pre-wrap` so they don't fuse into one
+  // block (the other .meta-value blocks must NOT get pre-wrap — their markup is
+  // source-whitespace-sensitive).
+  "the synopsis block" should "carry the .synopsis class and preserve paragraph newlines" in {
+    val html = render(sample.copy(synopsis = Some("Pierwszy akapit.\n\nDrugi akapit.")))
+    html should include ("""<div class="meta-value synopsis">""")
+    html should include ("Pierwszy akapit.\n\nDrugi akapit.")  // newline survives Twirl escaping
+    html should include ("pre-wrap")                            // the scoped CSS rule is present
+  }
 }

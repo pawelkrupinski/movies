@@ -167,4 +167,27 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.cleanSynopsis(el, "span.junk")
     Option(el.selectFirst("span.junk")) should not be empty // original untouched
   }
+
+  it should "preserve paragraph breaks between sibling <p> blocks" in {
+    val html = """<div class="t"><p>Pierwszy akapit opisu filmu.</p><p>Drugi akapit, osobny.</p></div>"""
+    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe
+      "Pierwszy akapit opisu filmu.\n\nDrugi akapit, osobny."
+  }
+
+  it should "drop a URL-only paragraph without leaving a blank-line gap" in {
+    val html = """<div class="t"><p>Prawdziwy opis.</p><p>https://youtu.be/x</p><p>Ostatni akapit.</p></div>"""
+    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe
+      "Prawdziwy opis.\n\nOstatni akapit."
+  }
+
+  it should "render <br> as a single line break and <p> as a blank line" in {
+    val html = """<div class="t"><p>Linia jeden<br>Linia dwa</p><p>Akapit dwa.</p></div>"""
+    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe
+      "Linia jeden\nLinia dwa\n\nAkapit dwa."
+  }
+
+  "blockText" should "fall back to flat text when the element has no block children" in {
+    ScraperParse.blockText(Jsoup.parse("<span>Jeden akapit bez struktury.</span>").selectFirst("span")).trim shouldBe
+      "Jeden akapit bez struktury."
+  }
 }

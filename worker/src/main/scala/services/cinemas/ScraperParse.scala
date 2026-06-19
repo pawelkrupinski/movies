@@ -192,15 +192,47 @@ private[cinemas] object ScraperParse {
   def stripUrls(text: String): String =
     BareUrl.replaceAllIn(text, "").replaceAll("[ \\t]{2,}", " ").replaceAll(" +([.,;:])", "$1").trim
 
+  // Block-boundary sentinels: private-use code points that never occur in
+  // cinema prose AND that jsoup's `.text` (which collapses only *whitespace*)
+  // leaves untouched. We mark `<p>`/`<li>`/`<br>` boundaries with them before
+  // flattening, then restore them as newlines — `.text` alone fuses every
+  // paragraph into one wall of text. U+E000 = paragraph break, U+E001 = line.
+  private val ParaMark = "\uE000"
+  private val LineMark = "\uE001"
+
+  /** Plain text of an element with its block structure preserved as newlines:
+   *  `<p>`/`<li>` separated by a blank line, `<br>` as a single line break.
+   *  jsoup's `.text` flattens all of that to spaces; the web detail page
+   *  (`white-space: pre-wrap`) and the iOS / Android `Text` views all render
+   *  `\n`/`\n\n`, so preserving them here restores paragraphs end-to-end.
+   *  Operates on a clone, so the live DOM is left intact. */
+  def blockText(el: Element): String = {
+    val clone = el.clone()
+    clone.select("br").asScala.foreach(_.after(LineMark))
+    clone.select("p, li").asScala.foreach(_.append(ParaMark))
+    clone.text
+      .replace(ParaMark, "\n\n")
+      .replace(LineMark, "\n")
+  }
+
   /** Extract clean synopsis prose from a container element that also wraps
    *  junk sub-trees — booking CTAs, showtime tables, event agendas, "read
    *  more" links, trailer anchors. Pass the CSS selectors of those sub-trees
    *  to drop them; any residual bare URL surviving as plain text is stripped
-   *  too. The container is cloned, so the live DOM is left intact for other
-   *  fields parsed from the same page. */
+   *  too. Paragraph / line structure is preserved (see [[blockText]]). The
+   *  container is cloned, so the live DOM is left intact for other fields
+   *  parsed from the same page. */
   def cleanSynopsis(container: Element, dropSelectors: String*): String = {
     val el = container.clone()
     dropSelectors.foreach(sel => el.select(sel).remove())
-    stripUrls(el.text.trim)
+    normalizeBlocks(stripUrls(blockText(el)))
   }
+
+  /** Tidy block-text after URL stripping: drop spaces hugging a newline and
+   *  cap blank-line runs at one, so an empty (URL-only) paragraph collapses
+   *  instead of leaving a gap. */
+  private def normalizeBlocks(s: String): String =
+    s.replaceAll("[ \\t]*\n[ \\t]*", "\n")
+      .replaceAll("\n{3,}", "\n\n")
+      .trim
 }
