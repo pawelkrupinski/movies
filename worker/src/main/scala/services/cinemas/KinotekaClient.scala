@@ -139,7 +139,15 @@ object KinotekaClient {
       countries     = dd(document, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       director      = dd(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       cast          = dd(document, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      synopsis      = Option(document.selectFirst("div.mce-content-body")).map(_.text.trim)
+      // Event pages append an agenda ("Harmonogram wydarzenia: godz. 18:00 –
+      // …") plus a partner/sponsor list as trailing <p>s of the body. When such
+      // an agenda heading is present, keep only the prose paragraphs before it.
+      synopsis      = Option(document.selectFirst("div.mce-content-body")).map { body =>
+                        val ps = body.select("p").asScala.toSeq
+                        if (ps.exists(_.text.trim.toLowerCase.startsWith("harmonogram")))
+                          ps.map(_.text.trim).takeWhile(!_.toLowerCase.startsWith("harmonogram")).filter(_.nonEmpty).mkString(" ")
+                        else body.text.trim
+                      }.map(_.trim).filter(_.length > 20)
                         .orElse(Option(document.selectFirst("meta[property=og:description]")).map(_.attr("content").trim)).filter(_.length > 20),
       // The hero poster is a `<picture class="p-movie-details__hero-poster">`
       // (not a `<div>`) wrapping the real film `<img>`; match by class on any

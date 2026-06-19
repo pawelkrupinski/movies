@@ -93,7 +93,9 @@ class UjazdowskiClient(
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     Try(detailHttp.get(ref)).toOption.map(Jsoup.parse).map { document =>
       FilmDetail(
-        synopsis      = Option(document.selectFirst("div.body.max-w")).map(_.text.trim).filter(_.length > 20),
+        // Some descriptions embed a source/related link as plain-text URL; strip
+        // it so the synopsis stays prose-only.
+        synopsis      = Option(document.selectFirst("div.body.max-w")).map(d => ScraperParse.stripUrls(d.text.trim)).filter(_.length > 20),
         originalTitle = UjazdowskiClient.originalTitleOf(document)
       )
     }

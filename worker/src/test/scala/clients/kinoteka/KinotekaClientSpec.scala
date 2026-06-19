@@ -74,4 +74,12 @@ class KinotekaClientSpec extends AnyFlatSpec with Matchers {
         None, Nil
       )
   }
+
+  // Regression: event pages append a "Harmonogram wydarzenia: …" agenda + a
+  // partner/sponsor list as trailing body paragraphs; keep only the prose.
+  it should "drop the trailing event agenda from synopses" in {
+    val synopses = results.flatMap(_.filmUrl).flatMap(client.fetchFilmDetail).flatMap(_.synopsis)
+    synopses.size should be >= 70 // the fix doesn't gut the corpus of synopses
+    synopses.foreach(_ should not include "Harmonogram")
+  }
 }

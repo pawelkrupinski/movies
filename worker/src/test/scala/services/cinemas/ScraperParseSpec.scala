@@ -138,4 +138,33 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
       Some("https://player.vimeo.com/video/12345")
     ScraperParse.canonicalTrailer("https://example.com/not-a-trailer") shouldBe None
   }
+
+  "stripUrls" should "remove http(s) and bare www tokens and tidy the whitespace they leave" in {
+    ScraperParse.stripUrls("Świetny film. Więcej: www.example.pl")  shouldBe "Świetny film. Więcej:"
+    ScraperParse.stripUrls("Zobacz https://foo.bar/x teraz")        shouldBe "Zobacz teraz"
+    ScraperParse.stripUrls("Instagram: https://instagram.com/abc")  shouldBe "Instagram:"
+    ScraperParse.stripUrls("Opis bez żadnych linków.")              shouldBe "Opis bez żadnych linków."
+  }
+
+  "cleanSynopsis" should "drop the named junk sub-trees and strip residual plain-text URLs" in {
+    val html =
+      """<div class="tresc">
+        |  <div class="trailer"><a href="x">https://youtube.com/watch?v=abc</a></div>
+        |  <p>Prawdziwy opis filmu o miłości i stracie.</p>
+        |  <div class="terminy"><h2>Dostępne terminy</h2><a>Kup bilet</a></div>
+        |  <p>Więcej: www.kino.pl</p>
+        |</div>""".stripMargin
+    val out = ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.tresc"), "div.terminy", "div.trailer")
+    out should include ("Prawdziwy opis filmu o miłości i stracie")
+    out should not include "Dostępne terminy"
+    out should not include "Kup bilet"
+    out should not include "youtube.com"
+    out should not include "www.kino.pl"
+  }
+
+  it should "operate on a clone, leaving the live DOM intact for other fields" in {
+    val el = Jsoup.parse("""<div class="c"><span class="junk">x</span>opis</div>""").selectFirst("div.c")
+    ScraperParse.cleanSynopsis(el, "span.junk")
+    Option(el.selectFirst("span.junk")) should not be empty // original untouched
+  }
 }

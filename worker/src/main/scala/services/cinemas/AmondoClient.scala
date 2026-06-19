@@ -135,7 +135,20 @@ object AmondoClient {
       year           = year,
       countries      = countries,
       director       = infoLi(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      synopsis       = Option(document.selectFirst("div.filmPosterSection__plot")).map(_.text.trim).filter(_.length > 20)
+      // The plot lives in `div.filmPosterSection__plot`, but the DOM varies:
+      // sometimes the prose is inside that div (prefixed with a "KUP BILET"
+      // booking anchor), sometimes the div is empty and the prose sits in a
+      // sibling <p> next to the booking <p>. Combine the plot div with its
+      // sibling paragraphs, dropping the "KUP BILET" anchor either way.
+      synopsis       = Option(document.selectFirst("div.filmPosterSection__plot")).flatMap { plot =>
+                         Option(plot.parent).map { blurb =>
+                           val plotText = ScraperParse.cleanSynopsis(plot, "a")
+                           val paraText = blurb.select("> p").asScala.toSeq
+                             .filter(p => Option(p.selectFirst("a.gooutButton")).isEmpty)
+                             .map(_.text.trim).filter(_.nonEmpty)
+                           ScraperParse.stripUrls((plotText +: paraText).filter(_.nonEmpty).mkString(" ").trim)
+                         }
+                       }.filter(_.length > 20)
     )
   }
 }

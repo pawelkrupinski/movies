@@ -112,6 +112,11 @@ object MuranowClient {
 
   private val YearPat = """\b(20\d{2})\b""".r
 
+  /** A credits-only body line, e.g. "Przechodzień Passer-By reż. Andrzej
+   *  Titkow, Polska, 1984, 36 min" — director + country + year + runtime, no
+   *  prose. Used to skip such lines when picking the synopsis paragraph. */
+  private[cinemas] val CreditsLine = """(?i)\breż\.\s.*,\s*\d{4},\s*\d+\s*min\s*$""".r
+
   def yearFromLabel(label: String, fallbackYear: Int = LocalDate.now(ZoneId.of("Europe/Warsaw")).getYear): Int =
     YearPat.findFirstMatchIn(label).map(_.group(1).toInt).getOrElse(fallbackYear)
 
@@ -165,7 +170,11 @@ object MuranowClient {
       director       = field(document, "field-movie-director").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       cast           = field(document, "field-movie-cast").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       originalTitle  = field(document, "field-movie-original-title"),
-      synopsis       = Option(document.selectFirst("div.field--name-body p")).map(_.text.trim).filter(_.length > 20),
+      // Retrospective screenings lead the body with a credits-only paragraph
+      // ("<title> <orig> reż. <dir>, <country>, <year>, <NN> min") before the
+      // real prose. Take the first body paragraph that ISN'T such a line.
+      synopsis       = document.select("div.field--name-body p").asScala.toSeq.map(_.text.trim)
+                         .filter(_.length > 20).find(MuranowClient.CreditsLine.findFirstIn(_).isEmpty),
       // The Drupal remote-video paragraph renders the trailer as
       // `<div class="youtube-player" data-vid="<id>">`; build the canonical
       // watch URL from the id.

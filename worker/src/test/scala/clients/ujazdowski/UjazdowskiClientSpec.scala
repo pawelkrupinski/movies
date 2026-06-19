@@ -55,4 +55,21 @@ class UjazdowskiClientSpec extends AnyFlatSpec with Matchers {
       .getOrElse(fail("no detail for Erupcja"))
     polishDetail.originalTitle shouldBe None
   }
+
+  // Regression: some descriptions embed a source/related link as a plain-text
+  // URL; it must be stripped from the synopsis. (The exact prod page isn't in
+  // the corpus; the structure is reproduced via a synthetic detail page.)
+  it should "strip an embedded source URL from the synopsis" in {
+    val withUrl = new FakeHttpFetch("ujazdowski") {
+      override def get(url: String): String =
+        if (url.endsWith("/synthetic"))
+          "<html><body><div class='body max-w'>Nowy film dokumentalny o mieście. Źródło: https://osw.org.pl/raport tutaj.</div></body></html>"
+        else super.get(url)
+    }
+    val s = new UjazdowskiClient(withUrl, today).fetchFilmDetail("https://u-jazdowski.pl/synthetic")
+      .flatMap(_.synopsis).getOrElse(fail("no synopsis"))
+    s should include ("Nowy film dokumentalny o mieście")
+    s should not include "http"
+    s should not include "osw.org.pl"
+  }
 }

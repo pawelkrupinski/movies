@@ -74,7 +74,13 @@ class CytadelaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     Try(detailHttp.get(ref)).toOption.map { html =>
       val document      = Jsoup.parse(html)
-      val synopsis = Option(document.selectFirst("div.article-info__text.description")).map(_.text.trim).filter(_.length > 20)
+      // The description tails into an inline venue/ticket footer — a "♦ Bilety:
+      // …", a "Kino Cytadela znajduje się …" venue blurb, a "◊ sprawdź dojazd
+      // TUTAJ" link, or a "W programie:" event agenda. These are plain text
+      // after the prose (not separate elements), so truncate at the first
+      // footer marker.
+      val synopsis = Option(document.selectFirst("div.article-info__text.description")).map(_.text.trim)
+        .map(CytadelaClient.FooterMarker.replaceFirstIn(_, "").trim).filter(_.length > 20)
       FilmDetail(synopsis = synopsis)
     }
 
@@ -98,4 +104,11 @@ class CytadelaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
       RawSlot(s, t, date.atTime(tm), genres, year, directory, rt, booking, poster)
     }
   }
+}
+
+object CytadelaClient {
+  /** Inline footer that tails Cytadela synopses: a "♦ Bilety…" price block, a
+   *  "◊ sprawdź dojazd" line, or a "W programie:" event agenda. Everything from
+   *  the first marker onward is dropped. */
+  private[cinemas] val FooterMarker = """(?s)\s*(?:[♦◊]|W programie:).*$""".r
 }

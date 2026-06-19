@@ -2124,7 +2124,7 @@ runtimeMinutes:    102
 releaseYear:       2026
 countries:         Irlandia, Wielka Brytania
 posterUrl:         https://image.tmdb.org/t/p/w500/FhRosui9MSdxdyD3h0skOFhqED.jpg
-synopsis.length:   2276
+synopsis.length:   2232
 cast:              Bill Nighy, Roman Griffin Davis, Dexter Sol Ansell, Clare Dunne, Michael Socha
 director:          Morgan Matthews
 tmdbId:            1242876
@@ -3838,7 +3838,7 @@ runtimeMinutes:    145
 releaseYear:       2026
 countries:         Francja, Niemcy, Węgry, Chiny, Belgia
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Milcząca-przyjaciółka_plakat-PL_LQ.jpg
-synopsis.length:   1708
+synopsis.length:   1704
 cast:              Tony Leung, Luna Wedler, Enzo Brumm, Sylvester Groth, Martin Wuttke, Johannes Hegemann, Rainer Bock, Léa Seydoux
 director:          Ildikó Enyedi
 tmdbId:            1168719
@@ -4544,7 +4544,7 @@ runtimeMinutes:    55
 releaseYear:       2026
 countries:         Polska, Portugalia
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Ale-kosmos-PLAKAT.jpg
-synopsis.length:   1611
+synopsis.length:   1545
 cast:              —
 director:          Elżbieta Wąsik
 tmdbId:            1646671
@@ -6964,7 +6964,7 @@ runtimeMinutes:    65
 releaseYear:       2006
 countries:         Polska
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/Sarnie-zniwo-plakat-1-553x800.jpg
-synopsis.length:   2275
+synopsis.length:   2267
 cast:              Krzysztof Radzimski, Patryk Michoń, Adam Pabudziński, Bartosz Walaszek, Bartek Flisek
 director:          Bartosz Walaszek
 tmdbId:            644270

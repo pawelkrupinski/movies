@@ -71,4 +71,13 @@ class MuranowClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Milcząca przyjaciółka").showtimes.head shouldBe
       Showtime(LocalDateTime.of(2026, 6, 5, 15, 0), Some("https://kinomuranow.pl/tickets/26878/buy"), None, Nil)
   }
+
+  // Regression: retrospective screenings lead the body with a credits-only line
+  // ("… reż. <dir>, <country>, <year>, <NN> min"); the synopsis must be the prose
+  // paragraph that follows, not the credits line.
+  it should "skip a credits-only paragraph and use the prose synopsis" in {
+    val synopses = results.flatMap(_.filmUrl).flatMap(client.fetchFilmDetail).flatMap(_.synopsis)
+    synopses.exists(_.contains("Bohaterem \"Przechodnia\" jest")) shouldBe true
+    synopses.foreach(_ should not include "reż. Andrzej Titkow, Polska, 1984, 36 min")
+  }
 }

@@ -745,4 +745,22 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
     detail              should not be empty  // page fetched OK → Some, so the handler marks it fresh
     detail.get.synopsis shouldBe None
   }
+
+  // Regression: cycle/event pages mix organiser-link paragraphs (an <a> to a
+  // festival, Instagram/Facebook, the ticket page) and plain-text URLs into the
+  // synopsis column. Drop the link paragraphs and strip residual URLs.
+  // (The exact prod page isn't in the corpus; the structure is reproduced here.)
+  it should "parseSynopsis: drop link paragraphs and strip plain-text URLs" in {
+    val html =
+      """<div class="col-lg-7 paragraph">
+        |<p>Prawdziwy opis filmu, dwa zdania o jego fabule i bohaterach.</p>
+        |<p>Więcej informacji na www.kinomuza.pl o pokazie.</p>
+        |<p><a href="https://instagram.com/x">Instagram organizatora</a></p>
+        |</div>""".stripMargin
+    val s = client.parseSynopsis(Jsoup.parse(html)).getOrElse(fail("no synopsis"))
+    s should include ("Prawdziwy opis filmu")
+    s should not include "www."
+    s should not include "instagram"
+    s should not include "Instagram organizatora" // link paragraph dropped whole
+  }
 }

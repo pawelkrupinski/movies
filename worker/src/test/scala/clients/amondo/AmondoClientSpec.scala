@@ -47,4 +47,12 @@ class AmondoClientSpec extends AnyFlatSpec with Matchers {
         Some("Sala II"), Nil
       )
   }
+
+  // Regression: the "KUP BILET" booking anchor sits next to (or inside) the
+  // plot block; it must not prefix the synopsis.
+  it should "keep the KUP BILET booking prefix out of synopses" in {
+    val synopses = results.flatMap(_.filmUrl).flatMap(client.fetchFilmDetail).flatMap(_.synopsis)
+    synopses.exists(_.contains("Julie wkrótce kończy trzydzieści lat")) shouldBe true // prose preserved
+    synopses.foreach(_ should not include "KUP BILET")
+  }
 }

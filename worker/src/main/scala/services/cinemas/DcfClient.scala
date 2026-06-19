@@ -172,7 +172,11 @@ object DcfClient {
         val year     = YearPat.findFirstMatchIn(infoLine).map(_.group(1).toInt)
         val country  = parts.find(p => !p.toLowerCase.startsWith("reż") && YearPat.findFirstMatchIn(p).isEmpty)
                           .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-        val synopsis = Option(lines.drop(1).mkString(" ").trim).filter(_.length > 20)
+        // The block sometimes ends with an organiser footer ("Więcej:
+        // www.<film>.pl"); drop URL-only / "Więcej: <url>" lines and strip any
+        // residual plain-text URL so it never lands in the synopsis.
+        val prose    = lines.drop(1).filterNot(_.matches("""(?i)^(?:więcej:?\s*)?(?:https?://|www\.)\S+$"""))
+        val synopsis = Option(ScraperParse.stripUrls(prose.mkString(" ")).trim).filter(_.length > 20)
         Detail(runtime, year, country, genres, director, synopsis, trailer)
     }
   }

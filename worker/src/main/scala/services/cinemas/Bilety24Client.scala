@@ -82,7 +82,12 @@ object Bilety24Client {
     val runtime = segs.flatMap(s => RuntimePat.findFirstMatchIn(s).map(_.group(1).toInt)).headOption
     val genres  = segs.filterNot(s => RuntimePat.findFirstMatchIn(s).isDefined)
                       .map(tools.TextNormalization.titleCaseIfAllLower)
-    val synopsis = Option(document.selectFirst("div.title-description-content")).map(_.text.trim).filter(_.length > 20)
+    // The description block also carries a "czytaj więcej" toggle, an empty
+    // `p.read-more` placeholder, and—on cycle/concert events—organiser links
+    // (Instagram/Facebook handles, "Więcej: www…"). Drop the anchors and the
+    // placeholder and strip any plain-text URLs left behind.
+    val synopsis = Option(document.selectFirst("div.title-description-content"))
+      .map(ScraperParse.cleanSynopsis(_, "a", "p.read-more")).filter(_.length > 20)
     // Some b24-image slots are generic SVG placeholders ("PAN-BILET…svg"); take
     // the first real raster image, else fall back to the og:image poster.
     val poster   = document.select("img.b24-image").asScala.toSeq.map(_.attr("src"))

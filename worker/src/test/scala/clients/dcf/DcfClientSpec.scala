@@ -74,4 +74,15 @@ class DcfClientSpec extends AnyFlatSpec with Matchers {
     DcfClient.normalizeTitle("Znaki Pana Śliwki | FKS")          shouldBe "Znaki Pana Śliwki"
     DcfClient.normalizeTitle("Fargo")                            shouldBe "Fargo"
   }
+
+  // Regression: some descriptions end with an organiser footer ("Więcej:
+  // www.<film>.pl"); it must not leak into the synopsis.
+  "DcfClient synopsis" should "drop the organiser URL footer" in {
+    val synopses = results.flatMap(_.filmUrl).flatMap(client.fetchFilmDetail).flatMap(_.synopsis)
+    synopses.exists(_.contains("Kultowa produkcja w reżyserii Bartosza Walaszka")) shouldBe true
+    synopses.foreach { s =>
+      s should not include "www."
+      s should not include "najlepszeznajgorszych"
+    }
+  }
 }

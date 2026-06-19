@@ -53,8 +53,12 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
   // Used by `fetchFilmDetail`; public so the client spec can exercise it
   // against a detail-page document directly.
   def parseSynopsis(document: Document): Option[String] = {
+    // Drop paragraphs that are organiser/event links (an `<a>` to a festival,
+    // Instagram/Facebook, ticket page) and strip any plain-text URL from the
+    // rest, so only prose paragraphs survive.
     val paragraphs = document.select("div.col-lg-7.paragraph > p").asScala
-      .map(_.text().trim)
+      .filter(p => Option(p.selectFirst("a")).isEmpty)
+      .map(p => ScraperParse.stripUrls(p.text().trim))
       .filter(_.nonEmpty)
       .toSeq
     if (paragraphs.isEmpty) None else Some(paragraphs.mkString("\n\n"))

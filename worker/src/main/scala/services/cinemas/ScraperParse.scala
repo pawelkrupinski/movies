@@ -1,6 +1,6 @@
 package services.cinemas
 
-import org.jsoup.nodes.Document
+import org.jsoup.nodes.{Document, Element}
 
 import java.time.LocalTime
 import java.util.Locale
@@ -181,4 +181,26 @@ private[cinemas] object ScraperParse {
   def canonicalTrailer(url: String): Option[String] =
     services.movies.TrailerEmbed.youTubeId(url).map(id => s"https://www.youtube.com/watch?v=$id")
       .orElse(services.movies.TrailerEmbed.vimeoId(url).map(_ => url))
+
+  private val BareUrl = """(?i)\b(?:https?://|www\.)\S+""".r
+
+  /** Drop bare URL tokens that leaked into prose (a plain-text link, an
+   *  Instagram/Facebook handle, a "Więcej: www…" footer) and collapse the
+   *  whitespace they leave behind. Anchored URLs are better removed at the
+   *  DOM level (see [[cleanSynopsis]]); this catches the plain-text ones a
+   *  `.text` extraction flattens in. */
+  def stripUrls(text: String): String =
+    BareUrl.replaceAllIn(text, "").replaceAll("[ \\t]{2,}", " ").replaceAll(" +([.,;:])", "$1").trim
+
+  /** Extract clean synopsis prose from a container element that also wraps
+   *  junk sub-trees — booking CTAs, showtime tables, event agendas, "read
+   *  more" links, trailer anchors. Pass the CSS selectors of those sub-trees
+   *  to drop them; any residual bare URL surviving as plain text is stripped
+   *  too. The container is cloned, so the live DOM is left intact for other
+   *  fields parsed from the same page. */
+  def cleanSynopsis(container: Element, dropSelectors: String*): String = {
+    val el = container.clone()
+    dropSelectors.foreach(sel => el.select(sel).remove())
+    stripUrls(el.text.trim)
+  }
 }
