@@ -358,6 +358,10 @@ private struct FullScreenPosterView: View {
     /// Mirrors the Android viewer's 80dp threshold (`FullScreenPoster.kt`).
     private static let dismissThreshold: CGFloat = 100
 
+    /// How long the poster takes to finish sliding off-screen once the swipe is
+    /// committed, before the cover is removed.
+    private static let flyOffDuration: Double = 0.25
+
     var body: some View {
         ZStack {
             // Fade the backdrop out as the poster is flicked away, so the
@@ -398,7 +402,7 @@ private struct FullScreenPosterView: View {
                             if scale > 1 {
                                 lastOffset = offset
                             } else if abs(value.translation.height) > Self.dismissThreshold {
-                                onClose()
+                                flickAway(up: value.translation.height < 0)
                             } else {
                                 withAnimation(.spring()) { dismissOffset = .zero }
                             }
@@ -428,11 +432,30 @@ private struct FullScreenPosterView: View {
         .onTapGesture { onClose() }
     }
 
-    /// Backdrop dims toward transparent as the dismiss swipe progresses, capped
-    /// so the poster never floats over a fully bare background.
+    /// Commit the swipe: slide the poster the rest of the way off-screen in the
+    /// direction it was thrown, fading the backdrop with it, then remove the
+    /// cover WITHOUT its default slide-down transition — that transition pulls
+    /// the content back down regardless of swipe direction, which reads as the
+    /// poster bouncing the wrong way on an up-swipe. We let the poster finish
+    /// flying off, then drop the (now off-screen, transparent) cover instantly.
+    private func flickAway(up: Bool) {
+        let travel = UIScreen.main.bounds.height + 200
+        withAnimation(.easeOut(duration: Self.flyOffDuration)) {
+            dismissOffset = CGSize(width: 0, height: up ? -travel : travel)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.flyOffDuration) {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { onClose() }
+        }
+    }
+
+    /// Backdrop dims toward transparent in step with the swipe — fully clear by
+    /// the time the poster has travelled a screen-height off, so the fly-off
+    /// reads as a dismissal rather than a pan.
     private var backdropOpacity: Double {
-        let progress = min(abs(dismissOffset.height) / 400, 1)
-        return 1 - progress * 0.5
+        let progress = min(abs(dismissOffset.height) / UIScreen.main.bounds.height, 1)
+        return 1 - progress
     }
 }
 
