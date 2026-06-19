@@ -2439,7 +2439,7 @@ runtimeMinutes:    89
 releaseYear:       2025
 countries:         Francja, USA, Wielka Brytania, Włochy, Polska, Holandia
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/01/Glos_Hind_Rajab-polski-plakat1-po-zmniejszeniu-200x288.jpg
-synopsis.length:   1027
+synopsis.length:   1031
 cast:              هند رامي إياد  رجب, Motaz Malhees, Saja Kilani, Amer Hlehel, Clara Khoury
 director:          Kaouther Ben Hania
 tmdbId:            1480382
@@ -3132,7 +3132,7 @@ runtimeMinutes:    70
 releaseYear:       2026
 countries:         Polska, Niemcy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/KUMOTRY_plakat_filmweb.jpg
-synopsis.length:   931
+synopsis.length:   971
 cast:              —
 director:          Emilia Śniegoska
 tmdbId:            1454157
@@ -5127,7 +5127,7 @@ runtimeMinutes:    127
 releaseYear:       2025
 countries:         Dania, Francja, Szwecja, Finlandia, Niemcy, Turcja
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/06/plakat_orly-republiki.jpg
-synopsis.length:   2863
+synopsis.length:   2905
 cast:              Fares Fares, Lyna Khoudri, Cherien Dabis, Amr Waked, Zineb Triki, Donia Massoud
 director:          Tarik Saleh
 tmdbId:            1220566
@@ -5299,7 +5299,7 @@ runtimeMinutes:    90
 releaseYear:       2025
 countries:         Czechy, Dania, Niemcy, Wielka Brytania, USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Pan_NIKT_kontra_PUTIN_plakat_net_DBKDtLN.jpg
-synopsis.length:   797
+synopsis.length:   801
 cast:              Павел Таланкин, Władimir Putin, Roman Abalin, Лаврентий Берия, Viktor Abakumov
 director:          David Borenstein, Pasha Talankin
 tmdbId:            1393151
@@ -7778,7 +7778,7 @@ runtimeMinutes:    100
 releaseYear:       2025
 countries:         USA, Chiny
 posterUrl:         https://movies.helios.pl/images/TOMIJERRYPRZYGODAWMUZEUMplakat.jpg
-synopsis.length:   1206
+synopsis.length:   1214
 cast:              John Shang, 黑兔子, Jiang Wen, 顺子, Lan Long
 director:          Gang Zhang
 tmdbId:            1497970
@@ -9002,7 +9002,7 @@ runtimeMinutes:    72
 releaseYear:       2026
 countries:         Polska
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/ZNAKI-PANA-SLIWKI-POSTER-jpg-po-zmniejszeniu-200x288.jpg
-synopsis.length:   3651
+synopsis.length:   3659
 cast:              Karol Śliwka, Dariusz Dłużewski
 director:          Urszula Morga, Bartosz Mikołajczyk
 tmdbId:            1556638

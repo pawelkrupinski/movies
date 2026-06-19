@@ -596,7 +596,8 @@ class MovieController( cc: ControllerComponents,
             // card must be free to walk to a reachable fallback (see OgCardService).
             schedule.posterUrl.toSeq ++ schedule.resolved.fallbackPosterUrls,
             director = MovieController.cardDirector(schedule),
-            synopsis = schedule.synopsis
+            // The PNG card draws plain text — drop the markdown emphasis markers.
+            synopsis = schedule.synopsis.map(tools.SynopsisMarkdown.strip)
           )
           Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=86400")
         case None => NotFound(s"Film not found: $title")
@@ -849,7 +850,8 @@ object MovieController {
    * synopsis. */
   private[controllers] def previewDescription(film: FilmSchedule): String = {
     val ratings  = ratingTokens(film).mkString(" · ")
-    val synopsis = film.synopsis.getOrElse("").trim
+    // og:description is plain text — drop the markdown emphasis markers.
+    val synopsis = tools.SynopsisMarkdown.strip(film.synopsis.getOrElse("")).trim
     val joined =
       if (ratings.nonEmpty && synopsis.nonEmpty) ratings + " — " + synopsis
       else if (ratings.nonEmpty) ratings

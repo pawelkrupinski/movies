@@ -190,4 +190,50 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.blockText(Jsoup.parse("<span>Jeden akapit bez struktury.</span>").selectFirst("span")).trim shouldBe
       "Jeden akapit bez struktury."
   }
+
+  it should "preserve <b>/<strong> as **bold** and <i>/<em> as *italic*" in {
+    val html = """<div class="t"><p>Zwykły <b>pogrubiony</b> i <em>kursywa</em> tekst.</p></div>"""
+    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe
+      "Zwykły **pogrubiony** i *kursywa* tekst."
+  }
+
+  it should "skip empty emphasis tags so they can't emit a bare ****" in {
+    val html = """<div class="t"><p>Opis<b></b> filmu.</p></div>"""
+    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe "Opis filmu."
+  }
+
+  it should "move whitespace inside an emphasis tag outside the markers (so CommonMark renders it)" in {
+    // `<b>pogrubiony </b>` would otherwise emit `**pogrubiony **`, which iOS
+    // (strict CommonMark) renders literally — the space must hop outside.
+    val html = """<div class="t"><p>A <b>pogrubiony </b>tekst.</p></div>"""
+    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe "A **pogrubiony** tekst."
+  }
+
+  it should "drop an emphasis tag whose content is only whitespace" in {
+    val html = """<div class="t"><p>A <b> </b>B.</p></div>"""
+    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe "A B."
+  }
+
+  it should "skip block-spanning emphasis (can't bold across a paragraph) and keep the prose" in {
+    val html = """<div class="t"><b><p>Pierwszy akapit.</p><p>Drugi akapit.</p></b></div>"""
+    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe
+      "Pierwszy akapit.\n\nDrugi akapit."
+  }
+
+  it should "skip nested emphasis (only the leaf wins, no broken ***…* **)" in {
+    val html = """<div class="t"><p>W filmie <b><i>Tytuł</i></b> coś.</p></div>"""
+    // The <b> contains an <i>, so bold is skipped; the leaf <i> still emphasises.
+    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe "W filmie *Tytuł* coś."
+  }
+
+  it should "not throw when an emphasis tag wraps only a Unicode space (em-space survives .text.trim)" in {
+    // U+2003 passes the insertion filter (trim keeps chars > 0x20) but counts as
+    // whitespace to the tidy pass — the all-whitespace pair must collapse, not
+    // index past the segment end.
+    val html = "<div class=\"t\"><p>A <b>\u2003</b>B.</p></div>"
+    val out = ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t"))
+    out should not include "**"
+    out should startWith ("A")
+    out should endWith ("B.")
+  }
 }

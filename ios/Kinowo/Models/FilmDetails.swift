@@ -53,3 +53,22 @@ extension Array where Element == FilmDetails {
         Dictionary(map { ($0.title, $0) }, uniquingKeysWith: { _, new in new })
     }
 }
+
+/// The `synopsis` carries a tiny markdown subset — `**bold**`, `*italic*` (and
+/// `***both***`) — plus `\n`/`\n\n` paragraph breaks, emitted server-side by
+/// `ScraperParse.blockText`. Render it as an `AttributedString` that PRESERVES
+/// the whitespace/newlines and only applies the inline bold/italic —
+/// `.inlineOnlyPreservingWhitespace` does both (the default markdown syntax
+/// would collapse the paragraph breaks). Falls back to the raw string if
+/// parsing ever throws. (Colocated with `FilmDetails` so it ships in both the
+/// app target and the `KinowoCore` test target without a separate file ref.)
+enum SynopsisMarkdown {
+    static func attributed(_ s: String) -> AttributedString {
+        (try? AttributedString(
+            markdown: s,
+            options: AttributedString.MarkdownParsingOptions(
+                interpretedSyntax: .inlineOnlyPreservingWhitespace
+            )
+        )) ?? AttributedString(s)
+    }
+}

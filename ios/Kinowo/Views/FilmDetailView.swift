@@ -204,7 +204,7 @@ struct FilmDetailView: View {
         // map — it's simply absent until `/api/details` lands, or for
         // films the backend has no synopsis for.
         VStack(alignment: .leading, spacing: style.metaBlockSpacing) {
-            metaBlock(label: "Opis",      value: filmDetails?.synopsis)
+            metaBlock(label: "Opis",      value: filmDetails?.synopsis, markdown: true)
             metaBlock(label: "Reżyseria", value: joined(film.directors))
             metaBlock(label: "Obsada",    value: joined(film.cast))
             metaBlock(label: "Kraj(e) produkcji", value: joined(film.countries))
@@ -217,15 +217,18 @@ struct FilmDetailView: View {
         values.isEmpty ? nil : values.joined(separator: ", ")
     }
 
+    /// `markdown: true` only for the synopsis — it carries `**bold**`/`*italic*`
+    /// + newlines (see `SynopsisMarkdown`). Director/cast/countries are plain
+    /// comma-joined strings and must render verbatim.
     @ViewBuilder
-    private func metaBlock(label: String, value: String?) -> some View {
+    private func metaBlock(label: String, value: String?, markdown: Bool = false) -> some View {
         if let value, !value.isEmpty {
             VStack(alignment: .leading, spacing: style.metaLabelToValue) {
                 Text(label.uppercased())
                     .font(.system(size: style.metaLabelFontSize, weight: .semibold))
                     .foregroundColor(.secondary)
                     .tracking(0.6)
-                Text(value)
+                (markdown ? Text(SynopsisMarkdown.attributed(value)) : Text(value))
                     .font(.system(size: style.metaValueFontSize))
                     .foregroundColor(Color(white: 0.87))
                     .fixedSize(horizontal: false, vertical: true)

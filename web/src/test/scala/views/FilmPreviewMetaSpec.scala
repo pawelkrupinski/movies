@@ -79,4 +79,9 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
     html should include ("Pierwszy akapit.\n\nDrugi akapit.")  // newline survives Twirl escaping
     html should include ("pre-wrap")                            // the scoped CSS rule is present
   }
+
+  it should "render the synopsis markdown emphasis as <strong>/<em>, escaping the prose" in {
+    val html = render(sample.copy(synopsis = Some("Film o **wojnie** i *miłości* <x>.")))
+    html should include ("Film o <strong>wojnie</strong> i <em>miłości</em> &lt;x&gt;.")
+  }
 }

@@ -192,27 +192,87 @@ private[cinemas] object ScraperParse {
   def stripUrls(text: String): String =
     BareUrl.replaceAllIn(text, "").replaceAll("[ \\t]{2,}", " ").replaceAll(" +([.,;:])", "$1").trim
 
-  // Block-boundary sentinels: private-use code points that never occur in
-  // cinema prose AND that jsoup's `.text` (which collapses only *whitespace*)
-  // leaves untouched. We mark `<p>`/`<li>`/`<br>` boundaries with them before
-  // flattening, then restore them as newlines — `.text` alone fuses every
-  // paragraph into one wall of text. U+E000 = paragraph break, U+E001 = line.
+  // Block- and inline-boundary sentinels: private-use code points that never
+  // occur in cinema prose AND that jsoup's `.text` (which collapses only
+  // *whitespace*) leaves untouched. We mark `<p>`/`<li>`/`<br>` boundaries and
+  // `<b>`/`<i>` emphasis with them before flattening, then restore them as
+  // newlines / markdown markers — `.text` alone fuses every paragraph into one
+  // wall of text and drops all emphasis. U+E000 = paragraph break,
+  // U+E001 = line, U+E002 = bold edge (→ `**`), U+E003 = italic edge (→ `*`).
   private val ParaMark = "\uE000"
   private val LineMark = "\uE001"
+  private val BoldMark = "\uE002"
+  private val ItalMark = "\uE003"
 
-  /** Plain text of an element with its block structure preserved as newlines:
-   *  `<p>`/`<li>` separated by a blank line, `<br>` as a single line break.
-   *  jsoup's `.text` flattens all of that to spaces; the web detail page
-   *  (`white-space: pre-wrap`) and the iOS / Android `Text` views all render
-   *  `\n`/`\n\n`, so preserving them here restores paragraphs end-to-end.
+  /** Plain text of an element with its block structure preserved as newlines
+   *  and its inline emphasis preserved as lightweight markdown: `<p>`/`<li>`
+   *  separated by a blank line, `<br>` as a single line break, `<b>`/`<strong>`
+   *  as `**bold**`, `<i>`/`<em>` as `*italic*`. jsoup's `.text` flattens all of
+   *  that; the web detail page, the iOS `AttributedString(markdown:)` view and
+   *  the Android markdown→AnnotatedString view render `\n`/`\n\n` + the bold/
+   *  italic markers, so preserving them here restores formatting end-to-end.
    *  Operates on a clone, so the live DOM is left intact. */
   def blockText(el: Element): String = {
     val clone = el.clone()
     clone.select("br").asScala.foreach(_.after(LineMark))
     clone.select("p, li").asScala.foreach(_.append(ParaMark))
-    clone.text
+    // Wrap non-empty INLINE emphasis runs with a marker on both edges. Empty
+    // tags (`<b></b>`) are skipped so they can't emit a bare `****`; emphasis
+    // that wraps a block (`<b><p>…</p><p>…</p></b>`) is skipped too — markdown
+    // can't bold across a paragraph break, so it would only produce a broken
+    // `**\n\n**`; the prose still renders, just without the (unrepresentable)
+    // emphasis.
+    def inlineEmphasis(sel: String) =
+      clone.select(sel).asScala.filter { e =>
+        e.text.trim.nonEmpty &&
+          e.select("p, li").isEmpty &&                          // not block-spanning
+          !e.select("b, strong, i, em").asScala.exists(_ ne e)  // no NESTED emphasis (avoids broken ***…* **)
+      }
+    inlineEmphasis("b, strong").foreach { e => e.before(BoldMark); e.after(BoldMark) }
+    inlineEmphasis("i, em").foreach { e => e.before(ItalMark); e.after(ItalMark) }
+    // Produce best-effort inline markdown; the read boundary
+    // (`MovieRecord.synopsis` -> `SynopsisMarkdown.sanitize`) is the single
+    // place that GUARANTEES well-formed markdown across every source, so
+    // blockText doesn't re-validate here.
+    val tidied = tidyMarker(tidyMarker(clone.text, BoldMark), ItalMark)
+    tidied
       .replace(ParaMark, "\n\n")
       .replace(LineMark, "\n")
+      .replace(BoldMark, "**")
+      .replace(ItalMark, "*")
+  }
+
+
+  // A char is "whitespace-like" for emphasis tidying if it's real whitespace or
+  // one of our block-break sentinels — emphasis must not straddle either.
+  private def isWsLike(c: Char): Boolean =
+    c.isWhitespace || c == ParaMark.head || c == LineMark.head
+
+  /** Markers of one type are balanced toggle pairs (one before + one after each
+   *  element), so split on the marker and treat the odd segments as emphasised.
+   *  Move any whitespace / block-break sentinel touching a marker OUTSIDE the
+   *  pair — CommonMark won't emphasise `** x **`, so iOS would show the literal
+   *  markers — and drop a pair whose content is blank (`<b> </b>`). */
+  private def tidyMarker(s: String, mark: String): String = {
+    val parts = s.split(java.util.regex.Pattern.quote(mark), -1)
+    // Even parts ⇒ ODD markers ⇒ unbalanced (malformed source HTML — unclosed or
+    // adoption-agency-split tags). Drop every marker of this type rather than
+    // ship a broken half-pair; the prose still renders, just unemphasised.
+    if (parts.length % 2 == 0) return s.replace(mark, "")
+    val sb = new StringBuilder
+    parts.iterator.zipWithIndex.foreach { case (part, i) =>
+      if (i % 2 == 0) sb.append(part)
+      else {
+        val lead = part.takeWhile(isWsLike)
+        if (lead.length == part.length) sb.append(part)  // all whitespace-like → drop markers, keep spacing
+        else {
+          val trail = part.reverse.takeWhile(isWsLike).reverse
+          val core  = part.substring(lead.length, part.length - trail.length)
+          sb.append(lead).append(mark).append(core).append(mark).append(trail)
+        }
+      }
+    }
+    sb.toString
   }
 
   /** Extract clean synopsis prose from a container element that also wraps

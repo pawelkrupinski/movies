@@ -62,6 +62,7 @@ import pl.kinowo.ui.common.MetaPills
 import pl.kinowo.ui.common.PosterImage
 import pl.kinowo.ui.common.RatingBadges
 import pl.kinowo.ui.common.Showings
+import pl.kinowo.ui.common.SynopsisMarkdown
 import pl.kinowo.ui.common.openUrl
 import pl.kinowo.ui.common.shareFilm
 import pl.kinowo.ui.theme.Brand
@@ -174,7 +175,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
 
             // Meta blocks. Synopsis comes from the parallel /api/details fetch;
             // director/cast are already on the listing Film.
-            MetaBlock("Opis", details?.synopsis)
+            MetaBlock("Opis", details?.synopsis, markdown = true)
             MetaBlock("Reżyseria", film.directors.joinToString(", ").ifEmpty { null })
             MetaBlock("Obsada", film.cast.joinToString(", ").ifEmpty { null })
             MetaBlock("Kraj(e) produkcji", film.countries.joinToString(", ").ifEmpty { null })
@@ -208,12 +209,19 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
 const val DetailPosterTag = "detailPoster"
 
 @Composable
-private fun MetaBlock(label: String, value: String?) {
+// `markdown = true` only for the synopsis — it carries **bold**/*italic* +
+// newlines (see SynopsisMarkdown). Director/cast/countries are plain comma-
+// joined strings and must render verbatim.
+private fun MetaBlock(label: String, value: String?, markdown: Boolean = false) {
     if (value.isNullOrBlank()) return
     val style = LocalFilmDetailStyle.current
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(label.uppercase(), color = TextSecondary, fontSize = style.sectionLabelFontSize, fontWeight = FontWeight.SemiBold)
-        Text(value, color = Color.White, fontSize = style.sectionBodyFontSize, lineHeight = 20.sp)
+        if (markdown) {
+            Text(SynopsisMarkdown.annotated(value), color = Color.White, fontSize = style.sectionBodyFontSize, lineHeight = 20.sp)
+        } else {
+            Text(value, color = Color.White, fontSize = style.sectionBodyFontSize, lineHeight = 20.sp)
+        }
     }
 }
 

@@ -232,12 +232,21 @@ case class MovieRecord(
    *  over the row's life and never shrinks until the whole row is deleted. With
    *  longest-wins over a non-shrinking pool the result is sticky/monotonic: it
    *  only ever upgrades to a strictly longer blurb, never downgrades when a
-   *  cinema stops listing the film. */
+   *  cinema stops listing the film.
+   *
+   *  The length compared is the VISIBLE length — markdown emphasis markers
+   *  (`**`/`*`, see `ScraperParse.blockText`) are stripped for the comparison so
+   *  a blurb can't win just by carrying more `<b>`/`<i>` tags; selection stays
+   *  identical to the plain-text era. The winner is run through
+   *  `SynopsisMarkdown.sanitize` so the value every consumer sees (web HTML,
+   *  mobile `/api/details`, OG card, og:description) is guaranteed well-formed
+   *  markdown regardless of which source produced it. */
   def synopsis: Option[String] =
     synopsisCandidates
       .map(tools.TextNormalization.stripUrls)
       .filter(_.nonEmpty)
-      .sortBy(-_.length).headOption
+      .sortBy(s => -tools.SynopsisMarkdown.strip(s).length).headOption
+      .map(tools.SynopsisMarkdown.sanitize)
 
   /** Synopsis candidates in source-priority order — each source's live slot
    *  synopsis followed by its retained (post-prune) one. Built in priority
