@@ -24,6 +24,7 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     def enabled = false
     def findAll() = Seq.empty
     def delete(title: String, year: Option[Int]) = ()
+    def deleteById(id: String) = ()
     def upsert(title: String, year: Option[Int], e: MovieRecord) = ()
     def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord) = false
     override def close() = ()
@@ -35,6 +36,7 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
     def enabled = true
     def findAll() = titles.map(t => StoredMovieRecord(t, None, MovieRecord()))
     def delete(title: String, year: Option[Int]) = ()
+    def deleteById(id: String) = ()
     def upsert(title: String, year: Option[Int], e: MovieRecord) = ()
     def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord) = false
     override def close() = ()
@@ -50,6 +52,7 @@ class AdminTitleRulesControllerSpec extends AnyFlatSpec with Matchers {
         MovieRecord(data = Map[Source, SourceData](cinema -> SourceData(title = Some(raw), rawTitle = Some(raw)))))
     }
     def delete(title: String, year: Option[Int]) = ()
+    def deleteById(id: String) = ()
     def upsert(title: String, year: Option[Int], e: MovieRecord) = ()
     def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord) = false
     override def close() = ()

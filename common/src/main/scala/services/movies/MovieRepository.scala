@@ -85,6 +85,15 @@ trait MovieRepository {
    *  failures are logged, never thrown. */
   def delete(title: String, year: Option[Int]): Unit
 
+  /** Remove the record stored under this exact `_id`. Unlike [[delete]] (which
+   *  keys off `(title, year)` → `documentId`), this targets a row by its raw,
+   *  possibly NON-canonical `_id` — used to reap a mis-keyed orphan whose stored
+   *  `_id` no longer matches `idFor(displayTitle, year)` (a row first stored under
+   *  a cinema's original-language title whose display form later drifted to the
+   *  Polish one, leaving two `movies` docs for one film). Best-effort — failures
+   *  are logged, never thrown. */
+  def deleteById(id: String): Unit
+
   /** Write-through upsert. Best-effort — failures are logged, never thrown. */
   def upsert(title: String, year: Option[Int], e: MovieRecord): Unit
 
@@ -271,6 +280,15 @@ class MongoMovieRepository(
       ()
     }.recover {
       case exception: Throwable => logger.warn(s"MovieRepository.delete($title, $year) failed: ${exception.getMessage}")
+    }
+  }
+
+  def deleteById(id: String): Unit = coll.foreach { c =>
+    Try {
+      Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
+      ()
+    }.recover {
+      case exception: Throwable => logger.warn(s"MovieRepository.deleteById($id) failed: ${exception.getMessage}")
     }
   }
 

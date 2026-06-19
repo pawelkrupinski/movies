@@ -98,6 +98,13 @@ class InMemoryMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Se
     deleteWatcher.foreach(_(id))
   }
 
+  def deleteById(id: String): Unit = lock.synchronized {
+    if (store.remove(id).isDefined) {
+      deletes.append((id, None))
+      deleteWatcher.foreach(_(id))
+    }
+  }
+
   def close(): Unit = ()
 
   /** Out-of-band edit: drop the `filmwebUrl` + `filmwebRating` for the row.

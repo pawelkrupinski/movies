@@ -975,6 +975,27 @@ class CaffeineMovieCache(
     positive.asMap().keySet().asScala.toSeq
       .filterNot(byKey.keySet.contains)
       .foreach(positive.invalidate)
+    // Reap mis-keyed Mongo orphans. A stored row whose persisted `_id` no longer
+    // equals the canonical id for its RE-DERIVED identity — `idFor(displayTitle,
+    // year)` — was first stored under one title and later drifted to another (a
+    // cinema's English "Tangled" row whose TMDB Polish title is "Zaplątani", so it
+    // now displays, and keys in this cache, as "Zaplątani" alongside a separate
+    // "zaplatani|2010" doc). `byKey` already merged its slots into the single cache
+    // entry, but the stale doc lingers in `movies` and shows as a /debug duplicate
+    // (the cross-title settle never sees two rows — they collapsed to one CacheKey
+    // on load). Rewrite the canonical doc with the merged record, then delete the
+    // orphan id(s). Gated on an orphan existing, so a canonical corpus writes nothing.
+    val orphans = rows.collect {
+      case r if r.persistedId.exists(_ != StoredMovieRecord.idFor(r.title, r.year)) =>
+        CacheKey(r.title, r.year) -> r.persistedId.get
+    }
+    if (orphans.nonEmpty) {
+      orphans.groupBy(_._1).foreach { case (k, items) =>
+        byKey.get(k).foreach(repository.upsert(k.cleanTitle, k.year, _))
+        items.map(_._2).distinct.foreach(repository.deleteById)
+      }
+      logger.info(s"MovieCache rehydrate: reaped ${orphans.size} mis-keyed `movies` orphan(s) whose `_id` drifted from the display title.")
+    }
     // The raw `positive.put` above bypasses the `put` identity-fold, so same-film
     // rows that different cinemas reported under different years (`Kumotry|2025`
     // + `Kumotry|2026`, both resolved to one tmdbId) land as separate entries.

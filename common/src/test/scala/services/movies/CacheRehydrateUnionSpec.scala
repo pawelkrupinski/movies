@@ -21,6 +21,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     def enabled = true
     def findAll() = rows.toSeq
     def delete(t: String, y: Option[Int]) = ()
+    def deleteById(id: String) = ()
     def upsert(t: String, y: Option[Int], e: MovieRecord) = ()
     def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord) = false
     override def close() = ()
@@ -119,6 +120,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
       def enabled = true
       def findAll() = if (calls.getAndIncrement() == 0) Seq.empty else Seq(row)
       def delete(t: String, y: Option[Int]) = ()
+      def deleteById(id: String) = ()
       def upsert(t: String, y: Option[Int], e: MovieRecord) = ()
       def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord) = false
       override def close() = ()
