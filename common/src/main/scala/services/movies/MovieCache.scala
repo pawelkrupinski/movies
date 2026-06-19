@@ -378,8 +378,18 @@ class CaffeineMovieCache(
     // canonicaliser folds over).
     val slotKeys = cluster.flatMap { case (_, e) => e.data.values.flatMap(d => d.title.map(t => keyOf(t, d.releaseYear))) }
     val allKeys  = slotKeys ++ keys
+    // Only variants that sanitize to the SAME title as the canonical can be
+    // "normalised onto" it — a case/separator/year drift of the same string. A
+    // cross-language cluster (folded by shared tmdbId) legitimately carries a
+    // foreign-language slot ("Tangled" on the Polish-keyed "Zaplątani" row) whose
+    // sanitize will NEVER equal the canonical's; comparing its raw string would
+    // leave `needsFix` permanently true and re-write (delete+upsert) the settled
+    // row on every hydrate/settle tick — pointless Mongo churn that pins the
+    // worker at full CPU-credit. So a differing-sanitize slot is NOT a fix signal.
+    val canonicalSanitized = TitleNormalizer.sanitize(canonical.cleanTitle)
     val needsFix = keys.sizeIs > 1 ||
-      allKeys.exists(k => k.cleanTitle != canonical.cleanTitle || k.year != canonical.year)
+      allKeys.exists(k => TitleNormalizer.sanitize(k.cleanTitle) == canonicalSanitized &&
+        (k.cleanTitle != canonical.cleanTitle || k.year != canonical.year))
     if (needsFix) {
       withTitleLock(canonical.cleanTitle) {
         keys.foreach(invalidate)

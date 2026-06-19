@@ -159,6 +159,26 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     r.head.record.cinemaData.keySet shouldBe Set(Multikino, Helios)
   }
 
+  it should "not re-write a settled cross-language row on a SECOND canonicalize pass" in {
+    // Regression for the worker CPU-credit churn: once "Tangled" + "Zaplątani"
+    // fold to one row keyed on the Polish display title, that row still carries
+    // BOTH cinema slot titles. A re-settle must recognise the corpus as already
+    // canonical and write NOTHING — otherwise every backstop/rehydrate tick
+    // re-upserts the same row to Mongo forever, pinning the worker at 90% steal.
+    val repo = new InMemoryMovieRepository
+    val c    = new CaffeineMovieCache(repo)
+    // Multikino genuinely LISTS the film under its original title — slot title is
+    // "Tangled", not just the row key — while Helios lists the Polish "Zaplątani".
+    aliasedRow(c, "Tangled",   Multikino, 2010, 38757, "Zaplątani", "Tangled", "Tangled")
+    aliasedRow(c, "Zaplątani", Helios,    2010, 38757, "Zaplątani", "Tangled", "Zaplątani")
+    c.canonicalizeBySanitize()                 // pass 1: folds the two into one row
+    c.snapshot().size shouldBe 1
+    val writesAfterSettle = repo.upserts.size
+    c.canonicalizeBySanitize()                 // pass 2: corpus already canonical
+    withClue(s"second pass wrote ${repo.upserts.size - writesAfterSettle} time(s) to an already-settled corpus\n")(
+      repo.upserts.size shouldBe writesAfterSettle)
+  }
+
   it should "keep a decorated edition that carries the base tmdbId as its own row" in {
     val c = cache
     // The programme edition resolves to the base film's tmdbId but is separate by
