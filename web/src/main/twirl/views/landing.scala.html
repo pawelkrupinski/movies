@@ -11,9 +11,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb. Wybierz swoje miasto, by zobaczyć dzisiejszy repertuar.">
-  @_favicon()
-  <title>Wybierz miasto — Kinowo</title>
+  <title>Kinowo — repertuar kin w Twoim mieście</title>
+  @* Share preview (FB / Messenger / X / Slack): a dedicated repertoire-preview
+     card, not the bare "Wybierz miasto" picker — so a shared `/` link sells the
+     product (posters + ratings), which the city-selection screen itself can't. *@
+  @_ogTagsApp(
+    pageTitle       = "Kinowo — repertuar kin w Twoim mieście",
+    pageDescription = "Repertuar wszystkich kin w jednym miejscu — z ocenami IMDb, RT i Filmweb. Sprawdź dzisiejszy repertuar w swoim mieście.",
+    pageUrl         = "https://kinowo.fly.dev/",
+    imageUrl        = "https://kinowo.fly.dev/assets/img/og-home.png",
+  )
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {

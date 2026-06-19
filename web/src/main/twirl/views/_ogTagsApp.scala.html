@@ -1,9 +1,10 @@
-@(pageTitle: String, pageDescription: String, pageUrl: String = "", fbAppId: Option[String] = None)
+@(pageTitle: String, pageDescription: String, pageUrl: String = "", fbAppId: Option[String] = None, imageUrl: String = "https://kinowo.fly.dev/assets/img/og-image.png")
 @*
     Open Graph + Twitter Card meta for every non-/film page (index, kina,
     browse, plan). The /film template has its own block because there we want
     the film's poster as og:image; everywhere else the app icon is the right
-    thing — none of the in-page posters represent the page as a whole.
+    thing — none of the in-page posters represent the page as a whole. The
+    `/` landing overrides `imageUrl` with a dedicated repertoire-preview card.
 
     og:image is the absolute prod URL: Facebook requires an absolute https
     URL and aggressively caches per-URL, so pinning to kinowo.fly.dev means
@@ -30,7 +31,7 @@
 @if(pageUrl.nonEmpty) {
 <meta property="og:url"         content="@pageUrl">
 }
-<meta property="og:image"       content="https://kinowo.fly.dev/assets/img/og-image.png">
+<meta property="og:image"       content="@imageUrl">
 <meta property="og:image:width"  content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:description" content="@pageDescription">
@@ -42,4 +43,4 @@
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="@pageTitle">
 <meta name="twitter:description" content="@pageDescription">
-<meta name="twitter:image"       content="https://kinowo.fly.dev/assets/img/og-image.png">
+<meta name="twitter:image"       content="@imageUrl">
