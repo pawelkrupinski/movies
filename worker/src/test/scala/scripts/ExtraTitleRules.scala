@@ -25,18 +25,20 @@ import services.titlerules.TitleRule
  *     resolves ratings/poster as "Ojczyzna".
  *   - `searchStrips` — GlobalStructural scope, no tag: stripped for enrichment
  *     only; the row is kept (przedpremiera screenings, DKF-suffix forms, `*AD`).
+ *   - `canonical` — Canonical scope: runs in `sanitize`, so it CHANGES the merge
+ *     key and COLLAPSES spelling variants of one film into a single row (the
+ *     "Mandalorian i Grogu" ~19-way fragmentation). Safe to add post-hoc — see
+ *     the note on `canonical` below.
  *
- *  Decoration MERGES (Tani wtorek: / `/Kino Cafe` collapsing into the base film)
- *  were intentionally left out. They'd be GlobalStructural rules, and a
- *  GlobalStructural (merge-key-changing) rule added AFTER the documents exist can't be
- *  back-filled by the change-stream rebuilder: `CacheKey` equality is by
- *  `sanitize` (which runs the GlobalStructural tier), so the stale "X/Kino Cafe"
- *  and the base "X" collide on cache hydration — Caffeine last-write-wins drops
- *  one before `NormalizationRebuilder.rebuild` ever sees two entries to union.
- *  PerCinema rules don't hit this (sanitize
- *  ignores that tier), which is why the seed's per-cinema migrations back-fill
- *  fine. Decoration merges wait on a rebuild union-on-collision fix (or
- *  per-cinema scoping), tracked with the language-version format extraction. */
+ *  GlobalStructural decoration MERGES (`/Kino Cafe` collapsing into the base film)
+ *  are still intentionally left out: a GlobalStructural rule does NOT change the
+ *  `sanitize` key, so the stale "X/Kino Cafe" and the base "X" collide on cache
+ *  hydration — Caffeine last-write-wins drops one before
+ *  `NormalizationRebuilder.rebuild` ever sees two entries to union. PerCinema and
+ *  Canonical rules DON'T hit this: they change the key, so the rebuilder re-keys
+ *  and unions on collision — which is why the seed's per-cinema migrations and the
+ *  `canonical` additions below back-fill fine. A GlobalStructural decoration merge
+ *  still waits on a rebuild union-on-collision fix (or per-cinema scoping). */
 object ExtraTitleRules {
 
   private def prog(id: String, pattern: String, note: String): TitleRule =
@@ -45,6 +47,9 @@ object ExtraTitleRules {
 
   private def searchStrip(id: String, pattern: String, note: String): TitleRule =
     TitleRule(id, GlobalStructural, None, pattern, "", applyAll = false, order = 0, note = Some(note))
+
+  private def canon(id: String, pattern: String, replacement: String, note: String): TitleRule =
+    TitleRule(id, Canonical, None, pattern, replacement, applyAll = false, order = 0, note = Some(note))
 
   /** Programme banners not in the seed alternation. Each anchored at `^` and
    *  ending in its delimiter (`: `, ` | `) so it's a true prefix the extractor
@@ -136,11 +141,40 @@ object ExtraTitleRules {
     searchStrip("xtra-wajda-o-filmie-suffix",      """(?i)\s*[-–—]\s*Andrzej\s+Wajda\s+o\s+filmie\s*$""", "'<film> - Andrzej Wajda o filmie' suffix (Brzezina)")
   )
 
+  /** Canonical (merge-key) unifications. Unlike the strips above these run in
+   *  `sanitize`, so they COLLAPSE spelling variants of one film into a single
+   *  `movies` row — and re-merge the fragments already in prod: a Canonical edit
+   *  changes the sanitize key, so `NormalizationRebuilder` re-keys every affected
+   *  row and unions on collision (`MovieRecordMerge.unionAll`). That back-fill is
+   *  clean, so the GlobalStructural caveat in the header (decoration MERGES left
+   *  out) does NOT apply to this tier — only to merges that DON'T change the key.
+   *
+   *  Curated from the 2026-06 corpus where one film fragments across many rows
+   *  that never share showtimes — "Mandalorian i Grogu" split ~19 ways by a
+   *  lower-case "Gwiezdne wojny:" prefix the seed rule (capitalised only) missed,
+   *  the English title, and trailing language/format suffixes left in the title by
+   *  cinemas whose scraper doesn't run `ScraperParse.extractFormatTags`. */
+  val canonical: Seq[TitleRule] = Seq(
+    canon("xtra-canonical-gwiezdne-wojny-ci",
+      """(?iu)^Gwiezdne\s+wojny\s*:\s*""", "",
+      "Case-insensitive 'Gwiezdne wojny:' franchise prefix — the seed 'canonical-gwiezdne-wojny' only matches the capitalised 'Gwiezdne Wojny:', so the lower-case spelling (Mandalorian i Grogu) never merged."),
+    canon("xtra-canonical-trailing-lang-format",
+      """(?iu)(?:\s+|\s*[\[/|.,–—-]\s*)(?:(?:2D|3D|4DX)\s*[/-]?\s*(?:ukrai[ńn]ski|ukrainian)?\s*(?:dubbing|napisy|lektor|dub|nap|lek)|(?:ukrai[ńn]ski|ukrainian)?\s*(?:dubbing|napisy|lektor))\s*\]?\s*$""",
+      "",
+      "Trailing language/format suffix glued to the title ('… 2D DUBBING', '… / napisy', '… - 2D DUB', '… [napisy]', '… ukraiński dubbing', '… – LEKTOR') — merges the 2D/3D × dub/napisy/lektor variants a non-extractFormatTags scraper left in the title. The suffix must follow a space/separator (so a bare 'Lektor'/'Napisy' title isn't eaten) and the short 'dub/nap/lek' abbreviations only strip behind a 2D/3D qualifier."),
+    canon("xtra-canonical-trailing-sound-paren",
+      """(?iu)\s*[\[(]\s*(?:dolby(?:\s+atmos)?|atmos|imax|4dx|2d|3d)\s*[\])]\s*$""", "",
+      "Trailing parenthesised sound/format tag ('(Dolby Atmos)', '[2D]', '(IMAX)') — never part of a film's identity, so the format-decorated row merges into the bare film."),
+    canon("xtra-canonical-mandalorian-grogu-en",
+      """(?iu)^The\s+Mandalorian\s+and\s+Grogu$""", "Mandalorian i Grogu",
+      "Map the English title to the Polish canonical (same TMDB id 1228710) so the EN-titled listing merges; ordered after the trailing-format strip clears its '2D DUB' suffix first.")
+  )
+
   /** Orders stamped by position so the additions fold AFTER the seed rules of
    *  their scope (matching how [[ApplyExtraTitleRules]] appends them to the
    *  existing record). */
   val all: Seq[TitleRule] =
-    (programmePrefixes ++ searchStrips).zipWithIndex.map {
+    (programmePrefixes ++ searchStrips ++ canonical).zipWithIndex.map {
       case (r, i) => r.copy(order = 100 + i)
     }
 }

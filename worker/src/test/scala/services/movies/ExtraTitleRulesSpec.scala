@@ -3,7 +3,10 @@ package services.movies
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scripts.ExtraTitleRules
+import services.movies.TitleNormalizer.normalize
 import services.titlerules.{TitleRuleDefaults, TitleRuleSet}
+
+import java.util.Locale
 
 /** Locks the behaviour of the post-baseline [[ExtraTitleRules]] before they're
  *  applied to prod. The "load-bearing" pair on each case is the gate: the seed
@@ -164,6 +167,95 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
       withClue(s"search('$t'): ")(withExtras.search(t) shouldBe t)
       withClue(s"structural('$t'): ")(withExtras.structural(t) shouldBe t)
       withClue(s"programmePrefix('$t'): ")(withExtras.programmePrefix(t) shouldBe None)
+    }
+  }
+
+  // ── canonical merges: spelling variants collapse to ONE sanitize key ────────
+  // `mergeKey` reproduces `TitleNormalizer.sanitize` exactly (deburr ∘ canonical ∘
+  // normalize, lower-cased + alphanumeric-only) — the `_id`-keying that decides
+  // whether two listings fold into the same `movies` row. Two variants sharing a
+  // key merge; the staging newcomer check (`MovieCache`) recognises an already-known
+  // film by that same key, so an unmerged spelling re-incubates ("appears and
+  // disappears" in /debug staging). These are the real "Mandalorian i Grogu" corpus
+  // spellings (common/.../prod-movies/titles.txt), all keyed to the canonical film.
+
+  private def mergeKey(rs: TitleRuleSet, t: String): String =
+    tools.TextNormalization.deburr(rs.canonical(normalize(t)))
+      .toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", "")
+
+  private val canonicalFilm = "Mandalorian i Grogu"
+
+  // Variants that the SEED alone already merges (the capitalised franchise prefix,
+  // the ' & ' → ' i ' unification) — a baseline so the load-bearing split below is
+  // honest about which spellings only the additions rescue.
+  private val seedAlreadyMerges = Seq(
+    "Gwiezdne Wojny: Mandalorian i Grogu",
+    "Mandalorian & Grogu"
+  )
+
+  // Variants ONLY the additions merge — the lower-case prefix, the trailing
+  // language/format suffixes, the parenthesised sound tag, the English title.
+  private val additionsMerge = Seq(
+    "Gwiezdne wojny: Mandalorian i Grogu",
+    "Gwiezdne wojny: mandalorian i grogu",
+    "GWIEZDNE WOJNY: MANDALORIAN i GROGU",
+    "Gwiezdne wojny: mandalorian & grogu",
+    "Gwiezdne wojny: Mandalorian i Grogu (Dolby Atmos)",
+    "Gwiezdne wojny: Mandalorian i Grogu 2D DUBBING",
+    "Gwiezdne wojny: Mandalorian i Grogu 2D NAPISY",
+    "Mandalorian & Grogu - 2D DUB",
+    "Mandalorian i Grogu [napisy]",
+    "Mandalorian i Grogu. Ukrainian dubbing",
+    "Mandalorian i Grogu/dubbing",
+    "Mandalorian i Grogu/napisy",
+    "The Mandalorian and Grogu 2D DUB",
+    "The Mandalorian and Grogu 2D NAP"
+  )
+
+  private val canonicalKey = mergeKey(seedOnly, canonicalFilm) // "mandalorianigrogu"
+
+  "ExtraTitleRules canonical merges" should "fold every Mandalorian i Grogu spelling onto one key" in {
+    (seedAlreadyMerges ++ additionsMerge).foreach { v =>
+      withClue(s"mergeKey('$v'): ")(mergeKey(withExtras, v) shouldBe canonicalKey)
+    }
+  }
+
+  it should "be load-bearing — the seed rules leave the addition-only spellings unmerged" in {
+    additionsMerge.foreach { v =>
+      withClue(s"seedOnly.mergeKey('$v') should NOT yet equal the film key: ")(
+        mergeKey(seedOnly, v) should not be canonicalKey)
+    }
+  }
+
+  it should "strip trailing language/format suffixes across films (not just M&G)" in {
+    val cases = Seq(
+      "Toy Story 5 2D DUBBING"        -> "Toy Story 5",
+      "Straszny film napisy"          -> "Straszny film",
+      "Supergirl/dubbing"             -> "Supergirl",
+      "Ojczyzna / napisy"             -> "Ojczyzna",
+      "Hopnięci | DUBBING"            -> "Hopnięci",
+      "Wielkie piękno – napisy"       -> "Wielkie piękno",
+      "Drzewo magii 2D DUBBING"       -> "Drzewo magii",
+      "Babystar - lektor"             -> "Babystar"
+    )
+    cases.foreach { case (variant, base) =>
+      withClue(s"mergeKey('$variant') vs '$base': ")(
+        mergeKey(withExtras, variant) shouldBe mergeKey(withExtras, base))
+    }
+  }
+
+  // Negative controls: a real title that merely CONTAINS a digit+D or ends in an
+  // unrelated word must not be eaten by the trailing-format strip.
+  it should "not strip format-shaped fragments from real titles" in {
+    val unharmed = Seq(
+      "Avatar 3D",            // bare 3D, no dub/napisy word behind it
+      "2001: Odyseja kosmiczna",
+      "Klub",                 // ends in 'b', must not look like 'dub'
+      "Lektor",               // the bare word is a title here, not a suffix
+      "Top Gun: Maverick"
+    )
+    unharmed.foreach { t =>
+      withClue(s"canonical('$t') unchanged: ")(withExtras.canonical(t) shouldBe t)
     }
   }
 }
