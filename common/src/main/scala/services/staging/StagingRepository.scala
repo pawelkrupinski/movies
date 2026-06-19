@@ -80,7 +80,10 @@ trait StagingRepository {
   def findAll(): Seq[StagingRecord]
 
   /** Write-through upsert of one cinema's row, keyed by `idFor(cinema, title,
-   *  year)`. Use for FRESH rows (a scrape divert). Best-effort — never throws. */
+   *  year)` — the scrape-divert path, called on every tick a newcomer is still
+   *  incubating. When the row already exists, its enrichment is carried forward
+   *  (`carryForwardEnrichment`) so a re-scrape only refreshes the cinema slot and
+   *  can't blank the resolve step's stamp. Best-effort — never throws. */
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit
 
   /** Write `row.record` back under the row's PERSISTED `id`. Use to re-stamp an
@@ -111,6 +114,21 @@ trait StagingRepository {
 }
 
 object StagingRepository {
+  /** Merge a fresh scrape-divert `fresh` record onto the `existing` row already
+   *  stored under the same `_id`, so a RE-SCRAPE refreshes the cinema's slot
+   *  WITHOUT clobbering the enrichment the resolve step stamped.
+   *
+   *  `MovieCache.recordCinemaScrape` re-diverts a newcomer through `upsert` on
+   *  EVERY scrape tick until it folds, rebuilding a BLANK `MovieRecord` (one
+   *  cinema slot, no tmdbId/imdbId/tmdbNoMatch) each time. A blind replace nulled
+   *  the resolution between the resolve step and the fold, so the film folded
+   *  un-enriched into `movies` and the reaper re-resolved it forever ("stuck in
+   *  staging"). Keeping `existing` as the base preserves its enrichment fields and
+   *  its `Tmdb` slot; `data ++ fresh.data` lets the fresh cinema slot win (new
+   *  showtimes replace stale ones, not accumulate). */
+  def carryForwardEnrichment(existing: MovieRecord, fresh: MovieRecord): MovieRecord =
+    existing.copy(data = existing.data ++ fresh.data)
+
   /** A disabled, empty no-op `StagingRepository` — the default for callers that don't
    *  wire staging (e.g. the web `/debug` controller in tests, or any non-staging
    *  build). `findAll` is empty and writes are dropped. */
@@ -154,10 +172,21 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
       }.getOrElse(Seq.empty)
   }
 
-  def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit =
-    upsertId(StagingRecord.idFor(cinema, title, year), record)
+  def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = {
+    val id = StagingRecord.idFor(cinema, title, year)
+    // Carry forward any enrichment already on the row so a re-scrape can't blank
+    // the resolve step's tmdbId/imdbId/tmdbNoMatch (see `carryForwardEnrichment`).
+    upsertId(id, recordAt(id).fold(record)(StagingRepository.carryForwardEnrichment(_, record)))
+  }
 
   override def upsertRow(row: StagingRecord): Unit = upsertId(row.id, row.record)
+
+  /** The `MovieRecord` currently stored under `id`, if any. Used to preserve
+   *  enrichment across a re-scrape. Best-effort — None on any read failure. */
+  private def recordAt(id: String): Option[MovieRecord] = coll.flatMap { c =>
+    Try(Await.result(c.find(Filters.eq("_id", id)).limit(1).toFuture(), 10.seconds))
+      .toOption.flatMap(_.headOption).map(dto => StoredMovieDto.toDomain(dto).record)
+  }
 
   private def upsertId(id: String, record: MovieRecord): Unit = coll.foreach { c =>
     val dto = StoredMovieDto.fromDomain(id, record, Instant.now())

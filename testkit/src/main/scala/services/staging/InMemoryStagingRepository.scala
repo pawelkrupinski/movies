@@ -49,7 +49,11 @@ class InMemoryStagingRepository(seed: Seq[(Source, String, Option[Int], MovieRec
   }
 
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = lock.synchronized {
-    val built = put(StagingRecord.idFor(cinema, title, year), record)
+    val id = StagingRecord.idFor(cinema, title, year)
+    // Carry forward enrichment so a re-scrape can't blank the resolve step's
+    // stamp — same rule as MongoStagingRepository (see `carryForwardEnrichment`).
+    val merged = store.get(id).map(_.record).fold(record)(StagingRepository.carryForwardEnrichment(_, record))
+    val built  = put(id, merged)
     upserts.append((cinema, title, year, record))
     upsertWatcher.foreach(w => built.foreach(w))
   }
