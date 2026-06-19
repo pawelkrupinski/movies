@@ -349,15 +349,26 @@ private struct FullScreenPosterView: View {
     @State private var lastScale: CGFloat = 1
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
+    // Vertical translation of an in-progress swipe-to-dismiss (only while not
+    // zoomed). The poster follows the finger; on release we either commit the
+    // dismissal or spring back to centre.
+    @State private var dismissOffset: CGSize = .zero
+
+    /// A swipe whose vertical travel exceeds this commits the dismissal.
+    /// Mirrors the Android viewer's 80dp threshold (`FullScreenPoster.kt`).
+    private static let dismissThreshold: CGFloat = 100
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            // Fade the backdrop out as the poster is flicked away, so the
+            // gesture reads as a dismissal rather than a pan.
+            Color.black.opacity(backdropOpacity).ignoresSafeArea()
                 .accessibilityIdentifier(A11y.FilmDetail.fullScreen)
 
             DetailPosterImage(primary: primary, fallbacks: fallbacks, noPoster: { EmptyView() })
                 .scaleEffect(scale)
-                .offset(offset)
+                .offset(x: offset.width + dismissOffset.width,
+                        y: offset.height + dismissOffset.height)
                 .gesture(
                     MagnificationGesture()
                         .onChanged { scale = min(4, max(1, lastScale * $0)) }
@@ -372,11 +383,26 @@ private struct FullScreenPosterView: View {
                 .simultaneousGesture(
                     DragGesture()
                         .onChanged { value in
-                            guard scale > 1 else { return }
-                            offset = CGSize(width: lastOffset.width + value.translation.width,
-                                            height: lastOffset.height + value.translation.height)
+                            if scale > 1 {
+                                // Zoomed in: a drag pans the magnified poster.
+                                offset = CGSize(width: lastOffset.width + value.translation.width,
+                                                height: lastOffset.height + value.translation.height)
+                            } else {
+                                // At rest (1×): a vertical drag flicks the poster
+                                // away to dismiss. Follow the finger vertically only
+                                // so the gesture stays a clean up/down swipe.
+                                dismissOffset = CGSize(width: 0, height: value.translation.height)
+                            }
                         }
-                        .onEnded { _ in lastOffset = offset }
+                        .onEnded { value in
+                            if scale > 1 {
+                                lastOffset = offset
+                            } else if abs(value.translation.height) > Self.dismissThreshold {
+                                onClose()
+                            } else {
+                                withAnimation(.spring()) { dismissOffset = .zero }
+                            }
+                        }
                 )
 
             VStack {
@@ -400,6 +426,13 @@ private struct FullScreenPosterView: View {
         // zoom/pan gestures take their touches first.
         .contentShape(Rectangle())
         .onTapGesture { onClose() }
+    }
+
+    /// Backdrop dims toward transparent as the dismiss swipe progresses, capped
+    /// so the poster never floats over a fully bare background.
+    private var backdropOpacity: Double {
+        let progress = min(abs(dismissOffset.height) / 400, 1)
+        return 1 - progress * 0.5
     }
 }
 

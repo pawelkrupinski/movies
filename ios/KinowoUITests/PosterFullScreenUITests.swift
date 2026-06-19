@@ -58,7 +58,44 @@ final class PosterFullScreenUITests: XCTestCase {
                       "Long-pressing the poster should present the full-screen cover")
     }
 
+    func testSwipeUpDismissesFullScreenCover() throws {
+        presentFullScreenCover()
+        let close = app.buttons[A11y.FilmDetail.closeButton]
+
+        // Drag the poster up past the dismiss threshold (bottom-centre → top).
+        swipe(fromDy: 0.7, toDy: 0.1)
+        XCTAssertTrue(waitForDisappearance(close, timeout: 5),
+                      "Swiping the poster up should dismiss the full-screen cover")
+    }
+
+    func testSwipeDownDismissesFullScreenCover() throws {
+        presentFullScreenCover()
+        let close = app.buttons[A11y.FilmDetail.closeButton]
+
+        // Drag the poster down past the dismiss threshold (top-centre → bottom).
+        swipe(fromDy: 0.3, toDy: 0.9)
+        XCTAssertTrue(waitForDisappearance(close, timeout: 5),
+                      "Swiping the poster down should dismiss the full-screen cover")
+    }
+
     // MARK: - helpers
+
+    /// Opens the detail screen, taps the poster, and waits until the cover is up.
+    private func presentFullScreenCover() {
+        let poster = openFirstFilmAndFindPoster()
+        poster.tap()
+        XCTAssertTrue(app.buttons[A11y.FilmDetail.closeButton].waitForExistence(timeout: 5),
+                      "Tapping the poster should present the full-screen cover")
+    }
+
+    /// A vertical drag across the centre of the screen — long enough to clear the
+    /// viewer's dismiss threshold. Coordinate-based (not `swipeUp()`) so the
+    /// travel is large and lands on the centred poster image.
+    private func swipe(fromDy: CGFloat, toDy: CGFloat) {
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: fromDy))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: toDy))
+        start.press(forDuration: 0.05, thenDragTo: end)
+    }
 
     private func openFirstFilmAndFindPoster() -> XCUIElement {
         // Tap the poster region (top of the card), not the centre: the card's
