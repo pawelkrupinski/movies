@@ -176,7 +176,7 @@ object DcfClient {
         // www.<film>.pl"); drop URL-only / "Więcej: <url>" lines and strip any
         // residual plain-text URL so it never lands in the synopsis.
         val prose    = lines.drop(1).filterNot(_.matches("""(?i)^(?:więcej:?\s*)?(?:https?://|www\.)\S+$"""))
-        val synopsis = Option(ScraperParse.stripUrls(prose.mkString(" ")).trim).filter(_.length > 20)
+        val synopsis = Option(ScraperParse.stripUrls(prose.mkString("\n")).trim).filter(_.length > 20)
         Detail(runtime, year, country, genres, director, synopsis, trailer)
     }
   }

@@ -52,7 +52,7 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
         posterUrl = primary.poster,
         filmUrl   = Some(primary.detailUrl),
         synopsis  = d.flatMap(x => Option(x.selectFirst("div.item-fulltext")).orElse(Option(x.selectFirst("div.com-content-article__body"))))
-                      .map(_.text.trim).filter(_.length > 20),
+                      .map(ScraperParse.blockText(_).trim).filter(_.length > 20),
         cast      = Seq.empty,
         director  = d.toSeq.flatMap(metaLi(_, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))),
         showtimes = showtimes

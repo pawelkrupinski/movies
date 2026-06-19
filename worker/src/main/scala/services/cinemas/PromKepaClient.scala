@@ -84,8 +84,9 @@ object PromKepaClient {
         year      = meta.map(_.group(3).toInt),
         countries = meta.toSeq.flatMap(_.group(2).split("[,/]").map(_.trim).filter(_.nonEmpty)),
         director  = meta.toSeq.flatMap(_.group(1).split(",").map(_.trim).filter(_.nonEmpty)),
-        synopsis  = Option(document.selectFirst("div.single_content")).map(_.text.trim)
-                      .map(_.replaceAll("(?i)\\s*bilet[^.]*\\d+\\s*zł.*$", "").trim).filter(_.length > 20),
+        synopsis  = Option(document.selectFirst("div.single_content")).map(ScraperParse.blockText(_).trim)
+                      // (?s) so the booking-footer cut spans the paragraph newlines blockText now keeps.
+                      .map(_.replaceAll("(?is)\\s*bilet[^.]*\\d+\\s*zł.*$", "").trim).filter(_.length > 20),
         poster    = Option(document.selectFirst("div.image_item img.wp-post-image[src]")).map(_.attr("src")).filter(_.nonEmpty)
       )
     }

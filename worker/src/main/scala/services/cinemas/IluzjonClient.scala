@@ -158,8 +158,8 @@ object IluzjonClient {
       director       = dd(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       cast           = dd(document, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       originalTitle  = dd(document, "tytuł oryg"),
-      synopsis       = Option(document.selectFirst("h4:contains(Opis filmu) + div.content")).map(_.text.trim)
-                         .orElse(Option(document.selectFirst("div.content p")).map(_.text.trim)).filter(_.length > 20),
+      synopsis       = Option(document.selectFirst("h4:contains(Opis filmu) + div.content")).map(ScraperParse.blockText(_).trim)
+                         .orElse(Option(document.selectFirst("div.content p")).map(ScraperParse.blockText(_).trim)).filter(_.length > 20),
       poster         = Option(document.selectFirst("div.plakat img[src]")).map(_.attr("src")).filter(_.nonEmpty)
                          .map(u => if (u.startsWith("http")) u else s"https://www.iluzjon.fn.org.pl/${u.stripPrefix("/")}")
     )

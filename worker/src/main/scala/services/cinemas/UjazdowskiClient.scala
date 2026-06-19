@@ -94,8 +94,9 @@ class UjazdowskiClient(
     Try(detailHttp.get(ref)).toOption.map(Jsoup.parse).map { document =>
       FilmDetail(
         // Some descriptions embed a source/related link as plain-text URL; strip
-        // it so the synopsis stays prose-only.
-        synopsis      = Option(document.selectFirst("div.body.max-w")).map(d => ScraperParse.stripUrls(d.text.trim)).filter(_.length > 20),
+        // it so the synopsis stays prose-only. cleanSynopsis also keeps the
+        // <p>/<br> paragraph structure (ScraperParse.blockText).
+        synopsis      = Option(document.selectFirst("div.body.max-w")).map(ScraperParse.cleanSynopsis(_)).filter(_.length > 20),
         originalTitle = UjazdowskiClient.originalTitleOf(document)
       )
     }

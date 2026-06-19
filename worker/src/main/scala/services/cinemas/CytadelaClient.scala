@@ -79,7 +79,7 @@ class CytadelaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
       // TUTAJ" link, or a "W programie:" event agenda. These are plain text
       // after the prose (not separate elements), so truncate at the first
       // footer marker.
-      val synopsis = Option(document.selectFirst("div.article-info__text.description")).map(_.text.trim)
+      val synopsis = Option(document.selectFirst("div.article-info__text.description")).map(ScraperParse.blockText(_).trim)
         .map(CytadelaClient.FooterMarker.replaceFirstIn(_, "").trim).filter(_.length > 20)
       FilmDetail(synopsis = synopsis)
     }

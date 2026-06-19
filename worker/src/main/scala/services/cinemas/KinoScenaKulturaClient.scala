@@ -89,7 +89,7 @@ object KinoScenaKulturaClient {
       title     = title,
       dateTime  = dt,
       posterUrl = Option(block.selectFirst("div.event-img img")).map(_.attr("abs:src")).filter(_.nonEmpty),
-      synopsis  = Option(block.selectFirst("div.event-desc")).map(_.text.trim).filter(_.length > 20),
+      synopsis  = Option(block.selectFirst("div.event-desc")).map(ScraperParse.blockText(_).trim).filter(_.length > 20),
       genres    = genresOf(block)
     )
 

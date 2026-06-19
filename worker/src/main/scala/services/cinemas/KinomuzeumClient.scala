@@ -143,7 +143,7 @@ object KinomuzeumClient {
       year      = meta(document, "rok produkcji").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
       countries = meta(document, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       director  = meta(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      synopsis  = Option(document.selectFirst("div.block-element.text .description")).map(_.text.trim)
+      synopsis  = Option(document.selectFirst("div.block-element.text .description")).map(ScraperParse.blockText(_).trim)
                     .orElse(Option(document.selectFirst("meta[property=og:description]")).map(_.attr("content").trim))
                     .filter(_.length > 20),
       poster    = Option(document.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty)

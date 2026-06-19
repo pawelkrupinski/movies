@@ -109,7 +109,7 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
         val lines   = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
         val emptyIndex = lines.indexWhere(_.isEmpty)
         val synLines = if (emptyIndex >= 0) lines.drop(emptyIndex + 1) else Array.empty[String]
-        val synText  = synLines.filter(_.nonEmpty).mkString(" ").trim
+        val synText  = synLines.filter(_.nonEmpty).mkString("\n").trim
         Option(synText).filter(_.nonEmpty)
       }
       val fullText = Option(document.selectFirst("span.text")).map(_.text()).getOrElse("")
@@ -164,7 +164,7 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
             val directory      = lines.find(_.startsWith("Reż. ")).map(_.stripPrefix("Reż. ").trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
             val emptyIndex = lines.indexWhere(_.isEmpty)
             val synLines = if (emptyIndex >= 0) lines.drop(emptyIndex + 1) else Array.empty[String]
-            val synText  = synLines.filter(_.nonEmpty).mkString(" ").trim
+            val synText  = synLines.filter(_.nonEmpty).mkString("\n").trim
             val fullText = lines.mkString(" ")
             val rt       = RuntimePat.findFirstMatchIn(fullText).flatMap(m => Try(m.group(1).toInt).toOption)
             val yr       = YearPat.findAllMatchIn(fullText).flatMap(m => Try(m.group(1).toInt).toOption).toSeq.headOption

@@ -2439,7 +2439,7 @@ runtimeMinutes:    89
 releaseYear:       2025
 countries:         Francja, USA, Wielka Brytania, Włochy, Polska, Holandia
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/01/Glos_Hind_Rajab-polski-plakat1-po-zmniejszeniu-200x288.jpg
-synopsis.length:   1026
+synopsis.length:   1027
 cast:              هند رامي إياد  رجب, Motaz Malhees, Saja Kilani, Amer Hlehel, Clara Khoury
 director:          Kaouther Ben Hania
 tmdbId:            1480382
@@ -2580,7 +2580,7 @@ runtimeMinutes:    96
 releaseYear:       2025
 countries:         USA, Kanada, Canada
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7704D2R.jpg
-synopsis.length:   444
+synopsis.length:   445
 cast:              Arden Cho, May Hong, Ji-young Yoo, Ahn Hyo-seop, 김윤진
 director:          Chris Appelhans, Maggie Kang
 tmdbId:            803796
@@ -2746,7 +2746,7 @@ runtimeMinutes:    45
 releaseYear:       2026
 countries:         Polska
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Kicia_Kocia_w_podrozy_PLAKAT_B1.jpg
-synopsis.length:   1086
+synopsis.length:   1095
 cast:              Dominika Kluźniak, Lidia Sadowa, Jacek Kopczyński, Agnieszka Mrozińska, Julia Kołakowska
 director:          Marta Stróżycka
 tmdbId:            1612090
@@ -2974,7 +2974,7 @@ runtimeMinutes:    113
 releaseYear:       2025
 countries:         USA
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/12/KOPNELABYM-CIE_patroni-po-zmniejszeniu-200x288.jpg
-synopsis.length:   1134
+synopsis.length:   1137
 cast:              Rose Byrne, Conan O'Brien, A$AP Rocky, Danielle Macdonald, Delaney Quinn
 director:          Mary Bronstein
 tmdbId:            1160360
@@ -3687,7 +3687,7 @@ runtimeMinutes:    106
 releaseYear:       1976
 countries:         USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Mikey_i_Nicky-plakat.png
-synopsis.length:   1072
+synopsis.length:   1075
 cast:              Peter Falk, John Cassavetes, Ned Beatty, Sanford Meisner, William Hickey, David Pendleton
 director:          Elaine May
 tmdbId:            59143
@@ -3731,7 +3731,7 @@ runtimeMinutes:    118
 releaseYear:       1991
 countries:         USA
 posterUrl:         https://img.helios.pl/pliki/film/milczenie-owiec/milczenie-owiec-plakat-760.jpg
-synopsis.length:   931
+synopsis.length:   933
 cast:              Anthony Hopkins, Jodie Foster, Ted Levine, Kasi Lemmons, Scott Glenn, Anthony Heald
 director:          Jonathan Demme
 tmdbId:            274
@@ -4544,7 +4544,7 @@ runtimeMinutes:    55
 releaseYear:       2026
 countries:         Polska, Portugalia
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Ale-kosmos-PLAKAT.jpg
-synopsis.length:   1545
+synopsis.length:   1552
 cast:              —
 director:          Elżbieta Wąsik
 tmdbId:            1646671
@@ -6824,7 +6824,7 @@ runtimeMinutes:    115
 releaseYear:       2025
 countries:         Hiszpania, Niemcy
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Romeria-B1.jpg
-synopsis.length:   973
+synopsis.length:   975
 cast:              Llúcia Garcia, Alberto Gracia, José Ángel Egido, Tristán Ulloa, Janet Novás, Marina Troncoso, Miryam Gallego, Mitch
 director:          Carla Simón
 tmdbId:            1182861
@@ -6866,7 +6866,7 @@ runtimeMinutes:    113
 releaseYear:       1974
 countries:         USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Reset-Rozmowa-1080x1080_zS7Plnr.png
-synopsis.length:   1651
+synopsis.length:   1654
 cast:              Gene Hackman, John Cazale, Allen Garfield, Frederic Forrest, Cindy Williams, Michael Higgins, Elizabeth MacRae, Teri Garr, Harrison Ford, Mark Wheeler, Robert Duvall
 director:          Francis Ford Coppola
 tmdbId:            592

@@ -145,8 +145,8 @@ object KinotekaClient {
       synopsis      = Option(document.selectFirst("div.mce-content-body")).map { body =>
                         val ps = body.select("p").asScala.toSeq
                         if (ps.exists(_.text.trim.toLowerCase.startsWith("harmonogram")))
-                          ps.map(_.text.trim).takeWhile(!_.toLowerCase.startsWith("harmonogram")).filter(_.nonEmpty).mkString(" ")
-                        else body.text.trim
+                          ps.map(_.text.trim).takeWhile(!_.toLowerCase.startsWith("harmonogram")).filter(_.nonEmpty).mkString("\n\n")
+                        else ScraperParse.blockText(body).trim
                       }.map(_.trim).filter(_.length > 20)
                         .orElse(Option(document.selectFirst("meta[property=og:description]")).map(_.attr("content").trim)).filter(_.length > 20),
       // The hero poster is a `<picture class="p-movie-details__hero-poster">`
