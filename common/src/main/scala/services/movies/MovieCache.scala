@@ -149,7 +149,12 @@ class CaffeineMovieCache(
   // Called after a merge whose inputs changed an enrichment's resolution, to
   // re-kick that enrichment as a worker task (per case). Default no-op for unit
   // tests + non-worker builds; the worker wires `QueueEnrichmentRetrigger`.
-  retrigger: EnrichmentRetrigger = EnrichmentRetrigger.noop
+  retrigger: EnrichmentRetrigger = EnrichmentRetrigger.noop,
+  // Counts each movie-row fold by reason (canonicalize / resolved-settle /
+  // tmdb-identity) so the worker can chart the merge rate that drives re-key
+  // re-enrichment load. No-op for web + unit tests; the worker wires
+  // `WorkerTaskMetrics`.
+  mergeMetrics: MergeMetrics = MergeMetrics.noop
 ) extends MovieCache with Stoppable with Logging {
 
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
@@ -406,6 +411,9 @@ class CaffeineMovieCache(
         keys.foreach(invalidate)
         put(canonical, merged)
       }
+      // Victims = every other row in the cluster folded away; a lone respelled
+      // key (keys.size == 1) is a re-key, not a merge, so it counts 0.
+      if (keys.sizeIs > 1) mergeMetrics.recordMerge(MergeReason.Canonicalize, keys.size - 1)
       retriggerChangedEnrichments(baseRec, baseKey, merged, canonical)
     }
   }
@@ -460,6 +468,10 @@ class CaffeineMovieCache(
       val merged = strays.foldLeft(base) { case (acc, (_, e)) => MovieRecordMerge.union(acc, e) }
       (strays.map(_._1) :+ oldKey).distinct.filterNot(_ == target).foreach(invalidate)
       put(target, merged)
+      // The resolved row's own re-key (oldKey → target) isn't a merge — only the
+      // strays and any prior occupant of the resolved year are folded-away rows.
+      val folded = strays.size + priorTarget.size
+      if (folded > 0) mergeMetrics.recordMerge(MergeReason.ResolvedSettle, folded)
       target
     }
 
@@ -525,6 +537,7 @@ class CaffeineMovieCache(
     if (victim != canonical) {
       positive.invalidate(victim)
       repository.delete(victim.cleanTitle, victim.year)
+      mergeMetrics.recordMerge(MergeReason.TmdbIdentity, 1)
       logger.info(s"Folded duplicate '${victim.cleanTitle}' (${victim.year.getOrElse("—")}) " +
                   s"into '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}) — same tmdbId=${newRecord.tmdbId.get}.")
     }

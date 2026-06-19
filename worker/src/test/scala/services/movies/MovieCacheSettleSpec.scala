@@ -251,4 +251,44 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     rows(c).map(r => TitleNormalizer.sanitize(r._1)) shouldBe
       Set("zaproszenie", "zaproszeniekinotekadlarodzicow")
   }
+
+  // --- merge metrics: each fold is counted, by reason --------------------------
+
+  private class RecordingMergeMetrics extends MergeMetrics {
+    val calls = scala.collection.mutable.ListBuffer[(MergeReason, Int)]()
+    def recordMerge(reason: MergeReason, victims: Int): Unit = { calls += ((reason, victims)); () }
+  }
+
+  "the merge counter" should
+    "record a Canonicalize fold (1 victim) when a cross-language same-tmdbId cluster collapses" in {
+    val m = new RecordingMergeMetrics
+    val c = new CaffeineMovieCache(new InMemoryMovieRepository, mergeMetrics = m)
+    aliasedRow(c, "Tangled",   Multikino, 2010, 38757, "Zaplątani", "Tangled", "Zaplątani")
+    aliasedRow(c, "Zaplątani", Helios,    2010, 38757, "Zaplątani", "Tangled", "Zaplątani")
+    c.canonicalizeBySanitize()
+    m.calls.toList shouldBe List(MergeReason.Canonicalize -> 1)
+  }
+
+  it should "record a TmdbIdentity fold (1 victim) when the put-time tmdbId gate collapses a duplicate" in {
+    val m = new RecordingMergeMetrics
+    val c = new CaffeineMovieCache(new InMemoryMovieRepository, mergeMetrics = m)
+    // Same normalised title + tmdbId under two years — the put gate folds the second.
+    c.put(c.keyOf("Film", Some(2025)), MovieRecord(tmdbId = Some(500),
+      data = Map[Source, SourceData]((Tmdb: Source) -> SourceData(title = Some("Film"), releaseYear = Some(2025)))))
+    c.put(c.keyOf("Film", Some(2026)), MovieRecord(tmdbId = Some(500),
+      data = Map[Source, SourceData]((Tmdb: Source) -> SourceData(title = Some("Film"), releaseYear = Some(2026)))))
+    m.calls.toList shouldBe List(MergeReason.TmdbIdentity -> 1)
+  }
+
+  it should "record a ResolvedSettle fold for a yearless stray absorbed by a year-bearing resolved row" in {
+    val m = new RecordingMergeMetrics
+    val c = new CaffeineMovieCache(new InMemoryMovieRepository, mergeMetrics = m)
+    resolvedRow(c, "Dzień objawienia", Helios,    2026, 1275779)  // year-bearing, resolved
+    cinemaRow (c, "Dzień objawienia", Multikino, None)            // a stranded yearless stray
+    val resolved = MovieRecord(tmdbId = Some(1275779), data = Map[Source, SourceData](
+      (Tmdb: Source)   -> SourceData(title = Some("Dzień objawienia"), releaseYear = Some(2026)),
+      (Helios: Source) -> SourceData(title = Some("Dzień objawienia"), releaseYear = Some(2026))))
+    c.settleResolved(c.keyOf("Dzień objawienia", Some(2026)), resolved)
+    m.calls.toList shouldBe List(MergeReason.ResolvedSettle -> 1)
+  }
 }

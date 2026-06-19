@@ -3,6 +3,7 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
+import services.movies.{MergeMetrics, MergeReason}
 import services.staging.StagingStep
 import services.tasks.{QueueSnapshot, Task, TaskState, TaskType}
 
@@ -49,7 +50,8 @@ object TaskObserver {
  * feeds `onStarted`/`onFinished` (this class is its `TaskObserver`); the queue
  * gauges are refreshed from a `QueueSnapshot` each `scrape()`.
  */
-class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new PrometheusRegistry()) extends TaskObserver {
+class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new PrometheusRegistry())
+  extends TaskObserver with MergeMetrics {
   import WorkerTaskMetrics._
 
   // The client auto-appends `_total` to counter names, so they're declared without it.
@@ -108,6 +110,12 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     .labelNames("step")
     .register(registry)
 
+  private val merges = Counter.builder()
+    .name("kinowo_worker_merges")
+    .help("Movie rows folded into another row since boot (one per victim absorbed; a cluster of N counts N−1), by reason — canonicalize=periodic same-film settle/rehydrate fold, resolved-settle=TMDB-resolve year fold, tmdb-identity=runtime same-tmdbId put-gate. Each fold orphans the victim's title|year freshness, so rate() is the re-key re-enrichment load.")
+    .labelNames("reason")
+    .register(registry)
+
   private val writer = PrometheusTextFormatWriter.create()
 
   seed()
@@ -124,8 +132,13 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     }
     QueueStates.foreach(s => queueDepth.labelValues(s).set(0.0))
     StagingStep.all.foreach(s => stagingMovies.labelValues(s.label).set(0.0))
+    MergeReason.all.foreach(r => merges.labelValues(r.label))
     poolSizeGauge.set(poolSize.toDouble)
   }
+
+  /** Each absorbed victim row is one increment under its fold's reason. */
+  def recordMerge(reason: MergeReason, victims: Int): Unit =
+    if (victims > 0) merges.labelValues(reason.label).inc(victims.toDouble)
 
   def recordEnqueue(taskType: TaskType, result: String): Unit =
     enqueued.labelValues(taskType.name, result).inc()

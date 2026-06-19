@@ -283,7 +283,7 @@ class WorkerWiring extends play.api.Logging {
   lazy val stagingRepository: StagingRepository = new MongoStagingRepository(mongoConnection.database)
   lazy val movieCache: CaffeineMovieCache =
     new CaffeineMovieCache(movieRepository, eventBus, staging = Some(stagingRepository),
-      retrigger = enrichmentRetrigger)
+      retrigger = enrichmentRetrigger, mergeMetrics = taskMetrics)
 
   // After a merge changes an enrichment's input fields, re-kick that enrichment
   // (per case) as a worker task — clearing its freshness stamp so the tmdbId-keyed

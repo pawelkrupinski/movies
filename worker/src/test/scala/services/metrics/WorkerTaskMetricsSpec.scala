@@ -2,6 +2,7 @@ package services.metrics
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.movies.MergeReason
 import services.staging.StagingStep
 import services.tasks.{QueueSnapshot, Task, TaskState, TaskSummary, TaskType}
 
@@ -106,5 +107,20 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     // A step with nobody waiting still appears at 0.
     out should include ("""kinowo_worker_staging_movies{step="resolve_tmdb"} 0""")
     out should include ("""kinowo_worker_staging_movies{step="resolve_imdb"} 0""")
+  }
+
+  it should "count movie-row merges by reason, summing victims and seeding unused reasons to 0" in {
+    val m = new WorkerTaskMetrics(poolSize = 4)
+    m.recordMerge(MergeReason.Canonicalize, 2)
+    m.recordMerge(MergeReason.Canonicalize, 1)
+    m.recordMerge(MergeReason.TmdbIdentity, 1)
+    m.recordMerge(MergeReason.ResolvedSettle, 0)  // a no-victim fold contributes nothing
+
+    val out = m.scrape(emptySnapshot, noStaging, now)
+
+    out should include ("""kinowo_worker_merges_total{reason="canonicalize"} 3""")
+    out should include ("""kinowo_worker_merges_total{reason="tmdb-identity"} 1""")
+    // Seeded so the series exists from boot; the 0-victim call left it at 0.
+    out should include ("""kinowo_worker_merges_total{reason="resolved-settle"} 0""")
   }
 }
