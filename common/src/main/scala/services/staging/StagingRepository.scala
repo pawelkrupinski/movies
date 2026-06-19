@@ -123,11 +123,20 @@ object StagingRepository {
    *  cinema slot, no tmdbId/imdbId/tmdbNoMatch) each time. A blind replace nulled
    *  the resolution between the resolve step and the fold, so the film folded
    *  un-enriched into `movies` and the reaper re-resolved it forever ("stuck in
-   *  staging"). Keeping `existing` as the base preserves its enrichment fields and
-   *  its `Tmdb` slot; `data ++ fresh.data` lets the fresh cinema slot win (new
-   *  showtimes replace stale ones, not accumulate). */
+   *  staging").
+   *
+   *  `fresh` is the base so a write that DOES carry resolution still wins (a row
+   *  resolving in place); each enrichment field falls back to `existing` only when
+   *  `fresh` lacks it (the blank re-scrape). `data ++ fresh.data` lets the fresh
+   *  cinema slot win (new showtimes replace stale ones, not accumulate) while
+   *  keeping the existing `Tmdb` slot. */
   def carryForwardEnrichment(existing: MovieRecord, fresh: MovieRecord): MovieRecord =
-    existing.copy(data = existing.data ++ fresh.data)
+    fresh.copy(
+      tmdbId      = fresh.tmdbId.orElse(existing.tmdbId),
+      imdbId      = fresh.imdbId.orElse(existing.imdbId),
+      tmdbNoMatch = fresh.tmdbNoMatch || existing.tmdbNoMatch,
+      searchTitle = fresh.searchTitle.orElse(existing.searchTitle),
+      data        = existing.data ++ fresh.data)
 
   /** A disabled, empty no-op `StagingRepository` — the default for callers that don't
    *  wire staging (e.g. the web `/debug` controller in tests, or any non-staging
