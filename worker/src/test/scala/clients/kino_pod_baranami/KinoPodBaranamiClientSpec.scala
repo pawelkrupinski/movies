@@ -50,6 +50,16 @@ class KinoPodBaranamiClientSpec extends AnyFlatSpec with Matchers with OptionVal
     movies.find(_.movie.title.contains("Podziemny")).value.movie.originalTitle.value shouldBe "Fight Club"
   }
 
+  it should "strip the trailing (SMAK) discussion-club label so the film folds into the main record" in {
+    // "(SMAK)" is Kino Pod Baranami's discussion-club programme tag ("Seans z
+    // dyskusją"), not part of the film title. Left in, "Dzień objawienia (SMAK)"
+    // sanitizes to a different merge key (`_id` = sanitize(title)|year) and forks
+    // off as a separate one-cinema record. It must not survive into the title.
+    val titles = client.fetch().map(_.movie.title)
+    all(titles) should not include "SMAK"
+    titles should contain("Dzień objawienia")
+  }
+
   it should "leave originalTitle empty when the original equals the displayed title" in {
     // A film whose `title=` attribute just repeats the visible title carries no
     // distinct original — don't store a redundant one.

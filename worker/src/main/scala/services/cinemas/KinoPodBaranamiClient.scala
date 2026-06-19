@@ -75,6 +75,18 @@ object KinoPodBaranamiClient {
   // "7 czerwca" or "10 maja" — day + Polish genitive month name
   private val DayMonthPat = """(\d{1,2})\s+(\w+)""".r
 
+  // "(SMAK)" is Kino Pod Baranami's discussion-club programme tag ("Seans z
+  // dyskusją"), appended to the film title for those screenings. It is not part
+  // of the film's name: left in, "Dzień objawienia (SMAK)" sanitizes to a
+  // different merge key (`_id` = sanitize(title)|year) and forks the film into a
+  // separate one-cinema record. Strip only this exact label — other trailing
+  // parentheticals here are genuine English original titles ("(The Promised
+  // Land)") that must be preserved.
+  private val ProgrammeLabelSuffix = """\s*\(SMAK\)\s*$""".r
+
+  private[cinemas] def stripProgrammeLabel(title: String): String =
+    ProgrammeLabelSuffix.replaceAllIn(title, "").trim
+
   private[cinemas] case class RawSlot(
     title:         String,
     originalTitle: Option[String],
@@ -116,7 +128,7 @@ object KinoPodBaranamiClient {
           currentDate.foreach { date =>
             element.select("li").asScala.foreach { li =>
               val titleAnchor = Option(li.selectFirst("a[href^=\"film.php\"]"))
-              val title       = titleAnchor.map(_.text.trim).filter(_.nonEmpty).getOrElse("")
+              val title       = titleAnchor.map(a => stripProgrammeLabel(a.text.trim)).filter(_.nonEmpty).getOrElse("")
               val filmUrl     = titleAnchor.map(a => s"$BaseUrl/${a.attr("href").trim}").filter(_.nonEmpty)
               // The anchor's `title=` attribute carries the film's original
               // (usually international/English) title — "Gourou" for "Guru",
