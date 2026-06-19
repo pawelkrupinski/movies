@@ -69,29 +69,11 @@ class MovieService(
   // concurrency free, and TMDB's published rate limit (~50 req/s) is enforced
   // at the HTTP layer (back off on 429/503) rather than at the thread count.
 
-  // Daily-tick scheduler for `retryUnresolvedTmdb`. The hourly IMDb refresh
-  // lives in `ImdbRatings`.
-  private val tmdbRetryScheduler = DaemonExecutors.scheduler("tmdb-retry")
-
-  // First run fires shortly after startup so Mongo hydration has time to
-  // populate the cache and we don't race app boot.
-  private val StartupDelaySeconds = 10L
-  private val TmdbRetryHours      = 24L
-
   // ── Lifecycle ──────────────────────────────────────────────────────────────
-
-  /** Schedule the daily TMDB-retry tick. The hourly IMDb refresh is scheduled
-   *  by `ImdbRatings.start()`. Called from `AppLoader` — see CLAUDE.md. */
-  def start(): Unit = {
-    val tmdbInterval = TmdbRetryHours * 3600
-    logger.info(s"TMDB retry scheduled every ${TmdbRetryHours}h (first run in ${StartupDelaySeconds}s).")
-    tmdbRetryScheduler.scheduleAtFixedRate(
-      () => Try(retryUnresolvedTmdb()).recover {
-        case exception => logger.warn(s"TMDB retry tick failed: ${exception.getMessage}")
-      },
-      StartupDelaySeconds, tmdbInterval, TimeUnit.SECONDS
-    )
-  }
+  // The scheduled, phase-spread TMDB re-try is owned by
+  // `services.tasks.UnresolvedTmdbReaper` (it drives `retryResolve`); the hourly
+  // IMDb refresh lives in `ImdbRatings`. This service only owns the inline
+  // enrichment pool's drain — see `stop()`.
 
   /** Re-assert the cache's one-row-per-film invariant: collapse same-title
    *  spelling/year variants — most importantly a no-year row that a later TMDB
@@ -127,7 +109,6 @@ class MovieService(
    *  against real upstreams finished. */
   def stop(): Unit = {
     executionContext.shutdown()
-    tmdbRetryScheduler.shutdown()
     while (!executionContext.isTerminated) executionContext.awaitTermination(1, TimeUnit.HOURS)
   }
 
@@ -557,8 +538,10 @@ class MovieService(
   // inline default just drops a transient failure; the next scrape or the daily
   // `retryUnresolvedTmdb` sweep re-dispatches.
 
-  // ── Scheduled loop ────────────────────────────────────────────────────────
-  // The hourly IMDb refresh lives in `ImdbRatings.refreshAll`.
+  // ── Bulk TMDB re-try (operator sweep) ───────────────────────────────────────
+  // The scheduled, phase-spread re-try is owned by `UnresolvedTmdbReaper`; this
+  // is the corpus-wide form behind the `RefreshAllTmdb` button. The hourly IMDb
+  // refresh lives in `ImdbRatings.refreshAll`.
 
   /** Walk every cached row with no `tmdbId` yet and re-run the TMDB stage on
    *  it. Rows that DO have a `tmdbId` are intentionally left alone — once a
@@ -569,9 +552,11 @@ class MovieService(
    *  sister-row donation). Missing MC / RT / Filmweb URLs are recovered by
    *  the respective `*Ratings.refreshAll` hourly walks, which do their own
    *  URL discovery; missing IMDb ids are recovered by the `ImdbIdMissing`
-   *  event fired from the TMDB stage at first resolution. Fires once every
-   *  `TmdbRetryHours`; also clears the negative cache so previously-failed
-   *  `(title, year)` lookups get one fresh shot via the next cinema scrape. */
+   *  event fired from the TMDB stage at first resolution. Clears the negative
+   *  cache so previously-failed `(title, year)` lookups get one fresh shot. This
+   *  bulk form backs the operator `RefreshAllTmdb` button; the scheduled,
+   *  phase-spread re-try is owned by [[services.tasks.UnresolvedTmdbReaper]]
+   *  (via [[retryResolve]]) so the backlog drains as a trickle, not a burst. */
   def retryUnresolvedTmdb(): Unit = {
     cache.clearNegatives()
     // Pass each row's `data`-merged director + originalTitle as
@@ -586,14 +571,33 @@ class MovieService(
     // enqueued — so this sweep only re-tries genuinely-stalled, detail-complete rows.
     val targets = cache.entries.collect { case (k, e) if e.tmdbId.isEmpty && !e.detailPending => (k, e) }
     logger.info(s"TMDB retry: cleared negatives + re-dispatching ${targets.size} row(s) with missing tmdbId.")
-    targets.foreach { case (k, e) =>
-      val (origHint, directoryHint) = tmdbHints(e)
-      dispatchResolve(k.cleanTitle, k.year, origHint, directoryHint)
+    targets.foreach { case (k, e) => dispatchWithHints(k, e) }
+  }
+
+  /** Re-attempt ONE still-unresolved row's TMDB resolution, clearing just that
+   *  row's negative marker first (the scoped form of [[retryUnresolvedTmdb]]'s
+   *  global `clearNegatives`). Driven by
+   *  [[services.tasks.UnresolvedTmdbReaper]]'s phase-spread tick so the
+   *  unresolved backlog re-tries as a flat trickle instead of a boot/period
+   *  burst. No-op once the row has resolved or is awaiting detail (its detail
+   *  completing re-triggers TMDB via `MovieDetailsComplete`). */
+  def retryResolve(key: CacheKey): Unit =
+    cache.get(key).filter(e => e.tmdbId.isEmpty && !e.detailPending).foreach { e =>
+      cache.clearNegative(key)
+      dispatchWithHints(key, e)
     }
+
+  /** Dispatch a row's TMDB resolution with its `data`-merged director +
+   *  originalTitle hints (the only path `directorWalk` can fire on for films
+   *  TMDB doesn't index under their Polish title). Shared by the bulk
+   *  [[retryUnresolvedTmdb]] sweep and the per-row [[retryResolve]]. */
+  private def dispatchWithHints(key: CacheKey, e: MovieRecord): Unit = {
+    val (origHint, directoryHint) = tmdbHints(e)
+    dispatchResolve(key.cleanTitle, key.year, origHint, directoryHint)
   }
 
   /** The originalTitle + director hints the TMDB resolution needs, derived from
-   *  a cached row — used by the daily retry sweep and as the fallback hints in
+   *  a cached row — used by the retry sweeps and as the fallback hints in
    *  `resolveTmdbOnce` when the dispatch carried none (the operator re-enrich). */
   private def tmdbHints(e: MovieRecord): (Option[String], Option[String]) =
     (e.cinemaOriginalTitle, if (e.director.nonEmpty) Some(e.director.mkString(", ")) else None)

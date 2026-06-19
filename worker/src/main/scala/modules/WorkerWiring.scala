@@ -14,7 +14,7 @@ import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadMod
 import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
-import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
+import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
 import tools.{Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
@@ -501,6 +501,17 @@ class WorkerWiring extends play.api.Logging {
   lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
     dueWindow = ratingDueWindow, maxEnqueuePerTick = maxEnrichmentEnqueuePerTick, runStore = scheduledRunStore)
 
+  // Re-tries unresolved-TMDB rows once per 24h, phase-spread across the period —
+  // the queue-era replacement for MovieService's old daily, all-at-once
+  // `retryUnresolvedTmdb` scheduler (it re-dispatched the whole unresolved
+  // backlog 10s after boot, the boot ResolveTmdb burst that pinned the
+  // shared-CPU credit). `retryResolve` clears each due row's negative + dispatches
+  // its ResolveTmdb. Cap bounds a clock-jump/cold burst the same way the rating
+  // reaper does — the leftover stays due and re-tries next period.
+  def maxTmdbRetryEnqueuePerTick: Int = Env.positiveLong("KINOWO_TMDB_RETRY_MAX_ENQUEUE_PER_TICK", 100L).toInt
+  lazy val unresolvedTmdbReaper = new UnresolvedTmdbReaper(movieCache, movieService.retryResolve,
+    maxEnqueuePerTick = maxTmdbRetryEnqueuePerTick, runStore = scheduledRunStore)
+
   // Operator-triggered handlers — ALWAYS registered (not gated by
   // queueEnrichment): the web `/tasks` buttons enqueue a corpus-wide refresh and
   // the `/debug` row button enqueues a per-movie re-resolve, regardless of which
@@ -586,7 +597,6 @@ class WorkerWiring extends play.api.Logging {
     // first deferred reconcile) read a hydrated `movies` collection; it watches the
     // change stream independently of the cache's own watch.
     readModelProjector.start()
-    movieService.start()
     // Ratings refresh via the queue (RatingHandlers + the EnrichmentReaper
     // backstop); refreshOneSync, which the handlers call, needs no start().
     unscreenedCleanup.start()
@@ -606,6 +616,7 @@ class WorkerWiring extends play.api.Logging {
     // queue-driven rating enrichment.
     taskWorker.start(); workerHeartbeat.start()
     enrichmentReaper.start()
+    unresolvedTmdbReaper.start()
     detailReaper.start()
     scrapeReaper.start()
     // Incubate pending_movies through the queue: the reaper kicks new newcomers
@@ -624,6 +635,7 @@ class WorkerWiring extends play.api.Logging {
     stagingReaper.stop()
     scrapeReaper.stop()
     enrichmentReaper.stop()
+    unresolvedTmdbReaper.stop()
     detailReaper.stop()
     workerHeartbeat.stop()
     taskWorker.stop()

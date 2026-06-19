@@ -121,9 +121,10 @@ trait MovieCache extends MovieCacheReader {
  *     change slowly; restarts re-warm via `rehydrate`).
  *   - **Negative**: known misses (events, festivals, retrospectives that
  *     don't match a real film), 24h TTL — failed TMDB lookups get retried
- *     about once a day. The daily TMDB-retry scheduler can clear the whole
- *     negative cache explicitly via `clearNegatives` so the next refresh tick
- *     gets a fresh shot at every previously-failed key.
+ *     about once a day (the phase-spread `UnresolvedTmdbReaper`, which clears
+ *     each due row's marker via `clearNegative`). The operator bulk retry can
+ *     also clear the whole negative cache explicitly via `clearNegatives` so
+ *     every previously-failed key gets a fresh shot at once.
  *
  * Pure reads (`get`, `isNegative`, `snapshot`, `entries`) have no side
  * effects — callers that want to *trigger* a lookup on miss go through
@@ -561,9 +562,11 @@ class CaffeineMovieCache(
   private[services] def markMissing(key: CacheKey): Unit =
     negative.put(key, java.lang.Boolean.TRUE)
 
-  /** Drop all negative entries — used by the daily TMDB retry to give every
-   *  previously-failed key one fresh shot. New misses re-populate the cache
-   *  organically as they happen. */
+  /** Drop all negative entries — used by the operator-triggered bulk TMDB retry
+   *  (`MovieService.retryUnresolvedTmdb`) to give every previously-failed key one
+   *  fresh shot. New misses re-populate the cache organically as they happen.
+   *  (The scheduled, phase-spread re-try clears negatives one row at a time via
+   *  `clearNegative` — see `UnresolvedTmdbReaper`.) */
   private[services] def clearNegatives(): Unit = negative.invalidateAll()
 
   /** Drop a single key's "missing" verdict. Called when a fresh cinema slot
