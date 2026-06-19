@@ -164,7 +164,7 @@
       "description": "Rate of tasks ADDED to the queue per task type (kinowo_worker_tasks_enqueued_total{result=\"added\"} — re-enqueues that the dedupKey collapses are excluded, so this is net new work, not churn). The per-type split of the 'enqueued' line in the overall flow panel above. Read with 'started by type' and 'fully-worked throughput by type' as one type's enqueue → claim → done funnel.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 55 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 55 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10, "stacking": { "mode": "normal" } } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "sum by (task_type) (rate(kinowo_worker_tasks_enqueued_total{result=\"added\"}[$__rate_interval])) * 60", "legendFormat": "{{task_type}}" }
@@ -176,7 +176,7 @@
       "description": "Rate of tasks CLAIMED by a worker per task type (kinowo_worker_tasks_started_total). Counts every claim, including ones that then skip (data already fresh) or reschedule, so started ≫ the same type's 'fully-worked throughput' means that type is handing out a lot of no-op work. The per-type split of the 'started' line in the overall flow panel above.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 55 },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 55 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10, "stacking": { "mode": "normal" } } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "sum by (task_type) (rate(kinowo_worker_tasks_started_total[$__rate_interval])) * 60", "legendFormat": "{{task_type}}" }
@@ -188,7 +188,7 @@
       "description": "rate of done (not skipped) tasks per task type — which kinds of work the worker is actually completing: cinema scrapes, detail enrichment, TMDB/IMDb resolution, the four rating sources, and the staging-incubation steps.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 63 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 55 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10, "stacking": { "mode": "normal" } } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "sum by (task_type) (rate(kinowo_worker_tasks_finished_total{outcome=\"done\"}[$__rate_interval])) * 60", "legendFormat": "{{task_type}}" }
@@ -200,7 +200,7 @@
       "description": "Every handler return, by outcome: done (real work), skipped (data already fresh — the queue handed out work that was no longer needed), rescheduled (transient retry/backoff), failed (handler threw), no_handler (claimed mid-deploy on a node without the handler). A spike in skipped/rescheduled is wasted churn; failed is the error signal.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 63 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 63 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [
         { "matcher": { "id": "byName", "options": "failed" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } } ] }
       ] },

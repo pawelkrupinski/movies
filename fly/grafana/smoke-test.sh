@@ -120,6 +120,14 @@ assert "started-by-type panel queries started_total by task_type" \
   "api/dashboards/uid/fly-overview" \
   "any(t.get('expr')=='sum by (task_type) (rate(kinowo_worker_tasks_started_total[\$__rate_interval])) * 60' for p in d['dashboard']['panels'] for t in p.get('targets',[]))"
 
+# The three by-type task-flow panels (enqueued → started → fully-worked) must sit
+# next to each other in one row — same gridPos.y, three distinct x's — so a type's
+# enqueue → claim → done funnel reads left-to-right at a glance. Guards against a
+# panel drifting back to its own row.
+assert "enqueued/started/fully-worked by-type panels share one row" \
+  "api/dashboards/uid/fly-overview" \
+  "(lambda ps: len(ps)==3 and len({p['gridPos']['y'] for p in ps})==1 and len({p['gridPos']['x'] for p in ps})==3)([p for p in d['dashboard']['panels'] if any(s in p.get('title','') for s in ['enqueued (non-duplicate) by type','started (claimed) by type','fully-worked throughput by type'])])"
+
 echo "==> scanning Grafana logs for provisioning errors"
 # Ignore the benign "no plugins provisioning dir" line — we ship none.
 if docker logs "$NAME" 2>&1 | grep -Ei 'failed to provision|failure to map|failure parsing|provisioning\.datasources.*level=error'; then
