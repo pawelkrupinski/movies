@@ -13,6 +13,7 @@ import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepositor
 import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
 import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
+import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
 import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
@@ -370,7 +371,13 @@ class WorkerWiring extends play.api.Logging {
   // tasks — deduped and shared across servers. TMDB / IMDb-id RESOLUTION stays
   // inline (it's one-shot per scraped row, already driven by the queue-gated
   // scrape).
-  lazy val taskQueue: TaskQueue = new MongoTaskQueue(mongoConnection.database)
+  // Task-pipeline metrics, exposed at /metrics (WorkerMain) and scraped by Fly
+  // Prometheus. The queue is wrapped so every enqueue is metered centrally; the
+  // TaskWorker reports claims/outcomes/durations via the same object as its
+  // `TaskObserver`; the /metrics handler refreshes the queue gauges per scrape.
+  lazy val taskMetrics: WorkerTaskMetrics = new WorkerTaskMetrics(workerPoolSize)
+  lazy val taskQueue: TaskQueue =
+    new MeteredTaskQueue(new MongoTaskQueue(mongoConnection.database), taskMetrics)
   lazy val freshnessStore: FreshnessStore = new MongoFreshnessStore(mongoConnection.database)
 
   // Cluster-wide occurrence claims gate the reapers' recurring ticks so each
@@ -515,7 +522,9 @@ class WorkerWiring extends play.api.Logging {
     poolSize = workerPoolSize,
     // Each completed task announces itself so StagingReaper can chain the next
     // staging step; non-staging completions are ignored by its subscriber.
-    onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload))
+    onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload)),
+    // Report claims / outcomes / handler durations to the Prometheus metrics.
+    observer = taskMetrics
   )
   lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, dueWindow = scrapeDueWindow,

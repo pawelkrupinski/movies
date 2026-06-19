@@ -1,6 +1,8 @@
 package services.tasks
 
 import services.Stoppable
+import services.metrics.TaskObserver
+import services.metrics.WorkerTaskMetrics.Outcome
 import tools.DaemonExecutors
 import play.api.Logging
 
@@ -73,7 +75,11 @@ class TaskWorker(
   // never on a reschedule. The composition root wires this to publish a
   // `TaskFinished` event so consumers (e.g. StagingReaper) can chain follow-up
   // work; default no-op keeps the worker decoupled from the bus.
-  onCompleted:       Task => Unit   = _ => ()
+  onCompleted:       Task => Unit   = _ => (),
+  // Metrics hook: notified on every claim and every handler outcome (with the
+  // handler's wall-clock). Default no-op keeps the worker decoupled from the
+  // metrics sink; the composition root wires WorkerTaskMetrics here.
+  observer:          TaskObserver   = TaskObserver.NoOp
 ) extends Stoppable with Logging {
   import HandlerOutcome._
   import TaskWorker._
@@ -151,7 +157,9 @@ class TaskWorker(
   private[tasks] def claimAndRun(workerId: String): PollResult =
     queue.claim(workerId, processingTimeout) match {
       case None       => PollResult.Idle
-      case Some(task) => runHandler(task, workerId)
+      case Some(task) =>
+        observer.onStarted(task)          // claimed and kicked off
+        runHandler(task, workerId)
     }
 
   private def runHandler(task: Task, workerId: String): PollResult = byType.get(task.taskType) match {
@@ -160,21 +168,34 @@ class TaskWorker(
       // so a node that has the handler can take it rather than tombstoning
       // unfinished work.
       queue.release(task.id, workerId, Some(s"no handler for ${task.taskType.name}"))
+      observer.onFinished(task, Outcome.NoHandler, 0L)
       PollResult.Returned
     case Some(h) =>
-      Try(h.handle(task)) match {
-        case Success(Done) | Success(Skipped) =>
-          queue.complete(task.id, workerId)
-          Try(onCompleted(task))   // a buggy chain hook must not fail the completed task
-          PollResult.Completed
+      val startedAt = System.nanoTime()
+      val outcome   = Try(h.handle(task))
+      val millis    = (System.nanoTime() - startedAt) / 1000000L
+      outcome match {
+        case Success(Done)    => completeWith(task, workerId, Outcome.Done, millis)
+        case Success(Skipped) => completeWith(task, workerId, Outcome.Skipped, millis)
         case Success(Reschedule(err)) =>
           queue.release(task.id, workerId, err, Some(backoffUntil(task.attempts)))
+          observer.onFinished(task, Outcome.Rescheduled, millis)
           PollResult.Returned
         case Failure(exception) =>
           logger.warn(s"Task ${task.taskType.name}/${task.dedupKey} failed: ${exception.getMessage}")
           queue.release(task.id, workerId, Some(exception.getMessage), Some(backoffUntil(task.attempts)))
+          observer.onFinished(task, Outcome.Failed, millis)
           PollResult.Returned
       }
+  }
+
+  /** Tombstone a finished task (Done/Skipped), fire the chain hook, and record
+   *  the outcome — shared by the two completing branches. */
+  private def completeWith(task: Task, workerId: String, outcome: String, handleMillis: Long): PollResult = {
+    queue.complete(task.id, workerId)
+    Try(onCompleted(task))   // a buggy chain hook must not fail the completed task
+    observer.onFinished(task, outcome, handleMillis)
+    PollResult.Completed
   }
 
   // When this attempt failed transiently, hold the task back from re-claim until

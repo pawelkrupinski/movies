@@ -21,6 +21,16 @@ primary_region = 'arn'
 [build]
   dockerfile = 'Dockerfile'
 
+# Fly's managed Prometheus scrapes this over the private network and ships the
+# series to api.fly.io/prometheus/personal — the same datasource the self-hosted
+# Grafana (fly/grafana) reads. WorkerMain serves it on the worker's internal
+# health port (9000): task-pipeline throughput (enqueued / started / finished by
+# type + outcome), handler-duration histogram, and live queue depth — all
+# invisible to Fly's host-only metrics.
+[[metrics]]
+  port = 9000
+  path = '/metrics'
+
 [env]
   # WorkerMain's JDK health server binds this port; the [checks] block below
   # probes it. No public router fronts it (no [http_service]).

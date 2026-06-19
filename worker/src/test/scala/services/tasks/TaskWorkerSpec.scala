@@ -203,4 +203,31 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
       h.seen.map(_.dedupKey) shouldBe List("scrape|x")
     } finally w.stop()
   }
+
+  "the TaskObserver" should "report a claim, then the mapped outcome for every handler result" in {
+    import services.metrics.{TaskObserver, WorkerTaskMetrics}
+    import WorkerTaskMetrics.Outcome
+
+    class RecordingObserver extends TaskObserver {
+      var started:  List[String]            = Nil
+      var finished: List[(String, String)]  = Nil
+      def onStarted(task: Task): Unit                                       = started ::= task.taskType.name
+      def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = finished ::= (task.taskType.name -> outcome)
+    }
+
+    def observed(handlers: Seq[TaskHandler]): (List[String], List[(String, String)]) = {
+      val q = new InMemoryTaskQueue
+      q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)
+      val obs = new RecordingObserver
+      new TaskWorker(q, handlers, processingTimeout = 5.minutes, poolSize = 4, observer = obs).claimAndRun("w0")
+      (obs.started, obs.finished)
+    }
+    val throwing = new TaskHandler { val taskType = ScrapeCinema; def handle(task: Task): HandlerOutcome = throw new RuntimeException("boom") }
+
+    observed(Seq(new RecordingHandler(ScrapeCinema, HandlerOutcome.Done)))         shouldBe (List("ScrapeCinema"), List("ScrapeCinema" -> Outcome.Done))
+    observed(Seq(new RecordingHandler(ScrapeCinema, HandlerOutcome.Skipped)))      shouldBe (List("ScrapeCinema"), List("ScrapeCinema" -> Outcome.Skipped))
+    observed(Seq(new RecordingHandler(ScrapeCinema, HandlerOutcome.Reschedule()))) shouldBe (List("ScrapeCinema"), List("ScrapeCinema" -> Outcome.Rescheduled))
+    observed(Seq(throwing))                                                        shouldBe (List("ScrapeCinema"), List("ScrapeCinema" -> Outcome.Failed))
+    observed(Seq.empty)                                                            shouldBe (List("ScrapeCinema"), List("ScrapeCinema" -> Outcome.NoHandler))
+  }
 }

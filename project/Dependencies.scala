@@ -27,6 +27,11 @@ object Dependencies {
   // plain-`def main` worker (declares it directly — see build.sbt).
   private val logbackVersion       = "1.5.22"
   private val scalatestPlayVersion = "7.0.2"
+  // Official Prometheus Java client (client_java 1.x) — the worker builds its
+  // task-pipeline metrics with it (counters, gauges, a bucketed duration
+  // histogram) and renders the text exposition via the exposition-formats
+  // module, rather than hand-rolling the `0.0.4` format.
+  private val prometheusVersion    = "1.8.0"
 
   // ── Artifacts ──────────────────────────────────────────────────────────────
   val play             = "org.playframework"             %% "play"               % playVersion
@@ -37,4 +42,6 @@ object Dependencies {
   val sentryLogback    = "io.sentry"                      %  "sentry-logback"     % sentryVersion
   val logbackClassic   = "ch.qos.logback"                %  "logback-classic"    % logbackVersion
   val scalatestPlay    = "org.scalatestplus.play"        %% "scalatestplus-play" % scalatestPlayVersion
+  val prometheusCore   = "io.prometheus"                  %  "prometheus-metrics-core"               % prometheusVersion
+  val prometheusText   = "io.prometheus"                  %  "prometheus-metrics-exposition-formats" % prometheusVersion
 }

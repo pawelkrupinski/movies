@@ -4,7 +4,8 @@ import com.sun.net.httpserver.HttpServer
 import play.api.Logging
 
 import java.net.InetSocketAddress
-import java.util.concurrent.CountDownLatch
+import java.time.Instant
+import java.util.concurrent.{CountDownLatch, Executors}
 
 /**
  * Entry point for the scrape/enrich worker. A plain `def main` (not `extends
@@ -46,6 +47,10 @@ object WorkerMain extends Logging {
       }
     logger.info("Worker up — scraping/enriching")
 
+    // Register /metrics now that the queue + metrics are live (it reads both).
+    addMetricsEndpoint(health, wiring)
+    logger.info(s"Worker metrics up on :$port/metrics")
+
     val done = new CountDownLatch(1)
     Runtime.getRuntime.addShutdownHook(new Thread(() => {
       logger.info("Worker received shutdown signal — draining the enrichment cascade…")
@@ -67,8 +72,41 @@ object WorkerMain extends Logging {
       val os = exchange.getResponseBody
       try os.write(body) finally os.close()
     })
-    server.setExecutor(null) // default executor — health traffic is trivial
+    // A tiny daemon pool (not the default single caller-runs executor) so a
+    // /metrics scrape — which reads the queue depth from Mongo and can block up
+    // to its Await timeout if Mongo is slow — can't delay the /health check.
+    server.setExecutor(Executors.newFixedThreadPool(2, (r: Runnable) => {
+      val t = new Thread(r, "worker-http"); t.setDaemon(true); t
+    }))
     server.start()
     server
+  }
+
+  /** Worker task-pipeline metrics for Fly's Prometheus scrape (the `[[metrics]]`
+   *  block in fly.worker.toml). Registered on the SAME HttpServer as /health,
+   *  AFTER WorkerWiring is up since it reads the live queue + metrics. Renders
+   *  the current snapshot; on a Mongo hiccup it answers 500 (empty) rather than
+   *  throwing, so a transient blip is a gap in the series, not a crash. */
+  private val MetricsActiveLimit = 1000
+  private def addMetricsEndpoint(server: HttpServer, wiring: WorkerWiring): Unit = {
+    server.createContext("/metrics", exchange => {
+      val body =
+        try wiring.taskMetrics.scrape(wiring.taskQueue.monitor(MetricsActiveLimit), Instant.now()).getBytes("UTF-8")
+        catch {
+          case e: Throwable =>
+            logger.warn(s"/metrics scrape failed: ${e.getMessage}")
+            Array.emptyByteArray
+        }
+      if (body.isEmpty) {
+        exchange.sendResponseHeaders(500, -1)
+        exchange.close()
+      } else {
+        exchange.getResponseHeaders.set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+        exchange.sendResponseHeaders(200, body.length.toLong)
+        val os = exchange.getResponseBody
+        try os.write(body) finally os.close()
+      }
+    })
+    ()
   }
 }

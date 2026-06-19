@@ -137,6 +137,10 @@ lazy val worker = (project in file("worker"))
       // EVERY log line — WorkerMain lifecycle, scrape ticks, and Sentry error
       // reporting all vanish. (Version pinned in Dependencies.scala to match Play.)
       logbackClassic,
+      // Prometheus client: build + expose the worker's task-pipeline metrics
+      // (scraped by Fly Prometheus via the [[metrics]] block in fly.worker.toml).
+      prometheusCore,
+      prometheusText,
       scalatestPlay % Test,
     )
   )
