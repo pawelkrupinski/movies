@@ -1,6 +1,6 @@
 package services.staging
 
-import models.{CinemaMovie, Helios, Movie, Multikino, MovieRecord, Showtime, Source, SourceData}
+import models.{CinemaMovie, Helios, Movie, Multikino, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
@@ -48,6 +48,23 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers {
 
     staging.findAll() shouldBe empty
     cache.get(cache.keyOf("Kumotry", Some(2026))).map(_.cinemaData.keySet) shouldBe Some(Set(Multikino, Helios))
+  }
+
+  "a known film listed under another language" should "land on the existing resolved row, not incubate as a newcomer" in {
+    val staging = new InMemoryStagingRepository
+    val cache   = cacheWithStaging(new InMemoryMovieRepository, staging)
+    // A CONCLUDED row for Tangled, keyed under its Polish title. Its TMDB aliases
+    // include the original "Tangled", so a cinema listing it in English is a known
+    // film — it must NOT be diverted as a brand-new newcomer.
+    cache.put(cache.keyOf("Zaplątani", Some(2010)),
+      MovieRecord(tmdbId = Some(38757), data = Map[Source, SourceData](
+        Tmdb      -> SourceData(title = Some("Zaplątani"), originalTitle = Some("Tangled"), releaseYear = Some(2010)),
+        Multikino -> SourceData(title = Some("Zaplątani"), releaseYear = Some(2010)))))
+
+    cache.recordCinemaScrape(Helios, Seq(scrape("Tangled", Some(2010))))
+
+    staging.findAll() shouldBe empty   // not incubated as a newcomer
+    cache.get(cache.keyOf("Zaplątani", Some(2010))).map(_.cinemaData.keySet) shouldBe Some(Set(Multikino, Helios))
   }
 
   "a newcomer a cinema stops listing" should "be pruned from staging" in {

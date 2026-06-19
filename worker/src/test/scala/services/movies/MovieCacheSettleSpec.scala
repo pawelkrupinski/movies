@@ -38,6 +38,17 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
         (Tmdb: Source)    -> SourceData(title = Some(title), releaseYear = Some(year)),
         (cinema: Source)  -> SourceData(title = Some(title), releaseYear = Some(year)))))
 
+  // A resolved row keyed under `keyTitle` for a film TMDB knows as `tmdbTitle`
+  // (Polish) / `originalTitle`. Lets a film be keyed under its original/English
+  // title while TMDB still identifies it by its Polish title + tmdbId.
+  private def aliasedRow(
+    c: MovieCache, keyTitle: String, cinema: Cinema, year: Int, tmdbId: Int,
+    tmdbTitle: String, originalTitle: String, cinemaTitle: String): Unit =
+    c.put(c.keyOf(keyTitle, Some(year)),
+      MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
+        (Tmdb: Source)   -> SourceData(title = Some(tmdbTitle), originalTitle = Some(originalTitle), releaseYear = Some(year)),
+        (cinema: Source) -> SourceData(title = Some(cinemaTitle), releaseYear = Some(year)))))
+
   private def rows(c: MovieCache): Set[(String, Option[Int])] =
     c.snapshot().map(r => (r.title, r.year)).toSet
 
@@ -128,5 +139,35 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     cinemaRow(c, "Maraton horrorów", KinoMuza, None)
     c.canonicalizeBySanitize()
     rows(c) shouldBe Set(("Maraton horrorów", None))
+  }
+
+  it should "collapse a film keyed under two languages (same tmdbId) into one row keyed on the Polish title" in {
+    val c = cache
+    // "Zaplątani" (Polish) and "Tangled" (original) are the same film: same tmdbId,
+    // both keys are TMDB aliases. Their differing sanitized titles dodge the
+    // put-time tmdbId gate, so two rows persist until settle folds them.
+    aliasedRow(c, "Tangled",   Multikino, 2010, 38757, "Zaplątani", "Tangled", "Zaplątani")
+    aliasedRow(c, "Zaplątani", Helios,    2010, 38757, "Zaplątani", "Tangled", "Zaplątani")
+    rows(c) shouldBe Set(("Tangled", Some(2010)), ("Zaplątani", Some(2010)))
+    c.canonicalizeBySanitize()
+    val r = c.snapshot()
+    withClue(s"expected ONE row, got ${r.map(x => (x.title, x.year))}\n")(r.size shouldBe 1)
+    // Keyed on the cinema-reported Polish title, NOT the original "tangled" (which
+    // no cinema reports — that would re-spawn the duplicate on the next scrape).
+    TitleNormalizer.sanitize(r.head.title) shouldBe "zaplatani"
+    r.head.record.tmdbId shouldBe Some(38757)
+    r.head.record.cinemaData.keySet shouldBe Set(Multikino, Helios)
+  }
+
+  it should "keep a decorated edition that carries the base tmdbId as its own row" in {
+    val c = cache
+    // The programme edition resolves to the base film's tmdbId but is separate by
+    // design: its key is not a TMDB alias, so the cross-title merge leaves it alone.
+    aliasedRow(c, "Zaproszenie", Helios, 2022, 9001, "Zaproszenie", "The Invitation", "Zaproszenie")
+    aliasedRow(c, "Zaproszenie | Kinoteka dla rodziców", KinoMuza, 2022, 9001,
+      "Zaproszenie", "The Invitation", "Zaproszenie | Kinoteka dla rodziców")
+    c.canonicalizeBySanitize()
+    rows(c).map(r => TitleNormalizer.sanitize(r._1)) shouldBe
+      Set("zaproszenie", "zaproszeniekinotekadlarodzicow")
   }
 }

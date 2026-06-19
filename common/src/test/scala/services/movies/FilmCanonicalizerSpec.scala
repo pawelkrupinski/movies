@@ -25,6 +25,21 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       data = Map[Source, SourceData](cinema -> SourceData(title = Some(title), releaseYear = year))
     )
 
+  /** A resolved row keyed under `keyTitle` for a film TMDB knows as `tmdbTitle`
+   *  (Polish) / `originalTitle`, reported by `cinema` as `cinemaTitle`. Used to
+   *  build the cross-title (translation) duplicates the merge must fold. */
+  private def aliased(
+    keyTitle: String, tmdbId: Int, tmdbYear: Int,
+    tmdbTitle: String, originalTitle: String, cinema: Source, cinemaTitle: String
+  ): (CacheKey, MovieRecord) =
+    key(keyTitle, Some(tmdbYear)) -> MovieRecord(
+      tmdbId = Some(tmdbId),
+      data = Map[Source, SourceData](
+        Tmdb   -> SourceData(title = Some(tmdbTitle), originalTitle = Some(originalTitle), releaseYear = Some(tmdbYear)),
+        cinema -> SourceData(title = Some(cinemaTitle), releaseYear = Some(tmdbYear))
+      )
+    )
+
   "canonical" should "collapse a ±1-year unresolved + resolved cluster onto the resolved year and unioned cinemas" in {
     // Helios resolved the film to TMDB year 2026; Multikino stranded a 2025
     // (production-year) unresolved row beside it.
@@ -143,6 +158,59 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
         clusters.head.flatMap(_._2.cinemaData.keySet).toSet shouldBe Set(KinoMuza, KinoMuzeumGdansk)
       }
     }
+  }
+
+  "groupByFilm" should "fold a film keyed under two languages (same tmdbId, bare titles) into one component, then one cluster" in {
+    // "Tangled" (original) and "Zaplątani" (Polish) are the SAME film — same
+    // tmdbId, both keys are TMDB aliases — but different sanitized titles, so the
+    // old sanitize-only grouping left them as two rows. They must now share a
+    // film-identity component and collapse to one cluster, either insertion order.
+    val rows = Seq(
+      aliased("Tangled",   tmdbId = 38757, tmdbYear = 2010, tmdbTitle = "Zaplątani", originalTitle = "Tangled", cinema = Multikino, cinemaTitle = "Zaplątani"),
+      aliased("Zaplątani", tmdbId = 38757, tmdbYear = 2010, tmdbTitle = "Zaplątani", originalTitle = "Tangled", cinema = Helios,    cinemaTitle = "Zaplątani")
+    )
+    Seq(rows, rows.reverse).foreach { ordered =>
+      val components = FilmCanonicalizer.groupByFilm(ordered)
+      withClue(s"components: ${components.map(_.map(_._1.cleanTitle))}\n") {
+        components should have size 1
+        val clusters = FilmCanonicalizer.clusterByFilm(components.head)
+        clusters should have size 1
+        clusters.head.flatMap(_._2.cinemaData.keySet).toSet shouldBe Set(Multikino, Helios)
+      }
+    }
+  }
+
+  it should "NOT fold a programme/decorated edition that merely carries the base tmdbId" in {
+    // "Zaproszenie | Kinoteka dla rodziców" resolves to the base film's tmdbId, but
+    // its key is NOT a TMDB alias (it adds the programme banner) — it is separate
+    // by design and must stay its own component, while the bare base folds normally.
+    val rows = Seq(
+      aliased("Zaproszenie",                       tmdbId = 9001, tmdbYear = 2022, tmdbTitle = "Zaproszenie", originalTitle = "The Invitation", cinema = Helios,   cinemaTitle = "Zaproszenie"),
+      aliased("Zaproszenie | Kinoteka dla rodziców", tmdbId = 9001, tmdbYear = 2022, tmdbTitle = "Zaproszenie", originalTitle = "The Invitation", cinema = Kinoteka, cinemaTitle = "Zaproszenie | Kinoteka dla rodziców")
+    )
+    val components = FilmCanonicalizer.groupByFilm(rows)
+    withClue(s"components: ${components.map(_.map(_._1.cleanTitle))}\n") {
+      components should have size 2
+    }
+  }
+
+  it should "keep a remake (two distinct tmdbIds sharing a title) as one component but two clusters" in {
+    val components = FilmCanonicalizer.groupByFilm(Seq(
+      resolved("Diuna", tmdbId = 100, tmdbYear = 1984, cinema = KinoMuza),
+      resolved("Diuna", tmdbId = 200, tmdbYear = 2021, cinema = KinoMuzeumGdansk)
+    ))
+    components should have size 1                                  // same sanitized title → one component
+    FilmCanonicalizer.clusterByFilm(components.head) should have size 2  // split back out by tmdbId
+  }
+
+  it should "key a cross-language cluster on the dominant cinema title, not the alphabetical min" in {
+    // The churn guard: keying on the alphabetical min ("tangled") would leave an
+    // _id no cinema reports, so every "Zaplątani" scrape would re-spawn the row.
+    val (canonicalKey, _) = FilmCanonicalizer.canonical(Seq(
+      aliased("Tangled",   tmdbId = 38757, tmdbYear = 2010, tmdbTitle = "Zaplątani", originalTitle = "Tangled", cinema = Multikino, cinemaTitle = "Zaplątani"),
+      aliased("Zaplątani", tmdbId = 38757, tmdbYear = 2010, tmdbTitle = "Zaplątani", originalTitle = "Tangled", cinema = Helios,    cinemaTitle = "Zaplątani")
+    ))
+    TitleNormalizer.sanitize(canonicalKey.cleanTitle) shouldBe "zaplatani"
   }
 
   it should "keep a decorated variant's own spelling, not the base title its Tmdb slot carries" in {

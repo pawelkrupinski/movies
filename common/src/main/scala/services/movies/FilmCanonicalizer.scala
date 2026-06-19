@@ -146,6 +146,66 @@ object FilmCanonicalizer {
     clusters.map(_.rows).filter(_.nonEmpty)
   }
 
+  /** Is this row's KEY one of the film's own TMDB titles (its Polish or original
+   *  title) — i.e. a bare film title in some language, not a decorated edition? A
+   *  translation ("Tangled" == originalTitle, "Zaplątani" == TMDB Polish title)
+   *  qualifies; a dub / programme / festival variant ("Straszny film ukraiński
+   *  dubbing", "Zaproszenie | Kinoteka dla rodziców") adds words beyond any alias
+   *  and does NOT. Only bare-title rows are merged across titles by shared tmdbId,
+   *  so an intentionally-separate decorated edition that merely carries the base
+   *  film's tmdbId is never folded onto the base. */
+  private[services] def isBareFilmTitle(row: (CacheKey, MovieRecord)): Boolean = {
+    val norm = TitleNormalizer.sanitize(row._1.cleanTitle)
+    row._2.tmdbTitleAliases.exists(a => TitleNormalizer.sanitize(a) == norm)
+  }
+
+  /** Partition the corpus into FILM-IDENTITY components before per-film
+   *  clustering. Two rows are the same film when they share a `sanitize(title)`
+   *  OR — both being bare film titles (see [[isBareFilmTitle]]) — a tmdbId. The
+   *  tmdbId edge is what folds a film keyed under two languages ("Tangled" /
+   *  "Zaplątani", same tmdbId) into one component so the duplicate `movies` row
+   *  collapses; gating it on bare titles keeps decorated editions (which carry the
+   *  base tmdbId but are separate by design) in their own component.
+   *
+   *  Connected components via union-find over the row set — a pure, order-
+   *  independent function: parents always point to the lowest index, components
+   *  are returned sorted by their smallest `canonicalRank` (rows within each
+   *  sorted too), so the settle stays deterministic (the `ScrapeOrderDeterminismSpec`
+   *  guard). Replaces the prior `groupBy(sanitize)`: a sanitized-title group is
+   *  always wholly inside one component (the sanitize edges union it), so every
+   *  same-title row a per-title group saw still clusters together — plus the
+   *  cross-title bare-alias rows. Each component is then sub-clustered by
+   *  [[clusterByFilm]]. */
+  def groupByFilm(rows: Seq[(CacheKey, MovieRecord)]): Seq[Seq[(CacheKey, MovieRecord)]] = {
+    val n      = rows.length
+    val parent = Array.tabulate(n)(identity)
+    def find(x: Int): Int = {
+      var root = x
+      while (parent(root) != root) root = parent(root)
+      var cur = x
+      while (parent(cur) != cur) { val next = parent(cur); parent(cur) = root; cur = next }
+      root
+    }
+    def union(a: Int, b: Int): Unit = {
+      val ra = find(a); val rb = find(b)
+      if (ra != rb) parent(math.max(ra, rb)) = math.min(ra, rb)
+    }
+    def unionAllIndices(idxs: Iterable[Int]): Unit =
+      idxs.reduceLeftOption { (a, b) => union(a, b); b }
+    // sanitize(title) edges — always (preserves the prior title-scoped grouping).
+    rows.indices.groupBy(i => TitleNormalizer.sanitize(rows(i)._1.cleanTitle))
+      .valuesIterator.foreach(unionAllIndices)
+    // tmdbId edges — only between BARE film titles, so translation duplicates fold
+    // but decorated editions sharing the base tmdbId stay apart.
+    rows.indices
+      .filter(i => rows(i)._2.tmdbId.isDefined && isBareFilmTitle(rows(i)))
+      .groupBy(i => rows(i)._2.tmdbId.get)
+      .valuesIterator.foreach(unionAllIndices)
+    rows.indices.groupBy(find).valuesIterator.toSeq
+      .map(idxs => idxs.toSeq.sortBy(i => canonicalRank(rows(i)._1)).map(rows))
+      .sortBy(comp => comp.map(r => canonicalRank(r._1)).min)
+  }
+
   /** The single canonical key + merged record for a cluster of same-film rows.
    *  Spelling is decoupled from year:
    *    - year:    TMDB's resolved year is authoritative (it overrides
@@ -178,9 +238,19 @@ object FilmCanonicalizer {
     // "SAVAGE HOUSE"), then break ties by string order — a pure function of the
     // variant set.
     def isAllCaps(t: String): Boolean = t.exists(_.isLetter) && t == t.toUpperCase(java.util.Locale.ROOT)
-    val canonicalTitle = allKeys.map(_.cleanTitle).minBy(t => (isAllCaps(t), t))
-    val canonicalKey   = CacheKey(canonicalTitle, canonicalYear)
+    val minSpelling = allKeys.map(_.cleanTitle).minBy(t => (isAllCaps(t), t))
     val merged = MovieRecordMerge.unionAll(cluster.sortBy { case (k, _) => canonicalRank(k) }.map(_._2))
+    // A cross-title cluster — a film folded across two languages by shared tmdbId
+    // ("Tangled" + "Zaplątani") — must NOT key on the alphabetical min, which
+    // could be the original-language title ("tangled") no cinema reports: every
+    // localised scrape would then miss it (`MovieCache.concludedKeyFor` matches by
+    // sanitize) and re-spawn the duplicate. Key on the dominant cinema-reported
+    // title instead — exactly what `displayTitle` derives — so scrapes land on the
+    // surviving row. A single-title cluster keeps the `min` spelling (unchanged),
+    // so the established case/spelling-normalisation behaviour is untouched.
+    val multiTitle = keys.map(k => TitleNormalizer.sanitize(k.cleanTitle)).distinct.sizeIs > 1
+    val canonicalTitle = if (multiTitle) merged.displayTitle(minSpelling) else minSpelling
+    val canonicalKey   = CacheKey(canonicalTitle, canonicalYear)
     (canonicalKey, merged)
   }
 }

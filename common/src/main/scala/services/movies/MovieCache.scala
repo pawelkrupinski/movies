@@ -329,10 +329,13 @@ class CaffeineMovieCache(
       .orElse(sameTitle.minByOption(canonicalRank))
   }
 
-  /** Collapse every set of rows that share a normalised cleanTitle into ONE row
-   *  per FILM under the canonical (min `canonicalRank`) key, unioning their
-   *  records. A concurrent scrape/enrichment can transiently split a film across
-   *  two spellings — a stale-keyed TMDB write seeds a phantom ("Nowa fala"
+  /** Collapse every set of rows that are the SAME FILM into ONE row under the
+   *  canonical key, unioning their records. Film identity is `groupByFilm`: rows
+   *  sharing a normalised cleanTitle, OR (both bare film titles) a tmdbId — so a
+   *  film keyed under two languages ("Tangled" + "Zaplątani", same tmdbId) folds
+   *  to one row, while a decorated edition that merely carries the base tmdbId
+   *  stays separate. A concurrent scrape/enrichment can transiently split a film
+   *  across two spellings — a stale-keyed TMDB write seeds a phantom ("Nowa fala"
    *  beside the canonical "Nowa Fala"), and once two same-sanitize rows exist
    *  `redirectToExistingVariant` stops merging (it only redirects on a UNIQUE
    *  match), so the split persists and which spelling a film ends under depends
@@ -354,10 +357,8 @@ class CaffeineMovieCache(
   }
 
   private def canonicalizeGroups(pairs: Seq[(CacheKey, MovieRecord)]): Unit =
-    pairs
-      .groupBy { case (k, _) => TitleNormalizer.sanitize(k.cleanTitle) }
-      .valuesIterator
-      .foreach(group => FilmCanonicalizer.clusterByFilm(group).foreach(collapseCluster))
+    FilmCanonicalizer.groupByFilm(pairs)
+      .foreach(component => FilmCanonicalizer.clusterByFilm(component).foreach(collapseCluster))
 
   /** Collapse ONE cluster (rows that are the same film) to a single canonical
    *  row, unioning their records. The `(canonical, merged)` DECISION — which
@@ -445,9 +446,17 @@ class CaffeineMovieCache(
   private def concludedKeyFor(primary: CacheKey): Option[CacheKey] = {
     import scala.jdk.CollectionConverters._
     val norm = TitleNormalizer.sanitize(primary.cleanTitle)
+    // A scrape lands on a concluded row when its title matches that row's key, OR
+    // one of the row's TMDB aliases (its Polish / original title). The alias arm
+    // lands a cinema's original-language listing of a film ("Tangled") straight on
+    // the existing resolved row ("Zaplątani") instead of spawning a translation
+    // duplicate for the next settle to merge. It is self-gating against decorated
+    // editions: a dub / programme title ("Straszny film ukraiński dubbing") adds
+    // words, so its sanitize matches no alias — it keeps landing on its own row.
     val concluded = positive.asMap().asScala.iterator
       .collect { case (k, e) if e.tmdbConcluded &&
-        TitleNormalizer.sanitize(k.cleanTitle) == norm => k }
+        (TitleNormalizer.sanitize(k.cleanTitle) == norm ||
+         e.tmdbTitleAliases.exists(a => TitleNormalizer.sanitize(a) == norm)) => k }
       .toSeq
     primary.year match {
       case None    => concluded.minByOption(canonicalRank)
@@ -691,6 +700,17 @@ class CaffeineMovieCache(
     val knownSanitized: Set[String] =
       if (staging.isEmpty) Set.empty
       else positive.asMap().asScala.keysIterator.map(k => TitleNormalizer.sanitize(k.cleanTitle)).toSet
+    // Sanitized TMDB aliases (Polish + original title) of every CONCLUDED row, so a
+    // cinema's original-language listing of a known film ("Tangled") is recognised
+    // as already-known and lands on the existing resolved row instead of incubating
+    // a parallel newcomer. Self-gating against decorated editions (their title
+    // matches no alias). Empty when staging is unwired (no diversion happens).
+    val knownAliases: Set[String] =
+      if (staging.isEmpty) Set.empty
+      else positive.asMap().asScala.valuesIterator
+        .filter(_.tmdbConcluded)
+        .flatMap(_.tmdbTitleAliases.iterator.map(TitleNormalizer.sanitize))
+        .toSet
     val priorStagingRows: Map[String, services.staging.StagingRecord] =
       staging.fold(Map.empty[String, services.staging.StagingRecord]) {
         _.findAll().iterator.collect { case r if r.cinema == cinema => TitleNormalizer.sanitize(r.title) -> r }.toMap
@@ -703,8 +723,10 @@ class CaffeineMovieCache(
       val primary      = keyOf(displayTitle, cm.movie.releaseYear)
       val norm         = TitleNormalizer.sanitize(displayTitle)
       // A newcomer: `staging` is wired and this film's sanitize group isn't in
-      // `movies` yet. (Same-tick spelling variants already collapsed in `deduped`.)
-      val divert       = staging.isDefined && !knownSanitized(norm)
+      // `movies` yet — AND it isn't a known film listed under another language (an
+      // alias of a concluded row). (Same-tick spelling variants already collapsed
+      // in `deduped`.)
+      val divert       = staging.isDefined && !knownSanitized(norm) && !knownAliases(norm)
       // Lock on the row's NORMALISED cleanTitle — `withTitleLock` keys by
       // `sanitize`, the SAME normalised key the TMDB stage and `rekey` acquire.
       // Serialises every read-modify-write on the row (scrape, rekey, TMDB put)

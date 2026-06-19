@@ -148,6 +148,17 @@ case class MovieRecord(
    *  hasn't filled this row yet. */
   def originalTitle: Option[String] = data.get(Tmdb).flatMap(_.originalTitle)
 
+  /** The titles by which TMDB knows this film: its Polish title and its original
+   *  (production-language) title. A film a cinema lists under its original/English
+   *  title ("Tangled") is the SAME film as the Polish-keyed row ("Zaplątani") —
+   *  its key matches one of these aliases — so the cross-title merge
+   *  (`FilmCanonicalizer.groupByFilm`) and alias-aware scrape-landing
+   *  (`MovieCache.concludedKeyFor`) use this to fold the two onto one row. A
+   *  decorated edition (dub / "+ Kinoteka dla rodziców") adds words beyond any
+   *  alias, so it never matches and stays its own row. Empty until TMDB resolves. */
+  def tmdbTitleAliases: Set[String] =
+    data.get(Tmdb).toSet.flatMap((sd: SourceData) => Set(sd.title, sd.originalTitle).flatten)
+
   /** Every poster URL we know about, de-duplicated, in source-priority order
    *  — Multikino, the rest of `Cinema.all`, then `Tmdb`, then `Imdb` — except
    *  that known "coming soon" placeholders (see [[PlaceholderPoster]]) are

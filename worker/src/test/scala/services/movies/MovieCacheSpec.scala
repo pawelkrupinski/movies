@@ -11,6 +11,20 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   private def mkEnrichment(imdbId: String, rating: Option[Double] = None): MovieRecord =
     MovieRecord(imdbId = Some(imdbId), imdbRating = rating)
 
+  private def cm(cinema: Cinema, title: String, year: Option[Int]): CinemaMovie =
+    CinemaMovie(
+      movie     = Movie(title, releaseYear = year),
+      cinema    = cinema,
+      posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 8, 18, 0), None))
+    )
+
+  // A TMDB-resolved row TMDB knows by `tmdbTitle` (Polish) / `originalTitle`.
+  private def resolvedRecord(tmdbId: Int, year: Int, tmdbTitle: String, originalTitle: String, cinema: Cinema): MovieRecord =
+    MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
+      Tmdb              -> SourceData(title = Some(tmdbTitle), originalTitle = Some(originalTitle), releaseYear = Some(year)),
+      (cinema: Source)  -> SourceData(title = Some(tmdbTitle), releaseYear = Some(year))))
+
   "MovieCache" should "hydrate from the repository on construction" in {
     // Carry the title in a cinema slot, as a scraped row does: the repository
     // re-derives the display title from the record on read (like Mongo), so a
@@ -1310,5 +1324,33 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     Thread.sleep(2)
     cache.rehydrate()
     cache.lastModified.isAfter(before) shouldBe true
+  }
+
+  // ── Alias-aware scrape landing (cross-language films) ──────────────────────
+  "recordCinemaScrape" should
+    "land an original-language scrape on the existing resolved row, not spawn a translation duplicate" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+    // An existing resolved row for Tangled, keyed under its Polish title.
+    cache.put(cache.keyOf("Zaplątani", Some(2010)),
+      resolvedRecord(38757, 2010, tmdbTitle = "Zaplątani", originalTitle = "Tangled", cinema = Helios))
+    // Another cinema lists the SAME film under its original English title. Its
+    // sanitized title ("tangled") matches the row's TMDB alias, so the slot lands
+    // on the existing row instead of creating a second "tangled|2010" doc.
+    cache.recordCinemaScrape(Multikino, Seq(cm(Multikino, "Tangled", Some(2010))))
+    val rows = cache.snapshot()
+    withClue(s"expected ONE row, got ${rows.map(r => (r.title, r.year))}\n")(rows.size shouldBe 1)
+    rows.head.record.cinemaData.keySet shouldBe Set(Helios, Multikino)
+    TitleNormalizer.sanitize(rows.head.title) shouldBe "zaplatani"
+  }
+
+  it should "NOT land a decorated edition on the base film via alias-matching" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+    cache.put(cache.keyOf("Zaproszenie", Some(2022)),
+      resolvedRecord(9001, 2022, tmdbTitle = "Zaproszenie", originalTitle = "The Invitation", cinema = Helios))
+    // A programme edition of the base film: its title adds the banner, so it
+    // matches no TMDB alias and must stay its own row.
+    cache.recordCinemaScrape(KinoMuza, Seq(cm(KinoMuza, "Zaproszenie | Kinoteka dla rodziców", Some(2022))))
+    cache.snapshot().map(r => TitleNormalizer.sanitize(r.title)).toSet shouldBe
+      Set("zaproszenie", "zaproszeniekinotekadlarodzicow")
   }
 }
