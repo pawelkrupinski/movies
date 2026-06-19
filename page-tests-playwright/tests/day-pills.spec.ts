@@ -29,4 +29,29 @@ test.describe('day pills', { tag: '@agnostic' }, () => {
       .poll(() => page.evaluate(() => new URL(location.href).searchParams.get('date')))
       .toBe('tomorrow');
   });
+
+  // On mobile portrait the active pill is a filled highlight clipped to the
+  // content box (it hugs its text). Without symmetric vertical padding the
+  // highlight fills the FULL pill height while hugging its sides, so on a short
+  // label like "Dziś" its flat stadium top/bottom read as "cut off" — reported
+  // on a real iPhone 17 Pro Max (440px) where the WebKit proxy's larger navbar
+  // gap hid it. The vertical padding must inset the painted highlight from the
+  // pill's top/bottom so it reads as a balanced rounded pill at every width.
+  test('the active highlight is vertically inset from the pill box (mobile portrait)', async ({ page }) => {
+    const vp = page.viewportSize();
+    test.skip(!vp || vp.width > 575 || vp.width >= vp.height, 'mobile portrait only');
+    await page.goto('/poznan/?date=today');
+    await waitForCards(page);
+    const m = await page.evaluate(() => {
+      const pill = document.querySelector('.day-pill.active') as HTMLElement;
+      const cs = getComputedStyle(pill);
+      const padT = parseFloat(cs.paddingTop), padB = parseFloat(cs.paddingBottom);
+      return { pillH: pill.clientHeight, highlightH: pill.clientHeight - padT - padB, padT, padB, bgClip: cs.backgroundClip };
+    });
+    // The highlight (content box) must sit clear of the pill's top and bottom.
+    expect(m.bgClip).toBe('content-box');
+    expect(m.padT).toBeGreaterThanOrEqual(3);
+    expect(m.padB).toBeGreaterThanOrEqual(3);
+    expect(m.pillH - m.highlightH).toBeGreaterThanOrEqual(6);
+  });
 });
