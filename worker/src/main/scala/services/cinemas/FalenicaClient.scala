@@ -79,7 +79,14 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
     Try(detailHttp.get(ref)).toOption.map { html =>
       val document = Jsoup.parse(html)
       FilmDetail(
-        synopsis   = Option(document.selectFirst("div.section.tresc")).map(_.text.trim).filter(_.length > 20),
+        // `div.section.tresc` wraps the synopsis prose alongside the
+        // "Dostępne terminy" showtime table and the trailer's <video><a> (a
+        // YouTube URL); drop both so only the prose lands in the synopsis.
+        synopsis   = Option(document.selectFirst("div.section.tresc")).map { tresc =>
+          val prose = tresc.clone()
+          prose.select("div.terminy_row, div.trailer").remove()
+          prose.text.trim
+        }.filter(_.length > 20),
         // The detail page's WordPress `[video]` block holds the YouTube
         // trailer as `<source type="video/youtube" src="…watch?v=…">`.
         trailerUrl = document.select("video source[src], iframe[src]").asScala

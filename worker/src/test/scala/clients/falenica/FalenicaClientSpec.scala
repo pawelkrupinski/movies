@@ -46,4 +46,18 @@ class FalenicaClientSpec extends AnyFlatSpec with Matchers {
       .getOrElse(fail("no detail for Sny o słoniach"))
     detail.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=_n9ODqV3A5Q")
   }
+
+  // Regression: `div.section.tresc` wraps the synopsis prose AND the
+  // "Dostępne terminy" showtime table AND the trailer's <video><a> (a YouTube
+  // URL). Taking `.text` of the whole div leaked the showtime tail
+  // ("Dostępne terminy … Kup bilet") and the trailer URL into the synopsis.
+  it should "extract the synopsis prose without the showtime table or trailer URL" in {
+    val detail = client.fetchFilmDetail(byTitle("Przepis na szczęście").filmUrl.getOrElse(fail("no filmUrl for Przepis na szczęście")))
+      .getOrElse(fail("no detail for Przepis na szczęście"))
+    val synopsis = detail.synopsis.getOrElse(fail("no synopsis for Przepis na szczęście"))
+    synopsis should include("Cécile")
+    synopsis should not include "Dostępne terminy"
+    synopsis should not include "Kup bilet"
+    synopsis should not include "youtube.com"
+  }
 }

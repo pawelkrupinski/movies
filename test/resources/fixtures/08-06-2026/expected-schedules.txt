@@ -5127,7 +5127,7 @@ runtimeMinutes:    127
 releaseYear:       2025
 countries:         Dania, Francja, Szwecja, Finlandia, Niemcy, Turcja
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/06/plakat_orly-republiki.jpg
-synopsis.length:   2921
+synopsis.length:   2850
 cast:              Fares Fares, Lyna Khoudri, Cherien Dabis, Amr Waked, Zineb Triki, Donia Massoud
 director:          Tarik Saleh
 tmdbId:            1220566
@@ -5299,7 +5299,7 @@ runtimeMinutes:    90
 releaseYear:       2025
 countries:         Czechy, Dania, Niemcy, Wielka Brytania, USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Pan_NIKT_kontra_PUTIN_plakat_net_DBKDtLN.jpg
-synopsis.length:   867
+synopsis.length:   796
 cast:              Павел Таланкин, Władimir Putin, Roman Abalin, Лаврентий Берия, Viktor Abakumov
 director:          David Borenstein, Pasha Talankin
 tmdbId:            1393151
@@ -6742,7 +6742,7 @@ runtimeMinutes:    50
 releaseYear:       2026
 countries:         Polska
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/04/Pucio-PLAKAT-online.jpg
-synopsis.length:   1508
+synopsis.length:   1464
 cast:              Joanna Pach, Antonina Żbikowska, Małgorzata Socha, Waldemar Barwiński, Ewa Kania
 director:          Marta Stróżycka
 tmdbId:            1645035
