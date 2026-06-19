@@ -237,6 +237,18 @@
       "targets": [
         { "refId": "A", "expr": "kinowo_worker_queue_oldest_waiting_age_seconds > 0", "legendFormat": "{{task_type}}" }
       ]
+    },
+    {
+      "id": 27,
+      "title": "Worker — fully-worked task duration p95 by type (s)",
+      "description": "Per-type tail latency of done (not skipped) tasks: the 95th-percentile handler wall-clock for each task type, over the bucketed histogram (kinowo_worker_task_duration_seconds). Splits the overall percentiles panel above by task_type so a slowdown localises to one upstream — e.g. ScrapeCinema (a cinema site), the *Rating types (Filmweb/RT/Metacritic/IMDb), or TMDB/IMDb resolution. Change 0.95 → 0.50 for the median.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 79 },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.95, sum by (le, task_type) (rate(kinowo_worker_task_duration_seconds_bucket[$__rate_interval])))", "legendFormat": "{{task_type}}" }
+      ]
     }
   ]
 }
