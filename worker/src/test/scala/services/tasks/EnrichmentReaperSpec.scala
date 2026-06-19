@@ -65,6 +65,37 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
     reaper.tick(t0 + 2 * 4.hours.toMillis) shouldBe 1    // two periods later → crossed a boundary
   }
 
+  it should "keep a row's rating freshness across a TITLE re-key (same tmdbId) and not re-enqueue" in {
+    val cache = newCache(); val queue = new InMemoryTaskQueue; val fresh = new InMemoryFreshnessStore
+    seedRow(cache, "Tangled")(_.copy(imdbId = Some("tt0398286"), tmdbId = Some(38757)))
+    val reaper = new EnrichmentReaper(cache, queue, fresh)
+    reaper.tick(t0) shouldBe 4
+    // Simulate the four handlers refreshing: stamp each enqueued task's key fresh.
+    Iterator.continually(queue.claim("w", 1.minute, Instant.ofEpochMilli(t0)))
+      .takeWhile(_.isDefined).flatten.foreach { task =>
+        fresh.markFresh(task.dedupKey, FreshnessKind.ImdbRating, Instant.ofEpochMilli(t0))
+        queue.complete(task.id, "w")
+      }
+    // The SAME film is re-listed under its Polish title — a cross-language fold /
+    // title-rule merge: same tmdbId, NEW cache key. Rating freshness is keyed on the
+    // stable tmdbId, so the re-keyed row stays fresh and is NOT re-enqueued. (Keyed
+    // on title|year, every such re-key orphaned the stamp and re-queued all four
+    // sources — the corpus-wide surge that pinned the worker after the merge waves.)
+    cache.invalidate(cache.keyOf("Tangled", None))
+    seedRow(cache, "Zaplątani")(_.copy(imdbId = Some("tt0398286"), tmdbId = Some(38757)))
+    reaper.tick(t0) shouldBe 0
+  }
+
+  it should "honour a legacy title-keyed stamp so switching to tmdbId keys doesn't re-queue the corpus" in {
+    val cache = newCache(); val queue = new InMemoryTaskQueue; val fresh = new InMemoryFreshnessStore
+    seedRow(cache, "Resolved")(_.copy(imdbId = Some("tt1"), tmdbId = Some(2)))
+    // Stamps written by the OLD title-keyed code, still fresh in this window. The
+    // reaper must treat the row as fresh under the new tmdbId key via the fallback.
+    Seq(FreshnessKind.ImdbRating, FreshnessKind.RtRating, FreshnessKind.McRating, FreshnessKind.FilmwebRating)
+      .foreach(k => fresh.markFresh(RatingTasks.dedupKey(k, cache.keyOf("Resolved", None)), k, Instant.ofEpochMilli(t0)))
+    new EnrichmentReaper(cache, queue, fresh).tick(t0) shouldBe 0
+  }
+
   // ── the spread property ──────────────────────────────────────────────────────
 
   it should "spread a synchronized corpus about-evenly across the period rather than bursting" in {

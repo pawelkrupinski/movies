@@ -13,8 +13,20 @@ object RatingTasks {
   val TitleKey = "title"
   val YearKey  = "year"
 
+  /** Legacy title-based key. Kept only as the transition fallback in
+   *  [[EnrichmentReaper]] (so deploying tmdbId-keyed freshness doesn't re-queue the
+   *  whole resolved corpus once); new stamps use the tmdbId-keyed form below. */
   def dedupKey(kind: FreshnessKind, key: CacheKey): String =
     s"${kind.label}|${key.cleanTitle}|${key.year.map(_.toString).getOrElse("")}"
+
+  /** Stable dedup/freshness key for a row, keyed on the IMMUTABLE tmdbId when the
+   *  row is resolved. A film re-keyed under a new title (cross-language fold, a
+   *  title-rule merge) keeps the same tmdbId, so its rating freshness survives the
+   *  re-key instead of being orphaned and re-queued across all four sources — the
+   *  corpus-wide rating surge that exhausted the worker's CPU credit after a merge
+   *  wave. Falls back to the title key for a rare eligible row without a tmdbId. */
+  def dedupKey(kind: FreshnessKind, key: CacheKey, tmdbId: Option[Int]): String =
+    tmdbId.fold(dedupKey(kind, key))(id => s"${kind.label}|tmdb:$id")
 
   def payload(key: CacheKey): Map[String, String] =
     Map(TitleKey -> key.cleanTitle, YearKey -> key.year.map(_.toString).getOrElse(""))

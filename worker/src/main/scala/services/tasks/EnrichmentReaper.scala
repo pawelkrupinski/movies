@@ -110,8 +110,15 @@ class EnrichmentReaper(
       while (sources.hasNext && enqueued < maxEnqueuePerTick) {
         val s = sources.next()
         if (s.eligible(record)) {
-          val dedupKey = RatingTasks.dedupKey(s.kind, key)
-          if (dueWindow.isDue(dedupKey, freshness.lastFetchedAt(dedupKey), Instant.ofEpochMilli(nowMillis)) &&
+          val dedupKey = RatingTasks.dedupKey(s.kind, key, record.tmdbId)
+          // Honour a stamp left under the legacy title-based key so switching to
+          // tmdbId-keyed freshness doesn't re-queue the whole resolved corpus once
+          // on deploy: a row fresh under its old title key isn't re-enqueued, and
+          // seeds the tmdbId key on its next due refresh. (Drop the fallback once no
+          // legacy stamps remain.)
+          val lastFetched = freshness.lastFetchedAt(dedupKey)
+            .orElse(freshness.lastFetchedAt(RatingTasks.dedupKey(s.kind, key)))
+          if (dueWindow.isDue(dedupKey, lastFetched, Instant.ofEpochMilli(nowMillis)) &&
               queue.enqueue(s.taskType, dedupKey, RatingTasks.payload(key)) == EnqueueResult.Added)
             enqueued += 1
         }
