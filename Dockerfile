@@ -21,6 +21,15 @@
 FROM eclipse-temurin:25-jre
 ARG COMMIT_SHA=unknown
 ENV COMMIT_SHA=$COMMIT_SHA
+# Hash of the worker artifact's inputs (sources + build + image recipe + fly
+# config), baked in so the deploy workflow can read it back off the running
+# machine and SKIP a redeploy when those inputs are byte-identical — a web/iOS/
+# Android/Grafana-only push must not restart the worker, since every restart
+# pays a cold freshness re-hydrate + scrape boot storm that drains the
+# shared-CPU credit. Only the worker leg passes a real value; web leaves it
+# `unknown`. See the deploy guard in .github/workflows/deploy.yml.
+ARG WORKER_INPUT_HASH=unknown
+ENV WORKER_INPUT_HASH=$WORKER_INPUT_HASH
 ARG BIN=web
 ENV BIN=$BIN
 WORKDIR /app

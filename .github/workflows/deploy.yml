@@ -3,6 +3,15 @@ name: Deploy to Fly.io
 on:
     push:
         branches: [main]
+    # Manual escape hatch: redeploy the worker even when its inputs are unchanged
+    # (a base-image refresh, a forced restart) — the worker deploy is otherwise
+    # skipped when nothing in its artifact changed (see the guard below).
+    workflow_dispatch:
+        inputs:
+            force_worker_deploy:
+                description: "Redeploy kinowo-worker even if its inputs are unchanged"
+                type: boolean
+                default: false
 
 # Workflow-level concurrency: a newer push cancels the older workflow
 # mid-flight, freeing its ~28 worker slots so the latest commit's jobs
@@ -70,22 +79,57 @@ jobs:
 
             - uses: superfly/flyctl-actions/setup-flyctl@master
 
-            # Skip if a newer commit is already live on THIS app. The running
-            # machine carries COMMIT_SHA from the Dockerfile build-arg; if this
-            # workflow's commit is an ancestor of that SHA, a newer build
-            # already deployed successfully and re-deploying would roll back.
-            # (On the worker's first-ever deploy the app has no machine yet, so
-            # the ssh probe returns empty and we proceed.)
-            - name: Check deployed commit
+            # Decide whether this app actually needs a deploy. Two skip reasons,
+            # both fail-open (any probe error → deploy):
+            #
+            #  (1) Roll-back guard (both apps): the running machine carries
+            #      COMMIT_SHA from the Dockerfile build-arg; if this workflow's
+            #      commit is an ANCESTOR of the live one, a newer build already
+            #      shipped and re-deploying would roll it back. (First-ever deploy:
+            #      no machine → empty probe → proceed.)
+            #
+            #  (2) No-op guard (WORKER only): every worker restart pays a cold
+            #      freshness re-hydrate + scrape boot storm that drains the
+            #      shared-CPU credit, so a push that doesn't change the worker's
+            #      deployable artifact must NOT restart it. We hash the worker
+            #      inputs — the bin's sources (worker/, common/), its build
+            #      (build.sbt, project/), the image recipe (Dockerfile) and its fly
+            #      config (fly.worker.toml), via each one's git object id — and bake
+            #      that hash into the image (WORKER_INPUT_HASH). If the live machine
+            #      already runs this exact hash, skip. Force a restart anyway (a
+            #      config/secret/base-image change with no code delta) with
+            #      `[deploy-worker]` in the commit message or the workflow_dispatch
+            #      force input.
+            - name: Decide whether to deploy
               id: guard
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+                  HEAD_MSG: ${{ github.event.head_commit.message }}
+                  FORCE_WORKER: ${{ github.event.inputs.force_worker_deploy }}
               run: |
                   deployed=$(flyctl ssh console -a ${{ matrix.app }} -C 'printenv COMMIT_SHA' 2>/dev/null || echo "")
                   if [ -n "$deployed" ] && [ "$deployed" != "${{ github.sha }}" ]; then
                       if git merge-base --is-ancestor "${{ github.sha }}" "$deployed" 2>/dev/null; then
                           echo "::warning::Skipping ${{ matrix.app }} — commit $deployed (descendant of ${{ github.sha }}) is already live"
                           echo "skip=true" >> "$GITHUB_OUTPUT"
+                          exit 0
+                      fi
+                  fi
+                  if [ "${{ matrix.app }}" = "kinowo-worker" ]; then
+                      hash=""
+                      for p in worker common build.sbt project Dockerfile fly.worker.toml; do
+                          hash="$hash$(git rev-parse "HEAD:$p")"
+                      done
+                      hash=$(printf '%s' "$hash" | sha256sum | cut -d' ' -f1)
+                      echo "worker_hash=$hash" >> "$GITHUB_OUTPUT"
+                      forced=false
+                      case "${HEAD_MSG:-}" in *"[deploy-worker]"*) forced=true ;; esac
+                      [ "${FORCE_WORKER:-}" = "true" ] && forced=true
+                      live_hash=$(flyctl ssh console -a kinowo-worker -C 'printenv WORKER_INPUT_HASH' 2>/dev/null | tr -d '[:space:]' || echo "")
+                      if [ "$forced" != "true" ] && [ -n "$live_hash" ] && [ "$live_hash" = "$hash" ]; then
+                          echo "::warning::Skipping kinowo-worker — inputs unchanged (hash ${hash:0:8}… already live). Force with [deploy-worker] or the workflow_dispatch input."
+                          echo "skip=true" >> "$GITHUB_OUTPUT"
+                          exit 0
                       fi
                   fi
 
@@ -95,7 +139,10 @@ jobs:
                   name: ${{ matrix.artifact }}
                   path: stage
 
-            - run: flyctl deploy --remote-only -c ${{ matrix.toml }} -a ${{ matrix.app }} --build-arg BIN=${{ matrix.bin }} --build-arg COMMIT_SHA=${{ github.sha }}
+            # WORKER_INPUT_HASH is set only for the worker leg (empty → Dockerfile
+            # default `unknown` for web); it bakes the no-op guard's hash into the
+            # image so the next push can read it back and skip a redundant restart.
+            - run: flyctl deploy --remote-only -c ${{ matrix.toml }} -a ${{ matrix.app }} --build-arg BIN=${{ matrix.bin }} --build-arg COMMIT_SHA=${{ github.sha }} --build-arg WORKER_INPUT_HASH=${{ steps.guard.outputs.worker_hash }}
               if: steps.guard.outputs.skip != 'true'
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
