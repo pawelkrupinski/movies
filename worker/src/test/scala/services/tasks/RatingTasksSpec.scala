@@ -15,7 +15,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
 
   // ── RatingHandler ─────────────────────────────────────────────────────────
 
-  private val dueWindow = new RatingDueWindow(4.hours)
+  private val dueWindow = new DueWindow(4.hours)
 
   private def ratingTask(dedup: String, title: String, year: Option[Int]) =
     Task("id", TaskType.ImdbRating, dedup,
@@ -44,7 +44,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     // to re-gate on a rolling 4h TTL. A row refreshed just before its boundary is
     // due again just after it, yet still within the TTL — so the handler skipped a
     // task the reaper kept enqueuing every tick, churning the queue without ever
-    // refreshing it. Both now share RatingDueWindow, so a due task is always acted on.
+    // refreshing it. Both now share DueWindow, so a due task is always acted on.
     val period = 4.hours.toMillis
     val dedup  = "imdb|dune|2024"
     val phase  = Math.floorMod(MurmurHash3.stringHash(dedup).toLong, period)

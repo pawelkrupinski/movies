@@ -17,7 +17,7 @@ import scala.util.Try
  * Periodically enqueues rating-refresh tasks for stale rows — the queue-based
  * replacement for the `*Ratings` classes' 4h cache walks.
  *
- * Each rating source refreshes every eligible row once per the [[RatingDueWindow]]
+ * Each rating source refreshes every eligible row once per the [[DueWindow]]
  * period (4h, matching the rating TTL in [[services.freshness.Freshness]]). But
  * instead of walking the whole corpus in one burst — which used to drop ~750 tasks
  * at once, four times every 4h, and pin the shared-CPU credit (the midday `steal`
@@ -43,7 +43,7 @@ import scala.util.Try
  * A sweep only enqueues rows the source can act on (IMDb needs an imdbId; the
  * others need a resolved tmdbId), matching the old walks' scope. Enqueue is
  * deduped by the queue's unique index and re-gated by [[RatingHandler]] at
- * pickup using the SAME [[RatingDueWindow]], so the handler skips a task iff this
+ * pickup using the SAME [[DueWindow]], so the handler skips a task iff this
  * reaper would no longer enqueue it (a race where another machine refreshed it
  * first) — never a task that is still due. On a multi-machine worker each tick is gated by a cluster-wide
  * occurrence claim ([[ScheduledRunStore]]) keyed by the tick window, so one
@@ -55,8 +55,8 @@ class EnrichmentReaper(
   freshness: FreshnessStore,
   // The shared due schedule (each row refreshed once per its period, phase-spread
   // across it). The SAME instance must back `RatingHandler` so this enqueue gate
-  // and that execution gate agree on what counts as due — see [[RatingDueWindow]].
-  dueWindow: RatingDueWindow = new RatingDueWindow(4.hours),
+  // and that execution gate agree on what counts as due — see [[DueWindow]].
+  dueWindow: DueWindow = new DueWindow(4.hours),
   // How often the reaper wakes to enqueue the slice of the corpus now due — the
   // spread granularity. Smaller = flatter trickle, at the cost of more (cheap,
   // in-memory) corpus scans. Defaults to 5min (≈48 ticks per 4h period).

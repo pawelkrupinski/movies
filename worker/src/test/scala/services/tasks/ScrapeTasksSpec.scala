@@ -9,7 +9,9 @@ import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
 
-import java.time.LocalDateTime
+import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
+import scala.concurrent.duration._
+import scala.util.hashing.MurmurHash3
 
 class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
 
@@ -67,6 +69,28 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val h = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(), fresh)
     h.handle(task(Multikino)) shouldBe HandlerOutcome.Done
     fresh.isFresh(key, FreshnessKind.CinemaScrape) shouldBe false
+  }
+
+  it should "scrape (not skip) a cinema the reaper deems due even when its last scrape was inside the rolling TTL" in {
+    // Regression: the reaper enqueues on a phase-window boundary; the handler must
+    // re-gate on the SAME DueWindow, not a rolling freshness TTL. A cinema scraped
+    // just before its boundary is due again just after it, yet still within the
+    // window's TTL — the old isFresh re-gate would skip a task the reaper keeps
+    // enqueuing, churning the queue without ever scraping. Both share DueWindow now.
+    val period    = 15.minutes
+    val due        = new DueWindow(period)
+    val key        = ScrapeCinemaHandler.dedupKey(Multikino)
+    val phase      = Math.floorMod(MurmurHash3.stringHash(key).toLong, period.toMillis)
+    val w          = 100L
+    val stampedAt  = Instant.ofEpochMilli(phase + w * period.toMillis + period.toMillis - 60000) // 1 min before boundary
+    val now        = Instant.ofEpochMilli(phase + (w + 1) * period.toMillis + 60000)             // 1 min after  boundary
+    val scraper    = new FakeScraper(Multikino, movieAt(Multikino))
+    val fresh      = new InMemoryFreshnessStore
+    fresh.markFresh(key, FreshnessKind.CinemaScrape, stampedAt)
+    val h = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper),
+      freshRunner(), fresh, due, Clock.fixed(now, ZoneOffset.UTC))
+    h.handle(task(Multikino)) shouldBe HandlerOutcome.Done
+    scraper.fetchCount shouldBe 1
   }
 
   // ── ScrapeReaper ──────────────────────────────────────────────────────────
@@ -138,7 +162,6 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   // initial delay was a hardcoded `0L`, so the tick fired immediately and the
   // `shouldBe 0L` assertion below would fail.)
   it should "hold the first tick until the initial delay elapses" in {
-    import scala.concurrent.duration._
     val queue  = new InMemoryTaskQueue
     val reaper = new ScrapeReaper(Seq(new FakeScraper(Multikino, movieAt(Multikino))),
                                   queue, new InMemoryFreshnessStore, initialDelay = 300.millis)
@@ -158,7 +181,6 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   // enqueues. (Before the gate, the first tick fired at initialDelay=0 against the
   // empty mirror and the first `shouldBe 0L` below would see both cinemas queued.)
   it should "wait for the freshness mirror to hydrate before its first tick, so a slow boot doesn't re-scrape every cinema" in {
-    import scala.concurrent.duration._
     import scala.concurrent.{Future, Promise}
     val gate  = Promise[Unit]()
     val fresh = new InMemoryFreshnessStore {

@@ -3,26 +3,30 @@ package services.tasks
 import play.api.Logging
 import services.Stoppable
 import services.cinemas.CinemaScraper
-import services.freshness.{FreshnessKind, FreshnessStore}
+import services.freshness.{Freshness, FreshnessKind, FreshnessStore}
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
 import tools.DaemonExecutors
 
-import java.time.Clock
+import java.time.{Clock, Instant}
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.{Failure, Try}
 
 /**
- * Periodically enqueues a `ScrapeCinema` task for every cinema whose last
- * successful scrape is older than the freshness window (default 30min,
- * `KINOWO_SCRAPE_FRESHNESS_MINUTES`) or that has never been scraped. Enqueue
- * is deduped by the queue, so a cinema with a task already waiting/working
- * isn't queued twice; the handler re-checks freshness and skips if a
- * concurrent run already refreshed it.
+ * Periodically enqueues a `ScrapeCinema` task for every cinema that is due under
+ * the shared [[DueWindow]] — its phase-window boundary has passed since the last
+ * successful scrape, or it has never been scraped. The window's period is the
+ * freshness setting (default 30min, `KINOWO_SCRAPE_FRESHNESS_MINUTES`); each
+ * cinema's boundary sits at a deterministic phase offset hashed from its key, so
+ * the ~300 cinemas spread evenly across the period instead of all falling due
+ * together and scraping in a lockstep wave. Enqueue is deduped by the queue, so a
+ * cinema with a task already waiting/working isn't queued twice; the handler
+ * re-checks the SAME `DueWindow` and skips only if a concurrent run already
+ * refreshed it this window (never a still-due task — that churn is what [[DueWindow]] fixes).
  *
  * Instead of re-scraping every cinema back-to-back in a continuous loop, the
- * worker scrapes a cinema at most once per freshness window, and a failed scrape
+ * worker scrapes a cinema at most once per window, and a failed scrape
  * (which doesn't mark freshness) is naturally retried on the next reaper tick.
  *
  * On a multi-machine worker each tick is gated by a cluster-wide occurrence
@@ -33,6 +37,11 @@ class ScrapeReaper(
   scrapers:  Seq[CinemaScraper],
   queue:     TaskQueue,
   freshness: FreshnessStore,
+  // The shared due schedule (each cinema scraped once per its freshness window,
+  // phase-spread across it so all ~300 don't fall due together). The SAME instance
+  // must back `ScrapeCinemaHandler` so this enqueue gate and that pickup re-gate
+  // agree on what's due — see [[DueWindow]].
+  dueWindow: DueWindow = new DueWindow(Freshness.defaultScrapeTtl),
   interval:  FiniteDuration = 1.minute,
   // A small extra spacing before the (now post-hydrate) first tick, so it doesn't
   // land on the same instant as the cache hydrate finishing. Defaults to 0 so the
@@ -88,11 +97,11 @@ class ScrapeReaper(
 
   /** Enqueue every stale cinema. Package-private so tests can drive it directly —
    *  bypasses the occurrence claim. */
-  private[tasks] def tick(): Int = {
+  private[tasks] def tick(now: Instant = clock.instant()): Int = {
     var enqueued = 0
     scrapers.iterator.takeWhile(_ => enqueued < maxEnqueuePerTick).foreach { s =>
       val key = ScrapeCinemaHandler.dedupKey(s.cinema)
-      if (!freshness.isFresh(key, FreshnessKind.CinemaScrape)) {
+      if (dueWindow.isDue(key, freshness.lastFetchedAt(key), now)) {
         if (queue.enqueue(TaskType.ScrapeCinema, key,
               Map(ScrapeCinemaHandler.CinemaKey -> s.cinema.displayName)) == EnqueueResult.Added)
           enqueued += 1

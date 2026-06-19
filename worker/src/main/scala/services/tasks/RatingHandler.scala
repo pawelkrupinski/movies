@@ -22,7 +22,7 @@ object RatingTasks {
 
 /**
  * Handles one rating-refresh task by delegating to the existing per-row refresh
- * of a `*Ratings` class, re-gated at pickup by the SAME [[RatingDueWindow]] the
+ * of a `*Ratings` class, re-gated at pickup by the SAME [[DueWindow]] the
  * [[EnrichmentReaper]] enqueues on. One generic handler covers all four sources —
  * they differ only in their `taskType`, `kind`, and which `refreshOneSync` they
  * call.
@@ -30,7 +30,7 @@ object RatingTasks {
  * The re-gate must use the reaper's due definition, not a separate rolling TTL:
  * when it didn't, the reaper enqueued a row on its phase boundary while the
  * handler skipped it as still-fresh, so the same row churned the queue every tick
- * without ever refreshing (see [[RatingDueWindow]]). A row is marked fresh after
+ * without ever refreshing (see [[DueWindow]]). A row is marked fresh after
  * the refresh attempt (success or no-op), so it isn't due again until its next
  * window.
  */
@@ -38,7 +38,7 @@ class RatingHandler(
   override val taskType: TaskType,
   kind:                  FreshnessKind,
   freshness:             FreshnessStore,
-  dueWindow:             RatingDueWindow,
+  dueWindow:             DueWindow,
   refresh:               (String, Option[Int]) => Unit,
   clock:                 Clock = Clock.systemUTC()
 ) extends TaskHandler {

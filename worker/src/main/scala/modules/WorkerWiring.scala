@@ -403,9 +403,13 @@ class WorkerWiring extends play.api.Logging {
   // MovieDetailsComplete only for rows that don't await deferred detail.
   lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus, deferredDetailCinemas)
 
+  // ONE shared due schedule backs both the scrape reaper (enqueue) and the scrape
+  // handler (pickup re-gate), so they agree on what's due and a cinema's scrapes
+  // spread across the freshness window instead of falling due in a lockstep wave.
+  val scrapeDueWindow = new services.tasks.DueWindow(services.freshness.Freshness.defaultScrapeTtl)
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
-    cinemaScrapeRunner, freshnessStore
+    cinemaScrapeRunner, freshnessStore, scrapeDueWindow
   )
   lazy val enrichDetailsHandler = new EnrichDetailsHandler(
     detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache, freshnessStore, uptimeMonitor, eventBus
@@ -467,9 +471,9 @@ class WorkerWiring extends play.api.Logging {
   // per 4h, phase-spread across frequent ticks rather than bursting).
   lazy val ratingEnqueuer = new RatingEnqueuer(movieCache, taskQueue)
   // ONE shared due schedule backs both the reaper (enqueue) and every handler
-  // (pickup re-gate), so they agree on what's due — see [[RatingDueWindow]].
+  // (pickup re-gate), so they agree on what's due — see [[DueWindow]].
   // Its period is the rating TTL (4h, `Freshness.ttlFor`).
-  val ratingDueWindow = new services.tasks.RatingDueWindow(4L.hours)
+  val ratingDueWindow = new services.tasks.DueWindow(4L.hours)
   lazy val ratingHandlers: Seq[services.tasks.TaskHandler] = Seq(
     new RatingHandler(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    freshnessStore, ratingDueWindow, imdbRatings.refreshOneSync),
     new RatingHandler(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, freshnessStore, ratingDueWindow, filmwebRatings.refreshOneSync),
@@ -514,7 +518,8 @@ class WorkerWiring extends play.api.Logging {
     onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload))
   )
   lazy val scrapeReaper =
-    new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, initialDelay = initialScrapeDelaySeconds.seconds,
+    new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, dueWindow = scrapeDueWindow,
+      initialDelay = initialScrapeDelaySeconds.seconds,
       maxEnqueuePerTick = maxScrapeEnqueuePerTick, runStore = scheduledRunStore)
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing

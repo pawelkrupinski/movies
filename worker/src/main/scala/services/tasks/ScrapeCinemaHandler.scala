@@ -3,13 +3,16 @@ package services.tasks
 import models.Cinema
 import play.api.Logging
 import services.cinemas.{CinemaScrapeRunner, CinemaScraper, ScrapeErrors}
-import services.freshness.{FreshnessKind, FreshnessStore}
+import services.freshness.{Freshness, FreshnessKind, FreshnessStore}
+
+import java.time.Clock
 
 /**
- * Handles a `ScrapeCinema` task: scrape one cinema, unless it was scraped within
- * the freshness window (then skip). The reaper enqueues by freshness; this
- * re-check guards against a duplicate task or a stale enqueue (per the queue's
- * "the consumer decides redundancy" contract).
+ * Handles a `ScrapeCinema` task: scrape one cinema, unless it is no longer due
+ * under the shared [[DueWindow]] (then skip). The reaper enqueues a cinema when
+ * the window says it's due; this re-check uses the SAME `DueWindow`, so it skips
+ * only a duplicate/stale task whose cinema was already scraped this window — never
+ * a still-due one (per the queue's "the consumer decides redundancy" contract).
  *
  * The scrape itself runs through `CinemaScrapeRunner`, which also enqueues any
  * deferred per-film detail tasks — so detail enrichment happens the same way
@@ -24,7 +27,9 @@ import services.freshness.{FreshnessKind, FreshnessStore}
 class ScrapeCinemaHandler(
   scrapersByKey: Map[String, CinemaScraper],
   runner:        CinemaScrapeRunner,
-  freshness:     FreshnessStore
+  freshness:     FreshnessStore,
+  dueWindow:     DueWindow = new DueWindow(Freshness.defaultScrapeTtl),
+  clock:         Clock = Clock.systemUTC()
 ) extends TaskHandler with Logging {
   import ScrapeCinemaHandler._
   import HandlerOutcome._
@@ -33,7 +38,7 @@ class ScrapeCinemaHandler(
 
   override def handle(task: Task): HandlerOutcome = {
     val key = task.dedupKey
-    if (freshness.isFresh(key, FreshnessKind.CinemaScrape)) return Skipped
+    if (!dueWindow.isDue(key, freshness.lastFetchedAt(key), clock.instant())) return Skipped
 
     scrapersByKey.get(task.payload.getOrElse(CinemaKey, "")) match {
       case None =>
