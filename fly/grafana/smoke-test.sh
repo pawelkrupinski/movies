@@ -85,6 +85,14 @@ assert "residential-proxy-failing rule provisioned with 0.5 ratio threshold" \
   "api/v1/provisioning/alert-rules" \
   "any(r['uid']=='kinowo-residential-proxy-failing' and any(c['model']['conditions'][0]['evaluator']['params']==[0.5] for c in r['data'] if c['refId']=='C') for r in d)"
 
+# The org-wide (un-app-scoped) rules must exclude the split-out `schowek` app, or
+# its series would page these alerts. Each must carry an app!="schowek" matcher.
+for uid in kinowo-cpu-steal-high kinowo-memory-pressure kinowo-http-5xx-high kinowo-http-p95-high; do
+  assert "$uid excludes the schowek app" \
+    "api/v1/provisioning/alert-rules" \
+    "any(r['uid']=='$uid' and any('schowek' in c['model'].get('expr','') for c in r['data']) for r in d)"
+done
+
 assert "Telegram contact point provisioned" \
   "api/v1/provisioning/contact-points" \
   "any(c.get('name')=='Telegram' for c in d)"

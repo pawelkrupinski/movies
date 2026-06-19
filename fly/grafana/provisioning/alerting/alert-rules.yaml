@@ -124,7 +124,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: fly-prometheus }
               editorMode: code
-              expr: 'sum by (app) (rate(fly_instance_cpu{mode="steal"}[5m])) / sum by (app) (rate(fly_instance_cpu[5m]))'
+              expr: 'sum by (app) (rate(fly_instance_cpu{mode="steal",app!="schowek"}[5m])) / sum by (app) (rate(fly_instance_cpu{app!="schowek"}[5m]))'
               instant: true
               range: false
               intervalMs: 1000
@@ -211,7 +211,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: fly-prometheus }
               editorMode: code
-              expr: 'min by (app, instance) (fly_instance_memory_mem_available / fly_instance_memory_mem_total)'
+              expr: 'min by (app, instance) (fly_instance_memory_mem_available{app!="schowek"} / fly_instance_memory_mem_total{app!="schowek"})'
               instant: true
               range: false
               intervalMs: 1000
@@ -451,7 +451,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: fly-prometheus }
               editorMode: code
-              expr: 'sum by (app) (rate(fly_app_http_responses_count{status=~"5.."}[5m])) / sum by (app) (rate(fly_app_http_responses_count[5m]))'
+              expr: 'sum by (app) (rate(fly_app_http_responses_count{status=~"5..",app!="schowek"}[5m])) / sum by (app) (rate(fly_app_http_responses_count{app!="schowek"}[5m]))'
               instant: true
               range: false
               intervalMs: 1000
@@ -491,7 +491,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: fly-prometheus }
               editorMode: code
-              expr: 'histogram_quantile(0.95, sum by (app, le) (rate(fly_app_http_response_time_seconds_bucket[5m])))'
+              expr: 'histogram_quantile(0.95, sum by (app, le) (rate(fly_app_http_response_time_seconds_bucket{app!="schowek"}[5m])))'
               instant: true
               range: false
               intervalMs: 1000

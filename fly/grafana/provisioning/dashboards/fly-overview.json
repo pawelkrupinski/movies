@@ -4,7 +4,7 @@
   "tags": ["fly", "kinowo"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 4,
   "refresh": "1m",
   "time": { "from": "now-6h", "to": "now" },
   "annotations": {
@@ -56,7 +56,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
       "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "min by (app) (fly_instance_cpu_balance)", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "min by (app) (fly_instance_cpu_balance{app!=\"schowek\"})", "legendFormat": "{{app}}" }
       ]
     },
     {
@@ -67,7 +67,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "max by (app) (rate(fly_instance_cpu_throttle[5m]))", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "max by (app) (rate(fly_instance_cpu_throttle{app!=\"schowek\"}[5m]))", "legendFormat": "{{app}}" }
       ]
     },
     {
@@ -78,7 +78,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{mode=\"steal\"}[5m])) / sum by (app) (rate(fly_instance_cpu[5m]))", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{mode=\"steal\",app!=\"schowek\"}[5m])) / sum by (app) (rate(fly_instance_cpu{app!=\"schowek\"}[5m]))", "legendFormat": "{{app}}" }
       ]
     },
     {
@@ -89,7 +89,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "min by (app) (fly_instance_memory_mem_available / fly_instance_memory_mem_total)", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "min by (app) (fly_instance_memory_mem_available{app!=\"schowek\"} / fly_instance_memory_mem_total{app!=\"schowek\"})", "legendFormat": "{{app}}" }
       ]
     },
     {
@@ -128,7 +128,7 @@
       "gridPos": { "h": 6, "w": 24, "x": 0, "y": 33 },
       "fieldConfig": { "defaults": { "min": 0, "max": 1, "custom": { "drawStyle": "line", "fillOpacity": 20, "lineInterpolation": "stepAfter" } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "max by (app) (fly_instance_up)", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "max by (app) (fly_instance_up{app!=\"schowek\"})", "legendFormat": "{{app}}" }
       ]
     },
     {
