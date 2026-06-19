@@ -3,6 +3,8 @@ package services.tasks
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.CacheKey
 
+import java.time.Clock
+
 /** Dedup/freshness key + payload for a rating-refresh task. The key encodes the
  *  rating source and the film, so "refresh the IMDb rating of film F" can't be
  *  queued twice while one is active (the queue's unique index), and is shared
@@ -20,25 +22,31 @@ object RatingTasks {
 
 /**
  * Handles one rating-refresh task by delegating to the existing per-row refresh
- * of a `*Ratings` class, freshness-gated to that source's TTL (4h). One generic
- * handler covers all four sources — they differ only in their `taskType`,
- * `kind`, and which `refreshOneSync` they call.
+ * of a `*Ratings` class, re-gated at pickup by the SAME [[RatingDueWindow]] the
+ * [[EnrichmentReaper]] enqueues on. One generic handler covers all four sources —
+ * they differ only in their `taskType`, `kind`, and which `refreshOneSync` they
+ * call.
  *
- * A row is marked fresh after the refresh attempt (success or no-op), so the
- * phase-spreading reaper won't re-enqueue it inside the 4h window — matching the
- * old 4h walk cadence, now deduped and shared across servers.
+ * The re-gate must use the reaper's due definition, not a separate rolling TTL:
+ * when it didn't, the reaper enqueued a row on its phase boundary while the
+ * handler skipped it as still-fresh, so the same row churned the queue every tick
+ * without ever refreshing (see [[RatingDueWindow]]). A row is marked fresh after
+ * the refresh attempt (success or no-op), so it isn't due again until its next
+ * window.
  */
 class RatingHandler(
   override val taskType: TaskType,
   kind:                  FreshnessKind,
   freshness:             FreshnessStore,
-  refresh:               (String, Option[Int]) => Unit
+  dueWindow:             RatingDueWindow,
+  refresh:               (String, Option[Int]) => Unit,
+  clock:                 Clock = Clock.systemUTC()
 ) extends TaskHandler {
   import HandlerOutcome._
 
   override def handle(task: Task): HandlerOutcome = {
     val key = task.dedupKey
-    if (freshness.isFresh(key, kind)) Skipped
+    if (!dueWindow.isDue(key, freshness.lastFetchedAt(key), clock.instant())) Skipped
     else {
       val title = task.payload.getOrElse(RatingTasks.TitleKey, "")
       val year  = task.payload.get(RatingTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)

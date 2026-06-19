@@ -466,11 +466,15 @@ class WorkerWiring extends play.api.Logging {
   // rating tasks; the reaper is the periodic backstop (each row refreshed once
   // per 4h, phase-spread across frequent ticks rather than bursting).
   lazy val ratingEnqueuer = new RatingEnqueuer(movieCache, taskQueue)
+  // ONE shared due schedule backs both the reaper (enqueue) and every handler
+  // (pickup re-gate), so they agree on what's due — see [[RatingDueWindow]].
+  // Its period is the rating TTL (4h, `Freshness.ttlFor`).
+  val ratingDueWindow = new services.tasks.RatingDueWindow(4L.hours)
   lazy val ratingHandlers: Seq[services.tasks.TaskHandler] = Seq(
-    new RatingHandler(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    freshnessStore, imdbRatings.refreshOneSync),
-    new RatingHandler(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, freshnessStore, filmwebRatings.refreshOneSync),
-    new RatingHandler(TaskType.RtRating,      FreshnessKind.RtRating,      freshnessStore, rottenTomatoesRatings.refreshOneSync),
-    new RatingHandler(TaskType.McRating,      FreshnessKind.McRating,      freshnessStore, metascoreRatings.refreshOneSync)
+    new RatingHandler(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    freshnessStore, ratingDueWindow, imdbRatings.refreshOneSync),
+    new RatingHandler(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, freshnessStore, ratingDueWindow, filmwebRatings.refreshOneSync),
+    new RatingHandler(TaskType.RtRating,      FreshnessKind.RtRating,      freshnessStore, ratingDueWindow, rottenTomatoesRatings.refreshOneSync),
+    new RatingHandler(TaskType.McRating,      FreshnessKind.McRating,      freshnessStore, ratingDueWindow, metascoreRatings.refreshOneSync)
   )
   // Cap on rating-refresh tasks the EnrichmentReaper enqueues per tick. The phase
   // spread keeps steady-state ticks small (~N·tickInterval/period per source ≈ a
@@ -480,7 +484,7 @@ class WorkerWiring extends play.api.Logging {
   // is never throttled; the leftover stays due and drains over the next ticks.
   def maxEnrichmentEnqueuePerTick: Int = Env.positiveLong("KINOWO_ENRICHMENT_MAX_ENQUEUE_PER_TICK", 250L).toInt
   lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
-    maxEnqueuePerTick = maxEnrichmentEnqueuePerTick, runStore = scheduledRunStore)
+    dueWindow = ratingDueWindow, maxEnqueuePerTick = maxEnrichmentEnqueuePerTick, runStore = scheduledRunStore)
 
   // Operator-triggered handlers — ALWAYS registered (not gated by
   // queueEnrichment): the web `/tasks` buttons enqueue a corpus-wide refresh and

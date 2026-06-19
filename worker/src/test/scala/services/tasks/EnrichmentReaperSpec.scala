@@ -60,7 +60,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
     seedRow(cache, "Stamped")(_.copy(imdbId = Some("tt1")))
     fresh.markFresh(RatingTasks.dedupKey(FreshnessKind.ImdbRating, cache.keyOf("Stamped", None)),
       FreshnessKind.ImdbRating, Instant.ofEpochMilli(t0))
-    val reaper = new EnrichmentReaper(cache, queue, fresh, sweepPeriod = 4.hours)
+    val reaper = new EnrichmentReaper(cache, queue, fresh, dueWindow = new RatingDueWindow(4.hours))
     reaper.tick(t0) shouldBe 0                           // same window as the stamp
     reaper.tick(t0 + 2 * 4.hours.toMillis) shouldBe 1    // two periods later → crossed a boundary
   }
@@ -79,7 +79,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
       fresh.markFresh(RatingTasks.dedupKey(FreshnessKind.ImdbRating, cache.keyOf(title, None)),
         FreshnessKind.ImdbRating, Instant.ofEpochMilli(t0))
     }
-    val reaper = new EnrichmentReaper(cache, queue, fresh, sweepPeriod = period)
+    val reaper = new EnrichmentReaper(cache, queue, fresh, dueWindow = new RatingDueWindow(period))
     val ticks  = (period.toMillis / delta.toMillis).toInt // 48 ticks across one period
     val perTick = (1 to ticks).map(k => reaper.tick(t0 + k * delta.toMillis))
 

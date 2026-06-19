@@ -8,26 +8,25 @@ import services.movies.MovieCacheReader
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
 import tools.DaemonExecutors
 
-import java.time.Clock
+import java.time.{Clock, Instant}
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
 import scala.util.Try
-import scala.util.hashing.MurmurHash3
 
 /**
  * Periodically enqueues rating-refresh tasks for stale rows — the queue-based
  * replacement for the `*Ratings` classes' 4h cache walks.
  *
- * Each rating source refreshes every eligible row once per `sweepPeriod` (4h,
- * matching the rating TTL in [[services.freshness.Freshness]]). But instead of
- * walking the whole corpus in one burst — which used to drop ~750 tasks at once,
- * four times every 4h, and pin the shared-CPU credit (the midday `steal` spikes)
- * — the walk is SMEARED across the period: each `(row, source)` gets a
- * deterministic phase offset in `[0, sweepPeriod)` from a hash of its dedup key,
+ * Each rating source refreshes every eligible row once per the [[RatingDueWindow]]
+ * period (4h, matching the rating TTL in [[services.freshness.Freshness]]). But
+ * instead of walking the whole corpus in one burst — which used to drop ~750 tasks
+ * at once, four times every 4h, and pin the shared-CPU credit (the midday `steal`
+ * spikes) — the walk is SMEARED across the period: each `(row, source)` gets a
+ * deterministic phase offset in `[0, period)` from a hash of its dedup key,
  * and a frequent tick (`tickInterval`, default 5min) enqueues only the rows
  * whose personal period boundary has passed since their last refresh. Over a
  * period the same ~750 tasks per source go out, but ~`N · tickInterval /
- * sweepPeriod` per tick (≈16 for 750 rows at 5min/4h) — a flat trickle, not a
+ * period` per tick (≈16 for 750 rows at 5min/4h) — a flat trickle, not a
  * spike. The four sources self-decorrelate because the dedup key embeds the
  * source label, so a film's phase differs per source — no manual stagger needed.
  *
@@ -44,8 +43,9 @@ import scala.util.hashing.MurmurHash3
  * A sweep only enqueues rows the source can act on (IMDb needs an imdbId; the
  * others need a resolved tmdbId), matching the old walks' scope. Enqueue is
  * deduped by the queue's unique index and re-gated by [[RatingHandler]] at
- * pickup (a freshness re-check), so over-enqueueing is cheap and safe across
- * servers. On a multi-machine worker each tick is gated by a cluster-wide
+ * pickup using the SAME [[RatingDueWindow]], so the handler skips a task iff this
+ * reaper would no longer enqueue it (a race where another machine refreshed it
+ * first) — never a task that is still due. On a multi-machine worker each tick is gated by a cluster-wide
  * occurrence claim ([[ScheduledRunStore]]) keyed by the tick window, so one
  * machine walks the corpus per tick, rotating — not every machine every tick.
  */
@@ -53,10 +53,10 @@ class EnrichmentReaper(
   cache:     MovieCacheReader,
   queue:     TaskQueue,
   freshness: FreshnessStore,
-  // Each (row, source) refreshes once per this period, phase-spread across it.
-  // Must match the rating TTL in `Freshness.ttlFor` so this enqueue gate and
-  // `RatingHandler`'s execution gate agree on what counts as "fresh".
-  sweepPeriod: FiniteDuration = 4.hours,
+  // The shared due schedule (each row refreshed once per its period, phase-spread
+  // across it). The SAME instance must back `RatingHandler` so this enqueue gate
+  // and that execution gate agree on what counts as due — see [[RatingDueWindow]].
+  dueWindow: RatingDueWindow = new RatingDueWindow(4.hours),
   // How often the reaper wakes to enqueue the slice of the corpus now due — the
   // spread granularity. Smaller = flatter trickle, at the cost of more (cheap,
   // in-memory) corpus scans. Defaults to 5min (≈48 ticks per 4h period).
@@ -74,7 +74,6 @@ class EnrichmentReaper(
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("enrichment-reaper")
-  private val periodMillis: Long = sweepPeriod.toMillis
 
   private case class Sweep(taskType: TaskType, kind: FreshnessKind, eligible: MovieRecord => Boolean)
 
@@ -89,7 +88,7 @@ class EnrichmentReaper(
     scheduler.scheduleWithFixedDelay(
       () => Try(tickIfClaimed()), initialDelay.toMillis, tickInterval.toMillis, TimeUnit.MILLISECONDS)
     logger.info(s"EnrichmentReaper started: ${sweeps.size} rating source(s), each row refreshed once per " +
-                s"${sweepPeriod.toHours}h, phase-spread over ticks every ${tickInterval.toSeconds}s.")
+                s"${dueWindow.period.toHours}h, phase-spread over ticks every ${tickInterval.toSeconds}s.")
   }
 
   /** Tick only if this machine wins the current tick window's occurrence claim —
@@ -99,25 +98,6 @@ class EnrichmentReaper(
     val key = OccurrenceKey.at("enrich-sweep", clock.millis(), tickInterval, 0.seconds)
     if (runStore.claim(key)) tick() else 0
   }
-
-  /** Per-`(row, source)` phase offset in `[0, sweepPeriod)`, deterministic from
-   *  the dedup key — stable across restarts and needing no storage. The dedup key
-   *  embeds the source label, so a film's four sources land on independent phases. */
-  private def phaseMillis(dedupKey: String): Long =
-    Math.floorMod(MurmurHash3.stringHash(dedupKey).toLong, periodMillis)
-
-  /** Which period-length window (counted from this key's own phase) `atMillis`
-   *  falls in. A new window means the key is due for another refresh. */
-  private def windowIndex(atMillis: Long, dedupKey: String): Long =
-    Math.floorDiv(atMillis - phaseMillis(dedupKey), periodMillis)
-
-  /** Due iff never refreshed, or a personal period boundary has passed since the
-   *  last refresh (the key has entered a new window). */
-  private def isDue(dedupKey: String, nowMillis: Long): Boolean =
-    freshness.lastFetchedAt(dedupKey) match {
-      case None    => true
-      case Some(t) => windowIndex(nowMillis, dedupKey) > windowIndex(t.toEpochMilli, dedupKey)
-    }
 
   /** Enqueue every eligible, now-due `(row, source)`, up to `maxEnqueuePerTick`.
    *  Package-private, with an injectable `nowMillis`, so tests can drive time. */
@@ -131,7 +111,7 @@ class EnrichmentReaper(
         val s = sources.next()
         if (s.eligible(record)) {
           val dedupKey = RatingTasks.dedupKey(s.kind, key)
-          if (isDue(dedupKey, nowMillis) &&
+          if (dueWindow.isDue(dedupKey, freshness.lastFetchedAt(dedupKey), Instant.ofEpochMilli(nowMillis)) &&
               queue.enqueue(s.taskType, dedupKey, RatingTasks.payload(key)) == EnqueueResult.Added)
             enqueued += 1
         }
