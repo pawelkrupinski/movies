@@ -249,6 +249,18 @@
       "targets": [
         { "refId": "A", "expr": "histogram_quantile(0.95, sum by (le, task_type) (rate(kinowo_worker_task_duration_seconds_bucket[$__rate_interval])))", "legendFormat": "{{task_type}}" }
       ]
+    },
+    {
+      "id": 28,
+      "title": "Worker — fully-worked task duration p50 (median) by type (s)",
+      "description": "Per-type typical latency of done (not skipped) tasks: the 50th-percentile (median) handler wall-clock for each task type, over the bucketed histogram (kinowo_worker_task_duration_seconds). The median companion to the p95-by-type panel above — p50 reads the everyday cost of each work kind, p95 the tail.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 88 },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum by (le, task_type) (rate(kinowo_worker_task_duration_seconds_bucket[$__rate_interval])))", "legendFormat": "{{task_type}}" }
+      ]
     }
   ]
 }
