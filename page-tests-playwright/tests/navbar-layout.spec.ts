@@ -221,17 +221,18 @@ test.describe('mobile portrait — floating search pill', () => {
   });
 });
 
-// ── Mobile portrait: day-pill highlight hugs its text ─────────────
+// ── Mobile portrait: active day-pill highlight fills its rounded cell ──
 //
-// The active day-pill's highlight is clipped to its content box (inset by the
-// pill's horizontal padding), NOT filling the whole flex cell to its edge.
-// Without this the active END pill — "Dziś" on the left, "Wszystkie" on the
-// right — slams its highlight up against the logo / Filtry while the opposite
-// (inactive) end shows only inset text, so the gap reads lopsided. Hugging the
-// text makes the highlight sit where the text does, so the row has the same gap
-// on both sides whichever day is selected.
+// The active day-pill's highlight fills its whole rounded border box (clipping
+// it to the content box to hug the text instead flattened the top/bottom corners
+// — the "cut off" pill — so that was reverted; see day-pills.spec.ts). Because
+// the pills `flex: 1 0 auto` spread to fill `.navbar-date`, the active END pill
+// — "Dziś" on the left, "Wszystkie" on the right — still doesn't jam the logo /
+// Filtry: the cell stops at the navbar's flex gap on each side, so both end gaps
+// equal that gap and the row reads the same on both sides whichever day is
+// selected. (The full-bleed-vs-cut-off clip mode is asserted in day-pills.spec.)
 
-test.describe('mobile portrait — active day-pill highlight hugs its text', () => {
+test.describe('mobile portrait — active day-pill highlight fills its rounded cell', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     const name = testInfo.project.name;
     const isPortraitMobile = !name.includes('desktop') && !name.includes('landscape');
@@ -240,43 +241,42 @@ test.describe('mobile portrait — active day-pill highlight hugs its text', () 
     await waitForCards(page);
   });
 
-  test('the active highlight is content-clipped, so end pills do not jam the logo or Filtry', async ({ page }) => {
+  test('the active end day-pill does not jam the logo or Filtry and the row reads symmetric', async ({ page }) => {
     // Below ~290px (e.g. a 150%-zoomed phone) the navbar drops into its
     // emergency-compact layout — `justify-content:space-between` with capped
     // item widths — which pools the slack into one big gap beside the day row
     // (a deliberately different spacing regime). The same-gap-on-both-sides
     // guarantee only holds at normal phone widths, so skip the symmetry check
-    // there; the content-clip mechanism is still exercised at every other width.
+    // there; the no-overlap guarantee is still exercised at every other width.
     const viewportWidth = await page.evaluate(() => window.innerWidth);
     test.skip(viewportWidth < 320, 'sub-320px navbar runs the emergency-compact layout — day-row gaps are intentionally asymmetric there');
     // Activate the FIRST pill (Dziś) and measure its highlight's gap to the logo.
     await page.locator('.day-pill[data-day="today"]').click();
     const left = await page.evaluate(() => {
       const activePill = document.querySelector('.day-pill.active') as HTMLElement;
-      const pillStyle = getComputedStyle(activePill);
       const logo = document.querySelector('.navbar-logo')!.getBoundingClientRect();
       const pillRect = activePill.getBoundingClientRect();
-      // background-clip:content-box paints the highlight inside the padding box.
-      return { clip: pillStyle.backgroundClip, label: activePill.textContent,
-               highlightGap: (pillRect.left + parseFloat(pillStyle.paddingLeft)) - logo.right };
+      // The highlight is border-box (fills the cell), so its painted edge IS the
+      // pill rect's edge — no padding inset.
+      return { clip: getComputedStyle(activePill).backgroundClip, label: activePill.textContent,
+               highlightGap: pillRect.left - logo.right };
     });
     // Activate the LAST pill (Wszystkie) and measure its highlight's gap to Filtry.
     await page.locator('.day-pill[data-day="anytime"]').click();
     const right = await page.evaluate(() => {
       const activePill = document.querySelector('.day-pill.active') as HTMLElement;
-      const pillStyle = getComputedStyle(activePill);
       const filtry = document.querySelector('.navbar-filtry')!.getBoundingClientRect();
       const pillRect = activePill.getBoundingClientRect();
       return { label: activePill.textContent,
-               highlightGap: filtry.left - (pillRect.right - parseFloat(pillStyle.paddingRight)) };
+               highlightGap: filtry.left - pillRect.right };
     });
-    // The mechanism (scale-independent): the active pill's background is clipped
-    // to its content box, so the highlight is inset by the pill's padding rather
-    // than filling the cell to the edge. The absolute gap scales with the
-    // viewport — only ~2px on a 150%-zoomed phone, ~7px at full size — so the
-    // durable assertions are the clip mode + left/right symmetry, NOT a fixed
-    // pixel gap.
-    expect(left.clip, 'active day-pill highlight must be clipped to its content box').toBe('content-box');
+    // The active highlight fills its rounded cell (border-box) — full-size, not
+    // clipped flat. Because the pills spread to fill `.navbar-date`, the active
+    // end pill's cell stops at the navbar's flex gap, so it never bleeds into the
+    // logo / Filtry and both end gaps equal that gap. The absolute gap scales
+    // with the viewport, so the durable assertions are no-overlap + symmetry,
+    // NOT a fixed pixel gap.
+    expect(left.clip, 'active day-pill highlight must fill its border box (full-size, not cut off)').toBe('border-box');
     // The highlight stays within its cell — it never bleeds past the edge into
     // the logo / Filtry…
     expect(left.highlightGap, `"${left.label}" highlight gap to logo is ${left.highlightGap.toFixed(1)}px`).toBeGreaterThanOrEqual(0);
