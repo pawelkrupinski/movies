@@ -2889,6 +2889,33 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // Clicking a corpus-table (#t) column header sorts the data rows by that
+  // column's data-* key, and EACH data row's collapsed details sibling must be
+  // re-attached immediately after it (the sort relocates pairs, not lone rows).
+  // The fixture corpus is Pending/Unresolved/Done Film; by title ascending that
+  // is Done, Pending, Unresolved, and a second click reverses it.
+  private val corpusTitles = """[...document.querySelectorAll('#t tbody tr.data')].map(r => r.dataset.title).join('|')"""
+  // Every data row is immediately followed by its OWN details row (same rowId).
+  private val detailsAdjacent =
+    """[...document.querySelectorAll('#t tbody tr.data')].every(r => {
+         const n = r.nextElementSibling;
+         return !!n && n.classList.contains('details') && n.dataset.rowId === r.dataset.rowId;
+       })"""
+
+  "the /debug corpus table" should "sort rows by a clicked column, keeping each details row beside its data row" in {
+    onDebug { page =>
+      page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 3""")
+      page.evalBool(detailsAdjacent) shouldBe true // intact before any sort
+      page.eval("""document.querySelector('#t thead th[data-key="title"]').click()""")
+      page.evalString(corpusTitles) shouldBe "Done Film|Pending Film|Unresolved Film"
+      page.evalBool(detailsAdjacent) shouldBe true
+      // Re-click the same header → descending.
+      page.eval("""document.querySelector('#t thead th[data-key="title"]').click()""")
+      page.evalString(corpusTitles) shouldBe "Unresolved Film|Pending Film|Done Film"
+      page.evalBool(detailsAdjacent) shouldBe true
+    }
+  }
+
   /** Dispatch a synthetic touch `PointerEvent` of `kind` at (`x`,`y`) on the
    *  document — drives the production `pointerdown`/`pointermove`/`pointerup`
    *  carousel handlers (which arm + translate `#day-track`) without needing real

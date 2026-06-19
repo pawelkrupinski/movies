@@ -238,23 +238,31 @@
     const prevKey = table.dataset.sortKey;
     const prevDir = table.dataset.sortDir || 'asc';
     const dir = (prevKey === key && prevDir === 'asc') ? 'desc' : 'asc';
+    const sign = dir === 'asc' ? 1 : -1;
 
+    const collator = new Intl.Collator();
     dataRows.sort((a, b) => {
       const av = a.dataset[key] || '';
       const bv = b.dataset[key] || '';
       if (type === 'num') {
         const an = av === '' ? -Infinity : parseFloat(av);
         const bn = bv === '' ? -Infinity : parseFloat(bv);
-        return dir === 'asc' ? an - bn : bn - an;
+        return sign * (an - bn);
       }
-      return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+      return sign * collator.compare(av, bv);
     });
 
+    // Index details rows by id once (O(n)) instead of re-scanning the tbody per
+    // row (O(n²)), and re-attach into a fragment so the reflow happens once.
+    const detailsById = new Map();
+    tbody.querySelectorAll('tr.details').forEach(d => detailsById.set(d.dataset.rowId, d));
+    const frag = document.createDocumentFragment();
     dataRows.forEach(r => {
-      tbody.appendChild(r);
-      const details = tbody.querySelector('tr.details[data-row-id="' + r.dataset.rowId + '"]');
-      if (details) tbody.appendChild(details);
+      frag.appendChild(r);
+      const details = detailsById.get(r.dataset.rowId);
+      if (details) frag.appendChild(details);
     });
+    tbody.appendChild(frag);
 
     table.dataset.sortKey = key;
     table.dataset.sortDir = dir;
