@@ -1,8 +1,10 @@
 apiVersion: 1
 
-# Telegram delivery. Create a bot via @BotFather, get its token; get the target
-# chat id (your own user id, or a group/channel id). Both injected as secrets:
-#   fly secrets set TELEGRAM_BOT_TOKEN=... TELEGRAM_CHAT_ID=...
+# Telegram delivery into the "Kinowo Monitoring" group — the single channel for
+# ALL of our alerts. The bot token is injected as a Fly secret; it must be the
+# bot that belongs to that group (the same one the worker posts its app alerts
+# with):
+#   fly secrets set TELEGRAM_BOT_TOKEN=...
 contactPoints:
   - orgId: 1
     name: Telegram
@@ -19,8 +21,10 @@ contactPoints:
           # env-expansion re-types a numeric chatid as a number regardless of
           # quote style, which fails its string schema ("cannot unmarshal number
           # into ... string"). A quoted literal in the file is parsed as a string.
-          # >>> Replace this placeholder with your Telegram chat id; KEEP the quotes.
-          chatid: "1771340065"
+          # This is the "Kinowo Monitoring" group; Grafana's infra alerts land in
+          # its General topic (no message_thread_id), while the worker posts app
+          # alerts to dedicated topics in the same group. KEEP the quotes.
+          chatid: "-1003950886618"
           # Send a follow-up when an alert clears, so a silent channel means
           # "all good" rather than "did it recover?".
         disableResolveMessage: false

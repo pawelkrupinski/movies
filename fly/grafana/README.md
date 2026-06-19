@@ -57,9 +57,13 @@ Notes grounded in the live metrics (verified against `api.fly.io/prometheus`):
 ## One-time setup
 
 ### 1. Telegram bot
-1. Message **@BotFather** → `/newbot` → copy the **bot token**.
-2. Get your **chat id**: message your new bot, then open
-   `https://api.telegram.org/bot<TOKEN>/getUpdates` and read `message.chat.id`.
+All alerts go to the **"Kinowo Monitoring"** Telegram group
+(chat id `-1003950886618`) — the same channel the worker posts its app alerts to.
+Use the bot that is already a member of that group (its token is the
+`TELEGRAM_BOT_TOKEN` secret); Grafana posts to the group's General topic.
+To use a different bot, add it to the group first, then set its token as the
+secret. (Look up a chat id by messaging the bot and reading `message.chat.id`
+from `https://api.telegram.org/bot<TOKEN>/getUpdates`.)
 
 ### 2. Fly read token for the Prometheus datasource
 ```sh
@@ -69,12 +73,13 @@ Copy the whole `FlyV1 …` value **without** the `FlyV1 ` prefix (the datasource
 config already prepends it — note: the header is `FlyV1 <token>`, **not**
 `Bearer`).
 
-### 3. Set your Telegram chat id (not a secret)
-Edit `provisioning/alerting/contact-points.yaml` and replace the `chatid:
-"0000000000"` placeholder with your chat id, **keeping the quotes**. It lives in
-the file (not `fly secrets`) on purpose: a chat id is useless without the bot
-token, and Grafana's `${VAR}` provisioning expansion mis-types a numeric chatid
-as a number, which fails — a quoted literal is the reliable form.
+### 3. Telegram chat id (not a secret)
+`provisioning/alerting/contact-points.yaml` already pins `chatid:
+"-1003950886618"` (the "Kinowo Monitoring" group). It lives in the file (not
+`fly secrets`) on purpose: a chat id is useless without the bot token, and
+Grafana's `${VAR}` provisioning expansion mis-types a numeric chatid as a
+number, which fails — a quoted literal is the reliable form. **Keep the quotes**
+if you ever change it.
 
 ### 4. Create the app, volume, and secrets
 ```sh

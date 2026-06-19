@@ -97,6 +97,13 @@ assert "Telegram contact point provisioned" \
   "api/v1/provisioning/contact-points" \
   "any(c.get('name')=='Telegram' for c in d)"
 
+# Pin the target chat to the "Kinowo Monitoring" group (-1003950886618) — the
+# single channel for all alerts. Guards against a regression back to a personal
+# DM or the old "Kinowo" channel.
+assert "Telegram chatid is the Kinowo Monitoring group" \
+  "api/v1/provisioning/contact-points" \
+  "any(c.get('name')=='Telegram' and c.get('settings',{}).get('chatid')=='-1003950886618' for c in d)"
+
 assert "overview dashboard provisioned" \
   "api/search?query=kinowo" \
   "any(x.get('uid')=='fly-overview' for x in d)"
