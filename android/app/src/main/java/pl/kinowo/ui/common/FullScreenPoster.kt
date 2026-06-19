@@ -1,6 +1,8 @@
 package pl.kinowo.ui.common
 
-import androidx.compose.foundation.background
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -17,19 +19,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import kotlin.math.abs
 import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /** testTag the UI/unit tests use to find the open viewer. */
 const val FullScreenPosterTag = "fullScreenPoster"
@@ -53,8 +60,17 @@ fun FullScreenPoster(
         // The poster fills the whole screen, not the centred platform dialog box.
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        val scope = rememberCoroutineScope()
+        val density = LocalDensity.current
+        val screenHeightPx = with(density) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+        val dismissPx = with(density) { 80.dp.toPx() }
+
         var scale by remember { mutableFloatStateOf(1f) }
         var offset by remember { mutableStateOf(Offset.Zero) }
+        // Vertical translation of an in-progress swipe-to-dismiss (only while not
+        // zoomed). The poster follows the finger; on release it either flies the
+        // rest of the way off-screen (dismiss) or springs back to centre.
+        var dismissY by remember { mutableFloatStateOf(0f) }
         val transform = rememberTransformableState { zoomChange, panChange, _ ->
             scale = (scale * zoomChange).coerceIn(1f, 5f)
             // Only pan while zoomed in; snap back to centre at 1×.
@@ -63,7 +79,15 @@ fun FullScreenPoster(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                // Backdrop dims toward transparent in step with the swipe — fully
+                // clear by the time the poster has travelled a screen-height off,
+                // so the fly-off reads as a dismissal and the screen behind shows
+                // through. drawBehind reads dismissY at draw time, so the drag
+                // repaints without recomposing.
+                .drawBehind {
+                    val progress = (abs(dismissY) / screenHeightPx).coerceIn(0f, 1f)
+                    drawRect(Color.Black, alpha = 1f - progress)
+                }
                 .testTag(FullScreenPosterTag)
                 // Tap anywhere on the backdrop to dismiss.
                 .pointerInput(Unit) { detectTapGestures(onTap = { onDismiss() }) }
@@ -76,13 +100,31 @@ fun FullScreenPoster(
                 // as a pan before this detector could claim it for dismissal).
                 .pointerInput(scale <= 1f) {
                     if (scale > 1f) return@pointerInput
-                    val dismissPx = 80.dp.toPx()
-                    var dragged = 0f
                     detectVerticalDragGestures(
-                        onDragStart = { dragged = 0f },
-                        onDragEnd = { if (abs(dragged) > dismissPx) onDismiss() },
+                        onDragEnd = {
+                            if (abs(dismissY) > dismissPx) {
+                                // Fly the poster the rest of the way off-screen in
+                                // the thrown direction, then dismiss — so an up-swipe
+                                // exits up and a down-swipe exits down. Mirrors the
+                                // iOS fly-off.
+                                val target = if (dismissY < 0f) -screenHeightPx else screenHeightPx
+                                scope.launch {
+                                    animate(dismissY, target, animationSpec = tween(220)) { v, _ ->
+                                        dismissY = v
+                                    }
+                                    onDismiss()
+                                }
+                            } else {
+                                // Not far enough: settle back to centre.
+                                scope.launch {
+                                    animate(dismissY, 0f, animationSpec = spring()) { v, _ ->
+                                        dismissY = v
+                                    }
+                                }
+                            }
+                        },
                         onVerticalDrag = { change, amount ->
-                            dragged += amount
+                            dismissY += amount
                             change.consume()
                         },
                     )
@@ -100,7 +142,7 @@ fun FullScreenPoster(
                         scaleX = scale
                         scaleY = scale
                         translationX = offset.x
-                        translationY = offset.y
+                        translationY = offset.y + dismissY
                     },
             )
             IconButton(
