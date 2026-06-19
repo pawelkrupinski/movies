@@ -114,9 +114,10 @@ class FilmwebRatings(
     val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
     Try(filmweb.ratingFor(url)).toOption.flatten match {
       case Some(rating) =>
+        val unchanged = FilmwebRatings.sameDisplayedRating(e.filmwebRating, rating)
         logger.info(s"Filmweb: $label $url → rating $rating" +
-          (if (e.filmwebRating.contains(rating)) " (unchanged)" else s" (was ${e.filmwebRating.getOrElse("—")})"))
-        if (!e.filmwebRating.contains(rating)) cache.putIfPresent(key, _.copy(filmwebRating = Some(rating)))
+          (if (unchanged) " (unchanged)" else s" (was ${e.filmwebRating.getOrElse("—")})"))
+        if (!unchanged) cache.putIfPresent(key, _.copy(filmwebRating = Some(rating)))
       case None =>
         logger.info(s"Filmweb: $label $url → no rating on page")
     }
@@ -233,6 +234,15 @@ class FilmwebRatings(
 }
 
 object FilmwebRatings {
+  /** Filmweb returns a high-precision vote average that drifts by ~1e-5 on every
+   *  fetch as votes trickle in, but the badge renders one decimal (`%.1f`). Treat a
+   *  change that doesn't move the displayed value as no change, so the 4h refresh
+   *  sweep doesn't rewrite the row (and re-project the read model) for an invisible
+   *  delta — the steady `7.47111 → 7.47116` write churn. A first resolve
+   *  (`stored = None`) still writes. */
+  def sameDisplayedRating(stored: Option[Double], fresh: Double): Boolean =
+    stored.exists(s => f"$s%.1f" == f"$fresh%.1f")
+
   /** Outcome of a single `auditOneSync` call. The summary stats in the
    *  `FilmwebUrlAudit` script are derived by counting these. */
   sealed trait AuditOutcome

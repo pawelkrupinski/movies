@@ -204,6 +204,23 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     repository.upserts shouldBe empty
   }
 
+  it should "not write back when the rating drifts below display precision (vote-count noise)" in {
+    // Filmweb's vote average creeps by ~1e-5 every fetch; the badge shows one
+    // decimal, so 7.47111 → 7.47116 is invisible. Rewriting the row (and
+    // re-projecting the read model) for it is the steady per-refresh write churn.
+    val url = "https://www.filmweb.pl/film/Foo-12"
+    val repository = new InMemoryMovieRepository(Seq(
+      ("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(7.47111)))))
+    val cache = new CaffeineMovieCache(repository)
+    repository.upserts.clear()
+    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map("/film/12/rating" -> """{"rate":7.47116,"count":1001}""")))
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+
+    ratings.refreshOneSync(cache.keyOf("Foo", None))
+
+    repository.upserts shouldBe empty
+  }
+
   // ── refreshAll ──────────────────────────────────────────────────────────────
 
   "refreshAll" should "do the cheap rating-only path for rows with a URL and full lookup for rows without" in {
