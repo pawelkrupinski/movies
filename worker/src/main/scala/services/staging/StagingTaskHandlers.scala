@@ -40,14 +40,29 @@ object StagingDetailHandler {
 
 /** STEP 2: resolve the film against TMDB once and stamp the outcome. A transient
  *  TMDB miss (`None`) reschedules with the queue's exponential backoff — the
- *  durability the 120s promoter tick lacked. */
+ *  durability the 120s promoter tick lacked. Once `MaxResolveAttempts` claims
+ *  have gone by still failing, the lookup is treated as permanently failing (a
+ *  decorated/foreign title TMDB can't search, or a lookup that keeps throwing)
+ *  and the film concludes as a no-match so it folds (un-enriched) instead of
+ *  re-resolving forever — the staging accumulation this guards against. */
 class StagingResolveTmdbHandler(steps: StagingSteps) extends TaskHandler {
   val taskType: TaskType = TaskType.StagingResolveTmdb
-  def handle(task: Task): HandlerOutcome = steps.resolveAndStamp(StagingTaskKeys.anchorOf(task.payload)) match {
-    case StagingSteps.Resolved | StagingSteps.AlreadyDone => HandlerOutcome.Done
-    case StagingSteps.DetailNotReady                      => HandlerOutcome.Reschedule(Some("staging detail not ready"))
-    case StagingSteps.TransientFailure                    => HandlerOutcome.Reschedule(Some("staging tmdb resolve transient miss"))
+  def handle(task: Task): HandlerOutcome = {
+    val giveUp = task.attempts >= StagingResolveTmdbHandler.MaxResolveAttempts
+    steps.resolveAndStamp(StagingTaskKeys.anchorOf(task.payload), giveUp) match {
+      case StagingSteps.Resolved | StagingSteps.AlreadyDone => HandlerOutcome.Done
+      case StagingSteps.DetailNotReady                      => HandlerOutcome.Reschedule(Some("staging detail not ready"))
+      case StagingSteps.TransientFailure                    => HandlerOutcome.Reschedule(Some("staging tmdb resolve transient miss"))
+    }
   }
+}
+
+object StagingResolveTmdbHandler {
+  /** After this many claims (the queue's exponential backoff, ≈ the detail
+   *  handler's ≈2.5min) a TMDB resolve that keeps failing is given up on, so the
+   *  film concludes as a no-match and folds instead of hot-looping. `task.attempts`
+   *  is incremented per claim, so the first run is attempt 1. */
+  private[staging] val MaxResolveAttempts = 6
 }
 
 /** STEP 3: recover a missing IMDb id (best-effort — gives up gracefully). */

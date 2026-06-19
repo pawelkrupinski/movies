@@ -81,6 +81,23 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
     handler.handle(task(TaskType.StagingResolveTmdb, StagingTaskKeys.titlePayload("Film"))) shouldBe a[HandlerOutcome.Reschedule]
   }
 
+  it should "give up and conclude as no-match once the resolve retry budget is exhausted" in {
+    // A TMDB lookup that keeps throwing returns None (transient) on every attempt.
+    // Without a give-up budget the film re-resolves forever and piles up in
+    // staging (decorated/foreign one-off titles TMDB can't search). After the
+    // budget it concludes as tmdbNoMatch so it folds un-enriched and drains.
+    val repository = new InMemoryStagingRepository
+    repository.upsert(Helios, "Throwy Film", Some(2026), listingRow("Throwy Film"))
+    val handler = new StagingResolveTmdbHandler(steps(repository, Seq.empty, (_, _, _) => None))
+    val payload = StagingTaskKeys.titlePayload("Throwy Film")
+
+    handler.handle(task(TaskType.StagingResolveTmdb, payload)) shouldBe a[HandlerOutcome.Reschedule]  // early — retry
+    handler.handle(task(TaskType.StagingResolveTmdb, payload, attempts = StagingResolveTmdbHandler.MaxResolveAttempts)) shouldBe HandlerOutcome.Done
+    val row = repository.findAll().head
+    row.record.tmdbNoMatch shouldBe true
+    row.record.tmdbConcluded shouldBe true
+  }
+
   "StagingResolveImdbIdHandler" should "recover + stamp the imdbId and report Done" in {
     val repository = new InMemoryStagingRepository
     repository.upsert(Helios, "Film", Some(2026), listingRow("Film").copy(tmdbId = Some(5)))   // resolved, no imdb

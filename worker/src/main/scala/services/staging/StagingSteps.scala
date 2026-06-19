@@ -114,23 +114,31 @@ class StagingSteps(
    *  anchor keeps getting re-enqueued for its remaining groups); `TransientFailure`
    *  if any group's resolve fails (already-stamped groups stay concluded, the
    *  reaper retries the rest). */
-  def resolveAndStamp(anchor: String): ResolveResult = {
+  def resolveAndStamp(anchor: String, giveUp: Boolean = false): ResolveResult = {
     val fresh = rowsFor(anchor)
     if (fresh.isEmpty || fresh.forall(_.record.tmdbConcluded)) AlreadyDone
     else if (!fresh.forall(detailReady)) DetailNotReady
     else {
       val outcomes = fresh.filterNot(_.record.tmdbConcluded)
         .groupBy(hintGroupKey).values.toSeq
-        .map(resolveAndStampGroup)
+        .map(resolveAndStampGroup(_, giveUp))
       if (outcomes.contains(TransientFailure)) TransientFailure else Resolved
     }
   }
 
-  /** Resolve + stamp one hint-combination's rows. */
-  private def resolveAndStampGroup(group: Seq[StagingRecord]): ResolveResult = {
+  /** Resolve + stamp one hint-combination's rows. `giveUp` is the handler's
+   *  "retry budget exhausted" signal: a lookup that keeps failing (`None`) would
+   *  otherwise re-resolve forever, so we conclude the group as a no-match
+   *  (`tmdbNoMatch = true`) — exactly a definitive `Success(None)` miss — and let
+   *  it fold un-enriched, the resolve-step analogue of `fetchDetailFor`'s giveUp. */
+  private def resolveAndStampGroup(group: Seq[StagingRecord], giveUp: Boolean): ResolveResult = {
     val resolveYear = group.flatMap(_.year).minOption
     val mergedHints = MovieRecordMerge.unionAll(group.map(_.record))
     resolveStaging(group.head.title, resolveYear, mergedHints) match {
+      case None if giveUp =>
+        group.foreach(r => stagingRepository.upsertRow(r.copy(record = r.record.copy(tmdbNoMatch = true))))
+        logger.warn(s"Staging: giving up TMDB resolve for '${group.head.title}' (${resolveYear.getOrElse("?")}) after repeated failures — concluding as no-match (folds un-enriched).")
+        Resolved
       case None => TransientFailure
       case Some(resolved) =>
         val tmdbSlot = resolved.data.get(Tmdb)
