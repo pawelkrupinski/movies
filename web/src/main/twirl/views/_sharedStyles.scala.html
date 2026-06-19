@@ -292,9 +292,14 @@
      inline width steps + the ≤290px search-hide are gone — the row no longer
      has to make space for it. */
   /* Row-1 items (logo+tabs 152 px + auth 79 px = 231 px) still overflow below
-     ~290 px, so clip the logo via max-width and zero the navbar padding. */
+     ~290 px, so clip the logo via max-width and zero the navbar's HORIZONTAL
+     padding. Only the horizontal padding is reclaimed for width — zeroing the
+     vertical padding too would collapse the row to the 28px pill height, so the
+     active day-pill capsule sat flush against the navbar's top/bottom edges and
+     its flat pill ends read as "cut off" (the `@@media (max-width: 575px)`
+     block's `calc(.5 * --mobile-scale)` vertical padding is left to stand). */
   @@media (max-width: 290px) {
-    nav.navbar { padding: 0 !important; column-gap: 0 !important; row-gap: calc(.05 * var(--mobile-scale)) !important; }
+    nav.navbar { padding-left: 0 !important; padding-right: 0 !important; column-gap: 0 !important; row-gap: calc(.05 * var(--mobile-scale)) !important; }
     .navbar > div:first-child { max-width: 60% !important; overflow: hidden; }
     .navbar-auth { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40% !important; }
     .navbar-date { max-width: 60% !important; overflow: hidden; }

@@ -79,4 +79,23 @@ test.describe('zoomed portrait card gaps', () => {
   // to wrap to two rows on mobile), so the old "visible vertical gap between
   // navbar rows" assertion no longer applies — the one-row invariant is covered
   // by navbar-layout / landscape-layout / PageJsBehaviourSpec.
+
+  // The active day-pill is a filled capsule; below ~290px the `@media
+  // (max-width: 290px)` block used to zero ALL navbar padding (to reclaim
+  // horizontal width for the logo), which collapsed the row to exactly the
+  // 28px pill height — so the capsule sat flush against the navbar's top and
+  // bottom edges and its flat pill top/bottom read as "cut off". Zeroing only
+  // the HORIZONTAL padding keeps the vertical breathing room, so the capsule
+  // never touches the row edge.
+  test('the active day-pill is not flush against the navbar top/bottom', async ({ page }) => {
+    const gaps = await page.evaluate(() => {
+      const pill = document.querySelector('.day-pill.active') as HTMLElement;
+      const navbar = document.querySelector('.navbar') as HTMLElement;
+      const pr = pill.getBoundingClientRect();
+      const nr = navbar.getBoundingClientRect();
+      return { top: pr.top - nr.top, bottom: nr.bottom - pr.bottom };
+    });
+    expect(gaps.top).toBeGreaterThanOrEqual(2);
+    expect(gaps.bottom).toBeGreaterThanOrEqual(2);
+  });
 });
