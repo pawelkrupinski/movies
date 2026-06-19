@@ -113,4 +113,26 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
     reaper.onTaskFinished.isDefinedAt(TaskFinished(TaskType.StagingFold, "k", StagingTaskKeys.titlePayload("Done"))) shouldBe false
     reaper.onTaskFinished.isDefinedAt(TaskFinished(TaskType.ScrapeCinema, "k", Map.empty)) shouldBe false
   }
+
+  "stepCounts" should "tally DISTINCT films by the step each needs next (the metrics view)" in {
+    val resolved  = listing("Pucio", Some(2026)).copy(tmdbId = Some(1645035))                  // hit, no imdb → resolve_imdb
+    val concluded = listing("Done", Some(2026)).copy(tmdbId = Some(7), imdbId = Some("tt7"))   // fold
+    val multiA    = listing("Multi", Some(2025)).copy(tmdbId = Some(9), imdbId = Some("tt9"))  // same film, two year-rows…
+    val multiB    = listing("Multi", Some(2026)).copy(tmdbId = Some(9), imdbId = Some("tt9"))  // …count once
+    val (_, reaper, _, freshness) = fixture(
+      ("Newcomer", Some(2026), listing("Newcomer", Some(2026))),   // detail not landed → detail
+      ("Ready",    Some(2026), listing("Ready", Some(2026))),      // detail done, unresolved → resolve_tmdb
+      ("Pucio",    Some(2026), resolved),
+      ("Done",     Some(2026), concluded),
+      ("Multi",    Some(2025), multiA), ("Multi", Some(2026), multiB)
+    )
+    markDetailDone(freshness, "Ready")
+
+    reaper.stepCounts() shouldBe Map(
+      StagingStep.Detail      -> 1,   // Newcomer
+      StagingStep.ResolveTmdb -> 1,   // Ready
+      StagingStep.ResolveImdb -> 1,   // Pucio
+      StagingStep.Fold        -> 2    // Done + Multi (Multi's two rows are one film)
+    )
+  }
 }

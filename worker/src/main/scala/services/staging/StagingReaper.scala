@@ -81,35 +81,56 @@ class StagingReaper(
    *  periodic scan converges without double-work. Returns tasks enqueued. */
   private[staging] def enqueueNext(anchor: String): Int = {
     val rows = steps.rowsFor(anchor)
-    rows.headOption.map(_.title) match {
-      case None => 0
-      case Some(title) =>
-        if (!rows.forall(_.record.tmdbConcluded)) {
-          // Some hint-combination still unresolved: finish its detail first, then
-          // resolve. `forall` (not `exists`) so a partially-resolved anchor — one
-          // group concluded, another not — keeps advancing the unconcluded group
-          // instead of jumping to fold and stranding it.
-          val notReady = rows.filterNot(steps.detailReady)
-          if (notReady.nonEmpty)
-            notReady.map(_.cinema).distinct.count(c =>
-              added(queue.enqueue(TaskType.StagingDetail, StagingTaskKeys.detailDedup(title, c.displayName),
-                StagingTaskKeys.detailPayload(title, c.displayName))))
-          else
-            countOne(queue.enqueue(TaskType.StagingResolveTmdb,
-              StagingTaskKeys.resolveTmdbDedup(title), StagingTaskKeys.titlePayload(title)))
-        } else if (rows.exists(r => r.record.tmdbId.isDefined && r.record.imdbId.isEmpty) && !steps.imdbRecoveryDone(anchor)) {
-          // Resolved with a tmdbId but no IMDb cross-reference, and recovery not yet
-          // attempted: recover it before folding. Best-effort — once attempted (even
-          // on a no-match) `imdbRecoveryDone` is true and the film folds.
-          countOne(queue.enqueue(TaskType.StagingResolveImdbId,
-            StagingTaskKeys.resolveImdbDedup(title), StagingTaskKeys.titlePayload(title)))
-        } else {
-          // Concluded (hit+imdb, or tmdbNoMatch): fold the whole sanitize group at
-          // once (group-scoped + idempotent), one task per film.
-          countOne(queue.enqueue(TaskType.StagingFold, StagingTaskKeys.foldDedup(title), StagingTaskKeys.titlePayload(title)))
-        }
+    (rows.headOption.map(_.title), stepFor(rows, anchor)) match {
+      case (Some(title), Some(StagingStep.Detail)) =>
+        // Some hint-combination still owes detail: finish each unready cinema's
+        // detail first (one task per cinema).
+        rows.filterNot(steps.detailReady).map(_.cinema).distinct.count(c =>
+          added(queue.enqueue(TaskType.StagingDetail, StagingTaskKeys.detailDedup(title, c.displayName),
+            StagingTaskKeys.detailPayload(title, c.displayName))))
+      case (Some(title), Some(StagingStep.ResolveTmdb)) =>
+        countOne(queue.enqueue(TaskType.StagingResolveTmdb,
+          StagingTaskKeys.resolveTmdbDedup(title), StagingTaskKeys.titlePayload(title)))
+      case (Some(title), Some(StagingStep.ResolveImdb)) =>
+        // Resolved with a tmdbId but no IMDb cross-reference, recovery not yet
+        // attempted: recover before folding (best-effort — once attempted, even on
+        // a no-match, `imdbRecoveryDone` is true and the film folds).
+        countOne(queue.enqueue(TaskType.StagingResolveImdbId,
+          StagingTaskKeys.resolveImdbDedup(title), StagingTaskKeys.titlePayload(title)))
+      case (Some(title), Some(StagingStep.Fold)) =>
+        // Concluded (hit+imdb, or tmdbNoMatch): fold the whole sanitize group at
+        // once (group-scoped + idempotent), one task per film.
+        countOne(queue.enqueue(TaskType.StagingFold, StagingTaskKeys.foldDedup(title), StagingTaskKeys.titlePayload(title)))
+      case _ => 0 // no rows for this anchor
     }
   }
+
+  /** Classify the film at `anchor` (given its already-fetched `rows`) to the step
+   *  it needs NEXT. The single source of truth for the staging state machine —
+   *  `enqueueNext` acts on it, `stepCounts` tallies by it — so the dashboard and
+   *  the reaper can never disagree. `forall(tmdbConcluded)` (not `exists`) so a
+   *  partially-resolved anchor keeps advancing its unconcluded group rather than
+   *  jumping to fold and stranding it. None when the anchor has no rows. */
+  private[staging] def stepFor(rows: Seq[StagingRecord], anchor: String): Option[StagingStep] =
+    if (rows.isEmpty) None
+    else if (!rows.forall(_.record.tmdbConcluded))
+      if (rows.exists(r => !steps.detailReady(r))) Some(StagingStep.Detail) else Some(StagingStep.ResolveTmdb)
+    else if (rows.exists(r => r.record.tmdbId.isDefined && r.record.imdbId.isEmpty) && !steps.imdbRecoveryDone(anchor))
+      Some(StagingStep.ResolveImdb)
+    else Some(StagingStep.Fold)
+
+  /** How many incubating films sit at each staging step right now — the
+   *  population view behind the queue tasks, for the Prometheus gauge. One
+   *  `findAll()`; counts DISTINCT films (a film's multiple cinema rows count
+   *  once, keyed by `sanitize(title)` like the chain). Reuses [[stepFor]] so it
+   *  agrees with what the reaper will actually enqueue. */
+  def stepCounts(): Map[StagingStep, Int] =
+    staging.findAll()
+      .groupBy(r => TitleNormalizer.sanitize(r.title))
+      .toSeq
+      .flatMap { case (anchor, rows) => stepFor(rows, anchor) }
+      .groupBy(identity)
+      .map { case (step, occurrences) => step -> occurrences.size }
 
   private def added(r: EnqueueResult): Boolean = r == EnqueueResult.Added
   private def countOne(r: EnqueueResult): Int = if (added(r)) 1 else 0

@@ -2,6 +2,7 @@ package services.metrics
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.staging.StagingStep
 import services.tasks.{QueueSnapshot, Task, TaskState, TaskSummary, TaskType}
 
 import java.time.Instant
@@ -24,6 +25,7 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
       workerId = None, leaseExpiresAt = None, lastError = None)
 
   private val emptySnapshot = QueueSnapshot(Map.empty, Nil)
+  private val noStaging      = Map.empty[StagingStep, Int]
 
   "WorkerTaskMetrics" should "count enqueues by type and result" in {
     val m = new WorkerTaskMetrics(poolSize = 4)
@@ -31,7 +33,7 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     m.recordEnqueue(TaskType.ScrapeCinema, WorkerTaskMetrics.EnqueueResult.Added)
     m.recordEnqueue(TaskType.ScrapeCinema, WorkerTaskMetrics.EnqueueResult.Deduped)
 
-    val out = m.scrape(emptySnapshot, now)
+    val out = m.scrape(emptySnapshot, noStaging, now)
 
     out should include ("""kinowo_worker_tasks_enqueued_total{result="added",task_type="ScrapeCinema"} 2""")
     out should include ("""kinowo_worker_tasks_enqueued_total{result="deduped",task_type="ScrapeCinema"} 1""")
@@ -44,7 +46,7 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     m.onStarted(task(TaskType.ResolveTmdb))
     m.onFinished(task(TaskType.ResolveTmdb), WorkerTaskMetrics.Outcome.Skipped, handleMillis = 5)
 
-    val out = m.scrape(emptySnapshot, now)
+    val out = m.scrape(emptySnapshot, noStaging, now)
 
     out should include ("""kinowo_worker_tasks_started_total{task_type="ResolveTmdb"} 2""")
     out should include ("""kinowo_worker_tasks_finished_total{outcome="done",task_type="ResolveTmdb"} 1""")
@@ -56,7 +58,7 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     m.onFinished(task(TaskType.EnrichDetails), WorkerTaskMetrics.Outcome.Done, handleMillis = 1500)
     m.onFinished(task(TaskType.EnrichDetails), WorkerTaskMetrics.Outcome.Skipped, handleMillis = 9000)
 
-    val out = m.scrape(emptySnapshot, now)
+    val out = m.scrape(emptySnapshot, noStaging, now)
 
     // Only the 1.5s done observation counts — the skipped one is excluded.
     out should include ("""kinowo_worker_task_duration_seconds_count{task_type="EnrichDetails"} 1""")
@@ -76,7 +78,7 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
         summary(TaskType.EnrichDetails, TaskState.WorkedOn, now.minusSeconds(10))
       ))
 
-    val out = m.scrape(snapshot, now)
+    val out = m.scrape(snapshot, noStaging, now)
 
     out should include ("""kinowo_worker_queue_depth{state="waiting"} 5""")
     out should include ("""kinowo_worker_queue_depth{state="worked_on"} 2""")
@@ -86,10 +88,23 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "seed every task type to 0 so the series exists from boot" in {
-    val out = new WorkerTaskMetrics(poolSize = 4).scrape(emptySnapshot, now)
+    val out = new WorkerTaskMetrics(poolSize = 4).scrape(emptySnapshot, noStaging, now)
 
     // A type that never ran still appears at 0 (no Grafana gap).
     out should include ("""kinowo_worker_tasks_started_total{task_type="StagingFold"} 0""")
     out should include ("""kinowo_worker_tasks_finished_total{outcome="done",task_type="RtRating"} 0""")
+  }
+
+  it should "expose staging movie counts by step, seeding unused steps to 0" in {
+    val m = new WorkerTaskMetrics(poolSize = 4)
+    val staging = Map[StagingStep, Int](StagingStep.Detail -> 3, StagingStep.Fold -> 1)
+
+    val out = m.scrape(emptySnapshot, staging, now)
+
+    out should include ("""kinowo_worker_staging_movies{step="detail"} 3""")
+    out should include ("""kinowo_worker_staging_movies{step="fold"} 1""")
+    // A step with nobody waiting still appears at 0.
+    out should include ("""kinowo_worker_staging_movies{step="resolve_tmdb"} 0""")
+    out should include ("""kinowo_worker_staging_movies{step="resolve_imdb"} 0""")
   }
 }

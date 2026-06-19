@@ -2,6 +2,7 @@ package services.metrics
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.staging.StagingStep
 import services.tasks.{InMemoryTaskQueue, QueueSnapshot, TaskQueue, TaskType}
 
 import java.time.Instant
@@ -19,7 +20,7 @@ class MeteredTaskQueueSpec extends AnyFlatSpec with Matchers {
     queue.enqueue(TaskType.ImdbRating, "film|2026")        // added
     queue.enqueue(TaskType.ImdbRating, "film|2026")        // dup of the active one → deduped
 
-    val out = metrics.scrape(QueueSnapshot(Map.empty, Nil), now)
+    val out = metrics.scrape(QueueSnapshot(Map.empty, Nil), Map.empty[StagingStep, Int], now)
     out should include ("""kinowo_worker_tasks_enqueued_total{result="added",task_type="ImdbRating"} 1""")
     out should include ("""kinowo_worker_tasks_enqueued_total{result="deduped",task_type="ImdbRating"} 1""")
   }

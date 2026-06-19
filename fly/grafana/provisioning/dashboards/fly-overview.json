@@ -261,6 +261,18 @@
       "targets": [
         { "refId": "A", "expr": "histogram_quantile(0.50, sum by (le, task_type) (rate(kinowo_worker_task_duration_seconds_bucket[$__rate_interval])))", "legendFormat": "{{task_type}}" }
       ]
+    },
+    {
+      "id": 29,
+      "title": "Worker — staging incubation: movies by step (total = all in staging)",
+      "description": "Films currently incubating in pending_movies, stacked by the step each needs NEXT on its way into the live `movies` collection: detail (a cinema's synopsis/poster still owed) → resolve_tmdb (no TMDB match yet) → resolve_imdb (TMDB hit, IMDb cross-ref pending) → fold (concluded, about to graduate). Distinct films (a film's multiple cinema rows count once). The stacked total is the total movie count in staging; a step that keeps growing is where incubation is stalling (correlate with the staging task queue panels + StagingStuckAlerter).",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 97 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 25, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "kinowo_worker_staging_movies", "legendFormat": "{{step}}" }
+      ]
     }
   ]
 }

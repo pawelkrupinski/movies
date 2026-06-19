@@ -3,6 +3,7 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
+import services.staging.StagingStep
 import services.tasks.{QueueSnapshot, Task, TaskState, TaskType}
 
 import java.io.ByteArrayOutputStream
@@ -101,6 +102,12 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     .help("Configured worker pool size — pair with queue_depth{state=\"worked_on\"} for utilization.")
     .register(registry)
 
+  private val stagingMovies = Gauge.builder()
+    .name("kinowo_worker_staging_movies")
+    .help("Incubating films currently in pending_movies, by the step each needs next (detail → resolve_tmdb → resolve_imdb → fold). Distinct films (a film's cinema rows count once); sum = total movies in staging.")
+    .labelNames("step")
+    .register(registry)
+
   private val writer = PrometheusTextFormatWriter.create()
 
   seed()
@@ -116,6 +123,7 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
       oldestWaitingAge.labelValues(t.name).set(0.0)
     }
     QueueStates.foreach(s => queueDepth.labelValues(s).set(0.0))
+    StagingStep.all.foreach(s => stagingMovies.labelValues(s.label).set(0.0))
     poolSizeGauge.set(poolSize.toDouble)
   }
 
@@ -132,10 +140,12 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     if (outcome == Outcome.Done) duration.labelValues(task.taskType.name).observe(handleMillis / 1000.0)
   }
 
-  /** Refresh the queue gauges from a live snapshot and render the full
-   *  exposition. Called from the worker's `/metrics` handler on each Fly scrape. */
-  def scrape(snapshot: QueueSnapshot, now: Instant): String = {
+  /** Refresh the queue + staging gauges from live samples and render the full
+   *  exposition. Called from the worker's `/metrics` handler on each Fly scrape;
+   *  `stagingByStep` comes from `StagingReaper.stepCounts()`. */
+  def scrape(snapshot: QueueSnapshot, stagingByStep: Map[StagingStep, Int], now: Instant): String = {
     refreshQueueGauges(snapshot, now)
+    StagingStep.all.foreach(s => stagingMovies.labelValues(s.label).set(stagingByStep.getOrElse(s, 0).toDouble))
     val out = new ByteArrayOutputStream()
     writer.write(out, registry.scrape())
     out.toString("UTF-8")

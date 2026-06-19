@@ -209,3 +209,16 @@ object StagingSteps {
   case object TransientFailure extends ResolveResult  // TMDB returned None — retry with backoff
   case object AlreadyDone      extends ResolveResult  // gone, or already concluded — nothing to do
 }
+
+/** The step an incubating film needs NEXT on its way out of `pending_movies`:
+ *  detail → resolve-TMDB → resolve-IMDb → fold. Computed by
+ *  [[StagingReaper.stepFor]] (the single source of truth the reaper acts on and
+ *  the metrics count by); `label` is the Prometheus label value. */
+sealed trait StagingStep { def label: String }
+object StagingStep {
+  case object Detail      extends StagingStep { val label = "detail"       }
+  case object ResolveTmdb extends StagingStep { val label = "resolve_tmdb" }
+  case object ResolveImdb extends StagingStep { val label = "resolve_imdb" }
+  case object Fold        extends StagingStep { val label = "fold"         }
+  val all: Seq[StagingStep] = Seq(Detail, ResolveTmdb, ResolveImdb, Fold)
+}
