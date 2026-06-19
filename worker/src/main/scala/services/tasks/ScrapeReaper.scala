@@ -11,7 +11,7 @@ import java.time.{Clock, Instant}
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.{Failure, Try}
+import scala.util.Try
 
 /**
  * Periodically enqueues a `ScrapeCinema` task for every cinema that is due under
@@ -47,9 +47,10 @@ class ScrapeReaper(
   // land on the same instant as the cache hydrate finishing. Defaults to 0 so the
   // tests that drive `tick()` directly are unaffected.
   initialDelay: FiniteDuration = 0.seconds,
-  // Cap on how long the first tick waits for the freshness mirror to load its
-  // scrape stamps. Past it we tick anyway — degrading to the old re-scrape-all
-  // behaviour — rather than never scraping if a hydrate wedges.
+  // How long each readiness wait blocks before logging and waiting again. We never
+  // tick against a not-ready mirror (that was the boot storm) — readiness itself
+  // now completes only once a hydrate SUCCEEDS or its bounded retry budget is spent
+  // (see MongoFreshnessStore.hydrateInPhases), so this just paces the holding log.
   readyTimeout: FiniteDuration = 30.seconds,
   // Cap on how many stale cinemas a single tick enqueues. After a restart every
   // cinema can be stale at once; enqueuing all ~300 lets the TaskWorker pool
@@ -74,16 +75,17 @@ class ScrapeReaper(
     logger.info(s"ScrapeReaper started over ${scrapers.size} cinemas, first tick after freshness hydrate then ${initialDelay.toSeconds}s, every ${interval.toSeconds}s.")
   }
 
-  // Block until the scrape freshness stamps are loaded (capped at `readyTimeout`),
-  // THEN begin the periodic ticks. Without this the first tick can read a
-  // not-yet-hydrated mirror, see every cinema as stale, and enqueue all ~300 at
-  // once — the boot storm that drained the shared-CPU credit balance.
+  // Wait until the scrape freshness stamps are actually loaded, THEN begin the
+  // periodic ticks. Readiness completes only once a hydrate SUCCEEDS (or its
+  // bounded retry budget is spent — see MongoFreshnessStore.hydrateInPhases), so a
+  // transient Mongo timeout no longer green-lights an empty mirror. We keep waiting
+  // rather than ticking against a not-yet-hydrated mirror: ticking then would read
+  // every cinema as stale and enqueue all ~300 at once — the boot storm that
+  // drained the shared-CPU credit balance and slowed the next restart's hydrate,
+  // storming again.
   private def awaitReadyThenStart(): Unit = {
-    Try(Await.ready(freshness.whenReady(FreshnessKind.CinemaScrape), readyTimeout)) match {
-      case Failure(_) =>
-        logger.warn(s"ScrapeReaper: freshness stamps not ready after ${readyTimeout.toSeconds}s; first tick may re-scrape every cinema.")
-      case _ => ()
-    }
+    while (!Try(Await.ready(freshness.whenReady(FreshnessKind.CinemaScrape), readyTimeout)).isSuccess)
+      logger.info("ScrapeReaper: freshness mirror still hydrating; holding scrape ticks (no cold re-scrape).")
     scheduler.scheduleWithFixedDelay(() => Try(tickIfClaimed()), initialDelay.toMillis, interval.toMillis, TimeUnit.MILLISECONDS)
   }
 

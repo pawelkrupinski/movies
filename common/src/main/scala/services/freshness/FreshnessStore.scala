@@ -53,12 +53,13 @@ trait FreshnessStore {
    *  key. */
   def invalidate(key: String): Unit
 
-  /** Completes once the mirror holds every persisted stamp of `kind`, so
-   *  `isFresh(_, kind)` can't read a not-yet-loaded key as stale. A scheduler
-   *  awaits this before its first tick, so a slow boot hydrate doesn't make
-   *  every unit of work look stale and enqueue it all at once — the boot storm
-   *  (see [[services.tasks.ScrapeReaper]]). Stores with nothing to load
-   *  (in-memory, Mongo-less dev) are ready immediately. */
+  /** Completes once the mirror holds every persisted stamp of `kind` from a
+   *  SUCCESSFUL load, so `isFresh(_, kind)` can't read a not-yet-loaded key as
+   *  stale. A transient read failure/timeout is retried first — it does NOT signal
+   *  ready against an empty mirror. A scheduler awaits this before its first tick,
+   *  so a slow boot hydrate doesn't make every unit of work look stale and enqueue
+   *  it all at once — the boot storm (see [[services.tasks.ScrapeReaper]]). Stores
+   *  with nothing to load (in-memory, Mongo-less dev) are ready immediately. */
   def whenReady(kind: FreshnessKind): Future[Unit] = Future.unit
 
   def close(): Unit = ()
@@ -165,32 +166,67 @@ class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessSto
     MongoFreshnessStore.hydrateInPhases(
       loadScrape  = () => hydrateInto(c, Filters.eq("kind", scrapeLabel), 15.seconds, "scrape"),
       scrapeReady = scrapeReady,
-      loadRest    = () => hydrateInto(c, Filters.ne("kind", scrapeLabel), 60.seconds, "enrichment")
+      loadRest    = () => { hydrateInto(c, Filters.ne("kind", scrapeLabel), 60.seconds, "enrichment"); () }
     )
   }
 
-  private def hydrateInto(c: MongoCollection[Document], filter: Bson, timeout: FiniteDuration, label: String): Unit = Try {
-    val documents = Await.result(c.find(filter).toFuture(), timeout)
-    var count = 0
-    documents.foreach { document =>
-      for {
-        key  <- Option(document.getString("_id"))
-        date <- Option(document.getDate("lastFetchedAt"))
-      } { mirror.put(key, Instant.ofEpochMilli(date.getTime)); count += 1 }
+  /** Load the stamps matching `filter` into the mirror. Returns true only if the
+   *  read COMPLETED (cursor exhausted) — matching nothing still counts, that's a
+   *  genuine empty result. Returns false if it timed out or failed, which the
+   *  caller retries rather than treating the empty mirror as authoritative. */
+  private def hydrateInto(c: MongoCollection[Document], filter: Bson, timeout: FiniteDuration, label: String): Boolean =
+    Try {
+      val documents = Await.result(c.find(filter).toFuture(), timeout)
+      var count = 0
+      documents.foreach { document =>
+        for {
+          key  <- Option(document.getString("_id"))
+          date <- Option(document.getDate("lastFetchedAt"))
+        } { mirror.put(key, Instant.ofEpochMilli(date.getTime)); count += 1 }
+      }
+      if (count > 0) logger.info(s"Hydrated $count $label freshness stamp(s) from Mongo.")
+    } match {
+      case scala.util.Success(_) => true
+      case scala.util.Failure(exception) =>
+        logger.warn(s"Freshness $label hydrate failed: ${exception.getMessage}"); false
     }
-    if (count > 0) logger.info(s"Hydrated $count $label freshness stamp(s) from Mongo.")
-  }.recover { case exception => logger.warn(s"Freshness $label hydrate failed: ${exception.getMessage}") }
 }
 
 object MongoFreshnessStore {
-  /** Boot hydrate in two phases: load the scrape stamps (`loadScrape`), then
-   *  signal `scrapeReady` so the [[services.tasks.ScrapeReaper]] can start, then
-   *  load the rest of the corpus (`loadRest`) off the critical path. The signal
-   *  and the rest phase run even if the scrape phase throws, so a hydrate failure
-   *  degrades to the old re-scrape-all behaviour rather than wedging the reaper
-   *  forever. Pulled out as a pure orchestration so the ordering is testable
-   *  without a live Mongo. */
-  def hydrateInPhases(loadScrape: () => Unit, scrapeReady: Promise[Unit], loadRest: () => Unit): Unit =
-    try loadScrape()
-    finally { scrapeReady.trySuccess(()); loadRest() }
+  /** Boot hydrate in two phases. Load the scrape stamps (`loadScrape`, returning
+   *  true once the read SUCCEEDS), then signal `scrapeReady` so the
+   *  [[services.tasks.ScrapeReaper]] can start, then load the rest of the corpus
+   *  (`loadRest`) off the critical path.
+   *
+   *  A failed/timed-out scrape read is RETRIED up to `maxScrapeAttempts` (sleeping
+   *  `retryDelay` between) before readiness is signalled. This is the boot-storm
+   *  fix: previously a single attempt signalled ready even when it timed out,
+   *  handing the reaper an EMPTY mirror — it then saw every cinema as stale and
+   *  re-scraped all ~300, which throttled the shared CPU and Mongo so the NEXT
+   *  restart's hydrate was slower still, storming again (the stacked-restart
+   *  amplification). Retrying past a transient Mongo slowdown keeps readiness
+   *  withheld so the reaper holds its ticks instead of storming.
+   *
+   *  Readiness still completes once the budget is spent even if every attempt
+   *  failed — a bounded last-resort fail-open, so a genuinely-down Mongo can't
+   *  wedge scraping forever (the reaper's per-tick cap bounds any residual burst) —
+   *  and `loadRest` always runs. `sleep` is injectable so tests don't block. Pure
+   *  orchestration so the retry/ordering is testable without a live Mongo. */
+  def hydrateInPhases(
+    loadScrape:        () => Boolean,
+    scrapeReady:       Promise[Unit],
+    loadRest:          () => Unit,
+    maxScrapeAttempts: Int = 5,
+    retryDelay:        FiniteDuration = 5.seconds,
+    sleep:             FiniteDuration => Unit = d => Thread.sleep(d.toMillis)
+  ): Unit =
+    try {
+      var attempt = 1
+      var loaded  = Try(loadScrape()).getOrElse(false)
+      while (!loaded && attempt < maxScrapeAttempts) {
+        sleep(retryDelay)
+        attempt += 1
+        loaded = Try(loadScrape()).getOrElse(false)
+      }
+    } finally { scrapeReady.trySuccess(()); loadRest() }
 }

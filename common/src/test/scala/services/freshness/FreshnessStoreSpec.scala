@@ -102,7 +102,7 @@ class FreshnessStoreSpec extends AnyFlatSpec with Matchers {
     val restMayFinish = new CountDownLatch(1)
     @volatile var order = List.empty[String]
     val t = new Thread(() => MongoFreshnessStore.hydrateInPhases(
-      loadScrape  = () => synchronized { order = order :+ "scrape" },
+      loadScrape  = () => { synchronized { order = order :+ "scrape" }; true },
       scrapeReady = ready,
       loadRest    = () => { restStarted.countDown(); restMayFinish.await(2, TimeUnit.SECONDS); synchronized { order = order :+ "rest" } }
     ))
@@ -114,15 +114,44 @@ class FreshnessStoreSpec extends AnyFlatSpec with Matchers {
     order shouldBe List("scrape", "rest")
   }
 
-  it should "still signal scrape-ready if the scrape phase fails, so the reaper never wedges" in {
+  // Boot-storm fix: a transient scrape-hydrate failure (a slow/throttled Mongo —
+  // exactly what an in-progress storm causes) must NOT signal ready against an
+  // empty mirror. If it did, the ScrapeReaper would see every cinema as stale and
+  // re-scrape all ~300, throttling Mongo so the next restart hydrated slower still
+  // and stormed again. Readiness is withheld and the load retried; it fires only
+  // once a retry succeeds.
+  it should "withhold readiness through a transient hydrate timeout and signal it only once a retry loads the stamps" in {
     import scala.concurrent.Promise
-    import scala.util.Try
-    val ready = Promise[Unit]()
-    Try(MongoFreshnessStore.hydrateInPhases(
-      loadScrape  = () => throw new RuntimeException("mongo down"),
-      scrapeReady = ready,
-      loadRest    = () => ()
-    ))
+    val ready  = Promise[Unit]()
+    var attempts = 0
+    var sleeps   = 0
+    MongoFreshnessStore.hydrateInPhases(
+      loadScrape        = () => { attempts += 1; attempts >= 3 }, // two timeouts, then success
+      scrapeReady       = ready,
+      loadRest          = () => (),
+      maxScrapeAttempts = 5,
+      sleep             = _ => { sleeps += 1 }
+    )
+    attempts shouldBe 3 // stopped retrying the moment a load succeeded
+    sleeps   shouldBe 2 // one wait between each of the three attempts
+    ready.future.isCompleted shouldBe true
+  }
+
+  // The anti-wedge guarantee survives the retry: a genuinely-down Mongo (every
+  // attempt fails) still signals ready once the bounded budget is spent, so the
+  // reaper resumes (its per-tick cap bounds the burst) rather than never scraping.
+  it should "still signal scrape-ready after the retry budget is spent if every attempt fails, so the reaper never wedges" in {
+    import scala.concurrent.Promise
+    val ready  = Promise[Unit]()
+    var attempts = 0
+    MongoFreshnessStore.hydrateInPhases(
+      loadScrape        = () => { attempts += 1; throw new RuntimeException("mongo down") },
+      scrapeReady       = ready,
+      loadRest          = () => (),
+      maxScrapeAttempts = 4,
+      sleep             = _ => ()
+    )
+    attempts shouldBe 4 // retried the whole budget, not a single fail-open attempt
     ready.future.isCompleted shouldBe true
   }
 }

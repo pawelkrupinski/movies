@@ -204,6 +204,38 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.stop()
   }
 
+  // Boot-storm guard, the stacked-restart case: if the freshness mirror never
+  // hydrates within a single ready timeout (a slow/throttled Mongo — exactly what
+  // an in-progress storm causes), the reaper must keep HOLDING its ticks, not fail
+  // open and re-scrape every cinema. Before this fix it waited only `readyTimeout`
+  // then ticked against the empty mirror, enqueuing all ~300 — which threw more
+  // load at the already-slow Mongo so the next restart hydrated slower still and
+  // stormed again. Now it keeps waiting for as long as the mirror is unready (and
+  // readiness itself is withheld until a hydrate succeeds), so a cold mirror yields
+  // zero enqueues no matter how many ready timeouts elapse; once readiness fires,
+  // normal ticking resumes.
+  it should "keep holding ticks instead of failing open and storming while the freshness mirror stays unhydrated" in {
+    import scala.concurrent.{Future, Promise}
+    val gate  = Promise[Unit]()
+    val fresh = new InMemoryFreshnessStore {
+      override def whenReady(kind: FreshnessKind): Future[Unit] =
+        if (kind == FreshnessKind.CinemaScrape) gate.future else super.whenReady(kind)
+    }
+    val scrapers = Seq(new FakeScraper(Multikino, movieAt(Multikino)),
+                       new FakeScraper(KinoApollo, movieAt(KinoApollo)))
+    val queue  = new InMemoryTaskQueue
+    val reaper = new ScrapeReaper(scrapers, queue, fresh,
+      initialDelay = 0.seconds, readyTimeout = 50.millis, interval = 50.millis)
+    reaper.start()
+    Thread.sleep(400) // several readyTimeout + interval periods pass with the mirror still cold
+    // Before the fix: fail-open after the first 50ms → both stale cinemas enqueued.
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
+    gate.success(()) // mirror reports ready → the legitimate cold-start scrape may now proceed
+    Thread.sleep(200)
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) should be > 0L
+    reaper.stop()
+  }
+
   // ── WorkerHeartbeat: queue-depth diagnostic ─────────────────────────────────
 
   "WorkerHeartbeat.statusLine" should "report the queue backlog depth" in {
