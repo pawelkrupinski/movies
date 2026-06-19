@@ -389,22 +389,23 @@ class CaffeineMovieCache(
     // changed (re-key, gained tmdbId/imdbId/searchTitle), to re-kick those.
     val sorted              = cluster.sortBy { case (k, _) => canonicalRank(k) }
     val (baseKey, baseRec)  = sorted.find { case (_, e) => e.tmdbId.isDefined }.getOrElse(sorted.head)
-    // Every reported variant — each cinema slot's derived key plus the rows'
-    // current keys — drives the "anything to fix?" guard (same set the
-    // canonicaliser folds over).
-    val slotKeys = cluster.flatMap { case (_, e) => e.data.values.flatMap(d => d.title.map(t => keyOf(t, d.releaseYear))) }
-    val allKeys  = slotKeys ++ keys
-    // Only variants that sanitize to the SAME title as the canonical can be
-    // "normalised onto" it — a case/separator/year drift of the same string. A
-    // cross-language cluster (folded by shared tmdbId) legitimately carries a
-    // foreign-language slot ("Tangled" on the Polish-keyed "Zaplątani" row) whose
-    // sanitize will NEVER equal the canonical's; comparing its raw string would
-    // leave `needsFix` permanently true and re-write (delete+upsert) the settled
-    // row on every hydrate/settle tick — pointless Mongo churn that pins the
-    // worker at full CPU-credit. So a differing-sanitize slot is NOT a fix signal.
+    // Only an actual stored ROW key drives the "anything to fix?" guard: a row is
+    // the only thing `collapseCluster` can re-key onto the canonical. A cinema's
+    // reported SLOT title is immutable display data — it can never be re-written —
+    // so folding slot keys in here left `needsFix` permanently true for any film a
+    // cinema SHOUTS: "DZIEŃ OBJAWIENIA" sanitize-equals the canonical "Dzień
+    // objawienia" but never string-equals it, so the settled row was
+    // delete+upsert-ed on EVERY hydrate/settle tick — pointless Mongo churn that
+    // pins the worker at full CPU-credit AND re-kicks the row's enrichment, the
+    // "merge→split" flap. (`f2dd5be1` killed this churn for cross-LANGUAGE slots
+    // via the sanitize guard below but missed the same-language CASE-drift slot;
+    // restricting the guard to row keys covers both.) A slot reporting a genuinely
+    // new spelling still drives a re-key: `recordCinemaScrape` merges it onto the
+    // row and `FilmCanonicalizer.canonical` moves the canonical, so the ROW key
+    // then differs and trips the guard.
     val canonicalSanitized = TitleNormalizer.sanitize(canonical.cleanTitle)
     val needsFix = keys.sizeIs > 1 ||
-      allKeys.exists(k => TitleNormalizer.sanitize(k.cleanTitle) == canonicalSanitized &&
+      keys.exists(k => TitleNormalizer.sanitize(k.cleanTitle) == canonicalSanitized &&
         (k.cleanTitle != canonical.cleanTitle || k.year != canonical.year))
     if (needsFix) {
       withTitleLock(canonical.cleanTitle) {
