@@ -108,6 +108,18 @@ assert "overview dashboard provisioned" \
   "api/search?query=kinowo" \
   "any(x.get('uid')=='fly-overview' for x in d)"
 
+# The per-type task-flow panels: enqueued (non-duplicate) by type queries the
+# enqueued counter scoped to result="added" (dedup collapses excluded), and
+# started by type splits the started counter. Guards the panels and their exprs
+# against being dropped or pointed at the wrong metric/label.
+assert "enqueued-by-type panel queries enqueued_total{result=added} by task_type" \
+  "api/dashboards/uid/fly-overview" \
+  "any(t.get('expr')=='sum by (task_type) (rate(kinowo_worker_tasks_enqueued_total{result=\"added\"}[\$__rate_interval])) * 60' for p in d['dashboard']['panels'] for t in p.get('targets',[]))"
+
+assert "started-by-type panel queries started_total by task_type" \
+  "api/dashboards/uid/fly-overview" \
+  "any(t.get('expr')=='sum by (task_type) (rate(kinowo_worker_tasks_started_total[\$__rate_interval])) * 60' for p in d['dashboard']['panels'] for t in p.get('targets',[]))"
+
 echo "==> scanning Grafana logs for provisioning errors"
 # Ignore the benign "no plugins provisioning dir" line — we ship none.
 if docker logs "$NAME" 2>&1 | grep -Ei 'failed to provision|failure to map|failure parsing|provisioning\.datasources.*level=error'; then
