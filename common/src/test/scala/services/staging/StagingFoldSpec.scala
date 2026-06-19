@@ -171,4 +171,46 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
 
     plan.newPromotions.map(u => (u._1.year, u._2.tmdbId)) shouldBe Seq((Some(2021), Some(438631)))
   }
+
+  // --- "stuck in staging" prod scenarios (2026-06-19) -------------------------
+  // Four decorated/foreign titles lingered in pending_movies and folded into
+  // `movies` UN-ENRICHED (tmdbId / tmdbNoMatch / imdbId all null) despite their
+  // staging rows carrying resolution. These pin whether `planGroup` itself
+  // discards the staging row's conclusion.
+
+  it should "preserve tmdbNoMatch=true through a fold (decorated title TMDB couldn't match)" in {
+    // "Kino bez barier: Ministranci (AD + CC + PJM)" / "Robin Hood: Koniec
+    // legendy/Kino Cafe": the decorated title sanitizes to its own anchor, TMDB
+    // returns no match → the staging row is concluded with tmdbNoMatch=true. The
+    // folded `movies` row MUST stay concluded, else the reaper re-stages it forever.
+    val concluded = StagingRecord(Helios, "Kino bez barier: Ministranci (AD + CC + PJM)", None,
+      MovieRecord(tmdbNoMatch = true,
+        data = Map[Source, SourceData](Helios -> SourceData(title = Some("Kino bez barier: Ministranci (AD + CC + PJM)")))))
+
+    val plan = StagingFold.planGroup(Seq(concluded), moviesRows = Seq.empty)
+
+    plan.moviesUpserts should have size 1
+    plan.moviesUpserts.head._2.tmdbNoMatch shouldBe true
+    plan.stagingDeletes should have size 1
+  }
+
+  it should "keep a resolved cinema's tmdbId/imdbId when an UNRESOLVED same-key sibling folds with it" in {
+    // "Denʹ istyny - UA" at two Helios venues, same (anchor, 2026) key: Blue City
+    // resolved (tmdbId+imdbId), Posnania still blank. The union MUST take the
+    // resolved row as base so the folded `movies` row carries the id — not blank it.
+    val resolved = StagingRecord(Helios, "Denʹ istyny - UA", Some(2026),
+      MovieRecord(tmdbId = Some(1275779), imdbId = Some("tt15047880"),
+        data = Map[Source, SourceData](
+          Helios -> SourceData(title = Some("Denʹ istyny - UA"), releaseYear = Some(2026)),
+          Tmdb   -> SourceData(title = Some("Denʹ istyny - UA"), releaseYear = Some(2026)))))
+    val blank = StagingRecord(Multikino, "Denʹ istyny - UA", Some(2026),
+      MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Denʹ istyny - UA"), releaseYear = Some(2026)))))
+
+    val plan = StagingFold.planGroup(Seq(resolved, blank), moviesRows = Seq.empty)
+
+    plan.moviesUpserts should have size 1
+    val (_, record) = plan.moviesUpserts.head
+    record.tmdbId shouldBe Some(1275779)
+    record.imdbId shouldBe Some("tt15047880")
+  }
 }
