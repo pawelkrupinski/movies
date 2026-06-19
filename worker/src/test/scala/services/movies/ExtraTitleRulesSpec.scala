@@ -40,7 +40,14 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Klasyka na TOPie: Podziemny krąg"                 -> ("Klasyka na TOPie: ",              "Podziemny krąg"),
     "Klasyka na TOPie na Dzień Ojca: Rambo: Pierwsza krew." -> ("Klasyka na TOPie na Dzień Ojca: ", "Rambo: Pierwsza krew."),
     "Klasyka w kinie Atlantic: Zawieście czerwone latarnie" -> ("Klasyka w kinie Atlantic: ", "Zawieście czerwone latarnie"),
-    "17. PRZEGLĄD NOWEGO KINA FRANCUSKIEGO: Fałszerz stulecia" -> ("17. PRZEGLĄD NOWEGO KINA FRANCUSKIEGO: ", "Fałszerz stulecia")
+    "17. PRZEGLĄD NOWEGO KINA FRANCUSKIEGO: Fałszerz stulecia" -> ("17. PRZEGLĄD NOWEGO KINA FRANCUSKIEGO: ", "Fałszerz stulecia"),
+    // Third-wave (2026-06-19) audience / club programme prefixes.
+    "Bezpieczne wakacje: Fleak. Futrzak i ja"         -> ("Bezpieczne wakacje: ",             "Fleak. Futrzak i ja"),
+    "Skocz z Bajtlem do kina: Ojczyzna"               -> ("Skocz z Bajtlem do kina: ",        "Ojczyzna"),
+    "KMW: Kurozając i świątynia Świstaka"             -> ("KMW: ",                             "Kurozając i świątynia Świstaka"),
+    "KF Ambasada: Hannah i jej siostry"               -> ("KF Ambasada: ",                     "Hannah i jej siostry"),
+    "KF Ambasada: Trzy kolory: Czerwony"              -> ("KF Ambasada: ",                     "Trzy kolory: Czerwony"),
+    "Seans filmowy dla rodziców: Ojczyzna"            -> ("Seans filmowy dla rodziców: ",      "Ojczyzna")
   )
 
   "ExtraTitleRules programme prefixes" should "extract the banner for the display row" in {
@@ -99,7 +106,31 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Najważniejsze to kochać – żuławski. Kino ekstazy"          -> "Najważniejsze to kochać",
     "Opętanie | ŻUŁAWSKI. KINO EKSTAZY"                         -> "Opętanie",
     "Salto | Poniedziałki z Konwickim: pisarz – scenarzysta – reżyser" -> "Salto",
-    "Truposz // JIM JARMUSCH"                                   -> "Truposz"
+    "Truposz // JIM JARMUSCH"                                   -> "Truposz",
+    // Third-wave (2026-06-19) retrospective / series prefixes + decoration suffixes.
+    "Pedro Almodóvar: Kolory emocji - Matador"                  -> "Matador",
+    "Pedro Almodóvar: Kolory emocji - Matki równoległe"         -> "Matki równoległe",
+    "Wielka Sztuka w Kinoteatrze Rialto - Velázquez i jego tajemnica" -> "Velázquez i jego tajemnica",
+    "SZTUKA W CENTRUM. NOWOŚCI 2026 | Caravaggio. Arcydzieła niepokornego geniusza" -> "Caravaggio. Arcydzieła niepokornego geniusza",
+    "Lekcje Filmowe - Nić widmo"                                -> "Nić widmo",
+    "Lekcje Filmowe - Śniadanie u Tiffany'ego"                  -> "Śniadanie u Tiffany'ego",
+    "Art Beats: Rafael. Młody geniusz"                          -> "Rafael. Młody geniusz",
+    "Wajda. Brzezina"                                           -> "Brzezina",
+    "Wajda. Kronika wypadków miłosnych"                         -> "Kronika wypadków miłosnych",
+    "Konwicki: Dolina Issy (1982)"                              -> "Dolina Issy (1982)",
+    "Pokaz przedpremierowy: minionki i straszydła"             -> "minionki i straszydła",
+    "Światłoczuła: II Jarociński Festiwal Filmowy dla Dzieci i Młodzieży" -> "Światłoczuła",
+    "STRAŻNICZKA SMOKÓW: II Jarociński Festiwal Filmowy dla Dzieci i Młodzieży" -> "STRAŻNICZKA SMOKÓW",
+    "LARP. Miłość, trolle i inne questy. : II Jarociński Festiwal Filmowy dla Dzieci i Młodzieży" -> "LARP. Miłość, trolle i inne questy",
+    "Ida - przegląd filmów Pawła Pawlikowskiego"               -> "Ida",
+    "Zimna wojna - przegląd filmów Pawła Pawlikowskiego"       -> "Zimna wojna",
+    "Pomoc domowa- kino dla kobiet"                            -> "Pomoc domowa",
+    "Mickey i nicky – kino dla seniora"                        -> "Mickey i nicky",
+    "Niesamowite przygody skarpetek 3 - KNTJ"                  -> "Niesamowite przygody skarpetek 3",
+    "Opętanie – pokaz specjalny na 60. Urodziny kina zamek"    -> "Opętanie",
+    "Mistrzynie | POKAZ PRZEDPREMIEROWY"                       -> "Mistrzynie",
+    "Lawa – Tadeusz Konwicki"                                  -> "Lawa",
+    "Brzezina - Andrzej Wajda o filmie"                        -> "Brzezina"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
@@ -123,7 +154,9 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Ojczyzna",
     "2001: Odyseja kosmiczna",
     "Trzy kolory: Czerwony",
-    "Rambo: Pierwsza krew"
+    "Rambo: Pierwsza krew",
+    // The 'pokaz' suffix must not amputate a real '- Seans …' subtitle.
+    "Pan Li - Seans Spirytustyczny"
   )
 
   it should "never touch a plain colon/word title" in {

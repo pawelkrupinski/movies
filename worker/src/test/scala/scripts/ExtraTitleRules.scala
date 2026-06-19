@@ -73,7 +73,14 @@ object ExtraTitleRules {
     prog("xtra-pp-wajda-rewizje",     """(?i)^(?:Cykl\s+[„"]?\s*)?WAJDA:\s*re-?\s*wizje[^:]*:\s*""", "WAJDA: re-wizje retrospective prefix"),
     prog("xtra-pp-klasyka-na-topie",  """(?i)^Klasyka\s+na\s+TOPie(?:\s+na\s+[^:]+)?:\s*""", "'Klasyka na TOPie [na …]:' classics strand"),
     prog("xtra-pp-klasyka-atlantic",  """(?i)^Klasyka\s+w\s+kinie\s+Atlantic:\s*""",      "'Klasyka w kinie Atlantic:' classics strand"),
-    prog("xtra-pp-pnkf-prefix",       """(?i)^\d+\.\s*PRZEGLĄD\s+NOWEGO\s+KINA\s+FRANCUSKIEGO:\s*""", "'17. Przegląd Nowego Kina Francuskiego:' festival prefix")
+    prog("xtra-pp-pnkf-prefix",       """(?i)^\d+\.\s*PRZEGLĄD\s+NOWEGO\s+KINA\s+FRANCUSKIEGO:\s*""", "'17. Przegląd Nowego Kina Francuskiego:' festival prefix"),
+    // Third-wave (2026-06-19) audit of the rating-less corpus: audience / club
+    // programme banners that prefix the film (own display row, query stripped).
+    prog("xtra-pp-bezpieczne-wakacje", """(?i)^Bezpieczne\s+wakacje:\s+""",                "'Bezpieczne wakacje:' kids-summer strand (Fleak, Hitpig, Tom i Jerry, …)"),
+    prog("xtra-pp-skocz-z-bajtlem",    """(?i)^Skocz\s+z\s+Bajtlem\s+do\s+kina:\s+""",      "'Skocz z Bajtlem do kina:' programme prefix (Ojczyzna, Drugie życie)"),
+    prog("xtra-pp-kmw",                """(?i)^KMW:\s+""",                                  "'KMW:' Kino Małego Widza kids-strand prefix"),
+    prog("xtra-pp-kf-klub",            """(?i)^KF\s+[^:]+:\s+""",                           "'KF <klub>:' film-club prefix (KF Ambasada: Hannah i jej siostry)"),
+    prog("xtra-pp-seans-dla-rodzicow", """(?i)^Seans\s+filmowy\s+dla\s+rodziców:\s+""",      "'Seans filmowy dla rodziców:' parents'-screening prefix")
   )
 
   /** Strips that fix enrichment without merging the row away — a premiere or a
@@ -107,7 +114,26 @@ object ExtraTitleRules {
     searchStrip("xtra-amerykanska-klasyka",        """(?iu)\s*[–—-]\s*amerykańska\s+klasyka(?:\s*/.*)?\s*$""", "'– amerykańska klasyka [/ N. rocznica]' suffix (Kino Zamek)"),
     searchStrip("xtra-zulawski-kino-ekstazy",      """(?iu)\s*[|–—-]\s*żuławski\.?\s*kino\s+ekstazy\s*$""", "'… | / – żuławski. Kino ekstazy' retrospective suffix (Kino Zamek)"),
     searchStrip("xtra-poniedzialki-konwicki",      """(?i)\s*\|\s*Poniedziałki\s+z\s+Konwickim\b.*$""", "'… | Poniedziałki z Konwickim …' cycle suffix (Kino Spektrum)"),
-    searchStrip("xtra-jim-jarmusch-suffix",        """(?i)\s*//\s*jim\s+jarmusch\s*$""",              "'// jim jarmusch' director-cycle suffix (Kino za Rogiem)")
+    searchStrip("xtra-jim-jarmusch-suffix",        """(?i)\s*//\s*jim\s+jarmusch\s*$""",              "'// jim jarmusch' director-cycle suffix (Kino za Rogiem)"),
+    // Third-wave (2026-06-19) audit of the rating-less corpus.
+    // Retrospective / art-on-screen series whose film follows the banner
+    // ('<cycle>: ' or '<cycle> - '); query-only strip keeps the decorated row.
+    searchStrip("xtra-pedro-almodovar-kolory",     """(?i)^Pedro\s+Almodóvar:\s+Kolory\s+emocji\s*[-–—]\s*""", "'Pedro Almodóvar: Kolory emocji - <film>' retrospective (Matador, Matki równoległe, …)"),
+    searchStrip("xtra-wielka-sztuka-rialto",       """(?i)^Wielka\s+Sztuka\s+w\s+Kinoteatrze\s+Rialto\s*[-–—]\s*""", "'Wielka Sztuka w Kinoteatrze Rialto - <film>' art-doc series (~10 titles)"),
+    searchStrip("xtra-sztuka-w-centrum",           """(?iu)^SZTUKA\s+W\s+CENTRUM\.\s*NOWOŚCI\s+\d{4}\s*\|\s*""", "'SZTUKA W CENTRUM. NOWOŚCI 2026 | <film>' art-doc series"),
+    searchStrip("xtra-lekcje-filmowe",             """(?i)^Lekcje\s+Filmowe\s*[-–—]\s*""",            "'Lekcje Filmowe - <film>' strand (Nić widmo, Śniadanie u Tiffany'ego)"),
+    searchStrip("xtra-art-beats",                  """(?i)^Art\s+Beats:\s+""",                        "'Art Beats: <film>' art-doc series (Rafael, Święty Piotr, …)"),
+    searchStrip("xtra-wajda-dot-prefix",           """(?i)^Wajda\.\s+""",                             "'Wajda. <film>' director-retrospective prefix (Brzezina, Kronika wypadków miłosnych)"),
+    searchStrip("xtra-konwicki-prefix",            """(?i)^Konwicki:\s+""",                           "'Konwicki: <film>' director-retrospective prefix (Dolina Issy, Lawa, Salto)"),
+    searchStrip("xtra-pokaz-przedpremierowy-prefix", """(?i)^Pokaz\s+przedpremierowy:\s*""",          "'Pokaz przedpremierowy: <film>' premiere prefix"),
+    // Decoration suffixes (banner after the film); query-only strip keeps the row.
+    searchStrip("xtra-jarocinski-festiwal-suffix", """(?iu)\s*[.:\s]*II\s+Jarociński\s+Festiwal\s+Filmowy\s+dla\s+Dzieci\s+i\s+Młodzieży\s*$""", "'<film>: II Jarociński Festiwal Filmowy dla Dzieci i Młodzieży' suffix (~6 films)"),
+    searchStrip("xtra-przeglad-filmow-suffix",     """(?i)\s*[-–—]\s*przegląd\s+filmów\s+.*$""",      "'<film> - przegląd filmów <reżyser>' suffix (Ida, Zimna wojna)"),
+    searchStrip("xtra-kino-dla-suffix",            """(?i)\s*[-–—]\s*kino\s+dla\s+(?:seniora|seniorów|kobiet|dzieci)\s*$""", "'<film> - kino dla seniora/kobiet' audience suffix"),
+    searchStrip("xtra-kntj-suffix",                """(?i)\s*[-–—]\s*KNTJ\s*$""",                     "'<film> - KNTJ' cross-cinema strand suffix"),
+    searchStrip("xtra-pokaz-suffix",               """(?i)\s*[-–—|]\s*pokaz\b.*$""",                  "'<film> - / | pokaz <specjalny|przedpremierowy|+ dyskusja…>' event suffix"),
+    searchStrip("xtra-tadeusz-konwicki-suffix",    """(?i)\s*[-–—]\s*tadeusz\s+konwicki\b.*$""",      "'<film> – Tadeusz Konwicki / 100. rocznica urodzin' suffix"),
+    searchStrip("xtra-wajda-o-filmie-suffix",      """(?i)\s*[-–—]\s*Andrzej\s+Wajda\s+o\s+filmie\s*$""", "'<film> - Andrzej Wajda o filmie' suffix (Brzezina)")
   )
 
   /** Orders stamped by position so the additions fold AFTER the seed rules of
