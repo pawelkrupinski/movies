@@ -213,4 +213,48 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     record.tmdbId shouldBe Some(1275779)
     record.imdbId shouldBe Some("tt15047880")
   }
+
+  // --- re-entry detection (a known film re-incubated through staging) ----------
+
+  private def promotion(title: String, year: Int, tmdbId: Int): (CacheKey, MovieRecord) =
+    CacheKey(title, Some(year)) -> MovieRecord(tmdbId = Some(tmdbId),
+      data = Map[Source, SourceData](Helios -> SourceData(title = Some(title), releaseYear = Some(year))))
+
+  "detectReentries" should "flag a brand-new promotion whose tmdbId already lives on another movies row" in {
+    // 'Tangled' incubates afresh and folds, but tmdbId 38757 is already in `movies`
+    // as the Polish 'Zaplątani' — a known film the divert gate's alias check missed.
+    val newPromotions = Seq(promotion("Tangled", 2010, 38757))
+    val reentries = StagingFold.detectReentries(newPromotions, {
+      case 38757 => Seq("zaplatani|2010")
+      case _     => Seq.empty
+    })
+
+    reentries should have size 1
+    reentries.head.tmdbId shouldBe 38757
+    reentries.head.promotedId shouldBe StoredMovieRecord.idFor("Tangled", Some(2010))
+    reentries.head.existingIds shouldBe Seq("zaplatani|2010")
+  }
+
+  it should "NOT flag a promotion whose only tmdbId match is its own (just-promoted) row" in {
+    val newPromotions = Seq(promotion("Kumotry", 2026, 1454157))
+    val ownId = StoredMovieRecord.idFor("Kumotry", Some(2026))
+    StagingFold.detectReentries(newPromotions, _ => Seq(ownId)) shouldBe empty
+  }
+
+  it should "NOT flag a tmdbNoMatch promotion (no tmdbId to collide on)" in {
+    val noMatch = Seq(CacheKey("Kino bez barier: Ministranci", None) -> MovieRecord(tmdbNoMatch = true,
+      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Kino bez barier: Ministranci")))))
+    // The lookup must never be consulted for a tmdb-less promotion.
+    StagingFold.detectReentries(noMatch, _ => fail("lookup should not be called")) shouldBe empty
+  }
+
+  it should "flag only the re-entrant promotion in a mixed batch" in {
+    val newPromotions = Seq(promotion("Tangled", 2010, 38757), promotion("Kumotry", 2026, 1454157))
+    val reentries = StagingFold.detectReentries(newPromotions, {
+      case 38757 => Seq("zaplatani|2010")   // collides
+      case _     => Seq.empty               // genuinely new
+    })
+
+    reentries.map(_.tmdbId) shouldBe Seq(38757)
+  }
 }

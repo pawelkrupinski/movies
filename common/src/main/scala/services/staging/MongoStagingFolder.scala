@@ -101,6 +101,14 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
       val moviesRows = await(movies.find(session, Filters.regex("_id", s"^$sanitize\\|")).toFuture())
         .map(StoredMovieDto.toDomain)
       val plan = StagingFold.planGroup(stagingRows, moviesRows)
+      // Smoking-gun for "a movie re-entered staging": a brand-new promotion whose
+      // tmdbId is already on another `movies` row. Query the WHOLE `movies`
+      // collection by tmdbId (a top-level field) on this session, BEFORE the
+      // upserts land, so a known film that re-incubated under a drifted sanitize
+      // key shows up as the duplicate the divert gate should have caught.
+      StagingFold.detectReentries(plan.newPromotions, tmdb =>
+        await(movies.find(session, Filters.eq("tmdbId", tmdb)).toFuture()).map(_._id))
+        .foreach(r => logger.warn(r.warning))
       plan.moviesUpserts.foreach { case (k, record) =>
         val id = StoredMovieRecord.idFor(k.cleanTitle, k.year)
         await(movies.replaceOne(session, Filters.eq("_id", id),
