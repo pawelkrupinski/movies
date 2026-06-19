@@ -603,13 +603,13 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   private def cinemaMovie(title: String, cinema: Cinema, year: Option[Int] = Some(2026),
                           poster: Option[String] = None, showtimes: Seq[Showtime] = Seq.empty,
-                          countries: Seq[String] = Seq.empty): CinemaMovie =
+                          countries: Seq[String] = Seq.empty, synopsis: Option[String] = None): CinemaMovie =
     CinemaMovie(
       movie     = Movie(title = title, releaseYear = year, countries = countries),
       cinema    = cinema,
       posterUrl = poster,
       filmUrl   = None,
-      synopsis  = None,
+      synopsis  = synopsis,
       cast      = Seq.empty,
       director  = Seq.empty,
       showtimes = showtimes
@@ -1308,6 +1308,46 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
     val after = cache.get(cache.keyOf("Shared", Some(2026))).get
     after.cinemaData.keySet shouldBe Set(Multikino)
+  }
+
+  // ── Synopsis retention: the displayed synopsis stays sticky after a reap ────
+  // When the cinema that had the best (longest) synopsis stops listing a film,
+  // its slot is pruned — but the synopsis is retained so the displayed value
+  // doesn't flip to whatever shorter blurb remains.
+  private val longSynopsis  = "Znacznie dłuższy, pełniejszy opis filmu, który ma zostać zachowany po reapie."
+  private val shortSynopsis = "Krótki opis."
+
+  it should "retain a pruned cinema's synopsis so the displayed synopsis stays sticky" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Foo", Multikino, Some(2026), synopsis = Some(longSynopsis))))
+    cache.recordCinemaScrape(Helios,    Seq(cinemaMovie("Foo", Helios,    Some(2026), synopsis = Some(shortSynopsis))))
+    val key = cache.keyOf("Foo", Some(2026))
+    cache.get(key).get.synopsis shouldBe Some(longSynopsis)
+
+    // Multikino (the long-synopsis source) drops Foo: its scrape returns a
+    // different film, so Foo's Multikino slot is genuinely pruned.
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Bar", Multikino, Some(2026))))
+
+    val row = cache.get(key).get
+    row.cinemaData.keySet           shouldBe Set(Helios)            // live slot gone
+    row.retainedSynopses.get(Multikino) shouldBe Some(longSynopsis) // but synopsis kept
+    row.synopsis                    shouldBe Some(longSynopsis)     // still the best one
+  }
+
+  it should "not keep a movie alive via retained synopses once its last cinema slot is pruned" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    cache.recordCinemaScrape(Multikino, Seq(
+      cinemaMovie("Foo", Multikino, Some(2026), synopsis = Some(longSynopsis)),
+      cinemaMovie("Bar", Multikino, Some(2026))
+    ))
+    // Foo drops out entirely (Multikino still scrapes, just not Foo).
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Bar", Multikino, Some(2026))))
+
+    val row = cache.get(cache.keyOf("Foo", Some(2026))).get
+    // The retention captured the synopsis, but the row has NO cinema slots — so
+    // UnscreenedCleanup (which gates on cinemaData.isEmpty) still deletes it.
+    row.retainedSynopses.get(Multikino) shouldBe Some(longSynopsis)
+    row.cinemaData                       shouldBe empty
   }
 
   "snapshot" should "return rows sorted by title (case-insensitive)" in {

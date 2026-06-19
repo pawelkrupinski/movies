@@ -63,7 +63,18 @@ case class MovieRecord(
   // a film mid-rotation loses its title variant from the derived view.
   // Acceptable trade-off: `displayTitle` falls back to the cache-key
   // `cleanTitle` anchor when no slot has a better candidate.
-  data:              Map[Source, SourceData] = Map.empty
+  data:              Map[Source, SourceData] = Map.empty,
+
+  // Longest synopsis ever seen per source, kept alive after the source's live
+  // slot is pruned (the cinema stopped listing the film). Unlike everything
+  // else in `data`, which vanishes the tick a cinema drops the film, this
+  // survives so the displayed `synopsis` stays STICKY: the best blurb we ever
+  // had keeps showing instead of flipping to whatever shorter text remains.
+  // Captured at the prune site (`MovieCache`) and unioned on merge
+  // (`MovieRecordMerge`). Dropped only when the WHOLE row is deleted
+  // (`UnscreenedCleanup`, when no cinema screens the film at all). See
+  // `synopsis`.
+  retainedSynopses:  Map[Source, String] = Map.empty
 ) {
   def imdbUrl: Option[String] = imdbId.map(id => s"https://www.imdb.com/title/$id/")
   def tmdbUrl: Option[String] = tmdbId.map(id => s"https://www.themoviedb.org/movie/$id")
@@ -214,17 +225,31 @@ case class MovieRecord(
    *  on length, and drop any source left empty (synopsis that was nothing but
    *  a link). Cleaning here — the single read boundary `FilmSchedule.synopsis`
    *  and `/api/details` both go through — fixes web + mobile at once without
-   *  re-scraping the stored value. */
-  // Iterate in source-priority order (not raw `data.values`, whose Map
-  // iteration order is JVM/platform-dependent) so that when two sources tie on
-  // length the STABLE sort keeps the higher-priority source — deterministic
-  // across machines. Raw `data.values` made the longest-wins tie-break differ
-  // between a dev box and CI, drifting the whole-corpus snapshot.
+   *  re-scraping the stored value.
+   *
+   *  Candidates come from BOTH the live `data` slots AND `retainedSynopses`
+   *  (synopses kept after a cinema dropped the film), so the pool only grows
+   *  over the row's life and never shrinks until the whole row is deleted. With
+   *  longest-wins over a non-shrinking pool the result is sticky/monotonic: it
+   *  only ever upgrades to a strictly longer blurb, never downgrades when a
+   *  cinema stops listing the film. */
   def synopsis: Option[String] =
-    prioritized.iterator.flatMap(_._2.synopsis)
+    synopsisCandidates
       .map(tools.TextNormalization.stripUrls)
       .filter(_.nonEmpty)
-      .toSeq.sortBy(-_.length).headOption
+      .sortBy(-_.length).headOption
+
+  /** Synopsis candidates in source-priority order — each source's live slot
+   *  synopsis followed by its retained (post-prune) one. Built in priority
+   *  order (not raw `data`/`Set` iteration, whose order is JVM/platform-
+   *  dependent) so that when two sources tie on length the STABLE `sortBy` in
+   *  `synopsis` keeps the higher-priority source — deterministic across
+   *  machines. Raw iteration order made the longest-wins tie-break differ
+   *  between a dev box and CI, drifting the whole-corpus snapshot. */
+  private def synopsisCandidates: Seq[String] =
+    (data.keySet ++ retainedSynopses.keySet).toSeq
+      .sortBy(s => Source.priority.getOrElse(s, Int.MaxValue))
+      .flatMap(s => data.get(s).flatMap(_.synopsis).iterator ++ retainedSynopses.get(s).iterator)
 
   /** Longest non-empty cast list across all sources (ties broken by source
    *  priority — see `synopsis`). */

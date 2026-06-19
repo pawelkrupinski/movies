@@ -869,7 +869,16 @@ class CaffeineMovieCache(
       .foreach { k =>
         // Drop only our cinema's slot, under the per-title lock, via
         // `putIfPresent` so a concurrent sibling-slot write isn't clobbered.
-        putIfPresent(k, cur => cur.copy(data = cur.data - cinema))
+        // Before dropping, retain this cinema's synopsis (longest-seen) so the
+        // displayed synopsis stays sticky once the cinema stops listing the
+        // film — see MovieRecord.retainedSynopses / synopsis.
+        putIfPresent(k, cur => {
+          val captured = cur.data.get(cinema).flatMap(_.synopsis).filter(_.nonEmpty)
+            .map(s => Map((cinema: Source) -> s)).getOrElse(Map.empty)
+          cur.copy(
+            data             = cur.data - cinema,
+            retainedSynopses = MovieRecordMerge.mergeRetainedSynopses(cur.retainedSynopses, captured))
+        })
       }
 
     // Prune (staging): drop this cinema's staging rows it no longer lists this

@@ -63,8 +63,23 @@ object MovieRecordMerge {
       metacriticUrl     = canonical.metacriticUrl.orElse(victim.metacriticUrl),
       rottenTomatoesUrl = canonical.rottenTomatoesUrl.orElse(victim.rottenTomatoesUrl),
       searchTitle       = canonical.searchTitle.orElse(victim.searchTitle),
-      data              = mergeData(canonical.data, victim.data)
+      data              = mergeData(canonical.data, victim.data),
+      retainedSynopses  = mergeRetainedSynopses(canonical.retainedSynopses, victim.retainedSynopses)
     )
+
+  /** Combine two retained-synopsis maps, keeping the LONGEST synopsis seen per
+   *  source (the canonical's on an exact-length tie). Shared by `union` and by
+   *  `MovieCache`'s slot-prune capture so both agree on "best-seen per source"
+   *  — the rule that keeps the displayed (longest-wins) synopsis sticky once a
+   *  cinema stops listing a film. Commutative on content, so it's
+   *  scrape/merge-order independent. */
+  def mergeRetainedSynopses(
+    a: Map[Source, String],
+    b: Map[Source, String]
+  ): Map[Source, String] =
+    (a.keySet ++ b.keySet).iterator.map { s =>
+      s -> (a.get(s).iterator ++ b.get(s).iterator).maxBy(_.length)
+    }.toMap
 
   /** Fold a set of rows of the SAME film into one. The enriched row (the first
    *  carrying a `tmdbId`) is the canonical, so its single-source enrichment

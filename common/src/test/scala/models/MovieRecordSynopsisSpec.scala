@@ -60,4 +60,35 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
   it should "be None when no source carries a synopsis" in {
     MovieRecord(data = Map[Source, SourceData](Tmdb -> SourceData(title = Some("X")))).synopsis shouldBe None
   }
+
+  // ── Retained synopses (sticky after a cinema drops the film) ───────────────
+  // When a cinema stops listing a film its live slot is pruned, but its synopsis
+  // is kept in `retainedSynopses` so the displayed (longest-wins) synopsis stays
+  // sticky — the best blurb we ever had keeps showing.
+
+  it should "still surface a retained synopsis once its live slot is gone" in {
+    // Multikino (which had the longest blurb) dropped the film: no live slot,
+    // only the retained copy survives. Helios is still live with a short one.
+    val record = MovieRecord(
+      data             = Map[Source, SourceData](Helios -> SourceData(synopsis = Some("Krótki opis."))),
+      retainedSynopses = Map[Source, String](Multikino -> "Znacznie dłuższy, pełniejszy opis filmu zachowany po reapie.")
+    )
+    record.synopsis shouldBe Some("Znacznie dłuższy, pełniejszy opis filmu zachowany po reapie.")
+  }
+
+  it should "prefer a longer live synopsis over a shorter retained one" in {
+    val record = MovieRecord(
+      data             = Map[Source, SourceData](Tmdb -> SourceData(synopsis = Some("Aktualny, dłuższy opis filmu z TMDB."))),
+      retainedSynopses = Map[Source, String](Helios -> "Stary, krótszy.")
+    )
+    record.synopsis shouldBe Some("Aktualny, dłuższy opis filmu z TMDB.")
+  }
+
+  it should "strip URLs from retained synopses too" in {
+    val record = MovieRecord(
+      data             = Map[Source, SourceData](),
+      retainedSynopses = Map[Source, String](StacjaFalenica -> "https://youtu.be/x Zachowany opis bez linku.")
+    )
+    record.synopsis shouldBe Some("Zachowany opis bez linku.")
+  }
 }

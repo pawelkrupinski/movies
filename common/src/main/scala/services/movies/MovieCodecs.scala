@@ -36,6 +36,10 @@ case class StoredMovieDto(
   tmdbNoMatch:       Option[Boolean],
   detailPending:     Option[Boolean],
   sourceData:        Map[String, SourceData],
+  // Longest synopsis kept per source after its live slot was pruned, keyed by
+  // `Source.displayName` like `sourceData`. Optional so legacy documents decode
+  // to None → empty map; omitted when empty to keep documents lean.
+  retainedSynopses:  Option[Map[String, String]],
   updatedAt:         Instant
 )
 
@@ -62,6 +66,8 @@ object StoredMovieDto {
       tmdbNoMatch       = Option.when(r.tmdbNoMatch)(true),
       detailPending     = Option.when(r.detailPending)(true),
       sourceData        = r.data.map { case (s, sd) => s.displayName -> sd },
+      retainedSynopses  = Option.when(r.retainedSynopses.nonEmpty)(
+                            r.retainedSynopses.map { case (s, v) => s.displayName -> v }),
       updatedAt         = updatedAt
     )
 
@@ -79,7 +85,9 @@ object StoredMovieDto {
       searchTitle       = dto.searchTitle,
       tmdbNoMatch       = dto.tmdbNoMatch.getOrElse(false),
       detailPending     = dto.detailPending.getOrElse(false),
-      data              = dto.sourceData.flatMap { case (k, sd) => Source.byDisplayName.get(k).map(_ -> sd) }
+      data              = dto.sourceData.flatMap { case (k, sd) => Source.byDisplayName.get(k).map(_ -> sd) },
+      retainedSynopses  = dto.retainedSynopses.getOrElse(Map.empty)
+                            .flatMap { case (k, v) => Source.byDisplayName.get(k).map(_ -> v) }
     )
     // title + year are derived from the `_id` + `sourceData`, not stored — see
     // `StoredMovieRecord.fromStorage` (shared with the in-memory repository).

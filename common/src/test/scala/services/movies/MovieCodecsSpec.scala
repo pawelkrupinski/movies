@@ -161,6 +161,36 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     back.record.detailPending shouldBe false
   }
 
+  it should "round-trip retainedSynopses (kept after a cinema's slot was pruned)" in {
+    val record = MovieRecord(
+      data = Map[Source, SourceData](Tmdb -> SourceData(synopsis = Some("tmdb"))),
+      retainedSynopses = Map[Source, String](Multikino -> "long retained blurb", Helios -> "short")
+    )
+    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("ret|2025", record, Instant.now())))
+    back.record.retainedSynopses shouldBe Map[Source, String](Multikino -> "long retained blurb", Helios -> "short")
+  }
+
+  it should "decode a legacy document with no retainedSynopses field to an empty map" in {
+    val record = MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Legacy"))))
+    val raw = new BsonDocument()
+    codec.encode(new BsonDocumentWriter(raw), StoredMovieDto.fromDomain("legret|2025", record, Instant.now()), EncoderContext.builder().build())
+    raw.remove("retainedSynopses")  // a document written before the field existed
+    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()))
+    back.record.retainedSynopses shouldBe Map.empty
+  }
+
+  it should "drop a retainedSynopses key for an unknown (legacy) Source displayName on decode" in {
+    val record = MovieRecord(
+      data = Map[Source, SourceData](Tmdb -> SourceData(title = Some("Known"))),
+      retainedSynopses = Map[Source, String](Multikino -> "kept")
+    )
+    val raw = new BsonDocument()
+    codec.encode(new BsonDocumentWriter(raw), StoredMovieDto.fromDomain("retunk|2025", record, Instant.now()), EncoderContext.builder().build())
+    raw.getDocument("retainedSynopses").put("DeprecatedCinema", new org.bson.BsonString("orphan"))
+    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()))
+    back.record.retainedSynopses shouldBe Map[Source, String](Multikino -> "kept")
+  }
+
   // ── Derived title/year (no longer stored) ─────────────────────────────────
 
   it should "derive the display title from sourceData (dominant cinema form), not a stored field" in {

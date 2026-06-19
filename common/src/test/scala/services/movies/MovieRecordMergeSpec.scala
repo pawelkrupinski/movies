@@ -167,4 +167,18 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
     // regardless of merge order.
     forward shouldBe reverse
   }
+
+  it should "keep the longest retained synopsis per source, order-independently" in {
+    val a = canonical.copy(retainedSynopses = Map[Source, String](
+      Multikino -> "krótki", Helios -> "helios dłuższy zachowany opis"))
+    val b = victim.copy(retainedSynopses = Map[Source, String](
+      Multikino -> "multikino znacznie dłuższy zachowany opis", Tmdb -> "tmdb"))
+
+    val expected = Map[Source, String](
+      Multikino -> "multikino znacznie dłuższy zachowany opis",  // b's is longer
+      Helios    -> "helios dłuższy zachowany opis",
+      Tmdb      -> "tmdb")
+    MovieRecordMerge.union(a, b).retainedSynopses shouldBe expected
+    MovieRecordMerge.union(b, a).retainedSynopses shouldBe expected
+  }
 }
