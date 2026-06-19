@@ -24,10 +24,10 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "carry a meta description for search-result snippets" in {
-    // The other pages get one via _ogTagsApp; the self-contained landing
-    // page had none, which Lighthouse SEO flagged.
+    // The landing now gets its description via _ogTagsApp (same partial as the
+    // other pages), which also covers the Lighthouse SEO "missing description".
     html should include ("""<meta name="description"""")
-    html should include ("Repertuar kin w jednym miejscu")
+    html should include ("Repertuar wszystkich kin w jednym miejscu")
   }
 
   it should "declare a favicon so the browser doesn't 404 on /favicon.ico" in {
