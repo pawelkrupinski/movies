@@ -8,6 +8,7 @@ import java.net.{Authenticator, CookieManager, CookiePolicy, InetSocketAddress, 
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
+import scala.concurrent.duration.FiniteDuration
 
 class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends HttpFetch with Logging {
   // Connect + per-request timeouts so a hung upstream (MC search HTML
@@ -78,7 +79,7 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
     val response = clientFor(url).send(buildRequest(url, Map.empty), HttpResponse.BodyHandlers.ofByteArray())
     val code = response.statusCode()
     if (code >= 200 && code < 300) Gunzip.decode(response.body())
-    else throw new RuntimeException(s"HTTP $code for GET $url")
+    else throw new HttpStatusException(code, "GET", url, retryAfterOf(response))
   }
 
   override def get(url: String, headers: Map[String, String]): String =
@@ -140,9 +141,16 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
     else {
       if (code >= 500) logger.warn(s"HTTP $code from $method $url (server-side)")
       else             logger.debug(s"HTTP $code from $method $url")
-      throw new RuntimeException(s"HTTP $code for $method $url")
+      // Typed so a decorator (ThrottledHttpFetch) can react to 429 + Retry-After.
+      // Message shape is unchanged, so MonitoringHttpFetch's 5xx classifier and
+      // any message-matching caller keep working.
+      throw new HttpStatusException(code, method, url, retryAfterOf(response))
     }
   }
+
+  /** The server's `Retry-After` hint, if any (delta-seconds form). */
+  private def retryAfterOf(response: HttpResponse[Array[Byte]]): Option[FiniteDuration] =
+    HttpStatusException.parseRetryAfter(Option(response.headers().firstValue("Retry-After").orElse(null)))
 
   /** Decode the raw response bytes to a UTF-8 string. `Gunzip.decode`
    *  loops while the bytes still start with the gzip magic prefix

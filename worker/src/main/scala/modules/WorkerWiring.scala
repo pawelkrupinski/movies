@@ -17,7 +17,7 @@ import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
 import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, RatingEnqueuer, RatingHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
-import tools.{Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch}
+import tools.{Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
@@ -40,8 +40,12 @@ class WorkerWiring extends play.api.Logging {
   // once on the first request and tells the monitor which hosts are cinema
   // scrapes — suppressed, since RetryingCinemaScraper already tracks each cinema
   // under its displayName.
+  // ThrottledHttpFetch sits closest to the wire: a per-host 429 gate that pauses
+  // ALL callers to a rate-limited host together (honoring Retry-After) instead of
+  // each of the ~12 concurrent TMDB callers retrying independently into the same
+  // burst. Inside MonitoringHttpFetch so its waits don't skew uptime.
   lazy val httoFetch: HttpFetch =
-    new MonitoringHttpFetch(new RealHttpFetch(), uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
+    new MonitoringHttpFetch(new ThrottledHttpFetch(new RealHttpFetch()), uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
 
   // ── External API clients ──────────────────────────────────────────────────
   lazy val tmdbClient = new TmdbClient(httoFetch)
