@@ -3,6 +3,10 @@ import XCTest
 
 final class SynopsisMarkdownTests: XCTestCase {
 
+    // The markdown parse is Apple-only (see SynopsisMarkdown); CI's `swift test`
+    // runs on Linux, where it falls back to the plain string. Gate the
+    // markdown-behaviour assertions so the Linux build still passes.
+    #if canImport(Darwin)
     func testPreservesNewlinesAndStripsMarkers() {
         // .inlineOnlyPreservingWhitespace keeps the \n\n paragraph break and
         // drops the ** / * markers from the visible text.
@@ -22,6 +26,7 @@ final class SynopsisMarkdownTests: XCTestCase {
         XCTAssertTrue(sawBold, "expected a bold run from **…**")
         XCTAssertTrue(sawItalic, "expected an italic run from *…*")
     }
+    #endif
 
     func testPlainTextIsUnchanged() {
         XCTAssertEqual(String(SynopsisMarkdown.attributed("zwykły opis bez znaczników").characters),

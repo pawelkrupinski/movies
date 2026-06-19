@@ -62,13 +62,22 @@ extension Array where Element == FilmDetails {
 /// would collapse the paragraph breaks). Falls back to the raw string if
 /// parsing ever throws. (Colocated with `FilmDetails` so it ships in both the
 /// app target and the `KinowoCore` test target without a separate file ref.)
+///
+/// The markdown parse is gated to Apple platforms: `KinowoCore`'s `swift test`
+/// runs on Linux in CI, whose swift-corelibs-foundation lacks
+/// `AttributedString.MarkdownParsingOptions`. The app only ever runs on
+/// iOS/macOS, so the Linux build just falls back to the plain string.
 enum SynopsisMarkdown {
     static func attributed(_ s: String) -> AttributedString {
-        (try? AttributedString(
+        #if canImport(Darwin)
+        return (try? AttributedString(
             markdown: s,
             options: AttributedString.MarkdownParsingOptions(
                 interpretedSyntax: .inlineOnlyPreservingWhitespace
             )
         )) ?? AttributedString(s)
+        #else
+        return AttributedString(s)
+        #endif
     }
 }
