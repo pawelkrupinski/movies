@@ -15,9 +15,13 @@ import models.{MovieRecord, Showtime, Source, SourceData}
  *
  * Rule of thumb:
  *   - Enrichment-side single-source fields (tmdbId, imdbId, ratings,
- *     MC/RT/Filmweb URLs) come from the canonical. Both rows necessarily
- *     have the same tmdbId-derived data once they're identified as the
- *     same film; preferring the canonical avoids churn.
+ *     MC/RT/Filmweb URLs) prefer the canonical, falling back to the victim
+ *     when the canonical lacks them. Both rows necessarily have the same
+ *     tmdbId-derived data once they're identified as the same film, so
+ *     preferring the canonical avoids churn — but when only the victim was
+ *     enriched (a freshly-resolved cross-language duplicate became the
+ *     canonical base), the fallback keeps its ratings instead of dropping
+ *     them.
  *   - `data` is unioned per-source: when only one row has a slot for source
  *     S, that slot survives unchanged; when BOTH rows have a slot for the
  *     same source (the regression case — a cinema reports the film twice
@@ -37,8 +41,29 @@ object MovieRecordMerge {
 
   def union(canonical: MovieRecord, victim: MovieRecord): MovieRecord =
     canonical.copy(
-      searchTitle = canonical.searchTitle.orElse(victim.searchTitle),
-      data        = mergeData(canonical.data, victim.data)
+      // Enrichment-side single-source fields prefer the canonical, but fall back
+      // to the victim when the canonical lacks them. The two rows are the SAME
+      // film (same tmdbId), so their ratings describe one film and only ever
+      // converge — taking the victim's when the canonical's is empty can't be
+      // wrong, and it stops the merge from DROPPING ratings. This matters once a
+      // cluster can hold two RESOLVED rows (a cross-language duplicate folded by
+      // shared tmdbId, FilmCanonicalizer.groupByFilm): the union base is the
+      // lowest-`canonicalRank` row, which may be a freshly-resolved translation
+      // that has a tmdbId but no ratings yet. A canonical-only copy then nulled
+      // the rated sibling's scores until the next rating refresh re-fetched them —
+      // the "ratings keep disappearing and coming back" flap. With the fallback,
+      // `canonical` is order-independent for enrichment, as its callers assume.
+      imdbId            = canonical.imdbId.orElse(victim.imdbId),
+      imdbRating        = canonical.imdbRating.orElse(victim.imdbRating),
+      metascore         = canonical.metascore.orElse(victim.metascore),
+      filmwebUrl        = canonical.filmwebUrl.orElse(victim.filmwebUrl),
+      filmwebRating     = canonical.filmwebRating.orElse(victim.filmwebRating),
+      rottenTomatoes    = canonical.rottenTomatoes.orElse(victim.rottenTomatoes),
+      tmdbId            = canonical.tmdbId.orElse(victim.tmdbId),
+      metacriticUrl     = canonical.metacriticUrl.orElse(victim.metacriticUrl),
+      rottenTomatoesUrl = canonical.rottenTomatoesUrl.orElse(victim.rottenTomatoesUrl),
+      searchTitle       = canonical.searchTitle.orElse(victim.searchTitle),
+      data              = mergeData(canonical.data, victim.data)
     )
 
   /** Fold a set of rows of the SAME film into one. The enriched row (the first

@@ -68,6 +68,48 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     r.head.record.cinemaData.keySet shouldBe Set(Helios, KinoMuza)
   }
 
+  it should "preserve a rated row's ratings when a cross-language duplicate folds onto it" in {
+    // The "missing & regaining ratings" flap. Since cross-language films are
+    // merged by shared tmdbId (FilmCanonicalizer.groupByFilm), a freshly-resolved
+    // but NOT-yet-rated translation duplicate ("Disclosure Day") clusters with the
+    // already-rated Polish row ("Dzień objawienia"). The canonical pick orders by
+    // `canonicalRank` → cleanTitle, so the alphabetically-earlier "Disclosure Day"
+    // becomes the union base; if the merge takes ratings ONLY from the base, the
+    // rated sibling's scores are dropped and the public card loses every rating but
+    // the IMDb link — until a later rating refresh re-fetches them (the flap).
+    val c = cache
+    // Rated Polish row (the victim): full ratings, keyed under its Polish title.
+    c.put(c.keyOf("Dzień objawienia", Some(2026)),
+      MovieRecord(
+        tmdbId = Some(1275779), imdbId = Some("tt15047880"),
+        imdbRating = Some(6.8), metascore = Some(74), rottenTomatoes = Some(80),
+        filmwebRating = Some(5.9357),
+        filmwebUrl = Some("https://www.filmweb.pl/film/Dzie%C5%84+objawienia-2026-10060793"),
+        metacriticUrl = Some("https://www.metacritic.com/movie/disclosure-day"),
+        rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/disclosure_day"),
+        data = Map[Source, SourceData](
+          (Tmdb: Source)   -> SourceData(title = Some("Dzień objawienia"), originalTitle = Some("Disclosure Day"), releaseYear = Some(2026)),
+          (Helios: Source) -> SourceData(title = Some("Dzień objawienia"), releaseYear = Some(2026)))))
+    // English-title duplicate (the canonical base): same tmdbId, just resolved,
+    // ratings not fetched yet. Its key sanitizes to a TMDB alias, so it's a bare
+    // film title and folds onto the Polish row by shared tmdbId.
+    aliasedRow(c, "Disclosure Day", KinoMuza, 2026, 1275779, "Dzień objawienia", "Disclosure Day", "Disclosure Day")
+    c.canonicalizeBySanitize()
+    val r = c.snapshot()
+    withClue(s"expected ONE merged row, got ${r.map(x => (x.title, x.year))}\n")(r.size shouldBe 1)
+    val merged = r.head.record
+    withClue(s"ratings were dropped by the cross-language merge: $merged\n") {
+      merged.imdbRating shouldBe Some(6.8)
+      merged.metascore shouldBe Some(74)
+      merged.rottenTomatoes shouldBe Some(80)
+      merged.filmwebRating shouldBe Some(5.9357)
+      merged.filmwebUrl shouldBe Some("https://www.filmweb.pl/film/Dzie%C5%84+objawienia-2026-10060793")
+      merged.metacriticUrl shouldBe Some("https://www.metacritic.com/movie/disclosure-day")
+      merged.rottenTomatoesUrl shouldBe Some("https://www.rottentomatoes.com/m/disclosure_day")
+      merged.imdbId shouldBe Some("tt15047880")
+    }
+  }
+
   it should "keep same-title rows resolved to DISTINCT tmdbIds as two separate rows" in {
     val c = cache
     resolvedRow(c, "Diuna", Helios,   1984, 100)  // the 1984 adaptation

@@ -48,6 +48,34 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
     merged.tmdbId        shouldBe Some(42)
   }
 
+  // The cross-language flap: the union base (canonical) is the lowest-canonicalRank
+  // row, which can be a freshly-resolved translation duplicate — same tmdbId, no
+  // ratings yet — while the VICTIM is the already-rated sibling. The base-only copy
+  // dropped the victim's scores until a later refresh re-fetched them. Each
+  // enrichment field must fall back to the victim when the canonical lacks it.
+  it should "fall back to the victim's enrichment fields when the canonical lacks them" in {
+    val unratedBase = MovieRecord(
+      tmdbId = Some(42),
+      data = Map[Source, SourceData](Helios -> slot("h.jpg").copy(title = Some("Disclosure Day")))
+    )
+    val rated = MovieRecord(
+      imdbId = Some("tt15047880"), imdbRating = Some(6.8), metascore = Some(74),
+      rottenTomatoes = Some(80), filmwebRating = Some(5.9),
+      filmwebUrl = Some("fw"), metacriticUrl = Some("mc"), rottenTomatoesUrl = Some("rt"),
+      tmdbId = Some(42),
+      data = Map[Source, SourceData](Multikino -> slot("m.jpg").copy(title = Some("Dzień objawienia")))
+    )
+    val merged = MovieRecordMerge.union(unratedBase, rated)
+    merged.imdbId            shouldBe Some("tt15047880")
+    merged.imdbRating        shouldBe Some(6.8)
+    merged.metascore         shouldBe Some(74)
+    merged.rottenTomatoes    shouldBe Some(80)
+    merged.filmwebRating     shouldBe Some(5.9)
+    merged.filmwebUrl        shouldBe Some("fw")
+    merged.metacriticUrl     shouldBe Some("mc")
+    merged.rottenTomatoesUrl shouldBe Some("rt")
+  }
+
   it should "preserve each row's per-cinema title and release year on the merged record" in {
     val merged = MovieRecordMerge.union(canonical, victim)
     merged.cinemaData.keySet                    shouldBe Set(Multikino, Helios)
