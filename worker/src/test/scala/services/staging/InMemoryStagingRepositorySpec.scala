@@ -1,14 +1,30 @@
 package services.staging
 
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.classic.{Level, Logger => LogbackLogger}
+import ch.qos.logback.core.read.ListAppender
 import models.{CinemaCityKinepolis, Helios, Multikino, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.slf4j.LoggerFactory
+
+import scala.jdk.CollectionConverters._
 
 class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
 
   private def slot(cinema: Source, title: String, year: Option[Int]): MovieRecord =
     MovieRecord(data = Map[Source, SourceData](
       cinema -> SourceData(title = Some(title), rawTitle = Some(title), releaseYear = year)))
+
+  /** Capture the WARN lines `body` emits from `InMemoryStagingRepository`'s logger. */
+  private def warnsDuring(body: => Unit): Seq[String] = {
+    val logger   = LoggerFactory.getLogger(classOf[InMemoryStagingRepository]).asInstanceOf[LogbackLogger]
+    val appender = new ListAppender[ILoggingEvent]
+    appender.start()
+    logger.addAppender(appender)
+    try body finally logger.detachAppender(appender)
+    appender.list.asScala.toSeq.filter(_.getLevel == Level.WARN).map(_.getFormattedMessage)
+  }
 
   "InMemoryStagingRepository" should "keep one row per (cinema, title, year) and read them back" in {
     val repository = new InMemoryStagingRepository
@@ -78,5 +94,55 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
     repository.watchUpserts(seen += _)
     repository.upsert(CinemaCityKinepolis, "Kumotry", Some(2026), slot(CinemaCityKinepolis, "Kumotry", Some(2026)))
     seen.map(r => (r.cinema, r.title, r.year)) shouldBe Seq((CinemaCityKinepolis, "Kumotry", Some(2026)))
+  }
+
+  it should "WARN when the same (cinema, sanitized title) enters staging under a second year-key" in {
+    val repository = new InMemoryStagingRepository
+    val warnings = warnsDuring {
+      repository.upsert(Helios, "Kumotry", Some(2025), slot(Helios, "Kumotry", Some(2025)))  // insert, no sibling
+      repository.upsert(Helios, "Kumotry", Some(2026), slot(Helios, "Kumotry", Some(2026)))  // insert, sibling 2025 → WARN
+    }
+    val reentry = warnings.find(_.contains("RE-ENTRY (same film + cinema)"))
+    reentry shouldBe defined
+    reentry.get should (include("kumotry|2026") and include("kumotry|2025"))
+  }
+
+  it should "NOT warn on a per-tick re-divert of an already-staged row (insert vs update)" in {
+    val repository = new InMemoryStagingRepository
+    repository.upsert(Helios, "Kumotry", Some(2026), slot(Helios, "Kumotry", Some(2026)))  // first insert
+    val warnings = warnsDuring {
+      repository.upsert(Helios, "Kumotry", Some(2026), slot(Helios, "Kumotry", Some(2026)))  // same id → update
+    }
+    warnings.filter(_.contains("RE-ENTRY")) shouldBe empty
+  }
+
+  it should "NOT warn when a different cinema stages the same title (different _id prefix)" in {
+    val repository = new InMemoryStagingRepository
+    val warnings = warnsDuring {
+      repository.upsert(Helios, "Kumotry", Some(2026), slot(Helios, "Kumotry", Some(2026)))
+      repository.upsert(Multikino, "Kumotry", Some(2026), slot(Multikino, "Kumotry", Some(2026)))
+    }
+    warnings.filter(_.contains("RE-ENTRY")) shouldBe empty
+  }
+
+  // --- pure same-film-entry helpers (shared by both repository impls) -----------
+
+  "StagingRepository.cinemaTitlePrefix" should "return the cinema|sanitize| prefix shared by year-variants" in {
+    StagingRepository.cinemaTitlePrefix("Helios|kumotry|2026") shouldBe "Helios|kumotry|"
+    StagingRepository.cinemaTitlePrefix("Helios|kumotry|")     shouldBe "Helios|kumotry|"  // yearless
+  }
+
+  "StagingRepository.sameFilmSiblings" should "match only same (cinema, sanitized title), other years" in {
+    val ids = Seq("Helios|kumotry|2025", "Helios|kumotry|2026", "Helios|kumotrze|2026", "Multikino|kumotry|2026")
+    StagingRepository.sameFilmSiblings("Helios|kumotry|2026", ids) shouldBe Seq("Helios|kumotry|2025")
+  }
+
+  "StagingRepository.duplicateEntryWarning" should "fire only on an INSERT that has same-film siblings" in {
+    val id = "Helios|kumotry|2026"
+    StagingRepository.duplicateEntryWarning(id, alreadyPresent = true,  Seq("Helios|kumotry|2025")) shouldBe None  // update
+    StagingRepository.duplicateEntryWarning(id, alreadyPresent = false, Seq.empty)                   shouldBe None  // no sibling
+    val warned = StagingRepository.duplicateEntryWarning(id, alreadyPresent = false, Seq("Helios|kumotry|2025"))
+    warned shouldBe defined
+    warned.get should (include(id) and include("Helios|kumotry|2025"))
   }
 }

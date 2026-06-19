@@ -1,6 +1,7 @@
 package services.staging
 
 import models.{MovieRecord, Source}
+import play.api.Logging
 
 import scala.collection.mutable
 
@@ -11,7 +12,7 @@ import scala.collection.mutable
  * on read exactly as the codec does, so case/diacritic variants collapse and the
  * fake differs from Mongo only at the storage boundary (a HashMap, not BSON).
  */
-class InMemoryStagingRepository(seed: Seq[(Source, String, Option[Int], MovieRecord)] = Seq.empty) extends StagingRepository {
+class InMemoryStagingRepository(seed: Seq[(Source, String, Option[Int], MovieRecord)] = Seq.empty) extends StagingRepository with Logging {
 
   // Store the REBUILT `StagingRecord` keyed by `_id`, in a `_id`-sorted map. The
   // promoter re-reads `findAll` O(films) times per staging drain, and on a
@@ -49,10 +50,16 @@ class InMemoryStagingRepository(seed: Seq[(Source, String, Option[Int], MovieRec
   }
 
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = lock.synchronized {
-    val id = StagingRecord.idFor(cinema, title, year)
+    val id       = StagingRecord.idFor(cinema, title, year)
+    val existing = store.get(id)
+    // On a fresh INSERT only, warn if the same (cinema, sanitized title) is already
+    // staged under another year-key — same detection + message as MongoStagingRepository.
+    if (existing.isEmpty)
+      StagingRepository.duplicateEntryWarning(id, alreadyPresent = false,
+        StagingRepository.sameFilmSiblings(id, store.keySet)).foreach(logger.warn(_))
     // Carry forward enrichment so a re-scrape can't blank the resolve step's
     // stamp — same rule as MongoStagingRepository (see `carryForwardEnrichment`).
-    val merged = store.get(id).map(_.record).fold(record)(StagingRepository.carryForwardEnrichment(_, record))
+    val merged = existing.map(_.record).fold(record)(StagingRepository.carryForwardEnrichment(_, record))
     val built  = put(id, merged)
     upserts.append((cinema, title, year, record))
     upsertWatcher.foreach(w => built.foreach(w))

@@ -138,6 +138,33 @@ object StagingRepository {
       searchTitle = fresh.searchTitle.orElse(existing.searchTitle),
       data        = existing.data ++ fresh.data)
 
+  /** The `cinema|sanitize(title)|` prefix every year-variant of one film at one
+   *  cinema shares — `idFor`'s output up to (and including) the final `|`. Reads
+   *  the persisted `_id`, so it's drift-proof (the title re-derived on read can
+   *  re-sanitize differently; the `_id` can't). */
+  def cinemaTitlePrefix(id: String): String = id.substring(0, id.lastIndexOf('|') + 1)
+
+  /** The `_id`s already in the store that are the SAME (cinema, sanitized title)
+   *  as `newId` — its year-variant siblings (yearless, 2025, 2026, …), excluding
+   *  `newId` itself. Compared on the `_id` prefix, not the re-derived title. */
+  def sameFilmSiblings(newId: String, existingIds: Iterable[String]): Seq[String] = {
+    val prefix = cinemaTitlePrefix(newId)
+    existingIds.iterator.filter(id => id != newId && id.startsWith(prefix)).toSeq
+  }
+
+  /** The warning to log when an `upsert` of `newId` is a fresh INSERT (the row was
+   *  `!alreadyPresent`) that joins existing same-(cinema, sanitized-title)
+   *  `siblings` — a movie with the same sanitized title + source cinema entering
+   *  `pending_movies` while another year-variant is already incubating. `None`
+   *  when it's a re-upsert of an existing row (no new entry) or there's no sibling,
+   *  so a normal per-tick re-divert stays silent. */
+  def duplicateEntryWarning(newId: String, alreadyPresent: Boolean, siblings: Seq[String]): Option[String] =
+    Option.when(!alreadyPresent && siblings.nonEmpty)(
+      s"Staging RE-ENTRY (same film + cinema): '$newId' entered pending_movies while the same " +
+        s"(cinema, sanitized title) is already staged as ${siblings.mkString(", ")} — a movie with the same " +
+        s"sanitized title and source cinema is incubating under more than one key. The fold collapses the " +
+        s"year-variants, but a recurring pair points at scrape title/year churn worth fixing at source.")
+
   /** A disabled, empty no-op `StagingRepository` — the default for callers that don't
    *  wire staging (e.g. the web `/debug` controller in tests, or any non-staging
    *  build). `findAll` is empty and writes are dropped. */
@@ -182,10 +209,27 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
   }
 
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = {
-    val id = StagingRecord.idFor(cinema, title, year)
+    val id       = StagingRecord.idFor(cinema, title, year)
+    val existing = recordAt(id)
+    // On a fresh INSERT only (not the per-tick re-divert of an existing row), warn
+    // if a movie with the same (cinema, sanitized title) is already staged under
+    // another year-key — a same-film+cinema duplicate entering pending_movies.
+    if (existing.isEmpty)
+      StagingRepository.duplicateEntryWarning(id, alreadyPresent = false, siblingIds(id)).foreach(logger.warn(_))
     // Carry forward any enrichment already on the row so a re-scrape can't blank
     // the resolve step's tmdbId/imdbId/tmdbNoMatch (see `carryForwardEnrichment`).
-    upsertId(id, recordAt(id).fold(record)(StagingRepository.carryForwardEnrichment(_, record)))
+    upsertId(id, existing.fold(record)(StagingRepository.carryForwardEnrichment(_, record)))
+  }
+
+  /** Sibling `_id`s of `id`'s (cinema, sanitized title), via an index-friendly `_id`
+   *  range over the shared `cinema|sanitize|` prefix — no collection scan, no regex
+   *  escaping. The `|` separator (0x7C) sorts after every digit + letter, so the
+   *  range can't bleed into a different film whose prefix is a superstring. */
+  private def siblingIds(id: String): Seq[String] = coll.toSeq.flatMap { c =>
+    val prefix = StagingRepository.cinemaTitlePrefix(id)
+    Try(Await.result(
+      c.find(Filters.and(Filters.gte("_id", prefix), Filters.lt("_id", prefix + "\uffff"))).toFuture(), 10.seconds))
+      .toOption.getOrElse(Seq.empty).map(_._id).filterNot(_ == id)
   }
 
   override def upsertRow(row: StagingRecord): Unit = upsertId(row.id, row.record)
