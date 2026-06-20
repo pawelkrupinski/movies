@@ -114,10 +114,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // The global-corpus /debug page (not city-scoped) — a few corpus rows to
       // populate the main #t table behind the staging table under test.
+      // Ratings are distinct so the "Ratings" column sorts by the COMBINED
+      // weighted score (MovieRecord.weightedRating), like the main page does:
+      //   Unresolved 0.0  <  Pending 6.0  <  Done 9.0.
+      // "Done Film" tops it on Metacritic+RT alone with NO imdbRating — proving
+      // the sort reads weightedRating, not the old raw-IMDb key (which was both
+      // empty here AND never matched its header, so the column never sorted).
       val debugRows = Seq(
-        StoredMovieRecord("Pending Film",    Some(2024), MovieRecord(detailPending = true, tmdbId = Some(1))),
+        StoredMovieRecord("Pending Film",    Some(2024), MovieRecord(detailPending = true, tmdbId = Some(1), imdbRating = Some(6.0))),
         StoredMovieRecord("Unresolved Film", Some(2023), MovieRecord()),
-        StoredMovieRecord("Done Film",       Some(2022), MovieRecord(tmdbId = Some(7))),
+        StoredMovieRecord("Done Film",       Some(2022), MovieRecord(tmdbId = Some(7), metascore = Some(90), rottenTomatoes = Some(90))),
       )
       // Staging (pending_movies) source rows the page FOLDS by film. "Staging
       // Film" (anchor `stagingfilm`) is reported by TWO cinemas and is at its
@@ -2912,6 +2918,25 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Re-click the same header → descending.
       page.eval("""document.querySelector('#t thead th[data-key="title"]').click()""")
       page.evalString(corpusTitles) shouldBe "Unresolved Film|Pending Film|Done Film"
+      page.evalBool(detailsAdjacent) shouldBe true
+    }
+  }
+
+  // The "Ratings" column sorts by the COMBINED weighted score (the same
+  // MovieRecord.weightedRating the main page sorts cards by), not the raw IMDb
+  // value. "Done Film" tops it on Metacritic+RT with no imdbRating at all, so a
+  // sort keyed on the old `data-imdbR` (which never matched its header anyway)
+  // could never produce this order — it asserts the real weighted-rating sort.
+  it should "sort the Ratings column by the combined weighted rating, like the main page" in {
+    onDebug { page =>
+      page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 3""")
+      // Ascending by weighted rating: 0.0, 6.0, 9.0.
+      page.eval("""document.querySelector('#t thead th[data-key="rating"]').click()""")
+      page.evalString(corpusTitles) shouldBe "Unresolved Film|Pending Film|Done Film"
+      page.evalBool(detailsAdjacent) shouldBe true
+      // Re-click → descending (highest-rated first, as the main page shows).
+      page.eval("""document.querySelector('#t thead th[data-key="rating"]').click()""")
+      page.evalString(corpusTitles) shouldBe "Done Film|Pending Film|Unresolved Film"
       page.evalBool(detailsAdjacent) shouldBe true
     }
   }

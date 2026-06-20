@@ -24,7 +24,12 @@
     data-year="@e.releaseYear.map(_.toString).getOrElse("")"
     data-imdb="@imdbId"
     data-tmdb="@e.tmdbId.map(_.toString).getOrElse("")"
-    data-imdbR="@e.imdbRating.map(_.toString).getOrElse("")"
+    @* Sort key for the "Ratings" column — the SAME combined weighted score the
+       main page sorts cards by (MovieRecord.weightedRating), not the raw IMDb
+       value. Lowercase attr name so `dataset.rating` matches the header key:
+       a `data-imdbR` is lowercased by the browser to `dataset.imdbr` and would
+       never match a `data-key="imdbR"`, so that column never actually sorted. *@
+    data-rating="@{f"${e.weightedRating}%.3f"}"
     data-urls="@{Seq(e.metacriticUrl, e.rottenTomatoesUrl, e.filmwebUrl).flatten.mkString(" ")}"
     data-cinemas="@e.cinemaData.size">
   @* The debug table is the global corpus, but /film is city-scoped — link
