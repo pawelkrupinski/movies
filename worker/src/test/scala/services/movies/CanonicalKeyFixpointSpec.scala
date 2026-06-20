@@ -116,6 +116,29 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
       .map(_.cinemaData.keySet).getOrElse(Set.empty) should contain (KinoMuranow: Cinema)
   }
 
+  "a re-scrape of a resolved film at an off-by-2 year" should
+    "keep the authoritative TMDB-derived key, not re-case it to the cinema's raw spelling" in {
+    // The real "Północ, północny zachód" (North by Northwest, tmdbId=213) flap.
+    // Its only cinema (Kino Muzeum) lists it ALL-CAPS at a 2-years-off year (1957),
+    // while TMDB resolved it as "Północ, północny zachód" / 1959. The settled row
+    // therefore keys on the properly-cased TMDB title at 1959. On the next tick the
+    // cinema's 1957 is >±1 off, so `concludedKeyFor` misses and the redirect path
+    // runs — it must NOT promote the resolved row onto the cinema's ALL-CAPS / 1957
+    // key. A resolved row's key is authoritative.
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+    cache.put(cache.keyOf("Północ, północny zachód", Some(1959)),
+      MovieRecord(tmdbId = Some(213), data = Map[Source, SourceData](
+        (Tmdb: Source)     -> SourceData(title = Some("Północ, północny zachód"), releaseYear = Some(1959)),
+        (KinoMuza: Source) -> SourceData(title = Some("PÓŁNOC, PÓŁNOCNY ZACHÓD"), releaseYear = Some(1957)))))
+
+    cache.recordCinemaScrape(KinoMuza, Seq(cm(KinoMuza, "PÓŁNOC, PÓŁNOCNY ZACHÓD", Some(1957))))
+
+    val rows = cache.snapshot().map(r => (r.title, r.year)).toSet
+    withClue(s"rows after re-scrape: $rows\n") {
+      rows shouldBe Set(("Północ, północny zachód", Some(1959)))
+    }
+  }
+
   "a settled programme-prefix film" should "be a fixpoint under an identical re-scrape" in {
     // The Plenerowe Pałacowe / Filmowy Klub Seniora shape: a decorated edition
     // some cinemas report with a year and some without.

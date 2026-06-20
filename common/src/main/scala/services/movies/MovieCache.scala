@@ -840,9 +840,23 @@ class CaffeineMovieCache(
           val key = concludedKeyFor(primary).getOrElse {
             redirectToExistingVariant(primary) match {
               case Some(existingKey) =>
-                val canonical = Seq(primary, existingKey).minBy(canonicalRank)
-                if (canonical != existingKey) rekey(existingKey, canonical, identity)
-                canonical
+                // A RESOLVED row's key is authoritative — TMDB's title + year,
+                // settled when the film concluded — so never re-key it onto a
+                // cinema's raw spelling. The promote below is for not-yet-resolved
+                // variants only (yearless→yeared, a lower year, a casing that sorts
+                // first). Without this gate, a cinema that lists a resolved film
+                // ALL-CAPS at a production year ≥2 off TMDB's release year (so
+                // `concludedKeyFor`'s ±1 window misses it) would promote the row to
+                // that all-caps / lower-year key — the "PÓŁNOC, PÓŁNOCNY ZACHÓD"
+                // (1957) re-casing of "Północ, północny zachód" (TMDB 1959). The
+                // cinema slot still merges in; only the row's own key is preserved.
+                val existingResolved = Option(positive.getIfPresent(existingKey)).exists(_.tmdbId.isDefined)
+                if (existingResolved) existingKey
+                else {
+                  val canonical = Seq(primary, existingKey).minBy(canonicalRank)
+                  if (canonical != existingKey) rekey(existingKey, canonical, identity)
+                  canonical
+                }
               case None => primary
             }
           }
