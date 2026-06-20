@@ -70,4 +70,11 @@ class CityOgImageControllerSpec extends AnyFlatSpec with Matchers {
   it should "drop films without a poster (no grey slots) and survive an empty pool" in {
     MovieController.dailyCardFilms(Seq(sched("No poster", None)), epochDay = 1, count = 5) shouldBe empty
   }
+
+  it should "cycle through the FULL repertoire, not just the first 40" in {
+    val pool = (1 to 50).map(i => sched(s"Film $i", Some(s"https://cdn/$i.jpg")))
+    // epochDay 9, count 5 → window starts at index 45, so films 46–50 show —
+    // unreachable when the pool was capped at the first 40.
+    MovieController.dailyCardFilms(pool, epochDay = 9, count = 5).map(_.movie.title) should contain ("Film 50")
+  }
 }

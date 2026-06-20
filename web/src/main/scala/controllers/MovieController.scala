@@ -964,16 +964,13 @@ object MovieController {
     }
   }
 
-  /** Size of the relevant-films pool the daily rotation cycles through. */
-  private val CardPoolSize = 40
-
   /** The `count` films to show in the city card on `epochDay`: dedup, keep the
-   *  ones with a poster, cap to the most-imminent [[CardPoolSize]], then rotate
-   *  a `count`-per-day window through that pool — so a different (and, day to
-   *  day, non-overlapping) set of posters shows each day, deterministically
-   *  (stable within a day, fresh the next). */
+   *  ones with a poster, then rotate a `count`-per-day window through the FULL
+   *  poster-bearing repertoire — so a different (and, day to day, non-overlapping)
+   *  set of posters shows each day, cycling through every film over time,
+   *  deterministically (stable within a day, fresh the next). */
   private[controllers] def dailyCardFilms(schedules: Seq[FilmSchedule], epochDay: Long, count: Int): Seq[FilmSchedule] = {
-    val pool = distinctByMovie(schedules).filter(_.posterUrl.exists(_.nonEmpty)).take(CardPoolSize)
+    val pool = distinctByMovie(schedules).filter(_.posterUrl.exists(_.nonEmpty))
     if (pool.isEmpty) Nil
     else {
       val start = Math.floorMod(epochDay * count, pool.length.toLong).toInt
