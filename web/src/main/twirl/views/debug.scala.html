@@ -255,30 +255,6 @@
   }
   sortBody.querySelectorAll('tr.details').forEach(parkDetails);
 
-  // Precomputed ASCENDING order per column key. Computing the order is the
-  // expensive half of a sort (extract every row's key + compare ~n·log n times);
-  // doing it once per column and caching means a click only reorders the DOM,
-  // and descending is just the cached ascending order reversed. Warmed at idle
-  // below so even the first click on a column is a pure reorder.
-  const ascOrderByKey = new Map();
-  function ascOrder(key, type) {
-    let order = ascOrderByKey.get(key);
-    if (order) return order;
-    const decorated = Array.from(sortBody.querySelectorAll('tr.data'), r => {
-      const raw = r.dataset[key] || '';
-      return { row: r, v: type === 'num' ? (raw === '' ? -Infinity : parseFloat(raw)) : raw };
-    });
-    if (type === 'num') {
-      decorated.sort((a, b) => a.v - b.v);
-    } else {
-      const collator = new Intl.Collator();
-      decorated.sort((a, b) => collator.compare(a.v, b.v));
-    }
-    order = decorated.map(d => d.row);
-    ascOrderByKey.set(key, order);
-    return order;
-  }
-
   table.querySelectorAll('thead th').forEach(th => {
     th.addEventListener('click', () => sortBy(th.dataset.key, th.dataset.type, th));
   });
@@ -286,29 +262,35 @@
   function sortBy(key, type, th) {
     if (!key) return;
     const prevKey = table.dataset.sortKey;
-    const prevDir = table.dataset.sortDir;
     // First click on a column sorts DESCENDING; clicking the active column again
     // toggles back to ascending.
-    const dir = (prevKey === key && prevDir === 'desc') ? 'asc' : 'desc';
-    const asc = ascOrder(key, type);
-    const ordered = dir === 'asc' ? asc : asc.slice().reverse();
+    const dir = (prevKey === key && table.dataset.sortDir === 'desc') ? 'asc' : 'desc';
+    const sign = dir === 'asc' ? 1 : -1;
 
-    // Reorder OFF-document: detach the tbody first so the whole thing reflows
-    // once on reattach. Only EXPANDED rows have a details sibling in the tbody to
-    // carry along — collapsed details are parked off-DOM, so the sort moves just
-    // the light data rows (the bulk of the old cost was dragging every heavy
-    // collapsed details subtree through the reorder).
-    const parent = sortBody.parentNode;
-    const next = sortBody.nextSibling;
-    parent.removeChild(sortBody);
+    // Sorting the corpus is ~1ms; the cost of a sort is the DOM reorder, which is
+    // why the heavy details rows are parked off-DOM (above) and only the light
+    // data rows are moved here. So just compare against the data-* keys directly.
+    const rows = Array.from(sortBody.querySelectorAll('tr.data'));
+    const collator = type === 'num' ? null : new Intl.Collator();
+    rows.sort((a, b) => {
+      const av = a.dataset[key] || '', bv = b.dataset[key] || '';
+      if (type === 'num') {
+        const an = av === '' ? -Infinity : parseFloat(av);
+        const bn = bv === '' ? -Infinity : parseFloat(bv);
+        return sign * (an - bn);
+      }
+      return sign * collator.compare(av, bv);
+    });
+
+    // Re-attach in order through a fragment (one reflow). Only an EXPANDED row
+    // has a details sibling in the tbody to carry along.
     const frag = document.createDocumentFragment();
-    ordered.forEach(r => {
+    rows.forEach(r => {
       frag.appendChild(r);
       const details = detailsById.get(r.dataset.rowId);
       if (details && !details.classList.contains('hidden')) frag.appendChild(details);
     });
     sortBody.appendChild(frag);
-    parent.insertBefore(sortBody, next);
 
     table.dataset.sortKey = key;
     table.dataset.sortDir = dir;
@@ -318,11 +300,6 @@
     arrow.textContent = dir === 'asc' ? '▲' : '▼';
     th.appendChild(arrow);
   }
-
-  // Warm the per-column order cache when the browser is idle, so the user's
-  // first click on any column is a pure DOM reorder with no sort cost.
-  const warm = () => table.querySelectorAll('thead th[data-key]').forEach(th => ascOrder(th.dataset.key, th.dataset.type));
-  if ('requestIdleCallback' in window) requestIdleCallback(warm); else setTimeout(warm, 0);
 
   document.getElementById('q').focus();
 
