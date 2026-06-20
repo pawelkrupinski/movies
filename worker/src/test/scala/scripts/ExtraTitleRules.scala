@@ -100,7 +100,13 @@ object ExtraTitleRules {
     prog("xtra-pp-najlepsze-z-najgorszych", """(?i)^Najlepsze\s+z\s+najgorszych:\s+""",      "'Najlepsze z najgorszych:' bad-movie-night cycle — global so it covers Kosmos/Mikro/NCKF, not just the muza per-cinema seed rule (Sarnie żniwo, Brudny Henryk)"),
     prog("xtra-pp-czlowiek-na-planie", """(?iu)^Człowiek\s+na\s+pierwszym\s+planie:\s+""",   "'Człowiek na pierwszym planie:' Światowid cycle (Takie jest życie)"),
     prog("xtra-pp-meskie-kino",        """(?iu)^Męskie\s+Kino[^:]*:\s+""",                   "'Męskie Kino [na Dzień Ojca]:' cycle (Czas Apokalipsy)"),
-    prog("xtra-pp-kobieta-pelna-zycia", """(?iu)^Kobieta\s+Pełna\s+Życia:\s+""",             "'Kobieta Pełna Życia:' Fregata cycle (Książę)")
+    prog("xtra-pp-kobieta-pelna-zycia", """(?iu)^Kobieta\s+Pełna\s+Życia:\s+""",             "'Kobieta Pełna Życia:' Fregata cycle (Książę)"),
+    // Fifth-wave (2026-06-20) audit of the TMDB-no-match corpus: a dated
+    // summer-screenings strand that prefixes ~8 well-rated classics, each its own
+    // outdoor screening (own display row, query stripped to the bare film). The
+    // trailing '(1984)' the series glues on stays in the query — TMDB resolves it
+    // fine, same as the existing 'Noce Cabirii (1957)' search case.
+    prog("xtra-pp-kino-letnie",        """(?iu)^KINO\s+LETNIE\s+\d{4}:\s+""",                "'KINO LETNIE 2026:' summer-cinema strand (Amadeusz, Requiem dla snu, Rambo, Norymberga, Dom Dobry, Przekleństwa niewinności, Jedna bitwa po drugiej)")
   )
 
   /** Strips that fix enrichment without merging the row away — a premiere or a
@@ -166,7 +172,29 @@ object ExtraTitleRules {
     searchStrip("xtra-wtorek-seniora-suffix",      """(?i)\s*\|\s*Wtorek\s+Seniora\s*$""",            "'<film> | Wtorek Seniora' senior-screening suffix (Ojczyzna)"),
     searchStrip("xtra-fks-suffix",                 """(?iu)\s*[|_]\s*FKS\s*$""",                      "'<film>_FKS' / '<film> | FKS' Filmowy Klub Seniora suffix (Takie jest życie, 500 Mil, Posłani)"),
     searchStrip("xtra-pokazy-specjalne-suffix",    """(?i)\s*[-–—|]\s*pokazy\s+specjalne\s*$""",      "'<film> - pokazy specjalne' suffix (the xtra-pokaz-suffix rule's pokaz\\b can't match the 'pokazy' plural) (Milczenie owiec)"),
-    searchStrip("xtra-wakacje-z-dokumentem-suffix", """(?i)\s*\|\s*Wakacje\s+z\s+dokumentem\s*$""",   "'<film> | Wakacje z dokumentem' documentary-strand suffix (Silver)")
+    searchStrip("xtra-wakacje-z-dokumentem-suffix", """(?i)\s*\|\s*Wakacje\s+z\s+dokumentem\s*$""",   "'<film> | Wakacje z dokumentem' documentary-strand suffix (Silver)"),
+    // Fifth-wave (2026-06-20) audit of the TMDB-no-match corpus.
+    // A Ukrainian-language screening is a DISTINCT version (separate audience), so
+    // — exactly like the canonical UA exclusion below — it must KEEP its own row
+    // and merge key. But a query-only strip still lets it resolve the base film's
+    // TMDB id/poster/ratings: '<film> ukraiński dubbing' → '<film>'. Covers the
+    // bare-space, dot ('Straszny film. Ukrainian dubbing') and parenthesised
+    // ('… (ukraiński dubbing)') shapes, and the English 'ukrainian' spelling. ~7
+    // major films × the Cinema City network (Toy Story 5, Spider-Man, Odyseja,
+    // Minionki i straszydła, Dzień objawienia, Straszny film).
+    searchStrip("xtra-ukrainski-lang-suffix",      """(?iu)\s*[.(\s]\s*(?:ukrai[ńn]ski|ukrainian)\s+(?:dubbing|napisy|lektor)\s*\)?\s*$""", "'<film> [.( ]ukraiński/ukrainian dubbing/napisy/lektor' UA-version marker — query-only strip so the row stays its own (matching the canonical UA exclusion) but resolves the base film"),
+    // '<film> reż. <director>' / '<film> reżyseria: <director>' authorship tag
+    // appended by a few art-house venues; query-only strip resolves the bare film
+    // (Perfect Days, Droga do Vermiglio, Za duży na bajki 3). Anchored on a
+    // separator + a following name so a real title can't be amputated.
+    searchStrip("xtra-rezyseria-suffix",           """(?iu)\s+re[zż](?:yseria)?\s*[.:]\s+\S.*$""", "'<film> reż. / reżyseria: <director>' authorship suffix (Perfect Days, Droga do Vermiglio, Za duży na bajki 3)"),
+    // Bare 'DKF - ' / 'DKF: ' film-club prefix (no club name) — the existing
+    // 'xtra-pp-dkf-named' only matches 'DKF <name>: ', so a clubless 'DKF: <film>'
+    // / 'DKF - <film>' never stripped. Query-only (Drugie życie, Czytając Lolitę
+    // w Teheranie). Anchored so 'DKF Kropka: …' still falls to the named prog rule.
+    searchStrip("xtra-dkf-bare-prefix",            """(?iu)^DKF\s*[-–—:]\s+""",                  "'DKF - / DKF: <film>' clubless film-club prefix (Drugie życie, Czytając Lolitę w Teheranie)"),
+    searchStrip("xtra-filmowy-klub-seniora-dash",  """(?iu)^Filmowy\s+Klub\s+Seniora\s*[-–—]\s+""", "'Filmowy Klub Seniora - <film>' dash variant of the seed senior-club banner (Drugie życie)"),
+    searchStrip("xtra-filozoficzny-klub-suffix",   """(?iu)\s*\|\s*Filozoficzny\s+Klub\s+Filmowy\s*$""", "'<film> | Filozoficzny Klub Filmowy' film-club suffix — sibling of the existing 'Klub Filmowy <name>:' prefix (Tajny agent)")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in

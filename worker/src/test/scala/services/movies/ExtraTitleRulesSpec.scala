@@ -59,7 +59,11 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Najlepsze z najgorszych: Sarnie żniwo"           -> ("Najlepsze z najgorszych: ",         "Sarnie żniwo"),
     "CZŁOWIEK NA PIERWSZYM PLANIE: Takie jest życie"  -> ("CZŁOWIEK NA PIERWSZYM PLANIE: ",     "Takie jest życie"),
     "Męskie Kino na Dzień Ojca: Czas Apokalipsy"      -> ("Męskie Kino na Dzień Ojca: ",       "Czas Apokalipsy"),
-    "Kobieta Pełna Życia: Książę"                     -> ("Kobieta Pełna Życia: ",             "Książę")
+    "Kobieta Pełna Życia: Książę"                     -> ("Kobieta Pełna Życia: ",             "Książę"),
+    // Fifth-wave (2026-06-20) dated summer-cinema strand. The trailing '(1984)'
+    // is a Canonical-only strip, so it stays in the query — TMDB resolves it.
+    "KINO LETNIE 2026: Amadeusz (1984)"               -> ("KINO LETNIE 2026: ",                "Amadeusz (1984)"),
+    "KINO LETNIE 2026: Requiem dla snu (2000)"        -> ("KINO LETNIE 2026: ",                "Requiem dla snu (2000)")
   )
 
   "ExtraTitleRules programme prefixes" should "extract the banner for the display row" in {
@@ -155,7 +159,24 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Takie jest życie_FKS"                                     -> "Takie jest życie",
     "Posłani | FKS"                                            -> "Posłani",
     "Milczenie owiec - pokazy specjalne"                       -> "Milczenie owiec",
-    "Silver | Wakacje z dokumentem"                            -> "Silver"
+    "Silver | Wakacje z dokumentem"                            -> "Silver",
+    // Fifth-wave (2026-06-20) audit of the TMDB-no-match corpus.
+    // Ukrainian-language version markers (bare-space, dot, parenthesised, and the
+    // English 'ukrainian' spelling). Query-only strip — the row stays its own (the
+    // canonical UA exclusion below keeps the key) but resolves the base film.
+    "Toy Story 5 ukraiński dubbing"                            -> "Toy Story 5",
+    "Odyseja ukraiński dubbing"                                -> "Odyseja",
+    "Straszny film. Ukrainian dubbing"                         -> "Straszny film",
+    "Minionki i straszydła (ukraiński dubbing)"                -> "Minionki i straszydła",
+    // 'reż. / reżyseria: <director>' authorship suffix.
+    "Perfect Days reż. Wim Wenders"                            -> "Perfect Days",
+    "Droga do Vermiglio reż. Maura Delpero"                    -> "Droga do Vermiglio",
+    "Za duży na bajki 3 reżyseria: Kristoffer Rus"             -> "Za duży na bajki 3",
+    // Clubless 'DKF - / DKF:' prefix + the 'Filmowy Klub Seniora -' dash variant.
+    "DKF - Drugie życie"                                       -> "Drugie życie",
+    "DKF: Czytając Lolitę w Teheranie"                         -> "Czytając Lolitę w Teheranie",
+    "Filmowy Klub Seniora - Drugie życie"                      -> "Drugie życie",
+    "Tajny agent | Filozoficzny Klub Filmowy"                  -> "Tajny agent"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
