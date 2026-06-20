@@ -50,7 +50,16 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "KMW: Kurozając i świątynia Świstaka"             -> ("KMW: ",                             "Kurozając i świątynia Świstaka"),
     "KF Ambasada: Hannah i jej siostry"               -> ("KF Ambasada: ",                     "Hannah i jej siostry"),
     "KF Ambasada: Trzy kolory: Czerwony"              -> ("KF Ambasada: ",                     "Trzy kolory: Czerwony"),
-    "Seans filmowy dla rodziców: Ojczyzna"            -> ("Seans filmowy dla rodziców: ",      "Ojczyzna")
+    "Seans filmowy dla rodziców: Ojczyzna"            -> ("Seans filmowy dla rodziców: ",      "Ojczyzna"),
+    // Fourth-wave (2026-06-20) club / audience programme prefixes.
+    "Kino seniora: Takie jest życie"                  -> ("Kino seniora: ",                    "Takie jest życie"),
+    "Fregata dla Seniorów: Ojczyzna"                  -> ("Fregata dla Seniorów: ",            "Ojczyzna"),
+    "Janosik Dzieciom: Minionki i straszydła"         -> ("Janosik Dzieciom: ",                "Minionki i straszydła"),
+    "Janosik Szkrabom: Reksio i paw"                  -> ("Janosik Szkrabom: ",                "Reksio i paw"),
+    "Najlepsze z najgorszych: Sarnie żniwo"           -> ("Najlepsze z najgorszych: ",         "Sarnie żniwo"),
+    "CZŁOWIEK NA PIERWSZYM PLANIE: Takie jest życie"  -> ("CZŁOWIEK NA PIERWSZYM PLANIE: ",     "Takie jest życie"),
+    "Męskie Kino na Dzień Ojca: Czas Apokalipsy"      -> ("Męskie Kino na Dzień Ojca: ",       "Czas Apokalipsy"),
+    "Kobieta Pełna Życia: Książę"                     -> ("Kobieta Pełna Życia: ",             "Książę")
   )
 
   "ExtraTitleRules programme prefixes" should "extract the banner for the display row" in {
@@ -133,7 +142,20 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Opętanie – pokaz specjalny na 60. Urodziny kina zamek"    -> "Opętanie",
     "Mistrzynie | POKAZ PRZEDPREMIEROWY"                       -> "Mistrzynie",
     "Lawa – Tadeusz Konwicki"                                  -> "Lawa",
-    "Brzezina - Andrzej Wajda o filmie"                        -> "Brzezina"
+    "Brzezina - Andrzej Wajda o filmie"                        -> "Brzezina",
+    // Fourth-wave (2026-06-20) director DOT prefixes + cross-cinema decoration suffixes.
+    "Fellini. Giulietta i duchy"                               -> "Giulietta i duchy",
+    "Fellini. Noce Cabirii | KF Ambasada"                      -> "Noce Cabirii",
+    "Fellini. Wałkonie"                                        -> "Wałkonie",
+    "Hosoda. Wilcze dzieci"                                    -> "Wilcze dzieci",
+    "Hosoda. Summer Wars"                                      -> "Summer Wars",
+    "Konwicki. Ostatni dzień lata"                             -> "Ostatni dzień lata",
+    "Konwicki. Salto"                                          -> "Salto",
+    "Ojczyzna | Wtorek Seniora"                                -> "Ojczyzna",
+    "Takie jest życie_FKS"                                     -> "Takie jest życie",
+    "Posłani | FKS"                                            -> "Posłani",
+    "Milczenie owiec - pokazy specjalne"                       -> "Milczenie owiec",
+    "Silver | Wakacje z dokumentem"                            -> "Silver"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {

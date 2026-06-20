@@ -85,7 +85,16 @@ object ExtraTitleRules {
     prog("xtra-pp-skocz-z-bajtlem",    """(?i)^Skocz\s+z\s+Bajtlem\s+do\s+kina:\s+""",      "'Skocz z Bajtlem do kina:' programme prefix (Ojczyzna, Drugie życie)"),
     prog("xtra-pp-kmw",                """(?i)^KMW:\s+""",                                  "'KMW:' Kino Małego Widza kids-strand prefix"),
     prog("xtra-pp-kf-klub",            """(?i)^KF\s+[^:]+:\s+""",                           "'KF <klub>:' film-club prefix (KF Ambasada: Hannah i jej siostry)"),
-    prog("xtra-pp-seans-dla-rodzicow", """(?i)^Seans\s+filmowy\s+dla\s+rodziców:\s+""",      "'Seans filmowy dla rodziców:' parents'-screening prefix")
+    prog("xtra-pp-seans-dla-rodzicow", """(?i)^Seans\s+filmowy\s+dla\s+rodziców:\s+""",      "'Seans filmowy dla rodziców:' parents'-screening prefix"),
+    // Fourth-wave (2026-06-20) audit of the rating-less corpus: club / audience
+    // programme banners that prefix the film (own display row, query stripped).
+    prog("xtra-pp-kino-seniora-colon", """(?i)^Kino\s+seniora:\s+""",                        "'Kino seniora:' colon variant of the existing pipe form (Takie jest życie)"),
+    prog("xtra-pp-fregata-seniorow",   """(?iu)^Fregata\s+dla\s+Seniorów:\s+""",             "'Fregata dla Seniorów:' senior strand (Ojczyzna)"),
+    prog("xtra-pp-janosik-kids",       """(?i)^Janosik\s+(?:Dzieciom|Szkrabom):\s+""",       "'Janosik Dzieciom/Szkrabom:' kids strands (Minionki i straszydła)"),
+    prog("xtra-pp-najlepsze-z-najgorszych", """(?i)^Najlepsze\s+z\s+najgorszych:\s+""",      "'Najlepsze z najgorszych:' bad-movie-night cycle — global so it covers Kosmos/Mikro/NCKF, not just the muza per-cinema seed rule (Sarnie żniwo, Brudny Henryk)"),
+    prog("xtra-pp-czlowiek-na-planie", """(?iu)^Człowiek\s+na\s+pierwszym\s+planie:\s+""",   "'Człowiek na pierwszym planie:' Światowid cycle (Takie jest życie)"),
+    prog("xtra-pp-meskie-kino",        """(?iu)^Męskie\s+Kino[^:]*:\s+""",                   "'Męskie Kino [na Dzień Ojca]:' cycle (Czas Apokalipsy)"),
+    prog("xtra-pp-kobieta-pelna-zycia", """(?iu)^Kobieta\s+Pełna\s+Życia:\s+""",             "'Kobieta Pełna Życia:' Fregata cycle (Książę)")
   )
 
   /** Strips that fix enrichment without merging the row away — a premiere or a
@@ -138,7 +147,20 @@ object ExtraTitleRules {
     searchStrip("xtra-kntj-suffix",                """(?i)\s*[-–—]\s*KNTJ\s*$""",                     "'<film> - KNTJ' cross-cinema strand suffix"),
     searchStrip("xtra-pokaz-suffix",               """(?i)\s*[-–—|]\s*pokaz\b.*$""",                  "'<film> - / | pokaz <specjalny|przedpremierowy|+ dyskusja…>' event suffix"),
     searchStrip("xtra-tadeusz-konwicki-suffix",    """(?i)\s*[-–—]\s*tadeusz\s+konwicki\b.*$""",      "'<film> – Tadeusz Konwicki / 100. rocznica urodzin' suffix"),
-    searchStrip("xtra-wajda-o-filmie-suffix",      """(?i)\s*[-–—]\s*Andrzej\s+Wajda\s+o\s+filmie\s*$""", "'<film> - Andrzej Wajda o filmie' suffix (Brzezina)")
+    searchStrip("xtra-wajda-o-filmie-suffix",      """(?i)\s*[-–—]\s*Andrzej\s+Wajda\s+o\s+filmie\s*$""", "'<film> - Andrzej Wajda o filmie' suffix (Brzezina)"),
+    // Fourth-wave (2026-06-20) audit of the rating-less corpus.
+    // Director-retrospective DOT prefixes ('<Director>. <film>'), siblings of the
+    // existing 'Wajda.' / 'Konwicki:' rules; each merges into an already-RATED row.
+    searchStrip("xtra-fellini-dot-prefix",         """(?iu)^Fellini\.\s+""",                          "'Fellini. <film>' retrospective prefix (Giulietta i duchy, Głos z księżyca, Noce Cabirii, Wałkonie — all rated)"),
+    searchStrip("xtra-hosoda-dot-prefix",          """(?iu)^Hosoda\.\s+""",                           "'Hosoda. <film>' Mamoru Hosoda retrospective prefix (Wilcze dzieci rated; Summer Wars, Belle, Scarlet)"),
+    searchStrip("xtra-konwicki-dot-prefix",        """(?iu)^Konwicki\.\s+""",                         "'Konwicki. <film>' DOT variant of the existing colon prefix (Ostatni dzień lata, Salto, Lawa)"),
+    // Cross-cinema decoration suffixes (banner after the film); query-only strip.
+    // ('+ prelekcja' / '+ wstęp' is already stripped by the seed PlusSuffix rule.)
+    searchStrip("xtra-kf-klub-suffix",             """(?i)\s*\|\s*KF\s+\S.*$""",                      "'<film> | KF <klub>' film-club suffix (Fellini. Noce Cabirii | KF Ambasada)"),
+    searchStrip("xtra-wtorek-seniora-suffix",      """(?i)\s*\|\s*Wtorek\s+Seniora\s*$""",            "'<film> | Wtorek Seniora' senior-screening suffix (Ojczyzna)"),
+    searchStrip("xtra-fks-suffix",                 """(?iu)\s*[|_]\s*FKS\s*$""",                      "'<film>_FKS' / '<film> | FKS' Filmowy Klub Seniora suffix (Takie jest życie, 500 Mil, Posłani)"),
+    searchStrip("xtra-pokazy-specjalne-suffix",    """(?i)\s*[-–—|]\s*pokazy\s+specjalne\s*$""",      "'<film> - pokazy specjalne' suffix (the xtra-pokaz-suffix rule's pokaz\\b can't match the 'pokazy' plural) (Milczenie owiec)"),
+    searchStrip("xtra-wakacje-z-dokumentem-suffix", """(?i)\s*\|\s*Wakacje\s+z\s+dokumentem\s*$""",   "'<film> | Wakacje z dokumentem' documentary-strand suffix (Silver)")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in
