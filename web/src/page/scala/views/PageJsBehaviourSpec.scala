@@ -2958,6 +2958,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "defer SSE frames until flush and coalesce repeats by id" in {
     onDebug { page =>
       page.waitFor("""document.querySelectorAll('#staging-folded tr.data').length === 2""")
+      // Neutralise the wall-clock auto-flush so the "deferred" assertion below is
+      // deterministic: otherwise, if the CDP round-trips between buffering and the
+      // check exceed SSE_FLUSH_MS (e.g. under load), the real timer flushes early
+      // and the count is 3, not 2 — a flake. We drive the flush explicitly instead.
+      page.eval("""scheduleSseFlush = function () {};""")
       val src = """<tr class="data" hidden data-row-id="X|buffered|2099" data-anchor="buffered" data-cinema="C" data-title="Buffered" data-year="2099" data-detail-done="false" data-tmdb-done="false" data-imdb-done="false"></tr>"""
       val frame = s"""applySse(JSON.stringify({type:'staging-upsert', id:'X|buffered|2099', html:${Json.stringify(Json.toJson(src))}}));"""
       // Two frames for the same id arrive — nothing is applied yet (deferred).
