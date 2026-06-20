@@ -2898,8 +2898,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // Clicking a corpus-table (#t) column header sorts the data rows by that
   // column's data-* key, and EACH data row's collapsed details sibling must be
   // re-attached immediately after it (the sort relocates pairs, not lone rows).
-  // The fixture corpus is Pending/Unresolved/Done Film; by title ascending that
-  // is Done, Pending, Unresolved, and a second click reverses it.
+  // The fixture corpus is Pending/Unresolved/Done Film; the FIRST click sorts
+  // descending, so by title that is Unresolved, Pending, Done, and a second
+  // click reverses it to ascending.
   private val corpusTitles = """[...document.querySelectorAll('#t tbody tr.data')].map(r => r.dataset.title).join('|')"""
   // Every data row is immediately followed by its OWN details row (same rowId).
   private val detailsAdjacent =
@@ -2912,12 +2913,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onDebug { page =>
       page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 3""")
       page.evalBool(detailsAdjacent) shouldBe true // intact before any sort
-      page.eval("""document.querySelector('#t thead th[data-key="title"]').click()""")
-      page.evalString(corpusTitles) shouldBe "Done Film|Pending Film|Unresolved Film"
-      page.evalBool(detailsAdjacent) shouldBe true
-      // Re-click the same header → descending.
+      // First click → descending.
       page.eval("""document.querySelector('#t thead th[data-key="title"]').click()""")
       page.evalString(corpusTitles) shouldBe "Unresolved Film|Pending Film|Done Film"
+      page.evalBool(detailsAdjacent) shouldBe true
+      // Re-click the same header → ascending.
+      page.eval("""document.querySelector('#t thead th[data-key="title"]').click()""")
+      page.evalString(corpusTitles) shouldBe "Done Film|Pending Film|Unresolved Film"
       page.evalBool(detailsAdjacent) shouldBe true
     }
   }
@@ -2930,13 +2932,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "sort the Ratings column by the combined weighted rating, like the main page" in {
     onDebug { page =>
       page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 3""")
-      // Ascending by weighted rating: 0.0, 6.0, 9.0.
-      page.eval("""document.querySelector('#t thead th[data-key="rating"]').click()""")
-      page.evalString(corpusTitles) shouldBe "Unresolved Film|Pending Film|Done Film"
-      page.evalBool(detailsAdjacent) shouldBe true
-      // Re-click → descending (highest-rated first, as the main page shows).
+      // First click → descending by weighted rating (highest first: 9.0, 6.0,
+      // 0.0), as the main page shows.
       page.eval("""document.querySelector('#t thead th[data-key="rating"]').click()""")
       page.evalString(corpusTitles) shouldBe "Done Film|Pending Film|Unresolved Film"
+      page.evalBool(detailsAdjacent) shouldBe true
+      // Re-click → ascending (0.0, 6.0, 9.0).
+      page.eval("""document.querySelector('#t thead th[data-key="rating"]').click()""")
+      page.evalString(corpusTitles) shouldBe "Unresolved Film|Pending Film|Done Film"
       page.evalBool(detailsAdjacent) shouldBe true
     }
   }

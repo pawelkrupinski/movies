@@ -226,47 +226,65 @@
   document.querySelectorAll('#t tbody tr.data').forEach(wireRow);
 
   const table = document.getElementById('t');
+  const sortBody = table.tBodies[0];
+
+  // Each data row's collapsed details sibling, indexed once — the DOM identity
+  // is stable for the page's life, so we never rescan the tbody to find it.
+  const detailsById = new Map();
+  sortBody.querySelectorAll('tr.details').forEach(d => detailsById.set(d.dataset.rowId, d));
+
+  // Precomputed ASCENDING order per column key. Computing the order is the
+  // expensive half of a sort (extract every row's key + compare ~n·log n times);
+  // doing it once per column and caching means a click only reorders the DOM,
+  // and descending is just the cached ascending order reversed. Warmed at idle
+  // below so even the first click on a column is a pure reorder.
+  const ascOrderByKey = new Map();
+  function ascOrder(key, type) {
+    let order = ascOrderByKey.get(key);
+    if (order) return order;
+    const decorated = Array.from(sortBody.querySelectorAll('tr.data'), r => {
+      const raw = r.dataset[key] || '';
+      return { row: r, v: type === 'num' ? (raw === '' ? -Infinity : parseFloat(raw)) : raw };
+    });
+    if (type === 'num') {
+      decorated.sort((a, b) => a.v - b.v);
+    } else {
+      const collator = new Intl.Collator();
+      decorated.sort((a, b) => collator.compare(a.v, b.v));
+    }
+    order = decorated.map(d => d.row);
+    ascOrderByKey.set(key, order);
+    return order;
+  }
+
   table.querySelectorAll('thead th').forEach(th => {
     th.addEventListener('click', () => sortBy(th.dataset.key, th.dataset.type, th));
   });
 
   function sortBy(key, type, th) {
     if (!key) return;
-    const tbody = table.tBodies[0];
-    // Sort by data row, then move each row's details sibling alongside.
-    const dataRows = Array.from(tbody.querySelectorAll('tr.data'));
     const prevKey = table.dataset.sortKey;
-    const prevDir = table.dataset.sortDir || 'asc';
-    const dir = (prevKey === key && prevDir === 'asc') ? 'desc' : 'asc';
-    const sign = dir === 'asc' ? 1 : -1;
+    const prevDir = table.dataset.sortDir;
+    // First click on a column sorts DESCENDING; clicking the active column again
+    // toggles back to ascending.
+    const dir = (prevKey === key && prevDir === 'desc') ? 'asc' : 'desc';
+    const asc = ascOrder(key, type);
+    const ordered = dir === 'asc' ? asc : asc.slice().reverse();
 
-    // Decorate-sort-undecorate: read each row's key from the DOM ONCE (O(n)),
-    // not on every comparison (which was ~n·log n dataset reads + parseFloats —
-    // the real cost on a multi-thousand-row corpus). The comparator below only
-    // touches plain numbers/strings already extracted into `decorated`.
-    const decorated = dataRows.map(r => {
-      const raw = r.dataset[key] || '';
-      return { row: r, v: type === 'num' ? (raw === '' ? -Infinity : parseFloat(raw)) : raw };
-    });
-    if (type === 'num') {
-      decorated.sort((a, b) => sign * (a.v - b.v));
-    } else {
-      const collator = new Intl.Collator();
-      decorated.sort((a, b) => sign * collator.compare(a.v, b.v));
-    }
-    const sortedRows = decorated.map(d => d.row);
-
-    // Index details rows by id once (O(n)) instead of re-scanning the tbody per
-    // row (O(n²)), and re-attach into a fragment so the reflow happens once.
-    const detailsById = new Map();
-    tbody.querySelectorAll('tr.details').forEach(d => detailsById.set(d.dataset.rowId, d));
+    // Reorder OFF-document: detach the tbody first so moving every row + its
+    // details sibling into place costs a single reflow on reattach, not one per
+    // node on the live tree.
+    const parent = sortBody.parentNode;
+    const next = sortBody.nextSibling;
+    parent.removeChild(sortBody);
     const frag = document.createDocumentFragment();
-    sortedRows.forEach(r => {
+    ordered.forEach(r => {
       frag.appendChild(r);
       const details = detailsById.get(r.dataset.rowId);
       if (details) frag.appendChild(details);
     });
-    tbody.appendChild(frag);
+    sortBody.appendChild(frag);
+    parent.insertBefore(sortBody, next);
 
     table.dataset.sortKey = key;
     table.dataset.sortDir = dir;
@@ -276,6 +294,11 @@
     arrow.textContent = dir === 'asc' ? '▲' : '▼';
     th.appendChild(arrow);
   }
+
+  // Warm the per-column order cache when the browser is idle, so the user's
+  // first click on any column is a pure DOM reorder with no sort cost.
+  const warm = () => table.querySelectorAll('thead th[data-key]').forEach(th => ascOrder(th.dataset.key, th.dataset.type));
+  if ('requestIdleCallback' in window) requestIdleCallback(warm); else setTimeout(warm, 0);
 
   document.getElementById('q').focus();
 
