@@ -60,7 +60,7 @@ primary_region = 'arn'
   # No KINOWO_SCRAPE_CITIES: the worker now scrapes EVERY modelled city by
   # default (ScrapeCities.allCities). The var still exists as a load-shedding
   # escape hatch — `fly secrets set KINOWO_SCRAPE_CITIES=poznan,wroclaw` NARROWS
-  # the set — but the steady state is all ~19 cities on 2 shared vCPUs / 1 GB.
+  # the set — but the steady state is all ~19 cities on 4 shared vCPUs / 2 GB.
   # Watch this worker's RSS/CPU: if it throttles or OOMs, narrow via the secret
   # or bump the [[vm]] (see below).
   # Per-app JVM sizing (moved out of the shared Dockerfile), tuned for memory on
@@ -117,32 +117,25 @@ primary_region = 'arn'
     type = 'http'
 
 [[vm]]
-  # 2 shared vCPUs / 1 GB. 2x is MEASURED steady-state-adequate (real scrape load is
-  # ~10/min ≈ 300 cinemas / 30-min TTL — the "~200/min" once feared was a metrics
-  # artifact: `rate(tasks_enqueued{ScrapeCinema})` double-counts deduped re-attempts
-  # ~11×; filter to result="added"). The recurring credit-floor pin was never a
-  # demand problem — it was a metastable DEADLOCK: a one-time burst (deploy re-key
-  # cohort / morning boot storm) drains credit, then throttled scrapes (~20s vs ~3s)
-  # keep the queue full so the pool never idles to rebuild credit, and restarts
-  # don't fix it (the boot storm re-drains). We BRIEFLY ran 4x/2 GB on 2026-06-20 to
-  # break a live pin, then reverted to 2x once the durable auto-recovery landed:
-  # `ScrapeThrottleMonitor` watches ScrapeCinema handler durations and, while
-  # throttled, tells ALL the reapers — scrape (KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_
-  # PER_TICK) AND ratings/detail/tmdb-retry (KINOWO_THROTTLED_ENQUEUE_PER_TICK) — to
-  # back off enqueue to a trickle, so the WHOLE pipeline quiets, the pool idles, and
-  # credit rebuilds, then full enqueue resumes. (Scrape-only backoff wasn't enough:
-  # the rating sweep kept the pool busy so credit never recovered — measured
-  # 2026-06-20.) With that self-heal, 2x holds.
+  # 4 shared vCPUs / 2 GB. 2x is steady-state-adequate (real scrape load ~10/min ≈
+  # 300 cinemas / 30-min TTL; the "~200/min" once feared was a metrics artifact —
+  # `rate(tasks_enqueued{ScrapeCinema})` double-counts deduped re-attempts ~11×,
+  # filter to result="added"), and the all-reaper credit watchdog DOES break the
+  # metastable deadlock on 2x (measured: credit climbs 1→7k once the whole pipeline
+  # backs off). BUT on 2x the cap is only ~8k, so the band sits low and a rating
+  # sweep landing right after a resume could still drain credit to the floor (the
+  # 4922→1 sawtooth). 4x lifts the credit ceiling to ~19k and 4× the accrual rate,
+  # so credit rarely dips into the band at all — the watchdog becomes a deep safety
+  # net rather than a constant control loop, and freshness doesn't lag during peaks.
   #
-  # If a pin somehow recurs at 2x WITH the watchdog active (check the
-  # "CPU-credit throttle … backing off" reaper logs fire), the next levers are:
-  # raise KINOWO_SCRAPE_FRESHNESS_MINUTES (less write volume), temporarily `fly scale
-  # vm shared-cpu-4x` to drain + rebuild then scale back, or go performance-2x
-  # (dedicated, no credit throttle). The OTHER throttle mode is MONGO's shared-cpu
-  # credit under scrape WRITE volume — bumping the worker can't fix that one.
-  # Memory: under all-cities load RSS once crept to ~890 MB / 1 GB and OOM-restarted;
-  # the SerialGC + glibc-arena + Xmx320m tuning in [env] above is the fix. If it OOMs
-  # again, bump to memory = '2048mb'.
-  memory = '1gb'
+  # The self-heal stays wired regardless: `ScrapeThrottleMonitor` (in-process
+  # scrape-duration backstop) + the EXTERNAL Grafana credit gate (fly_instance_cpu_
+  # balance < 6000 → /throttle webhook, recover > 12000 — band SCALED to the ~19k 4x
+  # cap; on 2x it was 2500/5000 for the ~8k cap) tell ALL reapers to back off to a
+  # trickle (KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK / KINOWO_THROTTLED_ENQUEUE_
+  # PER_TICK) so the pool idles and credit rebuilds. If 4x still ever pins, go
+  # performance-2x (dedicated, no credit throttle). 2 GB (the 4x minimum) also gives
+  # the 1 GB OOM history headroom (RSS crept to ~890 MB under all-cities load).
+  memory = '2gb'
   cpu_kind = 'shared'
-  cpus = 2
+  cpus = 4

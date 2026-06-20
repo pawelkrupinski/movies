@@ -638,12 +638,14 @@ groups:
         condition: C
         for: 0s
         # VALUE hysteresis (see the threshold's evaluator + unloadEvaluator below):
-        # FIRE only when credit drops under 2500, RECOVER (resolve) only once it
-        # climbs back over 5000. The 2.5k→5k band means the worker stays backed off
-        # long enough for the idle pool to rebuild a real buffer before resuming —
-        # otherwise it resumed the instant credit touched the trip line, barely
-        # overshot, and a rating sweep right after drained it to the floor (measured
-        # 2026-06-20: 4922→1 as ratings burst to 118/min). (A top-level
+        # FIRE only when credit drops under 6000, RECOVER (resolve) only once it
+        # climbs back over 12000. The 6k→12k band is scaled to the shared-cpu-4x
+        # ceiling (~19k; on 2x it was 2.5k/5k for the ~8k cap). The wide band keeps
+        # the worker backed off long enough for the idle pool to rebuild a real
+        # buffer before resuming — otherwise it resumed the instant credit touched
+        # the trip line and a rating sweep right after drained it to the floor
+        # (measured on 2x: 4922→1 as ratings burst to 118/min). At 4x credit rarely
+        # dips into this band at all, so it's mostly a deep safety net. (A top-level
         # `keep_firing_for` is silently ignored by file provisioning — the API
         # showed keepFiringFor=None — so the hysteresis lives in the threshold's
         # unloadEvaluator, which IS honoured.)
@@ -652,8 +654,8 @@ groups:
         labels:
           notify: worker-throttle
         annotations:
-          summary: 'kinowo-worker shared-CPU credit < 2.5k — backing off its reapers until it rebuilds past 5k'
-          description: 'fly_instance_cpu_balance{app="kinowo-worker"} dropped below 2500; the WorkerThrottle webhook tells the worker to throttle all reapers and HOLDS until credit climbs back over 5000 (the recovery threshold), so the idle pool builds a buffer before resuming. By design — not an incident.'
+          summary: 'kinowo-worker shared-CPU credit < 6k — backing off its reapers until it rebuilds past 12k'
+          description: 'fly_instance_cpu_balance{app="kinowo-worker"} dropped below 6000; the WorkerThrottle webhook tells the worker to throttle all reapers and HOLDS until credit climbs back over 12000 (the recovery threshold), so the idle pool builds a buffer before resuming. Band scaled to the 4x ~19k cap. By design — not an incident.'
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -676,11 +678,11 @@ groups:
               expression: A
               conditions:
                 - type: query
-                  evaluator: { type: lt, params: [2500] }
+                  evaluator: { type: lt, params: [6000] }
                   # Recovery threshold (hysteresis): once firing, stay firing until
-                  # the balance climbs back OVER 5000 — not the moment it re-crosses
-                  # the 2500 trip line.
-                  unloadEvaluator: { type: gt, params: [5000] }
+                  # the balance climbs back OVER 12000 — not the moment it re-crosses
+                  # the 6000 trip line. Scaled to the 4x ~19k cap.
+                  unloadEvaluator: { type: gt, params: [12000] }
                   operator: { type: and }
                   query: { params: [] }
                   reducer: { type: last, params: [] }
