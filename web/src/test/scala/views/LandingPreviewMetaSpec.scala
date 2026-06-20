@@ -8,8 +8,8 @@ import org.scalatest.matchers.should.Matchers
 // Messenger / Slack / X. The page itself is a city picker, but its share
 // preview must sell the product (repertoire + ratings), not show "Wybierz
 // miasto". This spec pins the Open Graph / Twitter card it emits — in
-// particular that og:image points at the dedicated `og-home.png` repertoire
-// card rather than the per-city `og-image.png`.
+// particular that og:image points at the national `og-home.png` repertoire
+// card ("…w Twoim mieście"), as opposed to a city index's own `og-{slug}.png`.
 class LandingPreviewMetaSpec extends AnyFlatSpec with Matchers {
 
   private def render(): String = views.html.landing(City.allSorted).body

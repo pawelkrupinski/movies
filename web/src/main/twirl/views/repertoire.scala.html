@@ -6,7 +6,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>@pageTitle</title>
-  @_ogTagsApp(pageTitle = pageTitle, pageDescription = pageDescription, pageUrl = pageUrl, fbAppId = fbAppId)
+  @_ogTagsApp(pageTitle = pageTitle, pageDescription = pageDescription, pageUrl = pageUrl, fbAppId = fbAppId, imageUrl = s"https://kinowo.fly.dev/assets/img/og-${city.slug}.png")
   @_errorTracking()
   @_analytics()
   @* The Filmy view-chrome CSS (`.cinema-label`, film-card content-visibility)

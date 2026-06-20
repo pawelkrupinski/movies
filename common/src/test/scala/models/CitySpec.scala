@@ -35,6 +35,17 @@ class CitySpec extends AnyFlatSpec with Matchers {
     Poznan.labels.locative shouldBe "Poznaniu"
   }
 
+  "City.locativePhrase" should "pick the right Polish preposition for the share-card line" in {
+    // Plain "w" before a vowel-initial or non-W/F locative.
+    Poznan.locativePhrase shouldBe "w Poznaniu"
+    Warszawa.locativePhrase shouldBe "w Warszawie"   // W + vowel → still "w"
+    Krakow.locativePhrase shouldBe "w Krakowie"
+    Walbrzych.locativePhrase shouldBe "w Wałbrzychu" // W + vowel → "w"
+    // "we" before a W/F + consonant cluster.
+    Wroclaw.locativePhrase shouldBe "we Wrocławiu"   // W + r
+    Wloclawek.locativePhrase shouldBe "we Włocławku" // W + ł
+  }
+
   "City.allSorted" should "list every city alphabetically under Polish collation" in {
     // Same cities as `all`, just reordered — nothing dropped or duplicated.
     City.allSorted should contain theSameElementsAs City.all

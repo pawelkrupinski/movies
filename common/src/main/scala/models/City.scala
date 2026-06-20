@@ -26,6 +26,18 @@ sealed abstract class City(
   val zoneId: ZoneId,
 ) {
   def cinemas: Seq[Cinema]
+  /** The locative with the right Polish preposition for "Repertuar kin …":
+   *  "w Poznaniu", "w Warszawie", but "we Wrocławiu" / "we Włocławku" — "we"
+   *  replaces "w" before a word starting with W/F + consonant (the awkward
+   *  "w w-" / "w f-" cluster). Used by the per-city share-card generator
+   *  (`tools.OgCardGenerator`). */
+  def locativePhrase: String = {
+    val loc    = labels.locative
+    val vowels = "aeiouyąęó"
+    val we     = loc.length >= 2 && (loc(0) == 'W' || loc(0) == 'F') &&
+                 !vowels.contains(loc(1).toLower)
+    s"${if (we) "we" else "w"} $loc"
+  }
   lazy val cinemaSet: Set[Cinema]              = cinemas.toSet
   def cinemaDisplayNames: Seq[String]          = cinemas.map(_.displayName)
   /** Display-name → pill-name for this city's cinemas — the per-city
