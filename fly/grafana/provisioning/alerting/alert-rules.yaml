@@ -637,6 +637,14 @@ groups:
         title: Worker credit low (drive backoff)
         condition: C
         for: 0s
+        # Hysteresis: stay firing 2m AFTER credit climbs back over 5k, so the
+        # worker keeps backing off long enough to build a real buffer (the idle
+        # pool refills credit toward the ~8k cap) before resuming — otherwise it
+        # resumed the instant credit touched 5k, barely overshot to ~5.5k, and a
+        # rating sweep landing right after a resume drained it straight to the
+        # floor (measured 2026-06-20: 4922→1 as ratings burst to 118/min). With
+        # this it cycles ~5k→7k instead of slamming to 1.
+        keep_firing_for: 2m
         noDataState: OK
         execErrState: OK
         labels:
