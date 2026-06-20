@@ -184,7 +184,17 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // Pythona'; this rule removes the studio tail so it resolves to TMDB 583.)
     "Żywot Briana Grupy Monty Pythona"                         -> "Żywot Briana",
     "Żywot Briana - PONOWNIE NA WIELKIM EKRANIE"               -> "Żywot Briana",
-    "Chungking Express  - Wong Kar Wai 4K"                     -> "Chungking Express"
+    "Chungking Express  - Wong Kar Wai 4K"                     -> "Chungking Express",
+    // Seventh-wave (2026-06-20) quoted cycle/series banners.
+    // (a) '"<cycle>" - <film>' — quoted banner prefix, film after the dash. The
+    // trailing '(2001)' is a Canonical-only strip, so it stays in the query (TMDB
+    // resolves it), same as the KINO LETNIE '(1984)' precedent.
+    "\"Kultowe Wakacje\" - Amelia (2001)"                      -> "Amelia (2001)",
+    "\"Kultowe Wakacje\" - Milczenie Owiec"                    -> "Milczenie Owiec",
+    // (b) '"<film>" w ramach cyklu <cycle>' — quoted film, descriptor tail dropped
+    // (the standalone '— 2025' year column the listing glues on is swallowed too).
+    "\"Drugie życie\" w ramach cyklu SWPS    —    2025"        -> "Drugie życie",
+    "\"Drugie życie\" w ramach cyklu SWPS"                     -> "Drugie życie"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
@@ -197,6 +207,17 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     searchStripCases.foreach { case (in, _) =>
       withClue(s"seedOnly.search('$in') should be unchanged: ")(seedOnly.search(in) shouldBe in)
     }
+  }
+
+  it should "not fire the quoted-banner rules without their anchor" in {
+    // (a) needs a leading quote + a dash; a plain '- subtitle' must survive.
+    withClue("plain dash subtitle: ")(withExtras.search("Rambo - Pierwsza krew") shouldBe "Rambo - Pierwsza krew")
+    // A fully-quoted title (no dash, no descriptor tail) hits neither banner rule,
+    // so it's left exactly as-is — crucially NOT stripped to empty.
+    withClue("fully-quoted, no dash: ")(withExtras.search("\"Whiplash\"") shouldBe "\"Whiplash\"")
+    // (b) needs the literal 'w ramach cyklu'; a quoted film with an unrelated 'w …'
+    // must NOT be amputated to its first word (left untouched, quotes and all).
+    withClue("quoted film, unrelated 'w …': ")(withExtras.search("\"Lato w mieście\"") shouldBe "\"Lato w mieście\"")
   }
 
   // ── negative controls: real titles must survive untouched ──────────────────

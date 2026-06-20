@@ -48,6 +48,13 @@ object ExtraTitleRules {
   private def searchStrip(id: String, pattern: String, note: String): TitleRule =
     TitleRule(id, GlobalStructural, None, pattern, "", applyAll = false, order = 0, note = Some(note))
 
+  /** Like [[searchStrip]] but keeps a capture group ($1) — for a banner whose
+   *  FILM is wrapped in the match (e.g. a quoted film with a descriptor tail),
+   *  where a pure strip can't isolate the title. Still GlobalStructural / query
+   *  only, so the screening keeps its own decorated row. */
+  private def searchReplace(id: String, pattern: String, replacement: String, note: String): TitleRule =
+    TitleRule(id, GlobalStructural, None, pattern, replacement, applyAll = false, order = 0, note = Some(note))
+
   private def canon(id: String, pattern: String, replacement: String, note: String): TitleRule =
     TitleRule(id, Canonical, None, pattern, replacement, applyAll = false, order = 0, note = Some(note))
 
@@ -210,7 +217,24 @@ object ExtraTitleRules {
     searchStrip("xtra-rerelease-suffix",           """(?iu)\s*[-–—|.]\s*(?:ponownie\s+na\s+wielkim\s+ekranie|wersja\s+(?:zremasterowan\w*|odrestaurowan\w*|zrekonstruowan\w*))\s*$""", "'<film> - PONOWNIE NA WIELKIM EKRANIE / Wersja zremasterowana' re-release/restoration suffix (Żywot Briana)"),
     // '<film> - <director> 4K' restoration-print suffix (Kino Kultura's Wong Kar
     // Wai retrospective). 'Chungking Express' is the unique exact-title TMDB hit.
-    searchStrip("xtra-wong-kar-wai-suffix",        """(?iu)\s*[-–—]\s*Wong\s+Kar[\s-]?Wai\b.*$""", "'<film> - Wong Kar Wai 4K' restoration-print suffix (Chungking Express → TMDB 11104)")
+    searchStrip("xtra-wong-kar-wai-suffix",        """(?iu)\s*[-–—]\s*Wong\s+Kar[\s-]?Wai\b.*$""", "'<film> - Wong Kar Wai 4K' restoration-print suffix (Chungking Express → TMDB 11104)"),
+    // Seventh-wave (2026-06-20) audit: QUOTED cycle/series banners. Both keep their
+    // own decorated display row (query-only strip), but resolve the bare film.
+    // Two opposite shapes, disjoint patterns (one keys on a dash after the closing
+    // quote, the other on a 'w ramach cyklu' descriptor), so they never collide:
+    //
+    //  (a) '"<cycle>" - <film>' — the QUOTED part is the cycle banner and the film
+    //      follows the dash. Strip the quoted prefix + dash, generic over the banner
+    //      so any future '"<cycle>" - …' series folds (the dash convention matches
+    //      the existing 'Pedro Almodóvar: Kolory emocji - …' / 'Wielka Sztuka … - …'
+    //      strips). Matches both ASCII " and the Polish „…" pair.
+    searchStrip("xtra-quoted-cycle-dash",          """(?iu)^[„"][^„""]+[„""]\s*[-–—]\s+""", "'\"<cycle>\" - <film>' quoted cycle/series banner prefix ('\"Kultowe Wakacje\" - Amelia (2001)', '\"Kultowe Wakacje\" - Milczenie Owiec')"),
+    // (b) '"<film>" w ramach cyklu <cycle>' — the OPPOSITE: the quoted part is the
+    //     FILM and 'w ramach cyklu <cycle> …' is the descriptor tail. Keep the
+    //     captured film ($1) and drop the wrapping quotes + the whole tail, so it
+    //     resolves as the bare film. The closing quote / literal 'w ramach cyklu'
+    //     anchor the lazy capture, so a film whose own title contains 'w …' is safe.
+    searchReplace("xtra-quoted-film-w-ramach-cyklu", """(?iu)^[„"]?\s*(.+?)\s*[„""]?\s+w\s+ramach\s+cyklu\b.*$""", "$1", "'\"<film>\" w ramach cyklu <cycle>' — quoted film + cycle descriptor tail kept its own row, resolves the bare film ('\"Drugie życie\" w ramach cyklu SWPS — 2025' → 'Drugie życie')")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in
