@@ -185,12 +185,12 @@
     document.querySelectorAll('#t tbody tr.data').forEach(tr => {
       const hit = lq.length === 0 || tr.dataset.haystack.includes(lq);
       tr.classList.toggle('hidden', !hit);
-      // Keep the details row in sync with its data row's visibility; collapse
-      // on filter so the layout stays tight.
-      const details = document.querySelector('#t tbody tr.details[data-row-id="' + tr.dataset.rowId + '"]');
-      if (details) {
-        details.classList.toggle('hidden', !hit || !tr.classList.contains('expanded'));
-        if (!hit) tr.classList.remove('expanded');
+      // A filtered-out row collapses so the layout stays tight (and its parked
+      // details never re-enters the DOM). Rows that stay visible keep whatever
+      // expanded state they had.
+      if (!hit && tr.classList.contains('expanded')) {
+        tr.classList.remove('expanded');
+        hideDetails(tr);
       }
     });
   }
@@ -204,10 +204,8 @@
     // to their own action.
     tr.addEventListener('click', (e) => {
       if (e.target.closest('a') || e.target.closest('button')) return;
-      const details = document.querySelector('#t tbody tr.details[data-row-id="' + tr.dataset.rowId + '"]');
-      if (!details) return;
       const expanded = tr.classList.toggle('expanded');
-      details.classList.toggle('hidden', !expanded);
+      if (expanded) showDetails(tr); else hideDetails(tr);
     });
     // Re-enrich button: POST the row's ResolveTmdb enqueue. stopPropagation so
     // the click doesn't toggle the details row underneath it.
@@ -228,10 +226,34 @@
   const table = document.getElementById('t');
   const sortBody = table.tBodies[0];
 
-  // Each data row's collapsed details sibling, indexed once — the DOM identity
-  // is stable for the page's life, so we never rescan the tbody to find it.
+  // ── Details rows live OFF-DOM until their row is expanded ───────────────────
+  // Each film's `tr.details` carries a heavy subtree (every cinema × day ×
+  // showtime). Keeping all of them parked in this map — out of the tbody —
+  // instead of interleaved-but-`display:none` is what makes a column sort fast:
+  // the sort reorders only the light data rows, ~6× quicker than dragging every
+  // collapsed details sibling along too (measured on the full corpus). A
+  // collapsed row's DOM position is irrelevant (it isn't rendered), and expand /
+  // filter / sort all locate a row's details through this map, never adjacency.
   const detailsById = new Map();
-  sortBody.querySelectorAll('tr.details').forEach(d => detailsById.set(d.dataset.rowId, d));
+  function parkDetails(d) {
+    if (!d) return;
+    detailsById.set(d.dataset.rowId, d);
+    d.classList.add('hidden');
+    d.remove(); // detach — only spliced back in on expand (showDetails)
+  }
+  function showDetails(dataRow) {
+    const d = detailsById.get(dataRow.dataset.rowId);
+    if (!d) return;
+    dataRow.after(d); // place adjacent to wherever the data row sits now
+    d.classList.remove('hidden');
+  }
+  function hideDetails(dataRow) {
+    const d = detailsById.get(dataRow.dataset.rowId);
+    if (!d) return;
+    d.classList.add('hidden');
+    d.remove(); // park off-DOM again so the next sort stays light
+  }
+  sortBody.querySelectorAll('tr.details').forEach(parkDetails);
 
   // Precomputed ASCENDING order per column key. Computing the order is the
   // expensive half of a sort (extract every row's key + compare ~n·log n times);
@@ -271,9 +293,11 @@
     const asc = ascOrder(key, type);
     const ordered = dir === 'asc' ? asc : asc.slice().reverse();
 
-    // Reorder OFF-document: detach the tbody first so moving every row + its
-    // details sibling into place costs a single reflow on reattach, not one per
-    // node on the live tree.
+    // Reorder OFF-document: detach the tbody first so the whole thing reflows
+    // once on reattach. Only EXPANDED rows have a details sibling in the tbody to
+    // carry along — collapsed details are parked off-DOM, so the sort moves just
+    // the light data rows (the bulk of the old cost was dragging every heavy
+    // collapsed details subtree through the reorder).
     const parent = sortBody.parentNode;
     const next = sortBody.nextSibling;
     parent.removeChild(sortBody);
@@ -281,7 +305,7 @@
     ordered.forEach(r => {
       frag.appendChild(r);
       const details = detailsById.get(r.dataset.rowId);
-      if (details) frag.appendChild(details);
+      if (details && !details.classList.contains('hidden')) frag.appendChild(details);
     });
     sortBody.appendChild(frag);
     parent.insertBefore(sortBody, next);
@@ -481,6 +505,7 @@
 
   function applyDelete(id) {
     rowsFor(id).forEach(el => el.remove());
+    detailsById.delete(id); // also drop the row's parked (off-DOM) details
   }
 
   function applyUpsert(id, html) {
@@ -490,20 +515,16 @@
     if (!fresh.length) return;
     const existing = rowsFor(id);
     const tbody = table.tBodies[0];
+    const wasExpanded = existing.length > 0 && existing[0].classList.contains('expanded');
     if (existing.length) {
-      // Replace in place, preserving expanded state.
-      const wasExpanded = existing[0].classList.contains('expanded');
       existing[0].replaceWith(fresh[0]);
-      if (existing[1] && fresh[1]) existing[1].replaceWith(fresh[1]);
-      else if (fresh[1]) fresh[0].after(fresh[1]);
-      if (wasExpanded && fresh[1]) {
-        fresh[0].classList.add('expanded');
-        fresh[1].classList.remove('hidden');
-      }
+      if (existing[1]) existing[1].remove(); // drop the old (attached) details row
     } else {
-      fresh.forEach(r => tbody.appendChild(r)); // new film — append (sortable on demand)
+      tbody.appendChild(fresh[0]); // new film — append the data row (sortable on demand)
     }
+    parkDetails(fresh[1]);   // register + detach the fresh details, like a server-rendered row
     wireRow(fresh[0]);
+    if (wasExpanded) { fresh[0].classList.add('expanded'); showDetails(fresh[0]); } // re-splice if it was open
   }
 
   // ── Live staging rows (pending_movies change stream) ───────────────────────

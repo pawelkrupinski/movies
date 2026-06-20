@@ -2896,31 +2896,40 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   }
 
   // Clicking a corpus-table (#t) column header sorts the data rows by that
-  // column's data-* key, and EACH data row's collapsed details sibling must be
-  // re-attached immediately after it (the sort relocates pairs, not lone rows).
-  // The fixture corpus is Pending/Unresolved/Done Film; the FIRST click sorts
-  // descending, so by title that is Unresolved, Pending, Done, and a second
-  // click reverses it to ascending.
+  // column's data-* key. The heavy collapsed `tr.details` siblings are parked
+  // OFF-DOM (the perf win — the sort drags only the light data rows); a row's
+  // details is spliced back in, adjacent, only while it's expanded. The fixture
+  // corpus is Pending/Unresolved/Done Film; the FIRST click sorts descending, so
+  // by title that is Unresolved, Pending, Done, and a second click reverses it.
   private val corpusTitles = """[...document.querySelectorAll('#t tbody tr.data')].map(r => r.dataset.title).join('|')"""
-  // Every data row is immediately followed by its OWN details row (same rowId).
-  private val detailsAdjacent =
-    """[...document.querySelectorAll('#t tbody tr.data')].every(r => {
+  private val attachedDetailsCount = """String(document.querySelectorAll('#t tbody tr.details').length)"""
+  // Every EXPANDED data row is immediately followed by its own visible details row.
+  private val expandedDetailsAdjacent =
+    """[...document.querySelectorAll('#t tbody tr.data.expanded')].every(r => {
          const n = r.nextElementSibling;
-         return !!n && n.classList.contains('details') && n.dataset.rowId === r.dataset.rowId;
+         return !!n && n.classList.contains('details') && n.dataset.rowId === r.dataset.rowId
+                && !n.classList.contains('hidden');
        })"""
 
-  "the /debug corpus table" should "sort rows by a clicked column, keeping each details row beside its data row" in {
+  "the /debug corpus table" should "sort data rows and keep an expanded row's details beside it" in {
     onDebug { page =>
       page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 3""")
-      page.evalBool(detailsAdjacent) shouldBe true // intact before any sort
-      // First click → descending.
+      // Collapsed details never sit in the table — that's what keeps the sort cheap.
+      page.evalString(attachedDetailsCount) shouldBe "0"
+      // First click → descending; re-click → ascending.
       page.eval("""document.querySelector('#t thead th[data-key="title"]').click()""")
       page.evalString(corpusTitles) shouldBe "Unresolved Film|Pending Film|Done Film"
-      page.evalBool(detailsAdjacent) shouldBe true
-      // Re-click the same header → ascending.
+      page.evalString(attachedDetailsCount) shouldBe "0"
       page.eval("""document.querySelector('#t thead th[data-key="title"]').click()""")
       page.evalString(corpusTitles) shouldBe "Done Film|Pending Film|Unresolved Film"
-      page.evalBool(detailsAdjacent) shouldBe true
+      // Expand the first data row → its details splices in, adjacent and visible.
+      page.eval("""document.querySelector('#t tbody tr.data').click()""")
+      page.evalString(attachedDetailsCount) shouldBe "1"
+      page.evalBool(expandedDetailsAdjacent) shouldBe true
+      // Re-sort (descending) → the now-expanded row moves and its details follows it.
+      page.eval("""document.querySelector('#t thead th[data-key="title"]').click()""")
+      page.evalString(corpusTitles) shouldBe "Unresolved Film|Pending Film|Done Film"
+      page.evalBool(expandedDetailsAdjacent) shouldBe true
     }
   }
 
@@ -2932,15 +2941,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "sort the Ratings column by the combined weighted rating, like the main page" in {
     onDebug { page =>
       page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 3""")
+      page.evalString(attachedDetailsCount) shouldBe "0"
       // First click → descending by weighted rating (highest first: 9.0, 6.0,
       // 0.0), as the main page shows.
       page.eval("""document.querySelector('#t thead th[data-key="rating"]').click()""")
       page.evalString(corpusTitles) shouldBe "Done Film|Pending Film|Unresolved Film"
-      page.evalBool(detailsAdjacent) shouldBe true
       // Re-click → ascending (0.0, 6.0, 9.0).
       page.eval("""document.querySelector('#t thead th[data-key="rating"]').click()""")
       page.evalString(corpusTitles) shouldBe "Unresolved Film|Pending Film|Done Film"
-      page.evalBool(detailsAdjacent) shouldBe true
+      // Sorting never dragged a collapsed details row into the DOM.
+      page.evalString(attachedDetailsCount) shouldBe "0"
     }
   }
 
