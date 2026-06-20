@@ -2,6 +2,7 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
+import services.movies.TitleNormalizer
 import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime}
@@ -49,13 +50,15 @@ object SystemBiletowyClient {
 
   def parse(html: String, cinema: Cinema, baseUrl: String): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, baseUrl)
+    // Per-cinema title cleanup (PerCinema rules) on top of the shared cleanTitle.
+    def clean(raw: String): String = TitleNormalizer.cinemaClean(cinema.slug, cleanTitle(raw))
 
     val tblSlots = document.select("table.tbl_repertoire tr").asScala.toSeq.flatMap { tr =>
       // Only rows that are a real screening carry a repertoire/booking link.
       if (tr.selectFirst("a[href*=repertoire.html]") == null) None
       else for {
         titleElement <- Option(tr.selectFirst("td.title a"))
-        title    = cleanTitle(titleElement.text) if title.nonEmpty
+        title    = clean(titleElement.text) if title.nonEmpty
         dayText <- Option(tr.selectFirst("td.date span.day")).map(_.text)
         d       <- DatePat.findFirstMatchIn(dayText)
         month   <- ScraperParse.PolishMonths.get(d.group(2).toLowerCase)
@@ -76,7 +79,7 @@ object SystemBiletowyClient {
     val altSlots = document.select("div.event-item:has(a[href*=repertoire.html])").asScala.toSeq.flatMap { item =>
       for {
         titleElement <- Option(item.selectFirst("div.title a"))
-        title    = cleanTitle(titleElement.text) if title.nonEmpty
+        title    = clean(titleElement.text) if title.nonEmpty
         dateText <- Option(item.selectFirst("div.date")).map(_.text)
         d       <- DatePat.findFirstMatchIn(dateText)
         month   <- ScraperParse.PolishMonths.get(d.group(2).toLowerCase)
@@ -97,7 +100,7 @@ object SystemBiletowyClient {
     val attrSlots = document.select("div.event-item[data-date]").asScala.toSeq.flatMap { item =>
       for {
         titleElement <- Option(item.selectFirst("h3.event-title"))
-        title    = cleanTitle(titleElement.text) if title.nonEmpty
+        title    = clean(titleElement.text) if title.nonEmpty
         day     <- Try(LocalDate.parse(item.attr("data-date"))).toOption
         time    <- ScraperParse.parseHHmm(item.attr("data-time"))
       } yield RawSlot(

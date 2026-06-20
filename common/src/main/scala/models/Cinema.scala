@@ -1,6 +1,14 @@
 package models
 
-sealed abstract class Cinema(val displayName: String, val pillName: String) extends Source
+sealed abstract class Cinema(val displayName: String, val pillName: String) extends Source {
+  /** Stable kebab-case id for per-cinema title rules (`TitleNormalizer.cinemaClean`).
+   *  Derived from the case-object name so a shared portal client (Bilety24,
+   *  SystemBiletowy, Ekobilet, …) can clean each venue it serves without a
+   *  hand-maintained map: `KinoOskard` → `"kino-oskard"`, `KinoNaStarowce` →
+   *  `"kino-na-starowce"`. */
+  lazy val slug: String =
+    toString.replaceAll("([a-z0-9])([A-Z])", "$1-$2").toLowerCase(java.util.Locale.ROOT)
+}
 
 // ── Poznań ───────────────────────────────────────────────────────────────────
 

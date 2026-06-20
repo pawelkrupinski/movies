@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.{KinoBajka, KinoCyfroweKino}
+import models.{KinoBajka, KinoCyfroweKino, KinoFarys, KinoNaStarowce, KinoOskard, KinoStaryMlyn}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scripts.ExtraTitleRules
@@ -92,5 +92,64 @@ class DedicatedCinemaTitleCleanSpec extends AnyFlatSpec with Matchers {
   }
   it should "be load-bearing — the seed rules alone leave the 'Napisy PL' suffix" in {
     seedOnly(kijowTitles() shouldBe Seq("Diabeł ubiera się u Prady 2 Napisy PL"))
+  }
+
+  // ── shared portal clients: per-cinema cleanup keyed by the derived Cinema.slug ──
+
+  "Cinema.slug" should "derive the kebab-case id the portal rules key on" in {
+    KinoOskard.slug shouldBe "kino-oskard"
+    KinoStaryMlyn.slug shouldBe "kino-stary-mlyn"
+    KinoNaStarowce.slug shouldBe "kino-na-starowce"
+    KinoFarys.slug shouldBe "kino-farys"
+  }
+
+  private val oskardHtml =
+    """<div class="title-name" title="Following/Kino Cafe">Following/Kino Cafe</div>
+      |<a class="b24-button" title="Kup bilet - Film: Following/Kino Cafe - 2026-08-20 18:00 - Konin" href="/buy/1">Kup</a>""".stripMargin
+
+  private def oskardTitle() =
+    Bilety24Client.parseEvent(oskardHtml, KinoOskard, "https://oskard.example", "ev1").map(_.movie.title)
+
+  "Bilety24Client (Kino Oskard)" should "strip the '/Kino Cafe' venue suffix via cinemaClean" in {
+    withExtras(oskardTitle() shouldBe Some("Following"))
+  }
+  it should "be load-bearing — the seed rules alone leave '/Kino Cafe' in place" in {
+    seedOnly(oskardTitle() shouldBe Some("Following/Kino Cafe"))
+  }
+
+  private val staryMlynHtml =
+    """<a title="Film: Toy Story 5 sensoryczny - 2026-08-20 18:00 - Zgierz" href="/buy/1">Kup</a>"""
+
+  private def staryMlynTitles() =
+    Bilety24OrganizerClient.parse(staryMlynHtml, KinoStaryMlyn).map(_.movie.title)
+
+  "Bilety24OrganizerClient (Kino Stary Młyn)" should "strip the 'sensoryczny' suffix via cinemaClean" in {
+    withExtras(staryMlynTitles() shouldBe Seq("Toy Story 5"))
+  }
+  it should "be load-bearing — the seed rules alone leave 'sensoryczny' in place" in {
+    seedOnly(staryMlynTitles() shouldBe Seq("Toy Story 5 sensoryczny"))
+  }
+
+  private def systemBiletowyHtml(title: String) =
+    s"""<div class="event-item" data-date="2026-08-20" data-time="18:00">
+       |  <h3 class="event-title">$title</h3>
+       |  <a href="/kup-bilet/1">Kup</a>
+       |</div>""".stripMargin
+
+  "SystemBiletowyClient (Na Starówce)" should "strip the 'akcja lato w kinie' campaign suffix" in {
+    withExtras(
+      SystemBiletowyClient.parse(systemBiletowyHtml("Toy story 5 akcja lato w kinie"), KinoNaStarowce, "https://s.example")
+        .map(_.movie.title) shouldBe Seq("Toy story 5"))
+  }
+
+  "SystemBiletowyClient (Kino Farys)" should "fix the 'Tot story 5' source typo" in {
+    withExtras(
+      SystemBiletowyClient.parse(systemBiletowyHtml("Tot story 5"), KinoFarys, "https://s.example")
+        .map(_.movie.title) shouldBe Seq("Toy Story 5"))
+  }
+  it should "be load-bearing — the seed rules alone leave the typo" in {
+    seedOnly(
+      SystemBiletowyClient.parse(systemBiletowyHtml("Tot story 5"), KinoFarys, "https://s.example")
+        .map(_.movie.title) shouldBe Seq("Tot story 5"))
   }
 }

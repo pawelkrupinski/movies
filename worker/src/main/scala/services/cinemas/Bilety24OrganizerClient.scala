@@ -2,6 +2,7 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
+import services.movies.TitleNormalizer
 import tools.HttpFetch
 
 import java.time.LocalDateTime
@@ -67,7 +68,7 @@ object Bilety24OrganizerClient {
       }
     }
 
-    slots.filter(_.title.nonEmpty).groupBy(_.title).toSeq.flatMap { case (title, group) =>
+    slots.filter(_.title.nonEmpty).groupBy(s => TitleNormalizer.cinemaClean(cinema.slug, s.title)).toSeq.flatMap { case (title, group) =>
       val showtimes = group
         .map(s => Showtime(s.dateTime, s.booking, format = s.format))
         .distinctBy(s => (s.dateTime, s.bookingUrl))

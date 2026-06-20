@@ -309,7 +309,14 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     ("cyfrowe-kino", "Premiera! toy story 5")                 -> "toy story 5",
     ("kino-kijow",   "Diabeł ubiera się u Prady 2 Napisy PL") -> "Diabeł ubiera się u Prady 2",
     ("kino-kijow",   "Mawka: Prawdziwy mit UA Napisy PL")     -> "Mawka: Prawdziwy mit",
-    ("kino-kijow",   "On drive UKR NAPISY PL")                -> "On drive"
+    ("kino-kijow",   "On drive UKR NAPISY PL")                -> "On drive",
+    // Shared-portal venues (cleaned via Cinema.slug in their owning client).
+    ("kino-oskard",     "Following/Kino Cafe")                -> "Following",
+    ("kino-oskard",     "Supergirl/dubbing/Kino Cafe")        -> "Supergirl",
+    ("kino-na-starowce", "Toy story 5 akcja lato w kinie")    -> "Toy story 5",
+    ("kino-na-starowce", "Vaiana - film akcja lato w kinie")  -> "Vaiana",
+    ("kino-stary-mlyn", "Toy Story 5 sensoryczny")            -> "Toy Story 5",
+    ("kino-farys",      "Tot story 5")                        -> "Toy Story 5"
   )
 
   "ExtraTitleRules per-cinema rules" should "strip venue-specific junk for the owning cinema" in {

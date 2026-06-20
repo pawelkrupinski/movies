@@ -2,6 +2,7 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
+import services.movies.TitleNormalizer
 import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
@@ -57,6 +58,7 @@ object Bilety24Client {
 
     val title = Option(document.selectFirst("div.title-name[title]")).map(_.attr("title").trim)
       .orElse(Option(document.selectFirst(".title-name")).map(_.text.trim))
+      .map(t => TitleNormalizer.cinemaClean(cinema.slug, t))
       .filter(_.nonEmpty)
 
     // Buy buttons are rendered twice (desktop + mobile) — dedup by booking URL.
