@@ -55,4 +55,19 @@ class CityOgImageControllerSpec extends AnyFlatSpec with Matchers {
     ).map(_.movie.title)
     out shouldBe Seq("Ziemia obiecana", "Toy Story 5")
   }
+
+  "MovieController.dailyCardFilms" should "rotate to a different, non-overlapping set each day (stable within a day)" in {
+    val pool = (1 to 12).map(i => sched(s"Film $i", Some(s"https://cdn/$i.jpg")))
+    val d1 = MovieController.dailyCardFilms(pool, epochDay = 100, count = 5).map(_.movie.title)
+    val d2 = MovieController.dailyCardFilms(pool, epochDay = 101, count = 5).map(_.movie.title)
+    d1 should have size 5
+    d2 should have size 5
+    d1 should not equal d2              // a different day shows a different set
+    d1.intersect(d2) shouldBe empty     // count-per-day step → adjacent days disjoint
+    MovieController.dailyCardFilms(pool, 100, 5).map(_.movie.title) shouldBe d1 // deterministic
+  }
+
+  it should "drop films without a poster (no grey slots) and survive an empty pool" in {
+    MovieController.dailyCardFilms(Seq(sched("No poster", None)), epochDay = 1, count = 5) shouldBe empty
+  }
 }

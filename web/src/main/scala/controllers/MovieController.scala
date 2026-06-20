@@ -646,12 +646,12 @@ class MovieController( cc: ControllerComponents,
    *  directly at `/:city/og-image` for review. */
   def cityOgImage(city: String): Action[AnyContent] = Action {
     withCity(city) { c =>
-      // First few films → the grid columns, deduped by search key so a film's
-      // programme/accessibility variant can't repeat its poster; the service
-      // caps how many it draws.
-      val films = MovieController.distinctByMovie(movieControllerService.toSchedules(c))
-        .take(6).map(MovieController.toCityCardFilm)
-      val bytes = cityOgCardService.card(c.slug, s"Repertuar kin ${c.locativePhrase}", films)
+      // A different (deduped, poster-bearing) set of the city's films each day —
+      // and the cache key carries the date so the card regenerates daily.
+      val day   = java.time.LocalDate.now(c.zoneId)
+      val films = MovieController.dailyCardFilms(movieControllerService.toSchedules(c), day.toEpochDay, count = 5)
+        .map(MovieController.toCityCardFilm)
+      val bytes = cityOgCardService.card(s"${c.slug}|$day", s"Repertuar kin ${c.locativePhrase}", films)
       // 1h, not a day: the card tracks the live repertoire (which shifts through
       // the day), and a shorter TTL means a regenerated card surfaces promptly.
       Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=3600")
@@ -961,6 +961,23 @@ object MovieController {
       val poster = s.posterUrl.map(_.trim).filter(_.nonEmpty)
       if (seenKeys(key) || poster.exists(seenPosters)) false
       else { seenKeys += key; poster.foreach(seenPosters += _); true }
+    }
+  }
+
+  /** Size of the relevant-films pool the daily rotation cycles through. */
+  private val CardPoolSize = 40
+
+  /** The `count` films to show in the city card on `epochDay`: dedup, keep the
+   *  ones with a poster, cap to the most-imminent [[CardPoolSize]], then rotate
+   *  a `count`-per-day window through that pool — so a different (and, day to
+   *  day, non-overlapping) set of posters shows each day, deterministically
+   *  (stable within a day, fresh the next). */
+  private[controllers] def dailyCardFilms(schedules: Seq[FilmSchedule], epochDay: Long, count: Int): Seq[FilmSchedule] = {
+    val pool = distinctByMovie(schedules).filter(_.posterUrl.exists(_.nonEmpty)).take(CardPoolSize)
+    if (pool.isEmpty) Nil
+    else {
+      val start = Math.floorMod(epochDay * count, pool.length.toLong).toInt
+      (pool.drop(start) ++ pool.take(start)).take(count)
     }
   }
 
