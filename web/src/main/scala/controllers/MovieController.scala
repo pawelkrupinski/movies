@@ -652,7 +652,9 @@ class MovieController( cc: ControllerComponents,
       val films = MovieController.distinctByMovie(movieControllerService.toSchedules(c))
         .take(6).map(MovieController.toCityCardFilm)
       val bytes = cityOgCardService.card(c.slug, s"Repertuar kin ${c.locativePhrase}", films)
-      Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=86400")
+      // 1h, not a day: the card tracks the live repertoire (which shifts through
+      // the day), and a shorter TTL means a regenerated card surfaces promptly.
+      Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=3600")
     }
   }
 
@@ -946,12 +948,21 @@ object MovieController {
   private[controllers] def cardDirector(film: FilmSchedule): Option[String] =
     Some(film.director.mkString(", ")).filter(_.nonEmpty)
 
-  /** Collapse rows that are the same film for the city OG card — same upstream
-   *  search key, so a base showing and its "Poranki:" / accessibility / "+ Q&A"
-   *  variant (which legitimately stay separate rows on the page) don't put the
-   *  same poster in the card twice. Keeps the first (earliest-showing) row. */
-  private[controllers] def distinctByMovie(schedules: Seq[FilmSchedule]): Seq[FilmSchedule] =
-    schedules.distinctBy(s => TitleNormalizer.apiQuery(s.movie.title).toLowerCase)
+  /** Pick the city OG card's films so no poster shows twice. Drops a row whose
+   *  EITHER (a) upstream search key — so a base showing and its "Poranki:" /
+   *  accessibility / "+ Q&A" variant collapse to one — OR (b) poster URL — so
+   *  unrelated films that share one image (a retrospective on a single generic
+   *  placeholder) don't both appear — was already taken. Keeps the first
+   *  (earliest-showing) row. */
+  private[controllers] def distinctByMovie(schedules: Seq[FilmSchedule]): Seq[FilmSchedule] = {
+    val seenKeys, seenPosters = scala.collection.mutable.Set.empty[String]
+    schedules.filter { s =>
+      val key    = TitleNormalizer.apiQuery(s.movie.title).toLowerCase
+      val poster = s.posterUrl.map(_.trim).filter(_.nonEmpty)
+      if (seenKeys(key) || poster.exists(seenPosters)) false
+      else { seenKeys += key; poster.foreach(seenPosters += _); true }
+    }
+  }
 
   private val OgTimeFmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
 

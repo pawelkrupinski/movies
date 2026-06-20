@@ -22,7 +22,7 @@ class CityOgImageControllerSpec extends AnyFlatSpec with Matchers {
     val result = controller.cityOgImage("poznan").apply(FakeRequest())
     status(result) shouldBe OK
     contentType(result) shouldBe Some("image/png")
-    header("Cache-Control", result) shouldBe Some("public, max-age=86400")
+    header("Cache-Control", result) shouldBe Some("public, max-age=3600")
     val img = ImageIO.read(new ByteArrayInputStream(contentAsBytes(result).toArray))
     img.getWidth  shouldBe 1200
     img.getHeight shouldBe 630
@@ -32,8 +32,8 @@ class CityOgImageControllerSpec extends AnyFlatSpec with Matchers {
     status(controller.cityOgImage("atlantyda").apply(FakeRequest())) shouldBe NOT_FOUND
   }
 
-  private def sched(title: String): FilmSchedule =
-    FilmSchedule(Movie(title), posterUrl = None, synopsis = None, cast = Nil, director = Nil,
+  private def sched(title: String, poster: Option[String] = None): FilmSchedule =
+    FilmSchedule(Movie(title), posterUrl = poster, synopsis = None, cast = Nil, director = Nil,
       cinemaFilmUrls = Nil, showings = Nil, resolved = TestReadModel.resolved(title, None, MovieRecord()))
 
   "MovieController.distinctByMovie" should "collapse a film's programme variant so its poster isn't repeated" in {
@@ -43,5 +43,16 @@ class CityOgImageControllerSpec extends AnyFlatSpec with Matchers {
       sched("Freak Show"), sched("Kino bez barier: Freak Show"), sched("Toy Story 5"))
     ).map(_.movie.title)
     out shouldBe Seq("Freak Show", "Toy Story 5")
+  }
+
+  it should "drop unrelated films that share one poster image (generic placeholder)" in {
+    // A retrospective where several distinct titles all use one placeholder
+    // poster — keep only the first so the image isn't repeated.
+    val out = MovieController.distinctByMovie(Seq(
+      sched("Ziemia obiecana", Some("https://cdn/generic.jpg")),
+      sched("Brzezina",        Some("https://cdn/generic.jpg")),
+      sched("Toy Story 5",     Some("https://cdn/toy.jpg")))
+    ).map(_.movie.title)
+    out shouldBe Seq("Ziemia obiecana", "Toy Story 5")
   }
 }
