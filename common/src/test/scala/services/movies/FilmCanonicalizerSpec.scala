@@ -30,12 +30,14 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
    *  build the cross-title (translation) duplicates the merge must fold. */
   private def aliased(
     keyTitle: String, tmdbId: Int, tmdbYear: Int,
-    tmdbTitle: String, originalTitle: String, cinema: Source, cinemaTitle: String
+    tmdbTitle: String, originalTitle: String, cinema: Source, cinemaTitle: String,
+    englishTitle: Option[String] = None
   ): (CacheKey, MovieRecord) =
     key(keyTitle, Some(tmdbYear)) -> MovieRecord(
       tmdbId = Some(tmdbId),
       data = Map[Source, SourceData](
-        Tmdb   -> SourceData(title = Some(tmdbTitle), originalTitle = Some(originalTitle), releaseYear = Some(tmdbYear)),
+        Tmdb   -> SourceData(title = Some(tmdbTitle), originalTitle = Some(originalTitle),
+                             englishTitle = englishTitle, releaseYear = Some(tmdbYear)),
         cinema -> SourceData(title = Some(cinemaTitle), releaseYear = Some(tmdbYear))
       )
     )
@@ -176,6 +178,31 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
         val clusters = FilmCanonicalizer.clusterByFilm(components.head)
         clusters should have size 1
         clusters.head.flatMap(_._2.cinemaData.keySet).toSet shouldBe Set(Multikino, Helios)
+      }
+    }
+  }
+
+  it should "fold a non-Latin-original film keyed under its English title via the englishTitle alias" in {
+    // The Taiwanese "左撇子女孩" screens in Poland as both the Polish TMDB title
+    // "Left-Handed Girl. To była ręka… diabła!" and the plain English release
+    // title "Left-Handed Girl". Its `originalTitle` is non-Latin, so WITHOUT the
+    // englishTitle alias the English-keyed row matches no alias, fails the bare
+    // check, and the duplicate never collapses. The englishTitle alias makes both
+    // rows bare so the shared tmdbId folds them into one component.
+    val polish = "Left-Handed Girl. To była ręka… diabła!"
+    val rows = Seq(
+      aliased("Left-Handed Girl", tmdbId = 999075, tmdbYear = 2025, tmdbTitle = polish,
+        originalTitle = "左撇子女孩", cinema = Multikino, cinemaTitle = "Left-Handed Girl",
+        englishTitle = Some("Left-Handed Girl")),
+      aliased(polish, tmdbId = 999075, tmdbYear = 2025, tmdbTitle = polish,
+        originalTitle = "左撇子女孩", cinema = Helios, cinemaTitle = polish,
+        englishTitle = Some("Left-Handed Girl"))
+    )
+    Seq(rows, rows.reverse).foreach { ordered =>
+      val components = FilmCanonicalizer.groupByFilm(ordered)
+      withClue(s"components: ${components.map(_.map(_._1.cleanTitle))}\n") {
+        components should have size 1
+        FilmCanonicalizer.clusterByFilm(components.head) should have size 1
       }
     }
   }

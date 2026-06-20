@@ -481,10 +481,17 @@ class MovieService(
     // cache hit (the cache stores only the id) — in that rare double case the
     // slot keeps whatever it already had, and the next resolution fills it.
     val hitTitle = hit.map(_.title).filter(_.nonEmpty)
+    // TMDB's English release title (en-US `title`, via the same `details` call
+    // MC/RT use). For a non-Latin-original film whose Polish `title` and
+    // `originalTitle` both differ from the English title a cinema lists it under
+    // ("Left-Handed Girl"), this is the alias that folds the English-keyed
+    // duplicate onto the Polish-titled row — see `MovieRecord.tmdbTitleAliases`.
+    val englishTitle = tmdb.englishTitle(tmdbId).orElse(existingTmdbSlot.englishTitle)
     val tmdbSlot = detailsOpt match {
       case Some(d) => SourceData(
         title          = d.title.orElse(hitTitle).orElse(existingTmdbSlot.title),
         originalTitle  = d.originalTitle.orElse(hit.flatMap(_.originalTitle)).orElse(existingTmdbSlot.originalTitle),
+        englishTitle   = englishTitle,
         synopsis       = d.synopsis.orElse(existingTmdbSlot.synopsis),
         cast           = if (d.cast.nonEmpty) d.cast else existingTmdbSlot.cast,
         director       = if (d.director.nonEmpty) d.director else existingTmdbSlot.director,
@@ -501,6 +508,7 @@ class MovieService(
       case None => existingTmdbSlot.copy(
         title         = hitTitle.orElse(existingTmdbSlot.title),
         originalTitle = hit.flatMap(_.originalTitle).orElse(existingTmdbSlot.originalTitle),
+        englishTitle  = englishTitle,
         releaseYear   = hit.flatMap(_.releaseYear).orElse(existingTmdbSlot.releaseYear)
       )
     }

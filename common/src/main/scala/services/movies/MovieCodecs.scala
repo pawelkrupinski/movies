@@ -153,6 +153,7 @@ object MovieCodecs {
         title          = optStr("title"),
         rawTitle       = optStr("rawTitle"),
         originalTitle  = optStr("originalTitle"),
+        englishTitle   = optStr("englishTitle"),
         synopsis       = optStr("synopsis"),
         cast           = seqStr("cast"),
         director       = seqStr("director"),

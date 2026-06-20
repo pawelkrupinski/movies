@@ -1,7 +1,7 @@
 package services.movies
 
 import clients.TmdbClient
-import models.{CinemaCityPoznanPlaza, MovieRecord, Source, SourceData}
+import models.{CinemaCityPoznanPlaza, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
@@ -55,6 +55,27 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
     // The hit's release year re-keys the row off (Unikat, None), so assert on the
     // snapshot rather than the original key.
     cache.snapshot().flatMap(_.record.tmdbId) should contain (555)
+  }
+
+  it should "capture TMDB's English release title into the Tmdb slot (the cross-title merge alias)" in {
+    // A non-Latin-original film: the search hit carries the Polish title and the
+    // Chinese original; the English release title is only on the en-US `details`
+    // call. The resolve must fold that en-US title into `englishTitle` so the
+    // row a cinema lists as "Left-Handed Girl" later merges onto this one.
+    val cache = bareRow("Left-Handed Girl")
+    val service = new MovieService(cache, new InProcessEventBus(),
+      tmdb(
+        "/search/movie" ->
+          """{"results":[{"id":999075,"title":"Left-Handed Girl. To była ręka… diabła!",
+            |"original_title":"左撇子女孩","release_date":"2025-10-01","popularity":3.0}]}""".stripMargin,
+        "/movie/999075/external_ids" -> """{"id":999075,"imdb_id":"tt27722618"}""",
+        // en-US `details` call — its `title` is the English release title.
+        "language=en-US" -> """{"id":999075,"title":"Left-Handed Girl","release_date":"2025-10-01"}"""
+      ))
+
+    service.reEnrichSync("Left-Handed Girl", None)
+    cache.snapshot().flatMap(_.record.data.get(Tmdb)).flatMap(_.englishTitle) should
+      contain ("Left-Handed Girl")
   }
 
   it should "still resolve via the popularity pick when a YEAR disambiguates (guard is title-only)" in {
