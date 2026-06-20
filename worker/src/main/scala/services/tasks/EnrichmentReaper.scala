@@ -69,6 +69,11 @@ class EnrichmentReaper(
   // drains over the next ticks. Default unbounded so tests driving `tick` are
   // unaffected; the wiring sets a finite cap comfortably above the steady-state.
   maxEnqueuePerTick: Int = Int.MaxValue,
+  // While the worker is CPU-credit throttled, cap enqueue to this trickle. Ratings
+  // are the dominant non-scrape load, so backing this off is what actually lets the
+  // pool idle + rebuild credit (the scrape-only watchdog couldn't). Default unbounded.
+  throttledMaxEnqueuePerTick: Int = Int.MaxValue,
+  throttle: ScrapeThrottleSignal = ScrapeThrottleSignal.AlwaysHealthy,
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:    Clock = Clock.systemUTC()
 ) extends Stoppable with Logging {
@@ -102,12 +107,13 @@ class EnrichmentReaper(
   /** Enqueue every eligible, now-due `(row, source)`, up to `maxEnqueuePerTick`.
    *  Package-private, with an injectable `nowMillis`, so tests can drive time. */
   private[tasks] def tick(nowMillis: Long = clock.millis()): Int = {
+    val cap      = ScrapeThrottleSignal.cap(throttle, maxEnqueuePerTick, throttledMaxEnqueuePerTick)
     var enqueued = 0
     val rows = cache.entries.iterator
-    while (rows.hasNext && enqueued < maxEnqueuePerTick) {
+    while (rows.hasNext && enqueued < cap) {
       val (key, record) = rows.next()
       val sources = sweeps.iterator
-      while (sources.hasNext && enqueued < maxEnqueuePerTick) {
+      while (sources.hasNext && enqueued < cap) {
         val s = sources.next()
         if (s.eligible(record)) {
           val dedupKey = RatingTasks.dedupKey(s.kind, key, record.tmdbId)

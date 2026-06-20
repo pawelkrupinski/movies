@@ -126,10 +126,13 @@ primary_region = 'arn'
   # keep the queue full so the pool never idles to rebuild credit, and restarts
   # don't fix it (the boot storm re-drains). We BRIEFLY ran 4x/2 GB on 2026-06-20 to
   # break a live pin, then reverted to 2x once the durable auto-recovery landed:
-  # `ScrapeThrottleMonitor` watches ScrapeCinema handler durations and tells
-  # `ScrapeReaper` to back off enqueue to a trickle (KINOWO_SCRAPE_THROTTLED_MAX_
-  # ENQUEUE_PER_TICK) while throttled, so the backlog drains, the pool earns idle,
-  # and credit rebuilds — then full enqueue resumes. With that self-heal, 2x holds.
+  # `ScrapeThrottleMonitor` watches ScrapeCinema handler durations and, while
+  # throttled, tells ALL the reapers — scrape (KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_
+  # PER_TICK) AND ratings/detail/tmdb-retry (KINOWO_THROTTLED_ENQUEUE_PER_TICK) — to
+  # back off enqueue to a trickle, so the WHOLE pipeline quiets, the pool idles, and
+  # credit rebuilds, then full enqueue resumes. (Scrape-only backoff wasn't enough:
+  # the rating sweep kept the pool busy so credit never recovered — measured
+  # 2026-06-20.) With that self-heal, 2x holds.
   #
   # If a pin somehow recurs at 2x WITH the watchdog active (check the
   # "CPU-credit throttle … backing off" reaper logs fire), the next levers are:

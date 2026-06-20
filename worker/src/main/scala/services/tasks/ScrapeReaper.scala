@@ -137,8 +137,9 @@ class ScrapeReaper(
     // Throttle backoff: when the pool is credit-starved, enqueue only a trickle so
     // the backlog drains and the box earns idle to rebuild credit (the cap only
     // bites under a backlog anyway — steady state has fewer than either cap due).
+    // ALL the reapers share this `cap` decision; ScrapeReaper additionally logs it.
     val throttled = throttle.isThrottled
-    val cap       = if (throttled) throttledMaxEnqueuePerTick else maxEnqueuePerTick
+    val cap       = ScrapeThrottleSignal.cap(throttle, maxEnqueuePerTick, throttledMaxEnqueuePerTick)
 
     var enqueued = 0
     due.iterator.takeWhile(_ => enqueued < cap).foreach { case (key, displayName) =>

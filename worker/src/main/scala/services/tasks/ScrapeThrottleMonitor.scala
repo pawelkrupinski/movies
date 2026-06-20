@@ -21,6 +21,15 @@ object ScrapeThrottleSignal {
     def isThrottled: Boolean = false
     def ewmaMillis:  Long    = 0L
   }
+
+  /** The per-tick enqueue cap a reaper should use: `normal` when healthy, trimmed
+   *  to the `trickle` while the worker is CPU-credit throttled. ALL the reapers
+   *  (scrape, detail, ratings, tmdb-retry) call this so the WHOLE task pipeline
+   *  quiets under throttle — credit only rebuilds when the pool actually goes
+   *  idle, which it can't if the scrape reaper backs off but the rating/detail
+   *  reapers keep feeding it. */
+  def cap(signal: ScrapeThrottleSignal, normal: Int, trickle: Int): Int =
+    if (signal.isThrottled) trickle else normal
 }
 
 /**

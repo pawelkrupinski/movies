@@ -65,6 +65,10 @@ class UnresolvedTmdbReaper(
   // stays due (re-tried next period). Default unbounded so tests driving `tick`
   // are unaffected; the wiring sets a finite cap.
   maxEnqueuePerTick: Int = Int.MaxValue,
+  // While the worker is CPU-credit throttled, cap enqueue to this trickle so the
+  // whole pipeline quiets and the pool can idle to rebuild credit. Default unbounded.
+  throttledMaxEnqueuePerTick: Int = Int.MaxValue,
+  throttle: ScrapeThrottleSignal = ScrapeThrottleSignal.AlwaysHealthy,
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:    Clock = Clock.systemUTC()
 ) extends Stoppable with Logging {
@@ -91,9 +95,10 @@ class UnresolvedTmdbReaper(
   private[tasks] def tick(nowMillis: Long = clock.millis()): Int = {
     val now   = Instant.ofEpochMilli(nowMillis)
     val since = Instant.ofEpochMilli(nowMillis - tickInterval.toMillis)
+    val cap   = ScrapeThrottleSignal.cap(throttle, maxEnqueuePerTick, throttledMaxEnqueuePerTick)
     var enqueued = 0
     val rows = cache.entries.iterator
-    while (rows.hasNext && enqueued < maxEnqueuePerTick) {
+    while (rows.hasNext && enqueued < cap) {
       val (key, record) = rows.next()
       if (record.tmdbId.isEmpty && !record.detailPending &&
           dueWindow.isDue(EnrichTaskKeys.resolveTmdbDedup(key.cleanTitle, key.year), Some(since), now)) {

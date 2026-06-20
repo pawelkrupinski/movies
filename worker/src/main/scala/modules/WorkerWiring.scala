@@ -449,9 +449,17 @@ class WorkerWiring extends play.api.Logging {
   // that pinned the shared-CPU credit). Same lever as the scrape/rating reapers.
   lazy val detailEnqueuers: Seq[DetailTaskEnqueuer] =
     detailEnrichers.map(de => new DetailTaskEnqueuer(de, movieCache, taskQueue, freshnessStore))
+  // The trickle every NON-scrape reaper (detail, ratings, tmdb-retry) drops to
+  // while the worker is CPU-credit throttled. Backing off scrapes alone wasn't
+  // enough — ratings/detail kept the pool busy so it never idled to rebuild
+  // credit; quieting the WHOLE pipeline is what lets it recover (see
+  // ScrapeThrottleMonitor / ScrapeThrottleSignal.cap).
+  def throttledSecondaryEnqueuePerTick: Int = Env.positiveInt("KINOWO_THROTTLED_ENQUEUE_PER_TICK", 5)
   def maxDetailEnqueuePerTick: Int = Env.positiveLong("KINOWO_DETAIL_MAX_ENQUEUE_PER_TICK", 50L).toInt
   lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
-    dueWindow = detailDueWindow, maxEnqueuePerTick = maxDetailEnqueuePerTick, runStore = scheduledRunStore)
+    dueWindow = detailDueWindow, maxEnqueuePerTick = maxDetailEnqueuePerTick,
+    throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = scrapeThrottleMonitor,
+    runStore = scheduledRunStore)
 
   // ── Staging incubation (resolve-then-fold) ──────────────────────────────────
   // A newcomer in `pending_movies` walks the SAME steps the direct path runs,
@@ -519,7 +527,9 @@ class WorkerWiring extends play.api.Logging {
   // is never throttled; the leftover stays due and drains over the next ticks.
   def maxEnrichmentEnqueuePerTick: Int = Env.positiveLong("KINOWO_ENRICHMENT_MAX_ENQUEUE_PER_TICK", 250L).toInt
   lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
-    dueWindow = ratingDueWindow, maxEnqueuePerTick = maxEnrichmentEnqueuePerTick, runStore = scheduledRunStore)
+    dueWindow = ratingDueWindow, maxEnqueuePerTick = maxEnrichmentEnqueuePerTick,
+    throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = scrapeThrottleMonitor,
+    runStore = scheduledRunStore)
 
   // Re-tries unresolved-TMDB rows once per 24h, phase-spread across the period —
   // the queue-era replacement for MovieService's old daily, all-at-once
@@ -530,7 +540,9 @@ class WorkerWiring extends play.api.Logging {
   // reaper does — the leftover stays due and re-tries next period.
   def maxTmdbRetryEnqueuePerTick: Int = Env.positiveLong("KINOWO_TMDB_RETRY_MAX_ENQUEUE_PER_TICK", 100L).toInt
   lazy val unresolvedTmdbReaper = new UnresolvedTmdbReaper(movieCache, movieService.retryResolve,
-    maxEnqueuePerTick = maxTmdbRetryEnqueuePerTick, runStore = scheduledRunStore)
+    maxEnqueuePerTick = maxTmdbRetryEnqueuePerTick,
+    throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = scrapeThrottleMonitor,
+    runStore = scheduledRunStore)
 
   // Operator-triggered handlers — ALWAYS registered (not gated by
   // queueEnrichment): the web `/tasks` buttons enqueue a corpus-wide refresh and

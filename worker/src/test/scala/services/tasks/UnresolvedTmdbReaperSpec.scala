@@ -89,6 +89,16 @@ class UnresolvedTmdbReaperSpec extends AnyFlatSpec with Matchers {
     reaper.tick(t0 + UnresolvedTmdbReaper.DefaultTickInterval.toMillis) shouldBe 10
   }
 
+  it should "back off to throttledMaxEnqueuePerTick while the worker is CPU-credit throttled" in {
+    val cache = newCache(); val (_, retry) = recorder()
+    (0 until 50).foreach(i => seedRow(cache, f"Stuck$i%03d")(identity))
+    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def ewmaMillis = 30000L }
+    val reaper = new UnresolvedTmdbReaper(cache, retry,
+      dueWindow = new DueWindow(UnresolvedTmdbReaper.DefaultTickInterval),
+      maxEnqueuePerTick = 100, throttledMaxEnqueuePerTick = 5, throttle = throttled)
+    reaper.tick(t0) shouldBe 5 // throttled → trickle (vs up to the healthy cap)
+  }
+
   // ── cluster occurrence claim ─────────────────────────────────────────────────
 
   "UnresolvedTmdbReaper.tickIfClaimed" should "not re-try when another machine claimed the window" in {

@@ -70,6 +70,11 @@ class DetailReaper(
   // and drains over the next ticks. Default unbounded so tests driving `tick` are
   // unaffected; the wiring sets a finite cap.
   maxEnqueuePerTick: Int = Int.MaxValue,
+  // While the worker is CPU-credit throttled, cap enqueue to this trickle so this
+  // reaper stops feeding the pool — credit only rebuilds when the WHOLE pipeline
+  // quiets and the pool idles (see ScrapeThrottleSignal.cap). Default unbounded.
+  throttledMaxEnqueuePerTick: Int = Int.MaxValue,
+  throttle: ScrapeThrottleSignal = ScrapeThrottleSignal.AlwaysHealthy,
   runStore:  ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:     Clock = Clock.systemUTC()
 ) extends Stoppable with Logging {
@@ -100,12 +105,13 @@ class DetailReaper(
    *  so tests can advance time. Returns how many tasks were enqueued. */
   def tick(nowMillis: Long = clock.millis()): Int = {
     val now      = Instant.ofEpochMilli(nowMillis)
+    val cap      = ScrapeThrottleSignal.cap(throttle, maxEnqueuePerTick, throttledMaxEnqueuePerTick)
     var enqueued = 0
     val rows = cache.entries.iterator
-    while (rows.hasNext && enqueued < maxEnqueuePerTick) {
+    while (rows.hasNext && enqueued < cap) {
       val (key, record) = rows.next()
       val es = enrichers.iterator
-      while (es.hasNext && enqueued < maxEnqueuePerTick) {
+      while (es.hasNext && enqueued < cap) {
         val e = es.next()
         e.nativeDetailRef(record).foreach { ref =>
           if (EnrichDetailsTasks.enqueueIfDue(queue, freshness, dueWindow, e, key, ref, now)) enqueued += 1

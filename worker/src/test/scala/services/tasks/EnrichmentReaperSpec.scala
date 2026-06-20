@@ -35,6 +35,18 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 4L
   }
 
+  it should "back off to throttledMaxEnqueuePerTick while the worker is CPU-credit throttled" in {
+    // Ratings are the dominant non-scrape load; backing them off (not just scrapes)
+    // is what lets the pool idle + rebuild credit. A fully-resolved row is eligible
+    // for all 4 sources, but a throttled reaper enqueues only the trickle.
+    val cache = newCache(); val queue = new InMemoryTaskQueue
+    seedRow(cache, "Resolved")(_.copy(imdbId = Some("tt1"), tmdbId = Some(2)))
+    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def ewmaMillis = 30000L }
+    val reaper = new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore,
+      throttledMaxEnqueuePerTick = 1, throttle = throttled)
+    reaper.tick(t0) shouldBe 1 // throttled → 1, not all 4 eligible rating tasks
+  }
+
   it should "enqueue only the non-IMDb ratings for a TMDB-resolved row without an imdbId" in {
     val cache = newCache(); val queue = new InMemoryTaskQueue
     seedRow(cache, "TmdbOnly")(_.copy(tmdbId = Some(2)))
