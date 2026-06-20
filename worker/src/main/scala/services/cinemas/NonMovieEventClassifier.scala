@@ -74,10 +74,20 @@ object NonMovieEventClassifier {
     "pokaz filmu"                       // "Pokaz filmu „…" i koncert
   )
 
+  /** True when `title` carries a marker of screened "event cinema" — an
+   *  opera/ballet/theatre transmission or concert film shown ON the screen
+   *  (André Rieu, NT Live, Met Opera, a `retransmisja`). This is legitimate
+   *  cinema content that must be KEPT even when other signals (an event-y title,
+   *  or a venue's `MusicEvent`/`TheaterEvent` structured type) would otherwise
+   *  flag it as a live event — see [[BiletynaClient]], which filters on the
+   *  schema.org `@type` and reuses this as its veto. */
+  def isScreenedBroadcast(title: String): Boolean =
+    BroadcastMarkers.exists(title.toLowerCase.contains)
+
   /** True when `title` names a live stage/music event rather than a film. */
   def isLiveEvent(title: String): Boolean = {
     val t = title.toLowerCase
-    if (BroadcastMarkers.exists(t.contains)) false
+    if (isScreenedBroadcast(t)) false
     else EventMarkers.exists(_.findFirstIn(t).isDefined) || isStandaloneGala(t)
   }
 }

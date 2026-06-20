@@ -73,9 +73,16 @@ object BiletynaClient {
    *  type is kept: missing a non-film row is cosmetic, dropping a film is not. */
   private val NonFilmEventTypes = Set("TheaterEvent", "ComedyEvent", "MusicEvent", "DanceEvent", "Event")
 
+  /** A non-film `@type` is NOT enough to drop an event: "event cinema"
+   *  broadcasts (André Rieu, NT Live, a `retransmisja`) are screened content the
+   *  app keeps, yet biletyna tags them `MusicEvent`/`TheaterEvent` just like a
+   *  live concert. Honour the same broadcast veto the title classifier uses so
+   *  these survive the structured-type filter. */
+  private def isLiveEventType(slot: RawSlot): Boolean =
+    slot.eventType.exists(NonFilmEventTypes) && !NonMovieEventClassifier.isScreenedBroadcast(slot.title)
+
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val slots = jsonLdBlocks(html).flatMap(parseEvents)
-      .filterNot(_.eventType.exists(NonFilmEventTypes))
+    val slots = jsonLdBlocks(html).flatMap(parseEvents).filterNot(isLiveEventType)
 
     slots.groupBy(_.title).toSeq.flatMap { case (rawName, group) =>
       val showtimes = group

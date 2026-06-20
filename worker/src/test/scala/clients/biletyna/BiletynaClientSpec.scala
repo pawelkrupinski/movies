@@ -131,4 +131,25 @@ class BiletynaClientSpec
     titles should not contain "Tenorzy przy świecach"
     titles should not contain "FilmQuiz w PDK"
   }
+
+  // "Event cinema" broadcasts (an André Rieu / NT Live / opera retransmisja
+  // shown ON the screen) are legitimate cinema content the app keeps — but
+  // biletyna tags them MusicEvent/TheaterEvent exactly like a live concert. The
+  // @type filter must honour the same broadcast veto the title classifier uses,
+  // or it regresses these screened transmissions. (Real case: Kino Świt's
+  // "André Rieu … Retransmisja letniego koncertu z Maastricht", a MusicEvent.)
+  it should "keep screened broadcasts even when @type is a non-film type — Kino PDK" in {
+    val movies = BiletynaClient.parse(
+      jsonLdPage(Seq(
+        event("MusicEvent",  "André Rieu. Niech żyje Maastricht! Retransmisja letniego koncertu", 19),
+        event("TheaterEvent","National Theatre Live: Hamlet", 20),
+        event("MusicEvent",  "Edyta Geppert - recital", 18)  // a genuine live concert — still dropped
+      ).mkString(",")),
+      KinoPDK
+    )
+    val titles = movies.map(_.movie.title).toSet
+    titles should contain("André Rieu. Niech żyje Maastricht! Retransmisja letniego koncertu")
+    titles should contain("National Theatre Live: Hamlet")
+    titles should not contain "Edyta Geppert - recital"
+  }
 }
