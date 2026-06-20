@@ -6,6 +6,7 @@ import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import services.UptimeMonitor
 import services.UptimeMonitor.BucketSnapshot
+import services.readmodel.TestReadModel
 
 /**
  * Locks the Prometheus `/metrics` exposition that feeds the self-hosted Grafana:
@@ -55,7 +56,8 @@ class MetricsControllerSpec extends AnyFlatSpec with Matchers {
     val monitor = new UptimeMonitor() // no Mongo — purely in-memory record/history
     (1 to 4).foreach(_ => monitor.recordFailure("Residential proxy", "too many authentication attempts. Limit: 3"))
     monitor.recordSuccess("Residential proxy")
-    val controller = new MetricsController(Helpers.stubControllerComponents(), monitor)
+    val movieMetrics = new WebMovieMetrics(new MovieControllerService(TestReadModel.fromRecords(Seq.empty)))
+    val controller = new MetricsController(Helpers.stubControllerComponents(), monitor, movieMetrics)
 
     val result = controller.metrics(FakeRequest())
 

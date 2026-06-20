@@ -16,12 +16,17 @@ import services.UptimeMonitor.BucketSnapshot
  * row goes red, which nobody is watching (and the Zyte bill quietly climbs).
  * Surfacing the recent per-service success/failure counts as gauges lets
  * Grafana alert on it like any host metric.
+ *
+ * Also appends [[WebMovieMetrics]] — the per-city count of films the web is
+ * actually serving (all future / showing tomorrow) — so Grafana can alert when
+ * a city's repertoire suddenly swings (the read-model-outage signal: a city
+ * silently dropping to zero).
  */
-class MetricsController(cc: ControllerComponents, monitor: UptimeMonitor) extends AbstractController(cc) {
+class MetricsController(cc: ControllerComponents, monitor: UptimeMonitor, movieMetrics: WebMovieMetrics) extends AbstractController(cc) {
   def metrics: Action[AnyContent] = Action {
     val snapshots = monitor.services.iterator.map(service => service -> monitor.history(service)).toMap
-    Ok(MetricsController.render(snapshots, System.currentTimeMillis()))
-      .as("text/plain; version=0.0.4; charset=utf-8")
+    val body = MetricsController.render(snapshots, System.currentTimeMillis()) + movieMetrics.render()
+    Ok(body).as("text/plain; version=0.0.4; charset=utf-8")
   }
 }
 

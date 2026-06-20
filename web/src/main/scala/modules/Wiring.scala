@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{AdminAction, AdminTitleRulesController, AuthController, DebugStreamController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController}
+import controllers.{AdminAction, AdminTitleRulesController, AuthController, DebugStreamController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController, WebMovieMetrics}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
@@ -160,7 +160,10 @@ trait Wiring {
   // Exposes the in-app /uptime health (Mongo `uptimeBuckets`) as Prometheus
   // gauges for the self-hosted Grafana — host metrics alone can't see a service
   // failing silently behind a fallback (the residential proxy → Zyte case).
-  lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor)
+  // Samples per-city served-film counts every minute (all future / showing
+  // tomorrow), appended to /metrics for Grafana to graph + alert on swings.
+  lazy val webMovieMetrics = new WebMovieMetrics(movieControllerService)
+  lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, webMovieMetrics)
   // Read-only on the web side: the worker writes fallback state; the /uptime/fallback
   // page reads it (hydrated from Mongo at boot).
   lazy val filmwebFallbackStore: FilmwebFallbackStore = new MongoFilmwebFallbackStore(mongoConnection.database)
@@ -189,10 +192,14 @@ trait Wiring {
     // Hydrate the read model from the derived collections + open their change
     // streams. (No `movies` watch — see the read-model wiring above.)
     webReadModel.start()
+    // Sample per-city served-film counts once a minute for /metrics. Started
+    // after the read model so the first sample reads a warm corpus.
+    webMovieMetrics.start()
   }
 
   protected def stop(): Unit = {
     uptimeMonitor.close()
+    webMovieMetrics.stop()
     webReadModel.stop()
     titleRulesCache.stop()
     // Each repository's close() is a no-op when it borrowed its database from
