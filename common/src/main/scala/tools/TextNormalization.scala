@@ -2,6 +2,7 @@ package tools
 
 import java.text.Normalizer
 import java.util.Locale
+import java.util.regex.Pattern
 import org.jsoup.Jsoup
 
 /**
@@ -10,8 +11,21 @@ import org.jsoup.Jsoup
  * duplicated in `TitleNormalizer`, `MetacriticClient`, `RottenTomatoesClient`,
  * `FilmwebClient`, and a few others. Centralised here so future edits to
  * the rule (e.g. additional digraph folds) propagate everywhere at once.
+ *
+ * The regex constants are precompiled `Pattern`s rather than inline
+ * `String.replaceAll` literals: `deburr` sits on the hottest path in the
+ * worker (every `TitleNormalizer.sanitize`, called per movie × per cinema
+ * × per tick, plus every rating client's title fold), and `String.replaceAll`
+ * recompiles its `Pattern` on every call. Compile once, reuse forever.
  */
 object TextNormalization {
+
+  private val CombiningMarks   = Pattern.compile("\\p{M}")
+  private val Whitespace       = Pattern.compile("\\s+")
+  private val UrlToken         = Pattern.compile("(?i)(?:https?://|www\\.)\\S+")
+  private val HorizontalGaps   = Pattern.compile("[ \\t\\x0B\\f\\r]+")
+  private val SpacedNewline    = Pattern.compile(" ?\\n ?")
+  private val BlankLineRuns    = Pattern.compile("\\n{3,}")
 
   /**
    * NFD-decompose `s`, drop combining marks, then fold Polish `ł`/`Ł` → `l`
@@ -20,8 +34,7 @@ object TextNormalization {
    * so this helper is reusable in display-side paths too.
    */
   def deburr(s: String): String =
-    Normalizer.normalize(s, Normalizer.Form.NFD)
-      .replaceAll("\\p{M}", "")
+    CombiningMarks.matcher(Normalizer.normalize(s, Normalizer.Form.NFD)).replaceAll("")
       .replace('ł', 'l').replace('Ł', 'l')
 
   /**
@@ -110,7 +123,7 @@ object TextNormalization {
    * long-but-complete cast keeps its tail).
    */
   def stripHtml(s: String): String =
-    Jsoup.parse(s).text().replaceAll("\\s+", " ").trim
+    Whitespace.matcher(Jsoup.parse(s).text()).replaceAll(" ").trim
 
   /**
    * Strip URL tokens out of free text. Cinema detail pages occasionally
@@ -126,12 +139,12 @@ object TextNormalization {
    * which Kino Muza uses to join `<p>` blocks and the iOS/Android apps render
    * via `/api/details`) are deliberately preserved.
    */
-  def stripUrls(s: String): String =
-    s.replaceAll("(?i)(?:https?://|www\\.)\\S+", " ")
-      .replaceAll("[ \\t\\x0B\\f\\r]+", " ")  // collapse horizontal runs, keep '\n'
-      .replaceAll(" ?\\n ?", "\n")            // drop spaces hugging a newline
-      .replaceAll("\\n{3,}", "\n\n")          // cap blank-line runs at one
-      .trim
+  def stripUrls(s: String): String = {
+    val noUrls   = UrlToken.matcher(s).replaceAll(" ")
+    val oneLine  = HorizontalGaps.matcher(noUrls).replaceAll(" ")   // collapse horizontal runs, keep '\n'
+    val tightNl  = SpacedNewline.matcher(oneLine).replaceAll("\n")  // drop spaces hugging a newline
+    BlankLineRuns.matcher(tightNl).replaceAll("\n\n").trim          // cap blank-line runs at one
+  }
 
   def dropTrailingPartialNameIfLong(s: String, threshold: Int = 230): String =
     if (s.length < threshold) s
