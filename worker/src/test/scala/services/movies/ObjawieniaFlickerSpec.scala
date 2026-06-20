@@ -1,7 +1,7 @@
 package services.movies
 
 import clients.TmdbClient
-import models.{Cinema, CinemaCityKinepolis, CinemaMovie, Helios, Movie, Multikino, MovieRecord, Showtime, Source, SourceData}
+import models.{Cinema, CinemaCityKinepolis, CinemaMovie, Helios, Movie, Multikino, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
@@ -96,6 +96,42 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
     resolved.cinemaData.keySet shouldBe Set(Helios, Multikino)
     // The user sees both cinemas — not just Helios.
     projectedCinemas(cache) shouldBe Set(Helios, Multikino)
+  }
+
+  // The "growing Ukrainian duplicate" bug: the film is also listed by a few
+  // cinemas under its Ukrainian title ("Denʹ istyny - UA" / Cyrillic "День
+  // істини"). That listing is TMDB-resolved to the SAME film, so its row carries
+  // the same tmdbId AND the Polish TMDB title as an alias — yet its KEY is the
+  // Ukrainian spelling, which sorts BEFORE "Dzień objawienia" ("De" < "Dz") in
+  // the canonicalRank tie-break. A plain-Polish scrape must NOT be routed onto
+  // that Ukrainian-keyed sibling just because its alias matches and it sorts
+  // first: a row whose OWN key is the scraped title always wins over an
+  // alias-only match. Otherwise Polish cinemas pile onto the UA row, it starts
+  // displaying "Dzień objawienia" too (display = dominant cinema spelling), and
+  // the corpus shows two ever-growing "Dzień objawienia" rows that never merge.
+  "a plain-Polish scrape" should "land on the Polish-keyed row, not a same-tmdbId Ukrainian sibling whose TMDB alias matches" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+
+    val uaTitle = "Denʹ istyny - UA"
+    // The Ukrainian-titled sibling: resolved to the same film (tmdbId + the Polish
+    // TMDB title as alias), but keyed under the UA spelling.
+    cache.put(cache.keyOf(uaTitle, Some(2026)),
+      MovieRecord(tmdbId = Some(1275779), imdbId = Some("tt15047880"),
+        data = Map(slot(Helios, Some(2026)), Tmdb -> SourceData(title = Some(Title)))))
+    // The real Polish row, keyed by the Polish title.
+    cache.put(cache.keyOf(Title, Some(2026)),
+      MovieRecord(tmdbId = Some(1275779), imdbId = Some("tt15047880"),
+        data = Map(slot(Multikino, Some(2026)), Tmdb -> SourceData(title = Some(Title)))))
+
+    // A fresh plain-"Dzień objawienia" scrape from a third cinema.
+    cache.recordCinemaScrape(CinemaCityKinepolis, Seq(scrape(CinemaCityKinepolis, Some(2026))))
+
+    // It lands on the Polish-keyed row …
+    cache.get(cache.keyOf(Title, Some(2026))).getOrElse(fail("polish row vanished"))
+      .cinemaData.keySet should contain(CinemaCityKinepolis)
+    // … never on the Ukrainian-keyed sibling.
+    cache.get(cache.keyOf(uaTitle, Some(2026))).getOrElse(fail("ua row vanished"))
+      .cinemaData.keySet should not contain CinemaCityKinepolis
   }
 
   // The "two copies of Kumotry" bug: a cinema reports the film at the PRODUCTION

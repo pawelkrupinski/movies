@@ -504,12 +504,23 @@ class CaffeineMovieCache(
         (TitleNormalizer.sanitize(k.cleanTitle) == norm ||
          e.tmdbTitleAliases.exists(a => TitleNormalizer.sanitize(a) == norm)) => k }
       .toSeq
-    primary.year match {
-      case None    => concluded.minByOption(canonicalRank)
+    // Prefer a row whose OWN key IS this title over one that matches only via a
+    // TMDB alias. The alias arm exists to land an original-language listing that
+    // has no row yet ("Tangled") onto the resolved row ("Zaplątani"); but once a
+    // row keyed by the scraped title exists, it must win — otherwise a same-tmdbId
+    // sibling under a different-language key ("Denʹ istyny - UA", its TMDB alias
+    // also "Dzień objawienia") steals the scrape whenever its cleanTitle sorts
+    // first in the canonicalRank tie-break ("De" < "Dz"), splitting the Polish
+    // film across two ever-growing rows the sanitize-keyed canonicalize can't
+    // re-merge. So resolve key-matches first, alias-only matches only as fallback.
+    val (keyMatches, aliasOnly) = concluded.partition(k => TitleNormalizer.sanitize(k.cleanTitle) == norm)
+    def nearest(cands: Seq[CacheKey]): Option[CacheKey] = primary.year match {
+      case None    => cands.minByOption(canonicalRank)
       case Some(y) =>
-        concluded.filter(_.year.contains(y)).minByOption(canonicalRank)
-          .orElse(concluded.filter(_.year.exists(ky => math.abs(ky - y) <= 1)).minByOption(canonicalRank))
+        cands.filter(_.year.contains(y)).minByOption(canonicalRank)
+          .orElse(cands.filter(_.year.exists(ky => math.abs(ky - y) <= 1)).minByOption(canonicalRank))
     }
+    nearest(keyMatches).orElse(nearest(aliasOnly))
   }
 
   /** Collapse two same-tmdbId rows into one. The surviving key is chosen by
