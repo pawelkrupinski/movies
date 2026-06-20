@@ -67,6 +67,9 @@ enum A11y {
         /// so a UITest can measure it renders at the enlarged (`.controlSize`
         /// `.large`) size rather than the compact system default.
         static let confirmButton = "citygate.confirm.button"
+        /// The "choose a different city" button on the confirm screen — a UITest
+        /// taps it to reach the manual `CityChoiceView` deterministically.
+        static let chooseOtherButton = "citygate.chooseOther.button"
     }
 
     enum EmptyState {

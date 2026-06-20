@@ -199,4 +199,53 @@ final class CityTests: XCTestCase {
         let url = City.apiURL(base: base, slug: "warszawa", endpoint: "repertoire")
         XCTAssertEqual(url.absoluteString, "https://kinowo.fly.dev/warszawa/api/repertoire")
     }
+
+    // ── matching (city-picker search) ─────────────────────────────
+
+    func testBlankQueryMatchesEveryCity() {
+        XCTAssertEqual(City.matching("").count, City.allSorted.count)
+        XCTAssertEqual(City.matching("   ").count, City.allSorted.count)
+    }
+
+    func testQueryNarrowsToAMatchingPrefix() {
+        let slugs = City.matching("wroc").map(\.slug)
+        XCTAssertEqual(slugs, ["wroclaw"])
+    }
+
+    func testMatchIsCaseInsensitive() {
+        XCTAssertEqual(City.matching("KRAKÓW").map(\.slug), ["krakow"])
+    }
+
+    func testMatchIsDiacriticInsensitiveTypedWithoutPolishLetters() {
+        // The whole point: people type "lodz"/"krakow"/"poznan" on a plain
+        // keyboard and still find the diacritic'd city.
+        XCTAssertEqual(City.matching("lodz").map(\.slug), ["lodz"])
+        XCTAssertEqual(City.matching("krakow").map(\.slug), ["krakow"])
+        XCTAssertEqual(City.matching("gdansk").map(\.slug), [])   // Trójmiasto, no "Gdańsk" name
+        XCTAssertTrue(City.matching("zielona gora").map(\.slug).contains("zielona-gora"))
+    }
+
+    func testMatchIsASubstringNotJustAPrefix() {
+        // "gora" appears mid-name in "Zielona Góra", "Jelenia Góra",
+        // "Dąbrowa Górnicza" — all should surface.
+        let slugs = City.matching("gora").map(\.slug)
+        XCTAssertTrue(slugs.contains("zielona-gora"))
+        XCTAssertTrue(slugs.contains("jelenia-gora"))
+    }
+
+    func testNoMatchReturnsEmpty() {
+        XCTAssertTrue(City.matching("zzzzz").isEmpty)
+    }
+
+    func testMatchingKeepsPolishAlphabeticalOrder() {
+        // "Gliwice" (G) before "Łódź" (Ł) before "Opole" (O): the filter must
+        // preserve allSorted's Polish collation, not reorder by match.
+        let slugs = City.matching("l").map(\.slug)
+        let g = slugs.firstIndex(of: "gliwice")
+        let l = slugs.firstIndex(of: "lodz")
+        let o = slugs.firstIndex(of: "opole")
+        XCTAssertNotNil(g); XCTAssertNotNil(l); XCTAssertNotNil(o)
+        XCTAssertTrue(g! < l!, "Gliwice should sort before Łódź")
+        XCTAssertTrue(l! < o!, "Łódź should sort before Opole")
+    }
 }

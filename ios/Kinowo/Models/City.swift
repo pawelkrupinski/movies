@@ -153,6 +153,33 @@ struct City: Codable, Hashable {
             .appendingPathComponent(endpoint)
     }
 
+    /// Fold a Polish string to its diacritic-free, lower-case form for search
+    /// matching, so a query typed without Polish letters still finds the city
+    /// ("lodz" → "Łódź", "krakow" → "Kraków"). `.diacriticInsensitive` folding
+    /// doesn't map ł/ą/ę/ń and isn't identical on Linux swift-corelibs, so map
+    /// the Polish letters explicitly for cross-platform-stable results.
+    static func searchFold(_ s: String) -> String {
+        let map: [Character: Character] = [
+            "ą": "a", "ć": "c", "ę": "e", "ł": "l", "ń": "n",
+            "ó": "o", "ś": "s", "ź": "z", "ż": "z"
+        ]
+        return String(s.lowercased().map { map[$0] ?? $0 })
+    }
+
+    /// Whether this city matches `query` under case- and diacritic-insensitive
+    /// substring matching. A blank query matches every city (an empty search
+    /// box shows the whole list).
+    func matches(_ query: String) -> Bool {
+        let q = City.searchFold(query.trimmingCharacters(in: .whitespaces))
+        return q.isEmpty || City.searchFold(name).contains(q)
+    }
+
+    /// [allSorted] narrowed to the cities matching `query`. Drives the search
+    /// box on the manual city picker.
+    static func matching(_ query: String) -> [City] {
+        allSorted.filter { $0.matches(query) }
+    }
+
     /// Great-circle distance in kilometres between two coordinates.
     private static func haversineKm(latitude1: Double, longitude1: Double, latitude2: Double, longitude2: Double) -> Double {
         let earthRadiusKm = 6_371.0

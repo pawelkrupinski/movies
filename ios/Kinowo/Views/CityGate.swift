@@ -118,6 +118,7 @@ struct CityConfirmView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
+            .accessibilityIdentifier(A11y.CityGate.chooseOtherButton)
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -134,11 +135,17 @@ struct CityChoiceView: View {
     /// `nil` when location was unavailable (then there's nothing to suppress).
     var nearest: City?
 
+    /// Live search text; narrows the list to the cities whose folded name
+    /// contains it (diacritic-insensitive, so "lodz" finds "Łódź").
+    @State private var query = ""
+
+    private var visibleCities: [City] { City.matching(query) }
+
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    ForEach(City.allSorted, id: \.slug) { city in
+                    ForEach(visibleCities, id: \.slug) { city in
                         Button {
                             choose(city)
                         } label: {
@@ -155,9 +162,21 @@ struct CityChoiceView: View {
                 } header: {
                     Text("Wybierz miasto")
                 }
+
+                if visibleCities.isEmpty {
+                    // Keeps the search field anchored (an empty List would let it
+                    // collapse) and tells the user nothing matched.
+                    Text("Brak miasta o nazwie „\(query)”.")
+                        .foregroundStyle(.secondary)
+                }
             }
             .navigationTitle("Miasto")
             .navigationBarTitleDisplayMode(.inline)
+            .searchable(text: $query,
+                        placement: .navigationBarDrawer(displayMode: .always),
+                        prompt: "Szukaj miasta")
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(.never)
         }
     }
 
