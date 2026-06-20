@@ -127,9 +127,12 @@ object MsiClient {
    *  as a trailing `-<venue>` (e.g. "DRUGIE ŻYCIE-KINO WYBRZEŻE", with or without
    *  spaces around the dash). Strips that suffix first, then runs the normal
    *  clean — so a format word the suffix had buried (e.g. "…NAPISY-KINO WYBRZEŻE")
-   *  becomes trailing and `extractFormatTags` recovers it as a version token. */
+   *  becomes trailing and `extractFormatTags` recovers it as a version token.
+   *  The separator is `[-–—=]`: Kino Wybrzeże is inconsistent and glues the label
+   *  on with `=` on some rows ("SUPERGIRL NAPISY=KINO WYBRZEŻE"), which the
+   *  dash-only class let through to a no-match key. */
   private[cinemas] def cleanTitleStripSuffix(venue: String)(raw: String): (String, List[String]) = {
-    val pat = s"""(?iu)\\s*[-–—]\\s*${java.util.regex.Pattern.quote(venue)}\\s*$$"""
+    val pat = s"""(?iu)\\s*[-–—=]\\s*${java.util.regex.Pattern.quote(venue)}\\s*$$"""
     cleanTitle(raw.replaceAll(pat, "").trim)
   }
 }
