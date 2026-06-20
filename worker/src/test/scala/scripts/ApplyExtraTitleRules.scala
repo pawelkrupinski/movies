@@ -63,31 +63,41 @@ object ApplyExtraTitleRules {
     val repository = new MongoTitleRulesRepository()
     if (!repository.enabled) { println("[apply] titleRules repository disabled — set MONGODB_URI. Aborting."); return }
 
-    val current = repository.loadRecords()
-    ExtraTitleRules.all.groupBy(_.scope).foreach { case (scope, extras) =>
-      val recordId    = TitleRuleRecord.idFor(scope, None)
-      val existing = current.find(_.id == recordId)
-      // If the record is somehow missing, seed it from the frozen defaults for
-      // this scope so we never write a record that DROPS the baseline rules.
-      val baseRules = existing.map(_.rules)
-        .getOrElse(TitleRuleDefaults.all.filter(r => r.scope == scope && !r.last))
-      val lastRules = existing.map(_.lastRules)
-        .getOrElse(TitleRuleDefaults.all.filter(r => r.scope == scope && r.last))
-
-      val present = baseRules.map(_.id).toSet
-      val toAdd   = extras.filterNot(r => present.contains(r.id))
-      if (toAdd.isEmpty) println(s"[apply] [$recordId] already current — nothing to add.")
-      else {
-        val merged = TitleRuleRecord(recordId, scope, None, baseRules ++ toAdd, lastRules)
-        repository.upsertRecord(merged)
-        println(s"[apply] [$recordId] appended ${toAdd.size} rules -> ${merged.rules.size} total " +
-          s"(${toAdd.map(_.id).mkString(", ")})")
-      }
+    val planned = plan(repository.loadRecords())
+    if (planned.isEmpty) println("[apply] all records already current — nothing to add.")
+    planned.foreach { case (merged, added) =>
+      repository.upsertRecord(merged)
+      println(s"[apply] [${merged.id}] appended ${added.size} rules -> ${merged.rules.size} total " +
+        s"(${added.mkString(", ")})")
     }
     repository.close()
     println("[apply] done. The worker's change stream will re-key + re-enrich the corpus; " +
       "check /admin/title-rules/report for the realized counts.")
   }
+
+  /** Pure planner: the records to upsert and the rule ids each adds, given the
+   *  current prod records. Groups by `(scope, cinemaId)` — NOT scope alone — so a
+   *  PerCinema rule lands in its own per-cinema record (`idFor` keys PerCinema by
+   *  cinema slug), never a bogus single "PerCinema" record. A missing record is
+   *  seeded from the frozen defaults for that exact `(scope, cinemaId)` so we
+   *  never write a record that DROPS the baseline rules. Idempotent: a rule whose
+   *  id is already present is skipped, so a record with nothing to add is omitted. */
+  private[scripts] def plan(current: Seq[TitleRuleRecord]): Seq[(TitleRuleRecord, Seq[String])] =
+    ExtraTitleRules.all.groupBy(r => (r.scope, r.cinemaId)).toSeq
+      .sortBy { case ((scope, cinemaId), _) => (scope.name, cinemaId.getOrElse("")) }
+      .flatMap { case ((scope, cinemaId), extras) =>
+        val recordId = TitleRuleRecord.idFor(scope, cinemaId)
+        val existing = current.find(_.id == recordId)
+        val baseRules = existing.map(_.rules)
+          .getOrElse(TitleRuleDefaults.all.filter(r => r.scope == scope && r.cinemaId == cinemaId && !r.last))
+        val lastRules = existing.map(_.lastRules)
+          .getOrElse(TitleRuleDefaults.all.filter(r => r.scope == scope && r.cinemaId == cinemaId && r.last))
+
+        val present = baseRules.map(_.id).toSet
+        val toAdd   = extras.filterNot(r => present.contains(r.id))
+        if (toAdd.isEmpty) None
+        else Some(TitleRuleRecord(recordId, scope, cinemaId, baseRules ++ toAdd, lastRules) -> toAdd.map(_.id))
+      }
 
   private def mergeKey(rs: TitleRuleSet, t: String): String =
     tools.TextNormalization.deburr(rs.canonical(normalize(t)))
