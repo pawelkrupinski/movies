@@ -69,18 +69,29 @@ class StagingReaper(
   }
 
   /** Enqueue the next pending step for EVERY incubating film. Public so tests /
-   *  the fixture harness can drive one pass directly. Returns tasks enqueued. */
+   *  the fixture harness can drive one pass directly. Returns tasks enqueued.
+   *
+   *  Takes ONE corpus-wide `findAll` snapshot and groups it by anchor, rather
+   *  than re-scanning the repository once per distinct anchor (the old
+   *  `enqueueNext(anchor)` → `rowsFor` → `findAll` did 1 + N scans per pass; on a
+   *  cold-corpus boot N is the whole staging set). The grouped rows are
+   *  `_id`-sorted (findAll is sorted and `groupBy` keeps encounter order), so each
+   *  group is byte-identical to what `rowsFor(anchor)` would have returned. */
   def tick(): Int = {
-    val n = staging.findAll().map(r => TitleNormalizer.sanitize(r.title)).distinct.foldLeft(0)((acc, a) => acc + enqueueNext(a))
+    val byAnchor = staging.findAll().groupBy(r => TitleNormalizer.sanitize(r.title))
+    val n = byAnchor.foldLeft(0) { case (acc, (anchor, rows)) => acc + enqueueNext(anchor, rows) }
     if (n > 0) logger.info(s"StagingReaper enqueued $n staging step(s).")
     n
   }
 
-  /** The staging state machine for one film: enqueue whichever step it needs next.
-   *  Idempotent (the queue dedups), so calling it on every completion AND every
-   *  periodic scan converges without double-work. Returns tasks enqueued. */
-  private[staging] def enqueueNext(anchor: String): Int = {
-    val rows = steps.rowsFor(anchor)
+  /** Event path: fetch just this one anchor's rows, then enqueue its next step. */
+  private[staging] def enqueueNext(anchor: String): Int = enqueueNext(anchor, steps.rowsFor(anchor))
+
+  /** The staging state machine for one film: enqueue whichever step it needs next,
+   *  given its already-fetched `rows`. Idempotent (the queue dedups), so calling
+   *  it on every completion AND every periodic scan converges without double-work.
+   *  Returns tasks enqueued. */
+  private[staging] def enqueueNext(anchor: String, rows: Seq[StagingRecord]): Int = {
     (rows.headOption.map(_.title), stepFor(rows, anchor)) match {
       case (Some(title), Some(StagingStep.Detail)) =>
         // Some hint-combination still owes detail: finish each unready cinema's
