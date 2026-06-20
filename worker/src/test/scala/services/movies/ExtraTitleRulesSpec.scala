@@ -63,7 +63,17 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // Fifth-wave (2026-06-20) dated summer-cinema strand. The trailing '(1984)'
     // is a Canonical-only strip, so it stays in the query — TMDB resolves it.
     "KINO LETNIE 2026: Amadeusz (1984)"               -> ("KINO LETNIE 2026: ",                "Amadeusz (1984)"),
-    "KINO LETNIE 2026: Requiem dla snu (2000)"        -> ("KINO LETNIE 2026: ",                "Requiem dla snu (2000)")
+    "KINO LETNIE 2026: Requiem dla snu (2000)"        -> ("KINO LETNIE 2026: ",                "Requiem dla snu (2000)"),
+    // Eighth-wave (2026-06-20) festival / audience / club colon prefixes.
+    "TNKF: Guru"                                      -> ("TNKF: ",                            "Guru"),
+    "Przegląd Nowego Kina Francuskiego: Obcy"         -> ("Przegląd Nowego Kina Francuskiego: ", "Obcy"),
+    "Rok z Marilyn Monroe: Słomiany wdowiec"          -> ("Rok z Marilyn Monroe: ",            "Słomiany wdowiec"),
+    "Rodzina w kinie: Kicia Kocia w podróży"          -> ("Rodzina w kinie: ",                 "Kicia Kocia w podróży"),
+    "Tani wtorek: OJCZYZNA"                           -> ("Tani wtorek: ",                     "OJCZYZNA"),
+    "Filmowe popołudnie dla dzieci: Złoto"            -> ("Filmowe popołudnie dla dzieci: ",   "Złoto"),
+    "Klasyk w kinie: Milczenie owiec"                 -> ("Klasyk w kinie: ",                  "Milczenie owiec"),
+    "Seans Przyjazny Sensorycznie: Willow i tajemniczy las" -> ("Seans Przyjazny Sensorycznie: ", "Willow i tajemniczy las"),
+    "FIESTA KINA HISZPAŃSKIEGO: Prawo pożądania"      -> ("FIESTA KINA HISZPAŃSKIEGO: ",       "Prawo pożądania")
   )
 
   "ExtraTitleRules programme prefixes" should "extract the banner for the display row" in {
@@ -194,7 +204,26 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // (b) '"<film>" w ramach cyklu <cycle>' — quoted film, descriptor tail dropped
     // (the standalone '— 2025' year column the listing glues on is swallowed too).
     "\"Drugie życie\" w ramach cyklu SWPS    —    2025"        -> "Drugie życie",
-    "\"Drugie życie\" w ramach cyklu SWPS"                     -> "Drugie życie"
+    "\"Drugie życie\" w ramach cyklu SWPS"                     -> "Drugie życie",
+    // Eighth-wave (2026-06-20) pipe/paren decoration suffixes.
+    "Drugie życie | Kino przy herbatce"                        -> "Drugie życie",
+    "Frances Ha | Teleskop"                                    -> "Frances Ha",
+    "Fisher King | Lato z Robinem Williamsem"                  -> "Fisher King",
+    "Stowarzyszenie umarłych poetów | Lato z Robinem Williamsem" -> "Stowarzyszenie umarłych poetów",
+    "Erupcja | Kinoteka dla Rodziców"                          -> "Erupcja",
+    "Projekt Hail Mary | Kinoteka dla rodzica"                 -> "Projekt Hail Mary",
+    "Matador | Fiesta Kina Hiszpańskiego"                      -> "Matador",
+    "Matador – fiesta kina hiszpańskiego: almodóvar/ banderas" -> "Matador",
+    "Prawo pożądania | Fiesta Kina Hiszpańskiego"              -> "Prawo pożądania",
+    "Santa Sangre | AMONDO GRINDHOUSE"                         -> "Santa Sangre",
+    "Erupcja (pokaz jednorazowy)"                              -> "Erupcja",
+    "Ojczyzna (pokaz przedpremierowy)"                         -> "Ojczyzna",
+    "Zawieście czerwone latarnie (pokaz jednorazowy)"          -> "Zawieście czerwone latarnie",
+    "K-Popowe Łowczynie Demonów (seans z napisami karaoke)"    -> "K-Popowe Łowczynie Demonów",
+    // Quoted FILM whose tail is a banner — the inverse of the cycle-dash shape.
+    "\"Backrooms. Bez wyjścia\" - UROCZYSTA POLSKA PREMIERA"   -> "Backrooms. Bez wyjścia",
+    "\"Drugie życie\" | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM" -> "Drugie życie",
+    "\"Wędrówka na północ\" pokaz przedpremierowy w ramach cyklu Spotkania Filozoficzne" -> "Wędrówka na północ"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
@@ -218,6 +247,14 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // (b) needs the literal 'w ramach cyklu'; a quoted film with an unrelated 'w …'
     // must NOT be amputated to its first word (left untouched, quotes and all).
     withClue("quoted film, unrelated 'w …': ")(withExtras.search("\"Lato w mieście\"") shouldBe "\"Lato w mieście\"")
+  }
+
+  // Real corpus strings the SEED already partially strips (so they can't go in the
+  // load-bearing searchStripCases), proving the eighth-wave suffix still resolves the
+  // bare film end-to-end once the seed's '+ …' PlusSuffix has run.
+  it should "resolve banner suffixes that sit behind a seed-stripped '+ …' tail" in {
+    withClue("Lato + Modowy tail: ")(
+      withExtras.search("Klatka dla ptaków | Lato z Robinem Williamsem + Modowy Klub Filmowy") shouldBe "Klatka dla ptaków")
   }
 
   // ── negative controls: real titles must survive untouched ──────────────────

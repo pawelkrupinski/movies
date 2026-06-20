@@ -113,7 +113,19 @@ object ExtraTitleRules {
     // outdoor screening (own display row, query stripped to the bare film). The
     // trailing '(1984)' the series glues on stays in the query — TMDB resolves it
     // fine, same as the existing 'Noce Cabirii (1957)' search case.
-    prog("xtra-pp-kino-letnie",        """(?iu)^KINO\s+LETNIE\s+\d{4}:\s+""",                "'KINO LETNIE 2026:' summer-cinema strand (Amadeusz, Requiem dla snu, Rambo, Norymberga, Dom Dobry, Przekleństwa niewinności, Jedna bitwa po drugiej)")
+    prog("xtra-pp-kino-letnie",        """(?iu)^KINO\s+LETNIE\s+\d{4}:\s+""",                "'KINO LETNIE 2026:' summer-cinema strand (Amadeusz, Requiem dla snu, Rambo, Norymberga, Dom Dobry, Przekleństwa niewinności, Jedna bitwa po drugiej)"),
+    // Eighth-wave (2026-06-20) audit of the rating-less corpus (1165-title prod
+    // snapshot replayed through the rule engine): festival / audience / club colon
+    // banners that prefix the film (own display row, query stripped to the bare film).
+    prog("xtra-pp-tnkf",               """^TNKF:\s+""",                                      "'TNKF: <film>' = Tydzień Nowego Kina Francuskiego abbreviation (~11 French titles: Guru, Mi Amor, Obcy, Nowa fala, Wielki Łuk, Windą na szafot, Wypadek fortepianowy, …) — sibling of the numbered 'xtra-pp-pnkf-prefix'"),
+    prog("xtra-pp-pnkf-bare",          """(?iu)^Przegląd\s+Nowego\s+Kina\s+Francuskiego:\s+""", "'Przegląd Nowego Kina Francuskiego: <film>' un-numbered form (the seed 'xtra-pp-pnkf-prefix' needs a leading 'NN.') — ~8 titles (Guru, Obcy, Wielki Łuk, Windą na szafot, …)"),
+    prog("xtra-pp-rok-z-marilyn",      """(?iu)^Rok\s+z\s+Marilyn\s+Monroe:\s+""",          "'Rok z Marilyn Monroe: <film>' retrospective (Książę i aktoreczka, Przystanek autobusowy, Pół żartem pół serio, Skłóceni z życiem, Słomiany wdowiec)"),
+    prog("xtra-pp-rodzina-w-kinie",    """(?iu)^Rodzina\s+w\s+kinie:\s+""",                  "'Rodzina w kinie: <film>' family-screening strand (Belle, Chłopiec na krańcach świata, Kicia Kocia, K-popowe łowczynie demonów, Niesamowite przygody skarpetek 3)"),
+    prog("xtra-pp-tani-wtorek",        """(?iu)^Tani\s+wtorek:\s+""",                        "'Tani wtorek: <film>' cheap-Tuesday promo (Czytając Lolitę w Teheranie, Drugie życie, Kumotry, Ojczyzna, Robin Hood)"),
+    prog("xtra-pp-filmowe-popoludnie", """(?iu)^Filmowe\s+popołudnie\s+dla\s+dzieci:\s+""",  "'Filmowe popołudnie dla dzieci: <film>' kids-afternoon strand (Indianie i kowboje, Złoto)"),
+    prog("xtra-pp-klasyk-w-kinie",     """(?iu)^Klasyk\s+w\s+kinie:\s+""",                   "'Klasyk w kinie: <film>' classics strand (Milczenie owiec, Rozmowa)"),
+    prog("xtra-pp-seans-sensoryczny",  """(?iu)^Seans\s+Przyjazny\s+Sensorycznie:\s+""",     "'Seans Przyjazny Sensorycznie: <film>' sensory-friendly screening (Willow i tajemniczy las, Chłopiec na krańcach świata)"),
+    prog("xtra-pp-fiesta-hiszpanskiego", """(?iu)^FIESTA\s+KINA\s+HISZPAŃSKIEGO:\s+""",      "'FIESTA KINA HISZPAŃSKIEGO: <film>' Spanish-cinema fiesta prefix (Prawo pożądania); the '| / – fiesta …' suffix forms are handled by xtra-fiesta-hiszpanskiego-suffix")
   )
 
   /** Strips that fix enrichment without merging the row away — a premiere or a
@@ -218,6 +230,26 @@ object ExtraTitleRules {
     // '<film> - <director> 4K' restoration-print suffix (Kino Kultura's Wong Kar
     // Wai retrospective). 'Chungking Express' is the unique exact-title TMDB hit.
     searchStrip("xtra-wong-kar-wai-suffix",        """(?iu)\s*[-–—]\s*Wong\s+Kar[\s-]?Wai\b.*$""", "'<film> - Wong Kar Wai 4K' restoration-print suffix (Chungking Express → TMDB 11104)"),
+    // Eighth-wave (2026-06-20) audit of the rating-less corpus: pipe/paren decoration
+    // suffixes whose film stays its own decorated row (query-only strip).
+    searchStrip("xtra-kino-przy-herbatce",         """(?iu)\s*\|\s*Kino\s+przy\s+herbatce\s*$""",     "'<film> | Kino przy herbatce' cosy-screening suffix (Drugie życie, Dzień objawienia, Wolność po włosku)"),
+    searchStrip("xtra-teleskop-suffix",            """(?iu)\s*\|\s*Teleskop\s*$""",                   "'<film> | Teleskop' cine-club suffix (Following (Śledząc), Frances Ha, Sny o pociągach)"),
+    searchStrip("xtra-lato-robin-williams",        """(?iu)\s*\|\s*Lato\s+z\s+Robinem\s+Williamsem\b.*$""", "'<film> | Lato z Robinem Williamsem [+ …]' actor-cycle suffix (Fisher King, Klatka dla ptaków, Stowarzyszenie umarłych poetów)"),
+    searchStrip("xtra-kinoteka-dla-rodzica",       """(?iu)\s*\|\s*Kinoteka\s+dla\s+rodzic\S*\s*$""", "'<film> | Kinoteka dla rodziców/rodzica' parents'-screening suffix (Erupcja, Projekt Hail Mary, Zaproszenie)"),
+    searchStrip("xtra-fiesta-hiszpanskiego-suffix", """(?iu)\s*[|–—-]\s*fiesta\s+kina\s+hiszpańskiego\b.*$""", "'<film> | / – Fiesta Kina Hiszpańskiego[: almodóvar/banderas]' Spanish-cinema suffix (Matador, Prawo pożądania, Kobiety na skraju załamania nerwowego); prefix form is xtra-pp-fiesta-hiszpanskiego"),
+    searchStrip("xtra-amondo-grindhouse",          """(?iu)\s*\|\s*AMONDO\s+GRINDHOUSE\s*$""",        "'<film> | AMONDO GRINDHOUSE' cult-strand suffix (Santa Sangre, Sleepaway Camp)"),
+    // Trailing PARENTHESISED '(pokaz …)' / '(seans …)' event note — the seed pokaz/
+    // przedpremiera strips only catch a dash/pipe separator, not a paren. Strips from
+    // the open paren to end, so the truncated '(seans' forms fold too.
+    searchStrip("xtra-paren-pokaz-seans",          """(?iu)\s*\(\s*(?:pokaz|seans)\b.*$""",           "'<film> (pokaz jednorazowy/przedpremierowy)' / '(seans z prelekcją)' paren event-note suffix (Erupcja, Ojczyzna, Zawieście czerwone latarnie, Młode matki, Ostatni dzień lata)"),
+    // QUOTED film whose tail is a banner ('"<film>" - UROCZYSTA POLSKA PREMIERA',
+    // '"<film>" | specjalny pokaz …', '"<film>" pokaz przedpremierowy w ramach …').
+    // The closing quote + a banner keyword (premiera/gala/pokaz/seans/specjalny/
+    // uroczysta/'w ramach') anchor the extraction; the closing quote is REQUIRED so a
+    // bare title can't match. Runs BEFORE the cycle-dash + w-ramach rules below so it
+    // wins on this inverse shape (quoted part = film, not cycle). Open quote optional:
+    // a seed rule strips a leading „ before this runs, leaving '<film>" - …'.
+    searchReplace("xtra-quoted-film-banner-tail",  """(?iu)^[„"]?\s*([^„""]+?)\s*[„""]\s+(?:[|–—-]\s*)?(?:premiera|prapremiera|gala|pokaz|seans|specjaln|uroczysta|w\s+ramach).*$""", "$1", "'\"<film>\" - UROCZYSTA POLSKA PREMIERA' / '\"<film>\" | specjalny pokaz …' inverse of xtra-quoted-cycle-dash: quoted part is the FILM, banner tail dropped (Backrooms. Bez wyjścia, Drugie życie, Wędrówka na północ)"),
     // Seventh-wave (2026-06-20) audit: QUOTED cycle/series banners. Both keep their
     // own decorated display row (query-only strip), but resolve the bare film.
     // Two opposite shapes, disjoint patterns (one keys on a dash after the closing
@@ -228,7 +260,13 @@ object ExtraTitleRules {
     //      so any future '"<cycle>" - …' series folds (the dash convention matches
     //      the existing 'Pedro Almodóvar: Kolory emocji - …' / 'Wielka Sztuka … - …'
     //      strips). Matches both ASCII " and the Polish „…" pair.
-    searchStrip("xtra-quoted-cycle-dash",          """(?iu)^[„"][^„""]+[„""]\s*[-–—]\s+""", "'\"<cycle>\" - <film>' quoted cycle/series banner prefix ('\"Kultowe Wakacje\" - Amelia (2001)', '\"Kultowe Wakacje\" - Milczenie Owiec')"),
+    // The negative look-ahead is the safety guard for the INVERSE shape, where the
+    // quoted part is the FILM and the dash introduces a premiere/gala banner
+    // ('"Backrooms. Bez wyjścia" - UROCZYSTA POLSKA PREMIERA'): if a premiere/gala/
+    // pokaz/seans word follows the dash (within ~2 tokens), this is NOT a cycle
+    // banner, so DON'T strip the film. The xtra-quoted-film-banner-tail rule above
+    // extracts the film from that inverse shape instead.
+    searchStrip("xtra-quoted-cycle-dash",          """(?iu)^[„"][^„""]+[„""]\s*[-–—]\s+(?!(?:\S+\s+){0,2}(?:premiera|prapremiera|gala|pokaz|seans)\b)""", "'\"<cycle>\" - <film>' quoted cycle/series banner prefix ('\"Kultowe Wakacje\" - Amelia (2001)', '\"Kultowe Wakacje\" - Milczenie Owiec')"),
     // (b) '"<film>" w ramach cyklu <cycle>' — the OPPOSITE: the quoted part is the
     //     FILM and 'w ramach cyklu <cycle> …' is the descriptor tail. Keep the
     //     captured film ($1) and drop the wrapping quotes + the whole tail, so it
