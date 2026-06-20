@@ -59,4 +59,24 @@ class SynopsisMarkdownSpec extends AnyFlatSpec with Matchers {
   it should "cap blank-line runs and trim" in {
     SynopsisMarkdown.sanitize("  Akapit.\n\n\n\nDrugi.  ") shouldBe "Akapit.\n\nDrugi."
   }
+
+  it should "collapse a blurb a cinema CMS pasted N times into one copy" in {
+    // Real shape: Kino Piast (Bilety24) shipped the "Ojczyzna" synopsis 9× glued
+    // together with no separator in a single description field.
+    val unit = "To jest pełny opis filmu, który ma sens jako jedno zdanie."
+    SynopsisMarkdown.sanitize(unit * 9) shouldBe unit
+  }
+
+  "collapseRepeats" should "reduce an exact k-fold repeat to one copy" in {
+    SynopsisMarkdown.collapseRepeats("ab" * 5) shouldBe "ab"
+  }
+
+  it should "leave a non-periodic string unchanged" in {
+    SynopsisMarkdown.collapseRepeats("abcabd") shouldBe "abcabd"
+  }
+
+  it should "leave a single copy unchanged" in {
+    SynopsisMarkdown.collapseRepeats("Zwykły, niepowtórzony opis filmu.") shouldBe
+      "Zwykły, niepowtórzony opis filmu."
+  }
 }

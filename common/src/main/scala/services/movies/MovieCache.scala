@@ -950,7 +950,11 @@ class CaffeineMovieCache(
       // string in `movie.rawTitle`; others leave it None and `title` is raw.
       rawTitle       = cm.movie.rawTitle.orElse(Some(cm.movie.title)),
       originalTitle  = cm.movie.originalTitle,
-      synopsis       = cm.synopsis.orElse(priorSlot.flatMap(_.synopsis)),
+      // Collapse a blurb the cinema CMS pasted N× into one description field
+      // (Bilety24's Kino Piast shipped the "Ojczyzna" synopsis 9× glued together)
+      // at the ingestion boundary, so we never store the duplicate — not just hide
+      // it at read time. See tools.SynopsisMarkdown.collapseRepeats.
+      synopsis       = cm.synopsis.map(tools.SynopsisMarkdown.collapseRepeats).orElse(priorSlot.flatMap(_.synopsis)),
       cast           = cm.cast.map(TextNormalization.titleCaseIfAllCaps),
       director       = cm.director.map(TextNormalization.titleCaseIfAllCaps),
       runtimeMinutes = cm.movie.runtimeMinutes.filter(_ > 0),

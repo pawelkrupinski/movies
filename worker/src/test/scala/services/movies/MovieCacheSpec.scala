@@ -1334,6 +1334,19 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     row.synopsis                    shouldBe Some(longSynopsis)     // still the best one
   }
 
+  it should "collapse a CMS-duplicated blurb at ingestion so the STORED slot is one copy" in {
+    // Bilety24's Kino Piast shipped the "Ojczyzna" synopsis 9× glued together in
+    // one description field. The root fix collapses it as it's stored, so the raw
+    // slot — not just the read-time synopsis — holds a single copy.
+    val unit  = "Pełny opis filmu w jednym sensownym zdaniu."
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Foo", Multikino, Some(2026), synopsis = Some(unit * 9))))
+
+    val row = cache.get(cache.keyOf("Foo", Some(2026))).get
+    row.cinemaData(Multikino).synopsis shouldBe Some(unit)  // stored slot collapsed
+    row.synopsis                       shouldBe Some(unit)
+  }
+
   it should "not keep a movie alive via retained synopses once its last cinema slot is pruned" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Multikino, Seq(

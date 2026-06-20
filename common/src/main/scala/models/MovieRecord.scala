@@ -240,9 +240,17 @@ case class MovieRecord(
    *  identical to the plain-text era. The winner is run through
    *  `SynopsisMarkdown.sanitize` so the value every consumer sees (web HTML,
    *  mobile `/api/details`, OG card, og:description) is guaranteed well-formed
-   *  markdown regardless of which source produced it. */
+   *  markdown regardless of which source produced it.
+   *
+   *  A CMS-duplicated blurb (some cinemas paste the synopsis N× into one field —
+   *  see `SynopsisMarkdown.collapseRepeats`) is collapsed to one copy FIRST, on
+   *  the raw value before `stripUrls` (which trims, breaking the exact periodicity
+   *  collapse needs), so it can't win the length race on its inflated size and
+   *  drown out a genuinely richer source. Ingestion already collapses new scrapes
+   *  (`MovieCache.buildCinemaSlot`); this is the defensive read-side guard. */
   def synopsis: Option[String] =
     synopsisCandidates
+      .map(tools.SynopsisMarkdown.collapseRepeats)
       .map(tools.TextNormalization.stripUrls)
       .filter(_.nonEmpty)
       .sortBy(s => -tools.SynopsisMarkdown.strip(s).length).headOption

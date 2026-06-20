@@ -5041,7 +5041,7 @@ runtimeMinutes:    82
 releaseYear:       2026
 countries:         Polska, Niemcy, Włochy, Francja
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/unnamed.jpg
-synopsis.length:   4815
+synopsis.length:   2387
 cast:              Sandra Hüller, Hanns Zischler, August Diehl, Anna Madeley, Devid Striesov, Joanna Kulig
 director:          Paweł Pawlikowski
 tmdbId:            1437696
@@ -8786,7 +8786,7 @@ runtimeMinutes:    97
 releaseYear:       2026
 countries:         Wielka Brytania, USA
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/zawodowcy-zawodowcy-plakat-po-zmniejszeniu-200x288.jpg
-synopsis.length:   2268
+synopsis.length:   1387
 cast:              Henry Cavill, Jake Gyllenhaal, Eiza González, Rosamund Pike, Fisher Stevens, Emmett J Scanlan
 director:          Guy Ritchie
 tmdbId:            1122573

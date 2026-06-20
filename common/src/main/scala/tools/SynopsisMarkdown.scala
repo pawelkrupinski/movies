@@ -28,16 +28,38 @@ object SynopsisMarkdown {
 
   private def quote(g: String) = java.util.regex.Matcher.quoteReplacement(g)
 
+  /** Collapse a synopsis that is nothing but the SAME text repeated back-to-back
+   *  down to a single copy. Some cinema CMSes paste the blurb several times into
+   *  one description field with no separator — a Bilety24 event page (Kino Piast,
+   *  Legnica) shipped the "Ojczyzna" synopsis 9× glued together, which then won
+   *  the longest-wins race in [[models.MovieRecord.synopsis]] over every genuine
+   *  source and rendered nine times on the detail page.
+   *
+   *  Uses the classic string-period trick: for any string `s`, `(s+s).indexOf(s, 1)`
+   *  is its smallest period. When that period is shorter than the whole string `s`
+   *  is an exact k-fold repeat (k ≥ 2) and we keep one period; non-repeating prose
+   *  has period == length and is returned untouched. Only EXACT whole-string
+   *  repetition is collapsed (the observed shape) — a blurb followed by a partial
+   *  copy or different trailing text is left alone. */
+  def collapseRepeats(s: String): String =
+    if (s.length < 2) s
+    else {
+      val period = (s + s).indexOf(s, 1)
+      if (period > 0 && period < s.length) s.substring(0, period) else s
+    }
+
   /** Normalise a synopsis to clean, well-formed markdown — applied once at the
    *  read boundary ([[models.MovieRecord.synopsis]]) so EVERY source path is
    *  guaranteed valid, whether the markers came from `ScraperParse.blockText`,
    *  a cinema JSON `description` that already held `**`, or anything else.
    *
-   *  Keeps only emphasis that hugs non-whitespace on both edges and contains no
-   *  line break; strips every other stray `*`/`**` (a missing bold is fine, a
-   *  dangling marker is not). Bold is hidden behind placeholders first so the
-   *  italic pass can't split a `**…**`. Finally caps blank-line runs and trims. */
-  def sanitize(s: String): String = {
+   *  First [[collapseRepeats]] a CMS-duplicated blurb back to one copy, then keep
+   *  only emphasis that hugs non-whitespace on both edges and contains no line
+   *  break; strip every other stray `*`/`**` (a missing bold is fine, a dangling
+   *  marker is not). Bold is hidden behind placeholders first so the italic pass
+   *  can't split a `**…**`. Finally caps blank-line runs and trims. */
+  def sanitize(s0: String): String = {
+    val s = collapseRepeats(s0)
     val boldValid = "\\*\\*(?=\\S)((?:(?!\\*\\*)[^\\n])+?)(?<=\\S)\\*\\*".r
     val italValid = "\\*(?=\\S)([^*\\n]+?)(?<=\\S)\\*".r
     val (bO, bC, iO, iC) = ("\u0011", "\u0012", "\u0013", "\u0014")

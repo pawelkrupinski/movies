@@ -91,4 +91,31 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
     )
     record.synopsis shouldBe Some("Zachowany opis bez linku.")
   }
+
+  // ── CMS-duplicated blurbs (a cinema pastes the synopsis N× into one field) ──
+  // Confirmed in prod for "Ojczyzna": Kino Piast (Bilety24) shipped the blurb 9×
+  // glued together, which — being the longest "source" — won longest-wins and
+  // rendered nine times on the detail page.
+
+  it should "collapse a synopsis a single source duplicated N times" in {
+    val unit = "Pełny opis filmu w jednym sensownym zdaniu."
+    val record = MovieRecord(
+      data = Map[Source, SourceData](Helios -> SourceData(synopsis = Some(unit * 9)))
+    )
+    record.synopsis shouldBe Some(unit)
+  }
+
+  it should "not let a repetition-inflated synopsis beat a genuinely longer one" in {
+    // The repeated blurb is RAW-longer (23×8 = 184) than the genuine one (~84),
+    // so before collapsing-before-ranking it would win and render eight times.
+    val short = "Krótki, lecz powtórzony. "
+    val long  = "Znacznie dłuższy, prawdziwy i pełny opis filmu bez żadnych powtórzeń, który powinien wygrać."
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        Helios -> SourceData(synopsis = Some(short * 8)),
+        Tmdb   -> SourceData(synopsis = Some(long))
+      )
+    )
+    record.synopsis shouldBe Some(long)
+  }
 }
