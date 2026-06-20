@@ -152,4 +152,54 @@ class CitiesTest {
         // Location unavailable at the gate — a later legitimate prompt stays armed.
         assertNull(Cities.initialChoiceSuppressKey("warszawa", null))
     }
+
+    // ── matching (city-picker search) ─────────────────────────────
+
+    @Test
+    fun blankQueryMatchesEveryCity() {
+        assertEquals(Cities.allSorted, Cities.matching(""))
+        assertEquals(Cities.allSorted, Cities.matching("   "))
+    }
+
+    @Test
+    fun narrowsToAMatchingName() {
+        assertEquals(listOf("wroclaw"), Cities.matching("wroc").map { it.slug })
+    }
+
+    @Test
+    fun matchIsCaseInsensitive() {
+        assertEquals(listOf("krakow"), Cities.matching("KRAKÓW").map { it.slug })
+    }
+
+    @Test
+    fun matchIsDiacriticInsensitiveTypedWithoutPolishLetters() {
+        // The whole point: a plain ASCII keyboard finds the diacritic'd city.
+        assertEquals(listOf("lodz"), Cities.matching("lodz").map { it.slug })
+        assertEquals(listOf("krakow"), Cities.matching("krakow").map { it.slug })
+        // "Gdańsk" isn't a city name (the Tri-City scope is "Trójmiasto") → no match.
+        assertEquals(emptyList<String>(), Cities.matching("gdansk").map { it.slug })
+        assert(Cities.matching("zielona gora").map { it.slug }.contains("zielona-gora"))
+    }
+
+    @Test
+    fun matchIsASubstringNotJustAPrefix() {
+        // "gora" appears mid-name in "Zielona Góra" and "Jelenia Góra".
+        val slugs = Cities.matching("gora").map { it.slug }
+        assert(slugs.contains("zielona-gora"))
+        assert(slugs.contains("jelenia-gora"))
+    }
+
+    @Test
+    fun noMatchReturnsEmpty() {
+        assertEquals(emptyList<City>(), Cities.matching("zzzzz"))
+    }
+
+    @Test
+    fun matchingKeepsPolishAlphabeticalOrder() {
+        // Filtered results stay in allSorted order: Gliwice (G) before Łódź (Ł)
+        // before Opole (O), not reordered by match.
+        val slugs = Cities.matching("l").map { it.slug }
+        assert(slugs.indexOf("gliwice") < slugs.indexOf("lodz"))
+        assert(slugs.indexOf("lodz") < slugs.indexOf("opole"))
+    }
 }

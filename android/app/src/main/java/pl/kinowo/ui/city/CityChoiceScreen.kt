@@ -1,18 +1,33 @@
 package pl.kinowo.ui.city
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pl.kinowo.model.Cities
@@ -26,25 +41,64 @@ private val ControlMinHeight = 56.dp
 
 /**
  * Fallback city picker shown when the location gate can't place the user
- * (permission denied, no fix, or out of range of every supported city). Lists
- * every [Cities.all] entry as a tap target, one row per city.
+ * (permission denied, no fix, or out of range of every supported city). A
+ * search box narrows the 41-city list by diacritic-insensitive substring match
+ * ("lodz" finds "Łódź"); the matches scroll in a [LazyColumn], one tap target
+ * per city.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CityChoiceScreen(onPick: (City) -> Unit) {
+    var query by remember { mutableStateOf("") }
+    val cities = Cities.matching(query)
+
     Column(
         Modifier.fillMaxSize().padding(horizontal = 24.dp),
-        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("Wybierz miasto", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Wybierz miasto",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 24.dp),
+        )
         Text(
             "Repertuar pokazujemy dla wybranego miasta.",
             fontSize = 14.sp,
             color = TextSecondary,
-            modifier = Modifier.padding(top = 6.dp, bottom = 20.dp),
+            modifier = Modifier.padding(top = 6.dp, bottom = 16.dp),
         )
-        for (city in Cities.allSorted) {
-            TallFilledButton(city.name) { onPick(city) }
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            singleLine = true,
+            placeholder = { Text("Szukaj miasta") },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = "Wyczyść",
+                        modifier = Modifier.clickable { query = "" },
+                    )
+                }
+            },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (cities.isEmpty()) {
+            Text(
+                "Brak miasta o nazwie „$query”.",
+                fontSize = 14.sp,
+                color = TextSecondary,
+                modifier = Modifier.padding(top = 20.dp),
+            )
+        } else {
+            LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                items(cities, key = { it.slug }) { city ->
+                    TallFilledButton(city.name) { onPick(city) }
+                }
+            }
         }
     }
 }

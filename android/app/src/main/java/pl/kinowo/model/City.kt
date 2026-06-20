@@ -88,6 +88,37 @@ object Cities {
     val DEFAULT: City = all.first()
 
     /**
+     * Fold a Polish string to its diacritic-free, lower-case form for search
+     * matching, so a query typed without Polish letters still finds the city
+     * ("lodz" → "Łódź", "krakow" → "Kraków"). Unicode normalisation won't fold
+     * ł/ą/ę/ń, so map the Polish letters explicitly.
+     */
+    fun searchFold(s: String): String {
+        val out = StringBuilder(s.length)
+        for (ch in s.lowercase()) {
+            out.append(
+                when (ch) {
+                    'ą' -> 'a'; 'ć' -> 'c'; 'ę' -> 'e'; 'ł' -> 'l'; 'ń' -> 'n'
+                    'ó' -> 'o'; 'ś' -> 's'; 'ź' -> 'z'; 'ż' -> 'z'; else -> ch
+                }
+            )
+        }
+        return out.toString()
+    }
+
+    /**
+     * [allSorted] narrowed to the cities whose folded name contains the folded
+     * [query] — case- and diacritic-insensitive substring match. A blank query
+     * yields the whole list (an empty search box shows everything). Drives the
+     * search box on the manual city picker.
+     */
+    fun matching(query: String): List<City> {
+        val q = searchFold(query.trim())
+        return if (q.isEmpty()) allSorted
+        else allSorted.filter { searchFold(it.name).contains(q) }
+    }
+
+    /**
      * The supported city nearest to ([lat], [lon]), or null when the nearest is
      * still farther than 100 km — i.e. the user isn't near any city we serve,
      * so the gate falls back to an explicit pick.
