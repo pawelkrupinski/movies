@@ -137,6 +137,37 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 5L
   }
 
+  // Fairness under the cap: when more cinemas are due than the per-tick cap allows,
+  // the reaper must enqueue the MOST-OVERDUE first, not the head of its fixed
+  // city→catalogue list. Otherwise a credit-throttled worker that drains slowly
+  // keeps re-enqueuing the same front cinemas every tick and STARVES the tail (the
+  // last cities) — they'd never get scraped while the backlog persists. Here the
+  // tail-of-list cinemas carry the OLDEST stamps; under a cap of 2 they (not the
+  // two head-of-list cinemas) must win the tick.
+  it should "enqueue the most-overdue cinemas first when the per-tick cap bites, not the head of the list" in {
+    val now = Instant.parse("2026-06-20T08:00:00Z")
+    // List order: Multikino, KinoApollo, KinoMuza, Rialto, Helios.
+    // Stamp them so the LAST two in the list are the most overdue (oldest stamps),
+    // and all are past their DueWindow boundary so every one is due.
+    val ordered = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios)
+    val ageMinutes = Map(    // larger age = more overdue
+      Multikino  -> 31L, KinoApollo -> 32L, KinoMuza -> 33L, Rialto -> 90L, Helios -> 120L)
+    val fresh = new InMemoryFreshnessStore
+    ordered.foreach(c =>
+      fresh.markFresh(ScrapeCinemaHandler.dedupKey(c), FreshnessKind.CinemaScrape,
+        now.minusSeconds(ageMinutes(c) * 60)))
+    val scrapers = ordered.map(c => new FakeScraper(c, movieAt(c)))
+    val queue    = new InMemoryTaskQueue
+    val reaper   = new ScrapeReaper(scrapers, queue, fresh, maxEnqueuePerTick = 2,
+      clock = Clock.fixed(now, ZoneOffset.UTC))
+
+    reaper.tick() shouldBe 2
+    val enqueuedKeys = queue.monitor(100).active.map(_.dedupKey).toSet
+    // The two OLDEST (Helios=120m, Rialto=90m) — at the TAIL of the list — must win,
+    // NOT the head-of-list Multikino/KinoApollo the old fixed-order takeWhile chose.
+    enqueuedKeys shouldBe Set(ScrapeCinemaHandler.dedupKey(Helios), ScrapeCinemaHandler.dedupKey(Rialto))
+  }
+
   it should "not enqueue when another machine has claimed this minute's occurrence" in {
     val scraper = new FakeScraper(Multikino, movieAt(Multikino))
     val queue   = new InMemoryTaskQueue

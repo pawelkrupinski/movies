@@ -29,6 +29,11 @@ import scala.util.Try
  * worker scrapes a cinema at most once per window, and a failed scrape
  * (which doesn't mark freshness) is naturally retried on the next reaper tick.
  *
+ * When a backlog makes more cinemas due than `maxEnqueuePerTick`, the tick
+ * enqueues the MOST-OVERDUE first (oldest last-scrape, never-scraped first), so a
+ * credit-throttled worker draining slowly doesn't keep re-serving the head of the
+ * fixed city list and starving the tail — see [[tick]].
+ *
  * On a multi-machine worker each tick is gated by a cluster-wide occurrence
  * claim ([[ScheduledRunStore]]) keyed by the tick's minute, so a given minute's
  * stale-cinema enqueue runs on one machine, rotating — not on every machine.
@@ -97,17 +102,34 @@ class ScrapeReaper(
     if (runStore.claim(key)) tick() else 0
   }
 
-  /** Enqueue every stale cinema. Package-private so tests can drive it directly —
-   *  bypasses the occurrence claim. */
+  /** Enqueue every stale cinema, most-overdue first under the per-tick cap.
+   *  Package-private so tests can drive it directly — bypasses the occurrence claim.
+   *
+   *  When `maxEnqueuePerTick` bites (a backlog: more cinemas due than the cap), we
+   *  must not always favour the same head-of-list cinemas — `scrapers` is a fixed
+   *  city→catalogue order, so a plain `takeWhile` over it would re-enqueue the front
+   *  cinemas every tick and STARVE the tail (the last cities) while the worker is
+   *  credit-throttled and draining the backlog slowly. Instead we order the due
+   *  cinemas by how long they've waited — oldest `lastFetchedAt` (never-fetched =
+   *  oldest) first — so the longest-overdue cinema is always served next and the
+   *  backlog drains fairly. Ties break on the dedup key, keeping the order
+   *  deterministic (no clock/random in the ordering — see ScrapeOrderDeterminismSpec).
+   *  In steady state far fewer than the cap are due, so the sort is a cheap no-op. */
   private[tasks] def tick(now: Instant = clock.instant()): Int = {
-    var enqueued = 0
-    scrapers.iterator.takeWhile(_ => enqueued < maxEnqueuePerTick).foreach { s =>
-      val key = ScrapeCinemaHandler.dedupKey(s.cinema)
-      if (dueWindow.isDue(key, freshness.lastFetchedAt(key), now)) {
-        if (queue.enqueue(TaskType.ScrapeCinema, key,
-              Map(ScrapeCinemaHandler.CinemaKey -> s.cinema.displayName)) == EnqueueResult.Added)
-          enqueued += 1
+    val due = scrapers.iterator
+      .map(s => (ScrapeCinemaHandler.dedupKey(s.cinema), s.cinema.displayName))
+      .filter { case (key, _) => dueWindow.isDue(key, freshness.lastFetchedAt(key), now) }
+      .toVector
+      // Oldest-fetched first; never-fetched (None) sorts ahead of any timestamp.
+      .sortBy { case (key, _) =>
+        (freshness.lastFetchedAt(key).map(_.toEpochMilli).getOrElse(Long.MinValue), key)
       }
+
+    var enqueued = 0
+    due.iterator.takeWhile(_ => enqueued < maxEnqueuePerTick).foreach { case (key, displayName) =>
+      if (queue.enqueue(TaskType.ScrapeCinema, key,
+            Map(ScrapeCinemaHandler.CinemaKey -> displayName)) == EnqueueResult.Added)
+        enqueued += 1
     }
     if (enqueued > 0) logger.info(s"ScrapeReaper enqueued $enqueued stale cinema(s).")
     enqueued
