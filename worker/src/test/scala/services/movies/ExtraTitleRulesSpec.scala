@@ -303,6 +303,54 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // "Niesamowite przygody skarpetek 3. Ale kosmos!" is TMDB-no-match, so nothing
+  // folds its fragments — Helios's Roman "III", Cinema City's source-truncated
+  // "Ale ko", the subtitle-less "…skarpetek 3", and the format-tagged variants
+  // each key separately. The xtra-canonical-skarpetek-3 rule collapses them all.
+  private val skarpetek3Variants = Seq(
+    "Niesamowite przygody skarpetek 3",
+    "Niesamowite przygody skarpetek III",
+    "Niesamowite przygody skarpetek 3. Ale ko",          // Cinema City source truncation
+    "Niesamowite przygody skarpetek 3. Ale kosmos",
+    "Niesamowite przygody skarpetek 3. Ale kosmos!",
+    "Niesamowite przygody skarpetek 3. Ale kosmos! 2D Dubbing"
+  )
+  private val skarpetek3Canonical = "Niesamowite przygody skarpetek 3. Ale kosmos!"
+
+  it should "fold every 'skarpetek 3. Ale kosmos!' spelling onto one key" in {
+    val key = mergeKey(withExtras, skarpetek3Canonical)
+    skarpetek3Variants.foreach { v =>
+      withClue(s"mergeKey('$v'): ")(mergeKey(withExtras, v) shouldBe key)
+    }
+  }
+
+  it should "be load-bearing — the seed rules leave the skarpetek-3 truncated/format spellings unmerged" in {
+    val key = mergeKey(seedOnly, skarpetek3Canonical)
+    // The "Ale ko" Cinema-City truncation and the "2D Dubbing" format-tagged
+    // spelling only merge WITH the extras. (The subtitle-less "…skarpetek 3",
+    // the Roman "III", and the bare "…Ale kosmos" without the "!" already share
+    // the seed key — the alphanumeric-only sanitize drops the trailing "!" — so
+    // those are NOT the load-bearing cases.)
+    Seq(
+      "Niesamowite przygody skarpetek 3. Ale ko",
+      "Niesamowite przygody skarpetek 3. Ale kosmos! 2D Dubbing"
+    ).foreach { v =>
+      withClue(s"seedOnly.mergeKey('$v') should NOT yet equal the canonical key: ")(
+        mergeKey(seedOnly, v) should not be key)
+    }
+  }
+
+  it should "keep the FIRST and SECOND skarpetek films as their own rows" in {
+    val third = mergeKey(withExtras, skarpetek3Canonical)
+    Seq(
+      "Niesamowite przygody skarpetek",                  // film 1 — no number
+      "Niesamowite przygody skarpetek 2. Skarpetki górą!" // film 2
+    ).foreach { v =>
+      withClue(s"mergeKey('$v') must NOT collapse into film 3: ")(
+        mergeKey(withExtras, v) should not be third)
+    }
+  }
+
   // Ukrainian-language screenings are a DISTINCT version (a separate audience),
   // so the language/format strip must NOT eat a Ukrainian marker — the variant
   // keeps its own key and stays its own row, exactly like a dub/programme

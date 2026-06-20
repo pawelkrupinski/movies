@@ -232,7 +232,23 @@ object ExtraTitleRules {
       "Trailing parenthesised release year ('(1991)', '(1976)') glued into the title by a scraper — never part of the film's identity, so 'Milczenie owiec (1991)' merges into 'Milczenie owiec'. Only the PARENTHESISED form, so a bare year that IS the title ('1917', '2046') survives."),
     canon("xtra-canonical-mandalorian-grogu-en",
       """(?iu)^The\s+Mandalorian\s+and\s+Grogu$""", "Mandalorian i Grogu",
-      "Map the English title to the Polish canonical (same TMDB id 1228710) so the EN-titled listing merges; ordered after the trailing-format strip clears its '2D DUB' suffix first.")
+      "Map the English title to the Polish canonical (same TMDB id 1228710) so the EN-titled listing merges; ordered after the trailing-format strip clears its '2D DUB' suffix first."),
+    // "Niesamowite przygody skarpetek 3. Ale kosmos!" is a TMDB-no-match kids'
+    // film that fragments across cinemas at the SUBTITLE level: Helios romanises
+    // the sequel number (III), Cinema City ships a source-truncated
+    // "…skarpetek 3. Ale ko", and others drop the "!" or the subtitle entirely
+    // ("…skarpetek 3"). With no TMDB id there's no fold edge, so every spelling
+    // is its own row. Because `canonical` runs AFTER `normalize`, the bare "3"
+    // has already become "III" while a dotted "3." stays Arabic — so match both.
+    // The third film's subtitle "Ale kosmos!" is what disambiguates it from the
+    // FIRST ("Niesamowite przygody skarpetek", no number) and the SECOND
+    // ("…skarpetek 2. Skarpetki górą!"), which the `3`/`III` requirement leaves
+    // untouched. Anything after the sequel number (a partial/truncated/decorated
+    // subtitle) collapses onto the canonical full title.
+    canon("xtra-canonical-skarpetek-3",
+      """(?iu)^Niesamowite\s+przygody\s+skarpetek\s+(?:III|3)\b.*$""",
+      "Niesamowite przygody skarpetek 3. Ale kosmos!",
+      "Collapse every spelling of the TMDB-no-match 'Niesamowite przygody skarpetek 3. Ale kosmos!' (Roman III, the Cinema-City source-truncated 'Ale ko', the subtitle-less '…skarpetek 3', the format-tagged variants) onto one canonical title. The '3'/'III' requirement keeps films 1 (no number) and 2 (…skarpetek 2.) as their own rows.")
   )
 
   /** Per-cinema (client) cleanups — venue-specific junk too narrow to globalise

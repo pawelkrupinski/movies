@@ -86,6 +86,17 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     mergeKey("Mortal Kombat 2", titles) shouldBe mergeKey("Mortal Kombat II", titles)
   }
 
+  // A bare trailing numeral already romanises, so "skarpetek 3" and Helios's
+  // Roman "skarpetek III" share an identity key with no extra rule. (A numeral
+  // that clings a trailing "." — "skarpetek 3. Ale kosmos!" — does NOT romanise;
+  // that family is unified by the `xtra-canonical-skarpetek-3` rule instead, NOT
+  // by `normalize`, because a global dotted-numeral romanisation would also fire
+  // on festival-edition prefixes like "17. PRZEGLĄD NOWEGO KINA FRANCUSKIEGO".)
+  it should "unify the bare 'skarpetek 3' / 'skarpetek III' spellings via Roman normalisation" in {
+    TitleNormalizer.sanitize("Niesamowite przygody skarpetek 3") shouldBe
+      TitleNormalizer.sanitize("Niesamowite przygody skarpetek III")
+  }
+
   // ── Punctuation-only duplicates ───────────────────────────────────────────
   //
   // Different cinemas format the same title differently — same words and
