@@ -3,6 +3,7 @@ package services.movies
 import services.titlerules.{TitleRuleSet, TitleRuleDefaults}
 
 import java.util.Locale
+import java.util.regex.Pattern
 
 object TitleNormalizer {
   // The active rule set drives every prefix/suffix/canonical strip below. It's
@@ -24,6 +25,16 @@ object TitleNormalizer {
 
   /** Apply a cinema's per-cinema cleanup rules to a raw scraped title. */
   def cinemaClean(cinemaId: String, raw: String): String = active.perCinema(cinemaId, raw)
+
+  // Precompiled hot-path patterns. `sanitize` / `stripPunct` run per movie ×
+  // per cinema × per tick (plus every staging row and read-model projection);
+  // `String.replaceAll` recompiles its `Pattern` on every call, so we compile
+  // these once. `CombiningMarks` mirrors the NFD combining-mark strip; the
+  // `NonAlnum*` pair drops the residual punctuation/whitespace, one Unicode-aware
+  // (keeps Cyrillic/Greek/CJK letters) and one ASCII-only.
+  private val CombiningMarks  = Pattern.compile("\\p{M}")
+  private val NonAlnumUnicode = Pattern.compile("[^\\p{L}\\p{N}]+")
+  private val NonAlnumAscii   = Pattern.compile("[^a-z0-9]+")
 
   // "Mortal Kombat 2" and "Mortal Kombat II" should collapse.
   private val ArabicToRoman = Map(
@@ -158,11 +169,12 @@ object TitleNormalizer {
   // by `mergeKeyLookup` ONLY when at least two distinct corpus titles reduce
   // to the same form — so it never collapses a standalone film into siblings
   // that merely share a prefix.
-  private def stripPunct(t: String): String =
-    java.text.Normalizer.normalize(t, java.text.Normalizer.Form.NFD)
-      .replaceAll("\\p{M}", "")
-      .toLowerCase(Locale.ROOT)
-      .replaceAll("[^a-z0-9]+", "")
+  private def stripPunct(t: String): String = {
+    val deburred = CombiningMarks.matcher(
+      java.text.Normalizer.normalize(t, java.text.Normalizer.Form.NFD)
+    ).replaceAll("").toLowerCase(Locale.ROOT)
+    NonAlnumAscii.matcher(deburred).replaceAll("")
+  }
 
   /** Corpus-independent stable key — the same collapse as `mergeKeyLookup`'s
    *  most-aggressive tier (`stripPunct` of `canonical`), applied
@@ -183,9 +195,9 @@ object TitleNormalizer {
    *  of the same film stay as separate records). The imdbId re-merge step
    *  (later phase) folds those across scripts. */
   def sanitize(title: String): String =
-    tools.TextNormalization.deburr(canonical(normalize(title)))
-      .toLowerCase(Locale.ROOT)
-      .replaceAll("[^\\p{L}\\p{N}]+", "")
+    NonAlnumUnicode.matcher(
+      tools.TextNormalization.deburr(canonical(normalize(title))).toLowerCase(Locale.ROOT)
+    ).replaceAll("")
 
   // Group key for merging. Falls back to the plain Roman-numeral form when no
   // sibling title reduces to the same canonical.
