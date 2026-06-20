@@ -66,6 +66,15 @@ class ScrapeReaper(
   // queue dedups, so already-in-flight cinemas don't re-count against the cap.
   // Default unbounded so the tests that drive `tick()` directly are unaffected.
   maxEnqueuePerTick: Int = Int.MaxValue,
+  // While the worker is CPU-credit throttled (see [[ScrapeThrottleMonitor]]), cap
+  // enqueue to THIS trickle instead of `maxEnqueuePerTick`. Adding fewer newly-due
+  // cinemas lets the existing backlog drain and the pool earn idle, so the
+  // shared-CPU credit balance rebuilds and the metastable throttle deadlock breaks
+  // — then the full cap resumes. Most-overdue-first (see [[tick]]) means the
+  // trickle still serves the stalest cinemas. Default = unbounded so callers/tests
+  // that don't wire `throttle` keep the old behaviour.
+  throttledMaxEnqueuePerTick: Int = Int.MaxValue,
+  throttle: ScrapeThrottleSignal = ScrapeThrottleSignal.AlwaysHealthy,
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:    Clock = Clock.systemUTC()
 ) extends Stoppable with Logging {
@@ -125,13 +134,25 @@ class ScrapeReaper(
         (freshness.lastFetchedAt(key).map(_.toEpochMilli).getOrElse(Long.MinValue), key)
       }
 
+    // Throttle backoff: when the pool is credit-starved, enqueue only a trickle so
+    // the backlog drains and the box earns idle to rebuild credit (the cap only
+    // bites under a backlog anyway — steady state has fewer than either cap due).
+    val throttled = throttle.isThrottled
+    val cap       = if (throttled) throttledMaxEnqueuePerTick else maxEnqueuePerTick
+
     var enqueued = 0
-    due.iterator.takeWhile(_ => enqueued < maxEnqueuePerTick).foreach { case (key, displayName) =>
+    due.iterator.takeWhile(_ => enqueued < cap).foreach { case (key, displayName) =>
       if (queue.enqueue(TaskType.ScrapeCinema, key,
             Map(ScrapeCinemaHandler.CinemaKey -> displayName)) == EnqueueResult.Added)
         enqueued += 1
     }
-    if (enqueued > 0) logger.info(s"ScrapeReaper enqueued $enqueued stale cinema(s).")
+    if (enqueued > 0) {
+      if (throttled)
+        logger.warn(s"ScrapeReaper: CPU-credit throttle (scrape EWMA ${throttle.ewmaMillis}ms) — " +
+          s"backing off to cap $cap; enqueued $enqueued most-overdue cinema(s) of ${due.size} due, " +
+          s"letting the pool drain + rebuild credit.")
+      else logger.info(s"ScrapeReaper enqueued $enqueued stale cinema(s).")
+    }
     enqueued
   }
 

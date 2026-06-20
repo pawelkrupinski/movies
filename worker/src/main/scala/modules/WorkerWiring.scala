@@ -389,6 +389,11 @@ class WorkerWiring extends play.api.Logging {
   lazy val taskQueue: TaskQueue =
     new MeteredTaskQueue(new MongoTaskQueue(mongoConnection.database), taskMetrics)
   lazy val freshnessStore: FreshnessStore = new MongoFreshnessStore(mongoConnection.database)
+  // Auto-recovery from the shared-CPU-credit deadlock: watches ScrapeCinema
+  // handler durations and tells ScrapeReaper to back off enqueue while throttled,
+  // so the box earns idle and rebuilds credit. Fed alongside taskMetrics via the
+  // composite observer the TaskWorker takes (see below).
+  lazy val scrapeThrottleMonitor = new services.tasks.ScrapeThrottleMonitor()
 
   // Cluster-wide occurrence claims gate the reapers' recurring ticks so each
   // scheduled occurrence runs on ONE machine (rotating), not on every machine.
@@ -557,13 +562,21 @@ class WorkerWiring extends play.api.Logging {
     // Each completed task announces itself so StagingReaper can chain the next
     // staging step; non-staging completions are ignored by its subscriber.
     onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload)),
-    // Report claims / outcomes / handler durations to the Prometheus metrics.
-    observer = taskMetrics
+    // Report claims / outcomes / handler durations to BOTH the Prometheus metrics
+    // and the scrape-throttle monitor (which reads ScrapeCinema durations).
+    observer = services.metrics.TaskObserver.composite(taskMetrics, scrapeThrottleMonitor)
   )
+  // While throttled the reaper enqueues at most this many newly-due cinemas per
+  // tick (vs the healthy `maxScrapeEnqueuePerTick`), so the backlog drains and the
+  // pool earns idle to rebuild credit. A trickle, not 0, so scrapes keep running
+  // and the monitor still sees durations fall when credit recovers.
+  def throttledScrapeEnqueuePerTick: Int = Env.positiveInt("KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK", 3)
   lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, dueWindow = scrapeDueWindow,
       initialDelay = initialScrapeDelaySeconds.seconds,
-      maxEnqueuePerTick = maxScrapeEnqueuePerTick, runStore = scheduledRunStore)
+      maxEnqueuePerTick = maxScrapeEnqueuePerTick,
+      throttledMaxEnqueuePerTick = throttledScrapeEnqueuePerTick, throttle = scrapeThrottleMonitor,
+      runStore = scheduledRunStore)
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing
   // when the 2026-06-12 worker-steal episode had to be reconstructed from metrics).

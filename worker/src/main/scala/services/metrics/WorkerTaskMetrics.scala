@@ -29,6 +29,14 @@ object TaskObserver {
     def onStarted(task: Task): Unit                                       = ()
     def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = ()
   }
+
+  /** Fan one worker's lifecycle callbacks out to several observers, so the
+   *  [[TaskWorker]] still takes a single observer while both the Prometheus sink
+   *  and the scrape-throttle monitor see every task. */
+  def composite(observers: TaskObserver*): TaskObserver = new TaskObserver {
+    def onStarted(task: Task): Unit                                       = observers.foreach(_.onStarted(task))
+    def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = observers.foreach(_.onFinished(task, outcome, handleMillis))
+  }
 }
 
 /**

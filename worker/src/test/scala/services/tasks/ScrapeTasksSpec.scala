@@ -168,6 +168,32 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     enqueuedKeys shouldBe Set(ScrapeCinemaHandler.dedupKey(Helios), ScrapeCinemaHandler.dedupKey(Rialto))
   }
 
+  // Credit-throttle backoff: while the ScrapeThrottleMonitor reports the pool is
+  // running throttled-slow, the reaper enqueues only a TRICKLE (throttledMaxEnqueue
+  // PerTick) instead of the healthy cap — so the backlog drains and the pool earns
+  // idle to rebuild credit (breaking the metastable deadlock), then resumes.
+  it should "back off to throttledMaxEnqueuePerTick while the worker is CPU-credit throttled" in {
+    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
+    val queue    = new InMemoryTaskQueue
+    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def ewmaMillis = 30000L }
+    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
+      maxEnqueuePerTick = Int.MaxValue, throttledMaxEnqueuePerTick = 2, throttle = throttled)
+    // All 5 cinemas are due, but throttled → only 2 enqueue (vs the full 5 healthy).
+    reaper.tick() shouldBe 2
+  }
+
+  it should "resume the full enqueue cap once the throttle clears" in {
+    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
+    val queue    = new InMemoryTaskQueue
+    var throttledFlag = true
+    val signal = new ScrapeThrottleSignal { def isThrottled = throttledFlag; def ewmaMillis = 0L }
+    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
+      maxEnqueuePerTick = Int.MaxValue, throttledMaxEnqueuePerTick = 2, throttle = signal)
+    reaper.tick() shouldBe 2 // throttled trickle
+    throttledFlag = false
+    reaper.tick() shouldBe 3 // recovered → the remaining 3 (first 2 still waiting, deduped)
+  }
+
   it should "not enqueue when another machine has claimed this minute's occurrence" in {
     val scraper = new FakeScraper(Multikino, movieAt(Multikino))
     val queue   = new InMemoryTaskQueue
