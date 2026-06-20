@@ -28,3 +28,20 @@ contactPoints:
           # Send a follow-up when an alert clears, so a silent channel means
           # "all good" rather than "did it recover?".
         disableResolveMessage: false
+
+  # NOT a notification — a control channel. The worker-credit-low rule posts here,
+  # and this webhook drives the worker's reaper backoff: Grafana POSTs the alert
+  # payload (status=firing on trip, status=resolved on recovery) to the worker's
+  # /throttle endpoint over the private network, which ExternalThrottleGate.parse
+  # turns into on/off. disableResolveMessage MUST stay false or the worker would
+  # never be told to resume. Reachable because the worker's :9000 health server is
+  # answered over the 6PN (verified 2026-06-20).
+  - orgId: 1
+    name: WorkerThrottle
+    receivers:
+      - uid: worker-throttle-webhook
+        type: webhook
+        settings:
+          url: 'http://kinowo-worker.internal:9000/throttle'
+          httpMethod: POST
+        disableResolveMessage: false

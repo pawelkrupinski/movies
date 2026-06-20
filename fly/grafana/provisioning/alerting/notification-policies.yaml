@@ -13,3 +13,19 @@ policies:
     group_interval: 5m
     # Re-nag every 4h while an alert is still firing.
     repeat_interval: 4h
+    routes:
+      # The worker-credit-low rule is a CONTROL signal, not a page: route it to
+      # the WorkerThrottle webhook (which drives the worker's reaper backoff) and
+      # NOT to Telegram. `continue: false` stops it falling through to the default
+      # Telegram receiver. Near-zero group_wait so the worker reacts promptly;
+      # long repeat_interval since the firing/resolved transitions carry the state
+      # (re-POSTing "on" is harmless/idempotent, just unnecessary).
+      - receiver: WorkerThrottle
+        object_matchers:
+          - ['notify', '=', 'worker-throttle']
+        continue: false
+        group_by:
+          - alertname
+        group_wait: 10s
+        group_interval: 30s
+        repeat_interval: 12h
