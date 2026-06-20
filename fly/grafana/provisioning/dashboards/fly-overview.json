@@ -108,16 +108,13 @@
     },
     {
       "id": 8,
-      "title": "HTTP latency — grafana (s)",
+      "title": "Worker — throttled (1 = reapers backing off, 0 = full enqueue)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 25 },
-      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "max": 1, "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "lineWidth": 2, "fillOpacity": 35 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "histogram_quantile(0.99, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo-grafana\"}[5m])))", "legendFormat": "p99" },
-        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo-grafana\"}[5m])))", "legendFormat": "p95" },
-        { "refId": "C", "expr": "histogram_quantile(0.75, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo-grafana\"}[5m])))", "legendFormat": "p75" },
-        { "refId": "D", "expr": "histogram_quantile(0.50, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo-grafana\"}[5m])))", "legendFormat": "p50" }
+        { "refId": "A", "expr": "max(kinowo_worker_throttled{app=\"kinowo-worker\"})", "legendFormat": "throttled" }
       ]
     },
     {
