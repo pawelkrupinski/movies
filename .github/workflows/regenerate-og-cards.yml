@@ -1,0 +1,122 @@
+name: Regenerate OG share cards
+
+# Weekly refresh of the per-city Open Graph share cards
+# (web/src/main/assets/img/og-{slug}.png) from the LIVE prod repertoire, so the
+# link previews Facebook/Messenger/X/Slack render don't freeze on one week's
+# posters. The cards are a screenshot of each `/{slug}/` page (all dates shown)
+# under the "Kinowo / Repertuar kin w {locative}" overlay — see
+# `web/src/page/scala/tools/OgCardGenerator.scala`.
+#
+# This only authors a branch + PR for a human to review — it does NOT push to
+# main and does NOT deploy. The repertoire moves week to week, so a run almost
+# always produces a diff (41 changed PNGs); a truly unchanged week produces no PR.
+#
+# Like sync-title-rules.yml, the PR is opened via the "Kinowo Sync Bot" GitHub
+# App so Branch CI runs on it (a PR created with the default GITHUB_TOKEN never
+# triggers `pull_request` — GitHub's recursion guard). Reuses the same repo
+# secrets: SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY.
+
+on:
+    # Manual trigger for an on-demand refresh.
+    workflow_dispatch:
+
+    # Friday 00:01 UTC. GitHub cron is UTC-only and can't follow DST, so this is
+    # ~02:01 Warsaw in summer / 01:01 in winter — early Friday morning either way.
+    schedule:
+        - cron: '1 0 * * 5'
+
+# Author/commit the regenerated cards into the PR branch.
+permissions:
+    contents: write
+    pull-requests: write
+
+jobs:
+    regenerate-og-cards:
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        steps:
+            # Short-lived installation token for the "Kinowo Sync Bot" GitHub App.
+            # The PR below is opened with THIS token (not GITHUB_TOKEN) so it fires
+            # `pull_request` and Branch CI runs on the refresh PR without a human
+            # nudge. Needs repo secrets SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY
+            # (set up for sync-title-rules.yml — see that file's header).
+            - uses: actions/create-github-app-token@v3
+              id: app-token
+              with:
+                  app-id: ${{ secrets.SYNC_PR_APP_ID }}
+                  private-key: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
+
+            - uses: actions/checkout@v5
+
+            # Same Scala toolchain as the other sbt jobs (Temurin JDK 25 + sbt
+            # dependency caching).
+            - uses: actions/setup-java@v5
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            # Headless Chrome for the CDP-driven generator — same install +
+            # `CDP_BROWSER_BIN` wiring the page-test jobs use.
+            - uses: browser-actions/setup-chrome@v1
+              id: setup-chrome
+              with:
+                  chrome-version: stable
+
+            # Fonts the card overlay renders: a clean Arial-metric sans for the
+            # "Kinowo" wordmark + the city line (the CSS asks for Helvetica
+            # Neue/Arial, absent on the runner), and colour emoji for the 🎬
+            # glyph. Without these the wordmark falls back to a default face and
+            # the clapperboard renders as tofu.
+            - name: Install card fonts
+              run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-liberation fonts-noto-color-emoji
+
+            # Share the same zinc/sbt-target cache shape as ci.yml so a cold
+            # compile is the exception.
+            - uses: actions/cache@v5
+              with:
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
+
+            # Screenshot every live city page and compose its card into
+            # web/src/main/assets/img/og-{slug}.png. Hits the public prod site —
+            # no Mongo/Fly secrets needed. ~5s/city, ~4 min for all 41.
+            - name: Regenerate per-city cards from live prod
+              env:
+                  CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
+              run: sbt "web/PageTest/runMain tools.OgCardGenerator"
+
+            # Open (or update) a PR with the refreshed cards. A fixed branch means
+            # a later run amends the open PR instead of stacking duplicates; if a
+            # run somehow produced no pixel diff, the action is a no-op (no PR).
+            # `add-paths` scopes the commit to the cards so nothing else can ride
+            # along.
+            - name: Open regenerate PR
+              uses: peter-evans/create-pull-request@v6
+              with:
+                  token: ${{ steps.app-token.outputs.token }}
+                  branch: chore/regenerate-og-cards
+                  delete-branch: true
+                  add-paths: web/src/main/assets/img/og-*.png
+                  commit-message: 'chore: regenerate per-city OG share cards'
+                  title: 'chore: regenerate per-city OG share cards'
+                  body: |
+                      Automated weekly refresh of the per-city Open Graph share
+                      cards (`web/src/main/assets/img/og-{slug}.png`) from the live
+                      prod repertoire, so the link previews don't freeze on one
+                      week's posters.
+
+                      Each card is a screenshot of that city's `/{slug}/` page (all
+                      dates shown) under the "Kinowo / Repertuar kin w {locative}"
+                      overlay. **Skim the cards** before merging — a city that's
+                      genuinely film-dormant this week will show a sparse grid.
+
+                      Generated by `.github/workflows/regenerate-og-cards.yml`
+                      (`tools.OgCardGenerator`).
