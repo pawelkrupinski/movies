@@ -142,14 +142,18 @@ object ApplyExtraTitleRules {
           .getOrElse(TitleRuleDefaults.all.filter(r => r.scope == scope && r.cinemaId == cinemaId && r.last))
 
         val byId  = extras.map(r => r.id -> r).toMap
-        // Update only an allowlisted id whose behaviour (pattern/replacement, NOT
-        // the cosmetic note) drifted; keep the stored order/last/enabled metadata.
+        // Update only an EXPLICITLY allowlisted id whose code content (pattern,
+        // replacement, OR note) drifted; keep the stored order/last/enabled
+        // metadata. The note is synced too — for a hand-picked id that's the point
+        // (a fixed rule's doc shouldn't lie); the allowlist gate is what stops the
+        // note from flagging the dozens of cosmetically-divergent rules prod
+        // carries from `GeneralizeSeparators`, since none of those are listed.
         def drifted(cur: TitleRule): Boolean =
           updateIds.contains(cur.id) &&
-            byId.get(cur.id).exists(code => (cur.pattern, cur.replacement) != (code.pattern, code.replacement))
+            byId.get(cur.id).exists(code => (cur.pattern, cur.replacement, cur.note) != (code.pattern, code.replacement, code.note))
         val updated = baseRules.filter(drifted).map(_.id)
         val reconciledBase = baseRules.map { cur =>
-          if (drifted(cur)) cur.copy(pattern = byId(cur.id).pattern, replacement = byId(cur.id).replacement)
+          if (drifted(cur)) cur.copy(pattern = byId(cur.id).pattern, replacement = byId(cur.id).replacement, note = byId(cur.id).note)
           else cur
         }
         val present = baseRules.map(_.id).toSet

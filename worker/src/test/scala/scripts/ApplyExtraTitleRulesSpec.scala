@@ -71,6 +71,7 @@ class ApplyExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     val reconciled = p.record.rules.find(_.id == laRule).get
     reconciled.pattern shouldBe codeRule.pattern          // code pattern wins
     reconciled.pattern should not be stalePattern
+    reconciled.note shouldBe codeRule.note                // and the doc note is synced too
   }
 
   it should "NOT update a drifted rule that is absent from the --update allowlist" in {
