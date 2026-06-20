@@ -3,6 +3,7 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import services.movies.TitleNormalizer
 import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime}
@@ -54,7 +55,7 @@ object CyfroweKinoClient {
   private def parseMovie(item: Element, cinema: Cinema): Option[CinemaMovie] =
     for {
       rawTitle <- Option(item.selectFirst("h3.amy-movie-field-title a")).map(_.text)
-      title     = cleanTitle(rawTitle) if title.nonEmpty
+      title     = TitleNormalizer.cinemaClean("cyfrowe-kino", cleanTitle(rawTitle)) if title.nonEmpty
       showtimes = parseShowtimes(item)
       if showtimes.nonEmpty
     } yield CinemaMovie(

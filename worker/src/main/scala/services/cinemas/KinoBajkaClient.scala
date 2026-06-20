@@ -3,6 +3,7 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import services.movies.TitleNormalizer
 import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime}
@@ -102,7 +103,7 @@ object KinoBajkaClient {
   private def parseItem(item: Element, date: LocalDate): Seq[RawSlot] = {
     val link    = Option(item.selectFirst("div.title-age-group h4 a[href]"))
                     .orElse(Option(item.selectFirst("h4 a[href]")))
-    val title   = link.map(_.text.trim).filter(_.nonEmpty)
+    val title   = link.map(l => TitleNormalizer.cinemaClean("kino-bajka", l.text.trim)).filter(_.nonEmpty)
     val filmUrl = link.map(_.attr("href")).filter(_.nonEmpty)
     val poster  = Option(item.selectFirst("img.screening-poster[src]"))
                     .map(_.attr("src")).filter(_.nonEmpty)

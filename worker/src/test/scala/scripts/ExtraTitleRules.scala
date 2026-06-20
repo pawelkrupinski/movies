@@ -51,6 +51,9 @@ object ExtraTitleRules {
   private def canon(id: String, pattern: String, replacement: String, note: String): TitleRule =
     TitleRule(id, Canonical, None, pattern, replacement, applyAll = false, order = 0, note = Some(note))
 
+  private def perCinema(id: String, cinemaId: String, pattern: String, note: String): TitleRule =
+    TitleRule(id, PerCinema, Some(cinemaId), pattern, "", applyAll = false, order = 0, note = Some(note))
+
   /** Programme banners not in the seed alternation. Each anchored at `^` and
    *  ending in its delimiter (`: `, ` | `) so it's a true prefix the extractor
    *  can split off. `[^:]+` variants absorb the cycle's sub-name (DKF Kropka,
@@ -201,11 +204,23 @@ object ExtraTitleRules {
       "Map the English title to the Polish canonical (same TMDB id 1228710) so the EN-titled listing merges; ordered after the trailing-format strip clears its '2D DUB' suffix first.")
   )
 
+  /** Per-cinema (client) cleanups — venue-specific junk too narrow to globalise
+   *  safely, scoped to the one cinema's slug. PerCinema runs in `cinemaClean` at
+   *  INGESTION (like the seed per-client `cleanTitle`), changing the display +
+   *  merge key, so variants collapse into one rated row. Each requires the owning
+   *  client to call `TitleNormalizer.cinemaClean("<slug>", …)` (wired in this
+   *  change). Fourth-wave (2026-06-20). */
+  val perCinemaRules: Seq[TitleRule] = Seq(
+    perCinema("xtra-bajka-sps",        "kino-bajka",   """(?iu)\s+(?:2D|3D)\s+(?:DUB|NAP)\.?\s+SPS\s*$""", "Kino Bajka '… 2D DUB. SPS' screening-code suffix (Toy Story 5, Vaiana)"),
+    perCinema("xtra-cyfrowe-premiera", "cyfrowe-kino", """(?i)^Premiera!\s+""",                            "Cyfrowe Kino 'Premiera! <film>' prefix"),
+    perCinema("xtra-kijow-napisy-pl",  "kino-kijow",   """(?iu)\s+(?:UA|UKR)?\s*Napisy\s+PL\s*$""",        "Kino Kijów '… [UA/UKR] Napisy PL' subtitle suffix (Diabeł …Prady 2, Mawka, On drive)")
+  )
+
   /** Orders stamped by position so the additions fold AFTER the seed rules of
    *  their scope (matching how [[ApplyExtraTitleRules]] appends them to the
    *  existing record). */
   val all: Seq[TitleRule] =
-    (programmePrefixes ++ searchStrips ++ canonical).zipWithIndex.map {
+    (programmePrefixes ++ searchStrips ++ canonical ++ perCinemaRules).zipWithIndex.map {
       case (r, i) => r.copy(order = 100 + i)
     }
 }

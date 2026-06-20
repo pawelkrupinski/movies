@@ -299,4 +299,35 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
       withClue(s"canonical('$t') unchanged: ")(withExtras.canonical(t) shouldBe t)
     }
   }
+
+  // ── per-cinema (client) rules: venue junk stripped at ingestion ─────────────
+  // `perCinema(slug, raw)` is what the owning client now runs in `cinemaClean`.
+
+  private val perCinemaCases = Seq(
+    ("kino-bajka",   "TOY STORY 5 2D DUB. SPS")               -> "TOY STORY 5",
+    ("kino-bajka",   "VAIANA 2D DUB. SPS")                    -> "VAIANA",
+    ("cyfrowe-kino", "Premiera! toy story 5")                 -> "toy story 5",
+    ("kino-kijow",   "Diabeł ubiera się u Prady 2 Napisy PL") -> "Diabeł ubiera się u Prady 2",
+    ("kino-kijow",   "Mawka: Prawdziwy mit UA Napisy PL")     -> "Mawka: Prawdziwy mit",
+    ("kino-kijow",   "On drive UKR NAPISY PL")                -> "On drive"
+  )
+
+  "ExtraTitleRules per-cinema rules" should "strip venue-specific junk for the owning cinema" in {
+    perCinemaCases.foreach { case ((slug, raw), clean) =>
+      withClue(s"perCinema('$slug', '$raw'): ")(withExtras.perCinema(slug, raw) shouldBe clean)
+    }
+  }
+
+  it should "be load-bearing — the seed rules alone leave the raw title intact" in {
+    perCinemaCases.foreach { case ((slug, raw), _) =>
+      withClue(s"seedOnly.perCinema('$slug', '$raw'): ")(seedOnly.perCinema(slug, raw) shouldBe raw)
+    }
+  }
+
+  it should "only fire for the owning cinema, not a cinema without that rule" in {
+    perCinemaCases.foreach { case ((_, raw), _) =>
+      withClue(s"perCinema('some-other-cinema', '$raw'): ")(
+        withExtras.perCinema("some-other-cinema", raw) shouldBe raw)
+    }
+  }
 }

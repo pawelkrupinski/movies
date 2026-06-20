@@ -2,6 +2,7 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
+import services.movies.TitleNormalizer
 import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.{LocalDate, LocalDateTime, YearMonth, ZoneId}
@@ -109,7 +110,7 @@ object KinoKijowClient {
 
       // Parse date/time from the span; title from h2 after the " - " separator
       val dateTime = parseDateTimePat(cdDate, month)
-      val title    = h2Title(h2Text).filter(_.nonEmpty)
+      val title    = h2Title(h2Text).map(t => TitleNormalizer.cinemaClean("kino-kijow", t)).filter(_.nonEmpty)
 
       val bookingUrl = Option(block.selectFirst("a.btn-badge2[href^=\"/MSI/Default.aspx\"]"))
         .map(_.attr("href").trim)
