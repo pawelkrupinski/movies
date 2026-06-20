@@ -646,8 +646,10 @@ class MovieController( cc: ControllerComponents,
    *  directly at `/:city/og-image` for review. */
   def cityOgImage(city: String): Action[AnyContent] = Action {
     withCity(city) { c =>
-      val posterUrls = movieControllerService.toSchedules(c).flatMap(_.posterUrl)
-      val bytes = cityOgCardService.card(c.slug, s"Repertuar kin ${c.locativePhrase}", posterUrls)
+      // First few DISTINCT films (toSchedules is one row per film) → the grid
+      // columns; CityOgCardService caps how many it draws.
+      val films = movieControllerService.toSchedules(c).take(6).map(MovieController.toCityCardFilm)
+      val bytes = cityOgCardService.card(c.slug, s"Repertuar kin ${c.locativePhrase}", films)
       Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=86400")
     }
   }
@@ -941,4 +943,29 @@ object MovieController {
    *  "Reżyseria: …" line, or None when no director is known. */
   private[controllers] def cardDirector(film: FilmSchedule): Option[String] =
     Some(film.director.mkString(", ")).filter(_.nonEmpty)
+
+  private val OgTimeFmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+
+  /** "0h 55min" / "1h 42min", matching the page's runtime pill. */
+  private def cardRuntime(min: Int): String = s"${min / 60}h ${min % 60}min"
+
+  /** Build one page-like column ([[tools.CityCardFilm]]) for the dynamic city OG
+   *  card: the small meta pills (runtime / year / up to two genres), the rating
+   *  pills, and the soonest day's per-cinema showtime chips — capped (2 cinemas
+   *  × 6 chips) so the rendered card stays bounded. */
+  private[controllers] def toCityCardFilm(film: FilmSchedule): tools.CityCardFilm = {
+    val meta =
+      film.movie.runtimeMinutes.map(cardRuntime).toSeq ++
+      film.movie.releaseYear.map(_.toString).toSeq ++
+      film.movie.genres.take(2)
+    val (dayLabel, cinemas) = film.showings.headOption.map { case (date, css) =>
+      DateFormatter.format(date) -> css.take(2).map { cs =>
+        cs.cinema.displayName -> cs.showtimes.take(6).map { st =>
+          val time = st.dateTime.format(OgTimeFmt)
+          st.format.headOption.filter(_.nonEmpty).fold(time)(fmt => s"$time $fmt")
+        }
+      }
+    }.getOrElse("" -> Seq.empty)
+    tools.CityCardFilm(film.movie.title, meta, cardRatingBadges(film), film.posterUrl, dayLabel, cinemas)
+  }
 }

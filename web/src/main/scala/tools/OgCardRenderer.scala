@@ -48,6 +48,26 @@ object OgCardRenderer {
   private val FooterCol   = new Color(0x70, 0x78, 0x86)
   private val UrlCol      = new Color(0xbd, 0xa4, 0xff) // the city card's accent "kinowo.fly.dev" line
 
+  // ── City page-like card: a grid of repertoire `.card`s as the background.
+  //    Colours/metrics copied from the live page CSS so it reads as the site. ──
+  private val GridCols   = 5
+  private val GridSide   = 24            // page container px-4 ≈ 1.5rem
+  private val GridGap    = 16            // bootstrap g-3 ≈ 1rem
+  private val GridTop    = 22
+  private val ColW       = (Width - 2 * GridSide - (GridCols - 1) * GridGap) / GridCols // ≈ 217
+  private val PosterColH = math.round(ColW * 1.48f)  // page .poster-wrap padding-top:148%
+  private val PageBg       = new Color(0x0d, 0x0d, 0x22) // page navy background
+  private val CardBg       = new Color(0x1e, 0x1e, 0x2e) // .card
+  private val PosterBg     = new Color(0x2a, 0x2a, 0x3e) // .poster-wrap fallback
+  private val MetaPillBg     = new Color(0x25, 0x25, 0x40) // .pill (runtime/year/genre)
+  private val MetaPillBorder = new Color(0x3a, 0x3a, 0x6e)
+  private val MetaPillText   = new Color(0x99, 0x99, 0xbb)
+  private val DayCol       = new Color(0x9a, 0x9a, 0xc0) // date-group label
+  private val CinemaCol    = new Color(0x66, 0xaa, 0xdd) // .cinema-label
+  private val ChipBg       = new Color(0x3a, 0x3a, 0x6e) // .badge-time
+  private val ChipText     = new Color(0xaa, 0xd4, 0xff)
+  private val ChipFmt      = new Color(0xaa, 0xd4, 0xff, 0xb3) // .badge-fmt (opacity ~.7)
+
   // Cap on synopsis lines so a long plot summary fills the space below the
   // ratings without crowding the footer; the available-height calc trims it
   // further when the title wraps or there are two rows of rating pills.
@@ -104,6 +124,10 @@ object OgCardRenderer {
   // Loaded once; `deriveFont` is cheap and thread-safe per call.
   private val regular = loadFont("/fonts/DejaVuSans.ttf")
   private val bold    = loadFont("/fonts/DejaVuSans-Bold.ttf")
+
+  // Decorative IMDb·Metacritic·RT·Filmweb pills for the city card's brand
+  // overlay — the card advertises that we carry ratings, not any one score.
+  private val OverlayBadges = ratingBadges(imdb = Some(7.8), metascore = Some(81), rottenTomatoes = Some(91), filmweb = Some(7.4))
 
   /** Compose the card. `subtitle` is the year · genres line; `badges` are the
    *  rating pills from [[ratingBadges]]; `poster` is the decoded poster image or
@@ -193,61 +217,160 @@ object OgCardRenderer {
     toPng(img)
   }
 
-  /** Compose the per-city share card: a montage of the city's current posters
-   *  as a full-bleed background, a left→right dark gradient for legibility, and
-   *  the "Kinowo / {cityLine}" wordmark + rating pills on the left — the
-   *  poster-montage cousin of the film card. `cityLine` is e.g. "Repertuar kin
-   *  w Poznaniu"; `posters` are the already-decoded poster images (tiled, and
-   *  cycled if fewer than the grid holds); `badges` are decorative sample pills.
-   *  No poster → a clean gradient-only brand card rather than an empty frame. */
-  def renderCityCard(cityLine: String, posters: Seq[BufferedImage], badges: Seq[Badge]): Array[Byte] = {
+  /** Compose the per-city share card so its background reads as the real
+   *  repertoire page: a 5-column grid of film cards (poster on top, then title,
+   *  meta + rating pills, the day + per-cinema showtime chips) on the page's
+   *  dark navy, with the left→right dark gradient + "Kinowo / {cityLine}" brand
+   *  overlay on the left. `columns` are the city's first few DISTINCT films
+   *  (no movie/poster repeats), each paired with its decoded poster (or None).
+   *  No films → a clean brand-only card rather than an empty frame. */
+  def renderCityPageCard(cityLine: String, columns: Seq[(CityCardFilm, Option[BufferedImage])]): Array[Byte] = {
     val img = new BufferedImage(Width, Height, BufferedImage.TYPE_INT_RGB)
     val g   = img.createGraphics()
     try {
       applyHints(g)
-      g.setPaint(new GradientPaint(0f, 0f, Bg, 0f, Height.toFloat, BgBottom))
+      g.setColor(PageBg)
       g.fillRect(0, 0, Width, Height)
-      drawMontage(g, posters)
 
-      // Left→right dark gradient: opaque on the left so the text reads, fading
-      // out by ~64% so the posters show on the right (mirrors the on-page card's
-      // `linear-gradient(90deg, …)` overlay).
+      for (((film, poster), i) <- columns.zipWithIndex.take(GridCols))
+        drawColumn(g, GridSide + i * (ColW + GridGap), film, poster)
+
+      // Left→right dark gradient: opaque on the left so the brand text reads,
+      // fading out by ~64% so the page grid shows on the right.
       val stops  = Array(0f, 0.30f, 0.64f, 1f)
       val shades = Array(new Color(13, 13, 34, 247), new Color(13, 13, 34, 235),
                          new Color(13, 13, 34, 77),  new Color(13, 13, 34, 0))
       g.setPaint(new LinearGradientPaint(0f, 0f, Width.toFloat, 0f, stops, shades))
       g.fillRect(0, 0, Width, Height)
 
-      val leftX   = 80
-      val brandFm = g.getFontMetrics(bold.deriveFont(86f))
-      val tagFm   = g.getFontMetrics(regular.deriveFont(33f))
-      val urlFm   = g.getFontMetrics(regular.deriveFont(23f))
-      val pillFm  = g.getFontMetrics(bold.deriveFont(30f))
-      val pillH   = pillFm.getAscent + pillFm.getDescent + 22 // padY*2, matching drawBadges
-      val (gapBrandTag, gapTagPills, gapPillsUrl) = (14, 30, 26)
-      val blockH = (brandFm.getAscent + brandFm.getDescent) + gapBrandTag +
-                   (tagFm.getAscent + tagFm.getDescent) + gapTagPills + pillH + gapPillsUrl +
-                   (urlFm.getAscent + urlFm.getDescent)
-      var y = (Height - blockH) / 2
-
-      g.setFont(bold.deriveFont(86f)); g.setColor(TitleCol)
-      y += brandFm.getAscent; g.drawString("Kinowo", leftX, y); y += brandFm.getDescent
-
-      y += gapBrandTag
-      g.setFont(regular.deriveFont(33f)); g.setColor(TitleCol)
-      y += tagFm.getAscent
-      g.drawString(ellipsize(g, cityLine, Width - Margin - leftX), leftX, y)
-      y += tagFm.getDescent
-
-      y += gapTagPills
-      y = drawBadges(g, badges, leftX, y, Width - Margin)
-
-      y += gapPillsUrl
-      g.setFont(regular.deriveFont(23f)); g.setColor(UrlCol)
-      y += urlFm.getAscent; g.drawString("kinowo.fly.dev", leftX, y)
+      drawBrandOverlay(g, cityLine)
     } finally g.dispose()
 
     toPng(img)
+  }
+
+  /** The left brand block: "Kinowo" wordmark + the city line + decorative rating
+   *  pills + the URL, vertically centred. */
+  private def drawBrandOverlay(g: Graphics2D, cityLine: String): Unit = {
+    val leftX   = 80
+    val brandFm = g.getFontMetrics(bold.deriveFont(86f))
+    val tagFm   = g.getFontMetrics(regular.deriveFont(33f))
+    val urlFm   = g.getFontMetrics(regular.deriveFont(23f))
+    val pillFm  = g.getFontMetrics(bold.deriveFont(30f))
+    val pillH   = pillFm.getAscent + pillFm.getDescent + 22 // padY*2, matching drawBadges at 30f
+    val (gapBrandTag, gapTagPills, gapPillsUrl) = (14, 30, 26)
+    val blockH = (brandFm.getAscent + brandFm.getDescent) + gapBrandTag +
+                 (tagFm.getAscent + tagFm.getDescent) + gapTagPills + pillH + gapPillsUrl +
+                 (urlFm.getAscent + urlFm.getDescent)
+    var y = (Height - blockH) / 2
+
+    g.setFont(bold.deriveFont(86f)); g.setColor(TitleCol)
+    y += brandFm.getAscent; g.drawString("Kinowo", leftX, y); y += brandFm.getDescent
+
+    y += gapBrandTag
+    g.setFont(regular.deriveFont(33f)); g.setColor(TitleCol)
+    y += tagFm.getAscent
+    g.drawString(ellipsize(g, cityLine, Width - Margin - leftX), leftX, y)
+    y += tagFm.getDescent
+
+    y += gapTagPills
+    y = drawBadges(g, OverlayBadges, leftX, y, Width - Margin)
+
+    y += gapPillsUrl
+    g.setFont(regular.deriveFont(23f)); g.setColor(UrlCol)
+    y += urlFm.getAscent; g.drawString("kinowo.fly.dev", leftX, y)
+  }
+
+  /** One film column, drawn like the page's `.card`: rounded `#1e1e2e` panel,
+   *  poster cover-filling the rounded top, then title / meta pills / rating pills
+   *  / day / per-cinema time chips. The panel runs past the canvas bottom so it
+   *  reads as a scrolled, cropped page rather than a floating card. */
+  private def drawColumn(g: Graphics2D, x: Int, film: CityCardFilm, poster: Option[BufferedImage]): Unit = {
+    val top  = GridTop
+    val card = new RoundRectangle2D.Float(x.toFloat, top.toFloat, ColW.toFloat, (Height - top + 80).toFloat, 12f, 12f)
+    g.setColor(CardBg); g.fill(card)
+
+    poster match {
+      case Some(p) =>
+        val saved = g.getClip
+        g.setClip(card); g.clipRect(x, top, ColW, PosterColH) // intersect → rounded top corners
+        drawCoverInto(g, p, x, top, ColW, PosterColH)
+        g.setClip(saved)
+      case None =>
+        g.setColor(PosterBg); g.fillRect(x, top, ColW, PosterColH)
+    }
+
+    val bx = x + 12
+    val bw = ColW - 24
+    val rightEdge = x + ColW - 12
+    var y = top + PosterColH + 12
+
+    g.setFont(bold.deriveFont(17f)); g.setColor(TitleCol)
+    val tfm = g.getFontMetrics
+    for (line <- wrap(g, film.title, bw, maxLines = 2)) {
+      y += tfm.getAscent; g.drawString(line, bx, y); y += tfm.getDescent + 2
+    }
+
+    if (film.meta.nonEmpty) { y += 6; y = drawMetaPills(g, film.meta, bx, y, rightEdge) }
+    if (film.badges.nonEmpty) { y += 7; y = drawBadges(g, film.badges, bx, y, rightEdge, fontSize = 14f) }
+
+    if (film.dayLabel.nonEmpty && y < Height) {
+      y += 12; g.setFont(regular.deriveFont(12.5f)); g.setColor(DayCol)
+      val dfm = g.getFontMetrics; y += dfm.getAscent; g.drawString(ellipsize(g, film.dayLabel, bw), bx, y); y += dfm.getDescent
+    }
+    for ((cinema, chips) <- film.showings if y < Height) {
+      y += 8; g.setFont(regular.deriveFont(11.5f)); g.setColor(CinemaCol)
+      val cfm = g.getFontMetrics; y += cfm.getAscent; g.drawString(ellipsize(g, cinema, bw), bx, y); y += cfm.getDescent
+      y += 4; y = drawTimeChips(g, chips, bx, y, rightEdge)
+    }
+  }
+
+  /** A wrapping row of the page's small grey meta pills (runtime / year / genre):
+   *  `#252540` fill, `#3a3a6e` 1px border, `#99b` text. Returns the bottom y. */
+  private def drawMetaPills(g: Graphics2D, pills: Seq[String], x0: Int, top: Int, rightEdge: Int): Int = {
+    g.setFont(regular.deriveFont(12.5f))
+    val fm = g.getFontMetrics
+    val (padX, padY, gap) = (6, 3, 5)
+    val h = fm.getAscent + fm.getDescent + padY * 2
+    var x = x0; var y = top
+    for (p <- pills) {
+      val w = fm.stringWidth(p) + padX * 2
+      if (x + w > rightEdge && x > x0) { x = x0; y += h + 4 }
+      g.setColor(MetaPillBg); g.fillRoundRect(x, y, w, h, 4, 4)
+      g.setColor(MetaPillBorder); g.drawRoundRect(x, y, w - 1, h - 1, 4, 4)
+      g.setColor(MetaPillText)
+      g.drawString(p, x + padX, y + padY + fm.getAscent)
+      x += w + gap
+    }
+    y + h
+  }
+
+  /** A wrapping row of the page's showtime chips: `#3a3a6e` fill, `#aad4ff` time
+   *  text, the format tag (e.g. "DUB") dimmer alongside. Chip label is
+   *  "HH:MM[ FORMAT…]". Returns the bottom y. */
+  private def drawTimeChips(g: Graphics2D, chips: Seq[String], x0: Int, top: Int, rightEdge: Int): Int = {
+    val font    = regular.deriveFont(13.5f)
+    val fmtFont = regular.deriveFont(10.5f)
+    val fm  = g.getFontMetrics(font)
+    val ffm = g.getFontMetrics(fmtFont)
+    val (padX, padY, gap) = (7, 4, 5)
+    val h = fm.getAscent + fm.getDescent + padY * 2
+    var x = x0; var y = top
+    for (chip <- chips if y + h <= Height + 40) {
+      val parts = chip.split(" ", 2)
+      val time  = parts(0)
+      val fmt   = if (parts.length > 1) parts(1) else ""
+      val timeW = fm.stringWidth(time)
+      val fmtW  = if (fmt.nonEmpty) ffm.stringWidth(fmt) + 4 else 0
+      val w     = timeW + fmtW + padX * 2
+      if (x + w > rightEdge && x > x0) { x = x0; y += h + 4 }
+      g.setColor(ChipBg); g.fillRoundRect(x, y, w, h, 6, 6)
+      val ty = y + padY + fm.getAscent
+      g.setColor(ChipText); g.setFont(font); g.drawString(time, x + padX, ty)
+      if (fmt.nonEmpty) { g.setColor(ChipFmt); g.setFont(fmtFont); g.drawString(fmt, x + padX + timeW + 4, ty) }
+      x += w + gap
+    }
+    y + h
   }
 
   private def applyHints(g: Graphics2D): Unit = {
@@ -264,26 +387,22 @@ object OgCardRenderer {
     baos.toByteArray
   }
 
-  /** Tile posters across the whole canvas as a 6×2 grid (each cell cover-cropped
-   *  2:3), cycling the list when there are fewer than 12 so there are no gaps. */
-  private def drawMontage(g: Graphics2D, posters: Seq[BufferedImage]): Unit = {
-    if (posters.isEmpty) return
-    val (cols, rows) = (6, 2)
-    val (cw, ch)     = (Width / cols, Height / rows) // 200 × 315, exact
-    for (r <- 0 until rows; c <- 0 until cols)
-      drawCover(g, posters((r * cols + c) % posters.length), c * cw, r * ch, cw, ch)
+  /** Cover-scale `p` to fill the (x, y, w, h) box, cropping the overflow
+   *  (`object-fit: cover`), clipped to that box. */
+  private def drawCover(g: Graphics2D, p: BufferedImage, x: Int, y: Int, w: Int, h: Int): Unit = {
+    val prev = g.getClip
+    g.setClip(x, y, w, h)
+    drawCoverInto(g, p, x, y, w, h)
+    g.setClip(prev)
   }
 
-  /** Cover-scale `p` to fill the (x, y, w, h) box, cropping the overflow —
-   *  `object-fit: cover`. */
-  private def drawCover(g: Graphics2D, p: BufferedImage, x: Int, y: Int, w: Int, h: Int): Unit = {
+  /** Cover-scale `p` into the box WITHOUT touching the clip — the caller has
+   *  already set a (possibly rounded) clip. */
+  private def drawCoverInto(g: Graphics2D, p: BufferedImage, x: Int, y: Int, w: Int, h: Int): Unit = {
     val scale = math.max(w.toDouble / p.getWidth, h.toDouble / p.getHeight)
     val sw    = math.round(p.getWidth * scale).toInt
     val sh    = math.round(p.getHeight * scale).toInt
-    val prev  = g.getClip
-    g.setClip(x, y, w, h)
     g.drawImage(p, x - (sw - w) / 2, y - (sh - h) / 2, sw, sh, null)
-    g.setClip(prev)
   }
 
   /** Cover-scale the film poster to the full-bleed left column. */
@@ -297,14 +416,17 @@ object OgCardRenderer {
    *
    *  Returns the y of the bottom edge of the last badge row, so the caller can
    *  place the director/synopsis directly beneath however many rows wrapped. */
-  private def drawBadges(g: Graphics2D, badges: Seq[Badge], x0: Int, top: Int, xMax: Int): Int = {
-    val fontSize = 30f
+  private def drawBadges(g: Graphics2D, badges: Seq[Badge], x0: Int, top: Int, xMax: Int, fontSize: Float = 30f): Int = {
     val labelFont = bold.deriveFont(fontSize)
     val valueFont = regular.deriveFont(fontSize)
     def fontFor(s: Seg)  = if (s.bold) labelFont else valueFont
-    val padY = 11
-    val gap  = 14
-    val arcD = 16f // corner diameter (radius ~8, ~web 3px scaled to this font)
+    // The 30f badge's paddings/gap/corner, scaled so a smaller font (the
+    // in-card mini pills) keeps the same proportions.
+    val scale = fontSize / 30f
+    val padY  = math.round(11 * scale)
+    val gap   = math.round(14 * scale)
+    val arcD  = 16f * scale
+    def padX(s: Seg) = math.round(s.padX * scale)
     // Uniform height across every badge, from the (taller) bold metrics.
     val refFm = g.getFontMetrics(labelFont)
     val height      = refFm.getAscent + refFm.getDescent + padY * 2
@@ -312,9 +434,9 @@ object OgCardRenderer {
     var yPosition = top
     for (b <- badges) {
       val fms   = b.segs.map(s => g.getFontMetrics(fontFor(s)))
-      val segW  = b.segs.zip(fms).map { case (s, fm) => fm.stringWidth(s.text) + s.padX * 2 }
+      val segW  = b.segs.zip(fms).map { case (s, fm) => fm.stringWidth(s.text) + padX(s) * 2 }
       val width     = segW.sum
-      if (xPosition + width > xMax && xPosition > x0) { xPosition = x0; yPosition += height + 12 }
+      if (xPosition + width > xMax && xPosition > x0) { xPosition = x0; yPosition += height + math.round(12 * scale) }
       val outer = new RoundRectangle2D.Float(xPosition.toFloat, yPosition.toFloat, width.toFloat, height.toFloat, arcD, arcD)
       val saved = g.getClip
       g.setClip(outer) // rounds the outer corners; the per-segment fills keep a square seam
@@ -325,7 +447,7 @@ object OgCardRenderer {
         g.setColor(s.fg)
         g.setFont(fontFor(s))
         val ty = yPosition + (height - (fm.getAscent + fm.getDescent)) / 2 + fm.getAscent
-        g.drawString(s.text, sx + s.padX, ty)
+        g.drawString(s.text, sx + padX(s), ty)
         sx += sw
       }
       g.setClip(saved)

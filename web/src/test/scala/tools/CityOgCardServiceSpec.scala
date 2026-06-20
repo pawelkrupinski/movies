@@ -35,47 +35,53 @@ class CityOgCardServiceSpec extends AnyFlatSpec with Matchers {
     (img.getWidth, img.getHeight)
   }
 
-  // Top-right montage cell, where the left→right gradient has faded to clear, so
-  // a loaded red poster shows through.
-  private def montageRed(bytes: Array[Byte]): Int =
-    new Color(ImageIO.read(new ByteArrayInputStream(bytes)).getRGB(1100, 100)).getRed
+  // The 5th column's poster slot (top-right) — clear of the brand overlay's
+  // opaque gradient, so a loaded red poster shows; a missing one is dark.
+  private def posterRed(bytes: Array[Byte]): Int =
+    new Color(ImageIO.read(new ByteArrayInputStream(bytes)).getRGB(1130, 80)).getRed
 
-  "CityOgCardService.card" should "build a 1200×630 poster-montage PNG from the fetched posters" in {
+  private def film(poster: String): CityCardFilm =
+    CityCardFilm("Incepcja", Seq("2h 28min", "2010"),
+      OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some(poster),
+      "Sobota 20 czerwca", Seq("Multikino" -> Seq("18:30")))
+
+  // Five distinct-poster films — enough to fill the grid so the right column
+  // (the one `posterRed` samples) has a card.
+  private val fiveFilms: Seq[CityCardFilm] = Seq("a", "b", "c", "d", "e").map(s => film(s"https://cdn/$s.jpg"))
+
+  "CityOgCardService.card" should "build a 1200×630 page-like PNG from the films' posters" in {
     val fetch = new CountingFetch(jpeg)
-    val bytes = new CityOgCardService(fetch).card("poznan", "Repertuar kin w Poznaniu",
-      Seq("https://cdn/a.jpg", "https://cdn/b.jpg"))
+    val bytes = new CityOgCardService(fetch).card("poznan", "Repertuar kin w Poznaniu", fiveFilms)
     dimensions(bytes) shouldBe (1200, 630)
-    montageRed(bytes) should be > 150
+    posterRed(bytes) should be > 150
   }
 
   it should "memoise per city — second call neither re-fetches nor re-renders" in {
     val fetch   = new CountingFetch(jpeg)
     val service = new CityOgCardService(fetch)
-    val a = service.card("poznan", "Repertuar kin w Poznaniu", Seq("https://cdn/a.jpg", "https://cdn/b.jpg"))
-    val b = service.card("poznan", "Repertuar kin w Poznaniu", Seq("https://cdn/a.jpg", "https://cdn/b.jpg"))
+    val a = service.card("poznan", "Repertuar kin w Poznaniu", fiveFilms)
+    val b = service.card("poznan", "Repertuar kin w Poznaniu", fiveFilms)
     b should be theSameInstanceAs a
-    fetch.calls.get shouldBe 2 // the two distinct candidate posters, fetched once
+    fetch.calls.get shouldBe 5 // one fetch per film poster, then served from cache
   }
 
-  it should "degrade to a gradient-only card (still 1200×630) when no poster decodes" in {
+  it should "degrade to a poster-less card (still 1200×630) when no poster decodes" in {
     val fetch: PosterFetch = (_: String) => None
-    dimensions(new CityOgCardService(fetch).card("poznan", "Repertuar kin w Poznaniu",
-      Seq("https://cdn/a.jpg"))) shouldBe (1200, 630)
+    dimensions(new CityOgCardService(fetch).card("poznan", "Repertuar kin w Poznaniu", fiveFilms)) shouldBe (1200, 630)
   }
 
   it should "not cache a poster-less card, so the next share retries the fetch" in {
-    // The one candidate's origin + weserv attempts both fail on the first card
-    // (gradient only); the next card's origin attempt succeeds. A cached failure
-    // would stop the second card re-fetching.
-    val fetch   = new FlakyFetch(jpeg, failFirst = 2)
+    // Every poster attempt fails on the first card (5 films × origin+weserv = 10);
+    // the next card's fetches succeed. A cached failure would stop the re-fetch.
+    val fetch   = new FlakyFetch(jpeg, failFirst = 10)
     val service = new CityOgCardService(fetch)
-    val first  = service.card("poznan", "Repertuar kin w Poznaniu", Seq("https://cdn/a.jpg"))
-    val second = service.card("poznan", "Repertuar kin w Poznaniu", Seq("https://cdn/a.jpg"))
-    montageRed(first)  should be < 80  // no poster loaded → dark
-    montageRed(second) should be > 150 // retry loaded a poster
+    val first  = service.card("poznan", "Repertuar kin w Poznaniu", fiveFilms)
+    val second = service.card("poznan", "Repertuar kin w Poznaniu", fiveFilms)
+    posterRed(first)  should be < 80  // no poster loaded → dark slot
+    posterRed(second) should be > 150 // retry loaded the posters
   }
 
-  it should "not touch the network when the city has no posters" in {
+  it should "not touch the network when the city has no films" in {
     val fetch = new CountingFetch(jpeg)
     new CityOgCardService(fetch).card("poznan", "Repertuar kin w Poznaniu", Seq.empty)
     fetch.calls.get shouldBe 0

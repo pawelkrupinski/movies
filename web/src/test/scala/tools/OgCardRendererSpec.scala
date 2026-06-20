@@ -98,38 +98,46 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
     img.getHeight shouldBe 630
   }
 
-  private val sampleBadges = OgCardRenderer.ratingBadges(Some(7.8), Some(81), Some(91), Some(7.4))
+  private def col(poster: Color, title: String = "Incepcja"): (CityCardFilm, Option[BufferedImage]) =
+    CityCardFilm(
+      title     = title,
+      meta      = Seq("2h 28min", "2010", "Sci-Fi"),
+      badges    = OgCardRenderer.ratingBadges(Some(8.8), Some(74), Some(87), Some(7.5)),
+      posterUrl = None,
+      dayLabel  = "Sobota 20 czerwca",
+      showings  = Seq("Multikino Stary Browar" -> Seq("18:30 2D", "21:00 DUB")),
+    ) -> Some(solidPoster(poster))
 
-  "OgCardRenderer.renderCityCard" should "tile posters across the canvas and keep the left text panel dark" in {
-    val img = decode(OgCardRenderer.renderCityCard("Repertuar kin w Poznaniu", Seq(solidPoster(Color.RED)), sampleBadges))
+  private def fiveCols(c: Color) = Seq.fill(5)(col(c))
+
+  "OgCardRenderer.renderCityPageCard" should "render the page-like grid and keep the left brand panel dark" in {
+    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", fiveCols(Color.RED)))
     img.getWidth shouldBe 1200
     img.getHeight shouldBe 630
-    // Top-right montage cell: the left→right gradient has faded out, so the red
-    // poster shows through.
-    val montage = new Color(img.getRGB(1100, 100))
-    montage.getRed should be > 150
-    montage.getRed should be > (montage.getBlue + 80)
-    // Left wordmark band stays dark behind the white text (gradient is opaque here).
-    val panel = new Color(img.getRGB(90, 315))
-    panel.getRed should be < 80
+    // A right-hand poster shows through where the gradient has faded.
+    val poster = new Color(img.getRGB(1130, 80))
+    poster.getRed should be > 150
+    poster.getRed should be > (poster.getBlue + 80)
+    // Left wordmark band stays dark behind the white text (gradient opaque here).
+    new Color(img.getRGB(90, 315)).getRed should be < 80
   }
 
   it should "draw the white 'Kinowo' wordmark and the city line on the left" in {
-    val img = decode(OgCardRenderer.renderCityCard("Repertuar kin w Poznaniu", Seq(solidPoster(Color.RED)), sampleBadges))
+    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", Seq(col(Color.RED))))
     var bright = 0
     for (x <- 80 until 560; y <- 200 until 430)
       if (new Color(img.getRGB(x, y)).getRed > 200) bright += 1
     bright should be > 50
   }
 
-  it should "paint the rating pills (IMDb gold + Filmweb orange present)" in {
-    val img = decode(OgCardRenderer.renderCityCard("Repertuar kin w Poznaniu", Seq(solidPoster(Color.BLUE)), sampleBadges))
-    hasColourNear(img, ImdbGold) shouldBe true
-    hasColourNear(img, FwOrange) shouldBe true
+  it should "paint the per-film rating pills and showtime chips into the cards" in {
+    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", fiveCols(Color.BLUE)))
+    hasColourNear(img, ImdbGold) shouldBe true                              // an in-card rating pill
+    hasColourNear(img, new Color(0xaa, 0xd4, 0xff), tol = 30) shouldBe true // a showtime chip's text
   }
 
-  it should "render a clean gradient-only card (correct size) when there are no posters" in {
-    val img = decode(OgCardRenderer.renderCityCard("Repertuar kin we Wrocławiu", Nil, sampleBadges))
+  it should "render a clean brand-only card (correct size) when there are no films" in {
+    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin we Wrocławiu", Nil))
     img.getWidth  shouldBe 1200
     img.getHeight shouldBe 630
   }
