@@ -35,6 +35,14 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     (new ReadModelProjector(repository, rm, rm), repository, rm)
   }
 
+  /** Spy sink: tallies the reprojection writes + film prunes the projector emits. */
+  private class RecordingMetrics extends ReadModelProjectionMetrics {
+    val writes = scala.collection.mutable.Map.empty[(String, String), Int].withDefaultValue(0)
+    var prunes = 0
+    def recordWrite(target: String, op: String, count: Int): Unit = writes((target, op)) += count
+    def recordFilmPruned(count: Int): Unit                        = prunes += count
+  }
+
   "the first projection of a row" should "write the movie document before its screenings" in {
     val (projector, _, rm) = fixture()
     projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
@@ -142,6 +150,34 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   // knew the document, so a `lastMovie`-based prune can't see it and the duplicate
   // card persists forever. `reconcile` must therefore diff the *actual read
   // model* against the live source, not this process's memory.
+  // ── Reprojection / re-key metrics ───────────────────────────────────────────
+  // The worker exposes these as kinowo_worker_readmodel_writes_total{target,op}
+  // and kinowo_worker_readmodel_films_pruned_total so the rate of reprojection
+  // churn — and the link-breaking film-prune events — is visible in Grafana.
+  import ReadModelProjectionMetrics.{Op, Target}
+
+  "the projector" should "meter the movie + screening upserts of a first projection" in {
+    val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
+    val m = new RecordingMetrics()
+    new ReadModelProjector(repository, rm, rm, m)
+      .onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
+    m.writes((Target.Movie, Op.Upsert))     shouldBe 1
+    m.writes((Target.Screening, Op.Upsert)) shouldBe 1
+    m.prunes                                shouldBe 0
+  }
+
+  "a re-key that prunes the old film in reconcile" should "meter a film prune + its document deletes" in {
+    val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
+    val m = new RecordingMetrics()
+    val projector = new ReadModelProjector(repository, rm, rm, m)
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.reconcile()                       // projects the film
+    repository.delete("Foo", Some(2024))         // source row gone (re-keyed/removed)
+    projector.reconcile()                       // prunes its derived documents
+    m.prunes                            shouldBe 1
+    m.writes((Target.Movie, Op.Delete)) shouldBe 1
+  }
+
   "reconcile after a restart" should "prune a stale film a prior process left in the read model" in {
     val repository = new InMemoryMovieRepository()
     val rm   = new InMemoryReadModelRepository()

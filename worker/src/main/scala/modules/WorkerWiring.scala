@@ -297,7 +297,7 @@ class WorkerWiring extends play.api.Logging {
   // Typed as the read+write intersection so test wirings can swap in
   // `InMemoryReadModelRepository` (Mongo-free fixture replay).
   lazy val readModelRepository: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(mongoConnection.database)
-  lazy val readModelProjector = new ReadModelProjector(movieRepository, readModelRepository, readModelRepository)
+  lazy val readModelProjector = new ReadModelProjector(movieRepository, readModelRepository, readModelRepository, taskMetrics)
 
   // Title-stripping rules. The worker owns seeding: a fresh DB gets the migrated
   // defaults so behaviour is unchanged from the hardcoded baseline. When an edit

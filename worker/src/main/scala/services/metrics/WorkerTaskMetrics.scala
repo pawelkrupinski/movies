@@ -4,6 +4,7 @@ import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.movies.{MergeMetrics, MergeReason}
+import services.readmodel.ReadModelProjectionMetrics
 import services.staging.StagingStep
 import services.tasks.{QueueSnapshot, Task, TaskState, TaskType}
 
@@ -51,7 +52,7 @@ object TaskObserver {
  * gauges are refreshed from a `QueueSnapshot` each `scrape()`.
  */
 class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new PrometheusRegistry())
-  extends TaskObserver with MergeMetrics {
+  extends TaskObserver with MergeMetrics with ReadModelProjectionMetrics {
   import WorkerTaskMetrics._
 
   // The client auto-appends `_total` to counter names, so they're declared without it.
@@ -116,6 +117,17 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     .labelNames("reason")
     .register(registry)
 
+  private val readModelWrites = Counter.builder()
+    .name("kinowo_worker_readmodel_writes")
+    .help("Denormalised read-model documents (re)written since boot, by target (movie|screening) and op (upsert|delete). rate() is the reprojection churn the worker pushes through the web's web_movies/web_screenings change streams.")
+    .labelNames("target", "op")
+    .register(registry)
+
+  private val readModelFilmsPruned = Counter.builder()
+    .name("kinowo_worker_readmodel_films_pruned")
+    .help("Films whose derived documents were removed from the read model during reconcile since boot — a source row that vanished or was re-keyed (its filmId changed). The event that can briefly 404 a film deep-link until the new key propagates to the web; pair with kinowo_worker_merges_total for the re-key cause.")
+    .register(registry)
+
   private val writer = PrometheusTextFormatWriter.create()
 
   seed()
@@ -133,12 +145,22 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     QueueStates.foreach(s => queueDepth.labelValues(s).set(0.0))
     StagingStep.all.foreach(s => stagingMovies.labelValues(s.label).set(0.0))
     MergeReason.all.foreach(r => merges.labelValues(r.label))
+    ReadModelProjectionMetrics.Targets.foreach(t =>
+      ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(t, o)))
+    readModelFilmsPruned.inc(0.0) // materialize the single series at 0 so Grafana draws a continuous line
     poolSizeGauge.set(poolSize.toDouble)
   }
 
   /** Each absorbed victim row is one increment under its fold's reason. */
   def recordMerge(reason: MergeReason, victims: Int): Unit =
     if (victims > 0) merges.labelValues(reason.label).inc(victims.toDouble)
+
+  // ── ReadModelProjectionMetrics ──────────────────────────────────────────────
+  def recordWrite(target: String, op: String, count: Int): Unit =
+    if (count > 0) readModelWrites.labelValues(target, op).inc(count.toDouble)
+
+  def recordFilmPruned(count: Int): Unit =
+    if (count > 0) readModelFilmsPruned.inc(count.toDouble)
 
   def recordEnqueue(taskType: TaskType, result: String): Unit =
     enqueued.labelValues(taskType.name, result).inc()

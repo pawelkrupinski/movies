@@ -39,8 +39,10 @@ import scala.util.Try
 class ReadModelProjector(
   movieRepository: MovieRepository,
   writer:    ReadModelWriter,
-  reader:    ReadModelReader
+  reader:    ReadModelReader,
+  metrics:   ReadModelProjectionMetrics = ReadModelProjectionMetrics.noop
 ) extends Stoppable with Logging {
+  import ReadModelProjectionMetrics.{Op, Target}
 
   private val lastMovie      = scala.collection.mutable.Map.empty[String, ResolvedMovie]
   private val lastScreenings = scala.collection.mutable.Map.empty[String, Map[String, CityScreening]]
@@ -72,6 +74,7 @@ class ReadModelProjector(
     val (movie, screenings) = ReadModelProjection.project(stored)
     if (!lastMovie.get(movie._id).contains(movie)) {
       writer.upsertMovie(movie)
+      metrics.recordWrite(Target.Movie, Op.Upsert, 1)
       lastMovie.update(movie._id, movie)
     }
     diffScreenings(movie._id, screenings)
@@ -80,14 +83,25 @@ class ReadModelProjector(
   private def diffScreenings(filmId: String, next: Seq[CityScreening]): Unit = {
     val nextById = next.map(s => s._id -> s).toMap
     val previous     = lastScreenings.getOrElse(filmId, Map.empty)
-    nextById.foreach { case (id, s) => if (!previous.get(id).contains(s)) writer.upsertScreening(s) }
-    previous.keysIterator.filterNot(nextById.contains).foreach(writer.deleteScreening)
+    var upserted = 0
+    nextById.foreach { case (id, s) => if (!previous.get(id).contains(s)) { writer.upsertScreening(s); upserted += 1 } }
+    val deletes = previous.keysIterator.filterNot(nextById.contains).toSeq
+    deletes.foreach(writer.deleteScreening)
+    if (upserted > 0)        metrics.recordWrite(Target.Screening, Op.Upsert, upserted)
+    if (deletes.nonEmpty)    metrics.recordWrite(Target.Screening, Op.Delete, deletes.size)
     if (nextById.isEmpty) lastScreenings.remove(filmId) else lastScreenings.update(filmId, nextById)
   }
 
+  // Only `reconcile` calls this — a film whose source row vanished or was re-keyed
+  // (its filmId changed) is dropped wholesale. `recordFilmPruned` is the link-break
+  // signal; the document deletes are also counted as reprojection writes.
   private def deleteFilm(filmId: String): Unit = {
     writer.deleteMovie(filmId)
-    lastScreenings.getOrElse(filmId, Map.empty).keysIterator.foreach(writer.deleteScreening)
+    val screeningIds = lastScreenings.getOrElse(filmId, Map.empty).keys.toSeq
+    screeningIds.foreach(writer.deleteScreening)
+    metrics.recordWrite(Target.Movie, Op.Delete, 1)
+    if (screeningIds.nonEmpty) metrics.recordWrite(Target.Screening, Op.Delete, screeningIds.size)
+    metrics.recordFilmPruned(1)
     lastMovie.remove(filmId)
     lastScreenings.remove(filmId)
   }
@@ -121,6 +135,7 @@ class ReadModelProjector(
     reader.findAllMovies().iterator.map(_._id).filterNot(liveIds).foreach(deleteFilm)
     reader.findAllScreenings().iterator.filterNot(s => liveIds(s.filmId)).foreach { s =>
       writer.deleteScreening(s._id)
+      metrics.recordWrite(Target.Screening, Op.Delete, 1)
       lastScreenings.updateWith(s.filmId)(_.map(_ - s._id).filter(_.nonEmpty))
     }
   }

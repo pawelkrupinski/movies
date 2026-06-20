@@ -137,7 +137,7 @@ case class FilmSchedule(
  * never touches the `movies` collection or a MovieRecord — the merge already
  * happened at projection time.
  */
-class MovieControllerService(readModel: WebReadModel) {
+class MovieControllerService(readModel: WebReadModel) extends Logging {
 
   def toSchedules(city: City): Seq[FilmSchedule] =
     toSchedules(city, LocalDateTime.now(city.zoneId))
@@ -182,20 +182,28 @@ class MovieControllerService(readModel: WebReadModel) {
             screenings
               .flatMap(sc => MovieControllerService.cinemaByName(sc.cinema).flatMap(c => sc.filmUrl.map(c -> _)))
               .sortBy(_._1.displayName)
-          Some((earliest, FilmSchedule(
-            movie = Movie(resolved.title, resolved.runtimeMinutes, resolved.releaseYear, countries = resolved.countries, genres = resolved.genres),
-            posterUrl = resolved.posterUrl,
-            synopsis = resolved.synopsis,
-            cast = resolved.cast,
-            director = resolved.directors,
-            cinemaFilmUrls = cinemaFilmUrls,
-            showings = byDate,
-            resolved = resolved
-          )))
+          Some((earliest, filmSchedule(resolved, cinemaFilmUrls, byDate)))
         }
       }
     }.sortBy { case (earliest, fs) => (earliest, fs.movie.title) }.map(_._2)
   }
+
+  /** Assemble a [[FilmSchedule]] from a resolved movie + its (possibly empty)
+   *  showings. Shared by the live `toSchedules` join and the deep-link
+   *  resilience fallback below, so both materialise the schedule identically. */
+  private def filmSchedule(resolved: ResolvedMovie,
+                           cinemaFilmUrls: Seq[(Cinema, String)],
+                           showings: Seq[(LocalDate, Seq[CinemaShowtimes])]): FilmSchedule =
+    FilmSchedule(
+      movie = Movie(resolved.title, resolved.runtimeMinutes, resolved.releaseYear, countries = resolved.countries, genres = resolved.genres),
+      posterUrl = resolved.posterUrl,
+      synopsis = resolved.synopsis,
+      cast = resolved.cast,
+      director = resolved.directors,
+      cinemaFilmUrls = cinemaFilmUrls,
+      showings = showings,
+      resolved = resolved
+    )
 
   def film(city: City, title: String): Option[FilmSchedule] = {
     def lookup(t: String): Option[FilmSchedule] = {
@@ -207,10 +215,35 @@ class MovieControllerService(readModel: WebReadModel) {
     // becomes `%25C5%25BC`. Play decodes that once, so `title` arrives with a
     // literal `%20` / `%C5%BC` still in it and the direct match misses. On a
     // miss, decode the residual escapes once more and retry.
-    lookup(title).orElse {
+    val decoded: Option[String] =
       Option(title)
         .filter(MovieControllerService.looksPercentEncoded)
-        .flatMap(t => lookup(URLDecoder.decode(t, StandardCharsets.UTF_8)))
+        .map(t => URLDecoder.decode(t, StandardCharsets.UTF_8))
+    lookup(title).orElse(decoded.flatMap(lookup))
+      .orElse(knownMovieFallback(city, title, decoded))
+  }
+
+  /** Resilience for film deep-links: a title the read model KNOWS but that has no
+   *  live schedule in this city right now must not 404 a shared/bookmarked link.
+   *  The common cause is a sub-second window while the worker re-projects or
+   *  re-keys the film — its `web_movies` and `web_screenings` documents arrive
+   *  over two independent change streams, so the `toSchedules` join momentarily
+   *  drops it (see [[services.readmodel.ReadModelProjectionMetrics]] for the
+   *  worker-side `films_pruned` / reprojection signal). Render the movie with an
+   *  empty showings list instead; it self-heals on the next load once both
+   *  documents land. A genuinely-ended run resolves the same way (better than a
+   *  404 for an old link); a title the read model has never seen still returns
+   *  None. Each hit is logged so the rate of "a link would have broken" is
+   *  visible alongside the worker metrics. */
+  private def knownMovieFallback(city: City, title: String, decoded: Option[String]): Option[FilmSchedule] = {
+    def byTitle(t: String): Option[ResolvedMovie] = {
+      val needle = normalizeTitle(t)
+      readModel.allMovies().find(m => normalizeTitle(m.title) == needle)
+    }
+    byTitle(title).orElse(decoded.flatMap(byTitle)).map { resolved =>
+      logger.warn(s"film deep-link served from the read model without a live ${city.slug} schedule " +
+        s"(reprojection/rekey gap or ended run): title='$title' filmId=${resolved._id}")
+      filmSchedule(resolved, cinemaFilmUrls = Seq.empty, showings = Seq.empty)
     }
   }
 
