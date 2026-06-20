@@ -771,10 +771,12 @@ class MovieService(
    *       almost never share a title — so prefer it, and accept a ±1-year window
    *       to absorb the production/release drift without matching an unrelated
    *       decade's remake.
-   *    2. EXACT year — the original behaviour, for the case where the cinema's
-   *       title doesn't match TMDB's spelling but the year pins the film. Still
-   *       requires a year; without one we can't disambiguate among the director's
-   *       films at all. */
+   *    2. EXACT year — for the case where the cinema's title doesn't match TMDB's
+   *       spelling but the year pins the film. Requires a year, AND requires that
+   *       year to be UNIQUE in the filmography: a director with two same-year
+   *       credits (Andrew Stanton's "In the Blink of an Eye" + "Toy Story 5", both
+   *       2026) can't be disambiguated by year, so the walk abstains rather than
+   *       guess the first — better no ratings than another film's ratings. */
   private def directorWalk(
     director:   Option[String],
     year:       Option[Int],
@@ -786,11 +788,20 @@ class MovieService(
         val wanted  = candidates.iterator.map(MovieService.normalize).filter(_.nonEmpty).toSet
         def titleOf(f: TmdbClient.SearchResult): Set[String] =
           (Seq(f.title) ++ f.originalTitle.toSeq).map(MovieService.normalize).filter(_.nonEmpty).toSet
-        // Title match first (±1-year-tolerant); fall back to an exact-year match.
+        // Title match first (±1-year-tolerant); fall back to an exact-year match,
+        // but ONLY when that year is unambiguous in the filmography. A director
+        // with two same-year credits (Andrew Stanton: "In the Blink of an Eye"
+        // and "Toy Story 5", both 2026) can't be told apart by year alone — the
+        // old `.find` returned whichever came first, binding a Ukrainian-dubbed
+        // "Toy Story 5" listing to "In the Blink of an Eye"'s ratings. Refuse.
         val byTitle = if (wanted.isEmpty) None else credits.find { f =>
           titleOf(f).exists(wanted.contains) && year.forall(y => f.releaseYear.forall(fy => math.abs(fy - y) <= 1))
         }
-        byTitle.orElse(year.flatMap(y => credits.find(_.releaseYear.contains(y)))).map { film =>
+        val byYear = year.flatMap(y => credits.filter(_.releaseYear.contains(y)) match {
+          case Seq(only) => Some(only)   // unique that year → the year pins it
+          case _         => None         // 0 or >1 → can't disambiguate, don't guess
+        })
+        byTitle.orElse(byYear).map { film =>
           logger.info(s"Director-walk: '$directory' year=${year.getOrElse("?")} → tmdbId=${film.id} '${film.originalTitle.getOrElse(film.title)}'")
           film
         }

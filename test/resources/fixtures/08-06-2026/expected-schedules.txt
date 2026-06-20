@@ -574,17 +574,17 @@ releaseYear:       2026
 countries:         Korea Południowa
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8240O2R.jpg
 synopsis.length:   1358
-cast:              RM, 진, 슈가, 제이홉, 지민
+cast:              BTS
 director:          Jungjae Ha
-tmdbId:            1640663
-imdbId:            tt39950539
-originalTitle:     BTS World Tour ‘Arirang’ in Goyang: Live Viewing
-imdbRating:        7.6
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
 metascore:         —
-rottenTomatoes:    98
+rottenTomatoes:    —
 filmwebRating:     —
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/bts_world_tour_arirang_in_goyang_live_viewing
+rottenTomatoesUrl: —
 filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/bts-world-tour-arirang-in-busan-live/8240o2r
@@ -2217,18 +2217,18 @@ releaseYear:       2025
 countries:         Włochy
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/takie-jest-zycie-plakat11.jpg
 synopsis.length:   830
-cast:              Giuseppe Ignazio Loi, Virginia Raffaele, Aldo Baglio, Diego Abatantuono, Geppi Cucciari
+cast:              —
 director:          Riccardo Milani
-tmdbId:            1397375
-imdbId:            tt34905624
-originalTitle:     La vita va così
-imdbRating:        6.5
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     7.18919
+filmwebRating:     —
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/life_is_life
-filmwebUrl:        https://www.filmweb.pl/film/Takie+jest+%C5%BCycie-2025-10102549
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157176
 cinemaScrapes:
@@ -8150,18 +8150,18 @@ releaseYear:       2025
 countries:         Francja, USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7678S2R.jpg
 synopsis.length:   624
-cast:              Guillaume Marbeck, Zoey Deutch, Aubry Dullin, Adrien Rouyard, Antoine Besson
+cast:              Guillaume Marbeck, Zoey Deutch, Aubry Dullin
 director:          Richard Linklater
-tmdbId:            1254808
-imdbId:            tt31688586
-originalTitle:     Nouvelle Vague
-imdbRating:        7.3
-metascore:         76
-rottenTomatoes:    92
-filmwebRating:     6.55556
-metacriticUrl:     https://www.metacritic.com/movie/nouvelle-vague
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/nouvelle_vague_2025
-filmwebUrl:        https://www.filmweb.pl/film/Nowa+fala-2025-10053131
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/unlimited-show-nowa-fala/7678s2r
 cinemaScrapes:
