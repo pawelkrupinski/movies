@@ -30,6 +30,15 @@ object ScrapeThrottleSignal {
    *  reapers keep feeding it. */
   def cap(signal: ScrapeThrottleSignal, normal: Int, trickle: Int): Int =
     if (signal.isThrottled) trickle else normal
+
+  /** Throttled when EITHER source says so — used to compose the externally-pushed
+   *  credit gate (the intended control) with the in-process scrape-duration
+   *  monitor (a fail-safe, in case the external pusher lags or stops). */
+  def either(a: ScrapeThrottleSignal, b: ScrapeThrottleSignal): ScrapeThrottleSignal =
+    new ScrapeThrottleSignal {
+      def isThrottled: Boolean = a.isThrottled || b.isThrottled
+      def ewmaMillis:  Long    = math.max(a.ewmaMillis, b.ewmaMillis)
+    }
 }
 
 /**

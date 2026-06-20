@@ -51,6 +51,12 @@ object WorkerMain extends Logging {
     addMetricsEndpoint(health, wiring)
     logger.info(s"Worker metrics up on :$port/metrics")
 
+    // /throttle — an external pusher (a Grafana alert on fly_instance_cpu_balance)
+    // flips the worker's credit backoff on/off here; the credit threshold lives
+    // outside the worker, this just receives the decision.
+    addThrottleEndpoint(health, wiring)
+    logger.info(s"Worker throttle control up on :$port/throttle")
+
     val done = new CountDownLatch(1)
     Runtime.getRuntime.addShutdownHook(new Thread(() => {
       logger.info("Worker received shutdown signal — draining the enrichment cascade…")
@@ -87,6 +93,30 @@ object WorkerMain extends Logging {
    *  AFTER WorkerWiring is up since it reads the live queue + metrics. Renders
    *  the current snapshot; on a Mongo hiccup it answers 500 (empty) rather than
    *  throwing, so a transient blip is a gap in the series, not a crash. */
+  /** External throttle control: the credit-balance logic lives outside the worker
+   *  (a Grafana alert on `fly_instance_cpu_balance`), and toggles the worker's
+   *  reaper backoff through this endpoint. Accepts a simple `?state=on|off`
+   *  (curl/manual), a `?throttled=true|false`, OR a Grafana webhook body whose
+   *  `"status"` is `"firing"` (→ on) / `"resolved"` (→ off). Reads no metric and
+   *  holds no threshold — it just sets `ExternalThrottleGate`. */
+  private def addThrottleEndpoint(server: HttpServer, wiring: WorkerWiring): Unit = {
+    server.createContext("/throttle", exchange => {
+      val state = throttleStateFrom(exchange)
+      state.foreach(wiring.externalThrottleGate.setThrottled)
+      val body = state.fold("no state — pass ?state=on|off or a Grafana firing/resolved webhook")(
+        on => s"throttled=$on").getBytes("UTF-8")
+      exchange.sendResponseHeaders(if (state.isDefined) 200 else 400, body.length.toLong)
+      val os = exchange.getResponseBody
+      try os.write(body) finally os.close()
+    })
+    ()
+  }
+
+  private def throttleStateFrom(exchange: com.sun.net.httpserver.HttpExchange): Option[Boolean] =
+    services.tasks.ExternalThrottleGate.parse(
+      Option(exchange.getRequestURI.getQuery),
+      new String(exchange.getRequestBody.readAllBytes(), "UTF-8"))
+
   private val MetricsActiveLimit = 1000
   private def addMetricsEndpoint(server: HttpServer, wiring: WorkerWiring): Unit = {
     server.createContext("/metrics", exchange => {

@@ -394,6 +394,14 @@ class WorkerWiring extends play.api.Logging {
   // so the box earns idle and rebuilds credit. Fed alongside taskMetrics via the
   // composite observer the TaskWorker takes (see below).
   lazy val scrapeThrottleMonitor = new services.tasks.ScrapeThrottleMonitor()
+  // The credit-balance throttle, pushed in from OUTSIDE (a Grafana alert on
+  // fly_instance_cpu_balance → the worker's /throttle endpoint) — the credit
+  // logic + threshold live there, not here. The reapers throttle when EITHER this
+  // gate (the intended control) OR the in-process scrape monitor (a fail-safe if
+  // the pusher lags) says so.
+  lazy val externalThrottleGate = new services.tasks.ExternalThrottleGate
+  lazy val throttleSignal: services.tasks.ScrapeThrottleSignal =
+    services.tasks.ScrapeThrottleSignal.either(externalThrottleGate, scrapeThrottleMonitor)
 
   // Cluster-wide occurrence claims gate the reapers' recurring ticks so each
   // scheduled occurrence runs on ONE machine (rotating), not on every machine.
@@ -458,7 +466,7 @@ class WorkerWiring extends play.api.Logging {
   def maxDetailEnqueuePerTick: Int = Env.positiveLong("KINOWO_DETAIL_MAX_ENQUEUE_PER_TICK", 50L).toInt
   lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
     dueWindow = detailDueWindow, maxEnqueuePerTick = maxDetailEnqueuePerTick,
-    throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = scrapeThrottleMonitor,
+    throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = throttleSignal,
     runStore = scheduledRunStore)
 
   // ── Staging incubation (resolve-then-fold) ──────────────────────────────────
@@ -528,7 +536,7 @@ class WorkerWiring extends play.api.Logging {
   def maxEnrichmentEnqueuePerTick: Int = Env.positiveLong("KINOWO_ENRICHMENT_MAX_ENQUEUE_PER_TICK", 250L).toInt
   lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
     dueWindow = ratingDueWindow, maxEnqueuePerTick = maxEnrichmentEnqueuePerTick,
-    throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = scrapeThrottleMonitor,
+    throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = throttleSignal,
     runStore = scheduledRunStore)
 
   // Re-tries unresolved-TMDB rows once per 24h, phase-spread across the period —
@@ -541,7 +549,7 @@ class WorkerWiring extends play.api.Logging {
   def maxTmdbRetryEnqueuePerTick: Int = Env.positiveLong("KINOWO_TMDB_RETRY_MAX_ENQUEUE_PER_TICK", 100L).toInt
   lazy val unresolvedTmdbReaper = new UnresolvedTmdbReaper(movieCache, movieService.retryResolve,
     maxEnqueuePerTick = maxTmdbRetryEnqueuePerTick,
-    throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = scrapeThrottleMonitor,
+    throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = throttleSignal,
     runStore = scheduledRunStore)
 
   // Operator-triggered handlers — ALWAYS registered (not gated by
@@ -587,7 +595,7 @@ class WorkerWiring extends play.api.Logging {
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, dueWindow = scrapeDueWindow,
       initialDelay = initialScrapeDelaySeconds.seconds,
       maxEnqueuePerTick = maxScrapeEnqueuePerTick,
-      throttledMaxEnqueuePerTick = throttledScrapeEnqueuePerTick, throttle = scrapeThrottleMonitor,
+      throttledMaxEnqueuePerTick = throttledScrapeEnqueuePerTick, throttle = throttleSignal,
       runStore = scheduledRunStore)
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing
