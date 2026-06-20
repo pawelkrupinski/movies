@@ -54,10 +54,28 @@ object BiletynaClient {
   // wall-clock LocalDateTime (the rest of the app reasons in Warsaw local time).
   private val IsoOffset = DateTimeFormatter.ISO_OFFSET_DATE_TIME
 
-  private case class RawSlot(title: String, dateTime: java.time.LocalDateTime, url: String, poster: Option[String])
+  private case class RawSlot(eventType: Option[String], title: String, dateTime: java.time.LocalDateTime, url: String, poster: Option[String])
+
+  /** schema.org `@type`s biletyna stamps on the venue's own LIVE stage/music
+   *  programming, which shares the ticketing surface with its film screenings
+   *  (a theatre play, a kabaret/stand-up night, a concert/recital, a film
+   *  quiz). Films are `ScreeningEvent`; these are never films, so we drop them
+   *  on the structured type — the high-precision signal the venue exposes —
+   *  rather than the title (many, e.g. „Być Kobietą" — Czyli Szaleństwa
+   *  Dojrzałej Młodości, a TheaterEvent, carry no event vocabulary for the
+   *  title-based [[NonMovieEventClassifier]] to catch).
+   *
+   *  `ChildrensEvent` is deliberately NOT here: a real kids' film is tagged it
+   *  too (e.g. „Willow i tajemniczy las"), so dropping the type would drop a
+   *  film — the one regression worse than a stray event. Those are left to the
+   *  title classifier ([[OnlyMovieEventsFilter]]), which catches the theatrical
+   *  ones via their „…Teatralne popołudnie…" naming. Likewise any unrecognised
+   *  type is kept: missing a non-film row is cosmetic, dropping a film is not. */
+  private val NonFilmEventTypes = Set("TheaterEvent", "ComedyEvent", "MusicEvent", "DanceEvent", "Event")
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val slots = jsonLdBlocks(html).flatMap(parseEvents)
+      .filterNot(_.eventType.exists(NonFilmEventTypes))
 
     slots.groupBy(_.title).toSeq.flatMap { case (rawName, group) =>
       val showtimes = group
@@ -141,9 +159,10 @@ object BiletynaClient {
       .map(_.data())
       .filter(_.nonEmpty)
 
-  /** Pull `ScreeningEvent`s out of one JSON-LD block. A `Place` node carries
-   *  them under `events`; anything that doesn't parse or doesn't hold events
-   *  yields nothing. */
+  /** Pull every event out of one JSON-LD block, keeping its schema.org `@type`
+   *  so [[parse]] can drop the venue's live stage/music programming (see
+   *  [[NonFilmEventTypes]]). A `Place` node carries the events under `events`;
+   *  anything that doesn't parse or doesn't hold events yields nothing. */
   private def parseEvents(block: String): Seq[RawSlot] =
     Try(Json.parse(block)).toOption.toSeq.flatMap { json =>
       (json \ "events").asOpt[Seq[JsValue]].getOrElse(Seq.empty).flatMap(parseEvent)
@@ -156,9 +175,10 @@ object BiletynaClient {
       dt    <- Try(OffsetDateTime.parse(start, IsoOffset).toLocalDateTime).toOption
       url   <- (ev \ "url").asOpt[String].filter(_.nonEmpty)
     } yield RawSlot(
-      title    = title,
-      dateTime = dt,
-      url      = url,
-      poster   = (ev \ "image").asOpt[String].filter(_.nonEmpty)
+      eventType = (ev \ "@type").asOpt[String],
+      title     = title,
+      dateTime  = dt,
+      url       = url,
+      poster    = (ev \ "image").asOpt[String].filter(_.nonEmpty)
     )
 }

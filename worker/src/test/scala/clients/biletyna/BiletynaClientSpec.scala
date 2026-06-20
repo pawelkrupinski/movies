@@ -6,6 +6,7 @@ import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
+import play.api.libs.json.Json
 import services.cinemas.BiletynaClient
 
 import java.time.LocalDateTime
@@ -87,5 +88,47 @@ class BiletynaClientSpec
     val film = movies.find(_.movie.title == "Mikey i Nicky (1976)").value
     film.movie.rawTitle shouldBe None
     film.director shouldBe empty
+  }
+
+  // Small municipal venues (e.g. Pyrzycki Dom Kultury / Kino PDK) sell their own
+  // theatre plays, kabaret/stand-up nights, concerts and quiz nights through the
+  // same biletyna place page their film repertoire comes from. biletyna stamps a
+  // schema.org `@type` on each event — films are `ScreeningEvent`, live events
+  // carry `TheaterEvent` / `ComedyEvent` / `MusicEvent` / generic `Event` — so
+  // the client drops the live ones on the structured type. The pinned regression
+  // is „Być Kobietą" — Czyli Szaleństwa Dojrzałej Młodości, a TheaterEvent that
+  // carries NO event vocabulary, so the title-based classifier alone can't catch
+  // it. A real children's film is tagged `ChildrensEvent`, so that type is kept.
+  private val theaterPlay = "\"Być Kobietą\" - Czyli Szaleństwa Dojrzałej Młodości"
+
+  private def event(eventType: String, name: String, hour: Int): String =
+    s"""{"@type":"$eventType","name":${Json.toJson(name)},
+       |"startDate":"2026-06-20T$hour:00:00+02:00",
+       |"url":"https://biletyna.pl/film/x?eid=$hour#opis"}""".stripMargin
+
+  private def jsonLdPage(events: String): String =
+    s"""<html><head><script type="application/ld+json">
+       |{"@type":"Place","name":"Kino PDK","events":[$events]}
+       |</script></head><body></body></html>""".stripMargin
+
+  it should "drop live stage/music events by schema.org @type, keeping films — Kino PDK" in {
+    val movies = BiletynaClient.parse(
+      jsonLdPage(Seq(
+        event("ScreeningEvent", "28 lat później", 20),
+        event("ChildrensEvent", "„Willow i tajemniczy las\" | reżyseria: Mike Marzuk | Niemcy 2025", 12),
+        event("TheaterEvent",   theaterPlay, 18),
+        event("ComedyEvent",    "Kabaret Trzecia Strona Medalu", 19),
+        event("MusicEvent",     "Tenorzy przy świecach", 17),
+        event("Event",          "FilmQuiz w PDK", 21)
+      ).mkString(",")),
+      KinoPDK
+    )
+    val titles = movies.map(_.movie.title).toSet
+    titles should contain("28 lat później")
+    titles should contain("Willow i tajemniczy las")  // a real kids' film — ChildrensEvent is kept
+    titles should not contain theaterPlay
+    titles should not contain "Kabaret Trzecia Strona Medalu"
+    titles should not contain "Tenorzy przy świecach"
+    titles should not contain "FilmQuiz w PDK"
   }
 }
