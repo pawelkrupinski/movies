@@ -687,3 +687,48 @@ groups:
                   query: { params: [] }
                   reducer: { type: last, params: [] }
               refId: C
+
+      # ---- Worker throttle NOTIFICATION (Telegram on start / end) -----------------
+      # A human heads-up, separate from the control gate above. Fires to Telegram
+      # whenever the worker is ACTUALLY backing off — the kinowo_worker_throttled
+      # gauge = 1, set from the live composite signal, so it covers BOTH the external
+      # credit gate AND the in-process scrape-duration backstop (not just credit).
+      # `for: 2m` so a brief EWMA blip doesn't message; firing = "throttling started",
+      # resolved = "ended" (the Telegram contact point sends both). NO `notify` label,
+      # so it falls through to the default Telegram receiver, not the /throttle webhook.
+      - uid: kinowo-worker-throttled
+        title: Worker throttling
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: OK
+        annotations:
+          summary: 'kinowo-worker is throttling — reapers backing off to let CPU credit rebuild'
+          description: 'kinowo_worker_throttled = 1 for 2m: the worker is backing off all reapers (the credit gate or the scrape-duration backstop tripped). Expected under load on shared CPU; this resolves when it returns to full enqueue.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max(kinowo_worker_throttled{app="kinowo-worker"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.5] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C

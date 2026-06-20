@@ -113,6 +113,15 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     .help("Configured worker pool size — pair with queue_depth{state=\"worked_on\"} for utilization.")
     .register(registry)
 
+  // 1 while the reapers are backing off (CPU-credit throttled — by the external
+  // Grafana credit gate OR the in-process scrape-duration backstop), 0 otherwise.
+  // A Grafana alert on this drives the Telegram start/end notification, and it's a
+  // clean on/off panel for the dashboard. Set at scrape time from the live signal.
+  private val throttledGauge = Gauge.builder()
+    .name("kinowo_worker_throttled")
+    .help("1 = reapers are backing off (CPU-credit throttled), 0 = full enqueue.")
+    .register(registry)
+
   private val stagingMovies = Gauge.builder()
     .name("kinowo_worker_staging_movies")
     .help("Incubating films currently in pending_movies, by the step each needs next (detail → resolve_tmdb → resolve_imdb → fold). Distinct films (a film's cinema rows count once); sum = total movies in staging.")
@@ -157,6 +166,7 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
       ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(t, o)))
     readModelFilmsPruned.inc(0.0) // materialize the single series at 0 so Grafana draws a continuous line
     poolSizeGauge.set(poolSize.toDouble)
+    throttledGauge.set(0.0) // materialize at 0 so Grafana draws a continuous on/off line
   }
 
   /** Each absorbed victim row is one increment under its fold's reason. */
@@ -185,10 +195,12 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
 
   /** Refresh the queue + staging gauges from live samples and render the full
    *  exposition. Called from the worker's `/metrics` handler on each Fly scrape;
-   *  `stagingByStep` comes from `StagingReaper.stepCounts()`. */
-  def scrape(snapshot: QueueSnapshot, stagingByStep: Map[StagingStep, Int], now: Instant): String = {
+   *  `stagingByStep` comes from `StagingReaper.stepCounts()`, `throttled` from the
+   *  live `ScrapeThrottleSignal` the reapers consult. */
+  def scrape(snapshot: QueueSnapshot, stagingByStep: Map[StagingStep, Int], now: Instant, throttled: Boolean = false): String = {
     refreshQueueGauges(snapshot, now)
     StagingStep.all.foreach(s => stagingMovies.labelValues(s.label).set(stagingByStep.getOrElse(s, 0).toDouble))
+    throttledGauge.set(if (throttled) 1.0 else 0.0)
     val out = new ByteArrayOutputStream()
     writer.write(out, registry.scrape())
     out.toString("UTF-8")

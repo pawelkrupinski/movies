@@ -28,6 +28,13 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
   private val emptySnapshot = QueueSnapshot(Map.empty, Nil)
   private val noStaging      = Map.empty[StagingStep, Int]
 
+  it should "expose kinowo_worker_throttled as 0/1 from the scrape's throttle flag" in {
+    val m = new WorkerTaskMetrics(poolSize = 4)
+    m.scrape(emptySnapshot, noStaging, now)                       should include ("kinowo_worker_throttled 0")
+    m.scrape(emptySnapshot, noStaging, now, throttled = true)     should include ("kinowo_worker_throttled 1")
+    m.scrape(emptySnapshot, noStaging, now, throttled = false)    should include ("kinowo_worker_throttled 0")
+  }
+
   "WorkerTaskMetrics" should "count enqueues by type and result" in {
     val m = new WorkerTaskMetrics(poolSize = 4)
     m.recordEnqueue(TaskType.ScrapeCinema, WorkerTaskMetrics.EnqueueResult.Added)

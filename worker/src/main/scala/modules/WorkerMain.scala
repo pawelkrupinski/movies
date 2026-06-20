@@ -121,7 +121,7 @@ object WorkerMain extends Logging {
   private def addMetricsEndpoint(server: HttpServer, wiring: WorkerWiring): Unit = {
     server.createContext("/metrics", exchange => {
       val body =
-        try wiring.taskMetrics.scrape(wiring.taskQueue.monitor(MetricsActiveLimit), wiring.stagingReaper.stepCounts(), Instant.now()).getBytes("UTF-8")
+        try wiring.taskMetrics.scrape(wiring.taskQueue.monitor(MetricsActiveLimit), wiring.stagingReaper.stepCounts(), Instant.now(), wiring.throttleSignal.isThrottled).getBytes("UTF-8")
         catch {
           case e: Throwable =>
             logger.warn(s"/metrics scrape failed: ${e.getMessage}")
