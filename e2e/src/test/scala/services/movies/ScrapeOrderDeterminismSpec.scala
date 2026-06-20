@@ -30,6 +30,12 @@ import scala.collection.mutable
  *     deterministic-per-(url,seed) few ms before each call, so the four rating
  *     stages on their separate worker pools finish in a perturbed order every
  *     run.
+ * This guards the ORDER axis (same inputs, shuffled timing → same output). Its
+ * companion `ReScrapeIdempotencySpec` guards the TEMPORAL axis: once settled, an
+ * identical re-scrape and a further settle pass must both be no-ops (the settled
+ * corpus is a fixpoint). Together they pin "the corpus is a pure function of the
+ * fixtures" from both directions.
+ *
  * After each replay it drains the cascade (so everything has settled) and
  * captures both the persisted record and the rendered row. Iteration 0 is the
  * reference; every later iteration must match it. Equality is case-class

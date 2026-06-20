@@ -496,13 +496,24 @@ class CaffeineMovieCache(
     // one of the row's TMDB aliases (its Polish / original title). The alias arm
     // lands a cinema's original-language listing of a film ("Tangled") straight on
     // the existing resolved row ("Zaplątani") instead of spawning a translation
-    // duplicate for the next settle to merge. It is self-gating against decorated
-    // editions: a dub / programme title ("Straszny film ukraiński dubbing") adds
-    // words, so its sanitize matches no alias — it keeps landing on its own row.
+    // duplicate for the next settle to merge.
+    //
+    // The alias arm is gated on `isBareFilmTitle` — the SAME predicate
+    // `FilmCanonicalizer.groupByFilm` uses to decide which same-tmdbId rows may
+    // fold. A decorated edition ("Plenerowe Pałacowe: Ścieżki życia") enriched off
+    // the base film via the apiQuery programme-prefix strip carries the BASE title
+    // ("Ścieżki życia") as a TMDB alias; without the gate a bare "Ścieżki życia"
+    // scrape would match that decorated row through the alias and (canonicalRank's
+    // 'P' < 'Ś' tiebreak) land on it — splitting the bare film and re-diverting it
+    // every tick. Gating keeps the scrape path's redirect consistent with the
+    // settle's fold: only a row that is itself a bare presentation of the film is
+    // a valid alias target. The decorated→own-row direction is already self-gating
+    // (its sanitize matches no alias).
     val concluded = positive.asMap().asScala.iterator
       .collect { case (k, e) if e.tmdbConcluded &&
         (TitleNormalizer.sanitize(k.cleanTitle) == norm ||
-         e.tmdbTitleAliases.exists(a => TitleNormalizer.sanitize(a) == norm)) => k }
+         (FilmCanonicalizer.isBareFilmTitle((k, e)) &&
+          e.tmdbTitleAliases.exists(a => TitleNormalizer.sanitize(a) == norm))) => k }
       .toSeq
     // Prefer a row whose OWN key IS this title over one that matches only via a
     // TMDB alias. The alias arm exists to land an original-language listing that
@@ -764,17 +775,20 @@ class CaffeineMovieCache(
     val knownSanitized: Set[String] =
       if (staging.isEmpty) Set.empty
       else positive.asMap().asScala.keysIterator.map(k => TitleNormalizer.sanitize(k.cleanTitle)).toSet
-    // Sanitized TMDB aliases (Polish + original title) of every CONCLUDED row, so a
-    // cinema's original-language listing of a known film ("Tangled") is recognised
-    // as already-known and lands on the existing resolved row instead of incubating
-    // a parallel newcomer. Self-gating against decorated editions (their title
-    // matches no alias). Empty when staging is unwired (no diversion happens).
+    // Sanitized TMDB aliases (Polish + original title) of every CONCLUDED, BARE
+    // row, so a cinema's original-language listing of a known film ("Tangled") is
+    // recognised as already-known and lands on the existing resolved row instead
+    // of incubating a parallel newcomer. Gated on `isBareFilmTitle` (the same
+    // predicate as `concludedKeyFor`'s alias arm and `groupByFilm`'s fold): a
+    // decorated edition that merely carries the base title as an alias must NOT
+    // make a genuinely-new bare film look already-known. Empty when staging is
+    // unwired (no diversion happens).
     val knownAliases: Set[String] =
       if (staging.isEmpty) Set.empty
-      else positive.asMap().asScala.valuesIterator
-        .filter(_.tmdbConcluded)
-        .flatMap(_.tmdbTitleAliases.iterator.map(TitleNormalizer.sanitize))
-        .toSet
+      else positive.asMap().asScala.iterator
+        .collect { case (k, e) if e.tmdbConcluded && FilmCanonicalizer.isBareFilmTitle((k, e)) =>
+          e.tmdbTitleAliases.iterator.map(TitleNormalizer.sanitize) }
+        .flatten.toSet
     val priorStagingRows: Map[String, services.staging.StagingRecord] =
       staging.fold(Map.empty[String, services.staging.StagingRecord]) {
         _.findAll().iterator.collect { case r if r.cinema == cinema => TitleNormalizer.sanitize(r.title) -> r }.toMap

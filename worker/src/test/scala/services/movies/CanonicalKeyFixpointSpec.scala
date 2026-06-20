@@ -1,0 +1,131 @@
+package services.movies
+
+import models._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
+import java.time.LocalDateTime
+import java.util.concurrent.atomic.AtomicInteger
+
+/**
+ * Fast (in-memory, ms) reproduction of the re-scrape FLAPPING the heavy
+ * `ReScrapeIdempotencySpec` found on the real corpus: once a film has settled to
+ * its canonical `(cleanTitle, year)` key, re-feeding the SAME cinema scrapes (the
+ * next prod tick) must leave the row untouched — same key, no merge/rekey churn.
+ *
+ * `CanonicalSpellingSpec` runs scrape → canonicalize ONCE, so it can't see a
+ * flap that only shows on the SECOND identical tick. This drives the cycle
+ * (scrape → canonicalize → re-scrape → canonicalize) and asserts the corpus is a
+ * fixpoint, counting merges to catch churn invisible at the key-set boundary.
+ */
+class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
+
+  private final class CountingMergeMetrics extends MergeMetrics {
+    private val n = new AtomicInteger(0)
+    def recordMerge(reason: MergeReason, victims: Int): Unit = n.addAndGet(victims)
+    def count: Int = n.get
+  }
+
+  private def cm(cinema: Cinema, title: String, year: Option[Int]): CinemaMovie =
+    CinemaMovie(
+      movie     = Movie(title, releaseYear = year),
+      cinema    = cinema,
+      posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 8, 18, 0), None))
+    )
+
+  private def keys(cache: MovieCache): Set[(String, Option[Int])] =
+    cache.snapshot().map(r => (r.title, r.year)).toSet
+
+  /** Settle a set of cinema reports, mark every row TMDB-concluded (as the boot's
+   *  `concludeEnrichment` does for no-match films), then re-scrape the IDENTICAL
+   *  reports and settle again. Returns (keys after first settle, keys after the
+   *  re-scrape settle, merges during the re-scrape tick). */
+  private def reScrape(reports: Seq[CinemaMovie]): (Set[(String, Option[Int])], Set[(String, Option[Int])], Int) = {
+    val merges = new CountingMergeMetrics
+    val cache  = new CaffeineMovieCache(new InMemoryMovieRepository, mergeMetrics = merges)
+    reports.foreach(r => cache.recordCinemaScrape(r.cinema, Seq(r)))
+    cache.canonicalizeBySanitize()
+    // Mark concluded (no-TMDB), the state the real flapping films are in.
+    cache.snapshot().foreach(sr => cache.put(cache.keyOf(sr.title, sr.year), sr.record.copy(tmdbNoMatch = true)))
+    cache.canonicalizeBySanitize()
+    val settled = keys(cache)
+    val mergesBefore = merges.count
+    reports.foreach(r => cache.recordCinemaScrape(r.cinema, Seq(r)))
+    cache.canonicalizeBySanitize()
+    (settled, keys(cache), merges.count - mergesBefore)
+  }
+
+  "a settled casing-variant film" should "be a fixpoint under an identical re-scrape" in {
+    // All-caps variant sorts FIRST by raw cleanTitle (0x4F 'O' < 0x6F 'o'), so
+    // canonicalRank prefers "ZOO" while canonical() (isAllCaps) prefers "Zoo".
+    val (settled, after, merges) = reScrape(Seq(
+      cm(Helios,   "Zoo", Some(2026)),
+      cm(KinoMuza, "ZOO", Some(2026))))
+    withClue(s"settled=$settled  afterReScrape=$after  merges=$merges\n") {
+      after shouldBe settled
+      merges shouldBe 0
+    }
+  }
+
+  "a settled year/yearless film" should "be a fixpoint under an identical re-scrape" in {
+    val (settled, after, merges) = reScrape(Seq(
+      cm(Helios,   "Sycamore", Some(2025)),
+      cm(KinoMuza, "Sycamore", None)))
+    withClue(s"settled=$settled  afterReScrape=$after  merges=$merges\n") {
+      after shouldBe settled
+      merges shouldBe 0
+    }
+  }
+
+  "a bare scrape" should "NOT match a decorated edition that merely carries the bare title as a TMDB alias" in {
+    // The real "Ścieżki życia" flap. A decorated edition (Plenerowe Pałacowe: …)
+    // is enriched off the base film via the apiQuery programme-prefix strip, so
+    // it legitimately carries the base tmdbId AND the base title as a TMDB alias
+    // — but it must stay a SEPARATE row from the bare film (the settle's
+    // `groupByFilm` keeps it apart via `isBareFilmTitle`). A re-scrape must agree:
+    // a bare "Ścieżki życia" tick must land on the bare row, never get pulled onto
+    // the decorated row by `concludedKeyFor`'s alias arm (where canonicalRank's
+    // 'P' < 'Ś' tiebreak would otherwise pick "Plenerowe …").
+    val tmdbId = 1127625
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+    // Bare base film: TMDB slot title is the base "Ścieżki życia".
+    cache.put(cache.keyOf("Ścieżki życia", Some(2025)),
+      MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
+        (Tmdb: Source)   -> SourceData(title = Some("Ścieżki życia"), releaseYear = Some(2025)),
+        (Helios: Source) -> SourceData(title = Some("Ścieżki życia"), releaseYear = Some(2025)))))
+    // Decorated edition: same base tmdbId (resolved off the prefix-stripped
+    // apiQuery), so its TMDB slot ALSO carries "Ścieżki życia" as a title alias —
+    // but its identity key keeps the "Plenerowe Pałacowe: …" prefix.
+    cache.put(cache.keyOf("Plenerowe Pałacowe: Ścieżki życia", Some(2025)),
+      MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
+        (Tmdb: Source)     -> SourceData(title = Some("Ścieżki życia"), releaseYear = Some(2025)),
+        (KinoMuza: Source) -> SourceData(title = Some("Plenerowe Pałacowe: Ścieżki życia"), releaseYear = Some(2025)))))
+
+    // A bare re-scrape from another Helios venue.
+    cache.recordCinemaScrape(KinoMuranow, Seq(cm(KinoMuranow, "Ścieżki życia", Some(2025))))
+    cache.canonicalizeBySanitize()
+
+    val rows = cache.snapshot().map(r => (r.title, r.year)).toSet
+    withClue(s"rows after bare re-scrape: $rows\n") {
+      rows should contain (("Ścieżki życia", Some(2025)))
+      rows should contain (("Plenerowe Pałacowe: Ścieżki życia", Some(2025)))
+    }
+    // The bare venue landed on the bare row, not the decorated one.
+    cache.get(cache.keyOf("Ścieżki życia", Some(2025)))
+      .map(_.cinemaData.keySet).getOrElse(Set.empty) should contain (KinoMuranow: Cinema)
+  }
+
+  "a settled programme-prefix film" should "be a fixpoint under an identical re-scrape" in {
+    // The Plenerowe Pałacowe / Filmowy Klub Seniora shape: a decorated edition
+    // some cinemas report with a year and some without.
+    val (settled, after, merges) = reScrape(Seq(
+      cm(Helios,        "Plenerowe Pałacowe: Ścieżki życia", Some(2025)),
+      cm(KinoMuza,      "Plenerowe Pałacowe: Ścieżki życia", None),
+      cm(KinoMuranow,   "PLENEROWE PAŁACOWE: ŚCIEŻKI ŻYCIA", None)))
+    withClue(s"settled=$settled  afterReScrape=$after  merges=$merges\n") {
+      after shouldBe settled
+      merges shouldBe 0
+    }
+  }
+}
