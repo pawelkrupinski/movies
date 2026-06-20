@@ -194,7 +194,23 @@ object ExtraTitleRules {
     // w Teheranie). Anchored so 'DKF Kropka: …' still falls to the named prog rule.
     searchStrip("xtra-dkf-bare-prefix",            """(?iu)^DKF\s*[-–—:]\s+""",                  "'DKF - / DKF: <film>' clubless film-club prefix (Drugie życie, Czytając Lolitę w Teheranie)"),
     searchStrip("xtra-filmowy-klub-seniora-dash",  """(?iu)^Filmowy\s+Klub\s+Seniora\s*[-–—]\s+""", "'Filmowy Klub Seniora - <film>' dash variant of the seed senior-club banner (Drugie życie)"),
-    searchStrip("xtra-filozoficzny-klub-suffix",   """(?iu)\s*\|\s*Filozoficzny\s+Klub\s+Filmowy\s*$""", "'<film> | Filozoficzny Klub Filmowy' film-club suffix — sibling of the existing 'Klub Filmowy <name>:' prefix (Tajny agent)")
+    searchStrip("xtra-filozoficzny-klub-suffix",   """(?iu)\s*\|\s*Filozoficzny\s+Klub\s+Filmowy\s*$""", "'<film> | Filozoficzny Klub Filmowy' film-club suffix — sibling of the existing 'Klub Filmowy <name>:' prefix (Tajny agent)"),
+    // Sixth-wave (2026-06-20) audit. Only rules whose stripped query was VERIFIED
+    // to resolve unambiguously on TMDB are kept — most residual no-match titles
+    // either don't decode to a TMDB film (yearless titles that map to two films,
+    // e.g. 'Substancja' = The Substance AND The Stuff) or are genuinely absent
+    // (Ostatni konsjerż), so a strip there would be theatre.
+    // 'Żywot Briana Grupy Monty Pythona. Wersja zremasterowana' (~30 Multikino
+    // rows) — strip the studio attribution + remaster tail so the query is the
+    // bare 'Żywot Briana', which is the UNIQUE TMDB result (583, Life of Brian).
+    searchStrip("xtra-zywot-briana-monty-suffix",  """(?iu)\s+Grupy\s+Monty\s+Pythona\b.*$""",  "'Żywot Briana Grupy Monty Pythona. Wersja zremasterowana' (~30 Multikino rows) → 'Żywot Briana' (TMDB 583, unique)"),
+    // Re-release / restoration banner appended to a classic ('… - PONOWNIE NA
+    // WIELKIM EKRANIE', '… Wersja zremasterowana/odrestaurowana'); query-only
+    // strip resolves the bare film (Żywot Briana at Kinoteatr Rialto).
+    searchStrip("xtra-rerelease-suffix",           """(?iu)\s*[-–—|.]\s*(?:ponownie\s+na\s+wielkim\s+ekranie|wersja\s+(?:zremasterowan\w*|odrestaurowan\w*|zrekonstruowan\w*))\s*$""", "'<film> - PONOWNIE NA WIELKIM EKRANIE / Wersja zremasterowana' re-release/restoration suffix (Żywot Briana)"),
+    // '<film> - <director> 4K' restoration-print suffix (Kino Kultura's Wong Kar
+    // Wai retrospective). 'Chungking Express' is the unique exact-title TMDB hit.
+    searchStrip("xtra-wong-kar-wai-suffix",        """(?iu)\s*[-–—]\s*Wong\s+Kar[\s-]?Wai\b.*$""", "'<film> - Wong Kar Wai 4K' restoration-print suffix (Chungking Express → TMDB 11104)")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in

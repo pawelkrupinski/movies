@@ -176,7 +176,15 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "DKF - Drugie życie"                                       -> "Drugie życie",
     "DKF: Czytając Lolitę w Teheranie"                         -> "Czytając Lolitę w Teheranie",
     "Filmowy Klub Seniora - Drugie życie"                      -> "Drugie życie",
-    "Tajny agent | Filozoficzny Klub Filmowy"                  -> "Tajny agent"
+    "Tajny agent | Filozoficzny Klub Filmowy"                  -> "Tajny agent",
+    // Sixth-wave (2026-06-20). Studio-attribution strip, re-release banner, and a
+    // restoration-print director suffix — each verified to leave a query that
+    // resolves on TMDB. (The seed already strips '. Wersja zremasterowana', so the
+    // prod query for the ~30 Multikino rows is already 'Żywot Briana Grupy Monty
+    // Pythona'; this rule removes the studio tail so it resolves to TMDB 583.)
+    "Żywot Briana Grupy Monty Pythona"                         -> "Żywot Briana",
+    "Żywot Briana - PONOWNIE NA WIELKIM EKRANIE"               -> "Żywot Briana",
+    "Chungking Express  - Wong Kar Wai 4K"                     -> "Chungking Express"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
