@@ -98,6 +98,42 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
     img.getHeight shouldBe 630
   }
 
+  private val sampleBadges = OgCardRenderer.ratingBadges(Some(7.8), Some(81), Some(91), Some(7.4))
+
+  "OgCardRenderer.renderCityCard" should "tile posters across the canvas and keep the left text panel dark" in {
+    val img = decode(OgCardRenderer.renderCityCard("Repertuar kin w Poznaniu", Seq(solidPoster(Color.RED)), sampleBadges))
+    img.getWidth shouldBe 1200
+    img.getHeight shouldBe 630
+    // Top-right montage cell: the left→right gradient has faded out, so the red
+    // poster shows through.
+    val montage = new Color(img.getRGB(1100, 100))
+    montage.getRed should be > 150
+    montage.getRed should be > (montage.getBlue + 80)
+    // Left wordmark band stays dark behind the white text (gradient is opaque here).
+    val panel = new Color(img.getRGB(90, 315))
+    panel.getRed should be < 80
+  }
+
+  it should "draw the white 'Kinowo' wordmark and the city line on the left" in {
+    val img = decode(OgCardRenderer.renderCityCard("Repertuar kin w Poznaniu", Seq(solidPoster(Color.RED)), sampleBadges))
+    var bright = 0
+    for (x <- 80 until 560; y <- 200 until 430)
+      if (new Color(img.getRGB(x, y)).getRed > 200) bright += 1
+    bright should be > 50
+  }
+
+  it should "paint the rating pills (IMDb gold + Filmweb orange present)" in {
+    val img = decode(OgCardRenderer.renderCityCard("Repertuar kin w Poznaniu", Seq(solidPoster(Color.BLUE)), sampleBadges))
+    hasColourNear(img, ImdbGold) shouldBe true
+    hasColourNear(img, FwOrange) shouldBe true
+  }
+
+  it should "render a clean gradient-only card (correct size) when there are no posters" in {
+    val img = decode(OgCardRenderer.renderCityCard("Repertuar kin we Wrocławiu", Nil, sampleBadges))
+    img.getWidth  shouldBe 1200
+    img.getHeight shouldBe 630
+  }
+
   it should "render Polish diacritics without throwing (bundled font has the glyphs)" in {
     noException should be thrownBy
       OgCardRenderer.render("Zażółć gęślą jaźń: Śćmaśń", "2026 · Dramat, Kryminał", OgCardRenderer.ratingBadges(Some(7.4), None, None, Some(7.8)), Some(solidPoster(Color.BLUE)))

@@ -2,7 +2,7 @@ package tools
 
 import java.awt.geom.RoundRectangle2D
 import java.awt.image.BufferedImage
-import java.awt.{Color, Font, GradientPaint, Graphics2D, RenderingHints}
+import java.awt.{Color, Font, GradientPaint, Graphics2D, LinearGradientPaint, RenderingHints}
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
 
@@ -46,6 +46,7 @@ object OgCardRenderer {
   private val SubCol      = new Color(0x9a, 0xa3, 0xb2)
   private val SynopsisCol = new Color(0xc2, 0xca, 0xd6) // a touch brighter than SubCol so the body copy reads
   private val FooterCol   = new Color(0x70, 0x78, 0x86)
+  private val UrlCol      = new Color(0xbd, 0xa4, 0xff) // the city card's accent "kinowo.fly.dev" line
 
   // Cap on synopsis lines so a long plot summary fills the space below the
   // ratings without crowding the footer; the available-height calc trims it
@@ -114,11 +115,7 @@ object OgCardRenderer {
     val img = new BufferedImage(Width, Height, BufferedImage.TYPE_INT_RGB)
     val g   = img.createGraphics()
     try {
-      g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-      g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
-      g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
-      g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
-      g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON)
+      applyHints(g)
 
       g.setPaint(new GradientPaint(0f, 0f, Bg, 0f, Height.toFloat, BgBottom))
       g.fillRect(0, 0, Width, Height)
@@ -193,25 +190,105 @@ object OgCardRenderer {
       g.drawString(footer, textRight - ffm.stringWidth(footer), footerBaseline)
     } finally g.dispose()
 
+    toPng(img)
+  }
+
+  /** Compose the per-city share card: a montage of the city's current posters
+   *  as a full-bleed background, a left→right dark gradient for legibility, and
+   *  the "Kinowo / {cityLine}" wordmark + rating pills on the left — the
+   *  poster-montage cousin of the film card. `cityLine` is e.g. "Repertuar kin
+   *  w Poznaniu"; `posters` are the already-decoded poster images (tiled, and
+   *  cycled if fewer than the grid holds); `badges` are decorative sample pills.
+   *  No poster → a clean gradient-only brand card rather than an empty frame. */
+  def renderCityCard(cityLine: String, posters: Seq[BufferedImage], badges: Seq[Badge]): Array[Byte] = {
+    val img = new BufferedImage(Width, Height, BufferedImage.TYPE_INT_RGB)
+    val g   = img.createGraphics()
+    try {
+      applyHints(g)
+      g.setPaint(new GradientPaint(0f, 0f, Bg, 0f, Height.toFloat, BgBottom))
+      g.fillRect(0, 0, Width, Height)
+      drawMontage(g, posters)
+
+      // Left→right dark gradient: opaque on the left so the text reads, fading
+      // out by ~64% so the posters show on the right (mirrors the on-page card's
+      // `linear-gradient(90deg, …)` overlay).
+      val stops  = Array(0f, 0.30f, 0.64f, 1f)
+      val shades = Array(new Color(13, 13, 34, 247), new Color(13, 13, 34, 235),
+                         new Color(13, 13, 34, 77),  new Color(13, 13, 34, 0))
+      g.setPaint(new LinearGradientPaint(0f, 0f, Width.toFloat, 0f, stops, shades))
+      g.fillRect(0, 0, Width, Height)
+
+      val leftX   = 80
+      val brandFm = g.getFontMetrics(bold.deriveFont(86f))
+      val tagFm   = g.getFontMetrics(regular.deriveFont(33f))
+      val urlFm   = g.getFontMetrics(regular.deriveFont(23f))
+      val pillFm  = g.getFontMetrics(bold.deriveFont(30f))
+      val pillH   = pillFm.getAscent + pillFm.getDescent + 22 // padY*2, matching drawBadges
+      val (gapBrandTag, gapTagPills, gapPillsUrl) = (14, 30, 26)
+      val blockH = (brandFm.getAscent + brandFm.getDescent) + gapBrandTag +
+                   (tagFm.getAscent + tagFm.getDescent) + gapTagPills + pillH + gapPillsUrl +
+                   (urlFm.getAscent + urlFm.getDescent)
+      var y = (Height - blockH) / 2
+
+      g.setFont(bold.deriveFont(86f)); g.setColor(TitleCol)
+      y += brandFm.getAscent; g.drawString("Kinowo", leftX, y); y += brandFm.getDescent
+
+      y += gapBrandTag
+      g.setFont(regular.deriveFont(33f)); g.setColor(TitleCol)
+      y += tagFm.getAscent
+      g.drawString(ellipsize(g, cityLine, Width - Margin - leftX), leftX, y)
+      y += tagFm.getDescent
+
+      y += gapTagPills
+      y = drawBadges(g, badges, leftX, y, Width - Margin)
+
+      y += gapPillsUrl
+      g.setFont(regular.deriveFont(23f)); g.setColor(UrlCol)
+      y += urlFm.getAscent; g.drawString("kinowo.fly.dev", leftX, y)
+    } finally g.dispose()
+
+    toPng(img)
+  }
+
+  private def applyHints(g: Graphics2D): Unit = {
+    g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+    g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+    g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+    g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON)
+  }
+
+  private def toPng(img: BufferedImage): Array[Byte] = {
     val baos = new ByteArrayOutputStream()
     ImageIO.write(img, "png", baos)
     baos.toByteArray
   }
 
-  /** Cover-scale the poster to fill the full-bleed left column (flush to the
-   *  top/left/bottom edges, no padding or border), cropping the overflow —
-   *  same intent as the on-page card's `object-fit: cover`. */
-  private def drawPoster(g: Graphics2D, p: BufferedImage): Unit = {
-    val scale = math.max(PosterW.toDouble / p.getWidth, PosterH.toDouble / p.getHeight)
+  /** Tile posters across the whole canvas as a 6×2 grid (each cell cover-cropped
+   *  2:3), cycling the list when there are fewer than 12 so there are no gaps. */
+  private def drawMontage(g: Graphics2D, posters: Seq[BufferedImage]): Unit = {
+    if (posters.isEmpty) return
+    val (cols, rows) = (6, 2)
+    val (cw, ch)     = (Width / cols, Height / rows) // 200 × 315, exact
+    for (r <- 0 until rows; c <- 0 until cols)
+      drawCover(g, posters((r * cols + c) % posters.length), c * cw, r * ch, cw, ch)
+  }
+
+  /** Cover-scale `p` to fill the (x, y, w, h) box, cropping the overflow —
+   *  `object-fit: cover`. */
+  private def drawCover(g: Graphics2D, p: BufferedImage, x: Int, y: Int, w: Int, h: Int): Unit = {
+    val scale = math.max(w.toDouble / p.getWidth, h.toDouble / p.getHeight)
     val sw    = math.round(p.getWidth * scale).toInt
     val sh    = math.round(p.getHeight * scale).toInt
-    val dx    = -(sw - PosterW) / 2
-    val dy    = -(sh - PosterH) / 2
-    val previous  = g.getClip
-    g.setClip(0, 0, PosterW, PosterH)
-    g.drawImage(p, dx, dy, sw, sh, null)
-    g.setClip(previous)
+    val prev  = g.getClip
+    g.setClip(x, y, w, h)
+    g.drawImage(p, x - (sw - w) / 2, y - (sh - h) / 2, sw, sh, null)
+    g.setClip(prev)
   }
+
+  /** Cover-scale the film poster to the full-bleed left column. */
+  private def drawPoster(g: Graphics2D, p: BufferedImage): Unit =
+    drawCover(g, p, 0, 0, PosterW, PosterH)
 
   /** A row (wrapping to a second row if needed) of two-segment rating badges.
    *  Each badge is filled segment-by-segment while clipped to its rounded outer

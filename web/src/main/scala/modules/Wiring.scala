@@ -140,7 +140,8 @@ trait Wiring {
   // Fetches + composites the per-film Open Graph share card. Its own poster
   // fetch (not the scraper's httoFetch) so slow cinema origins get a generous
   // connect budget instead of the fan-out's tight 5s.
-  lazy val ogCardService    = new tools.OgCardService(new tools.HttpPosterFetch)
+  lazy val ogCardService     = new tools.OgCardService(new tools.HttpPosterFetch)
+  lazy val cityOgCardService = new tools.CityOgCardService(new tools.HttpPosterFetch)
   // Comma-separated allowlist of admin EMAILS permitted to reach the operational
   // pages (title-rules editor, /uptime, /tasks) and the rehydrate trigger. Empty
   // (unset) → nobody is authorised, so those pages are closed by default. The
@@ -151,7 +152,7 @@ trait Wiring {
   lazy val adminAction = new AdminAction(controllerComponents.parsers.anyContent, userRepository, adminAllowlist)(using controllerComponents.executionContext)
   // The /debug "pending enrichment (staging)" table reads + live-watches this.
   lazy val stagingRepository: services.staging.StagingRepository = new services.staging.MongoStagingRepository(mongoConnection.database)
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, movieRepository, taskQueue, userRepository, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService,
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, movieRepository, taskQueue, userRepository, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService, cityOgCardService,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),
     stagingRepository = stagingRepository)
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepository, oauthProviders.keySet, environmentMode)

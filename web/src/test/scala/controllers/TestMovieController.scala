@@ -40,6 +40,7 @@ object TestMovieController {
       // the OG card falls back to text-only — fine for controller specs that
       // don't assert on the card image itself.
       ogCardService          = new tools.OgCardService((_: String) => None),
+      cityOgCardService      = new tools.CityOgCardService((_: String) => None),
       cinemaSourceUrls       = () => cinemaSourceUrls,
       stagingRepository      = stagingRepository,
     )

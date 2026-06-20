@@ -283,6 +283,7 @@ class MovieController( cc: ControllerComponents,
                        environment: Mode,
                        responseCache: GzippedResponseCache,
                        ogCardService: tools.OgCardService,
+                       cityOgCardService: tools.CityOgCardService,
                        // `cinema displayName -> public source-page URL`, the same
                        // links /uptime shows, sourced from the UptimeMonitor tag
                        // snapshot. Evaluated per request so it tracks live retags;
@@ -635,6 +636,19 @@ class MovieController( cc: ControllerComponents,
           Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=86400")
         case None => NotFound(s"Film not found: $title")
       }
+    }
+  }
+
+  /** The 1200×630 per-city Open Graph card (PNG): a montage of the city's
+   *  current posters under the "Kinowo / Repertuar kin w {locative}" overlay,
+   *  composited server-side ([[tools.CityOgCardService]]) — fully dynamic, no
+   *  committed image. NOT yet wired into the page's `og:image`; reachable
+   *  directly at `/:city/og-image` for review. */
+  def cityOgImage(city: String): Action[AnyContent] = Action {
+    withCity(city) { c =>
+      val posterUrls = movieControllerService.toSchedules(c).flatMap(_.posterUrl)
+      val bytes = cityOgCardService.card(c.slug, s"Repertuar kin ${c.locativePhrase}", posterUrls)
+      Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=86400")
     }
   }
 

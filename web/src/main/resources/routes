@@ -9,6 +9,7 @@ GET     /                           controllers.LandingController.index()
 GET     /:city/                     controllers.MovieController.index(city: String)
 GET     /:city/film                 controllers.MovieController.film(city: String, title: String)
 GET     /:city/film/og-image        controllers.MovieController.ogImage(city: String, title: String)
+GET     /:city/og-image             controllers.MovieController.cityOgImage(city: String)
 GET     /:city/filmy                controllers.MovieController.browse(city: String, kraj: Option[String] ?= None, rezyser: Option[String] ?= None, aktor: Option[String] ?= None, gatunek: Option[String] ?= None)
 GET     /:city/plan                 controllers.PlanController.plan(city: String)
 

@@ -2,10 +2,7 @@ package tools
 
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 
-import java.awt.image.BufferedImage
-import java.io.ByteArrayInputStream
 import java.util.concurrent.TimeUnit
-import javax.imageio.ImageIO
 
 /**
  * Orchestrates the film Open Graph card: fetch + decode the poster, hand it to
@@ -22,6 +19,7 @@ import javax.imageio.ImageIO
  * returning fixture bytes and never touch the network.
  */
 class OgCardService(posters: PosterFetch) {
+  private val loader = new PosterImageLoader(posters)
   private val cache: Cache[String, Array[Byte]] =
     Caffeine.newBuilder().maximumSize(1000).expireAfterWrite(12, TimeUnit.HOURS).build()
 
@@ -40,7 +38,7 @@ class OgCardService(posters: PosterFetch) {
     val key = Seq(title, subtitle, ratingKey, candidates.mkString("|"),
                   director.getOrElse(""), synopsis.getOrElse("")).mkString(" ")
     Option(cache.getIfPresent(key)).getOrElse {
-      val poster = loadPoster(candidates)
+      val poster = loader.loadFirst(candidates)
       val bytes  = OgCardRenderer.render(title, subtitle, badges, poster, director, synopsis)
       // Only cache a *complete* card: one with no poster to show, or whose
       // poster actually loaded. A transient poster-fetch failure must NOT be
@@ -51,32 +49,6 @@ class OgCardService(posters: PosterFetch) {
       bytes
     }
   }
-
-  /** Fetch + decode the first candidate poster that loads, or None when there's
-   *  no candidate or every source fails / isn't an ImageIO-readable format --
-   *  which degrades to a clean text-only card rather than a 500.
-   *
-   *  Each candidate is fetched at its origin directly first ([[PosterFetch]]
-   *  gives it the generous connect budget slow cinema origins need, which the
-   *  scraper's tight 5s budget denied). The TwelveMonkeys imageio-webp reader
-   *  lets ImageIO decode the webp these origins now serve. The weserv JPEG is
-   *  tried only for the rare origin ImageIO can't read — and only when it
-   *  differs from the origin URL, so a SkipHosts origin (Multikino) isn't
-   *  re-fetched pointlessly before moving to the next candidate. */
-  private def loadPoster(candidates: Seq[String]): Option[BufferedImage] =
-    candidates.iterator.flatMap(decodeWithProxyFallback(_).iterator).nextOption()
-
-  private def decodeWithProxyFallback(url: String): Option[BufferedImage] =
-    decode(url).orElse {
-      val proxied = PosterProxy.posterForCard(url)
-      if (proxied != url) decode(proxied) else None
-    }
-
-  private def decode(url: String): Option[BufferedImage] =
-    posters.bytes(url).flatMap { b =>
-      try Option(ImageIO.read(new ByteArrayInputStream(b)))
-      catch { case _: Throwable => None }
-    }
 }
 
 object OgCardService {
