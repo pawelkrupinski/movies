@@ -14,7 +14,7 @@ import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadMod
 import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
-import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, QueueEnrichmentRetrigger, RatingEnqueuer, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
+import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
 import tools.{Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
@@ -513,10 +513,12 @@ class WorkerWiring extends play.api.Logging {
   }
 
   // Rating refresh as queue tasks. The handlers reuse each *Ratings class's
-  // per-row refreshOneSync; the enqueuer turns the resolution bus events into
-  // rating tasks; the reaper is the periodic backstop (each row refreshed once
-  // per 4h, phase-spread across frequent ticks rather than bursting).
-  lazy val ratingEnqueuer = new RatingEnqueuer(movieCache, taskQueue)
+  // per-row refreshOneSync; the EnrichmentReaper is the SOLE enqueue path — it
+  // refreshes each row once per 4h, phase-spread across frequent ticks and capped
+  // per tick. A freshly-resolved film's first ratings come from the reaper's
+  // due-immediately first pass (within a tick, bounded by the cap), NOT from an
+  // instant per-resolution-event burst, so a cohort of resolutions can't fan out
+  // into a rating-task spike (the midday `kinowo_worker_tasks` peaks).
   // ONE shared due schedule backs both the reaper (enqueue) and every handler
   // (pickup re-gate), so they agree on what's due — see [[DueWindow]].
   // Its period is the rating TTL (4h, `Freshness.ttlFor`).
@@ -603,26 +605,25 @@ class WorkerWiring extends play.api.Logging {
   lazy val workerHeartbeat = new WorkerHeartbeat(taskQueue)
 
   // Subscribe BEFORE start() so the bus's first MovieDetailsComplete events reach
-  // the enrichment handlers. (See the original monolith comment block for the
-  // full event-cascade rationale — the wiring is unchanged.)
-  //   MovieDetailsComplete → movieService           (TMDB stage)
-  //   TmdbResolved       → ratingEnqueuer          (enqueue IMDb/RT/MC/Filmweb)
-  //   ImdbIdMissing      → imdbIdResolver + ratingEnqueuer (TMDB-only hits)
-  //   ImdbIdResolved     → ratingEnqueuer          (enqueue IMDb)
-  // Resolution stays inline (one-shot per scraped row).
+  // the enrichment handlers.
+  //   MovieDetailsComplete → movieService    (TMDB stage)
+  //   ImdbIdMissing        → imdbIdResolver  (recover the missing IMDb id)
+  // Resolution stays inline (one-shot per scraped row). Ratings are NOT enqueued
+  // off these resolution events any more — the EnrichmentReaper is the sole
+  // rating-enqueue path (capped + phase-spread), so a cohort of resolutions can't
+  // fan out into an instant rating-task burst. `TmdbResolved` / `ImdbIdResolved`
+  // are still published (resolution extension points; `ImdbIdResolved` also rides
+  // the ResolveImdbId task path) but currently have no subscribers.
   eventBus.subscribe(movieService.onMovieDetailsComplete)
   eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
   // One detail enqueuer per deferred-detail cinema.
   detailEnqueuers.foreach(e => eventBus.subscribe(e.onCinemaMovieAdded))
-  // Rating subscribers ENQUEUE tasks; RatingHandlers + EnrichmentReaper fetch.
-  eventBus.subscribe(ratingEnqueuer.onTmdbResolved)
-  eventBus.subscribe(ratingEnqueuer.onImdbIdResolved)
-  eventBus.subscribe(ratingEnqueuer.onImdbIdMissing)
   // A concluded newcomer folds (group-scoped, settling as it goes) into `movies`
   // the moment the StagingFold handler publishes. Each BRAND-NEW film the fold
-  // introduces (no pre-existing `movies` row merged in) gets its first-time
-  // ratings scheduled right away; a merge into an existing row keeps that row's
-  // ratings, so it isn't re-enqueued.
+  // introduces (no pre-existing `movies` row merged in) re-publishes its
+  // resolution outcome so a TMDB-only hit kicks IMDb-id recovery; its first-time
+  // ratings then come from the EnrichmentReaper's due-immediately first pass. A
+  // merge into an existing row keeps that row's ratings, so it's left untouched.
   eventBus.subscribe { case StagingFilmEnriched(title) =>
     stagingFolder.foldGroup(title).foreach { case (key, record) =>
       movieService.scheduleRatingsForNewMovie(key, record)

@@ -20,8 +20,7 @@ import scala.util.Try
  * single next step it needs (detail → resolve → imdb → fold), and the queue's
  * per-`dedupKey` idempotency makes every enqueue safe to repeat.
  *
- * It advances the chain two ways, mirroring [[services.tasks.RatingEnqueuer]] +
- * [[services.tasks.DetailReaper]]:
+ * It advances the chain two ways, mirroring [[services.tasks.DetailReaper]]:
  *   - EVENT-DRIVEN: subscribes to `TaskFinished` and, when a staging step
  *     completes, enqueues the film's next step immediately (low latency).
  *   - PERIODIC BACKSTOP: a `ScheduledRunStore`-gated tick scans every incubating

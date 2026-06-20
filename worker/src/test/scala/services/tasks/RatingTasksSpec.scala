@@ -2,10 +2,7 @@ package services.tasks
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{ImdbIdMissing, ImdbIdResolved, TmdbResolved}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
-import services.events.InProcessEventBus
 
 import java.time.{Clock, Instant, ZoneOffset}
 import scala.concurrent.duration._
@@ -61,25 +58,4 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     calls shouldBe 1
   }
 
-  // ── RatingEnqueuer (bus subscribers enqueue) ──────────────────────────────
-
-  private def newCache() = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
-
-  "RatingEnqueuer" should "enqueue all four rating tasks on TmdbResolved" in {
-    val queue = new InMemoryTaskQueue
-    new RatingEnqueuer(newCache(), queue).onTmdbResolved(TmdbResolved("Dune", Some(2024), "tt1"))
-    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 4L
-  }
-
-  it should "enqueue only the non-IMDb ratings on ImdbIdMissing" in {
-    val queue = new InMemoryTaskQueue
-    new RatingEnqueuer(newCache(), queue).onImdbIdMissing(ImdbIdMissing("Dune", Some(2024), "Dune"))
-    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 3L
-  }
-
-  it should "enqueue the IMDb rating on ImdbIdResolved" in {
-    val queue = new InMemoryTaskQueue
-    new RatingEnqueuer(newCache(), queue).onImdbIdResolved(ImdbIdResolved("Dune", Some(2024), "tt1"))
-    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
-  }
 }

@@ -3,6 +3,7 @@ package modules
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import services.events.TmdbResolved
 import services.tasks.{ScrapeReaper, UnresolvedTmdbReaper}
 import tools.TestWiring
 
@@ -40,6 +41,21 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.start()
     wiring.scrapeStarted shouldBe true
     wiring.tmdbRetryStarted shouldBe true
+    wiring.stop()
+  }
+
+  // Smoothing guard: a TMDB resolution must NOT directly enqueue rating tasks.
+  // The old `RatingEnqueuer` subscribed to `TmdbResolved` and fanned out four
+  // rating tasks per event instantly (the unspread amplifier behind the midday
+  // `kinowo_worker_tasks` rating spikes). With it removed, the EnrichmentReaper
+  // is the sole, capped + phase-spread rating-enqueue path — so publishing the
+  // event leaves the queue untouched. (Fails before the cascade removal: the
+  // event would have enqueued four tasks.)
+  it should "not enqueue rating tasks on a resolution event (ratings flow only via the EnrichmentReaper)" in {
+    val wiring = new SpyWiring
+    val before = wiring.taskQueue.countByState().values.sum
+    wiring.eventBus.publish(TmdbResolved("Dune", Some(2024), "tt1"))
+    wiring.taskQueue.countByState().values.sum shouldBe before
     wiring.stop()
   }
 }

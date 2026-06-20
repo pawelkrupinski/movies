@@ -46,10 +46,10 @@ trait TestWiring extends WorkerWiring {
   override protected def resolutionCache(collection: String): ResolutionCache = ResolutionCache.passthrough
 
   // In-memory task queue + freshness store so the queue-driven wiring boots
-  // without Mongo: the bus enqueuers (ratingEnqueuer, and the detail enqueuers
-  // when deferred detail is on) write here harmlessly. The harness never runs
-  // the TaskWorker — it drives enrichment synchronously (see `enrichRatingsSync`
-  // / `converge`) — so these stay drained.
+  // without Mongo: the reapers and the detail enqueuers (when deferred detail is
+  // on) write here harmlessly. The harness never runs the TaskWorker — it drives
+  // enrichment synchronously (see `enrichRatingsSync` / `converge`) — so these
+  // stay drained.
   override lazy val taskQueue: TaskQueue = new InMemoryTaskQueue
   override lazy val freshnessStore: FreshnessStore = new InMemoryFreshnessStore
 
