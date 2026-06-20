@@ -30,6 +30,13 @@ class CityOgCardServiceSpec extends AnyFlatSpec with Matchers {
       if (calls.incrementAndGet() <= failFirst) None else Some(payload)
   }
 
+  // Serves the payload only for URLs whose host the Fly IP can reach — models
+  // the prod block where a film's primary (Multikino) poster 403s but a cinema
+  // fallback origin doesn't.
+  private class HostGatedFetch(payload: Array[Byte], reachable: String) extends PosterFetch {
+    override def bytes(url: String): Option[Array[Byte]] = if (url.contains(reachable)) Some(payload) else None
+  }
+
   private def dimensions(bytes: Array[Byte]): (Int, Int) = {
     val img = ImageIO.read(new ByteArrayInputStream(bytes))
     (img.getWidth, img.getHeight)
@@ -42,7 +49,7 @@ class CityOgCardServiceSpec extends AnyFlatSpec with Matchers {
 
   private def film(poster: String): CityCardFilm =
     CityCardFilm("Incepcja", Seq("2h 28min", "2010"),
-      OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some(poster),
+      OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Seq(poster),
       "Sobota 20 czerwca", Seq("Multikino" -> Seq("18:30")))
 
   // Five distinct-poster films — enough to fill the grid so the right column
@@ -85,5 +92,16 @@ class CityOgCardServiceSpec extends AnyFlatSpec with Matchers {
     val fetch = new CountingFetch(jpeg)
     new CityOgCardService(fetch).card("poznan", "Repertuar kin w Poznaniu", Seq.empty)
     fetch.calls.get shouldBe 0
+  }
+
+  it should "walk past a blocked primary poster to a reachable cinema fallback" in {
+    // Each film's primary is a Multikino origin the Fly IP can't reach; the
+    // fallback origin decodes. Without the fallbacks the slots render empty.
+    val fetch = new HostGatedFetch(jpeg, reachable = "cinema-city.pl")
+    val films = Seq.fill(5)(CityCardFilm("Incepcja", Seq("2010"),
+      OgCardRenderer.ratingBadges(Some(8.8), None, None, None),
+      Seq("https://www.multikino.pl/x.jpg", "https://www.cinema-city.pl/p.jpg"),
+      "Sobota 20 czerwca", Seq("Multikino" -> Seq("18:30"))))
+    posterRed(new CityOgCardService(fetch).card("poznan", "Repertuar kin w Poznaniu", films)) should be > 150
   }
 }

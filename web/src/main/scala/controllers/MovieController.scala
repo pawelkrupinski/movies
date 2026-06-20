@@ -966,6 +966,9 @@ object MovieController {
         }
       }
     }.getOrElse("" -> Seq.empty)
-    tools.CityCardFilm(film.movie.title, meta, cardRatingBadges(film), film.posterUrl, dayLabel, cinemas)
+    // Primary poster first, then the cinema fallbacks — the primary is often a
+    // Multikino origin Cloudflare 403s from our Fly IP (see OgCardService).
+    val posterUrls = film.posterUrl.toSeq ++ film.resolved.fallbackPosterUrls
+    tools.CityCardFilm(film.movie.title, meta, cardRatingBadges(film), posterUrls, dayLabel, cinemas)
   }
 }

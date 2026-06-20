@@ -102,9 +102,9 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
     CityCardFilm(
       title     = title,
       meta      = Seq("2h 28min", "2010", "Sci-Fi"),
-      badges    = OgCardRenderer.ratingBadges(Some(8.8), Some(74), Some(87), Some(7.5)),
-      posterUrl = None,
-      dayLabel  = "Sobota 20 czerwca",
+      badges     = OgCardRenderer.ratingBadges(Some(8.8), Some(74), Some(87), Some(7.5)),
+      posterUrls = Nil,
+      dayLabel   = "Sobota 20 czerwca",
       showings  = Seq("Multikino Stary Browar" -> Seq("18:30 2D", "21:00 DUB")),
     ) -> Some(solidPoster(poster))
 
