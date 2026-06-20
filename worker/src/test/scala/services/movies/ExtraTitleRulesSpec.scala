@@ -227,7 +227,6 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Gwiezdne wojny: Mandalorian i Grogu 2D NAPISY",
     "Mandalorian & Grogu - 2D DUB",
     "Mandalorian i Grogu [napisy]",
-    "Mandalorian i Grogu. Ukrainian dubbing",
     "Mandalorian i Grogu/dubbing",
     "Mandalorian i Grogu/napisy",
     "The Mandalorian and Grogu 2D DUB",
@@ -280,6 +279,28 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     cases.foreach { case (variant, base) =>
       withClue(s"mergeKey('$variant') vs '$base': ")(
         mergeKey(withExtras, variant) shouldBe mergeKey(withExtras, base))
+    }
+  }
+
+  // Ukrainian-language screenings are a DISTINCT version (a separate audience),
+  // so the language/format strip must NOT eat a Ukrainian marker — the variant
+  // keeps its own key and stays its own row, exactly like a dub/programme
+  // edition. Only the Polish format suffixes above (2D DUBBING, /napisy, lektor)
+  // fold; "ukraiński/ukrainian <dub|napisy|lektor>" survives untouched.
+  it should "keep Ukrainian-language variants as their own row (not fold them into the base)" in {
+    val ukrainian = Seq(
+      "Dzień objawienia ukraiński dubbing",
+      "Mandalorian i Grogu. Ukrainian dubbing",
+      "Toy Story 5 ukraiński napisy",
+      "Toy Story 5 (ukraiński dubbing)"
+    )
+    ukrainian.foreach { v =>
+      withClue(s"canonical('$v') must be unchanged (Ukrainian marker preserved): ")(
+        withExtras.canonical(v) shouldBe v)
+      // And it must NOT collapse onto the base film's key.
+      val base = v.replaceAll("(?i)\\s*\\(?\\s*ukrai[ńn]ski|ukrainian.*$", "").trim
+      withClue(s"mergeKey('$v') should NOT equal the base '$base': ")(
+        mergeKey(withExtras, v) should not be mergeKey(withExtras, base))
     }
   }
 
