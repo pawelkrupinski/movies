@@ -616,6 +616,105 @@ groups:
                   reducer: { type: last, params: [] }
               refId: C
 
+      # ---- Per-city served-film count swung suddenly (either direction) -----
+      # The web exposes kinowo_web_movies_served{city,scope} — distinct films
+      # served per /:city/ page, sampled every minute from the real serving path
+      # (all future showings / showing tomorrow). This rule fires when a city's
+      # count deviates from its own trailing 1h average by >50% AND by >=4 films
+      # — in EITHER direction (abs()). The relative test catches the shape of a
+      # read-model outage (a malformed web_movies row empties the corpus → a city
+      # craters to 0); the absolute >=4 floor suppresses the noise of tiny-town
+      # cities where +-2 films is a normal day-to-day swing. It's inherently a
+      # TRANSITION ping (the 1h baseline catches up within ~an hour, so it
+      # self-resolves); the city-empty rule below is the companion that keeps
+      # paging while a city stays dark.
+      - uid: kinowo-movies-served-swing
+        title: Films served per city swung suddenly
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.city }} ({{ $labels.scope }}) film count swung sharply vs its 1h average'
+          description: 'kinowo_web_movies_served for city "{{ $labels.city }}" scope "{{ $labels.scope }}" is >50% and >=4 films off its trailing 1h average — a sudden jump or drop in what the web is serving. A drop is the read-model-outage shape (a malformed web_movies row empties the corpus, every city craters); a jump can be a scrape/projection anomaly. Check https://kinowo.fly.dev/{{ $labels.city }}/ and the "films served per city" dashboard panel.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: '(abs(kinowo_web_movies_served - avg_over_time(kinowo_web_movies_served[1h])) / clamp_min(avg_over_time(kinowo_web_movies_served[1h]), 1)) and (abs(kinowo_web_movies_served - avg_over_time(kinowo_web_movies_served[1h])) >= 4)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.5] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- A city that WAS serving films dropped to zero (sustained) --------
+      # The defensive floor under the swing rule above (which self-resolves once
+      # its 1h baseline decays). Fires when a city's all-scope count is 0 now AND
+      # averaged >=4 over the last 6h — i.e. it was genuinely serving films and
+      # went dark, NOT a tiny city that is simply empty by nature (those never
+      # satisfy the 6h>=4 guard, so they don't page). The 6h baseline keeps this
+      # firing for hours while the city stays at 0 — that's the read-model-outage
+      # signal the swing alert can't hold. Resolves (noData → OK) the moment the
+      # city serves a film again.
+      - uid: kinowo-movies-served-city-empty
+        title: City serving zero films (was active)
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $labels.city }} is serving ZERO films (it was active in the last 6h)'
+          description: 'kinowo_web_movies_served{city="{{ $labels.city }}",scope="all"} has been 0 for 5m despite a >=4 film average over the last 6h — the city went dark. The likely cause is a read-model outage (a malformed web_movies document makes the web''s findAllMovies throw and empties the whole corpus → every city to 0; see reference_web_movies_required_ratings_outage). Check web logs for "findAllMovies failed" / "Missing field", and https://kinowo.fly.dev/{{ $labels.city }}/.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: '(kinowo_web_movies_served{scope="all"} == 0) and (avg_over_time(kinowo_web_movies_served{scope="all"}[6h] offset 10m) >= 4)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [1] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
   # ---- Worker CPU-credit throttle CONTROL (drives the worker's /throttle) -----
   # NOT a page. The worker runs credit-starved by design; this rule is the
   # external "credit logic" for its self-heal backoff. When kinowo-worker's

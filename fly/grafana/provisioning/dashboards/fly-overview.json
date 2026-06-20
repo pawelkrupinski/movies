@@ -306,6 +306,30 @@
       "targets": [
         { "refId": "A", "expr": "sum by (reason) (rate(kinowo_worker_merges_total[$__rate_interval])) * 60", "legendFormat": "{{reason}}" }
       ]
+    },
+    {
+      "id": 33,
+      "title": "kinowo — films served per city (all future showings)",
+      "description": "Distinct films the web is currently serving on each /:city/ page (every film with a future showing), sampled once a minute from the real serving path (toSchedules) and exposed on web /metrics as kinowo_web_movies_served{scope=\"all\"}. A city dropping to 0 here is the read-model-outage signal (a malformed web_movies row empties the whole corpus). The MoviesServedSwing + MoviesServedCityEmpty alerts watch this series.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 122 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "kinowo_web_movies_served{scope=\"all\"}", "legendFormat": "{{city}}" }
+      ]
+    },
+    {
+      "id": 34,
+      "title": "kinowo — films served per city (showing tomorrow)",
+      "description": "Distinct films each /:city/ page shows for tomorrow (≥1 showtime on the next local calendar day, Europe/Warsaw), from kinowo_web_movies_served{scope=\"tomorrow\"}. Same per-minute sample as the all-future panel; the next-day view that fills the gap as today's showings pass.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 122 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "kinowo_web_movies_served{scope=\"tomorrow\"}", "legendFormat": "{{city}}" }
+      ]
     }
   ]
 }
