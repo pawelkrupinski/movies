@@ -135,4 +135,24 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
       StagingStep.Fold        -> 2    // Done + Multi (Multi's two rows are one film)
     )
   }
+
+  "tick" should "scan the repository ONCE regardless of how many distinct films are staged" in {
+    // The old `enqueueNext(anchor)` re-scanned via `rowsFor` per distinct anchor,
+    // so a tick over N films did 1 + N full `findAll`s; the snapshot rewrite does 1.
+    val repository = new CountingStagingRepository
+    Seq("Alpha", "Beta", "Gamma", "Delta").foreach(t =>
+      repository.upsert(Helios, t, Some(2026), listing(t, Some(2026))))
+    val freshness = new InMemoryFreshnessStore
+    val steps     = new StagingSteps(repository, Seq(enricher), (_, _, _) => None, (_, _) => None, freshness)
+    val reaper    = new StagingReaper(steps, new InMemoryTaskQueue, repository)
+
+    reaper.tick() shouldBe 4                      // one StagingDetail per film…
+    repository.findAllCalls shouldBe 1            // …off a single corpus scan (was 5)
+  }
+
+  /** Counts `findAll` calls so a test can assert the reaper's scan count. */
+  private class CountingStagingRepository extends InMemoryStagingRepository {
+    var findAllCalls = 0
+    override def findAll(): Seq[StagingRecord] = { findAllCalls += 1; super.findAll() }
+  }
 }
