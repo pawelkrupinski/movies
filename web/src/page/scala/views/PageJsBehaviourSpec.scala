@@ -65,6 +65,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val cinemas = city.cinemaDisplayNames
       val schedules       = service.toSchedules(city, now)
 
+      // The city-selection landing (`/` with no city cookie) — drives the
+      // inline city-search filter. City-independent, so served off-prefix.
+      val landingHtml: String = views.html.landing(models.City.all).body
+
       val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(
         schedules, cinemas, pills, devMode = false,
@@ -164,6 +168,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // The dev-only visual-tuning page — rendered with real fixture films
           // so its slider panel (and the ± step buttons) can be driven over CDP.
           case p if sub(p) == "/debug/tune" => views.html.tune(schedules.take(3)).body
+          // The city-selection landing (no city prefix — there's no city yet).
+          case "/landing" => landingHtml
           // The global-corpus /debug page (no city prefix).
           case "/debug" => debugHtml
         },
@@ -185,6 +191,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // `path` is an in-city sub-path ("/", "/film?title=…"); pages
       // live under `/{city}/…`, so prepend the city prefix.
       case Some(c) => c.openPage(server.baseUrl + cityPrefix + path)(body(_))
+      case None    => cancel("Chrome not installed — skipping JS behaviour test")
+    }
+
+  /** Open the city-selection landing page (not city-scoped). */
+  private def onLanding(body: CdpPage => Any): Unit =
+    chrome match {
+      case Some(c) => c.openPage(server.baseUrl + "/landing")(body(_))
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
 
@@ -240,6 +253,69 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val hidden = page.evalString("JSON.stringify(getHidden())")
       hidden should include ("Film A")  // pulled from the server
       hidden should include ("Local Z") // migrated up from this device
+    }
+  }
+
+  // ── city-selection landing search ────────────────────────────────────────
+  //
+  // The landing page (`/` with no city cookie) lists all 41 cities; the inline
+  // search box narrows them by folded substring match so a visitor can type
+  // their city instead of scrolling. Diacritic-insensitive: "lodz" finds
+  // "Łódź", "krakow" finds "Kraków".
+
+  /** Type `q` into the city-search box and fire the `input` handler. */
+  private def typeCitySearch(page: CdpPage, q: String): Unit =
+    page.eval(
+      "(function(){var i=document.getElementById('city-search');" +
+      s"""i.value="$q";""" +
+      "i.dispatchEvent(new Event('input'));})()")
+
+  /** JSON array of the city names whose row is currently visible. */
+  private def visibleCities(page: CdpPage): String =
+    page.evalString(
+      "JSON.stringify(Array.prototype.filter.call(" +
+      "document.querySelectorAll('#city-list > li')," +
+      "function(el){return getComputedStyle(el).display!=='none';})" +
+      ".map(function(el){return el.textContent.trim();}))")
+
+  "the city-selection landing search" should
+    "narrow the list to a typed city name" in {
+    onLanding { page =>
+      typeCitySearch(page, "wroc")
+      visibleCities(page) shouldBe """["Wrocław"]"""
+    }
+  }
+
+  it should "match Polish names typed without diacritics" in {
+    onLanding { page =>
+      // "lodz" must find "Łódź" — ł/ó folded away on both sides.
+      typeCitySearch(page, "lodz")
+      visibleCities(page) shouldBe """["Łódź"]"""
+      typeCitySearch(page, "krakow")
+      visibleCities(page) shouldBe """["Kraków"]"""
+    }
+  }
+
+  it should "show the empty-state and no rows when nothing matches" in {
+    onLanding { page =>
+      typeCitySearch(page, "zzzzz")
+      visibleCities(page) shouldBe "[]"
+      page.evalBool(
+        "getComputedStyle(document.getElementById('city-empty')).display !== 'none'"
+      ) shouldBe true
+    }
+  }
+
+  it should "restore the full list when the query is cleared" in {
+    onLanding { page =>
+      typeCitySearch(page, "wroc")
+      typeCitySearch(page, "")
+      page.evalString(
+        "String(document.querySelectorAll('#city-list > li').length)"
+      ) shouldBe page.evalString(
+        "String(Array.prototype.filter.call(" +
+        "document.querySelectorAll('#city-list > li')," +
+        "function(el){return getComputedStyle(el).display!=='none';}).length)")
     }
   }
 

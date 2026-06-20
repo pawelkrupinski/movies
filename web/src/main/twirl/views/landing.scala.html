@@ -31,6 +31,15 @@
     main { width: 100%; max-width: 420px; text-align: center; }
     h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: .25rem; }
     .sub { color: #9a9ac0; margin-bottom: 1.5rem; }
+    .city-search {
+      width: 100%; margin-bottom: 1rem; padding: .8rem 1rem;
+      font: inherit; font-size: 1rem; color: #e7e7f5;
+      background: #1a1a3a; border: 1px solid #2a2a5e; border-radius: 10px;
+      outline: none; transition: border-color .15s;
+    }
+    .city-search::placeholder { color: #6f6f9c; }
+    .city-search:focus { border-color: #3a3a7e; }
+    .city-empty { color: #9a9ac0; font-size: .95rem; margin: .25rem 0; display: none; }
     .city-list { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
     .city-list a {
       display: block; text-decoration: none; color: #e7e7f5;
@@ -46,7 +55,11 @@
   <main>
     <h1>🎬 Kinowo</h1>
     <p class="sub">Wybierz miasto</p>
-    <ul class="city-list">
+    <input class="city-search" id="city-search" type="search" inputmode="search"
+           autocomplete="off" autocapitalize="off" spellcheck="false"
+           placeholder="Szukaj miasta…" aria-label="Szukaj miasta" aria-controls="city-list">
+    <p class="city-empty" id="city-empty">Brak miasta o tej nazwie.</p>
+    <ul class="city-list" id="city-list">
       @for(c <- cities) {
         <li><a href="/@c.slug/">@c.labels.nominative</a></li>
       }
@@ -55,6 +68,36 @@
   </main>
   <script>
     var CITIES = @Html(models.City.allJson);
+
+    // Fold a Polish string to its diacritic-free, lower-case form so the city
+    // search matches what people actually type ("lodz" → "Łódź", "krakow" →
+    // "Kraków"). NFD won't fold ł/ą/ę/ń, so map the Polish letters explicitly.
+    function foldPl(s) {
+      return (s || '').toLowerCase()
+        .replace(/ą/g, 'a').replace(/ć/g, 'c').replace(/ę/g, 'e').replace(/ł/g, 'l')
+        .replace(/ń/g, 'n').replace(/ó/g, 'o').replace(/ś/g, 's')
+        .replace(/ź/g, 'z').replace(/ż/g, 'z');
+    }
+
+    // Client-side filter of the 41-city list: typing narrows the visible rows
+    // by folded substring match; an empty box shows everything.
+    (function () {
+      var input = document.getElementById('city-search');
+      if (!input) return;
+      var items = Array.prototype.slice.call(document.querySelectorAll('#city-list > li'));
+      var empty = document.getElementById('city-empty');
+      var apply = function () {
+        var q = foldPl(input.value.trim());
+        var shown = 0;
+        items.forEach(function (li) {
+          var match = q === '' || foldPl(li.textContent).indexOf(q) !== -1;
+          li.style.display = match ? '' : 'none';
+          if (match) shown++;
+        });
+        if (empty) empty.style.display = shown === 0 ? 'block' : 'none';
+      };
+      input.addEventListener('input', apply);
+    })();
 
     // Haversine distance in km between two lat/lon points.
     function distanceKm(lat1, lon1, lat2, lon2) {
