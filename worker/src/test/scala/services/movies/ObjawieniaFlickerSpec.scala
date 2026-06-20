@@ -43,8 +43,11 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
     )
 
   private def scrape(cinema: Cinema, year: Option[Int]): CinemaMovie =
+    scrapeTitled(cinema, Title, year)
+
+  private def scrapeTitled(cinema: Cinema, title: String, year: Option[Int]): CinemaMovie =
     CinemaMovie(
-      movie     = Movie(title = Title, releaseYear = year),
+      movie     = Movie(title = title, releaseYear = year),
       cinema    = cinema,
       posterUrl = None, filmUrl = None, synopsis = None,
       cast = Nil, director = Seq("Steven Spielberg"),
@@ -132,6 +135,36 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
     // … never on the Ukrainian-keyed sibling.
     cache.get(cache.keyOf(uaTitle, Some(2026))).getOrElse(fail("ua row vanished"))
       .cinemaData.keySet should not contain CinemaCityKinepolis
+  }
+
+  // Healing the ALREADY-folded prod state after the Ukrainian-marker rule change:
+  // before the fix, "Dzień objawienia ukraiński dubbing" sanitized to the base
+  // key, so Cinema City's slot lived INSIDE the base "Dzień objawienia" row. Once
+  // the rule no longer strips the marker, that title keys to its own row — and a
+  // backfill isn't needed: the next Cinema City scrape writes the slot on the new
+  // key AND the prune drops the now-stale slot from the base row. This proves the
+  // split + shed happen on one re-scrape (so prod self-heals within a scrape tick).
+  "a re-scrape after the Ukrainian-marker rule change" should "split the dub slot onto its own row and shed it from the base row" in {
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository)
+    val dubTitle = "Dzień objawienia ukraiński dubbing"
+
+    // Folded prod state: the base row carries Helios (base title) AND Cinema City's
+    // dub slot (the old strip put it here, under the base key).
+    cache.put(cache.keyOf(Title, Some(2026)), MovieRecord(data = Map(
+      slot(Helios, Some(2026)),
+      (CinemaCityKinepolis: Source) -> SourceData(title = Some(dubTitle), releaseYear = Some(2026),
+        showtimes = Seq(Showtime(When, bookingUrl = None))))))
+
+    // Both cinemas re-scrape under the new rules (the dub title no longer strips).
+    cache.recordCinemaScrape(Helios, Seq(scrape(Helios, Some(2026))))
+    cache.recordCinemaScrape(CinemaCityKinepolis, Seq(scrapeTitled(CinemaCityKinepolis, dubTitle, Some(2026))))
+
+    // The dub variant is now its OWN row …
+    val dubRow = cache.get(cache.keyOf(dubTitle, Some(2026))).getOrElse(fail("dub row never split out"))
+    dubRow.cinemaData.keySet shouldBe Set(CinemaCityKinepolis)
+    // … and the base row kept Helios but SHED the stale Cinema City dub slot.
+    val baseRow = cache.get(cache.keyOf(Title, Some(2026))).getOrElse(fail("base row vanished"))
+    baseRow.cinemaData.keySet shouldBe Set(Helios)
   }
 
   // The "two copies of Kumotry" bug: a cinema reports the film at the PRODUCTION
