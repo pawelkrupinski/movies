@@ -60,7 +60,7 @@ primary_region = 'arn'
   # No KINOWO_SCRAPE_CITIES: the worker now scrapes EVERY modelled city by
   # default (ScrapeCities.allCities). The var still exists as a load-shedding
   # escape hatch — `fly secrets set KINOWO_SCRAPE_CITIES=poznan,wroclaw` NARROWS
-  # the set — but the steady state is all ~19 cities on 2 shared vCPUs / 1 GB.
+  # the set — but the steady state is all ~19 cities on 4 shared vCPUs / 2 GB.
   # Watch this worker's RSS/CPU: if it throttles or OOMs, narrow via the secret
   # or bump the [[vm]] (see below).
   # Per-app JVM sizing (moved out of the shared Dockerfile), tuned for memory on
@@ -87,8 +87,8 @@ primary_region = 'arn'
   #     handing ~64 MB of committed RSS back. NMT breakdown of the rest:
   #     metaspace ~67 MB (≈13.8k Scala/Play/Pekko classes), code cache ~45 MB,
   #     symbols/threads/shared-class ~30 MB, + ~80 MB glibc/RSS overhead.
-  # If it still OOM-restarts after this, the next lever is bumping [[vm]] to 2 GB
-  # (~+$5.19/mo) — see below.
+  # (The [[vm]] is now 2 GB / 4 vCPUs as of 2026-06-20, so this heap sits in ~2×
+  # the RAM it was tuned for — pure headroom; revisit only if a leak reappears.)
   #
   # LOAD-BEARING trailing flag `-Djdk.http.auth.tunneling.disabledSchemes=` (empty):
   # re-enables Basic auth on HTTPS CONNECT tunnels, which the JDK disables by
@@ -117,16 +117,25 @@ primary_region = 'arn'
     type = 'http'
 
 [[vm]]
-  # 2 shared vCPUs / 1 GB. The 3-city continuous scrape pegged a single shared
-  # vCPU (load avg ~2.7), risking Fly's shared-CPU balance throttling. A second
-  # vCPU halves per-core load to ~1.35 and doubles the throttle balance — and
-  # it's ~free here (the second shared vCPU is ~$0.77/mo, covered by the web
-  # scale-down's ~$2.50/mo saving). Memory does NOT plateau at 600 MB as once
-  # assumed — under the all-cities load RSS crept to ~890 MB and OOM-restarted;
-  # the SerialGC + glibc-arena tuning in JAVA_OPTS / [env] above is the first fix.
-  # If it still OOMs, bump this to memory = '2048mb' (~+$5.19/mo on shared-cpu-2x).
-  # (Scrape concurrency stays at its default 2 — the extra core is headroom,
-  # not a reason to fan out wider.) Bump to performance-1x if it still throttles.
-  memory = '1gb'
+  # 4 shared vCPUs / 2 GB (bumped from 2x/1 GB on 2026-06-20). With the 4-thread
+  # task pool (KINOWO_WORKER_POOL_SIZE) the 2-vCPU box could only run 2 workers
+  # truly in parallel, so the morning scrape ramp (ScrapeCinema enqueue climbs
+  # ~10 → ~200/min as the day's repertoire populates) drained the shared-CPU
+  # credit balance to the floor (steal ~88%, scrapes 47-78s, queue backlog
+  # climbing) every morning and after every deploy/re-key wave — never
+  # self-healing within the day (measured 2026-06-20). 4 vCPUs gives the 4-worker
+  # pool real parallelism (≈2× throughput) and 4× the credit accrual rate, so a
+  # burst's credit dip refills instead of pinning at the floor. 2 GB (was 1 GB,
+  # the 4x minimum) buys headroom for 4-way-concurrent scrape/enrich + thread-
+  # stack/direct-buffer footprint; the JAVA_OPTS heap stays 320m so the extra RAM
+  # is pure slack, not a new ceiling to grow into.
+  #
+  # NOTE: the constraint here is the WORKER's own CPU credit (proven 2026-06-20:
+  # worker steal + credit-floor, Mongo fine). The OTHER throttle mode is MONGO's
+  # shared-cpu credit under scrape WRITE volume (KINOWO_SCRAPE_FRESHNESS_MINUTES,
+  # j:false) — bumping the worker can't fix that one, it can only write faster. If
+  # 4x still pins the worker credit, go performance-2x (dedicated, no credit
+  # throttle) rather than a wider pool.
+  memory = '2gb'
   cpu_kind = 'shared'
-  cpus = 2
+  cpus = 4
