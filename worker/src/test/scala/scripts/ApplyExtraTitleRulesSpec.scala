@@ -2,7 +2,7 @@ package scripts
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.titlerules.RuleScope.{GlobalStructural, PerCinema}
+import services.titlerules.RuleScope.{Canonical, GlobalStructural, PerCinema}
 import services.titlerules.{TitleRuleDefaults, TitleRuleRecord}
 
 /** Guards [[ApplyExtraTitleRules.plan]] — the pure half of the prod upsert. The
@@ -16,7 +16,7 @@ class ApplyExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
 
   // Against an empty store, plan must seed each (scope, cinemaId) record afresh.
   private val fromEmpty = planned(Seq.empty)
-  private val byId      = fromEmpty.map { case (rec, _) => rec.id -> rec }.toMap
+  private val byId      = fromEmpty.map(p => p.record.id -> p.record).toMap
 
   "ApplyExtraTitleRules.plan" should "key each PerCinema rule by its own cinema slug, never a single 'PerCinema' record" in {
     byId.keySet should contain noElementsOf Seq("PerCinema")
@@ -41,7 +41,7 @@ class ApplyExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be idempotent — re-planning against the freshly-written records adds nothing" in {
-    planned(fromEmpty.map(_._1)) shouldBe empty
+    planned(fromEmpty.map(_.record)) shouldBe empty
   }
 
   it should "leave an existing per-cinema record untouched when the additions carry none for it" in {
@@ -51,6 +51,36 @@ class ApplyExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     val existingMultikino =
       TitleRuleRecord("multikino", PerCinema, Some("multikino"),
         mkRules.filterNot(_.last), mkRules.filter(_.last))
-    planned(Seq(existingMultikino)).map(_._1.id) should not contain "multikino"
+    planned(Seq(existingMultikino)).map(_.record.id) should not contain "multikino"
+  }
+
+  // The reconcile path: when prod carries an OLD version of a code rule (a pattern
+  // since fixed in ExtraTitleRules — e.g. the Ukrainian-marker exclusion) AND the
+  // id is on the --update allowlist, plan must UPDATE that rule in place.
+  private val laRule = "xtra-canonical-trailing-lang-format"
+  private val canonical = TitleRuleRecord.idFor(Canonical, None)
+  private val codeRule  = ExtraTitleRules.all.find(_.id == laRule).getOrElse(fail("seed rule missing"))
+  private val stalePattern = "(?iu)STALE-PATTERN$"
+  private val staleProd = TitleRuleRecord(canonical, Canonical, None,
+    Seq(codeRule.copy(pattern = stalePattern, note = Some("old"))), Seq.empty)
+
+  it should "update an allowlisted rule in place when its code pattern has drifted" in {
+    val p = ApplyExtraTitleRules.plan(Seq(staleProd), updateIds = Set(laRule))
+      .find(_.record.id == canonical).getOrElse(fail("canonical not planned"))
+    p.updated should contain(laRule)
+    val reconciled = p.record.rules.find(_.id == laRule).get
+    reconciled.pattern shouldBe codeRule.pattern          // code pattern wins
+    reconciled.pattern should not be stalePattern
+  }
+
+  it should "NOT update a drifted rule that is absent from the --update allowlist" in {
+    // No allowlist — the drifted rule is left ALONE (a separator-generalised prod
+    // pattern is never silently reverted to the seed). The record may still be
+    // planned to APPEND the other canonical extras, but nothing is UPDATED and the
+    // stale pattern survives verbatim.
+    val planned = ApplyExtraTitleRules.plan(Seq(staleProd), updateIds = Set.empty)
+      .find(_.record.id == canonical)
+    planned.foreach(_.updated shouldBe empty)
+    planned.flatMap(_.record.rules.find(_.id == laRule)).map(_.pattern) shouldBe Some(stalePattern)
   }
 }
