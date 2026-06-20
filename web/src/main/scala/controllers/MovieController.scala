@@ -646,9 +646,11 @@ class MovieController( cc: ControllerComponents,
    *  directly at `/:city/og-image` for review. */
   def cityOgImage(city: String): Action[AnyContent] = Action {
     withCity(city) { c =>
-      // First few DISTINCT films (toSchedules is one row per film) → the grid
-      // columns; CityOgCardService caps how many it draws.
-      val films = movieControllerService.toSchedules(c).take(6).map(MovieController.toCityCardFilm)
+      // First few films → the grid columns, deduped by search key so a film's
+      // programme/accessibility variant can't repeat its poster; the service
+      // caps how many it draws.
+      val films = MovieController.distinctByMovie(movieControllerService.toSchedules(c))
+        .take(6).map(MovieController.toCityCardFilm)
       val bytes = cityOgCardService.card(c.slug, s"Repertuar kin ${c.locativePhrase}", films)
       Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=86400")
     }
@@ -943,6 +945,13 @@ object MovieController {
    *  "Reżyseria: …" line, or None when no director is known. */
   private[controllers] def cardDirector(film: FilmSchedule): Option[String] =
     Some(film.director.mkString(", ")).filter(_.nonEmpty)
+
+  /** Collapse rows that are the same film for the city OG card — same upstream
+   *  search key, so a base showing and its "Poranki:" / accessibility / "+ Q&A"
+   *  variant (which legitimately stay separate rows on the page) don't put the
+   *  same poster in the card twice. Keeps the first (earliest-showing) row. */
+  private[controllers] def distinctByMovie(schedules: Seq[FilmSchedule]): Seq[FilmSchedule] =
+    schedules.distinctBy(s => TitleNormalizer.apiQuery(s.movie.title).toLowerCase)
 
   private val OgTimeFmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
 
