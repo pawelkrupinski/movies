@@ -18,8 +18,8 @@ concurrency:
     group: android-${{ github.ref }}
     cancel-in-progress: true
 
-# Single lane: Linux runner, JDK 17 (AGP 8.6 needs 17+), the preinstalled
-# Android SDK + Gradle wrapper (8.9). Runs the JVM unit suite, assembles the
+# Single lane: Linux runner, JDK 17 (AGP 9.1 needs 17+), the preinstalled
+# Android SDK + Gradle wrapper (9.3.1). Runs the JVM unit suite, assembles the
 # debug APK, then builds the R8-minified release APK + AAB and ships all three
 # as (login-gated) workflow artifacts. On main pushes it ALSO publishes the
 # signed release APK to a rolling `android-latest` GitHub Release, which has a
@@ -59,7 +59,7 @@ jobs:
                   java-version: '17'
 
             # Provisions cmdline-tools + accepts SDK licenses so AGP can
-            # auto-fetch platform-34 / build-tools 34.0.0 if the runner image
+            # auto-fetch platform-37 / build-tools 37.0.0 if the runner image
             # doesn't already carry them. `packages: platform-tools` pins the
             # install to a minimal set instead of the action's default
             # `tools platform-tools` — the deprecated `tools` meta-package drags

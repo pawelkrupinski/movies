@@ -1,9 +1,9 @@
 import java.io.File
 import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
@@ -27,12 +27,12 @@ val hasReleaseSigning = releaseStorePath?.exists() == true
 
 android {
     namespace = "pl.kinowo"
-    compileSdk = 34
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "pl.kinowo"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -115,9 +115,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
     buildFeatures {
         compose = true
         buildConfig = true
@@ -135,31 +132,39 @@ android {
     }
 }
 
+// AGP 9 removed the `android.kotlinOptions` DSL; Kotlin compiler settings now
+// live on the Kotlin Gradle extension's `compilerOptions`.
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_17
+    }
+}
+
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2024.09.03")
+    val composeBom = platform("androidx.compose:compose-bom:2026.06.00")
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.activity:activity-compose:1.9.2")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
+    implementation("androidx.core:core-ktx:1.19.0")
+    implementation("androidx.activity:activity-compose:1.13.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
 
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.compose.material3:material3:1.3.0")
+    implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 
-    implementation("androidx.navigation:navigation-compose:2.8.0")
+    implementation("androidx.navigation:navigation-compose:2.9.8")
 
     // Custom Tabs for the web OAuth sign-in flow (the Android analog of iOS's
     // ASWebAuthenticationSession): an in-app browser tab that shares no cookies
     // with the app, so sign-in completes via the kinowo:// deep-link + one-shot
     // exchange code.
-    implementation("androidx.browser:browser:1.8.0")
+    implementation("androidx.browser:browser:1.10.0")
 
     // One-shot coarse location for the first-launch city gate (nearest
     // supported city; denial falls back to an explicit pick).
@@ -169,21 +174,21 @@ dependencies {
 
     // Backdrop blur for the floating search pill — real frosted-glass that
     // distorts the grid scrolling under it (RenderEffect on API 32+, graceful
-    // tint-only fallback below). 1.1.x is the Compose 1.7 line; newer Haze
-    // needs Compose 1.8+.
-    implementation("dev.chrisbanes.haze:haze:1.1.1")
+    // tint-only fallback below). 1.7.x tracks the Compose 1.9/1.10 line that
+    // Compose BOM 2026.06.00 pulls in.
+    implementation("dev.chrisbanes.haze:haze:1.7.2")
 
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("com.squareup.okhttp3:okhttp:5.4.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("androidx.datastore:datastore-preferences:1.2.1")
 
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     // Records the request path KinowoApi builds, so the city-slug prefix is
     // asserted without a live server.
-    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:5.4.0")
 
     // JVM (off-device) Compose UI tests via Robolectric — renders the real
     // composables and measures layout bounds without an emulator, so the
@@ -191,13 +196,13 @@ dependencies {
     // (already a debugImplementation) supplies the ComponentActivity that
     // createComposeRule launches.
     testImplementation(composeBom)
-    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("org.robolectric:robolectric:4.16.1")
     testImplementation("androidx.compose.ui:ui-test-junit4")
     // ApplicationProvider for the DataStore round-trip test (off-device).
-    testImplementation("androidx.test:core-ktx:1.6.1")
+    testImplementation("androidx.test:core-ktx:1.7.0")
 
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
