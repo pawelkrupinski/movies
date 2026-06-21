@@ -88,8 +88,16 @@
     .tag-fallback { background: #2b2410; color: #e0b341; border-color: #4d3f18; }
     .leading-fail h2 { color: #e74c3c; }
     .leading-zero h2 { color: #c9c9c9; }
-    /* Filmweb-fallback block, folded onto the page below the triage sections. */
-    .leading-fallback h2 { color: #c9962b; }
+    /* Filmweb-fallback block, folded onto the page below the triage sections.
+       Collapsed by default (a <details>); the <summary> is styled to match the
+       page's other <h2> section headers, with a click-to-expand cursor. */
+    .leading-fallback > summary {
+      font-size: 11px; font-weight: 600; color: #c9962b; text-transform: uppercase;
+      letter-spacing: 1px; margin: 28px 0 10px; padding-bottom: 6px;
+      border-bottom: 1px solid #1a1a1a; cursor: pointer; list-style-position: inside;
+    }
+    .leading-fallback[open] > summary { margin-bottom: 10px; }
+    .leading-fallback > summary:hover { color: #e0b341; }
     .leading-fallback table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
     .leading-fallback th, .leading-fallback td { text-align: left; padding: 5px 12px 5px 0; vertical-align: top; white-space: nowrap; }
     .leading-fallback th { color: #666; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
@@ -164,8 +172,8 @@
   }
 
   @if(onFallback.nonEmpty) {
-    <div class="leading-fallback" id="filmweb-fallback">
-      <h2>Filmweb fallback — currently on fallback (@onFallback.size)</h2>
+    <details class="leading-fallback" id="filmweb-fallback">
+      <summary>Filmweb fallback — currently on fallback (@onFallback.size)</summary>
       <table>
         <tr><th>Cinema</th><th>Filmweb id</th><th>Since</th><th>Fails</th><th>Next re-probe</th><th>Reason</th><th>History</th></tr>
         @for(r <- onFallback) {
@@ -180,7 +188,7 @@
           </tr>
         }
       </table>
-    </div>
+    </details>
   }
 
   @if(cinemasByCity.nonEmpty) {
