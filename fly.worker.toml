@@ -60,7 +60,7 @@ primary_region = 'arn'
   # No KINOWO_SCRAPE_CITIES: the worker now scrapes EVERY modelled city by
   # default (ScrapeCities.allCities). The var still exists as a load-shedding
   # escape hatch — `fly secrets set KINOWO_SCRAPE_CITIES=poznan,wroclaw` NARROWS
-  # the set — but the steady state is all ~19 cities on 4 shared vCPUs / 2 GB.
+  # the set — but the steady state is all ~19 cities on 4 shared vCPUs / 1 GB.
   # Watch this worker's RSS/CPU: if it throttles or OOMs, narrow via the secret
   # or bump the [[vm]] (see below).
   # Per-app JVM sizing (moved out of the shared Dockerfile), tuned for memory on
@@ -87,8 +87,20 @@ primary_region = 'arn'
   #     handing ~64 MB of committed RSS back. NMT breakdown of the rest:
   #     metaspace ~67 MB (≈13.8k Scala/Play/Pekko classes), code cache ~45 MB,
   #     symbols/threads/shared-class ~30 MB, + ~80 MB glibc/RSS overhead.
-  # If it still OOM-restarts after this, the next lever is bumping [[vm]] to 2 GB
-  # (~+$5.19/mo) — see the [[vm]] note below.
+  #   - Caps tightened to ~2× the measured-actual to bound a worst-case spike on
+  #     the 1 GB box (back down from 2 GB, 2026-06-21): MaxMetaspaceSize 160→128m
+  #     (actual ~67 MB; classes load at startup, no runtime class-gen here) and
+  #     ReservedCodeCacheSize 96→64m (actual ~45 MB; JIT plateaus, not JIT-heavy).
+  #     MaxDirectMemorySize stays 96m — under-sizing it fails concurrent fetches
+  #     functionally (Direct buffer memory), not just trims RSS. These are CEILINGS
+  #     (grown into as used, not pre-committed), so they don't change steady RSS —
+  #     they cap how far a runaway can push toward the 1 GB cgroup limit.
+  # Resulting envelope on the 1 GB box: steady committed ~540 MB (~480 MB headroom),
+  # hard ceiling 320 heap + 128 meta + 64 code + 96 direct + ~120 native ≈ 730 MB
+  # (~290 MB headroom). If it ever OOM-restarts anyway, the next lever is RAISING
+  # [[vm]] memory back toward 2 GB (extra RAM is ~$5.19/GB-mo and 1.25 GB / 1280 MB
+  # is a valid 256 MB-increment step) — the 4 vCPUs already include 1 GB at the
+  # shared-cpu-4x base price, so RAM is the only thing this trades.
   #
   # LOAD-BEARING trailing flag `-Djdk.http.auth.tunneling.disabledSchemes=` (empty):
   # re-enables Basic auth on HTTPS CONNECT tunnels, which the JDK disables by
@@ -97,7 +109,7 @@ primary_region = 'arn'
   # never serves. MUST be a JVM startup flag, not a runtime System.setProperty: the
   # property is cached at the first HttpClient build, before app code can set it.
   # See reference_decodo_isp_proxy.
-  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=96m -XX:MaxMetaspaceSize=160m -XX:MaxDirectMemorySize=96m -Djdk.http.auth.tunneling.disabledSchemes='
+  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -Djdk.http.auth.tunneling.disabledSchemes='
   # glibc allocator caps (read at process start, inherited by the JVM): bound the
   # arena count and trim freed heap back to the OS. See the JAVA_OPTS note above.
   MALLOC_ARENA_MAX = '2'
@@ -117,7 +129,7 @@ primary_region = 'arn'
     type = 'http'
 
 [[vm]]
-  # 4 shared vCPUs / 2 GB. 2x is steady-state-adequate (real scrape load ~10/min ≈
+  # 4 shared vCPUs / 1 GB. 2x is steady-state-adequate (real scrape load ~10/min ≈
   # 300 cinemas / 30-min TTL; the "~200/min" once feared was a metrics artifact —
   # `rate(tasks_enqueued{ScrapeCinema})` double-counts deduped re-attempts ~11×,
   # filter to result="added"), and the all-reaper credit watchdog DOES break the
@@ -134,8 +146,15 @@ primary_region = 'arn'
   # cap; on 2x it was 2500/5000 for the ~8k cap) tell ALL reapers to back off to a
   # trickle (KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK / KINOWO_THROTTLED_ENQUEUE_
   # PER_TICK) so the pool idles and credit rebuilds. If 4x still ever pins, go
-  # performance-2x (dedicated, no credit throttle). 2 GB (the 4x minimum) also gives
-  # the 1 GB OOM history headroom (RSS crept to ~890 MB under all-cities load).
-  memory = '2gb'
+  # performance-2x (dedicated, no credit throttle).
+  #
+  # RAM is INDEPENDENT of the CPU choice: 1 GB is the shared-cpu-4x base (`flyctl
+  # platform vm-sizes`), included in the 4x price — so this keeps all 4 vCPUs and
+  # the full ~19k credit ceiling above while dropping the +1 GB extra-RAM charge
+  # (~$5.19/mo). Back down from 2 GB on 2026-06-21: the old ~890 MB OOM history was
+  # the G1 config; the SerialGC + tightened-cap config above fits 1 GB with ~290 MB
+  # worst-case headroom (NMT-measured, see the JAVA_OPTS note). The earlier comment
+  # that "2 GB is the 4x minimum" was wrong — the 4x minimum is 1 GB.
+  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 4
