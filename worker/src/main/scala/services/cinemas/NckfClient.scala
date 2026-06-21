@@ -80,13 +80,13 @@ object NckfClient {
     val items = document.select("div.events-archive__item.cinema.active").asScala.toSeq
     val slots = items.flatMap(parseItem(_, today))
 
-    slots.groupBy(_.title).toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, s.bookingUrl, s.room))
-        .distinctBy(s => (s.dateTime, s.room))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(
+      slots,
+      titleOf    = _.title,
+      showtimeOf = s => Showtime(s.dateTime, s.bookingUrl, s.room),
+      distinctBy = s => (s.dateTime, s.room)
+    ) { (title, group, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = group.flatMap(_.posterUrl).headOption,
@@ -95,8 +95,8 @@ object NckfClient {
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 
   private def parseItem(item: Element, today: LocalDate): Seq[RawSlot] = {

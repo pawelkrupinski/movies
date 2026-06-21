@@ -61,13 +61,13 @@ object KinoScenaKulturaClient {
     val document = Jsoup.parse(html, BaseUrl)
     val slots    = document.select("div.col-md-6.col-lg-4").asScala.toSeq.flatMap(parseBlock)
 
-    slots.groupBy(_.title).toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, None))
-        .distinctBy(_.dateTime)
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(
+      slots,
+      titleOf    = _.title,
+      showtimeOf = s => Showtime(s.dateTime, None),
+      distinctBy = _.dateTime
+    ) { (title, group, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title, genres = group.flatMap(_.genres).distinct),
         cinema    = cinema,
         posterUrl = group.flatMap(_.posterUrl).headOption,
@@ -76,8 +76,8 @@ object KinoScenaKulturaClient {
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 
   private def parseBlock(block: Element): Option[RawSlot] =
