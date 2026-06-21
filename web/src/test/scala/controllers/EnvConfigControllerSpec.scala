@@ -56,6 +56,18 @@ class EnvConfigControllerSpec extends AnyFlatSpec with Matchers {
     (row \ "apps").as[JsArray].value.map(a => (a \ "app").as[String]) should contain allOf ("web", "worker")
   }
 
+  it should "carry the human-readable secondary unit for a time knob (seconds → minutes)" in {
+    val reg = new InMemoryEnvRegistryStore
+    reg.publish("worker", Seq(RegisteredKnob("worker", "KINOWO_GAP_SECONDS", Env.Kind.Long, Some("120"), Some("120"))))
+    val over = new InMemoryEnvOverrideStore
+    over.set("KINOWO_GAP_SECONDS", "90")
+    val rows = (Json.parse(contentAsString(controller(over, reg).data.apply(adminSession))) \ "rows").as[JsArray].value
+    val row = rows.head
+    (row \ "defaultHuman").as[String] shouldBe "2 min"
+    (row \ "overrideHuman").as[String] shouldBe "1.5 min"
+    (row \ "apps").as[JsArray].value.head.\("currentHuman").as[String] shouldBe "2 min"
+  }
+
   "POST /admin/config/set" should "apply a valid numeric override and surface it on the next data read" in {
     val (over, reg) = fixture()
     val c = controller(over, reg)

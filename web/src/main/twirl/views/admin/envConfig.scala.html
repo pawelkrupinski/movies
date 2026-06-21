@@ -66,6 +66,9 @@
       return el;
     }
 
+    // Append the server-computed human-readable unit (e.g. "60 (1 min)") when present.
+    function withHuman(value, human) { return human ? value + " (" + human + ")" : value; }
+
     async function load() {
       try {
         const r = await fetch("/admin/config/data", { headers: { "Accept": "application/json" } });
@@ -83,7 +86,7 @@
         const tr = document.createElement("tr");
         tr.appendChild(td(row.key, "mono"));
         tr.appendChild(td((row.kind || "").toLowerCase(), "kindtag"));
-        tr.appendChild(td(row.default == null ? "—" : row.default, "muted"));
+        tr.appendChild(td(row.default == null ? "—" : withHuman(row.default, row.defaultHuman), "muted"));
 
         const cur = document.createElement("td");
         cur.innerHTML = (row.apps && row.apps.length)
@@ -93,7 +96,7 @@
         if (row.apps) row.apps.forEach((a, i) => {
           const span = cur.querySelectorAll(".app")[i];
           span.textContent = a.app;
-          span.after(" " + (a.current == null ? "—" : a.current));
+          span.after(" " + (a.current == null ? "—" : withHuman(a.current, a.currentHuman)));
           if (i < row.apps.length - 1) span.parentNode.insertBefore(document.createElement("br"), null);
         });
         tr.appendChild(cur);
@@ -109,7 +112,7 @@
       oc.innerHTML = "";
       if (row.override != null) {
         const span = document.createElement("span");
-        span.className = "ovr"; span.textContent = row.override;
+        span.className = "ovr"; span.textContent = withHuman(row.override, row.overrideHuman);
         const edit = document.createElement("button");
         edit.textContent = "edit"; edit.style.marginLeft = "8px";
         edit.onclick = () => showEditor(oc, row, row.override);

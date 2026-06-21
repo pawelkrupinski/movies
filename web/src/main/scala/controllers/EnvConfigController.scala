@@ -2,7 +2,7 @@ package controllers
 
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
-import services.config.{EnvConfigRow, EnvConfigService}
+import services.config.{EnvConfigRow, EnvConfigService, TimeKnobFormat}
 
 /**
  * Admin page at `/admin/config` to view and flip the non-secret config knobs
@@ -41,10 +41,15 @@ class EnvConfigController(cc: ControllerComponents, adminAction: AdminAction, co
   }
 
   private def rowJson(r: EnvConfigRow): JsObject = Json.obj(
-    "key"      -> r.key,
-    "kind"     -> r.kind.toString,
-    "default"  -> r.default,
-    "override" -> r.overrideValue,
-    "apps"     -> r.apps.map(a => Json.obj("app" -> a.app, "current" -> a.current))
+    "key"           -> r.key,
+    "kind"          -> r.kind.toString,
+    "default"       -> r.default,
+    "defaultHuman"  -> r.default.flatMap(TimeKnobFormat.humanize(r.key, _)),
+    "override"      -> r.overrideValue,
+    "overrideHuman" -> r.overrideValue.flatMap(TimeKnobFormat.humanize(r.key, _)),
+    "apps"          -> r.apps.map(a => Json.obj(
+      "app"          -> a.app,
+      "current"      -> a.current,
+      "currentHuman" -> a.current.flatMap(TimeKnobFormat.humanize(r.key, _))))
   )
 }
