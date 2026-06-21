@@ -95,9 +95,14 @@ primary_region = 'arn'
   #     functionally (Direct buffer memory), not just trims RSS. These are CEILINGS
   #     (grown into as used, not pre-committed), so they don't change steady RSS —
   #     they cap how far a runaway can push toward the 1 GB cgroup limit.
-  # Resulting envelope on the 1 GB box: steady committed ~540 MB (~480 MB headroom),
-  # hard ceiling 320 heap + 128 meta + 64 code + 96 direct + ~120 native ≈ 730 MB
-  # (~290 MB headroom). If it ever OOM-restarts anyway, the next lever is RAISING
+  # Measured envelope on the 1 GB box (`free -m` over SSH, 2026-06-21, steady after
+  # the resize boot storm): ~704 MB used / ~257 MB available of the 961 MB cgroup-
+  # visible total — `free`'s "used" includes glibc/native overhead the 108 MB NMT
+  # live-set excludes, so don't expect RSS down near the live set. That 257 MB is
+  # ~3.6× the headroom the OLD G1 config had when it OOM-looped here (~890 MB used /
+  # ~71 MB free), and SerialGC has none of G1's concurrent-GC RSS excursions — which
+  # is why it fits where G1 didn't. If it ever OOM-restarts anyway, the next lever is
+  # RAISING
   # [[vm]] memory back toward 2 GB (extra RAM is ~$5.19/GB-mo and 1.25 GB / 1280 MB
   # is a valid 256 MB-increment step) — the 4 vCPUs already include 1 GB at the
   # shared-cpu-4x base price, so RAM is the only thing this trades.
