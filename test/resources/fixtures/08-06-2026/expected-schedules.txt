@@ -308,7 +308,7 @@ runtimeMinutes:    111
 releaseYear:       2026
 countries:         USA, Kanada
 posterUrl:         https://img.helios.pl/pliki/film/backrooms-bez-wyjscia/backrooms-bez-wyjscia-plakat-50878.jpg
-synopsis.length:   563
+synopsis.length:   831
 cast:              Chiwetel Ejiofor, Renate Reinsve, Mark Duplass, Finn Bennett, Lukita Maxwell, Avan Jogia
 director:          Kane Parsons
 tmdbId:            1083381
@@ -417,7 +417,7 @@ cinemaScrapes:
   Kino ODEON / Backrooms. Bez wyjścia / —
   Kino PCKul / Backrooms. Bez wyjścia / —
   Kino Pałacowe / Backrooms. Bez wyjścia / 2026
-  Kino Pionier 1907 / BACKROOMS. BEZ WYJŚCIA / —
+  Kino Pionier 1907 / BACKROOMS. BEZ WYJŚCIA / 2026
   Kino Pod Baranami / Backrooms. Bez wyjścia / —
   Kino Przedwiośnie / Backrooms. Bez wyjścia / 2026
   Kino Sokół / BACKROOMS. BEZ WYJŚCIA / —
@@ -1224,7 +1224,7 @@ releaseYear:       1977
 countries:         Polska
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg
 synopsis.length:   879
-cast:              Krystyna Janda, Jerzy Radziwiłowicz, Tadeusz Łomnicki, Jacek Łomnicki, Michał Tarkowski
+cast:              Krystyna Janda, Jerzy Radziwiłowicz, Tadeusz Łomnicki, Jacek Łomnicki, Michał Tarkowski, Krystyna Zachwatowicz
 director:          Andrzej Wajda
 tmdbId:            224
 imdbId:            tt0075902
@@ -1250,7 +1250,7 @@ cinemaScrapes:
   Kino MOK Centrum / CZŁOWIEK Z MARMURU / —
   Kino Malta Charlie Monroe / Człowiek z marmuru / —
   Kino Muranów / Człowiek z marmuru / 1977
-  Kino Pionier 1907 / Człowiek z marmuru / —
+  Kino Pionier 1907 / Człowiek z marmuru / 1976
   Kino nad Wartą / CZŁOWIEK Z MARMURU / —
   Kino za Rogiem Cafe / Człowiek z marmuru / —
 showings:
@@ -1360,7 +1360,7 @@ cinemaScrapes:
   Kino Na Biegunach / Diabeł ubiera się u prady 2 / —
   Kino Nowe Horyzonty / Diabeł ubiera się u Prady 2 / 2026
   Kino PCA / Diabeł ubiera się u Prady 2 / —
-  Kino Pionier 1907 / Diabeł ubiera się u Prady 2 / —
+  Kino Pionier 1907 / Diabeł ubiera się u Prady 2 / 2026
   Kino Pod Baranami / Diabeł ubiera się u Prady 2 / —
   Kino Przedwiośnie / Diabeł ubiera się u Prady 2 / 2026
   Kino Roma / Diabeł ubiera się u Prady 2 / 2026
@@ -1545,7 +1545,7 @@ cinemaScrapes:
   Kino Muza / Drugie życie / 2025
   Kino Oskard / Drugie życie / —
   Kino Piast / Drugie życie / —
-  Kino Pionier 1907 / Drugie życie / —
+  Kino Pionier 1907 / Drugie życie / 2025
   Kino Pod Baranami / Drugie życie / —
   Kino Praha / Drugie życie / —
   Kino Przedwiośnie / Drugie życie / 2025
@@ -2092,7 +2092,7 @@ runtimeMinutes:    128
 releaseYear:       2026
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/8210752.3.jpg
-synopsis.length:   389
+synopsis.length:   975
 cast:              Reda Kateb, Sara Giraudeau, Bastien Bouillon
 director:          Jean-Paul Salomé
 tmdbId:            1376415
@@ -2111,7 +2111,7 @@ cinemaScrapes:
   Kino Muranów / Fałszerz stulecia / 2025
   Kino Muza / Fałszerz stulecia / 2025
   Kino Nowe Horyzonty / Fałszerz stulecia / 2025
-  Kino Pionier 1907 / Fałszerz stulecia / —
+  Kino Pionier 1907 / Fałszerz stulecia / 2025
   Kino Pod Baranami / Fałszerz stulecia / —
   Kino Żak / Fałszerz stulecia / —
 showings:
@@ -2325,7 +2325,7 @@ runtimeMinutes:    70
 releaseYear:       1999
 countries:         Wielka Brytania, USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/FOLLOWING-5.jpg
-synopsis.length:   590
+synopsis.length:   1159
 cast:              Jeremy Theobald, Alex Haw, Lucy Russell, John Nolan, Dick Bradsell
 director:          Christopher Nolan
 tmdbId:            11660
@@ -2343,7 +2343,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Muranów / Following / 1998
   Kino Pałacowe / Following / 1998
-  Kino Pionier 1907 / FOLLOWING / —
+  Kino Pionier 1907 / FOLLOWING / 1998
 showings:
   2026-06-18  Kino Pałacowe                 20:15 Sala 1 - Kinowa
 
@@ -2944,7 +2944,7 @@ runtimeMinutes:    105
 releaseYear:       1988
 countries:         Polska, ZSRR
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/KLATWA-DOLINY-WEZY_AUTORSKA-NARRACJA-LONA_plakat-200x288.jpg
-synopsis.length:   462
+synopsis.length:   1586
 cast:              Krzysztof Kolberger, Roman Wilhelmi, Ewa Sałacka, Zbigniew Lesień, Leon Niemczyk
 director:          Marek Piestrak
 tmdbId:            81324
@@ -3159,7 +3159,7 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Kumotry / 2025
   Kino Paradox / Kumotry / 2026
   Kino Pałacowe / Kumotry / 2025
-  Kino Pionier 1907 / KUMOTRY / —
+  Kino Pionier 1907 / KUMOTRY / 2025
   Kino Pod Baranami / Kumotry / —
   Kino Sfinks / KUMOTRY / —
   Kino Spektrum / Kumotry / —
@@ -3818,7 +3818,7 @@ cinemaScrapes:
   Kino MDK / MILCZENIE OWIEC / —
   Kino Nowe Horyzonty / Milczenie owiec / 1991
   Kino Pałacowe / Milczenie owiec / 1991
-  Kino Pionier 1907 / MILCZENIE OWIEC / —
+  Kino Pionier 1907 / MILCZENIE OWIEC / 1991
   Kino Pod Baranami / Milczenie owiec / —
   Kino Sfinks / MILCZENIE OWIEC / —
   OKF Iluzja / Milczenie owiec / —
@@ -3886,7 +3886,7 @@ cinemaScrapes:
   Kino Orzeł / Milcząca przyjaciółka / —
   Kino PDK / Milcząca przyjaciółka / —
   Kino Pałacowe / Milcząca przyjaciółka / 2025
-  Kino Pionier 1907 / MILCZĄCA PRZYJACIÓŁKA / —
+  Kino Pionier 1907 / MILCZĄCA PRZYJACIÓŁKA / 2025
   Kino Pod Baranami / Milcząca przyjaciółka / —
   Kino Praha / Milcząca przyjaciółka / —
   Kino Spektrum / Milcząca przyjaciółka / —
@@ -4187,7 +4187,7 @@ releaseYear:       1968
 countries:         USA
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/Monterey_Pop_plakat.jpg
 synopsis.length:   2869
-cast:              Scott McKenzie, Denny Doherty, Cass Elliot, John Phillips, Michelle Phillips
+cast:              Janis Joplin, Jimi Hendrix, Ravi Shankar, Otis Redding, Paul Simon, Art Garfunkel, Denny Doherty, Scot McKenzie
 director:          D.A. Pennebaker
 tmdbId:            42632
 imdbId:            tt0064689
@@ -4207,7 +4207,7 @@ cinemaScrapes:
   KINOMUZEUM / Monterey Pop / 1967
   Kino 60 Krzeseł / Monterey Pop / —
   Kino Apollo / Monterey Pop / —
-  Kino Pionier 1907 / MONTEREY POP / —
+  Kino Pionier 1907 / MONTEREY POP / 1968
   Kino Rialto / MONTEREY POP / 1968
 showings:
   2026-06-16  Kino Apollo                   19:30
@@ -4296,7 +4296,7 @@ runtimeMinutes:    106
 releaseYear:       2025
 countries:         Francja, Niemcy
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/MV5BYTIzMjY3NzItNjNhOS00YjNmLTk4M2EtNGVlY2E1YmUxZTQ4XkEyXkFqcGc@._V1_-533x800.jpg
-synopsis.length:   468
+synopsis.length:   868
 cast:              Nadia Melliti, Park Ji-Min, Amina Ben Mohamed, Rita Benmannana, Melissa Guers
 director:          Hafsia Herzi
 tmdbId:            961077
@@ -4314,7 +4314,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Muranów / Młodsza siostra / 2025
   Kino Muza / Młodsza siostra / 2025
-  Kino Pionier 1907 / Młodsza siostra / —
+  Kino Pionier 1907 / Młodsza siostra / 2025
   Kino Pod Baranami / Młodsza siostra / —
 showings:
   2026-06-13  Kino Muza                     19:00 Sala 1
@@ -4741,7 +4741,7 @@ runtimeMinutes:    105
 releaseYear:       2025
 countries:         Francja, USA
 posterUrl:         https://www.kinomuza.pl/content/uploads/2025/11/AA1MbUuf-540x800.jpg
-synopsis.length:   543
+synopsis.length:   682
 cast:              Guillaume Marbeck, Zoey Deutch, Aubry Dullin, Adrien Rouyard, Antoine Besson
 director:          Richard Linklater
 tmdbId:            1254808
@@ -4760,7 +4760,7 @@ cinemaScrapes:
   Kino Muranów / Nowa Fala / 2025
   Kino Muza / Nowa fala / 2025
   Kino Nowe Horyzonty / Nowa Fala / 2025
-  Kino Pionier 1907 / Nowa Fala / —
+  Kino Pionier 1907 / Nowa Fala / 2025
   Kino Pod Baranami / Nowa fala / —
 showings:
   2026-06-12  Kino Muza                     19:00 Sala 1
@@ -4890,7 +4890,7 @@ runtimeMinutes:    122
 releaseYear:       2025
 countries:         Francja, Belgia, Maroko
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/MV5BNWZjNjQwMTMtMmZkOC00ZjYzLWJmZWQtNTMwZTI4N2JiZjJkXkEyXkFqcGc@._V1_-547x800.jpg
-synopsis.length:   620
+synopsis.length:   1030
 cast:              Benjamin Voisin, Rebecca Marder, Pierre Lottin, Denis Lavant, Swann Arlaud
 director:          François Ozon
 tmdbId:            1429348
@@ -4909,7 +4909,7 @@ cinemaScrapes:
   Kino Muranów / Obcy / 2025
   Kino Muza / Obcy / 2025
   Kino Nowe Horyzonty / Obcy / 2025
-  Kino Pionier 1907 / Obcy / —
+  Kino Pionier 1907 / Obcy / 2025
   Kino Pod Baranami / Obcy / —
 showings:
   2026-06-11  Kino Muza                     19:00 Sala 1
@@ -5098,7 +5098,7 @@ cinemaScrapes:
   Kino PDK / Ojczyzna / —
   Kino Paradox / Ojczyzna / 2026
   Kino Piast / Ojczyzna / —
-  Kino Pionier 1907 / OJCZYZNA / —
+  Kino Pionier 1907 / OJCZYZNA / 2026
   Kino Pod Baranami / Ojczyzna / —
   Kino Rialto / OJCZYZNA / 2026
   Kino Roma / Ojczyzna / 2026
@@ -5510,7 +5510,7 @@ countries:         Polska
 posterUrl:         https://img.helios.pl/pliki/film/piep-zyc-mickiewicza-3/piep-zyc-mickiewicza-3-plakat-22608.jpeg
 synopsis.length:   656
 cast:              Hugo Tarres, Wiktoria Koprowska, Igor Pawłowski, Krystian Embradora, Karol Rot, Ada Grodzka, Aldona Jankowska, Dawid Ogrodnik
-director:          Sara Bustamente-Drozdek
+director:          Sara Bustamante-Drozdek
 tmdbId:            1483055
 imdbId:            tt39747930
 originalTitle:     Piep*zyć Mickiewicza 3
@@ -5531,7 +5531,7 @@ cinemaScrapes:
   Helios Kędzierzyn-Koźle / Piep*zyć Mickiewicza 3 / —
   Helios Posnania / Piep*zyć Mickiewicza 3 / —
   Helios Solaris / Piep*zyć Mickiewicza 3 / 2025
-  Kino Pionier 1907 / PIEP*ZYĆ MICKIEWICZA 3 / —
+  Kino Pionier 1907 / PIEP*ZYĆ MICKIEWICZA 3 / 2026
 showings:
   2026-06-11  Helios Posnania               10:00 Sala 6 2D/ORG
 
@@ -6155,7 +6155,7 @@ runtimeMinutes:    102
 releaseYear:       2025
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/MV5BZWI5MWI1NGEtMzJkMC00NWE5LTlmZDgtNTE3NmMwZDhiZWJkXkEyXkFqcGc@._V1_FMjpg_UX1000_-590x800.jpg
-synopsis.length:   469
+synopsis.length:   957
 cast:              Salif Cissé, Denis Podalydès, Aure Atika
 director:          Fabienne Godet
 tmdbId:            1158616
@@ -6174,7 +6174,7 @@ cinemaScrapes:
   Kino Muranów / Poczta głosowa / 2024
   Kino Muza / Poczta głosowa / 2024
   Kino Nowe Horyzonty / Poczta głosowa / 2024
-  Kino Pionier 1907 / Poczta głosowa / —
+  Kino Pionier 1907 / Poczta głosowa / 2024
   Kino Pod Baranami / Poczta głosowa / —
 showings:
   2026-06-15  Kino Muza                     17:00 Sala 1
@@ -6982,7 +6982,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Dolnośląskie Centrum Filmowe / Sarnie żniwo, czyli pokusa statuetkowego szlaku / 2006
   Kino Muza / Sarnie żniwo, czyli pokusa statuetkowego szlaku / 2006
-  Kino Pionier 1907 / Sarnie żniwo, czyli pokusa statuetkowego szlaku / —
+  Kino Pionier 1907 / Sarnie żniwo, czyli pokusa statuetkowego szlaku / 2006
 showings:
   2026-06-11  Kino Muza                     21:15 Sala 1
   2026-06-22  Kino Muza                     19:00 Sala 1
@@ -7047,7 +7047,7 @@ cinemaScrapes:
   Kino Mikro / Sny o słoniach / —
   Kino Muranów / Sny o słoniach / 2025
   Kino Muzeum / SNY O SŁONIACH / 2025
-  Kino Pionier 1907 / SNY O SŁONIACH / —
+  Kino Pionier 1907 / SNY O SŁONIACH / 2026
   Kino Praha / Sny o słoniach / —
   Kino Spektrum / Sny o słoniach / —
   Kino U-jazdowski / Sny o słoniach / 2025
@@ -7646,7 +7646,7 @@ runtimeMinutes:    118
 releaseYear:       2025
 countries:         Włochy
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/Takie-jest-zycie_B1-1-scaled.jpg
-synopsis.length:   832
+synopsis.length:   1021
 cast:              Virginia Raffaele, Diego Abatantuono, Aldo Baglio, Ignazio Giuseppe Loi, Geppi Cucciari, David Budroni Language Italian
 director:          Riccardo Milani
 tmdbId:            1397375
@@ -7672,7 +7672,7 @@ cinemaScrapes:
   Kino IKM / Takie jest życie / —
   Kino Muranów / Takie jest życie / 2025
   Kino Pałacowe / Takie jest życie / 2025
-  Kino Pionier 1907 / TAKIE JEST ŻYCIE / —
+  Kino Pionier 1907 / TAKIE JEST ŻYCIE / 2025
   Kino Pod Baranami / Takie jest życie / —
 showings:
   2026-06-16  Kino Pałacowe                 19:00 Sala 1 - Kinowa
@@ -8387,7 +8387,7 @@ runtimeMinutes:    90
 releaseYear:       1958
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/81-MSws-MmL._AC_UF8941000_QL80_-595x800.jpg
-synopsis.length:   495
+synopsis.length:   690
 cast:              Jeanne Moreau, Maurice Ronet, Georges Poujouly, Yori Bertin, Jean Wall
 director:          Louis Malle
 tmdbId:            1093
@@ -8405,7 +8405,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Muranów / Windą na szafot / 1958
   Kino Muza / Windą na szafot / 1958
-  Kino Pionier 1907 / Windą na szafot / —
+  Kino Pionier 1907 / Windą na szafot / 1958
   Kino Pod Baranami / Windą na szafot / —
 showings:
   2026-06-16  Kino Muza                     18:00 Sala 1
@@ -8508,7 +8508,7 @@ runtimeMinutes:    88
 releaseYear:       2025
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/MV5BODBjNmM1OTMtNWIwZC00ZjJjLTkxOTUtNzE3YjViMzNkMzQyXkEyXkFqcGc@._V1_QL75_UY281_CR90190281_.jpg
-synopsis.length:   533
+synopsis.length:   930
 cast:              Adèle Exarchopoulos, Jérôme Commandeur, Sandrine Kiberlain, Karim Leklou, Gabin Visona
 director:          Quentin Dupieux
 tmdbId:            1313144
@@ -8528,7 +8528,7 @@ cinemaScrapes:
   Kino Muranów / Wypadek fortepianowy / 2025
   Kino Muza / Wypadek fortepianowy / 2025
   Kino Nowe Horyzonty / Wypadek fortepianowy / 2025
-  Kino Pionier 1907 / Wypadek fortepianowy / —
+  Kino Pionier 1907 / Wypadek fortepianowy / 2025
   Kino Pod Baranami / Wypadek fortepianowy / —
 showings:
   2026-06-13  Kino Muza                     21:00 Sala 1
@@ -8697,8 +8697,8 @@ runtimeMinutes:    108
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg
-synopsis.length:   649
-cast:              Olivia Wilde, Seth Rogen, Penélope Cruz, Edward Norton
+synopsis.length:   1151
+cast:              Olivia Wilde, Penelope Cruz, Seth Rogen, Edward Norton
 director:          Olivia Wilde
 tmdbId:            950028
 imdbId:            tt14173636
@@ -8715,7 +8715,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Dolnośląskie Centrum Filmowe / Zaproszenie / 2026
   Kino Pałacowe / Zaproszenie / 2026
-  Kino Pionier 1907 / ZAPROSZENIE / —
+  Kino Pionier 1907 / ZAPROSZENIE / 2026
 showings:
   2026-06-27  Kino Pałacowe                 18:00 Sala 1 - Kinowa
   2026-06-29  Kino Pałacowe                 20:30 Sala 1 - Kinowa

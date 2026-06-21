@@ -45,4 +45,55 @@ class PionierClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     slot.room.value shouldBe "Sala Czerwona"
     slot.bookingUrl.value should startWith("https://biletomat.pl/embedded/rezerwacja/")
   }
+
+  it should "expose each film's /event/ page as filmUrl for deferred detail" in {
+    val movies = new PionierClient(http, KinoPionier).fetch()
+    movies.flatMap(_.filmUrl) should not be empty
+    all(movies.flatMap(_.filmUrl).map(_.startsWith("https://pionier1907.pl/event/"))) shouldBe true
+  }
+
+  // ── Per-film detail page (deferred enrichment) ─────────────────────────────
+
+  private val client = new PionierClient(http, KinoPionier)
+
+  it should "harvest the production year off the event page so a yearless arthouse title can resolve" in {
+    // "Federico Fellini: Słodkie życie" — the bare title "Słodkie życie" collides
+    // with a 2024 TMDB film, so without the year the row is tmdbNoMatch. The event
+    // page carries `Rok: 1960`, which breaks the collision. This is the fix.
+    val detail = client.fetchFilmDetail("https://pionier1907.pl/event/federico-fellini-slodkie-zycie").value
+    detail.releaseYear    shouldBe Some(1960)
+    detail.countries      shouldBe Seq("Włochy", "Francja")
+    detail.runtimeMinutes shouldBe Some(176)
+    detail.cast           should contain allOf ("Marcello Mastroianni", "Anita Ekberg")
+    // This film leaves Reżyseria blank (credits everything to Scenariusz), so the
+    // director field is empty — the year alone still resolves it.
+    detail.director shouldBe empty
+  }
+
+  it should "harvest director, year, countries, genre, cast, runtime and synopsis when the page populates them" in {
+    val detail = client.fetchFilmDetail("https://pionier1907.pl/event/ojczyzna").value
+    detail.director       shouldBe Seq("Paweł Pawlikowski")
+    detail.releaseYear    shouldBe Some(2026)
+    detail.genres         shouldBe Seq("dramat")
+    detail.countries      shouldBe Seq("Francja", "Niemcy", "Polska", "Włochy")
+    detail.runtimeMinutes shouldBe Some(82) // "1h 22min"
+    detail.cast           should contain allOf ("Sandra Hüller", "August Diehl")
+    // Synopsis lives in its own <p> here (no awards interleaving), so it is read.
+    detail.synopsis.value should startWith("„Ojczyzna")
+  }
+
+  it should "recover the year from the Produkcja field when there is no separate Rok field" in {
+    // The Fellini-retrospective pages fold the year into Produkcja
+    // ("Włochy, Francja, 1957") and carry no `Rok:` line. The year must still be
+    // read, and it must NOT leak into the country list.
+    val detail = client.fetchFilmDetail("https://pionier1907.pl/event/federico-fellini-noce-cabirii").value
+    detail.releaseYear shouldBe Some(1957)
+    detail.countries   shouldBe Seq("Włochy", "Francja")
+    detail.director    shouldBe Seq("Federico Fellini")
+    detail.runtimeMinutes shouldBe Some(110) // "110’" (prime, not "min")
+  }
+
+  it should "return None when the detail-page fetch fails (no fixture)" in {
+    client.fetchFilmDetail("https://pionier1907.pl/event/nie-ma-takiego-filmu") shouldBe None
+  }
 }
