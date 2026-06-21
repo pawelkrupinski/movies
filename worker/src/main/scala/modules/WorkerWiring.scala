@@ -370,8 +370,10 @@ class WorkerWiring extends play.api.Logging {
   // flat-out for minutes, exhausting the shared-CPU credit balance — the boot-storm
   // throttle spike. ~25/min drains inside the 1-min tick, leaving idle gaps for
   // credit to recover; the backlog clears over a handful of ticks. Tune down if a
-  // restart still throttles, up once Mongo/CPU have headroom.
-  def maxScrapeEnqueuePerTick: Int = Env.positiveLong("KINOWO_SCRAPE_MAX_ENQUEUE_PER_TICK", 25L).toInt
+  // restart still throttles, up once Mongo/CPU have headroom. Default sized in
+  // ScrapeCadence (≥1.5× the steady-state due rate at the freshness window).
+  def maxScrapeEnqueuePerTick: Int =
+    Env.positiveInt("KINOWO_SCRAPE_MAX_ENQUEUE_PER_TICK", services.tasks.ScrapeCadence.MaxEnqueuePerTick)
 
   // Cinema scraping is driven by a durable Mongo task queue: the ScrapeReaper
   // enqueues each cinema at most once per freshness window, and the TaskWorker
@@ -472,7 +474,8 @@ class WorkerWiring extends play.api.Logging {
   // enough — ratings/detail kept the pool busy so it never idled to rebuild
   // credit; quieting the WHOLE pipeline is what lets it recover (see
   // ScrapeThrottleMonitor / ScrapeThrottleSignal.cap).
-  def throttledSecondaryEnqueuePerTick: Int = Env.positiveInt("KINOWO_THROTTLED_ENQUEUE_PER_TICK", 5)
+  def throttledSecondaryEnqueuePerTick: Int =
+    Env.positiveInt("KINOWO_THROTTLED_ENQUEUE_PER_TICK", services.tasks.ScrapeCadence.ThrottledSecondaryEnqueuePerTick)
   def maxDetailEnqueuePerTick: Int = Env.positiveLong("KINOWO_DETAIL_MAX_ENQUEUE_PER_TICK", 50L).toInt
   // How often the detail reaper wakes to enqueue the now-due slice (the spread
   // granularity). Finer = flatter per-minute `EnrichDetails` trickle on the
@@ -616,9 +619,13 @@ class WorkerWiring extends play.api.Logging {
   )
   // While throttled the reaper enqueues at most this many newly-due cinemas per
   // tick (vs the healthy `maxScrapeEnqueuePerTick`), so the backlog drains and the
-  // pool earns idle to rebuild credit. A trickle, not 0, so scrapes keep running
-  // and the monitor still sees durations fall when credit recovers.
-  def throttledScrapeEnqueuePerTick: Int = Env.positiveInt("KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK", 3)
+  // pool earns idle to rebuild credit. Sized in ScrapeCadence to still clear the
+  // whole catalogue within one freshness window (so a throttle episode keeps pace
+  // with the freshness setting rather than parking the corpus ~1.5h stale, the old
+  // cap=3 behaviour), while staying below the healthy cap so the pool still idles.
+  def throttledScrapeEnqueuePerTick: Int =
+    Env.positiveInt("KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK",
+      services.tasks.ScrapeCadence.ThrottledMaxEnqueuePerTick)
   lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, dueWindow = scrapeDueWindow,
       initialDelay = initialScrapeDelaySeconds.seconds,

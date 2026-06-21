@@ -40,7 +40,11 @@ object FreshnessKind {
  * introduces. The scrape TTL is the dominant lever on the worker's Mongo write
  * rate (each pass that finds a real change writes through to `movies` and
  * cascades to the read model), so it's tunable via `KINOWO_SCRAPE_FRESHNESS_MINUTES`
- * and defaults to 15min — short enough that showtimes stay current. It applies
+ * and defaults to 30min — short enough that showtimes stay current, long enough
+ * that the ~290-cinema corpus drains within one window even while the CPU-credit
+ * safety net throttles the reaper (see [[services.tasks.ScrapeCadence]]). At 15min
+ * even the healthy enqueue cap had barely any headroom, so 30min is the sustainable
+ * operating point — and `fly.worker.toml` already deploys it as `=30`. It applies
  * uniformly to EVERY cinema (Multikino included, now that it's on a flat-fee
  * residential proxy rather than per-request Zyte — no reason to scrape it less).
  */
@@ -48,8 +52,8 @@ object Freshness {
   import FreshnessKind._
 
   /** The cinema-scrape freshness window for every venue, tunable via
-   *  `KINOWO_SCRAPE_FRESHNESS_MINUTES` (default 15min). */
-  def defaultScrapeTtl: FiniteDuration = Env.positiveLong("KINOWO_SCRAPE_FRESHNESS_MINUTES", 15L).minutes
+   *  `KINOWO_SCRAPE_FRESHNESS_MINUTES` (default 30min). */
+  def defaultScrapeTtl: FiniteDuration = Env.positiveLong("KINOWO_SCRAPE_FRESHNESS_MINUTES", 30L).minutes
 
   def ttlFor(kind: FreshnessKind): Option[FiniteDuration] = kind match {
     case CinemaScrape  => Some(defaultScrapeTtl)

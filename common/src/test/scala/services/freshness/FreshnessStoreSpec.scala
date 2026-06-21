@@ -18,12 +18,12 @@ class FreshnessStoreSpec extends AnyFlatSpec with Matchers {
 
   it should "be true within the kind's TTL and false past it" in {
     val store = new InMemoryFreshnessStore
-    store.markFresh("scrape|kino-x", CinemaScrape, t0) // 15min default TTL
-    store.isFresh("scrape|kino-x", CinemaScrape, t0.plusSeconds(14 * 60)) shouldBe true
-    store.isFresh("scrape|kino-x", CinemaScrape, t0.plusSeconds(16 * 60)) shouldBe false
+    store.markFresh("scrape|kino-x", CinemaScrape, t0) // 30min default TTL
+    store.isFresh("scrape|kino-x", CinemaScrape, t0.plusSeconds(29 * 60)) shouldBe true
+    store.isFresh("scrape|kino-x", CinemaScrape, t0.plusSeconds(31 * 60)) shouldBe false
   }
 
-  it should "use the per-kind TTL — a 4h rating stays fresh long after a 15min scrape would be stale" in {
+  it should "use the per-kind TTL — a 4h rating stays fresh long after a 30min scrape would be stale" in {
     val store = new InMemoryFreshnessStore
     store.markFresh("imdb|movie", ImdbRating, t0) // 4h TTL
     store.isFresh("imdb|movie", ImdbRating, t0.plus(3, java.time.temporal.ChronoUnit.HOURS)) shouldBe true
@@ -62,7 +62,7 @@ class FreshnessStoreSpec extends AnyFlatSpec with Matchers {
     Freshness.ttlFor(FilmwebRating) shouldBe Some(4.hours)
     Freshness.ttlFor(RtRating)      shouldBe Some(4.hours)
     Freshness.ttlFor(McRating)      shouldBe Some(4.hours)
-    Freshness.ttlFor(CinemaScrape)  shouldBe Some(15.minutes) // default; tunable via KINOWO_SCRAPE_FRESHNESS_MINUTES
+    Freshness.ttlFor(CinemaScrape)  shouldBe Some(30.minutes) // default; tunable via KINOWO_SCRAPE_FRESHNESS_MINUTES
     Freshness.ttlFor(DetailEnrich)  shouldBe Some(6.hours)
     Freshness.ttlFor(TmdbResolve)   shouldBe None
   }
@@ -73,9 +73,9 @@ class FreshnessStoreSpec extends AnyFlatSpec with Matchers {
     try {
       System.setProperty(key, "45")
       Freshness.ttlFor(CinemaScrape) shouldBe Some(45.minutes)
-      // a non-positive / unparseable value falls back to the 15min default
+      // a non-positive / unparseable value falls back to the 30min default
       System.setProperty(key, "0")
-      Freshness.ttlFor(CinemaScrape) shouldBe Some(15.minutes)
+      Freshness.ttlFor(CinemaScrape) shouldBe Some(30.minutes)
     } finally previous match {
       case Some(v) => System.setProperty(key, v)
       case None    => System.clearProperty(key)
