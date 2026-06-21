@@ -85,6 +85,14 @@ assert "residential-proxy-failing rule provisioned with 0.5 ratio threshold" \
   "api/v1/provisioning/alert-rules" \
   "any(r['uid']=='kinowo-residential-proxy-failing' and any(c['model']['conditions'][0]['evaluator']['params']==[0.5] for c in r['data'] if c['refId']=='C') for r in d)"
 
+# The worker-throttle control gate must read a SMOOTHED balance, not the raw
+# instantaneous gauge, and debounce with `for: 1m` — otherwise a single spurious
+# low/zero scrape sample trips the backoff while the real balance sits well above
+# 6k. Guards against a regression back to `instant` + `for: 0s`.
+assert "worker-credit-low rule averages the balance over 2m and debounces with for:1m" \
+  "api/v1/provisioning/alert-rules" \
+  "any(r['uid']=='kinowo-worker-credit-low' and r.get('for')=='1m' and any('avg_over_time' in c['model'].get('expr','') for c in r['data']) for r in d)"
+
 # The org-wide (un-app-scoped) rules must exclude the split-out `schowek` app, or
 # its series would page these alerts. Each must carry an app!="schowek" matcher.
 for uid in kinowo-cpu-steal-high kinowo-memory-pressure kinowo-http-5xx-high kinowo-http-p95-high; do

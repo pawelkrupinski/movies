@@ -723,10 +723,13 @@ groups:
   # ExternalThrottleGate flips on → all reapers (scrape/ratings/detail/tmdb) back
   # off enqueue → the pool idles → credit rebuilds → balance climbs back above 5k →
   # the alert RESOLVES → webhook (status=resolved) → reapers resume. The threshold
-  # lives HERE, outside the worker (it only receives firing/resolved). 30s eval +
-  # `for: 0` so it reacts on the first dip; routed to WorkerThrottle (NOT Telegram)
-  # by the `notify: worker-throttle` label. noData/execErr = OK (never throttle on
-  # a missing/erroring balance — fail-safe).
+  # lives HERE, outside the worker (it only receives firing/resolved). 30s eval over
+  # a 2-min AVERAGE of the balance + `for: 1m` so a single spurious low/zero scrape
+  # sample (fly_instance_cpu_balance is occasionally noisy) can't trip the backoff —
+  # it was firing while the dashboard balance sat well above 6k because the old rule
+  # read ONE instantaneous sample with `for: 0`. Routed to WorkerThrottle (NOT
+  # Telegram) by the `notify: worker-throttle` label. noData/execErr = OK (never
+  # throttle on a missing/erroring balance — fail-safe).
   - orgId: 1
     name: worker-throttle
     folder: Fly Alerts
@@ -735,7 +738,7 @@ groups:
       - uid: kinowo-worker-credit-low
         title: Worker credit low (drive backoff)
         condition: C
-        for: 0s
+        for: 1m
         # VALUE hysteresis (see the threshold's evaluator + unloadEvaluator below):
         # FIRE only when credit drops under 6000, RECOVER (resolve) only once it
         # climbs back over 12000. The 6k→12k band is scaled to the shared-cpu-4x
@@ -744,7 +747,9 @@ groups:
         # buffer before resuming — otherwise it resumed the instant credit touched
         # the trip line and a rating sweep right after drained it to the floor
         # (measured on 2x: 4922→1 as ratings burst to 118/min). At 4x credit rarely
-        # dips into this band at all, so it's mostly a deep safety net. (A top-level
+        # dips into this band at all, so it's mostly a deep safety net — which is why
+        # a fire here is far more likely a noisy sample than a real drain, hence the
+        # 2-min avg + `for: 1m` debounce on the query below. (A top-level
         # `keep_firing_for` is silently ignored by file provisioning — the API
         # showed keepFiringFor=None — so the hysteresis lives in the threshold's
         # unloadEvaluator, which IS honoured.)
@@ -762,7 +767,12 @@ groups:
             model:
               datasource: { type: prometheus, uid: fly-prometheus }
               editorMode: code
-              expr: 'min by (app, instance) (fly_instance_cpu_balance{app="kinowo-worker"})'
+              # 2-min trailing average, not the raw instantaneous gauge: one spurious
+              # low/zero scrape (the gauge is occasionally noisy) gets diluted by the
+              # ~3 healthy ~19k samples around it, so it never alone pulls the mean
+              # under 6k. Window (120s) < relativeTimeRange.from (300s), so it's fully
+              # covered. Single venue still evaluated instantly at eval time.
+              expr: 'min by (app, instance) (avg_over_time(fly_instance_cpu_balance{app="kinowo-worker"}[2m]))'
               instant: true
               range: false
               intervalMs: 1000
