@@ -132,10 +132,27 @@ object FilmCanonicalizer {
     val seeded: Seq[Cluster] = resolvedWithAdjacent ++ windowClusters.toSeq
 
     // (4) Yearless+idless rows fold into the group's canonical cluster (smallest
-    // canonicalRank). With no other cluster, each such row stands alone.
+    // canonicalRank) — BUT only when the title maps to ONE film. With NO resolved
+    // film, or with TWO-OR-MORE distinct ones, each such row stands alone.
+    //
+    // The multi-film guard is the ambiguity refuse: a `sanitize(title)` can collide
+    // across genuinely different TMDB films — "Guru" is THREE (a Persian "لؤ گورو",
+    // Yann Gozlan's "Gourou" 2026, and his unrelated "Dalloway"/"Rezydencja" 2025).
+    // A yearless+idless row (a cinema that reports just the bare title, no year/
+    // director) can't tell which it is, so attaching it to the smallest-canonicalRank
+    // cluster would make it INHERIT that film's year + tmdbId — an order-dependent
+    // wrong guess (whichever same-title film resolved first wins the rank), and the
+    // inherited year then mis-pins the direct re-resolve to yet another same-director
+    // film (`directorWalk` byYear). Refuse instead: the row stays its own
+    // `tmdbNoMatch` self and renders with cinema-only data, identically across
+    // arrival orders (StagingOrderDeterminismSpec). A SINGLE resolved film is
+    // unambiguous, so the straggler still folds onto it (the cross-language adoption
+    // the alias-edge + this rule exist for — "The Mandalorian and Grogu").
     val yearlessRows = yearless.toSeq
+    val distinctFilms = resolvedClusters.size
     val clusters: Seq[Cluster] =
-      if (seeded.isEmpty) yearlessRows.map(r => Cluster(refYear = None, rows = Seq(r)))
+      if (seeded.isEmpty || distinctFilms >= 2)
+        seeded ++ yearlessRows.map(r => Cluster(refYear = None, rows = Seq(r)))
       else {
         val canonicalIndex = seeded.zipWithIndex.minBy { case (c, index) => (c.minRank, index) }._2
         seeded.zipWithIndex.map { case (c, index) =>

@@ -719,16 +719,21 @@ class MovieService(
     // this thread), so the caller keeps the hit's title/year as a fallback when
     // the full-details fetch fails. On a cache HIT the loader doesn't run and it
     // stays None — only the id is cached.
-    // When the SEARCH TITLE is the only signal — no year, no director, no
-    // original-title hint — a title search that returns several same-title films
-    // would resolve via the popularity tie-break, i.e. a guess (the "Zaproszenie"
-    // class: a bare title with two same-title TMDB entries). Refuse rather than
-    // guess: resolve only when the search is unambiguous (exactly one result).
+    // Without a DIRECTOR there is no reliable way to tell same-title films apart, so
+    // any title search returning several would resolve via the popularity/year-
+    // proximity tie-break — a GUESS, and an order-dependent one once a merged year or
+    // a more-popular sibling drifts in ("Guru" alone maps to THREE TMDB films: a
+    // Persian "لؤ گورو", Yann Gozlan's "Gourou", and his unrelated "Dalloway"). Refuse
+    // rather than guess: when no director is reported, resolve ONLY when the search
+    // (year-scoped if a year is present) is unambiguous — exactly one result. A
+    // director-bearing row keeps the richer director-walk path below, which can
+    // disambiguate. This is the generalised "Zaproszenie" guard (a bare title with two
+    // same-title TMDB entries) — see StagingOrderDeterminismSpec.
     val titleOnly = year.isEmpty && rowDirectors.isEmpty && originalTitle.isEmpty && slotOriginals.isEmpty
     var freshHit: Option[TmdbClient.SearchResult] = None
     val resolvedId = tmdbIdCache.getOrResolve(hintKey) {
       val hit =
-        if (titleOnly)
+        if (rowDirectors.isEmpty)
           candidates.iterator.flatMap(q => tmdb.searchUnique(q, year)).nextOption()
         else {
           // Resolve from this row's own titles only — no sister-row shortcut. Copying
@@ -738,14 +743,26 @@ class MovieService(
           // order-independent, so the row resolves to the same film every run.
           // Director-walk each reported director in turn (sorted) so a row whose
           // first-sorted director name happens to miss still recovers via the others.
-          val searchHit = candidates.iterator
-            .flatMap(q => verifyByDirector(tmdb.search(q, year), Some(rowDirectors.mkString(",")).filter(_.nonEmpty)))
-            .nextOption()
-          searchHit.orElse(rowDirectors.iterator.flatMap(d => directorWalk(Some(d), year, candidates)).nextOption())
+          // Director-walk FIRST when the row reports a director: it walks the
+          // director's filmography and picks the title-matching credit by lowest id
+          // — deterministic across a TMDB adjacent-year DUPLICATE of one film (Yann
+          // Gozlan's "Gourou"). The year-scoped title search below would otherwise
+          // pick the duplicate matching the row's KEY year, and that key year drifts
+          // with scrape/merge order, flipping the id (StagingOrderDeterminismSpec).
+          // The search stays the fallback for a row whose director TMDB can't find.
+          val byDirector = rowDirectors.iterator.flatMap(d => directorWalk(Some(d), year, candidates)).nextOption()
+          byDirector.orElse(
+            candidates.iterator
+              .flatMap(q => verifyByDirector(tmdb.search(q, year), Some(rowDirectors.mkString(",")).filter(_.nonEmpty)))
+              .nextOption())
         }
       freshHit = hit
       hit.map(_.id.toString)
     }.map(_.toInt)
+      // Whatever path resolved it (director-walk, year-scoped search, popularity),
+      // pin a same-director adjacent-year TMDB duplicate to its lowest id so the
+      // outcome can't drift with scrape/merge order. No-op when no director or no dup.
+      .map(rid => if (rowDirectors.nonEmpty) collapseDirectorDuplicate(rid, rowDirectors) else rid)
     resolvedId.map(id => (id, freshHit))
   }
 
@@ -809,24 +826,76 @@ class MovieService(
         val wanted  = candidates.iterator.map(MovieService.normalize).filter(_.nonEmpty).toSet
         def titleOf(f: TmdbClient.SearchResult): Set[String] =
           (Seq(f.title) ++ f.originalTitle.toSeq).map(MovieService.normalize).filter(_.nonEmpty).toSet
+        // Fuzzy title match, scoped to THIS director's filmography (a small, trusted
+        // set): a cinema's spelling of a foreign title drifts from TMDB's ("Guru" vs
+        // Yann Gozlan's "Gourou"), so an exact match misses and the year-only `byYear`
+        // below then pins whichever of the director's films sits at the row's
+        // (cinema-disagreed, merge-order-dependent) year — "Dalloway" 2025 vs "Gourou"
+        // 2026, the SAME-director cross-film flip. A tight edit-distance match (≤2 and
+        // ≤1/3 of the longer title) ties "guru"→"gourou" but never "guru"→"dalloway".
+        def titleClose(f: TmdbClient.SearchResult): Boolean =
+          titleOf(f).exists(t => wanted.exists { w =>
+            val d = MovieService.editDistance(w, t)
+            d <= 2 && d * 3 <= math.max(w.length, t.length)
+          })
         // Title match first (±1-year-tolerant); fall back to an exact-year match,
         // but ONLY when that year is unambiguous in the filmography. A director
         // with two same-year credits (Andrew Stanton: "In the Blink of an Eye"
         // and "Toy Story 5", both 2026) can't be told apart by year alone — the
         // old `.find` returned whichever came first, binding a Ukrainian-dubbed
         // "Toy Story 5" listing to "In the Blink of an Eye"'s ratings. Refuse.
-        val byTitle = if (wanted.isEmpty) None else credits.find { f =>
-          titleOf(f).exists(wanted.contains) && year.forall(y => f.releaseYear.forall(fy => math.abs(fy - y) <= 1))
-        }
+        // Pick the LOWEST tmdbId among title-matching credits, not the first in
+        // filmography order: a director's film duplicated in TMDB under adjacent
+        // years + ids (Yann Gozlan's "Gourou" exists as BOTH 1259983/2026 and
+        // 1315702/2025 — the SAME film, two entries) both match here, so `.find`
+        // returned whichever the credits happened to list first, flipping the
+        // resolved id with scrape/merge order. A genuinely-different same-title
+        // remake is still kept apart by the ±1-year window; only a true adjacent-year
+        // duplicate ties, and lowest-id breaks that tie deterministically
+        // (StagingOrderDeterminismSpec).
+        val byTitle = if (wanted.isEmpty) None else credits.filter { f =>
+          titleClose(f) && year.forall(y => f.releaseYear.forall(fy => math.abs(fy - y) <= 1))
+        }.minByOption(_.id)
         val byYear = year.flatMap(y => credits.filter(_.releaseYear.contains(y)) match {
-          case Seq(only) => Some(only)   // unique that year → the year pins it
-          case _         => None         // 0 or >1 → can't disambiguate, don't guess
+          case Seq(only) =>
+            // Collapse a TMDB adjacent-year DUPLICATE of one film: if the year-pinned
+            // credit shares its title with a credit ±1 year off (the same film entered
+            // twice — "Gourou" as both 2025/1315702 and 2026/1259983), they're ONE
+            // film; pick the lowest id so the merge-order-dependent KEY year can't pin
+            // whichever duplicate sits at it (StagingOrderDeterminismSpec).
+            Some(credits.filter(f => titleOf(f) == titleOf(only) &&
+              f.releaseYear.exists(fy => math.abs(fy - y) <= 1)).minBy(_.id))
+          case _         => None         // 0 or >1 at the exact year → can't disambiguate, don't guess
         })
         byTitle.orElse(byYear).map { film =>
           logger.info(s"Director-walk: '$directory' year=${year.getOrElse("?")} → tmdbId=${film.id} '${film.originalTitle.getOrElse(film.title)}'")
           film
         }
       }
+    }
+  }
+
+  /** Collapse a TMDB adjacent-year DUPLICATE of ONE film to its lowest id. TMDB
+   *  occasionally lists a single film under two ids a year apart (Yann Gozlan's
+   *  "Gourou" as 1315702/2025 AND 1259983/2026 — same title, same director). When
+   *  the row reports the director, those entries are provably one film (shared
+   *  director + a ±1-year shared title), so the resolved id is pinned to the lowest
+   *  — independent of which duplicate the row's (merge-order-dependent) key year or
+   *  a popularity tie-break happened to land on. A genuinely-different same-title
+   *  remake by the same director is kept apart by needing the SAME title AND ±1
+   *  year (a remake is years apart); this only fuses true duplicates. Reuses the
+   *  director credits `directorWalk` already fetched (cached), so no extra calls.
+   *  Order-independent — see `StagingOrderDeterminismSpec`. */
+  private def collapseDirectorDuplicate(id: Int, directors: Seq[String]): Int = {
+    val credits = directors.iterator
+      .flatMap(d => tmdb.findPerson(d.split(",").head.trim).iterator.flatMap(tmdb.personDirectorCredits))
+      .toSeq.distinctBy(_.id)
+    def titles(f: TmdbClient.SearchResult): Set[String] =
+      (Seq(f.title) ++ f.originalTitle.toSeq).map(MovieService.normalize).filter(_.nonEmpty).toSet
+    credits.find(_.id == id).fold(id) { resolved =>
+      credits.filter(f => titles(f) == titles(resolved) &&
+        f.releaseYear.exists(ry => resolved.releaseYear.exists(ay => math.abs(ry - ay) <= 1)))
+        .map(_.id).min
     }
   }
 
@@ -844,6 +913,27 @@ object MovieService {
   // cache lookups + Mongo upserts are stable across refresh ticks regardless
   // of which other films happen to be in the cache at the moment.
   def normalize(title: String): String = TitleNormalizer.sanitize(title)
+
+  /** Levenshtein edit distance — used to fuzzy-match a cinema's spelling of a
+   *  foreign title against a director's filmography ("guru" ↔ "gourou"). Plain
+   *  two-row DP, O(a·b); titles are short so it's cheap. A pure function. */
+  private[movies] def editDistance(a: String, b: String): Int = {
+    if (a.isEmpty) b.length
+    else if (b.isEmpty) a.length
+    else {
+      var prev = (0 to b.length).toArray
+      for (i <- 1 to a.length) {
+        val curr = new Array[Int](b.length + 1)
+        curr(0) = i
+        for (j <- 1 to b.length) {
+          val cost = if (a(i - 1) == b(j - 1)) 0 else 1
+          curr(j) = math.min(math.min(prev(j) + 1, curr(j - 1) + 1), prev(j - 1) + cost)
+        }
+        prev = curr
+      }
+      prev(b.length)
+    }
+  }
 
   /** Does a cinema-reported director name refer to the same person as a
    *  TMDB-credited one? Two independent signals, EITHER suffices:

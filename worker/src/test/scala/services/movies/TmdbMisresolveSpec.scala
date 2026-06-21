@@ -8,13 +8,12 @@ import services.events.{InProcessEventBus, MovieDetailsComplete}
 import tools.GetOnlyHttpFetch
 
 /**
- * FAILING regression: a film mis-resolved against a director-less first scrape
- * is never corrected when the real director arrives later.
- *
- * `needsTmdbResolution` early-returns on its "already resolved" guard the moment
- * ANY tmdbId is set — even a wrong one — and the daily `retryUnresolvedTmdb`
- * only revisits rows with tmdbId=None. So a partial-row mis-resolution is
- * permanent: the later, richer director hint is dropped.
+ * Regression guard: a director-less first scrape of a same-title, same-year TMDB
+ * ambiguity must not lock the row onto the wrong (popular) film before the real
+ * director arrives. The resolver now REFUSES a director-less ambiguous title
+ * (resolves only when the title search is unique), leaving the row tmdbId=None
+ * rather than mis-resolved — so when the director hint arrives it resolves cleanly
+ * (director-walk) instead of being stranded behind the "already resolved" guard.
  *
  * Modelled on a real same-title, SAME-YEAR TMDB ambiguity (captured from the
  * live API), where the year can't disambiguate — only the director can:
@@ -25,12 +24,10 @@ import tools.GetOnlyHttpFetch
  *   - tmdb 1026057 "The Visitor" (2022), directory Itay Gordon (person 3706395),
  *     popularity 0.15 — the film the cinema is actually showing.
  *
- * CinemaCity scrapes first WITHOUT a director → the row resolves to the popular
- * decoy 881487. Helios then reports the real director "Itay Gordon"; with that
- * hint the resolver WOULD reject 881487 (credits = Justin P. Lange) and
- * director-walk to 1026057 — but the already-resolved guard drops it. This spec
- * asserts the row ends at the CORRECT 1026057, so it FAILS today; it will pass
- * once a mis-resolution is re-verified against a later director hint.
+ * CinemaCity scrapes first WITHOUT a director → the row REFUSES (no-match, the
+ * search is ambiguous). Helios then reports the real director "Itay Gordon"; the
+ * now-unresolved row resolves cleanly, director-walking past the popular decoy
+ * 881487 (credits = Justin P. Lange) to the CORRECT 1026057 the cinema is showing.
  */
 class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
 
@@ -73,7 +70,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
   )
 
   "a film mis-resolved against a director-less first scrape" should
-    "be corrected once the real director arrives (it currently isn't)" in {
+    "be corrected once the real director arrives" in {
     // CinemaCity scraped it first, no director reported.
     val seed  = MovieRecord(data = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some(Title))))
     val repository  = new InMemoryMovieRepository(Seq((Title, Year, seed)))
@@ -86,7 +83,11 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     //    same-year decoy. `reEnrichSync` force-resolves (bypasses the guard) so
     //    the setup is deterministic.
     service.reEnrichSync(Title, Year)
-    cache.get(key).flatMap(_.tmdbId) shouldBe Some(Decoy) // mis-resolved, as expected
+    // With no director to tell the same-year "The Visitor" pair apart, the resolver
+    // now REFUSES rather than guessing the popular decoy (the generalised "Zaproszenie"
+    // guard: a director-less ambiguous title resolves only when the search is unique),
+    // so the row stays unresolved until a disambiguating hint arrives.
+    cache.get(key).flatMap(_.tmdbId) shouldBe None
 
     // 2. Helios now reports the real director "Itay Gordon".
     cache.putIfPresent(key, r =>
@@ -98,8 +99,9 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     bus.publish(MovieDetailsComplete(Title, Year, originalTitle = None, director = Some(Director)))
     service.stop()
 
-    // The row SHOULD now point at Itay Gordon's "The Visitor" — but the
-    // already-resolved guard dropped the director hint, so it's still wrong.
+    // The director hint now resolves it to Itay Gordon's "The Visitor": the row was
+    // left unresolved (refused) rather than mis-resolved, so the director arrival
+    // resolves it cleanly — director-walking to the correct film.
     cache.get(key).flatMap(_.tmdbId) shouldBe Some(Correct)
   }
 }

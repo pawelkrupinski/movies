@@ -177,13 +177,23 @@ class StagingSteps(
   def recoverImdbFor(anchor: String): Unit = {
     val fresh = rowsFor(anchor)
     if (fresh.isEmpty) return
-    // Per hint-group: a group resolved to its own tmdbId, so recover + stamp
-    // each group's imdbId independently — never cross-stamp one group's id onto
-    // another that resolved to a different film.
-    fresh.groupBy(hintGroupKey).values.foreach { group =>
-      group.find(r => r.record.tmdbId.isDefined && r.record.imdbId.isEmpty).foreach { needy =>
+    // Per RESOLVED FILM (tmdbId): recover + stamp each film's imdbId independently
+    // — never cross-stamp one film's id onto another that resolved to a different
+    // tmdbId. Grouping by tmdbId (not hint-group) gathers a film's year-VARIANTS
+    // (one cinema reports the production year, another the release year) so the
+    // recovery can try EVERY reported year, not just one group's: IMDb's release
+    // year can sit at any of those (TMDB resolves "Chłopiec na krańcach świata" 2026
+    // while IMDb + the cinemas have it 2025), so recovering with a single key year
+    // flickered the id present/absent by which variant happened to survive to be
+    // recovered (StagingOrderDeterminismSpec). The sorted year set is a pure function
+    // of the film, and the per-year exact match still refuses a same-series sibling
+    // ("Kicia Kocia w przedszkolu" 2024) whose year matches none of them.
+    fresh.filter(_.record.tmdbId.isDefined).groupBy(_.record.tmdbId).values.foreach { group =>
+      group.find(_.record.imdbId.isEmpty).foreach { needy =>
         val search = needy.record.originalTitle.getOrElse(MovieService.apiQuery(needy.title))
-        recoverImdbId(search, group.flatMap(_.year).minOption).foreach { id =>
+        val years  = group.flatMap(_.year).distinct.sorted
+        val tries  = if (years.isEmpty) Seq(None) else years.map(Option(_))
+        tries.iterator.flatMap(y => recoverImdbId(search, y)).nextOption().foreach { id =>
           group.foreach(r => stagingRepository.upsertRow(r.copy(record = r.record.copy(imdbId = Some(id)))))
           logger.info(s"Staging: '${needy.title}' ← recovered imdbId=$id")
         }

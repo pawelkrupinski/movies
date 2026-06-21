@@ -79,9 +79,19 @@ class ImdbIdResolver(
 
   private def resolve(title: String, year: Option[Int], searchTitle: String): Unit = {
     val key = cache.keyOf(title, year)
-    cache.get(key).filter(_.imdbId.isEmpty).foreach { _ =>
+    cache.get(key).filter(_.imdbId.isEmpty).foreach { record =>
       logger.info(s"IMDb-id: looking up '${key.cleanTitle}' (${key.year.getOrElse("?")}) [search='$searchTitle']")
-      cachedFindId(searchTitle, year) match {
+      // Try every year the film's cinemas report (plus the key year), sorted — the
+      // mirror of the staging recovery. IMDb's release year can sit at any cinema's
+      // reported (production) year, not the canonical TMDB one ("Chłopiec na krańcach
+      // świata": TMDB 2026, IMDb + the cinemas 2025), so a single-key-year lookup left
+      // the id flickering present/absent with arrival order (StagingOrderDeterminismSpec).
+      // The sorted year set is order-independent; the per-year EXACT match still refuses
+      // a same-series sibling ("Kicia Kocia w przedszkolu" 2024) at no reported year.
+      val years = (record.cinemaData.values.flatMap(_.releaseYear).toSet ++ year).toSeq.sorted
+      val found = (if (years.isEmpty) Seq(year) else years.map(Option(_)))
+        .iterator.flatMap(y => cachedFindId(searchTitle, y)).nextOption()
+      found match {
         case Some(id) =>
           logger.info(s"IMDb-id: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → resolved $id")
           // putIfPresent so a concurrent `cache.invalidate` between the lookup and
