@@ -398,7 +398,6 @@ case object KinoAstra extends Cinema("Kino Astra", "Astra")   // Oborniki Śląs
 case object KinoDyskusyjnyKlubFilmowyPolitechnika extends Cinema("Dyskusyjny Klub Filmowy Politechnika", "Wrocław")   // Wrocław — filmweb 1645
 // warszawa
 case object KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha extends Cinema("Kino Praha", "Praha")   // Warszawa — filmweb 2180
-case object KinoPlanetariumCentrumNaukiKopernik extends Cinema("Planetarium Kopernik", "Planetarium")   // Warszawa — filmweb 2130
 // lodz
 case object KinoSpojnia extends Cinema("Kino Spójnia", "Spójnia")   // Aleksandrów Łódzki — filmweb 2403
 case object KinoStaryMlyn extends Cinema("Kino Stary Młyn", "Stary Młyn")   // Zgierz — filmweb 2443
@@ -578,7 +577,7 @@ object Cinema {
 
   val wroclaw: Seq[Cinema] = Seq(CinemaCityWroclavia, CinemaCityKorona, MultikinoPasazGrunwaldzki, HeliosMagnolia, HeliosAlejaBielany, KinoNoweHoryzonty, DolnoslaskieCentrumFilmowe, KinoAstra, KinoDyskusyjnyKlubFilmowyPolitechnika)
 
-  val warszawa: Seq[Cinema] = Seq(CinemaCityArkadia, CinemaCityBemowo, CinemaCityGaleriaPolnocna, CinemaCityJanki, CinemaCityMokotow, CinemaCityPromenada, CinemaCitySadyba, MultikinoZloteTarasy, MultikinoMlociny, MultikinoReduta, MultikinoTargowek, MultikinoWolaPark, HeliosBlueCity, KinoMuranow, KinoLuna, KinoElektronik, KinoIluzjon, KinoGram, KinoKultura, KinoAmondo, KinoNaBoku, KinoGlebocka66, Kinomuzeum, KinoSwit, KinoKepa, StacjaFalenica, SluzewskiDomKultury, KinoAtlantic, Kinoteka, Ujazdowski, KinoCytadela, KinoWisla, AdaKinoStudyjne, KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha, KinoPlanetariumCentrumNaukiKopernik, KinoAlternatywy)
+  val warszawa: Seq[Cinema] = Seq(CinemaCityArkadia, CinemaCityBemowo, CinemaCityGaleriaPolnocna, CinemaCityJanki, CinemaCityMokotow, CinemaCityPromenada, CinemaCitySadyba, MultikinoZloteTarasy, MultikinoMlociny, MultikinoReduta, MultikinoTargowek, MultikinoWolaPark, HeliosBlueCity, KinoMuranow, KinoLuna, KinoElektronik, KinoIluzjon, KinoGram, KinoKultura, KinoAmondo, KinoNaBoku, KinoGlebocka66, Kinomuzeum, KinoSwit, KinoKepa, StacjaFalenica, SluzewskiDomKultury, KinoAtlantic, Kinoteka, Ujazdowski, KinoCytadela, KinoWisla, AdaKinoStudyjne, KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha, KinoAlternatywy)
 
   /** Kraków venues. Cinema City has three multiplexes here (Bonarka,
    *  Kazimierz, Zakopianka — Zakopianka also houses the city's only IMAX);
