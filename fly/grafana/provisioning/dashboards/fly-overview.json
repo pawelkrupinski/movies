@@ -334,7 +334,7 @@
     {
       "id": 35,
       "title": "Worker — TMDB-resolved → first rating attempt (p50/p90 per site)",
-      "description": "How long after a film's TMDB id resolves each rating site (imdb/fw/rt/mc) FIRST tries to fetch its rating, from kinowo_worker_rating_first_attempt_delay_seconds. Ratings are no longer enqueued the instant a film resolves (the RatingEnqueuer cascade was removed), so this is the EnrichmentReaper's first-pass latency: ~one 5-min tick in steady state, stretching when a large resolution cohort drains over the per-tick cap (KINOWO_ENRICHMENT_MAX_ENQUEUE_PER_TICK). A site climbing toward hours = a backlog the cap is metering out.",
+      "description": "How long after a film's TMDB id resolves each rating site (imdb/fw/rt/mc) FIRST tries to fetch its rating, from kinowo_worker_rating_first_attempt_delay_seconds. Ratings are no longer enqueued the instant a film resolves (the RatingEnqueuer cascade was removed), so this is the EnrichmentReaper's first-pass latency: ~one reaper tick (≤1min) in steady state, stretching when a large resolution cohort drains over the per-tick cap (KINOWO_ENRICHMENT_MAX_ENQUEUE_PER_TICK). A site climbing toward hours = a backlog the cap is metering out.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 131 },

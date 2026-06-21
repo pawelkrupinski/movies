@@ -69,7 +69,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
 
   "RatingHandler" should "record the TMDB-resolved → first-attempt delay per site, once (not on a later attempt)" in {
     val resolvedAt = Instant.parse("2026-06-21T10:00:00Z")
-    val firstAt    = resolvedAt.plusSeconds(300) // one reaper tick later
+    val firstAt    = resolvedAt.plusSeconds(300) // a representative post-resolution delay
     val fresh      = new InMemoryFreshnessStore
     fresh.markFresh(RatingTasks.tmdbResolvedAtKey(1454157), FreshnessKind.TmdbResolve, resolvedAt)
 

@@ -257,7 +257,7 @@ object WorkerTaskMetrics {
   val DurationBucketsSeconds: Seq[Double] = Seq(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0)
 
   /** Upper bounds (seconds) for the TMDB-resolved → first-rating-attempt delay:
-   *  ~one reaper tick (5min) in steady state, stretching to hours when a large
+   *  ~one reaper tick (≤1min) in steady state, stretching to hours when a large
    *  resolution cohort drains over the per-tick cap. 30s … 4h. */
   val RatingDelayBucketsSeconds: Seq[Double] =
     Seq(30.0, 60.0, 120.0, 300.0, 600.0, 1200.0, 1800.0, 3600.0, 7200.0, 14400.0)
