@@ -427,6 +427,8 @@ cinemaScrapes:
   Kino Wawel / Backrooms. Bez wyjścia / —
   Kinoteka / Backrooms. Bez wyjścia / 2026
   Koneckie Centrum Kultury / Backrooms. Bez wyjścia / —
+  Max Kino / Backrooms. Bez wyjścia / —
+  Patria / Backrooms. Bez wyjścia / —
   Planet Cinema / Backrooms. Bez wyjścia / —
   Regis / Backrooms. Bez wyjścia / —
   Wybrzeże / Backrooms bez wyjścia / —
@@ -501,6 +503,7 @@ cinemaScrapes:
   Kino Malta Charlie Monroe / Bez wyjścia / —
   Kino Meduza / Bez wyjścia / —
   Kino Muranów / Bez wyjścia / 2025
+  Kino Studyjne Kadr / Bez wyjścia / —
   Kino na Szekspirowskim / Bez wyjścia / —
   Służewski Dom Kultury / Bez wyjścia / 2025
 showings:
@@ -1350,7 +1353,6 @@ cinemaScrapes:
   Helios Łódź / Diabeł ubiera się u Prady 2 / 2026
   Kino Amok / Diabeł ubiera się u Prady 2 / —
   Kino Atlantic / Diabeł ubiera się u Prady 2 / 2026
-  Kino Awangarda 2 / Diabeł ubiera się u Prady 2 / 2026
   Kino Charlie / Diabeł ubiera się u Prady 2 / —
   Kino Echo / Diabeł ubiera się u Prady 2 / —
   Kino GCK / Diabeł ubiera się u Prady 2 / —
@@ -1525,6 +1527,7 @@ cinemaScrapes:
   Kino Agrafka / DRUGIE ŻYCIE / 2025
   Kino Apollo / Drugie życie / —
   Kino Apollo Wałbrzych / Drugie życie / —
+  Kino Awangarda 2 / Drugie życie / —
   Kino Bajka / Drugie życie / —
   Kino CK Lublin / Drugie życie / —
   Kino Echo / DRUGIE ŻYCIE / —
@@ -1701,6 +1704,7 @@ cinemaScrapes:
   Kino Kalejdoskop / Drzewo magii / —
   Kino Kika / DRZEWO MAGII / —
   Kino Kolory / Drzewo magii / —
+  Kino Kreska / Drzewo magii / —
   Kino Lewart / Drzewo magii / —
   Kino MCSW Elektrownia / DRZEWO MAGII / —
   Kino MDK / DRZEWO MAGII / —
@@ -1718,6 +1722,7 @@ cinemaScrapes:
   Kino Promień / Drzewo magii / —
   Kino Przedwiośnie / Drzewo magii / 2026
   Kino Sokół / DRZEWO MAGII / —
+  Kino Studyjne Kadr / Drzewo magii / —
   Kino Twierdza / Drzewo magii / —
   Kino Wawel / Drzewo magii / —
   Kino Wisła / Drzewo magii / 2026
@@ -1727,11 +1732,9 @@ cinemaScrapes:
   Kinomax / Drzewo magii / —
   Kinoteatr Rondo / Drzewo magii / —
   Klaps / Drzewo magii / —
-  Max Kino / Drzewo magii / 2026
   Mikro Bronowice / Drzewo magii / —
   Muza / Drzewo magii / —
   OKF Iluzja / Drzewo magii / —
-  Patria / Drzewo magii / 2026
   Piast / DRZEWO MAGII / —
   Pionier / Drzewo magii / —
 showings:
@@ -1890,7 +1893,7 @@ cinemaScrapes:
   Kino Apollo Wałbrzych / Dzień objawienia / —
   Kino Astra / Dzień objawienia / —
   Kino Atlantic / Dzień objawienia / 2026
-  Kino Awangarda 2 / Dzień objawienia / 2026
+  Kino Awangarda 2 / Dzień objawienia / —
   Kino Bajka / Dzień Objawienia / —
   Kino Bajka Kluczbork / Dzień Objawienia / —
   Kino Hel / DZIEŃ OBJAWIENIA / —
@@ -1929,6 +1932,7 @@ cinemaScrapes:
   Kinoteka / Dzień objawienia / 2026
   Klaps / Dzień Objawienia / —
   Kozienicki Dom Kultury / Dzień objawienia / —
+  Max Kino / Dzień objawienia / —
   Muza / Dzień Objawienia / —
   Pionier / Dzień objawienia / —
   Planet Cinema / Dzień objawienia / —
@@ -2061,7 +2065,6 @@ cinemaScrapes:
   Kino Amok / Erupcja / —
   Kino Charlie / Erupcja / —
   Kino Kika / ERUPCJA / —
-  Kino Kreska / Erupcja / 2025
   Kino Kępa / Erupcja / —
   Kino Luna / Erupcja / —
   Kino Malta Charlie Monroe / Erupcja / —
@@ -2071,6 +2074,7 @@ cinemaScrapes:
   Kino Pałacowe / Erupcja / 2025
   Kino Rejs / Erupcja / —
   Kino Spektrum / Erupcja / —
+  Kino Studyjne Kadr / Erupcja / —
   Kino U-jazdowski / Erupcja / 2025
   Kinoteka / Erupcja / 2026
   Mikro Bronowice / Erupcja / —
@@ -2996,7 +3000,6 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Malta Charlie Monroe / Kopnęłabym cię, gdybym mogła / —
   Kino Meduza / Kopnęłabym cię, gdybym mogła / —
-  Kino Studyjne Kadr / Kopnęłabym cię, gdybym mogła / 2025
   Kino na Szekspirowskim / Kopnęłabym cię, gdybym mogła / —
   Służewski Dom Kultury / Kopnęłabym cię, gdybym mogła / 2025
 showings:
@@ -3156,6 +3159,7 @@ cinemaScrapes:
   KINOMUZEUM / Kumotry / 2025
   Kino 60 Krzeseł / Kumotry / —
   Kino Amok / Kumotry / —
+  Kino Awangarda 2 / Kumotry / —
   Kino CK Lublin / Kumotry / —
   Kino Fenomen (WDK) / Kumotry / —
   Kino Iluzjon / Kumotry / 2025
@@ -3242,6 +3246,7 @@ cinemaScrapes:
   Kino Przedwiośnie / Kurozając i świątynia Świstaka / 2026
   Kino Scena Kultura / Kurozając i świątynia Świstaka / —
   Kino Sokół / KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA / —
+  Kino Studyjne Kadr / Kurozając i świątynia świstaka / —
   Na Starówce / Kurozając i świątynia świstaka / —
   Regis / Kurozając i świątynia świstaka / —
 showings:
@@ -3825,6 +3830,7 @@ cinemaScrapes:
   Kino Pionier 1907 / MILCZENIE OWIEC / 1991
   Kino Pod Baranami / Milczenie owiec / —
   Kino Sfinks / MILCZENIE OWIEC / —
+  Kino Studyjne Kadr / Milczenie owiec / —
   OKF Iluzja / Milczenie owiec / —
   Planet Cinema / Milczenie owiec / —
 showings:
@@ -3896,7 +3902,6 @@ cinemaScrapes:
   Kino Spektrum / Milcząca przyjaciółka / —
   Kino Wisła / Milcząca przyjaciółka / 2025
   Kinoteatr Rialto / Milcząca przyjaciółka / —
-  Patria / Milcząca przyjaciółka / 2025
   Świt / Milcząca przyjaciółka / —
 showings:
   2026-06-08  Kino Bułgarska 19             18:50 Sala Dzienniki Motocyklowe
@@ -4212,6 +4217,7 @@ cinemaScrapes:
   KINOMUZEUM / Monterey Pop / 1967
   Kino 60 Krzeseł / Monterey Pop / —
   Kino Apollo / Monterey Pop / —
+  Kino Awangarda 2 / Monterey Pop / —
   Kino Pionier 1907 / MONTEREY POP / 1968
   Kino Rialto / MONTEREY POP / 1968
 showings:
@@ -4625,7 +4631,7 @@ cinemaScrapes:
   Kino Ignacy / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino KDK / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Kika / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / —
-  Kino Kreska / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
+  Kino Kreska / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Lewart / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino MCK / Niesamowite przygody skarpetek 3. Ale kosmos / —
   Kino MOK / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -5024,7 +5030,7 @@ cinemaScrapes:
   Kino Wawel / Obsesja / —
   Kinomax / Obsesja / —
   Kinoteka / Obsesja / 2026
-  Max Kino / Obsesja / 2025
+  Max Kino / Obsesja / —
 showings:
   2026-06-08  Cinema City Kinepolis         14:25 Sala 13 2D/NAP · 16:50 Sala 13 2D/NAP · 17:10 Sala 4 2D/NAP · 19:20 Sala 13 2D/NAP · 19:45 Sala 4 2D/NAP · 21:10 Sala 8 2D/NAP · 21:30 Sala 16 2D/NAP
   2026-06-08  Cinema City Poznań Plaza      12:40 Sala 6 2D/NAP · 15:10 Sala 6 2D/NAP · 17:40 Sala 6 2D/NAP · 20:10 Sala 6 2D/NAP
@@ -5085,12 +5091,14 @@ cinemaScrapes:
   Kino Agrafka / OJCZYZNA / 2026
   Kino Apollo / Ojczyzna / —
   Kino Apollo Wałbrzych / Ojczyzna / —
+  Kino Awangarda 2 / Ojczyzna / —
   Kino Bajka / Ojczyzna / —
   Kino Bajka Kluczbork / Ojczyzna / —
   Kino Kijów / Ojczyzna / —
   Kino Kika / OJCZYZNA / —
   Kino Kinematograf / Ojczyzna / 2026
   Kino Kolory / Ojczyzna / —
+  Kino Kreska / Ojczyzna / —
   Kino Kultura / Ojczyzna / —
   Kino Lot / Ojczyzna / —
   Kino Millenium / Ojczyzna / —
@@ -5109,9 +5117,12 @@ cinemaScrapes:
   Kino Roma / Ojczyzna / 2026
   Kino Sfinks / OJCZYZNA / —
   Kino Stary Młyn / Ojczyzna / —
+  Kino Studyjne Kadr / Ojczyzna / —
   Kino Twierdza / Ojczyzna / —
   KinoGram / Ojczyzna / —
   Kinomax / Ojczyzna / —
+  Max Kino / Ojczyzna / —
+  Patria / Ojczyzna / —
   Planet Cinema / Ojczyzna / —
   Regis / Ojczyzna / —
   Świt / Ojczyzna / —
@@ -5188,7 +5199,6 @@ cinemaScrapes:
   Kino Amok / Orły republiki / —
   Kino Apollo Wałbrzych / Orły Republiki / —
   Kino Atlantic / Orły Republiki / 2025
-  Kino Awangarda 2 / Orły Republiki / 2025
   Kino Bułgarska 19 / ORŁY REPUBLIKI / 2025
   Kino CK Lublin / Orły Republiki / —
   Kino Fenomen (WDK) / Orły Republiki / —
@@ -6787,6 +6797,7 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Pucio / 2026
   Kino Pałacowe / Pucio / 2026
   Kino Sokół Dąbrowa Tarnowska / PUCIO / —
+  Kino Studyjne Kadr / Pucio / —
   Kino Tur / Pucio / —
   Służewski Dom Kultury / Pucio / —
   Teatr Elektryczny / Pucio / —
@@ -7047,7 +7058,6 @@ cinemaScrapes:
   KINOMUZEUM / Sny o słoniach / 2025
   Kino 60 Krzeseł / Sny o słoniach / —
   Kino Apollo / Sny o słoniach / —
-  Kino Awangarda 2 / Sny o słoniach / 2025
   Kino Fenomen (WDK) / Sny o słoniach / —
   Kino Iluzjon / Sny o słoniach / 2025
   Kino Mikro / Sny o słoniach / —
@@ -7269,7 +7279,7 @@ cinemaScrapes:
   Kino Śnieżka / Straszny film / —
   Kinomax / Straszny film / —
   Koneckie Centrum Kultury / Straszny film / —
-  Max Kino / Straszny film / 2026
+  Max Kino / Straszny film / —
   Miejskie Centrum Kultury / Straszny film / —
   Piast / STRASZNY FILM / —
   Pionier / Straszny film / —
@@ -7454,7 +7464,6 @@ cinemaScrapes:
   Kino Na Biegunach / Super mario galaxy film / —
   Kino ODEON / Super mario galaxy film / —
   Kino Sokół / SUPER MARIO GALAXY FILM / —
-  Max Kino / Super Mario Galaxy Film / 2026
 showings:
   2026-06-08  Cinema City Kinepolis         12:00 Sala 18 2D/DUB · 14:20 Sala 18 2D/DUB
   2026-06-08  Cinema City Poznań Plaza      11:30 Sala 3 2D/DUB · 13:50 Sala 3 2D/DUB
@@ -7923,7 +7932,6 @@ cinemaScrapes:
   Kinomax / Tom i jerry: przygoda w muzeum / —
   Kinoteatr Rondo / Tom i Jerry: Przygoda w muzeum / —
   Klaps / Tom i Jerry: Przygoda w muzeum / —
-  Max Kino / Tom i Jerry: Przygoda w muzeum / 2025
   Miejskie Centrum Kultury / Tom i Jerry: Przygoda w muzeum / —
   Mikro Bronowice / Tom i Jerry: Przygoda w muzeum / —
   Muza / Tom i Jerry: Przygoda w muzeum / —
@@ -8082,8 +8090,10 @@ cinemaScrapes:
   Kino Wawel / Toy Story 5 / —
   Kino Śnieżka / Toy story 5 / —
   Koneckie Centrum Kultury / Toy Story 5 / —
+  Max Kino / Toy story 5 / —
   Muza / Toy Story 5 / —
   Na Starówce / Toy story 5 / —
+  Patria / Toy Story 5 / —
   Pionier / Toy Story 5 / —
   Planet Cinema / Toy story 5 / —
   Regis / Toy story 5 / —
@@ -8257,6 +8267,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14399-wakonie-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
   Kino 60 Krzeseł / Wałkonie / —
+  Kino Awangarda 2 / Wałkonie / —
   Kino Muza / Wałkonie / 1953
   Kino Nowe Horyzonty / Wałkonie / 1953
   Kino Pałacowe / Wałkonie / 1953
@@ -8303,7 +8314,6 @@ cinemaScrapes:
   Kino Bajka Kluczbork / Werdykt / —
   Kino Bułgarska 19 / WERDYKT / 2025
   Kino CK Lublin / Werdykt / —
-  Kino Kreska / Werdykt / 2025
   Kino Luna / Werdykt / —
   Kino Malta Charlie Monroe / Werdykt / —
   Kino Meduza / Werdykt / —
@@ -8679,7 +8689,6 @@ cinemaScrapes:
   Kino Zachęta / Władcy Wszechświata / 2026
   Kinomax / Władcy wszechświata / —
   Klaps / Władcy Wszechświata / —
-  Max Kino / Władcy Wszechświata / 2026
   Planet Cinema / Władcy wszechświata / —
   Przedwiośnie / Władcy wszechświata / —
 showings:
@@ -8895,7 +8904,6 @@ cinemaScrapes:
   KINOkawiarnia Stacja Falenica / Zawodowcy / —
   Kino Apollo Wałbrzych / Zawodowcy / —
   Kino Atlantic / Zawodowcy / 2026
-  Kino Awangarda 2 / Zawodowcy / 2026
   Kino Bajka Kluczbork / ZAWODOWCY / —
   Kino Centrum / ZAWODOWCY / —
   Kino Diana / Zawodowcy / —
@@ -9003,7 +9011,7 @@ showings:
 
 === Znaki Pana Śliwki ===
 displayTitle:      Znaki Pana Śliwki
-cinemaTitles:      ZNAKI PANA ŚLIWKI | Znaki Pana Śliwki | Znaki pana śliwki
+cinemaTitles:      ZNAKI PANA ŚLIWKI | Znaki Pana Śliwki | Znaki pana Śliwki | Znaki pana śliwki
 runtimeMinutes:    72
 releaseYear:       2026
 countries:         Polska
@@ -9040,6 +9048,7 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Znaki Pana Śliwki / 2025
   Kino Orzeł / Znaki Pana Śliwki / —
   Kino Spektrum / Znaki Pana Śliwki / —
+  Kino Studyjne Kadr / Znaki pana Śliwki / —
   Kinoteatr Rialto / Znaki Pana Śliwki / —
   Kozienicki Dom Kultury / Znaki pana śliwki / —
   Świt Zwoleń / Znaki pana śliwki / —
@@ -9114,7 +9123,6 @@ cinemaScrapes:
   Helios Tczew / Ścieżki życia / —
   Helios Łódź / Ścieżki życia / —
   Helios Żory / Ścieżki życia / —
-  Kino Awangarda 2 / Ścieżki życia / 2024
   Kinoteatr Rialto / Ścieżki życia / —
 showings:
   2026-06-18  Helios Posnania               17:00 2D/LEK
