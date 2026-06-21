@@ -3262,10 +3262,10 @@ originalTitle:     La grazia
 imdbRating:        7.4
 metascore:         69
 rottenTomatoes:    87
-filmwebRating:     7.15319
+filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/la-grazia
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/la_grazia
-filmwebUrl:        https://www.filmweb.pl/film/La+grazia-2025-10088237
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/la-grazia
 cinemaScrapes:
@@ -7789,10 +7789,10 @@ originalTitle:     猫和老鼠：星盘奇缘
 imdbRating:        3.4
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     —
+filmwebRating:     2.17771
 metacriticUrl:     https://www.metacritic.com/movie/tom-and-jerry-forbidden-compass
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/tom_and_jerry_forbidden_compass
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Tom+i+Jerry%3A+Przygoda+w+muzeum-2025-10086986
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/tom-i-jerry-przygoda-w-muzeum/8142d2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/tom-i-jerry-przygoda-w-muzeum/8142d2r
