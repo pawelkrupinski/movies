@@ -56,17 +56,22 @@ class MongoEnvRegistryStore(sharedDb: Option[MongoDatabase]) extends EnvRegistry
     coll.flatMap(c => Try(Await.result(c.find().toFuture(), 10.seconds)).toOption)
       .getOrElse(Seq.empty).flatMap(fromDoc)
 
-  private def toDoc(k: RegisteredKnob): Document =
-    Document(
-      "_id"     -> s"${k.app}|${k.key}",
-      "app"     -> k.app,
-      "key"     -> k.key,
-      "kind"    -> k.kind.toString,
-      "default" -> k.default.orNull,
-      "current" -> k.current.orNull
-    )
+  // Build the doc with only the fields that are present. A `null` value can't go
+  // through the Scala Mongo `Document` builder (it throws), and an unset knob has
+  // a None current (and a get-knob has a None default) — so the previous
+  // `.orNull` blew up the whole insertMany batch, leaving env_registry empty.
+  private[config] def toDoc(k: RegisteredKnob): Document = {
+    val base = Document(
+      "_id"  -> s"${k.app}|${k.key}",
+      "app"  -> k.app,
+      "key"  -> k.key,
+      "kind" -> k.kind.toString)
+    base ++
+      k.default.map(v => Document("default" -> v)).getOrElse(Document()) ++
+      k.current.map(v => Document("current" -> v)).getOrElse(Document())
+  }
 
-  private def fromDoc(d: Document): Option[RegisteredKnob] =
+  private[config] def fromDoc(d: Document): Option[RegisteredKnob] =
     for {
       app  <- str(d, "app")
       key  <- str(d, "key")
