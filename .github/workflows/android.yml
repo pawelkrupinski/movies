@@ -156,10 +156,13 @@ jobs:
                   path: android/app/build/outputs/apk/tuneRelease/app-tuneRelease*.apk
                   if-no-files-found: error
 
-            # Publish the signed release APK to a rolling `android-latest`
-            # GitHub Release so it has a stable, anonymous download URL that
-            # doesn't require a GitHub login (unlike the upload-artifact above):
+            # Publish the signed release APK + AAB to a rolling `android-latest`
+            # GitHub Release so they have stable, anonymous download URLs that
+            # don't require a GitHub login (unlike the upload-artifact above):
             #   https://github.com/${{ github.repository }}/releases/download/android-latest/kinowo.apk
+            #   https://github.com/${{ github.repository }}/releases/download/android-latest/kinowo.aab
+            # The APK is for sideloading; the AAB is the Play Console upload
+            # artifact (Play requires an AAB, not an APK).
             #
             # Only on main pushes / manual runs — never on PRs. We delete +
             # recreate the release each time so its tag tracks the newest main
@@ -167,25 +170,32 @@ jobs:
             # prerelease so it stays out of the repo's "Latest release" slot.
             # Requires the KINOWO_RELEASE_* signing secrets: an unsigned APK
             # won't install, so we fail loudly rather than publish a dud.
-            - name: Publish rolling APK release
+            - name: Publish rolling APK + AAB release
               if: success() && github.event_name != 'pull_request'
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   apk=app/build/outputs/apk/release/app-release.apk
+                  aab=app/build/outputs/bundle/release/app-release.aab
                   if [ ! -f "$apk" ]; then
                       echo "::error::Signed $apk not found — set KINOWO_RELEASE_KEYSTORE_BASE64 (+ store/key secrets); unsigned builds won't install."
                       exit 1
                   fi
+                  if [ ! -f "$aab" ]; then
+                      echo "::error::Signed $aab not found — the bundleRelease step should have produced it."
+                      exit 1
+                  fi
                   cp "$apk" "$RUNNER_TEMP/kinowo.apk"
+                  cp "$aab" "$RUNNER_TEMP/kinowo.aab"
                   gh release delete android-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
                   gh release create android-latest \
                       --repo "$GITHUB_REPOSITORY" \
                       --target "$GITHUB_SHA" \
                       --prerelease \
                       --title "Kinowo Android (latest)" \
-                      --notes "Signed APK from the latest \`main\` build (${GITHUB_SHA:0:7}). Sideload \`kinowo.apk\` on Android — enable installing from unknown sources." \
-                      "$RUNNER_TEMP/kinowo.apk"
+                      --notes "Signed build from the latest \`main\` commit (${GITHUB_SHA:0:7}). \`kinowo.apk\` to sideload on Android (enable installing from unknown sources); \`kinowo.aab\` to upload to the Google Play Console." \
+                      "$RUNNER_TEMP/kinowo.apk" \
+                      "$RUNNER_TEMP/kinowo.aab"
 
             # Same as above, for the tweak build: a signed, minified APK
             # (≈ the same size as kinowo.apk) that adds the "Kinowo Tune"
