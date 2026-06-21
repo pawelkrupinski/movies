@@ -491,7 +491,7 @@ originalTitle:     어쩔수가없다
 imdbRating:        7.5
 metascore:         86
 rottenTomatoes:    97
-filmwebRating:     —
+filmwebRating:     7.13474
 metacriticUrl:     https://www.metacritic.com/movie/no-other-choice
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/no_other_choice
 filmwebUrl:        https://www.filmweb.pl/film/Bez+wyj%C5%9Bcia-2025-10058716
@@ -3262,10 +3262,10 @@ originalTitle:     La grazia
 imdbRating:        7.4
 metascore:         69
 rottenTomatoes:    87
-filmwebRating:     —
+filmwebRating:     7.15319
 metacriticUrl:     https://www.metacritic.com/movie/la-grazia
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/la_grazia
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/La+grazia-2025-10088237
 cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/la-grazia
 cinemaScrapes:

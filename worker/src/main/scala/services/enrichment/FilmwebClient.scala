@@ -101,7 +101,14 @@ class FilmwebClient(http: HttpFetch) {
    *  serve both, so downstream handling is uniform; only the canonical
    *  page URL prefix differs (`/film/` vs `/serial/`). */
   def search(title: String): Seq[SearchHit] =
-    parseSearch(http.get(s"$ApiBase/live/search?query=${urlEncode(title)}"))
+    // Query Filmweb's fuzzy `live/search` with a case- AND diacritic-folded title
+    // (`deburr` = TextNormalization.deburr + lowercase). The endpoint is itself
+    // case/diacritic-insensitive — "slodkie zycie" and "Słodkie życie" both return
+    // film 30940 — so this loses no matches, while making the request (hence the
+    // recorded-fixture fingerprint) INDEPENDENT of the caller's exact spelling. That
+    // decouples the rating query from the canonical title's casing, so a settle that
+    // re-spells `minSpelling`→`displayTitle` no longer changes which fixture is hit.
+    parseSearch(http.get(s"$ApiBase/live/search?query=${urlEncode(deburr(title))}"))
 
   def info(id: Int): Option[FilmInfo] =
     Try(parseInfo(http.get(s"$ApiBase/film/$id/info"))).toOption.flatten

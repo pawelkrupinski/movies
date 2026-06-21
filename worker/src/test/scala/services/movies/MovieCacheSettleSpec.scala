@@ -295,14 +295,14 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
   // ── restart guard against the per-deploy retrigger flap ──────────────────────
   // Re-key every settled row exactly as `StoredMovieRecord.fromStorage` rebuilds
   // it on hydrate (the `_id` stores only `sanitize(title)|year`, so the title is
-  // re-derived via `displayTitle`), then re-settle — and NO enrichment may be
-  // re-kicked. The settle keys a single-title cluster by `minSpelling` while the
-  // hydrate key is `displayTitle`; when those differ only by case/punctuation the
-  // re-key is harmless, but it must NOT count as a rating-input change. Before the
-  // fix it re-kicked all three title-ratings for every such row on every boot, and
-  // the next hydrate flipped the spelling back — the ~83 retriggers/boot rating
-  // spike measured in prod (`CanonicalizeRetriggerFlapSpec`).
-  private def assertRestartDoesNotReKickEnrichment(settled: MovieCache): Unit = {
+  // re-derived via `displayTitle`), then re-settle — and the settle must be a
+  // FIXPOINT: it re-keys NOTHING and re-kicks NO enrichment. The settle now keys a
+  // cluster by `displayTitle`, the SAME spelling `fromStorage` rebuilds, so a
+  // hydrated row is already under its canonical key. Before the unification the
+  // settle keyed by `minSpelling`, which disagreed for a decorated row, so every
+  // hydrate/settle re-keyed it AND re-kicked all three title-ratings — the ~83
+  // retriggers/boot rating spike measured in prod (`CanonicalizeRetriggerFlapSpec`).
+  private def assertRestartIsAFixpoint(settled: MovieCache): Unit = {
     val retriggered = scala.collection.mutable.ListBuffer.empty[Set[RetriggerKind]]
     val rebooted = new CaffeineMovieCache(new InMemoryMovieRepository, retrigger = new EnrichmentRetrigger {
       def retrigger(key: CacheKey, record: MovieRecord, kinds: Set[RetriggerKind]): Unit = { retriggered += kinds; () }
@@ -311,7 +311,10 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
       val recovered = StoredMovieRecord.fromStorage(StoredMovieRecord.idFor(r.title, r.year), r.record)
       rebooted.put(CacheKey(recovered.title, recovered.year), r.record)
     }
+    val before = rebooted.snapshot().map(r => (r.title, r.year)).toSet
     rebooted.canonicalizeBySanitize()
+    withClue(s"the settle RE-KEYED an already-settled corpus (the flap):\n  before=$before\n  after=${rebooted.snapshot().map(r => (r.title, r.year)).toSet}\n")(
+      rebooted.snapshot().map(r => (r.title, r.year)).toSet shouldBe before)
     withClue(s"enrichment re-kicked on restart (the deploy flap): ${retriggered.toList}\n")(
       retriggered shouldBe empty)
   }
@@ -325,6 +328,6 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     aliasedRow(c, "Federico Fellini: Słodkie życie", KinoMuza, 1960, 439, "Słodkie życie", "La dolce vita", "Federico Fellini SŁODKIE ŻYCIE")
     aliasedRow(c, "Słodkie życie",                    Helios,  1960, 439, "Słodkie życie", "La dolce vita", "Słodkie życie")
     c.canonicalizeBySanitize()
-    assertRestartDoesNotReKickEnrichment(c)
+    assertRestartIsAFixpoint(c)
   }
 }

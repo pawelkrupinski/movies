@@ -264,16 +264,21 @@ object FilmCanonicalizer {
     def isAllCaps(t: String): Boolean = t.exists(_.isLetter) && t == t.toUpperCase(java.util.Locale.ROOT)
     val minSpelling = allKeys.map(_.cleanTitle).minBy(t => (isAllCaps(t), t))
     val merged = MovieRecordMerge.unionAll(cluster.sortBy { case (k, _) => canonicalRank(k) }.map(_._2))
-    // A cross-title cluster — a film folded across two languages by shared tmdbId
-    // ("Tangled" + "Zaplątani") — must NOT key on the alphabetical min, which
-    // could be the original-language title ("tangled") no cinema reports: every
-    // localised scrape would then miss it (`MovieCache.concludedKeyFor` matches by
-    // sanitize) and re-spawn the duplicate. Key on the dominant cinema-reported
-    // title instead — exactly what `displayTitle` derives — so scrapes land on the
-    // surviving row. A single-title cluster keeps the `min` spelling (unchanged),
-    // so the established case/spelling-normalisation behaviour is untouched.
-    val multiTitle = keys.map(k => TitleNormalizer.sanitize(k.cleanTitle)).distinct.sizeIs > 1
-    val canonicalTitle = if (multiTitle) merged.displayTitle(minSpelling) else minSpelling
+    // Always key on `displayTitle` (the dominant cinema-reported clean form → TMDB
+    // PL title → recased `minSpelling` ladder) — the SAME spelling
+    // `StoredMovieRecord.fromStorage` rebuilds a hydrated row's key from. Keying the
+    // settle on `minSpelling` instead made the two disagree for a row whose cinema
+    // slots spell the title differently (decorated "Federico Fellini: …" vs
+    // "…SŁODKIE ŻYCIE"), so every hydrate/settle re-keyed it — the per-deploy flap.
+    // A cross-title cluster (a film folded across two languages by shared tmdbId,
+    // "Tangled" + "Zaplątani") ALSO needs this: keying on the alphabetical `min`
+    // could pick an original-language title no cinema reports, so every localised
+    // scrape would miss it (`MovieCache.concludedKeyFor` matches by sanitize) and
+    // re-spawn the duplicate. `minSpelling` remains the ladder's last-resort tie-
+    // break. The rating SEARCH query is now case/diacritic-folded (FilmwebClient;
+    // RT/MC already slug-fold), so this re-spelling no longer shifts which fixture
+    // a rating lookup hits.
+    val canonicalTitle = merged.displayTitle(minSpelling)
     val canonicalKey   = CacheKey(canonicalTitle, canonicalYear)
     (canonicalKey, merged)
   }

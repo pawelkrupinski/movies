@@ -17,6 +17,24 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
 
   private val client = new FilmwebClient(new RealHttpFetch)
 
+  // ── search query normalisation ───────────────────────────────────────────────
+
+  "search" should "query Filmweb with a case- and diacritic-folded title, so a row's exact spelling can't shift the recorded fixture" in {
+    def queryUrlFor(title: String): String = {
+      val urls = scala.collection.mutable.ListBuffer.empty[String]
+      new FilmwebClient(new GetOnlyHttpFetch {
+        override def get(url: String): String = { urls += url; """{"searchHits":[]}""" }
+      }).search(title)
+      urls.head
+    }
+    // "Słodkie Życie" → deburr + lowercase → "slodkie zycie" → URL-encoded.
+    queryUrlFor("Słodkie Życie") should include ("query=slodkie+zycie")
+    // Any casing/diacritic re-spelling of the SAME title (the settle's
+    // minSpelling↔displayTitle flip) must hit the IDENTICAL query URL — hence the
+    // same fingerprinted fixture — so canonicalisation never churns rating fixtures.
+    queryUrlFor("SŁODKIE ŻYCIE") shouldBe queryUrlFor("Słodkie Życie")
+  }
+
   // ── parseSearch ─────────────────────────────────────────────────────────────
 
   "parseSearch" should "extract film- and serial-type ids in the order Filmweb returned them, skipping persons / users" in {
@@ -328,8 +346,8 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
   it should "fall back to the fallback title when the primary query has no acceptable match" in {
     // Cinema's Polish title doesn't resolve, but TMDB's originalTitle does.
     val routes = Map(
-      "/live/search?query=Diuna"          -> """{"searchHits":[]}""",
-      "/live/search?query=Dune"           -> """{"searchHits":[{"id":779836,"type":"film","matchedTitle":"Dune: Part Two"}]}""",
+      "/live/search?query=diuna"          -> """{"searchHits":[]}""",        // query is deburr+lowercased
+      "/live/search?query=dune"           -> """{"searchHits":[{"id":779836,"type":"film","matchedTitle":"Dune: Part Two"}]}""",
       "/film/779836/info"                 -> """{"title":"Diuna: Część druga","originalTitle":"Dune: Part Two","year":2024}""",
       "/film/779836/rating"               -> """{"rate":8.2,"count":1}"""
     )

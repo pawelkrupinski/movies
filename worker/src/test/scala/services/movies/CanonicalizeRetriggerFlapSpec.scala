@@ -40,19 +40,19 @@ class CanonicalizeRetriggerFlapSpec extends AnyFlatSpec with Matchers {
         (KinoPionier: Source) -> SourceData(title = Some("Federico Fellini: Słodkie życie"), releaseYear = Some(1960)),
         (KinoMuza: Source)        -> SourceData(title = Some("Federico Fellini SŁODKIE ŻYCIE"), releaseYear = Some(1960))))
 
-  // The settle keys a single-title cluster by `minSpelling` while
-  // `StoredMovieRecord.fromStorage` rebuilds the hydrate key by `displayTitle`;
-  // for a row whose cinema slots disagree on punctuation/casing those two pick
-  // DIFFERENT strings (the sanitize-equal "Federico Fellini: Słodkie życie" vs
-  // "…SŁODKIE ŻYCIE"). That disagreement is harmless on its own — the fix is that
-  // a sanitize-equal re-key must not be treated as a rating-input change.
+  // `FilmCanonicalizer.canonical` and `StoredMovieRecord.fromStorage` now BOTH key a
+  // row by `displayTitle`, so for a decorated row whose cinema slots disagree on
+  // punctuation/casing ("Federico Fellini: Słodkie życie" vs "…SŁODKIE ŻYCIE") they
+  // pick the EXACT same string — the settle no longer re-keys it at all. (Before the
+  // unification the settle keyed on `minSpelling`, which disagreed, so every
+  // hydrate/settle re-keyed + re-kicked ratings: the per-deploy flap.)
   "FilmCanonicalizer.canonical vs fromStorage" should
-    "differ only by a sanitize-equal re-spelling for a decorated row (so the re-key must not re-kick ratings)" in {
+    "pick the EXACT same key for a decorated row (both key on displayTitle, so the settle never re-keys)" in {
     val record    = felliniRecord
     val recovered = StoredMovieRecord.fromStorage(StoredMovieRecord.idFor("Federico Fellini: Słodkie życie", Some(1960)), record)
     val storedKey = CacheKey(recovered.title, recovered.year)
     val (canonicalKey, _) = FilmCanonicalizer.canonical(Seq(storedKey -> record))
-    TitleNormalizer.sanitize(canonicalKey.cleanTitle) shouldBe TitleNormalizer.sanitize(storedKey.cleanTitle)
+    canonicalKey shouldBe storedKey
   }
 
   "canonicalizeBySanitize" should
