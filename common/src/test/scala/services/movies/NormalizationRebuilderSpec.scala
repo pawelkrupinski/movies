@@ -246,4 +246,38 @@ class NormalizationRebuilderSpec extends AnyFlatSpec with Matchers {
     reEnriched should contain (aabKey.cleanTitle)
     reEnriched should not contain (zzzKey.cleanTitle)
   }
+
+  /** Records every metric increment so a rebuild's merge/split counts can be
+   *  asserted — the same victims/fragments convention the runtime folds use. */
+  private class RecordingMetrics extends MergeMetrics with SplitMetrics {
+    var merges = List.empty[(MergeReason, Int)]
+    var splits = List.empty[Int]
+    def recordMerge(reason: MergeReason, victims: Int): Unit = merges ::= (reason -> victims)
+    def recordSplit(fragments: Int): Unit                    = splits ::= fragments
+  }
+
+  "rebuild" should "record a normalize-rebuild merge of one victim when two rows fold together" in {
+    val metrics = new RecordingMetrics
+    val cache   = staleCache()  // two rows that now key the same
+
+    new NormalizationRebuilder(cache, mergeMetrics = metrics, splitMetrics = metrics).rebuild()
+
+    metrics.merges shouldBe List(MergeReason.NormalizeRebuild -> 1)
+    metrics.splits.filter(_ > 0) shouldBe empty
+  }
+
+  it should "record a split of one fragment when a bundled row un-merges into two" in {
+    val metrics = new RecordingMetrics
+    val cache   = new CaffeineMovieCache(disabledRepository)
+    cache.put(cache.keyOf("Anora", None), MovieRecord(
+      tmdbId = Some(111),
+      data   = Map[Source, SourceData](
+        CinemaCityKinepolis -> SourceData(title = Some("Anora"),      rawTitle = Some("Anora")),
+        Multikino           -> SourceData(title = Some("Other Film"), rawTitle = Some("Other Film")))))
+
+    new NormalizationRebuilder(cache, mergeMetrics = metrics, splitMetrics = metrics).rebuild()
+
+    metrics.splits shouldBe List(1)               // 1→2 split = one new row
+    metrics.merges.filter(_._2 > 0) shouldBe empty
+  }
 }

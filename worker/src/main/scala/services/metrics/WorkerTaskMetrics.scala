@@ -4,7 +4,7 @@ import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
-import services.movies.{MergeMetrics, MergeReason}
+import services.movies.{MergeMetrics, MergeReason, SplitMetrics}
 import services.readmodel.ReadModelProjectionMetrics
 import services.staging.StagingStep
 import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState, TaskType}
@@ -61,7 +61,7 @@ object TaskObserver {
  * gauges are refreshed from a `QueueSnapshot` each `scrape()`.
  */
 class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new PrometheusRegistry())
-  extends TaskObserver with MergeMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics {
+  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics {
   import WorkerTaskMetrics._
 
   // The client auto-appends `_total` to counter names, so they're declared without it.
@@ -139,8 +139,13 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
 
   private val merges = Counter.builder()
     .name("kinowo_worker_merges")
-    .help("Movie rows folded into another row since boot (one per victim absorbed; a cluster of N counts N−1), by reason — canonicalize=periodic same-film settle/rehydrate fold, resolved-settle=TMDB-resolve year fold, tmdb-identity=runtime same-tmdbId put-gate. Each fold orphans the victim's title|year freshness, so rate() is the re-key re-enrichment load.")
+    .help("Movie rows folded into another row since boot (one per victim absorbed; a cluster of N counts N−1), by reason — canonicalize=periodic same-film settle/rehydrate fold, resolved-settle=TMDB-resolve year fold, tmdb-identity=runtime same-tmdbId put-gate, normalize-rebuild=title-rule change re-merges rows that now share a key. Each fold orphans the victim's title|year freshness, so rate() is the re-key re-enrichment load.")
     .labelNames("reason")
+    .register(registry)
+
+  private val splits = Counter.builder()
+    .name("kinowo_worker_splits")
+    .help("New movie rows spawned by un-merging since boot (a 1→N split counts N−1) — the inverse of a merge. Only a title-rule change (NormalizeRebuild) re-keys a row's slots onto distinct keys; each split-off is born fresh (no tmdbId) and re-resolves, so rate() is the un-merge re-enrichment load. Pairs with kinowo_worker_merges_total{reason=\"normalize-rebuild\"}.")
     .register(registry)
 
   private val readModelWrites = Counter.builder()
@@ -172,6 +177,7 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     QueueStates.foreach(s => queueDepth.labelValues(s).set(0.0))
     StagingStep.all.foreach(s => stagingMovies.labelValues(s.label).set(0.0))
     MergeReason.all.foreach(r => merges.labelValues(r.label))
+    splits.inc(0.0) // materialize the single series at 0 so Grafana draws a continuous line
     ReadModelProjectionMetrics.Targets.foreach(t =>
       ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(t, o)))
     readModelFilmsPruned.inc(0.0) // materialize the single series at 0 so Grafana draws a continuous line
@@ -186,6 +192,10 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
   /** Each absorbed victim row is one increment under its fold's reason. */
   def recordMerge(reason: MergeReason, victims: Int): Unit =
     if (victims > 0) merges.labelValues(reason.label).inc(victims.toDouble)
+
+  /** Each new row spawned by an un-merge is one increment (a 1→N split = N−1). */
+  def recordSplit(fragments: Int): Unit =
+    if (fragments > 0) splits.inc(fragments.toDouble)
 
   // ── ReadModelProjectionMetrics ──────────────────────────────────────────────
   def recordWrite(target: String, op: String, count: Int): Unit =

@@ -29,7 +29,12 @@ class NormalizationRebuilder(
   // so the worker can re-resolve its TMDB id + ratings (typically by publishing
   // MovieDetailsComplete). No-op by default (tests, web). Exposes primitives, not
   // the package-private CacheKey, so the composition root can wire it.
-  onSplitOff: (String, Option[Int]) => Unit = (_, _) => ()
+  onSplitOff: (String, Option[Int]) => Unit = (_, _) => (),
+  // Prometheus sinks so a rule-change re-merge / un-merge wave shows on the same
+  // panels as the runtime folds (merges by reason `normalize-rebuild`, plus the
+  // splits counter). No-op for web / unit tests.
+  mergeMetrics: MergeMetrics = MergeMetrics.noop,
+  splitMetrics: SplitMetrics = SplitMetrics.noop
 ) extends Logging {
   import NormalizationRebuilder._
 
@@ -91,15 +96,23 @@ class NormalizationRebuilder(
     byKey.foreach { case (key, fs) =>
       val merged = MovieRecordMerge.unionAll(fs.map(_.record))
       if (!cache.get(key).contains(merged)) { cache.put(key, merged); changed += 1 }
-      if (fs.map(_.from).distinct.sizeIs > 1)
+      val sources = fs.map(_.from).distinct
+      if (sources.sizeIs > 1) {
         merges += MergeEvent(merged.displayTitle(key.cleanTitle), key.year,
           fs.flatMap(_.record.cinemaTitles).distinct.sorted)
+        // One increment per source row absorbed beyond the survivor — the same
+        // victims-counting convention as the runtime folds.
+        mergeMetrics.recordMerge(MergeReason.NormalizeRebuild, sources.size - 1)
+      }
       if (merged.tmdbId.isEmpty && fs.exists(_.fresh)) onSplitOff(key.cleanTitle, key.year)
     }
 
     val splits = frags.groupBy(_.from).iterator.collect {
       case (from, fs) if fs.map(_.key).distinct.sizeIs > 1 =>
-        SplitEvent(from.cleanTitle, fs.map(f => f.record.displayTitle(f.key.cleanTitle)).distinct.sorted)
+        val into = fs.map(f => f.record.displayTitle(f.key.cleanTitle)).distinct.sorted
+        // Count the new rows spawned beyond the remnant (a 1→N split = N−1).
+        splitMetrics.recordSplit(fs.map(_.key).distinct.size - 1)
+        SplitEvent(from.cleanTitle, into)
     }.toSeq
 
     val result = RebuildResult(changed, merges.toSeq, splits)

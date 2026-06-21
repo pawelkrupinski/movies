@@ -25,8 +25,13 @@ object MergeReason {
    *  with an existing one; the runtime identity gate folds the lower-rank loser
    *  into the canonical at `put` time, before any settle pass. */
   case object TmdbIdentity   extends MergeReason { val label = "tmdb-identity"   }
+  /** `NormalizationRebuilder.rebuild` — a title-rule change re-keys existing rows
+   *  and several now share a merge key, so the rebuild unions them into one. The
+   *  retroactive (rule-driven) counterpart to the runtime folds above; pairs with
+   *  the splits counter, which records the un-merge half of the same rebuild. */
+  case object NormalizeRebuild extends MergeReason { val label = "normalize-rebuild" }
 
-  val all: Seq[MergeReason] = Seq(Canonicalize, ResolvedSettle, TmdbIdentity)
+  val all: Seq[MergeReason] = Seq(Canonicalize, ResolvedSettle, TmdbIdentity, NormalizeRebuild)
 }
 
 /**
@@ -44,4 +49,23 @@ trait MergeMetrics {
 
 object MergeMetrics {
   val noop: MergeMetrics = (_, _) => ()
+}
+
+/**
+ * Sink for movie-row SPLIT counts — the inverse of a merge. A title-rule change
+ * can re-key a row's cinema slots onto several distinct keys, so
+ * `NormalizationRebuilder.rebuild` un-merges it into N rows; this counts the new
+ * rows spawned (a 1→N split counts N−1). Each split-off is born fresh (no
+ * tmdbId) and re-enters resolution, so `rate(kinowo_worker_splits_total)` is the
+ * un-merge re-enrichment load — the counterpart to merges. Splits arise only
+ * from a rebuild (no runtime path divides a row), so this is unlabelled. The
+ * worker wires the Prometheus-backed [[services.metrics.WorkerTaskMetrics]]; web
+ * and unit tests use [[noop]].
+ */
+trait SplitMetrics {
+  def recordSplit(fragments: Int): Unit
+}
+
+object SplitMetrics {
+  val noop: SplitMetrics = _ => ()
 }

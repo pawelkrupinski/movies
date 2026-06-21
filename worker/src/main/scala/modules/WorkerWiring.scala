@@ -305,7 +305,8 @@ class WorkerWiring extends play.api.Logging {
   // arrives over the change stream, re-merge existing records so the rule applies
   // retroactively, not just to future scrapes.
   lazy val normalizationRebuilder = new NormalizationRebuilder(movieCache,
-    onSplitOff = (title, year) => eventBus.publish(MovieDetailsComplete(title, year)))
+    onSplitOff = (title, year) => eventBus.publish(MovieDetailsComplete(title, year)),
+    mergeMetrics = taskMetrics, splitMetrics = taskMetrics)
   lazy val normalizationReportRepository: NormalizationReportRepository =
     new MongoNormalizationReportRepository(mongoConnection.database, fallbackToOwnInit = false)
   lazy val titleRulesRepository: TitleRulesRepository = new MongoTitleRulesRepository(mongoConnection.database, fallbackToOwnInit = false)

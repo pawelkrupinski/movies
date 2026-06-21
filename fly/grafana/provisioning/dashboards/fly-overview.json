@@ -297,14 +297,15 @@
     },
     {
       "id": 32,
-      "title": "Worker — movie-row merges by reason (per min)",
-      "description": "Rate of movie rows folded into another row per reason (kinowo_worker_merges_total — one increment per VICTIM absorbed; a cluster of N counts N−1). canonicalize=periodic same-film settle/rehydrate fold (cross-language same-tmdbId rows, or a ±year/spelling drift of one title); resolved-settle=a yearless stray absorbed when TMDB concludes a year; tmdb-identity=the runtime put-time same-tmdbId gate. Each fold abandons the victim's title|year key, orphaning its DETAIL freshness — so a canonicalize spike here precedes the EnrichDetails → ResolveTmdb re-enrichment cascade that throttled the worker on 2026-06-19.",
+      "title": "Worker — movie-row merges by reason & splits (per min)",
+      "description": "Rate of movie rows folded into another row per reason (kinowo_worker_merges_total — one increment per VICTIM absorbed; a cluster of N counts N−1). canonicalize=periodic same-film settle/rehydrate fold (cross-language same-tmdbId rows, or a ±year/spelling drift of one title); resolved-settle=a yearless stray absorbed when TMDB concludes a year; tmdb-identity=the runtime put-time same-tmdbId gate; normalize-rebuild=a title-rule change re-keys rows that now share a key and unions them. Each fold abandons the victim's title|year key, orphaning its DETAIL freshness — so a canonicalize spike here precedes the EnrichDetails → ResolveTmdb re-enrichment cascade that throttled the worker on 2026-06-19. The splits series (kinowo_worker_splits_total) is the inverse — rows a title-rule change un-merged, counted as new rows spawned (a 1→N split = N−1), each born fresh and re-resolving; normalize-rebuild merges are the re-merge half of a rebuild, splits the un-merge half.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 114 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10, "stacking": { "mode": "normal" } } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "sum by (reason) (rate(kinowo_worker_merges_total[$__rate_interval])) * 60", "legendFormat": "{{reason}}" }
+        { "refId": "A", "expr": "sum by (reason) (rate(kinowo_worker_merges_total[$__rate_interval])) * 60", "legendFormat": "{{reason}}" },
+        { "refId": "B", "expr": "sum(rate(kinowo_worker_splits_total[$__rate_interval])) * 60", "legendFormat": "splits" }
       ]
     },
     {

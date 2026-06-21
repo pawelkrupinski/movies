@@ -121,14 +121,30 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     m.recordMerge(MergeReason.Canonicalize, 2)
     m.recordMerge(MergeReason.Canonicalize, 1)
     m.recordMerge(MergeReason.TmdbIdentity, 1)
+    m.recordMerge(MergeReason.NormalizeRebuild, 2)
     m.recordMerge(MergeReason.ResolvedSettle, 0)  // a no-victim fold contributes nothing
 
     val out = m.scrape(emptySnapshot, noStaging, now)
 
     out should include ("""kinowo_worker_merges_total{reason="canonicalize"} 3""")
     out should include ("""kinowo_worker_merges_total{reason="tmdb-identity"} 1""")
+    out should include ("""kinowo_worker_merges_total{reason="normalize-rebuild"} 2""")
     // Seeded so the series exists from boot; the 0-victim call left it at 0.
     out should include ("""kinowo_worker_merges_total{reason="resolved-settle"} 0""")
+  }
+
+  it should "count movie-row splits, summing fragments and seeding the series to 0" in {
+    val m = new WorkerTaskMetrics(poolSize = 4)
+    m.recordSplit(2)  // a 1→3 un-merge spawned 2 new rows
+    m.recordSplit(1)
+    m.recordSplit(0)  // a no-fragment split contributes nothing
+
+    m.scrape(emptySnapshot, noStaging, now) should include ("kinowo_worker_splits_total 3")
+  }
+
+  it should "seed the splits series to 0 so it exists from boot" in {
+    val out = new WorkerTaskMetrics(poolSize = 4).scrape(emptySnapshot, noStaging, now)
+    out should include ("kinowo_worker_splits_total 0")
   }
 
   it should "observe the TMDB-resolved → first-rating-attempt delay per site, seeding all four" in {
