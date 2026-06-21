@@ -79,6 +79,15 @@ object Bilety24OrganizerClient {
   private val SlotPat = """(?s)Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*-""".r
   private val Fmt     = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
+  // Trailing programme-strand markers Forum Bolesławiec glues with an underscore:
+  // "_DKF" (Dyskusyjny Klub Filmowy), "_FKS" (Filmowy Klub Seniora).
+  private val ProgrammeTagSuffix = """(?i)_(?:DKF|FKS)\s*$""".r
+
+  /** Strip a trailing `_DKF`/`_FKS` programme tag the bilety24 portal glues to
+   *  the title, so the special-strand screening merges onto the regular run. */
+  private def stripProgrammeTag(title: String): String =
+    ProgrammeTagSuffix.replaceFirstIn(title, "").trim
+
   private case class RawSlot(title: String, dateTime: LocalDateTime, eventUrl: Option[String],
                             format: List[String])
 
@@ -93,7 +102,12 @@ object Bilety24OrganizerClient {
           // portal buries in the title — "Supergirl_dubbing", "…_3D" on Forum
           // Bolesławiec — is peeled so the variants merge into one film AND
           // surfaced as a `Showtime.format` badge instead of being discarded.
-          val (clean, format) = ScraperParse.extractFormatTags(m.group(1))
+          val (withTag, format) = ScraperParse.extractFormatTags(m.group(1))
+          // Forum Bolesławiec glues a programme-strand marker to the title the
+          // same way — "Monterey Pop_DKF", "…_FKS". These aren't format/version
+          // words, so extractFormatTags leaves them intact; peel the tag here so
+          // a DKF screening merges onto the same clean film as the regular run.
+          val clean = stripProgrammeTag(withTag)
           // The `Film:` anchor's href is the `/kino/<slug>` event page — kept
           // both as the slot's booking link and as the film's detail `filmUrl`.
           RawSlot(clean, dt, Option(a.attr("abs:href")).filter(_.nonEmpty), format)

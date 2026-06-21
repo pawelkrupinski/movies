@@ -103,4 +103,20 @@ class Bilety24OrganizerClientSpec
     movies.map(_.movie.title) shouldBe Seq("Supergirl")
     movies.head.showtimes.map(_.format).toSet shouldBe Set(List("DUB"), List("NAP"))
   }
+
+  // Forum Bolesławiec also glues a programme-strand marker with an underscore —
+  // "Monterey Pop_DKF" (Dyskusyjny Klub Filmowy), "…_FKS". Unlike the format
+  // words it carries no version meaning, so it must be stripped (not surfaced as
+  // a badge) — otherwise the DKF screening becomes its own "Monterey Pop_DKF"
+  // card instead of merging onto the regular "Monterey Pop" run.
+  it should "strip a trailing _DKF/_FKS programme tag so the screening merges onto the clean title" in {
+    val html =
+      """<html><body>
+        |<a href="/kino/1-monterey-pop-10?id=1" title="Film: Monterey Pop_DKF - 2026-06-29 19:00 - Bolesławiec">buy</a>
+        |<a href="/kino/1-monterey-pop-11?id=2" title="Film: Monterey Pop - 2026-06-30 20:00 - Bolesławiec">buy</a>
+        |</body></html>""".stripMargin
+    val movies = Bilety24OrganizerClient.parse(html, KinoForumBoleslawiec)
+    movies.map(_.movie.title) shouldBe Seq("Monterey Pop")
+    movies.head.showtimes.map(_.format).toSet shouldBe Set(List.empty[String])
+  }
 }

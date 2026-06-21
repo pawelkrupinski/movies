@@ -4203,6 +4203,7 @@ cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/monterey-pop-seans-przedpremierowy-w-rocznice-koncertu/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157446
 cinemaScrapes:
+  Forum / Monterey Pop / —
   Gdyńskie Centrum Filmowe / Monterey Pop / —
   KINOMUZEUM / Monterey Pop / 1967
   Kino 60 Krzeseł / Monterey Pop / —
