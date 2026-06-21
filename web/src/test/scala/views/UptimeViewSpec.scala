@@ -87,14 +87,18 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
     out.indexOf("""id="filmweb-fallback"""") should be < out.indexOf("<h2>Cinemas</h2>")
   }
 
-  it should "show only the most recent history event, with the full history in the hover title" in {
+  it should "show only the most recent history event, with the full history in an instant hover tooltip" in {
     val fallback = FallbackRow("Kino Praha", "2180", "1 Jan 12:00", "down",
       2, "1 Jan 13:00", Seq("evt-recent", "evt-older"))
     val out = views.html.uptime(
       Seq.empty, Seq.empty, Seq(fallback), Nil, Nil, Nil).body
 
-    out should include (">evt-recent</td>")   // only the newest event is the visible cell text
-    out should include ("evt-older")           // the older event survives — in the hover title …
-    out should not include (">evt-older")      // … never as visible cell text
+    out should include (">evt-recent</span>")  // only the newest event is the visible cell text
+    // The full history rides a data-full CSS tooltip (instant on :hover), not the
+    // slow native title attribute.
+    out should include ("data-full=")
+    out should not include ("title=\"evt-recent")
+    out should include ("evt-older")            // the older event survives — in the hover tooltip …
+    out should not include (">evt-older")       // … never as visible cell text
   }
 }

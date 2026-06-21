@@ -97,10 +97,19 @@
     .leading-fallback td.reason { white-space: normal; color: #999; }
     .leading-fallback .gold { color: #c9962b; }
     /* History shows only the most recent event, truncated at the column fold; the
-       full history (newest-first) is in the cell's title tooltip on hover. */
-    .leading-fallback .hist {
-      color: #777; font-size: 11px; max-width: 320px;
+       full history (newest-first) pops INSTANTLY on hover via a CSS tooltip — the
+       native title attribute's ~1s delay was too slow. Truncation lives on the
+       inner span so the absolutely-positioned tooltip isn't clipped by the cell. */
+    .leading-fallback .hist { position: relative; max-width: 320px; }
+    .leading-fallback .hist-text {
+      display: block; color: #777; font-size: 11px;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .leading-fallback .hist[data-full]:hover::after {
+      content: attr(data-full); position: absolute; left: 0; top: 100%; z-index: 50;
+      margin-top: 3px; padding: 4px 8px; background: #1a1a1a; border: 1px solid #333;
+      border-radius: 4px; font-size: 11px; color: #ddd; white-space: pre;
+      pointer-events: none;
     }
 
     #overlay {
@@ -167,7 +176,7 @@
             <td>@r.fails</td>
             <td>@r.nextProbe</td>
             <td class="reason">@r.reason</td>
-            <td class="hist" title="@{r.history.mkString("\n")}">@{r.history.headOption.getOrElse("—")}</td>
+            <td class="hist" data-full="@{r.history.mkString("\n")}"><span class="hist-text">@{r.history.headOption.getOrElse("—")}</span></td>
           </tr>
         }
       </table>
