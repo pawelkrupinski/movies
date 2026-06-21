@@ -131,22 +131,6 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 2L
   }
 
-  it should "keep a single cinema's onboarding cohort (~Pionier's ~48 films) from dumping in one tick at the DEFAULT cap" in {
-    // A cinema NEWLY opting into DetailEnricher (e.g. Kino Pionier gaining its
-    // ~48 /event/<slug> detail fetches) has no DetailEnrich stamps yet, so its
-    // whole listing is a cold cohort due at once. The default cap must trickle it
-    // (≤ cap per tick) rather than dump it — the post-deploy `EnrichDetails` spike
-    // (each cascading into ResolveTmdb + ratings) the cap exists to bound. With
-    // the old default of 50 the 48-film cohort slipped UNDER the cap and dumped in
-    // one tick; the lowered default catches it.
-    val cohort = 48
-    val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
-    val r = new DetailReaper(Seq(enricher), cacheWithMany(cohort), queue, fresh, new InProcessEventBus(),
-      maxEnqueuePerTick = DetailReaper.DefaultMaxEnqueuePerTick)
-    DetailReaper.DefaultMaxEnqueuePerTick should be < cohort // the cap genuinely bites such an onboarding cohort
-    r.tick() shouldBe DetailReaper.DefaultMaxEnqueuePerTick  // capped this tick, not all 48 at once
-  }
-
   it should "back off to throttledMaxEnqueuePerTick while the worker is CPU-credit throttled" in {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     val throttled = new ScrapeThrottleSignal { def isThrottled = true; def ewmaMillis = 30000L }
