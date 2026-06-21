@@ -177,4 +177,23 @@ object DetailReaper {
    *  spikes on the `kinowo_worker_tasks` panel). The walk is a cheap in-memory
    *  corpus scan, so the finer cadence costs little. */
   val DefaultTickInterval: FiniteDuration = 1.minute
+
+  /** Default per-tick enqueue cap — the bound on a COLD cohort's burst (every
+   *  never-fresh row is due at once: `DueWindow.isDue` returns true with no
+   *  last-fetch stamp, so the phase spread can't smear them). A cold cohort is
+   *  exactly an onboarding wave (a cinema NEWLY opting into `DetailEnricher`, so
+   *  none of its films have a `DetailEnrich` stamp yet — e.g. Kino Pionier's ~48
+   *  `/event/<slug>` films) or a re-key / title-rule wave that orphans a batch's
+   *  stamps at once.
+   *
+   *  Kept the LOWEST of the reaper caps (scrape is 25) because detail is the most
+   *  AMPLIFYING: each `EnrichDetails` that lands cascades into a `ResolveTmdb` and
+   *  then a fan of rating tasks, so a burst here multiplies ~5× downstream and is
+   *  what pins the shared-CPU credit. At 10/tick (1min) a ~48-film onboarding
+   *  trickles over ~5min instead of dumping in one tick (the `EnrichDetails` spike
+   *  on the `kinowo_worker_tasks` panel). Day-to-day new films don't wait on this
+   *  trickle — they're enqueued promptly by the event-driven [[DetailTaskEnqueuer]]
+   *  (off `CinemaMovieAdded`), which the cap doesn't touch; only cold cohorts do.
+   *  Flippable live via `KINOWO_DETAIL_MAX_ENQUEUE_PER_TICK`. */
+  val DefaultMaxEnqueuePerTick: Int = 10
 }
