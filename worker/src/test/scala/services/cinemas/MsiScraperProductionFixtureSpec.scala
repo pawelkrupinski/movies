@@ -6,11 +6,11 @@ import org.scalatest.matchers.should.Matchers
 
 import scala.io.{Codec, Source}
 
-/** Fixture-replay coverage proving the release year mined from the
- *  `RepertoireEvents` Description survives end-to-end through
+/** Fixture-replay coverage proving the release year + original title mined from
+ *  the `RepertoireEvents` Description survive end-to-end through
  *  `MsiScraper.parseMonthWithYear` for a real recorded Zamek Szczecin month
- *  page. The director-only parse left the year `None`, so same-title films fell
- *  to titleOnly TMDB resolution; the production-line parse fixes that. Lives in
+ *  page. The director-only parse left these `None`, so same-title films fell to
+ *  titleOnly TMDB resolution; the production-line parse fixes that. Lives in
  *  `services.cinemas` to reach the package-private `MsiScraper`. */
 class MsiScraperProductionFixtureSpec extends AnyFlatSpec with Matchers with OptionValues {
 
@@ -32,15 +32,17 @@ class MsiScraperProductionFixtureSpec extends AnyFlatSpec with Matchers with Opt
 
   private val movies = MsiScraper.toMovies(slots, models.KinoZamekSzczecin)
 
-  "MsiScraper" should "carry the release year for a foreign film" in {
+  "MsiScraper" should "carry the release year + original title for a foreign film" in {
     // Description: "(Casablanca, USA 1942, 102’) ... REŻYSERIA: Michael Curtiz"
     val casablanca = movies.find(_.movie.title.toUpperCase.startsWith("CASABLANCA")).value
     casablanca.movie.releaseYear shouldBe Some(1942)
+    casablanca.movie.originalTitle shouldBe Some("Casablanca")
   }
 
-  it should "carry the release year for a Polish film (paren opens on the country)" in {
-    // Description: "(Polska 1976, 153’) ..."
+  it should "carry the release year and leave the original title empty for a Polish film" in {
+    // Description: "(Polska 1976, 153’) ..." — paren opens on the country.
     val czlowiek = movies.find(_.movie.title.toUpperCase.contains("CZŁOWIEK Z MARMURU")).value
     czlowiek.movie.releaseYear shouldBe Some(1976)
+    czlowiek.movie.originalTitle shouldBe None
   }
 }

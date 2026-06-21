@@ -66,21 +66,43 @@ private[cinemas] object MsiScraper {
   private val DirectorLinePat = """(?iu)(?:^|<br>)\s*re[żz]yser(?:ia|a)\s*:?\s*([^<]+)""".r
 
   // The "production line" parenthetical the art-house portals (Zamek/…) emit in
-  // a Description, from which we take the YEAR:
-  //   foreign:    `(Casablanca, USA 1942, 102’)`            → year 1942
-  //   polish:     `(Polska 1976, 153’)`                     → year 1976
-  //   multi-país: `(Kanada/USA/Wielka Brytania 2001, 117’)` → year 2001
-  //   two-país:   `(USA, Japonia 1989, 110 min.)`           → year 1989
+  // a Description: `( [OriginalTitle, ] Country[, /Country…] YEAR [, runtime'] )`.
+  //   foreign:    `(Casablanca, USA 1942, 102’)`            → orig "Casablanca", year 1942
+  //   polish:     `(Polska 1976, 153’)`                     → no orig,           year 1976
+  //   multi-país: `(Kanada/USA/Wielka Brytania 2001, 117’)` → no orig,           year 2001
+  //   two-país:   `(USA, Japonia 1989, 110 min.)`           → no orig,           year 1989
   // The year is required to be preceded by a country WORD (letters) so a bare
   // biographical paren like `(1869-1939)` or a lone `(2017)` can't false-match.
-  // Group 1 consumes any text before the country/year group (unused — we don't
-  // mine an original title; see parseDescriptionProduction); group 2 = the year.
+  // Group 1 = the text before the last country (an optional original-title prefix,
+  // possibly with leading countries); group 2 = the 4-digit year.
   private val ProductionLinePat =
     """(?u)\(([^()]*?)[\p{L}/. ]+\s((?:19|20)\d{2})(?=\s*[,)])""".r
 
+  // Country names (and the abbreviations) that show up in MSI production lines,
+  // lower-cased. Used to strip a leading country out of the original-title prefix:
+  // `(USA, Japonia 1989)` has no original title — "USA" is the first of two
+  // countries, not a title — whereas `(Casablanca, USA 1942)` does. Telling them
+  // apart structurally is impossible (both are "X, Y YEAR"), so we test against
+  // this set. Not exhaustive — an unlisted country merely risks re-surfacing the
+  // leak for that one film, never a wrong YEAR.
+  private val Countries: Set[String] = Set(
+    "usa", "polska", "niemcy", "rfn", "nrd", "francja", "włochy", "hiszpania",
+    "wielka brytania", "anglia", "kanada", "japonia", "zsrr", "rosja", "czechy",
+    "czechosłowacja", "słowacja", "austria", "szwajcaria", "szwecja", "norwegia",
+    "dania", "finlandia", "holandia", "niderlandy", "belgia", "irlandia",
+    "australia", "nowa zelandia", "chiny", "korea", "korea południowa", "indie",
+    "brazylia", "argentyna", "meksyk", "węgry", "rumunia", "bułgaria", "grecja",
+    "turcja", "portugalia", "islandia", "izrael", "iran", "ukraina", "jugosławia",
+    "chorwacja", "serbia", "luksemburg", "estonia", "litwa", "łotwa", "rpa",
+    "egipt", "tajwan", "hongkong", "wietnam", "tajlandia", "kuba", "chile",
+    "kolumbia", "gruzja", "armenia", "kazachstan", "katar")
+
+  private def isCountry(s: String): Boolean = Countries.contains(s.trim.toLowerCase(java.util.Locale.ROOT))
+
   private[cinemas] case class FilmMeta(director: Seq[String] = Seq.empty,
-                                       releaseYear: Option[Int] = None) {
-    def nonEmpty: Boolean = director.nonEmpty || releaseYear.isDefined
+                                       releaseYear: Option[Int] = None,
+                                       originalTitle: Option[String] = None) {
+    def nonEmpty: Boolean = director.nonEmpty || releaseYear.isDefined || originalTitle.isDefined
   }
 
   private[cinemas] case class RawSlot(title: String, rawTitle: String, dateTime: LocalDateTime,
@@ -88,9 +110,9 @@ private[cinemas] object MsiScraper {
                                       meta: FilmMeta = FilmMeta())
 
   /** Map every `RepertoireEvents` entry's name → the metadata mined from its
-   *  `Description` (director, release year). Entries whose Description yields
-   *  nothing are omitted. The name is matched against the rendered block's
-   *  (Jsoup-decoded) title attr. */
+   *  `Description` (director, release year, original title). Entries whose
+   *  Description yields nothing are omitted. The name is matched against the
+   *  rendered block's (Jsoup-decoded) title attr. */
   private[cinemas] def metaByName(html: String): Map[String, FilmMeta] =
     JsObjectPat.findAllMatchIn(html).flatMap { obj =>
       val block = obj.matched
@@ -101,23 +123,41 @@ private[cinemas] object MsiScraper {
       } yield name -> meta
     }.toMap
 
-  /** All structured metadata mined from a Description: director + release year. */
-  private[cinemas] def parseDescriptionMeta(description: String): FilmMeta =
-    FilmMeta(parseDescriptionDirector(description), parseDescriptionProduction(description))
+  /** All structured metadata mined from a Description: director, release year,
+   *  and original title (when the production line carries one). */
+  private[cinemas] def parseDescriptionMeta(description: String): FilmMeta = {
+    val (year, originalTitle) = parseDescriptionProduction(description)
+    FilmMeta(parseDescriptionDirector(description), year, originalTitle)
+  }
 
-  /** Release year from a Description's production-line parenthetical — the
-   *  4-digit number that follows the country word(s). `None` when there's no
-   *  production line (kids-film synopses and other Descriptions carry none).
+  /** Release year + original title from a Description's production-line
+   *  parenthetical. The year is the 4-digit number that follows the country
+   *  word(s); the original title is the comma-terminated prefix before them.
    *
-   *  We deliberately do NOT mine an original title here: the comma-separated
-   *  prefix before the year is ambiguous between a real title and a leading
-   *  country — `(Casablanca, USA 1942)` (title) vs `(USA, Japonia 1989)` (two
-   *  countries) — and can't be told apart without a country list, so a
-   *  multi-country film like Jarmusch's "Mystery Train" wrongly yielded
-   *  originalTitle "USA". MSI's listed title is already the Polish display title,
-   *  so the original title adds little; the unambiguous year is the useful part. */
-  private[cinemas] def parseDescriptionProduction(description: String): Option[Int] =
-    ProductionLinePat.findFirstMatchIn(description).flatMap(m => Try(m.group(2).toInt).toOption)
+   *  That prefix is ambiguous: `(Casablanca, USA 1942)` carries a title, but
+   *  `(USA, Japonia 1989)` opens on the first of two countries — both look like
+   *  "X, Y YEAR". So we strip any trailing country tokens off the prefix (the
+   *  ones sitting between a real title and the year-bearing country): what's left
+   *  is the original title, or nothing when the prefix was countries all the way
+   *  down. `(None, None)` when there's no production line at all. */
+  private[cinemas] def parseDescriptionProduction(description: String): (Option[Int], Option[String]) =
+    ProductionLinePat.findFirstMatchIn(description).map { m =>
+      val year = Try(m.group(2).toInt).toOption
+      // The candidate title is everything up to the last comma in the pre-year
+      // prefix (`Casablanca, ` → "Casablanca"; no comma → the paren opened on the
+      // country, so no title).
+      val prefix = m.group(1)
+      val originalTitle = prefix.lastIndexOf(',') match {
+        case -1 => None
+        case i  =>
+          // Drop trailing country tokens so "USA, Japonia" → nothing and
+          // "Mystery Train, USA" → "Mystery Train", while "Casablanca" stays.
+          val parts = prefix.substring(0, i).split(',').map(_.trim).filter(_.nonEmpty)
+          val titleParts = parts.reverse.dropWhile(isCountry).reverse
+          Some(titleParts.mkString(", ")).filter(_.nonEmpty)
+      }
+      (year, originalTitle)
+    }.getOrElse((None, None))
 
   /** Director names from a Description's `REŻYSERIA …` line — comma-split, with
    *  trailing sentence punctuation dropped. Empty when there's no director line
@@ -200,8 +240,9 @@ private[cinemas] object MsiScraper {
         CinemaMovie(
           movie     = Movie(
             title,
-            releaseYear = metas.flatMap(_.releaseYear).headOption,
-            rawTitle    = group.map(_.rawTitle).headOption
+            releaseYear   = metas.flatMap(_.releaseYear).headOption,
+            originalTitle = metas.flatMap(_.originalTitle).headOption,
+            rawTitle      = group.map(_.rawTitle).headOption
           ),
           cinema    = cinema,
           posterUrl = None,
