@@ -62,6 +62,15 @@ trait FreshnessStore {
    *  with nothing to load (in-memory, Mongo-less dev) are ready immediately. */
   def whenReady(kind: FreshnessKind): Future[Unit] = Future.unit
 
+  /** Non-blocking form of [[whenReady]]: are `kind`'s stamps loaded into the
+   *  mirror yet? A periodic reaper gates each scheduled tick on this so it never
+   *  reads a not-yet-hydrated mirror as "everything stale" and re-enqueues the
+   *  whole corpus on every boot. (ScrapeReaper instead *blocks* its first tick on
+   *  `whenReady` — equivalent intent, but the non-scrape reapers tick-and-skip so
+   *  the gate stays unit-testable without a held thread.) Derived, so impls only
+   *  define the Future. */
+  final def isReady(kind: FreshnessKind): Boolean = whenReady(kind).isCompleted
+
   def close(): Unit = ()
 }
 
@@ -100,6 +109,13 @@ class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessSto
   // boot hydrate hasn't reached its stamp yet. Completed by the scrape phase of
   // `hydrate`, or immediately when there's nothing to load (Mongo-less dev).
   private val scrapeReady = Promise[Unit]()
+  // The rest-phase signal (everything that ISN'T a scrape stamp — detail + rating
+  // stamps), completed once `loadRest` has run. The DetailReaper / EnrichmentReaper
+  // gate on this: those stamps hydrate AFTER the scrape phase, so without the gate
+  // their first post-deploy tick reads an empty mirror as "every detail/rating
+  // stale" and re-enqueues the whole corpus (each cascading downstream) on EVERY
+  // boot — the recurring per-deploy `EnrichDetails`/rating spike.
+  private val restReady = Promise[Unit]()
 
   coll match {
     case Some(c) =>
@@ -108,11 +124,12 @@ class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessSto
       thread.start()
     case None =>
       scrapeReady.trySuccess(())
+      restReady.trySuccess(())
   }
 
   override def whenReady(kind: FreshnessKind): Future[Unit] = kind match {
     case FreshnessKind.CinemaScrape => scrapeReady.future
-    case _                          => Future.unit
+    case _                          => restReady.future
   }
 
   override def lastFetchedAt(key: String): Option[Instant] = Option(mirror.get(key))
@@ -166,7 +183,8 @@ class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessSto
     MongoFreshnessStore.hydrateInPhases(
       loadScrape  = () => hydrateInto(c, Filters.eq("kind", scrapeLabel), 15.seconds, "scrape"),
       scrapeReady = scrapeReady,
-      loadRest    = () => { hydrateInto(c, Filters.ne("kind", scrapeLabel), 60.seconds, "enrichment"); () }
+      loadRest    = () => { hydrateInto(c, Filters.ne("kind", scrapeLabel), 60.seconds, "enrichment"); () },
+      restReady   = restReady
     )
   }
 
@@ -216,6 +234,10 @@ object MongoFreshnessStore {
     loadScrape:        () => Boolean,
     scrapeReady:       Promise[Unit],
     loadRest:          () => Unit,
+    // Completed once `loadRest` has run, gating the detail/rating reapers the way
+    // `scrapeReady` gates the ScrapeReaper. Defaulted so the existing scrape-phase
+    // tests that don't care about it stay terse; production always wires it.
+    restReady:         Promise[Unit] = Promise[Unit](),
     maxScrapeAttempts: Int = 5,
     retryDelay:        FiniteDuration = 5.seconds,
     sleep:             FiniteDuration => Unit = d => Thread.sleep(d.toMillis)
@@ -228,5 +250,5 @@ object MongoFreshnessStore {
         attempt += 1
         loaded = Try(loadScrape()).getOrElse(false)
       }
-    } finally { scrapeReady.trySuccess(()); loadRest() }
+    } finally { scrapeReady.trySuccess(()); try loadRest() finally restReady.trySuccess(()) }
 }

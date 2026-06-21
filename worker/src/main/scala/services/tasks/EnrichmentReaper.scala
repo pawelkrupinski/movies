@@ -113,6 +113,12 @@ class EnrichmentReaper(
    *  otherwise another machine is walking the corpus for this window, so skip.
    *  Package-private for tests. */
   private[tasks] def tickIfClaimed(): Int = {
+    // Same boot-hydrate gate as DetailReaper: the rating stamps load in the rest
+    // phase, so until they land an empty mirror reads as "every row's rating stale"
+    // and re-enqueues up to maxEnqueuePerTick rating tasks (×4 sources) on every
+    // deploy. All rating kinds share the one rest-hydrate signal, so any one of
+    // them answers "are the rating stamps loaded"; an in-memory store is ready now.
+    if (!freshness.isReady(FreshnessKind.ImdbRating)) return 0
     val key = OccurrenceKey.at("enrich-sweep", clock.millis(), tickInterval, 0.seconds)
     if (runStore.claim(key)) tick() else 0
   }

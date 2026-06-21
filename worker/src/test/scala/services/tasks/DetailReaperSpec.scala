@@ -164,6 +164,20 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 
+  it should "hold its tick (enqueue nothing) while the detail freshness mirror is still hydrating" in {
+    // A never-fresh film with a filmUrl is due. But the detail stamps hydrate in
+    // the rest phase, so until they land the reaper must NOT read the empty mirror
+    // as "every detail stale" and re-enqueue the whole deferred-detail corpus — the
+    // recurring per-deploy spike. It wins the claim yet holds until ready.
+    val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    val hydrating = new InMemoryFreshnessStore {
+      override def whenReady(kind: FreshnessKind): scala.concurrent.Future[Unit] = scala.concurrent.Promise[Unit]().future
+    }
+    new DetailReaper(Seq(enricher), cacheWith(Some("http://ref")), queue, hydrating, new InProcessEventBus(),
+      runStore = new InMemoryScheduledRunStore).tickIfClaimed() shouldBe 0
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
+  }
+
   // ── reapStuckPending: release detail-pending rows that can never complete ────
 
   "DetailReaper.reapStuckPending" should

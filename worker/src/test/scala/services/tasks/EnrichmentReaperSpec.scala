@@ -189,4 +189,19 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
       .tickIfClaimed() shouldBe 4
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 4L
   }
+
+  it should "hold its tick (enqueue nothing) while the rating freshness mirror is still hydrating" in {
+    // A resolved, never-refreshed row is eligible for all 4 sources → due. But the
+    // rating stamps hydrate in the rest phase, so while that's in progress the
+    // reaper must NOT read the empty mirror as "all stale" and re-enqueue the
+    // corpus — the recurring per-deploy rating spike. It wins the claim yet holds.
+    val cache = newCache(); val queue = new InMemoryTaskQueue
+    seedRow(cache, "Resolved")(_.copy(imdbId = Some("tt1"), tmdbId = Some(2)))
+    val hydrating = new InMemoryFreshnessStore {
+      override def whenReady(kind: FreshnessKind): scala.concurrent.Future[Unit] = scala.concurrent.Promise[Unit]().future
+    }
+    new EnrichmentReaper(cache, queue, hydrating, runStore = new InMemoryScheduledRunStore)
+      .tickIfClaimed() shouldBe 0
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
+  }
 }

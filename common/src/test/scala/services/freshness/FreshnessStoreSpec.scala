@@ -91,6 +91,35 @@ class FreshnessStoreSpec extends AnyFlatSpec with Matchers {
     new InMemoryFreshnessStore().whenReady(CinemaScrape).isCompleted shouldBe true
   }
 
+  "isReady" should "mirror whenReady's completion (gate for the detail/rating reapers)" in {
+    import scala.concurrent.{Future, Promise}
+    new InMemoryFreshnessStore().isReady(DetailEnrich) shouldBe true // nothing to hydrate
+    val stillHydrating = new InMemoryFreshnessStore {
+      override def whenReady(kind: FreshnessKind): Future[Unit] = Promise[Unit]().future
+    }
+    stillHydrating.isReady(DetailEnrich) shouldBe false
+  }
+
+  // The detail/rating stamps load in the REST phase, after the scrape phase. Their
+  // reapers gate on `restReady`, which must stay pending until `loadRest` has run —
+  // otherwise the first post-deploy tick reads the empty mirror as "all stale" and
+  // re-enqueues the whole corpus (the recurring per-deploy spike).
+  it should "signal rest-ready only AFTER loadRest has run" in {
+    import scala.concurrent.Promise
+    val scrapeReady = Promise[Unit]()
+    val restReady   = Promise[Unit]()
+    var sawRestPendingDuringLoad = false
+    MongoFreshnessStore.hydrateInPhases(
+      loadScrape  = () => true,
+      scrapeReady = scrapeReady,
+      loadRest    = () => { sawRestPendingDuringLoad = !restReady.future.isCompleted },
+      restReady   = restReady,
+      sleep       = _ => ()
+    )
+    sawRestPendingDuringLoad shouldBe true   // not signalled before the load finished
+    restReady.future.isCompleted shouldBe true // signalled once it did
+  }
+
   // Fix 2: the scrape stamps load first and signal readiness BEFORE the rest of
   // the (much larger) corpus hydrates, so the ScrapeReaper's gate opens off the
   // small scrape query, not behind thousands of detail/rating stamps.

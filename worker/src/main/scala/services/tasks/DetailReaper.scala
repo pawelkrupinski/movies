@@ -104,6 +104,15 @@ class DetailReaper(
    *  this window, so skip. Returns the number of detail tasks enqueued (0 when
    *  the claim was lost). Package-private so tests can drive it directly. */
   private[tasks] def tickIfClaimed(): Int = {
+    // Hold ALL ticks until the detail freshness stamps have hydrated from Mongo.
+    // They load in the rest phase (after the scrape stamps), so a tick against the
+    // not-yet-hydrated mirror reads every detail as never-fresh and re-enqueues the
+    // whole deferred-detail corpus — each cascading into ResolveTmdb + ratings — on
+    // EVERY deploy (the recurring post-deploy spike). The scrape analogue is
+    // ScrapeReaper.awaitReadyThenStart; an in-memory / Mongo-less store is ready at
+    // once. Skip reapStuckPending too: against an empty mirror its detailOutstanding
+    // check would wrongly release detail-pending rows whose detail is in fact fresh.
+    if (!freshness.isReady(FreshnessKind.DetailEnrich)) return 0
     val key = OccurrenceKey.at("detail", clock.millis(), tickInterval, 0.seconds)
     if (runStore.claim(key)) { val n = tick(); reapStuckPending(); n } else 0
   }
