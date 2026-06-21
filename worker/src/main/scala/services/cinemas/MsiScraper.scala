@@ -51,8 +51,10 @@ private[cinemas] object MsiScraper {
   // The MSI page also embeds full film metadata in a `var RepertoireEvents = [
   // {…} ]` JS array (one flat object per screening) that Jsoup doesn't surface.
   // Each object carries a `Name` (identical to the rendered block's `title`
-  // attribute) and a `Description` whose first line is the director. We mine the
-  // director out of there and join it back to the rendered blocks by name.
+  // attribute) and a free-text `Description`. There is no dedicated year /
+  // original-title field — that metadata, like the director, lives inside the
+  // Description prose. We mine all of it out of there and join it back to the
+  // rendered blocks by name.
   private val JsObjectPat = """(?s)\{[^{}]*\}""".r
   private val JsNamePat   = """'Name'\s*:\s*'((?:[^'\\]|\\.)*)'""".r
   private val JsDescPat   = """'Description'\s*:\s*'((?:[^'\\]|\\.)*)'""".r
@@ -63,22 +65,68 @@ private[cinemas] object MsiScraper {
   // "reżyserią" end past `(?:ia|a)` so prose like "w reżyserii X" won't match.
   private val DirectorLinePat = """(?iu)(?:^|<br>)\s*re[żz]yser(?:ia|a)\s*:?\s*([^<]+)""".r
 
+  // The "production line" parenthetical the art-house portals (Zamek/…) emit in
+  // a Description: `( [OriginalTitle, ] Country[/Country…] YEAR [, runtime'] )`.
+  //   foreign:    `(Casablanca, USA 1942, 102’)`   → orig "Casablanca", year 1942
+  //   polish:     `(Polska 1976, 153’)`            → no orig title,     year 1976
+  //   multi-país: `(Kanada/USA/Wielka Brytania 2001, 117’)` → no orig,  year 2001
+  // The year is required to be preceded by a country WORD (letters) so a bare
+  // biographical paren like `(1869-1939)` or a lone `(2017)` can't false-match.
+  // Group 1 = the text before the country/year group (possibly empty or a comma-
+  // terminated original-title prefix); group 2 = the 4-digit year.
+  private val ProductionLinePat =
+    """(?u)\(([^()]*?)[\p{L}/. ]+\s((?:19|20)\d{2})(?=\s*[,)])""".r
+
+  private[cinemas] case class FilmMeta(director: Seq[String] = Seq.empty,
+                                       releaseYear: Option[Int] = None,
+                                       originalTitle: Option[String] = None) {
+    def nonEmpty: Boolean = director.nonEmpty || releaseYear.isDefined || originalTitle.isDefined
+  }
+
   private[cinemas] case class RawSlot(title: String, rawTitle: String, dateTime: LocalDateTime,
                                       booking: Option[String], format: List[String],
-                                      director: Seq[String] = Seq.empty)
+                                      meta: FilmMeta = FilmMeta())
 
-  /** Map every `RepertoireEvents` entry's name → its director list, mined from
-   *  the entry's `Description`. Names with no director line are omitted. The
-   *  name is matched against the rendered block's (Jsoup-decoded) title attr. */
-  private[cinemas] def directorsByName(html: String): Map[String, Seq[String]] =
+  /** Map every `RepertoireEvents` entry's name → the metadata mined from its
+   *  `Description` (director, release year, original title). Entries whose
+   *  Description yields nothing are omitted. The name is matched against the
+   *  rendered block's (Jsoup-decoded) title attr. */
+  private[cinemas] def metaByName(html: String): Map[String, FilmMeta] =
     JsObjectPat.findAllMatchIn(html).flatMap { obj =>
       val block = obj.matched
       for {
         name <- JsNamePat.findFirstMatchIn(block).map(m => unescapeJs(m.group(1)))
         desc <- JsDescPat.findFirstMatchIn(block).map(m => unescapeJs(m.group(1)))
-        dirs = parseDescriptionDirector(desc) if dirs.nonEmpty
-      } yield name -> dirs
+        meta = parseDescriptionMeta(desc) if meta.nonEmpty
+      } yield name -> meta
     }.toMap
+
+  /** All structured metadata mined from a Description: director, release year,
+   *  and original title (when the production line carries one). */
+  private[cinemas] def parseDescriptionMeta(description: String): FilmMeta = {
+    val (year, originalTitle) = parseDescriptionProduction(description)
+    FilmMeta(parseDescriptionDirector(description), year, originalTitle)
+  }
+
+  /** Release year + original title from a Description's production-line
+   *  parenthetical. The year is the 4-digit number that follows the country
+   *  word(s); the original title is the comma-terminated prefix before them,
+   *  present only for foreign films (Polish films open the paren with the
+   *  country, so there's no leading title). `(None, None)` when there's no
+   *  production line (kids-film synopses and other Descriptions carry none). */
+  private[cinemas] def parseDescriptionProduction(description: String): (Option[Int], Option[String]) =
+    ProductionLinePat.findFirstMatchIn(description).map { m =>
+      val year = Try(m.group(2).toInt).toOption
+      // The original title is everything up to (and including) the last comma in
+      // the pre-year prefix — `Casablanca, ` → "Casablanca". No comma means the
+      // paren opened on the country (Polish / multi-country film) → no title.
+      val prefix = m.group(1)
+      val originalTitle = prefix.lastIndexOf(',') match {
+        case -1 => None
+        case i  => Some(prefix.substring(0, i).trim).filter(_.nonEmpty)
+      }
+      (year, originalTitle)
+    }.getOrElse((None, None))
 
   /** Director names from a Description's `REŻYSERIA …` line — comma-split, with
    *  trailing sentence punctuation dropped. Empty when there's no director line
@@ -109,14 +157,14 @@ private[cinemas] object MsiScraper {
   def parseMonthWithYear(html: String, yearMonth: YearMonth, baseUrl: String,
                          cleanTitle: String => (String, List[String])): Seq[RawSlot] = {
     val document = Jsoup.parse(html, baseUrl)
-    val directors = directorsByName(html)
+    val metaByName0 = metaByName(html)
     document.select("div.movies-movie__single").asScala.toSeq.flatMap { movieDiv =>
       val rawTitle = Option(movieDiv.selectFirst(".movies-movie__single__title"))
         .map(_.attr("title").trim)
         .filter(_.nonEmpty)
         .getOrElse("")
       val (title, format) = cleanTitle(rawTitle)
-      val director = directors.getOrElse(rawTitle, Seq.empty)
+      val meta = metaByName0.getOrElse(rawTitle, FilmMeta())
       if (title.isEmpty) Seq.empty
       else {
         // Only the desktop showtime list — the mobile duplicate has no extra `d-none`
@@ -130,7 +178,7 @@ private[cinemas] object MsiScraper {
             val text    = a.text.trim
             val href    = a.attr("abs:href")
             val booking = if (href.nonEmpty) Some(href) else None
-            parseEventTime(text, yearMonth).map { dt => RawSlot(title, rawTitle, dt, booking, format, director) }
+            parseEventTime(text, yearMonth).map { dt => RawSlot(title, rawTitle, dt, booking, format, meta) }
           }
         }
       }
@@ -157,14 +205,20 @@ private[cinemas] object MsiScraper {
   def toMovies(slots: Seq[RawSlot], cinema: Cinema): Seq[CinemaMovie] =
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, format = s.format)) {
       (title, group, showtimes) =>
+        val metas = group.map(_.meta)
         CinemaMovie(
-          movie     = Movie(title, rawTitle = group.map(_.rawTitle).headOption),
+          movie     = Movie(
+            title,
+            releaseYear   = metas.flatMap(_.releaseYear).headOption,
+            originalTitle = metas.flatMap(_.originalTitle).headOption,
+            rawTitle      = group.map(_.rawTitle).headOption
+          ),
           cinema    = cinema,
           posterUrl = None,
           filmUrl   = None,
           synopsis  = None,
           cast      = Seq.empty,
-          director  = group.map(_.director).find(_.nonEmpty).getOrElse(Seq.empty),
+          director  = metas.map(_.director).find(_.nonEmpty).getOrElse(Seq.empty),
           showtimes = showtimes
         )
     }

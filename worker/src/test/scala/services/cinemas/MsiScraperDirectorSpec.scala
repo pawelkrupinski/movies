@@ -46,4 +46,46 @@ class MsiScraperDirectorSpec extends AnyFlatSpec with Matchers {
       "Film nakręcony w reżyserii Stevena Spielberga zachwyca.<br>"
     ) shouldBe empty
   }
+
+  // The same Description blob carries the release year (and, for foreign films,
+  // the original title) inside a `(OriginalTitle, Country YEAR, runtime')`
+  // production-line parenthetical — there is no dedicated year field. Extracting
+  // it lets these films resolve against same-title TMDB collisions, which the
+  // director alone can't disambiguate.
+  "MsiScraper.parseDescriptionProduction" should "read year + original title for a foreign film" in {
+    MsiScraper.parseDescriptionProduction(
+      "(Casablanca, USA 1942, 102’)<br>REŻYSERIA: Michael Curtiz"
+    ) shouldBe ((Some(1942), Some("Casablanca")))
+  }
+
+  it should "read the year but no original title for a Polish film (paren opens on the country)" in {
+    MsiScraper.parseDescriptionProduction(
+      "(Polska 1976, 153’) <br><br>REŻYSERIA Andrzej Wajda."
+    ) shouldBe ((Some(1976), None))
+  }
+
+  it should "read the year but no original title for a multi-country co-production" in {
+    MsiScraper.parseDescriptionProduction(
+      "(Kanada/USA/Wielka Brytania 2001, 117’)<br>REŻYSERIA: Richard Kelly"
+    ) shouldBe ((Some(2001), None))
+  }
+
+  it should "handle an original title that contains spaces" in {
+    MsiScraper.parseDescriptionProduction(
+      "(What Ever Happened to Baby Jane?, USA 1962, 134’)"
+    ) shouldBe ((Some(1962), Some("What Ever Happened to Baby Jane?")))
+  }
+
+  it should "not mistake a bare biographical-dates paren for a production line" in {
+    // Van Gogh's lifespan, not a film year — no country word precedes it.
+    MsiScraper.parseDescriptionProduction(
+      "Vincent van Gogh (1869-1939) malował pola zbóż.<br>"
+    ) shouldBe ((None, None))
+  }
+
+  it should "return None for a Description with no production line" in {
+    MsiScraper.parseDescriptionProduction(
+      "Witajcie moi drodzy! Nazywam się Alicja...<br>"
+    ) shouldBe ((None, None))
+  }
 }
