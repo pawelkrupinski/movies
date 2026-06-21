@@ -8,8 +8,8 @@ import services.enrichment.ImdbIdResolver
  * event; this lets the merge-retrigger path re-kick it as a proper queue task
  * (deduped, retried, metered) when a merge changed the id-resolution inputs.
  *
- * `ImdbIdResolver.resolveSync` writes the id through the cache and publishes
- * `ImdbIdResolved`, so the downstream IMDb rating still follows off the event.
+ * `ImdbIdResolver.resolveSync` writes the id through the cache; the
+ * `EnrichmentReaper` then enqueues the now-eligible IMDb rating on its next pass.
  */
 class ResolveImdbIdHandler(resolver: ImdbIdResolver) extends TaskHandler {
   override val taskType: TaskType = TaskType.ResolveImdbId

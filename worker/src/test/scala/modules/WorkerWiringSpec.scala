@@ -3,7 +3,7 @@ package modules
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import services.events.TmdbResolved
+import services.events.ImdbIdMissing
 import services.tasks.{ScrapeReaper, UnresolvedTmdbReaper}
 import tools.TestWiring
 
@@ -46,17 +46,17 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
-  // Smoothing guard: a TMDB resolution must NOT directly enqueue rating tasks.
-  // The old `RatingEnqueuer` subscribed to `TmdbResolved` and fanned out four
+  // Smoothing guard: a resolution event must NOT enqueue rating tasks. The old
+  // `RatingEnqueuer` subscribed to the resolution events and fanned out four
   // rating tasks per event instantly (the unspread amplifier behind the midday
-  // `kinowo_worker_tasks` rating spikes). With it removed, the EnrichmentReaper
-  // is the sole, capped + phase-spread rating-enqueue path — so publishing the
-  // event leaves the queue untouched. (Fails before the cascade removal: the
-  // event would have enqueued four tasks.)
+  // `kinowo_worker_tasks` rating spikes). With it gone, the EnrichmentReaper is
+  // the sole, capped + phase-spread rating-enqueue path; `ImdbIdMissing` (the one
+  // surviving resolution event) only drives id recovery, never a rating enqueue —
+  // so publishing it leaves the queue untouched.
   it should "not enqueue rating tasks on a resolution event (ratings flow only via the EnrichmentReaper)" in {
     val wiring = new SpyWiring
     val before = wiring.taskQueue.countByState().values.sum
-    wiring.eventBus.publish(TmdbResolved("Dune", Some(2024), "tt1"))
+    wiring.eventBus.publish(ImdbIdMissing("Dune", Some(2024), "Dune"))
     wiring.taskQueue.countByState().values.sum shouldBe before
     wiring.stop()
   }

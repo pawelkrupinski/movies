@@ -9,8 +9,9 @@ import play.api.Logging
  * operator `/debug` "re-enrich" button enqueue this task — the latter sets the
  * `force` flag so it re-resolves even an already-resolved row.
  *
- * `resolve` publishes `TmdbResolved` / `ImdbIdMissing` on a hit, so the
- * downstream rating refreshers re-run for the row off the existing event chain.
+ * `resolve` writes the resolved row (and publishes `ImdbIdMissing` on a hit with
+ * no IMDb cross-reference, for id recovery); the `EnrichmentReaper` then enqueues
+ * the row's rating refreshes on its next pass.
  * It returns `false` on a TRANSIENT failure (rate-limit / network blip) — we
  * map that to `Reschedule` so the queue re-claims the task (with backoff) until
  * the row reaches a definitive TMDB state; a hit or a persisted `tmdbNoMatch`

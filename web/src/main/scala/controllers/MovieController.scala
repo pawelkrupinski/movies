@@ -543,9 +543,9 @@ class MovieController( cc: ControllerComponents,
 
   /** Dev-only: force a TMDB re-enrich of one film from the /debug row button.
    *  Enqueues a `ResolveTmdb` task the worker's `ResolveTmdbHandler` consumes;
-   *  that re-resolves the row and publishes `TmdbResolved`, so every downstream
-   *  rating refresher re-runs off the existing event chain — the "followed by
-   *  all the other enrichments" hook. Idempotent per (title, year): a repeat
+   *  that re-resolves the row and writes the TMDB-side fields, and the worker's
+   *  `EnrichmentReaper` then re-runs every rating refresher for the row on its
+   *  next pass. Idempotent per (title, year): a repeat
    *  click while one is queued returns `duplicate`. Returns JSON for the page's
    *  fetch. */
   def reenrich(title: String, year: Option[Int]): Action[AnyContent] = Action {

@@ -4,7 +4,7 @@ import clients.TmdbClient
 import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
-import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete, TmdbResolved}
+import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import services.tasks.RatingTasks
@@ -22,8 +22,7 @@ import scala.util.{Failure, Success, Try}
  *     plus Filmweb + Metacritic + Rotten Tomatoes URLs (all of which key off
  *     TMDB's `originalTitle`). Triggered by `MovieDetailsComplete`, and re-run once a day
  *     for cached rows whose `tmdbId` is still empty. Publishes `ImdbIdMissing`
- *     when TMDB has no IMDb cross-reference so `ImdbIdResolver` recovers the id
- *     (and `TmdbResolved`, currently subscriber-less — see below).
+ *     when TMDB has no IMDb cross-reference so `ImdbIdResolver` recovers the id.
  *   - **IMDb stage** fetches one row's IMDb rating. Enqueued by the queue-driven
  *     `EnrichmentReaper` (capped + phase-spread) once the row carries an
  *     `imdbId`, and refreshed once per the rating TTL — NOT off a bus event.
@@ -104,9 +103,9 @@ class MovieService(
   def settle(): Unit = cache.canonicalizeBySanitize()
 
   /** Drain the INLINE enrichment pool (`executionContext`) so any in-flight inline TMDB
-   *  resolution finishes — its upserts hit Mongo and its TmdbResolved /
-   *  ImdbIdMissing events fire (downstream listeners dispatch synchronously on
-   *  this thread) — before `MovieRepository` closes its client. The caller
+   *  resolution finishes — its upserts hit Mongo and its `ImdbIdMissing` event
+   *  fires (the id resolver dispatches synchronously on this thread) — before
+   *  `MovieRepository` closes its client. The caller
    *  (`AppLoader`) registers this hook so the repository's close runs strictly after.
    *
    *  In production single-movie resolution runs as a `ResolveTmdb` worker task,
@@ -266,11 +265,10 @@ class MovieService(
    *  seams run — the worker's `ResolveTmdb` task handler in production, the
    *  inline `executionContext` pool otherwise.
    *
-   *    - HIT: `runTmdbStageSync` writes the TMDB-side fields, then we publish
-   *      `TmdbResolved` (currently subscriber-less — ratings are enqueued by the
-   *      `EnrichmentReaper`, not this event) or `ImdbIdMissing` (resolved but no
-   *      IMDb cross-reference → `ImdbIdResolver` recovers the id via IMDb's
-   *      suggestion endpoint). Returns true.
+   *    - HIT: `runTmdbStageSync` writes the TMDB-side fields. Ratings are enqueued
+   *      by the `EnrichmentReaper` (not on resolution); only a hit without an IMDb
+   *      cross-reference publishes `ImdbIdMissing` so `ImdbIdResolver` recovers the
+   *      id via IMDb's suggestion endpoint. Returns true.
    *    - DEFINITIVE MISS: persist `tmdbNoMatch` so the row is `tmdbConcluded`
    *      (→ released to the read model) and that survives a restart. The daily
    *      `retryUnresolvedTmdb` sweep still re-checks it later. Returns true.
@@ -331,8 +329,8 @@ class MovieService(
    *    - `Some(existing.copy(tmdbNoMatch = true))` on a DEFINITIVE MISS;
    *      (both conclude the row → ready to fold into `movies`)
    *    - `None` on a TRANSIENT failure — leave the row for the promoter to retry.
-   *  Publishes no events: rating enrichment is scheduled on the merged `movies`
-   *  row at fold time (`scheduleRatingsForNewMovie`, driven by the folder's
+   *  Publishes no events: rating enrichment is set up on the merged `movies`
+   *  row at fold time (`announceResolvedNewMovie`, driven by the folder's
    *  `newPromotions`), not on the per-cinema staging rows. */
   def resolveStagingRecord(cleanTitle: String, year: Option[Int], existing: MovieRecord): Option[MovieRecord] = {
     val (origHint, directoryHint) = tmdbHints(existing)
@@ -351,16 +349,14 @@ class MovieService(
     }
   }
 
-  /** Re-publish a brand-new movie's resolution outcome when it's promoted out of
-   *  staging (`StagingFolder.foldGroup`'s `newPromotions`), so a TMDB-only hit
-   *  kicks IMDb-id recovery (`ImdbIdMissing` → `ImdbIdResolver`). Its first-time
-   *  ratings then come from the `EnrichmentReaper`'s due-immediately first pass —
-   *  there's no per-event rating enqueue any more. Only resolved promotions (a
-   *  TMDB id) qualify, mirroring the direct path: a `tmdbNoMatch` promotion has
-   *  no id to recover or query ratings against, so it publishes nothing and waits
-   *  for the periodic backstop. (NB: for a promotion that already carries an
-   *  imdbId this is now a no-op publish — `TmdbResolved` has no subscriber.) */
-  def scheduleRatingsForNewMovie(key: CacheKey, record: MovieRecord): Unit =
+  /** Announce a brand-new movie's resolution outcome when it's promoted out of
+   *  staging (`StagingFolder.foldGroup`'s `newPromotions`): stamp its resolution
+   *  time (for the first-rating delay metric) and, for a TMDB-only hit, kick
+   *  IMDb-id recovery (`ImdbIdMissing` → `ImdbIdResolver`). First-time ratings
+   *  come from the `EnrichmentReaper`'s due-immediately first pass — there's no
+   *  per-resolution rating enqueue. Only resolved promotions (a TMDB id) qualify:
+   *  a `tmdbNoMatch` promotion has no id to recover or query ratings against. */
+  def announceResolvedNewMovie(key: CacheKey, record: MovieRecord): Unit =
     if (record.tmdbId.isDefined) publishTmdbOutcome(key, record)
 
   // Publish the post-resolution event so the rating refreshers re-run for the
@@ -371,7 +367,8 @@ class MovieService(
     movieRecord.tmdbId.foreach(id => freshness.markFresh(RatingTasks.tmdbResolvedAtKey(id), FreshnessKind.TmdbResolve))
     movieRecord.imdbId match {
       case Some(id) =>
-        bus.publish(TmdbResolved(finalKey.cleanTitle, finalKey.year, id))
+        // imdbId already known → nothing to recover; the EnrichmentReaper picks up
+        // this row's ratings on its next due pass (no per-resolution rating event).
         logger.info(s"TMDB: '${finalKey.cleanTitle}' (${finalKey.year.getOrElse("?")}) → matched tmdbId=${movieRecord.tmdbId.getOrElse("—")} imdbId=$id")
       case None =>
         // IMDb's suggestion endpoint sees the cleaned-up form when TMDB didn't
@@ -387,10 +384,10 @@ class MovieService(
   // Synchronous core. Resolves TMDB; on a hit, writes a row carrying ONLY the
   // TMDB-side fields (tmdbId, imdbId, originalTitle). All score/URL fields
   // (IMDb rating, Metacritic URL+score, RT URL+score, Filmweb URL+rating)
-  // are owned by the dedicated *Ratings classes — each subscribes to
-  // `TmdbResolved` on the bus and runs its own discovery/refresh. The TMDB
-  // stage preserves any existing values for those fields so a re-resolve
-  // doesn't blank them while the listeners catch up. Returns the new
+  // are owned by the dedicated *Ratings classes — the `EnrichmentReaper`
+  // enqueues each one's per-row refresh. The TMDB stage preserves any existing
+  // values for those fields so a re-resolve doesn't blank them while the rating
+  // refreshes catch up. Returns the new
   // MovieRecord, or None when TMDB has no match. Does NOT publish events —
   // callers decide.
   private def runTmdbStageSync(
@@ -548,8 +545,8 @@ class MovieService(
   // IMDb / Filmweb / Metacritic / Rotten Tomatoes refresh logic lives in the
   // dedicated *Ratings classes, driven via the queue: the `EnrichmentReaper`
   // enqueues each row's refresh (capped + phase-spread) and a `RatingHandler`
-  // runs `refreshOneSync` at pickup — they no longer subscribe to `TmdbResolved`.
-  // The sync path (`reEnrichSync`) is TMDB-only on purpose — callers that need
+  // runs `refreshOneSync` at pickup — they're no longer driven by a resolution
+  // bus event. The sync path (`reEnrichSync`) is TMDB-only on purpose — callers that need
   // the score fields chain `*Ratings.refreshOneSync(title, year)` themselves so
   // the worker pool stays uninvolved (see `scripts/EnrichmentBackfill`).
 

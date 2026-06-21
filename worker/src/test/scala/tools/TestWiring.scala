@@ -86,8 +86,8 @@ trait TestWiring extends WorkerWiring {
   // Inject a stub TMDB API key so the test doesn't depend on a `TMDB_API_KEY`
   // env var. `TmdbClient.search` short-circuits to `None` when the key is
   // absent — without an override, every CI runner (and any local box without
-  // `.env.local`) sees no TMDB resolution, no TmdbResolved events, no
-  // enrichment cascade. The fixture replay doesn't need a real key (the URL's
+  // `.env.local`) sees no TMDB resolution and no downstream enrichment at all.
+  // The fixture replay doesn't need a real key (the URL's
   // `api_key` query parameter is stripped from the fixture fingerprint via
   // `RecordingHttpFetch.stableQueryFingerprint`), so any non-empty string works.
   override lazy val tmdbClient: TmdbClient = new TmdbClient(httoFetch, apiKey = Some("test-api-key"))
@@ -149,9 +149,9 @@ trait TestWiring extends WorkerWiring {
 
   /** Synchronously refresh all four ratings for every TMDB-resolved row — the
    *  same per-row `refreshOneSync` the queue's `RatingHandler` runs per task,
-   *  applied to the whole corpus in a deterministic title order. Production
-   *  enqueues a rating task only off `TmdbResolved` / `ImdbIdMissing` — i.e.
-   *  only for rows TMDB matched (a `tmdbId`); rows with no TMDB match get no
+   *  applied to the whole corpus in a deterministic title order. Production's
+   *  `EnrichmentReaper` enqueues a rating task only for rows TMDB matched (a
+   *  `tmdbId`, or an `imdbId` for the IMDb source); rows with no TMDB match get no
    *  rating enrichment. We mirror that gate here, so a row Filmweb could find by
    *  title but TMDB couldn't isn't enriched in the harness when it wouldn't be
    *  in prod. Production drains these as queue tasks on the `TaskWorker`; the
@@ -201,10 +201,10 @@ trait TestWiring extends WorkerWiring {
   def quiesce(stoppables: Stoppable*): Unit =
     stoppables.foreach(_.stop())
 
-  /** Drain the event-cascade worker pools so every `TmdbResolved` /
-   *  `ImdbIdMissing` / `ImdbIdResolved` published during the scrape is processed
-   *  end to end. Uses the same `cascadeDrainOrder` production shutdown does —
-   *  single source of truth for the producer→consumer ordering.
+  /** Drain the enrichment worker pools so every `ImdbIdMissing` published during
+   *  the scrape (and the id write-backs it drives) is processed end to end. Uses
+   *  the same `cascadeDrainOrder` production shutdown does — single source of
+   *  truth for the producer→consumer ordering.
    *
    *  Kino Muza's detail-page synopsis/poster/trailer is no longer settled here:
    *  it now rides the standard deferred-detail pipeline (a deduped

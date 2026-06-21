@@ -3,20 +3,18 @@ package services.enrichment
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{ImdbIdMissing, ImdbIdResolved, InProcessEventBus}
+import services.events.{ImdbIdMissing, InProcessEventBus}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import tools.HttpFetch
 import tools.Eventually.eventually
 
-import scala.collection.mutable
-
 /**
  * Tests for `ImdbIdResolver` — the class extracted out of `ImdbRatings` to
  * own the IMDb-id discovery path. Confirms that an `ImdbIdMissing` event
- * triggers a suggestion lookup, the id gets written to the cache row, and
- * an `ImdbIdResolved` event fires for downstream consumers (rating
- * fetchers). `ImdbRatings`'s rating-refresh behaviour is covered in its
- * own spec; this spec is intentionally narrow.
+ * triggers a suggestion lookup and the id gets written back to the cache row
+ * (from where the EnrichmentReaper picks up the now-eligible IMDb rating).
+ * `ImdbRatings`'s rating-refresh behaviour is covered in its own spec; this
+ * spec is intentionally narrow.
  */
 class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
 
@@ -44,7 +42,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
 
   // ── onImdbIdMissing ─────────────────────────────────────────────────────────
 
-  "onImdbIdMissing" should "find the IMDb id via the suggestion endpoint, write it back, and publish ImdbIdResolved" in {
+  "onImdbIdMissing" should "find the IMDb id via the suggestion endpoint and write it back to the cache" in {
     val bus = new InProcessEventBus()
     val tmdbOnly = MovieRecord(
       tmdbId = Some(1024),
@@ -54,18 +52,13 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repository)
     val resolver = new ImdbIdResolver(cache, imdbStub(
       Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))
-    ), bus)
-
-    val resolved = mutable.ListBuffer.empty[ImdbIdResolved]
-    bus.subscribe { case e: ImdbIdResolved => resolved.append(e) }
+    ))
     bus.subscribe(resolver.onImdbIdMissing)
 
     bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II"))
 
     eventually {
-      val row = cache.get(cache.keyOf("Mortal Kombat 2", Some(2026))).get
-      row.imdbId shouldBe Some("tt17490712")
-      resolved.toList shouldBe List(ImdbIdResolved("Mortal Kombat 2", Some(2026), "tt17490712"))
+      cache.get(cache.keyOf("Mortal Kombat 2", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt17490712")
     }
   }
 
@@ -78,16 +71,12 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val repository  = new InMemoryMovieRepository(Seq(("Imaginary Film", None, tmdbOnly)))
     val cache = new CaffeineMovieCache(repository)
     repository.upserts.clear()
-    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")), bus)
-
-    val resolved = mutable.ListBuffer.empty[ImdbIdResolved]
-    bus.subscribe { case e: ImdbIdResolved => resolved.append(e) }
+    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")))
     bus.subscribe(resolver.onImdbIdMissing)
 
     noException should be thrownBy bus.publish(ImdbIdMissing("Imaginary Film", None, "Imaginary Film"))
     Thread.sleep(100)
     repository.upserts shouldBe empty
-    resolved     shouldBe empty
   }
 
   it should "be a no-op when the row already has an imdbId (stale event raced with another resolver)" in {
@@ -107,16 +96,12 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String = throw new RuntimeException("findId should not be called")
       override def post(url: String, body: String, contentType: String): String =
         throw new RuntimeException("lookup should not be called")
-    }), bus)
-
-    val emitted = mutable.ListBuffer.empty[ImdbIdResolved]
-    bus.subscribe { case e: ImdbIdResolved => emitted.append(e) }
+    }))
     bus.subscribe(resolver.onImdbIdMissing)
 
     noException should be thrownBy bus.publish(ImdbIdMissing("Foo", None, "Foo"))
     Thread.sleep(100)
     repository.upserts shouldBe empty
-    emitted      shouldBe empty
   }
 
   // ── hint-keyed cache ─────────────────────────────────────────────────────────
@@ -134,7 +119,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   "the IMDb id cache" should "look up the same search once for two findIdFor calls" in {
     val calls = new java.util.concurrent.atomic.AtomicInteger(0)
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
-    val resolver = new ImdbIdResolver(cache, countingImdb(calls), new InProcessEventBus(),
+    val resolver = new ImdbIdResolver(cache, countingImdb(calls),
       imdbIdCache = new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore()))
 
     resolver.findIdFor("Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")
@@ -145,7 +130,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   it should "look up on every call without a cache (control)" in {
     val calls = new java.util.concurrent.atomic.AtomicInteger(0)
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
-    val resolver = new ImdbIdResolver(cache, countingImdb(calls), new InProcessEventBus(),
+    val resolver = new ImdbIdResolver(cache, countingImdb(calls),
       imdbIdCache = services.resolution.ResolutionCache.passthrough)
 
     resolver.findIdFor("Mortal Kombat II", Some(2026))

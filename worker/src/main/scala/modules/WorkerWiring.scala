@@ -328,7 +328,7 @@ class WorkerWiring extends play.api.Logging {
   // async off the bus and draws a shared-budget EC.
   lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient)
   lazy val imdbIdCache: ResolutionCache = resolutionCache("resolve_imdb")
-  lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient, eventBus,
+  lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient,
     backgroundBudget.executionContext("imdb-id-resolver"), imdbIdCache = imdbIdCache)
   lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, resolutionCache("resolve_rt"))
   lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient, resolutionCache("resolve_mc"))
@@ -577,8 +577,8 @@ class WorkerWiring extends play.api.Logging {
     new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => rottenTomatoesRatings.refreshAllNow()),
     new ResolveTmdbHandler(movieService.resolveTmdbOnce),
     // Movies-path IMDb-id recovery as a task (was inline off ImdbIdMissing) — so
-    // the merge-retrigger path can re-kick it; resolveSync writes the id + publishes
-    // ImdbIdResolved, keeping the downstream IMDb rating on the event chain.
+    // the merge-retrigger path can re-kick it; resolveSync writes the id, and the
+    // EnrichmentReaper then enqueues the now-eligible IMDb rating on its next pass.
     new ResolveImdbIdHandler(imdbIdResolver)
   )
 
@@ -618,11 +618,11 @@ class WorkerWiring extends play.api.Logging {
   //   MovieDetailsComplete → movieService    (TMDB stage)
   //   ImdbIdMissing        → imdbIdResolver  (recover the missing IMDb id)
   // Resolution stays inline (one-shot per scraped row). Ratings are NOT enqueued
-  // off these resolution events any more — the EnrichmentReaper is the sole
-  // rating-enqueue path (capped + phase-spread), so a cohort of resolutions can't
-  // fan out into an instant rating-task burst. `TmdbResolved` / `ImdbIdResolved`
-  // are still published (resolution extension points; `ImdbIdResolved` also rides
-  // the ResolveImdbId task path) but currently have no subscribers.
+  // off resolution any more — the EnrichmentReaper is the sole rating-enqueue path
+  // (capped + phase-spread), so a cohort of resolutions can't fan out into an
+  // instant rating-task burst. ImdbIdMissing is the only resolution event with a
+  // subscriber now (id recovery); the old TmdbResolved / ImdbIdResolved events
+  // were removed once nothing consumed them.
   eventBus.subscribe(movieService.onMovieDetailsComplete)
   eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
   // One detail enqueuer per deferred-detail cinema.
@@ -635,7 +635,7 @@ class WorkerWiring extends play.api.Logging {
   // merge into an existing row keeps that row's ratings, so it's left untouched.
   eventBus.subscribe { case StagingFilmEnriched(title) =>
     stagingFolder.foldGroup(title).foreach { case (key, record) =>
-      movieService.scheduleRatingsForNewMovie(key, record)
+      movieService.announceResolvedNewMovie(key, record)
     }
   }
   // The reaper advances the staging chain (detail → resolve → imdb → fold) one

@@ -6,11 +6,8 @@ import clients.TmdbClient
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{InProcessEventBus, TmdbResolved}
+import services.events.InProcessEventBus
 import tools.RoutingHttpFetch
-import tools.Eventually.eventually
-
-import scala.collection.mutable.ListBuffer
 
 /**
  * Tests for `MovieService.reEnrichSync`.
@@ -142,22 +139,19 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
 
   // ── resolveTmdbOnce(force = true) — the per-movie `/debug` button path ────────
   // Unlike `reEnrichSync` (silent — returns the record only), this forces a
-  // re-resolve AND publishes `TmdbResolved`, so the downstream rating refreshers
-  // re-run for the row off the existing event chain. That published event is the
-  // "followed by all the other enrichments" hook. It's the work the worker's
-  // `ResolveTmdbHandler` runs for an operator re-enrich task.
+  // re-resolve even of an already-resolved row and writes the TMDB-side fields
+  // (tmdbId, imdbId) back through the cache — from where the EnrichmentReaper
+  // re-runs the row's ratings. It's the work the worker's `ResolveTmdbHandler`
+  // runs for an operator re-enrich task.
 
-  "resolveTmdbOnce(force = true)" should "publish TmdbResolved with the resolved imdbId and return true (concluded)" in {
+  "resolveTmdbOnce(force = true)" should "write the resolved imdbId through the cache and return true (concluded)" in {
     val tmdbHttp = tmdbWithYearFallback()
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
-    val bus      = new InProcessEventBus()
     val cache    = new CaffeineMovieCache(new InMemoryMovieRepository())
-    val service      = new MovieService(cache, bus, tmdb)
-    val resolved = ListBuffer.empty[TmdbResolved]
-    bus.subscribe { case e: TmdbResolved => resolved += e }
+    val service  = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     service.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, force = true) shouldBe true
 
-    eventually(resolved.map(_.imdbId).toList shouldBe List("tt0088763"))
+    cache.get(cache.keyOf("Powrót do przyszłości", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt0088763")
   }
 }

@@ -75,12 +75,6 @@ case class CinemaMovieAdded(
   filmUrl: Option[String]
 ) extends DomainEvent
 
-/** TMDB resolved a `(title, year)` to a film and an IMDb id. The enrichment
- *  pipeline publishes this after its TMDB stage writes the row to the cache;
- *  the IMDb stage subscribes and fetches the rating asynchronously, so the
- *  TMDB lookup doesn't block on IMDb's GraphQL CDN. */
-case class TmdbResolved(title: String, year: Option[Int], imdbId: String) extends DomainEvent
-
 /** TMDB resolved a `(title, year)` to a film but TMDB had no IMDb cross-
  *  reference for it (common for very recent films and festival items, e.g.
  *  "Mortal Kombat II" 2026). `searchTitle` is the title we want to search
@@ -88,14 +82,9 @@ case class TmdbResolved(title: String, year: Option[Int], imdbId: String) extend
  *  English release title, whichever is more likely to match IMDb's primary.
  *
  *  `ImdbIdResolver` subscribes to this event, calls `ImdbClient.findId(...)`
- *  to recover the id, writes it back to the cache, then publishes
- *  `ImdbIdResolved` so the rating + score services can chain off the new id. */
+ *  to recover the id, and writes it back to the cache — from where the
+ *  `EnrichmentReaper` picks up the now-eligible IMDb rating on its next pass. */
 case class ImdbIdMissing(title: String, year: Option[Int], searchTitle: String) extends DomainEvent
-
-/** `ImdbIdResolver` recovered the IMDb id for a row that TMDB couldn't
- *  cross-reference. Listeners (rating fetchers) chain off this to drive
- *  the per-row refresh once the id is finally known. */
-case class ImdbIdResolved(title: String, year: Option[Int], imdbId: String) extends DomainEvent
 
 /** A newcomer film incubating in the `pending_movies` staging collection has
  *  reached a definitive TMDB conclusion (a hit, or `tmdbNoMatch`). The

@@ -31,10 +31,9 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  *      order (`cascadeDrainOrder` on `Wiring`: `movieService` →
  *      `imdbIdResolver` → the four `*Ratings`). Each `stop()` shuts the
  *      worker pool down and `awaitTermination(15s)`s so all queued
- *      tasks complete. During each drain, the queued tasks publish
- *      their own bus events (`TmdbResolved`, `ImdbIdMissing`,
- *      `ImdbIdResolved`), which synchronously dispatch to the next
- *      pool; that pool drains in the next step. After `drainServices()`
+ *      tasks complete. During each drain, resolution publishes its
+ *      `ImdbIdMissing` (which `imdbIdResolver` consumes to recover the
+ *      id); the next pool drains in the next step. After `drainServices()`
  *      returns every cache row has:
  *        - `tmdbId`/`imdbId`/`originalTitle` from TMDB
  *        - IMDb rating (GraphQL CDN) or suggestion-recovered `imdbId`
