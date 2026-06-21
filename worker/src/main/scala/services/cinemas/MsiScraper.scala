@@ -32,6 +32,15 @@ import scala.util.Try
  * (class includes `d-block d-lg-flex`) carry the same events.  We read only
  * the desktop div so each event is counted exactly once.
  *
+ * A few MSI installs serve an older "list-group" skin instead (e.g. Max Kino
+ * Świebodzin at repertuar.maxkino.eu): each film is a
+ * `div.list-group-item.event-background` (rendered `visible-md`/`visible-xs`
+ * twice), the title lives in the poster anchor's `title` attr, and showtimes
+ * are `a.badge-purple` anchors in `ul.repo-event-dates`. The event-time text
+ * format (`DD mmm HH:MM`) is identical, so only the block/title/anchor
+ * selectors differ. `parseMonthWithYear` tries the standard skin first and
+ * falls back to this one when it yields nothing.
+ *
  * Showtimes for the same cleaned title across all fetched months are merged
  * before returning.
  */
@@ -189,31 +198,50 @@ private[cinemas] object MsiScraper {
                          cleanTitle: String => (String, List[String])): Seq[RawSlot] = {
     val document = Jsoup.parse(html, baseUrl)
     val metaByName0 = metaByName(html)
-    document.select("div.movies-movie__single").asScala.toSeq.flatMap { movieDiv =>
-      val rawTitle = Option(movieDiv.selectFirst(".movies-movie__single__title"))
-        .map(_.attr("title").trim)
-        .filter(_.nonEmpty)
-        .getOrElse("")
-      val (title, format) = cleanTitle(rawTitle)
-      val meta = metaByName0.getOrElse(rawTitle, FilmMeta())
-      if (title.isEmpty) Seq.empty
-      else {
-        // Only the desktop showtime list — the mobile duplicate has no extra `d-none`
-        // class, so the selector `div.movies-movie__single__options.d-none` matches
-        // only the desktop div, giving each event exactly once.
-        val desktopList = movieDiv.select(
-          "div.movies-movie__single__options.d-none ul.movies-movie__single__options__hours"
-        )
-        desktopList.asScala.toSeq.flatMap { ul =>
-          ul.select("a[href]").asScala.toSeq.flatMap { a =>
-            val text    = a.text.trim
-            val href    = a.attr("abs:href")
-            val booking = if (href.nonEmpty) Some(href) else None
-            parseEventTime(text, yearMonth).map { dt => RawSlot(title, rawTitle, dt, booking, format, meta) }
+
+    /** One pass over a skin's film blocks: for each block, read its raw title and
+     *  desktop showtime anchors, clean the title, and emit a `RawSlot` per anchor.
+     *  The two skins differ only in these three selectors + how the title is read,
+     *  so they share everything below. */
+    def parseBlocks(blockSelector: String, rawTitleOf: org.jsoup.nodes.Element => String,
+                    showtimeAnchorSelector: String): Seq[RawSlot] =
+      document.select(blockSelector).asScala.toSeq.flatMap { movieDiv =>
+        val rawTitle        = rawTitleOf(movieDiv)
+        val (title, format) = cleanTitle(rawTitle)
+        val meta            = metaByName0.getOrElse(rawTitle, FilmMeta())
+        if (title.isEmpty) Seq.empty
+        else movieDiv.select(showtimeAnchorSelector).asScala.toSeq.flatMap { a =>
+          val href    = a.attr("abs:href")
+          val booking = if (href.nonEmpty) Some(href) else None
+          parseEventTime(a.text.trim, yearMonth).map { dt =>
+            RawSlot(title, rawTitle, dt, booking, format, meta)
           }
         }
       }
-    }
+
+    // Standard MSI skin: one `div.movies-movie__single` per film variant; the raw
+    // title is the `title` attr of `.movies-movie__single__title`; showtimes are in
+    // the desktop-only `div.movies-movie__single__options.d-none` list (the mobile
+    // duplicate lacks the extra `d-none` class, so each event is counted once).
+    val standard = parseBlocks(
+      "div.movies-movie__single",
+      m => Option(m.selectFirst(".movies-movie__single__title")).map(_.attr("title").trim).filter(_.nonEmpty).getOrElse(""),
+      "div.movies-movie__single__options.d-none ul.movies-movie__single__options__hours a[href]"
+    )
+    if (standard.nonEmpty) standard
+    else
+      // Alternate "list-group" skin (e.g. Max Kino Świebodzin at
+      // repertuar.maxkino.eu): each film is a `div.list-group-item.event-background`,
+      // rendered twice — `visible-md visible-lg` (desktop) + `visible-xs visible-sm`
+      // (mobile). We read only the desktop copy so each event is counted once. The
+      // clean raw title lives in the poster anchor's `title` attr (the `.event-title`
+      // text is polluted with a `Premiera!` badge span); showtimes are the
+      // `a.badge-purple` anchors in `ul.repo-event-dates`, same `DD mmm HH:MM` text.
+      parseBlocks(
+        "div.list-group-item.event-background.visible-md",
+        m => Option(m.selectFirst("a[title]")).map(_.attr("title").trim).filter(_.nonEmpty).getOrElse(""),
+        "ul.repo-event-dates a.badge-purple[href]"
+      )
   }
 
   private def parseEventTime(text: String, ym: YearMonth): Option[LocalDateTime] =
