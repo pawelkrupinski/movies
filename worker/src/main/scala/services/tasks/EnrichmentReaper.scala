@@ -60,9 +60,10 @@ class EnrichmentReaper(
   dueWindow: DueWindow = new DueWindow(4.hours),
   // How often the reaper wakes to enqueue the slice of the corpus now due — the
   // spread granularity. Smaller = flatter trickle, at the cost of more (cheap,
-  // in-memory) corpus scans. Defaults to 1min (≈240 ticks per 4h period). Exposed
-  // as a `val` so the composition root can assert what it wired.
-  val tickInterval: FiniteDuration = EnrichmentReaper.DefaultTickInterval,
+  // in-memory) corpus scans. Defaults to 1min (≈240 ticks per 4h period). BY-NAME
+  // + a self-rescheduling tick (not fixed-delay) so an `/admin/config` flip of the
+  // interval applies mid-flight, on the next cycle, without a restart.
+  tickInterval: => FiniteDuration = EnrichmentReaper.DefaultTickInterval,
   // A small spacing before the first tick (0 in tests that drive `tick` directly).
   initialDelay: FiniteDuration = 0.seconds,
   // Cap on enqueues per tick. The phase spread keeps steady-state ticks small,
@@ -70,11 +71,12 @@ class EnrichmentReaper(
   // recovery burst the same way `ScrapeReaper` does — the leftover stays due and
   // drains over the next ticks. Default unbounded so tests driving `tick` are
   // unaffected; the wiring sets a finite cap comfortably above the steady-state.
-  maxEnqueuePerTick: Int = Int.MaxValue,
+  // BY-NAME: read live each tick, so an `/admin/config` flip applies mid-flight.
+  maxEnqueuePerTick: => Int = Int.MaxValue,
   // While the worker is CPU-credit throttled, cap enqueue to this trickle. Ratings
   // are the dominant non-scrape load, so backing this off is what actually lets the
   // pool idle + rebuild credit (the scrape-only watchdog couldn't). Default unbounded.
-  throttledMaxEnqueuePerTick: Int = Int.MaxValue,
+  throttledMaxEnqueuePerTick: => Int = Int.MaxValue,
   throttle: ScrapeThrottleSignal = ScrapeThrottleSignal.AlwaysHealthy,
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:    Clock = Clock.systemUTC()
@@ -92,10 +94,19 @@ class EnrichmentReaper(
   )
 
   def start(): Unit = {
-    scheduler.scheduleWithFixedDelay(
-      () => Try(tickIfClaimed()), initialDelay.toMillis, tickInterval.toMillis, TimeUnit.MILLISECONDS)
+    scheduleNext(initialDelay)
     logger.info(s"EnrichmentReaper started: ${sweeps.size} rating source(s), each row refreshed once per " +
                 s"${dueWindow.period.toHours}h, phase-spread over ticks every ${tickInterval.toSeconds}s.")
+  }
+
+  /** Self-rescheduling tick: run, then schedule the next one reading `tickInterval`
+   *  afresh — so an interval flip applies on the next cycle (a fixed-delay schedule
+   *  would freeze the boot-time value). */
+  private def scheduleNext(delay: FiniteDuration): Unit = {
+    scheduler.schedule(new Runnable {
+      def run(): Unit = { Try(tickIfClaimed()); scheduleNext(tickInterval) }
+    }, delay.toMillis, TimeUnit.MILLISECONDS)
+    ()
   }
 
   /** Tick only if this machine wins the current tick window's occurrence claim —

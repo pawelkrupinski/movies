@@ -113,6 +113,16 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 
+  it should "read maxEnqueuePerTick live each tick, so an /admin/config cap flip applies mid-flight" in {
+    val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    var cap = 1
+    val r = new DetailReaper(Seq(enricher), cacheWithMany(10), queue, fresh, new InProcessEventBus(),
+      maxEnqueuePerTick = cap)
+    r.tick() shouldBe 1   // cap = 1
+    cap = 4
+    r.tick() shouldBe 4   // live re-read picks up the new cap (a captured Int would still be 1)
+  }
+
   it should "enqueue at most maxEnqueuePerTick details when a whole cohort is stale (anti-burst cap)" in {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     val r = new DetailReaper(Seq(enricher), cacheWithMany(5), queue, fresh, new InProcessEventBus(),

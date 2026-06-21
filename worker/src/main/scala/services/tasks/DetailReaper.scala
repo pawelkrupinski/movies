@@ -61,20 +61,21 @@ class DetailReaper(
   dueWindow: DueWindow = new DueWindow(6.hours),
   // How often the reaper wakes to enqueue the now-due slice — the spread
   // granularity (smaller = flatter trickle, at the cost of cheap in-memory scans).
-  // Exposed as a `val` so the composition root can assert what it wired.
-  val tickInterval: FiniteDuration = DetailReaper.DefaultTickInterval,
+  // BY-NAME + a self-rescheduling tick so an `/admin/config` interval flip applies
+  // mid-flight on the next cycle, without a restart.
+  tickInterval: => FiniteDuration = DetailReaper.DefaultTickInterval,
   // A small spacing before the first tick (0 in tests that drive `tick` directly).
   initialDelay: FiniteDuration = 0.seconds,
   // Cap on enqueues per tick — the backstop the phase spread can't provide for a
   // COLD cohort (every re-keyed row is "never refreshed" → due at once). Bounds
   // that recovery burst the way every other reaper does; the leftover stays due
   // and drains over the next ticks. Default unbounded so tests driving `tick` are
-  // unaffected; the wiring sets a finite cap.
-  maxEnqueuePerTick: Int = Int.MaxValue,
+  // unaffected; the wiring sets a finite cap. BY-NAME: read live each tick.
+  maxEnqueuePerTick: => Int = Int.MaxValue,
   // While the worker is CPU-credit throttled, cap enqueue to this trickle so this
   // reaper stops feeding the pool — credit only rebuilds when the WHOLE pipeline
   // quiets and the pool idles (see ScrapeThrottleSignal.cap). Default unbounded.
-  throttledMaxEnqueuePerTick: Int = Int.MaxValue,
+  throttledMaxEnqueuePerTick: => Int = Int.MaxValue,
   throttle: ScrapeThrottleSignal = ScrapeThrottleSignal.AlwaysHealthy,
   runStore:  ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:     Clock = Clock.systemUTC()
@@ -84,10 +85,18 @@ class DetailReaper(
 
   def start(): Unit = {
     if (enrichers.isEmpty) { logger.info("DetailReaper: no deferred cinemas; not starting."); return }
-    scheduler.scheduleWithFixedDelay(
-      () => Try(tickIfClaimed()), initialDelay.toMillis, tickInterval.toMillis, TimeUnit.MILLISECONDS)
+    scheduleNext(initialDelay)
     logger.info(s"DetailReaper started over ${enrichers.size} deferred cinema(s): each detail refreshed once per " +
                 s"${dueWindow.period.toHours}h, phase-spread over ticks every ${tickInterval.toSeconds}s.")
+  }
+
+  /** Self-rescheduling tick: run, then schedule the next reading `tickInterval`
+   *  afresh, so an interval flip applies on the next cycle. */
+  private def scheduleNext(delay: FiniteDuration): Unit = {
+    scheduler.schedule(new Runnable {
+      def run(): Unit = { Try(tickIfClaimed()); scheduleNext(tickInterval) }
+    }, delay.toMillis, TimeUnit.MILLISECONDS)
+    ()
   }
 
   /** Run the detail tick + stuck-pending release only if this machine wins the

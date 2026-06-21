@@ -61,23 +61,15 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
-  // Smoothing lever: the EnrichmentReaper is wired with the finer (≤1min) tick
-  // interval, so the rating sweep enqueues a flat per-minute trickle instead of
+  // Smoothing lever: the reapers are wired with the finer (≤1min) tick interval,
+  // so the rating/detail sweeps enqueue a flat per-minute trickle instead of
   // dumping a 5-min-wide backlog in one tick (the residual `kinowo_worker_tasks`
-  // spikes). Guards that the composition root actually passes the configured
-  // interval — not that the reaper defaults it internally.
-  it should "wire the EnrichmentReaper with a sub-5-minute tick interval so rating enqueues stay flat" in {
+  // spikes). The reapers now read the interval by-name (a live, mid-flight-
+  // flippable knob), so this guards the wiring value the composition root supplies.
+  it should "wire both reapers with a sub-5-minute tick interval so enqueues stay flat" in {
     val wiring = new SpyWiring
-    wiring.enrichmentReaper.tickInterval should be <= (1.minute: FiniteDuration)
-    wiring.stop()
-  }
-
-  // Same smoothing lever for the detail side: the DetailReaper must be wired with
-  // the finer (≤1min) tick interval so `EnrichDetails` enqueues a flat per-minute
-  // trickle rather than dumping a 5-min-wide backlog in one tick.
-  it should "wire the DetailReaper with a sub-5-minute tick interval so detail enqueues stay flat" in {
-    val wiring = new SpyWiring
-    wiring.detailReaper.tickInterval should be <= (1.minute: FiniteDuration)
+    wiring.enrichmentTickInterval should be <= (1.minute: FiniteDuration)
+    wiring.detailTickInterval     should be <= (1.minute: FiniteDuration)
     wiring.stop()
   }
 }
