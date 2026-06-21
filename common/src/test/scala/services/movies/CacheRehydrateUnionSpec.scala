@@ -27,11 +27,11 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     override def close() = ()
   }
 
-  private def withInstalledRules(rs: TitleRuleSet)(body: => Unit): Unit = {
-    val saved = TitleNormalizer.currentRules
-    try { TitleNormalizer.installRules(rs); body }
-    finally TitleNormalizer.installRules(saved)
-  }
+  // Thread-scoped (see TitleNormalizer.withRules): the rehydrate under test runs
+  // synchronously on this thread at cache construction, and the scope keeps the
+  // custom rule set from leaking into a suite running in parallel.
+  private def withInstalledRules(rs: TitleRuleSet)(body: => Unit): Unit =
+    TitleNormalizer.withRules(rs)(body)
 
   private def row(title: String, cinema: Source): StoredMovieRecord =
     StoredMovieRecord(title, Some(2025),

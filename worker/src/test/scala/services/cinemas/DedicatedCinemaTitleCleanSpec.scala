@@ -25,16 +25,12 @@ class DedicatedCinemaTitleCleanSpec extends AnyFlatSpec with Matchers {
     def post(url: String, body: String, contentType: String): String = ""
   }
 
-  private def withExtras[A](body: => A): A = {
-    val saved = TitleNormalizer.currentRules
-    try { TitleNormalizer.installRules(TitleRuleSet(TitleRuleDefaults.all ++ ExtraTitleRules.all)); body }
-    finally TitleNormalizer.installRules(saved)
-  }
-  private def seedOnly[A](body: => A): A = {
-    val saved = TitleNormalizer.currentRules
-    try { TitleNormalizer.installRules(TitleRuleDefaults.ruleSet); body }
-    finally TitleNormalizer.installRules(saved)
-  }
+  // Thread-scoped (see TitleNormalizer.withRules) so these custom rule sets can't
+  // leak into a suite running in parallel.
+  private def withExtras[A](body: => A): A =
+    TitleNormalizer.withRules(TitleRuleSet(TitleRuleDefaults.all ++ ExtraTitleRules.all))(body)
+  private def seedOnly[A](body: => A): A =
+    TitleNormalizer.withRules(TitleRuleDefaults.ruleSet)(body)
 
   private val bajkaHtml =
     """<div class="screening-day" id="screening-20260820">

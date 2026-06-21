@@ -13,18 +13,46 @@ object TitleNormalizer {
   // visible to scrape/enrich threads without locking the hot path.
   @volatile private var active: TitleRuleSet = TitleRuleDefaults.ruleSet
 
+  // A THREAD-SCOPED override that, when set, shadows `active` for the current
+  // thread only. Tests that need a custom rule set install it here via
+  // `withRules` instead of swapping the global `active`: ScalaTest runs suites in
+  // PARALLEL (`Test / parallelExecution` defaults to true), so a global swap by
+  // one suite leaked its rules into every OTHER suite's `sanitize` for the
+  // duration of its `try` block — a rare, order-dependent flake that no
+  // `finally` restore could prevent (the race is during the install, not after).
+  // Scoping the override to the installing thread keeps a test's rules invisible
+  // to the suites running beside it. Production never sets this; the change-stream
+  // consumer still swaps `active` globally via `installRules`.
+  private val scopedOverride = new ThreadLocal[TitleRuleSet]()
+  private def effective: TitleRuleSet = scopedOverride.get() match {
+    case null => active
+    case rs   => rs
+  }
+
   /** Install a new rule set (called by the `titleRules` change-stream consumer). */
   def installRules(rs: TitleRuleSet): Unit = active = rs
 
-  /** The currently-active rule set — read by the admin preview + backfill. */
+  /** Run `body` with `rs` as the active rule set for the CURRENT THREAD only,
+   *  restoring the prior state afterwards. The scope is thread-local so a test
+   *  installing custom rules can't leak them into a suite running in parallel —
+   *  see `scopedOverride`. The body must drive its title normalisation on the
+   *  calling thread (the common case for unit specs). */
+  def withRules[A](rs: TitleRuleSet)(body: => A): A = {
+    val prev = scopedOverride.get()
+    scopedOverride.set(rs)
+    try body
+    finally if (prev == null) scopedOverride.remove() else scopedOverride.set(prev)
+  }
+
+  /** The currently-active GLOBAL rule set — read by the admin preview + backfill
+   *  (which run without a thread scope, so they see what `installRules` set). */
   def currentRules: TitleRuleSet = active
 
-  /** Restore the in-code defaults. Tests that mutate rules MUST call this in
-   *  teardown so they don't leak a rule set into the next spec. */
+  /** Restore the in-code defaults on the GLOBAL rule set. */
   def resetToDefaults(): Unit = active = TitleRuleDefaults.ruleSet
 
   /** Apply a cinema's per-cinema cleanup rules to a raw scraped title. */
-  def cinemaClean(cinemaId: String, raw: String): String = active.perCinema(cinemaId, raw)
+  def cinemaClean(cinemaId: String, raw: String): String = effective.perCinema(cinemaId, raw)
 
   // Precompiled hot-path patterns. `sanitize` / `stripPunct` run per movie ×
   // per cinema × per tick (plus every staging row and read-model projection);
@@ -70,7 +98,7 @@ object TitleNormalizer {
    *  "Kino bez barier: Freak Show (AD + CC + PJM)" queries upstream as just
    *  "Freak Show". Identity (`sanitize`) does NOT apply these, so the decorated
    *  row stays its own card; this just finds the base film upstream. */
-  def apiQuery(display: String): String = active.search(display)
+  def apiQuery(display: String): String = effective.search(display)
 
   /** Display-side casing applied to EVERY scraper's title at the scrape choke
    *  point (`MovieCache.recordCinemaScrape`). Banner-aware: when a leading
@@ -92,7 +120,7 @@ object TitleNormalizer {
    *  the re-cased form is only adopted when it sanitizes to the SAME key; otherwise
    *  the original casing is kept (the franchise-prefixed shout stays as scraped). */
   def recase(title: String): String = {
-    val recased = active.leadingBannerBoundary(title) match {
+    val recased = effective.leadingBannerBoundary(title) match {
       case Some(n) => caseSegment(title.substring(0, n)) + caseSegment(title.substring(n))
       case None    => caseSegment(title)
     }
@@ -154,14 +182,14 @@ object TitleNormalizer {
    *  Filmowy Klub Seniora, …), return the matched prefix INCLUDING the trailing
    *  ": " delimiter, so a caller can split the prefix from the film title and
    *  case each half on its own. None when no programme prefix is present. */
-  def programmePrefix(title: String): Option[String] = active.programmePrefix(title)
+  def programmePrefix(title: String): Option[String] = effective.programmePrefix(title)
 
   // Cross-cinema spelling unifications (Gwiezdne Wojny prefix, " & " → " i ")
   // over the trimmed title. Does NOT apply `searchTitle`/structural: decoration
   // (anniversary / wersja / slash / Cykl / restored) is NOT part of identity, so
   // a decoration edition keys by its own form and is NOT merged with the base
   // film. Used by `sanitize` (the documentId) and `preferredDisplay`.
-  private def canonical(t: String): String = active.canonical(t)
+  private def canonical(t: String): String = effective.canonical(t)
 
   // Last-resort collapse for titles that share words + order but differ only
   // in punctuation/whitespace ("Top Gun Maverick" vs "Top Gun: Maverick").
