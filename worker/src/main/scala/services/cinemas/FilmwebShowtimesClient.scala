@@ -114,7 +114,15 @@ class FilmwebShowtimesClient(
             .sortBy(_.dateTime)
           if (showtimes.isEmpty) None
           else Some(CinemaMovie(
-            movie       = Movie(title = t, releaseYear = info.flatMap(_.year)),
+            movie       = Movie(
+              title         = t,
+              releaseYear   = info.flatMap(_.year),
+              // Filmweb's `originalTitle` is the international/source title, a
+              // strong TMDB-resolution hint for non-Polish films. Carry it only
+              // when it actually differs from the displayed title — for Polish
+              // films Filmweb echoes the Polish title there, which is redundant.
+              originalTitle = info.flatMap(_.originalTitle).filter(_ != t)
+            ),
             cinema      = cinema,
             posterUrl   = info.flatMap(_.posterUrl),
             filmUrl     = Some(filmPageUrl(filmId)),
@@ -150,14 +158,15 @@ class FilmwebShowtimesClient(
   private def parseSeancesForUrl(json: String, url: String): Seq[RawSeance] =
     dateOf(url).map(d => Try(parseSeances(json, d)).getOrElse(Seq.empty)).getOrElse(Seq.empty)
 
-  /** Parse one /title/{id}/info response into title + year + poster URL.
-   *  Pure + public so the spec can feed fixture bytes. */
+  /** Parse one /title/{id}/info response into title + originalTitle + year +
+   *  poster URL. Pure + public so the spec can feed fixture bytes. */
   def parseFilmInfo(json: String): Option[FilmInfo] =
     Try(Json.parse(json)).toOption.map { j =>
       FilmInfo(
-        title     = (j \ "title").asOpt[String],
-        year      = (j \ "year").asOpt[Int],
-        posterUrl = (j \ "posterPath").asOpt[String].filter(_.nonEmpty).map(posterUrlFor)
+        title         = (j \ "title").asOpt[String],
+        originalTitle = (j \ "originalTitle").asOpt[String].map(_.trim).filter(_.nonEmpty),
+        year          = (j \ "year").asOpt[Int],
+        posterUrl     = (j \ "posterPath").asOpt[String].filter(_.nonEmpty).map(posterUrlFor)
       )
     }
 }
@@ -246,5 +255,10 @@ object FilmwebShowtimesClient extends play.api.Logging {
   case class RawSeance(filmId: Long, showtimes: Seq[Showtime], fallbackTitle: Option[String])
 
   /** Distilled /title/{id}/info — the fields this client needs. */
-  case class FilmInfo(title: Option[String], year: Option[Int], posterUrl: Option[String])
+  case class FilmInfo(
+    title:         Option[String],
+    originalTitle: Option[String],
+    year:          Option[Int],
+    posterUrl:     Option[String]
+  )
 }

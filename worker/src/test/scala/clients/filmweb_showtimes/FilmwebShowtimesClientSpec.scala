@@ -64,6 +64,18 @@ class FilmwebShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     thirteen.bookingUrl.value should startWith("https://www.multikino.pl/rezerwacja-biletow/")
   }
 
+  it should "carry Filmweb's originalTitle as a TMDB hint, but only when it differs from the title" in {
+    val movies = client.fetch()
+
+    // Filmweb id 582 → Polish title "Kosmiczny mecz" but originalTitle "Space Jam":
+    // the international title is a strong TMDB-resolution hint for non-Polish films.
+    movies.find(_.movie.title == "Kosmiczny mecz").value.movie.originalTitle.value shouldBe "Space Jam"
+
+    // Filmweb id 10016294 → "Pucio", where Filmweb echoes the Polish title as the
+    // originalTitle. Redundant, so the client drops it rather than storing a copy.
+    movies.find(_.movie.title == "Pucio").value.movie.originalTitle shouldBe None
+  }
+
   // ── /uptime source link ──────────────────────────────────────────────────
   // The cinema name on /uptime links to Filmweb's canonical, browser-renderable
   // showtimes page. Only the numeric id is in our model, so the city + name are
