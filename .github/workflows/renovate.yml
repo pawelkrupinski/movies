@@ -1,0 +1,43 @@
+name: Renovate
+
+# Renovate is the Gradle/Android analog of scala-steward.yml: it scans the
+# Android build files (android/build.gradle.kts plugin versions, the inline
+# coordinates in android/app/build.gradle.kts, and the Gradle wrapper) and
+# opens one PR per available upgrade. The actual config — including the scope
+# that limits Renovate to the Gradle managers so it doesn't tread on
+# scala-steward or the npm/Docker side of this repo — lives in /renovate.json.
+# It only proposes the bump; per CLAUDE.md's test gate a human reviews each PR
+# and lands it once android.yml is green.
+on:
+    # Weekly sweep — Monday 06:00 UTC. Renovate batches and dedups against open
+    # PRs, so a quiet week produces nothing.
+    schedule:
+        - cron: '0 6 * * 1'
+    # Manual kick from the Actions tab for an upgrade pass now.
+    workflow_dispatch:
+
+# Renovate pushes its update branches and opens PRs.
+permissions:
+    contents: write
+    pull-requests: write
+
+jobs:
+    renovate:
+        runs-on: ubuntu-latest
+        name: Renovate
+        steps:
+            - name: Self-hosted Renovate
+              uses: renovatebot/github-action@v46.1.15
+              with:
+                  # Prefer a PAT (or GitHub App token) in secrets.RENOVATE_TOKEN.
+                  # PRs opened by the default GITHUB_TOKEN do NOT trigger other
+                  # workflows, so a PAT is what lets android.yml CI run on
+                  # Renovate's branches. Falls back to GITHUB_TOKEN if unset.
+                  token: ${{ secrets.RENOVATE_TOKEN || github.token }}
+              env:
+                  # Single-repo, self-hosted: don't crawl the org, don't open an
+                  # onboarding PR (the committed renovate.json is the config).
+                  RENOVATE_AUTODISCOVER: 'false'
+                  RENOVATE_REPOSITORIES: ${{ github.repository }}
+                  RENOVATE_ONBOARDING: 'false'
+                  LOG_LEVEL: info

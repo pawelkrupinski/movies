@@ -1,0 +1,39 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommitsDisabled"
+  ],
+  "description": "Renovate is scoped to the Gradle/Android project ONLY. The Scala side is handled by scala-steward.yml, and the rest of the polyglot repo (npm, Docker, GitHub Actions) is intentionally left alone — so we whitelist just the two Gradle managers below. Widen enabledManagers if you ever want Renovate to own those too.",
+  "enabledManagers": ["gradle", "gradle-wrapper"],
+  "ignorePaths": ["**/build/**", "**/target/**", "**/node_modules/**"],
+  "labels": ["dependencies", "android"],
+  "schedule": ["before 6am on monday"],
+  "prConcurrentLimit": 5,
+  "rangeStrategy": "pin",
+  "packageRules": [
+    {
+      "description": "The Kotlin Gradle plugin, the Compose compiler plugin and the kotlinx-serialization plugin are version-locked to the Kotlin release (the Compose plugin in particular MUST equal the Kotlin version). Bump them in one PR so they never drift apart.",
+      "matchManagers": ["gradle"],
+      "matchDepTypes": ["plugin"],
+      "matchPackageNames": [
+        "org.jetbrains.kotlin.android",
+        "org.jetbrains.kotlin.plugin.compose",
+        "org.jetbrains.kotlin.plugin.serialization"
+      ],
+      "groupName": "Kotlin"
+    },
+    {
+      "description": "androidx.lifecycle artifacts share a version (currently 2.8.6) and are meant to move together.",
+      "matchManagers": ["gradle"],
+      "matchPackageNames": ["androidx.lifecycle:**"],
+      "groupName": "AndroidX Lifecycle"
+    },
+    {
+      "description": "Haze 1.1.x is the Compose 1.7 line; 1.2+ requires Compose 1.8+, which this app isn't on yet (see the comment in app/build.gradle.kts). Cap auto-updates below 1.2 until Compose is upgraded.",
+      "matchPackageNames": ["dev.chrisbanes.haze:haze"],
+      "allowedVersions": "<1.2.0"
+    }
+  ]
+}
