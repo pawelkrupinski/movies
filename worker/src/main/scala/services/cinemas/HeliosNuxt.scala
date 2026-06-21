@@ -46,8 +46,12 @@ object HeliosNuxt {
   val Katowice     = HeliosCinema(HeliosKatowice,     "katowice", "kino-helios",                "b661164e-04d4-41af-bdca-0f9a745c3898")
   val Szczecin     = HeliosCinema(HeliosSzczecin,     "szczecin", "kino-helios-chr-kupiec",     "3e60a454-c438-4c9b-b24f-7c6feff3b5ed")
   val SzczecinOutletPark = HeliosCinema(HeliosOutletPark, "szczecin", "helios-outlet-park",     "b898bbed-7ab6-428f-a57b-26d6b6e6a04b")
-  val Radom        = HeliosCinema(HeliosRadom,        "radom",    "kino-helios-radom",          "287fc8f4-7bee-49b4-afcd-b22b52e520b9")
-  val Sosnowiec    = HeliosCinema(HeliosSosnowiec,    "sosnowiec","kino-helios-sosnowiec",      "880f2a3a-e9e8-447c-95ca-72c49ca38a1e")
+  // helios.pl renamed these two venues' page slugs to the chain-default
+  // `kino-helios` (mid-June 2026); the old `kino-helios-<city>` slugs now
+  // 302-redirect to the films-less homepage, which `HeliosClient` correctly
+  // treats as a degraded scrape — so a stale slug silently empties the venue.
+  val Radom        = HeliosCinema(HeliosRadom,        "radom",    "kino-helios",                "287fc8f4-7bee-49b4-afcd-b22b52e520b9")
+  val Sosnowiec    = HeliosCinema(HeliosSosnowiec,    "sosnowiec","kino-helios",                "880f2a3a-e9e8-447c-95ca-72c49ca38a1e")
   val Kielce       = HeliosCinema(HeliosKielce,       "kielce",   "kino-helios",                "d01162e6-31a4-41b9-97cd-1ef7707522fe")
   val Rzeszow      = HeliosCinema(HeliosRzeszow,      "rzeszow",  "kino-helios-galeria",        "409eac78-9718-4fa3-b590-d1e1fb60892d")
 
