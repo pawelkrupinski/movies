@@ -796,7 +796,7 @@ runtimeMinutes:    88
 releaseYear:       2026
 countries:         Polska, Hiszpania, Turcja, Kanada
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Chopiec_na_krancach_swiata_PLAKAT_teaser.jpg
-synopsis.length:   934
+synopsis.length:   780
 cast:              Mikołaj Wachowski, Jan Szydłowski, Łucja Dobrogowska, Magdalena Herman-Urbańska, Elżbieta Jarosik
 director:          Grzegorz Wacławek, Marta Szymańska
 tmdbId:            1277047
@@ -1169,7 +1169,7 @@ runtimeMinutes:    97
 releaseYear:       2025
 countries:         Włochy
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/02/plakat_follemente.jpg
-synopsis.length:   611
+synopsis.length:   584
 cast:              Edoardo Leo, Pilar Fogliati, Emanuela Fanelli, Maria Chiara Giannetta, Claudia Pandolfi
 director:          Paolo Genovese
 tmdbId:            1312157
@@ -1263,7 +1263,7 @@ runtimeMinutes:    120
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://movies.helios.pl/images/prada2plakat.jpg
-synopsis.length:   1002
+synopsis.length:   825
 cast:              Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci, Kenneth Branagh
 director:          David Frankel
 tmdbId:            1314481
@@ -1445,7 +1445,7 @@ runtimeMinutes:    116
 releaseYear:       2025
 countries:         Hiszpania, Niemcy, Francja, Belgia, Maroko
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/Drugie-Zycie-plakat-HQ.jpg
-synopsis.length:   3586
+synopsis.length:   1372
 cast:              Carmen Maura, Marta Etura, Ahmed Boulane, María Alfonsa Rosso, Miguel Garcés
 director:          Maryam Touzani
 tmdbId:            1399462
@@ -2243,7 +2243,7 @@ runtimeMinutes:    116
 releaseYear:       2025
 countries:         Niemcy, Francja, Hiszpania, Belgia, Maroko
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/drugie-zycie-plakat-lq-1.jpg
-synopsis.length:   1351
+synopsis.length:   932
 cast:              Carmen Maura, Marta Etura, Ahmed Boulane, Miguel Garcés, María Alfonsa Rosso
 director:          Maryam Touzani
 tmdbId:            1399462
@@ -6187,7 +6187,7 @@ runtimeMinutes:    139
 releaseYear:       1999
 countries:         Niemcy, USA
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/04/Podziemny-krag_online_cut-200x288.webp
-synopsis.length:   1167
+synopsis.length:   325
 cast:              Edward Norton, Brad Pitt, Helena Bonham Carter, Meat Loaf, Jared Leto
 director:          David Fincher
 tmdbId:            550
@@ -6580,7 +6580,7 @@ runtimeMinutes:    156
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7449S2R.jpg
-synopsis.length:   688
+synopsis.length:   683
 cast:              Ryan Gosling, Sandra Hüller, James Ortiz, Lionel Boyce, Milana Vayntrub
 director:          Christopher Miller, Phil Lord
 tmdbId:            687163
@@ -7647,7 +7647,7 @@ runtimeMinutes:    118
 releaseYear:       2025
 countries:         Włochy
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/Takie-jest-zycie_B1-1-scaled.jpg
-synopsis.length:   1021
+synopsis.length:   832
 cast:              Virginia Raffaele, Diego Abatantuono, Aldo Baglio, Ignazio Giuseppe Loi, Geppi Cucciari, David Budroni Language Italian
 director:          Riccardo Milani
 tmdbId:            1397375

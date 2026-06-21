@@ -123,9 +123,12 @@ case class MovieRecord(
   //     `Imdb` — and pick the first non-empty value (or union for
   //     `countries`). This preserves the prior cinema-only behaviour while
   //     letting TMDB/IMDb fill in fields no cinema reported.
-  //   - **Longest-wins** (`synopsis`, `cast`): pick the longest non-empty
-  //     value across all sources. Different sources write different-length
-  //     blurbs; the longest tends to be the most complete.
+  //   - **Longest-wins** (`cast`): pick the longest non-empty value across all
+  //     sources. Different sources write different-length lists; the longest
+  //     tends to be the most complete.
+  //   - **Paragraphed-then-longest** (`synopsis`): prefer a blurb that carries
+  //     a paragraph break, falling back to longest among those that tie on it —
+  //     a properly broken-up synopsis reads better than a longer wall of text.
 
   /** Iterate `data` in source-priority order — Multikino first, then the
    *  rest of `Cinema.all`, then `Tmdb`, then `Imdb`. Used by every "first
@@ -221,7 +224,12 @@ case class MovieRecord(
     seen.toSeq
   }
 
-  /** Longest non-empty synopsis across all sources, with URL tokens stripped.
+  /** Best non-empty synopsis across all sources, with URL tokens stripped.
+   *  "Best" = a paragraphed blurb (one carrying a `\n`/`\n\n` break, see
+   *  `ScraperParse.blockText`) beats an unbroken single block, and only among
+   *  candidates that tie on that does the longest win. A wall of text reads
+   *  worse than a properly broken-up one even when it's marginally longer, so
+   *  paragraph structure is the primary key and visible length the tie-break.
    *  A cinema detail page that inlines a trailer link folds the bare URL into
    *  the blurb (see `TextNormalization.stripUrls`); we clean every source's
    *  text *before* the longest-wins comparison so a URL-padded blurb can't win
@@ -232,10 +240,10 @@ case class MovieRecord(
    *
    *  Candidates come from BOTH the live `data` slots AND `retainedSynopses`
    *  (synopses kept after a cinema dropped the film), so the pool only grows
-   *  over the row's life and never shrinks until the whole row is deleted. With
-   *  longest-wins over a non-shrinking pool the result is sticky/monotonic: it
-   *  only ever upgrades to a strictly longer blurb, never downgrades when a
-   *  cinema stops listing the film.
+   *  over the row's life and never shrinks until the whole row is deleted. Over
+   *  a non-shrinking pool the result is sticky/monotonic: it only ever upgrades
+   *  (to a paragraphed blurb, or a longer one in the same paragraph class),
+   *  never downgrades when a cinema stops listing the film.
    *
    *  The length compared is the VISIBLE length — markdown emphasis markers
    *  (`**`/`*`, see `ScraperParse.blockText`) are stripped for the comparison so
@@ -256,8 +264,9 @@ case class MovieRecord(
       .map(tools.SynopsisMarkdown.collapseRepeats)
       .map(tools.TextNormalization.stripUrls)
       .filter(_.nonEmpty)
-      .sortBy(s => -tools.SynopsisMarkdown.strip(s).length).headOption
-      .map(tools.SynopsisMarkdown.sanitize)
+      .map(candidate => candidate -> tools.SynopsisMarkdown.strip(candidate))
+      .sortBy { case (_, plainText) => (if (plainText.contains('\n')) 0 else 1, -plainText.length) }
+      .headOption.map { case (candidate, _) => tools.SynopsisMarkdown.sanitize(candidate) }
 
   /** Synopsis candidates in source-priority order — each source's live slot
    *  synopsis followed by its retained (post-prune) one. Built in priority

@@ -118,4 +118,35 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
     )
     record.synopsis shouldBe Some(long)
   }
+
+  // ── Paragraphed blurbs beat single-block ones ──────────────────────────────
+  // A synopsis split into paragraphs (cinema pages emit `\n`/`\n\n` breaks)
+  // reads far better than an unbroken wall of text, so prefer it even when a
+  // single-block source is marginally longer. Length only decides among
+  // candidates that tie on whether they carry a paragraph break.
+
+  it should "prefer a paragraphed synopsis over a longer single-block one" in {
+    val paragraphed = "Pierwszy akapit opisu filmu.\n\nDrugi akapit z dalszą częścią fabuły."
+    val singleBlock = "Jeden długi, nieprzerwany blok tekstu bez żadnego podziału na akapity, a do tego jeszcze trochę więcej słów."
+    singleBlock.length should be > paragraphed.length
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        Tmdb   -> SourceData(synopsis = Some(singleBlock)),
+        Helios -> SourceData(synopsis = Some(paragraphed))
+      )
+    )
+    record.synopsis shouldBe Some(paragraphed)
+  }
+
+  it should "pick the longest among several paragraphed synopses" in {
+    val shorter = "Akapit jeden.\n\nAkapit dwa."
+    val longer  = "Akapit pierwszy z opisem.\n\nAkapit drugi z dalszym ciągiem fabuły filmu."
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        Helios -> SourceData(synopsis = Some(shorter)),
+        Tmdb   -> SourceData(synopsis = Some(longer))
+      )
+    )
+    record.synopsis shouldBe Some(longer)
+  }
 }
