@@ -65,24 +65,21 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  // The live duplicate-card / double-rating-run shape: different cinemas report ONE
-  // film under different years, both already TMDB-resolved to the same id. They land
-  // under distinct `CacheKey`s, so the raw hydrate `put` can't fold them (its
-  // identity gate is bypassed on load). The hydrate is now a PURE LOAD, so they sit
-  // separate until the periodic `SettleReaper` runs the whole-corpus `settle`
-  // (`canonicalizeBySanitize`) — the cross-year collapse only that pass does. (The
-  // settle is its own cluster-claimed tick now, not bolted onto the reload, so the
-  // restart loop no longer resets it the way it once did.)
+  // The live duplicate-card / double-rating-run bug at its source: different
+  // cinemas report ONE film under different years, both already TMDB-resolved to
+  // the same id. They land under distinct `CacheKey`s, so rehydrate's raw put
+  // can't fold them (the `put` identity gate is bypassed on hydrate). They'd then
+  // sit duplicated — each independently enriched — until the periodic `settle`,
+  // which the worker's restart loop keeps resetting. rehydrate must collapse them
+  // on load so the duplicate never reaches the read model or the rating pipeline.
   private def resolvedRow(year: Int, cinema: Source): StoredMovieRecord =
     StoredMovieRecord("Kumotry", Some(year),
       MovieRecord(tmdbId = Some(777), data = Map[Source, SourceData](
         cinema -> SourceData(title = Some("Kumotry"), rawTitle = Some("Kumotry"), releaseYear = Some(year)))))
 
-  "settle after a pure load" should "collapse two same-tmdbId rows that differ only by year" in {
+  "rehydrate" should "collapse two same-tmdbId rows that differ only by year, on load" in {
     val cache = new CaffeineMovieCache(repositoryOf(
       resolvedRow(2025, Multikino), resolvedRow(2026, CinemaCityKinepolis)))
-    cache.entries should have size 2            // pure load leaves the cross-year split
-    cache.canonicalizeBySanitize()              // the SettleReaper's settle collapses it
     cache.entries should have size 1
     cache.entries.head._2.cinemaData.keySet shouldBe Set(Multikino, CinemaCityKinepolis)
   }
@@ -105,11 +102,9 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
       MovieRecord(data = Map[Source, SourceData](
         cinema -> SourceData(title = Some("Kumotry"), rawTitle = Some("Kumotry"), releaseYear = Some(2025)))))
 
-  it should "attach an unresolved ±1-year row to its resolved same-title cluster" in {
+  it should "attach an unresolved ±1-year row to its resolved same-title cluster, on load" in {
     val cache = new CaffeineMovieCache(repositoryOf(
       unresolved2025Row(Multikino), resolved2026Row(CinemaCityKinepolis)))
-    cache.entries should have size 2            // pure load
-    cache.canonicalizeBySanitize()              // settle attaches the ±1-year row
     cache.entries should have size 1
     cache.entries.head._2.cinemaData.keySet shouldBe Set(Multikino, CinemaCityKinepolis)
   }

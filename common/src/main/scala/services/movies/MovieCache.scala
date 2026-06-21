@@ -1101,14 +1101,17 @@ class CaffeineMovieCache(
       }
       logger.info(s"MovieCache rehydrate: reaped ${orphans.size} mis-keyed `movies` orphan(s) whose `_id` drifted from the display title.")
     }
-    // Hydrate is a PURE LOAD: it rebuilds the cache from Mongo (`fromStorage`, which
-    // keys each row by `displayTitle`) and stops. It deliberately does NOT
-    // re-canonicalise. The raw `positive.put` above can leave same-film rows split
-    // across years/spellings (`Kumotry|2025` + `Kumotry|2026`, both one tmdbId);
-    // collapsing them is the periodic `SettleReaper`'s job (`MovieService.settle`),
-    // NOT the load's — re-merging here, right after `fromStorage` re-derives every
-    // key, was the per-deploy re-key flap. The newcomer path stays settled via the
-    // staging fold; cross-title/cross-year splits are reconciled by the reaper.
+    // The raw `positive.put` above bypasses the `put` identity-fold, so same-film
+    // rows that different cinemas reported under different years (`Kumotry|2025`
+    // + `Kumotry|2026`, both resolved to one tmdbId) land as separate entries.
+    // Collapse them right here on every load — at boot and on the 30-s sync tick.
+    // The staging fold (`StagingFold.planGroup`) already writes settled `movies`
+    // rows, but a direct-path scrape/enrich can still transiently split a film
+    // across two years between writes; folding on hydrate (which demonstrably
+    // runs) re-asserts the invariant without relying on any periodic pass. No-op
+    // on an already-canonical corpus — it only writes when a group needs
+    // collapsing.
+    if (rows.nonEmpty) canonicalizeBySanitize()
     val tPopulateMs = (System.nanoTime() - tPostFetch) / 1000000
     if (rows.nonEmpty)
       logger.info(s"Hydrated ${rows.size} enrichment(s) from Mongo — findAll=${tFindAllMs}ms populate=${tPopulateMs}ms.")

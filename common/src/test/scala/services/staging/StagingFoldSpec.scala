@@ -3,7 +3,7 @@ package services.staging
 import models.{Cinema, Helios, Multikino, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{CacheKey, CaffeineMovieCache, EnrichmentRetrigger, MovieRepository, RetriggerKind, StoredMovieRecord}
+import services.movies.{CacheKey, StoredMovieRecord}
 
 class StagingFoldSpec extends AnyFlatSpec with Matchers {
 
@@ -16,42 +16,9 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
         cinema -> SourceData(title = Some(title), releaseYear = Some(cinemaYear)),
         Tmdb   -> SourceData(title = Some(title), releaseYear = Some(tmdbYear)))))
 
-  private def repoOf(rows: StoredMovieRecord*): MovieRepository = new MovieRepository {
-    def enabled = true
-    def findAll() = rows.toSeq
-    def delete(t: String, y: Option[Int]) = ()
-    def deleteById(id: String) = ()
-    def upsert(t: String, y: Option[Int], e: MovieRecord) = ()
-    def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord) = false
-    override def close() = ()
-  }
-
-  /** THE invariant: the staging fold runs the SAME `groupByFilm`/`clusterByFilm`/
-   *  `canonical` collapse the periodic settle (`canonicalizeBySanitize`) runs — just
-   *  scoped to the fold's neighbourhood. So the folded `movies` state is ALREADY the
-   *  settled steady state: load it exactly as a boot would (`fromStorage` round-trip)
-   *  and a full settle must change NOTHING — no re-key, no enrichment re-kick. If
-   *  this fails, the fold and the settle have drifted apart. */
-  private def settleIsANoOpAfterFold(plan: StagingFold.Plan): Unit = {
-    val retriggered = scala.collection.mutable.ListBuffer.empty[Set[RetriggerKind]]
-    val rows = plan.moviesUpserts.map { case (k, rec) =>
-      StoredMovieRecord.fromStorage(StoredMovieRecord.idFor(k.cleanTitle, k.year), rec)
-    }
-    val cache = new CaffeineMovieCache(repoOf(rows*), retrigger = new EnrichmentRetrigger {
-      def retrigger(key: CacheKey, record: MovieRecord, kinds: Set[RetriggerKind]): Unit = { retriggered += kinds; () }
-    })
-    val before = cache.snapshot().map(r => (r.title, r.year)).toSet
-    cache.canonicalizeBySanitize()
-    withClue(s"a settle RE-KEYED the folded state — fold ≠ settle:\n  before=$before\n  after=${cache.snapshot().map(r => (r.title, r.year)).toSet}\n")(
-      cache.snapshot().map(r => (r.title, r.year)).toSet shouldBe before)
-    withClue(s"a settle re-kicked enrichment after the fold: ${retriggered.toList}\n")(
-      retriggered shouldBe empty)
-  }
-
   "planGroup" should "merge same-film staging rows from several cinemas into one movies row" in {
     val rows = Seq(staging(Helios, "Kumotry", 2026, 1454157, 2026), staging(Multikino, "Kumotry", 2026, 1454157, 2026))
     val plan = StagingFold.planGroup(rows, moviesRows = Seq.empty)
-    settleIsANoOpAfterFold(plan)
 
     plan.moviesUpserts should have size 1
     val (key, record) = plan.moviesUpserts.head
@@ -60,29 +27,6 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     record.data.keySet shouldBe Set(Helios, Multikino, Tmdb)
     plan.stagingDeletes should have size 2
     plan.moviesDeletes shouldBe empty
-  }
-
-  it should "merge a cross-title same-tmdbId sibling at fold time (the Mandalorian PL/EN duplicate)" in {
-    // The English "The Mandalorian and Grogu" newcomer folds while the Polish
-    // "Gwiezdne wojny: Mandalorian i Grogu" is ALREADY a movies row, same tmdbId.
-    // The folder pulls that sibling in (reconcileTmdbIds), and groupByFilm's
-    // bare-title tmdbId edge must collapse the two languages onto ONE row HERE —
-    // not leave a duplicate for the periodic settle. The two keys sanitise
-    // differently, so only the tmdbId edge can merge them.
-    val englishNewcomer = staging(Multikino, "The Mandalorian and Grogu", 2026, 700, 2026)
-    val polishSibling = StoredMovieRecord("Gwiezdne wojny: Mandalorian i Grogu", Some(2026),
-      MovieRecord(tmdbId = Some(700), data = Map[Source, SourceData](
-        (Tmdb: Source)   -> SourceData(title = Some("Gwiezdne wojny: Mandalorian i Grogu"),
-                                       englishTitle = Some("The Mandalorian and Grogu"), releaseYear = Some(2026)),
-        (Helios: Source) -> SourceData(title = Some("Gwiezdne wojny: Mandalorian i Grogu"), releaseYear = Some(2026)))))
-
-    val plan = StagingFold.planGroup(Seq(englishNewcomer), moviesRows = Seq(polishSibling))
-    settleIsANoOpAfterFold(plan)
-
-    withClue(s"cross-title rows did not collapse: ${plan.moviesUpserts.map(_._1)}\n")(
-      plan.moviesUpserts should have size 1)
-    plan.moviesUpserts.head._2.tmdbId shouldBe Some(700)
-    plan.moviesUpserts.head._2.data.keySet shouldBe Set(Helios, Multikino, Tmdb) // both languages' cinemas
   }
 
   it should "collapse ±1-year variants into ONE row re-keyed to the TMDB year (the absorbed settle)" in {
@@ -95,7 +39,6 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     val rest26  = staging(Helios,    "Zawodowcy", 2026, 1122573, 2026)
 
     val plan = StagingFold.planGroup(Seq(cc2025, rest26), Seq.empty)
-    settleIsANoOpAfterFold(plan)
 
     plan.moviesUpserts should have size 1
     val (key, record) = plan.moviesUpserts.head
@@ -116,7 +59,6 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     val fresh2026 = staging(Helios, "Zawodowcy", 2026, 1122573, 2026)
 
     val plan = StagingFold.planGroup(Seq(fresh2026), Seq(existing2025))
-    settleIsANoOpAfterFold(plan)
 
     plan.moviesUpserts should have size 1
     plan.moviesUpserts.head._1.year shouldBe Some(2026)
@@ -135,7 +77,6 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
       data = Map[Source, SourceData](Helios -> SourceData(title = Some("Dzień objawienia"), releaseYear = Some(2026)))))
 
     val plan = StagingFold.planGroup(Seq(stray), Seq(resolvedSibling))
-    settleIsANoOpAfterFold(plan)
 
     plan.moviesUpserts should have size 1
     val (key, record) = plan.moviesUpserts.head
@@ -158,7 +99,6 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
       data = Map[Source, SourceData](c -> SourceData(title = Some("Maraton Horrorów"))))))
 
     val plan = StagingFold.planGroup(rows, moviesRows = Seq.empty)
-    settleIsANoOpAfterFold(plan)
 
     plan.moviesUpserts should have size 1
     val (key, record) = plan.moviesUpserts.head
@@ -175,7 +115,6 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     // cache's one-row-per-key invariant, which `planGroup` mirrors.)
     val rows = Seq(staging(Helios, "Diuna", 1984, 841, 1984), staging(Multikino, "Diuna", 2021, 438631, 2021))
     val plan = StagingFold.planGroup(rows, Seq.empty)
-    settleIsANoOpAfterFold(plan)
     plan.moviesUpserts.map(u => (u._1.year, u._2.tmdbId)).toSet shouldBe
       Set((Some(1984), Some(841)), (Some(2021), Some(438631)))
     plan.stagingDeletes should have size 2
@@ -188,7 +127,6 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
       data = Map[Source, SourceData](Helios -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026)))))
 
     val plan = StagingFold.planGroup(Seq(stagingRow), Seq(existing))
-    settleIsANoOpAfterFold(plan)
 
     plan.moviesUpserts should have size 1
     plan.moviesUpserts.head._2.data.keySet shouldBe Set(Helios, Multikino, Tmdb)
@@ -200,7 +138,6 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     // promotion, so the folder can schedule its first-time ratings.
     val rows = Seq(staging(Helios, "Kumotry", 2026, 1454157, 2026), staging(Multikino, "Kumotry", 2026, 1454157, 2026))
     val plan = StagingFold.planGroup(rows, moviesRows = Seq.empty)
-    settleIsANoOpAfterFold(plan)
 
     plan.newPromotions shouldBe plan.moviesUpserts
     plan.newPromotions.map(_._1) shouldBe Seq(CacheKey("Kumotry", Some(2026)))
@@ -215,7 +152,6 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
       data = Map[Source, SourceData](Helios -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026)))))
 
     val plan = StagingFold.planGroup(Seq(stagingRow), Seq(existing))
-    settleIsANoOpAfterFold(plan)
 
     plan.moviesUpserts should have size 1                // the merged row IS written
     plan.newPromotions shouldBe empty                    // but it is not a fresh promotion
@@ -232,7 +168,6 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     val staging2021 = staging(Multikino, "Diuna", 2021, 438631, 2021)
 
     val plan = StagingFold.planGroup(Seq(staging1984, staging2021), Seq(existing1984))
-    settleIsANoOpAfterFold(plan)
 
     plan.newPromotions.map(u => (u._1.year, u._2.tmdbId)) shouldBe Seq((Some(2021), Some(438631)))
   }
@@ -253,7 +188,6 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
         data = Map[Source, SourceData](Helios -> SourceData(title = Some("Kino bez barier: Ministranci (AD + CC + PJM)")))))
 
     val plan = StagingFold.planGroup(Seq(concluded), moviesRows = Seq.empty)
-    settleIsANoOpAfterFold(plan)
 
     plan.moviesUpserts should have size 1
     plan.moviesUpserts.head._2.tmdbNoMatch shouldBe true
@@ -273,7 +207,6 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
       MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Denʹ istyny - UA"), releaseYear = Some(2026)))))
 
     val plan = StagingFold.planGroup(Seq(resolved, blank), moviesRows = Seq.empty)
-    settleIsANoOpAfterFold(plan)
 
     plan.moviesUpserts should have size 1
     val (_, record) = plan.moviesUpserts.head

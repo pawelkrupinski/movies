@@ -44,14 +44,8 @@ class InMemoryStagingFolder(stagingRepository: StagingRepository, movieRepositor
     val stagingRows = stagingRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key)
     if (stagingRows.isEmpty) Seq.empty
     else {
-      val all        = movieRepository.findAll()
-      val groupRows  = all.filter(r => TitleNormalizer.sanitize(r.title) == key)
-      // Also pull cross-title same-tmdbId siblings (any title) so a cross-language
-      // duplicate already in `movies` merges at fold time (see reconcileTmdbIds).
-      val ids        = StagingFold.reconcileTmdbIds(stagingRows, groupRows)
-      val siblings   = if (ids.isEmpty) Seq.empty
-        else all.filter(r => r.record.tmdbId.exists(ids.contains) && TitleNormalizer.sanitize(r.title) != key)
-      val plan       = StagingFold.planGroup(stagingRows, groupRows ++ siblings)
+      val moviesRows = movieRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key)
+      val plan       = StagingFold.planGroup(stagingRows, moviesRows)
       plan.moviesUpserts.foreach { case (k, record) => movieRepository.upsert(k.cleanTitle, k.year, record) }
       plan.moviesDeletes.foreach(k => movieRepository.delete(k.cleanTitle, k.year))
       plan.stagingDeletes.foreach(stagingRepository.deleteRow)

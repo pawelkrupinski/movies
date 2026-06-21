@@ -34,22 +34,9 @@ object StagingFold {
     newPromotions:  Seq[(CacheKey, MovieRecord)]
   )
 
-  /** The TMDB ids carried by a group's rows. A folder loads existing `movies` rows
-   *  with these ids under ANY title and feeds them to `planGroup` too, so a
-   *  cross-LANGUAGE duplicate already in `movies` under its other-language title
-   *  (same id — the Polish "Gwiezdne wojny: Mandalorian i Grogu" already promoted
-   *  when the English "The Mandalorian and Grogu" folds) collapses onto one row
-   *  HERE, at fold time, not only on the next periodic settle. `groupByFilm`'s
-   *  bare-title tmdbId edge does the actual cross-title merge. */
-  def reconcileTmdbIds(stagingRows: Seq[StagingRecord], moviesRows: Seq[StoredMovieRecord]): Set[Int] =
-    (stagingRows.flatMap(_.record.tmdbId) ++ moviesRows.flatMap(_.record.tmdbId)).toSet
-
-  /** `stagingRows` are every per-cinema row of ONE `sanitize(title)` group (all its
-   *  year-variants); `moviesRows` are the existing `movies` rows in that group PLUS
-   *  any cross-title same-tmdbId siblings the folder pulled in (see
-   *  [[reconcileTmdbIds]]). `groupByFilm` then collapses within AND across titles by
-   *  shared tmdbId — the same partition the cache `canonicalizeBySanitize` settle
-   *  runs over the whole corpus, applied here to the fold's neighbourhood. */
+  /** `stagingRows` are every per-cinema row of ONE `sanitize(title)` group (all
+   *  its year-variants); `moviesRows` are the existing `movies` rows in that same
+   *  group. */
   def planGroup(stagingRows: Seq[StagingRecord], moviesRows: Seq[StoredMovieRecord]): Plan = {
     // Union the per-cinema staging rows to ONE row per (sanitize, year) key FIRST,
     // restoring the one-row-per-key invariant `clusterByFilm` assumes. Without it,
@@ -74,7 +61,7 @@ object StagingFold {
       val sorted = entries.sortBy { case (k, _) => FilmCanonicalizer.canonicalRank(k) }
       sorted.head._1 -> MovieRecordMerge.unionAll(sorted.map(_._2))
     }
-    val planned = FilmCanonicalizer.groupByFilm(byKey).flatMap(FilmCanonicalizer.clusterByFilm).map { cluster =>
+    val planned = FilmCanonicalizer.clusterByFilm(byKey).map { cluster =>
       val (canonKey, merged) = FilmCanonicalizer.canonical(cluster)
       // A cluster is a brand-new promotion iff no existing `movies` row joined it
       // (all members came from staging) — a merge into an existing row, or a

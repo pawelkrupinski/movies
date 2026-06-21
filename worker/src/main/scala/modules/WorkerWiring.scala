@@ -14,7 +14,7 @@ import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadMod
 import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
-import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
+import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
 import tools.{Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
@@ -489,17 +489,6 @@ class WorkerWiring extends play.api.Logging {
     throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = throttleSignal,
     runStore = scheduledRunStore)
 
-  // The whole-corpus settle on its OWN periodic tick, decoupled from the cache
-  // hydrate. The settle used to ride `MovieCache.rehydrate`'s backstop reload
-  // (KINOWO_CACHE_REHYDRATE_SECONDS=1800s), but a reload re-derives every key as
-  // `displayTitle`, so settling right after it re-keyed the spelling-variant rows —
-  // the per-deploy flap. Now the load is a pure read and this reaper re-asserts the
-  // one-row-per-film invariant once per the SAME 30-min window (cluster-claimed).
-  def settleIntervalSeconds: FiniteDuration =
-    Env.positiveLong("KINOWO_SETTLE_INTERVAL_SECONDS", SettleReaper.DefaultInterval.toSeconds).seconds
-  lazy val settleReaper = new SettleReaper(() => movieService.settle(),
-    interval = settleIntervalSeconds, runStore = scheduledRunStore)
-
   // ── Staging incubation (resolve-then-fold) ──────────────────────────────────
   // A newcomer in `pending_movies` walks the SAME steps the direct path runs,
   // but each is now a durable queue task (StagingDetail → StagingResolveTmdb →
@@ -717,7 +706,6 @@ class WorkerWiring extends play.api.Logging {
     enrichmentReaper.start()
     unresolvedTmdbReaper.start()
     detailReaper.start()
-    settleReaper.start()
     scrapeReaper.start()
     // Incubate pending_movies through the queue: the reaper kicks new newcomers
     // and backstops stalled chains; the TaskWorker (above) drains the steps.
@@ -738,7 +726,6 @@ class WorkerWiring extends play.api.Logging {
     enrichmentReaper.stop()
     unresolvedTmdbReaper.stop()
     detailReaper.stop()
-    settleReaper.stop()
     workerHeartbeat.stop()
     taskWorker.stop()
     taskQueue.close()

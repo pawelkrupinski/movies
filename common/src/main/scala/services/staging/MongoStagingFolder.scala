@@ -98,17 +98,9 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
     if (stagingRows.isEmpty) Seq.empty
     else {
       // Movies `_id` = sanitize|year — match the sanitize group, any year.
-      val groupRows = await(movies.find(session, Filters.regex("_id", s"^$sanitize\\|")).toFuture())
+      val moviesRows = await(movies.find(session, Filters.regex("_id", s"^$sanitize\\|")).toFuture())
         .map(StoredMovieDto.toDomain)
-      // Cross-title same-tmdbId siblings (any title, OUTSIDE this sanitize group),
-      // so a cross-language duplicate already in `movies` merges at fold time (see
-      // StagingFold.reconcileTmdbIds). Skipped when the group carries no tmdbId.
-      val ids = StagingFold.reconcileTmdbIds(stagingRows, groupRows)
-      val siblings = if (ids.isEmpty) Seq.empty
-        else await(movies.find(session, Filters.and(
-          Filters.in("tmdbId", ids.toSeq*),
-          Filters.not(Filters.regex("_id", s"^$sanitize\\|")))).toFuture()).map(StoredMovieDto.toDomain)
-      val plan = StagingFold.planGroup(stagingRows, groupRows ++ siblings)
+      val plan = StagingFold.planGroup(stagingRows, moviesRows)
       plan.moviesUpserts.foreach { case (k, record) =>
         val id = StoredMovieRecord.idFor(k.cleanTitle, k.year)
         await(movies.replaceOne(session, Filters.eq("_id", id),
