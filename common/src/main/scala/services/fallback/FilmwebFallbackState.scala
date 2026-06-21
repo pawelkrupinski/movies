@@ -4,8 +4,8 @@ import java.time.Instant
 
 /**
  * One transition in a cinema's Filmweb-fallback history, newest-first in
- * `FilmwebFallbackState.history`. Persisted so the /uptime/fallback page can show
- * not just the current state but how it got there.
+ * `FilmwebFallbackState.history`. Persisted so the /uptime page's Filmweb-fallback
+ * section can show not just the current state but how it got there.
  */
 case class FallbackEvent(at: Instant, event: String, reason: String)
 
@@ -20,8 +20,8 @@ object FallbackEvent {
 
 /**
  * Per-cinema Filmweb-fallback state. The worker owns it (it runs the scrape and
- * decides transitions); the web process reads it for the /uptime/fallback status
- * page. Keyed by `cinema` (the `Cinema.displayName`, same key UptimeMonitor uses)
+ * decides transitions); the web process reads it for the /uptime page's
+ * Filmweb-fallback section. Keyed by `cinema` (the `Cinema.displayName`, same key UptimeMonitor uses)
  * so the two views line up.
  *
  * A cinema gets a document only once it has entered fallback at least once — a

@@ -82,7 +82,20 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     def row(n: String) =
       ServiceRow(n, barsFor(n), monitor.averageMs1h(n), monitor.averageMsTotal(n), tags = tags.getOrElse(n, Set.empty))
     val (failing, zero, cinemasByCity, services, other) = groupRows(active, row)
-    Ok(views.html.uptime(failing, zero, cinemasByCity, services, other))
+    val (onFallback, recovered, filmwebOnly) = fallbackSections()
+    Ok(views.html.uptime(failing, zero, onFallback, recovered, filmwebOnly, cinemasByCity, services, other))
+  }
+
+  /** The Filmweb-fallback status, rendered as a section ON the uptime page (below
+   *  the failing / no-screenings triage): cinemas CURRENTLY served by Filmweb
+   *  because their own scraper is down/empty, cinemas that RECENTLY RECOVERED, and
+   *  cinemas that are Filmweb-only BY DESIGN (their only scraper is Filmweb). */
+  private def fallbackSections(): (Seq[FallbackRow], Seq[FallbackRow], Seq[String]) = {
+    val all         = filmwebFallback.findAll()
+    val onFallback  = all.filter(_.active).sortBy(_.cinema).map(fallbackRow)
+    val recovered   = all.filterNot(_.active).filter(_.history.nonEmpty).sortBy(_.cinema).map(fallbackRow)
+    val filmwebOnly = filmwebFallback.filmwebOnly().toSeq.sorted
+    (onFallback, recovered, filmwebOnly)
   }
 
   /** Split the active services into the page's sections. Two triage sections lead:
@@ -203,17 +216,6 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
       }
     }
     NoContent
-  }
-
-  /** Status page for the Filmweb fallback: cinemas CURRENTLY served by Filmweb
-   *  because their own scraper is down/empty, cinemas that RECENTLY RECOVERED, and
-   *  cinemas that are Filmweb-only BY DESIGN (their only scraper is Filmweb). */
-  def fallback: Action[AnyContent] = adminAction {
-    val all         = filmwebFallback.findAll()
-    val onFallback  = all.filter(_.active).sortBy(_.cinema).map(fallbackRow)
-    val recovered   = all.filterNot(_.active).filter(_.history.nonEmpty).sortBy(_.cinema).map(fallbackRow)
-    val filmwebOnly = filmwebFallback.filmwebOnly().toSeq.sorted
-    Ok(views.html.uptimeFallback(onFallback, recovered, filmwebOnly))
   }
 
   private val tsFmt = DateTimeFormatter.ofPattern("d MMM HH:mm").withZone(warsawZone)

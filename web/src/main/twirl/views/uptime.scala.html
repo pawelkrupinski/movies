@@ -1,7 +1,7 @@
-@import controllers.{BarData, FlaggedRow, ServiceRow}
+@import controllers.{BarData, FallbackRow, FlaggedRow, ServiceRow}
 @import play.api.libs.json.Json
 @import services.UptimeMonitor
-@(failing: Seq[FlaggedRow], zero: Seq[FlaggedRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow])
+@(failing: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], recovered: Seq[FallbackRow], filmwebOnly: Seq[String], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow])
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -88,6 +88,19 @@
     .tag-fallback { background: #2b2410; color: #e0b341; border-color: #4d3f18; }
     .leading-fail h2 { color: #e74c3c; }
     .leading-zero h2 { color: #c9c9c9; }
+    /* Filmweb-fallback block, folded onto the page below the triage sections. */
+    .leading-fallback h2 { color: #c9962b; }
+    .leading-fallback table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+    .leading-fallback th, .leading-fallback td { text-align: left; padding: 5px 12px 5px 0; vertical-align: top; white-space: nowrap; }
+    .leading-fallback th { color: #666; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+    .leading-fallback td.cinema { color: #fff; }
+    .leading-fallback td.reason, .leading-fallback .hist { white-space: normal; color: #999; }
+    .leading-fallback .gold { color: #c9962b; }
+    .leading-fallback .hist { color: #777; font-size: 11px; }
+    .leading-fallback .hist div { margin: 1px 0; }
+    .leading-fallback .sub { color: #666; font-size: 12px; margin: -4px 0 10px; }
+    .leading-fallback .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .leading-fallback .chip { background: #161616; border: 1px solid #262626; border-radius: 4px; padding: 3px 8px; color: #aaa; font-size: 12px; }
 
     #overlay {
       display: none; position: fixed; z-index: 100;
@@ -140,6 +153,53 @@
     </div>
   }
 
+  @if(onFallback.nonEmpty || recovered.nonEmpty || filmwebOnly.nonEmpty) {
+    <div class="leading-fallback" id="filmweb-fallback">
+      <h2>Filmweb fallback — currently on fallback (@onFallback.size)</h2>
+      <div class="sub">cinemas served by Filmweb when their own scraper is down or empty</div>
+      @if(onFallback.isEmpty) {
+        <div class="empty-msg">None — every cinema is being served by its own scraper.</div>
+      } else {
+        <table>
+          <tr><th>Cinema</th><th>Filmweb id</th><th>Since</th><th>Fails</th><th>Next re-probe</th><th>Reason</th><th>History</th></tr>
+          @for(r <- onFallback) {
+            <tr>
+              <td class="cinema">@r.cinema</td>
+              <td class="gold">@r.filmwebId</td>
+              <td>@r.since</td>
+              <td>@r.fails</td>
+              <td>@r.nextProbe</td>
+              <td class="reason">@r.reason</td>
+              <td class="hist">@for(h <- r.history) { <div>@h</div> }</td>
+            </tr>
+          }
+        </table>
+      }
+
+      @if(recovered.nonEmpty) {
+        <h2>Recently recovered (@recovered.size)</h2>
+        <table>
+          <tr><th>Cinema</th><th>Last updated</th><th>History</th></tr>
+          @for(r <- recovered) {
+            <tr>
+              <td class="cinema">@r.cinema</td>
+              <td>@r.updated</td>
+              <td class="hist">@for(h <- r.history) { <div>@h</div> }</td>
+            </tr>
+          }
+        </table>
+      }
+
+      @if(filmwebOnly.nonEmpty) {
+        <h2>Filmweb-only by design (@filmwebOnly.size)</h2>
+        <div class="sub">these venues have no own-site scraper — Filmweb is their primary, not a fallback</div>
+        <div class="chips">
+          @for(c <- filmwebOnly) { <span class="chip">@c</span> }
+        </div>
+      }
+    </div>
+  }
+
   @if(cinemasByCity.nonEmpty) {
     <h2>Cinemas</h2>
     @for((city, rows) <- cinemasByCity) {
@@ -167,7 +227,7 @@
     <div class="legend-item"><div class="legend-swatch" style="background:#e74c3c"></div> all failed</div>
     <div class="legend-item"><div class="legend-swatch" style="background:#f5f5f5"></div> no screenings</div>
     <div class="legend-item"><div class="legend-swatch" style="background:#5a7560"></div> no data</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#2ecc40;box-shadow:inset 0 0 0 2px #c9962b"></div> <a href="/uptime/fallback" style="color:#c9962b">served via Filmweb →</a></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#2ecc40;box-shadow:inset 0 0 0 2px #c9962b"></div> <a href="#filmweb-fallback" style="color:#c9962b">served via Filmweb ↑</a></div>
   </div>
 
   <div id="overlay"></div>

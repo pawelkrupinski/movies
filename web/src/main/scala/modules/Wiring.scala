@@ -164,8 +164,8 @@ trait Wiring {
   // tomorrow), appended to /metrics for Grafana to graph + alert on swings.
   lazy val webMovieMetrics = new WebMovieMetrics(movieControllerService)
   lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, webMovieMetrics)
-  // Read-only on the web side: the worker writes fallback state; the /uptime/fallback
-  // page reads it (hydrated from Mongo at boot).
+  // Read-only on the web side: the worker writes fallback state; the /uptime page's
+  // Filmweb-fallback section reads it (hydrated from Mongo at boot).
   lazy val filmwebFallbackStore: FilmwebFallbackStore = new MongoFilmwebFallbackStore(mongoConnection.database)
   lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, filmwebFallbackStore)(using materializer)
   lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue)

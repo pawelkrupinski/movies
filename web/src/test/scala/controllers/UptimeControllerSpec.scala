@@ -142,7 +142,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     val failing = Seq(FlaggedRow(
       ServiceRow("Kino Rialto", bars("red", "red", "red"), tags = Set("custom:RialtoClient")),
       Some("Poznań")))
-    val html = views.html.uptime(failing, Nil, Nil, Nil, Nil).body
+    val html = views.html.uptime(failing, Nil, Nil, Nil, Nil, Nil, Nil, Nil).body
     html should include ("Failing — last 3 scrapes")
     html should include ("""data-city="Poznań"""")           // city pops on name hover (instant tooltip)
     html should include ("tag-custom")                       // styled by kind
@@ -155,21 +155,21 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     val failing = Seq(FlaggedRow(
       ServiceRow("Kino Tatry", bars("red", "red", "red"), tags = Set("shared:FilmwebShowtimesClient")),
       None))
-    val html = views.html.uptime(failing, Nil, Nil, Nil, Nil).body
+    val html = views.html.uptime(failing, Nil, Nil, Nil, Nil, Nil, Nil, Nil).body
     html should include ("tag-shared")
     html should include (">FilmwebShowtimes<")                 // suffix dropped for the chip
     html should include ("""title="FilmwebShowtimesClient"""") // full class on hover
   }
 
-  "the /uptime/fallback page" should "list active fallbacks, recovered cinemas, and Filmweb-only-by-design venues" in {
+  "the /uptime page's Filmweb-fallback section" should "list active fallbacks, recovered cinemas, and Filmweb-only-by-design venues" in {
     fallbackStore.put(fallbackState("Kino Praha", active = true))
     fallbackStore.put(fallbackState("Kino Iluzjon", active = false))
     fallbackStore.putFilmwebOnly(Set("Kino Astra"))
 
-    val result = controller.fallback()(adminSession)
+    val result = controller.index(adminSession)
     status(result) shouldBe OK
     val html = contentAsString(result)
-    html should include ("Currently on fallback (1)")
+    html should include ("Filmweb fallback — currently on fallback (1)")
     html should include ("Kino Praha")        // active
     html should include ("Recently recovered (1)")
     html should include ("Kino Iluzjon")       // recovered (inactive, has history)
@@ -191,9 +191,5 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   it should "render /uptime for an allowlisted admin" in {
     status(controller.index(adminSession)) shouldBe OK
-  }
-
-  it should "gate /uptime/fallback the same way" in {
-    status(controller.fallback()(FakeRequest())) shouldBe UNAUTHORIZED
   }
 }
