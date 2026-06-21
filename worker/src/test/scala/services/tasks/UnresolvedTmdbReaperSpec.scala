@@ -92,7 +92,7 @@ class UnresolvedTmdbReaperSpec extends AnyFlatSpec with Matchers {
   it should "back off to throttledMaxEnqueuePerTick while the worker is CPU-credit throttled" in {
     val cache = newCache(); val (_, retry) = recorder()
     (0 until 50).foreach(i => seedRow(cache, f"Stuck$i%03d")(identity))
-    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def ewmaMillis = 30000L }
+    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def slowScrapeMillis = 30000L }
     val reaper = new UnresolvedTmdbReaper(cache, retry,
       dueWindow = new DueWindow(UnresolvedTmdbReaper.DefaultTickInterval),
       maxEnqueuePerTick = 100, throttledMaxEnqueuePerTick = 5, throttle = throttled)

@@ -21,8 +21,8 @@ class ExternalThrottleGate extends ScrapeThrottleSignal {
   def setThrottled(on: Boolean): Unit = throttled.set(on)
 
   def isThrottled: Boolean = throttled.get()
-  // The gate is driven by credit, not scrape durations — no EWMA to report.
-  def ewmaMillis: Long = 0L
+  // The gate is driven by credit, not scrape durations — no timing to report.
+  def slowScrapeMillis: Long = 0L
 }
 
 object ExternalThrottleGate {

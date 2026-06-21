@@ -133,7 +133,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
 
   it should "back off to throttledMaxEnqueuePerTick while the worker is CPU-credit throttled" in {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
-    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def ewmaMillis = 30000L }
+    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def slowScrapeMillis = 30000L }
     val r = new DetailReaper(Seq(enricher), cacheWithMany(5), queue, fresh, new InProcessEventBus(),
       maxEnqueuePerTick = 50, throttledMaxEnqueuePerTick = 2, throttle = throttled)
     r.tick() shouldBe 2 // throttled → trickle (vs all 5 at the healthy cap)

@@ -7,11 +7,14 @@ import java.util.concurrent.atomic.AtomicReference
 
 /** What [[ScrapeReaper]] needs to know to back off: is the worker currently
  *  CPU-credit throttled, and (for the log) how slow are scrapes running. Kept a
- *  narrow trait so the reaper depends on the abstraction, not the EWMA monitor —
- *  and so tests can inject a fixed signal. */
+ *  narrow trait so the reaper depends on the abstraction, not the monitor — and
+ *  so tests can inject a fixed signal. */
 trait ScrapeThrottleSignal {
   def isThrottled: Boolean
-  def ewmaMillis:  Long
+  /** A representative "how slow are scrapes right now" figure, purely for the
+   *  backoff log. 0 when the signal isn't duration-derived (the external credit
+   *  gate, which knows credit directly and reads no scrape timings). */
+  def slowScrapeMillis: Long
 }
 
 object ScrapeThrottleSignal {
@@ -19,7 +22,7 @@ object ScrapeThrottleSignal {
    *  that don't wire the monitor — so the reaper behaves exactly as before. */
   val AlwaysHealthy: ScrapeThrottleSignal = new ScrapeThrottleSignal {
     def isThrottled: Boolean = false
-    def ewmaMillis:  Long    = 0L
+    def slowScrapeMillis: Long = 0L
   }
 
   /** The per-tick enqueue cap a reaper should use: `normal` when healthy, trimmed
@@ -37,7 +40,7 @@ object ScrapeThrottleSignal {
   def either(a: ScrapeThrottleSignal, b: ScrapeThrottleSignal): ScrapeThrottleSignal =
     new ScrapeThrottleSignal {
       def isThrottled: Boolean = a.isThrottled || b.isThrottled
-      def ewmaMillis:  Long    = math.max(a.ewmaMillis, b.ewmaMillis)
+      def slowScrapeMillis: Long = math.max(a.slowScrapeMillis, b.slowScrapeMillis)
     }
 }
 
@@ -51,48 +54,65 @@ object ScrapeThrottleSignal {
  * recovers; nothing does that automatically today (the standing "highest-value
  * fix" from the 2026-06-19 post-mortem — see project_worker_cpu_steal_boot_storm).
  *
- * This is that fix. It taps the [[TaskObserver]] lifecycle the [[TaskWorker]]
- * already calls, reads each finished `ScrapeCinema` handler's wall-clock as the
- * self-contained throttle SIGNAL (no Fly cpu_balance read needed), smooths it
- * into an EWMA, and exposes a HYSTERETIC `isThrottled`. `ScrapeReaper` consults
- * it and, while throttled, caps enqueue to a trickle so the backlog drains and
- * the pool earns idle; as credit rebuilds the handler durations fall, the EWMA
- * clears, and the full enqueue cap resumes. The trickle (not a hard stop) keeps
- * scrapes — hence this signal — alive so recovery is actually observed, instead
- * of the signal freezing high against an idle pool that never probes again.
+ * This is that fix's in-process FAIL-SAFE: the authoritative control is the
+ * external credit gate ([[ExternalThrottleGate]], driven by a Grafana alert on
+ * the real `fly_instance_cpu_balance`); this monitor backstops the window where
+ * that pusher is silent — the first minutes after a reboot (the gate resets to
+ * off, and a still-firing alert won't re-POST until its repeat interval), or a
+ * full Grafana outage. It taps the [[TaskObserver]] lifecycle the [[TaskWorker]]
+ * already calls, reads each finished `ScrapeCinema` handler's wall-clock as a
+ * self-contained throttle SIGNAL (no Fly cpu_balance read needed), and exposes a
+ * HYSTERETIC `isThrottled` the reapers consult to trickle their enqueue.
+ *
+ * Why a windowed POPULATION, not an EWMA of all durations: scrape wall-clock is
+ * an ambiguous proxy. Real credit throttle slows the WHOLE fleet at once — most
+ * recent scrapes are slow together. A single slow/stalled remote host (slow TLS,
+ * a hung detail fetch) slows only ITS scrape while the rest stay ~3s — pure
+ * network wait, not CPU starvation. An EWMA blends them, so one 57s outlier among
+ * fast scrapes alone crossed the old enter line and tripped a needless backoff
+ * while real credit sat at ~48k (observed 2026-06-21). Instead we count how many
+ * of the last `windowSize` scrapes were slow and trip only when a MAJORITY are:
+ * an isolated outlier can never reach the enter count, but a credit-throttled
+ * fleet trips within a few ticks. Hysteresis (enter high, exit low) keeps the
+ * reaper from oscillating on the boundary.
  *
  * Updated from worker-pool threads (one call per finished task); a lock-free
  * `AtomicReference` keeps the hot path cheap and the reaper-thread read of
  * `isThrottled` consistent.
  */
 class ScrapeThrottleMonitor(
-  // Trip throttled when the duration EWMA climbs to/above this; clear it when the
-  // EWMA falls below `recoverMillis`. The wide gap (≈3s healthy, 20s+ throttled)
-  // is the hysteresis band — the reaper doesn't oscillate on per-cinema noise.
-  throttleMillis: Long   = Env.positiveLong("KINOWO_SCRAPE_THROTTLE_ENTER_MS", 12000L),
-  recoverMillis:  Long   = Env.positiveLong("KINOWO_SCRAPE_THROTTLE_EXIT_MS", 6000L),
-  // EWMA smoothing — weight on the newest sample. 0.2 ≈ the last ~5 scrapes
-  // dominate, enough to ride out one slow cinema but react within a few ticks.
-  alpha:          Double = 0.2
+  // A single scrape is "slow" at/above this — well past the ~3s healthy baseline
+  // (even a slow-TLS host rarely exceeds it) but far under the 20-70s throttled
+  // baseline, so genuine credit-throttle scrapes all count as slow.
+  slowMillis: Long = Env.positiveLong("KINOWO_SCRAPE_THROTTLE_SLOW_MS", 12000L),
+  // How many recent ScrapeCinema durations to weigh. Small enough to react within
+  // a few ticks, large enough that one outlier is a minority.
+  windowSize: Int = Env.positiveInt("KINOWO_SCRAPE_THROTTLE_WINDOW", 6),
+  // Trip throttled when at least this many of the last `windowSize` scrapes were
+  // slow (a majority → the fleet is broadly slow, not one bad host).
+  enterCount: Int = Env.positiveInt("KINOWO_SCRAPE_THROTTLE_ENTER_COUNT", 4),
+  // While throttled, HOLD until the slow count drops to/below this (hysteresis —
+  // the gap to `enterCount` is the band the reaper won't oscillate within).
+  exitCount: Int = Env.positiveInt("KINOWO_SCRAPE_THROTTLE_EXIT_COUNT", 1)
 ) extends TaskObserver with ScrapeThrottleSignal {
 
-  private case class State(ewmaMillis: Double, throttled: Boolean, samples: Long)
-  private val state = new AtomicReference(State(0.0, throttled = false, samples = 0L))
+  private case class State(window: Vector[Long], throttled: Boolean)
+  private val state = new AtomicReference(State(Vector.empty, throttled = false))
 
   def onStarted(task: Task): Unit = ()
 
   def onFinished(task: Task, outcome: String, handleMillis: Long): Unit =
     if (task.taskType == TaskType.ScrapeCinema && outcome == WorkerTaskMetrics.Outcome.Done)
       state.updateAndGet { s =>
-        val ewma =
-          if (s.samples == 0L) handleMillis.toDouble
-          else alpha * handleMillis + (1 - alpha) * s.ewmaMillis
-        // Hysteresis: while throttled, hold until the EWMA drops below the LOWER
-        // exit line; while healthy, trip only when it crosses the HIGHER enter line.
-        val throttled = if (s.throttled) ewma >= recoverMillis else ewma >= throttleMillis
-        State(ewma, throttled, s.samples + 1)
+        val window = (s.window :+ handleMillis).takeRight(windowSize)
+        val slow   = window.count(_ >= slowMillis)
+        // Hysteresis: while throttled, hold until the slow count falls to/below the
+        // LOWER exit count; while healthy, trip only when it reaches the HIGHER enter.
+        val throttled = if (s.throttled) slow > exitCount else slow >= enterCount
+        State(window, throttled)
       }
 
   def isThrottled: Boolean = state.get().throttled
-  def ewmaMillis:  Long    = state.get().ewmaMillis.toLong
+  // The slowest scrape currently in the window — a representative "how slow" for the log.
+  def slowScrapeMillis: Long = { val w = state.get().window; if (w.isEmpty) 0L else w.max }
 }

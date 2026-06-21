@@ -14,7 +14,7 @@ class ExternalThrottleGateSpec extends AnyFlatSpec with Matchers {
 
   "ScrapeThrottleSignal.either" should "be throttled when EITHER source is (gate OR backstop)" in {
     val gate    = new ExternalThrottleGate
-    val backstop = new ScrapeThrottleSignal { def isThrottled = false; def ewmaMillis = 0L }
+    val backstop = new ScrapeThrottleSignal { def isThrottled = false; def slowScrapeMillis = 0L }
     val both    = ScrapeThrottleSignal.either(gate, backstop)
     both.isThrottled shouldBe false
     gate.setThrottled(true)

@@ -17,9 +17,16 @@ policies:
       # The worker-credit-low rule is a CONTROL signal, not a page: route it to
       # the WorkerThrottle webhook (which drives the worker's reaper backoff) and
       # NOT to Telegram. `continue: false` stops it falling through to the default
-      # Telegram receiver. Near-zero group_wait so the worker reacts promptly;
-      # long repeat_interval since the firing/resolved transitions carry the state
-      # (re-POSTing "on" is harmless/idempotent, just unnecessary).
+      # Telegram receiver. Near-zero group_wait so the worker reacts promptly.
+      #
+      # SHORT repeat_interval (re-POST "firing" every 5m while it holds): the
+      # webhook only flips an in-memory AtomicBoolean in the worker, and a worker
+      # REBOOT resets that flag to off. Grafana won't re-send a still-firing alert
+      # (no transition), so with the old 12h interval a worker that rebooted while
+      # credit was low stayed BLIND to the throttle for up to 12h — exactly the
+      # boot-storm window where credit is most drained. Re-POSTing "firing" every
+      # 5m re-seeds the gate within minutes of any reboot. The POST is idempotent,
+      # so re-nagging is harmless; it goes only to the webhook, never Telegram.
       - receiver: WorkerThrottle
         object_matchers:
           - ['notify', '=', 'worker-throttle']
@@ -28,4 +35,4 @@ policies:
           - alertname
         group_wait: 10s
         group_interval: 30s
-        repeat_interval: 12h
+        repeat_interval: 5m

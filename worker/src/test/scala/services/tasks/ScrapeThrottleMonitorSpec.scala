@@ -10,8 +10,9 @@ class ScrapeThrottleMonitorSpec extends AnyFlatSpec with Matchers {
   private def feed(m: ScrapeThrottleMonitor, millis: Long, n: Int): Unit =
     (1 to n).foreach(_ => m.onFinished(scrape, WorkerTaskMetrics.Outcome.Done, millis))
 
-  // alpha=0.5 makes the EWMA move fast enough to assert in a few samples.
-  private def monitor = new ScrapeThrottleMonitor(throttleMillis = 12000, recoverMillis = 6000, alpha = 0.5)
+  // slow=12s, window of 6, trip at 4 slow, recover at <=1 slow.
+  private def monitor =
+    new ScrapeThrottleMonitor(slowMillis = 12000, windowSize = 6, enterCount = 4, exitCount = 1)
 
   "ScrapeThrottleMonitor" should "stay healthy under fast scrapes" in {
     val m = monitor
@@ -19,23 +20,43 @@ class ScrapeThrottleMonitorSpec extends AnyFlatSpec with Matchers {
     m.isThrottled shouldBe false
   }
 
-  it should "trip throttled once the duration EWMA crosses the enter line" in {
+  it should "trip throttled once a majority of recent scrapes are slow" in {
     val m = monitor
-    feed(m, 3000, 3)
+    feed(m, 3000, 6)
     m.isThrottled shouldBe false
-    feed(m, 30000, 10) // sustained slow → EWMA climbs past the 12s enter line
+    feed(m, 30000, 4) // 4 of the last 6 now slow → broadly slow → trip
     m.isThrottled shouldBe true
   }
 
-  it should "hold throttled through the hysteresis band, then recover below the exit line" in {
+  // The 2026-06-21 false-positive: a single ~57s host (slow TLS / a hung detail
+  // fetch) among otherwise-fast scrapes spiked the old EWMA past its enter line and
+  // tripped a needless backoff while real credit sat at ~48k. A lone outlier is a
+  // minority of the window, so the population signal must NOT throttle on it.
+  it should "NOT trip on a single slow outlier among fast scrapes" in {
     val m = monitor
-    feed(m, 30000, 10)
+    feed(m, 3000, 5)
+    m.onFinished(scrape, WorkerTaskMetrics.Outcome.Done, 57000) // one stalled host
+    feed(m, 3000, 3)
+    m.isThrottled shouldBe false
+  }
+
+  it should "NOT trip even on intermittent slow outliers below the enter count" in {
+    val m = monitor
+    // 3 of 6 slow, scattered — still under the 4-of-6 enter count.
+    Seq(3000L, 57000L, 3000L, 57000L, 3000L, 57000L).foreach(d =>
+      m.onFinished(scrape, WorkerTaskMetrics.Outcome.Done, d))
+    m.isThrottled shouldBe false
+  }
+
+  it should "hold throttled through the hysteresis band, then recover once scrapes are fast again" in {
+    val m = monitor
+    feed(m, 30000, 6)
     m.isThrottled shouldBe true
-    // A scrape between the exit (6s) and enter (12s) lines must NOT clear it.
-    feed(m, 9000, 1)
+    // Still 2 slow in the window (> exit count 1) → must hold.
+    feed(m, 3000, 4)
     m.isThrottled shouldBe true
-    // Fast scrapes pull the EWMA below the exit line → recovered.
-    feed(m, 2000, 10)
+    // Now only fast scrapes remain → slow count drops to/below 1 → recovered.
+    feed(m, 3000, 2)
     m.isThrottled shouldBe false
   }
 

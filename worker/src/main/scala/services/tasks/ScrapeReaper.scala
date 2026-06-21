@@ -149,7 +149,7 @@ class ScrapeReaper(
     }
     if (enqueued > 0) {
       if (throttled)
-        logger.warn(s"ScrapeReaper: CPU-credit throttle (scrape EWMA ${throttle.ewmaMillis}ms) — " +
+        logger.warn(s"ScrapeReaper: CPU-credit throttle (slowest recent scrape ${throttle.slowScrapeMillis}ms) — " +
           s"backing off to cap $cap; enqueued $enqueued most-overdue cinema(s) of ${due.size} due, " +
           s"letting the pool drain + rebuild credit.")
       else logger.info(s"ScrapeReaper enqueued $enqueued stale cinema(s).")

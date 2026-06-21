@@ -175,7 +175,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   it should "back off to throttledMaxEnqueuePerTick while the worker is CPU-credit throttled" in {
     val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
     val queue    = new InMemoryTaskQueue
-    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def ewmaMillis = 30000L }
+    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def slowScrapeMillis = 30000L }
     val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
       maxEnqueuePerTick = Int.MaxValue, throttledMaxEnqueuePerTick = 2, throttle = throttled)
     // All 5 cinemas are due, but throttled → only 2 enqueue (vs the full 5 healthy).
@@ -186,7 +186,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
     val queue    = new InMemoryTaskQueue
     var throttledFlag = true
-    val signal = new ScrapeThrottleSignal { def isThrottled = throttledFlag; def ewmaMillis = 0L }
+    val signal = new ScrapeThrottleSignal { def isThrottled = throttledFlag; def slowScrapeMillis = 0L }
     val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
       maxEnqueuePerTick = Int.MaxValue, throttledMaxEnqueuePerTick = 2, throttle = signal)
     reaper.tick() shouldBe 2 // throttled trickle

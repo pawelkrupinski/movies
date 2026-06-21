@@ -41,7 +41,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
     // for all 4 sources, but a throttled reaper enqueues only the trickle.
     val cache = newCache(); val queue = new InMemoryTaskQueue
     seedRow(cache, "Resolved")(_.copy(imdbId = Some("tt1"), tmdbId = Some(2)))
-    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def ewmaMillis = 30000L }
+    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def slowScrapeMillis = 30000L }
     val reaper = new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore,
       throttledMaxEnqueuePerTick = 1, throttle = throttled)
     reaper.tick(t0) shouldBe 1 // throttled → 1, not all 4 eligible rating tasks

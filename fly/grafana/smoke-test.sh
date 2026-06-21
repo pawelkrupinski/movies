@@ -112,6 +112,15 @@ assert "Telegram chatid is the Kinowo Monitoring group" \
   "api/v1/provisioning/contact-points" \
   "any(c.get('name')=='Telegram' and c.get('settings',{}).get('chatid')=='-1003950886618' for c in d)"
 
+# The WorkerThrottle route must re-POST a still-firing alert on a SHORT interval
+# (5m), not the default-long one. The webhook flips an in-memory flag the worker
+# loses on reboot; a long repeat_interval leaves a rebooted worker blind to a
+# still-low credit balance for that whole interval. Guards against a regression
+# back to the 12h value.
+assert "WorkerThrottle route re-seeds the gate on a short (<=5m) repeat_interval" \
+  "api/v1/provisioning/policies" \
+  "any(r.get('receiver')=='WorkerThrottle' and r.get('repeat_interval')=='5m' for r in d.get('routes',[]))"
+
 assert "overview dashboard provisioned" \
   "api/search?query=kinowo" \
   "any(x.get('uid')=='fly-overview' for x in d)"
