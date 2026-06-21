@@ -73,13 +73,13 @@ object PrahaClient {
       )
     }
 
-    slots.groupBy(_.title).toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, bookingUrl = None))
-        .distinctBy(_.dateTime)
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(
+      slots,
+      titleOf    = _.title,
+      showtimeOf = s => Showtime(s.dateTime, bookingUrl = None),
+      distinctBy = _.dateTime
+    ) { (title, group, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = None,
@@ -88,8 +88,8 @@ object PrahaClient {
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 
   /** "10 Cze 2026 / 15:30" → `LocalDateTime`; `None` when the month

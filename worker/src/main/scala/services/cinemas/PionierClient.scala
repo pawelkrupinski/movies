@@ -41,13 +41,8 @@ class PionierClient(http: tools.HttpFetch, override val cinema: Cinema = KinoPio
     val document   = Jsoup.parse(http.get(PageUrl))
     val slots = parseSlots(document)
 
-    slots.groupBy(_.title).toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, s.booking, s.room))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, s.room)) { (title, group, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = None,
@@ -56,8 +51,8 @@ class PionierClient(http: tools.HttpFetch, override val cinema: Cinema = KinoPio
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 }
 

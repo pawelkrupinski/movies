@@ -44,13 +44,8 @@ class KinoSpektrumClient(http: HttpFetch, override val cinema: Cinema) extends C
   def parseHtml(html: String): Seq[CinemaMovie] = {
     val slots = Jsoup.parse(html).select("div.event-item").asScala.toSeq.flatMap(parseEvent)
 
-    slots.groupBy(_.title).toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, s.booking, s.room))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, s.room)) { (title, group, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = group.flatMap(_.poster).headOption,
@@ -59,8 +54,8 @@ class KinoSpektrumClient(http: HttpFetch, override val cinema: Cinema) extends C
         cast      = Seq.empty,
         director  = group.map(_.director).find(_.nonEmpty).getOrElse(Seq.empty),
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 }
 

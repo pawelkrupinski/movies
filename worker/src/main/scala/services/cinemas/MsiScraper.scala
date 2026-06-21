@@ -155,16 +155,9 @@ private[cinemas] object MsiScraper {
    * showtimes by `(dateTime, bookingUrl)`.
    */
   def toMovies(slots: Seq[RawSlot], cinema: Cinema): Seq[CinemaMovie] =
-    slots
-      .groupBy(_.title)
-      .toSeq
-      .flatMap { case (title, group) =>
-        val showtimes = group
-          .map(s => Showtime(s.dateTime, s.booking, format = s.format))
-          .distinctBy(s => (s.dateTime, s.bookingUrl))
-          .sortBy(_.dateTime)
-        if (showtimes.isEmpty) None
-        else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, format = s.format)) {
+      (title, group, showtimes) =>
+        CinemaMovie(
           movie     = Movie(title, rawTitle = group.map(_.rawTitle).headOption),
           cinema    = cinema,
           posterUrl = None,
@@ -173,7 +166,6 @@ private[cinemas] object MsiScraper {
           cast      = Seq.empty,
           director  = group.map(_.director).find(_.nonEmpty).getOrElse(Seq.empty),
           showtimes = showtimes
-        ))
-      }
-      .sortBy(_.movie.title)
+        )
+    }
 }
