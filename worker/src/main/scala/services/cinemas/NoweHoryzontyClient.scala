@@ -148,6 +148,31 @@ object NoweHoryzontyClient {
   private val RuntimePat = """(\d+)""".r
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r
 
+  // A bare foreign-language label (`FR:` / `EN:` …) inside the synopsis container
+  // marks the start of a translated copy of the plot — text + everything after it
+  // isn't part of the Polish synopsis. The leading `&nbsp;` survives jsoup `.text`
+  // as U+00A0, so callers normalise it before matching.
+  private val ForeignLangLabel = """(?i)^(fr|en|eng|de|es|it)\s*:$""".r
+
+  /** Extract the Polish synopsis prose from the `div.txt.wciecia.opisf` block.
+   *  The block also wraps a `gatunek:` genre `<h4>` (and other event-note `<h4>`s)
+   *  plus, for some films, a foreign-language version of the plot behind a bare
+   *  `FR:` / `EN:` label `<h4>`. Drop everything from the foreign label onward, then
+   *  let [[ScraperParse.cleanSynopsis]] strip the `<h4>` labels and join the
+   *  remaining `<p>` paragraphs with blank lines — the old `selectFirst("… p")`
+   *  kept only the FIRST paragraph, truncating multi-paragraph synopses. */
+  private def synopsisProse(container: org.jsoup.nodes.Element): String = {
+    val el = container.clone()
+    el.children.asScala
+      .find(c => c.tagName == "h4" && ForeignLangLabel.matches(c.text.replace('\u00a0', ' ').trim))
+      .foreach { marker =>
+        var sib = marker.nextElementSibling()
+        while (sib != null) { val next = sib.nextElementSibling(); sib.remove(); sib = next }
+        marker.remove()
+      }
+    ScraperParse.cleanSynopsis(el, "h4")
+  }
+
   private def crrow(document: org.jsoup.nodes.Document, label: String): Option[String] =
     document.select("div.crrow").asScala.find(_.text.toLowerCase.contains(label))
       .map(_.text.replaceFirst(s"(?i)^[^:]*:\\s*", "").trim).filter(_.nonEmpty)
@@ -172,7 +197,7 @@ object NoweHoryzontyClient {
     val director = Option(document.selectFirst("h4:contains(reż.) a")).map(_.text.trim)
                     .filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
     val original = Option(document.selectFirst("h4.tytulorg")).map(_.text.trim).filter(_.nonEmpty)
-    val synopsis = Option(document.selectFirst("div.txt.wciecia.opisf p")).map(_.text.trim).filter(_.length > 20)
+    val synopsis = Option(document.selectFirst("div.txt.wciecia.opisf")).map(synopsisProse).filter(_.length > 20)
     val poster   = Option(document.selectFirst("div.plakat img[src]")).map(_.attr("src"))
                     .filter(_.nonEmpty).map(u => if (u.startsWith("http")) u else s"https://www.kinonh.pl/${u.stripPrefix("/")}")
     Detail(runtime, year, original, countries, genres, director, synopsis, poster)

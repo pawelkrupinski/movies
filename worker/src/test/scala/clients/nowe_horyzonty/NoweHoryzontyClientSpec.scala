@@ -60,6 +60,31 @@ class NoweHoryzontyClientSpec extends AnyFlatSpec with Matchers {
     d.synopsis.getOrElse("").length should be > 30
   }
 
+  // Regression: `selectFirst("div.txt.wciecia.opisf p")` grabbed only the FIRST
+  // `<p>` of a multi-paragraph synopsis, truncating ~half the film's plot (23 of
+  // 43 op.s pages carry 2+ Polish paragraphs). The whole synopsis must survive,
+  // with the paragraph breaks preserved as blank lines.
+  it should "preserve every paragraph of a multi-paragraph synopsis" in {
+    val synopsis = detailFor("Zawodowcy").synopsis.getOrElse(fail("no synopsis for Zawodowcy"))
+    withClue(s"synopsis = ${synopsis.replace("\n", "\\n")}\n") {
+      synopsis should include("\n\n")
+      synopsis should include("rollercoaster")  // 2nd paragraph
+      synopsis should include("Eve")            // 3rd paragraph
+    }
+  }
+
+  // The op.s synopsis container also wraps a foreign-language version of the plot
+  // behind a bare "FR:" / "EN:" `<h4>` label, plus a "gatunek:" genre `<h4>`.
+  // Neither belongs in the displayed synopsis — only the Polish prose does.
+  it should "drop the foreign-language translation and the genre label from the synopsis" in {
+    val synopsis = detailFor("Przeżyj to sam").synopsis.getOrElse(fail("no synopsis for Przeżyj to sam"))
+    withClue(s"synopsis = $synopsis\n") {
+      synopsis should include("dorastaniu")     // Polish prose kept
+      synopsis should not include "Nous sommes" // French translation dropped
+      synopsis should not include "gatunek"     // genre label dropped
+    }
+  }
+
   it should "parse a multi-genre film and keep its original title" in {
     val d = detailFor("Diabeł ubiera się u Prady 2")
     d.originalTitle shouldBe Some("The Devil Wears Prada 2")

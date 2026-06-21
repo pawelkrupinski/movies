@@ -796,7 +796,7 @@ runtimeMinutes:    88
 releaseYear:       2026
 countries:         Polska, Hiszpania, Turcja, Kanada
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Chopiec_na_krancach_swiata_PLAKAT_teaser.jpg
-synopsis.length:   780
+synopsis.length:   835
 cast:              Mikołaj Wachowski, Jan Szydłowski, Łucja Dobrogowska, Magdalena Herman-Urbańska, Elżbieta Jarosik
 director:          Grzegorz Wacławek, Marta Szymańska
 tmdbId:            1277047
@@ -2092,7 +2092,7 @@ runtimeMinutes:    128
 releaseYear:       2026
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/8210752.3.jpg
-synopsis.length:   975
+synopsis.length:   389
 cast:              Reda Kateb, Sara Giraudeau, Bastien Bouillon
 director:          Jean-Paul Salomé
 tmdbId:            1376415
@@ -3283,7 +3283,7 @@ runtimeMinutes:    132
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://movies.helios.pl/images/MANDALORIANIGROGUnowyplakat.jpg
-synopsis.length:   698
+synopsis.length:   700
 cast:              Pedro Pascal, Sigourney Weaver, Jeremy Allen White, Steve Blum, Jonny Coyne, Matthew Willig
 director:          Jon Favreau
 tmdbId:            1228710
@@ -3687,7 +3687,7 @@ runtimeMinutes:    106
 releaseYear:       1976
 countries:         USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Mikey_i_Nicky-plakat.png
-synopsis.length:   1075
+synopsis.length:   1753
 cast:              Peter Falk, John Cassavetes, Ned Beatty, Sanford Meisner, William Hickey, David Pendleton
 director:          Elaine May
 tmdbId:            59143
@@ -4707,7 +4707,7 @@ runtimeMinutes:    110
 releaseYear:       1957
 countries:         Włochy, Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/1dbb3597576ffa0f68209c107e48f9c8bc9ee13837caf07e216186166427906d-564x800.jpg
-synopsis.length:   1244
+synopsis.length:   1297
 cast:              Giulietta Masina, François Périer, Franca Marzi, Amedeo Nazzari, Aldo Silvani
 director:          Federico Fellini
 tmdbId:            19426
@@ -7066,7 +7066,7 @@ runtimeMinutes:    109
 releaseYear:       2026
 countries:         Irlandia, Niemcy, USA, Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7956D2R.jpg
-synopsis.length:   812
+synopsis.length:   753
 cast:              Nicholas Galitzine, Molly Gordon, Julia Louis-Dreyfus, Bryan Cranston, Chris O’Dowd, Regina Hall, Patrick Stewart, Hong Chau, Emma Thompson, Tosin Cole, Kobna Holdbrook-Smith, Conleth Hill i Mandeep Dhillon
 director:          Kyle Balda
 tmdbId:            1301421
@@ -7589,7 +7589,7 @@ runtimeMinutes:    176
 releaseYear:       1960
 countries:         Włochy, Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/unnamed.jpg
-synopsis.length:   1261
+synopsis.length:   1280
 cast:              Marcello Mastroianni, Anita Ekberg, Anouk Aimée, Yvonne Furneaux, Magali Noël
 director:          Federico Fellini
 tmdbId:            439
@@ -8234,7 +8234,7 @@ runtimeMinutes:    103
 releaseYear:       1953
 countries:         Włochy, Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/JcrTWB1.jpg-585x800.png
-synopsis.length:   1399
+synopsis.length:   1444
 cast:              Franco Interlenghi, Alberto Sordi, Franco Fabrizi, Leopoldo Trieste, Riccardo Fellini
 director:          Federico Fellini
 tmdbId:            12548

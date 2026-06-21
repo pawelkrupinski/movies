@@ -60,4 +60,17 @@ class FalenicaClientSpec extends AnyFlatSpec with Matchers {
     synopsis should not include "Kup bilet"
     synopsis should not include "youtube.com"
   }
+
+  // The detail page wraps the synopsis in several `<p class="wp-block-paragraph">`
+  // blocks; flattening them with jsoup `.text` fuses the whole thing into one wall
+  // of prose. `cleanSynopsis`/`blockText` must preserve the paragraph breaks as
+  // blank lines so the markdown view renders them as separate paragraphs.
+  it should "preserve paragraph breaks between synopsis blocks" in {
+    val detail = client.fetchFilmDetail(byTitle("Przepis na szczęście").filmUrl.getOrElse(fail("no filmUrl for Przepis na szczęście")))
+      .getOrElse(fail("no detail for Przepis na szczęście"))
+    val synopsis = detail.synopsis.getOrElse(fail("no synopsis for Przepis na szczęście"))
+    withClue(s"synopsis = ${synopsis.replace("\n", "\\n")}\n") {
+      synopsis should include("\n\n")
+    }
+  }
 }
