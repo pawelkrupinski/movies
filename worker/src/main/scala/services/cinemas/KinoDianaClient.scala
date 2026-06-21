@@ -34,27 +34,22 @@ class KinoDianaClient(http: HttpFetch, override val cinema: Cinema = KinoDiana)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] =
-    parseFeed(Try(http.get(FeedUrl)).getOrElse(""))
-      .groupBy(_._1)
-      .toSeq
-      .flatMap { case (title, group) =>
-        val showtimes = group
-          .map { case (_, dt, booking) => Showtime(dt, booking) }
-          .distinctBy(s => (s.dateTime, s.bookingUrl))
-          .sortBy(_.dateTime)
-        if (showtimes.isEmpty) None
-        else Some(CinemaMovie(
-          movie     = Movie(title),
-          cinema    = cinema,
-          posterUrl = None,
-          filmUrl   = None,
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = Seq.empty,
-          showtimes = showtimes
-        ))
-      }
-      .sortBy(_.movie.title)
+    SlotsToMovies.fold(
+      parseFeed(Try(http.get(FeedUrl)).getOrElse("")),
+      titleOf    = _._1,
+      showtimeOf = { case (_, dt, booking) => Showtime(dt, booking) }
+    ) { (title, _, showtimes) =>
+      CinemaMovie(
+        movie     = Movie(title),
+        cinema    = cinema,
+        posterUrl = None,
+        filmUrl   = None,
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = Seq.empty,
+        showtimes = showtimes
+      )
+    }
 }
 
 object KinoDianaClient {

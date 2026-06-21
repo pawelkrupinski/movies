@@ -47,14 +47,13 @@ class KinoAmokClient(
     val document  = Jsoup.parse(html)
     val slots = parseDocument(document, today)
 
-    val byTitle = slots.groupBy(_.title)
-    byTitle.toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, s.booking, s.room))
-        .distinctBy(s => (s.dateTime, s.room))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(
+      slots,
+      titleOf    = _.title,
+      showtimeOf = s => Showtime(s.dateTime, s.booking, s.room),
+      distinctBy = s => (s.dateTime, s.room)
+    ) { (title, _, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = None,
@@ -63,8 +62,8 @@ class KinoAmokClient(
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 }
 

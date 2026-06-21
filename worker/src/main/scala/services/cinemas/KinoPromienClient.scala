@@ -53,13 +53,13 @@ class KinoPromienClient(
       dateTimes.map(dt => (title, dt, url))
     }
 
-    slots.groupBy(_._1).toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map { case (_, dt, _) => Showtime(dt, None) }
-        .distinctBy(_.dateTime)
-        .sortBy(_.dateTime)
-      if (title.isEmpty || showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(
+      slots.filter(_._1.nonEmpty),
+      titleOf    = _._1,
+      showtimeOf = { case (_, dt, _) => Showtime(dt, None) },
+      distinctBy = _.dateTime
+    ) { (title, group, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = None,
@@ -68,8 +68,8 @@ class KinoPromienClient(
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 }
 

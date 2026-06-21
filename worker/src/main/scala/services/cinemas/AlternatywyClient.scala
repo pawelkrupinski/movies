@@ -44,23 +44,23 @@ class AlternatywyClient(
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] =
-    parseRepertoire(http.get(RepertoireUrl))
-      .groupBy(_.title)
-      .toSeq
-      .flatMap { case (title, group) =>
-        val showtimes = group.map(_.showtime).distinctBy(s => (s.dateTime, s.room)).sortBy(_.dateTime)
-        if (title.isEmpty || showtimes.isEmpty) None
-        else Some(CinemaMovie(
-          movie     = Movie(title, rawTitle = group.map(_.rawTitle).headOption),
-          cinema    = cinema,
-          posterUrl = group.flatMap(_.posterUrl).headOption,
-          filmUrl   = group.flatMap(_.filmUrl).headOption,
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = Seq.empty,
-          showtimes = showtimes
-        ))
-      }
+    SlotsToMovies.fold(
+      parseRepertoire(http.get(RepertoireUrl)).filter(_.title.nonEmpty),
+      titleOf    = _.title,
+      showtimeOf = _.showtime,
+      distinctBy = s => (s.dateTime, s.room)
+    ) { (title, group, showtimes) =>
+      CinemaMovie(
+        movie     = Movie(title, rawTitle = group.map(_.rawTitle).headOption),
+        cinema    = cinema,
+        posterUrl = group.flatMap(_.posterUrl).headOption,
+        filmUrl   = group.flatMap(_.filmUrl).headOption,
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = Seq.empty,
+        showtimes = showtimes
+      )
+    }
 
   private case class Screening(title: String, rawTitle: String, showtime: Showtime, posterUrl: Option[String], filmUrl: Option[String])
 

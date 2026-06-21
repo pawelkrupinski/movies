@@ -53,10 +53,13 @@ object KinoAurumClient {
       } yield (title, dt)
     }
 
-    slots.groupBy(_._1).toSeq.flatMap { case (title, group) =>
-      val showtimes = group.map(s => Showtime(s._2, None)).distinctBy(_.dateTime).sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(
+      slots,
+      titleOf    = _._1,
+      showtimeOf = s => Showtime(s._2, None),
+      distinctBy = _.dateTime
+    ) { (title, _, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = None,
@@ -65,7 +68,7 @@ object KinoAurumClient {
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 }

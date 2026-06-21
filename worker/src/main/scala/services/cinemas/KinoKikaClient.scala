@@ -38,14 +38,8 @@ class KinoKikaClient(http: HttpFetch, override val cinema: Cinema) extends Cinem
     val html  = http.get(RepertoireUrl)
     val slots = parseDocument(html)
 
-    val byTitle = slots.groupBy(_.title)
-    byTitle.toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, Some(s.bookingUrl), s.room))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, Some(s.bookingUrl), s.room)) { (title, _, showtimes) =>
+      CinemaMovie(
         movie     = Movie(tools.TextNormalization.titleCaseIfAllLower(title)),
         cinema    = cinema,
         posterUrl = None,
@@ -54,8 +48,8 @@ class KinoKikaClient(http: HttpFetch, override val cinema: Cinema) extends Cinem
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 }
 

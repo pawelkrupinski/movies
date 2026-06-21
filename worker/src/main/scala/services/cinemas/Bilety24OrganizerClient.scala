@@ -68,13 +68,12 @@ object Bilety24OrganizerClient {
       }
     }
 
-    slots.filter(_.title.nonEmpty).groupBy(s => TitleNormalizer.cinemaClean(cinema.slug, s.title)).toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, s.booking, format = s.format))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(
+      slots.filter(_.title.nonEmpty),
+      titleOf    = s => TitleNormalizer.cinemaClean(cinema.slug, s.title),
+      showtimeOf = s => Showtime(s.dateTime, s.booking, format = s.format)
+    ) { (title, _, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = None,
@@ -83,7 +82,7 @@ object Bilety24OrganizerClient {
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 }

@@ -81,27 +81,20 @@ class KinoSfinksClient(http: HttpFetch, override val cinema: Cinema)
     val documents = firstDocument +: extraPaths.flatMap(p => extraDocuments.getOrElse(p, None))
 
     val slots = documents.flatMap(parseDocument)
-    val byTitle = slots.groupBy(_.title)
-
-    byTitle.toSeq.flatMap { case (title, group) =>
-      val ordered = group.sortBy(_.dateTime)
-      val showtimes = ordered
-        .map(s => Showtime(s.dateTime, s.booking))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, group, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = None,
         // The earliest screening's detail page — the metadata is film-level, so
         // any one screening's page serves; pick deterministically.
-        filmUrl   = ordered.flatMap(_.detailUrl).headOption,
+        filmUrl   = group.sortBy(_.dateTime).flatMap(_.detailUrl).headOption,
         synopsis  = None,
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 }
 

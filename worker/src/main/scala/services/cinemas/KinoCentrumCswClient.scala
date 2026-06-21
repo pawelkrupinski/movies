@@ -51,14 +51,13 @@ class KinoCentrumCswClient(
     // per-date event URLs (e.g. "drzewo-magii-14/", "drzewo-magii-15/") — we
     // merge them into one CinemaMovie and use the first seen event URL as the
     // canonical film URL.
-    val byTitle = slots.groupBy(_.title)
-    byTitle.toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, bookingUrl = None))
-        .distinctBy(_.dateTime)
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(
+      slots,
+      titleOf    = _.title,
+      showtimeOf = s => Showtime(s.dateTime, bookingUrl = None),
+      distinctBy = _.dateTime
+    ) { (title, group, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = None,
@@ -67,8 +66,8 @@ class KinoCentrumCswClient(
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 }
 

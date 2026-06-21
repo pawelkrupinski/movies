@@ -52,14 +52,8 @@ class KinoKijowClient(
     }
     val slots = months.flatMap(m => pages.getOrElse(m, None).toSeq.flatMap(html => parseDocument(html, m)))
 
-    val byTitle = slots.groupBy(_.title)
-    byTitle.toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, Some(s.bookingUrl)))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, Some(s.bookingUrl))) { (title, _, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = None,
@@ -68,8 +62,8 @@ class KinoKijowClient(
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 
   /** Current month, plus next month when today is in the final 14 days so

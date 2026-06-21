@@ -43,27 +43,19 @@ class KinoFenomenClient(
 
     val slots = document.select("div.iframe_all").asScala.toSeq.flatMap(parseSlot)
 
-    val byTitle = slots.groupBy(_.title)
-    byTitle.toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, s.booking, None, s.format))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else {
-        val head = group.head
-        Some(CinemaMovie(
-          movie     = Movie(title, releaseYear = head.year),
-          cinema    = cinema,
-          posterUrl = head.poster,
-          filmUrl   = head.booking.map(u => if (u.startsWith("http")) u else BaseUrl + u),
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = head.directors,
-          showtimes = showtimes
-        ))
-      }
-    }.sortBy(_.movie.title)
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format)) { (title, group, showtimes) =>
+      val head = group.head
+      CinemaMovie(
+        movie     = Movie(title, releaseYear = head.year),
+        cinema    = cinema,
+        posterUrl = head.poster,
+        filmUrl   = head.booking.map(u => if (u.startsWith("http")) u else BaseUrl + u),
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = head.directors,
+        showtimes = showtimes
+      )
+    }
   }
 }
 

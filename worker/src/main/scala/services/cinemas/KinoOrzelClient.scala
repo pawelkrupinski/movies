@@ -85,27 +85,17 @@ object KinoOrzelClient {
       }
     }
 
-    slots
-      .groupBy(_.filmId)
-      .toSeq
-      .flatMap { case (_, group) =>
-        val title     = group.head.title
-        val showtimes = group
-          .map(s => Showtime(s.dateTime, Some(s.booking)))
-          .distinctBy(s => (s.dateTime, s.bookingUrl))
-          .sortBy(_.dateTime)
-        if (showtimes.isEmpty) None
-        else Some(CinemaMovie(
-          movie     = Movie(title),
-          cinema    = cinema,
-          posterUrl = group.flatMap(_.poster).headOption,
-          filmUrl   = None,
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = Seq.empty,
-          showtimes = showtimes
-        ))
-      }
-      .sortBy(_.movie.title)
+    SlotsToMovies.fold(slots, _.filmId, s => Showtime(s.dateTime, Some(s.booking))) { (_, group, showtimes) =>
+      CinemaMovie(
+        movie     = Movie(group.head.title),
+        cinema    = cinema,
+        posterUrl = group.flatMap(_.poster).headOption,
+        filmUrl   = None,
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = Seq.empty,
+        showtimes = showtimes
+      )
+    }
   }
 }

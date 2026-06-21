@@ -67,16 +67,10 @@ class McswElektrowniaCinemaClient(
     }
 
     // Group by normalised title and merge showtimes across days.
-    val byTitle = slots.groupBy(_.normTitle)
-    byTitle.toSeq.flatMap { case (_, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, Some(BookingBase + s.eventPath)))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else {
+    SlotsToMovies.fold(slots, _.normTitle, s => Showtime(s.dateTime, Some(BookingBase + s.eventPath))) {
+      (_, group, showtimes) =>
         val head = group.head
-        Some(CinemaMovie(
+        CinemaMovie(
           movie     = Movie(head.displayTitle),
           cinema    = cinema,
           posterUrl = head.posterUrl,
@@ -85,9 +79,8 @@ class McswElektrowniaCinemaClient(
           cast      = Seq.empty,
           director  = Seq.empty,
           showtimes = showtimes
-        ))
-      }
-    }.sortBy(_.movie.title)
+        )
+    }
   }
 }
 

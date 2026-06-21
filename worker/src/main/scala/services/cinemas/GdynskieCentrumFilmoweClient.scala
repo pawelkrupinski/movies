@@ -79,28 +79,23 @@ object GdynskieCentrumFilmoweClient {
     val document   = Jsoup.parse(html)
     val slots = document.select("div.film-width").asScala.toSeq.flatMap(parseFilmBlock)
 
-    slots
-      .groupBy(_.title)
-      .toSeq
-      .flatMap { case (title, group) =>
-        val poster    = group.flatMap(_.poster).headOption
-        val showtimes = group
-          .map(s => Showtime(s.dateTime, s.booking, s.room))
-          .distinctBy(s => (s.dateTime, s.room))
-          .sortBy(_.dateTime)
-        if (showtimes.isEmpty) None
-        else Some(CinemaMovie(
-          movie     = Movie(title),
-          cinema    = cinema,
-          posterUrl = poster,
-          filmUrl   = None,
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = Seq.empty,
-          showtimes = showtimes
-        ))
-      }
-      .sortBy(_.movie.title)
+    SlotsToMovies.fold(
+      slots,
+      titleOf    = _.title,
+      showtimeOf = s => Showtime(s.dateTime, s.booking, s.room),
+      distinctBy = s => (s.dateTime, s.room)
+    ) { (title, group, showtimes) =>
+      CinemaMovie(
+        movie     = Movie(title),
+        cinema    = cinema,
+        posterUrl = group.flatMap(_.poster).headOption,
+        filmUrl   = None,
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = Seq.empty,
+        showtimes = showtimes
+      )
+    }
   }
 
   /** Parse all screenings out of one `div.film-width` block. */
