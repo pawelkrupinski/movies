@@ -1,0 +1,545 @@
+ <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="pl-pl" lang="pl-pl" >
+    <head>
+      <script src="/templates/wd_bikeit/js/jquery.js" type="text/javascript"></script>
+          <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <meta name="robots" content="index, follow" />
+  <meta name="keywords" content="Awangarda" />
+  <meta name="rights" content="Awangarda" />
+  <meta name="description" content="Kino Studyjne Awangarda 2" />
+  <meta name="generator" content="Joomla! 1.7 - Open Source Content Management" />
+  <title>Repertuar</title>
+  <link href="/templates/wd_bikeit/favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon" />
+  <link rel="stylesheet" href="/plugins/content/arisexylightboxlite/arisexylightboxlite/js/sexylightbox.css" type="text/css" />
+  <link rel="stylesheet" href="/libraries/gantry/css/gantry.css" type="text/css" />
+  <link rel="stylesheet" href="/libraries/gantry/css/grid-12.css" type="text/css" />
+  <link rel="stylesheet" href="/libraries/gantry/css/joomla.css" type="text/css" />
+  <link rel="stylesheet" href="/templates/wd_bikeit/css/style1.css" type="text/css" />
+  <link rel="stylesheet" href="/templates/wd_bikeit/css/template.css" type="text/css" />
+  <link rel="stylesheet" href="/templates/wd_bikeit/css/fusionmenu.css" type="text/css" />
+  <link rel="stylesheet" href="https://www.awangarda.olsztyn.pl/modules/mod_news_pro_gk4/interface/css/style.css" type="text/css" />
+  <link rel="stylesheet" href="/media/mod_vt_nivo_slider/css/nivo-slider.css" type="text/css" />
+  <link rel="stylesheet" href="/media/mod_vt_nivo_slider/themes/default/default.css" type="text/css" />
+  <style type="text/css">
+body {background:#dddddd;}body a {color:#ffffff;}#rt-header .rt-container {background:#111111;}#rt-bottom .rt-container {background:#111111;}#rt-footer .rt-container, #rt-copyright .rt-container, #rt-menu .rt-container {background:#666666;}body #rt-logo {width:940px;height:81px;}
+  </style>
+  <script src="/media/system/js/core.js" type="text/javascript"></script>
+  <script src="/media/system/js/mootools-core.js" type="text/javascript"></script>
+  <script src="/media/system/js/caption.js" type="text/javascript"></script>
+  <script src="/plugins/content/arisexylightboxlite/arisexylightboxlite/js/jquery.easing.js" type="text/javascript"></script>
+  <script src="/plugins/content/arisexylightboxlite/arisexylightboxlite/js/jquery.sexylightbox.min.js" type="text/javascript"></script>
+  <script src="/media/system/js/mootools-more.js" type="text/javascript"></script>
+  <script src="/libraries/gantry/js/gantry-totop.js" type="text/javascript"></script>
+  <script src="/templates/wd_bikeit/js/add.js" type="text/javascript"></script>
+  <script src="/templates/wd_bikeit/js/zoo_coment.js" type="text/javascript"></script>
+  <script src="/templates/wd_bikeit/js/cufon-yui.js" type="text/javascript"></script>
+  <script src="/templates/wd_bikeit/js/Bebas_400.font.js" type="text/javascript"></script>
+  <script src="/templates/wd_bikeit/js/Tw_Cen_MT_400.font.js" type="text/javascript"></script>
+  <script src="/templates/wd_bikeit/js/sidebar_menu.js" type="text/javascript"></script>
+  <script src="/modules/mod_roknavmenu/themes/fusion/js/fusion.js" type="text/javascript"></script>
+  <script src="https://www.awangarda.olsztyn.pl/modules/mod_news_pro_gk4/interface/scripts/engine.js" type="text/javascript"></script>
+  <script src="/media/mod_vt_nivo_slider/js/jquery.nivo.slider.min.js" type="text/javascript"></script>
+  <script type="text/javascript">
+jQuery(document).ready(function(){ SexyLightbox.initialize({"find":"lightbox","dir":"\/plugins\/content\/arisexylightboxlite\/arisexylightboxlite\/js\/sexyimages"}); });window.addEvent('domready', function() {                new Fusion('ul.menutop', {
+                    pill: 0,
+                    effect: 'slide and fade',
+                    opacity:  1,
+                    hideDelay:  500,
+                    centered:  0,
+                    tweakInitial: {'x': -10, 'y': -13},
+                    tweakSubsequent: {'x':  0, 'y':  0},
+                    tweakSizes: {'width': 20, 'height': 20},
+                    menuFx: {duration:  300, transition: Fx.Transitions.Circ.easeOut},
+                    pillFx: {duration:  400, transition: Fx.Transitions.Back.easeOut}
+                });
+            
+});
+window.addEvent('load', function() {
+});
+
+  </script>
+        <script type="text/javascript">
+
+      Cufon.replace('h3.catItemTitle, div.itemHeader h2.itemTitle, h1, h2:not(.NotCufon), h3:not(.NotCufon), h4, h5, h6, h1.rt-article-title', { fontFamily: 'Bebas Neue', hover:true});
+      Cufon.replace('.menutop a span, h3.title, h3.title:hover, .news h2.title', { fontFamily: 'Tw Cen MT', hover:true});
+    
+    </script>
+      <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-29602014-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-29602014-1');
+</script>
+</head>
+    <body  class="cssstyle-style1 font-family-helvetica font-size-is-default menu-type-fusionmenu col12">
+                      <div class="background_slider">
+                    <div class="rt-block">
+                                
+<!-- BEGIN: Vinaora Nivo Slider >> http://vinaora.com/ -->
+<div class="slider-wrapper theme-default">
+    <div class="ribbon"></div>
+    <div id="vt_nivo_slider26" class="nivoSlider">
+		<img src="/images/slide/background1.jpg" alt="Vinaora Nivo Slider" title="" rel="https://www.awangarda.olsztyn.pl/images/slide/background1_thumb.jpg" /><img src="/images/slide/background2.jpg" alt="Vinaora Nivo Slider" title="" rel="https://www.awangarda.olsztyn.pl/images/slide/background2_thumb.jpg" /><img src="/images/slide/background3.jpg" alt="Vinaora Nivo Slider" title="" rel="https://www.awangarda.olsztyn.pl/images/slide/background3_thumb.jpg" />
+    </div>
+</div>
+<script type="text/javascript">
+	jQuery.noConflict();
+	
+	jQuery(window).load(function() {
+		jQuery("#vt_nivo_slider26").nivoSlider({
+			effect: 'boxRain', // Specify sets like: 'fold,fade,sliceDown'
+			slices: 15, // For slice animations
+			boxCols: 8, // For box animations
+			boxRows: 4, // For box animations
+			animSpeed: 400, // Slide transition speed
+			pauseTime: 9000, // How long each slide will show
+			startSlide: 0, // Set starting Slide (0 index)
+			directionNav: false, // Next & Prev navigation
+			directionNavHide: false, // Only show on hover
+			controlNav: false, // 1,2,3... navigation
+			controlNavThumbs: true, // Use thumbnails for Control Nav
+			controlNavThumbsFromRel: true, // Use image rel for thumbs
+			controlNavThumbsSearch: '.jpg', // Replace this with...
+			controlNavThumbsReplace: '_thumb.jpg', // ...this in thumb Image src
+			keyboardNav: true, // Use left & right arrows
+			pauseOnHover: true, // Stop animation while hovering
+			manualAdvance: false, // Force manual transitions
+			captionOpacity: 1, // Universal caption opacity
+			prevText: 'Prev', // Prev directionNav text
+			nextText: 'Next', // Next directionNav text
+			beforeChange: function(){}, // Triggers before a slide transition
+			afterChange: function(){}, // Triggers after a slide transition
+			slideshowEnd: function(){}, // Triggers after all slides have been shown
+			lastSlide: function(){}, // Triggers when last slide is shown
+			afterLoad: function(){} // Triggers when slider has loaded
+		});
+    });
+</script>
+<!-- END: Vinaora Nivo Slider >> http://vinaora.com/ -->
+            </div>
+                </div>
+		
+        
+        <div id="rt-top" >
+      <div class="rt-container">
+        <div class="rt-grid-12 rt-alpha rt-omega">
+    			<div class="rt-block">
+    	    	<img name="logo" src="https://www.awangarda.olsztyn.pl/templates/wd_bikeit/images/logo/logo.png" width="940" height="81" border="0" id="logo" usemap="#m_logo" alt="" /><map name="m_logo" id="m_logo">
+<area shape="rect" coords="580,0,940,81" href="http://www.kinastudyjne.pl/" title="Sieć Kin Studyjnych" alt="Sieć kin studyjnych" target="_blank" />
+<area shape="rect" coords="320,0,563,81" href="http://www.europa-cinemas.org/en/" title="Europe Cinemas" alt="Europe Cinemas" target="_blank" />
+<area shape="rect" coords="0,0,294,81" href="http://www.awangarda.olsztyn.pl" title="Kino Studyjne Awangarda 2" alt="Kino Studyjne Awangarda 2"  />
+</map>
+    		</div>
+	    
+                    <div class="rt-block">
+                                
+<!-- Simple Image Holder 1.7.1 starts here -->
+<div style='text-align:center;'><img class="sih8094" src="https://www.awangarda.olsztyn.pl/images/banery/banerynowe/ojczyznapoziom.png" border="0" alt="" title="" width="750" height="200" /></div>
+<!-- Simple Image Holder 1.7.1 ends here -->
+            </div>
+        	                    <div class="rt-block">
+                                
+<!-- Simple Image Holder 1.7.1 starts here -->
+<div style='text-align:center;'><img class="sih8098" src="https://www.awangarda.olsztyn.pl/images/banery/banerynowe/drugiezyciepoziom2.jpg" border="0" alt="" title="" width="750" height="200" /></div>
+<!-- Simple Image Holder 1.7.1 ends here -->
+            </div>
+        	                    <div class="rt-block">
+                                
+<!-- Simple Image Holder 1.7.1 starts here -->
+<div style='text-align:center;'><img class="sih8102" src="https://www.awangarda.olsztyn.pl/images/banery/banerynowe/robinpoziom.jpg" border="0" alt="" title="" width="750" height="200" /></div>
+<!-- Simple Image Holder 1.7.1 ends here -->
+            </div>
+        	
+</div>
+        <div class="clear"></div>
+      </div>
+    </div>
+            <div id="rt-header">
+      <div class="rt-container">
+        <div class="rt-grid-12 rt-alpha rt-omega">
+    <div class="rt-fusionmenu">
+<div class="nopill">
+<div class="rt-menubar">
+    <ul class="menutop level1 " >
+                        <li class="item101 parent root" >
+                            <a class="daddy item bullet" href="https://www.awangarda.olsztyn.pl/"  >
+                    <span>
+                                        Awangarda 2                                                            </span>
+                </a>
+            
+                                                <div class="fusion-submenu-wrapper level2" style="width:180px;">
+                        
+                        <ul class="level2" style="width:180px;">
+                                                                                                        <li class="item1421 parent" >
+                            <a class="daddy item bullet" href="/index.php?option=com_content&amp;view=article&amp;id=720&amp;Itemid=1421"  >
+                    <span>
+                                        Nasze Sale                                                            </span>
+                </a>
+            
+                                                <div class="fusion-submenu-wrapper level3" style="width:180px;">
+                        
+                        <ul class="level3" style="width:180px;">
+                                                                                                        <li class="item154" >
+                            <a class="orphan item bullet" href="/index.php?option=com_content&amp;view=article&amp;id=33&amp;Itemid=154"  >
+                    <span>
+                                        Sala Studyjna                                                            </span>
+                </a>
+            
+                    </li>
+                                                                                                                                                <li class="item164" >
+                            <a class="orphan item bullet" href="/index.php?option=com_content&amp;view=article&amp;id=719&amp;Itemid=164"  >
+                    <span>
+                                        Sala Arte                                                            </span>
+                </a>
+            
+                    </li>
+                                                                                                                                                <li class="item1420" >
+                            <a class="orphan item bullet" href="/index.php?option=com_content&amp;view=article&amp;id=46&amp;Itemid=1420"  >
+                    <span>
+                                        Sala Klubowa                                                            </span>
+                </a>
+            
+                    </li>
+                                                                                            </ul>
+
+                                                <div class="drop-bot"></div>
+                    </div>
+                                    </li>
+                                                                                                                                                <li class="item147" >
+                            <a class="orphan item bullet" href="/index.php?option=com_content&amp;view=article&amp;id=22&amp;Itemid=147"  >
+                    <span>
+                                        Historia Awangardy                                                            </span>
+                </a>
+            
+                    </li>
+                                                                                                                                                <li class="item155" >
+                            <a class="orphan item bullet" href="/index.php?option=com_content&amp;view=article&amp;id=32&amp;Itemid=155"  >
+                    <span>
+                                        Konrad Lenkiewicz                                                            </span>
+                </a>
+            
+                    </li>
+                                                                                            </ul>
+
+                                                <div class="drop-bot"></div>
+                    </div>
+                                    </li>
+                                <li class="item104 active root" >
+                            <a class="orphan item bullet" href="/index.php?option=com_content&amp;view=article&amp;id=77&amp;Itemid=104"  >
+                    <span>
+                                        Repertuar                                                            </span>
+                </a>
+            
+                    </li>
+                                <li class="item111 root" >
+                            <a class="orphan item bullet" href="/index.php?option=com_content&amp;view=article&amp;id=45&amp;Itemid=111"  >
+                    <span>
+                                        Zapowiedzi                                                            </span>
+                </a>
+            
+                    </li>
+                                <li class="item112 root" >
+                            <a class="orphan item bullet" href="/index.php?option=com_content&amp;view=article&amp;id=35&amp;Itemid=112"  >
+                    <span>
+                                        Wydarzenia                                                            </span>
+                </a>
+            
+                    </li>
+                                <li class="item114 root" >
+                            <a class="orphan item bullet" href="/index.php?option=com_contact&amp;view=contact&amp;id=1&amp;Itemid=114"  >
+                    <span>
+                                        Kontakt                                                            </span>
+                </a>
+            
+                    </li>
+                    </ul>
+</div>
+</div>
+</div>
+</div>
+        <div class="clear"></div>
+      </div>
+    </div>
+                    <div id="rt-feature">
+      <div class="rt-container">
+                <div class="clear"></div>
+      </div>
+    </div>
+                                    <div id="rt-main" class="mb8-sa4">
+                <div class="rt-container">
+                    <div class="rt-grid-8 ">
+                                                						<div class="rt-block">
+	                        <div id="rt-mainbody">
+								<div class="component-content">
+	                            	<div class="rt-article"><div class="rt-article-bg">
+	<div class="item-page">
+						<h2 class="title">
+							Repertuar Kina Studyjnego Awangarda 2					</h2>
+		
+		
+		
+		
+		
+															
+				
+		
+					<p style="text-align: left;"> </p>
+<p style="text-align: left;"><strong style="font-size: 12.16px;"><span style="font-family: 'comic sans ms', sans-serif; font-size: x-large; color: #ff0000;">       MAŁE WIELKIE KINO</span></strong></p>
+<p style="text-align: left;"><strong><span style="font-family: 'comic sans ms', sans-serif; font-size: x-large; color: #ff0000;">              ZAPRASZA</span></strong></p>
+<p style="text-align: left;"> </p>
+<div>
+<p> </p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ff0000;"><img src="images/oj%20new.png" border="0" width="500" /></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ff0000;"><br /></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ff0000;">Piątek 19.06.</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ff0000;"><strong><strong><a href="index.php?option=com_content&amp;view=article&amp;id=2310&amp;Itemid=3524">"Drugie życie"</a> <span style="color: #888888;">- prod. Francja, Belgia : godz. 17.45 <span style="color: #ffcc00;">sala arte</span></span></strong></strong></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ff0000;"><strong><strong><span style="color: #888888;"><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2313&amp;Itemid=3527">"Ojczyzna" </a>- prod. Polska, Francja : godz. 18.00 sala studyjna</span></strong></strong></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ff0000;"><strong><strong><span style="color: #888888;"><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2320&amp;Itemid=3534">"Monterey Pop"</a> - prod. USA : godz. 18.00 <span style="color: #ff0000;">sala klubowa</span></span></strong></strong></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ff0000;"><strong><strong><span style="color: #888888;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2314&amp;Itemid=3528">"Dzień objawienia" </a>- prod. USA : godz. 19.30 <span style="color: #ff0000;">sala klubowa</span></strong></strong></span></strong></strong></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ff0000;"><strong><strong><span style="color: #888888;"><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2323&amp;Itemid=3537">"Robin Hood. Koniec legendy"</a> - prod. USA : godz. 19.45 sala studyjna</span></strong></strong></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ff0000;"><strong><strong><span style="color: #888888;"><strong><strong><span><strong><strong><span><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2313&amp;Itemid=3527">"Ojczyzna" </a>- prod. Polska, Francja : godz. 20.00 <span style="color: #ffcc00;">sala arte</span></span></strong></strong></span></strong></strong></span></strong></strong></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ff0000;"><strong><strong><span style="color: #888888;"><br /></span></strong></strong></span></strong></strong></span></p>
+<p> <img src="images/robinhood_banerykinowe_750x200.jpg" border="0" width="500" /></p>
+<p><img src="images/monterey-pop-poster.jpg" border="0" width="500" /></p>
+<p> </p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium; color: #ff0000;"><strong><strong><strong><strong>Sobota 20.06.</strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ff0000;"><strong><strong><span style="color: #888888;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2314&amp;Itemid=3528">"Dzień objawienia" </a>- prod. USA : godz. 15.30 <span>sala studyjna</span></strong></strong></span></strong></strong></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ff0000;"><strong><strong><span style="color: #888888;"><strong><strong><span><strong><strong><span><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2313&amp;Itemid=3527">"Ojczyzna" </a>- prod. Polska, Francja : godz. 16.00 <span style="color: #ffcc00;">sala arte</span></span></strong></strong></span></strong></strong></span></strong></strong></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ff0000;"><strong><strong><span style="color: #888888;"><strong><strong><span><strong><strong><span><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2320&amp;Itemid=3534">"Monterey Pop"</a> - prod. USA : godz. 16.15 <span style="color: #ff0000;">sala klubowa</span></span></strong></strong></span></strong></strong></span></strong></strong></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ff0000;"><strong><strong><span style="color: #888888;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2317&amp;Itemid=3531">"Kumotry"</a> - prod. Polska, Niemcy : godz. 17.45 <span style="color: #ffcc00;">sala arte</span></strong></strong></span></strong></strong></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><a href="index.php?option=com_content&amp;view=article&amp;id=2310&amp;Itemid=3524">"Drugie życie"</a> - prod. Francja, Belgia : godz. 17.45 <span style="color: #ff0000;">sala klubowa</span></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2313&amp;Itemid=3527">"Ojczyzna" </a>- prod. Polska, Francja : godz. 18.00 sala studyjna</strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2319&amp;Itemid=3533">"Czytając Lolitę w Teheranie"</a> - prod. 19.15 <span style="color: #ffcc00;">sala arte</span></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2323&amp;Itemid=3537">"Robin Hood. Koniec legendy"</a> - prod. USA : godz. 19.45 sala studyjna</strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><strong><strong><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2314&amp;Itemid=3528">"Dzień objawienia"</a> - prod. USA : godz. 19.45 <span style="color: #ff0000;">sala klubowa</span></strong></strong></strong></strong></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><strong><strong><strong><strong><br /></strong></strong></strong></strong></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><strong><strong><strong><strong><img src="images/czyt%20lol.jpg" border="0" width="500" /></strong></strong></strong></strong></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><strong><strong><strong><strong><img src="images/kumotry%20ban.png" border="0" width="500" /></strong></strong></strong></strong></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><strong><strong><strong><strong><br /></strong></strong></strong></strong></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium; color: #ff0000;"><strong><strong><strong><strong><strong><strong><strong><strong>Niedziela 21.06.</strong></strong></strong></strong></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2314&amp;Itemid=3528">"Dzień objawienia" </a>- prod. USA : godz. 15.30 sala studyjna</strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2313&amp;Itemid=3527">"Ojczyzna" </a>- prod. Polska, Francja : godz. 16.00 <span style="color: #ffcc00;">sala arte</span></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2320&amp;Itemid=3534">"Monterey Pop"</a> - prod. USA : godz. 16.15 <span style="color: #ff0000;">sala klubowa</span></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2317&amp;Itemid=3531">"Kumotry"</a> - prod. Polska, Niemcy : godz. 17.45 <span style="color: #ffcc00;">sala arte</span></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="index.php?option=com_content&amp;view=article&amp;id=2310&amp;Itemid=3524">"Drugie życie"</a> - prod. Francja, Belgia : godz. 17.45 <span style="color: #ff0000;">sala klubowa</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2313&amp;Itemid=3527">"Ojczyzna" </a>- prod. Polska, Francja : godz. 18.00 sala studyjna</strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2319&amp;Itemid=3533">"Czytając Lolitę w Teheranie"</a> - prod. 19.15 <span style="color: #ffcc00;">sala arte</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2323&amp;Itemid=3537">"Robin Hood. Koniec legendy"</a> - prod. USA : godz. 19.45 sala studyjna</strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2314&amp;Itemid=3528">"Dzień objawienia"</a> - prod. USA : godz. 19.45 <span style="color: #ff0000;">sala klubowa</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ffcc00;"><br /></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ffcc00;"><img src="images/tanie.jpg" border="0" width="500" /></span></strong></strong></span></p>
+<p> </p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ffcc00;">Poniedziałek 22.06.</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><a href="index.php?option=com_content&amp;view=article&amp;id=2310&amp;Itemid=3524">"Drugie życie"</a> - prod. Francja, Belgia : godz. 17.45 <span style="color: #ffcc00;">sala arte</span></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2313&amp;Itemid=3527">"Ojczyzna" </a>- prod. Polska, Francja : godz. 18.00 sala studyjna</strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2320&amp;Itemid=3534">"Monterey Pop"</a> - prod. USA : godz. 18.00 <span style="color: #ff0000;">sala klubowa</span></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2314&amp;Itemid=3528">"Dzień objawienia" </a>- prod. USA : godz. 19.30 <span style="color: #ff0000;">sala klubowa</span></strong></strong></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2323&amp;Itemid=3537">"Robin Hood. Koniec legendy"</a> - prod. USA : godz. 19.45 sala studyjna</strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2319&amp;Itemid=3533">"Czytając Lolitę w Teheranie"</a> - prod. Włochy, Izrael : godz. 19.45 <span style="color: #ffcc00;">sala arte</span></strong></strong></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><br /></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><img src="images/dz%20o.jpg" border="0" width="500" /></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><img src="images/robinhood_banerykinowe_750x200.jpg" border="0" width="500" /></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><br /></strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium; color: #ffcc00;"><strong><strong><strong><strong>Wtorek 23.06.</strong></strong></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="index.php?option=com_content&amp;view=article&amp;id=2310&amp;Itemid=3524">"Drugie życie"</a> - prod. Francja, Belgia : godz. 17.45 <span style="color: #ffcc00;">sala arte</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2313&amp;Itemid=3527">"Ojczyzna" </a>- prod. Polska, Francja : godz. 18.00 sala studyjna</strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2320&amp;Itemid=3534">"Monterey Pop"</a> - prod. USA : godz. 18.00 <span style="color: #ff0000;">sala klubowa</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2314&amp;Itemid=3528">"Dzień objawienia" </a>- prod. USA : godz. 19.30 <span style="color: #ff0000;">sala klubowa</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2323&amp;Itemid=3537">"Robin Hood. Koniec legendy"</a> - prod. USA : godz. 19.45 sala studyjna</strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2319&amp;Itemid=3533">"Czytając Lolitę w Teheranie"</a> - prod. Włochy, Izrael : godz. 19.45<span style="color: #ffcc00;"> sala arte</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><br /></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><img src="images/oj%20new.png" border="0" width="500" /></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><img src="images/czyt%20lol.jpg" border="0" width="500" /></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><br /></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium; color: #ffcc00;"><strong><strong>Środa 24.06.</strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="index.php?option=com_content&amp;view=article&amp;id=2310&amp;Itemid=3524">"Drugie życie"</a> - prod. Francja, Belgia : godz. 17.45 <span style="color: #ffcc00;">sala arte</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2313&amp;Itemid=3527">"Ojczyzna" </a>- prod. Polska, Francja : godz. 18.00 sala studyjna</strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2314&amp;Itemid=3528">"Dzień objawienia" </a>- prod. USA : godz. 19.30 <span style="color: #ff0000;">sala klubowa</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2323&amp;Itemid=3537">"Robin Hood. Koniec legendy"</a> - prod. USA : godz. 19.45 sala studyjna</strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2319&amp;Itemid=3533">"Czytając Lolitę w Teheranie"</a> - prod. Włochy, Izrael : godz. 19.45 <span style="color: #ffcc00;">sala arte</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ffcc00;"><br /></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><img src="images/drugie%20z.jpg" border="0" width="500" /></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><img src="images/monterey-pop-poster.jpg" border="0" width="500" /></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><br /></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium; color: #ffcc00;"><strong><strong>Czwartek 25.06.</strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="index.php?option=com_content&amp;view=article&amp;id=2310&amp;Itemid=3524">"Drugie życie"</a> - prod. Francja, Belgia : godz. 17.45 <span style="color: #ffcc00;">sala arte</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2313&amp;Itemid=3527">"Ojczyzna" </a>- prod. Polska, Francja : godz. 18.00 sala studyjna</strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2320&amp;Itemid=3534">"Monterey Pop"</a> - prod. USA : godz. 18.00 <span style="color: #ff0000;">sala klubowa</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2314&amp;Itemid=3528">"Dzień objawienia" </a>- prod. USA : godz. 19.30 <span style="color: #ff0000;">sala klubowa</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2323&amp;Itemid=3537">"Robin Hood. Koniec legendy"</a> - prod. USA : godz. 19.45 sala studyjna</strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><a href="https://www.awangarda.olsztyn.pl/index.php?option=com_content&amp;view=article&amp;id=2316&amp;Itemid=3530">Federico Fellini : Ciao a tutti "Wałkonie"</a> godz. 19.45 <span style="color: #ffcc00;">sala arte</span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ffcc00;"><br /></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ffcc00;"><img src="images/zaproszenie-zaproszenie-2-mf-1500x690-1-1.jpg" border="0" width="500" /></span></strong></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><span style="color: #ffcc00;"><img src="images/takie.jpg" border="0" width="500" /></span></strong></strong></span></p>
+</div>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: large;"><strong><span style="color: #ff0000;">..............................................................................</span></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: large;"><strong><span style="color: #ff0000;"><br /></span></strong></span></p>
+<p><span style="font-family: 'comic sans ms', sans-serif; font-size: xx-large; color: #ff0000;"><strong>               Zapraszamy !</strong></span></p>
+<p> </p>
+<p style="text-align: center;"><span style="color: #ff0000; font-family: 'comic sans ms', sans-serif;"><strong>rezerwacja biletów :</strong></span></p>
+<p style="text-align: center;"><span style="color: #ff0000; font-family: 'comic sans ms', sans-serif;"><strong>kasa kina : 89 523 75 38 /czynna pół godziny przed 1 seansem/</strong></span></p>
+<p style="text-align: center;"> </p>
+<p style="text-align: center;"><span style="color: #ff0000; font-family: 'comic sans ms', sans-serif;"><strong>Zarezerwowane bilety prosimy odebrać 15 min. przed seansem, w przeciwnym razie zostaną sprzedane. Miejsca w kinie są nienumerowane</strong></span></p>
+<p style="text-align: center;"><span style="color: #ff0000; font-family: 'comic sans ms', sans-serif;"><strong>Kino zastrzega sobie prawo do wprowadzania zmian w bieżącym repertuarze</strong></span></p>
+<p style="text-align: center;"><span style="color: #ff0000; font-family: 'comic sans ms', sans-serif;"><strong><br /></strong></span></p> 			
+				
+			</div>
+</div></div>
+								</div>
+	                        </div>
+						</div>
+                                                                    </div>
+                                <div class="rt-grid-4 ">
+                <div id="rt-sidebar-a">
+                                    <div class="icons">
+                    <div class="rt-block">
+                                
+
+<div class="customicons"  >
+	<p><a href="http://www.facebook.com/pages/Kino-Studyjne-Awangarda-2/199691740116823?sk=wall" target="_blank" title="Awangarda na Facebook'u"><img src="images/facebook_logo.png" border="0" width="35" height="35" /></a></p></div>            </div>
+                </div>
+		                <div class="menusidebar_menu">
+                    <div class="rt-block">
+                				<div class="module-title">
+                	<h2 class="title">Zapowiedzi</h2>
+				</div>
+                                
+<ul class="menu">
+<li id="item-3468"><a href="/index.php?option=com_content&amp;view=article&amp;id=2256&amp;Itemid=3468" ><span>Wajda : re -wizje</span></a></li><li id="item-3512"><a href="/index.php?option=com_content&amp;view=article&amp;id=2299&amp;Itemid=3512" ><span>Fiesta Kina Hiszpańskiego</span></a></li><li id="item-3524"><a href="/index.php?option=com_content&amp;view=article&amp;id=2310&amp;Itemid=3524" ><span>Drugie życie</span></a></li><li id="item-3526"><a href="/index.php?option=com_content&amp;view=article&amp;id=2312&amp;Itemid=3526" ><span>Takie jest życie</span></a></li><li id="item-3527"><a href="/index.php?option=com_content&amp;view=article&amp;id=2313&amp;Itemid=3527" ><span>Ojczyzna</span></a></li><li id="item-3528"><a href="/index.php?option=com_content&amp;view=article&amp;id=2314&amp;Itemid=3528" ><span>Dzień objawienia</span></a></li><li id="item-3529"><a href="/index.php?option=com_content&amp;view=article&amp;id=2315&amp;Itemid=3529" ><span>Sny o słoniach</span></a></li><li id="item-3530"><a href="/index.php?option=com_content&amp;view=article&amp;id=2316&amp;Itemid=3530" ><span>Federico Fellini : ciao a tutti </span></a></li><li id="item-3531"><a href="/index.php?option=com_content&amp;view=article&amp;id=2317&amp;Itemid=3531" ><span>Kumotry</span></a></li><li id="item-3533"><a href="/index.php?option=com_content&amp;view=article&amp;id=2319&amp;Itemid=3533" ><span>Czytając Lolitę w Teheranie</span></a></li><li id="item-3534"><a href="/index.php?option=com_content&amp;view=article&amp;id=2320&amp;Itemid=3534" ><span>Monterey Pop</span></a></li><li id="item-3535"><a href="/index.php?option=com_content&amp;view=article&amp;id=2321&amp;Itemid=3535" ><span>Following</span></a></li><li id="item-3536"><a href="/index.php?option=com_content&amp;view=article&amp;id=2322&amp;Itemid=3536" ><span>Przekleństwa niewinności</span></a></li><li id="item-3537"><a href="/index.php?option=com_content&amp;view=article&amp;id=2323&amp;Itemid=3537" ><span>Robin Hood. Koniec legendy</span></a></li><li id="item-3538"><a href="/index.php?option=com_content&amp;view=article&amp;id=2324&amp;Itemid=3538" ><span>Guru</span></a></li></ul>            </div>
+                </div>
+		                <div class="menusidebar_menu">
+                    <div class="rt-block">
+                				<div class="module-title">
+                	<h2 class="title">Zapraszamy do Nas</h2>
+				</div>
+                                
+<ul class="menu">
+<li id="item-110"><a href="/index.php?option=com_content&amp;view=article&amp;id=31&amp;Itemid=110" ><span>Kawiarenka &quot;Filmowa&quot;</span></a></li><li id="item-136"><a href="/index.php?option=com_content&amp;view=article&amp;id=30&amp;Itemid=136" ><span>Edukacja Młode Horyzonty</span></a></li><li id="item-214"><a href="/index.php?option=com_content&amp;view=article&amp;id=84&amp;Itemid=214" ><span>RODO</span></a></li><li id="item-108"><a href="/index.php?option=com_content&amp;view=article&amp;id=25&amp;Itemid=108" ><span>Ceny biletów</span></a></li><li id="item-2319"><a href="/index.php?option=com_content&amp;view=article&amp;id=1157&amp;Itemid=2319" ><span>Regulamin Kina Studyjnego Awangarda 2</span></a></li></ul>            </div>
+                </div>
+		                <div class="sidebar">
+                    <div class="rt-block">
+                				<div class="module-title">
+                	<h2 class="title">Aktualności Filmowe</h2>
+				</div>
+                                
+
+
+	<div class="nspMain nspFs100" id="nsp-nsp_31" style="width:100%;">
+		
+		
+			
+			<div class="nspArts bottom" style="width:100%;">
+			
+				
+			
+				
+					
+					<div class="nspArt" style="width:100%;"><div style="padding:0 0px 0px 0"><p class="nspText tleft fleft"><p style="text-align: left;"><strong style="color: #ff0000; font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><strong><strong><strong><span class="yt-core-attributed-string yt-core-attributed-string--white-space-pre-wrap" dir="auto"><span class="ods-c-image-description__text"><strong><strong><strong><span class="yt-core-attributed-string--link-inherit-color" dir="auto"><strong><span class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap" dir="auto">"Czytając Lolitę w Teheranie"   </span></strong></span></strong></strong></strong></span></span></strong></strong></strong></strong></strong></strong></strong></strong><strong style="color: #ff0000; font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><strong><strong><strong><span class="yt-core-attributed-string yt-core-attributed-string--white-space-pre-wrap" dir="auto"><span class="ods-c-image-description__text"><strong><strong><strong><span class="yt-core-attributed-string--link-inherit-color" dir="auto"><strong><span class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap" dir="auto">film oparty na podstawie bestsellerowej autobiografii</span></strong></span></strong></strong></strong></span></span></strong></strong></strong></strong></strong></strong></strong></strong></p>
+<p style="text-align: left;"><strong style="color: #ff0000; font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><strong><strong><strong><span class="yt-core-attributed-string yt-core-attributed-string--white-space-pre-wrap" dir="auto"><span class="ods-c-image-description__text"><strong><strong><strong><span class="yt-core-attributed-string--link-inherit-color" dir="auto"><strong><span class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap" dir="auto">Legendarny festiwal z miłością i muzyką w tle : "Monterey Pop"</span></strong></span></strong></strong></strong></span></span></strong></strong></strong></strong></strong></strong></strong></strong></p>
+<p style="text-align: left;"><strong style="color: #ff0000; font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><strong><strong><strong></strong></strong></strong></strong></strong></strong></strong></strong><strong style="color: #ff0000; font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><strong><strong><strong><span class="yt-core-attributed-string yt-core-attributed-string--white-space-pre-wrap" dir="auto"><span class="ods-c-image-description__text"><strong><strong><strong><span class="yt-core-attributed-string--link-inherit-color" dir="auto"><strong><span class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap" dir="auto">Przygodowy "Robin Hood. Koniec legendy"</span></strong></span></strong></strong></strong></span></span></strong></strong></strong></strong></strong></strong></strong></strong></p>
+<p style="text-align: left;"><strong style="color: #ff0000; font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><strong><strong><strong><span class="yt-core-attributed-string yt-core-attributed-string--white-space-pre-wrap" dir="auto"><span class="ods-c-image-description__text"><strong><strong><strong><span class="yt-core-attributed-string--link-inherit-color" dir="auto"><strong><span class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap" dir="auto">"Ojczyzna" Pawła Pawlikowskiego z nagrodą w Cannes</span></strong></span></strong></strong></strong></span></span></strong></strong></strong></strong></strong></strong></strong></strong></p>
+<p style="text-align: left;"><strong style="color: #ff0000; font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><strong><strong><strong><span class="yt-core-attributed-string yt-core-attributed-string--white-space-pre-wrap" dir="auto"><span class="ods-c-image-description__text"><strong><strong><strong><span class="yt-core-attributed-string--link-inherit-color" dir="auto"><strong><span class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap" dir="auto">Tylko w weekend "Kumotry"</span></strong></span></strong></strong></strong></span></span></strong></strong></strong></strong></strong></strong></strong></strong></p>
+<p style="text-align: left;"><strong style="color: #ff0000; font-family: 'comic sans ms', sans-serif; font-size: medium;"><strong><strong><strong><strong><strong><strong><strong><span class="yt-core-attributed-string yt-core-attributed-string--white-space-pre-wrap" dir="auto"><span class="ods-c-image-description__text"><strong><strong><strong><span class="yt-core-attributed-string--link-inherit-color" dir="auto"><strong><span class="ytAttributedStringHost ytAttributedStringWhiteSpacePreWrap" dir="auto">Przegląd filmów Federico Felliniego</span></strong></span></strong></strong></strong></span></span></strong></strong></strong></strong></strong></strong></strong></strong></p>
+</p><a class="readon  fright" href="/index.php?option=com_content&amp;view=article&amp;id=57:aktualnosci-filmowe-2&amp;catid=10:first-category&amp;Itemid=130">Czytaj Dalej</a></div></div>
+					
+			</div>
+		
+		
+		
+	</div>
+
+
+
+<script type="text/javascript">
+//<![CDATA[
+try {$Gavick;}catch(e){$Gavick = {};};
+$Gavick["nsp-nsp_31"] = {
+	"animation_speed": 400,
+	"animation_interval": 5000,
+	"animation_function": Fx.Transitions.Expo.easeIn,
+	"news_column": 1,
+	"news_rows": 1,
+	"links_columns_amount": 0,
+	"links_amount": 0,
+	"counter_text": '<strong>Strona:</strong>'
+};
+//]]>
+</script>	            </div>
+                </div>
+		                    <div class="rt-block">
+                                
+<!-- Simple Image Holder 1.7.1 starts here -->
+<div style='text-align:center;'><img class="sih8059" src="https://www.awangarda.olsztyn.pl//images/banery/banerynowe/taniepion.png" border="0" alt="" title="" width="300" height="600" /></div>
+<!-- Simple Image Holder 1.7.1 ends here -->
+            </div>
+        	                    <div class="rt-block">
+                                
+<!-- Simple Image Holder 1.7.1 starts here -->
+<div style='text-align:center;'><img class="sih8064" src="https://www.awangarda.olsztyn.pl/images/banery/banerynowe/drugiezyciepion3.jpg" border="0" alt="" title="" width="300" height="600" /></div>
+<!-- Simple Image Holder 1.7.1 ends here -->
+            </div>
+        	                    <div class="rt-block">
+                                
+<!-- Simple Image Holder 1.7.1 starts here -->
+<div style='text-align:center;'><img class="sih8068" src="https://www.awangarda.olsztyn.pl/images/banery/banerynowe/ojczyznapion.jpg" border="0" alt="" title="" width="300" height="600" /></div>
+<!-- Simple Image Holder 1.7.1 ends here -->
+            </div>
+        	                    <div class="rt-block">
+                                
+<!-- Simple Image Holder 1.7.1 starts here -->
+<div style='text-align:center;'><img class="sih8072" src="https://www.awangarda.olsztyn.pl/images/banery/banerynowe/objawieniepion.jpg" border="0" alt="" title="" width="300" height="600" /></div>
+<!-- Simple Image Holder 1.7.1 ends here -->
+            </div>
+        	                    <div class="rt-block">
+                                
+<!-- Simple Image Holder 1.7.1 starts here -->
+<div style='text-align:center;'><img class="sih8077" src="https://www.awangarda.olsztyn.pl/images/banery/banerynowe/lolitapion.jpg" border="0" alt="" title="" width="300" height="600" /></div>
+<!-- Simple Image Holder 1.7.1 ends here -->
+            </div>
+        	                    <div class="rt-block">
+                                
+<!-- Simple Image Holder 1.7.1 starts here -->
+<div style='text-align:center;'><img class="sih8081" src="https://www.awangarda.olsztyn.pl/images/banery/banerynowe/poppion.jpg" border="0" alt="" title="" width="300" height="600" /></div>
+<!-- Simple Image Holder 1.7.1 ends here -->
+            </div>
+        	                    <div class="rt-block">
+                                
+<!-- Simple Image Holder 1.7.1 starts here -->
+<div style='text-align:center;'><img class="sih8085" src="https://www.awangarda.olsztyn.pl/images/banery/banerynowe/felinipion.jpg" border="0" alt="" title="" width="300" height="600" /></div>
+<!-- Simple Image Holder 1.7.1 ends here -->
+            </div>
+        	                    <div class="rt-block">
+                                
+<!-- Simple Image Holder 1.7.1 starts here -->
+<div style='text-align:center;'><img class="sih8089" src="https://www.awangarda.olsztyn.pl/images/banery/banerynowe/robin3pion.jpg" border="0" alt="" title="" width="300" height="600" /></div>
+<!-- Simple Image Holder 1.7.1 ends here -->
+            </div>
+        	
+                </div>
+            </div>
+
+                    <div class="clear"></div>
+                </div>
+            </div>
+                        <div id="rt-copyright">
+      <div class="rt-container">
+        <div class="rt-grid-12 rt-alpha rt-omega">
+    		<div class="clear"></div>
+		<div class="rt-block">
+			<a href="http://www.ideare.pl/" title="Agencja Interaktywna Ideare" id="rocket"></a>
+			 © 2020 Awangarda 2. Wszelkie prawa zastrzeżone		</div>
+		
+		<div class="clear"></div>
+		<div class="rt-block">
+			<a href="#" id="gantry-totop">  </a>
+		</div>
+		
+</div>
+        <div class="clear"></div>
+      </div>
+    </div>
+              </body>
+</html>
