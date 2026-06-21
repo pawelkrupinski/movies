@@ -3177,7 +3177,7 @@ runtimeMinutes:    88
 releaseYear:       2026
 countries:         Francja, Belgia, USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7921D2R.jpg
-synopsis.length:   526
+synopsis.length:   527
 cast:              Karol Jankiewicz, Martyna Byczkowska, Artur Barciś, Krystian Embradora, Igor Pawłowski
 director:          Benjamin Mousquet
 tmdbId:            —
