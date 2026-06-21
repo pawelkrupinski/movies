@@ -467,8 +467,14 @@ class WorkerWiring extends play.api.Logging {
   // ScrapeThrottleMonitor / ScrapeThrottleSignal.cap).
   def throttledSecondaryEnqueuePerTick: Int = Env.positiveInt("KINOWO_THROTTLED_ENQUEUE_PER_TICK", 5)
   def maxDetailEnqueuePerTick: Int = Env.positiveLong("KINOWO_DETAIL_MAX_ENQUEUE_PER_TICK", 50L).toInt
+  // How often the detail reaper wakes to enqueue the now-due slice (the spread
+  // granularity). Finer = flatter per-minute `EnrichDetails` trickle on the
+  // `kinowo_worker_tasks` panel, at the cost of cheap in-memory corpus scans.
+  // Default 1min (≈360 ticks per 6h).
+  def detailTickInterval: FiniteDuration =
+    Env.positiveLong("KINOWO_DETAIL_TICK_INTERVAL_SECONDS", DetailReaper.DefaultTickInterval.toSeconds).seconds
   lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
-    dueWindow = detailDueWindow, maxEnqueuePerTick = maxDetailEnqueuePerTick,
+    dueWindow = detailDueWindow, tickInterval = detailTickInterval, maxEnqueuePerTick = maxDetailEnqueuePerTick,
     throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = throttleSignal,
     runStore = scheduledRunStore)
 

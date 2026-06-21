@@ -9,7 +9,8 @@ import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
 
-import java.time.LocalDateTime
+import java.time.{Instant, LocalDateTime}
+import scala.concurrent.duration._
 
 class DetailReaperSpec extends AnyFlatSpec with Matchers {
 
@@ -47,6 +48,39 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     }
     cache.recordCinemaScrape(KinoApollo, films)
     cache
+  }
+
+  /** Drive `n` deferred films — all stamped detail-fresh at the SAME instant (a
+   *  synchronized cohort) — through one full 6h period of ticks spaced `delta`
+   *  apart, returning the per-tick enqueue counts. The phase spread should smear
+   *  them across the ticks; a finer `delta` flattens the worst-case tick. */
+  private def perTickOverPeriod(n: Int, delta: FiniteDuration): Seq[Int] = {
+    val t0 = Instant.parse("2026-06-18T00:00:00Z").toEpochMilli
+    val cache = cacheWithMany(n)
+    val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    (1 to n).foreach { i =>
+      fresh.markFresh(EnrichDetailsTasks.dedupKey("kino-apollo", cache.keyOf(s"Film $i", None)),
+        FreshnessKind.DetailEnrich, Instant.ofEpochMilli(t0))
+    }
+    val r = new DetailReaper(Seq(enricher), cache, queue, fresh, new InProcessEventBus(),
+      dueWindow = new DueWindow(6.hours))
+    val ticks = (6.hours.toMillis / delta.toMillis).toInt
+    (1 to ticks).map(k => r.tick(t0 + k * delta.toMillis))
+  }
+
+  // The actual smoothing lever for the prod `EnrichDetails` spikes: a tick interval
+  // `delta` only catches the rows whose phase boundary fell in the last `delta`, so
+  // the per-tick burst scales with `delta`. Production wires
+  // `DetailReaper.DefaultTickInterval`; this guards it's finer than the old 5-min
+  // cadence — a finer default genuinely flattens the worst-case per-tick burst for
+  // the same synchronized cohort. (Fails when the default IS 5min: the two runs are
+  // identical, so the finer-run max isn't materially below the 5-min max.)
+  "DetailReaper" should "keep the per-tick burst materially flatter at the default interval than at the old 5-min cadence" in {
+    val n = 240
+    val coarseMax  = perTickOverPeriod(n, delta = 5.minutes).max
+    val defaultMax = perTickOverPeriod(n, delta = DetailReaper.DefaultTickInterval).max
+    DetailReaper.DefaultTickInterval should be < (5.minutes: FiniteDuration)
+    defaultMax.toDouble should be <= (coarseMax / 2.0)
   }
 
   "DetailReaper.tick" should "enqueue a detail task for each deferred film that has a filmUrl and isn't fresh" in {

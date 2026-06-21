@@ -71,4 +71,13 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.enrichmentReaper.tickInterval should be <= (1.minute: FiniteDuration)
     wiring.stop()
   }
+
+  // Same smoothing lever for the detail side: the DetailReaper must be wired with
+  // the finer (≤1min) tick interval so `EnrichDetails` enqueues a flat per-minute
+  // trickle rather than dumping a 5-min-wide backlog in one tick.
+  it should "wire the DetailReaper with a sub-5-minute tick interval so detail enqueues stay flat" in {
+    val wiring = new SpyWiring
+    wiring.detailReaper.tickInterval should be <= (1.minute: FiniteDuration)
+    wiring.stop()
+  }
 }

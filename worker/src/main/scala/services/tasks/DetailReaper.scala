@@ -61,7 +61,8 @@ class DetailReaper(
   dueWindow: DueWindow = new DueWindow(6.hours),
   // How often the reaper wakes to enqueue the now-due slice — the spread
   // granularity (smaller = flatter trickle, at the cost of cheap in-memory scans).
-  tickInterval: FiniteDuration = 5.minutes,
+  // Exposed as a `val` so the composition root can assert what it wired.
+  val tickInterval: FiniteDuration = DetailReaper.DefaultTickInterval,
   // A small spacing before the first tick (0 in tests that drive `tick` directly).
   initialDelay: FiniteDuration = 0.seconds,
   // Cap on enqueues per tick — the backstop the phase spread can't provide for a
@@ -157,4 +158,14 @@ class DetailReaper(
     }
 
   override def stop(): Unit = { scheduler.shutdown(); () }
+}
+
+object DetailReaper {
+  /** How often the reaper wakes to enqueue the now-due slice of the corpus. At
+   *  1min over a 6h period the deferred-cinema corpus spreads across ~360 ticks,
+   *  so each tick enqueues only a sliver — a flat per-minute trickle rather than
+   *  the ~5min-wide bursts a coarser cadence dumps in one tick (the `EnrichDetails`
+   *  spikes on the `kinowo_worker_tasks` panel). The walk is a cheap in-memory
+   *  corpus scan, so the finer cadence costs little. */
+  val DefaultTickInterval: FiniteDuration = 1.minute
 }
