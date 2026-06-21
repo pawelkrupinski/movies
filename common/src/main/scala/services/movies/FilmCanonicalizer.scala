@@ -201,6 +201,30 @@ object FilmCanonicalizer {
       .filter(i => rows(i)._2.tmdbId.isDefined && isBareFilmTitle(rows(i)))
       .groupBy(i => rows(i)._2.tmdbId.get)
       .valuesIterator.foreach(unionAllIndices)
+    // tmdbTitleAlias edges — fold an UNRESOLVED row whose key sanitizes to one of a
+    // RESOLVED row's TMDB titles (Polish / original / English) onto that row, even
+    // though the straggler has no tmdbId of its own. The tmdbId edge above can only
+    // connect two ALREADY-resolved rows; a cinema's English listing of a film whose
+    // English-title TMDB search has no hit (only the Polish title resolves) never
+    // gets its own tmdbId, so it would otherwise sit forever in a separate sanitize
+    // group — its adoption hinged on `concludedKeyFor` redirecting it onto the
+    // canonical at resolve time, which is order-dependent (the canonical must
+    // already be concluded when the straggler is swept). This corpus-wide edge makes
+    // the cross-title fold a pure function of the settled row set instead: the
+    // straggler ("The mandalorian and grogu") unions with the resolved Polish row
+    // ("Gwiezdne wojny: Mandalorian i Grogu", englishTitle alias "The Mandalorian
+    // and Grogu") regardless of which resolved first. Gated on the alias SANITIZE-
+    // EQUALLING the straggler's whole key, so a decorated edition that merely
+    // contains the base title ("Zaproszenie | Kinoteka dla rodziców") never matches.
+    val resolvedBareByAlias: Map[String, Seq[Int]] =
+      rows.indices
+        .filter(i => rows(i)._2.tmdbId.isDefined && isBareFilmTitle(rows(i)))
+        .flatMap(i => rows(i)._2.tmdbTitleAliases.map(a => TitleNormalizer.sanitize(a) -> i))
+        .groupBy(_._1).view.mapValues(_.map(_._2)).toMap
+    rows.indices.foreach { j =>
+      val norm = TitleNormalizer.sanitize(rows(j)._1.cleanTitle)
+      resolvedBareByAlias.get(norm).foreach(_.foreach(union(_, j)))
+    }
     rows.indices.groupBy(find).valuesIterator.toSeq
       .map(idxs => idxs.toSeq.sortBy(i => canonicalRank(rows(i)._1)).map(rows))
       .sortBy(comp => comp.map(r => canonicalRank(r._1)).min)

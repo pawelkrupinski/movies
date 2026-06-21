@@ -107,12 +107,13 @@ class MovieService(
    *  determinism the order guard (`ScrapeOrderDeterminismSpec`) catches. The
    *  in-memory pass is a pure function of the cache, so it's order-independent.
    *
-   *  There is no longer a periodic production caller: newcomers settle as they
-   *  graduate (`StagingFold.planGroup` runs this collapse over the staging+movies
-   *  rows inside the fold), and `MovieCache.rehydrate` re-settles the cache on
-   *  every Mongo load. This method survives as the determinism harness's
-   *  direct-scrape settle (`FixtureTestWiring.converge`), which has no rehydrate
-   *  round-trip to lean on. */
+   *  The periodic production caller is the [[services.tasks.SettleReaper]] (once
+   *  per 30 min, cluster-claimed). Newcomers also settle as they graduate
+   *  (`StagingFold.planGroup` runs this collapse over the staging+movies rows
+   *  inside the fold). The cache hydrate deliberately does NOT call this — settling
+   *  right after a load re-keys rows on their re-derived `displayTitle`, the
+   *  per-deploy flap the reaper-on-its-own-tick avoids. Also the determinism
+   *  harness's direct-scrape settle (`FixtureTestWiring.converge`). */
   def settle(): Unit = cache.canonicalizeBySanitize()
 
   /** Drain the dispatcher's owned pool so any in-flight inline TMDB resolution

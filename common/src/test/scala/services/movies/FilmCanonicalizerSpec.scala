@@ -207,6 +207,44 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "fold an UNRESOLVED straggler whose key matches a resolved row's englishTitle alias" in {
+    // A cinema (Chemik) lists the film under its plain English title "The Mandalorian
+    // and Grogu". That English-title TMDB search has no hit (only the Polish title
+    // resolves), so the straggler never gets its own tmdbId — the tmdbId edge can't
+    // connect it. The resolved Polish row carries "The Mandalorian and Grogu" as its
+    // englishTitle alias, so the alias edge must fold the idless straggler onto it
+    // regardless of order; without it the straggler sits in its own component and the
+    // cinema's slot is lost from the canonical row (order-dependent in the full corpus).
+    val polish = "Gwiezdne wojny: Mandalorian i Grogu"
+    val rows = Seq(
+      aliased(polish, tmdbId = 1228710, tmdbYear = 2026, tmdbTitle = polish,
+        originalTitle = "The Mandalorian and Grogu", cinema = Helios, cinemaTitle = polish,
+        englishTitle = Some("The Mandalorian and Grogu")),
+      unresolved("The mandalorian and grogu", None, cinema = KinoMuza)
+    )
+    Seq(rows, rows.reverse).foreach { ordered =>
+      val components = FilmCanonicalizer.groupByFilm(ordered)
+      withClue(s"components: ${components.map(_.map(_._1.cleanTitle))}\n") {
+        components should have size 1
+        val clusters = FilmCanonicalizer.clusterByFilm(components.head)
+        clusters should have size 1
+        clusters.head.flatMap(_._2.cinemaData.keySet).toSet shouldBe Set(Helios, KinoMuza)
+      }
+    }
+  }
+
+  it should "NOT fold a decorated edition whose key only CONTAINS a resolved row's alias" in {
+    // The alias edge must match the straggler's WHOLE sanitized key, not a substring:
+    // "Zaproszenie | Kinoteka dla rodziców" contains the base alias "Zaproszenie" but
+    // adds a programme banner, so it stays its own component (it is separate by design).
+    val rows = Seq(
+      aliased("Zaproszenie", tmdbId = 9001, tmdbYear = 2022, tmdbTitle = "Zaproszenie",
+        originalTitle = "The Invitation", cinema = Helios, cinemaTitle = "Zaproszenie"),
+      unresolved("Zaproszenie | Kinoteka dla rodziców", None, cinema = Kinoteka)
+    )
+    FilmCanonicalizer.groupByFilm(rows) should have size 2
+  }
+
   it should "NOT fold a programme/decorated edition that merely carries the base tmdbId" in {
     // "Zaproszenie | Kinoteka dla rodziców" resolves to the base film's tmdbId, but
     // its key is NOT a TMDB alias (it adds the programme banner) — it is separate

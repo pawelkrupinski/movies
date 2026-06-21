@@ -225,8 +225,9 @@ trait TestWiring extends WorkerWiring {
    *  any leftover (TMDB-fixture-less) GROUP — `concludeEnrichment` then marks those
    *  still-unresolved `movies` rows `tmdbNoMatch`, the same end state a no-fixture
    *  film reaches on the direct route. The harness has no `movies` change stream, so
-   *  finally rehydrate the cache from the repository (prod's stream does this) —
-   *  `rehydrate` re-settles the corpus, so the fold's own settle has a backstop.
+   *  finally rehydrate the cache from the repository (prod's stream does this) — a
+   *  PURE LOAD now (the per-hydrate settle moved to the periodic SettleReaper), so
+   *  the cache mirrors the folded repo for the caller's own settle pass to act on.
    *
    *  Staging ingest is always-on in prod, so EVERY newcomer is diverted to
    *  `pending_movies` on a cold cache. Both the replay harness (bootStartup /
@@ -248,7 +249,7 @@ trait TestWiring extends WorkerWiring {
     // collapse over staging+movies), so the production-year and release-year
     // variants merge into ONE deterministically-keyed `movies` row and the
     // resolved cluster is already re-keyed to its TMDB year — no separate settle
-    // pass needed. The trailing `rehydrate` re-settles the loaded cache anyway.
+    // pass needed. The trailing `rehydrate` is a pure load of the folded repo.
     // One `foldGroup` per distinct staging title graduates the whole sanitize
     // group; a second title sharing that group then no-ops (rows already folded).
     stagingRepository.findAll().map(_.title).distinct.foreach { title =>
