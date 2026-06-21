@@ -79,12 +79,5 @@ object RecordSwitchedToCorpus {
     rep("KinoNawojka")(new BiletynaClient(record, "https://biletyna.pl/Lipno/Kino-Nawojka", KinoNawojka).fetch().size)
     rep("KinoPlaneta")(new MsiClient(record, "https://rezerwacja.planetabrzesko.pl", KinoPlaneta, today, mvcPath = "/Rezerwacja/mvc/pl").fetch().size)
     rep("KinoSwitCzechowiceDziedzice")(new BiletynaClient(record, "https://biletyna.pl/Czechowice-Dziedzice/Kino-Swit", KinoSwitCzechowiceDziedzice).fetch().size)
-    // 2026-06-21 wave: the remaining Filmweb-primary venues that have a usable own site.
-    rep("KinoMaxKino")(new MsiClient(record, "https://repertuar.maxkino.eu", KinoMaxKino, today).fetch().size)
-    rep("KinoKreska")(new KinoKreskaClient(record, KinoKreska, today).fetch().size)
-    rep("KinoKadr")(new VisualTicketClient(record, "https://bilety.palac.art.pl", KinoKadr, locationId = 2).fetch().size)
-    rep("KinoPatria")(new KinoPatriaClient(record, KinoPatria, today).fetch().size)
-    rep("KinoStudio")(new KinoStudioClient(record, KinoStudio, today).fetch().size)
-    rep("KinoAwangarda2")(new KinoAwangarda2Client(record, today).fetch().size)
   }
 }
