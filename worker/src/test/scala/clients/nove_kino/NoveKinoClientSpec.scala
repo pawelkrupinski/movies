@@ -47,6 +47,17 @@ class NoveKinoClientSpec extends AnyFlatSpec with Matchers {
     d.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=CdoTYdt4GQE")
   }
 
+  it should "keep every paragraph of the synopsis, not just the first" in {
+    // `section.text_panel` wraps an "Opis filmu" header `<div>` followed by the
+    // prose paragraphs; the old `selectFirst("section.text_panel p")` kept only
+    // the FIRST `<p>`, dropping the rest of a multi-paragraph plot.
+    val synopsis = detailFor("Diabeł ubiera się u Prady 2").synopsis.getOrElse(fail("no synopsis"))
+    synopsis should include ("Miranda Priestly powraca!")  // first paragraph
+    synopsis should include ("David Frankel")              // second paragraph (was dropped)
+    synopsis should include ("\n")                          // joined with a paragraph break
+    synopsis should not include ("Opis filmu")             // the panel header is dropped
+  }
+
   "NoveKinoClient.parseTitle" should "split format suffixes but leave dash-bearing titles intact" in {
     NoveKinoClient.parseTitle("Zawodowcy - napisy")     shouldBe ("Zawodowcy", List("NAP"))
     NoveKinoClient.parseTitle("Coco - dubbing 3D")      shouldBe ("Coco", List("DUB", "3D"))

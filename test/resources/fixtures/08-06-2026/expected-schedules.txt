@@ -1582,7 +1582,7 @@ runtimeMinutes:    110
 releaseYear:       2026
 countries:         Francja, USA, Wielka Brytania
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/DRZEWO-MAGII_PLAKAT-GLOWNY.jpg
-synopsis.length:   1270
+synopsis.length:   709
 cast:              Andrew Garfield, Claire Foy, Rebecca Ferguson, Nicola Coughlan, Jessica Gunning
 director:          Simon Farnaby
 tmdbId:            1140521
@@ -1785,7 +1785,7 @@ runtimeMinutes:    146
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://movies.helios.pl/images/DzienObjawieniaPlakatNew.jpg
-synopsis.length:   928
+synopsis.length:   950
 cast:              Emily Blunt, Josh O'Connor, Colin Firth, Eve Hewson, Wyatt Russell, Colman Domingo
 director:          Steven Spielberg
 tmdbId:            1275779
@@ -2670,7 +2670,7 @@ runtimeMinutes:    96
 releaseYear:       2025
 countries:         USA
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/KPopoweLowczynieDemonow_plakat-HQ.jpg
-synopsis.length:   254
+synopsis.length:   928
 cast:              —
 director:          —
 tmdbId:            —
@@ -3177,7 +3177,7 @@ runtimeMinutes:    88
 releaseYear:       2026
 countries:         Francja, Belgia, USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7921D2R.jpg
-synopsis.length:   527
+synopsis.length:   590
 cast:              Karol Jankiewicz, Martyna Byczkowska, Artur Barciś, Krystian Embradora, Igor Pawłowski
 director:          Benjamin Mousquet
 tmdbId:            —
@@ -3568,7 +3568,7 @@ runtimeMinutes:    128
 releaseYear:       2026
 countries:         Wielka Brytania, USA, Kanada
 posterUrl:         https://movies.helios.pl/images/Michaelnowyplakat.jpg
-synopsis.length:   825
+synopsis.length:   569
 cast:              Jaafar Jackson, Nia Long, Colman Domingo, Miles Teller, Juliano Valdi
 director:          Antoine Fuqua
 tmdbId:            936075
@@ -5260,7 +5260,7 @@ runtimeMinutes:    105
 releaseYear:       2025
 countries:         Francja
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/03/ostatnia-sesja-w-paryzu-plakat-z-data-11.jpg
-synopsis.length:   382
+synopsis.length:   420
 cast:              Jodie Foster, Daniel Auteuil, Virginie Efira, Mathieu Amalric, Vincent Lacoste, Luàna Bajrami
 director:          Rebecca Zlotowski
 tmdbId:            1290432

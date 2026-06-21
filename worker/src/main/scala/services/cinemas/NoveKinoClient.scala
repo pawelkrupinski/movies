@@ -159,7 +159,12 @@ object NoveKinoClient {
       genres    = dd(document, "gatunek").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)).map(tools.TextNormalization.titleCaseIfAllLower),
       director  = dd(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       cast      = dd(document, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      synopsis  = Option(document.selectFirst("section.text_panel p")).map(_.text.trim).filter(_.length > 20),
+      // `section.text_panel` wraps an "Opis filmu" header `<div class=panel-header>`
+      // then the prose `<p>`s. `selectFirst("… p")` kept only the FIRST paragraph,
+      // truncating multi-paragraph plots; select the whole panel, drop the header,
+      // and let ScraperParse.cleanSynopsis join every `<p>` with blank lines.
+      synopsis  = Option(document.selectFirst("section.text_panel"))
+                    .map(ScraperParse.cleanSynopsis(_, ".panel-header")).filter(_.length > 20),
       // The film page embeds a single YouTube `/embed/` iframe in its slider.
       trailer   = document.select("iframe[src]").asScala.iterator.map(_.attr("src")).filter(_.nonEmpty)
                     .flatMap(ScraperParse.canonicalTrailer).nextOption()
