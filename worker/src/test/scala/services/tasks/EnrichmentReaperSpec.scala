@@ -110,12 +110,13 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
 
   // ── the spread property ──────────────────────────────────────────────────────
 
-  it should "spread a synchronized corpus about-evenly across the period rather than bursting" in {
+  /** Drive `n` IMDb-only rows — all stamped fresh at the SAME instant (a
+   *  synchronized "birthday" the old burst walk re-enqueued all at once one
+   *  period on) — through one full `period` of ticks spaced `delta` apart, and
+   *  return the per-tick enqueue counts. The reaper's phase spread should smear
+   *  them across the ticks rather than bunch them. */
+  private def perTickOverPeriod(n: Int, delta: FiniteDuration, period: FiniteDuration = 4.hours): Seq[Int] = {
     val cache = newCache(); val queue = new InMemoryTaskQueue; val fresh = new InMemoryFreshnessStore
-    val period = 4.hours; val delta = 5.minutes
-    val n = 120
-    // n IMDb-only rows, all stamped fresh at the SAME instant — a synchronized
-    // "birthday" that the old burst walk would re-enqueue all at once one period on.
     (0 until n).foreach { i =>
       val title = f"Film$i%03d"
       seedRow(cache, title)(_.copy(imdbId = Some(s"tt$i")))
@@ -123,12 +124,31 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
         FreshnessKind.ImdbRating, Instant.ofEpochMilli(t0))
     }
     val reaper = new EnrichmentReaper(cache, queue, fresh, dueWindow = new DueWindow(period))
-    val ticks  = (period.toMillis / delta.toMillis).toInt // 48 ticks across one period
-    val perTick = (1 to ticks).map(k => reaper.tick(t0 + k * delta.toMillis))
+    val ticks  = (period.toMillis / delta.toMillis).toInt
+    (1 to ticks).map(k => reaper.tick(t0 + k * delta.toMillis))
+  }
 
-    perTick.sum shouldBe n                       // every row refreshed exactly once over the period
-    perTick.max should be <= 20                  // no burst (a single-shot walk would put all 120 in one tick)
-    perTick.count(_ > 0) should be >= 24         // genuinely spread across at least half the ticks
+  it should "spread a synchronized corpus about-evenly across the period rather than bursting" in {
+    val perTick = perTickOverPeriod(n = 120, delta = 5.minutes) // 48 ticks across one period
+    perTick.sum shouldBe 120                      // every row refreshed exactly once over the period
+    perTick.max should be <= 20                   // no burst (a single-shot walk would put all 120 in one tick)
+    perTick.count(_ > 0) should be >= 24          // genuinely spread across at least half the ticks
+  }
+
+  // The actual smoothing lever for the prod `kinowo_worker_tasks` rating spikes:
+  // a tick interval `delta` only catches the rows whose phase boundary fell in the
+  // last `delta`, so the per-tick burst scales with `delta`. The production wiring
+  // uses `EnrichmentReaper.DefaultTickInterval`, so smear is only as fine as that
+  // default. This guards that the default is finer than the old 5-min cadence —
+  // a finer default genuinely flattens the worst-case per-tick burst for the same
+  // synchronized corpus. (Fails when the default IS 5min: the two runs are
+  // identical, so the finer-run max isn't materially below the 5-min max.)
+  it should "keep the per-tick burst materially flatter at the default interval than at the old 5-min cadence" in {
+    val n = 240
+    val coarseMax = perTickOverPeriod(n, delta = 5.minutes).max
+    val defaultMax = perTickOverPeriod(n, delta = EnrichmentReaper.DefaultTickInterval).max
+    EnrichmentReaper.DefaultTickInterval should be < (5.minutes: FiniteDuration)
+    defaultMax.toDouble should be <= (coarseMax / 2.0)
   }
 
   // ── recovery-burst cap ───────────────────────────────────────────────────────

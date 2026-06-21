@@ -531,13 +531,19 @@ class WorkerWiring extends play.api.Logging {
   )
   // Cap on rating-refresh tasks the EnrichmentReaper enqueues per tick. The phase
   // spread keeps steady-state ticks small (~N·tickInterval/period per source ≈ a
-  // few dozen across all four), so this only bites a cold/long-down corpus where
-  // every row is due at once — bounding that recovery burst, the same lever as
-  // the scrape reaper. Set comfortably above the steady-state so normal operation
-  // is never throttled; the leftover stays due and drains over the next ticks.
+  // handful across all four at the 1min cadence), so this only bites a cold/long-down
+  // corpus where every row is due at once — bounding that recovery burst, the same
+  // lever as the scrape reaper. Set comfortably above the steady-state so normal
+  // operation is never throttled; the leftover stays due and drains over the next ticks.
   def maxEnrichmentEnqueuePerTick: Int = Env.positiveLong("KINOWO_ENRICHMENT_MAX_ENQUEUE_PER_TICK", 250L).toInt
+  // How often the reaper wakes to enqueue the now-due slice (the spread granularity).
+  // Finer = flatter per-minute rating trickle on the `kinowo_worker_tasks` panel,
+  // at the cost of cheap in-memory corpus scans. Default 1min (≈240 ticks per 4h).
+  def enrichmentTickInterval: FiniteDuration =
+    Env.positiveLong("KINOWO_ENRICHMENT_TICK_INTERVAL_SECONDS", EnrichmentReaper.DefaultTickInterval.toSeconds).seconds
   lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
-    dueWindow = ratingDueWindow, maxEnqueuePerTick = maxEnrichmentEnqueuePerTick,
+    dueWindow = ratingDueWindow, tickInterval = enrichmentTickInterval,
+    maxEnqueuePerTick = maxEnrichmentEnqueuePerTick,
     throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = throttleSignal,
     runStore = scheduledRunStore)
 

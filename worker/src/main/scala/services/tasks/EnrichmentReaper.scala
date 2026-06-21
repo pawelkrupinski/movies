@@ -23,11 +23,12 @@ import scala.util.Try
  * at once, four times every 4h, and pin the shared-CPU credit (the midday `steal`
  * spikes) — the walk is SMEARED across the period: each `(row, source)` gets a
  * deterministic phase offset in `[0, period)` from a hash of its dedup key,
- * and a frequent tick (`tickInterval`, default 5min) enqueues only the rows
+ * and a frequent tick (`tickInterval`, default 1min) enqueues only the rows
  * whose personal period boundary has passed since their last refresh. Over a
  * period the same ~750 tasks per source go out, but ~`N · tickInterval /
- * period` per tick (≈16 for 750 rows at 5min/4h) — a flat trickle, not a
- * spike. The four sources self-decorrelate because the dedup key embeds the
+ * period` per tick (≈3 for 750 rows at 1min/4h) — a flat per-minute trickle, not
+ * the ~5min-wide burst a coarser cadence dumps in one tick. The four sources
+ * self-decorrelate because the dedup key embeds the
  * source label, so a film's phase differs per source — no manual stagger needed.
  *
  * The spread is self-sustaining and self-correcting: a row refreshed at its
@@ -59,8 +60,9 @@ class EnrichmentReaper(
   dueWindow: DueWindow = new DueWindow(4.hours),
   // How often the reaper wakes to enqueue the slice of the corpus now due — the
   // spread granularity. Smaller = flatter trickle, at the cost of more (cheap,
-  // in-memory) corpus scans. Defaults to 5min (≈48 ticks per 4h period).
-  tickInterval: FiniteDuration = EnrichmentReaper.DefaultTickInterval,
+  // in-memory) corpus scans. Defaults to 1min (≈240 ticks per 4h period). Exposed
+  // as a `val` so the composition root can assert what it wired.
+  val tickInterval: FiniteDuration = EnrichmentReaper.DefaultTickInterval,
   // A small spacing before the first tick (0 in tests that drive `tick` directly).
   initialDelay: FiniteDuration = 0.seconds,
   // Cap on enqueues per tick. The phase spread keeps steady-state ticks small,
@@ -139,6 +141,10 @@ class EnrichmentReaper(
 
 object EnrichmentReaper {
   /** How often the reaper wakes to enqueue the now-due slice of the corpus. At
-   *  5min over a 4h period the corpus is spread across ~48 ticks. */
-  val DefaultTickInterval: FiniteDuration = 5.minutes
+   *  1min over a 4h period the corpus spreads across ~240 ticks, so each tick
+   *  enqueues only ~1/240 of each source — a flat per-minute trickle rather than
+   *  the ~5min-wide bursts a coarser cadence dumps in one tick (the residual
+   *  `kinowo_worker_tasks` rating spikes the panel still showed). The walk is a
+   *  cheap in-memory corpus scan, so the finer cadence costs little. */
+  val DefaultTickInterval: FiniteDuration = 1.minute
 }

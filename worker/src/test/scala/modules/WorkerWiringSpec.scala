@@ -7,6 +7,8 @@ import services.events.TmdbResolved
 import services.tasks.{ScrapeReaper, UnresolvedTmdbReaper}
 import tools.TestWiring
 
+import scala.concurrent.duration._
+
 /** The worker composition root must boot BOTH halves of the write pipeline:
  *  the scrape side (the queue-driven `scrapeReaper`) and the enrich/TMDB side
  *  (the `unresolvedTmdbReaper`, which drives the phase-spread TMDB re-resolve —
@@ -56,6 +58,17 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     val before = wiring.taskQueue.countByState().values.sum
     wiring.eventBus.publish(TmdbResolved("Dune", Some(2024), "tt1"))
     wiring.taskQueue.countByState().values.sum shouldBe before
+    wiring.stop()
+  }
+
+  // Smoothing lever: the EnrichmentReaper is wired with the finer (≤1min) tick
+  // interval, so the rating sweep enqueues a flat per-minute trickle instead of
+  // dumping a 5-min-wide backlog in one tick (the residual `kinowo_worker_tasks`
+  // spikes). Guards that the composition root actually passes the configured
+  // interval — not that the reaper defaults it internally.
+  it should "wire the EnrichmentReaper with a sub-5-minute tick interval so rating enqueues stay flat" in {
+    val wiring = new SpyWiring
+    wiring.enrichmentReaper.tickInterval should be <= (1.minute: FiniteDuration)
     wiring.stop()
   }
 }
