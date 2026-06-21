@@ -84,31 +84,24 @@ object BiletynaClient {
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val slots = jsonLdBlocks(html).flatMap(parseEvents).filterNot(isLiveEventType)
 
-    slots.groupBy(_.title).toSeq.flatMap { case (rawName, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, Some(s.url)))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else {
-        val parsed = parseTitle(rawName)
-        Some(CinemaMovie(
-          movie     = Movie(
-            title       = parsed.title,
-            releaseYear = parsed.year,
-            countries   = parsed.countries,
-            rawTitle    = parsed.rawTitle
-          ),
-          cinema    = cinema,
-          posterUrl = group.flatMap(_.poster).headOption,
-          filmUrl   = group.map(_.url).headOption,
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = parsed.directors,
-          showtimes = showtimes
-        ))
-      }
-    }.sortBy(_.movie.title)
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, Some(s.url))) { (rawName, group, showtimes) =>
+      val parsed = parseTitle(rawName)
+      CinemaMovie(
+        movie     = Movie(
+          title       = parsed.title,
+          releaseYear = parsed.year,
+          countries   = parsed.countries,
+          rawTitle    = parsed.rawTitle
+        ),
+        cinema    = cinema,
+        posterUrl = group.flatMap(_.poster).headOption,
+        filmUrl   = group.map(_.url).headOption,
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = parsed.directors,
+        showtimes = showtimes
+      )
+    }
   }
 
   /** The film title plus any metadata split out of biletyna's descriptive

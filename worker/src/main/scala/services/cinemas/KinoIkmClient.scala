@@ -49,13 +49,8 @@ class KinoIkmClient(
     val posters = posterIndex(document)
     val slots   = document.select("div.screeningtable div.schedulerow").asScala.toSeq.flatMap(parseRow)
 
-    slots.groupBy(_.title).toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, s.booking))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, group, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = group.flatMap(_.filmUrl).flatMap(posters.get).headOption,
@@ -64,8 +59,8 @@ class KinoIkmClient(
         cast      = Seq.empty,
         director  = group.flatMap(_.directors).distinct,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 
   /** Film-page URL → poster URL, read off the `section.movielist` grid. */

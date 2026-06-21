@@ -121,30 +121,25 @@ object KinoMuzeumGdanskClient {
   /** One `CinemaMovie` per film title; showtimes deduped by (dateTime, booking)
    *  and sorted. Shares the listing metadata captured off the first slot. */
   private[cinemas] def group(slots: Seq[RawSlot], cinema: Cinema): Seq[CinemaMovie] =
-    slots.groupBy(_.title).toSeq.flatMap { case (title, rows) =>
-      val showtimes = rows.map(s => Showtime(s.dateTime, s.booking))
-        .distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else {
-        val primary = rows.head
-        Some(CinemaMovie(
-          movie     = Movie(
-            title          = title,
-            runtimeMinutes = rows.flatMap(_.runtime).headOption,
-            releaseYear    = primary.year,
-            countries      = primary.countries,
-            genres         = primary.genres
-          ),
-          cinema    = cinema,
-          posterUrl = rows.flatMap(_.poster).headOption,
-          filmUrl   = rows.flatMap(_.filmUrl).headOption,
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = primary.director,
-          showtimes = showtimes
-        ))
-      }
-    }.sortBy(_.movie.title)
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, rows, showtimes) =>
+      val primary = rows.head
+      CinemaMovie(
+        movie     = Movie(
+          title          = title,
+          runtimeMinutes = rows.flatMap(_.runtime).headOption,
+          releaseYear    = primary.year,
+          countries      = primary.countries,
+          genres         = primary.genres
+        ),
+        cinema    = cinema,
+        posterUrl = rows.flatMap(_.poster).headOption,
+        filmUrl   = rows.flatMap(_.filmUrl).headOption,
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = primary.director,
+        showtimes = showtimes
+      )
+    }
 
   private def text(element: Element, selector: String): Option[String] =
     Option(element.selectFirst(selector)).map(_.text.trim).filter(_.nonEmpty)

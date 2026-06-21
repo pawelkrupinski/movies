@@ -110,14 +110,9 @@ object SystemBiletowyClient {
       )
     }
 
-    (tblSlots ++ altSlots ++ attrSlots).distinctBy(s => (s.title, s.dateTime, s.booking))
-      .groupBy(_.title).toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, s.booking))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    val slots = (tblSlots ++ altSlots ++ attrSlots).distinctBy(s => (s.title, s.dateTime, s.booking))
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, _, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = None,
@@ -126,8 +121,8 @@ object SystemBiletowyClient {
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 
   /** Drop the trailing `dubbing`/`napisy`/… version tag (so the same film's

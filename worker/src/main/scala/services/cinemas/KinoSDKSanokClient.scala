@@ -109,13 +109,8 @@ object KinoSDKSanokClient {
    *  identical showtimes (the same event can appear on several picker days)
    *  and sorting both the showtimes and the films deterministically. */
   private def group(slots: Seq[RawSlot], cinema: Cinema): Seq[CinemaMovie] =
-    slots.groupBy(_.title).toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, s.booking))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, group, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = None,
@@ -124,6 +119,6 @@ object KinoSDKSanokClient {
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
 }

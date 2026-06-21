@@ -80,13 +80,8 @@ object KinoSpojniaClient {
       )
     }
 
-    slots.groupBy(_.title).toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, s.booking))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, group, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title, releaseYear = group.flatMap(_.year).headOption),
         cinema    = cinema,
         posterUrl = None,
@@ -95,7 +90,7 @@ object KinoSpojniaClient {
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 }

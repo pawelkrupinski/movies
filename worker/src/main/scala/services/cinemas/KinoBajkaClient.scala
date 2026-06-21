@@ -48,26 +48,19 @@ class KinoBajkaClient(http: HttpFetch, override val cinema: Cinema) extends Cine
   def parseHtml(html: String): Seq[CinemaMovie] = {
     val slots = Jsoup.parse(html).select("div.screening-day[id]").asScala.toSeq.flatMap(parseDay)
 
-    slots.groupBy(_.title).toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, s.booking))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else {
-        val head = group.head
-        Some(CinemaMovie(
-          movie     = Movie(title, runtimeMinutes = head.runtime, countries = head.countries),
-          cinema    = cinema,
-          posterUrl = group.flatMap(_.poster).headOption,
-          filmUrl   = group.flatMap(_.filmUrl).headOption,
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = Seq.empty,
-          showtimes = showtimes
-        ))
-      }
-    }.sortBy(_.movie.title)
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, group, showtimes) =>
+      val head = group.head
+      CinemaMovie(
+        movie     = Movie(title, runtimeMinutes = head.runtime, countries = head.countries),
+        cinema    = cinema,
+        posterUrl = group.flatMap(_.poster).headOption,
+        filmUrl   = group.flatMap(_.filmUrl).headOption,
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = Seq.empty,
+        showtimes = showtimes
+      )
+    }
   }
 }
 

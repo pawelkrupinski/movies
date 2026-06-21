@@ -63,13 +63,13 @@ object KdkKrapkowiceClient {
       } yield RawSlot(title, LocalDateTime.of(date, time), tokens)
     }
 
-    slots.groupBy(_.title).toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, None, format = s.format))
-        .distinctBy(s => (s.dateTime, s.format))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(
+      slots,
+      titleOf    = _.title,
+      showtimeOf = s => Showtime(s.dateTime, None, format = s.format),
+      distinctBy = s => (s.dateTime, s.format)
+    ) { (title, _, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = None,
@@ -78,7 +78,7 @@ object KdkKrapkowiceClient {
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 }
