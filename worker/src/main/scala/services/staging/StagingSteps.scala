@@ -119,8 +119,17 @@ class StagingSteps(
     if (fresh.isEmpty || fresh.forall(_.record.tmdbConcluded)) AlreadyDone
     else if (!fresh.forall(detailReady)) DetailNotReady
     else {
-      val outcomes = fresh.filterNot(_.record.tmdbConcluded)
-        .groupBy(hintGroupKey).values.toSeq
+      // Re-resolve each hint-group that STILL has an unconcluded row against the
+      // group's COMPLETE membership — concluded siblings included — so a late
+      // cinema's hints re-decide the whole group's identity instead of the FIRST
+      // partial-group resolution sticking forever. Skipping concluded rows here
+      // (`filterNot(tmdbConcluded)`) is exactly what made the settled corpus
+      // arrival-order-dependent: a row resolved against whichever siblings had
+      // arrived when the reaper first fired, then was never revisited
+      // (StagingOrderDeterminismSpec). `hintGroupKey` drops the stamped `Tmdb`
+      // slot so a concluded row keeps grouping with its still-arriving siblings.
+      val outcomes = fresh.groupBy(hintGroupKey).values.toSeq
+        .filter(_.exists(!_.record.tmdbConcluded))
         .map(resolveAndStampGroup(_, giveUp))
       if (outcomes.contains(TransientFailure)) TransientFailure else Resolved
     }
@@ -133,7 +142,10 @@ class StagingSteps(
    *  it fold un-enriched, the resolve-step analogue of `fetchDetailFor`'s giveUp. */
   private def resolveAndStampGroup(group: Seq[StagingRecord], giveUp: Boolean): ResolveResult = {
     val resolveYear = group.flatMap(_.year).minOption
-    val mergedHints = MovieRecordMerge.unionAll(group.map(_.record))
+    // Resolve from CINEMA hints only — drop any stale stamped `Tmdb` slot a prior
+    // (partial-group) resolution left on a concluded row, so a re-resolution is a
+    // pure function of the cinemas' own data, not the answer it's replacing.
+    val mergedHints = MovieRecordMerge.unionAll(group.map(r => r.record.copy(data = r.record.data - Tmdb)))
     resolveStaging(group.head.title, resolveYear, mergedHints) match {
       case None if giveUp =>
         group.foreach(r => stagingRepository.upsertRow(r.copy(record = r.record.copy(tmdbNoMatch = true))))
@@ -157,9 +169,15 @@ class StagingSteps(
 
   /** The hint-combination a row resolves under — title + year + director set +
    *  original title, the same hints the TMDB resolver and its cache key use, so
-   *  rows that would resolve identically group together. */
-  private def hintGroupKey(r: StagingRecord): String =
-    ResolutionKeys.tmdb(r.title, r.year, r.record.director, r.record.cinemaOriginalTitle)
+   *  rows that would resolve identically group together. Computed from CINEMA/
+   *  detail hints only (the stamped `Tmdb` slot is dropped) so a row's group key
+   *  stays STABLE across re-resolution: a concluded row keeps grouping with its
+   *  still-arriving same-film siblings instead of drifting onto TMDB's own
+   *  director/title — see `resolveAndStamp`. */
+  private def hintGroupKey(r: StagingRecord): String = {
+    val cinemaOnly = r.record.copy(data = r.record.data - Tmdb)
+    ResolutionKeys.tmdb(r.title, r.year, cinemaOnly.director, cinemaOnly.cinemaOriginalTitle)
+  }
 
   /** STEP 3 (per film): recover a missing IMDb cross-reference and stamp it onto
    *  every row — the promoter's inline recovery, now its own retryable task. A
