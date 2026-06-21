@@ -1,5 +1,5 @@
 @import models.{ResolvedMovie, Movie}
-@import controllers.{FilmHref, BrowseHref}
+@import controllers.FilmHref
 @(movie: Movie, posterUrl: Option[String], resolved: ResolvedMovie)(showingsContent: Html)(implicit city: models.City)
 <div class="card">
   <div class="poster-wrap">
@@ -16,13 +16,7 @@
   </div>
   <div class="card-body">
     <div class="card-title">
-      <a href="@FilmHref(movie.title)">@movie.title</a>@movie.runtimeMinutes.filter(_ > 0).map { mins =>
-  <span class="pill runtime">@{mins / 60}h@if(mins % 60 != 0){ @{mins % 60}min}</span>
-}@movie.releaseYear.map { y =>
-  <span class="pill year">@y</span>
-}@for(g <- movie.genres.take(3)) {
-  <a href="@BrowseHref.genre(g)" class="pill genre" title="Filmy gatunku @g">@g</a>
-}
+      @_cardTitle(movie, linkGenres = true)
     </div>
     @_ratingBadges(Some(resolved.ratings))
     @showingsContent

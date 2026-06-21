@@ -1,0 +1,16 @@
+@import models.Movie
+@import controllers.{FilmHref, BrowseHref, CardFormat}
+@(movie: Movie, linkGenres: Boolean)(implicit city: models.City)
+@*
+   The title link + runtime/year/genre pills shared, byte-for-byte, by the
+   listing card (`_movieCard`) and the /plan picker card (`_planCard`). The two
+   differ only in the genre element: the listing links each genre to its browse
+   page, the picker renders a plain span (its grid is filtered client-side, not
+   navigated). `linkGenres` picks between them; everything else is one source.
+*@<a href="@FilmHref(movie.title)">@movie.title</a>@movie.runtimeMinutes.filter(_ > 0).map { mins =>
+  <span class="pill runtime">@CardFormat.runtimePill(mins)</span>
+}@movie.releaseYear.map { y =>
+  <span class="pill year">@y</span>
+}@for(g <- movie.genres.take(3)) {
+  @if(linkGenres){<a href="@BrowseHref.genre(g)" class="pill genre" title="Filmy gatunku @g">@g</a>}else{<span class="pill genre">@g</span>}
+}
