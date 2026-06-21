@@ -291,4 +291,40 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     c.settleResolved(c.keyOf("Dzień objawienia", Some(2026)), resolved)
     m.calls.toList shouldBe List(MergeReason.ResolvedSettle -> 1)
   }
+
+  // ── restart guard against the per-deploy retrigger flap ──────────────────────
+  // Re-key every settled row exactly as `StoredMovieRecord.fromStorage` rebuilds
+  // it on hydrate (the `_id` stores only `sanitize(title)|year`, so the title is
+  // re-derived via `displayTitle`), then re-settle — and NO enrichment may be
+  // re-kicked. The settle keys a single-title cluster by `minSpelling` while the
+  // hydrate key is `displayTitle`; when those differ only by case/punctuation the
+  // re-key is harmless, but it must NOT count as a rating-input change. Before the
+  // fix it re-kicked all three title-ratings for every such row on every boot, and
+  // the next hydrate flipped the spelling back — the ~83 retriggers/boot rating
+  // spike measured in prod (`CanonicalizeRetriggerFlapSpec`).
+  private def assertRestartDoesNotReKickEnrichment(settled: MovieCache): Unit = {
+    val retriggered = scala.collection.mutable.ListBuffer.empty[Set[RetriggerKind]]
+    val rebooted = new CaffeineMovieCache(new InMemoryMovieRepository, retrigger = new EnrichmentRetrigger {
+      def retrigger(key: CacheKey, record: MovieRecord, kinds: Set[RetriggerKind]): Unit = { retriggered += kinds; () }
+    })
+    settled.snapshot().foreach { r =>
+      val recovered = StoredMovieRecord.fromStorage(StoredMovieRecord.idFor(r.title, r.year), r.record)
+      rebooted.put(CacheKey(recovered.title, recovered.year), r.record)
+    }
+    rebooted.canonicalizeBySanitize()
+    withClue(s"enrichment re-kicked on restart (the deploy flap): ${retriggered.toList}\n")(
+      retriggered shouldBe empty)
+  }
+
+  "a settled corpus" should "not re-kick enrichment across a worker restart — decorated same-tmdbId editions don't flap ratings" in {
+    val c = cache
+    // Several cinemas list one film (tmdbId 439) under different decorated
+    // spellings — the prod "Słodkie życie" / Fellini-retrospective shape that
+    // flapped: displayTitle picks "Federico Fellini: Słodkie życie" while the old
+    // min-spelling picked "…SŁODKIE ŻYCIE" (space sorts before colon).
+    aliasedRow(c, "Federico Fellini: Słodkie życie", KinoMuza, 1960, 439, "Słodkie życie", "La dolce vita", "Federico Fellini SŁODKIE ŻYCIE")
+    aliasedRow(c, "Słodkie życie",                    Helios,  1960, 439, "Słodkie życie", "La dolce vita", "Słodkie życie")
+    c.canonicalizeBySanitize()
+    assertRestartDoesNotReKickEnrichment(c)
+  }
 }

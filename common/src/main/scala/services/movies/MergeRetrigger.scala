@@ -53,7 +53,20 @@ object MergeRetrigger {
     before:    MovieRecord, beforeKey: CacheKey,
     after:     MovieRecord, afterKey:  CacheKey
   ): Set[RetriggerKind] = {
-    val titleOrYearChanged   = beforeKey.cleanTitle != afterKey.cleanTitle || beforeKey.year != afterKey.year
+    // Compare the SANITIZED title, not the raw spelling. A pure case/punctuation
+    // re-spelling (sanitize-equal) is not a real change of the film's identity:
+    // every enrichment lookup folds the key to `sanitize`, and Filmweb/RT/Metacritic
+    // match case- and diacritic-insensitively, so re-fetching under the re-cased
+    // title would return the same rating. Comparing the RAW spelling re-kicked all
+    // three title-ratings on EVERY boot for any row whose hydrate key (rebuilt as
+    // `displayTitle` by `StoredMovieRecord.fromStorage`) differed only in
+    // case/punctuation from the settle's `minSpelling` canonical — e.g. "Federico
+    // Fellini: Słodkie życie" vs "…SŁODKIE ŻYCIE". That was the ~83-retrigger/boot
+    // rating spike (`CanonicalizeRetriggerFlapSpec`). Only a genuine title change
+    // (different `sanitize`) or a year change re-kicks now.
+    val titleOrYearChanged   =
+      TitleNormalizer.sanitize(beforeKey.cleanTitle) != TitleNormalizer.sanitize(afterKey.cleanTitle) ||
+      beforeKey.year != afterKey.year
     val originalTitleChanged = before.originalTitle != after.originalTitle
     val directorChanged      = before.director != after.director
     val tmdbIdChanged        = before.tmdbId != after.tmdbId
