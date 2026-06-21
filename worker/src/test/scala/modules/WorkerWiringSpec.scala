@@ -46,14 +46,15 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
-  // Smoothing guard: a resolution event must NOT enqueue rating tasks. The old
-  // `RatingEnqueuer` subscribed to the resolution events and fanned out four
+  // Smoothing guard: a resolution BUS EVENT must NOT fan out rating tasks. The old
+  // cascade subscribed the rating fetchers to the resolution events and dumped four
   // rating tasks per event instantly (the unspread amplifier behind the midday
-  // `kinowo_worker_tasks` rating spikes). With it gone, the EnrichmentReaper is
-  // the sole, capped + phase-spread rating-enqueue path; `ImdbIdMissing` (the one
-  // surviving resolution event) only drives id recovery, never a rating enqueue —
-  // so publishing it leaves the queue untouched.
-  it should "not enqueue rating tasks on a resolution event (ratings flow only via the EnrichmentReaper)" in {
+  // `kinowo_worker_tasks` rating spikes). Rating enqueues now come from only two
+  // bounded paths: the EnrichmentReaper's capped + phase-spread corpus sweep, and the
+  // immediate newcomer-fold kick (a trickle — a few promotions a day). `ImdbIdMissing`
+  // (the one surviving resolution event) drives id recovery alone, never a rating
+  // enqueue — so publishing it on its own leaves the queue untouched.
+  it should "not fan out rating tasks when a resolution event fires (only the reaper + newcomer fold enqueue ratings)" in {
     val wiring = new SpyWiring
     val before = wiring.taskQueue.countByState().values.sum
     wiring.eventBus.publish(ImdbIdMissing("Dune", Some(2024), "Dune"))

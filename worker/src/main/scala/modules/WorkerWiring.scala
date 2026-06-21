@@ -350,7 +350,12 @@ class WorkerWiring extends play.api.Logging {
     tmdbIdCache = tmdbIdCache,
     // SAME store the rating handlers read, so the resolved → first-rating delay
     // (stamped here on resolution, observed there on first attempt) correlates.
-    freshness = freshnessStore)
+    freshness = freshnessStore,
+    // Kick a freshly-promoted newcomer's ratings the instant it folds — the SAME
+    // enqueuer the EnrichmentReaper walks the corpus with, so a newcomer and a
+    // reaper sweep share the eligibility + due gate. A fold is a trickle, so this
+    // doesn't recreate the old TmdbResolved corpus-wide burst.
+    enqueueNewcomerRatings = (key, record) => { ratingEnqueuer.enqueueDueFor(key, record, java.time.Instant.now()); () })
   lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache)
 
   // ── Task queue (scrape scheduling) ──────────────────────────────────────────
@@ -552,11 +557,15 @@ class WorkerWiring extends play.api.Logging {
   // at the cost of cheap in-memory corpus scans. Default 1min (≈240 ticks per 4h).
   def enrichmentTickInterval: FiniteDuration =
     Env.positiveLong("KINOWO_ENRICHMENT_TICK_INTERVAL_SECONDS", EnrichmentReaper.DefaultTickInterval.toSeconds).seconds
+  // The per-row rating-enqueue decision, shared by the reaper's corpus walk and the
+  // newcomer-fold kick (`MovieService.announceResolvedNewMovie`) so the two agree on
+  // eligibility + the tmdbId-keyed due gate. ONE instance, handed to both.
+  lazy val ratingEnqueuer = new services.tasks.RatingEnqueuer(taskQueue, freshnessStore, ratingDueWindow)
   lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
     dueWindow = ratingDueWindow, tickInterval = enrichmentTickInterval,
     maxEnqueuePerTick = maxEnrichmentEnqueuePerTick,
     throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = throttleSignal,
-    runStore = scheduledRunStore)
+    runStore = scheduledRunStore, enqueuer = Some(ratingEnqueuer))
 
   // Re-tries unresolved-TMDB rows once per 24h, phase-spread across the period —
   // the queue-era replacement for MovieService's old daily, all-at-once
@@ -637,10 +646,12 @@ class WorkerWiring extends play.api.Logging {
   detailEnqueuers.foreach(e => eventBus.subscribe(e.onCinemaMovieAdded))
   // A concluded newcomer folds (group-scoped, settling as it goes) into `movies`
   // the moment the StagingFold handler publishes. Each BRAND-NEW film the fold
-  // introduces (no pre-existing `movies` row merged in) re-publishes its
-  // resolution outcome so a TMDB-only hit kicks IMDb-id recovery; its first-time
-  // ratings then come from the EnrichmentReaper's due-immediately first pass. A
-  // merge into an existing row keeps that row's ratings, so it's left untouched.
+  // introduces (no pre-existing `movies` row merged in) re-publishes its resolution
+  // outcome so a TMDB-only hit kicks IMDb-id recovery, AND immediately enqueues its
+  // now-eligible rating tasks (`announceResolvedNewMovie` → `ratingEnqueuer`) so a
+  // newcomer's ratings don't wait for the reaper's next tick — a trickle, not the
+  // corpus-wide burst the reaper's cap smooths. A merge into an existing row keeps
+  // that row's ratings, so it's left untouched.
   eventBus.subscribe { case StagingFilmEnriched(title) =>
     stagingFolder.foldGroup(title).foreach { case (key, record) =>
       movieService.announceResolvedNewMovie(key, record)

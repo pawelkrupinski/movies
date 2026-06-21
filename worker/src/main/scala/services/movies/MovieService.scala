@@ -64,7 +64,14 @@ class MovieService(
   // rating attempt fired (the EnrichmentReaper first-pass latency metric).
   // Production injects the SHARED store the rating handlers read; tests default
   // to a throwaway in-memory one (the stamp is observability, not correctness).
-  freshness: FreshnessStore = new InMemoryFreshnessStore
+  freshness: FreshnessStore = new InMemoryFreshnessStore,
+  // Immediately enqueue a freshly-PROMOTED newcomer's due rating tasks (see
+  // `announceResolvedNewMovie`) so its ratings don't wait for the
+  // `EnrichmentReaper`'s next tick. A newcomer fold is a trickle, so this can't
+  // reintroduce the corpus-wide enqueue burst the old `TmdbResolved` fan-out was.
+  // Default no-op for tests/scripts without a task queue; production passes
+  // `RatingEnqueuer.enqueueDueFor` (the SAME enqueuer the reaper walks the corpus with).
+  enqueueNewcomerRatings: (CacheKey, MovieRecord) => Unit = (_, _) => ()
 ) extends Stoppable with Logging {
 
   // How a needed single-movie TMDB resolution is dispatched (see the `dispatcher`
@@ -335,13 +342,22 @@ class MovieService(
 
   /** Announce a brand-new movie's resolution outcome when it's promoted out of
    *  staging (`StagingFolder.foldGroup`'s `newPromotions`): stamp its resolution
-   *  time (for the first-rating delay metric) and, for a TMDB-only hit, kick
-   *  IMDb-id recovery (`ImdbIdMissing` → `ImdbIdResolver`). First-time ratings
-   *  come from the `EnrichmentReaper`'s due-immediately first pass — there's no
-   *  per-resolution rating enqueue. Only resolved promotions (a TMDB id) qualify:
-   *  a `tmdbNoMatch` promotion has no id to recover or query ratings against. */
+   *  time (for the first-rating delay metric), kick IMDb-id recovery for a TMDB-only
+   *  hit (`ImdbIdMissing` → `ImdbIdResolver`), and IMMEDIATELY enqueue the now-eligible
+   *  rating tasks (`enqueueNewcomerRatings`) so a newcomer's ratings don't wait for the
+   *  `EnrichmentReaper`'s next tick. A newcomer fold is a trickle (a handful a day), so
+   *  the immediate kick can't recreate the corpus-wide burst the old `TmdbResolved`
+   *  fan-out was — the bulk corpus is still owned by the reaper's capped, phase-spread
+   *  walk. The stamp happens BEFORE the enqueue so the first-rating delay metric has a
+   *  baseline. Only resolved promotions (a TMDB id) qualify: a `tmdbNoMatch` promotion
+   *  has no id to recover or query ratings against. A row resolved without an imdbId
+   *  enqueues only its non-IMDb ratings now; IMDb follows once `ImdbIdResolver` lands
+   *  the id and the reaper picks it up. */
   def announceResolvedNewMovie(key: CacheKey, record: MovieRecord): Unit =
-    if (record.tmdbId.isDefined) publishTmdbOutcome(key, record)
+    if (record.tmdbId.isDefined) {
+      publishTmdbOutcome(key, record)
+      enqueueNewcomerRatings(key, record)
+    }
 
   // Publish the post-resolution event so the rating refreshers re-run for the
   // row off the existing event chain.

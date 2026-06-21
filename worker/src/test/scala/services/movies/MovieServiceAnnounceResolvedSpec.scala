@@ -6,57 +6,71 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{DomainEvent, ImdbIdMissing, InProcessEventBus}
 import services.freshness.InMemoryFreshnessStore
-import services.tasks.RatingTasks
+import services.tasks.{DueWindow, InMemoryTaskQueue, RatingEnqueuer, RatingTasks, TaskState}
 import tools.RoutingHttpFetch
 
+import java.time.Instant
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.duration._
 
 /**
  * `announceResolvedNewMovie` handles a film freshly PROMOTED out of staging (vs
  * merged into an existing movie): it stamps the row's TMDB-resolution time (for
- * the first-rating-attempt delay metric) and, for a TMDB-only hit, publishes
- * `ImdbIdMissing` to kick id recovery. Ratings come from the `EnrichmentReaper`,
- * not a per-event enqueue, so no rating event fires. A `tmdbNoMatch` promotion
- * stays silent. This pins those three branches.
+ * the first-rating-attempt delay metric), for a TMDB-only hit publishes
+ * `ImdbIdMissing` to kick id recovery, and IMMEDIATELY enqueues the newcomer's
+ * now-eligible rating tasks (so a newcomer's ratings don't wait for the reaper's
+ * next tick — a trickle, not the old `TmdbResolved` corpus burst). A `tmdbNoMatch`
+ * promotion stays silent. This pins those branches.
  */
 class MovieServiceAnnounceResolvedSpec extends AnyFlatSpec with Matchers {
 
   private val deadTmdb = new TmdbClient(http = RoutingHttpFetch.dead("unused"), apiKey = None)
 
-  private def fixture(): (MovieService, ListBuffer[DomainEvent], InMemoryFreshnessStore) = {
+  private def fixture(): (MovieService, ListBuffer[DomainEvent], InMemoryFreshnessStore, InMemoryTaskQueue) = {
     val bus  = new InProcessEventBus()
     val seen = ListBuffer.empty[DomainEvent]
     bus.subscribe { case e => seen += e }
     val freshness = new InMemoryFreshnessStore
+    val queue     = new InMemoryTaskQueue
+    // The real production enqueuer over an in-memory queue — same eligibility + due
+    // gate the EnrichmentReaper uses, so this exercises the actual newcomer kick.
+    val enqueuer  = new RatingEnqueuer(queue, freshness, new DueWindow(4.hours))
     val service = new MovieService(
-      new CaffeineMovieCache(new InMemoryMovieRepository()), bus, deadTmdb, freshness = freshness)
-    (service, seen, freshness)
+      new CaffeineMovieCache(new InMemoryMovieRepository()), bus, deadTmdb, freshness = freshness,
+      enqueueNewcomerRatings = (key, record) => { enqueuer.enqueueDueFor(key, record, Instant.parse("2026-06-21T00:00:00Z")); () })
+    (service, seen, freshness, queue)
   }
 
-  "announceResolvedNewMovie" should "stamp the resolution time and fire no rating event for a promotion with an imdbId" in {
-    val (service, seen, freshness) = fixture()
+  private def waiting(queue: InMemoryTaskQueue): Long =
+    queue.countByState().getOrElse(TaskState.Waiting, 0L)
+
+  "announceResolvedNewMovie" should "stamp the resolution time, fire no rating event, and enqueue all four ratings for a promotion with an imdbId" in {
+    val (service, seen, freshness, queue) = fixture()
     service.announceResolvedNewMovie(
       CacheKey("Kumotry", Some(2026)), MovieRecord(tmdbId = Some(1454157), imdbId = Some("tt1454157")))
 
     seen shouldBe empty
     freshness.lastFetchedAt(RatingTasks.tmdbResolvedAtKey(1454157)) should not be empty
+    waiting(queue) shouldBe 4L // imdb + rt + mc + fw, immediately — no waiting for the reaper
   }
 
-  it should "publish ImdbIdMissing (→ IMDb-id recovery) and stamp resolution for a promotion without an imdbId" in {
-    val (service, seen, freshness) = fixture()
+  it should "publish ImdbIdMissing (→ IMDb-id recovery), stamp resolution, and enqueue only the non-IMDb ratings for a promotion without an imdbId" in {
+    val (service, seen, freshness, queue) = fixture()
     service.announceResolvedNewMovie(
       CacheKey("Kumotry", Some(2026)), MovieRecord(tmdbId = Some(1454157), imdbId = None))
 
     seen.toSeq should matchPattern { case Seq(ImdbIdMissing("Kumotry", Some(2026), _)) => }
     freshness.lastFetchedAt(RatingTasks.tmdbResolvedAtKey(1454157)) should not be empty
+    waiting(queue) shouldBe 3L // rt + mc + fw now; IMDb waits for ImdbIdResolver to land the id
   }
 
-  it should "do nothing for a tmdbNoMatch promotion (no id to recover or query ratings against)" in {
-    val (service, seen, freshness) = fixture()
+  it should "do nothing — no event, no rating tasks — for a tmdbNoMatch promotion" in {
+    val (service, seen, freshness, queue) = fixture()
     service.announceResolvedNewMovie(
       CacheKey("Obscure Local Premiere", Some(2026)), MovieRecord(tmdbNoMatch = true))
 
     seen shouldBe empty
     freshness.lastFetchedAt(RatingTasks.tmdbResolvedAtKey(1454157)) shouldBe empty
+    waiting(queue) shouldBe 0L
   }
 }

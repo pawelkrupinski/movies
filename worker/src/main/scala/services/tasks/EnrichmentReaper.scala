@@ -1,6 +1,5 @@
 package services.tasks
 
-import models.MovieRecord
 import play.api.Logging
 import services.Stoppable
 import services.freshness.{FreshnessKind, FreshnessStore}
@@ -79,23 +78,22 @@ class EnrichmentReaper(
   throttledMaxEnqueuePerTick: => Int = Int.MaxValue,
   throttle: ScrapeThrottleSignal = ScrapeThrottleSignal.AlwaysHealthy,
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
-  clock:    Clock = Clock.systemUTC()
+  clock:    Clock = Clock.systemUTC(),
+  // The per-row enqueue decision (eligible sources, tmdbId-keyed dedup, due gate),
+  // shared with the newcomer-fold path so the two can't drift. `None` builds one over
+  // this reaper's own queue/freshness/dueWindow (tests are unaffected); the wiring
+  // passes `Some(...)` of the SAME instance it hands `MovieService` for the newcomer kick.
+  enqueuer: Option[RatingEnqueuer] = None
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("enrichment-reaper")
 
-  private case class Sweep(taskType: TaskType, kind: FreshnessKind, eligible: MovieRecord => Boolean)
-
-  private val sweeps = Seq(
-    Sweep(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    _.imdbId.isDefined),
-    Sweep(TaskType.RtRating,      FreshnessKind.RtRating,      _.tmdbId.isDefined),
-    Sweep(TaskType.McRating,      FreshnessKind.McRating,      _.tmdbId.isDefined),
-    Sweep(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, _.tmdbId.isDefined)
-  )
+  private val ratingEnqueuer: RatingEnqueuer =
+    enqueuer.getOrElse(new RatingEnqueuer(queue, freshness, dueWindow))
 
   def start(): Unit = {
     scheduleNext(initialDelay)
-    logger.info(s"EnrichmentReaper started: ${sweeps.size} rating source(s), each row refreshed once per " +
+    logger.info(s"EnrichmentReaper started: ${ratingEnqueuer.sourceCount} rating source(s), each row refreshed once per " +
                 s"${dueWindow.period.toHours}h, phase-spread over ticks every ${tickInterval.toSeconds}s.")
   }
 
@@ -127,27 +125,12 @@ class EnrichmentReaper(
    *  Package-private, with an injectable `nowMillis`, so tests can drive time. */
   private[tasks] def tick(nowMillis: Long = clock.millis()): Int = {
     val cap      = ScrapeThrottleSignal.cap(throttle, maxEnqueuePerTick, throttledMaxEnqueuePerTick)
+    val now      = Instant.ofEpochMilli(nowMillis)
     var enqueued = 0
     val rows = cache.entries.iterator
     while (rows.hasNext && enqueued < cap) {
       val (key, record) = rows.next()
-      val sources = sweeps.iterator
-      while (sources.hasNext && enqueued < cap) {
-        val s = sources.next()
-        if (s.eligible(record)) {
-          val dedupKey = RatingTasks.dedupKey(s.kind, key, record.tmdbId)
-          // Honour a stamp left under the legacy title-based key so switching to
-          // tmdbId-keyed freshness doesn't re-queue the whole resolved corpus once
-          // on deploy: a row fresh under its old title key isn't re-enqueued, and
-          // seeds the tmdbId key on its next due refresh. (Drop the fallback once no
-          // legacy stamps remain.)
-          val lastFetched = freshness.lastFetchedAt(dedupKey)
-            .orElse(freshness.lastFetchedAt(RatingTasks.dedupKey(s.kind, key)))
-          if (dueWindow.isDue(dedupKey, lastFetched, Instant.ofEpochMilli(nowMillis)) &&
-              queue.enqueue(s.taskType, dedupKey, RatingTasks.payload(key)) == EnqueueResult.Added)
-            enqueued += 1
-        }
-      }
+      enqueued += ratingEnqueuer.enqueueDueFor(key, record, now, cap - enqueued)
     }
     if (enqueued > 0) logger.info(s"EnrichmentReaper enqueued $enqueued due rating-refresh task(s).")
     enqueued
