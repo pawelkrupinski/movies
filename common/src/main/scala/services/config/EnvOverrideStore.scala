@@ -41,11 +41,14 @@ class InMemoryEnvOverrideStore extends EnvOverrideStore {
 }
 
 /** Mongo-backed override store. Document shape: `{ _id: key, value: String }`.
- *  All writes are best-effort with a 10s timeout (a flip is operator-driven, not
- *  on a hot path); the local cache is updated synchronously on set/clear so the
- *  writing process sees its own flip without waiting for the next refresh. */
-class MongoEnvOverrideStore(db: MongoDatabase) extends EnvOverrideStore with Logging {
-  private val coll: MongoCollection[Document] = db.getCollection[Document]("env_overrides")
+ *  Takes the shared web/worker database (None → disabled, e.g. in tests/local
+ *  without Mongo, where the in-memory impl is used instead). All writes are
+ *  best-effort with a 10s timeout (a flip is operator-driven, not on a hot path);
+ *  the local cache is updated synchronously on set/clear so the writing process
+ *  sees its own flip without waiting for the next refresh. */
+class MongoEnvOverrideStore(sharedDb: Option[MongoDatabase]) extends EnvOverrideStore with Logging {
+  private val coll: Option[MongoCollection[Document]] =
+    sharedDb.map(_.getCollection[Document]("env_overrides"))
 
   @volatile private var cache: Map[String, String] = Map.empty
   refresh()
@@ -53,28 +56,33 @@ class MongoEnvOverrideStore(db: MongoDatabase) extends EnvOverrideStore with Log
   def lookup(key: String): Option[String] = cache.get(key)
   def all(): Map[String, String] = cache
 
-  def refresh(): Unit =
-    Try(Await.result(coll.find().toFuture(), 10.seconds)).toOption.foreach { docs =>
+  def refresh(): Unit = coll.foreach { c =>
+    Try(Await.result(c.find().toFuture(), 10.seconds)).toOption.foreach { docs =>
       cache = docs.flatMap { d =>
         for { k <- str(d, "_id"); v <- str(d, "value") } yield k -> v
       }.toMap
     }
+  }
 
   private def str(d: Document, key: String): Option[String] =
     d.get(key).filter(_.isString).map(_.asString().getValue)
 
   def set(key: String, value: String): Unit = {
-    Try(Await.result(
-      coll.replaceOne(Filters.eq("_id", key),
-        Document("_id" -> key, "value" -> value), ReplaceOptions().upsert(true)).toFuture(),
-      10.seconds))
-      .recover { case e => logger.warn(s"EnvOverrideStore.set($key) failed: ${e.getMessage}") }
+    coll.foreach { c =>
+      Try(Await.result(
+        c.replaceOne(Filters.eq("_id", key),
+          Document("_id" -> key, "value" -> value), ReplaceOptions().upsert(true)).toFuture(),
+        10.seconds))
+        .recover { case e => logger.warn(s"EnvOverrideStore.set($key) failed: ${e.getMessage}") }
+    }
     cache = cache + (key -> value)
   }
 
   def clear(key: String): Unit = {
-    Try(Await.result(coll.deleteOne(Filters.eq("_id", key)).toFuture(), 10.seconds))
-      .recover { case e => logger.warn(s"EnvOverrideStore.clear($key) failed: ${e.getMessage}") }
+    coll.foreach { c =>
+      Try(Await.result(c.deleteOne(Filters.eq("_id", key)).toFuture(), 10.seconds))
+        .recover { case e => logger.warn(s"EnvOverrideStore.clear($key) failed: ${e.getMessage}") }
+    }
     cache = cache - key
   }
 }

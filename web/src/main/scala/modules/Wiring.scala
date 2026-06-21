@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{AdminAction, AdminTitleRulesController, AuthController, DebugStreamController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController, WebMovieMetrics}
+import controllers.{AdminAction, AdminTitleRulesController, AuthController, DebugStreamController, EnvConfigController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController, WebMovieMetrics}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
@@ -182,11 +182,22 @@ trait Wiring {
   lazy val adminTitleRulesController =
     new AdminTitleRulesController(controllerComponents, adminAction, titleRulesRepository, movieRepository, normalizationReportRepository)
 
+  // Live config: install the override cache as Env's source + publish web's knobs
+  // to the shared registry, and serve the /admin/config page (see EnvConfigService).
+  lazy val envConfigService = new services.config.EnvConfigService(
+    app          = "web",
+    overrides    = new services.config.MongoEnvOverrideStore(mongoConnection.database),
+    registry     = new services.config.MongoEnvRegistryStore(mongoConnection.database),
+    tickInterval = scala.concurrent.duration.Duration(Env.positiveLong("KINOWO_CONFIG_REFRESH_SECONDS", 30L), "seconds"))
+  lazy val envConfigController = new EnvConfigController(controllerComponents, adminAction, envConfigService)
+
   // Start the data layer. Force the Mongo connection at boot (so connection
   // errors surface in the boot timeline, not mid-request), then start the cache
   // — hydrate from Mongo + open the change stream that keeps it warm.
   protected def start(): Unit = {
     mongoConnection.database
+    // Install the override source first so boot-time knob reads already see flips.
+    envConfigService.start()
     // Install rules (used by the admin rule-merge preview's normalisation).
     titleRulesCache.start()
     // Hydrate the read model from the derived collections + open their change
@@ -198,6 +209,7 @@ trait Wiring {
   }
 
   protected def stop(): Unit = {
+    envConfigService.stop()
     uptimeMonitor.close()
     webMovieMetrics.stop()
     webReadModel.stop()

@@ -1,0 +1,173 @@
+@()
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Config — Kinowo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font: 13px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 24px; }
+    h1 { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    .sub { color: #666; font-size: 11px; margin-bottom: 18px; max-width: 760px; }
+    .bar { margin-bottom: 14px; display: flex; gap: 10px; align-items: center; }
+    #status { color: #777; font-size: 11px; }
+    #status.err { color: #c0392b; }
+    #status.ok { color: #2ecc40; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+      color: #666; font-weight: 600; padding: 6px 10px; border-bottom: 1px solid #1a1a1a; }
+    td { padding: 6px 10px; border-bottom: 1px solid #141414; vertical-align: top; }
+    tr:hover td { background: #131313; }
+    .mono { color: #ddd; }
+    .muted { color: #666; }
+    .app { display: inline-block; min-width: 48px; color: #4aa3df; }
+    .ovr { color: #f0ad4e; font-weight: 600; }
+    button { font: inherit; cursor: pointer; background: #1c1c1c; color: #ccc;
+      border: 1px solid #333; border-radius: 4px; padding: 3px 9px; }
+    button:hover { background: #262626; border-color: #444; }
+    button.reset { color: #c97a7a; border-color: #5a2d2d; }
+    button.save { color: #2ecc40; border-color: #2d5a33; }
+    input.val { font: inherit; background: #000; color: #fff; border: 1px solid #444;
+      border-radius: 4px; padding: 3px 6px; width: 110px; }
+    .kindtag { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #777; }
+  </style>
+</head>
+<body>
+  <h1>Config knobs</h1>
+  <div class="sub">
+    Non-secret <code>Env</code> knobs auto-discovered from both apps (worker + web). An override
+    wins over the env var and applies mid-flight (within the refresh tick) — no restart. Secrets
+    (tokens, URIs, credentials) are excluded by design. Unset knobs run on the default shown.
+  </div>
+  <div class="bar">
+    <button id="refresh">Refresh</button>
+    <span id="status"></span>
+  </div>
+  <table>
+    <thead>
+      <tr><th>Key</th><th>Type</th><th>Default</th><th>Current (per app)</th><th>Override</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <script>
+    let editing = null; // key currently being edited — pauses auto-refresh
+
+    function setStatus(msg, cls) {
+      const s = document.getElementById("status");
+      s.textContent = msg || ""; s.className = cls || "";
+    }
+
+    function td(text, cls) {
+      const el = document.createElement("td");
+      if (cls) el.className = cls;
+      el.textContent = text;
+      return el;
+    }
+
+    async function load() {
+      try {
+        const r = await fetch("/admin/config/data", { headers: { "Accept": "application/json" } });
+        if (!r.ok) { setStatus("load failed (" + r.status + ")", "err"); return; }
+        const j = await r.json();
+        render(j.rows);
+        setStatus(j.rows.length + " knobs", "");
+      } catch (e) { setStatus("load failed", "err"); }
+    }
+
+    function render(rows) {
+      const tb = document.getElementById("rows");
+      tb.innerHTML = "";
+      for (const row of rows) {
+        const tr = document.createElement("tr");
+        tr.appendChild(td(row.key, "mono"));
+        tr.appendChild(td((row.kind || "").toLowerCase(), "kindtag"));
+        tr.appendChild(td(row.default == null ? "—" : row.default, "muted"));
+
+        const cur = document.createElement("td");
+        cur.innerHTML = (row.apps && row.apps.length)
+          ? row.apps.map(a => '<span class="app"></span>').join("")
+          : '<span class="muted">—</span>';
+        // fill app text safely (no innerHTML for values)
+        if (row.apps) row.apps.forEach((a, i) => {
+          const span = cur.querySelectorAll(".app")[i];
+          span.textContent = a.app;
+          span.after(" " + (a.current == null ? "—" : a.current));
+          if (i < row.apps.length - 1) span.parentNode.insertBefore(document.createElement("br"), null);
+        });
+        tr.appendChild(cur);
+
+        const oc = document.createElement("td");
+        buildOverrideCell(oc, row);
+        tr.appendChild(oc);
+        tb.appendChild(tr);
+      }
+    }
+
+    function buildOverrideCell(oc, row) {
+      oc.innerHTML = "";
+      if (row.override != null) {
+        const span = document.createElement("span");
+        span.className = "ovr"; span.textContent = row.override;
+        const edit = document.createElement("button");
+        edit.textContent = "edit"; edit.style.marginLeft = "8px";
+        edit.onclick = () => showEditor(oc, row, row.override);
+        const reset = document.createElement("button");
+        reset.className = "reset"; reset.textContent = "reset"; reset.style.marginLeft = "6px";
+        reset.onclick = () => doReset(row.key);
+        oc.appendChild(span); oc.appendChild(edit); oc.appendChild(reset);
+      } else {
+        // Unset: a button instead of a value; clicking reveals the textbox.
+        const setb = document.createElement("button");
+        setb.textContent = "Set / Override";
+        const seed = row.override != null ? row.override
+          : (row.apps && row.apps[0] && row.apps[0].current != null ? row.apps[0].current
+          : (row.default != null ? row.default : ""));
+        setb.onclick = () => showEditor(oc, row, seed);
+        oc.appendChild(setb);
+      }
+    }
+
+    function showEditor(oc, row, seed) {
+      editing = row.key;
+      oc.innerHTML = "";
+      const input = document.createElement("input");
+      input.className = "val"; input.value = seed == null ? "" : seed;
+      input.onkeydown = (e) => { if (e.key === "Enter") doSet(row.key, input.value);
+                                 if (e.key === "Escape") { editing = null; load(); } };
+      const save = document.createElement("button");
+      save.className = "save"; save.textContent = "Save"; save.style.marginLeft = "6px";
+      save.onclick = () => doSet(row.key, input.value);
+      const cancel = document.createElement("button");
+      cancel.textContent = "Cancel"; cancel.style.marginLeft = "6px";
+      cancel.onclick = () => { editing = null; load(); };
+      oc.appendChild(input); oc.appendChild(save); oc.appendChild(cancel);
+      input.focus(); input.select();
+    }
+
+    async function post(path, body) {
+      return fetch(path, { method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify(body) });
+    }
+
+    async function doSet(key, value) {
+      const r = await post("/admin/config/set", { key: key, value: value });
+      editing = null;
+      if (r.ok) { setStatus("set " + key + " = " + value, "ok"); load(); }
+      else { const j = await r.json().catch(() => ({})); setStatus(j.error || "set failed", "err"); load(); }
+    }
+
+    async function doReset(key) {
+      const r = await post("/admin/config/reset", { key: key });
+      if (r.ok) { setStatus("reset " + key, "ok"); load(); }
+      else { const j = await r.json().catch(() => ({})); setStatus(j.error || "reset failed", "err"); }
+    }
+
+    document.getElementById("refresh").onclick = load;
+    load();
+    setInterval(() => { if (!editing) load(); }, 10000);
+  </script>
+</body>
+</html>

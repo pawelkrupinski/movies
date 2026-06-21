@@ -386,6 +386,14 @@ class WorkerWiring extends play.api.Logging {
   lazy val taskQueue: TaskQueue =
     new MeteredTaskQueue(new MongoTaskQueue(mongoConnection.database), taskMetrics)
   lazy val freshnessStore: FreshnessStore = new MongoFreshnessStore(mongoConnection.database)
+  // Live config: install the Mongo override cache as Env's override source and
+  // publish this process's (non-secret) knobs to the shared registry so the web
+  // `/admin/config` page can list + flip them mid-flight. See EnvConfigService.
+  lazy val envConfigService = new services.config.EnvConfigService(
+    app       = "worker",
+    overrides = new services.config.MongoEnvOverrideStore(mongoConnection.database),
+    registry  = new services.config.MongoEnvRegistryStore(mongoConnection.database),
+    tickInterval = Env.positiveLong("KINOWO_CONFIG_REFRESH_SECONDS", 30L).seconds)
   // Auto-recovery from the shared-CPU-credit deadlock: watches ScrapeCinema
   // handler durations and tells ScrapeReaper to back off enqueue while throttled,
   // so the box earns idle and rebuilds credit. Fed alongside taskMetrics via the
@@ -645,6 +653,8 @@ class WorkerWiring extends play.api.Logging {
   def start(): Unit = {
     // Force Mongo at boot so connection errors surface in the boot timeline.
     mongoConnection.database
+    // Install the override source first so boot-time knob reads already see flips.
+    envConfigService.start()
     // Seed + install title rules before the cache hydrates so scrape/merge keys
     // are computed with the active rules from the very first tick.
     titleRulesCache.start()
@@ -693,6 +703,7 @@ class WorkerWiring extends play.api.Logging {
   def cascadeDrainOrder: Seq[Stoppable] = Seq(movieService, imdbIdResolver)
 
   def stop(): Unit = {
+    envConfigService.stop()
     stagingStuckAlerter.foreach(_.stop())
     stagingReaper.stop()
     scrapeReaper.stop()

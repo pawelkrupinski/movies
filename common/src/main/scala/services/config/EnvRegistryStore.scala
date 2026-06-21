@@ -37,20 +37,24 @@ class InMemoryEnvRegistryStore extends EnvRegistryStore {
   }
 }
 
-class MongoEnvRegistryStore(db: MongoDatabase) extends EnvRegistryStore with Logging {
-  private val coll: MongoCollection[Document] = db.getCollection[Document]("env_registry")
+class MongoEnvRegistryStore(sharedDb: Option[MongoDatabase]) extends EnvRegistryStore with Logging {
+  private val coll: Option[MongoCollection[Document]] =
+    sharedDb.map(_.getCollection[Document]("env_registry"))
 
-  def publish(app: String, knobs: Seq[RegisteredKnob]): Unit = Try {
-    // Replace the whole app slice each tick: drop stale rows then re-insert, so a
-    // key no longer read (or renamed) stops appearing on the page.
-    Await.result(coll.deleteMany(Filters.eq("app", app)).toFuture(), 10.seconds)
-    if (knobs.nonEmpty)
-      Await.result(coll.insertMany(knobs.map(toDoc)).toFuture(), 10.seconds)
-    ()
-  }.recover { case e => logger.warn(s"EnvRegistryStore.publish($app) failed: ${e.getMessage}") }
+  def publish(app: String, knobs: Seq[RegisteredKnob]): Unit = coll.foreach { c =>
+    Try {
+      // Replace the whole app slice each tick: drop stale rows then re-insert, so a
+      // key no longer read (or renamed) stops appearing on the page.
+      Await.result(c.deleteMany(Filters.eq("app", app)).toFuture(), 10.seconds)
+      if (knobs.nonEmpty)
+        Await.result(c.insertMany(knobs.map(toDoc)).toFuture(), 10.seconds)
+      ()
+    }.recover { case e => logger.warn(s"EnvRegistryStore.publish($app) failed: ${e.getMessage}") }
+  }
 
   def all(): Seq[RegisteredKnob] =
-    Try(Await.result(coll.find().toFuture(), 10.seconds)).toOption.getOrElse(Seq.empty).flatMap(fromDoc)
+    coll.flatMap(c => Try(Await.result(c.find().toFuture(), 10.seconds)).toOption)
+      .getOrElse(Seq.empty).flatMap(fromDoc)
 
   private def toDoc(k: RegisteredKnob): Document =
     Document(

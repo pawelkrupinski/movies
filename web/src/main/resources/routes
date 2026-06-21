@@ -137,6 +137,18 @@ POST    /admin/title-rules/preview       controllers.AdminTitleRulesController.p
 POST    /admin/title-rules/affected      controllers.AdminTitleRulesController.affected()
 GET     /admin/title-rules/report        controllers.AdminTitleRulesController.report()
 
+# ── Admin: live config knobs ────────────────────────────────────────────────
+# View + flip the non-secret Env knobs both apps auto-register. Set/Reset write
+# the Mongo `env_overrides` collection that web + worker consult live, so a flip
+# applies mid-flight (no restart). Same login + ADMIN_ALLOWLIST gate; nocsrf
+# because the page POSTs JSON via fetch (the AdminAction gate is the auth check).
+GET     /admin/config                    controllers.EnvConfigController.index()
+GET     /admin/config/data               controllers.EnvConfigController.data()
++ nocsrf
+POST    /admin/config/set                controllers.EnvConfigController.set()
++ nocsrf
+POST    /admin/config/reset              controllers.EnvConfigController.reset()
+
 # ── robots.txt ────────────────────────────────────────────────────────────────
 # Returning a 404 on /robots.txt confused Facebook's link-preview scraper
 # (`facebookexternalhit`) — its debugger reported "403 due to robots.txt
