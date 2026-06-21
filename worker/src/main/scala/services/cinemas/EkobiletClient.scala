@@ -2,7 +2,8 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import tools.{HttpFetch, ParallelDetailFetch}
+import org.jsoup.nodes.Document
+import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.concurrent.duration._
@@ -27,6 +28,17 @@ import scala.util.Try
  * `span.fw-bold` = "HH:MM …". The year isn't in the row, so it's inferred from
  * `today` (next occurrence of that month/day).
  *
+ * The detail page also carries a plain-Polish synopsis in an off-canvas info
+ * panel (`#offcanvasRightInfo .offcanvas-body`) — and that is the ONLY
+ * film-level metadata ekobilet exposes: there is no production year, director,
+ * cast, country, genre or runtime anywhere on the page (verified across venues:
+ * no labelled block, no `Movie` JSON-LD, no OG tags). So the deferred
+ * [[fetchFilmDetail]] supplies a synopsis only — pure display enrichment with no
+ * TMDB-identity hints — which is why `defersTmdbResolution` is overridden to
+ * false: the row resolves immediately off its listing title rather than waiting
+ * for a detail that can't disambiguate it. (Resolution disambiguation for
+ * yearless arthouse titles still has to come from TMDB/IMDb, not this source.)
+ *
  * One instance per venue, captured by its `slug` + `cinema` (OCP). Fetches: the
  * landing + one page per available day (to find every film), then each film's
  * detail page once (deduped) in parallel. Previously scraped from Filmweb.
@@ -36,13 +48,31 @@ class EkobiletClient(
   slug:   String,
   override val cinema: Cinema,
   today:  LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-) extends CinemaScraper with OnlyMovieEventsFilter {
+) extends CinemaScraper with DetailEnricher with OnlyMovieEventsFilter {
 
   import EkobiletClient._
+
+  // Detail pages are static across passes for a live film, so cache them.
+  private val detailHttp = new CachingDetailFetch(http)
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   // The venue's public landing page — the same URL fetch() reads its listing from.
   override def sourceUrl: Option[String] = Some(s"$BaseUrl/$slug")
+
+  // Each venue is standalone (no chain), so the dedup/freshness scope is the
+  // cinema's own slug. (Two venues never share a film's detail page — the URL is
+  // venue-scoped: `ekobilet.pl/<slug>/<film>`.)
+  override def detailGroup: String = cinema.slug
+
+  // The synopsis is display-only and supplies no TMDB-identity hint, so the row
+  // resolves straight off its listing title and the synopsis merges in later.
+  override def defersTmdbResolution: Boolean = false
+
+  /** Deferred per-film detail — the synopsis off the off-canvas info panel, the
+   *  only film-level field ekobilet exposes. None on a fetch failure so the task
+   *  stays stale and retries rather than recording an empty result as fresh. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(detailHttp.get(ref)).toOption.map(html => parseDetail(Jsoup.parse(html)))
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     val landing = http.get(s"$BaseUrl/$slug")
@@ -135,6 +165,19 @@ object EkobiletClient {
         dt      <- Try(LocalDateTime.of(date, time)).toOption
       } yield Showtime(dt, Option(row.attr("data-href")).filter(_.nonEmpty))
     }.distinctBy(s => (s.dateTime, s.bookingUrl))
+
+  /** Parse a film detail page into its (synopsis-only) `FilmDetail`. The synopsis
+   *  is the prose paragraph in the off-canvas info panel
+   *  (`#offcanvasRightInfo .offcanvas-body p`); that panel's body also embeds the
+   *  venue's own boilerplate "about the cinema" blurb after a `.line` divider, so
+   *  read only the first `<p>` (the film synopsis) rather than the whole body.
+   *  No other film-level field (year, director, cast, country, genre, runtime)
+   *  exists on the page, so this is all the detail there is. */
+  private[cinemas] def parseDetail(document: Document): FilmDetail =
+    FilmDetail(
+      synopsis = Option(document.selectFirst("#offcanvasRightInfo .offcanvas-body p"))
+        .map(_.text.trim).filter(_.nonEmpty)
+    )
 
   /** The next date with the given month/day on or after `today` (so a December
    *  listing seen in January resolves to this year, not last). */

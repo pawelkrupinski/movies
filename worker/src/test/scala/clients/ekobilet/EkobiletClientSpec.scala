@@ -58,4 +58,41 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 12, 18, 20))
     film.showtimes.flatMap(_.bookingUrl).head should startWith("https://ekobilet.pl/")
   }
+
+  // ── Per-film detail page (deferred enrichment) ─────────────────────────────
+
+  private val jaworzynaClient =
+    new EkobiletClient(new FakeHttpFetch("ekobilet-jaworzyna"), "kino-jaworzyna", KinoJaworzyna,
+      today = LocalDate.of(2026, 6, 11))
+
+  it should "expose each film's detail page as filmUrl for deferred enrichment" in {
+    jaworzyna.flatMap(_.filmUrl) should not be empty
+    all(jaworzyna.flatMap(_.filmUrl).map(_.startsWith("https://ekobilet.pl/kino-jaworzyna/"))) shouldBe true
+  }
+
+  it should "harvest the synopsis off the detail page reached via filmUrl" in {
+    // Take the film's own filmUrl (the ref the listing scrape leaves) and run the
+    // deferred fetchFilmDetail against it, exactly as the EnrichDetails task does.
+    val ref    = jaworzyna.find(_.movie.title == "Milczenie owiec").value.filmUrl.value
+    val detail = jaworzynaClient.fetchFilmDetail(ref).value
+    detail.synopsis.value shouldBe
+      "Seryjny morderca i inteligentna agentka łączą siły, by znaleźć przestępcę obdzierającego ze skóry swoje ofiary."
+    // ekobilet pages carry no other film-level metadata — assert the gap so a
+    // future page shape that *does* add it shows up as a failing expectation.
+    detail.releaseYear shouldBe None
+    detail.director    shouldBe empty
+    detail.cast        shouldBe empty
+    detail.countries   shouldBe empty
+  }
+
+  it should "read the film synopsis only, not the venue's own about-the-cinema blurb" in {
+    val ref    = jaworzyna.find(_.movie.title == "Romeria").value.filmUrl.value
+    val detail = jaworzynaClient.fetchFilmDetail(ref).value
+    detail.synopsis.value should startWith("Marina wraca do rodzinnej Galicji")
+    detail.synopsis.value should not include "Małopolskiej Sieci Kin Cyfrowych" // the venue blurb
+  }
+
+  it should "return None when the detail-page fetch fails (no fixture)" in {
+    jaworzynaClient.fetchFilmDetail("https://ekobilet.pl/kino-jaworzyna/nie-ma-takiego-filmu-99999") shouldBe None
+  }
 }
