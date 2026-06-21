@@ -30,6 +30,35 @@ object RatingTasks {
 
   def payload(key: CacheKey): Map[String, String] =
     Map(TitleKey -> key.cleanTitle, YearKey -> key.year.map(_.toString).getOrElse(""))
+
+  /** Freshness key under which a resolved row's TMDB-resolution TIME is stamped
+   *  (see `MovieService.publishTmdbOutcome`). tmdbId-keyed so the rating handler
+   *  can correlate it with its own tmdbId-keyed rating dedup key without touching
+   *  the cache — both sides derive the same `tmdb|tmdb:<id>` string. */
+  def tmdbResolvedAtKey(tmdbId: Int): String = s"${FreshnessKind.TmdbResolve.label}|tmdb:$tmdbId"
+
+  /** The `tmdbResolvedAtKey` matching a rating task's dedup key — `Some` only when
+   *  the rating task is tmdbId-keyed (`<site>|tmdb:<id>`). A legacy title-keyed
+   *  rating row has no tmdbId to correlate on, so its delay isn't measured. */
+  def tmdbResolvedAtKeyFor(ratingDedupKey: String): Option[String] =
+    ratingDedupKey.split('|') match {
+      case Array(_, tmdbPart) if tmdbPart.startsWith("tmdb:") => Some(s"${FreshnessKind.TmdbResolve.label}|$tmdbPart")
+      case _                                                  => None
+    }
+}
+
+/** Records how long after a film's TMDB resolution each rating site FIRST tried
+ *  to fetch its rating — the latency the [[EnrichmentReaper]]'s first pass now
+ *  owns, since ratings are no longer enqueued the instant a film resolves. A
+ *  narrow seam (like `MergeMetrics`) so [[RatingHandler]] doesn't depend on the
+ *  Prometheus sink; `WorkerTaskMetrics` implements it, tests pass a spy or NoOp. */
+trait RatingLatencyMetrics {
+  /** `site` is a [[FreshnessKind]] label (imdb/fw/rt/mc); `seconds` is clamped ≥ 0. */
+  def recordFirstRatingDelay(site: String, seconds: Double): Unit
+}
+
+object RatingLatencyMetrics {
+  val NoOp: RatingLatencyMetrics = (_, _) => ()
 }
 
 /**
@@ -52,19 +81,34 @@ class RatingHandler(
   freshness:             FreshnessStore,
   dueWindow:             DueWindow,
   refresh:               (String, Option[Int]) => Unit,
-  clock:                 Clock = Clock.systemUTC()
+  clock:                 Clock = Clock.systemUTC(),
+  metrics:               RatingLatencyMetrics = RatingLatencyMetrics.NoOp
 ) extends TaskHandler {
   import HandlerOutcome._
 
   override def handle(task: Task): HandlerOutcome = {
-    val key = task.dedupKey
-    if (!dueWindow.isDue(key, freshness.lastFetchedAt(key), clock.instant())) Skipped
+    val key      = task.dedupKey
+    val lastRated = freshness.lastFetchedAt(key)
+    if (!dueWindow.isDue(key, lastRated, clock.instant())) Skipped
     else {
+      // No prior rating stamp ⇒ this is the FIRST attempt for this (row, site):
+      // record how long after TMDB resolution it took, so the EnrichmentReaper's
+      // first-pass latency is observable per site (the smoothing trade-off).
+      if (lastRated.isEmpty) recordFirstAttemptDelay(key)
       val title = task.payload.getOrElse(RatingTasks.TitleKey, "")
       val year  = task.payload.get(RatingTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
       refresh(title, year)
-      freshness.markFresh(key, kind)
+      freshness.markFresh(key, kind, clock.instant())
       Done
     }
   }
+
+  private def recordFirstAttemptDelay(ratingKey: String): Unit =
+    for {
+      resolvedKey <- RatingTasks.tmdbResolvedAtKeyFor(ratingKey)
+      resolvedAt  <- freshness.lastFetchedAt(resolvedKey)
+    } {
+      val seconds = (clock.instant().toEpochMilli - resolvedAt.toEpochMilli).toDouble / 1000.0
+      metrics.recordFirstRatingDelay(kind.label, math.max(0.0, seconds))
+    }
 }

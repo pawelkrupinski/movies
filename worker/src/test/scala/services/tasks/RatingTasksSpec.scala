@@ -3,8 +3,10 @@ package services.tasks
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
+import services.movies.CacheKey
 
 import java.time.{Clock, Instant, ZoneOffset}
+import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.hashing.MurmurHash3
 
@@ -56,6 +58,42 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
       (_, _) => calls += 1, Clock.fixed(now, ZoneOffset.UTC))
     h.handle(ratingTask(dedup, "dune", Some(2024))) shouldBe HandlerOutcome.Done
     calls shouldBe 1
+  }
+
+  // ── first-rating-attempt delay metric ─────────────────────────────────────
+
+  private def recordingMetrics(): (RatingLatencyMetrics, mutable.ListBuffer[(String, Double)]) = {
+    val seen = mutable.ListBuffer.empty[(String, Double)]
+    (new RatingLatencyMetrics { def recordFirstRatingDelay(site: String, seconds: Double): Unit = seen += ((site, seconds)) }, seen)
+  }
+
+  "RatingHandler" should "record the TMDB-resolved → first-attempt delay per site, once (not on a later attempt)" in {
+    val resolvedAt = Instant.parse("2026-06-21T10:00:00Z")
+    val firstAt    = resolvedAt.plusSeconds(300) // one reaper tick later
+    val fresh      = new InMemoryFreshnessStore
+    fresh.markFresh(RatingTasks.tmdbResolvedAtKey(1454157), FreshnessKind.TmdbResolve, resolvedAt)
+
+    val (metrics, seen) = recordingMetrics()
+    val dedup = RatingTasks.dedupKey(FreshnessKind.ImdbRating, CacheKey("Kumotry", Some(2026)), Some(1454157)) // imdb|tmdb:1454157
+    val h = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow,
+      (_, _) => (), Clock.fixed(firstAt, ZoneOffset.UTC), metrics = metrics)
+
+    h.handle(ratingTask(dedup, "Kumotry", Some(2026))) shouldBe HandlerOutcome.Done
+    seen.toList shouldBe List(("imdb", 300.0))
+
+    // Same tick → now fresh, so a second pickup is skipped and records nothing more.
+    h.handle(ratingTask(dedup, "Kumotry", Some(2026))) shouldBe HandlerOutcome.Skipped
+    seen.toList shouldBe List(("imdb", 300.0))
+  }
+
+  it should "not record a delay for a legacy title-keyed rating (no tmdbId to correlate)" in {
+    val fresh = new InMemoryFreshnessStore
+    fresh.markFresh(RatingTasks.tmdbResolvedAtKey(1454157), FreshnessKind.TmdbResolve, Instant.parse("2026-06-21T10:00:00Z"))
+    val (metrics, seen) = recordingMetrics()
+    val h = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, (_, _) => (), metrics = metrics)
+
+    h.handle(ratingTask("imdb|kumotry|2026", "Kumotry", Some(2026))) shouldBe HandlerOutcome.Done
+    seen shouldBe empty
   }
 
 }

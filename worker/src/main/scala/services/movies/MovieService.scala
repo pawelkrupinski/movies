@@ -5,7 +5,9 @@ import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete, TmdbResolved}
+import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
 import services.resolution.{ResolutionCache, ResolutionKeys}
+import services.tasks.RatingTasks
 import tools.DaemonExecutors
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -56,7 +58,13 @@ class MovieService(
   // same hints resolve once. `fullDetails`/`imdbId` are still fetched per hit
   // (cheap single round-trips) — only the search loop is cached. Defaults to a
   // passthrough so unit specs/scripts keep resolving live unless they wire one.
-  tmdbIdCache: ResolutionCache = ResolutionCache.passthrough
+  tmdbIdCache: ResolutionCache = ResolutionCache.passthrough,
+  // Where the row's TMDB-resolution TIME is stamped (FreshnessKind.TmdbResolve),
+  // so `RatingHandler` can measure how long after resolution each site's first
+  // rating attempt fired (the EnrichmentReaper first-pass latency metric).
+  // Production injects the SHARED store the rating handlers read; tests default
+  // to a throwaway in-memory one (the stamp is observability, not correctness).
+  freshness: FreshnessStore = new InMemoryFreshnessStore
 ) extends Stoppable with Logging {
 
   // Active or queued INLINE TMDB-stage lookups, so the inline-default dispatch
@@ -357,7 +365,10 @@ class MovieService(
 
   // Publish the post-resolution event so the rating refreshers re-run for the
   // row off the existing event chain.
-  private def publishTmdbOutcome(finalKey: CacheKey, movieRecord: MovieRecord): Unit =
+  private def publishTmdbOutcome(finalKey: CacheKey, movieRecord: MovieRecord): Unit = {
+    // Stamp WHEN this row resolved (keyed by the immutable tmdbId) so the rating
+    // handler can measure the resolved → first-rating-attempt delay per site.
+    movieRecord.tmdbId.foreach(id => freshness.markFresh(RatingTasks.tmdbResolvedAtKey(id), FreshnessKind.TmdbResolve))
     movieRecord.imdbId match {
       case Some(id) =>
         bus.publish(TmdbResolved(finalKey.cleanTitle, finalKey.year, id))
@@ -371,6 +382,7 @@ class MovieService(
         logger.info(s"TMDB: '${finalKey.cleanTitle}' (${finalKey.year.getOrElse("?")}) → matched tmdbId=${movieRecord.tmdbId.getOrElse("—")} (no IMDb cross-reference yet); publishing ImdbIdMissing(search='$searchTitle')")
         bus.publish(ImdbIdMissing(finalKey.cleanTitle, finalKey.year, searchTitle))
     }
+  }
 
   // Synchronous core. Resolves TMDB; on a hit, writes a row carrying ONLY the
   // TMDB-side fields (tmdbId, imdbId, originalTitle). All score/URL fields

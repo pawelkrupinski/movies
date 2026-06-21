@@ -3,10 +3,11 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
+import services.freshness.FreshnessKind
 import services.movies.{MergeMetrics, MergeReason}
 import services.readmodel.ReadModelProjectionMetrics
 import services.staging.StagingStep
-import services.tasks.{QueueSnapshot, Task, TaskState, TaskType}
+import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState, TaskType}
 
 import java.io.ByteArrayOutputStream
 import java.time.Instant
@@ -60,7 +61,7 @@ object TaskObserver {
  * gauges are refreshed from a `QueueSnapshot` each `scrape()`.
  */
 class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new PrometheusRegistry())
-  extends TaskObserver with MergeMetrics with ReadModelProjectionMetrics {
+  extends TaskObserver with MergeMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics {
   import WorkerTaskMetrics._
 
   // The client auto-appends `_total` to counter names, so they're declared without it.
@@ -87,6 +88,14 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     .help("Handler wall-clock of fully-worked (done) tasks, by type.")
     .labelNames("task_type")
     .classicUpperBounds(DurationBucketsSeconds*)
+    .classicOnly()
+    .register(registry)
+
+  private val ratingFirstAttemptDelay = Histogram.builder()
+    .name("kinowo_worker_rating_first_attempt_delay_seconds")
+    .help("Delay between a film's TMDB resolution and the FIRST attempt to fetch its rating, by site (imdb/fw/rt/mc). Measures the EnrichmentReaper's first-pass latency now that ratings aren't enqueued the instant a film resolves.")
+    .labelNames("site")
+    .classicUpperBounds(RatingDelayBucketsSeconds*)
     .classicOnly()
     .register(registry)
 
@@ -159,6 +168,7 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
       waitingByType.labelValues(t.name).set(0.0)
       oldestWaitingAge.labelValues(t.name).set(0.0)
     }
+    RatingSites.foreach(s => ratingFirstAttemptDelay.labelValues(s))
     QueueStates.foreach(s => queueDepth.labelValues(s).set(0.0))
     StagingStep.all.foreach(s => stagingMovies.labelValues(s.label).set(0.0))
     MergeReason.all.foreach(r => merges.labelValues(r.label))
@@ -168,6 +178,10 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     poolSizeGauge.set(poolSize.toDouble)
     throttledGauge.set(0.0) // materialize at 0 so Grafana draws a continuous on/off line
   }
+
+  // ── RatingLatencyMetrics ────────────────────────────────────────────────────
+  def recordFirstRatingDelay(site: String, seconds: Double): Unit =
+    ratingFirstAttemptDelay.labelValues(site).observe(math.max(0.0, seconds))
 
   /** Each absorbed victim row is one increment under its fold's reason. */
   def recordMerge(reason: MergeReason, victims: Int): Unit =
@@ -241,4 +255,15 @@ object WorkerTaskMetrics {
   /** Fixed histogram upper bounds (seconds), spanning a sub-second freshness
    *  skip up to a slow multi-minute scrape/detail fetch. */
   val DurationBucketsSeconds: Seq[Double] = Seq(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0)
+
+  /** Upper bounds (seconds) for the TMDB-resolved → first-rating-attempt delay:
+   *  ~one reaper tick (5min) in steady state, stretching to hours when a large
+   *  resolution cohort drains over the per-tick cap. 30s … 4h. */
+  val RatingDelayBucketsSeconds: Seq[Double] =
+    Seq(30.0, 60.0, 120.0, 300.0, 600.0, 1200.0, 1800.0, 3600.0, 7200.0, 14400.0)
+
+  /** The four rating-site labels, materialized at boot so each series exists from
+   *  the start (no Grafana gaps). Mirrors the [[FreshnessKind]] rating labels. */
+  val RatingSites: Seq[String] =
+    Seq(FreshnessKind.ImdbRating, FreshnessKind.FilmwebRating, FreshnessKind.RtRating, FreshnessKind.McRating).map(_.label)
 }

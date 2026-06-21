@@ -353,7 +353,10 @@ class WorkerWiring extends play.api.Logging {
         EnrichTaskKeys.resolveTmdbPayload(title, year, director, originalTitle))
       ()
     }),
-    tmdbIdCache = tmdbIdCache)
+    tmdbIdCache = tmdbIdCache,
+    // SAME store the rating handlers read, so the resolved → first-rating delay
+    // (stamped here on resolution, observed there on first attempt) correlates.
+    freshness = freshnessStore)
   lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache)
 
   // ── Task queue (scrape scheduling) ──────────────────────────────────────────
@@ -524,10 +527,10 @@ class WorkerWiring extends play.api.Logging {
   // Its period is the rating TTL (4h, `Freshness.ttlFor`).
   val ratingDueWindow = new services.tasks.DueWindow(4L.hours)
   lazy val ratingHandlers: Seq[services.tasks.TaskHandler] = Seq(
-    new RatingHandler(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    freshnessStore, ratingDueWindow, imdbRatings.refreshOneSync),
-    new RatingHandler(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, freshnessStore, ratingDueWindow, filmwebRatings.refreshOneSync),
-    new RatingHandler(TaskType.RtRating,      FreshnessKind.RtRating,      freshnessStore, ratingDueWindow, rottenTomatoesRatings.refreshOneSync),
-    new RatingHandler(TaskType.McRating,      FreshnessKind.McRating,      freshnessStore, ratingDueWindow, metascoreRatings.refreshOneSync)
+    new RatingHandler(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    freshnessStore, ratingDueWindow, imdbRatings.refreshOneSync,         metrics = taskMetrics),
+    new RatingHandler(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, freshnessStore, ratingDueWindow, filmwebRatings.refreshOneSync,      metrics = taskMetrics),
+    new RatingHandler(TaskType.RtRating,      FreshnessKind.RtRating,      freshnessStore, ratingDueWindow, rottenTomatoesRatings.refreshOneSync, metrics = taskMetrics),
+    new RatingHandler(TaskType.McRating,      FreshnessKind.McRating,      freshnessStore, ratingDueWindow, metascoreRatings.refreshOneSync,    metrics = taskMetrics)
   )
   // Cap on rating-refresh tasks the EnrichmentReaper enqueues per tick. The phase
   // spread keeps steady-state ticks small (~N·tickInterval/period per source ≈ a

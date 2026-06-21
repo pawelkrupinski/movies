@@ -130,4 +130,17 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     // Seeded so the series exists from boot; the 0-victim call left it at 0.
     out should include ("""kinowo_worker_merges_total{reason="resolved-settle"} 0""")
   }
+
+  it should "observe the TMDB-resolved → first-rating-attempt delay per site, seeding all four" in {
+    val m = new WorkerTaskMetrics(poolSize = 4)
+    m.recordFirstRatingDelay("imdb", 300.0)
+
+    val out = m.scrape(emptySnapshot, noStaging, now)
+
+    out should include ("""kinowo_worker_rating_first_attempt_delay_seconds_count{site="imdb"} 1""")
+    // Seeded so every site's series exists from boot even before its first observation.
+    out should include ("""kinowo_worker_rating_first_attempt_delay_seconds_count{site="fw"} 0""")
+    out should include ("""kinowo_worker_rating_first_attempt_delay_seconds_count{site="rt"} 0""")
+    out should include ("""kinowo_worker_rating_first_attempt_delay_seconds_count{site="mc"} 0""")
+  }
 }
