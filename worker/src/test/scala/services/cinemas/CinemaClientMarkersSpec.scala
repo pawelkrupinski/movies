@@ -66,8 +66,9 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
 
   it should "link an own-site-migrated venue (Kino Tatry) to its own repertoire page" in {
     // Tatry left Filmweb for its own WordPress site, so its source link is the
-    // venue's repertoire page, not a /cinema/-<id> Filmweb fallback.
-    sourceUrls("Kino Tatry") shouldBe "https://kinotatrylodz.pl/repertuar/"
+    // venue's homepage (which carries the whole current slate), not a
+    // /cinema/-<id> Filmweb fallback.
+    sourceUrls("Kino Tatry") shouldBe "https://kinotatrylodz.pl/"
   }
 
   it should "link a Cinema City venue to its public venue page by externalCode" in {

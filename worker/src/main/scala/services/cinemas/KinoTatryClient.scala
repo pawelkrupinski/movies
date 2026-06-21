@@ -18,18 +18,26 @@ import scala.util.Try
  * Filmweb stopped carrying its (sparse) programme, so it's scraped straight from
  * the venue's own WordPress site (`kinotatrylodz.pl`, the `ergotree` theme).
  *
- * The repertoire archive at `/repertuar/` lists film posts newest-first, each
- * linking to a `/repertuar/<slug>/` detail page. Showtimes live ONLY on the
- * detail page, in a `ul.harmonogram-list` whose `<li>` items read
- * `<strong>DD/MM/YYYY:</strong> HH:MM` (a `li` may carry several comma-separated
- * times). The list page carries titles but no dates, so each film's schedule is
- * read from its detail page (fetched in parallel, tolerantly).
+ * The whole currently-scheduled slate lives inline on the HOMEPAGE ("START |
+ * REPERTUAR KINA"): a carousel of cards, each an `h3.title-article` title, a
+ * `ul.harmonogram-list` of `<li><strong>DD/MM/YYYY:</strong> HH:MM</li>` slots
+ * (a `li` may carry several comma-separated times), an `a.btn-theme` link to the
+ * film's `/repertuar/<slug>/` detail page, and an `img.wp-post-image` poster.
  *
- * Scope: the FIRST archive page only. This is a low-frequency club cinema — a
- * new screening is published as a fresh post, so the currently-scheduled films
- * are always the newest entries; older pages are past films with no upcoming
- * dates. Films whose detail page has no future-dated `harmonogram-list` entry
- * (the bulk of the archive) yield no showtimes and are dropped.
+ * The homepage is curated by the cinema to its current programme and drops a
+ * card once its screenings pass, so reading it directly is both complete and
+ * up-to-date. (The earlier design walked the `/repertuar/` archive newest-first,
+ * assuming the newest posts were the scheduled ones — but the venue re-publishes
+ * old film posts when it re-screens them, so the archive's newest entries are
+ * NOT the current slate; every listed film aged out and the scrape went empty.)
+ * Per-card showtimes are still filtered to `>= today`, so a straggler whose only
+ * date is in the past yields no showtimes and is dropped.
+ *
+ * The homepage card has no release year, but this is a repertory cinema showing
+ * classics (Pianista 2002, Possession 1981, Basic Instinct 1992) where the year
+ * is the disambiguator that stops TMDB matching a same-titled remake — so each
+ * listed film's `/repertuar/<slug>/` detail page (a handful, fetched in
+ * parallel) is read for its `Premiera</strong>YYYY` line.
  */
 class KinoTatryClient(
   http:             HttpFetch,
@@ -40,63 +48,64 @@ class KinoTatryClient(
   import KinoTatryClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(RepertoireUrl)
+  override def sourceUrl: Option[String] = Some(HomepageUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val detailUrls = filmUrls(Try(http.get(RepertoireUrl)).getOrElse(""))
-    if (detailUrls.isEmpty) return Seq.empty
+    val cards = parseHomepage(Try(http.get(HomepageUrl)).getOrElse(""), today, cinema)
+    if (cards.isEmpty) return Seq.empty
 
-    val byUrl = ParallelDetailFetch.keyed("kino-tatry-detail", detailUrls, 1.minute)(identity) { url =>
-      Try(http.get(url)).toOption.flatMap(html => parseDetail(html, url, today, cinema))
+    val detailUrls = cards.flatMap(_.filmUrl).distinct
+    val yearByUrl = ParallelDetailFetch.keyed("kino-tatry-detail", detailUrls, 1.minute)(identity) { url =>
+      Try(http.get(url)).toOption.flatMap(yearOf)
     }
-    detailUrls.flatMap(byUrl.getOrElse(_, None)).sortBy(_.movie.title)
+    cards.map { card =>
+      val year = card.filmUrl.flatMap(yearByUrl.getOrElse(_, None))
+      card.copy(movie = card.movie.copy(releaseYear = year))
+    }
   }
 }
 
 object KinoTatryClient {
 
-  val BaseUrl       = "https://kinotatrylodz.pl"
-  val RepertoireUrl = s"$BaseUrl/repertuar/"
+  val BaseUrl     = "https://kinotatrylodz.pl"
+  val HomepageUrl = s"$BaseUrl/"
 
-  private val DetailPath = """^https://kinotatrylodz\.pl/repertuar/[a-z0-9-]+/$""".r
   private val DateFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy")
   private val DatePat    = """(\d{2}/\d{2}/\d{4})""".r
   private val TimePat    = """(\d{1,2}:\d{2})""".r
   private val YearPat    = """Premiera\D{0,12}(\d{4})""".r
 
-  /** Distinct `/repertuar/<slug>/` detail-page URLs linked from the archive
-   *  listing, in document order (the listing's own pagination/`/repertuar/`
-   *  links are filtered out by the strict slug pattern). */
-  private[cinemas] def filmUrls(listingHtml: String): Seq[String] =
-    Jsoup.parse(listingHtml, BaseUrl).select("a[href]").asScala.toSeq
-      .map(_.absUrl("href"))
-      .collect { case u @ DetailPath() => u }
-      .distinct
+  /** The release year mined from a `/repertuar/<slug>/` detail page's
+   *  `Premiera</strong>YYYY` line, if present. */
+  private[cinemas] def yearOf(html: String): Option[Int] =
+    YearPat.findFirstMatchIn(html).map(_.group(1).toInt)
 
-  /** Parse one `/repertuar/<slug>/` detail page into a `CinemaMovie`, or `None`
-   *  when it has no future-dated screening (an archive film). */
-  private[cinemas] def parseDetail(html: String, url: String, today: LocalDate, cinema: Cinema): Option[CinemaMovie] = {
+  /** Parse the homepage repertoire carousel into `CinemaMovie`s. Each
+   *  `h3.title-article` heading anchors one film card; its showtimes, detail
+   *  link and poster are read from that card. Films with no future-dated
+   *  `harmonogram-list` entry yield no showtimes and are dropped. */
+  private[cinemas] def parseHomepage(html: String, today: LocalDate, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
-    val title = Option(document.selectFirst("div.content h2")).orElse(Option(document.selectFirst("h2")))
-      .map(_.text.trim).filter(_.nonEmpty)
-
-    title.flatMap { t =>
-      val showtimes = document.select("ul.harmonogram-list li").asScala.toSeq
-        .flatMap(slotTimes(_, today))
-        .distinct
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
-        movie       = Movie(t, releaseYear = YearPat.findFirstMatchIn(html).map(_.group(1).toInt)),
-        cinema      = cinema,
-        posterUrl   = Option(document.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty),
-        filmUrl     = Some(url),
-        synopsis    = None,
-        cast        = Seq.empty,
-        director    = Seq.empty,
-        showtimes   = showtimes
-      ))
-    }
+    document.select("h3.title-article").asScala.toSeq.flatMap { heading =>
+      val title = heading.text.trim
+      Option(heading.parent()).filter(_ => title.nonEmpty).flatMap { card =>
+        val showtimes = card.select("ul.harmonogram-list li").asScala.toSeq
+          .flatMap(slotTimes(_, today))
+          .distinct
+          .sortBy(_.dateTime)
+        if (showtimes.isEmpty) None
+        else Some(CinemaMovie(
+          movie       = Movie(title),
+          cinema      = cinema,
+          posterUrl   = Option(card.selectFirst("img.wp-post-image")).map(_.absUrl("src")).filter(_.nonEmpty),
+          filmUrl     = Option(card.selectFirst("a.btn-theme[href]")).map(_.absUrl("href")).filter(_.nonEmpty),
+          synopsis    = None,
+          cast        = Seq.empty,
+          director    = Seq.empty,
+          showtimes   = showtimes
+        ))
+      }
+    }.sortBy(_.movie.title)
   }
 
   /** One `harmonogram-list` `<li>` → its future-dated `Showtime`s. The `<strong>`

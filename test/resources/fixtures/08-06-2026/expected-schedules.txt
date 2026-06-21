@@ -5439,7 +5439,7 @@ showings:
 
 === Pianista ===
 displayTitle:      Pianista
-cinemaTitles:      Pianista
+cinemaTitles:      PIANISTA | Pianista
 runtimeMinutes:    149
 releaseYear:       2002
 countries:         Francja, Niemcy, Polska, Wielka Brytania, USA
@@ -5498,6 +5498,7 @@ cinemaScrapes:
   Helios Tczew / Pianista / —
   Helios Łódź / Pianista / —
   Helios Żory / Pianista / —
+  Kino Tatry / PIANISTA / 2002
 showings:
   2026-06-14  Helios Posnania               15:00 Sala 2 2D/NAP
 
