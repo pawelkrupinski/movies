@@ -31,7 +31,7 @@
 
     <div class="col">
       <div class="film-title">@film.movie.title@film.movie.runtimeMinutes.filter(_ > 0).map { mins =>
-  <span class="pill runtime">@{mins / 60}h@if(mins % 60 != 0){ @{mins % 60}min}</span>
+  <span class="pill runtime">@controllers.CardFormat.runtimePill(mins)</span>
 }@film.movie.releaseYear.map { y =>
   <span class="pill year">@y</span>
 }@for(g <- film.movie.genres) {

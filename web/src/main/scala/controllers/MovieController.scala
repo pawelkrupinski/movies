@@ -11,7 +11,6 @@ import services.readmodel.WebReadModel
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.time.{LocalDate, LocalDateTime}
-import java.time.format.DateTimeFormatter
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.DurationInt
 
@@ -68,8 +67,6 @@ object ApiFilm {
   implicit val apiRatingsWrites: Writes[ApiRatings] = Json.writes[ApiRatings]
   implicit val apiFilmWrites: Writes[ApiFilm] = Json.writes[ApiFilm]
 
-  private val TimeFmt = DateTimeFormatter.ofPattern("HH:mm")
-
   def from(fs: FilmSchedule): ApiFilm = {
     val resolved = fs.resolved
     val cinemaUrlMap = fs.cinemaFilmUrls.map { case (c, url) => c.displayName -> url }.toMap
@@ -96,14 +93,14 @@ object ApiFilm {
       showings         = fs.showings.map { case (date, cinemas) =>
         ApiDayShowings(
           date    = date.toString,
-          label   = DateFormatter.format(date),
+          label   = CardFormat.date(date),
           cinemas = cinemas.map { cs =>
             ApiCinemaShowings(
               cinema    = cs.cinema.displayName,
               cinemaURL = cinemaUrlMap.get(cs.cinema.displayName),
               showtimes = cs.showtimes.map { st =>
                 ApiShowtime(
-                  time       = st.dateTime.format(TimeFmt),
+                  time       = CardFormat.time(st.dateTime),
                   format     = st.format.mkString(" "),
                   room       = st.room,
                   bookingURL = st.bookingUrl
@@ -978,24 +975,19 @@ object MovieController {
     }
   }
 
-  private val OgTimeFmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-
-  /** "0h 55min" / "1h 42min", matching the page's runtime pill. */
-  private def cardRuntime(min: Int): String = s"${min / 60}h ${min % 60}min"
-
   /** Build one page-like column ([[tools.CityCardFilm]]) for the dynamic city OG
    *  card: the small meta pills (runtime / year / up to two genres), the rating
    *  pills, and the soonest day's per-cinema showtime chips — capped (2 cinemas
    *  × 6 chips) so the rendered card stays bounded. */
   private[controllers] def toCityCardFilm(film: FilmSchedule): tools.CityCardFilm = {
     val meta =
-      film.movie.runtimeMinutes.map(cardRuntime).toSeq ++
+      film.movie.runtimeMinutes.map(CardFormat.runtimeText).toSeq ++
       film.movie.releaseYear.map(_.toString).toSeq ++
       film.movie.genres.take(2)
     val (dayLabel, cinemas) = film.showings.headOption.map { case (date, css) =>
-      DateFormatter.format(date) -> css.take(2).map { cs =>
+      CardFormat.date(date) -> css.take(2).map { cs =>
         cs.cinema.displayName -> cs.showtimes.take(6).map { st =>
-          val time = st.dateTime.format(OgTimeFmt)
+          val time = CardFormat.time(st.dateTime)
           st.format.headOption.filter(_.nonEmpty).fold(time)(fmt => s"$time $fmt")
         }
       }

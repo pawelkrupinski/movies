@@ -82,7 +82,6 @@ class PlanController(
 
 object PlanController {
   private val DateFmt = DateTimeFormatter.ISO_LOCAL_DATE
-  private val TimeFmt = DateTimeFormatter.ofPattern("HH:mm")
 
   // Pure view-model builder so the snapshot spec can call it with a
   // fixture-pinned `toSchedules(now)` and render the template directly,
@@ -99,7 +98,7 @@ object PlanController {
               cinema = cs.cinema.displayName,
               room   = st.room.map(_.trim).filter(_.nonEmpty),
               date   = date.format(DateFmt),
-              time   = st.dateTime.format(TimeFmt),
+              time   = CardFormat.time(st.dateTime),
               format = st.format
             )
           }

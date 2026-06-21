@@ -1,4 +1,4 @@
-@import controllers.{FilmSchedule, DateFormatter, FilmHref}
+@import controllers.{FilmSchedule, CardFormat, FilmHref}
 @(film: FilmSchedule)(implicit city: models.City)
 @*
    One film's showings, grouped by date → cinema → time slots. Used by
@@ -20,7 +20,7 @@
 ) { commonToksByCinema =>
 @for((date, cinemaShowtimesList) <- film.showings) {
   <div class="date-group" data-date="@date">
-    <div class="date-label">@DateFormatter.format(date)</div>
+    <div class="date-label">@CardFormat.date(date)</div>
     @for(cinemaShowtimes <- cinemaShowtimesList) {
       @defining(commonToksByCinema.getOrElse(cinemaShowtimes.cinema, Set.empty[String])) { commonToks =>
       <div class="cinema-group" data-cinema="@cinemaShowtimes.cinema.displayName">
