@@ -27,6 +27,21 @@ class HeliosClientResilienceSpec extends AnyFlatSpec with Matchers {
       } else nuxt.getAsync(url)
   }
 
+  // The mirror failure: the NUXT `/repertuar` page redirects to the films-less
+  // homepage (helios.pl 302s it server-side, intermittently, per venue), so
+  // `buildMovies` parses nothing — but REST is fully available. This is the
+  // degraded state behind the per-city served-films "flap": without the guard,
+  // `fetch` returns the REST-only `/screening` subset, a non-empty-but-truncated
+  // list that slips past MovieCache's empty-scrape guard and prunes the venue's
+  // whole NUXT repertoire.
+  private class RedirectedNuxtHttpFetch extends GetOnlyHttpFetch {
+    private val rest = new FakeHttpFetch("helios/rest-enrichment")
+    private def isRest(url: String): Boolean = url.contains("restapi.helios.pl")
+    override def get(url: String): String =
+      if (isRest(url)) rest.get(url) else "" // NUXT repertoire page → no films
+    override def getAsync(url: String): CompletableFuture[String] = rest.getAsync(url)
+  }
+
   private val client  = new HeliosClient(new NuxtOnlyHttpFetch)
   private val results = client.fetch()
 
@@ -55,5 +70,9 @@ class HeliosClientResilienceSpec extends AnyFlatSpec with Matchers {
     results.forall(_.cast.isEmpty)     shouldBe true
     results.forall(_.director.isEmpty) shouldBe true
     results.forall(_.movie.releaseYear.isEmpty) shouldBe true
+  }
+
+  it should "return no movies when the NUXT repertoire page is degraded, rather than the REST-only backfill that would prune the repertoire" in {
+    new HeliosClient(new RedirectedNuxtHttpFetch).fetch() shouldBe empty
   }
 }

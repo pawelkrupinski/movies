@@ -46,8 +46,23 @@ class HeliosClient(
   override def sourceUrl: Option[String] = Some(config.baseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val rest     = fetchRestData()
-    val enriched = enrichFromRest(HeliosNuxt.buildMovies(http.get(PageUrl), config), rest)
+    val rest = fetchRestData()
+    val nuxt = HeliosNuxt.buildMovies(http.get(PageUrl), config)
+    // The NUXT `/repertuar` page is Helios's authoritative full-repertoire source
+    // (it lists every screening, well beyond REST's 6-day window). helios.pl
+    // intermittently 302-redirects it to the films-less homepage — server-side,
+    // per-venue, rotating — and `RealHttpFetch` follows the redirect, so
+    // `buildMovies` parses nothing. If we then fell through to the REST
+    // `/screening` subset, `fetch` would return a NON-EMPTY but truncated list,
+    // which slips past `MovieCache.recordCinemaScrape`'s empty-scrape guard (it
+    // only catches a fully-empty result) and PRUNES every NUXT-only film from the
+    // venue — re-added on the next healthy tick. That round-trip is the per-city
+    // served-films "flap" (Grafana panel-34). A film-less NUXT page means the
+    // scrape is degraded, so return nothing and let the empty-scrape guard retain
+    // the prior repertoire until NUXT recovers (a retry can't help — the redirect
+    // persists for the whole degraded window).
+    if (nuxt.isEmpty) return Seq.empty
+    val enriched = enrichFromRest(nuxt, rest)
     mergeDuplicateFilms(removeLessSpecificOverlaps(enriched ++ restOnlyMovies(enriched, rest))).sortBy(_.movie.title)
   }
 
