@@ -272,7 +272,15 @@ object ExtraTitleRules {
     //     captured film ($1) and drop the wrapping quotes + the whole tail, so it
     //     resolves as the bare film. The closing quote / literal 'w ramach cyklu'
     //     anchor the lazy capture, so a film whose own title contains 'w …' is safe.
-    searchReplace("xtra-quoted-film-w-ramach-cyklu", """(?iu)^[„"]?\s*(.+?)\s*[„""]?\s+w\s+ramach\s+cyklu\b.*$""", "$1", "'\"<film>\" w ramach cyklu <cycle>' — quoted film + cycle descriptor tail kept its own row, resolves the bare film ('\"Drugie życie\" w ramach cyklu SWPS — 2025' → 'Drugie życie')")
+    searchReplace("xtra-quoted-film-w-ramach-cyklu", """(?iu)^[„"]?\s*(.+?)\s*[„""]?\s+w\s+ramach\s+cyklu\b.*$""", "$1", "'\"<film>\" w ramach cyklu <cycle>' — quoted film + cycle descriptor tail kept its own row, resolves the bare film ('\"Drugie życie\" w ramach cyklu SWPS — 2025' → 'Drugie życie')"),
+    // Ninth-wave (2026-06-21) audit. The Kino Luna 'Filmoterapia w Lunie' therapy
+    // series pipe-WRAPS the film between its banner and an event tail
+    // ('Filmoterapia W Lunie | <film> | seans + rozmowa Martyny Harland'), so the
+    // film is in the MIDDLE — neither the seed plus-suffix nor a pure prefix strip
+    // isolates it. Capture the first pipe-delimited segment and drop the banner +
+    // tail; query-only, so the therapy screening keeps its own decorated row but
+    // resolves the bare film. Sibling of the 'Filmoterapia z Inspirą:' prog prefix.
+    searchReplace("xtra-filmoterapia-w-lunie", """(?iu)^Filmoterapia\s+w\s+Lunie\s*\|\s*(.+?)\s*(?:\|.*)?$""", "$1", "'Filmoterapia W Lunie | <film> | seans + rozmowa Martyny Harland' Kino Luna therapy series — film pipe-wrapped in the middle (O czym sobie nie mówmy → TMDB 1473635)")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in

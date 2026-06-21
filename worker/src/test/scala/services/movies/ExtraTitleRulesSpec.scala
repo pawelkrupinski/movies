@@ -255,6 +255,14 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
   it should "resolve banner suffixes that sit behind a seed-stripped '+ …' tail" in {
     withClue("Lato + Modowy tail: ")(
       withExtras.search("Klatka dla ptaków | Lato z Robinem Williamsem + Modowy Klub Filmowy") shouldBe "Klatka dla ptaków")
+    // Ninth-wave: the 'Filmoterapia w Lunie' series pipe-wraps the film in the
+    // middle; the seed's '+ …' PlusSuffix already drops '+ rozmowa Martyny Harland',
+    // so this can't go in the load-bearing list. The xtra rule captures the middle
+    // segment regardless of the tail.
+    withClue("Filmoterapia w Lunie pipe-wrapped: ")(
+      withExtras.search("Filmoterapia W Lunie | O czym sobie nie mówmy | seans + rozmowa Martyny Harland") shouldBe "O czym sobie nie mówmy")
+    withClue("Filmoterapia w Lunie no tail: ")(
+      withExtras.search("Filmoterapia w Lunie | Drugie życie") shouldBe "Drugie życie")
   }
 
   // ── negative controls: real titles must survive untouched ──────────────────
