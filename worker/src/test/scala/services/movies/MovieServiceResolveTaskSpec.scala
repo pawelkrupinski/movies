@@ -31,13 +31,7 @@ class MovieServiceResolveTaskSpec extends AnyFlatSpec with Matchers {
   private def serviceEnqueueing(queue: InMemoryTaskQueue, cache: MovieCache): MovieService =
     new MovieService(
       cache, new InProcessEventBus(), deadTmdb,
-      enqueueResolveTmdb = Some((title, year, orig, directory) => {
-        queue.enqueue(
-          TaskType.ResolveTmdb,
-          EnrichTaskKeys.resolveTmdbDedup(title, year),
-          EnrichTaskKeys.resolveTmdbPayload(title, year, directory, orig))
-        ()
-      }))
+      dispatcher = Some(new QueueResolveDispatcher(queue)))
 
   "onMovieDetailsComplete" should "enqueue a ResolveTmdb task carrying the director hint for an unresolved film" in {
     val queue = new InMemoryTaskQueue()

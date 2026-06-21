@@ -96,12 +96,13 @@ trait TestWiring extends WorkerWiring {
   // resolution as a `ResolveTmdb` task (drained by the TaskWorker), but the
   // harness never runs the worker — it drives enrichment synchronously
   // (`drainServices` / `converge`) and relies on `taskQueue` staying drained.
-  // Overriding the production `enqueueResolveTmdb` seam back to None makes a
-  // `MovieDetailsComplete` resolve on the `executionContext` pool exactly as before, so the
-  // determinism + snapshot harness is unchanged. The shared `resolveTmdbOnce`
-  // is the same work either way; the enqueue seam is covered by the unit +
-  // WorkerWiring specs. A missing fixture is a permanent miss (the inline path
-  // drops a transient failure without retrying — no cascade churn).
+  // Omitting the production `QueueResolveDispatcher` falls back to the inline
+  // `ResolveDispatcher` default, so a `MovieDetailsComplete` resolves on the
+  // `executionContext` pool exactly as before and the determinism + snapshot
+  // harness is unchanged. The shared `resolveTmdbOnce` is the same work either
+  // way; the queue dispatch seam is covered by the unit + WorkerWiring specs. A
+  // missing fixture is a permanent miss (the inline path drops a transient
+  // failure without retrying — no cascade churn).
   override lazy val movieService =
     new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.executionContext("enrichment-worker"))
 

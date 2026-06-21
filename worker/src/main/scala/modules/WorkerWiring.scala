@@ -9,12 +9,12 @@ import services.enrichment._
 import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
 import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete, StagingFilmEnriched, TaskFinished}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
-import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepository, MovieService, MongoNormalizationReportRepository, NormalizationRebuilder, NormalizationReport, NormalizationReportRepository, UnscreenedCleanup}
+import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepository, MovieService, MongoNormalizationReportRepository, NormalizationRebuilder, NormalizationReport, NormalizationReportRepository, QueueResolveDispatcher, UnscreenedCleanup}
 import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
 import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
-import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, EnrichTaskKeys, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
+import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
 import tools.{Env, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
@@ -345,14 +345,8 @@ class WorkerWiring extends play.api.Logging {
     new WriteThroughResolutionCache(new MongoResolutionStore(mongoConnection.database, collection))
   lazy val tmdbIdCache: ResolutionCache = resolutionCache("resolve_tmdb")
   lazy val movieService = new MovieService(
-    movieCache, eventBus, tmdbClient, backgroundBudget.executionContext("enrichment-worker"),
-    enqueueResolveTmdb = Some((title, year, originalTitle, director) => {
-      taskQueue.enqueue(
-        TaskType.ResolveTmdb,
-        EnrichTaskKeys.resolveTmdbDedup(title, year),
-        EnrichTaskKeys.resolveTmdbPayload(title, year, director, originalTitle))
-      ()
-    }),
+    movieCache, eventBus, tmdbClient,
+    dispatcher = Some(new QueueResolveDispatcher(taskQueue)),
     tmdbIdCache = tmdbIdCache,
     // SAME store the rating handlers read, so the resolved → first-rating delay
     // (stamped here on resolution, observed there on first attempt) correlates.
