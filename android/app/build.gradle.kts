@@ -33,7 +33,10 @@ android {
         applicationId = "pl.kinowo"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
+        // Play rejects re-uploading a versionCode, so CI passes a strictly
+        // increasing one (the workflow run number) via KINOWO_VERSION_CODE.
+        // Local builds fall back to 1.
+        versionCode = System.getenv("KINOWO_VERSION_CODE")?.toIntOrNull() ?: 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

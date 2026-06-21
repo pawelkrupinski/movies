@@ -46,6 +46,11 @@ jobs:
         permissions:
             contents: write
             checks: write
+        # Hoisted to job scope so the Play-publish step's `if:` can test whether
+        # the service-account secret is set (secrets can't be read directly in
+        # an `if:`, but a job-level env derived from one can).
+        env:
+            PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
         defaults:
             run:
                 working-directory: android
@@ -125,6 +130,8 @@ jobs:
                   KINOWO_RELEASE_STORE_PASSWORD: ${{ secrets.KINOWO_RELEASE_STORE_PASSWORD }}
                   KINOWO_RELEASE_KEY_ALIAS: ${{ secrets.KINOWO_RELEASE_KEY_ALIAS }}
                   KINOWO_RELEASE_KEY_PASSWORD: ${{ secrets.KINOWO_RELEASE_KEY_PASSWORD }}
+                  # Strictly-increasing versionCode for Play (see build.gradle.kts).
+                  KINOWO_VERSION_CODE: ${{ github.run_number }}
               run: ./gradlew --no-daemon assembleRelease bundleRelease assembleTuneRelease
 
             - name: Upload release APK
@@ -144,6 +151,34 @@ jobs:
                   name: kinowo-release-aab
                   path: android/app/build/outputs/bundle/release/app-release.aab
                   if-no-files-found: error
+
+            # Manually-triggered publish of the signed AAB to Google Play's
+            # `internal` testing track. workflow_dispatch ONLY — a normal push/PR
+            # never ships to Play; you click "Run workflow" in the Actions tab
+            # when you want to release. Gated on PLAY_SERVICE_ACCOUNT_JSON: absent
+            # → the step below is skipped and a notice explains how to enable it,
+            # so the workflow still passes without the secret.
+            #
+            # Prerequisites (one-time, outside CI): the app `pl.kinowo` must
+            # already exist in the Play Console with its FIRST AAB uploaded
+            # manually once; a Google Cloud service account with the Play Android
+            # Developer API enabled + release permission in the Console; its JSON
+            # key stored as the PLAY_SERVICE_ACCOUNT_JSON repo secret. mappingFile
+            # uploads the R8 deobfuscation map so Play can symbolicate crashes.
+            - name: Publish to Google Play (internal)
+              if: ${{ github.event_name == 'workflow_dispatch' && env.PLAY_JSON != '' }}
+              uses: r0adkll/upload-google-play@v1
+              with:
+                  serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+                  packageName: pl.kinowo
+                  releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+                  mappingFile: android/app/build/outputs/mapping/release/mapping.txt
+                  track: internal
+                  status: completed
+
+            - name: Note skipped Play publish
+              if: ${{ github.event_name == 'workflow_dispatch' && env.PLAY_JSON == '' }}
+              run: echo "::notice::Play upload skipped — add the PLAY_SERVICE_ACCOUNT_JSON secret (service-account key with Play release permission) to enable it."
 
             - name: Upload tune APK
               uses: actions/upload-artifact@v6
