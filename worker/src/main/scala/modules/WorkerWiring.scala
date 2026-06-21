@@ -212,7 +212,8 @@ class WorkerWiring extends play.api.Logging {
     }
 
   // Cinemas whose ONLY scraper is a FilmwebShowtimesClient — served by Filmweb by
-  // design, not as a fallback. Published to Mongo at start() for the status page.
+  // design, not as a fallback. Feeds the FilmwebDropAlerter (a Filmweb-only venue
+  // going empty means migrate it to an own-site scraper).
   lazy val filmwebOnlyCinemas: Set[String] =
     cinemaScraperCatalog.all.groupBy(_.cinema)
       .collect { case (c, scrapers) if scrapers.nonEmpty && scrapers.forall(_.isInstanceOf[FilmwebShowtimesClient]) =>
@@ -690,9 +691,6 @@ class WorkerWiring extends play.api.Logging {
     // Ratings refresh via the queue (RatingHandlers + the EnrichmentReaper
     // backstop); refreshOneSync, which the handlers call, needs no start().
     unscreenedCleanup.start()
-    // Publish the by-design Filmweb-only cinemas so the /uptime/fallback page can
-    // list them (the catalog is worker-only; the web reads this from Mongo).
-    filmwebFallbackStore.putFilmwebOnly(filmwebOnlyCinemas)
     // Tag each cinema with its scraper-client marker (shared platform client vs a
     // bespoke one) plus the FtFW chip if it's already in Filmweb fallback at boot
     // (transitions only fire on change, so an in-flight fallback would otherwise go

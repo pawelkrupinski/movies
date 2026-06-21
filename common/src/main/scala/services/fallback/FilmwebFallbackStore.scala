@@ -24,22 +24,14 @@ trait FilmwebFallbackStore {
   def get(cinema: String): Option[FilmwebFallbackState]
   def findAll(): Seq[FilmwebFallbackState]
   def put(state: FilmwebFallbackState): Unit
-  /** The set of cinemas served by Filmweb BY DESIGN (their only scraper is a
-   *  `FilmwebShowtimesClient`) — distinct from a fallback. The worker computes it
-   *  from the catalog and writes it; the web status page reads it to list them. */
-  def putFilmwebOnly(cinemas: Set[String]): Unit
-  def filmwebOnly(): Set[String]
   def close(): Unit = ()
 }
 
 class InMemoryFilmwebFallbackStore extends FilmwebFallbackStore {
   private val map = new ConcurrentHashMap[String, FilmwebFallbackState]()
-  @volatile private var only: Set[String] = Set.empty
   def get(cinema: String): Option[FilmwebFallbackState] = Option(map.get(cinema))
   def findAll(): Seq[FilmwebFallbackState] = map.values().asScala.toSeq
   def put(state: FilmwebFallbackState): Unit = { map.put(state.cinema, state); () }
-  def putFilmwebOnly(cinemas: Set[String]): Unit = only = cinemas
-  def filmwebOnly(): Set[String] = only
 }
 
 /**
@@ -58,35 +50,11 @@ class MongoFilmwebFallbackStore(
 
   private val mirror = new ConcurrentHashMap[String, FilmwebFallbackState]()
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(collectionName))
-  private val metaColl: Option[MongoCollection[Document]] = db.map(_.getCollection(MetaCollectionName))
-  @volatile private var filmwebOnlyMirror: Set[String] = Set.empty
 
   coll.foreach(hydrate)
-  metaColl.foreach(hydrateMeta)
 
   def get(cinema: String): Option[FilmwebFallbackState] = Option(mirror.get(cinema))
   def findAll(): Seq[FilmwebFallbackState] = mirror.values().asScala.toSeq
-  def filmwebOnly(): Set[String] = filmwebOnlyMirror
-
-  def putFilmwebOnly(cinemas: Set[String]): Unit = {
-    filmwebOnlyMirror = cinemas
-    metaColl.foreach { c =>
-      Try {
-        Await.result(
-          c.updateOne(Filters.eq("_id", FilmwebOnlyId),
-            Updates.set("cinemas", cinemas.toList.sorted.asJava), new UpdateOptions().upsert(true)).toFuture(),
-          10.seconds
-        )
-      }.recover { case exception => logger.debug(s"Filmweb-only write failed: ${exception.getMessage}") }
-    }
-  }
-
-  private def hydrateMeta(c: MongoCollection[Document]): Unit = Try {
-    Await.result(c.find(Filters.eq("_id", FilmwebOnlyId)).toFuture(), 10.seconds).headOption.foreach { document =>
-      filmwebOnlyMirror = Try(document.getList("cinemas", classOf[String])).toOption.flatMap(Option(_))
-        .fold(Set.empty[String])(_.asScala.toSet)
-    }
-  }.recover { case exception => logger.warn(s"Filmweb-only hydrate failed: ${exception.getMessage}") }
 
   /** Writes are SYNCHRONOUS (unlike the hot-path freshness store): a cinema
    *  enters/leaves fallback at most a few times a day, so the round-trip cost is
@@ -114,10 +82,6 @@ class MongoFilmwebFallbackStore(
 
 object MongoFilmwebFallbackStore {
   val CollectionName = "filmwebFallback"
-  /** Separate collection for the singleton "Filmweb-only cinemas" meta document, so it
-   *  never pollutes the per-cinema `findAll`. */
-  val MetaCollectionName = "filmwebFallbackMeta"
-  private val FilmwebOnlyId = "filmwebOnly"
 
   private val Sep = "\t"
 

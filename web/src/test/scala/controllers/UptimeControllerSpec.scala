@@ -164,7 +164,6 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   "the /uptime page's Filmweb-fallback section" should "list only the cinemas currently on fallback — not recovered or by-design venues" in {
     fallbackStore.put(fallbackState("Kino Praha", active = true))
     fallbackStore.put(fallbackState("Kino Iluzjon", active = false))   // recovered (inactive, has history)
-    fallbackStore.putFilmwebOnly(Set("Kino Astra"))                    // Filmweb-only by design
 
     val result = controller.index(adminSession)
     status(result) shouldBe OK
@@ -176,7 +175,6 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     html should not include ("Recently recovered")
     html should not include ("Kino Iluzjon")        // recovered cinema no longer surfaced
     html should not include ("Filmweb-only by design")
-    html should not include ("Kino Astra")          // by-design venue no longer surfaced
   }
 
   // ── Auth gate: /uptime is an operational page, closed like the title-rules
