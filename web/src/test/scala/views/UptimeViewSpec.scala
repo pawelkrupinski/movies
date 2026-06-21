@@ -18,7 +18,7 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
     "Warszawa" -> Seq(cinemaRow("Kino Muranów")),
   )
 
-  private val html = views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, cinemasByCity, Seq.empty, Seq.empty).body
+  private val html = views.html.uptime(Seq.empty, Seq.empty, Seq.empty, cinemasByCity, Seq.empty, Seq.empty).body
 
   "the uptime page" should "render a subheader for each city group" in {
     html should include ("<h3>Poznań</h3>")
@@ -49,7 +49,7 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
   it should "link the cinema name to its source page when a url: tag is present" in {
     val row = ServiceRow("DKF Rumcajs", Seq.empty,
       tags = Set("shared:FilmwebShowtimesClient", "url:https://www.filmweb.pl/cinema/-1714"))
-    val out = views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq("Częstochowa" -> Seq(row)), Seq.empty, Seq.empty).body
+    val out = views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq("Częstochowa" -> Seq(row)), Seq.empty, Seq.empty).body
     // The name becomes an anchor to the scraped source, opening in a new tab …
     out should include ("""<a class="name-label" href="https://www.filmweb.pl/cinema/-1714" target="_blank" rel="noopener noreferrer">DKF Rumcajs</a>""")
     // … and the url: tag is consumed for the link, never rendered as a chip.
@@ -59,14 +59,14 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
 
   it should "render the name as plain text when no url: tag is present" in {
     val row = ServiceRow("Multikino Stary Browar", Seq.empty, tags = Set("shared:MultikinoClient"))
-    val out = views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq("Poznań" -> Seq(row)), Seq.empty, Seq.empty).body
+    val out = views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq("Poznań" -> Seq(row)), Seq.empty, Seq.empty).body
     out should include ("""<span class="name-label">Multikino Stary Browar</span>""")
     out should not include ("<a class=\"name-label\"")
   }
 
   it should "render a gold FtFW chip for a cinema currently in Filmweb fallback" in {
     val row = ServiceRow("Kino Iluzjon", Seq.empty, tags = Set("custom:IluzjonClient", "fallback:FtFW"))
-    val out = views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq("Warszawa" -> Seq(row)), Seq.empty, Seq.empty).body
+    val out = views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq("Warszawa" -> Seq(row)), Seq.empty, Seq.empty).body
     // The fallback tag gets its own dedicated chip class + "FtFW" label …
     out should include ("tag-fallback")
     out should include (">FtFW<")
@@ -76,16 +76,25 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
 
   it should "fold the Filmweb-fallback section onto the page, below the triage and above Cinemas" in {
     val fallback = FallbackRow("Kino Praha", "2180", "1 Jan 12:00", "RuntimeException: down",
-      2, "1 Jan 13:00", "1 Jan 12:30", Seq("1 Jan 12:00 · enter · down"))
+      2, "1 Jan 13:00", Seq("evt-recent", "evt-older"))
     val out = views.html.uptime(
-      Seq.empty, Seq.empty, Seq(fallback), Seq.empty, Seq("Kino Astra"), cinemasByCity, Seq.empty, Seq.empty).body
+      Seq.empty, Seq.empty, Seq(fallback), cinemasByCity, Seq.empty, Seq.empty).body
 
     out should include ("""id="filmweb-fallback"""")
     out should include ("Filmweb fallback — currently on fallback (1)")
     out should include ("Kino Praha")            // the active fallback row
-    out should include ("Filmweb-only by design (1)")
-    out should include ("Kino Astra")            // a Filmweb-only-by-design venue
     // The fallback block sits between the triage sections and the Cinemas section.
     out.indexOf("""id="filmweb-fallback"""") should be < out.indexOf("<h2>Cinemas</h2>")
+  }
+
+  it should "show only the most recent history event, with the full history in the hover title" in {
+    val fallback = FallbackRow("Kino Praha", "2180", "1 Jan 12:00", "down",
+      2, "1 Jan 13:00", Seq("evt-recent", "evt-older"))
+    val out = views.html.uptime(
+      Seq.empty, Seq.empty, Seq(fallback), Nil, Nil, Nil).body
+
+    out should include (">evt-recent</td>")   // only the newest event is the visible cell text
+    out should include ("evt-older")           // the older event survives — in the hover title …
+    out should not include (">evt-older")      // … never as visible cell text
   }
 }

@@ -82,21 +82,15 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     def row(n: String) =
       ServiceRow(n, barsFor(n), monitor.averageMs1h(n), monitor.averageMsTotal(n), tags = tags.getOrElse(n, Set.empty))
     val (failing, zero, cinemasByCity, services, other) = groupRows(active, row)
-    val (onFallback, recovered, filmwebOnly) = fallbackSections()
-    Ok(views.html.uptime(failing, zero, onFallback, recovered, filmwebOnly, cinemasByCity, services, other))
+    Ok(views.html.uptime(failing, zero, activeFallbacks(), cinemasByCity, services, other))
   }
 
-  /** The Filmweb-fallback status, rendered as a section ON the uptime page (below
-   *  the failing / no-screenings triage): cinemas CURRENTLY served by Filmweb
-   *  because their own scraper is down/empty, cinemas that RECENTLY RECOVERED, and
-   *  cinemas that are Filmweb-only BY DESIGN (their only scraper is Filmweb). */
-  private def fallbackSections(): (Seq[FallbackRow], Seq[FallbackRow], Seq[String]) = {
-    val all         = filmwebFallback.findAll()
-    val onFallback  = all.filter(_.active).sortBy(_.cinema).map(fallbackRow)
-    val recovered   = all.filterNot(_.active).filter(_.history.nonEmpty).sortBy(_.cinema).map(fallbackRow)
-    val filmwebOnly = filmwebFallback.filmwebOnly().toSeq.sorted
-    (onFallback, recovered, filmwebOnly)
-  }
+  /** Cinemas CURRENTLY served by Filmweb because their own scraper is down/empty,
+   *  rendered as a section ON the uptime page (below the failing / no-screenings
+   *  triage). Recovered cinemas and Filmweb-only-by-design venues are kept in
+   *  Mongo but no longer surfaced here. */
+  private def activeFallbacks(): Seq[FallbackRow] =
+    filmwebFallback.findAll().filter(_.active).sortBy(_.cinema).map(fallbackRow)
 
   /** Split the active services into the page's sections. Two triage sections lead:
    *  rows that have been FAILING (every one of their last ≤3 active 15-min buckets
@@ -228,7 +222,6 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     reason    = s.lastReason.getOrElse("—"),
     fails     = s.consecutiveFailures,
     nextProbe = s.nextPrimaryProbeAt.map(fmtInstant).getOrElse("—"),
-    updated   = fmtInstant(s.updatedAt),
     history   = s.history.take(8).map(e => s"${fmtInstant(e.at)} · ${e.event} · ${e.reason}")
   )
 }
@@ -265,7 +258,7 @@ object BarData {
 
 case class FallbackRow(
   cinema: String, filmwebId: String, since: String, reason: String,
-  fails: Int, nextProbe: String, updated: String, history: Seq[String]
+  fails: Int, nextProbe: String, history: Seq[String]
 )
 
 case class ServiceRow(

@@ -142,7 +142,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     val failing = Seq(FlaggedRow(
       ServiceRow("Kino Rialto", bars("red", "red", "red"), tags = Set("custom:RialtoClient")),
       Some("Poznań")))
-    val html = views.html.uptime(failing, Nil, Nil, Nil, Nil, Nil, Nil, Nil).body
+    val html = views.html.uptime(failing, Nil, Nil, Nil, Nil, Nil).body
     html should include ("Failing — last 3 scrapes")
     html should include ("""data-city="Poznań"""")           // city pops on name hover (instant tooltip)
     html should include ("tag-custom")                       // styled by kind
@@ -155,26 +155,28 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     val failing = Seq(FlaggedRow(
       ServiceRow("Kino Tatry", bars("red", "red", "red"), tags = Set("shared:FilmwebShowtimesClient")),
       None))
-    val html = views.html.uptime(failing, Nil, Nil, Nil, Nil, Nil, Nil, Nil).body
+    val html = views.html.uptime(failing, Nil, Nil, Nil, Nil, Nil).body
     html should include ("tag-shared")
     html should include (">FilmwebShowtimes<")                 // suffix dropped for the chip
     html should include ("""title="FilmwebShowtimesClient"""") // full class on hover
   }
 
-  "the /uptime page's Filmweb-fallback section" should "list active fallbacks, recovered cinemas, and Filmweb-only-by-design venues" in {
+  "the /uptime page's Filmweb-fallback section" should "list only the cinemas currently on fallback — not recovered or by-design venues" in {
     fallbackStore.put(fallbackState("Kino Praha", active = true))
-    fallbackStore.put(fallbackState("Kino Iluzjon", active = false))
-    fallbackStore.putFilmwebOnly(Set("Kino Astra"))
+    fallbackStore.put(fallbackState("Kino Iluzjon", active = false))   // recovered (inactive, has history)
+    fallbackStore.putFilmwebOnly(Set("Kino Astra"))                    // Filmweb-only by design
 
     val result = controller.index(adminSession)
     status(result) shouldBe OK
     val html = contentAsString(result)
     html should include ("Filmweb fallback — currently on fallback (1)")
-    html should include ("Kino Praha")        // active
-    html should include ("Recently recovered (1)")
-    html should include ("Kino Iluzjon")       // recovered (inactive, has history)
-    html should include ("Kino Astra")         // Filmweb-only by design
+    html should include ("Kino Praha")              // active fallback shown
     html should include ("RuntimeException: down")  // the active row's reason rendered
+    // The recovered table and Filmweb-only-by-design table were dropped …
+    html should not include ("Recently recovered")
+    html should not include ("Kino Iluzjon")        // recovered cinema no longer surfaced
+    html should not include ("Filmweb-only by design")
+    html should not include ("Kino Astra")          // by-design venue no longer surfaced
   }
 
   // ── Auth gate: /uptime is an operational page, closed like the title-rules

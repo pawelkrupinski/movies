@@ -1,7 +1,7 @@
 @import controllers.{BarData, FallbackRow, FlaggedRow, ServiceRow}
 @import play.api.libs.json.Json
 @import services.UptimeMonitor
-@(failing: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], recovered: Seq[FallbackRow], filmwebOnly: Seq[String], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow])
+@(failing: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow])
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -94,13 +94,14 @@
     .leading-fallback th, .leading-fallback td { text-align: left; padding: 5px 12px 5px 0; vertical-align: top; white-space: nowrap; }
     .leading-fallback th { color: #666; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
     .leading-fallback td.cinema { color: #fff; }
-    .leading-fallback td.reason, .leading-fallback .hist { white-space: normal; color: #999; }
+    .leading-fallback td.reason { white-space: normal; color: #999; }
     .leading-fallback .gold { color: #c9962b; }
-    .leading-fallback .hist { color: #777; font-size: 11px; }
-    .leading-fallback .hist div { margin: 1px 0; }
-    .leading-fallback .sub { color: #666; font-size: 12px; margin: -4px 0 10px; }
-    .leading-fallback .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-    .leading-fallback .chip { background: #161616; border: 1px solid #262626; border-radius: 4px; padding: 3px 8px; color: #aaa; font-size: 12px; }
+    /* History shows only the most recent event, truncated at the column fold; the
+       full history (newest-first) is in the cell's title tooltip on hover. */
+    .leading-fallback .hist {
+      color: #777; font-size: 11px; max-width: 320px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
 
     #overlay {
       display: none; position: fixed; z-index: 100;
@@ -153,50 +154,23 @@
     </div>
   }
 
-  @if(onFallback.nonEmpty || recovered.nonEmpty || filmwebOnly.nonEmpty) {
+  @if(onFallback.nonEmpty) {
     <div class="leading-fallback" id="filmweb-fallback">
       <h2>Filmweb fallback — currently on fallback (@onFallback.size)</h2>
-      <div class="sub">cinemas served by Filmweb when their own scraper is down or empty</div>
-      @if(onFallback.isEmpty) {
-        <div class="empty-msg">None — every cinema is being served by its own scraper.</div>
-      } else {
-        <table>
-          <tr><th>Cinema</th><th>Filmweb id</th><th>Since</th><th>Fails</th><th>Next re-probe</th><th>Reason</th><th>History</th></tr>
-          @for(r <- onFallback) {
-            <tr>
-              <td class="cinema">@r.cinema</td>
-              <td class="gold">@r.filmwebId</td>
-              <td>@r.since</td>
-              <td>@r.fails</td>
-              <td>@r.nextProbe</td>
-              <td class="reason">@r.reason</td>
-              <td class="hist">@for(h <- r.history) { <div>@h</div> }</td>
-            </tr>
-          }
-        </table>
-      }
-
-      @if(recovered.nonEmpty) {
-        <h2>Recently recovered (@recovered.size)</h2>
-        <table>
-          <tr><th>Cinema</th><th>Last updated</th><th>History</th></tr>
-          @for(r <- recovered) {
-            <tr>
-              <td class="cinema">@r.cinema</td>
-              <td>@r.updated</td>
-              <td class="hist">@for(h <- r.history) { <div>@h</div> }</td>
-            </tr>
-          }
-        </table>
-      }
-
-      @if(filmwebOnly.nonEmpty) {
-        <h2>Filmweb-only by design (@filmwebOnly.size)</h2>
-        <div class="sub">these venues have no own-site scraper — Filmweb is their primary, not a fallback</div>
-        <div class="chips">
-          @for(c <- filmwebOnly) { <span class="chip">@c</span> }
-        </div>
-      }
+      <table>
+        <tr><th>Cinema</th><th>Filmweb id</th><th>Since</th><th>Fails</th><th>Next re-probe</th><th>Reason</th><th>History</th></tr>
+        @for(r <- onFallback) {
+          <tr>
+            <td class="cinema">@r.cinema</td>
+            <td class="gold">@r.filmwebId</td>
+            <td>@r.since</td>
+            <td>@r.fails</td>
+            <td>@r.nextProbe</td>
+            <td class="reason">@r.reason</td>
+            <td class="hist" title="@{r.history.mkString("\n")}">@{r.history.headOption.getOrElse("—")}</td>
+          </tr>
+        }
+      </table>
     </div>
   }
 
