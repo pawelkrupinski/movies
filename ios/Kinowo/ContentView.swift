@@ -5,6 +5,7 @@ struct ContentView: View {
     @EnvironmentObject var details: DetailsStore
     @EnvironmentObject var prefs: UserPreferences
     @EnvironmentObject var authService: AuthService
+    @EnvironmentObject var deepLink: DeepLinkCoordinator
     @Environment(\.scenePhase) private var scenePhase
     /// iPhone portrait is `.regular` height, landscape `.compact` — so this
     /// flips on every portrait⇄landscape rotation. It's resolved from the
@@ -36,6 +37,11 @@ struct ContentView: View {
     @State private var sortOption: SortOption = .earliest
     @State private var showFilters: Bool = false
     @FocusState private var searchFocused: Bool
+
+    /// A deep link whose film push / multi-value filters couldn't be applied yet
+    /// because the repertoire (hence the value universe and the `Film` to push)
+    /// hadn't loaded. Re-applied the moment the first repertoire load lands.
+    @State private var pendingDeepLink: DeepLink?
 
     /// Live viewport width, tracked by a backing GeometryReader so the
     /// search placement re-evaluates on rotation / iPad split-view resize.
@@ -219,9 +225,22 @@ struct ContentView: View {
         // Cold start: the first non-empty `store.films` is the first
         // repertoire load completing.
         .onChange(of: store.films.isEmpty) { isEmpty in
-            if !isEmpty { maybeShowSwipeHint() }
+            if !isEmpty {
+                maybeShowSwipeHint()
+                // A link parked before the repertoire arrived: now that films
+                // (and the value universe) exist, push the film + apply the
+                // multi-value filters it carried.
+                if let link = pendingDeepLink { applyRepertoireDependent(link) }
+            }
+        }
+        // A link that arrived while the app was already running.
+        .onChange(of: deepLink.pending) { link in
+            if let link { consumeDeepLink(link) }
         }
         .onAppear {
+            // A link parked before this view mounted (cold launch via a link):
+            // `onChange` won't fire for a value set before we subscribed.
+            if let link = deepLink.pending { consumeDeepLink(link) }
             Task { await maybeSuggestCitySwitch() }
         }
         .onChange(of: scenePhase) { phase in
@@ -270,6 +289,66 @@ struct ContentView: View {
         else { return }
         prefs.setCitySwitchPromptKey(suggestion.key)
         citySwitchSuggestion = suggestion
+    }
+
+    // MARK: Deep link application
+
+    /// Apply an inbound deep link. The city was already switched by
+    /// `KinowoApp.onOpenURL`; here we land its filters and film. Scalar filters
+    /// apply immediately; the film push and multi-value (country/genre/…/cinema)
+    /// filters need the loaded repertoire, so they defer to `pendingDeepLink`
+    /// until the first load lands when the link arrives on a cold start.
+    private func consumeDeepLink(_ link: DeepLink) {
+        deepLink.pending = nil
+        applyScalarFilters(link.filters)
+        if store.films.isEmpty {
+            pendingDeepLink = link
+        } else {
+            applyRepertoireDependent(link)
+        }
+    }
+
+    /// Filters that map straight onto state with no dependency on the loaded
+    /// repertoire. Absent axes are left untouched (a `?dim=2D` link doesn't wipe
+    /// the user's date or search).
+    private func applyScalarFilters(_ filters: DeepLinkFilters) {
+        if let date = filters.date { dateFilter = date }
+        formatFilter = filters.formatFilter(base: formatFilter)
+        if let query = filters.query { search = query }
+        if let sort = filters.sort { sortOption = sort }
+    }
+
+    /// The film push + the multi-value exclusion filters, which both need the
+    /// repertoire: the `Film` to push, and the value universe to invert the
+    /// link's inclusion lists into the app's exclusion sets.
+    private func applyRepertoireDependent(_ link: DeepLink) {
+        pendingDeepLink = nil
+        let filters = link.filters
+        if !filters.includedCountries.isEmpty {
+            excludedCountries = filters.excluded(filters.includedCountries, universe: Set(allCountries.map(\.name)))
+        }
+        if !filters.includedGenres.isEmpty {
+            excludedGenres = filters.excluded(filters.includedGenres, universe: Set(allGenres.map(\.name)))
+        }
+        if !filters.includedDirectors.isEmpty {
+            excludedDirectors = filters.excluded(filters.includedDirectors, universe: Set(allDirectors.map(\.name)))
+        }
+        if !filters.includedCast.isEmpty {
+            excludedCast = filters.excluded(filters.includedCast, universe: Set(allCast.map(\.name)))
+        }
+        // Cinemas are a single global set across cities; only re-derive the ones
+        // in THIS city, preserving any disabled in other cities (mirrors
+        // `UserPreferences.setAllCinemas(in:selected:)`).
+        let cityCinemas = Set(allCinemas)
+        if let disabledHere = filters.disabledCinemas(allCinemas: cityCinemas) {
+            let others = prefs.disabledCinemas.subtracting(cityCinemas)
+            prefs.setDisabledCinemas(others.union(disabledHere))
+        }
+        // Push the film onto a fresh stack so the detail screen is what the user
+        // sees. A title not in the repertoire (left the listing) just no-ops.
+        if let title = link.filmTitle, let film = store.films.first(where: { $0.title == title }) {
+            navPath = [film]
+        }
     }
 
     @ViewBuilder

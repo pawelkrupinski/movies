@@ -81,6 +81,7 @@ let package = Package(
                 "Views/ShowtimeTuningScreen.swift",
                 "ContentView.swift",
                 "KinowoApp.swift",
+                "DeepLinkCoordinator.swift",
                 "Auth",
                 // CoreLocation — not on Linux. The pure nearest-city pick
                 // lives in `City.swift` (KinowoCore) and is tested there.

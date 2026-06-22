@@ -9,5 +9,20 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Używamy lokalizacji, aby wybrać najbliższe miasto z repertuarem.</string>
+	<!-- Custom-scheme deep links (kinowo://<city>/…). Universal Links use the
+	     associated-domains entitlement instead; this is the kinowo:// fallback.
+	     OAuth's ASWebAuthenticationSession claims kinowo:// callbacks at the OS
+	     level before this, so the two don't collide. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>dev.kinowo.Kinowo</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>kinowo</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
