@@ -383,22 +383,23 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // `foreachRecord` pages the cursor by `_id` (keyset pagination) so the read-model
   // reconcile never holds the whole corpus on the heap — the transient that OOM'd the
   // worker's 320m heap. The page boundary is the risk: `_id > lastSeen` must continue
-  // without skipping or re-visiting the boundary row. A tiny batch size forces many
-  // boundaries across the real corpus (>1000 rows), and the keyset invariant is
-  // global: every row is visited exactly once (no duplicate even at a boundary), and
-  // the seeded sentinels (no skip) all appear.
+  // without skipping or re-visiting the boundary row. Batch size 2 forces several
+  // boundaries over the seeded rows regardless of how many the collection holds (CI
+  // seeds only a handful, prod has ~1000), and the keyset invariant is global: every
+  // row is visited exactly once (no duplicate even at a boundary), and the seeded
+  // sentinels (no skip) all appear, in `_id` order across the boundaries.
   it should "stream every row exactly once across keyset page boundaries (foreachRecord)" in {
-    Seq("p", "q", "r", "s").foreach(s =>
+    Seq("a", "b", "c", "d", "e").foreach(s =>
       repository.upsert(s"__integration-test-stream-${s}__", None, MovieRecord()))
 
-    val paged    = new MongoMovieRepository(findAllBatchSize = 50)
+    val paged    = new MongoMovieRepository(findAllBatchSize = 2)
     val streamed = scala.collection.mutable.ListBuffer.empty[String]
     try paged.foreachRecord(r => streamed += StoredMovieRecord.idOf(r)) finally paged.close()
 
-    streamed.size should be > 1000                       // crossed many 50-row pages
     streamed.size shouldBe streamed.distinct.size        // no row re-visited at a boundary
     val sentinels = streamed.filter(_.startsWith("integrationteststream"))
-    sentinels.distinct should have size 4                // every seeded row visited — no skip
-    sentinels          shouldBe sentinels.sorted          // …in _id order
+    sentinels          should have size 5                // every seeded row visited — no skip/dup
+    sentinels.distinct should have size 5
+    sentinels          shouldBe sentinels.sorted          // …in _id order across the boundaries
   }
 }
