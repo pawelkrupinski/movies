@@ -4,7 +4,7 @@ import models.{CinemaCityWroclavia, Helios, MovieRecord, Poznan}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.libs.json.Json
+import play.api.libs.json.{Json, JsString}
 import services.movies.StoredMovieRecord
 import services.staging.StagingRecord
 import tools.{CdpPage, Chrome, FixtureTestWiring, TestHttpServer}
@@ -348,6 +348,43 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool("typeof closeAuthMenu === 'function'") shouldBe true
       page.evalBool("typeof openLoginModal === 'function'") shouldBe true
       page.evalBool("typeof closeLoginModal === 'function'") shouldBe true
+    }
+  }
+
+  // IMDb rating badges deep-link into the IMDb app on Android Chrome via an
+  // `intent://` URL with a `browser_fallback_url`; every other surface (iOS,
+  // desktop, Firefox Android) keeps the plain https anchor. The decision lives
+  // in two pure helpers exported from shared.js — assert their exact output so
+  // the tt-id extraction, the encoded fallback, and the UA gating can't drift.
+  "imdbIntentUrl" should "build the intent:// deep link with an encoded web fallback" in {
+    onPath("/") { page =>
+      page.evalString("imdbIntentUrl('https://www.imdb.com/title/tt1234567/')") shouldBe
+        "intent://title/tt1234567#Intent;scheme=imdb;package=com.imdb.mobile;" +
+        "S.browser_fallback_url=https%3A%2F%2Fwww.imdb.com%2Ftitle%2Ftt1234567%2F;end"
+    }
+  }
+
+  it should "return null for a URL without an IMDb title id" in {
+    onPath("/") { page =>
+      page.evalBool("imdbIntentUrl('https://www.filmweb.pl/film/Foo-2026-123') === null") shouldBe true
+      page.evalBool("imdbIntentUrl('') === null") shouldBe true
+    }
+  }
+
+  "isAndroidChrome" should "match Android Chrome but not iOS, desktop, or Firefox Android" in {
+    onPath("/") { page =>
+      val androidChrome = "Mozilla/5.0 (Linux; Android 14; Pixel 9a) AppleWebKit/537.36 " +
+        "(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
+      val firefoxAndroid = "Mozilla/5.0 (Android 14; Mobile; rv:127.0) Gecko/127.0 Firefox/127.0"
+      val iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 " +
+        "(KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
+      val desktop = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
+        "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+      def call(ua: String) = s"isAndroidChrome(${Json.stringify(JsString(ua))})"
+      page.evalBool(call(androidChrome)) shouldBe true
+      page.evalBool(call(firefoxAndroid)) shouldBe false
+      page.evalBool(call(iphone)) shouldBe false
+      page.evalBool(call(desktop)) shouldBe false
     }
   }
 

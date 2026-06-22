@@ -18,6 +18,11 @@ struct RatingBadgesView: View {
     /// `ShowtimeTuningScreen` overrides it through the environment.
     @Environment(\.ratingPillStyle) private var style
 
+    /// Used by the IMDb badge to open the IMDb app first (`imdb://`), falling
+    /// back to the web page when the app isn't installed — the completion
+    /// reports whether the scheme was handled.
+    @Environment(\.openURL) private var openURL
+
     var body: some View {
         FlowLayout(spacing: style.interPillGap, lineSpacing: 4) {
             if let imdb = ratings.imdb {
@@ -25,6 +30,8 @@ struct RatingBadgesView: View {
                     label:    "IMDb",
                     value:    Film.Ratings.scoreText(imdb),
                     url:      ratings.imdbURL,
+                    appURL:   ratings.imdbAppURL,
+                    open:     openURL,
                     labelBg:  Color(red: 0.961, green: 0.773, blue: 0.094),  // #f5c518
                     labelFg:  .black,
                     valueFg:  Color(red: 0.961, green: 0.773, blue: 0.094),
@@ -90,6 +97,8 @@ private enum Badge {
         label:   String,
         value:   String,
         url:     URL?,
+        appURL:  URL? = nil,
+        open:    OpenURLAction? = nil,
         labelBg: Color,
         labelFg: Color,
         valueFg: Color,
@@ -118,7 +127,18 @@ private enum Badge {
         // pills to a new line instead.
         .fixedSize(horizontal: true, vertical: false)
 
-        if let url {
+        if let appURL, let open {
+            // Try the app scheme first; `accepted == false` means no installed
+            // app claimed `imdb://`, so we open the web URL instead. A native
+            // open with a completion handler never raises Safari's "Cannot Open
+            // Page" alert the way navigating to the scheme in the browser would.
+            Button {
+                open(appURL) { accepted in
+                    if !accepted, let url { open(url) }
+                }
+            } label: { body }
+            .buttonStyle(.plain)
+        } else if let url {
             Link(destination: url) { body }.buttonStyle(.plain)
         } else {
             body

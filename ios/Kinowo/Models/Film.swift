@@ -81,6 +81,31 @@ struct Film: Identifiable, Hashable, Codable {
         static func scoreText(_ value: Double) -> String {
             String(format: "%.1f", value)
         }
+
+        /// The IMDb app's `imdb:///title/tt…` deep link, derived from the public
+        /// `imdbURL`, or `nil` when that URL carries no recognisable title id.
+        /// `RatingBadgesView` opens this first and falls back to `imdbURL` when
+        /// the app isn't installed, so the IMDb badge lands inside the app when
+        /// it's there and on the web page otherwise. The other sources stay on
+        /// their https links: RT/Filmweb already open their apps via the OS's
+        /// Universal Links, and Metacritic has no app.
+        var imdbAppURL: URL? {
+            Ratings.imdbAppURL(from: imdbURL)
+        }
+
+        static func imdbAppURL(from webURL: URL?) -> URL? {
+            guard let titleID = imdbTitleID(from: webURL) else { return nil }
+            return URL(string: "imdb:///title/\(titleID)/")
+        }
+
+        /// Extracts the `tt…` IMDb title id from any IMDb URL (e.g.
+        /// `https://www.imdb.com/title/tt1234567/`), or `nil` if absent.
+        static func imdbTitleID(from webURL: URL?) -> String? {
+            guard let s = webURL?.absoluteString,
+                  let range = s.range(of: "tt[0-9]+", options: .regularExpression)
+            else { return nil }
+            return String(s[range])
+        }
     }
 }
 

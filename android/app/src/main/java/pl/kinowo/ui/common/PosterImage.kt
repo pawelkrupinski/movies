@@ -89,3 +89,27 @@ fun openUrl(context: Context, url: String?) {
     } catch (_: Exception) {
     }
 }
+
+/** The IMDb app's `imdb://title/tt…` deep link, derived from the public IMDb
+ *  web URL, or null when that URL carries no `tt…` title id. */
+fun imdbAppUri(webUrl: String?): String? {
+    val titleId = webUrl?.let { Regex("tt\\d+").find(it)?.value } ?: return null
+    return "imdb://title/$titleId"
+}
+
+/** Open an IMDb title in the IMDb app, falling back to its web page when the
+ *  app isn't installed. The other rating sources just call [openUrl]: RT and
+ *  Filmweb already open their apps from the https link via Android App Links,
+ *  and Metacritic has no app. */
+fun openImdb(context: Context, webUrl: String?) {
+    val appUri = imdbAppUri(webUrl)
+    if (appUri != null) {
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(appUri)))
+            return
+        } catch (_: ActivityNotFoundException) {
+        } catch (_: Exception) {
+        }
+    }
+    openUrl(context, webUrl)
+}

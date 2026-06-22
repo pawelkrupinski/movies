@@ -1057,6 +1057,43 @@
     closeAuthMenu();
   }, true);
 
+  // ── IMDb "open in app" on Android ─────────────────────────────────────────
+  // Tapping an IMDb rating badge on Android Chrome opens the IMDb app at the
+  // title (imdb://) when installed, and falls back to the web page when not.
+  // Android's `intent://` URL does both natively: Chrome routes the registered
+  // scheme to the app and otherwise follows `browser_fallback_url` — no error
+  // dialog, no JS timeout. We don't do this for the other rating sources: RT
+  // and Filmweb already open their apps from the plain https link via the OS's
+  // App Links, and Metacritic has no app. iOS Safari is left as the plain
+  // https `target="_blank"` anchor too — there a custom scheme would raise an
+  // unavoidable "Cannot Open Page" alert when the app is absent, and the https
+  // link still opens the IMDb app via Universal Links when it's installed.
+  // Firefox Android lacks `intent://` support, so we gate on Chrome-family UAs.
+  function imdbIntentUrl(href) {
+    const m = /tt\d+/.exec(href || '');
+    if (!m) return null;
+    return 'intent://title/' + m[0] +
+      '#Intent;scheme=imdb;package=com.imdb.mobile;S.browser_fallback_url=' +
+      encodeURIComponent(href) + ';end';
+  }
+  function isAndroidChrome(ua) {
+    return /Android/.test(ua) && /Chrome\//.test(ua) && !/Firefox/.test(ua);
+  }
+  window.imdbIntentUrl  = imdbIntentUrl;
+  window.isAndroidChrome = isAndroidChrome;
+
+  if (isAndroidChrome(navigator.userAgent)) {
+    document.addEventListener('click', e => {
+      if (!(e.target instanceof Element)) return;
+      const link = e.target.closest('a.rating-imdb');
+      if (!link) return;
+      const url = imdbIntentUrl(link.getAttribute('href'));
+      if (!url) return;
+      e.preventDefault();
+      window.location.href = url;
+    });
+  }
+
   // ── Empty state ───────────────────────────────────────────────────────────
 
   function updateEmptyState(visibleCount) {

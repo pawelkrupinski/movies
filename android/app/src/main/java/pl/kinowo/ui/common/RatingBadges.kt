@@ -107,7 +107,7 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
                 value = oneDecimal(v), valueFg = ImdbYellow,
                 fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
                 labelWeight = style.labelWeight, valueWeight = style.valueWeight,
-                onClick = { openUrl(context, ratings.imdbURL) },
+                onClick = { openImdb(context, ratings.imdbURL) },
             )
         }
         ratings.metascore?.let { v ->
