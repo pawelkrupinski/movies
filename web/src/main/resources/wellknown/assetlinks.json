@@ -1,0 +1,22 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "pl.kinowo",
+      "sha256_cert_fingerprints": [
+        "REPLACE_WITH_PLAY_APP_SIGNING_SHA256"
+      ]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "pl.kinowo.debug",
+      "sha256_cert_fingerprints": [
+        "85:FE:52:8D:6B:8E:8B:79:97:AE:73:C1:B4:E5:56:76:8A:3F:74:96:CE:7D:FE:79:B0:35:FE:B4:9F:60:06:7B"
+      ]
+    }
+  }
+]

@@ -5,6 +5,12 @@
 # geolocation). Hard cut: the old unprefixed URLs are gone.
 GET     /                           controllers.LandingController.index()
 
+# ── Mobile app association (Universal Links / App Links) ───────────────────────
+# Let kinowo.fly.dev URLs (incl. the copy-to-clipboard filter links) open the
+# native apps. AASA is served with no extension as application/json per Apple.
+GET     /.well-known/apple-app-site-association  controllers.WellKnownController.appleAppSiteAssociation
+GET     /.well-known/assetlinks.json             controllers.WellKnownController.assetLinks
+
 # ── Repertoire (city-scoped: /:city/…) ─────────────────────────────────────────
 GET     /:city/                     controllers.MovieController.index(city: String)
 GET     /:city/film                 controllers.MovieController.film(city: String, title: String)

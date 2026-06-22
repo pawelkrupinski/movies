@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{AdminAction, AdminTitleRulesController, AuthController, DebugStreamController, EnvConfigController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController, WebMovieMetrics}
+import controllers.{AdminAction, AdminTitleRulesController, AuthController, DebugStreamController, EnvConfigController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController, WebMovieMetrics, WellKnownController}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
@@ -157,6 +157,7 @@ trait Wiring {
     stagingRepository = stagingRepository)
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepository, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
+  lazy val wellKnownController = new WellKnownController(controllerComponents)
   // Exposes the in-app /uptime health (Mongo `uptimeBuckets`) as Prometheus
   // gauges for the self-hosted Grafana — host metrics alone can't see a service
   // failing silently behind a fallback (the residential proxy → Zyte case).

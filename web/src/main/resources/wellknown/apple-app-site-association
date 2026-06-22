@@ -1,0 +1,28 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["CQ4YC43YDM.dev.kinowo.Kinowo"],
+        "components": [
+          { "/": "/auth/*", "exclude": true, "comment": "OAuth callbacks must open in the browser, not the app" },
+          { "/": "/api/*", "exclude": true },
+          { "/": "/*/api/*", "exclude": true },
+          { "/": "/debug*", "exclude": true },
+          { "/": "/admin/*", "exclude": true },
+          { "/": "/uptime*", "exclude": true },
+          { "/": "/tasks*", "exclude": true },
+          { "/": "/metrics", "exclude": true },
+          { "/": "/health", "exclude": true },
+          { "/": "/.well-known/*", "exclude": true },
+          { "/": "/*/og-image", "exclude": true },
+          { "/": "/*/film/og-image", "exclude": true },
+          { "/": "/*/film", "comment": "film detail" },
+          { "/": "/*/", "comment": "city repertoire listing (with optional filter query)" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["CQ4YC43YDM.dev.kinowo.Kinowo"]
+  }
+}
