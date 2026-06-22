@@ -224,43 +224,70 @@ case class MovieRecord(
     seen.toSeq
   }
 
-  /** Best non-empty synopsis across all sources, with URL tokens stripped.
+  /** Best non-empty synopsis across ALL sources (every cinema + TMDB/IMDb),
+   *  URL tokens stripped — the global "best blurb we have", surfaced by the
+   *  `/debug` view. DISPLAY goes through the city-scoped [[synopsisForCity]]
+   *  instead, so a city page never shows a synopsis a cinema in some OTHER city
+   *  wrote. See [[bestSynopsis]] for the paragraphed-then-longest selection and
+   *  [[synopsisCandidatesFor]] for the (non-shrinking, sticky) candidate pool. */
+  def synopsis: Option[String] = bestSynopsis(synopsisCandidatesFor(_ => true))
+
+  /** City-scoped synopsis: the best blurb chosen among ONLY the synopses a
+   *  cinema in `city` published for this film, plus the city-independent
+   *  metadata sources (TMDB, IMDb, Filmweb). A cinema in another city never
+   *  contributes — the Poznań page shows a Poznań cinema's blurb (or TMDB's),
+   *  never one a Warszawa cinema wrote. Identical paragraphed-then-longest
+   *  selection as [[synopsis]]; only the candidate pool narrows.
+   *
+   *  Cinema City is the one wrinkle: every venue shares ONE chain-wide detail
+   *  slot ([[CinemaCityChain]], see `Cinema.chainDetailVenues`) that belongs to
+   *  no city, so it's admitted for `city` only when a Cinema City venue there is
+   *  actually screening the film — see [[synopsisAppliesToCity]]. */
+  def synopsisForCity(city: City): Option[String] =
+    bestSynopsis(synopsisCandidatesFor(synopsisAppliesToCity(city)))
+
+  /** Best synopsis from the city-independent metadata sources ONLY (TMDB / IMDb
+   *  / Filmweb — no cinema). The read model's per-film fallback ([[ResolvedMovie]]
+   *  stores this as `synopsis`): served wherever no [[synopsisForCity]] override
+   *  applies, so a city with no cinema blurb of its own shows TMDB's rather than
+   *  leaking another city's cinema text. */
+  def synopsisNonCinema: Option[String] =
+    bestSynopsis(synopsisCandidatesFor { case _: Cinema => false; case _ => true })
+
+  /** Does `source`'s synopsis count for `city`? A venue does iff it's one of
+   *  the city's cinemas; a chain-detail source (Cinema City) iff one of its
+   *  member venues in this city is screening the film; every non-cinema source
+   *  (TMDB / IMDb / Filmweb) always does — its blurb is city-independent. */
+  private def synopsisAppliesToCity(city: City)(source: Source): Boolean = source match {
+    case cinema: Cinema =>
+      city.cinemaSet.contains(cinema) ||
+        Cinema.chainDetailVenues.get(cinema).exists { venues =>
+          cinemaData.keySet.exists(v => venues.contains(v) && city.cinemaSet.contains(v))
+        }
+    case _ => true
+  }
+
+  /** Best synopsis over `candidates` — the paragraphed-then-longest selection
+   *  shared by [[synopsis]], [[synopsisForCity]] and [[synopsisNonCinema]].
    *  "Best" = a paragraphed blurb (one carrying a `\n`/`\n\n` break, see
    *  `ScraperParse.blockText`) beats an unbroken single block, and only among
-   *  candidates that tie on that does the longest win. A wall of text reads
-   *  worse than a properly broken-up one even when it's marginally longer, so
-   *  paragraph structure is the primary key and visible length the tie-break.
-   *  A cinema detail page that inlines a trailer link folds the bare URL into
-   *  the blurb (see `TextNormalization.stripUrls`); we clean every source's
-   *  text *before* the longest-wins comparison so a URL-padded blurb can't win
-   *  on length, and drop any source left empty (synopsis that was nothing but
-   *  a link). Cleaning here — the single read boundary `FilmSchedule.synopsis`
-   *  and `/api/details` both go through — fixes web + mobile at once without
-   *  re-scraping the stored value.
-   *
-   *  Candidates come from BOTH the live `data` slots AND `retainedSynopses`
-   *  (synopses kept after a cinema dropped the film), so the pool only grows
-   *  over the row's life and never shrinks until the whole row is deleted. Over
-   *  a non-shrinking pool the result is sticky/monotonic: it only ever upgrades
-   *  (to a paragraphed blurb, or a longer one in the same paragraph class),
-   *  never downgrades when a cinema stops listing the film.
-   *
-   *  The length compared is the VISIBLE length — markdown emphasis markers
-   *  (`**`/`*`, see `ScraperParse.blockText`) are stripped for the comparison so
-   *  a blurb can't win just by carrying more `<b>`/`<i>` tags; selection stays
-   *  identical to the plain-text era. The winner is run through
-   *  `SynopsisMarkdown.sanitize` so the value every consumer sees (web HTML,
-   *  mobile `/api/details`, OG card, og:description) is guaranteed well-formed
-   *  markdown regardless of which source produced it.
+   *  candidates that tie on that does the longest win — a wall of text reads
+   *  worse than a properly broken-up one even when marginally longer.
    *
    *  A CMS-duplicated blurb (some cinemas paste the synopsis N× into one field —
    *  see `SynopsisMarkdown.collapseRepeats`) is collapsed to one copy FIRST, on
    *  the raw value before `stripUrls` (which trims, breaking the exact periodicity
-   *  collapse needs), so it can't win the length race on its inflated size and
-   *  drown out a genuinely richer source. Ingestion already collapses new scrapes
-   *  (`MovieCache.buildCinemaSlot`); this is the defensive read-side guard. */
-  def synopsis: Option[String] =
-    synopsisCandidates
+   *  collapse needs), so it can't win the length race on its inflated size. URL
+   *  tokens are then stripped (a cinema detail page that inlines a trailer link
+   *  folds the bare URL into the blurb) so a link-padded blurb can't win on
+   *  length either, and any source left empty (nothing but a link) is dropped.
+   *  The length compared is the VISIBLE length — markdown emphasis markers are
+   *  stripped for the comparison so a blurb can't win just by carrying more
+   *  `<b>`/`<i>` tags. The winner is run through `SynopsisMarkdown.sanitize` so
+   *  every consumer (web HTML, mobile `/api/details`, OG card, og:description)
+   *  sees well-formed markdown regardless of which source produced it. */
+  private def bestSynopsis(candidates: Seq[String]): Option[String] =
+    candidates
       .map(tools.SynopsisMarkdown.collapseRepeats)
       .map(tools.TextNormalization.stripUrls)
       .filter(_.nonEmpty)
@@ -268,15 +295,20 @@ case class MovieRecord(
       .sortBy { case (_, plainText) => (if (plainText.contains('\n')) 0 else 1, -plainText.length) }
       .headOption.map { case (candidate, _) => tools.SynopsisMarkdown.sanitize(candidate) }
 
-  /** Synopsis candidates in source-priority order — each source's live slot
-   *  synopsis followed by its retained (post-prune) one. Built in priority
-   *  order (not raw `data`/`Set` iteration, whose order is JVM/platform-
-   *  dependent) so that when two sources tie on length the STABLE `sortBy` in
-   *  `synopsis` keeps the higher-priority source — deterministic across
-   *  machines. Raw iteration order made the longest-wins tie-break differ
-   *  between a dev box and CI, drifting the whole-corpus snapshot. */
-  private def synopsisCandidates: Seq[String] =
+  /** Synopsis candidates whose source passes `keep`, in source-priority order —
+   *  each source's live slot synopsis followed by its retained (post-prune) one.
+   *  Candidates come from BOTH the live `data` slots AND `retainedSynopses`
+   *  (synopses kept after a cinema dropped the film), so the pool only grows over
+   *  the row's life and shrinks only when the whole row is deleted — the result
+   *  is sticky/monotonic, never downgrading when a cinema stops listing the film.
+   *  Built in priority order (not raw `data`/`Set` iteration, whose order is
+   *  JVM/platform-dependent) so that when two sources tie on length the STABLE
+   *  `sortBy` in [[bestSynopsis]] keeps the higher-priority source —
+   *  deterministic across machines (raw order drifted the whole-corpus snapshot
+   *  between a dev box and CI). */
+  private def synopsisCandidatesFor(keep: Source => Boolean): Seq[String] =
     (data.keySet ++ retainedSynopses.keySet).toSeq
+      .filter(keep)
       .sortBy(s => Source.priority.getOrElse(s, Int.MaxValue))
       .flatMap(s => data.get(s).flatMap(_.synopsis).iterator ++ retainedSynopses.get(s).iterator)
 

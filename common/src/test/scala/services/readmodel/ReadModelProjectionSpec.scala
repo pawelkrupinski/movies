@@ -58,6 +58,38 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     // resolved values above).
   }
 
+  it should "scope synopsis per city, with the TMDB blurb as the city-independent fallback" in {
+    // Both cinemas carry their own (paragraphed) blurb; TMDB carries a different
+    // one. Each city must show its own cinema's text, the fallback stays TMDB's.
+    val rec = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino      -> SourceData(title = Some("X"),
+        synopsis = Some("Poznański opis kina.\n\nAkapit drugi."), showtimes = Seq(at("2026-06-12T18:00"))),
+      HeliosMagnolia -> SourceData(title = Some("X"),
+        synopsis = Some("Wrocławski opis kina.\n\nAkapit drugi."), showtimes = Seq(at("2026-06-12T19:00"))),
+      Tmdb           -> SourceData(title = Some("X"), synopsis = Some("Opis z TMDB."))
+    ))
+    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|", rec))
+    m.synopsis shouldBe Some("Opis z TMDB.")                              // city-independent fallback (no cinema)
+    m.synopsisByCity.keySet shouldBe Set("poznan", "wroclaw")
+    m.synopsisFor(Poznan).get  should (include ("Poznański")  and not include ("Wrocławski"))
+    m.synopsisFor(Wroclaw).get should (include ("Wrocławski") and not include ("Poznański"))
+  }
+
+  it should "omit a city from synopsisByCity when its pick ties the fallback" in {
+    // Only Wrocław has a cinema blurb; Poznań's best ties the TMDB fallback, so
+    // it isn't stored — `synopsisFor(Poznań)` resolves via the fallback instead.
+    val rec = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino      -> SourceData(title = Some("X"), showtimes = Seq(at("2026-06-12T18:00"))),
+      HeliosMagnolia -> SourceData(title = Some("X"),
+        synopsis = Some("Wrocławski opis kina, wyraźnie dłuższy niż TMDB."), showtimes = Seq(at("2026-06-12T19:00"))),
+      Tmdb           -> SourceData(title = Some("X"), synopsis = Some("Opis z TMDB."))
+    ))
+    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|", rec))
+    m.synopsisByCity.keySet shouldBe Set("wroclaw")
+    m.synopsisFor(Poznan)  shouldBe Some("Opis z TMDB.")
+    m.synopsisFor(Wroclaw) shouldBe Some("Wrocławski opis kina, wyraźnie dłuższy niż TMDB.")
+  }
+
   it should "resolve every rating with its click-through URL" in {
     movie.ratings.imdb shouldBe Some(9.3)
     movie.ratings.imdbUrl shouldBe Some("https://www.imdb.com/title/tt0111161/")

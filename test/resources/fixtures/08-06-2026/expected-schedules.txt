@@ -308,7 +308,7 @@ runtimeMinutes:    111
 releaseYear:       2026
 countries:         USA, Kanada
 posterUrl:         https://img.helios.pl/pliki/film/backrooms-bez-wyjscia/backrooms-bez-wyjscia-plakat-50878.jpg
-synopsis.length:   831
+synopsis.length:   563
 cast:              Chiwetel Ejiofor, Renate Reinsve, Mark Duplass, Finn Bennett, Lukita Maxwell, Avan Jogia
 director:          Kane Parsons
 tmdbId:            1083381
@@ -484,7 +484,7 @@ runtimeMinutes:    139
 releaseYear:       2025
 countries:         Korea Południowa, Francja
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/Bez-wyjscia_plakat_B1_HQ-po-zmniejszeniu-200x288.jpg
-synopsis.length:   408
+synopsis.length:   356
 cast:              Lee Byung-hun, Son Ye-jin, Park Hee-soon, Lee Sung-min, Yeom Hye-ran, Cha Seung-won
 director:          Chan-wook Park
 tmdbId:            639988
@@ -799,7 +799,7 @@ runtimeMinutes:    88
 releaseYear:       2026
 countries:         Polska, Hiszpania, Turcja, Kanada
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Chopiec_na_krancach_swiata_PLAKAT_teaser.jpg
-synopsis.length:   835
+synopsis.length:   934
 cast:              Mikołaj Wachowski, Jan Szydłowski, Łucja Dobrogowska, Magdalena Herman-Urbańska, Elżbieta Jarosik
 director:          Grzegorz Wacławek, Marta Szymańska
 tmdbId:            1277047
@@ -1226,7 +1226,7 @@ runtimeMinutes:    153
 releaseYear:       1977
 countries:         Polska
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg
-synopsis.length:   879
+synopsis.length:   286
 cast:              Krystyna Janda, Jerzy Radziwiłowicz, Tadeusz Łomnicki, Jacek Łomnicki, Michał Tarkowski, Krystyna Zachwatowicz
 director:          Andrzej Wajda
 tmdbId:            224
@@ -1266,7 +1266,7 @@ runtimeMinutes:    120
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://movies.helios.pl/images/prada2plakat.jpg
-synopsis.length:   825
+synopsis.length:   1002
 cast:              Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci, Kenneth Branagh
 director:          David Frankel
 tmdbId:            1314481
@@ -1447,7 +1447,7 @@ runtimeMinutes:    116
 releaseYear:       2025
 countries:         Hiszpania, Niemcy, Francja, Belgia, Maroko
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/Drugie-Zycie-plakat-HQ.jpg
-synopsis.length:   1372
+synopsis.length:   1353
 cast:              Carmen Maura, Marta Etura, Ahmed Boulane, María Alfonsa Rosso, Miguel Garcés
 director:          Maryam Touzani
 tmdbId:            1399462
@@ -1585,7 +1585,7 @@ runtimeMinutes:    110
 releaseYear:       2026
 countries:         Francja, USA, Wielka Brytania
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/DRZEWO-MAGII_PLAKAT-GLOWNY.jpg
-synopsis.length:   709
+synopsis.length:   905
 cast:              Andrew Garfield, Claire Foy, Rebecca Ferguson, Nicola Coughlan, Jessica Gunning
 director:          Simon Farnaby
 tmdbId:            1140521
@@ -1788,7 +1788,7 @@ runtimeMinutes:    146
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://movies.helios.pl/images/DzienObjawieniaPlakatNew.jpg
-synopsis.length:   950
+synopsis.length:   531
 cast:              Emily Blunt, Josh O'Connor, Colin Firth, Eve Hewson, Wyatt Russell, Colman Domingo
 director:          Steven Spielberg
 tmdbId:            1275779
@@ -2247,7 +2247,7 @@ runtimeMinutes:    116
 releaseYear:       2025
 countries:         Niemcy, Francja, Hiszpania, Belgia, Maroko
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/drugie-zycie-plakat-lq-1.jpg
-synopsis.length:   932
+synopsis.length:   1351
 cast:              Carmen Maura, Marta Etura, Ahmed Boulane, Miguel Garcés, María Alfonsa Rosso
 director:          Maryam Touzani
 tmdbId:            1399462
@@ -2329,7 +2329,7 @@ runtimeMinutes:    70
 releaseYear:       1999
 countries:         Wielka Brytania, USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/FOLLOWING-5.jpg
-synopsis.length:   1159
+synopsis.length:   590
 cast:              Jeremy Theobald, Alex Haw, Lucy Russell, John Nolan, Dick Bradsell
 director:          Christopher Nolan
 tmdbId:            11660
@@ -2447,7 +2447,7 @@ runtimeMinutes:    89
 releaseYear:       2025
 countries:         Francja, USA, Wielka Brytania, Włochy, Polska, Holandia
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/01/Glos_Hind_Rajab-polski-plakat1-po-zmniejszeniu-200x288.jpg
-synopsis.length:   1031
+synopsis.length:   299
 cast:              هند رامي إياد  رجب, Motaz Malhees, Saja Kilani, Amer Hlehel, Clara Khoury
 director:          Kaouther Ben Hania
 tmdbId:            1480382
@@ -2588,7 +2588,7 @@ runtimeMinutes:    96
 releaseYear:       2025
 countries:         USA, Kanada, Canada
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7704D2R.jpg
-synopsis.length:   445
+synopsis.length:   425
 cast:              Arden Cho, May Hong, Ji-young Yoo, Ahn Hyo-seop, 김윤진
 director:          Chris Appelhans, Maggie Kang
 tmdbId:            803796
@@ -2678,7 +2678,7 @@ runtimeMinutes:    96
 releaseYear:       2025
 countries:         USA
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/KPopoweLowczynieDemonow_plakat-HQ.jpg
-synopsis.length:   928
+synopsis.length:   74
 cast:              —
 director:          —
 tmdbId:            —
@@ -2754,7 +2754,7 @@ runtimeMinutes:    45
 releaseYear:       2026
 countries:         Polska
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Kicia_Kocia_w_podrozy_PLAKAT_B1.jpg
-synopsis.length:   1095
+synopsis.length:   487
 cast:              Dominika Kluźniak, Lidia Sadowa, Jacek Kopczyński, Agnieszka Mrozińska, Julia Kołakowska
 director:          Marta Stróżycka
 tmdbId:            1612090
@@ -2952,7 +2952,7 @@ runtimeMinutes:    105
 releaseYear:       1988
 countries:         Polska, ZSRR
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/KLATWA-DOLINY-WEZY_AUTORSKA-NARRACJA-LONA_plakat-200x288.jpg
-synopsis.length:   1586
+synopsis.length:   462
 cast:              Krzysztof Kolberger, Roman Wilhelmi, Ewa Sałacka, Zbigniew Lesień, Leon Niemczyk
 director:          Marek Piestrak
 tmdbId:            81324
@@ -2982,7 +2982,7 @@ runtimeMinutes:    113
 releaseYear:       2025
 countries:         USA
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/12/KOPNELABYM-CIE_patroni-po-zmniejszeniu-200x288.jpg
-synopsis.length:   1137
+synopsis.length:   273
 cast:              Rose Byrne, Conan O'Brien, A$AP Rocky, Danielle Macdonald, Delaney Quinn
 director:          Mary Bronstein
 tmdbId:            1160360
@@ -3139,7 +3139,7 @@ runtimeMinutes:    70
 releaseYear:       2026
 countries:         Polska, Niemcy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/KUMOTRY_plakat_filmweb.jpg
-synopsis.length:   971
+synopsis.length:   119
 cast:              —
 director:          Emilia Śniegoska
 tmdbId:            1454157
@@ -3185,7 +3185,7 @@ runtimeMinutes:    88
 releaseYear:       2026
 countries:         Francja, Belgia, USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7921D2R.jpg
-synopsis.length:   590
+synopsis.length:   451
 cast:              Karol Jankiewicz, Martyna Byczkowska, Artur Barciś, Krystian Embradora, Igor Pawłowski
 director:          Benjamin Mousquet
 tmdbId:            —
@@ -3262,7 +3262,7 @@ runtimeMinutes:    133
 releaseYear:       2025
 countries:         Włochy
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/12/LaGrazia_plakat-B1_HQ-po-zmniejszeniu-200x288.jpg
-synopsis.length:   399
+synopsis.length:   317
 cast:              Toni Servillo, Anna Ferzetti, Orlando Cinque, Massimo Venturiello, Milvia Marigliano, Giuseppe Gaiani
 director:          Paolo Sorrentino
 tmdbId:            1397364
@@ -3292,7 +3292,7 @@ runtimeMinutes:    132
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://movies.helios.pl/images/MANDALORIANIGROGUnowyplakat.jpg
-synopsis.length:   700
+synopsis.length:   678
 cast:              Pedro Pascal, Sigourney Weaver, Jeremy Allen White, Steve Blum, Jonny Coyne, Matthew Willig
 director:          Jon Favreau
 tmdbId:            1228710
@@ -3577,7 +3577,7 @@ runtimeMinutes:    128
 releaseYear:       2026
 countries:         Wielka Brytania, USA, Kanada
 posterUrl:         https://movies.helios.pl/images/Michaelnowyplakat.jpg
-synopsis.length:   569
+synopsis.length:   825
 cast:              Jaafar Jackson, Nia Long, Colman Domingo, Miles Teller, Juliano Valdi
 director:          Antoine Fuqua
 tmdbId:            936075
@@ -3696,7 +3696,7 @@ runtimeMinutes:    106
 releaseYear:       1976
 countries:         USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Mikey_i_Nicky-plakat.png
-synopsis.length:   1753
+synopsis.length:   1047
 cast:              Peter Falk, John Cassavetes, Ned Beatty, Sanford Meisner, William Hickey, David Pendleton
 director:          Elaine May
 tmdbId:            59143
@@ -3740,7 +3740,7 @@ runtimeMinutes:    118
 releaseYear:       1991
 countries:         USA
 posterUrl:         https://img.helios.pl/pliki/film/milczenie-owiec/milczenie-owiec-plakat-760.jpg
-synopsis.length:   933
+synopsis.length:   783
 cast:              Anthony Hopkins, Jodie Foster, Ted Levine, Kasi Lemmons, Scott Glenn, Anthony Heald
 director:          Jonathan Demme
 tmdbId:            274
@@ -3848,7 +3848,7 @@ runtimeMinutes:    145
 releaseYear:       2026
 countries:         Francja, Niemcy, Węgry, Chiny, Belgia
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Milcząca-przyjaciółka_plakat-PL_LQ.jpg
-synopsis.length:   1707
+synopsis.length:   1589
 cast:              Tony Leung, Luna Wedler, Enzo Brumm, Sylvester Groth, Martin Wuttke, Johannes Hegemann, Rainer Bock, Léa Seydoux
 director:          Ildikó Enyedi
 tmdbId:            1168719
@@ -4231,7 +4231,7 @@ runtimeMinutes:    116
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7478S2R.jpg
-synopsis.length:   420
+synopsis.length:   321
 cast:              KARL URBAN, ADELINE RUDOLPH, LEWIS TAN, JESSICA MCNAMEE, JOSH LAWSON, TADANOBU ASANO, MEHCAD BROOKS, LUDI LIN, DAMON HERRIMAN, TATI GABRIELLE, MARTYN FORD, CHIN HAN, JOE TASLIM, HIROYUKI SANADA, DESMOND CHIAM, ANA THU NGUYEN, MAX HUANG
 director:          Simon McQuoid
 tmdbId:            931285
@@ -4307,7 +4307,7 @@ runtimeMinutes:    106
 releaseYear:       2025
 countries:         Francja, Niemcy
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/MV5BYTIzMjY3NzItNjNhOS00YjNmLTk4M2EtNGVlY2E1YmUxZTQ4XkEyXkFqcGc@._V1_-533x800.jpg
-synopsis.length:   868
+synopsis.length:   468
 cast:              Nadia Melliti, Park Ji-Min, Amina Ben Mohamed, Rita Benmannana, Melissa Guers
 director:          Hafsia Herzi
 tmdbId:            961077
@@ -4555,7 +4555,7 @@ runtimeMinutes:    55
 releaseYear:       2026
 countries:         Polska, Portugalia
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Ale-kosmos-PLAKAT.jpg
-synopsis.length:   1552
+synopsis.length:   910
 cast:              —
 director:          Elżbieta Wąsik
 tmdbId:            1646671
@@ -4683,7 +4683,7 @@ runtimeMinutes:    110
 releaseYear:       2025
 countries:         Hiszpania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8191D2R.jpg
-synopsis.length:   331
+synopsis.length:   209
 cast:              Miki Esparbé, Jordi Catalán, Àngels Gonyalons
 director:          Javier Ruiz Caldera
 tmdbId:            1306284
@@ -4718,7 +4718,7 @@ runtimeMinutes:    110
 releaseYear:       1957
 countries:         Włochy, Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/1dbb3597576ffa0f68209c107e48f9c8bc9ee13837caf07e216186166427906d-564x800.jpg
-synopsis.length:   1297
+synopsis.length:   1244
 cast:              Giulietta Masina, François Périer, Franca Marzi, Amedeo Nazzari, Aldo Silvani
 director:          Federico Fellini
 tmdbId:            19426
@@ -4752,7 +4752,7 @@ runtimeMinutes:    105
 releaseYear:       2025
 countries:         Francja, USA
 posterUrl:         https://www.kinomuza.pl/content/uploads/2025/11/AA1MbUuf-540x800.jpg
-synopsis.length:   682
+synopsis.length:   543
 cast:              Guillaume Marbeck, Zoey Deutch, Aubry Dullin, Adrien Rouyard, Antoine Besson
 director:          Richard Linklater
 tmdbId:            1254808
@@ -4901,7 +4901,7 @@ runtimeMinutes:    122
 releaseYear:       2025
 countries:         Francja, Belgia, Maroko
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/MV5BNWZjNjQwMTMtMmZkOC00ZjYzLWJmZWQtNTMwZTI4N2JiZjJkXkEyXkFqcGc@._V1_-547x800.jpg
-synopsis.length:   1030
+synopsis.length:   620
 cast:              Benjamin Voisin, Rebecca Marder, Pierre Lottin, Denis Lavant, Swann Arlaud
 director:          François Ozon
 tmdbId:            1429348
@@ -5143,7 +5143,7 @@ runtimeMinutes:    127
 releaseYear:       2025
 countries:         Dania, Francja, Szwecja, Finlandia, Niemcy, Turcja
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/06/plakat_orly-republiki.jpg
-synopsis.length:   2905
+synopsis.length:   420
 cast:              Fares Fares, Lyna Khoudri, Cherien Dabis, Amr Waked, Zineb Triki, Donia Massoud
 director:          Tarik Saleh
 tmdbId:            1220566
@@ -5275,7 +5275,7 @@ runtimeMinutes:    105
 releaseYear:       2025
 countries:         Francja
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/03/ostatnia-sesja-w-paryzu-plakat-z-data-11.jpg
-synopsis.length:   420
+synopsis.length:   337
 cast:              Jodie Foster, Daniel Auteuil, Virginie Efira, Mathieu Amalric, Vincent Lacoste, Luàna Bajrami
 director:          Rebecca Zlotowski
 tmdbId:            1290432
@@ -5314,7 +5314,7 @@ runtimeMinutes:    90
 releaseYear:       2025
 countries:         Czechy, Dania, Niemcy, Wielka Brytania, USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Pan_NIKT_kontra_PUTIN_plakat_net_DBKDtLN.jpg
-synopsis.length:   801
+synopsis.length:   362
 cast:              Павел Таланкин, Władimir Putin, Roman Abalin, Лаврентий Берия, Viktor Abakumov
 director:          David Borenstein, Pasha Talankin
 tmdbId:            1393151
@@ -5524,7 +5524,7 @@ runtimeMinutes:    89
 releaseYear:       2026
 countries:         Polska
 posterUrl:         https://img.helios.pl/pliki/film/piep-zyc-mickiewicza-3/piep-zyc-mickiewicza-3-plakat-22608.jpeg
-synopsis.length:   656
+synopsis.length:   285
 cast:              Hugo Tarres, Wiktoria Koprowska, Igor Pawłowski, Krystian Embradora, Karol Rot, Ada Grodzka, Aldona Jankowska, Dawid Ogrodnik
 director:          Sara Bustamante-Drozdek
 tmdbId:            1483055
@@ -6171,7 +6171,7 @@ runtimeMinutes:    102
 releaseYear:       2025
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/MV5BZWI5MWI1NGEtMzJkMC00NWE5LTlmZDgtNTE3NmMwZDhiZWJkXkEyXkFqcGc@._V1_FMjpg_UX1000_-590x800.jpg
-synopsis.length:   957
+synopsis.length:   469
 cast:              Salif Cissé, Denis Podalydès, Aure Atika
 director:          Fabienne Godet
 tmdbId:            1158616
@@ -6202,7 +6202,7 @@ runtimeMinutes:    139
 releaseYear:       1999
 countries:         Niemcy, USA
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/04/Podziemny-krag_online_cut-200x288.webp
-synopsis.length:   325
+synopsis.length:   279
 cast:              Edward Norton, Brad Pitt, Helena Bonham Carter, Meat Loaf, Jared Leto
 director:          David Fincher
 tmdbId:            550
@@ -6391,7 +6391,7 @@ runtimeMinutes:    83
 releaseYear:       2026
 countries:         Polska
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/123-2.jpg
-synopsis.length:   649
+synopsis.length:   392
 cast:              Michał Ulewiński, Aneta Ciężarek, Daniel Bukowy
 director:          Dariusz Walusiak
 tmdbId:            1699008
@@ -6595,7 +6595,7 @@ runtimeMinutes:    156
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7449S2R.jpg
-synopsis.length:   683
+synopsis.length:   497
 cast:              Ryan Gosling, Sandra Hüller, James Ortiz, Lionel Boyce, Milana Vayntrub
 director:          Christopher Miller, Phil Lord
 tmdbId:            687163
@@ -6758,7 +6758,7 @@ runtimeMinutes:    50
 releaseYear:       2026
 countries:         Polska
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/04/Pucio-PLAKAT-online.jpg
-synopsis.length:   1473
+synopsis.length:   426
 cast:              Joanna Pach, Antonina Żbikowska, Małgorzata Socha, Waldemar Barwiński, Ewa Kania
 director:          Marta Stróżycka
 tmdbId:            1645035
@@ -6841,7 +6841,7 @@ runtimeMinutes:    115
 releaseYear:       2025
 countries:         Hiszpania, Niemcy
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Romeria-B1.jpg
-synopsis.length:   975
+synopsis.length:   954
 cast:              Llúcia Garcia, Alberto Gracia, José Ángel Egido, Tristán Ulloa, Janet Novás, Marina Troncoso, Miryam Gallego, Mitch
 director:          Carla Simón
 tmdbId:            1182861
@@ -6883,7 +6883,7 @@ runtimeMinutes:    113
 releaseYear:       1974
 countries:         USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Reset-Rozmowa-1080x1080_zS7Plnr.png
-synopsis.length:   1654
+synopsis.length:   393
 cast:              Gene Hackman, John Cazale, Allen Garfield, Frederic Forrest, Cindy Williams, Michael Higgins, Elizabeth MacRae, Teri Garr, Harrison Ford, Mark Wheeler, Robert Duvall
 director:          Francis Ford Coppola
 tmdbId:            592
@@ -6981,7 +6981,7 @@ runtimeMinutes:    65
 releaseYear:       2006
 countries:         Polska
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/Sarnie-zniwo-plakat-1-553x800.jpg
-synopsis.length:   2267
+synopsis.length:   1330
 cast:              Krzysztof Radzimski, Patryk Michoń, Adam Pabudziński, Bartosz Walaszek, Bartek Flisek
 director:          Bartosz Walaszek
 tmdbId:            644270
@@ -7081,7 +7081,7 @@ runtimeMinutes:    109
 releaseYear:       2026
 countries:         Irlandia, Niemcy, USA, Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7956D2R.jpg
-synopsis.length:   753
+synopsis.length:   812
 cast:              Nicholas Galitzine, Molly Gordon, Julia Louis-Dreyfus, Bryan Cranston, Chris O’Dowd, Regina Hall, Patrick Stewart, Hong Chau, Emma Thompson, Tosin Cole, Kobna Holdbrook-Smith, Conleth Hill i Mandeep Dhillon
 director:          Kyle Balda
 tmdbId:            1301421
@@ -7603,7 +7603,7 @@ runtimeMinutes:    176
 releaseYear:       1960
 countries:         Włochy, Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/unnamed.jpg
-synopsis.length:   1280
+synopsis.length:   1261
 cast:              Marcello Mastroianni, Anita Ekberg, Anouk Aimée, Yvonne Furneaux, Magali Noël
 director:          Federico Fellini
 tmdbId:            439
@@ -7661,7 +7661,7 @@ runtimeMinutes:    118
 releaseYear:       2025
 countries:         Włochy
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/Takie-jest-zycie_B1-1-scaled.jpg
-synopsis.length:   832
+synopsis.length:   831
 cast:              Virginia Raffaele, Diego Abatantuono, Aldo Baglio, Ignazio Giuseppe Loi, Geppi Cucciari, David Budroni Language Italian
 director:          Riccardo Milani
 tmdbId:            1397375
@@ -7793,7 +7793,7 @@ runtimeMinutes:    100
 releaseYear:       2025
 countries:         USA, Chiny
 posterUrl:         https://movies.helios.pl/images/TOMIJERRYPRZYGODAWMUZEUMplakat.jpg
-synopsis.length:   1214
+synopsis.length:   668
 cast:              John Shang, 黑兔子, Jiang Wen, 顺子, Lan Long
 director:          Gang Zhang
 tmdbId:            1497970
@@ -8249,7 +8249,7 @@ runtimeMinutes:    103
 releaseYear:       1953
 countries:         Włochy, Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/JcrTWB1.jpg-585x800.png
-synopsis.length:   1444
+synopsis.length:   1399
 cast:              Franco Interlenghi, Alberto Sordi, Franco Fabrizi, Leopoldo Trieste, Riccardo Fellini
 director:          Federico Fellini
 tmdbId:            12548
@@ -8283,7 +8283,7 @@ runtimeMinutes:    89
 releaseYear:       2025
 countries:         Irlandia, Luksemburg
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Werdykt_plakat-data.jpg
-synopsis.length:   901
+synopsis.length:   797
 cast:              Colm Meaney, Aidan Gillen, Jim Sheridan, Tristan Heanue, John Connors
 director:          David Merriman
 tmdbId:            1246215
@@ -8403,7 +8403,7 @@ runtimeMinutes:    90
 releaseYear:       1958
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/81-MSws-MmL._AC_UF8941000_QL80_-595x800.jpg
-synopsis.length:   690
+synopsis.length:   495
 cast:              Jeanne Moreau, Maurice Ronet, Georges Poujouly, Yori Bertin, Jean Wall
 director:          Louis Malle
 tmdbId:            1093
@@ -8524,7 +8524,7 @@ runtimeMinutes:    88
 releaseYear:       2025
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/MV5BODBjNmM1OTMtNWIwZC00ZjJjLTkxOTUtNzE3YjViMzNkMzQyXkEyXkFqcGc@._V1_QL75_UY281_CR90190281_.jpg
-synopsis.length:   930
+synopsis.length:   532
 cast:              Adèle Exarchopoulos, Jérôme Commandeur, Sandrine Kiberlain, Karim Leklou, Gabin Visona
 director:          Quentin Dupieux
 tmdbId:            1313144
@@ -8712,7 +8712,7 @@ runtimeMinutes:    108
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg
-synopsis.length:   1151
+synopsis.length:   113
 cast:              Olivia Wilde, Penelope Cruz, Seth Rogen, Edward Norton
 director:          Olivia Wilde
 tmdbId:            950028
@@ -8801,7 +8801,7 @@ runtimeMinutes:    97
 releaseYear:       2026
 countries:         Wielka Brytania, USA
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/zawodowcy-zawodowcy-plakat-po-zmniejszeniu-200x288.jpg
-synopsis.length:   1387
+synopsis.length:   1367
 cast:              Henry Cavill, Jake Gyllenhaal, Eiza González, Rosamund Pike, Fisher Stevens, Emmett J Scanlan
 director:          Guy Ritchie
 tmdbId:            1122573
@@ -9016,7 +9016,7 @@ runtimeMinutes:    72
 releaseYear:       2026
 countries:         Polska
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/ZNAKI-PANA-SLIWKI-POSTER-jpg-po-zmniejszeniu-200x288.jpg
-synopsis.length:   3659
+synopsis.length:   1036
 cast:              Karol Śliwka, Dariusz Dłużewski
 director:          Urszula Morga, Bartosz Mikołajczyk
 tmdbId:            1556638
@@ -9067,7 +9067,7 @@ runtimeMinutes:    116
 releaseYear:       2025
 countries:         Wielka Brytania
 posterUrl:         https://img.helios.pl/pliki/film/sciezki-zycia/sciezki-zycia-plakat-23717.jpg
-synopsis.length:   691
+synopsis.length:   403
 cast:              Gillian Anderson, Jason Isaacs, James Lance, Hermione Norris, Rebecca Ineson
 director:          Marianne Elliott
 tmdbId:            1127625

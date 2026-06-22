@@ -731,6 +731,20 @@ object Cinema {
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 
+  /** Synthetic chain-detail sources → the venue cinemas whose per-film detail
+   *  they hold. A chain (only Cinema City today) fetches a film's
+   *  synopsis/cast/… ONCE network-wide into its [[CinemaCityChain]] slot rather
+   *  than each venue's own slot, so that slot belongs to no single city. A
+   *  city-scoped synopsis merge ([[MovieRecord.synopsisForCity]]) consults this
+   *  map to decide which cities a chain blurb applies to — namely those where a
+   *  member venue screens the film. Derived from the per-city venue lists by the
+   *  stable "Cinema City <branch>" naming every Cinema City venue follows
+   *  (`CinemaCityChain` itself is "Cinema City", no trailing branch, and isn't in
+   *  `all`), so a newly-added branch is picked up automatically. */
+  val chainDetailVenues: Map[Source, Set[Cinema]] = Map(
+    CinemaCityChain -> all.filter(_.displayName.startsWith("Cinema City ")).toSet
+  )
+
   /** City display label for each cinema — derived from `byCity`, the single
    *  source of truth. Used by the debug source-data view to disambiguate
    *  same-named chains (e.g. the many "Helios" venues across cities). */

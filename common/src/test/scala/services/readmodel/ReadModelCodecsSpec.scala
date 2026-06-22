@@ -37,6 +37,7 @@ class ReadModelCodecsSpec extends AnyFlatSpec with Matchers {
       directors          = Seq("Frank Darabont"),
       cast               = Seq("Tim Robbins", "Morgan Freeman"),
       synopsis           = Some("Life in a state penitentiary."),
+      synopsisByCity     = Map("poznan" -> "Poznański opis kina.", "wroclaw" -> "Wrocławski opis kina."),
       trailerUrls        = Seq("https://www.youtube.com/embed/abc"),
       ratings            = ResolvedRatings(
         imdb = Some(9.3), imdbUrl = Some("https://www.imdb.com/title/tt0111161/"),

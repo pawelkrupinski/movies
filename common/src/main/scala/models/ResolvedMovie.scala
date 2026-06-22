@@ -31,6 +31,10 @@ case class ResolvedMovie(
   countries:          Seq[String],
   directors:          Seq[String],
   cast:               Seq[String],
+  // City-INDEPENDENT synopsis fallback: the best blurb from TMDB/IMDb/Filmweb
+  // only (no cinema). Served wherever `synopsisByCity` carries no override for
+  // the city being viewed, so a city with no cinema blurb of its own shows
+  // TMDB's rather than another city's cinema text. See `synopsisFor`.
   synopsis:           Option[String],
   // Ready-to-embed trailer URLs (raw URLs already mapped through
   // `TrailerEmbed.embedUrlFor` and deduped), so clients embed without further
@@ -39,10 +43,26 @@ case class ResolvedMovie(
   ratings:            ResolvedRatings,
   // Equal-weight average of the present ratings on a 0–10 scale — the grid's
   // "Ocena" sort key (rendered into the card's `data-rating`).
-  weightedRating:     Double
+  weightedRating:     Double,
+  // Per-city synopsis overrides, keyed by `City.slug`: the best blurb chosen
+  // among the cinemas screening this film IN that city plus TMDB/IMDb. Only
+  // cities whose pick differs from the city-independent `synopsis` fallback are
+  // stored (most don't), keeping the document small and a metadata change
+  // confined to the affected cities. Read via `synopsisFor(city)`. Defaulted —
+  // and placed last — so positional constructors and legacy `web_movies`
+  // documents written before this field both stay valid (the codec ignores
+  // absent fields, restoring this as `Map.empty`).
+  synopsisByCity:     Map[String, String] = Map.empty
 ) {
   /** Readable alias for the Mongo `_id`. */
   def id: String = _id
+
+  /** The synopsis to show for `city`: its per-city override when one was
+   *  projected (a cinema there wrote a better blurb than the TMDB/IMDb
+   *  fallback), else the city-independent `synopsis`. Never another city's
+   *  cinema text — the fallback is cinema-free by construction. */
+  def synopsisFor(city: City): Option[String] =
+    synopsisByCity.get(city.slug).orElse(synopsis)
 }
 
 /**

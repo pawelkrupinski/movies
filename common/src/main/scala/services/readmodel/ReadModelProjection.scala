@@ -54,11 +54,27 @@ object ReadModelProjection {
       countries          = r.countries,
       directors          = r.director,
       cast               = r.cast,
-      synopsis           = r.synopsis,
+      synopsis           = r.synopsisNonCinema,
+      synopsisByCity     = synopsisByCity(r),
       trailerUrls        = r.trailerUrls.flatMap(TrailerEmbed.embedUrlFor).distinct,
       ratings            = ratingsFor(r, title),
       weightedRating     = r.weightedRating
     )
+  }
+
+  /** Per-city synopsis overrides for the read model, keyed by `City.slug`. For
+   *  each city the film screens in, the city-scoped pick ([[MovieRecord.synopsisForCity]]
+   *  — that city's cinemas + TMDB/IMDb) is stored ONLY when it differs from the
+   *  city-independent `synopsisNonCinema` fallback `ResolvedMovie.synopsis` holds.
+   *  Most cities have no cinema blurb richer than TMDB's, so they tie the fallback
+   *  and are omitted — the map carries only the genuine per-city exceptions, and
+   *  `ResolvedMovie.synopsisFor` falls back for the rest. */
+  private def synopsisByCity(r: MovieRecord): Map[String, String] = {
+    val fallback = r.synopsisNonCinema
+    r.cities.flatMap { city =>
+      val scoped = r.synopsisForCity(city)
+      if (scoped != fallback) scoped.map(city.slug -> _) else None
+    }.toMap
   }
 
   /** Materialise a record's per-source ratings + their click-through URLs into

@@ -179,7 +179,7 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
             screenings
               .flatMap(sc => MovieControllerService.cinemaByName(sc.cinema).flatMap(c => sc.filmUrl.map(c -> _)))
               .sortBy(_._1.displayName)
-          Some((earliest, filmSchedule(resolved, cinemaFilmUrls, byDate)))
+          Some((earliest, filmSchedule(resolved, cinemaFilmUrls, byDate, city)))
         }
       }
     }.sortBy { case (earliest, fs) => (earliest, fs.movie.title) }.map(_._2)
@@ -190,11 +190,12 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
    *  resilience fallback below, so both materialise the schedule identically. */
   private def filmSchedule(resolved: ResolvedMovie,
                            cinemaFilmUrls: Seq[(Cinema, String)],
-                           showings: Seq[(LocalDate, Seq[CinemaShowtimes])]): FilmSchedule =
+                           showings: Seq[(LocalDate, Seq[CinemaShowtimes])],
+                           city: City): FilmSchedule =
     FilmSchedule(
       movie = Movie(resolved.title, resolved.runtimeMinutes, resolved.releaseYear, countries = resolved.countries, genres = resolved.genres),
       posterUrl = resolved.posterUrl,
-      synopsis = resolved.synopsis,
+      synopsis = resolved.synopsisFor(city),
       cast = resolved.cast,
       director = resolved.directors,
       cinemaFilmUrls = cinemaFilmUrls,
@@ -240,7 +241,7 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
     byTitle(title).orElse(decoded.flatMap(byTitle)).map { resolved =>
       logger.warn(s"film deep-link served from the read model without a live ${city.slug} schedule " +
         s"(reprojection/rekey gap or ended run): title='$title' filmId=${resolved._id}")
-      filmSchedule(resolved, cinemaFilmUrls = Seq.empty, showings = Seq.empty)
+      filmSchedule(resolved, cinemaFilmUrls = Seq.empty, showings = Seq.empty, city)
     }
   }
 

@@ -149,4 +149,61 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
     )
     record.synopsis shouldBe Some(longer)
   }
+
+  // ── City-scoped synopsis (`synopsisForCity`) ───────────────────────────────
+  // The displayed blurb is chosen among only the cinemas screening the film IN
+  // the city being viewed, plus the city-independent TMDB/IMDb. A cinema in
+  // another city never contributes — even when its blurb is the global longest.
+
+  // `Helios` is a Poznań venue; `HeliosMagnolia` a Wrocław one (see Cinema.byCity).
+  it should "prefer an in-city cinema blurb over a longer one from another city" in {
+    val poznan   = "Poznański krótki opis."
+    val wroclaw  = "Wrocławski znacznie dłuższy i pełniejszy opis filmu, który globalnie by wygrał."
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        Helios         -> SourceData(synopsis = Some(poznan)),
+        HeliosMagnolia -> SourceData(synopsis = Some(wroclaw))
+      )
+    )
+    record.synopsis                     shouldBe Some(wroclaw) // global still picks the longest
+    record.synopsisForCity(Poznan)      shouldBe Some(poznan)  // …but Poznań sees its own
+    record.synopsisForCity(Wroclaw)     shouldBe Some(wroclaw)
+  }
+
+  it should "fall back to TMDB in a city whose cinemas carry no blurb, never another city's" in {
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        HeliosMagnolia -> SourceData(synopsis = Some("Wrocławski opis kina.")),
+        Tmdb           -> SourceData(synopsis = Some("Opis z TMDB."))
+      )
+    )
+    // Poznań has no cinema blurb of its own here → TMDB, NOT the Wrocław cinema.
+    record.synopsisForCity(Poznan) shouldBe Some("Opis z TMDB.")
+  }
+
+  it should "expose the city-independent (TMDB/IMDb-only) fallback via synopsisNonCinema" in {
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        HeliosMagnolia -> SourceData(synopsis = Some("Dłuższy wrocławski opis kina, dłuższy niż TMDB.")),
+        Tmdb           -> SourceData(synopsis = Some("Opis z TMDB."))
+      )
+    )
+    record.synopsis           shouldBe Some("Dłuższy wrocławski opis kina, dłuższy niż TMDB.") // global incl. cinema
+    record.synopsisNonCinema  shouldBe Some("Opis z TMDB.")                                     // cinema excluded
+  }
+
+  // Cinema City fetches a film's detail ONCE chain-wide into the synthetic
+  // `CinemaCityChain` slot (which belongs to no city); a per-city merge admits
+  // it only where a Cinema City venue is actually screening the film.
+  it should "admit the Cinema City chain blurb only in cities its venues screen in" in {
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        CinemaCityChain       -> SourceData(synopsis = Some("Opis z sieci Cinema City.")),
+        CinemaCityPoznanPlaza -> SourceData(), // the Poznań venue screening this film
+        Tmdb                  -> SourceData(synopsis = Some("Krótki TMDB."))
+      )
+    )
+    record.synopsisForCity(Poznan)  shouldBe Some("Opis z sieci Cinema City.") // CC venue here → chain applies
+    record.synopsisForCity(Wroclaw) shouldBe Some("Krótki TMDB.")              // no CC venue here → chain excluded
+  }
 }

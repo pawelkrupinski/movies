@@ -155,10 +155,12 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
         "https://www.kinomalta.pl/wp-content/uploads/2026/05/zawodowcy-zawodowcy-plakat-po-zmniejszeniu-200x288.jpg"
       )
 
-      // Merged `MovieRecord.synopsis` picks the longest non-empty across all
-      // cinemas that scrape this film. The exact text moves with the corpus,
-      // so assert it's a substantial Polish synopsis and let the whole-corpus
-      // snapshot below pin the exact value.
+      // City-scoped synopsis (`ResolvedMovie.synopsisFor(Poznań)`, since these
+      // schedules come from `toSchedules(Poznan, …)`): the best blurb among the
+      // cinemas screening this film IN POZNAŃ plus TMDB/IMDb — never a cinema in
+      // another city. The exact text moves with the corpus, so assert it's a
+      // substantial Polish synopsis and let the whole-corpus snapshot below pin
+      // the exact value.
       regular.synopsis.map(_.length).getOrElse(0) should be > 400
 
       // Cast accessor picks the longest non-empty list across sources. Assert
