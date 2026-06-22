@@ -40,4 +40,11 @@ jobs:
                   RENOVATE_AUTODISCOVER: 'false'
                   RENOVATE_REPOSITORIES: ${{ github.repository }}
                   RENOVATE_ONBOARDING: 'false'
+                  # Let Renovate run `./gradlew wrapper` on a Gradle-wrapper bump so
+                  # it produces a complete update (regenerated wrapper jar + scripts,
+                  # not just the distributionUrl string). Verified to run cleanly with
+                  # no Android SDK present, exactly like this CI container; Renovate's
+                  # image installs the JDK on demand. Without this the dashboard logs
+                  # "gradleWrapper is not permitted in the allowedUnsafeExecutions".
+                  RENOVATE_ALLOWED_UNSAFE_EXECUTIONS: '["gradleWrapper"]'
                   LOG_LEVEL: info
