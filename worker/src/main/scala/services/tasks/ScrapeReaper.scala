@@ -66,7 +66,7 @@ class ScrapeReaper(
   // queue dedups, so already-in-flight cinemas don't re-count against the cap.
   // Default unbounded so the tests that drive `tick()` directly are unaffected.
   maxEnqueuePerTick: Int = Int.MaxValue,
-  // While the worker is CPU-credit throttled (see [[ScrapeThrottleMonitor]]), cap
+  // While the worker is CPU-credit throttled (see [[CpuCreditPoller]]), cap
   // enqueue to THIS trickle instead of `maxEnqueuePerTick`. Adding fewer newly-due
   // cinemas lets the existing backlog drain and the pool earn idle, so the
   // shared-CPU credit balance rebuilds and the metastable throttle deadlock breaks

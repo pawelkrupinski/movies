@@ -403,19 +403,23 @@ class WorkerWiring extends play.api.Logging {
     overrides = new services.config.MongoEnvOverrideStore(mongoConnection.database),
     registry  = new services.config.MongoEnvRegistryStore(mongoConnection.database),
     tickInterval = Env.positiveLong("KINOWO_CONFIG_REFRESH_SECONDS", 30L).seconds)
-  // Auto-recovery from the shared-CPU-credit deadlock: watches ScrapeCinema
-  // handler durations and tells ScrapeReaper to back off enqueue while throttled,
-  // so the box earns idle and rebuilds credit. Fed alongside taskMetrics via the
-  // composite observer the TaskWorker takes (see below).
-  lazy val scrapeThrottleMonitor = new services.tasks.ScrapeThrottleMonitor()
-  // The credit-balance throttle, pushed in from OUTSIDE (a Grafana alert on
-  // fly_instance_cpu_balance → the worker's /throttle endpoint) — the credit
-  // logic + threshold live there, not here. The reapers throttle when EITHER this
-  // gate (the intended control) OR the in-process scrape monitor (a fail-safe if
-  // the pusher lags) says so.
+  // Auto-recovery from the shared-CPU-credit deadlock: the AUTHORITATIVE control
+  // is an in-process poller that reads the REAL fly_instance_cpu_balance straight
+  // from Fly's Prometheus and tells the reapers to back off enqueue while credit
+  // is floored, so the box earns idle and rebuilds credit. Needs a read-only Fly
+  // token (KINOWO_FLY_PROM_TOKEN); absent it (local dev / tests), there's no
+  // poller and only the external gate drives throttling.
+  lazy val cpuCreditPoller: Option[services.tasks.CpuCreditPoller] =
+    Env.get("KINOWO_FLY_PROM_TOKEN").map(token =>
+      new services.tasks.CpuCreditPoller(new RealHttpFetch(), token))
+  // The credit-balance throttle pushed in from OUTSIDE (the same Grafana alert on
+  // fly_instance_cpu_balance → the worker's /throttle endpoint). Kept as an
+  // INDEPENDENT backstop to the poller: if the poller can't reach api.fly.io (or
+  // its token lapses) and fails open, this still trips on a real credit crunch.
   lazy val externalThrottleGate = new services.tasks.ExternalThrottleGate
   lazy val throttleSignal: services.tasks.ScrapeThrottleSignal =
-    services.tasks.ScrapeThrottleSignal.either(externalThrottleGate, scrapeThrottleMonitor)
+    cpuCreditPoller.fold[services.tasks.ScrapeThrottleSignal](externalThrottleGate)(
+      poller => services.tasks.ScrapeThrottleSignal.either(externalThrottleGate, poller))
 
   // Cluster-wide occurrence claims gate the reapers' recurring ticks so each
   // scheduled occurrence runs on ONE machine (rotating), not on every machine.
@@ -475,7 +479,7 @@ class WorkerWiring extends play.api.Logging {
   // while the worker is CPU-credit throttled. Backing off scrapes alone wasn't
   // enough — ratings/detail kept the pool busy so it never idled to rebuild
   // credit; quieting the WHOLE pipeline is what lets it recover (see
-  // ScrapeThrottleMonitor / ScrapeThrottleSignal.cap).
+  // CpuCreditPoller / ScrapeThrottleSignal.cap).
   def throttledSecondaryEnqueuePerTick: Int =
     Env.positiveInt("KINOWO_THROTTLED_ENQUEUE_PER_TICK", services.tasks.ScrapeCadence.ThrottledSecondaryEnqueuePerTick)
   def maxDetailEnqueuePerTick: Int = Env.positiveLong("KINOWO_DETAIL_MAX_ENQUEUE_PER_TICK", 50L).toInt
@@ -626,9 +630,8 @@ class WorkerWiring extends play.api.Logging {
     // Each completed task announces itself so StagingReaper can chain the next
     // staging step; non-staging completions are ignored by its subscriber.
     onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload)),
-    // Report claims / outcomes / handler durations to BOTH the Prometheus metrics
-    // and the scrape-throttle monitor (which reads ScrapeCinema durations).
-    observer = services.metrics.TaskObserver.composite(taskMetrics, scrapeThrottleMonitor)
+    // Report claims / outcomes / handler durations to the Prometheus metrics.
+    observer = taskMetrics
   )
   // While throttled the reaper enqueues at most this many newly-due cinemas per
   // tick (vs the healthy `maxScrapeEnqueuePerTick`), so the backlog drains and the
@@ -712,6 +715,10 @@ class WorkerWiring extends play.api.Logging {
       val inFallback = filmwebFallbackStore.get(cinema).exists(_.active)
       uptimeMonitor.tagService(cinema, CinemaClientMarkers.tagsFor(Some(marker), sourceUrls.get(cinema), inFallback))
     }
+    // Poll the real CPU-credit balance so the reapers back off before the box
+    // starves (the authoritative throttle signal; absent its token, the external
+    // gate alone drives backoff).
+    cpuCreditPoller.foreach(_.start())
     // The task worker drains all queue work: scraping, deferred detail, and
     // queue-driven rating enrichment.
     taskWorker.start(); workerHeartbeat.start()
@@ -741,6 +748,7 @@ class WorkerWiring extends play.api.Logging {
     detailReaper.stop()
     settleReaper.stop()
     workerHeartbeat.stop()
+    cpuCreditPoller.foreach(_.stop())
     taskWorker.stop()
     taskQueue.close()
     freshnessStore.close()

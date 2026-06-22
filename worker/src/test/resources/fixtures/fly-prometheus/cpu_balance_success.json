@@ -1,0 +1,20 @@
+{
+    "status": "success",
+    "isPartial": false,
+    "data": {
+        "resultType": "vector",
+        "result": [
+            {
+                "metric": {},
+                "value": [
+                    1782119844,
+                    "148216.0187608"
+                ]
+            }
+        ]
+    },
+    "stats": {
+        "seriesFetched": "1",
+        "executionTimeMsec": 10
+    }
+}

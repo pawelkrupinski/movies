@@ -168,8 +168,8 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     enqueuedKeys shouldBe Set(ScrapeCinemaHandler.dedupKey(Helios), ScrapeCinemaHandler.dedupKey(Rialto))
   }
 
-  // Credit-throttle backoff: while the ScrapeThrottleMonitor reports the pool is
-  // running throttled-slow, the reaper enqueues only a TRICKLE (throttledMaxEnqueue
+  // Credit-throttle backoff: while the throttle signal reports the worker is
+  // credit-starved, the reaper enqueues only a TRICKLE (throttledMaxEnqueue
   // PerTick) instead of the healthy cap — so the backlog drains and the pool earns
   // idle to rebuild credit (breaking the metastable deadlock), then resumes.
   it should "back off to throttledMaxEnqueuePerTick while the worker is CPU-credit throttled" in {
