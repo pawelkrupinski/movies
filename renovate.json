@@ -14,26 +14,32 @@
   "rangeStrategy": "pin",
   "packageRules": [
     {
-      "description": "The Kotlin Gradle plugin, the Compose compiler plugin and the kotlinx-serialization plugin are version-locked to the Kotlin release (the Compose plugin in particular MUST equal the Kotlin version). Bump them in one PR so they never drift apart.",
+      "description": "The Compose compiler plugin and the kotlinx-serialization plugin are version-locked to the Kotlin release (the Compose plugin in particular MUST equal the Kotlin version, currently 2.4.0). Bump them in one PR so they never drift apart. (AGP 9 bundles the Kotlin Gradle plugin, so there is no standalone org.jetbrains.kotlin.android entry to include.)",
       "matchManagers": ["gradle"],
       "matchDepTypes": ["plugin"],
       "matchPackageNames": [
-        "org.jetbrains.kotlin.android",
         "org.jetbrains.kotlin.plugin.compose",
         "org.jetbrains.kotlin.plugin.serialization"
       ],
       "groupName": "Kotlin"
     },
     {
-      "description": "androidx.lifecycle artifacts share a version (currently 2.8.6) and are meant to move together.",
+      "description": "androidx.lifecycle artifacts share a version (currently 2.11.0) and are meant to move together.",
       "matchManagers": ["gradle"],
       "matchPackageNames": ["androidx.lifecycle:**"],
       "groupName": "AndroidX Lifecycle"
     },
     {
-      "description": "Haze 1.1.x is the Compose 1.7 line; 1.2+ requires Compose 1.8+, which this app isn't on yet (see the comment in app/build.gradle.kts). Cap auto-updates below 1.2 until Compose is upgraded.",
-      "matchPackageNames": ["dev.chrisbanes.haze:haze"],
-      "allowedVersions": "<1.2.0"
+      "description": "okhttp + mockwebserver are the same com.squareup.okhttp3 release (5.4.0) and must move in lockstep, or the test artifact won't resolve against the main one.",
+      "matchManagers": ["gradle"],
+      "matchPackageNames": ["com.squareup.okhttp3:**"],
+      "groupName": "OkHttp"
+    },
+    {
+      "description": "kotlinx-coroutines-android + kotlinx-coroutines-test share the coroutines version (1.11.0) and must bump together.",
+      "matchManagers": ["gradle"],
+      "matchPackageNames": ["org.jetbrains.kotlinx:kotlinx-coroutines-**"],
+      "groupName": "kotlinx-coroutines"
     }
   ]
 }
