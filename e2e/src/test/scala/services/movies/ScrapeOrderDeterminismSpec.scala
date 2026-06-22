@@ -1,12 +1,11 @@
 package services.movies
 
-import clients.tools.FakeHttpFetch
 import controllers.{FilmSchedule, MovieControllerService}
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete
-import tools.{FixtureTestWiring, HttpFetch}
+import tools.{FixtureTestWiring, SameThreadExecutionBudget}
 
 import java.time.LocalDateTime
 import scala.collection.mutable
@@ -24,13 +23,12 @@ import scala.collection.mutable
  * For each of a handful of multi-cinema films it replays the same scrape input
  * `IterationsPerMovie` times, each time randomizing every ordering we control:
  *   - the order cinema scrapes arrive (and the within-cinema movie order),
- *   - the order `MovieDetailsComplete` events are published,
- *   - the timing each enrichment fetch (TMDB / IMDb / Metacritic / Rotten
- *     Tomatoes / Filmweb) *completes* — a [[JitterHttpFetch]] sleeps a
- *     deterministic-per-(url,seed) few ms before each call, so the four rating
- *     stages on their separate worker pools finish in a perturbed order every
- *     run.
- * This guards the ORDER axis (same inputs, shuffled timing → same output). Its
+ *   - the order `MovieDetailsComplete` events are published.
+ * The enrichment cascade (TMDB / IMDb / Metacritic / Rotten Tomatoes / Filmweb)
+ * runs on a deterministic SAME-THREAD budget, so its completion order follows the
+ * shuffles above — pure ORDERING, with no `Thread.sleep` timing jitter and no
+ * thread-pool race, so each seed is exactly reproducible.
+ * This guards the ORDER axis (same inputs, shuffled order → same output). Its
  * companion `ReScrapeIdempotencySpec` guards the TEMPORAL axis: once settled, an
  * identical re-scrape and a further settle pass must both be no-ops (the settled
  * corpus is a fixpoint). Together they pin "the corpus is a pure function of the
@@ -74,9 +72,6 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
   // the (now larger) film set still finishes in ~15s.
   private val MoviesToTest     = 40
   private val IterationsPerMovie = 5
-  // Per-fetch sleep ceiling (ms). Small enough that the perturbation adds only
-  // a few ms per replay, large enough that concurrent rating stages reorder.
-  private val MaxJitterMillis  = 3
 
   // Films that surfaced an order-dependence (or were near-misses) while this
   // spec was built — pinned so they're always replayed even when they're not in
@@ -137,17 +132,18 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     (curated ++ auto).distinctBy(_.cleanTitle)
   }
 
-  /** Replay one film with a given RNG seed: fresh wiring (jittered enrichment
-   *  fetch), shuffled cinema arrival + within-cinema order, shuffled event
+  /** Replay one film with a given RNG seed: fresh wiring (same-thread enrichment
+   *  budget), shuffled cinema arrival + within-cinema order, shuffled event
    *  publish order, drain. Returns the persisted record(s) and the rendered
    *  rows across every city. */
   private def replay(group: FilmGroup, seed: Long): (Seq[StoredMovieRecord], Seq[FilmSchedule]) = {
     val rnd = new scala.util.Random(seed)
     val w = new FixtureTestWiring(Fixture) {
-      // Only this wiring's ENRICHMENT goes through httoFetch here (we never call
-      // scraper.fetch() in a replay — cinema data is the pre-parsed harvest), so
-      // the jitter perturbs exactly the TMDB/IMDb/MC/RT/Filmweb arrival timing.
-      override lazy val httoFetch: HttpFetch = new JitterHttpFetch(new FakeHttpFetch(fixture), seed, MaxJitterMillis)
+      // Perturb by ORDERING, not timing: the shuffled cinema-arrival + event-publish
+      // order (below) decides the cascade, which runs on a deterministic SAME-THREAD
+      // budget — the TMDB-resolution AND imdb-id-recovery pools both run inline, with
+      // no `Thread.sleep` jitter and no thread-pool race, so each seed is reproducible.
+      override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
 
     val created = mutable.ListBuffer.empty[MovieDetailsComplete]
@@ -220,14 +216,13 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
       .groupBy(_._1).view.mapValues(_.flatMap(_._2)).toSeq
 
   /** Replay the WHOLE corpus once: shuffled cinema arrival order, shuffled event
-   *  publish order, jittered enrichment timing, then drain + the deterministic
+   *  publish order, same-thread enrichment, then drain + the deterministic
    *  convergence sweep `bootStartup` runs. Returns the full persisted corpus and
    *  the rendered rows across every city. */
   private def replayCorpus(seed: Long): (Seq[StoredMovieRecord], Seq[FilmSchedule]) = {
     val rnd = new scala.util.Random(seed)
-    val jitter = new JitterHttpFetch(new FakeHttpFetch(Fixture), seed, MaxJitterMillis)
     val w = new FixtureTestWiring(Fixture) {
-      override lazy val httoFetch: HttpFetch = jitter
+      override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
     val created = mutable.ListBuffer.empty[MovieDetailsComplete]
     rnd.shuffle(harvestByCinema).foreach { case (cinema, movies) =>
@@ -248,13 +243,11 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     w.enrichDetailsSync()
     rnd.shuffle(created.toList).foreach(w.eventBus.publish)
     w.drainServices()
-    // The async drain above is where the concurrent enrichment pools complete in
-    // a perturbed order (what the jitter forces). The following `converge()`
-    // re-enriches all ~950 films SERIALLY, but in a SHUFFLED order (seeded by
-    // this replay) — mirroring prod's arbitrary `retryUnresolvedTmdb` sweep, so a
-    // cross-film re-enrich/settle order can't change the result. Single-threaded,
-    // so the per-fetch jitter only burns wall-clock here — switch it off.
-    jitter.enabled = false
+    // The drain above runs the enrichment pools — now SAME-THREAD, so their order is
+    // fixed by the seeded arrival/publish shuffle, not a race. The following
+    // `converge()` re-enriches all ~950 films SERIALLY, but in a SHUFFLED order
+    // (seeded by this replay) — mirroring prod's arbitrary `retryUnresolvedTmdb`
+    // sweep, so a cross-film re-enrich/settle order can't change the result.
     w.converge(Some(rnd))
     val record = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     // Project the converged corpus into the read model and warm it — the same
@@ -411,6 +404,3 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
         s"dir=${s.director.mkString(",")} | $showings"
     }.mkString("\n")
 }
-
-// `JitterHttpFetch` (shared with `StagingOrderDeterminismSpec`) lives in its own
-// file now.

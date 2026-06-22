@@ -129,14 +129,23 @@ private[tools] abstract class DelegatingExecutorService(delegate: ExecutorServic
  * `DaemonExecutors.virtualThreadEC` semantics (used by tests that don't want a
  * cap).
  */
-final class SharedExecutionBudget(maxConcurrent: Int) {
+/** The abstraction the wiring depends on for background-task execution contexts.
+ *  Production wires [[SharedExecutionBudget]] (virtual threads under a shared cap);
+ *  the determinism harness wires a same-thread implementation so the enrichment
+ *  cascade runs by ordering alone, with no thread-pool race to shuffle. */
+trait ExecutionBudget {
+  def executionContext(name: String): ExecutionContextExecutorService
+  def executionContext(name: String, subLimit: Int): ExecutionContextExecutorService
+}
+
+final class SharedExecutionBudget(maxConcurrent: Int) extends ExecutionBudget {
   private val permits: Option[Semaphore] =
     if (maxConcurrent > 0) Some(new Semaphore(maxConcurrent)) else None
 
   /** A fresh virtual-thread EC named `${name}-N`, gated by this budget's shared
    *  permits. Shut it down independently of any sibling EC from the same
    *  budget. */
-  def executionContext(name: String): ExecutionContextExecutorService = {
+  override def executionContext(name: String): ExecutionContextExecutorService = {
     val underlying = DaemonExecutors.virtualThreadExecutor(name)
     val gated      = permits.fold(underlying)(p => DaemonExecutors.semaphoreGated(underlying, p))
     ExecutionContext.fromExecutorService(DaemonExecutors.dropRejectedAfterShutdown(gated))
@@ -152,7 +161,7 @@ final class SharedExecutionBudget(maxConcurrent: Int) {
    *  task waiting for a sub-slot doesn't sit holding a budget permit (which would
    *  let `subLimit` parked tasks starve the other consumers). The sub-semaphore
    *  is private to this EC, so there's no cross-consumer deadlock. */
-  def executionContext(name: String, subLimit: Int): ExecutionContextExecutorService = {
+  override def executionContext(name: String, subLimit: Int): ExecutionContextExecutorService = {
     val underlying  = DaemonExecutors.virtualThreadExecutor(name)
     val subGated    = DaemonExecutors.semaphoreGated(underlying, new Semaphore(subLimit.max(1)))
     val budgetGated = permits.fold(subGated)(p => DaemonExecutors.semaphoreGated(subGated, p))

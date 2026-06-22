@@ -4,7 +4,7 @@ import controllers.{FilmSchedule, MovieControllerService}
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.{FixtureTestWiring, SameThreadExecutorService}
+import tools.{FixtureTestWiring, SameThreadExecutionBudget}
 
 import java.time.LocalDateTime
 import scala.collection.mutable
@@ -53,12 +53,11 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     val rnd = new scala.util.Random(seed)
     // Perturb by ORDERING, not timing: the seeded cinema-arrival shuffle
     // (`bootStartupInterleaved`) decides the order rows enter resolution, and the
-    // enrichment cascade runs on a deterministic SAME-THREAD executor — so a seed is
-    // perfectly reproducible with no `Thread.sleep` jitter and no thread-pool race.
+    // whole background cascade runs on a deterministic SAME-THREAD budget — so a seed
+    // is perfectly reproducible with no `Thread.sleep` jitter and no thread-pool race.
     // `converge(Some(rnd))` then additionally shuffles the re-enrich/settle sweep.
     val w = new FixtureTestWiring(Fixture) {
-      override protected def enrichmentEC: scala.concurrent.ExecutionContextExecutorService =
-        SameThreadExecutorService.newEC()
+      override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
     w.bootStartupInterleaved(rnd)
     w.converge(Some(rnd))
@@ -130,8 +129,7 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
   private def replaySubset(cinemas: Set[Cinema], seed: Long): Seq[StoredMovieRecord] = {
     val rnd = new scala.util.Random(seed)
     val w = new FixtureTestWiring(Fixture) {
-      override protected def enrichmentEC: scala.concurrent.ExecutionContextExecutorService =
-        SameThreadExecutorService.newEC()
+      override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
     w.bootStartupInterleaved(rnd, cinemas.contains)
     w.converge(Some(rnd))
