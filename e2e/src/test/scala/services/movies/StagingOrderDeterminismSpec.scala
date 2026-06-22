@@ -1,11 +1,10 @@
 package services.movies
 
-import clients.tools.FakeHttpFetch
 import controllers.{FilmSchedule, MovieControllerService}
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.{FixtureTestWiring, HttpFetch}
+import tools.{FixtureTestWiring, SameThreadExecutorService}
 
 import java.time.LocalDateTime
 import scala.collection.mutable
@@ -23,7 +22,9 @@ import scala.collection.mutable
  * against a PARTIAL set of cinemas, before the cinema carrying the
  * canonical-order director spelling has landed. `bootStartupInterleaved` recreates
  * exactly that: cinemas arrive in a shuffled order and `advanceStagingOnce` runs
- * the reaper between arrivals, under a jittered fetch clock.
+ * the reaper between arrivals. The perturbation is pure ORDERING (the seeded
+ * arrival shuffle), not timing — the enrichment cascade runs on a deterministic
+ * same-thread executor, so each seed is exactly reproducible.
  *
  * This is the disorder behind the CI-only `FilmScheduleEndToEndSpec` flake on
  * "Zawieście czerwone latarnie": one cinema reports the director as "Yimou Zhang"
@@ -39,10 +40,10 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
   private val Fixture        = "08-06-2026"
   private val Now            = LocalDateTime.of(2026, 6, 8, 0, 0)
   private val Iterations     = 3
-  private val MaxJitterMillis = 3
 
   /** Boot the whole corpus through the real staging path with a shuffled,
-   *  reaper-interleaved cinema arrival (seeded) + jittered enrichment timing,
+   *  reaper-interleaved cinema arrival (seeded), the cascade on a same-thread
+   *  executor (ordering, not timing),
    *  THEN settle to the deterministic steady state with `converge` (re-resolve +
    *  re-fold + collapse, the same eventual-consistency sweep prod reaches via the
    *  daily retry), and capture the persisted records + the rendered rows across
@@ -50,14 +51,16 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
    *  the unsettled inline transient is stable, but it does promise this. */
   private def replay(seed: Long): (Seq[StoredMovieRecord], Seq[FilmSchedule]) = {
     val rnd = new scala.util.Random(seed)
-    val jitter = new JitterHttpFetch(new FakeHttpFetch(Fixture), seed, MaxJitterMillis)
+    // Perturb by ORDERING, not timing: the seeded cinema-arrival shuffle
+    // (`bootStartupInterleaved`) decides the order rows enter resolution, and the
+    // enrichment cascade runs on a deterministic SAME-THREAD executor — so a seed is
+    // perfectly reproducible with no `Thread.sleep` jitter and no thread-pool race.
+    // `converge(Some(rnd))` then additionally shuffles the re-enrich/settle sweep.
     val w = new FixtureTestWiring(Fixture) {
-      override lazy val httoFetch: HttpFetch = jitter
+      override protected def enrichmentEC: scala.concurrent.ExecutionContextExecutorService =
+        SameThreadExecutorService.newEC()
     }
     w.bootStartupInterleaved(rnd)
-    // Serial converge re-resolves/re-folds to steady state; jitter perturbs nothing
-    // serial, only burns wall-clock — switch it off (as replayCorpus does).
-    jitter.enabled = false
     w.converge(Some(rnd))
     w.readModelProjector.reconcile()
     w.webReadModel.reload()
@@ -119,17 +122,18 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
 
   // ── Targeted fast reproduction ──────────────────────────────────────────────
   // Boot ONLY the cinemas that report a film of interest (their REAL scrapers,
-  // real deferred-detail, jittered) — seconds instead of the 14-min full corpus —
+  // real deferred-detail) — seconds instead of the 14-min full corpus —
   // to pin a single film's arrival-order resolution race.
   private val HindRajabCinemas: Set[Cinema] =
     Set(CharlieMonroe, KinoMuranow, KinoAmondo, SluzewskiDomKultury)
 
   private def replaySubset(cinemas: Set[Cinema], seed: Long): Seq[StoredMovieRecord] = {
     val rnd = new scala.util.Random(seed)
-    val jitter = new JitterHttpFetch(new FakeHttpFetch(Fixture), seed, MaxJitterMillis)
-    val w = new FixtureTestWiring(Fixture) { override lazy val httoFetch: HttpFetch = jitter }
+    val w = new FixtureTestWiring(Fixture) {
+      override protected def enrichmentEC: scala.concurrent.ExecutionContextExecutorService =
+        SameThreadExecutorService.newEC()
+    }
     w.bootStartupInterleaved(rnd, cinemas.contains)
-    jitter.enabled = false
     w.converge(Some(rnd))
     w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
   }

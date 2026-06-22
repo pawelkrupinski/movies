@@ -103,8 +103,13 @@ trait TestWiring extends WorkerWiring {
   // way; the queue dispatch seam is covered by the unit + WorkerWiring specs. A
   // missing fixture is a permanent miss (the inline path drops a transient
   // failure without retrying — no cascade churn).
+  // The pool the inline TMDB-resolution cascade runs on. Overridable so the
+  // determinism harness can swap in a deterministic same-thread executor (ordering,
+  // not sleep-jittered concurrency) — see StagingOrderDeterminismSpec.
+  protected def enrichmentEC: scala.concurrent.ExecutionContextExecutorService =
+    backgroundBudget.executionContext("enrichment-worker")
   override lazy val movieService =
-    new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.executionContext("enrichment-worker"))
+    new MovieService(movieCache, eventBus, tmdbClient, enrichmentEC)
 
   // Staging repository/folder are Mongo-backed in prod; pin in-memory here — TestWiring's
   // Mongo is disabled, so the inherited MongoStagingRepository would silently drop the
