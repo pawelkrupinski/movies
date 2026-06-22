@@ -51,6 +51,14 @@ class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
   def findAllMovies():     Seq[ResolvedMovie]  = { findAllMoviesCalls.incrementAndGet();     lock.synchronized(moviesStore.values.toSeq) }
   def findAllScreenings(): Seq[CityScreening]  = { findAllScreeningsCalls.incrementAndGet(); lock.synchronized(screeningsStore.values.toSeq) }
 
+  // Id-only projections mirror Mongo's server-side `{_id}` / `{_id, filmId}`
+  // projection: they read ids WITHOUT decoding (or counting) a full reload, so the
+  // reconcile prune's lightweight path is faithfully exercised — a test can assert
+  // the prune never triggers a full `findAll*`.
+  override def findAllMovieIds(): Seq[String] = lock.synchronized(moviesStore.keys.toSeq)
+  override def findAllScreeningRefs(): Seq[ScreeningRef] =
+    lock.synchronized(screeningsStore.values.map(s => ScreeningRef(s._id, s.filmId)).toSeq)
+
   def countMovies():     Long = lock.synchronized(moviesStore.size.toLong)
   def countScreenings(): Long = lock.synchronized(screeningsStore.size.toLong)
 

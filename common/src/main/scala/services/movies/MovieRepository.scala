@@ -81,6 +81,16 @@ trait MovieRepository {
   /** Snapshot of every persisted record. Returns empty when disabled. */
   def findAll(): Seq[StoredMovieRecord]
 
+  /** Stream every persisted record through `f`, one row at a time, without
+   *  materialising the whole collection on the heap. The default loads via
+   *  [[findAll]] — fine for the in-memory store — while `MongoMovieRepository`
+   *  overrides it to page the cursor by `_id`, so the worker's read-model
+   *  reconcile never holds the full ~13 MB `movies` corpus (incl. multi-MB raw
+   *  `sourceData` rows) in memory at once. Ordering and the concurrent-write
+   *  no-duplicate/no-skip guarantee match [[findAll]] (keyset pagination on the
+   *  unique, immutable `_id` index). Best-effort: failures are logged, not thrown. */
+  def foreachRecord(f: StoredMovieRecord => Unit): Unit = findAll().foreach(f)
+
   /** Remove every record matching the given (title, year). Best-effort —
    *  failures are logged, never thrown. */
   def delete(title: String, year: Option[Int]): Unit
@@ -163,7 +173,12 @@ class MongoMovieRepository(
   // means it failed and re-running our own init would just hit the
   // same DNS / TLS timeout twice. Saves ~15s of boot time on the
   // offline / unreachable-cluster path.
-  fallbackToOwnInit: Boolean = true
+  fallbackToOwnInit: Boolean = true,
+  // Cursor page size for `foreachRecord`'s keyset pagination — the cap on how many
+  // corpus rows are decoded onto the heap at once. 200 rows × ~13 KB avg ≈ a few
+  // hundred KB per batch (vs ~13 MB for the whole corpus). Injectable so tests can
+  // force multiple pages with a handful of rows.
+  findAllBatchSize: Int = 200
 ) extends MovieRepository with Logging {
 
   // Lazy so subclasses that override every wire method (e.g.
@@ -253,6 +268,34 @@ class MongoMovieRepository(
           Seq.empty
       }.getOrElse(Seq.empty)
     case None => Seq.empty
+  }
+
+  /** Page the cursor by `_id` so the caller (the read-model reconcile) never holds
+   *  more than one batch — `findAllBatchSize` rows — of the ~13 MB corpus at once.
+   *  Keyset pagination (`_id > lastSeen`, sorted ascending) gives the SAME
+   *  no-duplicate/no-skip guarantee as [[findAll]]'s sorted scan: `_id` is unique
+   *  and immutable, and the `gt` filter + sort both run server-side under the
+   *  default binary collation, so a concurrent write can neither resurface a
+   *  visited row nor hide one whose `_id` doesn't change. A batch shorter than the
+   *  limit is the last page. */
+  override def foreachRecord(f: StoredMovieRecord => Unit): Unit = coll match {
+    case Some(c) =>
+      Try {
+        var afterId: Option[String] = None
+        var more = true
+        while (more) {
+          val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
+          val batch  = Await.result(
+            c.find(filter).sort(Sorts.ascending("_id")).limit(findAllBatchSize).toFuture(), 60.seconds)
+          batch.foreach(dto => f(StoredMovieDto.toDomain(dto)))
+          afterId = batch.lastOption.map(_._id)
+          more    = batch.sizeIs == findAllBatchSize
+        }
+      }.recover {
+        case exception: Throwable =>
+          logger.warn(s"MovieRepository.foreachRecord failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+      }
+    case None => ()
   }
 
   /** Deletes by `_id` (the current `documentId` formula) OR by the legacy `title` +

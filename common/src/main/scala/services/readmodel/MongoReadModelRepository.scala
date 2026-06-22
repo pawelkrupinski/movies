@@ -4,7 +4,8 @@ import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument, OperationType}
 import models.{CityScreening, ResolvedMovie}
-import org.mongodb.scala.model.{Filters, IndexOptions, Indexes}
+import org.mongodb.scala.bson.BsonDocument
+import org.mongodb.scala.model.{Filters, IndexOptions, Indexes, Projections}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import play.api.Logging
 
@@ -71,6 +72,34 @@ class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadMode
       Try(Await.result(c.find().toFuture(), 60.seconds)).recover {
         case exception: Throwable =>
           logger.warn(s"ReadModelRepository.findAllScreenings failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+          Seq.empty
+      }.getOrElse(Seq.empty)
+    case None => Seq.empty
+  }
+
+  // ── Id-only projections (the reconcile prune) ───────────────────────────────
+  // The prune needs only ids/filmIds to spot orphaned documents; projecting them
+  // server-side (read as BsonDocument, not the full case-class codec) keeps the
+  // worker's 30-min reconcile from decoding the whole read model onto the heap —
+  // the transient that, stacked on the resident corpus, exhausted the 320m heap.
+
+  override def findAllMovieIds(): Seq[String] = movies match {
+    case Some(c) =>
+      Try(Await.result(c.find[BsonDocument]().projection(Projections.include("_id")).toFuture(), 60.seconds)
+        .map(_.getString("_id").getValue)).recover {
+        case exception: Throwable =>
+          logger.warn(s"ReadModelRepository.findAllMovieIds failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+          Seq.empty
+      }.getOrElse(Seq.empty)
+    case None => Seq.empty
+  }
+
+  override def findAllScreeningRefs(): Seq[ScreeningRef] = screenings match {
+    case Some(c) =>
+      Try(Await.result(c.find[BsonDocument]().projection(Projections.include("_id", "filmId")).toFuture(), 60.seconds)
+        .map(d => ScreeningRef(d.getString("_id").getValue, d.getString("filmId").getValue))).recover {
+        case exception: Throwable =>
+          logger.warn(s"ReadModelRepository.findAllScreeningRefs failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
           Seq.empty
       }.getOrElse(Seq.empty)
     case None => Seq.empty

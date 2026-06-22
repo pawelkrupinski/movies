@@ -50,7 +50,7 @@ class ReadModelProjector(
 
   private val scheduler        = DaemonExecutors.scheduler("read-model-projector")
   private val ReconcileSeconds = Env.positiveLong("KINOWO_READMODEL_RECONCILE_SECONDS", 1800L)
-  // The boot reconcile is a full `movieRepository.findAll()` + project-every-row scan.
+  // The boot reconcile is a full `movieRepository.foreachRecord` project-every-row scan.
   // Running it synchronously at `start()` stacked a second full scan onto the
   // cache hydrate and the first scrape on a cold JVM (the boot CPU-credit drain).
   // Defer it to the first scheduled tick this many seconds in — short, NOT the
@@ -109,8 +109,9 @@ class ReadModelProjector(
   /** Re-project every source row (the diff keeps it cheap — only genuinely
    *  changed documents are written) and prune derived documents whose source film is gone.
    *
-   *  Self-healing: the prune diffs the ACTUAL read model (`reader.findAll*`)
-   *  against the live source, NOT this process's in-memory `lastMovie`. The
+   *  Self-healing: the prune diffs the ACTUAL read model ids
+   *  (`reader.findAllMovieIds`/`findAllScreeningRefs`) against the live source,
+   *  NOT this process's in-memory `lastMovie`. The
    *  change stream delivers no deletes, so a film the worker re-keyed — a scrape
    *  pins a raw cinema year, enrichment resolves a different TMDB year, `settle`
    *  folds same-tmdbId variants — leaves its old `web_movies`/`web_screenings`
@@ -122,21 +123,31 @@ class ReadModelProjector(
    *  A row that fails to project must not abort the prune (the prune is what
    *  removes the duplicates), so each projection is guarded individually. */
   def reconcile(): Unit = lock.synchronized {
-    // Only READY rows are part of the read model — held-back rows are absent
-    // from `liveIds`, so they neither project nor leave a stale document behind, and
-    // a row that becomes ready between ticks gets projected on the next one.
-    val ready   = movieRepository.findAll().filter(_.record.readyToProject)
-    val liveIds = ready.iterator.map(ReadModelProjection.filmId).toSet
-    ready.foreach { row =>
-      try project(row)
-      catch { case exception: Throwable =>
-        logger.warn(s"read-model reconcile: a row failed to project, continuing: ${exception.getMessage}") }
+    // Stream the source rows one at a time (`foreachRecord`) rather than
+    // materialising the whole ~13 MB corpus — the projector already holds the read
+    // model resident in `lastMovie`/`lastScreenings`, and a second full copy on top
+    // (plus the prune's read-model copies below) is the transient that exhausted the
+    // worker's 320m heap on the 30-min reconcile tick. Only READY rows are part of
+    // the read model — held-back rows are absent from `liveIds`, so they neither
+    // project nor leave a stale document behind, and a row that becomes ready
+    // between ticks gets projected on the next one.
+    val liveIds = scala.collection.mutable.Set.empty[String]
+    movieRepository.foreachRecord { row =>
+      if (row.record.readyToProject) {
+        liveIds += ReadModelProjection.filmId(row)
+        try project(row)
+        catch { case exception: Throwable =>
+          logger.warn(s"read-model reconcile: a row failed to project, continuing: ${exception.getMessage}") }
+      }
     }
-    reader.findAllMovies().iterator.map(_._id).filterNot(liveIds).foreach(deleteFilm)
-    reader.findAllScreenings().iterator.filterNot(s => liveIds(s.filmId)).foreach { s =>
-      writer.deleteScreening(s._id)
+    // Prune off id-only projections — the prune reads ids/filmIds, never payloads,
+    // so projecting them server-side keeps the whole `web_movies`/`web_screenings`
+    // corpus off the heap (the read model is already resident in memory anyway).
+    reader.findAllMovieIds().iterator.filterNot(liveIds).foreach(deleteFilm)
+    reader.findAllScreeningRefs().iterator.filterNot(ref => liveIds(ref.filmId)).foreach { ref =>
+      writer.deleteScreening(ref._id)
       metrics.recordWrite(Target.Screening, Op.Delete, 1)
-      lastScreenings.updateWith(s.filmId)(_.map(_ - s._id).filter(_.nonEmpty))
+      lastScreenings.updateWith(ref.filmId)(_.map(_ - ref._id).filter(_.nonEmpty))
     }
   }
 

@@ -89,6 +89,22 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.findAllMovies().map(_._id) should contain only fid  // Bar is held back
   }
 
+  // Memory flatten: the 30-min reconcile holds the read model resident already, so
+  // the prune must diff it off id-only projections (`findAllMovieIds` /
+  // `findAllScreeningRefs`) — NOT a second full `findAllMovies` / `findAllScreenings`
+  // decode of the whole corpus. A second full read on top of the resident copy is the
+  // transient that exhausted the worker's 320m heap on the reconcile tick.
+  "reconcile" should "prune off id-only projections, never a full findAllMovies/findAllScreenings" in {
+    val (projector, repository, rm) = fixture()
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.reconcile()                       // projects Foo
+    repository.delete("Foo", Some(2024))         // source gone → next reconcile prunes
+    projector.reconcile()
+    rm.movieDeletes should contain(fid)          // the prune actually ran
+    rm.findAllMoviesCalls.get()     shouldBe 0   // …off id-only projections, not full decodes
+    rm.findAllScreeningsCalls.get() shouldBe 0
+  }
+
   "a showtime-only change" should "move only the one screening document" in {
     val (projector, _, rm) = fixture()
     projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
