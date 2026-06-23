@@ -11,20 +11,39 @@
   .intro { color: #777; font-size: 12px; margin: 0 0 1rem; max-width: 60ch; }
   .tune-layout { display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap; }
 
-  /* Control panel. */
-  .panel { flex: 1 1 340px; min-width: 300px; }
-  .panel-header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .6rem; }
+  /* Control panel — a floating "app window": it floats over the preview,
+     drags by its header, and collapses to a small corner bubble. Out of
+     flow (position:fixed) so the preview keeps the full layout width. */
+  .panel {
+    position: fixed; top: 1rem; right: 1rem; z-index: 1000;
+    width: 360px; max-width: calc(100vw - 2rem); max-height: calc(100vh - 2rem);
+    overflow: auto; padding: 0 .8rem .8rem;
+    background: #12121e; border: 1px solid #2a2a3e; border-radius: 8px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, .6);
+  }
+  /* Header doubles as the title bar / drag handle; sticks to the top while
+     the body scrolls, and spans the panel's padding via negative margins. */
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+    position: sticky; top: 0; z-index: 1;
+    margin: 0 -.8rem .6rem; padding: .5rem .8rem;
+    cursor: move; user-select: none; touch-action: none;
+    background: #1a1a2e; border-bottom: 1px solid #2a2a3e; border-radius: 8px 8px 0 0;
+  }
   .panel-title { font-size: 12px; color: #66aadd; text-transform: uppercase; letter-spacing: .06em; }
   .panel-toggle {
     flex: 0 0 auto; width: 1.7em; height: 1.7em; line-height: 1; padding: 0;
-    background: #1a1a2e; border: 1px solid #3a3a6e; color: #aad4ff;
+    background: #12121e; border: 1px solid #3a3a6e; color: #aad4ff;
     border-radius: 4px; cursor: pointer; font: inherit; font-size: 14px;
   }
   .panel-toggle:hover { background: #252540; color: #fff; }
-  /* Minimized: shrink to the header bar and hand the freed width back to
-     the preview by dropping the grow factor and the 300px floor. */
-  .panel.minimized { flex: 0 0 auto; min-width: 0; }
+  /* Minimized → a compact corner bubble: just the header bar, auto width. */
+  .panel.minimized {
+    width: auto; max-height: none; overflow: visible; padding: 0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .5);
+  }
   .panel.minimized > *:not(.panel-header) { display: none; }
+  .panel.minimized .panel-header { margin: 0; border-bottom: 0; border-radius: 8px; }
   .panel-group { margin-bottom: 1rem; }
   .panel-group h2 {
     font-size: 12px; color: #66aadd; text-transform: uppercase; letter-spacing: .06em;
