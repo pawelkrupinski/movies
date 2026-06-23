@@ -344,6 +344,18 @@
         { "refId": "A", "expr": "histogram_quantile(0.90, sum by (le, site) (rate(kinowo_worker_rating_first_attempt_delay_seconds_bucket[$__rate_interval])))", "legendFormat": "p90 {{site}}" },
         { "refId": "B", "expr": "histogram_quantile(0.50, sum by (le, site) (rate(kinowo_worker_rating_first_attempt_delay_seconds_bucket[$__rate_interval])))", "legendFormat": "p50 {{site}}" }
       ]
+    },
+    {
+      "id": 36,
+      "title": "Worker — movies corpus coverage (records, ids, ratings)",
+      "description": "Census of the live `movies` collection, sampled off-band every 5 min by WorkerCorpusMetrics and exposed as kinowo_worker_corpus_movies{subset}. total = distinct movie records; with_any_rating = at least one of imdb/fw/rt/mc; with_tmdb_id / with_imdb_id = resolution coverage; imdb_rating/rt_rating/mc_rating/fw_rating = per-source rating coverage. The gap between total and with_*_id is the resolution backlog; the gap between with_tmdb_id and each rating series is each site's enrichment backlog.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 139 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "kinowo_worker_corpus_movies", "legendFormat": "{{subset}}" }
+      ]
     }
   ]
 }

@@ -400,7 +400,16 @@ class WorkerWiring extends play.api.Logging {
   // Prometheus. The queue is wrapped so every enqueue is metered centrally; the
   // TaskWorker reports claims/outcomes/durations via the same object as its
   // `TaskObserver`; the /metrics handler refreshes the queue gauges per scrape.
-  lazy val taskMetrics: WorkerTaskMetrics = new WorkerTaskMetrics(workerPoolSize)
+  // One registry shared by every worker metric so a single /metrics scrape (and
+  // the existing `taskMetrics.scrape()` render) exposes the task pipeline AND the
+  // corpus census together.
+  lazy val metricsRegistry: io.prometheus.metrics.model.registry.PrometheusRegistry =
+    new io.prometheus.metrics.model.registry.PrometheusRegistry()
+  lazy val taskMetrics: WorkerTaskMetrics = new WorkerTaskMetrics(workerPoolSize, metricsRegistry)
+  // Periodic census of the movies corpus (counts of resolved/rated rows), sampled
+  // off-band and exposed on the same registry — see WorkerCorpusMetrics.
+  lazy val corpusMetrics: services.metrics.WorkerCorpusMetrics =
+    new services.metrics.WorkerCorpusMetrics(movieRepository, metricsRegistry)
   lazy val taskQueue: TaskQueue =
     new MeteredTaskQueue(new MongoTaskQueue(mongoConnection.database), taskMetrics)
   lazy val freshnessStore: FreshnessStore = new MongoFreshnessStore(mongoConnection.database)
@@ -781,6 +790,8 @@ class WorkerWiring extends play.api.Logging {
     // and backstops stalled chains; the TaskWorker (above) drains the steps.
     stagingReaper.start()
     stagingStuckAlerter.foreach(_.start())
+    // Census the corpus for the /metrics gauges (off-band, read-only paged scan).
+    corpusMetrics.start()
   }
 
   /** Event-cascade drain order, producer→consumer (see monolith comment). Only
@@ -790,6 +801,7 @@ class WorkerWiring extends play.api.Logging {
 
   def stop(): Unit = {
     envConfigService.stop()
+    corpusMetrics.stop()
     stagingStuckAlerter.foreach(_.stop())
     stagingReaper.stop()
     scrapeReaper.stop()
