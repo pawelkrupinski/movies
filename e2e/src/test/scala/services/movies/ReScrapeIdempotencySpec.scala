@@ -5,8 +5,12 @@ import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete
 import tools.FixtureTestWiring
 
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.{Random, Try}
 
 /**
  * TEMPORAL idempotency / fixpoint guard — the axis `ScrapeOrderDeterminismSpec`
@@ -53,17 +57,41 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
   /** One production-shaped scrape tick that REPLICATES `runOneScrapeTick` but
    *  observes the staging sink right after the scrape phase (before it drains),
    *  so a known film re-diverted to `pending_movies` is visible. Returns the set
-   *  of `(cinema, sanitize(title))` diversions this tick produced. */
-  private def scrapeTickObservingStaging(w: FixtureTestWiring): Set[(String, String)] = {
+   *  of `(cinema, sanitize(title))` diversions this tick produced.
+   *
+   *  Two deliberate departures from a naive serial loop, both strengthening the
+   *  test rather than the opposite:
+   *   - The per-cinema `fetch()` (a pure fixture read + parse, no shared state)
+   *     runs CONCURRENTLY. That's the I/O-bound bulk of a tick; fanning it out
+   *     cuts wall-clock without changing what each cinema reports.
+   *   - The cache MUTATION (`recordCinemaScrape` + `classify`) is then applied
+   *     SERIALLY but in a per-tick `rnd`-SHUFFLED order, so we assert the settled
+   *     corpus stays churn-free regardless of which order cinemas re-report —
+   *     not merely the fixed catalogue order. `rnd` is seeded by the caller, so
+   *     any order-dependent regression reproduces deterministically. */
+  private def scrapeTickObservingStaging(w: FixtureTestWiring, rnd: Random): Set[(String, String)] = {
     val stagingBefore = w.stagingRepository.findAll()
       .map(r => (r.cinema.displayName, services.movies.TitleNormalizer.sanitize(r.title))).toSet
     val ready = mutable.ListBuffer.empty[MovieDetailsComplete]
-    w.cinemaScrapers.foreach { scraper =>
+
+    val pool = Executors.newFixedThreadPool(8)
+    val fetched =
       try {
-        val touched = w.movieCache.recordCinemaScrape(scraper.cinema, scraper.fetch())
-        ready ++= w.cinemaScrapeRunner.classify(scraper.cinema, touched)
-      } catch { case _: Exception => () }
+        implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(pool)
+        Await.result(
+          Future.sequence(w.cinemaScrapers.toList.map(s => Future((s, Try(s.fetch()).toOption)))),
+          5.minutes)
+      } finally pool.shutdown()
+
+    rnd.shuffle(fetched).foreach { case (scraper, showtimes) =>
+      showtimes.foreach { st =>
+        try {
+          val touched = w.movieCache.recordCinemaScrape(scraper.cinema, st)
+          ready ++= w.cinemaScrapeRunner.classify(scraper.cinema, touched)
+        } catch { case _: Exception => () }
+      }
     }
+
     val stagingAfter = w.stagingRepository.findAll()
       .map(r => (r.cinema.displayName, services.movies.TitleNormalizer.sanitize(r.title))).toSet
     w.enrichDetailsSync()
@@ -74,8 +102,8 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
   /** A full settle tick: scrape (observing staging) + drain + fold + settle.
    *  Returns the staging diversions the scrape phase produced; merge churn is
    *  read separately off the injected `CountingMergeMetrics`. */
-  private def settleTick(w: FixtureTestWiring): Set[(String, String)] = {
-    val diversions = scrapeTickObservingStaging(w)
+  private def settleTick(w: FixtureTestWiring, rnd: Random): Set[(String, String)] = {
+    val diversions = scrapeTickObservingStaging(w, rnd)
     w.drainServices()
     w.drainStaging()
     w.movieService.settle()
@@ -147,12 +175,16 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
     // re-diversion of a known film back into staging. Key-spelling drift (a
     // settled title re-cased by the scrape path) is reported informationally —
     // it carries no merge/freshness cost and is tracked separately.
+    // Seeded so every tick re-scrapes in a different but REPRODUCIBLE cinema
+    // order (one `rnd`, its state advancing per tick) — an order-dependent
+    // regression fails deterministically here, never as a flake.
+    val rnd = new Random(0x2026_06_23L)
     val Ticks = 4
     val churn    = mutable.ListBuffer.empty[String]
     val keyDrift = mutable.ListBuffer.empty[String]
     (1 to Ticks).foreach { t =>
       val mergesBefore = merges.byReason
-      val diversions = settleTick(w)
+      val diversions = settleTick(w, rnd)
       val mergesDelta = MergeReason.all.map(r => r -> (merges.byReason(r) - mergesBefore(r))).filter(_._2 > 0)
       val keysNow = keySet(w)
       val added = keysNow -- settledKeys
