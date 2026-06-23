@@ -36,4 +36,13 @@ class KinoKijowClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     skarpety.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 10, 30))
     skarpety.showtimes.flatMap(_.bookingUrl).head should include("/MSI/Default.aspx?event_id=")
   }
+
+  // The portal bakes "2D DUBBING" / "2D NAPISY" into the h2 title. Strip it off
+  // the title and surface it as a per-showtime format badge instead.
+  it should "strip the trailing '2D DUBBING' tag into the showtime format badge" in {
+    val movies   = client.fetch()
+    val straszny = movies.find(_.movie.title == "Straszny film").value
+    straszny.movie.title shouldBe "Straszny film" // not "Straszny film 2D DUBBING"
+    straszny.showtimes.flatMap(_.format).toSet should contain allOf ("2D", "DUB")
+  }
 }

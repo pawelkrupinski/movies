@@ -49,6 +49,23 @@ class GdynskieCentrumFilmoweClientSpec extends AnyFlatSpec with Matchers with Op
     diabel.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 20, 15))
   }
 
+  // The venue bakes the version into the title attribute ("Hopnięci | DUBBING");
+  // it's peeled off the title and surfaced as a per-showtime format badge. (The
+  // 07-06-2026 fixture has no such title, so this drives a crafted block.)
+  it should "strip a trailing '| DUBBING' tag off the title into the showtime format badge" in {
+    val html =
+      """<div class="film-width"><div class="box-item-content">
+        |<a title="Hopnięci | DUBBING"></a></div>
+        |<div class="projection"><div class="projection-location">Sala 1</div>
+        |<a class="film-hours" data-date="2026-06-20" data-hour="18:00" href="https://bilet.gcf.org.pl/MSI/x"></a>
+        |</div></div>""".stripMargin
+    val stub   = new GetOnlyHttpFetch { def get(url: String): String = html }
+    val movies = new GdynskieCentrumFilmoweClient(stub, GdynskieCentrumFilmowe).fetch()
+    val film   = movies.find(_.movie.title == "Hopnięci").value
+    film.movie.title shouldBe "Hopnięci" // not "Hopnięci | DUBBING"
+    film.showtimes.flatMap(_.format).toSet shouldBe Set("DUB")
+  }
+
   it should "include booking URLs pointing to bilet.gcf.org.pl" in {
     val movies = client.fetch()
     val bookings = movies.flatMap(_.showtimes).flatMap(_.bookingUrl)

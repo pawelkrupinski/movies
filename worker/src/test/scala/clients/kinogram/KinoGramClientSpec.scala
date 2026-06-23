@@ -24,9 +24,20 @@ class KinoGramClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return correct showtime counts per film" in {
-    val counts = results.map(m => m.movie.title -> m.showtimes.size).toMap
+    // The "(Dolby Atmos)" edition now strips to the base title, so the film spans
+    // two client rows (the cache folds them into one card downstream); sum them.
+    val counts = results.groupBy(_.movie.title).view.mapValues(_.map(_.showtimes.size).sum).toMap
     counts("Zawodowcy")                   shouldBe 17
-    counts("Diabeł ubiera się u Prady 2") shouldBe 24
+    counts("Diabeł ubiera się u Prady 2") shouldBe 27 // 24 base + 3 Dolby Atmos
+  }
+
+  // KinoGram bakes the premium-sound edition into the GraphQL title
+  // ("… (Dolby Atmos)"); strip it so those screenings fold onto the base film
+  // instead of standing up a near-duplicate card. Dolby Atmos isn't one of the
+  // app's format badges (2D/3D/DUB/NAP/IMAX/4DX), so it yields no badge token.
+  it should "strip a trailing '(Dolby Atmos)' edition tag off the title" in {
+    results.map(_.movie.title) should contain("Diabeł ubiera się u Prady 2")
+    results.map(_.movie.title) should not contain "Diabeł ubiera się u Prady 2 (Dolby Atmos)"
   }
 
   it should "map English country names to Polish and keep only the Polish synopsis" in {

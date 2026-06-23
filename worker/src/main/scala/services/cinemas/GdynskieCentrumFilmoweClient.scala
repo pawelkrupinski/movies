@@ -69,6 +69,7 @@ object GdynskieCentrumFilmoweClient {
 
   private[cinemas] case class RawSlot(
     title:   String,
+    format:  List[String],
     poster:  Option[String],
     dateTime: LocalDateTime,
     booking: Option[String],
@@ -82,7 +83,7 @@ object GdynskieCentrumFilmoweClient {
     SlotsToMovies.fold(
       slots,
       titleOf    = _.title,
-      showtimeOf = s => Showtime(s.dateTime, s.booking, s.room),
+      showtimeOf = s => Showtime(s.dateTime, s.booking, s.room, s.format),
       distinctBy = s => (s.dateTime, s.room)
     ) { (title, group, showtimes) =>
       CinemaMovie(
@@ -100,17 +101,21 @@ object GdynskieCentrumFilmoweClient {
 
   /** Parse all screenings out of one `div.film-width` block. */
   private def parseFilmBlock(filmDiv: Element): Seq[RawSlot] = {
-    // Title is on the anchor wrapping the image, via its `title` attribute.
-    val titleOpt = Option(filmDiv.selectFirst("div.box-item-content > a[title]"))
+    // Title is on the anchor wrapping the image, via its `title` attribute. The
+    // venue bakes the version into the title ("Hopnięci | DUBBING"); peel it off
+    // and carry it as a per-showtime badge so the dub/napisy variants collapse
+    // onto one film row without losing the format.
+    val titleTags = Option(filmDiv.selectFirst("div.box-item-content > a[title]"))
       .map(_.attr("title").trim)
-      .filter(_.nonEmpty)
+      .map(ScraperParse.extractFormatTags)
+      .filter(_._1.nonEmpty)
     val poster   = Option(filmDiv.selectFirst("img.image-film[src]"))
       .map(_.attr("src").trim)
       .filter(_.nonEmpty)
 
-    titleOpt match {
+    titleTags match {
       case None    => Seq.empty
-      case Some(t) =>
+      case Some((t, fmt)) =>
         // Each `div.projection` block within the film entry groups one hall's
         // screenings. The hall name is in a sibling `div.projection-location`.
         filmDiv.select("div.projection").asScala.toSeq.flatMap { projDiv =>
@@ -122,7 +127,7 @@ object GdynskieCentrumFilmoweClient {
             val hourStr = a.attr("data-hour").trim
             val booking = Option(a.attr("href")).filter(u => u.nonEmpty && u != "#")
             parseDateTime(dateStr, hourStr).map { dt =>
-              RawSlot(t, poster, dt, booking, hall)
+              RawSlot(t, fmt, poster, dt, booking, hall)
             }
           }
         }

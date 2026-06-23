@@ -92,8 +92,20 @@ object HeliosNuxt {
   // The event/format suffix peeling now lives in the editable "helios" rules
   // (TitleRuleDefaults, same order); this delegates so the Nuxt+REST dedup
   // grouping/matching still collapses decorated variants onto the bare film.
-  def cleanTitle(title: String): String =
-    services.movies.TitleNormalizer.cinemaClean("helios", title)
+  // On top of those rules we peel any trailing screen-format/version tag the
+  // rules don't cover ("Babystar - 2D NAP"); the 2D/NAP it carries is already in
+  // Showtime.format (see above), so stripping it from the title loses nothing.
+  // Anchored on the separator that precedes the tag, so a bare in-title "3D"
+  // ("Billie Eilish … The Tour Live in 3D") and trailing whitespace are left
+  // alone — only a clearly-delimited format tail is removed.
+  def cleanTitle(title: String): String = {
+    val cleaned = services.movies.TitleNormalizer.cinemaClean("helios", title)
+    if (FormatTail.findFirstMatchIn(cleaned).isDefined) FormatTail.replaceFirstIn(cleaned, "").trim
+    else cleaned
+  }
+
+  private val FormatTail =
+    """(?i)\s+[-–—|/]\s*(?:(?:2D|3D|IMAX|4DX|DUBBING|DUBB|DUB|NAPISY|NAP|LEKTOR|LEK)\b[\s/]*)+$""".r
 
   def buildMovies(html: String, config: HeliosCinema = Poznan): Seq[CinemaMovie] = {
     val parsed   = parseNuxtPage(html, config.baseUrl)

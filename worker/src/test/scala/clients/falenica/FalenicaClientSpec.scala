@@ -5,6 +5,7 @@ import models.{Showtime, StacjaFalenica}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.FalenicaClient
+import tools.GetOnlyHttpFetch
 
 import java.time.LocalDateTime
 
@@ -33,6 +34,27 @@ class FalenicaClientSpec extends AnyFlatSpec with Matchers {
     romeria.showtimes.head shouldBe
       Showtime(LocalDateTime.of(2026, 6, 14, 20, 0), Some("https://ksf.systembiletowy.pl/index.php/repertoire.html?id=33447"), None, Nil)
     byTitle("Znaki Pana Śliwki").showtimes.size shouldBe 3
+  }
+
+  // The listing bakes the version into the title ("Ścieżki życia – LEKTOR"); it's
+  // peeled off and carried as a per-showtime format badge. (The recorded fixture
+  // has no such title, so this drives crafted listing + detail HTML.)
+  it should "strip a trailing 'LEKTOR' tag off the listing title into the showtime format badge" in {
+    val listing =
+      """<article class="filmy"><h2 class="repe_title">
+        |<a href="/filmy/test-lektor/">Ścieżki życia – LEKTOR</a></h2></article>""".stripMargin
+    val detail =
+      """<div class="terminy_list"><div class="row">
+        |<div class="term_det">20.06.2026</div><div class="term_det">18:00</div>
+        |<a class="green_but" href="https://ksf.systembiletowy.pl/x">Kup</a>
+        |</div></div>""".stripMargin
+    val stub = new GetOnlyHttpFetch {
+      def get(url: String): String = if (url.contains("/filmy/")) detail else listing
+    }
+    val movies = new FalenicaClient(stub).fetch()
+    val film   = movies.find(_.movie.title == "Ścieżki życia").getOrElse(fail("no Ścieżki życia"))
+    film.movie.title shouldBe "Ścieżki życia" // not "Ścieżki życia – LEKTOR"
+    film.showtimes.flatMap(_.format).toSet shouldBe Set("LEK")
   }
 
   it should "read runtime off the listing and showtimes off the detail page" in {

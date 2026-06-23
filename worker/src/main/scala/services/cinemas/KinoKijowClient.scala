@@ -52,7 +52,7 @@ class KinoKijowClient(
     }
     val slots = months.flatMap(m => pages.getOrElse(m, None).toSeq.flatMap(html => parseDocument(html, m)))
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, Some(s.bookingUrl))) { (title, _, showtimes) =>
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, Some(s.bookingUrl), format = s.format)) { (title, _, showtimes) =>
       CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
@@ -93,7 +93,7 @@ object KinoKijowClient {
   // "07 cze 10:30" — day, Polish month abbr, time
   private val DateTimePat = """(\d{1,2})\s+(\w+)\s+(\d{2}:\d{2})""".r
 
-  private[cinemas] case class RawSlot(title: String, dateTime: LocalDateTime, bookingUrl: String)
+  private[cinemas] case class RawSlot(title: String, format: List[String], dateTime: LocalDateTime, bookingUrl: String)
 
   private[cinemas] def parseDocument(html: String, month: YearMonth): Seq[RawSlot] = {
     val document = Jsoup.parse(html)
@@ -102,9 +102,15 @@ object KinoKijowClient {
       val cdDate  = Option(block.selectFirst("span.cd-date")).map(_.text.trim).getOrElse("")
       val h2Text  = Option(block.selectFirst("h2")).map(_.text.trim).getOrElse("")
 
-      // Parse date/time from the span; title from h2 after the " - " separator
+      // Parse date/time from the span; title from h2 after the " - " separator.
+      // The portal bakes the screening's screen-format/version into the title
+      // ("Willow i tajemniczy las 2D DUBBING"); peel it off and surface it as a
+      // per-showtime badge instead so the 2D-DUB and 2D-NAP variants collapse
+      // onto one film row without losing the format.
       val dateTime = parseDateTimePat(cdDate, month)
-      val title    = h2Title(h2Text).map(t => TitleNormalizer.cinemaClean("kino-kijow", t)).filter(_.nonEmpty)
+      val titleTags = h2Title(h2Text)
+        .map(t => ScraperParse.extractFormatTags(TitleNormalizer.cinemaClean("kino-kijow", t)))
+        .filter(_._1.nonEmpty)
 
       val bookingUrl = Option(block.selectFirst("a.btn-badge2[href^=\"/MSI/Default.aspx\"]"))
         .map(_.attr("href").trim)
@@ -113,9 +119,9 @@ object KinoKijowClient {
 
       for {
         dt <- dateTime
-        t  <- title
+        (t, fmt) <- titleTags
         bu <- bookingUrl
-      } yield RawSlot(t, dt, bu)
+      } yield RawSlot(t, fmt, dt, bu)
     }
   }
 

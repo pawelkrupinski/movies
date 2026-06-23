@@ -34,7 +34,7 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
   private val SlugPat    = """/filmy/([^/"]+)/""".r
   private val DateFmt    = DateTimeFormatter.ofPattern("dd.MM.yyyy")
 
-  private case class Film(slug: String, title: String, runtime: Option[Int], director: Seq[String], poster: Option[String])
+  private case class Film(slug: String, title: String, format: List[String], runtime: Option[Int], director: Seq[String], poster: Option[String])
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
@@ -53,7 +53,8 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
 
     films.flatMap { f =>
       val detail    = pages.getOrElse(f.slug, None)
-      val showtimes = detail.toSeq.flatMap(parseShowtimes).distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
+      val showtimes = detail.toSeq.flatMap(parseShowtimes).map(_.copy(format = f.format))
+        .distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
       if (showtimes.isEmpty) None
       else Some(CinemaMovie(
         movie     = Movie(title = f.title, runtimeMinutes = f.runtime, releaseYear = None),
@@ -93,7 +94,10 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
 
   private def parseListItem(art: Element): Option[Film] =
     Option(art.selectFirst("h2.repe_title a")).flatMap { a =>
-      val title = a.text.trim
+      // The listing bakes the version into the title ("Ścieżki życia – LEKTOR");
+      // peel it off and carry it as a per-showtime badge so the LEKTOR/napisy
+      // variants collapse onto one film row without losing the format.
+      val (title, format) = ScraperParse.extractFormatTags(a.text.trim)
       SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1)).filter(_ => title.nonEmpty).map { slug =>
         val czas     = Option(art.selectFirst("div.repe_czas")).map(_.text.trim).getOrElse("")
         val runtime  = """(\d+)\s*min""".r.findFirstMatchIn(czas).map(_.group(1).toInt)
@@ -102,7 +106,7 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
         val poster   = Option(art.selectFirst("div.repe_outer")).map(_.attr("style"))
                          .flatMap(ScraperParse.cssUrl)
                          .map(u => if (u.startsWith("http")) u else s"$BaseUrl/${u.stripPrefix("/")}")
-        Film(slug, title, runtime, director, poster)
+        Film(slug, title, format, runtime, director, poster)
       }
     }
 

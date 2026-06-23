@@ -1702,6 +1702,7 @@ cinemaScrapes:
   Kino Ikar / Drzewo magii / —
   Kino KDK / Drzewo magii / —
   Kino Kalejdoskop / Drzewo magii / —
+  Kino Kijów / Drzewo magii / —
   Kino Kika / DRZEWO MAGII / —
   Kino Kolory / Drzewo magii / —
   Kino Kreska / Drzewo magii / —
@@ -3240,6 +3241,7 @@ cinemaScrapes:
   Helios Tczew / Kurozając i Świątynia Świstaka / —
   Helios Żory / Kurozając i Świątynia Świstaka / —
   Kino Bajka Kluczbork / Kurozając i świątynia Świstaka / —
+  Kino Kijów / Kurozając i świątynia świstaka / —
   Kino MCK / Kurozając i świątynia świstaka / —
   Kino MOKiS / Kurozając i świątynia Świstaka / —
   Kino Na Biegunach / Kurozając i świątynia świstaka / —
@@ -3354,7 +3356,7 @@ cinemaScrapes:
   Helios Biała / Mandalorian & Grogu / 2025
   Helios Bielsko-Biała / Mandalorian & Grogu / 2025
   Helios Blue City / Mandalorian & Grogu / 2025
-  Helios Bydgoszcz / Mandalorian & Grogu / 2025
+  Helios Bydgoszcz / Mandalorian & Grogu / —
   Helios Dąbrowa Górnicza / Mandalorian & Grogu / 2025
   Helios Forum / Mandalorian & Grogu / 2025
   Helios Gorzów Wielkopolski / Mandalorian & Grogu / 2025
@@ -4630,6 +4632,7 @@ cinemaScrapes:
   Kino IKM / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Ignacy / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino KDK / Niesamowite przygody skarpetek 3. Ale kosmos! / —
+  Kino Kijów / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Kika / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / —
   Kino Kreska / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Lewart / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -5085,6 +5088,7 @@ cinemaScrapes:
   Cinema City Wroclavia / Ojczyzna / 2026
   Dolnośląskie Centrum Filmowe / Ojczyzna / 2026
   Forum / Ojczyzna / —
+  Gdyńskie Centrum Filmowe / Ojczyzna / —
   Janosik / Ojczyzna / —
   KINOMUZEUM / Ojczyzna / 2026
   Kino 60 Krzeseł / Ojczyzna / —
@@ -6688,6 +6692,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14578-przeklenstwa-niewinnosci/
 cinemaScrapes:
   Dolnośląskie Centrum Filmowe / Przekleństwa niewinności / 1999
+  Gdyńskie Centrum Filmowe / Przekleństwa niewinności / —
   Kino Pałacowe / Przekleństwa niewinności / 1999
   Kino Pod Baranami / Przekleństwa niewinności / —
 showings:
@@ -7246,6 +7251,7 @@ cinemaScrapes:
   Helios Przemyśl / Straszny film / 2026
   Helios Płock / Straszny film / 2026
   Helios Radom / Straszny film / 2026
+  Helios Riviera / Straszny film / 2026
   Helios Rzeszów / Straszny film / 2026
   Helios Solaris / Straszny film / 2026
   Helios Sosnowiec / Straszny film / 2026
@@ -7262,6 +7268,7 @@ cinemaScrapes:
   Kino Hel / STRASZNY FILM / —
   Kino Ignacy / Straszny film / —
   Kino Kalejdoskop / Straszny film / —
+  Kino Kijów / Straszny film / —
   Kino Lewart / Straszny film / —
   Kino MOK / Straszny film / —
   Kino MOK Centrum / STRASZNY FILM / —
@@ -7906,6 +7913,7 @@ cinemaScrapes:
   Kino Ignacy / Tom i jerry: przygoda w muzeum / —
   Kino KDK / Tom i Jerry: Przygoda w muzeum / —
   Kino Kalejdoskop / Tom i jerry: przygoda w muzeum / —
+  Kino Kijów / Tom i Jerry: Przygoda w muzeum / —
   Kino Lewart / Tom i Jerry: Przygoda w muzeum / —
   Kino Luna / Tom i Jerry: Przygoda w muzeum / —
   Kino MOK / Tom i Jerry: Przygoda w muzeum / —
@@ -8573,6 +8581,7 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/wedrowka-na-polnoc/
 cinemaScrapes:
   Dolnośląskie Centrum Filmowe / Wędrówka na północ / 2025
+  Gdyńskie Centrum Filmowe / Wędrówka na północ / —
   Kino Muza / Wędrówka na północ / 2025
   Kino Nowe Horyzonty / Wędrówka na północ / 2025
   Kino Żak / Wędrówka na północ / 2025
@@ -9069,7 +9078,7 @@ countries:         Wielka Brytania
 posterUrl:         https://img.helios.pl/pliki/film/sciezki-zycia/sciezki-zycia-plakat-23717.jpg
 synopsis.length:   403
 cast:              Gillian Anderson, Jason Isaacs, James Lance, Hermione Norris, Rebecca Ineson
-director:          Marianne Elliott
+director:          Marianne Elliot
 tmdbId:            1127625
 imdbId:            tt27766440
 originalTitle:     The Salt Path
@@ -9123,6 +9132,7 @@ cinemaScrapes:
   Helios Tczew / Ścieżki życia / —
   Helios Łódź / Ścieżki życia / —
   Helios Żory / Ścieżki życia / —
+  KINOkawiarnia Stacja Falenica / Ścieżki życia / —
   Kinoteatr Rialto / Ścieżki życia / —
 showings:
   2026-06-18  Helios Posnania               17:00 2D/LEK
