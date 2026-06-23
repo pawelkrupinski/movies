@@ -139,8 +139,10 @@ private fun CityGate(viewModel: KinowoViewModel) {
     }
 }
 
+// `internal` (not `private`) so the on-device deep-link test can mount the real
+// nav graph directly, without going through the CityGate's location flow.
 @Composable
-private fun Repertoire(viewModel: KinowoViewModel) {
+internal fun Repertoire(viewModel: KinowoViewModel) {
     val nav = rememberNavController()
     // A deep link asked to open a specific film: navigate once the title has
     // been confirmed present in the loaded repertoire (set by the ViewModel).
