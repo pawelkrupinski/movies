@@ -1,6 +1,5 @@
 package services.metrics
 
-import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
@@ -9,7 +8,6 @@ import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CacheKey, MovieCacheReader, StoredMovieRecord}
 import services.tasks.RatingTasks
 
-import java.io.ByteArrayOutputStream
 import java.time.Instant
 
 /**
@@ -76,12 +74,12 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
     val census   = new RatingRunCensus(cacheOf(entries), freshness(), registry, java.time.Clock.fixed(now, java.time.ZoneOffset.UTC))
 
     // Before sampling, every site series exists at 0 (no Grafana gaps).
-    val seeded = render(registry)
-    FreshnessKind.all.collect { case k if Seq("imdb", "fw", "rt", "mc").contains(k.label) => k.label }
+    val seeded = PrometheusExposition.render(registry)
+    Seq("imdb", "fw", "rt", "mc")
       .foreach(site => gauge(seeded, RatingRunCensus.NotRunName, site) shouldBe Some(0.0))
 
     census.sample()
-    val text = render(registry)
+    val text = PrometheusExposition.render(registry)
     gauge(text, RatingRunCensus.NotRunName, "rt") shouldBe Some(2.0)
     gauge(text, RatingRunCensus.NotRunName, "fw") shouldBe Some(1.0)
     gauge(text, RatingRunCensus.NotRunName, "imdb") shouldBe Some(0.0)
@@ -101,14 +99,6 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
     private[services] def entries: Seq[(CacheKey, MovieRecord)]             = rows
   }
 
-  private def render(registry: PrometheusRegistry): String = {
-    val out = new ByteArrayOutputStream()
-    PrometheusTextFormatWriter.create().write(out, registry.scrape())
-    out.toString("UTF-8")
-  }
-
   private def gauge(text: String, name: String, site: String): Option[Double] =
-    text.linesIterator
-      .find(_.startsWith(s"""$name{site="$site"}"""))
-      .map(_.trim.split("\\s+").last.toDouble)
+    PrometheusExposition.sample(text, name, s"""site="$site"""")
 }

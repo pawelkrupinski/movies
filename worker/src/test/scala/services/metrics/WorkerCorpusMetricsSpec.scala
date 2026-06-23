@@ -1,14 +1,11 @@
 package services.metrics
 
-import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.metrics.WorkerCorpusMetrics.{CorpusCounts, Subset}
 import services.movies.{MovieRepository, StoredMovieRecord}
-
-import java.io.ByteArrayOutputStream
 
 /**
  * Locks the corpus census the worker exposes for the Grafana "corpus coverage"
@@ -31,16 +28,10 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
     override def close() = ()
   }
 
-  private def render(registry: PrometheusRegistry): String = {
-    val out = new ByteArrayOutputStream()
-    PrometheusTextFormatWriter.create().write(out, registry.scrape())
-    out.toString("UTF-8")
-  }
+  private def render(registry: PrometheusRegistry): String = PrometheusExposition.render(registry)
 
   private def gauge(text: String, subset: String): Option[Double] =
-    text.linesIterator
-      .find(l => l.startsWith(s"""${WorkerCorpusMetrics.Name}{subset="$subset"}"""))
-      .map(_.trim.split("\\s+").last.toDouble)
+    PrometheusExposition.sample(text, WorkerCorpusMetrics.Name, s"""subset="$subset"""")
 
   // A mix exercising every subset: each record opts into a distinct combination.
   private val corpus = Seq(
