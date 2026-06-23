@@ -298,4 +298,86 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       TitleNormalizer.sanitize("Straszny film ukraiński dubbing")
     canonicalKey.cleanTitle should include ("dubbing")
   }
+
+  // Each order-sensitivity case above proves ONE fold rule on a 2-row cluster,
+  // where `rows.reverse` is the only alternate ordering. The settle's internals,
+  // though, are multi-row: union-find over sanitize/tmdbId/alias edges
+  // (`groupByFilm`), a `LinkedHashMap` of ±-window attachments and an
+  // index-tie-broken `minByOption` (`clusterByFilm` rules 2 & 4), and a
+  // `foldLeft`-driven `unionAll` (`canonical`). A 2-row case can't expose a bug
+  // that only bites once three or more rows interleave. This case assembles ONE
+  // film reported five different ways across five cinemas — every fold rule at
+  // once — and asserts the settle lands on the SAME single cluster (and the same
+  // canonical key) for ALL 5! = 120 arrival orders, the full-corpus guarantee
+  // `StagingOrderDeterminismSpec` checks end-to-end, pinned here at the unit seam.
+  "the full settle (groupByFilm → clusterByFilm → canonical)" should
+    "collapse one five-cinema film to one cluster + key for every arrival order" in {
+    val polish = "Zaplątani"
+    // tmdbId 38757 with PL title "Zaplątani" / original "Tangled" (also its
+    // englishTitle alias). The five rows exercise, respectively: a bare resolved
+    // PL row, a bare resolved EN row folded by the shared tmdbId edge, a ±2-year
+    // unresolved straggler (rule 2), a yearless EN straggler folded by the
+    // englishTitle alias edge then rule 4, and a yearless PL straggler (rule 4).
+    val rows = Seq(
+      aliased(polish,    tmdbId = 38757, tmdbYear = 2010, tmdbTitle = polish, originalTitle = "Tangled",
+        cinema = Helios,    cinemaTitle = polish,    englishTitle = Some("Tangled")),
+      aliased("Tangled", tmdbId = 38757, tmdbYear = 2010, tmdbTitle = polish, originalTitle = "Tangled",
+        cinema = Multikino, cinemaTitle = "Tangled", englishTitle = Some("Tangled")),
+      unresolved(polish,    Some(2012), cinema = KinoMuza),          // production-year +2, rule 2
+      unresolved("Tangled", None,       cinema = KinoMuzeumGdansk),  // alias-edge + rule 4
+      unresolved(polish,    None,       cinema = Kinoteka)           // rule 4
+    )
+    val allCinemas = Set[Source](Helios, Multikino, KinoMuza, KinoMuzeumGdansk, Kinoteka)
+
+    val settled = rows.permutations.toList.map { ordered =>
+      val clusters = FilmCanonicalizer.groupByFilm(ordered).flatMap(FilmCanonicalizer.clusterByFilm)
+      withClue(s"order ${ordered.map(r => (r._1.cleanTitle, r._1.year))} → " +
+               s"${clusters.map(_.map(c => (c._1.cleanTitle, c._1.year)))}\n") {
+        clusters should have size 1
+        clusters.head.flatMap(_._2.cinemaData.keySet).toSet shouldBe allCinemas
+      }
+      val (canonicalKey, merged) = FilmCanonicalizer.canonical(clusters.head)
+      (canonicalKey, merged.tmdbId)
+    }
+
+    // The canonical identity is one value, not 120: same key + tmdbId every order.
+    settled.distinct should have size 1
+    val (canonicalKey, tmdbId) = settled.head
+    canonicalKey.year shouldBe Some(2010)                          // TMDB year, not the 2012 straggler
+    TitleNormalizer.sanitize(canonicalKey.cleanTitle) shouldBe "zaplatani"  // dominant PL spelling (3 of 5)
+    tmdbId shouldBe Some(38757)
+  }
+
+  "clusterByFilm rule-2 tie-break" should
+    "attach an equidistant straggler to the same remake for every arrival order" in {
+    // A remake keyed under one title: two resolved films two years apart, and an
+    // unresolved straggler EXACTLY equidistant from both (Δ1 each). Rule 2 attaches
+    // it to the NEAREST resolved cluster; on a tie it must break on a pure function
+    // of the row set (the cluster's `minRank`, then its tmdbId-sorted index), NOT on
+    // which film the straggler happened to arrive after. A yearless+idless row
+    // alongside two distinct films can't be attributed to either, so rule 4 leaves
+    // it standing alone. Both outcomes must hold for ALL 4! = 24 orders — the
+    // index-tie-break is exactly the kind of "stable only because we sorted first"
+    // invariant a single fixed ordering can silently pass while broken.
+    val rows = Seq(
+      resolved  ("Diuna", tmdbId = 100, tmdbYear = 2018, cinema = Helios),
+      resolved  ("Diuna", tmdbId = 200, tmdbYear = 2020, cinema = Multikino),
+      unresolved("Diuna", Some(2019), cinema = KinoMuza),       // Δ1 from BOTH → tie → lower tmdbId (100)
+      unresolved("Diuna", None,       cinema = Kinoteka)        // yearless + 2 films → own cluster (rule 4)
+    )
+
+    val perOrder = rows.permutations.toList.map { ordered =>
+      val clusters = FilmCanonicalizer.clusterByFilm(ordered)
+      // Each cluster as its set of cinemas, the whole partition as a sorted set —
+      // a representation independent of cluster/row emission order.
+      clusters.map(_.flatMap(_._2.cinemaData.keySet).toSet).toSet
+    }
+
+    perOrder.distinct should have size 1   // the partition itself never depends on order
+    perOrder.head shouldBe Set(
+      Set[Source](Helios, KinoMuza),   // tmdbId 100 + the equidistant straggler (tie → lower id)
+      Set[Source](Multikino),          // tmdbId 200, alone
+      Set[Source](Kinoteka)            // yearless straggler, alone (two distinct films → rule 4 refuses)
+    )
+  }
 }

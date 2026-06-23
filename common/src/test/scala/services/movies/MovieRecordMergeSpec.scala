@@ -5,6 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.time.LocalDateTime
+import scala.util.Random
 
 class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
 
@@ -166,6 +167,47 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
     // And the result — including which bookingUrl survives — is identical
     // regardless of merge order.
     forward shouldBe reverse
+  }
+
+  it should "settle five screenings with two collisions to one deduped slot, whatever the split + order" in {
+    // The forward/reverse case above proves order-independence for one collision
+    // across two showtimes. But `dedupShowtimes` picks each screening's surviving
+    // bookingUrl with `groupBy(identity).minBy(rank)` and re-sorts by time, fed by
+    // `canonicalSlot.showtimes ++ victimSlot.showtimes` — so the real exposure is
+    // how FIVE screenings (two of them duplicate-identity pairs carrying different
+    // booking links) partition across the two rows and order WITHIN each row. A
+    // single forward/reverse pair can't cover that. Shuffle all five, split them
+    // every which way, and assert the deduped slot — times AND surviving links —
+    // is one fixed value across orders.
+    val unique = withBooking("2026-06-11T10:00", "https://nh/bilet.s?id=u")
+    // 12:00 reported twice with different per-event links; "eventA" < "eventB" so
+    // `rank` (non-empty first, then lowest URL) keeps eventA.
+    val noonA  = withBooking("2026-06-11T12:00", "https://nh/bilet.s?id=eventA")
+    val noonB  = withBooking("2026-06-11T12:00", "https://nh/bilet.s?id=eventB")
+    // 14:00 likewise; "c1" < "c2" keeps c1.
+    val twoA   = withBooking("2026-06-11T14:00", "https://nh/bilet.s?id=c1")
+    val twoB   = withBooking("2026-06-11T14:00", "https://nh/bilet.s?id=c2")
+    val all    = Seq(unique, noonA, noonB, twoA, twoB)
+
+    def deduped(first: Seq[Showtime], second: Seq[Showtime]): Seq[Showtime] = {
+      val a = canonical.copy(data = canonical.data + ((Multikino: Source) -> slot("a.jpg", showtimes = first)))
+      val b = victim.copy(data    = victim.data    + ((Multikino: Source) -> slot("b.jpg", showtimes = second)))
+      MovieRecordMerge.union(a, b).cinemaData(Multikino).showtimes
+    }
+
+    val expected = Seq(unique, noonA, twoA)   // one per physical screening, lowest-URL link wins, time-sorted
+
+    // 10 shuffles × every split point of the shuffled five → varies both the
+    // partition across rows and the concatenation order into `dedupShowtimes`.
+    (0 until 10).foreach { seed =>
+      val shuffled = new Random(seed).shuffle(all)
+      (0 to shuffled.size).foreach { splitAt =>
+        val (first, second) = shuffled.splitAt(splitAt)
+        withClue(s"seed=$seed split=$splitAt first=${first.map(_.bookingUrl)} second=${second.map(_.bookingUrl)}\n") {
+          deduped(first, second) shouldBe expected
+        }
+      }
+    }
   }
 
   it should "keep the longest retained synopsis per source, order-independently" in {
