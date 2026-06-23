@@ -47,6 +47,44 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
       .connectTimeout().orElseThrow() shouldBe RealHttpFetch.DefaultConnectTimeout
   }
 
+  // ── Fast-fail per-request timeout (stall-prone enrichment hosts) ───────────
+  //
+  // restapi.helios.pl's detail endpoints intermittently hang ~30s for our
+  // datacenter egress; under the 30s default each hang pinned a ParallelDetail-
+  // Fetch slot, ballooning Helios scrapes and draining the worker's CPU credit
+  // into a throttle spiral (2026-06-23). We assert the closest reachable
+  // mechanism — that the host is classified fast-fail and gets the tight
+  // response-read budget, while every other host keeps the generous default.
+
+  "isFastFailHost" should "match Helios's REST API host and its sub-domains" in {
+    RealHttpFetch.isFastFailHost("https://restapi.helios.pl/api/cinema/4b/screen/6c") shouldBe true
+    RealHttpFetch.isFastFailHost("https://www.restapi.helios.pl/api/movie/1") shouldBe true
+  }
+
+  it should "not match unrelated hosts (including Helios's own NUXT site)" in {
+    RealHttpFetch.isFastFailHost("https://www.helios.pl/poznan/kino-helios/repertuar") shouldBe false
+    RealHttpFetch.isFastFailHost("https://api.themoviedb.org/3/movie/1") shouldBe false
+  }
+
+  it should "not throw on a malformed URL" in {
+    RealHttpFetch.isFastFailHost("not a url") shouldBe false
+  }
+
+  "the fast-fail request budget" should "be much tighter than the default" in {
+    RealHttpFetch.FastFailRequestTimeout.compareTo(RealHttpFetch.DefaultRequestTimeout) should be < 0
+    // Above the ~1-3s a healthy Helios detail call takes, with headroom.
+    RealHttpFetch.FastFailRequestTimeout.compareTo(Duration.ofSeconds(5)) should be > 0
+  }
+
+  "requestTimeoutFor" should "give Helios's REST host the tight budget and everyone else the default" in {
+    RealHttpFetch.requestTimeoutFor("https://restapi.helios.pl/api/cinema/4b/screen/6c") shouldBe
+      RealHttpFetch.FastFailRequestTimeout
+    RealHttpFetch.requestTimeoutFor("https://www.helios.pl/poznan/kino-helios/repertuar") shouldBe
+      RealHttpFetch.DefaultRequestTimeout
+    RealHttpFetch.requestTimeoutFor("https://api.themoviedb.org/3/movie/1") shouldBe
+      RealHttpFetch.DefaultRequestTimeout
+  }
+
   // ── Residential-proxy egress (Decodo static ISP) ──────────────────────────
 
   private def selectedPort(pc: RealHttpFetch.ProxyConfig): Int =

@@ -26,10 +26,12 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
   // that hangs the connect pins HALF the budget for the whole timeout. At 10s a
   // couple of unreachable detail URLs stalled a wave for 10s each (most of
   // Kinoteka's ~57s scrape); at 5s the slot is freed twice as fast to fetch the
-  // films that *are* reachable. The request timeout below is separate — it
-  // bounds reading the response, where a slow upstream legitimately needs longer
-  // — so trimming connect doesn't cut off slow-but-alive servers.
-  private val RequestTimeout = Duration.ofSeconds(30)
+  // films that *are* reachable. The request (response-read) timeout is separate
+  // and bounds reading the response, where a slow upstream legitimately needs
+  // longer — so trimming connect doesn't cut off slow-but-alive servers. It is
+  // per-host (see RealHttpFetch.requestTimeoutFor): the default 30s, but the
+  // fast-fail hosts get a tight budget so one stalling enrichment origin can't
+  // pin a fan-out slot for the full default.
 
   // `CookieManager` makes the client a well-behaved HTTP citizen: any
   // `Set-Cookie` header lands in the in-memory store and is sent back on
@@ -98,7 +100,7 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
   override def post(url: String, body: String, contentType: String = "application/json"): String = {
     val request = HttpRequest.newBuilder()
       .uri(URI.create(url))
-      .timeout(RequestTimeout)
+      .timeout(RealHttpFetch.requestTimeoutFor(url))
       .header("Content-Type", contentType)
       .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
       // Decoded transparently in `decodeBody` below. See the matching
@@ -163,7 +165,7 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
 
   private def logFailure(method: String, url: String, exception: Throwable): Unit = exception match {
     case _: HttpTimeoutException =>
-      logger.warn(s"HTTP $method $url timed out after ${RequestTimeout.toSeconds}s (service not responding)")
+      logger.warn(s"HTTP $method $url timed out after ${RealHttpFetch.requestTimeoutFor(url).toSeconds}s (service not responding)")
     case _ =>
       logger.warn(s"HTTP $method $url failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
   }
@@ -179,7 +181,7 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
   private def buildRequest(url: String, extraHeaders: Map[String, String] = Map.empty): HttpRequest = {
     val builder = HttpRequest.newBuilder()
       .uri(URI.create(url))
-      .timeout(RequestTimeout)
+      .timeout(RealHttpFetch.requestTimeoutFor(url))
       .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
       .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
       // Advertise gzip — `decodeBody` decompresses transparently. Without
@@ -274,11 +276,45 @@ object RealHttpFetch {
    *  matches, an unrelated *.fn.org.pl does not). */
   private val SlowTlsHostSuffixes: Set[String] = Set("iluzjon.fn.org.pl")
 
-  def isSlowTlsHost(url: String): Boolean =
-    // Swallow a malformed URL here so routing never changes failure semantics —
-    // the subsequent buildRequest's own URI.create throws it the same way.
+  /** The default per-request (response-read) budget: a slow-but-alive upstream
+   *  legitimately needs longer than the connect phase, so this stays generous. */
+  val DefaultRequestTimeout: Duration = Duration.ofSeconds(30)
+
+  /** The tight per-request budget for the fast-fail hosts below — well above the
+   *  ~1-3s a healthy response takes, but far under the 30s default so a stalling
+   *  origin frees its fan-out slot fast instead of pinning it. */
+  val FastFailRequestTimeout: Duration = Duration.ofSeconds(8)
+
+  /** Hosts that must fast-fail when they stall rather than hold a ParallelDetail-
+   *  Fetch slot for the full DefaultRequestTimeout. The TCP+TLS connect is fine;
+   *  it's the response read that hangs.
+   *    - restapi.helios.pl — Helios's per-screen/detail REST API. On 2026-06-23
+   *      its detail endpoints started hanging ~30s for our datacenter egress;
+   *      with the fan-out cap at 2 and many Helios venues × screens, each 30s
+   *      hang ballooned Helios scrapes from ~2s to 100s+ and drained the worker's
+   *      shared-cpu credit into a throttle spiral. These endpoints only ENRICH —
+   *      HeliosClient degrades to its NUXT repertoire when REST is unavailable —
+   *      so dropping a slow call costs at most some screen-name detail, never the
+   *      listing.
+   *  Matched by exact host or a dotted sub-domain, like SlowTlsHostSuffixes. */
+  private val FastFailHostSuffixes: Set[String] = Set("restapi.helios.pl")
+
+  /** True when `url`'s host matches one of `suffixes` (exact host or a dotted
+   *  sub-domain, so www.x matches x but an unrelated *.y does not). Swallows a
+   *  malformed URL so routing never changes failure semantics — the subsequent
+   *  buildRequest's own URI.create throws it the same way. */
+  private def hostMatches(url: String, suffixes: Set[String]): Boolean =
     scala.util.Try(Option(URI.create(url).getHost)).toOption.flatten.exists { host =>
       val lowerHost = host.toLowerCase
-      SlowTlsHostSuffixes.exists(suffix => lowerHost == suffix || lowerHost.endsWith("." + suffix))
+      suffixes.exists(suffix => lowerHost == suffix || lowerHost.endsWith("." + suffix))
     }
+
+  def isSlowTlsHost(url: String): Boolean = hostMatches(url, SlowTlsHostSuffixes)
+
+  def isFastFailHost(url: String): Boolean = hostMatches(url, FastFailHostSuffixes)
+
+  /** The per-request (response-read) timeout for `url`: the tight fast-fail
+   *  budget for a stall-prone enrichment host, the generous default otherwise. */
+  def requestTimeoutFor(url: String): Duration =
+    if (isFastFailHost(url)) FastFailRequestTimeout else DefaultRequestTimeout
 }
