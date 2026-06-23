@@ -841,3 +841,89 @@ groups:
                   query: { params: [] }
                   reducer: { type: last, params: [] }
               refId: C
+
+      # ---- Task-queue head-of-line starvation ------------------------------------
+      # The EARLIEST symptom of a throttle/backlog spiral. During the 2026-06-23
+      # episode the oldest waiting task aged to ~29min while credit drained for two
+      # HOURS before anyone looked — this gauge crossing 10min would have paged at
+      # ~04:00, long before the floor at 05:00. `for: 5m` so a brief reaper pause
+      # doesn't message. Human Telegram heads-up (no `notify` label → default
+      # receiver), not the /throttle control webhook.
+      - uid: kinowo-worker-task-age-high
+        title: Worker task queue head-of-line age high
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: OK
+        annotations:
+          summary: 'kinowo-worker oldest waiting task > 10min — the queue is not draining'
+          description: 'kinowo_worker_queue_oldest_waiting_age_seconds > 600 for 5m: the head of the task queue has been waiting over ten minutes, so the worker pool is not keeping up (a CPU-credit throttle spiral, a wedged reaper, or a slow-host backlog). The earliest signal of the sustained-throttle failure mode.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max(kinowo_worker_queue_oldest_waiting_age_seconds{app="kinowo-worker"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [600] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- Task-queue backlog depth ----------------------------------------------
+      # Backs up the age signal with a volume one: a large WAITING set that isn't
+      # draining. Normal steady state is ~0 (work is claimed near-instantly); the
+      # spiral piled 286→568. `for: 10m` rides out the brief post-boot flush (the
+      # 568 blip cleared in ~4min) and only fires on a genuinely stuck backlog.
+      - uid: kinowo-worker-queue-backlog
+        title: Worker task queue backlog high
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: OK
+        annotations:
+          summary: 'kinowo-worker waiting task backlog > 150 for 10min — pool not keeping up'
+          description: 'kinowo_worker_queue_depth{state="waiting"} > 150 for 10m: the waiting task set has stayed large, so the worker pool is not draining it (throttle spiral or a stuck reaper). Pairs with kinowo-worker-task-age-high.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max(kinowo_worker_queue_depth{app="kinowo-worker", state="waiting"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [150] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C

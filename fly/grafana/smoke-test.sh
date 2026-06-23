@@ -13,7 +13,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IMG="$(grep -m1 '^FROM ' "$DIR/Dockerfile" | awk '{print $2}')"
 NAME="kinowo-grafana-smoke"
 PORT="${SMOKE_PORT:-3999}"
-EXPECTED_RULES=17
+EXPECTED_RULES=19
 
 # Mount a FRESH copy, not the source tree directly: Docker Desktop's macOS
 # bind-mount cache can keep serving a file's pre-edit bytes after you edit it,
@@ -100,6 +100,17 @@ for uid in kinowo-cpu-steal-high kinowo-memory-pressure kinowo-http-5xx-high kin
     "api/v1/provisioning/alert-rules" \
     "any(r['uid']=='$uid' and any('schowek' in c['model'].get('expr','') for c in r['data']) for r in d)"
 done
+
+# The task-queue starvation alerts: the head-of-line age rule is the earliest
+# signal of the sustained-throttle spiral (it would have paged ~2h before the
+# 2026-06-23 credit floor). Guards both new rules' thresholds against drift.
+assert "worker-task-age-high rule fires above 600s oldest waiting age" \
+  "api/v1/provisioning/alert-rules" \
+  "any(r['uid']=='kinowo-worker-task-age-high' and any(c['model']['conditions'][0]['evaluator']['params']==[600] for c in r['data'] if c['refId']=='C') for r in d)"
+
+assert "worker-queue-backlog rule fires above 150 waiting tasks" \
+  "api/v1/provisioning/alert-rules" \
+  "any(r['uid']=='kinowo-worker-queue-backlog' and any(c['model']['conditions'][0]['evaluator']['params']==[150] for c in r['data'] if c['refId']=='C') for r in d)"
 
 assert "Telegram contact point provisioned" \
   "api/v1/provisioning/contact-points" \
