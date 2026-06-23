@@ -14,15 +14,6 @@
   The panel markup + builder below are then fully generic.
 *@
 <div class="panel" id="panel">
-  <!-- Header bar: the panel title plus a minimize toggle. Minimizing
-       collapses everything but this bar so the live preview can take the
-       full width while dialing in geometry; the state persists across the
-       resize-reloads a tuning session churns through. -->
-  <div class="panel-header">
-    <span class="panel-title">Kontrolki</span>
-    <button type="button" class="panel-toggle" id="panelToggle"
-            aria-expanded="true" aria-label="Zwiń panel" title="Zwiń panel">−</button>
-  </div>
   <!-- Live display-geometry readout: available viewport first, then the
        device-pixel ratio and the physical pixels it works out to. -->
   <div class="viewport-info" id="viewportInfo" style="font:11px/1.4 ui-monospace,monospace;color:#8a8aa0;margin-bottom:.6rem">viewport …</div>
@@ -152,70 +143,4 @@
       dump.select();
     }
   });
-
-  // Make the panel behave like a little app window: drag it by its header
-  // and minimize it to a corner bubble. The CSS `.minimized` rule hides
-  // every child but the header. Both the minimized flag and the dragged
-  // position persist, so the window stays where you left it across the
-  // viewport-resize reloads a tuning session relies on.
-  (function () {
-    const header = panel.querySelector('.panel-header');
-    const toggle = document.getElementById('panelToggle');
-    const MIN_KEY = 'tunePanelMinimized';
-    const POS_KEY = 'tunePanelPos';
-
-    const setMinimized = (min) => {
-      panel.classList.toggle('minimized', min);
-      toggle.textContent = min ? '+' : '−';
-      toggle.setAttribute('aria-expanded', String(!min));
-      const label = min ? 'Rozwiń panel' : 'Zwiń panel';
-      toggle.setAttribute('aria-label', label);
-      toggle.title = label;
-    };
-    setMinimized(localStorage.getItem(MIN_KEY) === '1');
-    toggle.addEventListener('click', () => {
-      const min = !panel.classList.contains('minimized');
-      setMinimized(min);
-      localStorage.setItem(MIN_KEY, min ? '1' : '0');
-    });
-
-    // Pin the window to an absolute top/left, clamped so the header always
-    // stays grabbable on-screen even after the viewport shrinks.
-    const place = (left, top) => {
-      const maxLeft = window.innerWidth - Math.min(panel.offsetWidth, 60);
-      const maxTop = window.innerHeight - 32;
-      panel.style.left = Math.max(0, Math.min(left, maxLeft)) + 'px';
-      panel.style.top = Math.max(0, Math.min(top, maxTop)) + 'px';
-      panel.style.right = 'auto';
-    };
-    try {
-      const saved = JSON.parse(localStorage.getItem(POS_KEY) || 'null');
-      if (saved) place(saved.left, saved.top);
-    } catch (e) { /* ignore a corrupt saved position */ }
-
-    let originLeft = 0, originTop = 0, grabX = 0, grabY = 0, dragging = false;
-    header.addEventListener('pointerdown', (e) => {
-      // Let clicks on the minimize button through — only the bar drags.
-      if (e.target.closest('.panel-toggle')) return;
-      const rect = panel.getBoundingClientRect();
-      originLeft = rect.left; originTop = rect.top;
-      grabX = e.clientX; grabY = e.clientY;
-      dragging = true;
-      try { header.setPointerCapture(e.pointerId); } catch (_) {}
-      e.preventDefault();
-    });
-    header.addEventListener('pointermove', (e) => {
-      if (!dragging) return;
-      place(originLeft + (e.clientX - grabX), originTop + (e.clientY - grabY));
-    });
-    const endDrag = (e) => {
-      if (!dragging) return;
-      dragging = false;
-      try { header.releasePointerCapture(e.pointerId); } catch (_) {}
-      const rect = panel.getBoundingClientRect();
-      localStorage.setItem(POS_KEY, JSON.stringify({ left: rect.left, top: rect.top }));
-    };
-    header.addEventListener('pointerup', endDrag);
-    header.addEventListener('pointercancel', endDrag);
-  })();
 </script>

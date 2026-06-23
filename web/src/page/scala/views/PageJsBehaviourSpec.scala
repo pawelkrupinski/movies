@@ -2707,60 +2707,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  "the /debug/tune panel minimize toggle" should "collapse the panel to its header, then restore it" in {
-    onPath("/debug/tune") { page =>
-      // A `.panel-group` is one of the slider blocks the toggle hides — its
-      // computed display tracks the panel's minimized state.
-      def slidersShown: Boolean =
-        page.evalBool(
-          "(() => { const g = document.querySelector('.panel-group');" +
-          "  return !!g && getComputedStyle(g).display !== 'none'; })()"
-        )
-      def minimized: Boolean =
-        page.evalBool("document.getElementById('panel').classList.contains('minimized')")
-      def click(): Unit =
-        page.evalBool("(() => { document.getElementById('panelToggle').click(); return true; })()") shouldBe true
-
-      // Starts expanded: sliders visible, not minimized.
-      minimized shouldBe false
-      slidersShown shouldBe true
-
-      click()
-      minimized shouldBe true
-      slidersShown shouldBe false
-
-      click()
-      minimized shouldBe false
-      slidersShown shouldBe true
-    }
-  }
-
-  "the /debug/tune panel" should "be draggable by its header to a new position" in {
-    onPath("/debug/tune") { page =>
-      def leftPx: Double =
-        page.evalString("String(Math.round(document.getElementById('panel').getBoundingClientRect().left))").toDouble
-
-      val before = leftPx
-
-      // Grab the header and drag it 120px left / 60px down via pointer events.
-      page.eval(
-        """(() => {
-          |  const header = document.querySelector('.panel-header');
-          |  const rect = document.getElementById('panel').getBoundingClientRect();
-          |  const x = rect.left + 20, y = rect.top + 10;
-          |  const fire = (type, cx, cy) =>
-          |    header.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: cx, clientY: cy, pointerId: 1 }));
-          |  fire('pointerdown', x, y);
-          |  fire('pointermove', x - 120, y + 60);
-          |  fire('pointerup',   x - 120, y + 60);
-          |})()""".stripMargin
-      )
-
-      // The window followed the drag (moved left), not snapped back.
-      leftPx should be <= (before - 100)
-    }
-  }
-
   // ── helpers ──────────────────────────────────────────────────────────────
 
   private def clearLocalStorage(page: CdpPage): Unit =
