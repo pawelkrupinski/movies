@@ -1,7 +1,7 @@
 package services.tasks
 
 import models.MovieRecord
-import services.freshness.{FreshnessKind, FreshnessStore}
+import services.freshness.FreshnessStore
 import services.movies.CacheKey
 
 import java.time.Instant
@@ -29,14 +29,9 @@ class RatingEnqueuer(
   // [[DueWindow]].
   dueWindow: DueWindow
 ) {
-  private case class Source(taskType: TaskType, kind: FreshnessKind, eligible: MovieRecord => Boolean)
-
-  private val sources = Seq(
-    Source(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    _.imdbId.isDefined),
-    Source(TaskType.RtRating,      FreshnessKind.RtRating,      _.tmdbId.isDefined),
-    Source(TaskType.McRating,      FreshnessKind.McRating,      _.tmdbId.isDefined),
-    Source(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, _.tmdbId.isDefined)
-  )
+  // The eligibility rule lives in RatingSources so the metrics census can't drift
+  // from what this actually enqueues (see RatingSources).
+  private val sources = RatingSources.all
 
   /** How many rating sources exist (for the reaper's start-up log). */
   val sourceCount: Int = sources.size

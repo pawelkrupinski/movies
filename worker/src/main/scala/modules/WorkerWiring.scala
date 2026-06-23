@@ -410,6 +410,10 @@ class WorkerWiring extends play.api.Logging {
   // off-band and exposed on the same registry — see WorkerCorpusMetrics.
   lazy val corpusMetrics: services.metrics.WorkerCorpusMetrics =
     new services.metrics.WorkerCorpusMetrics(movieRepository, metricsRegistry)
+  // Per-site backlog of resolved films whose rating has NEVER run — the never-run
+  // latency the first-attempt histogram can't show (see RatingRunCensus).
+  lazy val ratingRunCensus: services.metrics.RatingRunCensus =
+    new services.metrics.RatingRunCensus(movieCache, freshnessStore, metricsRegistry)
   lazy val taskQueue: TaskQueue =
     new MeteredTaskQueue(new MongoTaskQueue(mongoConnection.database), taskMetrics)
   lazy val freshnessStore: FreshnessStore = new MongoFreshnessStore(mongoConnection.database)
@@ -792,6 +796,8 @@ class WorkerWiring extends play.api.Logging {
     stagingStuckAlerter.foreach(_.start())
     // Census the corpus for the /metrics gauges (off-band, read-only paged scan).
     corpusMetrics.start()
+    // Census the per-site never-run rating backlog (off-band, in-memory scan).
+    ratingRunCensus.start()
   }
 
   /** Event-cascade drain order, producer→consumer (see monolith comment). Only
@@ -801,6 +807,7 @@ class WorkerWiring extends play.api.Logging {
 
   def stop(): Unit = {
     envConfigService.stop()
+    ratingRunCensus.stop()
     corpusMetrics.stop()
     stagingStuckAlerter.foreach(_.stop())
     stagingReaper.stop()
