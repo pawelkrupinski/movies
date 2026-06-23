@@ -672,4 +672,26 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
   it should "leave an undecorated title untouched" in {
     CinemaCityClient.cleanTitle("Diabeł ubiera się u Prady 2") shouldBe "Diabeł ubiera się u Prady 2"
   }
+
+  // ─── cleanTitle: strip trailing screen-format / version tags ──────────────
+  //
+  // Cinema City's `film.name` repeats the screening's format/version as a
+  // trailing tag even though the same tokens already ride each Showtime.format.
+  // Strip them so the format-decorated entry collapses onto the plain film.
+
+  it should "strip a trailing '3D IMAX' screen-format tag" in {
+    CinemaCityClient.cleanTitle("Afrykanska Przygoda 3D IMAX") shouldBe "Afrykanska Przygoda"
+  }
+
+  it should "strip a trailing '(lektor)' version tag" in {
+    CinemaCityClient.cleanTitle("500 mil (lektor)") shouldBe "500 mil"
+  }
+
+  it should "NOT mistake a trailing numeral for a 2D/3D tag" in {
+    CinemaCityClient.cleanTitle("Minecraft: Film 2") shouldBe "Minecraft: Film 2"
+  }
+
+  it should "leave a foreign-language dub variant whole (no dangling 'ukraiński')" in {
+    CinemaCityClient.cleanTitle("Odyseja ukraiński dubbing") shouldBe "Odyseja ukraiński dubbing"
+  }
 }

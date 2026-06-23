@@ -165,9 +165,27 @@ object CinemaCityClient {
    *  The strip now lives in the editable rule set under the "cinema-city" key
    *  (see TitleRuleDefaults); this delegates so the behaviour stays unit-testable
    *  here and documents the chain's rule key. Production cleaning happens
-   *  centrally in `MovieCache.recordCinemaScrape`. */
-  def cleanTitle(name: String): String =
-    services.movies.TitleNormalizer.cinemaClean("cinema-city", name)
+   *  centrally in `MovieCache.recordCinemaScrape`.
+   *
+   *  On top of the editable strips we also peel the trailing screen-format /
+   *  version tag Cinema City bakes into `film.name` ("Afrykanska Przygoda 3D
+   *  IMAX", "500 mil (lektor)") — the same tokens already ride each
+   *  `Showtime.format`, so dropping them lets the format-decorated entry collapse
+   *  onto the plain film and enrich off one title. A foreign-language dub
+   *  ("Odyseja ukraiński dubbing") is a genuinely separate Ukrainian-language
+   *  screening, NOT a format variant: stripping only the trailing "dubbing" would
+   *  leave a dangling "ukraiński", so that variant is left whole. */
+  def cleanTitle(name: String): String = {
+    val decorated = services.movies.TitleNormalizer.cinemaClean("cinema-city", name)
+    if (LanguageDubSuffixRe.findFirstIn(decorated).isDefined) decorated
+    else ScraperParse.stripFormatTags(decorated)
+  }
+
+  // A trailing foreign-language dub marker ("… ukraiński dubbing") — left whole
+  // so it stays a distinct card rather than being half-stripped to a dangling
+  // language word. Anchored to the end so an interior word never matches.
+  private val LanguageDubSuffixRe =
+    """(?i)\b(?:ukraiński|ukrainian)\s+(?:dubbing|napisy|lektor)\s*$""".r
 
   /** Per-film metadata parsed from the public film page. Countries used to
    *  live in a `<p>Produkcja: …</p>` line; cast/director/synopsis come from
