@@ -893,9 +893,16 @@ class MovieService(
     def titles(f: TmdbClient.SearchResult): Set[String] =
       (Seq(f.title) ++ f.originalTitle.toSeq).map(MovieService.normalize).filter(_.nonEmpty).toSet
     credits.find(_.id == id).fold(id) { resolved =>
+      // `minOption.getOrElse(id)`, not `.min`: the adjacency filter is EMPTY
+      // whenever the resolved credit carries no TMDB release year (its own
+      // `resolved.releaseYear.exists(…)` is false, so nothing — not even itself —
+      // matches), and a bare `.min` on that empty Seq threw
+      // `UnsupportedOperationException: empty.min`, which the resolve mistook for a
+      // transient failure and retried forever. No year ⇒ no provable duplicate ⇒
+      // keep the resolved id.
       credits.filter(f => titles(f) == titles(resolved) &&
         f.releaseYear.exists(ry => resolved.releaseYear.exists(ay => math.abs(ry - ay) <= 1)))
-        .map(_.id).min
+        .map(_.id).minOption.getOrElse(id)
     }
   }
 

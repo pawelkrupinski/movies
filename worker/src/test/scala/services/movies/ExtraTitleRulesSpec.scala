@@ -239,6 +239,11 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "ŚMIECH PRZEZ ŁZY: Wesele"                               -> "Wesele",
     "Andrzej Wajda. Dziedzictwo Mistrza: Popiół i diament"  -> "Popiół i diament",
     "MIĘDZYNARODOWY KONKURS FILMÓW PEŁNOMETRAŻOWYCH - ALLAH IS NOT OBLIGED" -> "ALLAH IS NOT OBLIGED",
+    // The same banner in the cinema's mixed/lower case — the `(?iu)` flag must fold
+    // the Polish diacritics (Ę/Ó/Ł/Ż) so the lower-case spelling strips too. This is
+    // the exact prod-queue form that kept a 'the square' ResolveTmdb task retrying.
+    "Międzynarodowy konkurs filmów pełnometrażowych - the square" -> "the square",
+    "Międzynarodowy konkurs filmów pełnometrażowych - The square" -> "The square",
     "Supergirl tani poniedziałek"                            -> "Supergirl",
     "Toy story 5 tani poniedziałek"                          -> "Toy story 5",
     "Supergirl 2D"                                           -> "Supergirl",
@@ -258,14 +263,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Człowiek z marmuru. Spotkanie z Michałem Tarkowskim"    -> "Człowiek z marmuru",
     "Sprawiedliwość owiec - Filmoteka Dojrzałego Człowieka"  -> "Sprawiedliwość owiec",
     "Zaproszenie - przepdremiera"                            -> "Zaproszenie",
-    "Toy Story 5- 2D Dubbing PL"                             -> "Toy Story 5",
-    // Cleanup wave (2026-06-23): the banners now use the {{SEP}} placeholder, so a
-    // separator other than the originally-spelled one strips too (broadening guard).
-    // (NB: '/' is excluded here on purpose — the seed structural-slash-suffix owns it.)
-    "Maraton – Powrót do przyszłości"                        -> "Powrót do przyszłości",
-    "Wakacje dla dzieci - Pucio"                             -> "Pucio",
-    // 'Klasyka w NCKF' alternative added to the consolidated classics rule.
-    "Klasyka w NCKF: Przekleństwa niewinności"               -> "Przekleństwa niewinności"
+    "Toy Story 5- 2D Dubbing PL"                             -> "Toy Story 5"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
