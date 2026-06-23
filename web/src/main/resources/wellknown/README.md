@@ -8,6 +8,17 @@ Served by `controllers.WellKnownController` at:
 These let `https://kinowo.fly.dev/...` links (including the copy-to-clipboard
 filter links) open the native apps instead of the browser.
 
+## ⚠️ iOS Universal Links need a PAID Apple Developer account
+
+The AASA above is served, but iOS Universal Links also require the app to carry
+the **Associated Domains** entitlement — which a **free/personal** Apple team
+cannot provision ("Personal development teams do not support the Associated
+Domains capability"). So the entitlement is currently NOT wired into the build
+(`ios/Kinowo/Kinowo.entitlements` exists but isn't referenced by
+`CODE_SIGN_ENTITLEMENTS`), and iOS ships with only the `kinowo://` custom URL
+scheme. Re-enable per the comment in that entitlements file once on a paid team.
+Android App Links have no such gate.
+
 ## Android signing fingerprints (`assetlinks.json`)
 
 App Links verify only when the SHA-256 of the cert that signed the **installed**
