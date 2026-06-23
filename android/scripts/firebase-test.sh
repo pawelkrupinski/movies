@@ -43,6 +43,13 @@ TEST_APK="app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
 [[ -f "$APP_APK" && -f "$TEST_APK" ]] || { echo "APKs missing after build"; exit 1; }
 
 # Resolve a physical Xiaomi/Redmi device + a supported version, unless pinned.
+#
+# HEADS-UP: as of 2026-06, Test Lab's ONLY Xiaomi device is `cactus` (Redmi 6A,
+# Android 8.1 / API 27) and its capacity is "Low" — so a run queues for a long
+# time and you get 2018-era MIUI, not HyperOS. For modern MIUI/HyperOS use a
+# real-device cloud (BrowserStack / LambdaTest / Sauce). Because of the Low
+# capacity this script submits with `--async` by default (prints the results URL
+# and returns); set WAIT=1 to block for the pass/fail exit code instead.
 MODEL="${MODEL:-}"
 VERSION="${VERSION:-}"
 if [[ -z "$MODEL" ]]; then
@@ -68,7 +75,14 @@ echo "==> Device: model=$MODEL version=$VERSION"
 TARGETS=(--test-targets "class pl.kinowo.DeepLinkInstrumentedTest")
 [[ "${FULL:-}" == "1" ]] && TARGETS=()
 
+# Default to --async (submit + print results URL + return) because the only
+# Xiaomi device is Low-capacity and blocking can queue for a long time. WAIT=1
+# blocks for the pass/fail exit code (useful when capacity allows / in CI).
+ASYNC=(--async)
+[[ "${WAIT:-}" == "1" ]] && ASYNC=()
+
 exec gcloud firebase test android run \
+  "${ASYNC[@]}" \
   --type instrumentation \
   --app "$APP_APK" \
   --test "$TEST_APK" \
