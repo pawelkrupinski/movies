@@ -17,7 +17,7 @@ import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
 import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
-import tools.{Env, ExecutionBudget, FallbackHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
+import tools.{Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
@@ -44,8 +44,17 @@ class WorkerWiring extends play.api.Logging {
   // ALL callers to a rate-limited host together (honoring Retry-After) instead of
   // each of the ~12 concurrent TMDB callers retrying independently into the same
   // burst. Inside MonitoringHttpFetch so its waits don't skew uptime.
+  // The per-host circuit breaker sits closest to the wire: after a few consecutive
+  // timeouts/5xx from a host it OPENS and fast-fails every further call to that
+  // host for a cooldown, so a slow/hanging origin (Helios's restapi, 2026-06-23)
+  // stops pinning the ParallelDetailFetch slots for its whole timeout on every
+  // call. Generalises RealHttpFetch's static per-host FastFailRequestTimeout to any
+  // host, with no allowlist. Wrapped by ThrottledHttpFetch (429 gate) and
+  // MonitoringHttpFetch (so a fast-fail still shows as the real unavailability).
   lazy val httoFetch: HttpFetch =
-    new MonitoringHttpFetch(new ThrottledHttpFetch(new RealHttpFetch()), uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
+    new MonitoringHttpFetch(
+      new ThrottledHttpFetch(new HostCircuitBreakerHttpFetch(new RealHttpFetch())),
+      uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
 
   // ── External API clients ──────────────────────────────────────────────────
   lazy val tmdbClient = new TmdbClient(httoFetch)
