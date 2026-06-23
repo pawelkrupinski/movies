@@ -351,8 +351,12 @@ struct ContentView: View {
             prefs.setDisabledCinemas(others.union(disabledHere))
         }
         // Push the film onto a fresh stack so the detail screen is what the user
-        // sees. A title not in the repertoire (left the listing) just no-ops.
-        if let title = link.filmTitle, let film = store.films.first(where: { $0.title == title }) {
+        // sees. Match the way the web's film lookup does — by normalized title
+        // (Arabic→Roman fold) so a link to "…Prady 2" finds the stored
+        // "…Prady II" — not byte-for-byte. A title not in the repertoire (left
+        // the listing) just no-ops.
+        if let title = link.filmTitle,
+           let film = store.films.first(where: { DeepLinkTitle.matches($0.title, title) }) {
             navPath = [film]
         }
     }

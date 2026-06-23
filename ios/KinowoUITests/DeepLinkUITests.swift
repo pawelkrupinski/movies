@@ -36,6 +36,19 @@ final class DeepLinkUITests: XCTestCase {
             "A film deep link should push the detail screen, but the detail poster never appeared")
     }
 
+    func testNumberedFilmLinkMatchesByNormalizedTitle() throws {
+        // The fixture has "Film 2"; a link carrying the Roman form "Film II" must
+        // still open it — the app matches by the web's normalized title (Arabic↔
+        // Roman), not byte-for-byte. Guards the sequel-title deep-link fix.
+        app.launchEnvironment["KINOWO_UITEST_DEEPLINK"] = "kinowo://warszawa/film?title=Film%20II"
+        app.launch()
+
+        let poster = app.descendants(matching: .any).matching(identifier: "filmdetail.poster").firstMatch
+        XCTAssertTrue(
+            poster.waitForExistence(timeout: 30),
+            "A numbered film link (Film II) should open the fixture's 'Film 2' detail via normalized matching")
+    }
+
     func testCityLinkLandsOnRepertoireWithoutGate() throws {
         // A city-only link satisfies the gate and shows the grid directly —
         // never the city-confirm screen.

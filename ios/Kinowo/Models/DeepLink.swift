@@ -184,3 +184,30 @@ struct DeepLinkFilters: Equatable {
         return (h, m)
     }
 }
+
+/// Title matching for deep links, mirroring the server's
+/// `TitleNormalizer.normalize`. The web's film page matches a URL's `?title=`
+/// against schedules by normalized title (Arabic→Roman numeral fold,
+/// "…Prady 2" ⇄ "…Prady II"), NOT byte-for-byte — the linked title and the
+/// stored title diverge for numbered films. The app must match the same way or
+/// a deep link to a sequel opens the app but never the film page.
+///
+/// Keep in sync with `TitleNormalizer.normalize` / its `ArabicToRoman` map.
+enum DeepLinkTitle {
+    private static let arabicToRoman: [String: String] = [
+        "1": "I", "2": "II", "3": "III", "4": "IV", "5": "V",
+        "6": "VI", "7": "VII", "8": "VIII", "9": "IX", "10": "X",
+        "11": "XI", "12": "XII", "13": "XIII", "14": "XIV", "15": "XV",
+        "16": "XVI", "17": "XVII", "18": "XVIII", "19": "XIX", "20": "XX",
+    ]
+
+    /// Standalone Arabic numerals → Roman, word by word.
+    static func normalize(_ title: String) -> String {
+        title.split(separator: " ", omittingEmptySubsequences: false)
+            .map { arabicToRoman[String($0)] ?? String($0) }
+            .joined(separator: " ")
+    }
+
+    /// Whether two titles refer to the same film under the server's normalize.
+    static func matches(_ a: String, _ b: String) -> Bool { normalize(a) == normalize(b) }
+}

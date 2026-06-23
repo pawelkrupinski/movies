@@ -131,4 +131,18 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertNil(f.enabledCinemas)
         XCTAssertNil(f.disabledCinemas(allCinemas: ["A", "B"]))
     }
+
+    // MARK: title normalization (matches web TitleNormalizer.normalize)
+
+    func testNormalizeFoldsArabicNumeralsToRoman() {
+        XCTAssertEqual(DeepLinkTitle.normalize("Diabeł ubiera się u Prady 2"), "Diabeł ubiera się u Prady II")
+        XCTAssertEqual(DeepLinkTitle.normalize("Mortal Kombat 2"), "Mortal Kombat II")
+        // Only standalone-numeral WORDS fold; digits inside a word stay.
+        XCTAssertEqual(DeepLinkTitle.normalize("Blade Runner 2049"), "Blade Runner 2049")
+    }
+
+    func testNumberedTitleMatchesAcrossArabicAndRoman() {
+        XCTAssertTrue(DeepLinkTitle.matches("…Prady 2", "…Prady II"))
+        XCTAssertFalse(DeepLinkTitle.matches("Dune 2", "Dune"))
+    }
 }

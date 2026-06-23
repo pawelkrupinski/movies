@@ -100,6 +100,21 @@ class DeepLinkApplyTest {
     }
 
     @Test
+    fun filmLinkMatchesNumberedTitleByNormalizedForm() {
+        val vm = viewModel()
+
+        // The web links "…Prady 2" (Arabic, as displayed) but the stored film is
+        // "…Prady II" — exact match would miss. Normalized match finds it, and we
+        // navigate with the FOUND film's real title so the detail route resolves.
+        vm.applyRepertoireDependent(
+            DeepLink.parse("https://kinowo.fly.dev/warszawa/film?title=Diabe%C5%82%20ubiera%20si%C4%99%20u%20Prady%202")!!,
+            listOf(Film(title = "Diabeł ubiera się u Prady II")),
+        )
+
+        assertEquals("Diabeł ubiera się u Prady II", vm.pendingFilmNav)
+    }
+
+    @Test
     fun filmLinkDoesNotNavigateWhenTitleAbsentFromRepertoire() {
         val vm = viewModel()
 

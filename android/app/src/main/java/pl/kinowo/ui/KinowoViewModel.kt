@@ -33,6 +33,7 @@ import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
 import pl.kinowo.deeplink.DeepLink
 import pl.kinowo.deeplink.DeepLinkFilters
+import pl.kinowo.deeplink.DeepLinkTitle
 import pl.kinowo.location.LocationCityResolver
 import pl.kinowo.model.Cities
 import pl.kinowo.model.CitySwitchSuggestion
@@ -317,9 +318,15 @@ class KinowoViewModel(
         f.disabledCinemas(cityCinemas.toSet())?.let { disabledHere ->
             setDisabledCinemas((disabledCinemas.value - cityCinemas.toSet()) + disabledHere)
         }
-        // Only navigate to a film that's actually in the listing (one that left
-        // the repertoire just no-ops, like iOS).
-        link.filmTitle?.let { title -> if (loaded.any { it.title == title }) pendingFilmNav = title }
+        // Match the film the way the web's MovieController.film does — by
+        // normalized title (Arabic→Roman fold), NOT byte-for-byte — so a deep
+        // link to a numbered sequel ("…Prady 2") finds the stored "…Prady II".
+        // Navigate with the FOUND film's real title so the detail route (which
+        // looks the film up by exact title) resolves it. A film that left the
+        // listing just no-ops, like iOS.
+        link.filmTitle?.let { title ->
+            loaded.firstOrNull { DeepLinkTitle.matches(it.title, title) }?.let { pendingFilmNav = it.title }
+        }
     }
 
     /** Persist the chosen city. `start()`'s `selectedCity` collector picks up
