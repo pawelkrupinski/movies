@@ -241,7 +241,24 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "MIĘDZYNARODOWY KONKURS FILMÓW PEŁNOMETRAŻOWYCH - ALLAH IS NOT OBLIGED" -> "ALLAH IS NOT OBLIGED",
     "Supergirl tani poniedziałek"                            -> "Supergirl",
     "Toy story 5 tani poniedziałek"                          -> "Toy story 5",
-    "Supergirl 2D"                                           -> "Supergirl"
+    "Supergirl 2D"                                           -> "Supergirl",
+    // Eleventh-wave (2026-06-23) containment-derived strips (inner film is rated).
+    "Maraton: Powrót do przyszłości"                         -> "Powrót do przyszłości",
+    "Spotkania Filmowe | Ojczyzna"                           -> "Ojczyzna",
+    "Psychoanalityczne Spotkania Filmowe „W głębi”: Czytając Lolitę w Teheranie" -> "Czytając Lolitę w Teheranie",
+    "Classy Monday - Rambo: Pierwsza krew"                   -> "Rambo: Pierwsza krew",
+    "19. FGA: Szepty lasu"                                   -> "Szepty lasu",
+    "BKF #53 Chronologia wody"                               -> "Chronologia wody",
+    "Niedziela z Dokumentem: Dziecko z pyłu"                 -> "Dziecko z pyłu",
+    "70-lecie Wydawnictwa Poznańskiego: Wędrówka na północ"  -> "Wędrówka na północ",
+    "BACKROOMS. BEZ WYJŚCIA - Młodzieżowy Klub Filmowy LEŻAK" -> "BACKROOMS. BEZ WYJŚCIA",
+    "Backrooms. Bez wyjścia I 2D I"                          -> "Backrooms. Bez wyjścia",
+    "Rozmowa. Ostatni seans"                                 -> "Rozmowa",
+    "Werdykt czwartek konesera"                              -> "Werdykt",
+    "Człowiek z marmuru. Spotkanie z Michałem Tarkowskim"    -> "Człowiek z marmuru",
+    "Sprawiedliwość owiec - Filmoteka Dojrzałego Człowieka"  -> "Sprawiedliwość owiec",
+    "Zaproszenie - przepdremiera"                            -> "Zaproszenie",
+    "Toy Story 5- 2D Dubbing PL"                             -> "Toy Story 5"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
@@ -298,7 +315,14 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // The full-length-competition strip must NOT touch the short-film SETS (they
     // don't decode to a single film, so stripping the banner is pointless): the
     // rule requires PEŁNOMETRAŻOWYCH + a dash, not KRÓTKOMETRAŻOWYCH + a colon.
-    "Międzynarodowy Konkurs Filmów Krótkometrażowych: set II – MOST"
+    "Międzynarodowy Konkurs Filmów Krótkometrażowych: set II – MOST",
+    // The capital-'I' format wrapper is case-SENSITIVE on the 'I' so the Polish
+    // conjunction ' i ' (and the lowercase title) can't trigger it.
+    "Lilo i Stitch",
+    "Asterix i Obelix: Imperium smoka",
+    // The dot-'Spotkanie' suffix needs a PERIOD before 'spotkani…'; a title that
+    // merely CONTAINS 'spotkania' must survive (no period, no following ' z').
+    "Bliskie spotkania trzeciego stopnia"
   )
 
   it should "never touch a plain colon/word title" in {

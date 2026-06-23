@@ -302,7 +302,30 @@ object ExtraTitleRules {
     searchStrip("xtra-konkurs-pelnometrazowych",   """(?iu)^MIĘDZYNARODOWY\s+KONKURS\s+FILMÓW\s+PEŁNOMETRAŻOWYCH\s*[-–—]\s+""", "'MIĘDZYNARODOWY KONKURS FILMÓW PEŁNOMETRAŻOWYCH - <film>' festival full-length competition (Allah Is Not Obliged, Space Cadet → Nowa w kosmosie, The Square); the KRÓTKOMETRAŻOWYCH short-film SETS are left alone (they don't resolve to one film)"),
     // Decoration suffixes (banner after the film); query-only strip keeps the row.
     searchStrip("xtra-tani-dzien-suffix",          """(?iu)\s+tani\s+(?:poniedziałek|wtorek)\s*$""", "'<film> tani poniedziałek/wtorek' cheap-day suffix (Supergirl, Toy Story 5) — sibling of the 'Tani wtorek:' prefix"),
-    searchStrip("xtra-bare-format-suffix",         """(?iu)\s+(?:2D|3D)\s*$""",                       "'<film> 2D/3D' bare screen-format suffix the seed/canonical format strips miss (they require a dub/napisy word or parens) — Supergirl 2D")
+    searchStrip("xtra-bare-format-suffix",         """(?iu)\s+(?:2D|3D)\s*$""",                       "'<film> 2D/3D' bare screen-format suffix the seed/canonical format strips miss (they require a dub/napisy word or parens) — Supergirl 2D"),
+    // Eleventh-wave (2026-06-23) audit by CONTAINMENT: a rating-less raw title that
+    // contains an already-RATED film title as a substring proves the surrounding
+    // text is strippable decoration (and the inner film is rated by construction).
+    // Spurious substring hits ("Szlagierowy zawrót głowy" ⊅ Zawrót głowy/Vertigo,
+    // "60. ROCZNICA PREMIERY" ⊅ the film 'Rocznica', the 'Minimaraton Superman i
+    // Supergirl' double-feature, the 'NT Live:' theatre broadcast that must NOT
+    // inherit the film's ratings) were reviewed out by hand. Query-only strips.
+    searchStrip("xtra-maraton-prefix",             """(?iu)^Maraton:\s+""",                          "'Maraton: <film>' marathon prefix (Powrót do przyszłości); NOT 'Minimaraton …' which fronts a double-feature bundle"),
+    searchStrip("xtra-spotkania-filmowe-banner",   """(?iu)^(?:\p{L}+\s+)?Spotkania\s+Filmowe\b[^:|]*[:|]\s*""", "'[<adj>] Spotkania Filmowe [„<cycle>”] : / | <film>' film-meeting banner — the pipe form + a leading-adjective form the seed 'spotkani…:' prefix (anchored, colon-only) misses (Spotkania Filmowe | Ojczyzna; Psychoanalityczne Spotkania Filmowe „W głębi”: Czytając Lolitę w Teheranie)"),
+    searchStrip("xtra-classy-monday-prefix",       """(?iu)^Classy\s+Monday\s*[-–—]\s*""",           "'Classy Monday - <film>' cycle prefix (Rambo: Pierwsza krew)"),
+    searchStrip("xtra-fga-prefix",                 """(?iu)^\d+\.\s*FGA:\s+""",                       "'19. FGA: <film>' film-festival numbered prefix (Szepty lasu)"),
+    searchStrip("xtra-bkf-prefix",                 """(?iu)^BKF\s*#?\s*\d+\s+""",                     "'BKF #53 <film>' film-club numbered prefix (Chronologia wody)"),
+    searchStrip("xtra-niedziela-z-dokumentem",     """(?iu)^Niedziela\s+z\s+Dokumentem:\s+""",       "'Niedziela z Dokumentem: <film>' documentary-strand prefix (Dziecko z pyłu)"),
+    searchStrip("xtra-nlecie-org-prefix",          """(?iu)^\d+[-–]lecie\s+[^:]{2,40}:\s+""",        "'70-lecie Wydawnictwa Poznańskiego: <film>' anniversary-of-an-organisation prefix (Wędrówka na północ)"),
+    // Decoration suffixes (banner after the film).
+    searchStrip("xtra-klub-filmowy-suffix",        """(?iu)\s*[-–—|]\s*(?:\p{L}+\s+){0,3}Klub\s+Filmowy\b.*$""", "'<film> - <name> Klub Filmowy <…>' film-club suffix (Backrooms. Bez wyjścia - Młodzieżowy Klub Filmowy Leżak); generalises the specific 'xtra-filozoficzny-klub-suffix'"),
+    searchStrip("xtra-capital-i-format-wrapper",   """\s+I\s+(?i:2D|3D|DUB(?:BING)?|NAP(?:ISY)?|LEKTOR|ATMOS|IMAX|4DX)\s+I\s*$""", "'<film> I 2D I' — a cinema that wraps the screen-format tag in literal capital-'I' separators instead of pipes (Backrooms. Bez wyjścia I 2D I). The 'I's are case-SENSITIVE so the Polish conjunction ' i ' can't trigger it"),
+    searchStrip("xtra-ostatni-seans-suffix",       """(?iu)\s*[.,]\s*Ostatni\s+seans\s*$""",         "'<film>. Ostatni seans' last-screening suffix (Rozmowa. Ostatni seans)"),
+    searchStrip("xtra-czwartek-konesera-suffix",   """(?iu)\s+czwartek\s+konesera\s*$""",            "'<film> czwartek konesera' connoisseur-Thursday suffix (Werdykt czwartek konesera)"),
+    searchStrip("xtra-dot-spotkanie-suffix",       """(?iu)\s*\.\s*Spotkani\p{L}*\s+z\b.*$""",       "'<film>. Spotkanie z <person>' meeting suffix introduced by a PERIOD — the seed meeting-suffix only fires after a dash/pipe/plus (Człowiek z marmuru. Spotkanie z Michałem Tarkowskim)"),
+    searchStrip("xtra-filmoteka-dojrzalego",       """(?iu)\s*[-–—|]\s*Filmoteka\s+Dojrzałego\s+Człowieka\s*$""", "'<film> - Filmoteka Dojrzałego Człowieka' mature-viewers'-strand suffix (Sprawiedliwość owiec)"),
+    searchStrip("xtra-przedpremiera-typo-suffix",  """(?iu)\s*[-–—|]\s*przepdremiera\s*$""",         "'<film> - przepdremiera' (data-entry transposition of przedpremiera the other premiere strips don't match) (Zaproszenie)"),
+    searchStrip("xtra-format-pl-suffix",           """(?iu)\s*[-–—|]?\s*(?:2D|3D)\s+(?:dubbing|napisy|lektor)\s+PL\s*$""", "'<film>- 2D Dubbing PL' screen-format + dub/napisy + PL suffix (the canonical format strips stop before the trailing ' PL') (Toy Story 5)")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in
