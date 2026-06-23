@@ -14,6 +14,15 @@
   The panel markup + builder below are then fully generic.
 *@
 <div class="panel" id="panel">
+  <!-- Header bar: the panel title plus a minimize toggle. Minimizing
+       collapses everything but this bar so the live preview can take the
+       full width while dialing in geometry; the state persists across the
+       resize-reloads a tuning session churns through. -->
+  <div class="panel-header">
+    <span class="panel-title">Kontrolki</span>
+    <button type="button" class="panel-toggle" id="panelToggle"
+            aria-expanded="true" aria-label="Zwiń panel" title="Zwiń panel">−</button>
+  </div>
   <!-- Live display-geometry readout: available viewport first, then the
        device-pixel ratio and the physical pixels it works out to. -->
   <div class="viewport-info" id="viewportInfo" style="font:11px/1.4 ui-monospace,monospace;color:#8a8aa0;margin-bottom:.6rem">viewport …</div>
@@ -143,4 +152,27 @@
       dump.select();
     }
   });
+
+  // Minimize/restore the whole control panel. The CSS `.minimized` rule
+  // hides every child but the header bar and lets the panel shrink, handing
+  // the freed width to the live preview. State is persisted so the choice
+  // survives the viewport-resize reloads a tuning session relies on.
+  (function () {
+    const toggle = document.getElementById('panelToggle');
+    const KEY = 'tunePanelMinimized';
+    const setMinimized = (min) => {
+      panel.classList.toggle('minimized', min);
+      toggle.textContent = min ? '+' : '−';
+      toggle.setAttribute('aria-expanded', String(!min));
+      const label = min ? 'Rozwiń panel' : 'Zwiń panel';
+      toggle.setAttribute('aria-label', label);
+      toggle.title = label;
+    };
+    setMinimized(localStorage.getItem(KEY) === '1');
+    toggle.addEventListener('click', () => {
+      const min = !panel.classList.contains('minimized');
+      setMinimized(min);
+      localStorage.setItem(KEY, min ? '1' : '0');
+    });
+  })();
 </script>

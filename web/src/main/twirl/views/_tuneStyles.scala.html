@@ -13,6 +13,18 @@
 
   /* Control panel. */
   .panel { flex: 1 1 340px; min-width: 300px; }
+  .panel-header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .6rem; }
+  .panel-title { font-size: 12px; color: #66aadd; text-transform: uppercase; letter-spacing: .06em; }
+  .panel-toggle {
+    flex: 0 0 auto; width: 1.7em; height: 1.7em; line-height: 1; padding: 0;
+    background: #1a1a2e; border: 1px solid #3a3a6e; color: #aad4ff;
+    border-radius: 4px; cursor: pointer; font: inherit; font-size: 14px;
+  }
+  .panel-toggle:hover { background: #252540; color: #fff; }
+  /* Minimized: shrink to the header bar and hand the freed width back to
+     the preview by dropping the grow factor and the 300px floor. */
+  .panel.minimized { flex: 0 0 auto; min-width: 0; }
+  .panel.minimized > *:not(.panel-header) { display: none; }
   .panel-group { margin-bottom: 1rem; }
   .panel-group h2 {
     font-size: 12px; color: #66aadd; text-transform: uppercase; letter-spacing: .06em;

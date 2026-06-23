@@ -2707,6 +2707,34 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  "the /debug/tune panel minimize toggle" should "collapse the panel to its header, then restore it" in {
+    onPath("/debug/tune") { page =>
+      // A `.panel-group` is one of the slider blocks the toggle hides — its
+      // computed display tracks the panel's minimized state.
+      def slidersShown: Boolean =
+        page.evalBool(
+          "(() => { const g = document.querySelector('.panel-group');" +
+          "  return !!g && getComputedStyle(g).display !== 'none'; })()"
+        )
+      def minimized: Boolean =
+        page.evalBool("document.getElementById('panel').classList.contains('minimized')")
+      def click(): Unit =
+        page.evalBool("(() => { document.getElementById('panelToggle').click(); return true; })()") shouldBe true
+
+      // Starts expanded: sliders visible, not minimized.
+      minimized shouldBe false
+      slidersShown shouldBe true
+
+      click()
+      minimized shouldBe true
+      slidersShown shouldBe false
+
+      click()
+      minimized shouldBe false
+      slidersShown shouldBe true
+    }
+  }
+
   // ── helpers ──────────────────────────────────────────────────────────────
 
   private def clearLocalStorage(page: CdpPage): Unit =
