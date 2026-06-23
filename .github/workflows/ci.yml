@@ -17,16 +17,16 @@ on:
 #
 #   test (unit + eslint + stage) ─┐
 #   integration-test ─────────────┤
-#   e2e × 3 shards ───────────────┤  (all independent; deploy.yml's deploy job
+#   e2e × 4 shards ───────────────┤  (all independent; deploy.yml's deploy job
 #   mobile-local-server (iOS+And) ┤   `needs` this whole workflow)
 #   page-tests × 13 ──────────────┘
 #
 # Jobs are split to stay under the 20-runner cap WITHOUT any job queueing
-# (currently 19: 1 test + 1 integration + 3 e2e + 1 mobile + 13 page-tests).
+# (currently 20: 1 test + 1 integration + 4 e2e + 1 mobile + 13 page-tests).
 # eslint rides `test` (was its own job), and iOS + Android LocalServer share
 # one `mobile-local-server` job (one FixtureServerMain boot for both). The
 # original ~13-min long pole was the single `e2e` job (two serial whole-corpus
-# determinism specs); it's now (a) fanned out across 3 parallel shards and
+# determinism specs); it's now (a) fanned out across 4 parallel shards and
 # (b) each heavy spec runs its replays CONCURRENTLY (see ParallelReplays), so
 # e2e drops well under the page-tests tier. The WebKit phone page-tests are
 # 2-way sharded (slow engine — the test run, not the boot, is the bulk); the
@@ -360,22 +360,28 @@ jobs:
                   include_passed: false
 
 
-    # The `e2e` module (cross-app whole-corpus specs), FANNED OUT across three
+    # The `e2e` module (cross-app whole-corpus specs), FANNED OUT across four
     # parallel shards. On one runner the module was the ~13-min pipeline long
-    # pole: its two whole-corpus determinism specs each drain the always-on
-    # staging pipeline per shuffled replay (~5 min apiece), and they ran serially.
-    # The shards (see the e2eScrape/e2eStaging/e2eRest aliases in build.sbt):
+    # pole: each heavy spec boots the always-on staging pipeline (~110s) one or
+    # more times, and they ran serially. The shards (see the
+    # e2eScrape/e2eStaging/e2eReScrape/e2eRest aliases in build.sbt):
     #
-    #   scrape  — ScrapeOrderDeterminismSpec  (run by name)
-    #   staging — StagingOrderDeterminismSpec (run by name)
-    #   rest    — every OTHER e2e spec, via `e2e/Test/test -- -l …CorpusReplay`
-    #             (tag-EXCLUSION of the two heavy specs), so a newly-added spec
-    #             auto-rides this shard and can't be silently dropped. See the
-    #             `@CorpusReplay` tag annotation in CorpusReplay.java.
+    #   scrape   — ScrapeOrderDeterminismSpec  (run by name)
+    #   staging  — StagingOrderDeterminismSpec (run by name)
+    #   rescrape — ReScrapeIdempotencySpec     (run by name) — the heaviest
+    #              single spec; pooled into `rest` it was the pipeline long pole
+    #              (it boots the settled corpus, then runs identical re-scrape
+    #              ticks against it). Its own shard now.
+    #   rest     — every OTHER e2e spec, via `e2e/Test/test -- -l …CorpusReplay`
+    #              (tag-EXCLUSION of the three @CorpusReplay specs), so a
+    #              newly-added spec auto-rides this shard and can't be silently
+    #              dropped. See the `@CorpusReplay` tag annotation in
+    #              CorpusReplay.java.
     #
-    # Same coverage as the old single job, ~half the wall-clock. Each shard pays
-    # its own compile, but they run in parallel; the freed runner slots come from
-    # un-sharding the (boot-bound, not test-bound) playwright phone jobs below.
+    # Same coverage as the old single job, a fraction of the wall-clock. Each
+    # shard pays its own compile, but they run in parallel; the 4th shard's
+    # runner slot comes from the page-tests tier staying at 13 (the freed slots
+    # earlier came from un-sharding the boot-bound playwright phone jobs below).
     # Uses FixtureTestWiring (no Mongo); reports go to the root unit/ dir
     # (unitReportSettings) → a per-shard `e2e tests (<shard>)` check.
     e2e:
@@ -384,9 +390,10 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { shard: scrape,  cmd: e2eScrape }
-                    - { shard: staging, cmd: e2eStaging }
-                    - { shard: rest,    cmd: e2eRest }
+                    - { shard: scrape,   cmd: e2eScrape }
+                    - { shard: staging,  cmd: e2eStaging }
+                    - { shard: rescrape, cmd: e2eReScrape }
+                    - { shard: rest,     cmd: e2eRest }
         runs-on: ubuntu-latest
         permissions:
             contents: read

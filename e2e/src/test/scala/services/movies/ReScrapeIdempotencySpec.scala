@@ -34,6 +34,7 @@ import scala.collection.mutable
  * re-cased by the scrape path) is reported informationally — no merge/freshness
  * cost — and tracked as a separate, smaller follow-up.
  */
+@CorpusReplay // CI runs this heavy spec on its own parallel e2e shard — see CorpusReplay.java
 class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
 
   private val Fixture = "08-06-2026"
@@ -100,6 +101,16 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
     (w, merges)
   }
 
+  // ONE boot shared by both tests below. The full-pipeline `bootSettled()` is
+  // ~110s; booting it per-test made this the single heaviest e2e spec (two
+  // boots ≈ 5.5 min) and the CI long pole. Sharing is order-independent and
+  // safe BY CONSTRUCTION: both tests assert the settled corpus is a fixpoint
+  // (an extra settle is a no-op; identical re-scrape ticks are churn-free), so
+  // neither test mutates the shared key set — whichever runs first leaves the
+  // corpus in exactly the state the other expects. `merges` deltas are captured
+  // fresh inside each test, so a no-op pass can't pollute the other's baseline.
+  private lazy val settled: (FixtureTestWiring, CountingMergeMetrics) = bootSettled()
+
   // ── Settle is idempotent ────────────────────────────────────────────────────
   // The cheapest temporal invariant: re-running the settle (`canonicalizeBySanitize`)
   // on an ALREADY-settled corpus must be a pure no-op — no fold, no re-key. A
@@ -107,7 +118,7 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
   // fixpoint of its own rule (the partition/canonical-key choice isn't stable),
   // which is the seam the re-scrape flap rode in on.
   "an already-settled corpus" should "be unchanged by a further settle pass (settle is idempotent)" in {
-    val (w, merges) = bootSettled()
+    val (w, merges) = settled
     val before       = keySet(w)
     val mergesBefore = merges.total
     info(s"settled corpus: ${before.size} films")
@@ -126,7 +137,7 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
   // ── Re-scrape is a no-op ─────────────────────────────────────────────────────
   "a settled corpus" should
     "be churn-free under an identical re-scrape: no re-divert of known films, no re-fold" in {
-    val (w, merges) = bootSettled()
+    val (w, merges) = settled
     val settledKeys = keySet(w)
     info(s"settled corpus: ${settledKeys.size} films")
 
