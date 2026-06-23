@@ -38,5 +38,5 @@ echo "  scripts: $SCRIPTS_DIR"
 
 if [[ "${1:-}" != "--no-open" ]]; then
   open "$APP"
-  echo "▶ Launched (look top-left of the screen)."
+  echo "▶ Launched (look top-right of the screen; also a ☰ menu-bar icon)."
 fi

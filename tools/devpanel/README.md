@@ -60,10 +60,18 @@ Both device actions wait for the phone to be ready before launching:
 bash tools/devpanel/build.sh
 ```
 
-This compiles `build/DevPanel.app` and opens it (top-left of the screen). It has
-no Dock icon (`LSUIElement`); quit with the `✕` in the panel. Drag the panel by
-its background to reposition. The panel stays above other windows and follows
-you across Spaces.
+This compiles `build/DevPanel.app` and opens it (top-right of the screen). It has
+no Dock icon (`LSUIElement`). Drag the panel by its background to reposition. The
+panel stays above other windows and follows you across Spaces.
+
+**Hide / show / quit.** Since there's no Dock icon, the app lives in the menu
+bar (a ☰ slider icon):
+
+- The **yellow** traffic-light *hides* the panel (it doesn't quit).
+- **Click** the menu-bar icon to toggle the panel back on/off.
+- **Right-click** (or control-click) the menu-bar icon for a *Show / Hide* +
+  *Quit* menu — the way to quit while the panel is hidden.
+- The panel's **`✕`** still quits outright.
 
 The absolute path to `scripts/` is baked into the app's Info.plist at build
 time, so the `.app` works even if copied to `/Applications`. **Re-run the build

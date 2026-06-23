@@ -1,6 +1,10 @@
 // DevPanel — a small always-on-top floating palette of dev actions for the
 // movies repo.
 //
+// It has no Dock icon (accessory app). The yellow traffic-light HIDES the
+// panel; a menu-bar (☰) icon brings it back (left-click) or quits it
+// (right-click) — so it can be tucked away without quitting.
+//
 // Every action runs its script as a background subprocess, streaming live
 // output into an in-panel console. There are two consoles:
 //   • Web    — shared by the two server actions; KEEPS its scrollback across
@@ -397,6 +401,7 @@ private let defaultExpandedWidth: CGFloat = 380
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var panel: NSPanel!
+    private var statusItem: NSStatusItem!
     private let scriptsDir: String =
         (Bundle.main.object(forInfoDictionaryKey: "DevPanelScriptsDir") as? String) ?? ""
     private lazy var repoRoot: String =
@@ -418,6 +423,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_ note: Notification) {
         installMenu()
+        installStatusItem()
         webConsole.scriptsDir = scriptsDir
         loadGroupSelections()
 
@@ -456,13 +462,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             backing: .buffered, defer: false)
         panel.title = "movies"
         // An always-on-top floating panel can't use the OS's native minimize /
-        // zoom, so the yellow + green buttons drive floating-palette equivalents:
-        // minimize → collapse to the compact panel, zoom → open both consoles.
+        // zoom (and as an accessory app there's no Dock icon to minimize into),
+        // so the yellow + green buttons drive floating-palette equivalents:
+        // minimize → hide the panel entirely (bring it back from the menu-bar
+        // ☰ icon), zoom → open both consoles.
         panel.standardWindowButton(.closeButton)?.isHidden = false
         if let mini = panel.standardWindowButton(.miniaturizeButton) {
             mini.isHidden = false
             mini.target = self
-            mini.action = #selector(minimizePanel)
+            mini.action = #selector(hidePanel)
         }
         if let zoom = panel.standardWindowButton(.zoomButton) {
             zoom.isHidden = false
@@ -546,11 +554,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // reopen a merely-closed window from).
     func windowWillClose(_ notification: Notification) { NSApp.terminate(nil) }
 
-    // Yellow: collapse to the compact panel. Green: open both consoles (toggle).
-    @objc private func minimizePanel() {
-        webConsole.setOpen(false)
-        deviceConsole.setOpen(false)
-    }
+    // Yellow: hide the whole panel (it's an accessory app, so there's no Dock
+    // icon to minimize into — the menu-bar ☰ icon brings it back). Green: open
+    // both consoles (toggle).
+    @objc private func hidePanel() { panel.orderOut(nil) }
 
     @objc private func zoomPanel() {
         let open = !(webConsole.isExpanded && deviceConsole.isExpanded)
@@ -660,6 +667,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         editItem.submenu = edit
 
         NSApp.mainMenu = main
+    }
+
+    // MARK: menu-bar status item
+
+    /// A menu-bar (☰) icon so the panel can be hidden out of the way and brought
+    /// back — there's no Dock icon (accessory app). Left-click toggles the panel;
+    /// right/control-click opens a tiny menu (also the only way to quit while the
+    /// panel is hidden).
+    private func installStatusItem() {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        if let button = item.button {
+            if let img = NSImage(systemSymbolName: "slider.horizontal.3",
+                                 accessibilityDescription: "DevPanel") {
+                img.isTemplate = true
+                button.image = img
+            } else {
+                button.title = "☰"
+            }
+            button.toolTip = "DevPanel — click to show/hide"
+            button.target = self
+            button.action = #selector(statusItemClicked)
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        }
+        self.statusItem = item
+    }
+
+    @objc private func statusItemClicked() {
+        let event = NSApp.currentEvent
+        let isSecondary = event?.type == .rightMouseUp
+            || (event?.modifierFlags.contains(.control) ?? false)
+        if isSecondary {
+            let menu = NSMenu()
+            let toggle = NSMenuItem(title: panel.isVisible ? "Hide DevPanel" : "Show DevPanel",
+                                    action: #selector(togglePanel), keyEquivalent: "")
+            toggle.target = self
+            menu.addItem(toggle)
+            menu.addItem(.separator())
+            let quitItem = NSMenuItem(title: "Quit DevPanel", action: #selector(quit), keyEquivalent: "q")
+            quitItem.target = self
+            menu.addItem(quitItem)
+            // Attach the menu just for this click, then detach so a plain
+            // left-click keeps toggling instead of opening the menu.
+            statusItem.menu = menu
+            statusItem.button?.performClick(nil)
+            statusItem.menu = nil
+        } else {
+            togglePanel()
+        }
+    }
+
+    /// Show the panel where it was if hidden, otherwise hide it.
+    @objc private func togglePanel() {
+        if panel.isVisible {
+            panel.orderOut(nil)
+        } else {
+            panel.orderFrontRegardless()
+        }
     }
 
     // MARK: running
