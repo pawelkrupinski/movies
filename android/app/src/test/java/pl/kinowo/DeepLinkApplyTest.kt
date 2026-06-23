@@ -3,6 +3,7 @@ package pl.kinowo
 import androidx.test.core.app.ApplicationProvider
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -82,5 +83,33 @@ class DeepLinkApplyTest {
         assertEquals(DateFilter.Today, vm.dateFilter)
         assertEquals("", vm.search)
         assertEquals(SortOption.DEFAULT, vm.sortBy)
+    }
+
+    @Test
+    fun filmLinkQueuesNavigationWhenTitleIsInTheLoadedRepertoire() {
+        val vm = viewModel()
+
+        // The film lookup runs against the list it's GIVEN — which the fix
+        // guarantees is the target city's repertoire, not stale films.
+        vm.applyRepertoireDependent(
+            DeepLink.parse("https://kinowo.fly.dev/warszawa/film?title=Wicked")!!,
+            listOf(Film(title = "Other film"), Film(title = "Wicked")),
+        )
+
+        assertEquals("Wicked", vm.pendingFilmNav)
+    }
+
+    @Test
+    fun filmLinkDoesNotNavigateWhenTitleAbsentFromRepertoire() {
+        val vm = viewModel()
+
+        // Title not in the supplied list (e.g. matched against the wrong/stale
+        // city, or the film left the listing) → no navigation, lands on the grid.
+        vm.applyRepertoireDependent(
+            DeepLink.parse("https://kinowo.fly.dev/warszawa/film?title=Wicked")!!,
+            listOf(Film(title = "Other film")),
+        )
+
+        assertNull(vm.pendingFilmNav)
     }
 }

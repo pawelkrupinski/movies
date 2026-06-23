@@ -5,6 +5,12 @@ final class RepertoireStore: ObservableObject {
     @Published var films: [Film] = []
     @Published var isLoading: Bool = false
     @Published var error: Error? = nil
+    /// The city whose repertoire `films` currently holds, or nil before the
+    /// first successful load. `films` isn't cleared on a city switch (no empty
+    /// flash), so it briefly holds the PREVIOUS city's list mid-switch — a deep
+    /// link's film lookup waits for this to equal its target slug rather than
+    /// for `films` to merely be non-empty.
+    @Published private(set) var loadedCitySlug: String?
 
     private let base: URL
     private var url: URL
@@ -57,6 +63,7 @@ final class RepertoireStore: ObservableObject {
         // UI tests run against the in-memory fixture, never the network.
         if RepertoireStore.uiTestFixtureEnabled {
             lastReloadedAt = now
+            loadedCitySlug = citySlug
             return
         }
         do {
@@ -71,6 +78,9 @@ final class RepertoireStore: ObservableObject {
                 throw URLError(.badServerResponse)
             }
             if http.statusCode == 304 {
+                // `films` already holds this city's data (the conditional header
+                // is city-bound), so mark it loaded for the deep-link gate.
+                self.loadedCitySlug = citySlug
                 self.lastReloadedAt = now
                 return
             }
@@ -79,6 +89,7 @@ final class RepertoireStore: ObservableObject {
             }
             let decoded = try JSONDecoder().decode([Film].self, from: data)
             self.films = decoded
+            self.loadedCitySlug = citySlug
             self.lastReloadedAt = now
             let lm = http.value(forHTTPHeaderField: "Last-Modified")
             let filmsCopy = decoded

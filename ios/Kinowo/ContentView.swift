@@ -225,14 +225,13 @@ struct ContentView: View {
         // Cold start: the first non-empty `store.films` is the first
         // repertoire load completing.
         .onChange(of: store.films.isEmpty) { isEmpty in
-            if !isEmpty {
-                maybeShowSwipeHint()
-                // A link parked before the repertoire arrived: now that films
-                // (and the value universe) exist, push the film + apply the
-                // multi-value filters it carried.
-                if let link = pendingDeepLink { applyRepertoireDependent(link) }
-            }
+            if !isEmpty { maybeShowSwipeHint() }
         }
+        // A parked link's film push + multi-value filters land once the TARGET
+        // city's repertoire is the loaded one — not merely when films turn
+        // non-empty, which on a warm app / cached cold-start is still the
+        // PREVIOUS city's list (so the film lookup would miss).
+        .onChange(of: store.loadedCitySlug) { _ in applyPendingDeepLinkIfReady() }
         // A link that arrived while the app was already running.
         .onChange(of: deepLink.pending) { link in
             if let link { consumeDeepLink(link) }
@@ -296,16 +295,23 @@ struct ContentView: View {
     /// Apply an inbound deep link. The city was already switched by
     /// `KinowoApp.onOpenURL`; here we land its filters and film. Scalar filters
     /// apply immediately; the film push and multi-value (country/genre/…/cinema)
-    /// filters need the loaded repertoire, so they defer to `pendingDeepLink`
-    /// until the first load lands when the link arrives on a cold start.
+    /// filters need the TARGET city's loaded repertoire, so they park in
+    /// `pendingDeepLink` until `store.loadedCitySlug` matches.
     private func consumeDeepLink(_ link: DeepLink) {
         deepLink.pending = nil
         applyScalarFilters(link.filters)
-        if store.films.isEmpty {
-            pendingDeepLink = link
-        } else {
-            applyRepertoireDependent(link)
-        }
+        pendingDeepLink = link
+        applyPendingDeepLinkIfReady()
+    }
+
+    /// Land the parked link's film + multi-value filters once the loaded
+    /// repertoire is the link's target city — guarding against matching the
+    /// film against the previous city's (or a stale cached) list, which would
+    /// silently drop the film push (the bug MIUI hits, since it keeps the app
+    /// warm with the prior city already loaded).
+    private func applyPendingDeepLinkIfReady() {
+        guard let link = pendingDeepLink, store.loadedCitySlug == link.citySlug else { return }
+        applyRepertoireDependent(link)
     }
 
     /// Filters that map straight onto state with no dependency on the loaded

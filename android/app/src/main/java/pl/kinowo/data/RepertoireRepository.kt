@@ -27,6 +27,15 @@ class RepertoireRepository(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    // The city whose repertoire `films` currently holds, or null before the
+    // first successful load. `films` is NOT cleared on a city switch (to avoid
+    // flashing an empty grid), so it briefly holds the PREVIOUS city's list
+    // mid-switch — anything that must read the right city's films (e.g. a deep
+    // link's film lookup) waits for this to equal the target slug rather than
+    // for `films` to merely be non-empty.
+    private val _loadedCity = MutableStateFlow<String?>(null)
+    val loadedCity: StateFlow<String?> = _loadedCity.asStateFlow()
+
     private var lastReloadedAt: Instant? = null
     private val staleAfter: Duration = Duration.ofSeconds(60)
 
@@ -43,11 +52,16 @@ class RepertoireRepository(
         try {
             val result = api.fetchRepertoire(citySlug, cache.lastModifiedFor(citySlug))
             if (result.notModified) {
+                // 304: `films` already holds this city's data (the conditional
+                // header is city-bound, so a 304 only comes back for the same
+                // city). Mark it loaded so a deep link can proceed.
+                _loadedCity.value = citySlug
                 lastReloadedAt = now
                 return
             }
             val films = result.items ?: return
             _films.value = films
+            _loadedCity.value = citySlug
             lastReloadedAt = now
             cache.save(citySlug, films, result.lastModified)
         } catch (e: Exception) {

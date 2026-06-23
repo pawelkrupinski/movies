@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import android.content.Context
 import coil.annotation.ExperimentalCoilApi
 import coil.imageLoader
@@ -283,9 +284,15 @@ class KinowoViewModel(
         if (link.citySlug != selectedCity.value) setCity(link.citySlug)
         applyScalarFilters(link.filters)
         viewModelScope.launch {
-            // Wait for the repertoire to load, then land the film + exclusions.
-            val loaded = films.first { it.isNotEmpty() }
-            applyRepertoireDependent(link, loaded)
+            // Wait for the TARGET city's repertoire to be the loaded one — NOT
+            // merely for `films` to be non-empty. On a warm app (or a cached
+            // cold start) `films` still holds the PREVIOUS city's list, so
+            // matching the deep-linked film against it misses and the film page
+            // never opens — the bug MIUI hits every time, since it keeps the app
+            // warm. Bounded so a film that genuinely left the repertoire, or a
+            // city whose load fails, falls through to a no-op instead of hanging.
+            withTimeoutOrNull(10_000) { repository.loadedCity.first { it == link.citySlug } }
+            applyRepertoireDependent(link, films.value)
         }
     }
 
@@ -297,7 +304,8 @@ class KinowoViewModel(
         filters.sort?.let { sortBy = it }
     }
 
-    private fun applyRepertoireDependent(link: DeepLink, loaded: List<Film>) {
+    @androidx.annotation.VisibleForTesting
+    internal fun applyRepertoireDependent(link: DeepLink, loaded: List<Film>) {
         val f = link.filters
         if (f.includedCountries.isNotEmpty()) excludedCountries = f.excluded(f.includedCountries, allCountries(loaded).map { it.name }.toSet())
         if (f.includedGenres.isNotEmpty()) excludedGenres = f.excluded(f.includedGenres, allGenres(loaded).map { it.name }.toSet())

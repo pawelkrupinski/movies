@@ -63,6 +63,22 @@ class RepertoireRepositoryTest {
     }
 
     @Test
+    fun `loadedCity tracks the city whose films are held, across a switch`() = runBlocking {
+        val poznan = listOf(Film(title = "Poznań film"))
+        val warszawa = listOf(Film(title = "Warszawa film"))
+        val api = GlobalLastModifiedApi(mapOf("poznan" to poznan, "warszawa" to warszawa), LM)
+        val repository = RepertoireRepository(api, cache())
+
+        assertEquals(null, repository.loadedCity.value)   // nothing loaded yet
+        repository.reload("poznan")
+        assertEquals("poznan", repository.loadedCity.value)
+        repository.reload("warszawa")
+        // The deep-link gate keys on this: it stays "poznan" until warszawa's
+        // load actually lands, so a film lookup never runs against stale films.
+        assertEquals("warszawa", repository.loadedCity.value)
+    }
+
+    @Test
     fun `reloading the same city still revalidates with If-Modified-Since`() = runBlocking {
         val poznan = listOf(Film(title = "Poznań film"))
         val api = GlobalLastModifiedApi(mapOf("poznan" to poznan), LM)
