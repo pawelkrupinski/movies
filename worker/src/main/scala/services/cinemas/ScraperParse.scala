@@ -23,6 +23,20 @@ private[cinemas] object ScraperParse {
     "lipca" -> 7, "sierpnia" -> 8, "września" -> 9, "października" -> 10, "listopada" -> 11, "grudnia" -> 12
   )
 
+  /** Polish month names in the NOMINATIVE ("Czerwiec", "Styczeń"), as several
+    * calendar pages spell their day headers, vs the genitive [[PolishMonths]]
+    * ("czerwca"). */
+  val PolishMonthsNominative: Map[String, Int] = Map(
+    "styczeń" -> 1, "luty" -> 2, "marzec" -> 3, "kwiecień" -> 4, "maj" -> 5, "czerwiec" -> 6,
+    "lipiec" -> 7, "sierpień" -> 8, "wrzesień" -> 9, "październik" -> 10, "listopad" -> 11, "grudzień" -> 12
+  )
+
+  /** Genitive and nominative month names folded into one lookup — accepts
+    * either spelling (the dok.pl / Iluzjon calendars use the nominative in their
+    * day headers, most other pages the genitive). Keyed lower-case; callers
+    * lower-case the token before lookup. */
+  val PolishMonthsAnyCase: Map[String, Int] = PolishMonths ++ PolishMonthsNominative
+
   /** Polish three-letter month abbreviations as several cinema pages spell them
     * ("10 Cze 2026", "5 paź"). Keyed lower-case; [[polishMonthAbbrev]] folds case
     * so a page can capitalise them ("Cze") or not ("cze"). Shared so the

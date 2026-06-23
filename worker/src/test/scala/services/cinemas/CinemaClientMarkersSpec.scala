@@ -31,8 +31,8 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
 
   it should "mark a widely-reused platform client as shared, naming the client" in {
     // FilmwebShowtimesClient still backs the venues Filmweb hasn't been migrated
-    // off (artKino Krosno among them) — unambiguously shared.
-    markers("artKino") shouldBe "shared:FilmwebShowtimesClient"
+    // off (KinoPort among them) — unambiguously shared.
+    markers("KinoPort") shouldBe "shared:FilmwebShowtimesClient"
     // Kino Studyjne Kadr was migrated off Filmweb onto the reusable VisualTicket
     // platform client; only one cinema uses it so far, so it's a custom marker.
     markers("Kino Studyjne Kadr") shouldBe "custom:VisualTicketClient"
@@ -61,7 +61,7 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
     // The PURE catalog map carries the no-network `/cinema/-<id>` fallback; the
     // worker upgrades it to the canonical `/showtimes/<City>/<Name>-<id>` at boot
     // (FilmwebShowtimesClient.resolveAll, covered in FilmwebShowtimesClientSpec).
-    sourceUrls("artKino") shouldBe "https://www.filmweb.pl/cinema/-1122"
+    sourceUrls("KinoPort") shouldBe "https://www.filmweb.pl/cinema/-1735"
   }
 
   it should "link an own-site-migrated venue (Kino Tatry) to its own repertoire page" in {

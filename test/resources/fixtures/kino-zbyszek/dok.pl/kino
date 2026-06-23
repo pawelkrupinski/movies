@@ -1,0 +1,1675 @@
+<!DOCTYPE html>
+<html lang="pl" dir="ltr" prefix="content: http://purl.org/rss/1.0/modules/content/  dc: http://purl.org/dc/terms/  foaf: http://xmlns.com/foaf/0.1/  og: http://ogp.me/ns#  rdfs: http://www.w3.org/2000/01/rdf-schema#  schema: http://schema.org/  sioc: http://rdfs.org/sioc/ns#  sioct: http://rdfs.org/sioc/types#  skos: http://www.w3.org/2004/02/skos/core#  xsd: http://www.w3.org/2001/XMLSchema# ">
+<head>
+  <meta charset="utf-8" />
+<link rel="canonical" href="https://dok.pl/kino" />
+<link rel="apple-touch-icon" sizes="180x180" href="/sites/default/files/favicons/apple-touch-icon.png"/>
+<link rel="icon" type="image/png" sizes="32x32" href="/sites/default/files/favicons/favicon-32x32.png"/>
+<link rel="icon" type="image/png" sizes="16x16" href="/sites/default/files/favicons/favicon-16x16.png"/>
+<link rel="manifest" href="/sites/default/files/favicons/site.webmanifest"/>
+<link rel="mask-icon" href="/sites/default/files/favicons/safari-pinned-tab.svg" color="#5bbad5"/>
+<meta name="msapplication-TileColor" content="#ffc40d"/>
+<meta name="theme-color" content="#ffffff"/>
+<meta name="favicon-generator" content="Drupal responsive_favicons + realfavicongenerator.net" />
+<meta name="Generator" content="Drupal 8 (https://www.drupal.org)" />
+<meta name="MobileOptimized" content="width" />
+<meta name="HandheldFriendly" content="true" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>div#sliding-popup, div#sliding-popup .eu-cookie-withdraw-banner, .eu-cookie-withdraw-tab {background: #0779bf} div#sliding-popup.eu-cookie-withdraw-wrapper { background: transparent; } #sliding-popup h1, #sliding-popup h2, #sliding-popup h3, #sliding-popup p, #sliding-popup label, #sliding-popup div, .eu-cookie-compliance-more-button, .eu-cookie-compliance-secondary-button, .eu-cookie-withdraw-tab { color: #ffffff;} .eu-cookie-withdraw-tab { border-color: #ffffff;}</style>
+<link rel="revision" href="https://dok.pl/kino" />
+
+    <title>Kino | Dzierżoniowski Ośrodek Kultury</title>
+    <link rel="stylesheet" media="all" href="/core/assets/vendor/normalize-css/normalize.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/misc/normalize-fixes.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/ajax-progress.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/align.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/autocomplete-loading.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/fieldgroup.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/container-inline.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/clearfix.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/details.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/hidden.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/item-list.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/js.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/nowrap.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/position-container.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/progress.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/reset-appearance.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/resize.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/sticky-header.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/system-status-counter.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/system-status-report-counters.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/system-status-report-general-info.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/tabledrag.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/tablesort.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/system/components/tree-child.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/stable/css/views/views.module.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/modules/custom/video_embed_field/css/video_embed_field.responsive-video.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/modules/custom/vtextresize/css/vtextresize.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/modules/contrib/eu_cookie_compliance/css/eu_cookie_compliance.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/modules/custom/ckeditor_indentblock/css/plugins/indentblock/ckeditor.indentblock.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/modules/contrib/colorbox/styles/stockholmsyndrome/colorbox_style.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/modules/contrib/ckeditor_accordion/css/ckeditor-accordion.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/modules/contrib/spamspan/css/spamspan.atsign.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/modules/custom/calendar_movie/css/calendar.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/modules/contrib/paragraphs/css/paragraphs.unpublished.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/modules/custom/vphoto_gallery/css/vpg_gallery_list_page.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/modules/custom/vbanner/css/vbanner.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/action-links.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/breadcrumb.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/button.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/collapse-processed.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/container-inline.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/details.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/exposed-filters.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/field.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/form.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/icons.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/inline-form.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/item-list.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/link.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/links.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/menu.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/more-link.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/pager.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/tabledrag.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/tableselect.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/tablesort.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/tabs.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/textarea.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/ui-dialog.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/messages.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/node.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/core/themes/classy/css/components/progress.css?t4mv85" />
+<link rel="stylesheet" media="all" href="/themes/custom/dok/css/style.css?t4mv85" />
+
+      
+<!--[if lte IE 8]>
+<script src="/core/assets/vendor/html5shiv/html5shiv.min.js?v=3.7.3"></script>
+<![endif]-->
+
+        </head>
+<body class="node-237 path-node page-node-type-page">
+<a href="#main-content" class="visually-hidden focusable skip-link">
+  Przejdź do treści
+</a>
+<div id="fb-root"></div>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/pl_PL/sdk.js#xfbml=1&amp;version=v5.0"></script>
+  <div class="dialog-off-canvas-main-canvas" data-off-canvas-main-canvas>
+    <div class="page">
+
+    <div class="header-container">
+          <div class="region region-top-bar">
+    <nav role="navigation"
+     aria-labelledby="block-menukino-menu" id="block-menukino" class="block block-menu navigation menu--menu-kino">
+    
+                    
+    <h2 class="visually-hidden" id="block-menukino-menu">Menu Kino</h2>
+    
+
+        <div class="menu-container">
+                    
+              <ul data-region="top_bar" class="menu">
+                    <li class="menu-item">
+        <a href="/kino/o-kinie" data-drupal-link-system-path="node/25">O Kinie</a>
+              </li>
+                <li class="menu-item menu-item--active-trail">
+        <a href="/kino#block-calendarblock" data-drupal-link-system-path="node/237" class="is-active">Repertuar</a>
+              </li>
+                <li class="menu-item">
+        <a href="/kino/cennik" data-drupal-link-system-path="node/23">Cennik</a>
+              </li>
+                <li class="menu-item">
+        <a href="/kino/filmy" data-drupal-link-system-path="kino/filmy">Filmy</a>
+              </li>
+                <li class="menu-item">
+        <a href="/kino/dokumenty" title="Dokumenty" data-drupal-link-system-path="node/6">Dokumenty</a>
+              </li>
+                <li class="menu-item">
+        <a href="/kino/edukacja-filmowa" data-drupal-link-system-path="node/24">Edukacja filmowa</a>
+              </li>
+                <li class="menu-item">
+        <a href="/kino/zapowiedzi" data-drupal-link-system-path="kino/zapowiedzi">Zapowiedzi</a>
+              </li>
+                <li class="menu-item">
+        <a href="/dok/kontakt" title="Kontakt Kino" data-drupal-link-system-path="node/18">Kontakt</a>
+              </li>
+        </ul>
+  
+
+
+                    </div>
+</nav>
+
+  </div>
+
+          <div class="region region-header">
+    <div id="block-logowitryny" class="block block-block-content block-block-content6f5c8e73-d3d8-4362-a305-e5404f8e95db">
+  
+    
+      
+            <div class="field field--name-field-image field--type-image field--label-hidden field__item">  <img src="/sites/default/files/2020-05/1b-1%402x.png" width="102" height="155" alt="Przejdź do strony głównej" typeof="foaf:Image" />
+
+</div>
+      
+      <div class="field field--name-field-links field--type-entity-reference-revisions field--label-hidden field__items">
+              <div class="field__item">  <div class="paragraph paragraph--type--linked-title-description paragraph--view-mode--default">
+          
+            <div class="field field--name-field-title field--type-string field--label-hidden field__item"><a href="https://dok.pl/dok">Dzierżoniowski ośrodek kultury</a></div>
+      
+      </div>
+</div>
+              <div class="field__item">  <div class="paragraph paragraph--type--linked-title-description paragraph--view-mode--default">
+          
+            <div class="field field--name-field-title field--type-string field--label-hidden field__item"><a href="https://dok.pl/kino">Kino Zbyszek</a></div>
+      
+      </div>
+</div>
+          </div>
+  
+  </div>
+
+  </div>
+
+          <div class="region region-top-menu">
+    <nav role="navigation"
+     aria-labelledby="block-menugorneprawe-menu" id="block-menugorneprawe" class="block block-menu navigation menu--menu-top-right">
+    
+                    
+    <h2 class="visually-hidden" id="block-menugorneprawe-menu">Menu górne prawe</h2>
+    
+
+        <div class="menu-container">
+                    
+
+    <ul class="menu menu-level-0">
+      
+    <li class="menu-item">
+      <a href="http://bip.dok.nv.pl" title="BIP DOK Dzierżoniów">BIP </a>
+                    
+    
+  <div class="menu_link_content menu-link-contentmenu-top-right view-mode-default menu-dropdown menu-dropdown-0 menu-type-default">
+              
+            <div class="field field--name-field-image field--type-image field--label-hidden field__item">  <a href="http://bip.dok.nv.pl"><img src="/sites/default/files/2020-05/bip.png" width="23" height="27" alt="Bip" typeof="Image" /></a>
+
+</div>
+      
+      </div>
+
+
+
+          </li>
+      
+    <li class="menu-item">
+      <a href="https://www.facebook.com/dzierzoniowski.osrodek.kultury/">Facebook</a>
+                    
+    
+  <div class="menu_link_content menu-link-contentmenu-top-right view-mode-default menu-dropdown menu-dropdown-0 menu-type-default">
+              
+            <div class="field field--name-field-image field--type-image field--label-hidden field__item">  <a href="https://www.facebook.com/dzierzoniowski.osrodek.kultury/"><img src="/sites/default/files/2020-05/002-facebook.png" width="29" height="29" alt="Facebook" typeof="Image" /></a>
+
+</div>
+      
+      </div>
+
+
+
+          </li>
+      
+    <li class="menu-item">
+      <a href="https://www.youtube.com/channel/UCC4rAjoSPK02Vh74Erhu5wQ?view_as=subscriber">Youtube</a>
+                    
+    
+  <div class="menu_link_content menu-link-contentmenu-top-right view-mode-default menu-dropdown menu-dropdown-0 menu-type-default">
+              
+            <div class="field field--name-field-image field--type-image field--label-hidden field__item">  <a href="https://www.youtube.com/channel/UCC4rAjoSPK02Vh74Erhu5wQ?view_as=subscriber"><img src="/sites/default/files/2020-05/004-youtube.png" width="29" height="21" alt="Youtube" typeof="Image" /></a>
+
+</div>
+      
+      </div>
+
+
+
+          </li>
+      
+    <li class="menu-item">
+      <a href="https://dok.pl/dok/videorelacje/dostepnosc">DOSTEPNOŚĆ</a>
+                    
+    
+  <div class="menu_link_content menu-link-contentmenu-top-right view-mode-default menu-dropdown menu-dropdown-0 menu-type-default">
+              
+            <div class="field field--name-field-image field--type-image field--label-hidden field__item">  <a href="https://dok.pl/dok/videorelacje/dostepnosc"><img src="/sites/default/files/2022-07/dost%C4%99pno%C5%9B%C4%87%204.jpg" width="66" height="82" alt="dostępność" typeof="Image" /></a>
+
+</div>
+      
+      </div>
+
+
+
+          </li>
+      
+    <li class="menu-item">
+      <a href="https://dok.pl/cyfrowy-dok">Cyfrowy DOK</a>
+                    
+    
+  <div class="menu_link_content menu-link-contentmenu-top-right view-mode-default menu-dropdown menu-dropdown-0 menu-type-default">
+              
+            <div class="field field--name-field-image field--type-image field--label-hidden field__item">  <a href="https://dok.pl/cyfrowy-dok"><img src="/sites/default/files/2022-10/ZNAK_0.jpg" width="472" height="76" alt="1" typeof="Image" /></a>
+
+</div>
+      
+      </div>
+
+
+
+          </li>
+    </ul>
+
+
+                    </div>
+</nav>
+<div id="block-vobacomtextresizeblock" class="block block-vtextresize">
+  
+    
+      <div class="vtextresize-buttons">
+  <button id="vtextresize-increase" class="vtextresize vtextresize-increase"
+          title="Increase font size">
+    <span class="visually-hidden">Increase font size</span>
+  </button>
+
+      <button id="vtextresize-reset" class="vtextresize vtextresize-reset"
+            title="Reset font size">
+      <span class="visually-hidden">Reset font size</span>
+    </button>
+  
+  <button id="vtextresize-decrease" class="vtextresize vtextresize-decrease"
+          title="Decrease font size">
+    <span class="visually-hidden">Decrease font size</span>
+  </button>
+</div>
+
+  </div>
+<div class="search-block-form block block-search container-inline" data-drupal-selector="search-block-form" id="block-formularzwyszukiwania" role="search">
+  
+    
+      <form action="/search/node" method="get" id="search-block-form" accept-charset="UTF-8">
+  <div class="js-form-item form-item js-form-type-search form-type-search js-form-item-keys form-item-keys form-no-label">
+      <label for="edit-keys" class="visually-hidden">Szukaj</label>
+        <input title="Wprowadź słowa, które mają zostać wyszukane." placeholder="Wpisz szukaną frazę" data-drupal-selector="edit-keys" type="search" id="edit-keys" name="keys" value="" size="15" maxlength="128" class="form-search" />
+
+        </div>
+<div data-drupal-selector="edit-actions" class="form-actions js-form-wrapper form-wrapper" id="edit-actions"><input data-drupal-selector="edit-submit" type="submit" id="edit-submit" value="Szukaj" class="button js-form-submit form-submit" />
+</div>
+
+</form>
+
+  </div>
+
+  </div>
+
+        
+    </div>
+
+    <div class="breadcrumbs">
+        
+    </div>
+        <div class="slider-container">
+          <div class="region region-slider">
+    
+<div class="views-element-container block block-views block-views-blockpromoted-films-block-1" id="block-views-block-promoted-films-block-1">
+  
+    
+      <div><div class="view view-promoted-films view-id-promoted_films view-display-id-block_1 js-view-dom-id-ac05fb4663ddd99ae57a00cf1eda6ad49d16fd908da3f6ce81af64ac09166beb">
+  
+    
+      <div class="view-header">
+      <p><span class="title-container">Polecamy</span></p>
+
+    </div>
+      
+      <div class="view-content">
+          <div class="views-row">
+
+<div class="views-field views-field-field-image-promo"><div class="field-content">  <img src="/sites/default/files/styles/slider_promo_1580x850/public/2026-06/bez%20wdfgh.jpg?itok=K7V5ekWV" width="1580" height="850" alt="fotos z filmu BACKROOMS. BEZ WYJŚCIA" typeof="foaf:Image" class="image-style-slider-promo-1580x850" />
+
+
+</div></div><div class="info-container">
+  
+
+<div class="views-field views-field-field-film-status"><div class="field-content"><a href="/taxonomy/term/14" hreflang="pl">Premiera</a></div></div><div class="views-field views-field-title"><span class="field-content"><a href="/kino/repertuar/backrooms-bez-wyjscia" hreflang="pl">BACKROOMS. BEZ WYJŚCIA</a></span></div><div class="views-field views-field-view-node"><span class="field-content"><a href="/kino/repertuar/backrooms-bez-wyjscia" hreflang="pl">więcej informacji</a></span></div><div class="views-field views-field-field-trailer"><div class="field-content"><div data-video-embed-field-modal="&lt;div class=&quot;video-embed-field-provider-youtube video-embed-field-responsive-video video-embed-field-responsive-modal&quot; style=&quot;width:854px;&quot;&gt;&lt;iframe width=&quot;854&quot; height=&quot;480&quot; frameborder=&quot;0&quot; allowfullscreen=&quot;allowfullscreen&quot; src=&quot;https://www.youtube.com/embed/J1r0ho-EgRs?autoplay=1&amp;amp;start=0&amp;amp;rel=0&quot;&gt;&lt;/iframe&gt;
+&lt;/div&gt;
+" class="video-embed-field-launch-modal"><img src="/sites/default/files/styles/mini_30x30/public/video_thumbnails/J1r0ho-EgRs.jpg?itok=cDoVunNu" width="30" height="30" alt="" typeof="foaf:Image" class="image-style-mini-30x30" />
+
+</div>
+</div></div><div class="views-field views-field-nothing"><span class="field-content">Zwiastun</span></div></div>
+</div>
+    <div class="views-row">
+
+<div class="views-field views-field-field-image-promo"><div class="field-content">  <img src="/sites/default/files/styles/slider_promo_1580x850/public/2026-06/Chlopiec-na-krancach-swiata-3-1200x675.png?itok=b2p5KuT5" width="1580" height="850" alt="fotos z filmu CHŁOPIEC NA KRAŃCACH ŚWIATA" typeof="foaf:Image" class="image-style-slider-promo-1580x850" />
+
+
+</div></div><div class="info-container">
+  
+
+<div class="views-field views-field-field-film-status"><div class="field-content"><a href="/taxonomy/term/14" hreflang="pl">Premiera</a></div></div><div class="views-field views-field-title"><span class="field-content"><a href="/kino/repertuar/chlopiec-na-krancach-swiata" hreflang="pl">CHŁOPIEC NA KRAŃCACH ŚWIATA</a></span></div><div class="views-field views-field-view-node"><span class="field-content"><a href="/kino/repertuar/chlopiec-na-krancach-swiata" hreflang="pl">więcej informacji</a></span></div><div class="views-field views-field-field-trailer"><div class="field-content"><div data-video-embed-field-modal="&lt;div class=&quot;video-embed-field-provider-youtube video-embed-field-responsive-video video-embed-field-responsive-modal&quot; style=&quot;width:854px;&quot;&gt;&lt;iframe width=&quot;854&quot; height=&quot;480&quot; frameborder=&quot;0&quot; allowfullscreen=&quot;allowfullscreen&quot; src=&quot;https://www.youtube.com/embed/wqzcpHAOTb8?autoplay=1&amp;amp;start=0&amp;amp;rel=0&quot;&gt;&lt;/iframe&gt;
+&lt;/div&gt;
+" class="video-embed-field-launch-modal"><img src="/sites/default/files/styles/mini_30x30/public/video_thumbnails/wqzcpHAOTb8.jpg?itok=oqZcCKz7" width="30" height="30" alt="" typeof="foaf:Image" class="image-style-mini-30x30" />
+
+</div>
+</div></div><div class="views-field views-field-nothing"><span class="field-content">Zwiastun</span></div></div>
+</div>
+    <div class="views-row">
+
+<div class="views-field views-field-field-image-promo"><div class="field-content">  <img src="/sites/default/files/styles/slider_promo_1580x850/public/2026-06/Fatherland_Still_1_AgataGrzybowska-1024x768.jpg?itok=aFJ8H1P0" width="1580" height="850" alt="fotos z filmu OJCZYZNA" typeof="foaf:Image" class="image-style-slider-promo-1580x850" />
+
+
+</div></div><div class="info-container">
+  
+
+<div class="views-field views-field-field-film-status"><div class="field-content"><a href="/taxonomy/term/14" hreflang="pl">Premiera</a></div></div><div class="views-field views-field-title"><span class="field-content"><a href="/kino/repertuar/ojczyzna" hreflang="pl">OJCZYZNA</a></span></div><div class="views-field views-field-view-node"><span class="field-content"><a href="/kino/repertuar/ojczyzna" hreflang="pl">więcej informacji</a></span></div><div class="views-field views-field-field-trailer"><div class="field-content"><div data-video-embed-field-modal="&lt;div class=&quot;video-embed-field-provider-youtube video-embed-field-responsive-video video-embed-field-responsive-modal&quot; style=&quot;width:854px;&quot;&gt;&lt;iframe width=&quot;854&quot; height=&quot;480&quot; frameborder=&quot;0&quot; allowfullscreen=&quot;allowfullscreen&quot; src=&quot;https://www.youtube.com/embed/kxDLkNfPBUA?autoplay=1&amp;amp;start=0&amp;amp;rel=0&quot;&gt;&lt;/iframe&gt;
+&lt;/div&gt;
+" class="video-embed-field-launch-modal"><img src="/sites/default/files/styles/mini_30x30/public/video_thumbnails/kxDLkNfPBUA.jpg?itok=s8WAwgma" width="30" height="30" alt="" typeof="foaf:Image" class="image-style-mini-30x30" />
+
+</div>
+</div></div><div class="views-field views-field-nothing"><span class="field-content">Zwiastun</span></div></div>
+</div>
+
+    </div>
+  
+          </div>
+</div>
+
+  </div>
+
+  </div>
+
+    </div>
+        <div class="content">
+                    <div class="content-wrapp">
+                  <div class="region region-content">
+    <div data-drupal-messages-fallback class="hidden"></div><div id="block-calendarblock" class="block block-calendar-movie block-calendar-movies-block">
+  
+    
+      <div class="calendar-container">
+  <div class="title"><h2>Repertuar</h2></div>
+<div class="calendar">
+<div class="prev-month">
+  <button
+    data-date="5/2026"
+    class="calendar-month-nav prev-month">
+    <span class="visually-hidden">Previous month</span>
+  </button>
+</div>
+
+<div class="month-name">
+  Czerwiec 2026
+</div>
+
+<div class="calendar-body-container">
+  <div class="title">Kalendarz:</div>
+<div class="calendar-body">
+
+      
+              <div class="day day-1 current-month">
+                      <span class="day-name">PN</span>
+            <span class="day">
+              <span class="day-number">01</span>
+
+            </span>
+
+            
+                  </div>
+          
+              <div class="day day-2 current-month">
+                      <span class="day-name">WT</span>
+            <span class="day">
+              <span class="day-number">02</span>
+
+            </span>
+
+            
+                  </div>
+          
+              <div class="day day-3 current-month">
+                      <span class="day-name">ŚR</span>
+            <span class="day">
+              <span class="day-number">03</span>
+
+            </span>
+
+            
+                  </div>
+          
+              <div class="day day-4 current-month">
+                      <span class="day-name">CZW</span>
+            <span class="day">
+              <span class="day-number">04</span>
+
+            </span>
+
+            
+                  </div>
+          
+              <div class="day day-5 current-month has-events">
+                    <a data-date="05 Czerwiec 2026"><span
+              class="visually-hidden">Display events list of the day:</span>
+                        <span class="day-name">PT</span>
+            <span class="day">
+              <span class="day-number">05</span>
+
+            </span>
+
+                        <span
+              class="visually-hidden"> Czerwiec 2026</span>
+          </a>
+          
+                      <ul class="events-bubble">
+                              <li class="event"
+                    data-title="DRZEWO MAGII"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/drzewo-magii"
+                    data-ticket="https://biletyna.pl/film/Drzewo-magii/Dzierzoniow"
+                    data-age="7+"
+                    data-duration="1 godz. 50 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Familijny"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/DRZEWO-MAGII_TEASER_PLAKAT-714x1024.jpg"
+                    data-production="Wlk. Brytania, USA, Francja"
+                    data-hours="16:00">
+                  <a href="/kino/repertuar/drzewo-magii">DRZEWO MAGII</a>
+                </li>
+                              <li class="event"
+                    data-title="STRASZNY FILM"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/straszny-film"
+                    data-ticket="https://biletyna.pl/film/Straszny-film/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="1 godz. 35 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Horror, Komedia"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/STRASZNY%20FILM%20pl.jpg"
+                    data-production="USA , Wlk. Brytania"
+                    data-hours="20:15">
+                  <a href="/kino/repertuar/straszny-film">STRASZNY FILM</a>
+                </li>
+                              <li class="event"
+                    data-title="MORTAL KOMBAT II"
+                    data-term=""
+                    data-link="/kino/repertuar/mortal-kombat-ii"
+                    data-ticket="https://biletyna.pl/film/Mortal-Kombat-II/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="1 godz. 56 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Akcja, Fantasy, Przygodowy"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/MORTAL%20KOMBAT%20II.jpg"
+                    data-production="USA"
+                    data-hours="18:00">
+                  <a href="/kino/repertuar/mortal-kombat-ii">MORTAL KOMBAT II</a>
+                </li>
+                          </ul>
+                  </div>
+          
+              <div class="day day-6 current-month has-events">
+                    <a data-date="06 Czerwiec 2026"><span
+              class="visually-hidden">Display events list of the day:</span>
+                        <span class="day-name">SO</span>
+            <span class="day">
+              <span class="day-number">06</span>
+
+            </span>
+
+                        <span
+              class="visually-hidden"> Czerwiec 2026</span>
+          </a>
+          
+                      <ul class="events-bubble">
+                              <li class="event"
+                    data-title="DRZEWO MAGII"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/drzewo-magii"
+                    data-ticket="https://biletyna.pl/film/Drzewo-magii/Dzierzoniow"
+                    data-age="7+"
+                    data-duration="1 godz. 50 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Familijny"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/DRZEWO-MAGII_TEASER_PLAKAT-714x1024.jpg"
+                    data-production="Wlk. Brytania, USA, Francja"
+                    data-hours="16:00">
+                  <a href="/kino/repertuar/drzewo-magii">DRZEWO MAGII</a>
+                </li>
+                              <li class="event"
+                    data-title="STRASZNY FILM"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/straszny-film"
+                    data-ticket="https://biletyna.pl/film/Straszny-film/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="1 godz. 35 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Horror, Komedia"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/STRASZNY%20FILM%20pl.jpg"
+                    data-production="USA , Wlk. Brytania"
+                    data-hours="20:15">
+                  <a href="/kino/repertuar/straszny-film">STRASZNY FILM</a>
+                </li>
+                              <li class="event"
+                    data-title="MORTAL KOMBAT II"
+                    data-term=""
+                    data-link="/kino/repertuar/mortal-kombat-ii"
+                    data-ticket="https://biletyna.pl/film/Mortal-Kombat-II/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="1 godz. 56 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Akcja, Fantasy, Przygodowy"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/MORTAL%20KOMBAT%20II.jpg"
+                    data-production="USA"
+                    data-hours="18:00">
+                  <a href="/kino/repertuar/mortal-kombat-ii">MORTAL KOMBAT II</a>
+                </li>
+                          </ul>
+                  </div>
+          
+              <div class="day day-7 current-month has-events">
+                    <a data-date="07 Czerwiec 2026"><span
+              class="visually-hidden">Display events list of the day:</span>
+                        <span class="day-name">N</span>
+            <span class="day">
+              <span class="day-number">07</span>
+
+            </span>
+
+                        <span
+              class="visually-hidden"> Czerwiec 2026</span>
+          </a>
+          
+                      <ul class="events-bubble">
+                              <li class="event"
+                    data-title="DRZEWO MAGII"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/drzewo-magii"
+                    data-ticket="https://biletyna.pl/film/Drzewo-magii/Dzierzoniow"
+                    data-age="7+"
+                    data-duration="1 godz. 50 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Familijny"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/DRZEWO-MAGII_TEASER_PLAKAT-714x1024.jpg"
+                    data-production="Wlk. Brytania, USA, Francja"
+                    data-hours="16:00">
+                  <a href="/kino/repertuar/drzewo-magii">DRZEWO MAGII</a>
+                </li>
+                              <li class="event"
+                    data-title="STRASZNY FILM"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/straszny-film"
+                    data-ticket="https://biletyna.pl/film/Straszny-film/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="1 godz. 35 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Horror, Komedia"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/STRASZNY%20FILM%20pl.jpg"
+                    data-production="USA , Wlk. Brytania"
+                    data-hours="20:15">
+                  <a href="/kino/repertuar/straszny-film">STRASZNY FILM</a>
+                </li>
+                              <li class="event"
+                    data-title="MORTAL KOMBAT II"
+                    data-term=""
+                    data-link="/kino/repertuar/mortal-kombat-ii"
+                    data-ticket="https://biletyna.pl/film/Mortal-Kombat-II/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="1 godz. 56 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Akcja, Fantasy, Przygodowy"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/MORTAL%20KOMBAT%20II.jpg"
+                    data-production="USA"
+                    data-hours="18:00">
+                  <a href="/kino/repertuar/mortal-kombat-ii">MORTAL KOMBAT II</a>
+                </li>
+                          </ul>
+                  </div>
+                
+              <div class="day day-1 current-month">
+                      <span class="day-name">PN</span>
+            <span class="day">
+              <span class="day-number">08</span>
+
+            </span>
+
+            
+                  </div>
+          
+              <div class="day day-2 current-month">
+                      <span class="day-name">WT</span>
+            <span class="day">
+              <span class="day-number">09</span>
+
+            </span>
+
+            
+                  </div>
+          
+              <div class="day day-3 current-month has-events">
+                    <a data-date="10 Czerwiec 2026"><span
+              class="visually-hidden">Display events list of the day:</span>
+                        <span class="day-name">ŚR</span>
+            <span class="day">
+              <span class="day-number">10</span>
+
+            </span>
+
+                        <span
+              class="visually-hidden"> Czerwiec 2026</span>
+          </a>
+          
+                      <ul class="events-bubble">
+                              <li class="event"
+                    data-title="DZIEŃ OBJAWIENIA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/dzien-objawienia"
+                    data-ticket="https://biletyna.pl/film/Dzien-objawienia/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="2 godz. 25 min."
+                    data-soundtrack="napisy"
+                    data-genre="Science-Fiction"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/Dzien%20Objawienia%20plakat.jpg"
+                    data-production="USA"
+                    data-hours="19:30">
+                  <a href="/kino/repertuar/dzien-objawienia">DZIEŃ OBJAWIENIA</a>
+                </li>
+                              <li class="event"
+                    data-title="TKACZE"
+                    data-term=""
+                    data-link="/kino/repertuar/tkacze"
+                    data-ticket=""
+                    data-age=""
+                    data-duration=""
+                    data-soundtrack="oryginalny"
+                    data-genre="Dramat"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/tkacze%20dok.jpg"
+                    data-production=""
+                    data-hours="17:00">
+                  <a href="/kino/repertuar/tkacze">TKACZE</a>
+                </li>
+                          </ul>
+                  </div>
+          
+              <div class="day day-4 current-month">
+                      <span class="day-name">CZW</span>
+            <span class="day">
+              <span class="day-number">11</span>
+
+            </span>
+
+            
+                  </div>
+          
+              <div class="day day-5 current-month has-events">
+                    <a data-date="12 Czerwiec 2026"><span
+              class="visually-hidden">Display events list of the day:</span>
+                        <span class="day-name">PT</span>
+            <span class="day">
+              <span class="day-number">12</span>
+
+            </span>
+
+                        <span
+              class="visually-hidden"> Czerwiec 2026</span>
+          </a>
+          
+                      <ul class="events-bubble">
+                              <li class="event"
+                    data-title="DRZEWO MAGII"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/drzewo-magii"
+                    data-ticket="https://biletyna.pl/film/Drzewo-magii/Dzierzoniow"
+                    data-age="7+"
+                    data-duration="1 godz. 50 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Familijny"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/DRZEWO-MAGII_TEASER_PLAKAT-714x1024.jpg"
+                    data-production="Wlk. Brytania, USA, Francja"
+                    data-hours="15:30">
+                  <a href="/kino/repertuar/drzewo-magii">DRZEWO MAGII</a>
+                </li>
+                              <li class="event"
+                    data-title="STRASZNY FILM"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/straszny-film"
+                    data-ticket="https://biletyna.pl/film/Straszny-film/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="1 godz. 35 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Horror, Komedia"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/STRASZNY%20FILM%20pl.jpg"
+                    data-production="USA , Wlk. Brytania"
+                    data-hours="20:15">
+                  <a href="/kino/repertuar/straszny-film">STRASZNY FILM</a>
+                </li>
+                              <li class="event"
+                    data-title="DZIEŃ OBJAWIENIA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/dzien-objawienia"
+                    data-ticket="https://biletyna.pl/film/Dzien-objawienia/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="2 godz. 25 min."
+                    data-soundtrack="napisy"
+                    data-genre="Science-Fiction"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/Dzien%20Objawienia%20plakat.jpg"
+                    data-production="USA"
+                    data-hours="17:30">
+                  <a href="/kino/repertuar/dzien-objawienia">DZIEŃ OBJAWIENIA</a>
+                </li>
+                          </ul>
+                  </div>
+          
+              <div class="day day-6 current-month has-events">
+                    <a data-date="13 Czerwiec 2026"><span
+              class="visually-hidden">Display events list of the day:</span>
+                        <span class="day-name">SO</span>
+            <span class="day">
+              <span class="day-number">13</span>
+
+            </span>
+
+                        <span
+              class="visually-hidden"> Czerwiec 2026</span>
+          </a>
+          
+                      <ul class="events-bubble">
+                              <li class="event"
+                    data-title="KINO NIECZYNNE"
+                    data-term=""
+                    data-link="/kino/repertuar/kino-nieczynne-20"
+                    data-ticket=""
+                    data-age=""
+                    data-duration=""
+                    data-soundtrack=""
+                    data-genre=""
+                    data-poster=""
+                    data-production=""
+                    data-hours="00:00">
+                  <a href="/kino/repertuar/kino-nieczynne-20">KINO NIECZYNNE</a>
+                </li>
+                          </ul>
+                  </div>
+          
+              <div class="day day-7 current-month has-events">
+                    <a data-date="14 Czerwiec 2026"><span
+              class="visually-hidden">Display events list of the day:</span>
+                        <span class="day-name">N</span>
+            <span class="day">
+              <span class="day-number">14</span>
+
+            </span>
+
+                        <span
+              class="visually-hidden"> Czerwiec 2026</span>
+          </a>
+          
+                      <ul class="events-bubble">
+                              <li class="event"
+                    data-title="DRZEWO MAGII"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/drzewo-magii"
+                    data-ticket="https://biletyna.pl/film/Drzewo-magii/Dzierzoniow"
+                    data-age="7+"
+                    data-duration="1 godz. 50 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Familijny"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/DRZEWO-MAGII_TEASER_PLAKAT-714x1024.jpg"
+                    data-production="Wlk. Brytania, USA, Francja"
+                    data-hours="15:30">
+                  <a href="/kino/repertuar/drzewo-magii">DRZEWO MAGII</a>
+                </li>
+                              <li class="event"
+                    data-title="STRASZNY FILM"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/straszny-film"
+                    data-ticket="https://biletyna.pl/film/Straszny-film/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="1 godz. 35 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Horror, Komedia"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/STRASZNY%20FILM%20pl.jpg"
+                    data-production="USA , Wlk. Brytania"
+                    data-hours="20:15">
+                  <a href="/kino/repertuar/straszny-film">STRASZNY FILM</a>
+                </li>
+                              <li class="event"
+                    data-title="DZIEŃ OBJAWIENIA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/dzien-objawienia"
+                    data-ticket="https://biletyna.pl/film/Dzien-objawienia/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="2 godz. 25 min."
+                    data-soundtrack="napisy"
+                    data-genre="Science-Fiction"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/Dzien%20Objawienia%20plakat.jpg"
+                    data-production="USA"
+                    data-hours="17:30">
+                  <a href="/kino/repertuar/dzien-objawienia">DZIEŃ OBJAWIENIA</a>
+                </li>
+                          </ul>
+                  </div>
+                
+              <div class="day day-1 current-month">
+                      <span class="day-name">PN</span>
+            <span class="day">
+              <span class="day-number">15</span>
+
+            </span>
+
+            
+                  </div>
+          
+              <div class="day day-2 current-month">
+                      <span class="day-name">WT</span>
+            <span class="day">
+              <span class="day-number">16</span>
+
+            </span>
+
+            
+                  </div>
+          
+              <div class="day day-3 current-month has-events">
+                    <a data-date="17 Czerwiec 2026"><span
+              class="visually-hidden">Display events list of the day:</span>
+                        <span class="day-name">ŚR</span>
+            <span class="day">
+              <span class="day-number">17</span>
+
+            </span>
+
+                        <span
+              class="visually-hidden"> Czerwiec 2026</span>
+          </a>
+          
+                      <ul class="events-bubble">
+                              <li class="event"
+                    data-title="CZŁOWIEK Z MARMURU"
+                    data-term=""
+                    data-link="/kino/repertuar/czlowiek-z-marmuru"
+                    data-ticket="https://biletyna.pl/film/Czlowiek-z-marmuru-2/Dzierzoniow"
+                    data-age="15+"
+                    data-duration="2 godz. 35 min."
+                    data-soundtrack="oryginalny"
+                    data-genre="Dramat, Obyczajowy, Polityczny"
+                    data-poster="https://dok.pl/sites/default/files/2026-06/czlowiek_z_marmuru_b2.jpg"
+                    data-production="Polska"
+                    data-hours="18:00">
+                  <a href="/kino/repertuar/czlowiek-z-marmuru">CZŁOWIEK Z MARMURU</a>
+                </li>
+                          </ul>
+                  </div>
+          
+              <div class="day day-4 current-month">
+                      <span class="day-name">CZW</span>
+            <span class="day">
+              <span class="day-number">18</span>
+
+            </span>
+
+            
+                  </div>
+          
+              <div class="day day-5 current-month has-events">
+                    <a data-date="19 Czerwiec 2026"><span
+              class="visually-hidden">Display events list of the day:</span>
+                        <span class="day-name">PT</span>
+            <span class="day">
+              <span class="day-number">19</span>
+
+            </span>
+
+                        <span
+              class="visually-hidden"> Czerwiec 2026</span>
+          </a>
+          
+                      <ul class="events-bubble">
+                              <li class="event"
+                    data-title="DZIEŃ OBJAWIENIA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/dzien-objawienia"
+                    data-ticket="https://biletyna.pl/film/Dzien-objawienia/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="2 godz. 25 min."
+                    data-soundtrack="napisy"
+                    data-genre="Science-Fiction"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/Dzien%20Objawienia%20plakat.jpg"
+                    data-production="USA"
+                    data-hours="17:30">
+                  <a href="/kino/repertuar/dzien-objawienia">DZIEŃ OBJAWIENIA</a>
+                </li>
+                              <li class="event"
+                    data-title="WILLOW I TAJEMNICZY LAS"
+                    data-term=""
+                    data-link="/kino/repertuar/willow-i-tajemniczy-las"
+                    data-ticket="https://biletyna.pl/film/Willow-i-tajemniczy-las/Dzierzoniow"
+                    data-age="7+"
+                    data-duration="1 godz. 40 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Familijny"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/WILLOW%20I%20TAJEMNICZY%20LAS%20pl.jpg"
+                    data-production="Niemcy"
+                    data-hours="15:30">
+                  <a href="/kino/repertuar/willow-i-tajemniczy-las">WILLOW I TAJEMNICZY LAS</a>
+                </li>
+                              <li class="event"
+                    data-title="OJCZYZNA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/ojczyzna"
+                    data-ticket="https://biletyna.pl/film/Ojczyzna/Dzierzoniow"
+                    data-age="15+"
+                    data-duration="1 godz. 22 min."
+                    data-soundtrack="napisy"
+                    data-genre="Dramat"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/Ojczyzna_plakat%20%28002%29.jpg"
+                    data-production="Francja, Niemcy, Polska, Włochy"
+                    data-hours="20:15">
+                  <a href="/kino/repertuar/ojczyzna">OJCZYZNA</a>
+                </li>
+                          </ul>
+                  </div>
+          
+              <div class="day day-6 current-month has-events">
+                    <a data-date="20 Czerwiec 2026"><span
+              class="visually-hidden">Display events list of the day:</span>
+                        <span class="day-name">SO</span>
+            <span class="day">
+              <span class="day-number">20</span>
+
+            </span>
+
+                        <span
+              class="visually-hidden"> Czerwiec 2026</span>
+          </a>
+          
+                      <ul class="events-bubble">
+                              <li class="event"
+                    data-title="DZIEŃ OBJAWIENIA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/dzien-objawienia"
+                    data-ticket="https://biletyna.pl/film/Dzien-objawienia/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="2 godz. 25 min."
+                    data-soundtrack="napisy"
+                    data-genre="Science-Fiction"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/Dzien%20Objawienia%20plakat.jpg"
+                    data-production="USA"
+                    data-hours="17:30">
+                  <a href="/kino/repertuar/dzien-objawienia">DZIEŃ OBJAWIENIA</a>
+                </li>
+                              <li class="event"
+                    data-title="WILLOW I TAJEMNICZY LAS"
+                    data-term=""
+                    data-link="/kino/repertuar/willow-i-tajemniczy-las"
+                    data-ticket="https://biletyna.pl/film/Willow-i-tajemniczy-las/Dzierzoniow"
+                    data-age="7+"
+                    data-duration="1 godz. 40 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Familijny"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/WILLOW%20I%20TAJEMNICZY%20LAS%20pl.jpg"
+                    data-production="Niemcy"
+                    data-hours="15:30">
+                  <a href="/kino/repertuar/willow-i-tajemniczy-las">WILLOW I TAJEMNICZY LAS</a>
+                </li>
+                              <li class="event"
+                    data-title="OJCZYZNA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/ojczyzna"
+                    data-ticket="https://biletyna.pl/film/Ojczyzna/Dzierzoniow"
+                    data-age="15+"
+                    data-duration="1 godz. 22 min."
+                    data-soundtrack="napisy"
+                    data-genre="Dramat"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/Ojczyzna_plakat%20%28002%29.jpg"
+                    data-production="Francja, Niemcy, Polska, Włochy"
+                    data-hours="20:15">
+                  <a href="/kino/repertuar/ojczyzna">OJCZYZNA</a>
+                </li>
+                          </ul>
+                  </div>
+          
+              <div class="day day-7 current-month has-events">
+                    <a data-date="21 Czerwiec 2026"><span
+              class="visually-hidden">Display events list of the day:</span>
+                        <span class="day-name">N</span>
+            <span class="day">
+              <span class="day-number">21</span>
+
+            </span>
+
+                        <span
+              class="visually-hidden"> Czerwiec 2026</span>
+          </a>
+          
+                      <ul class="events-bubble">
+                              <li class="event"
+                    data-title="DZIEŃ OBJAWIENIA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/dzien-objawienia"
+                    data-ticket="https://biletyna.pl/film/Dzien-objawienia/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="2 godz. 25 min."
+                    data-soundtrack="napisy"
+                    data-genre="Science-Fiction"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/Dzien%20Objawienia%20plakat.jpg"
+                    data-production="USA"
+                    data-hours="17:30">
+                  <a href="/kino/repertuar/dzien-objawienia">DZIEŃ OBJAWIENIA</a>
+                </li>
+                              <li class="event"
+                    data-title="WILLOW I TAJEMNICZY LAS"
+                    data-term=""
+                    data-link="/kino/repertuar/willow-i-tajemniczy-las"
+                    data-ticket="https://biletyna.pl/film/Willow-i-tajemniczy-las/Dzierzoniow"
+                    data-age="7+"
+                    data-duration="1 godz. 40 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Familijny"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/WILLOW%20I%20TAJEMNICZY%20LAS%20pl.jpg"
+                    data-production="Niemcy"
+                    data-hours="15:30">
+                  <a href="/kino/repertuar/willow-i-tajemniczy-las">WILLOW I TAJEMNICZY LAS</a>
+                </li>
+                              <li class="event"
+                    data-title="OJCZYZNA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/ojczyzna"
+                    data-ticket="https://biletyna.pl/film/Ojczyzna/Dzierzoniow"
+                    data-age="15+"
+                    data-duration="1 godz. 22 min."
+                    data-soundtrack="napisy"
+                    data-genre="Dramat"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/Ojczyzna_plakat%20%28002%29.jpg"
+                    data-production="Francja, Niemcy, Polska, Włochy"
+                    data-hours="20:15">
+                  <a href="/kino/repertuar/ojczyzna">OJCZYZNA</a>
+                </li>
+                          </ul>
+                  </div>
+                
+              <div class="day day-1 current-month">
+                      <span class="day-name">PN</span>
+            <span class="day">
+              <span class="day-number">22</span>
+
+            </span>
+
+            
+                  </div>
+          
+              <div class="day day-2 current-month today">
+                      <span class="day-name">WT</span>
+            <span class="day">
+              <span class="day-number">23</span>
+
+            </span>
+
+            
+                  </div>
+          
+              <div class="day day-3 current-month">
+                      <span class="day-name">ŚR</span>
+            <span class="day">
+              <span class="day-number">24</span>
+
+            </span>
+
+            
+                  </div>
+          
+              <div class="day day-4 current-month">
+                      <span class="day-name">CZW</span>
+            <span class="day">
+              <span class="day-number">25</span>
+
+            </span>
+
+            
+                  </div>
+          
+              <div class="day day-5 current-month has-events">
+                    <a data-date="26 Czerwiec 2026"><span
+              class="visually-hidden">Display events list of the day:</span>
+                        <span class="day-name">PT</span>
+            <span class="day">
+              <span class="day-number">26</span>
+
+            </span>
+
+                        <span
+              class="visually-hidden"> Czerwiec 2026</span>
+          </a>
+          
+                      <ul class="events-bubble">
+                              <li class="event"
+                    data-title="OJCZYZNA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/ojczyzna"
+                    data-ticket="https://biletyna.pl/film/Ojczyzna/Dzierzoniow"
+                    data-age="15+"
+                    data-duration="1 godz. 22 min."
+                    data-soundtrack="napisy"
+                    data-genre="Dramat"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/Ojczyzna_plakat%20%28002%29.jpg"
+                    data-production="Francja, Niemcy, Polska, Włochy"
+                    data-hours="18:00">
+                  <a href="/kino/repertuar/ojczyzna">OJCZYZNA</a>
+                </li>
+                              <li class="event"
+                    data-title="CHŁOPIEC NA KRAŃCACH ŚWIATA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/chlopiec-na-krancach-swiata"
+                    data-ticket="https://biletyna.pl/film/Chlopiec-na-krancach-swiata/Dzierzoniow"
+                    data-age="6+"
+                    data-duration="1 godz. 28 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Bajka animowana, Przygodowy"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/ch%C5%82opiec%20na%20pl.jpg"
+                    data-production="Polska"
+                    data-hours="16:00">
+                  <a href="/kino/repertuar/chlopiec-na-krancach-swiata">CHŁOPIEC NA KRAŃCACH ŚWIATA</a>
+                </li>
+                              <li class="event"
+                    data-title="BACKROOMS. BEZ WYJŚCIA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/backrooms-bez-wyjscia"
+                    data-ticket="https://biletyna.pl/film/Backrooms-Bez-wyjscia/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="1 godz. 30 min."
+                    data-soundtrack="napisy"
+                    data-genre="Horror, Science-Fiction"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/BACKROOMS%20BEZ%20WYJ%C5%9ACIA%20pl.jpg"
+                    data-production="USA"
+                    data-hours="20:00">
+                  <a href="/kino/repertuar/backrooms-bez-wyjscia">BACKROOMS. BEZ WYJŚCIA</a>
+                </li>
+                          </ul>
+                  </div>
+          
+              <div class="day day-6 current-month has-events">
+                    <a data-date="27 Czerwiec 2026"><span
+              class="visually-hidden">Display events list of the day:</span>
+                        <span class="day-name">SO</span>
+            <span class="day">
+              <span class="day-number">27</span>
+
+            </span>
+
+                        <span
+              class="visually-hidden"> Czerwiec 2026</span>
+          </a>
+          
+                      <ul class="events-bubble">
+                              <li class="event"
+                    data-title="OJCZYZNA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/ojczyzna"
+                    data-ticket="https://biletyna.pl/film/Ojczyzna/Dzierzoniow"
+                    data-age="15+"
+                    data-duration="1 godz. 22 min."
+                    data-soundtrack="napisy"
+                    data-genre="Dramat"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/Ojczyzna_plakat%20%28002%29.jpg"
+                    data-production="Francja, Niemcy, Polska, Włochy"
+                    data-hours="18:00">
+                  <a href="/kino/repertuar/ojczyzna">OJCZYZNA</a>
+                </li>
+                              <li class="event"
+                    data-title="CHŁOPIEC NA KRAŃCACH ŚWIATA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/chlopiec-na-krancach-swiata"
+                    data-ticket="https://biletyna.pl/film/Chlopiec-na-krancach-swiata/Dzierzoniow"
+                    data-age="6+"
+                    data-duration="1 godz. 28 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Bajka animowana, Przygodowy"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/ch%C5%82opiec%20na%20pl.jpg"
+                    data-production="Polska"
+                    data-hours="16:00">
+                  <a href="/kino/repertuar/chlopiec-na-krancach-swiata">CHŁOPIEC NA KRAŃCACH ŚWIATA</a>
+                </li>
+                              <li class="event"
+                    data-title="BACKROOMS. BEZ WYJŚCIA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/backrooms-bez-wyjscia"
+                    data-ticket="https://biletyna.pl/film/Backrooms-Bez-wyjscia/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="1 godz. 30 min."
+                    data-soundtrack="napisy"
+                    data-genre="Horror, Science-Fiction"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/BACKROOMS%20BEZ%20WYJ%C5%9ACIA%20pl.jpg"
+                    data-production="USA"
+                    data-hours="20:00">
+                  <a href="/kino/repertuar/backrooms-bez-wyjscia">BACKROOMS. BEZ WYJŚCIA</a>
+                </li>
+                          </ul>
+                  </div>
+          
+              <div class="day day-7 current-month has-events">
+                    <a data-date="28 Czerwiec 2026"><span
+              class="visually-hidden">Display events list of the day:</span>
+                        <span class="day-name">N</span>
+            <span class="day">
+              <span class="day-number">28</span>
+
+            </span>
+
+                        <span
+              class="visually-hidden"> Czerwiec 2026</span>
+          </a>
+          
+                      <ul class="events-bubble">
+                              <li class="event"
+                    data-title="OJCZYZNA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/ojczyzna"
+                    data-ticket="https://biletyna.pl/film/Ojczyzna/Dzierzoniow"
+                    data-age="15+"
+                    data-duration="1 godz. 22 min."
+                    data-soundtrack="napisy"
+                    data-genre="Dramat"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/Ojczyzna_plakat%20%28002%29.jpg"
+                    data-production="Francja, Niemcy, Polska, Włochy"
+                    data-hours="18:00">
+                  <a href="/kino/repertuar/ojczyzna">OJCZYZNA</a>
+                </li>
+                              <li class="event"
+                    data-title="CHŁOPIEC NA KRAŃCACH ŚWIATA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/chlopiec-na-krancach-swiata"
+                    data-ticket="https://biletyna.pl/film/Chlopiec-na-krancach-swiata/Dzierzoniow"
+                    data-age="6+"
+                    data-duration="1 godz. 28 min."
+                    data-soundtrack="dubbing"
+                    data-genre="Bajka animowana, Przygodowy"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/ch%C5%82opiec%20na%20pl.jpg"
+                    data-production="Polska"
+                    data-hours="16:00">
+                  <a href="/kino/repertuar/chlopiec-na-krancach-swiata">CHŁOPIEC NA KRAŃCACH ŚWIATA</a>
+                </li>
+                              <li class="event"
+                    data-title="BACKROOMS. BEZ WYJŚCIA"
+                    data-term="Premiera"
+                    data-link="/kino/repertuar/backrooms-bez-wyjscia"
+                    data-ticket="https://biletyna.pl/film/Backrooms-Bez-wyjscia/Dzierzoniow"
+                    data-age="12+"
+                    data-duration="1 godz. 30 min."
+                    data-soundtrack="napisy"
+                    data-genre="Horror, Science-Fiction"
+                    data-poster="https://dok.pl/sites/default/files/2026-05/BACKROOMS%20BEZ%20WYJ%C5%9ACIA%20pl.jpg"
+                    data-production="USA"
+                    data-hours="20:00">
+                  <a href="/kino/repertuar/backrooms-bez-wyjscia">BACKROOMS. BEZ WYJŚCIA</a>
+                </li>
+                          </ul>
+                  </div>
+                
+              <div class="day day-1 current-month">
+                      <span class="day-name">PN</span>
+            <span class="day">
+              <span class="day-number">29</span>
+
+            </span>
+
+            
+                  </div>
+          
+              <div class="day day-2 current-month">
+                      <span class="day-name">WT</span>
+            <span class="day">
+              <span class="day-number">30</span>
+
+            </span>
+
+            
+                  </div>
+          
+          
+          
+          
+          
+            </div>
+</div>
+
+<div class="next-month">
+  <button
+    data-date="7/2026"
+    class="calendar-month-nav next-month">
+    <span class="visually-hidden">Next month</span>
+  </button>
+</div>
+
+</div>
+
+<div class="buttons">
+  <a href="/kino/cennik" class="prices">Cennik biletów</a>
+  <a href="/kino/filmy" class="movies">Wszystkie filmy</a>
+</div>
+</div>
+  </div>
+
+<article role="article" about="/kino" typeof="schema:WebPage" class="node node--type-page node--view-mode-full">
+
+  
+      <span property="schema:name" content="Kino" class="rdf-meta hidden"></span>
+
+
+  
+  <div class="node__content">
+    <h1 class="title" id="page-title">Kino</h1>  <div class="node__links">
+    <ul class="links inline"><li class="print"><a href="/vcontent_print/node/237">Drukuj</a></li><li class="pdf"><a href="/print/pdf/node/237">PDF</a></li><li class="fb-share"><div class="fb-share-button" data-href="https://dok.pl/kino" data-layout="button_count" data-size="small" data-mobile-iframe="true"><a target="_blank" href="https://www.facebook.com/sharer/sharer.php?u=https://dok.pl/kino&amp;src=sdkpreparse" class="fb-xfbml-parse-ignore">Udostępnij</a></div></li><li class="fb-like"><div class="fb-like" data-href="https://dok.pl/kino"data-layout="button_count" data-action="like" data-size="small" data-show-faces="false" data-share="false"></div></li></ul>  </div>
+
+  </div>
+
+</article>
+
+  </div>
+
+                
+            </div>
+            </div>
+    <div class="bottom-slider">
+          <div class="region region-bottom-slider">
+    <div class="views-element-container block block-views block-views-blockpromoted-films-block-2" id="block-views-block-promoted-films-block-2">
+  
+    
+      <div><div class="view view-promoted-films view-id-promoted_films view-display-id-block_2 js-view-dom-id-0cc77c393b9c2ed7da6d2385a2b091fabd52884634aa437d79e723d21c35cd46">
+  
+    
+      
+  
+          </div>
+</div>
+
+  </div>
+
+  </div>
+
+    </div>
+    <div class="media">
+        
+    </div>
+
+    <div class="forerunner-container">
+
+          <div class="region region-forerunner">
+    <div class="views-element-container block block-views block-views-blockrepertuar-block-3" id="block-views-block-repertuar-block-3">
+  
+    
+      <div><div class="view view-repertuar view-id-repertuar view-display-id-block_3 js-view-dom-id-5d901c79f79a6810f08b1507f1ddba62a9cce390c121f1b5c12a0ad93023231a">
+  
+    
+      
+  
+      
+
+          <div class="more-link"><a href="/kino/zapowiedzi">wszystkie zapowiedzi</a></div>
+
+      </div>
+</div>
+
+  </div>
+
+  </div>
+
+    </div>
+
+    <div class="newsletter-container">
+        
+    </div>
+
+    <div class="calendar-wrapper">
+        
+        
+    </div>
+
+    <div class="banner-container">
+          <div class="region region-banner">
+    <div id="block-banerybanerydolnekino" class="block block-vbanner block-vbanner-blockbanners-cinema-bottom">
+  
+    
+        <div class="vbanner-item">
+    <div class="vbanner-item-content">
+      
+        
+                      <a class="vbanner-link" href="/vbanner/click/1?path=https%3A//pisf.pl/" target="_blank">
+          
+          <img src="/sites/default/files/vbanner/PisfPolEng_bialetlo.png" alt="Polski instytut sztuki filmowej"/>
+
+                      </a>
+          
+        
+          </div>
+  </div>
+  <div class="vbanner-item">
+    <div class="vbanner-item-content">
+      
+        
+                      <a class="vbanner-link" href="/vbanner/click/2?path=http%3A//www.kinastudyjne.pl/" target="_blank">
+          
+          <img src="/sites/default/files/vbanner/SiecKinStudyjnych_Logo_2_Wiersze_Zolty_RGB%20%28002%29.png" alt="Sieć kin studyjnych i lokalnych"/>
+
+                      </a>
+          
+        
+          </div>
+  </div>
+  <div class="vbanner-item">
+    <div class="vbanner-item-content">
+      
+        
+                      <a class="vbanner-link" href="/vbanner/click/3?path=http%3A//www.c-kino.pl/" target="_blank">
+          
+          <img src="/sites/default/files/vbanner/Sie%C4%87%20Polskich%20Kin%20Cyfrowych%20logo.png" alt="sieć polskich kin cyfrowych"/>
+
+                      </a>
+          
+        
+          </div>
+  </div>
+
+  </div>
+
+  </div>
+
+    </div>
+
+    <div class="footer-container">
+          <div class="region region-footer-top-left">
+    <div id="block-stopkalogo" class="block block-block-content block-block-contentb8936c76-5e29-40a2-9b41-70ca2f2c2925">
+  
+    
+      
+            <div class="clearfix text-formatted field field--name-body field--type-text-with-summary field--label-hidden field__item"><p><a href="/"><img alt="Odnośnik do strony głównej " data-entity-type="" data-entity-uuid="" src="/sites/default/files/pliki/doklogo.png" /></a>            <a href="https://dzierzoniow.pl/"><img alt="Dzierzoniow" data-entity-type="" data-entity-uuid="" src="/sites/default/files/pliki/images/logo-dzierzonow.png" /></a>              <img alt="ekran" data-entity-type="" data-entity-uuid="" src="/sites/default/files/pliki/NOWY%20EKRAN%20II%20xx.jpg" /></p>
+</div>
+      
+  </div>
+<div id="block-kontaktkino" class="block block-block-content block-block-contentdce349c1-1519-4d51-be6d-4a904ba43b04">
+  
+      <h2>Kontakt</h2>
+    
+      
+            <div class="clearfix text-formatted field field--name-body field--type-text-with-summary field--label-hidden field__item"><p>Kino Zbyszek<br />
+ul. Świdnicka 25<br />
+58-200 Dzierżoniów<br />
+Tel. 74 64 64 658<br />
+<span class="spamspan"><span class="u">kinozbyszek</span><img class="spamspan-image" alt="at" src="/modules/contrib/spamspan/image.gif" /><span class="d">dok<span class="o"> [dot] </span>pl</span></span></p>
+</div>
+      
+  </div>
+<nav role="navigation"
+     aria-labelledby="block-menukino-2-menu" id="block-menukino-2" class="block block-menu navigation menu--menu-kino">
+    
+        
+    <h2 id="block-menukino-2-menu">Na skróty</h2>
+    
+
+        <div class="menu-container">
+                    
+              <ul data-region="footer_top_left" class="menu">
+                    <li class="menu-item">
+        <a href="/kino/o-kinie" data-drupal-link-system-path="node/25">O Kinie</a>
+              </li>
+                <li class="menu-item menu-item--active-trail">
+        <a href="/kino#block-calendarblock" data-drupal-link-system-path="node/237" class="is-active">Repertuar</a>
+              </li>
+                <li class="menu-item">
+        <a href="/kino/cennik" data-drupal-link-system-path="node/23">Cennik</a>
+              </li>
+                <li class="menu-item">
+        <a href="/kino/filmy" data-drupal-link-system-path="kino/filmy">Filmy</a>
+              </li>
+                <li class="menu-item">
+        <a href="/kino/dokumenty" title="Dokumenty" data-drupal-link-system-path="node/6">Dokumenty</a>
+              </li>
+                <li class="menu-item">
+        <a href="/kino/edukacja-filmowa" data-drupal-link-system-path="node/24">Edukacja filmowa</a>
+              </li>
+                <li class="menu-item">
+        <a href="/kino/zapowiedzi" data-drupal-link-system-path="kino/zapowiedzi">Zapowiedzi</a>
+              </li>
+                <li class="menu-item">
+        <a href="/dok/kontakt" title="Kontakt Kino" data-drupal-link-system-path="node/18">Kontakt</a>
+              </li>
+        </ul>
+  
+
+
+                    </div>
+</nav>
+
+  </div>
+
+          <div class="region region-footer-top-right">
+    <nav role="navigation"
+     aria-labelledby="block-znajdznas-menu" id="block-znajdznas" class="block block-menu navigation menu--find-us">
+    
+        
+    <h2 id="block-znajdznas-menu">Znajdź nas</h2>
+    
+
+        <div class="menu-container">
+                    
+              <ul data-region="footer_top_right" class="menu">
+                    <li class="menu-item">
+        <a href="https://www.facebook.com/dzierzoniowski.osrodek.kultury/">facebook</a>
+              </li>
+                <li class="menu-item">
+        <a href="https://www.youtube.com/channel/UCC4rAjoSPK02Vh74Erhu5wQ">Youtube</a>
+              </li>
+                <li class="menu-item">
+        <a href="https://www.instagram.com/dzierzoniowski_osrodek_kultury/">Instagram</a>
+              </li>
+                <li class="menu-item">
+        <a href="https://bip.dok.nv.pl/" class="icon-icomoon icon-bip only-rwd" target="_blank">Biuletyn Informacji Publicznej</a>
+              </li>
+        </ul>
+  
+
+
+                    </div>
+</nav>
+<div id="block-skontaktujsieznami" class="block block-block-content block-block-content255ff278-68a8-4986-ae28-4fbe77c26fe4">
+  
+    
+      
+            <div class="clearfix text-formatted field field--name-body field--type-text-with-summary field--label-hidden field__item"><p>Skontaktuj się z nami: <span class="tel"><a href="tel:+48:746464660"> </a></span><span class="mail"><span class="spamspan"><span class="u">dok</span><img class="spamspan-image" alt="at" src="/modules/contrib/spamspan/image.gif" /><span class="d">dok<span class="o"> [dot] </span>pl</span><span class="t"> ( )</span></span></span></p>
+</div>
+      
+  </div>
+
+  </div>
+
+    </div>
+    <div class="footer-bottom-container">
+          <div class="region region-footer-bottom">
+    <div id="block-copyrights" class="block block-block-content block-block-content46df18e4-bdc5-4400-a49f-ee00d9847e8d">
+  
+    
+      
+            <div class="clearfix text-formatted field field--name-body field--type-text-with-summary field--label-hidden field__item"><p>Copyrights © 2020 DOK</p>
+</div>
+      
+  </div>
+<nav role="navigation"
+     aria-labelledby="block-menustopkadolna-menu" id="block-menustopkadolna" class="block block-menu navigation menu--menu-footer-bottom">
+    
+                    
+    <h2 class="visually-hidden" id="block-menustopkadolna-menu">Menu stopka dolna</h2>
+    
+
+        <div class="menu-container">
+                    
+              <ul data-region="footer_bottom" class="menu">
+                    <li class="menu-item">
+        <a href="/deklaracja-dostepnosci" title=" Deklaracja dostępności" data-drupal-link-system-path="node/30">Deklaracja dostępności</a>
+              </li>
+                <li class="menu-item">
+        <a href="/polityka-plikow-cookies" title="Polityka plików cookies" data-drupal-link-system-path="node/3">Polityka plików cookies</a>
+              </li>
+                <li class="menu-item">
+        <a href="/klauzula-informacyjna-rodo" title="RODO" data-drupal-link-system-path="node/41812">Klauzula informacyjna RODO</a>
+              </li>
+        </ul>
+  
+
+
+                    </div>
+</nav>
+<div id="block-vbanner-popup-kino" class="block block-core block-vbanner-blockpopup-kino">
+  
+    
+      
+  </div>
+
+  </div>
+
+    </div>
+</div>
+
+
+
+  </div>
+
+
+<script type="application/json" data-drupal-selector="drupal-settings-json">{"path":{"baseUrl":"\/","scriptPath":null,"pathPrefix":"","currentPath":"node\/237","currentPathIsAdmin":false,"isFront":false,"currentLanguage":"pl"},"pluralDelimiter":"\u0003","suppressDeprecationErrors":true,"ajaxPageState":{"libraries":"calendar_movie\/calendar_movie,ckeditor_accordion\/accordion_style,ckeditor_indentblock\/indentblock,classy\/base,classy\/messages,classy\/node,colorbox\/stockholmsyndrome,colorbox_inline\/colorbox_inline,core\/html5shiv,core\/normalize,dok\/global-styling,dok\/slick,eu_cookie_compliance\/eu_cookie_compliance,paragraphs\/drupal.paragraphs.unpublished,spamspan\/atsign,spamspan\/obfuscate,system\/base,vbanner\/vbanner-css,video_embed_field\/colorbox,video_embed_field\/responsive-video,views\/views.module,views_infinite_scroll\/views-infinite-scroll,vphoto_gallery\/gallery.list,vtextresize\/base","theme":"dok","theme_token":null},"ajaxTrustedUrl":{"\/search\/node":true},"colorbox":{"transition":"elastic","speed":600,"opacity":0.85,"slideshow":false,"slideshowAuto":true,"slideshowSpeed":2500,"slideshowStart":"start slideshow","slideshowStop":"stop slideshow","current":"{current} z {total}","previous":"\u00ab Poprzednie","next":"Nast\u0119pne \u00bb","close":"Close","overlayClose":true,"returnFocus":true,"maxWidth":"98%","maxHeight":"98%","initialWidth":"0","initialHeight":"0","fixed":true,"scrolling":true,"mobiledetect":true,"mobiledevicewidth":"320px"},"eu_cookie_compliance":{"popup_enabled":true,"popup_agreed_enabled":false,"popup_hide_agreed":false,"popup_clicking_confirmation":false,"popup_scrolling_confirmation":false,"popup_html_info":"\u003Cdiv class=\u0022eu-cookie-compliance-banner eu-cookie-compliance-banner-info\u0022\u003E\n    \u003Cdiv class =\u0022popup-content info eu-cookie-compliance-content\u0022\u003E\n        \u003Cdiv id=\u0022popup-text\u0022 class=\u0022eu-cookie-compliance-message\u0022\u003E\n            \u003Cp\u003ETa witryna u\u017cywa plik\u00f3w cookie. Wi\u0119cej informacji o u\u017cywanych plikach cookie mo\u017cna znale\u017a\u0107 \u003Ca href=\u0022\/polityka-plikow-cookies\u0022\u003Etutaj\u003C\/a\u003E oraz w stopce na naszej stronie internetowej (Polityka prywatno\u015bci).\u003C\/p\u003E\n\n        \u003C\/div\u003E\n        \u003Cdiv id=\u0022popup-buttons\u0022 class=\u0022eu-cookie-compliance-buttons\u0022\u003E\n            \u003Cbutton type=\u0022button\u0022 class=\u0022agree-button eu-cookie-compliance-agree-button\u0022\u003EZgadzam si\u0119\u003C\/button\u003E\n                    \u003C\/div\u003E\n    \u003C\/div\u003E\n\u003C\/div\u003E","use_mobile_message":false,"mobile_popup_html_info":"\u003Cdiv class=\u0022eu-cookie-compliance-banner eu-cookie-compliance-banner-info\u0022\u003E\n    \u003Cdiv class =\u0022popup-content info eu-cookie-compliance-content\u0022\u003E\n        \u003Cdiv id=\u0022popup-text\u0022 class=\u0022eu-cookie-compliance-message\u0022\u003E\n            \n        \u003C\/div\u003E\n        \u003Cdiv id=\u0022popup-buttons\u0022 class=\u0022eu-cookie-compliance-buttons\u0022\u003E\n            \u003Cbutton type=\u0022button\u0022 class=\u0022agree-button eu-cookie-compliance-agree-button\u0022\u003EZgadzam si\u0119\u003C\/button\u003E\n                    \u003C\/div\u003E\n    \u003C\/div\u003E\n\u003C\/div\u003E","mobile_breakpoint":768,"popup_html_agreed":false,"popup_use_bare_css":false,"popup_height":"auto","popup_width":"100%","popup_delay":1000,"popup_link":"\/polityka-plikow-cookies","popup_link_new_window":true,"popup_position":false,"fixed_top_position":true,"popup_language":"pl","store_consent":false,"better_support_for_screen_readers":false,"cookie_name":"","reload_page":false,"domain":"","domain_all_sites":false,"popup_eu_only_js":false,"cookie_lifetime":100,"cookie_session":0,"disagree_do_not_show_popup":false,"method":"default","whitelisted_cookies":"","withdraw_markup":"\u003Cbutton type=\u0022button\u0022 class=\u0022eu-cookie-withdraw-tab\u0022\u003EPrivacy settings\u003C\/button\u003E\n\u003Cdiv class=\u0022eu-cookie-withdraw-banner\u0022\u003E\n  \u003Cdiv class=\u0022popup-content info eu-cookie-compliance-content\u0022\u003E\n    \u003Cdiv id=\u0022popup-text\u0022 class=\u0022eu-cookie-compliance-message\u0022\u003E\n      \u003Ch2\u003EWe use cookies on this site to enhance your user experience\u003C\/h2\u003E\n\u003Cp\u003EYou have given your consent for us to set cookies.\u003C\/p\u003E\n\n    \u003C\/div\u003E\n    \u003Cdiv id=\u0022popup-buttons\u0022 class=\u0022eu-cookie-compliance-buttons\u0022\u003E\n      \u003Cbutton type=\u0022button\u0022 class=\u0022eu-cookie-withdraw-button\u0022\u003EWithdraw consent\u003C\/button\u003E\n    \u003C\/div\u003E\n  \u003C\/div\u003E\n\u003C\/div\u003E","withdraw_enabled":false,"withdraw_button_on_info_popup":false,"cookie_categories":[],"enable_save_preferences_button":true,"fix_first_cookie_category":true,"select_all_categories_by_default":false},"ckeditorAccordion":{"accordionStyle":{"collapseAll":null,"keepRowsOpen":null}},"views":{"ajax_path":"\/views\/ajax","ajaxViews":{"views_dom_id:5d901c79f79a6810f08b1507f1ddba62a9cce390c121f1b5c12a0ad93023231a":{"view_name":"repertuar","view_display_id":"block_3","view_args":"","view_path":"\/node\/237","view_base_path":"kino\/zapowiedzi","view_dom_id":"5d901c79f79a6810f08b1507f1ddba62a9cce390c121f1b5c12a0ad93023231a","pager_element":0}}},"vtextresize":{"step":2,"max_font_size":25,"min_font_size":12},"user":{"uid":0,"permissionsHash":"da6a0a208ff40b06ac8961a0bcba3f6281c065449705f5f66218d40a460f0324"}}</script>
+<script src="/core/assets/vendor/jquery/jquery.min.js?v=3.5.1"></script>
+<script src="/core/misc/polyfills/object.assign.js?v=8.9.20"></script>
+<script src="/core/assets/vendor/jquery-once/jquery.once.min.js?v=2.2.3"></script>
+<script src="/core/misc/drupalSettingsLoader.js?v=8.9.20"></script>
+<script src="/sites/default/files/languages/pl_bHhoeAdJKYNmDRCw2AJxlAj6b71UH-JlNjvKtyMaiGw.js?t4mv85"></script>
+<script src="/core/misc/drupal.js?v=8.9.20"></script>
+<script src="/core/misc/drupal.init.js?v=8.9.20"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/effect-min.js?v=1.12.1"></script>
+<script src="/libraries/colorbox/jquery.colorbox-min.js?v=8.9.20"></script>
+<script src="/modules/contrib/colorbox/js/colorbox.js?v=8.9.20"></script>
+<script src="/modules/contrib/colorbox/styles/stockholmsyndrome/colorbox_style.js?v=8.9.20"></script>
+<script src="/modules/contrib/colorbox_inline/js/colorbox_inline.js?t4mv85"></script>
+<script src="/themes/custom/dok/js/misc.js?v=1.x"></script>
+<script src="/core/assets/vendor/js-cookie/js.cookie.min.js?v=3.0.0-rc0"></script>
+<script src="/core/misc/jquery.cookie.shim.js?v=8.9.20"></script>
+<script src="/modules/contrib/eu_cookie_compliance/js/eu_cookie_compliance.js?v=1"></script>
+<script src="/modules/contrib/ckeditor_accordion/js/ckeditor-accordion.js?v=1.x"></script>
+<script src="/modules/contrib/spamspan/js/spamspan.js?v=8.9.20"></script>
+<script src="/core/misc/progress.js?v=8.9.20"></script>
+<script src="/core/modules/responsive_image/js/responsive_image.ajax.js?v=8.9.20"></script>
+<script src="/core/misc/ajax.js?v=8.9.20"></script>
+<script src="/core/themes/stable/js/ajax.js?v=8.9.20"></script>
+<script src="/modules/custom/calendar_movie/js/calendar.js?v=1.x"></script>
+<script src="/core/modules/system/js/system.js?v=8.9.20"></script>
+<script src="/modules/custom/video_embed_field/js/video-embed-field.colorbox.js?t4mv85"></script>
+<script src="/themes/custom/dok/js/libraries/slick.js?t4mv85"></script>
+<script src="/themes/custom/dok/js/gallery-slick.js?t4mv85"></script>
+<script src="/themes/custom/dok/js/film-slick.js?t4mv85"></script>
+<script src="/core/assets/vendor/jquery-form/jquery.form.min.js?v=4.22"></script>
+<script src="/core/modules/views/js/base.js?v=8.9.20"></script>
+<script src="/core/modules/views/js/ajax_view.js?v=8.9.20"></script>
+<script src="/core/misc/debounce.js?v=8.9.20"></script>
+<script src="/modules/contrib/views_infinite_scroll/js/infinite-scroll.js?v=8.9.20"></script>
+<script src="/modules/custom/vtextresize/js/jquery.cookie.js?v=1.x"></script>
+<script src="/modules/custom/vtextresize/js/vtextresize.js?v=1.x"></script>
+
+</body>
+</html>

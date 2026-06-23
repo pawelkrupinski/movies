@@ -116,12 +116,9 @@ class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
 
 object IluzjonClient {
 
-  // Genitive forms shared via ScraperParse; the h3 also uses the bare
-  // nominative ("5 Czerwiec"), so extend the shared map with those.
-  private val Months = ScraperParse.PolishMonths ++ Map(
-    "styczeń" -> 1, "luty" -> 2, "marzec" -> 3, "kwiecień" -> 4, "maj" -> 5, "czerwiec" -> 6,
-    "lipiec" -> 7, "sierpień" -> 8, "wrzesień" -> 9, "październik" -> 10, "listopad" -> 11, "grudzień" -> 12
-  )
+  // The h3 uses the bare nominative ("5 Czerwiec") as well as the genitive, so
+  // the case-folded shared map handles both.
+  private val Months = ScraperParse.PolishMonthsAnyCase
   private val DayMonthPat = """(\d{1,2})\s+([A-Za-ząćęłńóśźżĄĆĘŁŃÓŚŹŻ]+)""".r
 
   /** "5 Czerwca - Piątek" → an absolute date; year from `today`, rolling forward
