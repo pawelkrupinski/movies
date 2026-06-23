@@ -430,6 +430,17 @@ class WorkerWiring extends play.api.Logging {
     cpuCreditPoller.fold[services.tasks.ScrapeThrottleSignal](externalThrottleGate)(
       poller => services.tasks.ScrapeThrottleSignal.either(externalThrottleGate, poller))
 
+  // Last-resort backstop: if the worker stays throttled CONTINUOUSLY past this many
+  // minutes, the duty-cycle + reaper backoff failed to recover credit (a wedged
+  // spiral) — exit non-zero so Fly restarts the machine. Safe to wire only because
+  // the per-host circuit breaker now skips the offending host on the way back up,
+  // so the restart sticks instead of re-spiralling. Threshold sits FAR above any
+  // healthy backoff (clears in minutes), so it never fires on a normal episode.
+  def throttleStuckMinutes: Long = Env.positiveLong("KINOWO_WORKER_THROTTLE_STUCK_MINUTES", 30L)
+  lazy val throttleStuckWatchdog = new services.tasks.ThrottleStuckWatchdog(
+    throttleSignal, stuckAfter = throttleStuckMinutes.minutes,
+    onStuck = () => sys.exit(1))
+
   // Cluster-wide occurrence claims gate the reapers' recurring ticks so each
   // scheduled occurrence runs on ONE machine (rotating), not on every machine.
   // Absent Mongo (local dev opt-out) → always-claim, i.e. run unlocked.
@@ -738,6 +749,8 @@ class WorkerWiring extends play.api.Logging {
     // starves (the authoritative throttle signal; absent its token, the external
     // gate alone drives backoff).
     cpuCreditPoller.foreach(_.start())
+    // Arm the last-resort restart backstop for a throttle spiral the backoff can't break.
+    throttleStuckWatchdog.start()
     // The task worker drains all queue work: scraping, deferred detail, and
     // queue-driven rating enrichment.
     taskWorker.start(); workerHeartbeat.start()
@@ -767,6 +780,7 @@ class WorkerWiring extends play.api.Logging {
     detailReaper.stop()
     settleReaper.stop()
     workerHeartbeat.stop()
+    throttleStuckWatchdog.stop()
     cpuCreditPoller.foreach(_.stop())
     taskWorker.stop()
     taskQueue.close()
