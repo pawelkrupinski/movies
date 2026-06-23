@@ -19,6 +19,12 @@ import java.util.concurrent.{CountDownLatch, Executors}
  * latch so the JVM stays up; a SIGTERM (Fly machine stop) runs the drain hook.
  */
 object WorkerMain extends Logging {
+
+  // The liveness signal `/health` reports. Starts permissive — `/health` comes up
+  // BEFORE wiring (a slow Mongo boot must not fail the check), and a still-booting
+  // process IS alive — then is swapped to the LivenessWatchdog once wiring is up.
+  @volatile private var livenessProbe: () => Boolean = () => true
+
   def main(args: Array[String]): Unit = {
     val commit = Option(System.getenv("COMMIT_SHA")).getOrElse("unknown")
     logger.info(s"Worker starting — commit $commit")
@@ -57,6 +63,15 @@ object WorkerMain extends Logging {
     addThrottleEndpoint(health, wiring)
     logger.info(s"Worker throttle control up on :$port/throttle")
 
+    // Now that the heartbeat + watchdog are running, let /health report real
+    // liveness: it goes 503 (and the watchdog restarts the process) only once the
+    // heartbeat pulse has been stale for minutes — a wedged JVM, not a slow boot.
+    livenessProbe = () => wiring.livenessWatchdog.isAlive
+    // Ensure the heap-dump volume dir exists so the JVM's HeapDumpOnOutOfMemoryError
+    // (hard-OOM path) and the watchdog (death-spiral path) both have somewhere to write.
+    try java.nio.file.Files.createDirectories(java.nio.file.Paths.get(wiring.heapDumpDir))
+    catch { case e: Throwable => logger.warn(s"Could not create heap-dump dir ${wiring.heapDumpDir}: ${e.getMessage}") }
+
     val done = new CountDownLatch(1)
     Runtime.getRuntime.addShutdownHook(new Thread(() => {
       logger.info("Worker received shutdown signal — draining the enrichment cascade…")
@@ -73,8 +88,9 @@ object WorkerMain extends Logging {
   private def startHealthServer(port: Int): HttpServer = {
     val server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0)
     server.createContext("/health", exchange => {
-      val body = "ok".getBytes("UTF-8")
-      exchange.sendResponseHeaders(200, body.length.toLong)
+      val alive = livenessProbe()
+      val body  = (if (alive) "ok" else "wedged").getBytes("UTF-8")
+      exchange.sendResponseHeaders(if (alive) 200 else 503, body.length.toLong)
       val os = exchange.getResponseBody
       try os.write(body) finally os.close()
     })

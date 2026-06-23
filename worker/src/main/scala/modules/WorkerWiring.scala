@@ -683,6 +683,21 @@ class WorkerWiring extends play.api.Logging {
   // when the 2026-06-12 worker-steal episode had to be reconstructed from metrics).
   lazy val workerHeartbeat = new WorkerHeartbeat(taskQueue)
 
+  // Last-resort backstop for a WEDGED-but-alive JVM (the 2026-06-23 heap OOM, where
+  // the process limped on for ~2h answering /health 200 because the OOM had killed
+  // its worker threads but not the process, and the throttle watchdog couldn't see
+  // it — the credit poller failed open to "healthy"). The LivenessWatchdog watches
+  // the heartbeat pulse and, if it stalls past the threshold, dumps the about-to-die
+  // heap to the Fly volume (so a leak-vs-too-tight analysis is possible offline) and
+  // exits non-zero so Fly reschedules. Threshold sits several heartbeat intervals
+  // above the 1-min pulse so GC jitter never trips it.
+  def livenessStaleMinutes: Long = Env.positiveLong("KINOWO_WORKER_LIVENESS_STALE_MINUTES", 5L)
+  def heapDumpDir: String        = Env.get("KINOWO_HEAP_DUMP_DIR").getOrElse("/data/heapdumps")
+  lazy val livenessWatchdog = new services.tasks.LivenessWatchdog(
+    lastBeatMillis     = () => workerHeartbeat.lastTickMillis,
+    stalenessThreshold = livenessStaleMinutes.minutes,
+    onWedged           = () => { tools.HeapDumper.dump(heapDumpDir); sys.exit(70) })
+
   // Subscribe BEFORE start() so the bus's first MovieDetailsComplete events reach
   // the enrichment handlers.
   //   MovieDetailsComplete → movieService    (TMDB stage)
@@ -754,6 +769,9 @@ class WorkerWiring extends play.api.Logging {
     // The task worker drains all queue work: scraping, deferred detail, and
     // queue-driven rating enrichment.
     taskWorker.start(); workerHeartbeat.start()
+    // Arm AFTER the heartbeat (so the first pulse is already stamped) — restart a
+    // wedged-but-alive JVM the throttle watchdog can't see.
+    livenessWatchdog.start()
     enrichmentReaper.start()
     unresolvedTmdbReaper.start()
     detailReaper.start()
@@ -779,6 +797,7 @@ class WorkerWiring extends play.api.Logging {
     unresolvedTmdbReaper.stop()
     detailReaper.stop()
     settleReaper.stop()
+    livenessWatchdog.stop()
     workerHeartbeat.stop()
     throttleStuckWatchdog.stop()
     cpuCreditPoller.foreach(_.stop())
