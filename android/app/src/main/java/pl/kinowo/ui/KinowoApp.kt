@@ -142,6 +142,14 @@ private fun CityGate(viewModel: KinowoViewModel) {
 @Composable
 private fun Repertoire(viewModel: KinowoViewModel) {
     val nav = rememberNavController()
+    // A deep link asked to open a specific film: navigate once the title has
+    // been confirmed present in the loaded repertoire (set by the ViewModel).
+    val pendingFilm = viewModel.pendingFilmNav
+    LaunchedEffect(pendingFilm) {
+        val title = pendingFilm ?: return@LaunchedEffect
+        nav.navigate("detail/${Uri.encode(title)}")
+        viewModel.clearPendingFilmNav()
+    }
     NavHost(navController = nav, startDestination = "list") {
         composable("list") {
             ListScreen(viewModel = viewModel, onOpenFilm = { title -> nav.navigate("detail/${Uri.encode(title)}") })

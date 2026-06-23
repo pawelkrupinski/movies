@@ -32,6 +32,27 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="kinowo" android:host="auth-done" />
             </intent-filter>
+            <!-- App Links: verified kinowo.fly.dev links (incl. the
+                 copy-to-clipboard filter links) open the app directly. Scoped to
+                 /<city>/ and /<city>/film so OAuth (/auth/…) and API paths stay
+                 in the browser. autoVerify checks /.well-known/assetlinks.json. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="kinowo.fly.dev" />
+                <data android:pathPattern="/..*/" />
+                <data android:pathPattern="/..*/film" />
+            </intent-filter>
+            <!-- kinowo://<city>/… custom-scheme fallback for deep links. The
+                 ViewModel rejects the auth-done host, so it doesn't disturb the
+                 OAuth filter above. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="kinowo" />
+            </intent-filter>
         </activity>
     </application>
 </manifest>

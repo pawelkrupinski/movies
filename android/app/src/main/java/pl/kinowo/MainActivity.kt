@@ -70,6 +70,7 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
         handleAuthDeepLink(intent)
+        handleNavDeepLink(intent)
         // Non-prod tweak screen, gated behind a launch extra so it never shows in
         // a normal run, AND behind BuildConfig.ENABLE_TUNING so it's compiled out
         // of the public `release` build (it's on for `debug` + `tuneRelease`).
@@ -94,6 +95,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleAuthDeepLink(intent)
+        handleNavDeepLink(intent)
     }
 
     private fun handleAuthDeepLink(intent: Intent?) {
@@ -101,5 +103,13 @@ class MainActivity : ComponentActivity() {
         if (data.scheme == "kinowo" && data.host == "auth-done") {
             data.getQueryParameter("code")?.let { viewModel.handleAuthRedirect(it) }
         }
+    }
+
+    // A kinowo.fly.dev App Link or kinowo://<city>/… link. The ViewModel parses
+    // it (rejecting the auth-done callback handled above), switches the city, and
+    // applies the filters + film. Harmless on a plain MAIN/LAUNCHER start: a null
+    // or unrecognised data URI is a no-op.
+    private fun handleNavDeepLink(intent: Intent?) {
+        intent?.data?.let { viewModel.handleDeepLink(it.toString()) }
     }
 }

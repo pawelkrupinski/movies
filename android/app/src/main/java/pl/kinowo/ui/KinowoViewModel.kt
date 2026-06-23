@@ -30,6 +30,8 @@ import pl.kinowo.auth.UserStateClient
 import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
+import pl.kinowo.deeplink.DeepLink
+import pl.kinowo.deeplink.DeepLinkFilters
 import pl.kinowo.location.LocationCityResolver
 import pl.kinowo.model.Cities
 import pl.kinowo.model.CitySwitchSuggestion
@@ -110,6 +112,14 @@ class KinowoViewModel(
     var excludedGenres by mutableStateOf<Set<String>>(emptySet())
     var excludedDirectors by mutableStateOf<Set<String>>(emptySet())
     var excludedCast by mutableStateOf<Set<String>>(emptySet())
+
+    /** A film title a deep link asked to open, once it's confirmed present in the
+     *  loaded repertoire. [Repertoire] navigates to it then calls
+     *  [clearPendingFilmNav]. Null when there's nothing pending. */
+    var pendingFilmNav by mutableStateOf<String?>(null)
+        private set
+
+    fun clearPendingFilmNav() { pendingFilmNav = null }
 
     // `allCinemas` of the current city is passed in so the cinema clause is
     // scoped to it — a cinema deselected in another city lingers in the global
@@ -258,6 +268,51 @@ class KinowoViewModel(
 
     fun markSwiped() = viewModelScope.launch { prefs.markSwiped() }
     fun markSwipeHintShown(date: String) = viewModelScope.launch { prefs.markSwipeHintShown(date) }
+
+    // ── deep links ────────────────────────────────────────────────────────
+    /**
+     * Apply an inbound App Link / kinowo:// link. Switches the city eagerly (so
+     * a cold launch from a link lands on the linked city), applies the scalar
+     * filters immediately, and defers the film push + multi-value (exclusion /
+     * cinema) filters until the repertoire loads — both need the loaded films
+     * (the value universe to invert the link's inclusion lists, and the title to
+     * confirm before navigating). Mirrors iOS `ContentView.consumeDeepLink`.
+     */
+    fun handleDeepLink(rawUrl: String) {
+        val link = DeepLink.parse(rawUrl) ?: return
+        if (link.citySlug != selectedCity.value) setCity(link.citySlug)
+        applyScalarFilters(link.filters)
+        viewModelScope.launch {
+            // Wait for the repertoire to load, then land the film + exclusions.
+            val loaded = films.first { it.isNotEmpty() }
+            applyRepertoireDependent(link, loaded)
+        }
+    }
+
+    @androidx.annotation.VisibleForTesting
+    internal fun applyScalarFilters(filters: DeepLinkFilters) {
+        filters.date?.let { dateFilter = it }
+        formatFilter = filters.formatFilter(formatFilter)
+        filters.query?.let { search = it }
+        filters.sort?.let { sortBy = it }
+    }
+
+    private fun applyRepertoireDependent(link: DeepLink, loaded: List<Film>) {
+        val f = link.filters
+        if (f.includedCountries.isNotEmpty()) excludedCountries = f.excluded(f.includedCountries, allCountries(loaded).map { it.name }.toSet())
+        if (f.includedGenres.isNotEmpty()) excludedGenres = f.excluded(f.includedGenres, allGenres(loaded).map { it.name }.toSet())
+        if (f.includedDirectors.isNotEmpty()) excludedDirectors = f.excluded(f.includedDirectors, allDirectors(loaded).map { it.name }.toSet())
+        if (f.includedCast.isNotEmpty()) excludedCast = f.excluded(f.includedCast, allCast(loaded).map { it.name }.toSet())
+        // Cinemas are a single global set across cities; re-derive only the ones
+        // in THIS city, preserving deselections elsewhere (CinemaCityFilter).
+        val cityCinemas = allCinemas(loaded)
+        f.disabledCinemas(cityCinemas.toSet())?.let { disabledHere ->
+            setDisabledCinemas((disabledCinemas.value - cityCinemas.toSet()) + disabledHere)
+        }
+        // Only navigate to a film that's actually in the listing (one that left
+        // the repertoire just no-ops, like iOS).
+        link.filmTitle?.let { title -> if (loaded.any { it.title == title }) pendingFilmNav = title }
+    }
 
     /** Persist the chosen city. `start()`'s `selectedCity` collector picks up
      *  the change and re-fetches that city's repertoire — no explicit reload.
