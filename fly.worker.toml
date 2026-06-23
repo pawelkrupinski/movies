@@ -114,7 +114,23 @@ primary_region = 'arn'
   # never serves. MUST be a JVM startup flag, not a runtime System.setProperty: the
   # property is cached at the first HttpClient build, before app code can set it.
   # See reference_decodo_isp_proxy.
-  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -Djdk.http.auth.tunneling.disabledSchemes='
+  #
+  # OOM SURVIVABILITY (added after the 2026-06-23 heap OOM, where the 320m heap
+  # filled after ~5.5h and the JVM threw OutOfMemoryError on its worker threads but
+  # the PROCESS kept running — wedged, answering /health 200 — for ~2h until a
+  # manual restart):
+  #   - `-XX:+ExitOnOutOfMemoryError`: a hard OOM now EXITS (code 3) instead of
+  #     limping on with dead threads, so Fly reschedules the machine (~30s) rather
+  #     than leaving a zombie. The codebase already relies on Fly-restarts-on-exit
+  #     (see WorkerMain boot-fail path + ThrottleStuckWatchdog). The in-process
+  #     LivenessWatchdog is the complement for a wedge that does NOT throw OOM.
+  #   - `-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps`: dump the
+  #     heap on that hard OOM to the Fly volume mounted at /data (so it survives the
+  #     restart) — the diagnostic that was missing, to tell a real leak from a
+  #     working set that simply outgrew 320m. The LivenessWatchdog writes the same
+  #     dump when it pre-empts the OOM during a death-spiral. Pull dumps off the
+  #     volume after an event; clear them so it doesn't fill.
+  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -Djdk.http.auth.tunneling.disabledSchemes='
   # glibc allocator caps (read at process start, inherited by the JVM): bound the
   # arena count and trim freed heap back to the OS. See the JAVA_OPTS note above.
   MALLOC_ARENA_MAX = '2'
@@ -132,6 +148,17 @@ primary_region = 'arn'
     port = 9000
     timeout = '10s'
     type = 'http'
+
+# A small persistent volume purely to hold heap dumps across a restart — the
+# worker's only durable state (everything else lives in the shared Mongo). The
+# JVM's HeapDumpOnOutOfMemoryError (hard-OOM path) and the LivenessWatchdog
+# (death-spiral path) both write `*.hprof` into /data/heapdumps; ephemeral
+# rootfs would lose them the instant the process exits + Fly reschedules. One
+# machine ⇒ one volume in the worker's region. Create out-of-band before deploy:
+#   flyctl volume create worker_heapdumps --size 1 --region arn --app kinowo-worker
+[[mounts]]
+  source = 'worker_heapdumps'
+  destination = '/data'
 
 [[vm]]
   # 4 shared vCPUs / 1 GB. 2x is steady-state-adequate (real scrape load ~10/min ≈
