@@ -258,7 +258,14 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Człowiek z marmuru. Spotkanie z Michałem Tarkowskim"    -> "Człowiek z marmuru",
     "Sprawiedliwość owiec - Filmoteka Dojrzałego Człowieka"  -> "Sprawiedliwość owiec",
     "Zaproszenie - przepdremiera"                            -> "Zaproszenie",
-    "Toy Story 5- 2D Dubbing PL"                             -> "Toy Story 5"
+    "Toy Story 5- 2D Dubbing PL"                             -> "Toy Story 5",
+    // Cleanup wave (2026-06-23): the banners now use the {{SEP}} placeholder, so a
+    // separator other than the originally-spelled one strips too (broadening guard).
+    // (NB: '/' is excluded here on purpose — the seed structural-slash-suffix owns it.)
+    "Maraton – Powrót do przyszłości"                        -> "Powrót do przyszłości",
+    "Wakacje dla dzieci - Pucio"                             -> "Pucio",
+    // 'Klasyka w NCKF' alternative added to the consolidated classics rule.
+    "Klasyka w NCKF: Przekleństwa niewinności"               -> "Przekleństwa niewinności"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
