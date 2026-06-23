@@ -280,7 +280,29 @@ object ExtraTitleRules {
     // isolates it. Capture the first pipe-delimited segment and drop the banner +
     // tail; query-only, so the therapy screening keeps its own decorated row but
     // resolves the bare film. Sibling of the 'Filmoterapia z Inspirą:' prog prefix.
-    searchReplace("xtra-filmoterapia-w-lunie", """(?iu)^Filmoterapia\s+w\s+Lunie\s*\|\s*(.+?)\s*(?:\|.*)?$""", "$1", "'Filmoterapia W Lunie | <film> | seans + rozmowa Martyny Harland' Kino Luna therapy series — film pipe-wrapped in the middle (O czym sobie nie mówmy → TMDB 1473635)")
+    searchReplace("xtra-filmoterapia-w-lunie", """(?iu)^Filmoterapia\s+w\s+Lunie\s*\|\s*(.+?)\s*(?:\|.*)?$""", "$1", "'Filmoterapia W Lunie | <film> | seans + rozmowa Martyny Harland' Kino Luna therapy series — film pipe-wrapped in the middle (O czym sobie nie mówmy → TMDB 1473635)"),
+    // Tenth-wave (2026-06-23) audit of the rating-less prod corpus (402 / 1141 rows
+    // carry no ratings, 334 of them also TMDB-no-match — their SEARCH title still
+    // wears a cinema banner the normaliser doesn't strip). Programme/cycle banners
+    // that PREFIX a real, TMDB-resolvable film, plus decoration that SUFFIXES it.
+    // Per the "search titles only" scope these are query-only strips (no tag, no
+    // Canonical/PerCinema rule): the screening keeps its own decorated DISPLAY row
+    // and merge key, it just resolves ratings/poster off the bare film. Each stripped
+    // query was verified to resolve on TMDB before adding — a few targets (Amelia,
+    // Zaproszenie, Drugie życie) are year-ambiguous title-only, but the strip itself
+    // is correct and the year-scoped pipeline lookup disambiguates.
+    searchStrip("xtra-lato-wakacje-klasyka",       """(?iu)^LATO\s*['’‘`]?\s*\d{2,4}\.?\s*Wakacje\s+z\s+Klasyką\s+Kina\s*[-–—:]\s+""", "'LATO'26. Wakacje z Klasyką Kina - <film>' summer-classics strand (Casablanca, Amadeusz, Mulholland Drive, 2001: Odyseja kosmiczna, Amelia, Łowca androidów, Wielki błękit, Wielkie piękno, Piknik pod Wiszącą Skałą)"),
+    searchStrip("xtra-wakacje-dla-dzieci",         """(?iu)^Wakacje\s+dla\s+dzieci:\s+""",            "'Wakacje dla dzieci: <film>' kids-summer strand (Arco, Pucio, Basia mam swój świat, Kicia Kocia w podróży, Fleak. Futrzak i ja, Fantastyczny Angelo)"),
+    searchStrip("xtra-lato-w-lunie",               """(?iu)^LATO\s+w\s+LUNIE\s*\|\s*""",             "'LATO w LUNIE | <film>' Kino Luna summer strand (Drzewo magii, Chłopiec na krańcach świata, Willow i tajemniczy las, Ekipa zwierzaków, Superfutrzak i złośliwa wiewiórka)"),
+    searchStrip("xtra-kobiece-strands",            """(?iu)^(?:Kino\s+dla\s+Kobiet|Babski\s+(?:wieczór|czwartek)|Kobiecy\s+świat|Kobiece\s+Wieczory\s+w\s+Kino\s+Cafe|Wieczory\s+filmowe\s+na\s+boku)\s*[:|]\s+""", "ladies'-night strands (Kino dla Kobiet / Babski wieczór / Babski czwartek / Kobiecy świat / Kobiece Wieczory w Kino Cafe / Wieczory filmowe na boku) — film after the ':' or '|' (Drugie życie, Zaproszenie, Czytając Lolitę w Teheranie, Zupa nic)"),
+    searchStrip("xtra-klasyka-cycles",             """(?iu)^Klasyk[ai]\s+(?:Kina|na\s+fali|w\s+Kulturze):\s+""", "'Klasyka Kina / Klasyka na fali / Klasyka w Kulturze: <film>' classics strands (Milczenie owiec, Lot nad kukułczym gniazdem, La Strada) — siblings of the existing 'Klasyk w kinie:' rule"),
+    searchStrip("xtra-filmy-z-lektorem",           """(?iu)^FILMY\s+Z\s+LEKTOREM\s*[-–—]\s+""",      "'FILMY Z LEKTOREM - <film>' dubbed-screening strand (Poprzednie życie, Emilia Pérez)"),
+    searchStrip("xtra-smiech-przez-lzy",           """(?iu)^ŚMIECH\s+PRZEZ\s+ŁZY:\s+""",             "'ŚMIECH PRZEZ ŁZY: <film>' comedy strand (Chłopaki nie płaczą, Wesele)"),
+    searchStrip("xtra-wajda-dziedzictwo",          """(?iu)^Andrzej\s+Wajda\.\s+Dziedzictwo\s+Mistrza:\s+""", "'Andrzej Wajda. Dziedzictwo Mistrza: <film>' Wajda retrospective (Popiół i diament)"),
+    searchStrip("xtra-konkurs-pelnometrazowych",   """(?iu)^MIĘDZYNARODOWY\s+KONKURS\s+FILMÓW\s+PEŁNOMETRAŻOWYCH\s*[-–—]\s+""", "'MIĘDZYNARODOWY KONKURS FILMÓW PEŁNOMETRAŻOWYCH - <film>' festival full-length competition (Allah Is Not Obliged, Space Cadet → Nowa w kosmosie, The Square); the KRÓTKOMETRAŻOWYCH short-film SETS are left alone (they don't resolve to one film)"),
+    // Decoration suffixes (banner after the film); query-only strip keeps the row.
+    searchStrip("xtra-tani-dzien-suffix",          """(?iu)\s+tani\s+(?:poniedziałek|wtorek)\s*$""", "'<film> tani poniedziałek/wtorek' cheap-day suffix (Supergirl, Toy Story 5) — sibling of the 'Tani wtorek:' prefix"),
+    searchStrip("xtra-bare-format-suffix",         """(?iu)\s+(?:2D|3D)\s*$""",                       "'<film> 2D/3D' bare screen-format suffix the seed/canonical format strips miss (they require a dub/napisy word or parens) — Supergirl 2D")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in

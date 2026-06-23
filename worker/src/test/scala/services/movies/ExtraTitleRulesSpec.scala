@@ -223,7 +223,25 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // Quoted FILM whose tail is a banner — the inverse of the cycle-dash shape.
     "\"Backrooms. Bez wyjścia\" - UROCZYSTA POLSKA PREMIERA"   -> "Backrooms. Bez wyjścia",
     "\"Drugie życie\" | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM" -> "Drugie życie",
-    "\"Wędrówka na północ\" pokaz przedpremierowy w ramach cyklu Spotkania Filozoficzne" -> "Wędrówka na północ"
+    "\"Wędrówka na północ\" pokaz przedpremierowy w ramach cyklu Spotkania Filozoficzne" -> "Wędrówka na północ",
+    // Tenth-wave (2026-06-23) programme/cycle prefixes + decoration suffixes.
+    "LATO’26. Wakacje z Klasyką Kina - Casablanca"            -> "Casablanca",
+    "LATO 2026. Wakacje z Klasyką Kina - Mulholland Drive"    -> "Mulholland Drive",
+    "Wakacje dla dzieci: Pucio"                               -> "Pucio",
+    "LATO w LUNIE | Drzewo magii"                             -> "Drzewo magii",
+    "Kino dla Kobiet: Drugie życie"                           -> "Drugie życie",
+    "Babski czwartek: Czytając Lolitę w Teheranie"           -> "Czytając Lolitę w Teheranie",
+    "Kobiece Wieczory w Kino Cafe: Zupa nic"                  -> "Zupa nic",
+    "Wieczory filmowe na boku | Zaproszenie"                  -> "Zaproszenie",
+    "Klasyka na fali: Lot nad kukułczym gniazdem"            -> "Lot nad kukułczym gniazdem",
+    "Klasyka w Kulturze: La Strada"                          -> "La Strada",
+    "FILMY Z LEKTOREM - Poprzednie życie"                    -> "Poprzednie życie",
+    "ŚMIECH PRZEZ ŁZY: Wesele"                               -> "Wesele",
+    "Andrzej Wajda. Dziedzictwo Mistrza: Popiół i diament"  -> "Popiół i diament",
+    "MIĘDZYNARODOWY KONKURS FILMÓW PEŁNOMETRAŻOWYCH - ALLAH IS NOT OBLIGED" -> "ALLAH IS NOT OBLIGED",
+    "Supergirl tani poniedziałek"                            -> "Supergirl",
+    "Toy story 5 tani poniedziałek"                          -> "Toy story 5",
+    "Supergirl 2D"                                           -> "Supergirl"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
@@ -276,7 +294,11 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Trzy kolory: Czerwony",
     "Rambo: Pierwsza krew",
     // The 'pokaz' suffix must not amputate a real '- Seans …' subtitle.
-    "Pan Li - Seans Spirytustyczny"
+    "Pan Li - Seans Spirytustyczny",
+    // The full-length-competition strip must NOT touch the short-film SETS (they
+    // don't decode to a single film, so stripping the banner is pointless): the
+    // rule requires PEŁNOMETRAŻOWYCH + a dash, not KRÓTKOMETRAŻOWYCH + a colon.
+    "Międzynarodowy Konkurs Filmów Krótkometrażowych: set II – MOST"
   )
 
   it should "never touch a plain colon/word title" in {
