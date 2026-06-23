@@ -624,9 +624,19 @@ class WorkerWiring extends play.api.Logging {
   // pool size and a backlog can't peg the box. (Replaces the old single batch
   // poller that claimed up to 20 tasks per tick onto a shared-budget EC.)
   def workerPoolSize: Int = Env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4)
+  // While CPU-credit throttled, each busy worker pauses this long before its next
+  // claim so the pool sheds load and the box idles enough to rebuild credit. The
+  // reaper enqueue-backoff (below) only trims NEW work; it can't drain a backlog
+  // that itself keeps the pool pegged at the throttle ceiling — the sustained
+  // spiral of 2026-06-23. Live-tunable via KINOWO_WORKER_THROTTLE_PAUSE_MILLIS.
+  def workerThrottlePauseMillis: Long = Env.positiveLong("KINOWO_WORKER_THROTTLE_PAUSE_MILLIS", 2000L)
   lazy val taskWorker = new TaskWorker(
     taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler) ++ ratingHandlers ++ operatorHandlers ++ stagingHandlers,
     poolSize = workerPoolSize,
+    // The SAME composite credit-throttle signal the reapers read, so the pool
+    // duty-cycles in lockstep with the enqueue-backoff under a credit crunch.
+    throttle = throttleSignal,
+    throttlePause = workerThrottlePauseMillis.millis,
     // Each completed task announces itself so StagingReaper can chain the next
     // staging step; non-staging completions are ignored by its subscriber.
     onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload)),

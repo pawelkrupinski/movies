@@ -23,6 +23,11 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
   private def worker(q: TaskQueue, hs: Seq[TaskHandler]) =
     new TaskWorker(q, hs, processingTimeout = 5.minutes, poolSize = 4)
 
+  private def fixedSignal(throttled: Boolean): ScrapeThrottleSignal = new ScrapeThrottleSignal {
+    def isThrottled: Boolean = throttled
+    def slowScrapeMillis: Long = 0L
+  }
+
   "claimAndRun" should "claim a waiting task, run its handler, and tombstone it on Done" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ScrapeCinema, "scrape|x", Map("cinema" -> "x"), submittedAt = t0)
@@ -58,6 +63,22 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     q.claim("w1", 1.minute) shouldBe None
     // …but it's still a Waiting task, claimable once the window has passed.
     q.claim("w1", 1.minute, Instant.now().plusSeconds(10)).map(_.dedupKey) shouldBe Some("imdb|x")
+  }
+
+  "throttlePauseMillis" should "duty-cycle a busy worker while CPU-credit throttled and run full speed when healthy" in {
+    val q = new InMemoryTaskQueue
+    def workerWith(throttled: Boolean) =
+      new TaskWorker(q, Seq.empty, poolSize = 4, throttle = fixedSignal(throttled), throttlePause = 2.seconds)
+    // Throttled: every busy worker pauses before its next claim so the pool sheds
+    // load and the shared-cpu box idles enough to rebuild credit (the reaper
+    // enqueue-backoff can't drain a backlog that itself pins the pool).
+    workerWith(throttled = true).throttlePauseMillis()  shouldBe 2000L
+    // Healthy: no pause — drain the queue at full speed.
+    workerWith(throttled = false).throttlePauseMillis() shouldBe 0L
+  }
+
+  it should "default to the always-healthy signal (no pause) so existing wiring is unaffected" in {
+    worker(new InMemoryTaskQueue, Seq.empty).throttlePauseMillis() shouldBe 0L
   }
 
   "TaskWorker.retryBackoffFor" should "ramp exponentially from 5s and cap at 30 minutes" in {
