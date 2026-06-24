@@ -5,6 +5,10 @@
 //   testkit — shared test fakes/helpers (not deployed). dependsOn(common).
 //   web     — content-serving Play app (controllers, Twirl views). Fly: kinowo.
 //   worker  — scrape + enrich background app (plain `def main`). Fly: <worker>.
+//             worker's `fixtures` sbt config (src/fixtures/scala) holds the fixture
+//             pipeline harness (TestWiring/FixtureTestWiring/ReadModelSnapshot).
+//             e2e and web/PageTest depend on it via "test->fixtures" / "page->fixtures"
+//             so they compile only those 5 sources, not worker's full ~320-spec test tree.
 //   e2e     — cross-app end-to-end specs (not deployed). dependsOn(web, worker).
 //
 // `root` is a pure aggregator — no sources of its own. web and worker each
@@ -43,6 +47,13 @@ ThisBuild / javacOptions ++= Seq("--release", "21")
 // worker and web modules attach the `it` config.
 lazy val IntegrationTest = config("it") extend Test
 lazy val PageTest = config("page") extend Test
+// The handful of classes (TestWiring, FixtureTestWiring, ReadModelSnapshot, the
+// SameThread* determinism helpers) that e2e and web's PageTest need from worker's
+// test tree to boot the fixture pipeline — but NOT worker's other ~320 unit specs.
+// `extend Compile` (not Test) so this config sees only worker's main code, never
+// worker's own specs; that's also what breaks the cycle e2e/web would otherwise
+// hit by depending on worker's full Test config (which depends on this one too).
+lazy val Fixtures = config("fixtures") extend Compile
 
 // Every module writes its JUnit XML into ONE root-level dir per layer, so each
 // CI job's single action-junit-report step (`target/test-reports/<layer>/**`)
@@ -102,9 +113,9 @@ lazy val testkit = (project in file("testkit"))
 // MovieCache to Mongo; the web app's cache picks those writes up via the Mongo
 // change stream, so the two processes share no in-process state.
 lazy val worker = (project in file("worker"))
-  .dependsOn(common, testkit % Test)
+  .dependsOn(common, testkit % "test,fixtures->compile")
   .enablePlugins(JavaAppPackaging)
-  .configs(IntegrationTest)
+  .configs(IntegrationTest, Fixtures)
   .settings(
     name := "worker",
     // standard sbt layout: src/main/scala, src/test/scala
@@ -115,6 +126,15 @@ lazy val worker = (project in file("worker"))
     IntegrationTest / scalaSource       := baseDirectory.value / "src" / "it" / "scala",
     IntegrationTest / resourceDirectory := baseDirectory.value / "src" / "it" / "resources",
     IntegrationTest / parallelExecution := true,
+    // src/fixtures/scala/tools/{TestWiring,FixtureTestWiring,SameThreadExecutor*,
+    // ReadModelSnapshot} — see the Fixtures config comment above. Compiled once
+    // here; worker's own specs (below) and e2e/web's PageTest (cross-project,
+    // via the worker % "...->fixtures" mapping) all reuse this one compile.
+    inConfig(Fixtures)(Defaults.configSettings),
+    Fixtures / scalaSource := baseDirectory.value / "src" / "fixtures" / "scala",
+    // worker's own specs still construct TestWiring/FixtureTestWiring directly —
+    // make Fixtures' compiled output visible on worker's Test classpath.
+    Test / unmanagedClasspath ++= (Fixtures / exportedProducts).value,
     // A handful of enrichment specs (MetacriticClientSpec, RottenTomatoesClientSpec,
     // ImdbClientSpec, ImdbIdResolverSpec) read fixtures off the CLASSPATH via
     // `getResourceAsStream("/fixtures/…")`, but those HTML captures live in the
@@ -158,10 +178,13 @@ lazy val web = (project in file("web"))
   .disablePlugins(PlayLayoutPlugin)
   // The page tests render real pages from a fixture-populated cache that the
   // worker's `FixtureTestWiring` (scrape pipeline) seeds — so the PAGE scope
-  // alone reaches into worker's test classpath. Compile/Test stay independent:
-  // the deployed `web/stage` is built from Compile, which never sees worker, so
-  // the two apps remain decoupled in production. (Same cross-app shape as e2e.)
-  .dependsOn(common, testkit % Test, worker % "page->test")
+  // alone reaches into worker's classpath. Depending on worker's narrow
+  // `Fixtures` config (not its full `Test`, which is ~320 unrelated specs)
+  // keeps every PageTest shard from paying to compile worker's whole test tree.
+  // Compile/Test stay independent: the deployed `web/stage` is built from
+  // Compile, which never sees worker, so the two apps remain decoupled in
+  // production. (Same cross-app shape as e2e.)
+  .dependsOn(common, testkit % Test, worker % "page->fixtures")
   .configs(IntegrationTest, PageTest)
   .settings(
     name := "web",
@@ -221,10 +244,12 @@ lazy val web = (project in file("web"))
 // FixtureTestWiring) and the web app's MovieControllerService / FilmSchedule
 // transform. Depending on web + worker here means neither app depends on the
 // other and no view code has to sink into common. Test-only — `publish / skip`,
-// never staged. CI fans its specs out across three parallel `e2e` shards (see
-// the e2eScrape/e2eStaging/e2eRest aliases below); it ships no deploy artifact.
+// never staged. CI fans its specs out across parallel `e2e` shards (see the
+// e2eScrape/e2eStaging/e2eReScrape/e2eRest aliases below); it ships no deploy
+// artifact. Depends on worker's narrow `Fixtures` config, not its full `Test`
+// (~320 unrelated specs) — see the Fixtures config comment near IntegrationTest.
 lazy val e2e = (project in file("e2e"))
-  .dependsOn(web, worker % "test->test", testkit % Test)
+  .dependsOn(web, worker % "test->fixtures", testkit % Test)
   .settings(
     name := "e2e",
     publish / skip := true,
