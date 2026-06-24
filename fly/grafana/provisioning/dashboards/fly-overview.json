@@ -333,40 +333,15 @@
       ]
     },
     {
-      "id": 35,
-      "title": "Worker — TMDB-resolved → rating run latency, incl. never-run backlog (per site)",
-      "description": "Time from a film's TMDB id resolving to each rating site (imdb/fw/rt/mc) being RUN — resolved or not. Two views, both in seconds:\n• 'p90 ran' = how long the runs that DID happen took (kinowo_worker_rating_first_attempt_delay_seconds, the EnrichmentReaper first-pass latency: ~one reaper tick ≤1min in steady state, stretching when a resolution cohort drains over the per-tick cap KINOWO_ENRICHMENT_MAX_ENQUEUE_PER_TICK).\n• 'oldest never-run' = how long the OLDEST resolved film that has NEVER had this site run has been waiting (kinowo_worker_rating_resolved_not_run_oldest_age_seconds, sampled every 5min by RatingRunCensus). The histogram can't show 'never' — no sample is ever emitted — so this line makes a site that never runs visible: it climbs without bound. A site whose 'oldest never-run' grows past hours while 'p90 ran' stays flat is starving (no match, or the cap never reaches it).",
-      "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 131 },
-      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
-      "targets": [
-        { "refId": "A", "expr": "histogram_quantile(0.90, sum by (le, site) (rate(kinowo_worker_rating_first_attempt_delay_seconds_bucket[$__rate_interval])))", "legendFormat": "p90 ran {{site}}" },
-        { "refId": "B", "expr": "max by (site) (kinowo_worker_rating_resolved_not_run_oldest_age_seconds)", "legendFormat": "oldest never-run {{site}}" }
-      ]
-    },
-    {
       "id": 36,
       "title": "Worker — movies corpus coverage (records, ids, ratings)",
       "description": "Census of the live `movies` collection, sampled off-band every 5 min by WorkerCorpusMetrics and exposed as kinowo_worker_corpus_movies{subset}. total = distinct movie records; with_any_rating = at least one of imdb/fw/rt/mc; with_tmdb_id / with_imdb_id = resolution coverage; imdb_rating/rt_rating/mc_rating/fw_rating = per-source rating coverage. The gap between total and with_*_id is the resolution backlog; the gap between with_tmdb_id and each rating series is each site's enrichment backlog.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 139 },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 131 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "kinowo_worker_corpus_movies", "legendFormat": "{{subset}}" }
-      ]
-    },
-    {
-      "id": 37,
-      "title": "Worker — resolved films whose rating never ran (count per site)",
-      "description": "How many TMDB-resolved films are eligible for each rating site (imdb needs an imdbId; rt/mc/fw a tmdbId) yet have never had that site run — no freshness stamp — from kinowo_worker_rating_resolved_not_run, sampled every 5min by RatingRunCensus over the in-memory cache. The companion to the 'oldest never-run' age on the rating-latency panel: that shows how STALE the worst film is, this shows HOW MANY are stuck. Eligibility mirrors exactly what the EnrichmentReaper/RatingEnqueuer would enqueue (shared RatingSources), so a persistent backlog here is real, not a definitional gap.",
-      "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 148 },
-      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
-      "targets": [
-        { "refId": "A", "expr": "max by (site) (kinowo_worker_rating_resolved_not_run)", "legendFormat": "{{site}}" }
       ]
     }
   ]
