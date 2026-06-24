@@ -135,6 +135,12 @@ primary_region = 'arn'
   # arena count and trim freed heap back to the OS. See the JAVA_OPTS note above.
   MALLOC_ARENA_MAX = '2'
   MALLOC_TRIM_THRESHOLD_ = '131072'
+  # Persist logs to the /data volume so they SURVIVE a restart — `flyctl logs`
+  # keeps only a short rolling window, which loses the pre-restart logs needed to
+  # diagnose a crash/throttle spiral. The logback RollingFileAppender writes here
+  # (capped 80MB; see worker logback.xml). Read after an event:
+  #   flyctl ssh console --app kinowo-worker -C 'tail -n 500 /data/logs/worker.log'
+  KINOWO_LOG_DIR = '/data/logs'
 
 # NO [http_service]: the worker serves no user traffic, so it gets no public
 # IP / edge routing. Its only inbound HTTP is the Fly machine health check

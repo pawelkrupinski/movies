@@ -1,0 +1,13 @@
+<configuration>
+  <!-- Tests: console only — NO RollingFileAppender, so the 1900+ worker specs
+       don't litter ./logs with a worker.log. Shares the appenders + logger
+       levels with prod via the included base; the prod-only persistent FILE
+       appender lives in logback.xml. (WorkerFileLoggingSpec configures the real
+       logback.xml into a private LoggerContext to test that file path directly.) -->
+  <include resource="logback-base.xml"/>
+
+  <root level="WARN">
+    <appender-ref ref="STDOUT"/>
+    <appender-ref ref="SENTRY"/>
+  </root>
+</configuration>

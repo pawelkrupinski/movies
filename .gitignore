@@ -48,6 +48,10 @@ project/plugins/project/
 # ESLint for `public/js/`; CI installs on demand from the lockfile.
 node_modules/
 
+# Local worker logs: with KINOWO_LOG_DIR unset, the worker's RollingFileAppender
+# falls back to ./logs/worker.log (on Fly it writes to the /data volume instead).
+logs/
+
 # Local Claude Code state (machine-specific — settings, locks, agent worktrees)
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
