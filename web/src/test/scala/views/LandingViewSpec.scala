@@ -30,6 +30,15 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     html should include ("Repertuar wszystkich kin w jednym miejscu")
   }
 
+  it should "carry the Google Search Console verification tag" in {
+    // `/` (this landing page) is what GSC fetches for the URL-prefix property
+    // https://kinowo.fly.dev/ — DNS TXT verification is impossible because
+    // fly.dev's DNS is owned by Fly.io, so we verify via this HTML meta tag.
+    html should include (
+      """<meta name="google-site-verification" content="GHV7eYMZc7PnJlXt03b8TU5ZsLib0pSDYOgIr08ifTE" />"""
+    )
+  }
+
   it should "declare a favicon so the browser doesn't 404 on /favicon.ico" in {
     html should include ("""rel="icon"""")
     html should include ("img/favicon.svg")
