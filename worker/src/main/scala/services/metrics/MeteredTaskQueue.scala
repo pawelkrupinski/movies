@@ -36,6 +36,7 @@ class MeteredTaskQueue(delegate: TaskQueue, metrics: WorkerTaskMetrics) extends 
     delegate.release(id, workerId, error, notBefore)
   override def reapExpiredLeases(now: Instant): Int = delegate.reapExpiredLeases(now)
   override def countByState(): Map[String, Long] = delegate.countByState()
+  override def waitingCount(taskType: TaskType): Int = delegate.waitingCount(taskType)
   override def monitor(activeLimit: Int): QueueSnapshot = delegate.monitor(activeLimit)
   override def watchWaiting(onWaiting: () => Unit): Option[AutoCloseable] = delegate.watchWaiting(onWaiting)
   override def close(): Unit = delegate.close()

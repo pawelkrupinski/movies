@@ -202,6 +202,20 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       }.toMap
   }
 
+  // Counts via the {state, submittedAt} index prefix, then filters taskType over
+  // the bounded waiting set — cheap (waiting ≤ corpus). On a read failure report 0
+  // so the reaper fails OPEN (enqueues its trickle) rather than wedging scrapes on
+  // a transient Mongo blip.
+  override def waitingCount(taskType: TaskType): Int = coll match {
+    case None => 0
+    case Some(c) =>
+      Try(Await.result(
+        c.countDocuments(Filters.and(
+          Filters.eq("state", TaskState.Waiting),
+          Filters.eq("taskType", taskType.name))).toFuture(),
+        10.seconds)).toOption.fold(0)(_.toInt)
+  }
+
   override def monitor(activeLimit: Int): QueueSnapshot = coll match {
     case None => QueueSnapshot(Map.empty, Seq.empty)
     case Some(c) =>

@@ -101,6 +101,10 @@ class InMemoryTaskQueue extends TaskQueue {
     rows.values.groupBy(_.state).map { case (s, rs) => s -> rs.size.toLong }
   }
 
+  override def waitingCount(taskType: TaskType): Int = lock.synchronized {
+    rows.values.count(r => r.state == TaskState.Waiting && r.taskType == taskType)
+  }
+
   override def monitor(activeLimit: Int): QueueSnapshot = lock.synchronized {
     val counts = rows.values.groupBy(_.state).map { case (s, rs) => s -> rs.size.toLong }
     val active = rows.values.toSeq

@@ -132,6 +132,13 @@ trait TaskQueue {
   /** Count of tasks per state — for the debug view and tests. */
   def countByState(): Map[String, Long]
 
+  /** Count of WAITING (claimable) tasks of `taskType`. A cheap, index-backed
+   *  backlog gauge for the reaper's throttle backoff: while CPU-credit throttled,
+   *  the reaper must not pile new work on an undrained queue (that pins the pool
+   *  permanently busy with no idle gap to rebuild credit — the 2026-06-24 spiral).
+   *  See [[services.tasks.ScrapeReaper]]. */
+  def waitingCount(taskType: TaskType): Int
+
   /** Read-only snapshot for the monitoring page: per-state counts plus the live
    *  ACTIVE tasks (waiting + worked-on), oldest-first, capped at `activeLimit`.
    *  Tombstones are counted but not listed. Index-backed + bounded so the web

@@ -10,17 +10,19 @@ import java.time.LocalDate
 
 /**
  * Guards that the SHIPPED scrape-enqueue caps keep pace with the freshness
- * setting over the REAL cinema catalogue — even while the CPU-credit safety net
- * is engaged. This is the regression for raising
- * `KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK` from 3 (which drained the
- * ~290-cinema corpus only every ~97 ticks, ~1.5h out of date) to a value that
- * fits one window.
+ * setting over the REAL cinema catalogue.
  *
- * Capacity over a freshness window = `cap × ticksPerWindow`; to never fall behind
- * it must cover the whole corpus. The corpus size is read from the live catalogue,
+ * NOTE on the throttled cap: [[ScrapeReaper]] treats
+ * `KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK` as a bound on the OUTSTANDING
+ * waiting-scrape backlog, not a per-tick drain rate. So while a SHORT throttle
+ * blip keeps pace (the backlog sits near empty, so each tick tops it up by ~the
+ * full cap — the `cap × ticksPerWindow ≥ corpus` capacity below), a SUSTAINED
+ * throttle deliberately slows: the backlog stays bounded so the credit-starved
+ * pool idles and rebuilds credit instead of staying pinned busy (the 2026-06-24
+ * spiral). The capacity guard still matters — it sizes the cap big enough that the
+ * common blip doesn't lag — and the corpus size is read from the live catalogue,
  * so adding cinemas faster than the cap can sustain fails HERE and forces a
- * re-tune (the "remember for the future" guard) instead of silently letting
- * scraping lag.
+ * re-tune instead of silently letting scraping lag.
  */
 class ScrapeCadenceSustainabilitySpec extends AnyFlatSpec with Matchers {
 
@@ -37,7 +39,7 @@ class ScrapeCadenceSustainabilitySpec extends AnyFlatSpec with Matchers {
   private def capacityPerWindow(cap: Int): Long = cap.toLong * ticksPerWindow
 
   "the throttled scrape cap" should
-    "drain the whole catalogue within one freshness window, so a throttle episode can't park the corpus stale" in {
+    "be big enough that a short throttle blip still keeps pace (capacity over a window ≥ corpus)" in {
     withClue(s"corpus=$corpusSize, ticks/window=$ticksPerWindow, " +
       s"throttledCap=${ScrapeCadence.ThrottledMaxEnqueuePerTick}, " +
       s"capacity=${capacityPerWindow(ScrapeCadence.ThrottledMaxEnqueuePerTick)}: ") {

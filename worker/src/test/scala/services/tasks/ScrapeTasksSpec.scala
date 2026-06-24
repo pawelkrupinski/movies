@@ -194,6 +194,28 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.tick() shouldBe 3 // recovered → the remaining 3 (first 2 still waiting, deduped)
   }
 
+  // Backlog-aware throttle backoff: the throttled cap bounds the OUTSTANDING
+  // waiting scrapes, not just the per-tick additions. The queue dedups, so a flat
+  // per-tick cap kept piling NEW cinemas on every tick until the whole corpus was
+  // queued — pinning the credit-starved pool permanently busy with no idle gap, so
+  // credit never rebuilt (the 2026-06-24 spiral). Bounding the backlog lets the
+  // pool drain it + idle, rebuilding credit; a freed slot is topped back up.
+  it should "bound the OUTSTANDING waiting backlog while throttled, not re-add the cap every tick" in {
+    val scrapers  = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
+    val queue     = new InMemoryTaskQueue
+    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def slowScrapeMillis = 0L }
+    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
+      maxEnqueuePerTick = Int.MaxValue, throttledMaxEnqueuePerTick = 2, throttle = throttled)
+
+    reaper.tick() shouldBe 2 // fills the backlog budget (2 waiting)
+    reaper.tick() shouldBe 0 // already at budget → add nothing (a flat per-tick cap would add 2 more)
+
+    // Drain one waiting scrape: the freed slot is topped back up next tick — bounded, not zero forever.
+    val claimed = queue.claim("w", 1.minute).get
+    queue.complete(claimed.id, "w")
+    reaper.tick() shouldBe 1
+  }
+
   it should "not enqueue when another machine has claimed this minute's occurrence" in {
     val scraper = new FakeScraper(Multikino, movieAt(Multikino))
     val queue   = new InMemoryTaskQueue

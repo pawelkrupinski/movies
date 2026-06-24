@@ -66,13 +66,16 @@ class ScrapeReaper(
   // queue dedups, so already-in-flight cinemas don't re-count against the cap.
   // Default unbounded so the tests that drive `tick()` directly are unaffected.
   maxEnqueuePerTick: Int = Int.MaxValue,
-  // While the worker is CPU-credit throttled (see [[CpuCreditPoller]]), cap
-  // enqueue to THIS trickle instead of `maxEnqueuePerTick`. Adding fewer newly-due
-  // cinemas lets the existing backlog drain and the pool earn idle, so the
-  // shared-CPU credit balance rebuilds and the metastable throttle deadlock breaks
-  // — then the full cap resumes. Most-overdue-first (see [[tick]]) means the
-  // trickle still serves the stalest cinemas. Default = unbounded so callers/tests
-  // that don't wire `throttle` keep the old behaviour.
+  // While the worker is CPU-credit throttled (see [[CpuCreditPoller]]), this bounds
+  // the OUTSTANDING waiting scrapes (not just the per-tick additions): each tick
+  // tops the waiting ScrapeCinema backlog up to THIS many, so once it's at budget
+  // the tick adds nothing and the pool drains to near-empty + idles, rebuilding
+  // credit (breaking the metastable spiral) — then the full cap resumes. A flat
+  // per-tick cap couldn't do this: the queue dedups, so it kept adding new cinemas
+  // until the whole corpus was queued, pinning the pool busy. Most-overdue-first
+  // (see [[tick]]) means the bounded trickle still serves the stalest cinemas.
+  // Default = unbounded so callers/tests that don't wire `throttle` keep the old
+  // behaviour (the not-throttled path is unaffected).
   throttledMaxEnqueuePerTick: Int = Int.MaxValue,
   throttle: ScrapeThrottleSignal = ScrapeThrottleSignal.AlwaysHealthy,
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
@@ -134,12 +137,19 @@ class ScrapeReaper(
         (freshness.lastFetchedAt(key).map(_.toEpochMilli).getOrElse(Long.MinValue), key)
       }
 
-    // Throttle backoff: when the pool is credit-starved, enqueue only a trickle so
-    // the backlog drains and the box earns idle to rebuild credit (the cap only
-    // bites under a backlog anyway — steady state has fewer than either cap due).
-    // ALL the reapers share this `cap` decision; ScrapeReaper additionally logs it.
+    // Throttle backoff, BACKLOG-AWARE: when the pool is credit-starved, bound the
+    // OUTSTANDING waiting scrapes to `throttledMaxEnqueuePerTick` rather than adding
+    // that many AFRESH every tick. The queue dedups, so a flat per-tick cap keeps
+    // piling new cinemas on until the whole due corpus is queued — which pins the
+    // credit-starved pool permanently busy with NO idle gap, so credit never
+    // rebuilds (the self-sustaining throttle spiral of 2026-06-24). Capping the
+    // backlog lets the pool drain to near-empty and idle between ticks → credit
+    // recovers, then the full cap resumes. Most-overdue-first (above) means the
+    // bounded trickle still serves the stalest cinemas.
     val throttled = throttle.isThrottled
-    val cap       = ScrapeThrottleSignal.cap(throttle, maxEnqueuePerTick, throttledMaxEnqueuePerTick)
+    val cap =
+      if (throttled) math.max(0, throttledMaxEnqueuePerTick - queue.waitingCount(TaskType.ScrapeCinema))
+      else maxEnqueuePerTick
 
     var enqueued = 0
     due.iterator.takeWhile(_ => enqueued < cap).foreach { case (key, displayName) =>
@@ -150,7 +160,7 @@ class ScrapeReaper(
     if (enqueued > 0) {
       if (throttled)
         logger.warn(s"ScrapeReaper: CPU-credit throttle (slowest recent scrape ${throttle.slowScrapeMillis}ms) — " +
-          s"backing off to cap $cap; enqueued $enqueued most-overdue cinema(s) of ${due.size} due, " +
+          s"backlog-capped to $cap new; enqueued $enqueued most-overdue cinema(s) of ${due.size} due, " +
           s"letting the pool drain + rebuild credit.")
       else logger.info(s"ScrapeReaper enqueued $enqueued stale cinema(s).")
     }

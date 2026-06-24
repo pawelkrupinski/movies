@@ -30,11 +30,16 @@ object ScrapeCadence {
   /** Healthy per-tick enqueue cap (`KINOWO_SCRAPE_MAX_ENQUEUE_PER_TICK`). */
   val MaxEnqueuePerTick: Int = 25
 
-  /** Per-tick enqueue cap while CPU-credit throttled
-   *  (`KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK`). Sized to still drain the
-   *  catalogue within one freshness window (15 × 30 ticks = 450 ≥ ~290) so a
-   *  throttle episode keeps pace with the freshness setting instead of falling
-   *  ~1.5h behind, while staying below [[MaxEnqueuePerTick]] so the pool idles. */
+  /** Throttled cap for [[ScrapeReaper]] (`KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK`).
+   *  ScrapeReaper treats this as a bound on the OUTSTANDING waiting-scrape backlog
+   *  (not just per-tick additions): while throttled it tops the waiting set up to
+   *  this many, so the credit-starved pool drains it to near-empty and idles
+   *  between ticks, rebuilding credit. 15 outstanding still serves the stalest
+   *  cinemas each tick while leaving the pool real idle gaps — recovery pressure a
+   *  flat per-tick cap could NOT provide (it let the backlog grow to the whole
+   *  corpus and pinned the pool busy, the 2026-06-24 spiral). Freshness during a
+   *  sustained throttle is deliberately sacrificed for recovery; it catches up once
+   *  the throttle clears and the full [[MaxEnqueuePerTick]] resumes. */
   val ThrottledMaxEnqueuePerTick: Int = 15
 
   /** Per-tick enqueue cap for the SECONDARY reapers (detail/rating/tmdb-retry)

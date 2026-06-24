@@ -112,6 +112,20 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
     q.reapExpiredLeases(t0.plusSeconds(60)) shouldBe 0
   }
 
+  "waitingCount" should "count only WAITING tasks of the given type (not worked-on/deleted/other types)" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ScrapeCinema, "scrape|a", submittedAt = t0)
+    q.enqueue(ScrapeCinema, "scrape|b", submittedAt = t0.plusSeconds(1))
+    q.enqueue(ImdbRating, "imdb|c", submittedAt = t0.plusSeconds(2))
+    q.waitingCount(ScrapeCinema) shouldBe 2
+    q.waitingCount(ImdbRating) shouldBe 1
+
+    val claimed = q.claim("w1", 1.minute, t0).get // scrape|a → worked_on, no longer waiting
+    q.waitingCount(ScrapeCinema) shouldBe 1
+    q.complete(claimed.id, "w1")                   // scrape|a → deleted
+    q.waitingCount(ScrapeCinema) shouldBe 1        // only scrape|b still waiting
+  }
+
   "monitor" should "list active tasks oldest-first with their live state, and exclude tombstones" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ScrapeCinema, "scrape|a", submittedAt = t0)
