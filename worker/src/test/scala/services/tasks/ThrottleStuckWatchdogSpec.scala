@@ -16,8 +16,14 @@ class ThrottleStuckWatchdogSpec extends AnyFlatSpec with Matchers {
 
   private val start = Instant.parse("2026-06-23T00:00:00Z")
 
-  private def watchdog(signal: ScrapeThrottleSignal, clock: () => Instant, onStuck: () => Unit = () => ()) =
-    new ThrottleStuckWatchdog(signal, stuckAfter = 30.minutes, onStuck = onStuck, now = clock)
+  private def watchdog(
+    signal:        ScrapeThrottleSignal,
+    clock:         () => Instant,
+    onStuck:       () => Unit            = () => (),
+    creditBalance: () => Option[Double]  = () => None
+  ) =
+    new ThrottleStuckWatchdog(signal, stuckAfter = 30.minutes, onStuck = onStuck,
+      creditBalance = creditBalance, now = clock)
 
   "isStuck" should "be false while the worker is healthy" in {
     watchdog(new MutableSignal(throttled = false), () => start).isStuck() shouldBe false
@@ -54,6 +60,74 @@ class ThrottleStuckWatchdogSpec extends AnyFlatSpec with Matchers {
     w.check(); calls.get() shouldBe 0          // engaged, but not yet stuck — no restart
     clock = start.plusSeconds(31 * 60)
     w.check(); w.check(); w.check()            // wedged — but the restart fires once, not on every tick
+    calls.get() shouldBe 1
+  }
+
+  // `check` anchors the throttled-stretch start at its FIRST call, so each test
+  // below anchors with a check at `start`, then drives the clock toward minute 31
+  // (past the 30-min threshold). The trend is judged over the last 10 min, so the
+  // pre-threshold samples (minutes 22, 26) are what populate the window at minute 31.
+
+  it should "NOT restart while wedged if credit is trending up — recovery is underway" in {
+    val calls = new AtomicInteger(0)
+    val sig   = new MutableSignal(throttled = true)
+    var clock = start
+    var bal   = 1000.0
+    val w = watchdog(sig, () => clock, onStuck = () => { calls.incrementAndGet(); () },
+      creditBalance = () => Some(bal))
+    w.check()                                                   // anchor the stretch at minute 0
+    clock = start.plusSeconds(22 * 60); bal = 1000; w.check()
+    clock = start.plusSeconds(26 * 60); bal = 800;  w.check()   // a dip — still net up overall
+    clock = start.plusSeconds(31 * 60); bal = 3000; w.check()   // now stuck (31 > 30), net rise 1000→3000
+    calls.get() shouldBe 0
+  }
+
+  it should "restart when wedged and credit is flat (a true wedge, not recovering)" in {
+    val calls = new AtomicInteger(0)
+    val sig   = new MutableSignal(throttled = true)
+    var clock = start
+    val w = watchdog(sig, () => clock, onStuck = () => { calls.incrementAndGet(); () },
+      creditBalance = () => Some(2.0)) // pinned at the floor — no upward trend
+    w.check()
+    clock = start.plusSeconds(22 * 60); w.check()
+    clock = start.plusSeconds(26 * 60); w.check()
+    clock = start.plusSeconds(31 * 60); w.check()
+    calls.get() shouldBe 1
+  }
+
+  it should "restart when wedged and credit is declining" in {
+    val calls = new AtomicInteger(0)
+    val sig   = new MutableSignal(throttled = true)
+    var clock = start
+    var bal   = 3000.0
+    val w = watchdog(sig, () => clock, onStuck = () => { calls.incrementAndGet(); () },
+      creditBalance = () => Some(bal))
+    w.check()
+    clock = start.plusSeconds(22 * 60); bal = 3000; w.check()
+    clock = start.plusSeconds(26 * 60); bal = 2000; w.check()
+    clock = start.plusSeconds(31 * 60); bal = 1000; w.check() // net DOWN → not recovering → restart
+    calls.get() shouldBe 1
+  }
+
+  it should "not be fooled into deferring by two samples a minute apart (needs a real span)" in {
+    val calls = new AtomicInteger(0)
+    val sig   = new MutableSignal(throttled = true)
+    var clock = start
+    var bal   = 1000.0
+    val w = watchdog(sig, () => clock, onStuck = () => { calls.incrementAndGet(); () },
+      creditBalance = () => Some(bal))
+    w.check()                                                  // anchor + first sample at minute 0 (pruned by minute 31)
+    clock = start.plusSeconds(31 * 60); bal = 9000; w.check()  // stuck; a lone late spike is too short a span to trust
+    calls.get() shouldBe 1
+  }
+
+  it should "fall back to restarting when no credit source is available" in {
+    val calls = new AtomicInteger(0)
+    val sig   = new MutableSignal(throttled = true)
+    var clock = start
+    val w = watchdog(sig, () => clock, onStuck = () => { calls.incrementAndGet(); () }) // creditBalance = None
+    w.check()
+    clock = start.plusSeconds(31 * 60); w.check()
     calls.get() shouldBe 1
   }
 }

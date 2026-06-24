@@ -65,6 +65,10 @@ class CpuCreditPoller(
     s"https://api.fly.io/prometheus/$org/api/v1/query?query=${URLEncoder.encode(query, StandardCharsets.UTF_8)}"
 
   private val state = new AtomicReference(State(throttled = false, failures = 0))
+  // The most recent good balance read (None until the first success / after a run
+  // of failures). Exposed for the ThrottleStuckWatchdog's trend guard, which needs
+  // the raw number — not just the throttled boolean — to tell recovery from a wedge.
+  private val lastBalanceRef = new AtomicReference[Option[Double]](None)
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("cpu-credit-poller")
 
   def start(): Unit = {
@@ -79,6 +83,7 @@ class CpuCreditPoller(
     val prev = state.get()
     val next = CpuCreditPoller.nextState(prev, balance, enterBelow, exitAbove, maxConsecutiveFailures)
     state.set(next)
+    balance.foreach(b => lastBalanceRef.set(Some(b)))
     if (next.throttled != prev.throttled)
       logger.warn(s"CpuCreditPoller: throttle ${if (next.throttled) "ENGAGED" else "RELEASED"} " +
         s"(credit=${balance.map(_.round).getOrElse("?")}, enter<$enterBelow, exit>$exitAbove).")
@@ -89,6 +94,9 @@ class CpuCreditPoller(
   def isThrottled: Boolean = state.get().throttled
   // Credit-driven, not duration-derived — no scrape timing to report for the log.
   def slowScrapeMillis: Long = 0L
+
+  /** The most recent good credit balance, or None until one is read. */
+  def lastBalance: Option[Double] = lastBalanceRef.get()
 
   def stop(): Unit = { scheduler.shutdownNow(); () }
 }

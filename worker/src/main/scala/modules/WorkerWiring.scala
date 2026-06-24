@@ -449,10 +449,15 @@ class WorkerWiring extends play.api.Logging {
   // the per-host circuit breaker now skips the offending host on the way back up,
   // so the restart sticks instead of re-spiralling. Threshold sits FAR above any
   // healthy backoff (clears in minutes), so it never fires on a normal episode.
-  def throttleStuckMinutes: Long = Env.positiveLong("KINOWO_WORKER_THROTTLE_STUCK_MINUTES", 30L)
+  // The watchdog also reads the live credit balance (from the poller) and DEFERS
+  // the restart while credit is trending up — so a slow-but-real recovery isn't
+  // cut short by a boot-storm that would cost more credit than it saves (the
+  // self-inflicted 30-min crash loop of 2026-06-24).
+  def throttleStuckMinutes: Long = Env.positiveLong("KINOWO_WORKER_THROTTLE_STUCK_MINUTES", 45L)
   lazy val throttleStuckWatchdog = new services.tasks.ThrottleStuckWatchdog(
     throttleSignal, stuckAfter = throttleStuckMinutes.minutes,
-    onStuck = () => sys.exit(1))
+    onStuck = () => sys.exit(1),
+    creditBalance = () => cpuCreditPoller.flatMap(_.lastBalance))
 
   // Cluster-wide occurrence claims gate the reapers' recurring ticks so each
   // scheduled occurrence runs on ONE machine (rotating), not on every machine.
