@@ -3,11 +3,10 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import play.api.libs.json._
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.time.format.DateTimeFormatter
-import scala.concurrent.duration._
 import scala.util.Try
 
 /**
@@ -32,19 +31,16 @@ class KinoMikroClient(
   venueName:           String,
   override val cinema: Cinema,
   today:               LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-) extends CinemaScraper {
+) extends ChunkedCinemaScraper {
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoMikroClient.BaseApiUrl, "https://bilety.kinomikro.pl")
 
-  def fetch(): Seq[CinemaMovie] = {
-    val dates = (0 until KinoMikroClient.WindowDays).map(today.plusDays(_))
-    val dayBodies = ParallelDetailFetch.keyed("kino-mikro-days", dates.map(_.toString), 1.minute) { dateStr =>
-      KinoMikroClient.dayUrl(LocalDate.parse(dateStr))
-    } { url =>
-      Try(http.get(url)).toOption
-    }
-    val jsons = dates.flatMap(d => dayBodies.getOrElse(d.toString, None))
-    KinoMikroParser.parse(jsons, venueName, cinema)
-  }
+  /** A fixed one-week window — no nav fetch; one chunk per day. */
+  def planChunks(): Seq[String] = (0 until KinoMikroClient.WindowDays).map(today.plusDays(_).toString)
+
+  /** One day's repertoire JSON → that day's films. A throw reschedules just this
+   *  day's chunk task. */
+  def fetchChunk(date: String): Seq[CinemaMovie] =
+    KinoMikroParser.parse(Seq(http.get(KinoMikroClient.dayUrl(LocalDate.parse(date)))), venueName, cinema)
 }
 
 object KinoMikroClient {

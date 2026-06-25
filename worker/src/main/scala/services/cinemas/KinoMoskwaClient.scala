@@ -3,10 +3,9 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -44,28 +43,26 @@ class KinoMoskwaClient(
   http:             HttpFetch,
   override val cinema: Cinema = KinoMoskwa,
   today:            LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-) extends CinemaScraper {
+) extends ChunkedCinemaScraper {
 
   import KinoMoskwaClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  def fetch(): Seq[CinemaMovie] = {
-    val todayHtml  = http.get(dayUrl(today))
-    val todayDocument   = Jsoup.parse(todayHtml)
+  /** The mini-calendar on today's page lists the event-days (today inclusive) =
+   *  one chunk per day. Fetching today's page here is the nav fetch. */
+  def planChunks(): Seq[String] =
+    miniCalendarEventDays(Jsoup.parse(http.get(dayUrl(today))), today).map(_.toString)
 
-    // Collect future event-days from the mini-calendar (today inclusive).
-    val eventDays = miniCalendarEventDays(todayDocument, today)
+  /** One day's page → that day's films (folded by title). A throw reschedules
+   *  just this day's chunk. */
+  def fetchChunk(date: String): Seq[CinemaMovie] = {
+    val d = LocalDate.parse(date)
+    moviesFrom(parseDayDocument(Jsoup.parse(http.get(dayUrl(d))), d))
+  }
 
-    // Fetch future days in parallel; today's page is already in hand.
-    val futureHtml = ParallelDetailFetch.keyed("kino-moskwa-days", eventDays.tail, 1.minute)(dayUrl) { url =>
-      Try(Jsoup.parse(http.get(url))).toOption
-    }
-    val documents = todayDocument +: eventDays.tail.flatMap(d => futureHtml.getOrElse(d, None))
-
-    // Parse all days and merge by title.
-    val slots    = documents.zip(eventDays.take(documents.size)).flatMap { case (document, date) => parseDayDocument(document, date) }
+  private def moviesFrom(slots: Seq[RawSlot]): Seq[CinemaMovie] =
     SlotsToMovies.fold(
       slots,
       titleOf    = _.title,
@@ -83,7 +80,6 @@ class KinoMoskwaClient(
         showtimes = showtimes
       )
     }
-  }
 }
 
 object KinoMoskwaClient {

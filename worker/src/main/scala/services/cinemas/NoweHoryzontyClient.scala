@@ -3,11 +3,10 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import play.api.libs.json.Json
-import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId}
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -28,7 +27,7 @@ import scala.util.Try
  * countries / genres / director / synopsis. `today` is injected so the day
  * window (and thus the fixture replay) is deterministic.
  */
-class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper with DetailEnricher {
+class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends ChunkedCinemaScraper with DetailEnricher {
 
   // Static op.s detail pages cached across passes; day blobs keep the live http.
   private val detailHttp = new CachingDetailFetch(http)
@@ -53,15 +52,17 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  def fetch(): Seq[CinemaMovie] = fetchBare()
+  /** A fixed one-week window — no nav fetch needed; one chunk per day. */
+  def planChunks(): Seq[String] = (0 until WindowDays).map(today.plusDays(_).toString)
 
-  private def fetchBare(): Seq[CinemaMovie] = {
-    val days     = (0 until WindowDays).map(today.plusDays(_)).toList
-    val dayLists = ParallelDetailFetch.keyed("nowe-horyzonty-days", days, 1.minute, maxConcurrent = 1)(dayUrl) { url =>
-      Try(http.get(url)).toOption.flatMap(listaHtml)
-    }
-    val slots = days.flatMap(d => dayLists.getOrElse(d, None).toSeq.flatMap(parseDay(_, d)))
+  /** One day's `rep.json` blob → that day's films (slots grouped by film id). A
+   *  throw reschedules just this day's chunk task. */
+  def fetchChunk(date: String): Seq[CinemaMovie] = {
+    val d = LocalDate.parse(date)
+    moviesFrom(listaHtml(http.get(dayUrl(d))).toSeq.flatMap(parseDay(_, d)))
+  }
 
+  private def moviesFrom(slots: Seq[RawSlot]): Seq[CinemaMovie] =
     slots.groupBy(_.filmId).toSeq.flatMap { case (filmId, group) =>
       val primary    = group.head
       val showtimes  = group.distinctBy(_.eventId).sortBy(_.dateTime)
@@ -83,7 +84,6 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
         showtimes = showtimes
       ))
     }
-  }
 
   /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
    *  movie's filmUrl (`https://www.kinonh.pl/op.s?id=<id>`). None on fetch failure
