@@ -73,6 +73,25 @@ object DaemonExecutors {
   private[tools] def virtualThreadExecutor(name: String): ExecutorService =
     Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name(s"$name-", 0L).factory())
 
+  /** A caller-runs `ExecutorService`: every submitted task executes INLINE on
+   *  the calling thread during `execute`, so a `submit(...).get(...)` round-trip
+   *  never spawns a thread and can never time out (the task is already done by
+   *  the time `get` is called). Used by the deterministic test harness so a
+   *  decorator that hands work to an executor ([[services.cinemas.AdaptiveTimeoutScraper]])
+   *  stays single-threaded and order-stable — no thread-pool race for the
+   *  determinism specs to shuffle. Production uses [[virtualThreadEC]] instead,
+   *  where a real timeout can fire. */
+  def directExecutor(): ExecutorService =
+    new AbstractExecutorService {
+      @volatile private var stopped = false
+      override def execute(command: Runnable): Unit = command.run()
+      override def shutdown(): Unit = stopped = true
+      override def shutdownNow(): java.util.List[Runnable] = { stopped = true; java.util.Collections.emptyList() }
+      override def isShutdown: Boolean = stopped
+      override def isTerminated: Boolean = stopped
+      override def awaitTermination(timeout: Long, unit: TimeUnit): Boolean = true
+    }
+
   /** Single-thread scheduled executor with a daemon platform thread named
    *  `name`. Schedulers stay platform-threaded — their job is firing a
    *  Runnable on a timer, and `Future`/EC has no stdlib equivalent for

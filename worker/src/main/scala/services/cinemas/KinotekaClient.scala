@@ -41,7 +41,12 @@ class KinotekaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
   private def fetchBare(): Seq[CinemaMovie] = {
     val base  = http.get(ListingUrl)
     val dates = DatePat.findAllMatchIn(base).map(_.group(1)).toSeq.distinct
-    val dayPages = ParallelDetailFetch.keyed("kinoteka-days", dates, 1.minute, maxConcurrent = 1)(d => s"$ListingUrl?date=$d") { url =>
+    // Fetch the ~2 weeks of day pages a few at a time rather than one-at-a-time:
+    // serially they summed to ~30–70s and pinned a scrape slot long enough to
+    // drain the worker's shared-cpu credit into a throttle. The pages are
+    // independent GETs of the same listing keyed by `?date=`, so concurrency is
+    // safe; 4 keeps us polite to a small site while cutting the wall-clock ~4×.
+    val dayPages = ParallelDetailFetch.keyed("kinoteka-days", dates, 1.minute, maxConcurrent = 4)(d => s"$ListingUrl?date=$d") { url =>
       Try(http.get(url)).toOption
     }
     val slots = dates.flatMap(d => dayPages.getOrElse(d, None).toSeq.flatMap(parsePage))

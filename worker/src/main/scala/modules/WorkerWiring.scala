@@ -17,7 +17,9 @@ import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
 import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
-import tools.{Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
+import tools.{DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
+
+import java.util.concurrent.ExecutorService
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
@@ -255,17 +257,32 @@ class WorkerWiring extends play.api.Logging {
       .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
       .map { raw =>
         val retried = new RetryingCinemaScraper(raw, maxAttempts = math.min(raw.maxFetchAttempts, scrapeAttemptCeiling))
+        // Bound the whole scrape (retries included) to an adaptive per-host
+        // budget, OUTSIDE retry but INSIDE the uptime recorder so a cut surfaces
+        // as a normal failure. See AdaptiveTimeoutScraper.
+        val timed = new AdaptiveTimeoutScraper(retried, hostScrapeStats, adaptiveTimeoutExecutor)
         if (FallbackEligibility.eligible(raw))
           new FilmwebFallbackScraper(
-            retried,
+            timed,
             () => filmwebFallbackFor(raw.cinema),
             () => filmwebFallbackIds.get(raw.cinema),
             uptimeMonitor,
             filmwebFallbackStore,
             onEvent = filmwebFallbackOnEvent)
         else
-          new UptimeRecordingScraper(retried, uptimeMonitor, scrapeOutcomeListener)
+          new UptimeRecordingScraper(timed, uptimeMonitor, scrapeOutcomeListener)
       }
+
+  /** Rolling per-host scrape-duration stats backing the adaptive scrape timeout.
+   *  In-memory by design — it adds no Mongo write load (the throttle this guards
+   *  against IS write/CPU pressure) and rebuilds within a few refresh ticks. */
+  lazy val hostScrapeStats: HostScrapeStats = new HostScrapeStats()
+
+  /** Runs each scrape so [[AdaptiveTimeoutScraper]] can time it out and interrupt
+   *  it. Virtual threads (cheap, daemon) in production; the test harness
+   *  overrides this with a caller-runs executor to stay deterministic. */
+  protected lazy val adaptiveTimeoutExecutor: ExecutorService =
+    DaemonExecutors.virtualThreadEC("adaptive-timeout")
 
   // ── Background concurrency budget ───────────────────────────────────────────
   // Scrape + enrichment + the rating refreshers draw run permits from ONE shared

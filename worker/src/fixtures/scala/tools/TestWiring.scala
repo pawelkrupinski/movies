@@ -38,6 +38,14 @@ trait TestWiring extends WorkerWiring {
   override lazy val mongoConnection: MongoConnection =
     new MongoConnection(uri = None, dbName = "kinowo", required = false)
 
+  // Run the adaptive-timeout scrape inline on the calling thread, so the
+  // deterministic record-all-then-publish harness (`runOneScrapeTick`) and the
+  // order-determinism specs see no scrape thread to race. Fixture scrapes are
+  // instant, so the timeout never fires here regardless — this just removes the
+  // virtual thread production uses to make a real timeout interruptible.
+  override protected lazy val adaptiveTimeoutExecutor: java.util.concurrent.ExecutorService =
+    DaemonExecutors.directExecutor()
+
   // Passthrough resolution caches: the fixture harness proves the pipeline is a
   // pure function of the corpus, and a shared stateful cache (whose value for a
   // hint key is fixed by whichever row populates it first) would make a shuffled
