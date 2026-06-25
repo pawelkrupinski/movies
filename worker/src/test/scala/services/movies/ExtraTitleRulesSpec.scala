@@ -263,7 +263,20 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Człowiek z marmuru. Spotkanie z Michałem Tarkowskim"    -> "Człowiek z marmuru",
     "Sprawiedliwość owiec - Filmoteka Dojrzałego Człowieka"  -> "Sprawiedliwość owiec",
     "Zaproszenie - przepdremiera"                            -> "Zaproszenie",
-    "Toy Story 5- 2D Dubbing PL"                             -> "Toy Story 5"
+    "Toy Story 5- 2D Dubbing PL"                             -> "Toy Story 5",
+    // Twelfth-wave (2026-06-25) programme/series prefixes + a Silesian-dub suffix.
+    // The 'Przegląd filmów <reż> - <film>' PREFIX (the existing rule only caught the
+    // SUFFIX form 'Ida - przegląd filmów Pawła Pawlikowskiego').
+    "Przegląd filmów Andrzeja Wajdy - Ziemia obiecana"       -> "Ziemia obiecana",
+    "Przegląd filmów andrzeja wajdy - człowiek z marmuru"    -> "człowiek z marmuru",
+    "Filmowe wakacje za Rogiem: Koszmarek"                   -> "Koszmarek",
+    "Filmowe wakacje za Rogiem:  Pies i robot"               -> "Pies i robot",
+    "Filmowe lato: Toy Story 5"                              -> "Toy Story 5",
+    "Wakacje w Kinie Orzeł: Drzewo magii"                    -> "Drzewo magii",
+    "Wakacje w kinie: Chłopiec na krańcach świata"           -> "Chłopiec na krańcach świata",
+    "Seksmisja po śląsku"                                    -> "Seksmisja",
+    "Seksmisja po ślōnsku"                                   -> "Seksmisja",
+    "SEKSMISJA po śląsku!"                                   -> "SEKSMISJA"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {

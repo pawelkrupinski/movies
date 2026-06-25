@@ -323,7 +323,16 @@ object ExtraTitleRules {
     searchStrip("xtra-czwartek-konesera-suffix",   """(?iu)\s+czwartek\s+konesera\s*$""",            "'<film> czwartek konesera' connoisseur-Thursday suffix (Werdykt czwartek konesera)"),
     searchStrip("xtra-dot-spotkanie-suffix",       """(?iu){{SEPD}}Spotkani\p{L}*\s+z\b.*$""",       "'<film>. Spotkanie z <person>' meeting suffix introduced by a PERIOD (or any separator) — the seed meeting-suffix only fires after a dash/pipe/plus (Człowiek z marmuru. Spotkanie z Michałem Tarkowskim)"),
     searchStrip("xtra-filmoteka-dojrzalego",       """(?iu){{SEP}}Filmoteka\s+Dojrzałego\s+Człowieka\s*$""", "'<film> - Filmoteka Dojrzałego Człowieka' mature-viewers'-strand suffix (Sprawiedliwość owiec)"),
-    searchStrip("xtra-format-pl-suffix",           """(?iu)(?:{{SEP}})?(?:2D|3D)\s+(?:dubbing|napisy|lektor)\s+PL\s*$""", "'<film>- 2D Dubbing PL' screen-format + dub/napisy + PL suffix (the canonical format strips stop before the trailing ' PL') (Toy Story 5)")
+    searchStrip("xtra-format-pl-suffix",           """(?iu)(?:{{SEP}})?(?:2D|3D)\s+(?:dubbing|napisy|lektor)\s+PL\s*$""", "'<film>- 2D Dubbing PL' screen-format + dub/napisy + PL suffix (the canonical format strips stop before the trailing ' PL') (Toy Story 5)"),
+    // Twelfth-wave (2026-06-25) audit of the TMDB-no-match corpus: programme/series
+    // banners that prefix the film and weren't yet covered, plus a Silesian-dub
+    // suffix. Query-only strips (own display row kept); each target verified to
+    // resolve on TMDB after the strip.
+    searchStrip("xtra-przeglad-filmow-prefix",     """(?iu)^Przegląd\s+filmów\s+{{NSEP}}+{{SEP}}""", "'Przegląd filmów <reżyser> - <film>' retrospective PREFIX — sibling of the existing '<film> - przegląd filmów <reż>' SUFFIX rule; the {{NSEP}} guard eats the director name and stops at the banner separator (Ziemia obiecana, Powidoki, Brzezina, Człowiek z marmuru)"),
+    searchStrip("xtra-filmowe-wakacje-za-rogiem",  """(?iu)^Filmowe\s+wakacje\s+za\s+Rogiem{{SEP}}""", "'Filmowe wakacje za Rogiem: <film>' Kino za Rogiem kids-summer strand (Koszmarek, Pies i robot, Pan Zabawka, Legenda Ochi, Skrzat. Nowy początek, Zmiennokształtni, Fantastyczny Angelo, O psie który jeździł koleją 2)"),
+    searchStrip("xtra-filmowe-lato",               """(?iu)^Filmowe\s+lato{{SEP}}""",                "'Filmowe lato: <film>' summer strand (Toy Story 5)"),
+    searchStrip("xtra-wakacje-w-kinie",            """(?iu)^Wakacje\s+w\s+[Kk]inie(?:\s+Orzeł)?{{SEP}}""", "'Wakacje w Kinie Orzeł: / Wakacje w kinie: <film>' kids-summer strand (Drzewo magii, Chłopiec na krańcach świata, Anzu. Kot-duch, Mała Amelia, Yuku i magiczny kwiat) — sibling of 'Wakacje dla dzieci:'"),
+    searchStrip("xtra-po-slasku-suffix",           """(?iu)\s+po\s+śl(?:ąsku|ōnsku|onsku)!?\s*$""", "'<film> po śląsku / po ślōnsku' Silesian-dub suffix (Seksmisja)")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in
