@@ -50,4 +50,10 @@ class KinoSpektrumClientSpec extends AnyFlatSpec with Matchers with OptionValues
     // `Reżyseria:` label keeps an empty director (no prose leakage).
     movies.find(_.movie.title == "Zimna wojna").value.director shouldBe empty
   }
+
+  it should "read the runtime off the fa-history clock element" in {
+    val movies = new KinoSpektrumClient(http, KinoSpektrum).fetch()
+    // "Zimna wojna" carries `…fa-history"></i> <i>88''</i>` → 88 minutes.
+    movies.find(_.movie.title == "Zimna wojna").value.movie.runtimeMinutes shouldBe Some(88)
+  }
 }

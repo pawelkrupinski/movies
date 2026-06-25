@@ -49,12 +49,16 @@ object KinoScenaKulturaClient {
   /** The `/YYYY-MM-DD-HH-mm` tail of a screening's `/repertuar/<slug>/…` link. */
   private val DateTimePat = """/(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})$""".r
 
+  /** The "… | 124 min." runtime tail of the event-attribute line. */
+  private val RuntimePat = """(\d+)\s*min""".r
+
   private case class RawSlot(
     title:     String,
     dateTime:  LocalDateTime,
     posterUrl: Option[String],
     synopsis:  Option[String],
-    genres:    Seq[String]
+    genres:    Seq[String],
+    runtime:   Option[Int]
   )
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
@@ -68,7 +72,8 @@ object KinoScenaKulturaClient {
       distinctBy = _.dateTime
     ) { (title, group, showtimes) =>
       CinemaMovie(
-        movie     = Movie(title, genres = group.flatMap(_.genres).distinct),
+        movie     = Movie(title, runtimeMinutes = group.flatMap(_.runtime).headOption,
+                          genres = group.flatMap(_.genres).distinct),
         cinema    = cinema,
         posterUrl = group.flatMap(_.posterUrl).headOption,
         filmUrl   = None,
@@ -90,7 +95,8 @@ object KinoScenaKulturaClient {
       dateTime  = dt,
       posterUrl = Option(block.selectFirst("div.event-img img")).map(_.attr("abs:src")).filter(_.nonEmpty),
       synopsis  = Option(block.selectFirst("div.event-desc")).map(ScraperParse.blockText(_).trim).filter(_.length > 20),
-      genres    = genresOf(block)
+      genres    = genresOf(block),
+      runtime   = runtimeOf(block)
     )
 
   /** The local `LocalDateTime` from a `(yyyy, MM, dd, HH, mm)` match. */
@@ -106,4 +112,9 @@ object KinoScenaKulturaClient {
       .flatMap(_.split("\\|").headOption)
       .flatMap(_.split(",").map(_.trim))
       .filter(_.nonEmpty)
+
+  /** Runtime in minutes from the "… | 124 min." tail of the attribute line. */
+  private def runtimeOf(block: Element): Option[Int] =
+    Option(block.selectFirst("div.event-attribute")).map(_.text)
+      .flatMap(RuntimePat.findFirstMatchIn).map(_.group(1).toInt)
 }

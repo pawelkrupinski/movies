@@ -39,4 +39,10 @@ class KinoScenaKulturaClientSpec extends AnyFlatSpec with Matchers with OptionVa
     val film = movies.find(_.movie.title == "Dzień objawienia").value
     film.movie.genres shouldBe Seq("Thriller", "Sci-Fi")
   }
+
+  it should "read the runtime off the '… min.' tail of the same line" in {
+    // "Thriller, Sci-Fi | 12+ | 124 min." → 124 minutes.
+    val film = movies.find(_.movie.title == "Dzień objawienia").value
+    film.movie.runtimeMinutes shouldBe Some(124)
+  }
 }

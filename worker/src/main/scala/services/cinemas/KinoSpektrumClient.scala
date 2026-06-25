@@ -25,8 +25,8 @@ import scala.util.Try
  *     ignored because the displayed anchor text is the clean title.
  *   - `img.list-repertoire-image` → poster (a site-relative `/uploads/...` URL).
  *   - the runtime in an `<i>NN''</i>` next to a `fa-history` icon, and the
- *     room in the `fa-map-marker-alt` line — runtime isn't surfaced (TMDB
- *     supplies it); room is captured onto the showtime for completeness.
+ *     room in the `fa-map-marker-alt` line — both captured (runtime as a hint /
+ *     fallback before TMDB enriches; room onto the showtime for completeness).
  *
  * The listing has everything we display; there's no per-film detail page to
  * fetch (TMDB enriches the rest downstream). One `CinemaMovie` per title, with
@@ -46,7 +46,7 @@ class KinoSpektrumClient(http: HttpFetch, override val cinema: Cinema) extends C
 
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, s.room)) { (title, group, showtimes) =>
       CinemaMovie(
-        movie     = Movie(title),
+        movie     = Movie(title, runtimeMinutes = group.flatMap(_.runtime).headOption),
         cinema    = cinema,
         posterUrl = group.flatMap(_.poster).headOption,
         filmUrl   = None,
@@ -74,6 +74,9 @@ object KinoSpektrumClient {
   // the explicit label and bounded by the next tag, so the surrounding synopsis
   // prose can't leak in. The director list is comma-separated.
   private val DirectorPat = """(?iu)reżyseria\s*:?\s*([^<\n]+)""".r
+  // The runtime sits in the `<i>NN''</i>` immediately after the `fa-history`
+  // clock icon ("…fa-history\"></i> <i>124''</i>").
+  private val RuntimePat = """(\d+)""".r
 
   private case class RawSlot(
     title:    String,
@@ -81,8 +84,16 @@ object KinoSpektrumClient {
     booking:  Option[String],
     poster:   Option[String],
     room:     Option[String],
-    director: Seq[String]
+    director: Seq[String],
+    runtime:  Option[Int]
   )
+
+  /** Runtime (minutes) from the `<i>NN''</i>` sibling of the `fa-history` icon. */
+  private[cinemas] def parseRuntime(item: Element): Option[Int] =
+    Option(item.selectFirst("i.fa-history"))
+      .flatMap(i => Option(i.nextElementSibling))
+      .filter(_.tagName == "i")
+      .flatMap(e => RuntimePat.findFirstMatchIn(e.text)).map(_.group(1).toInt)
 
   /** Director(s) from the `Reżyseria:` line of the event-item description,
    *  comma-split. Empty when the description carries no such line. */
@@ -105,7 +116,7 @@ object KinoSpektrumClient {
           .map(_.attr("src")).filter(_.nonEmpty).map(absolute)
         val room    = Option(item.selectFirst("i.fa-map-marker-alt"))
           .flatMap(i => Option(i.nextSibling)).map(_.toString.trim).filter(_.nonEmpty)
-        Some(RawSlot(t, dt, booking, poster, room, parseDirector(item)))
+        Some(RawSlot(t, dt, booking, poster, room, parseDirector(item), parseRuntime(item)))
       case _ => None
     }
   }
