@@ -24,4 +24,25 @@ class CinemaCityScraperSpec extends AnyFlatSpec with Matchers {
     kinepolis.detailTarget shouldBe CinemaCityChain
     plaza.enrichmentServiceOverride shouldBe Some("Cinema City Enrichment")
   }
+
+  "planChunks" should "group screening dates into week-sized chunks, not one per date" in {
+    val plaza = scraper("1078", CinemaCityPoznanPlaza)
+    val dates = client.dates("1078")
+    dates.size should be > CinemaCityScraper.DaysPerChunk // fixture spans more than one chunk
+
+    val keys = plaza.planChunks()
+    keys.size shouldBe math.ceil(dates.size.toDouble / CinemaCityScraper.DaysPerChunk).toInt
+    keys.size should be < dates.size                      // fewer tasks than per-date
+    // Each key packs up to a week of dates; together they cover every date once.
+    keys.foreach(_.split(",").length should be <= CinemaCityScraper.DaysPerChunk)
+    keys.flatMap(_.split(",")).toList shouldBe dates.map(_.toString).toList
+  }
+
+  "fetchChunk" should "fetch every day in a week chunk" in {
+    val plaza = scraper("1078", CinemaCityPoznanPlaza)
+    // The whole repertoire reached via fetchChunk over all planned chunks equals
+    // the whole-venue fetch() — i.e. chunking by week loses nothing.
+    val viaChunks = plaza.planChunks().flatMap(plaza.fetchChunk)
+    viaChunks.flatMap(_.externalIds.get("cc")).toSet shouldBe plaza.fetch().flatMap(_.externalIds.get("cc")).toSet
+  }
 }

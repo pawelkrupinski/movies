@@ -96,11 +96,21 @@ class CinemaCityScraper(
   cinemaId: String,
   val cinema: Cinema
 ) extends ChunkedCinemaScraper with DetailEnricher {
-  // Chunked per-date: one ScrapeChunk task per screening date (30–60 of them),
-  // each an independent `/at-date` fetch, merged by Cinema City film id. The
+  // Chunked per-WEEK. The quickbook API has no range/multi-cinema endpoint (only
+  // per-date `/at-date`), so the 30–60 per-date calls are irreducible — but they
+  // don't each need their own task. We group the screening dates into runs of
+  // `DaysPerChunk` (one chunk key = a comma-joined run of dates); each ScrapeChunk
+  // fetches that run's days and they're merged by Cinema City film id. This keeps
+  // the fan-out's slot-relief + run-id coordination while cutting the chunk-task +
+  // `scrape_chunks` write count ~7× versus per-date (those tiny coordination
+  // writes — per venue, per refresh — were themselves Mongo write load). The
   // chain-shared deferred detail path (detailGroup "cinema-city") is orthogonal.
-  def planChunks(): Seq[String] = client.dates(cinemaId).map(_.toString)
-  def fetchChunk(date: String): Seq[CinemaMovie] = client.fetchDay(cinemaId, cinema, LocalDate.parse(date))
+  def planChunks(): Seq[String] =
+    client.dates(cinemaId).map(_.toString).grouped(CinemaCityScraper.DaysPerChunk).map(_.mkString(",")).toSeq
+  // A throw on any day reschedules the whole run (run-level retry); fixtures
+  // resolve every day, so the synchronous `fetch()` output is unchanged.
+  def fetchChunk(key: String): Seq[CinemaMovie] =
+    key.split(",").toSeq.flatMap(d => client.fetchDay(cinemaId, cinema, LocalDate.parse(d)))
   override def reduceChunks(chunks: Map[String, Seq[CinemaMovie]]): Seq[CinemaMovie] =
     client.reduce(chunks.values.flatten.toSeq)
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(CinemaCityClient.BaseApiUrl)
@@ -113,4 +123,11 @@ class CinemaCityScraper(
   override def enrichmentServiceOverride: Option[String] = Some("Cinema City Enrichment")
   override def fetchFilmDetail(ref: String): Option[FilmDetail] = client.fetchFilmDetail(ref)
   override def chain: Boolean = true
+}
+
+object CinemaCityScraper {
+  /** How many consecutive screening-dates one chunk task covers. 7 ≈ a week:
+   *  enough to cut the chunk/write count ~7× vs per-date, small enough that a
+   *  chunk's slot time and its retry blast-radius stay bounded. */
+  val DaysPerChunk: Int = 7
 }
