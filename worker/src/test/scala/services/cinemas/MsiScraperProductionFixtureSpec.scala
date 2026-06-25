@@ -39,6 +39,12 @@ class MsiScraperProductionFixtureSpec extends AnyFlatSpec with Matchers with Opt
     casablanca.movie.originalTitle shouldBe Some("Casablanca")
   }
 
+  it should "carry the runtime that trails the year in the production line" in {
+    // "(Casablanca, USA 1942, 102’)" — 102 minutes after the year.
+    val casablanca = movies.find(_.movie.title.toUpperCase.startsWith("CASABLANCA")).value
+    casablanca.movie.runtimeMinutes shouldBe Some(102)
+  }
+
   it should "carry the release year and leave the original title empty for a Polish film" in {
     // Description: "(Polska 1976, 153’) ..." — paren opens on the country.
     val czlowiek = movies.find(_.movie.title.toUpperCase.contains("CZŁOWIEK Z MARMURU")).value

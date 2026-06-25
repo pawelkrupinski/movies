@@ -87,6 +87,12 @@ private[cinemas] object MsiScraper {
   private val ProductionLinePat =
     """(?u)\(([^()]*?)[\p{L}/. ]+\s((?:19|20)\d{2})(?=\s*[,)])""".r
 
+  // The runtime that trails the year in the same production line — `1942, 102’`
+  // or `1989, 110 min.`. Anchored on the year so a stray number elsewhere in the
+  // Description prose can't match.
+  private val ProductionRuntimePat =
+    """(?u)(?:19|20)\d{2}\s*,\s*(\d{1,3})\s*(?:['’]|min)""".r
+
   // Country names (and the abbreviations) that show up in MSI production lines,
   // lower-cased. Used to strip a leading country out of the original-title prefix:
   // `(USA, Japonia 1989)` has no original title — "USA" is the first of two
@@ -110,8 +116,10 @@ private[cinemas] object MsiScraper {
 
   private[cinemas] case class FilmMeta(director: Seq[String] = Seq.empty,
                                        releaseYear: Option[Int] = None,
-                                       originalTitle: Option[String] = None) {
-    def nonEmpty: Boolean = director.nonEmpty || releaseYear.isDefined || originalTitle.isDefined
+                                       originalTitle: Option[String] = None,
+                                       runtimeMinutes: Option[Int] = None) {
+    def nonEmpty: Boolean =
+      director.nonEmpty || releaseYear.isDefined || originalTitle.isDefined || runtimeMinutes.isDefined
   }
 
   private[cinemas] case class RawSlot(title: String, rawTitle: String, dateTime: LocalDateTime,
@@ -136,8 +144,13 @@ private[cinemas] object MsiScraper {
    *  and original title (when the production line carries one). */
   private[cinemas] def parseDescriptionMeta(description: String): FilmMeta = {
     val (year, originalTitle) = parseDescriptionProduction(description)
-    FilmMeta(parseDescriptionDirector(description), year, originalTitle)
+    FilmMeta(parseDescriptionDirector(description), year, originalTitle, parseDescriptionRuntime(description))
   }
+
+  /** Runtime (minutes) from the production line's `YEAR, NNN’` / `YEAR, NNN min.`
+   *  tail. None when the line carries no runtime. */
+  private[cinemas] def parseDescriptionRuntime(description: String): Option[Int] =
+    ProductionRuntimePat.findFirstMatchIn(description).map(_.group(1).toInt)
 
   /** Release year + original title from a Description's production-line
    *  parenthetical. The year is the 4-digit number that follows the country
@@ -268,6 +281,7 @@ private[cinemas] object MsiScraper {
         CinemaMovie(
           movie     = Movie(
             title,
+            runtimeMinutes = metas.flatMap(_.runtimeMinutes).headOption,
             releaseYear   = metas.flatMap(_.releaseYear).headOption,
             originalTitle = metas.flatMap(_.originalTitle).headOption,
             rawTitle      = group.map(_.rawTitle).headOption
