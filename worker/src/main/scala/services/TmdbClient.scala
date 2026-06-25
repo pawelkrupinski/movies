@@ -85,20 +85,22 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
     if (results.lengthCompare(1) == 0) results.headOption else None
   }
 
-  /** Resolve when a YEAR is present AND the year-scoped search's TOP result (the
-   *  most-popular hit, since [[parseSearchResults]] orders by popularity) is an
-   *  EXACT title match — Polish or original. Broader than [[searchUnique]] (which
-   *  needs the search to be a singleton): the year scopes to the right era and a
-   *  verbatim title at the head of the list is the confidence, so a row whose
-   *  year-scoped search returns several same-year films ("Sundown" alongside
-   *  "Sundown Town", "DJ at Sundown") still resolves to the one the cinema named.
-   *  Still refuses when the top hit isn't an exact match — that's the popularity
-   *  guess [[searchUnique]] exists to avoid. No-op without a year, so the yearless
-   *  ambiguous long tail (where there's no era to scope to) stays refused. */
+  /** Resolve when a YEAR is present AND the year-scoped search yields EXACTLY ONE
+   *  exact-title match (Polish or original). Broader than [[searchUnique]] (which
+   *  needs the whole result set to be a singleton): the year scopes to the right
+   *  era, so a row whose year-scoped search returns several same-year films
+   *  ("Sundown" alongside "Sundown Town", "DJ at Sundown") still resolves to the
+   *  one the cinema named — provided only that one is an exact match.
+   *  Refuses when multiple results are exact matches (e.g. two same-year films
+   *  with the same original title) — that's still an ambiguity a director hint
+   *  must resolve. No-op without a year; yearless rows stay refused. */
   def searchYearExactTop(title: String, year: Option[Int]): Option[TmdbClient.SearchResult] =
     if (year.isEmpty) None
     else authHeader.flatMap { auth =>
-      searchOnce(title, year, auth).headOption.filter(TmdbClient.isExactTitleMatch(_, title))
+      searchOnce(title, year, auth).filter(TmdbClient.isExactTitleMatch(_, title)) match {
+        case Seq(single) => Some(single)
+        case _           => None
+      }
     }
 
   /**
