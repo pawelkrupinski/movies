@@ -3,7 +3,7 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.ImdbClient
-import tools.{GetOnlyHttpFetch, RealHttpFetch}
+import tools.{GetOnlyHttpFetch, HttpFetch, RealHttpFetch}
 
 class ImdbClientSpec extends AnyFlatSpec with Matchers {
 
@@ -170,5 +170,98 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String = throw new RuntimeException("HTTP 503")
     })
     c.findId("anything", None) shouldBe None
+  }
+
+  // ── Diacritic normalisation ────────────────────────────────────────────────
+  //
+  // IMDb stores titles in ASCII (ł→l, ą→a, ś→s, etc.) while our query titles
+  // retain Polish diacritics.  `parseSuggestions` deburrs both sides so
+  // "Chłopiec na krańcach świata" matches IMDb's "Chlopiec na krancach swiata".
+
+  it should "match a Polish title whose diacritics are stripped in IMDb's response" in {
+    // IMDb returns the ASCII form; our query title keeps the Polish diacritics.
+    val body =
+      """{"d":[{"id":"tt39637392","l":"Chlopiec na krancach swiata","q":"feature","qid":"movie","rank":1,"y":2025}]}"""
+    // year=2026 but IMDb says 2025 — distance 1, still the best candidate
+    client.parseSuggestions(body, "Chłopiec na krańcach świata", Some(2026)) shouldBe Some("tt39637392")
+  }
+
+  it should "deburr suggestion titles when applying the exact-match filter" in {
+    val body =
+      """{"d":[
+         {"id":"tt111","l":"Basia. Radze sobie!","q":"feature","qid":"movie","rank":1,"y":2025},
+         {"id":"tt222","l":"Unrelated Film","q":"feature","qid":"movie","rank":2,"y":2025}
+       ]}"""
+    client.parseSuggestions(body, "Basia. Radzę sobie!", Some(2025)) shouldBe Some("tt111")
+  }
+
+  // ── Director disambiguation ────────────────────────────────────────────────
+  //
+  // When `parseSuggestions` returns None (no title match — film may be listed
+  // under a different/international title on IMDb), `findId` considers ALL
+  // suggestion-API movie candidates and picks the one whose director overlaps.
+  // This covers AKA/foreign-title cases where year isn't yet set on IMDb.
+  //
+  // In all tests below the suggestion has a DIFFERENT title from the query so
+  // that `parseSuggestions` returns None, allowing director disambiguation to run.
+
+  private def detailsBody(directorName: String): String =
+    s"""{"data":{"title":{
+       |  "titleText":{"text":"IMDb Title"},
+       |  "originalTitleText":{"text":"IMDb Title"},
+       |  "releaseYear":null,"runtime":null,
+       |  "ratingsSummary":{"aggregateRating":0,"voteCount":0},
+       |  "countriesOfOrigin":{"countries":[]},
+       |  "primaryImage":null,
+       |  "principalCredits":[
+       |    {"category":{"id":"director"},"credits":[
+       |      {"name":{"nameText":{"text":"$directorName"}}}
+       |    ]}
+       |  ]
+       |}}}""".stripMargin
+
+  // The suggestion returns a film under a DIFFERENT title so parseSuggestions gets None,
+  // then director confirms the match. This is the AKA-film pattern ("Nasz Film" on the
+  // cinema side, "IMDb Title" on IMDb).
+  private val AkaSuggestionBody =
+    """{"d":[{"id":"tt9999999","l":"IMDb Title","q":"feature","qid":"movie","rank":1}]}"""
+
+  it should "use director to identify a film listed under a different title on IMDb" in {
+    val c = new ImdbClient(http = new HttpFetch {
+      def get(url: String): String = AkaSuggestionBody
+      override def post(url: String, body: String, contentType: String): String = detailsBody("Jakub Pączek")
+    })
+    val found = c.findId("Nasz Film", Some(2026), Set("Jakub Pączek"))
+    found shouldBe Some("tt9999999")
+  }
+
+  it should "deburr director names on both sides when disambiguating" in {
+    val c = new ImdbClient(http = new HttpFetch {
+      def get(url: String): String = AkaSuggestionBody
+      // IMDb stores director name without diacritics; our record has Polish diacritics
+      override def post(url: String, body: String, contentType: String): String = detailsBody("Jakub Paczek")
+    })
+    val found = c.findId("Nasz Film", Some(2026), Set("Jakub Pączek"))
+    found shouldBe Some("tt9999999")
+  }
+
+  it should "return None when no candidate's director matches" in {
+    val c = new ImdbClient(http = new HttpFetch {
+      def get(url: String): String = AkaSuggestionBody
+      override def post(url: String, body: String, contentType: String): String = detailsBody("Anna Kowalska")
+    })
+    val found = c.findId("Nasz Film", Some(2026), Set("Jan Nowak"))
+    found shouldBe None
+  }
+
+  it should "skip director disambiguation when directors set is empty (no details POSTs)" in {
+    // parseSuggestions returns None (no title match, no year-corroborated #1 hit),
+    // directors empty → return None without calling details
+    val c = new ImdbClient(http = new HttpFetch {
+      def get(url: String): String = AkaSuggestionBody
+      override def post(url: String, body: String, contentType: String): String =
+        throw new RuntimeException("details should not be called without directors")
+    })
+    c.findId("Nasz Film", Some(2026)) shouldBe None
   }
 }

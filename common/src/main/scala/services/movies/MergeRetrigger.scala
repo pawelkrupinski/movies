@@ -81,7 +81,8 @@ object MergeRetrigger {
     val builder = Set.newBuilder[RetriggerKind]
     if ((titleOrYearChanged || originalTitleChanged || directorChanged) && after.tmdbId.isEmpty && !after.tmdbNoMatch)
       builder += RetriggerKind.ResolveTmdb
-    if ((tmdbIdChanged || searchTitleChanged || titleOrYearChanged) && after.tmdbId.isDefined && after.imdbId.isEmpty)
+    if ((tmdbIdChanged || searchTitleChanged || titleOrYearChanged || directorChanged || originalTitleChanged)
+        && after.tmdbId.isDefined && after.imdbId.isEmpty)
       builder += RetriggerKind.ResolveImdbId
     if (imdbIdChanged && after.imdbId.isDefined)
       builder += RetriggerKind.ImdbRating

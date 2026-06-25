@@ -137,4 +137,44 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     resolver.findIdFor("Mortal Kombat II", Some(2026))
     calls.get() shouldBe 2
   }
+
+  // ── Director-based disambiguation ───────────────────────────────────────────
+
+  "onImdbIdMissing" should "use director data from the cache record when the film is listed under a different title on IMDb" in {
+    // The film is in our cache as "Nasz Film" but IMDb lists it under "IMDb Title"
+    // (AKA / foreign-title situation). parseSuggestions finds no title match → None.
+    // The director fallback reads the director from the cache record and confirms
+    // the match via a details POST.
+    val bus = new InProcessEventBus()
+    // director is derived from sourceData — pass via data map
+    val tmdbOnly = MovieRecord(
+      tmdbId = Some(1024),
+      data   = Map[Source, SourceData](Tmdb -> SourceData(
+        originalTitle = Some("Nasz Film"),
+        director      = Seq("Jakub Pączek")
+      ))
+    )
+    val repository = new InMemoryMovieRepository(Seq(("Nasz Film", Some(2026), tmdbOnly)))
+    val cache      = new CaffeineMovieCache(repository)
+    // IMDb suggestion returns the film under a different title
+    val suggestionBody =
+      """{"d":[{"id":"tt9999999","l":"IMDb Title","q":"feature","qid":"movie","rank":1}]}"""
+    // IMDb stores director without diacritics; record has the Polish form — deburr match
+    val detailsBody =
+      """{"data":{"title":{"titleText":{"text":"IMDb Title"},"originalTitleText":{"text":"IMDb Title"},
+        |"releaseYear":null,"runtime":null,"ratingsSummary":{"aggregateRating":0,"voteCount":0},
+        |"countriesOfOrigin":{"countries":[]},"primaryImage":null,
+        |"principalCredits":[{"category":{"id":"director"},"credits":[
+        |  {"name":{"nameText":{"text":"Jakub Paczek"}}}
+        |]}]}}}""".stripMargin
+    val resolver = new ImdbIdResolver(cache, new ImdbClient(http = new HttpFetch {
+      def get(url: String): String = suggestionBody
+      override def post(url: String, body: String, contentType: String): String = detailsBody
+    }))
+    bus.subscribe(resolver.onImdbIdMissing)
+    bus.publish(ImdbIdMissing("Nasz Film", Some(2026), "Nasz Film"))
+    eventually {
+      cache.get(cache.keyOf("Nasz Film", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt9999999")
+    }
+  }
 }

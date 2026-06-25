@@ -1,7 +1,7 @@
 package services.enrichment
 
 import play.api.libs.json._
-import tools.HttpFetch
+import tools.{HttpFetch, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -139,22 +139,68 @@ class ImdbClient(http: HttpFetch) {
    *  endpoint also accepts.
    *
    *  Conservative match: only `qid == "movie"` entries qualify. An exact
-   *  case-insensitive title match wins (year-closest breaks ties, rank —
-   *  lower = more popular — is the final tie-breaker). Failing that, a
-   *  foreign film whose IMDb display title is its international/English name
-   *  (e.g. Polish "Kumotry" → IMDb "Double Trouble") is accepted only when
-   *  it is IMDb's top movie suggestion AND its year matches the one we
+   *  case-insensitive deburr-normalised title match wins (year-closest breaks
+   *  ties, rank — lower = more popular — is the final tie-breaker). Failing
+   *  that, a foreign film whose IMDb display title is its international/English
+   *  name (e.g. Polish "Kumotry" → IMDb "Double Trouble") is accepted only
+   *  when it is IMDb's top movie suggestion AND its year matches the one we
    *  already know from TMDB. Otherwise None — a wrong id pollutes ratings +
    *  RT lookups downstream.
-   */
-  def findId(title: String, year: Option[Int]): Option[String] = {
+   *
+   *  The `directors` overload adds a last-resort: when neither the title-match
+   *  nor the year-corroborated foreign-title path fires, all movie candidates
+   *  are checked for a director overlap via `disambiguateByDirector`. */
+  def findId(title: String, year: Option[Int]): Option[String] = findId(title, year, Set.empty)
+
+  def findId(title: String, year: Option[Int], directors: Set[String]): Option[String] = {
     if (title.trim.isEmpty) None
     else {
       val encoded = URLEncoder.encode(title, StandardCharsets.UTF_8)
       val prefix  = title.trim.headOption.filter(c => c.isLetter && c.toInt < 128).map(_.toLower).getOrElse('x')
       val url     = s"$SuggestionBase/$prefix/$encoded.json"
-      Try(http.get(url)).toOption.flatMap(body => parseSuggestions(body, title, year))
+      Try(http.get(url)).toOption.flatMap { body =>
+        parseSuggestions(body, title, year).orElse(
+          if (directors.nonEmpty) disambiguateByDirector(body, directors) else None
+        )
+      }
     }
+  }
+
+  /** Director-based fallback: when `parseSuggestions` finds no title match (the
+   *  film may be listed under a different or international title on IMDb), consider
+   *  ALL suggestion-API movie candidates and pick the one whose director list
+   *  overlaps with `directors`. This covers AKA/foreign-title cases where the year
+   *  also isn't yet set on IMDb, so neither the exact-title nor the year-corroborated
+   *  foreign-title paths in `parseSuggestions` can fire.
+   *
+   *  Returns None when 0 or multiple candidates match — never guesses.
+   *  Requires director data on the IMDb side; skips candidates with empty director
+   *  lists so an undocumented entry doesn't accidentally match. */
+  private def disambiguateByDirector(body: String, directors: Set[String]): Option[String] = {
+    val candidates = Try(Json.parse(body)).toOption.toSeq
+      .flatMap(js => (js \ "d").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty))
+      .flatMap { entry =>
+        for {
+          id  <- (entry \ "id").asOpt[String] if id.startsWith("tt")
+          qid <- (entry \ "qid").asOpt[String] if qid == "movie"
+        } yield id
+      }.distinct.take(5)
+    if (candidates.isEmpty) return None
+    val callerNorms = directors.map(d => TextNormalization.deburr(d).toLowerCase)
+    val matching = candidates.filter { id =>
+      details(id) match {
+        case None    => false
+        case Some(d) =>
+          // Require director data on IMDb's side — an undocumented entry provides no
+          // evidence and must not be accepted without the confirmatory signal.
+          d.director.nonEmpty &&
+          d.director.exists { dir =>
+            val norm = TextNormalization.deburr(dir).toLowerCase
+            callerNorms.exists(c => norm.contains(c) || c.contains(norm))
+          }
+      }
+    }
+    if (matching.sizeIs == 1) Some(matching.head) else None
   }
 
   /** Parse the IMDb suggestion JSON. See `findId` for the matching rules.
@@ -162,7 +208,10 @@ class ImdbClient(http: HttpFetch) {
    *  ids, video games sharing the title, missing optional fields) that we
    *  want fixture-driven assertions independent of HTTP. */
   def parseSuggestions(body: String, title: String, year: Option[Int]): Option[String] = {
-    val normalizedTitle = title.toLowerCase.trim
+    // Deburr both sides: IMDb stores titles in ASCII (ł→l, ą→a, ś→s, etc.) while
+    // our query titles retain Polish diacritics. `TextNormalization.deburr` handles
+    // NFD-based stripping PLUS the explicit ł/Ł→l substitution that NFD alone misses.
+    val normalizedTitle = TextNormalization.deburr(title).toLowerCase.trim
     Try(Json.parse(body)).toOption.flatMap { js =>
       // Real film candidates: tt-id, qid "movie". Keep document order — IMDb
       // returns the best query match first, popularity padding after.
@@ -171,7 +220,7 @@ class ImdbClient(http: HttpFetch) {
           for {
             id  <- (entry \ "id").asOpt[String] if id.startsWith("tt")
             qid <- (entry \ "qid").asOpt[String] if qid == "movie"
-          } yield Suggestion(id, (entry \ "l").asOpt[String].map(_.toLowerCase.trim), (entry \ "y").asOpt[Int], (entry \ "rank").asOpt[Int].getOrElse(Int.MaxValue))
+          } yield Suggestion(id, (entry \ "l").asOpt[String].map(s => TextNormalization.deburr(s).toLowerCase.trim), (entry \ "y").asOpt[Int], (entry \ "rank").asOpt[Int].getOrElse(Int.MaxValue))
         }
       val exact = movies
         .filter(_.title.contains(normalizedTitle))

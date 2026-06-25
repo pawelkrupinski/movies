@@ -69,4 +69,23 @@ class MergeRetriggerSpec extends AnyFlatSpec with Matchers {
     val after  = rec(tmdbId = None, original = Some("The Original"))
     decide(before, k("Foo"), after, k("Foo")) should contain (ResolveTmdb)
   }
+
+  it should "re-kick IMDb-id resolution when director data arrives on a TMDB-resolved but imdbId-less row" in {
+    // `director` is derived from sourceData, so inject via data map
+    val beforeRec = rec(tmdbId = Some(7), imdbId = None)
+    val afterRec  = beforeRec.copy(data = Map(Tmdb -> SourceData(director = Seq("Jan Nowak"))))
+    decide(beforeRec, k("Foo"), afterRec, k("Foo")) should contain (ResolveImdbId)
+  }
+
+  it should "re-kick IMDb-id resolution when originalTitle changes on a TMDB-resolved but imdbId-less row" in {
+    val before = rec(tmdbId = Some(7), imdbId = None, original = None)
+    val after  = rec(tmdbId = Some(7), imdbId = None, original = Some("The Original Title"))
+    decide(before, k("Foo"), after, k("Foo")) should contain (ResolveImdbId)
+  }
+
+  it should "NOT re-kick IMDb-id resolution when director changes but the row already has an imdbId" in {
+    val beforeRec = rec(tmdbId = Some(7), imdbId = Some("tt1"))
+    val afterRec  = beforeRec.copy(data = Map(Tmdb -> SourceData(director = Seq("Jan Nowak"))))
+    decide(beforeRec, k("Foo"), afterRec, k("Foo")) should not contain ResolveImdbId
+  }
 }

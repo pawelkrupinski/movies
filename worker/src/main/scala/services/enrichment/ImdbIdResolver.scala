@@ -89,8 +89,19 @@ class ImdbIdResolver(
       // The sorted year set is order-independent; the per-year EXACT match still refuses
       // a same-series sibling ("Kicia Kocia w przedszkolu" 2024) at no reported year.
       val years = (record.cinemaData.values.flatMap(_.releaseYear).toSet ++ year).toSeq.sorted
-      val found = (if (years.isEmpty) Seq(year) else years.map(Option(_)))
-        .iterator.flatMap(y => cachedFindId(searchTitle, y)).nextOption()
+      val yearSeq = if (years.isEmpty) Seq(year) else years.map(Option(_))
+      val found = yearSeq.iterator.flatMap(y => cachedFindId(searchTitle, y)).nextOption()
+        .orElse {
+          // Director-based fallback: when the year-anchored cached search returns nothing
+          // (e.g. IMDb hasn't set a release year yet for a fresh film), try confirming an
+          // exact-deburr-title candidate via director. Not routed through the cache — the
+          // basic path already cached a miss; this live fallback only fires when directors
+          // are known and can disambiguate.
+          val directors = record.director.toSet
+          if (directors.nonEmpty)
+            yearSeq.iterator.flatMap(y => Try(imdb.findId(searchTitle, y, directors)).toOption.flatten).nextOption()
+          else None
+        }
       found match {
         case Some(id) =>
           logger.info(s"IMDb-id: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → resolved $id")
