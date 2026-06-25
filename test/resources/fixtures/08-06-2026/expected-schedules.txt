@@ -5461,21 +5461,21 @@ displayTitle:      Pianista
 cinemaTitles:      PIANISTA | Pianista
 runtimeMinutes:    149
 releaseYear:       2002
-countries:         —
+countries:         Francja, Niemcy, Polska, Wielka Brytania, USA
 posterUrl:         https://img.helios.pl/pliki/film/pianista/pianista-plakat-769.png
-synopsis.length:   —
-cast:              —
-director:          —
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+synopsis.length:   579
+cast:              Adrien Brody, Thomas Kretschmann, Frank Finlay, Maureen Lipman, Emilia Fox
+director:          Roman Polański
+tmdbId:            423
+imdbId:            tt0253474
+originalTitle:     The Pianist
+imdbRating:        8.5
+metascore:         85
+rottenTomatoes:    29
+filmwebRating:     8.2702
+metacriticUrl:     https://www.metacritic.com/movie/the-pianist
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_pianist
+filmwebUrl:        https://www.filmweb.pl/film/Pianista-2002-32225
 cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/pianista-w-helios-replay-2610
 cinemaScrapes:

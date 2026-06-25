@@ -85,6 +85,22 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
     if (results.lengthCompare(1) == 0) results.headOption else None
   }
 
+  /** Resolve when a YEAR is present AND the year-scoped search's TOP result (the
+   *  most-popular hit, since [[parseSearchResults]] orders by popularity) is an
+   *  EXACT title match — Polish or original. Broader than [[searchUnique]] (which
+   *  needs the search to be a singleton): the year scopes to the right era and a
+   *  verbatim title at the head of the list is the confidence, so a row whose
+   *  year-scoped search returns several same-year films ("Sundown" alongside
+   *  "Sundown Town", "DJ at Sundown") still resolves to the one the cinema named.
+   *  Still refuses when the top hit isn't an exact match — that's the popularity
+   *  guess [[searchUnique]] exists to avoid. No-op without a year, so the yearless
+   *  ambiguous long tail (where there's no era to scope to) stays refused. */
+  def searchYearExactTop(title: String, year: Option[Int]): Option[TmdbClient.SearchResult] =
+    if (year.isEmpty) None
+    else authHeader.flatMap { auth =>
+      searchOnce(title, year, auth).headOption.filter(TmdbClient.isExactTitleMatch(_, title))
+    }
+
   /**
    * From a set of TMDB hits, pick the best match for the query.
    *   1. Exact title matches (Polish OR original) win over everything else.
@@ -100,11 +116,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
   ): Option[TmdbClient.SearchResult] = {
     if (results.isEmpty) None
     else {
-      val cleanQuery = title.toLowerCase.trim
-      val exactMatches = results.filter(r =>
-        r.title.toLowerCase.trim == cleanQuery ||
-          r.originalTitle.exists(_.toLowerCase.trim == cleanQuery)
-      )
+      val exactMatches = results.filter(r => TmdbClient.isExactTitleMatch(r, title))
       val candidates = if (exactMatches.nonEmpty) exactMatches else results
       candidates
         .sortBy(r => year.flatMap(y => r.releaseYear.map(ry => math.abs(ry - y))).getOrElse(Int.MaxValue))
@@ -362,6 +374,14 @@ object TmdbClient {
     releaseYear:   Option[Int],
     popularity:    Double
   )
+
+  /** A TMDB hit whose Polish OR original title is a verbatim (case-insensitive,
+   *  trimmed) match for the query — the exactness both [[TmdbClient.pickBest]]
+   *  and [[TmdbClient.searchYearExactTop]] gate on. */
+  private[clients] def isExactTitleMatch(r: SearchResult, title: String): Boolean = {
+    val q = title.toLowerCase.trim
+    r.title.toLowerCase.trim == q || r.originalTitle.exists(_.toLowerCase.trim == q)
+  }
 
   /** Slim shape returned by `details(tmdbId)` — just the fields the ratings
    *  classes need for MC/RT URL resolution.

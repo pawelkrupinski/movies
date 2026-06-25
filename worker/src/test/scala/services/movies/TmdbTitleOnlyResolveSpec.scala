@@ -10,8 +10,14 @@ import tools.GetOnlyHttpFetch
 /**
  * When the SEARCH TITLE is the only signal (no year, no director, no
  * original-title hint), a title search that returns several same-title films
- * would resolve by the popularity tie-break — a guess. The TMDB stage now
- * refuses unless the search is unambiguous (exactly one result).
+ * would resolve by the popularity tie-break — a guess. The TMDB stage refuses
+ * unless the search is unambiguous (exactly one result).
+ *
+ * The one widening: when a YEAR is present, a year-scoped search whose TOP hit
+ * is an exact-title match resolves even if it returned several same-year films
+ * (`searchYearExactTop`) — the year + verbatim top is confidence the yearless
+ * case can't have. A non-exact top still refuses, and yearless rows are
+ * unaffected.
  */
 class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
 
@@ -91,5 +97,38 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
 
     service.reEnrichSync("Zaproszenie", Some(2026))
     cache.get(cache.keyOf("Zaproszenie", Some(2026))).flatMap(_.tmdbId) shouldBe Some(950028)
+  }
+
+  it should "resolve a year-bearing row when the year-scoped search's TOP hit is an exact-title match (several same-year films)" in {
+    val seed = MovieRecord(data = Map[Source, SourceData](
+      CinemaCityPoznanPlaza -> SourceData(title = Some("Sundown"), releaseYear = Some(2021))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Sundown", Some(2021), seed))))
+    // Three 2021 films; the exact-title "Sundown" is the most popular, so after the
+    // popularity sort it's the top hit. searchUnique refuses (count != 1); the new
+    // year + exact-top rule resolves to it rather than leaving the row unenriched.
+    val search = s"""{"results":[${result(701, "Sundown", "2021-01-01", 30.0)},${result(702, "Sundown Town", "2021-01-01", 5.0)},${result(703, "DJ at Sundown", "2021-01-01", 2.0)}]}"""
+    val service = new MovieService(cache, new InProcessEventBus(),
+      tmdb(
+        "/search/movie"           -> search,
+        "/movie/701/external_ids" -> """{"id":701,"imdb_id":"tt7010000"}"""
+      ))
+
+    service.reEnrichSync("Sundown", Some(2021))
+    cache.snapshot().flatMap(_.record.tmdbId) should contain (701)
+  }
+
+  it should "NOT resolve a year-bearing row when the year-scoped search's TOP hit is NOT exact (no popularity guess)" in {
+    val seed = MovieRecord(data = Map[Source, SourceData](
+      CinemaCityPoznanPlaza -> SourceData(title = Some("Labirynt"), releaseYear = Some(2024))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Labirynt", Some(2024), seed))))
+    // The most-popular 2024 hit is a SUBSTRING match, not exact; the exact title is
+    // absent from the top → refuse rather than guess. (No /external_ids stub — a
+    // resolve would throw on the unstubbed call, so a silent guess fails loudly.)
+    val search = s"""{"results":[${result(801, "Labirynt strachu", "2024-01-01", 40.0)},${result(802, "W labiryncie", "2024-01-01", 10.0)}]}"""
+    val service = new MovieService(cache, new InProcessEventBus(),
+      tmdb("/search/movie" -> search))
+
+    service.reEnrichSync("Labirynt", Some(2024))
+    cache.get(cache.keyOf("Labirynt", Some(2024))).flatMap(_.tmdbId) shouldBe None
   }
 }

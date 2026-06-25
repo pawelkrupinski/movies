@@ -734,7 +734,14 @@ class MovieService(
     val resolvedId = tmdbIdCache.getOrResolve(hintKey) {
       val hit =
         if (rowDirectors.isEmpty)
+          // First the strict singleton rule; then, when a YEAR is present, accept a
+          // year-scoped search whose TOP hit is an exact-title match even if it
+          // returned several films (e.g. "Sundown" alongside "Sundown Town", "DJ at
+          // Sundown"). The year + verbatim top is confidence the singleton rule
+          // lacks — still no popularity guess (a non-exact top doesn't resolve), and
+          // yearless rows are untouched (searchYearExactTop is a no-op without a year).
           candidates.iterator.flatMap(q => tmdb.searchUnique(q, year)).nextOption()
+            .orElse(candidates.iterator.flatMap(q => tmdb.searchYearExactTop(q, year)).nextOption())
         else {
           // Resolve from this row's own titles only — no sister-row shortcut. Copying
           // a tmdbId from an already-resolved relative was order-dependent (it could
