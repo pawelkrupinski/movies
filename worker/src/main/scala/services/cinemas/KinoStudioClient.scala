@@ -54,7 +54,9 @@ object KinoStudioClient {
     showtimes: Seq[LocalDateTime],
     posterUrl: Option[String],
     synopsis:  Option[String],
-    genres:    Seq[String]
+    genres:    Seq[String],
+    director:  Seq[String],
+    cast:      Seq[String]
   )
 
   def parse(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
@@ -68,8 +70,8 @@ object KinoStudioClient {
         posterUrl = f.posterUrl,
         filmUrl   = Some(RepertoireUrl),
         synopsis  = f.synopsis,
-        cast      = Seq.empty,
-        director  = Seq.empty,
+        cast      = f.cast,
+        director  = f.director,
         showtimes = f.showtimes.map(dt => Showtime(dt, None)).sortBy(_.dateTime)
       )
     }
@@ -93,18 +95,23 @@ object KinoStudioClient {
     var currentTitle  = Option.empty[String]
     var currentGenres = Seq.empty[String]
     var currentSynopsis = Option.empty[String]
+    var currentDirector = Seq.empty[String]
+    var currentCast     = Seq.empty[String]
 
     def flushFilm(): Unit =
       currentTitle.filter(_.nonEmpty).foreach { title =>
         val showtimes = for { d <- pendingDates; t <- pendingTimes } yield LocalDateTime.of(d, t)
         if (showtimes.nonEmpty)
-          films += RawFilm(title, showtimes.distinct.sorted, pendingPoster, currentSynopsis, currentGenres)
+          films += RawFilm(title, showtimes.distinct.sorted, pendingPoster, currentSynopsis,
+                           currentGenres, currentDirector, currentCast)
         pendingDates    = Seq.empty
         pendingTimes    = Seq.empty
         pendingPoster   = None
         currentTitle    = None
         currentGenres   = Seq.empty
         currentSynopsis = None
+        currentDirector = Seq.empty
+        currentCast     = Seq.empty
       }
 
     children.foreach { el =>
@@ -145,18 +152,24 @@ object KinoStudioClient {
           // the <strong> elements at matching positions.
           else if (lower.contains("gatunek") || lower.contains("reżyseria") || lower.contains("rezyseria") || lower.contains("obsada")) {
             // wholeOwnText has no <br> → use the original HTML, split on <br>
-            // and parse each fragment independently using Jsoup to extract the value.
+            // and parse each fragment independently using Jsoup to extract the
+            // value from the fragment's <strong>. The "gatunek"/"reżyseria"/
+            // "obsada" lines are all `label:&nbsp;<strong>A, B, C</strong>`, so a
+            // comma-split of the bold text yields the list. `&nbsp;` decodes to a
+            // non-breaking space, normalised back to a plain space before trim.
             val fragments = el.html.split("(?i)<br\\s*/?>").toSeq
+            def boldList(frag: String): Seq[String] =
+              Option(Jsoup.parseBodyFragment(frag).body.selectFirst("strong"))
+                .map(_.text).getOrElse("")
+                .split(",").map(_.replaceAll("\\u00A0", " ").trim).filter(_.nonEmpty).toSeq
             fragments.foreach { frag =>
               val fragLower = frag.toLowerCase
-              if (fragLower.contains("gatunek") && currentGenres.isEmpty) {
-                val fragEl = Jsoup.parseBodyFragment(frag).body
-                Option(fragEl.selectFirst("strong")).map(_.text.trim)
-                  .filter(_.nonEmpty)
-                  .foreach { g =>
-                    currentGenres = g.split(",").map(_.trim).filter(_.nonEmpty).toSeq
-                  }
-              }
+              if (fragLower.contains("gatunek") && currentGenres.isEmpty)
+                currentGenres = boldList(frag)
+              else if ((fragLower.contains("reżyseria") || fragLower.contains("rezyseria")) && currentDirector.isEmpty)
+                currentDirector = boldList(frag)
+              else if (fragLower.contains("obsada") && currentCast.isEmpty)
+                currentCast = boldList(frag)
             }
           }
           // First synopsis paragraph (em-wrapped prose)

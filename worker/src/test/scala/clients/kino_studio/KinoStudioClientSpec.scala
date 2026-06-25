@@ -43,4 +43,13 @@ class KinoStudioClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val film = movies.find(m => m.movie.title.contains("Lolita") || m.movie.title.contains("Lolitę")).value
     film.movie.genres should contain("dramat")
   }
+
+  it should "capture the director and cast from the metadata block" in {
+    // The same `gatunek/reżyseria/obsada` <br>-line carries director + cast;
+    // `obsada` is `&nbsp;`-joined ("A,&nbsp;B,&nbsp;C") so the nbsp is normalised
+    // before splitting.
+    val film = movies.find(m => m.movie.title.contains("Lolita") || m.movie.title.contains("Lolitę")).value
+    film.director shouldBe Seq("Eran Riklis")
+    film.cast shouldBe Seq("Golshifteh Farahani", "Zar Amir Ebrahimi", "Mina Kavani")
+  }
 }

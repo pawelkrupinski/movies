@@ -48,14 +48,44 @@ object KinoSpojniaClient {
   // (`…%26date%3d2026-06-12`) — match both `date=` and `date%3d`.
   private val BookingDatePat = """(?i)date(?:=|%3d)(\d{4}-\d{2}-\d{2})""".r
   private val YearPat        = """\b(19|20)\d{2}\b""".r
+  // A bare-year token in the gray meta line ("2026").
+  private val YearTokenPat   = """^(?:19|20)\d{2}$""".r
+  // A runtime token ("135'" / "55’") — the minutes followed by a prime.
+  private val RuntimeTokenPat = """^(\d{1,3})\s*['’]""".r
+
+  /** Everything the gray metadata line ("135', USA, 2026, Sci-fi" or
+   *  "104', USA, Chiny, 2026, Animacja, Komedia") carries. The line is ordered
+   *  `runtime', country[, country…], year, genre[, genre…]` — so the year token
+   *  splits countries (before) from genres (after), and the prime token is the
+   *  runtime. */
+  private[cinemas] case class GrayMeta(
+    year:      Option[Int] = None,
+    runtime:   Option[Int] = None,
+    countries: Seq[String]  = Seq.empty,
+    genres:    Seq[String]  = Seq.empty
+  )
 
   private case class RawSlot(
     title:    String,
     dateTime: LocalDateTime,
     booking:  Option[String],
     filmUrl:  Option[String],
-    year:     Option[Int]
+    meta:     GrayMeta
   )
+
+  private[cinemas] def parseGrayMeta(line: String): GrayMeta = {
+    val tokens  = line.split(",").map(_.trim).filter(_.nonEmpty).toSeq
+    val runtime = tokens.iterator.flatMap(t => RuntimeTokenPat.findFirstMatchIn(t)).map(_.group(1).toInt).nextOption()
+    val yearIdx = tokens.indexWhere(t => YearTokenPat.matches(t))
+    if (yearIdx < 0) GrayMeta(runtime = runtime)
+    else {
+      val year      = scala.util.Try(tokens(yearIdx).toInt).toOption
+      // Countries sit between the runtime prime and the year; genres after it.
+      val countries = tokens.take(yearIdx).filterNot(t => RuntimeTokenPat.findFirstIn(t).isDefined)
+      val genres    = tokens.drop(yearIdx + 1)
+      GrayMeta(year, runtime, countries, genres)
+    }
+  }
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
@@ -74,15 +104,23 @@ object KinoSpojniaClient {
         dateTime = LocalDateTime.of(date, time),
         booking  = bookElement.map(_.attr("abs:href")).filter(_.nonEmpty),
         filmUrl  = Option(titleElement.attr("abs:href")).filter(_.nonEmpty),
-        // Gray metadata line e.g. "135', USA, 2026, Sci-fi" → release year.
-        year     = Option(t.selectFirst("div[style*=808080]"))
-                     .flatMap(d => YearPat.findFirstMatchIn(d.text)).map(_.group(0).toInt)
+        // Gray metadata line e.g. "135', USA, 2026, Sci-fi" → runtime, countries,
+        // release year, genres.
+        meta     = Option(t.selectFirst("div[style*=808080]"))
+                     .map(d => parseGrayMeta(d.text)).getOrElse(GrayMeta())
       )
     }
 
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, group, showtimes) =>
+      val metas = group.map(_.meta)
       CinemaMovie(
-        movie     = Movie(title, releaseYear = group.flatMap(_.year).headOption),
+        movie     = Movie(
+          title,
+          runtimeMinutes = metas.flatMap(_.runtime).headOption,
+          releaseYear    = metas.flatMap(_.year).headOption,
+          countries      = metas.map(_.countries).find(_.nonEmpty).getOrElse(Seq.empty),
+          genres         = metas.map(_.genres).find(_.nonEmpty).getOrElse(Seq.empty)
+        ),
         cinema    = cinema,
         posterUrl = None,
         filmUrl   = group.flatMap(_.filmUrl).headOption,

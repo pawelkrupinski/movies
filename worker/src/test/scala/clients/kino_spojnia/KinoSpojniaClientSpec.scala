@@ -36,6 +36,24 @@ class KinoSpojniaClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     film.movie.releaseYear shouldBe Some(2026)
   }
 
+  it should "read runtime, countries and genres off the gray metadata line" in {
+    // Gray line: "135', USA, 2026, Sci-fi" — runtime before, country before the
+    // year, genre after it.
+    val film = movies.find(_.movie.title == "Gwiezdne wojny: Mandalorian i Grogu").value
+    film.movie.runtimeMinutes shouldBe Some(135)
+    film.movie.countries shouldBe Seq("USA")
+    film.movie.genres shouldBe Seq("Sci-fi")
+  }
+
+  it should "keep multiple countries (before the year) apart from genres (after it)" in {
+    // "104', USA, Chiny, 2026, Animacja, Komedia, Przygodowy" — two countries
+    // ahead of the year, three genres behind it.
+    val multi = movies.find(_.movie.countries == Seq("USA", "Chiny")).value
+    multi.movie.runtimeMinutes shouldBe Some(104)
+    multi.movie.genres shouldBe Seq("Animacja", "Komedia", "Przygodowy")
+    multi.movie.releaseYear shouldBe Some(2026)
+  }
+
   it should "read the absolute date off the buy link, not infer the year" in {
     // Every showtime dates into the captured June–July 2026 window.
     movies.flatMap(_.showtimes).map(_.dateTime.getYear).toSet shouldBe Set(2026)

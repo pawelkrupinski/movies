@@ -43,6 +43,14 @@ class KinoParadoxClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     zawies.movie.releaseYear shouldBe Some(1991)
   }
 
+  // The same slash line carries countries + runtime after the director/year —
+  // "reż. Yimou Zhang / Chiny, Hong Kong / 1991 / 125’".
+  it should "parse the production countries and runtime from item-director" in {
+    val zawies = client.fetch().find(_.movie.title == "Zawieście czerwone latarnie").value
+    zawies.movie.countries shouldBe Seq("Chiny", "Hong Kong")
+    zawies.movie.runtimeMinutes shouldBe Some(125)
+  }
+
   it should "parse multiple directors and skip the country / runtime slashes" in {
     val bum = client.fetch().find(_.movie.title == "Bum!").value
     bum.director shouldBe Seq("Marta Selecka", "Andra Doršs")
