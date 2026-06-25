@@ -1,7 +1,7 @@
 package clients
 
 import play.api.libs.json._
-import tools.{Env, HttpFetch}
+import tools.{Env, HttpFetch, SynopsisSimilarity}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -60,7 +60,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
     parseSearchResults(http.get(url, auth))
   }
 
-  def search(title: String, year: Option[Int]): Option[TmdbClient.SearchResult] = authHeader.flatMap { auth =>
+  def search(title: String, year: Option[Int], referenceSynopsis: Option[String] = None): Option[TmdbClient.SearchResult] = authHeader.flatMap { auth =>
     // Try year-restricted first (more precise when TMDB has the film for that
     // year), then year-less fallback. pickBest runs at BOTH levels so we don't
     // silently grab the most popular film that merely contains the query word:
@@ -68,8 +68,8 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
     //   - "Odlot"  (year=None) → would otherwise pick Pixar's "Up" (pop 21)
     //   - "Rocznica" (year=None) → would otherwise pick "Harry Potter 20th
     //     Anniversary: Return to Hogwarts"
-    val yearScoped = if (year.isDefined) pickBest(searchOnce(title, year, auth), title, year) else None
-    yearScoped.orElse(pickBest(searchOnce(title, None, auth), title, year))
+    val yearScoped = if (year.isDefined) pickBest(searchOnce(title, year, auth), title, year, referenceSynopsis) else None
+    yearScoped.orElse(pickBest(searchOnce(title, None, auth), title, year, referenceSynopsis))
   }
 
   /** Resolve ONLY when the title search is unambiguous — exactly one result.
@@ -106,21 +106,41 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *   1. Exact title matches (Polish OR original) win over everything else.
    *   2. Among exact matches (or when none exist), prefer the result closest
    *      to the requested year.
-   *   3. With no year and no tie-break needed, the parseSearchResults
+   *   3. When several survivors TIE at that closest year-distance and the caller
+   *      supplied `referenceSynopsis` (the row's cinema-published Polish blurb),
+   *      the candidate whose TMDB `overview` is the confident closest match to it
+   *      wins — a content signal title+year can't provide (same-title films of
+   *      the same year). Falls back to the popularity order when no candidate is
+   *      a confident winner (see `SynopsisSimilarity.confidentTieBreak`), so the
+   *      behaviour is byte-identical to before whenever the synopsis is absent,
+   *      ambiguous, or weak.
+   *   4. With no year and no tie-break needed, the parseSearchResults
    *      insertion order (popularity-descending) wins.
    */
   private[clients] def pickBest(
-    results: Seq[TmdbClient.SearchResult],
-    title:   String,
-    year:    Option[Int]
+    results:           Seq[TmdbClient.SearchResult],
+    title:             String,
+    year:              Option[Int],
+    referenceSynopsis: Option[String] = None
   ): Option[TmdbClient.SearchResult] = {
     if (results.isEmpty) None
     else {
+      def yearDistance(r: TmdbClient.SearchResult): Int =
+        year.flatMap(y => r.releaseYear.map(ry => math.abs(ry - y))).getOrElse(Int.MaxValue)
       val exactMatches = results.filter(r => TmdbClient.isExactTitleMatch(r, title))
       val candidates = if (exactMatches.nonEmpty) exactMatches else results
-      candidates
-        .sortBy(r => year.flatMap(y => r.releaseYear.map(ry => math.abs(ry - y))).getOrElse(Int.MaxValue))
-        .headOption
+      // Stable sort keeps the popularity order within an equal year-distance, so
+      // `tied.head` is exactly the legacy winner.
+      val sorted = candidates.sortBy(yearDistance)
+      sorted.headOption.map { top =>
+        val tied = sorted.takeWhile(r => yearDistance(r) == yearDistance(top))
+        if (tied.lengthCompare(1) > 0)
+          referenceSynopsis
+            .flatMap(ref => SynopsisSimilarity.confidentTieBreak(ref, tied.map(_.overview.getOrElse(""))))
+            .map(tied)
+            .getOrElse(top)
+        else top
+      }
     }
   }
 
@@ -346,7 +366,8 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
         title         = (js \ "title").asOpt[String].getOrElse(""),
         originalTitle = (js \ "original_title").asOpt[String],
         releaseYear   = (js \ "release_date").asOpt[String].filter(_.length >= 4).map(_.take(4).toInt),
-        popularity    = (js \ "popularity").asOpt[Double].getOrElse(0.0)
+        popularity    = (js \ "popularity").asOpt[Double].getOrElse(0.0),
+        overview      = (js \ "overview").asOpt[String].filter(_.nonEmpty)
       )
     }.sortBy(-_.popularity).toSeq
 }
@@ -372,7 +393,12 @@ object TmdbClient {
     title:         String,
     originalTitle: Option[String],
     releaseYear:   Option[Int],
-    popularity:    Double
+    popularity:    Double,
+    // Polish `overview` from the search row — carried so `pickBest` can break a
+    // same-year same-title tie on synopsis closeness without an extra HTTP call
+    // (`/search/movie?language=pl-PL` already returns it). Empty for the
+    // person-credits decoder, which never feeds the synopsis tie-break.
+    overview:      Option[String] = None
   )
 
   /** A TMDB hit whose Polish OR original title is a verbatim (case-insensitive,

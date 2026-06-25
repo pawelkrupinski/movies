@@ -446,4 +446,53 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     ps(1).language     shouldBe None
     ps.head.voteAverage shouldBe 7.5 +- 0.001
   }
+
+  // ── synopsis tie-break among same-year same-title hits ────────────────────
+  //
+  // "Niedźwiedzica" (2026) is BOTH a nature documentary and an unrelated
+  // thriller released the same year. Title is exact for both and year-distance
+  // ties at 0, so the legacy picker falls to popularity — which here favours the
+  // thriller. The cinema's own Polish blurb is about the she-bear documentary,
+  // so passing it as the reference must flip the pick to the doc.
+
+  private val niedzwiedzicaSameYear =
+    """{"results":[
+      |  {"id":100,"title":"Niedźwiedzica","original_title":"Niedźwiedzica",
+      |   "release_date":"2026-03-01","popularity":80.0,
+      |   "overview":"Trzymający w napięciu thriller o napadzie na bank, w którym grupa złodziei zostaje uwięziona przez policję w centrum wielkiego miasta."},
+      |  {"id":200,"title":"Niedźwiedzica","original_title":"Niedźwiedzica",
+      |   "release_date":"2026-09-01","popularity":20.0,
+      |   "overview":"Przyrodniczy dokument śledzący niedźwiedzicę i jej młode w Tatrach przez cały rok, gdy uczą się przetrwać w dzikich górach."}
+      |]}""".stripMargin
+
+  private val bearDocCinemaBlurb =
+    "Dokument o matczynej niedźwiedzicy, która w Tatrach prowadzi swoje młode " +
+      "przez pierwszy rok życia, ucząc je przetrwania w dzikich górach."
+
+  "search" should "fall to popularity among same-year exact-title hits without a reference synopsis (regression guard)" in {
+    val client = fakeClient(Map("&year=2026" -> niedzwiedzicaSameYear))
+    client.search("Niedźwiedzica", Some(2026)).map(_.id) shouldBe Some(100)
+  }
+
+  it should "break a same-year exact-title tie toward the synopsis-matching hit when a reference is given" in {
+    val client = fakeClient(Map("&year=2026" -> niedzwiedzicaSameYear))
+    client.search("Niedźwiedzica", Some(2026), Some(bearDocCinemaBlurb)).map(_.id) shouldBe Some(200)
+  }
+
+  it should "keep the legacy pick when the reference synopsis matches neither candidate" in {
+    val client = fakeClient(Map("&year=2026" -> niedzwiedzicaSameYear))
+    val unrelated = "Komedia o grupie przyjaciół otwierających food truck nad morzem."
+    client.search("Niedźwiedzica", Some(2026), Some(unrelated)).map(_.id) shouldBe Some(100)
+  }
+
+  "parseSearchResults" should "carry the Polish overview onto each SearchResult" in {
+    val json =
+      """{"results":[
+        |  {"id":1,"title":"a","release_date":"2024-01-01","popularity":1.0,"overview":"Polski opis filmu."},
+        |  {"id":2,"title":"b","release_date":"2024-01-01","popularity":1.0,"overview":""}
+        |]}""".stripMargin
+    val results = client.parseSearchResults(json)
+    results.find(_.id == 1).flatMap(_.overview) shouldBe Some("Polski opis filmu.")
+    results.find(_.id == 2).flatMap(_.overview) shouldBe None   // empty → None
+  }
 }

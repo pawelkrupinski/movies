@@ -758,9 +758,13 @@ class MovieService(
           // with scrape/merge order, flipping the id (StagingOrderDeterminismSpec).
           // The search stays the fallback for a row whose director TMDB can't find.
           val byDirector = rowDirectors.iterator.flatMap(d => directorWalk(Some(d), year, candidates)).nextOption()
+          // The row's own cinema blurb (Polish, same language as TMDB's pl-PL
+          // `overview`) breaks a same-year same-title tie inside `pickBest`; None
+          // when no cinema published one, leaving the search unchanged.
+          val cinemaSynopsis = row.synopsisCinema
           byDirector.orElse(
             candidates.iterator
-              .flatMap(q => verifyByDirector(tmdb.search(q, year), Some(rowDirectors.mkString(",")).filter(_.nonEmpty)))
+              .flatMap(q => verifyByDirector(tmdb.search(q, year, cinemaSynopsis), Some(rowDirectors.mkString(",")).filter(_.nonEmpty)))
               .nextOption())
         }
       freshHit = hit

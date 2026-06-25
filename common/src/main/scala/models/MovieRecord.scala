@@ -254,6 +254,14 @@ case class MovieRecord(
   def synopsisNonCinema: Option[String] =
     bestSynopsis(synopsisCandidatesFor { case _: Cinema => false; case _ => true })
 
+  /** Best synopsis from CINEMA sources ONLY (no TMDB / IMDb / Filmweb). This is
+   *  the same-language Polish reference the TMDB/Filmweb resolvers feed to the
+   *  synopsis tie-break — comparing a candidate against the row's OWN TMDB blurb
+   *  would be circular, so the enrichment sources are excluded. None when no
+   *  cinema published a blurb (then the tie-break is simply not applied). */
+  def synopsisCinema: Option[String] =
+    bestSynopsis(synopsisCandidatesFor { case _: Cinema => true; case _ => false })
+
   /** Does `source`'s synopsis count for `city`? A venue does iff it's one of
    *  the city's cinemas; a chain-detail source (Cinema City) iff one of its
    *  member venues in this city is screening the film; every non-cinema source
