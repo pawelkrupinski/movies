@@ -274,9 +274,20 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Filmowe lato: Toy Story 5"                              -> "Toy Story 5",
     "Wakacje w Kinie Orzeł: Drzewo magii"                    -> "Drzewo magii",
     "Wakacje w kinie: Chłopiec na krańcach świata"           -> "Chłopiec na krańcach świata",
-    "Seksmisja po śląsku"                                    -> "Seksmisja",
-    "Seksmisja po ślōnsku"                                   -> "Seksmisja",
-    "SEKSMISJA po śląsku!"                                   -> "SEKSMISJA"
+    // Thirteenth-wave (2026-06-25) containment-audit strips: decoration wrapping a
+    // rated film that no rule caught.
+    "26 FFS Być kochaną"                                     -> "Być kochaną",
+    "Toy Story 5 2D DUB. SPS"                                -> "Toy Story 5",
+    "Vaiana 2D DUB. SPS"                                     -> "Vaiana",
+    "Premiera: Kumotry"                                      -> "Kumotry",
+    "Premiera!!! Straszny film"                              -> "Straszny film",
+    "Dialog przez Film: Co do... Kury?"                      -> "Co do... Kury?",
+    "Mistrzowska Kreska: Podwójne życie Weroniki"            -> "Podwójne życie Weroniki",
+    "Najlepsze z Najgorszych - Big Shark"                    -> "Big Shark",
+    "Brudny Henryk | Najlepsze z Najgorszych"                -> "Brudny Henryk",
+    "Sztuka na ekranie - Caravaggio. Arcydzieła niepokornego geniusza" -> "Caravaggio. Arcydzieła niepokornego geniusza",
+    "Exhibition On Screen: David Hockney. Pejzaże, portrety i martwe natury" -> "David Hockney. Pejzaże, portrety i martwe natury",
+    "Minionki i straszydła - Poranki dziecięce"              -> "Minionki i straszydła"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
@@ -340,7 +351,15 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Asterix i Obelix: Imperium smoka",
     // The dot-'Spotkanie' suffix needs a PERIOD before 'spotkani…'; a title that
     // merely CONTAINS 'spotkania' must survive (no period, no following ' z').
-    "Bliskie spotkania trzeciego stopnia"
+    "Bliskie spotkania trzeciego stopnia",
+    // Thirteenth-wave containment traps: a rated film appears as a BARE substring
+    // here, but the surrounding text is NOT a strippable banner — the strips must
+    // be anchored, never blind contains. These must survive whole.
+    "Minimaraton Supergirl & Superman",   // a double-feature bundle, NOT 'Supergirl'
+    "Szlagierowy zawrót głowy",            // ⊅ 'Zawrót głowy' (Vertigo) — ordinary words
+    // 'po śląsku' is part of the release's own title, not a strippable dub suffix —
+    // a twelfth-wave rule that stripped it was dropped; this guards against re-adding.
+    "Seksmisja po śląsku"
   )
 
   it should "never touch a plain colon/word title" in {

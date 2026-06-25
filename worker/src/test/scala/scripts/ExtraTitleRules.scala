@@ -325,14 +325,34 @@ object ExtraTitleRules {
     searchStrip("xtra-filmoteka-dojrzalego",       """(?iu){{SEP}}Filmoteka\s+Dojrzałego\s+Człowieka\s*$""", "'<film> - Filmoteka Dojrzałego Człowieka' mature-viewers'-strand suffix (Sprawiedliwość owiec)"),
     searchStrip("xtra-format-pl-suffix",           """(?iu)(?:{{SEP}})?(?:2D|3D)\s+(?:dubbing|napisy|lektor)\s+PL\s*$""", "'<film>- 2D Dubbing PL' screen-format + dub/napisy + PL suffix (the canonical format strips stop before the trailing ' PL') (Toy Story 5)"),
     // Twelfth-wave (2026-06-25) audit of the TMDB-no-match corpus: programme/series
-    // banners that prefix the film and weren't yet covered, plus a Silesian-dub
-    // suffix. Query-only strips (own display row kept); each target verified to
-    // resolve on TMDB after the strip.
+    // banners that prefix the film and weren't yet covered. Query-only strips (own
+    // display row kept); each target verified to resolve on TMDB after the strip.
+    // (A 'po śląsku/ślōnsku' Silesian-dub suffix was tried here and DROPPED — that
+    // phrase is part of the release's own title, not strippable decoration.)
     searchStrip("xtra-przeglad-filmow-prefix",     """(?iu)^Przegląd\s+filmów\s+{{NSEP}}+{{SEP}}""", "'Przegląd filmów <reżyser> - <film>' retrospective PREFIX — sibling of the existing '<film> - przegląd filmów <reż>' SUFFIX rule; the {{NSEP}} guard eats the director name and stops at the banner separator (Ziemia obiecana, Powidoki, Brzezina, Człowiek z marmuru)"),
     searchStrip("xtra-filmowe-wakacje-za-rogiem",  """(?iu)^Filmowe\s+wakacje\s+za\s+Rogiem{{SEP}}""", "'Filmowe wakacje za Rogiem: <film>' Kino za Rogiem kids-summer strand (Koszmarek, Pies i robot, Pan Zabawka, Legenda Ochi, Skrzat. Nowy początek, Zmiennokształtni, Fantastyczny Angelo, O psie który jeździł koleją 2)"),
     searchStrip("xtra-filmowe-lato",               """(?iu)^Filmowe\s+lato{{SEP}}""",                "'Filmowe lato: <film>' summer strand (Toy Story 5)"),
     searchStrip("xtra-wakacje-w-kinie",            """(?iu)^Wakacje\s+w\s+[Kk]inie(?:\s+Orzeł)?{{SEP}}""", "'Wakacje w Kinie Orzeł: / Wakacje w kinie: <film>' kids-summer strand (Drzewo magii, Chłopiec na krańcach świata, Anzu. Kot-duch, Mała Amelia, Yuku i magiczny kwiat) — sibling of 'Wakacje dla dzieci:'"),
-    searchStrip("xtra-po-slasku-suffix",           """(?iu)\s+po\s+śl(?:ąsku|ōnsku|onsku)!?\s*$""", "'<film> po śląsku / po ślōnsku' Silesian-dub suffix (Seksmisja)")
+    // Thirteenth-wave (2026-06-25) CONTAINMENT audit: rating-less rows whose
+    // rule-cleaned query still WRAPS an already-rated film as a word-boundary
+    // substring → the surrounding text is strippable decoration no rule caught.
+    // Each revealed film is rated in prod (so the strip lets the decorated
+    // screening inherit that rating). The blind-substring traps the audit surfaced
+    // are deliberately NOT stripped — they're banner-anchored, never bare contains:
+    //   "Minimaraton Supergirl & Superman" (a bundle, not Supergirl), "Szlagierowy
+    //   zawrót głowy" (⊅ Vertigo), "60. ROCZNICA premiery" (⊅ the film 'Rocznica'),
+    //   "BACKROOM: Bez wyjścia" (the film IS 'Backrooms. Bez wyjścia') — see the
+    //   negative controls in ExtraTitleRulesSpec.
+    searchStrip("xtra-pp-ffs-festival",            """(?iu)^\d+\s*FFS\s+""",                          "'26 FFS <film>' film-festival edition prefix (Być kochaną, Ostatni wiking, Wartość sentymentalna, Świat po pracy, Wiking i magiczny miecz)"),
+    searchStrip("xtra-dub-sps-suffix",             """(?iu)\s+(?:2D|3D)\s+(?:DUB|NAP)\.?\s+SPS\s*$""", "'<film> 2D DUB. SPS' screening-code suffix — the global form of the kino-bajka per-cinema rule (other venues use it too: Toy Story 5, Vaiana)"),
+    searchStrip("xtra-premiera-prefix",            """(?iu)^Premiera\s*[:!]+\s*""",                   "'Premiera: <film>' / 'PREMIERA!!! <film>' release-announcement prefix (Kumotry, Straszny film) — distinct from the existing przedpremiera prefix"),
+    searchStrip("xtra-dialog-przez-film",          """(?iu)^Dialog\s+przez\s+Film:\s*""",             "'Dialog przez Film: <film>' discussion-cycle prefix (Co do... Kury?)"),
+    searchStrip("xtra-mistrzowska-kreska",         """(?iu)^Mistrzowska\s+Kreska:\s*""",              "'Mistrzowska Kreska: <film>' animation-cycle prefix (Podwójne życie Weroniki)"),
+    searchStrip("xtra-najlepsze-dash-prefix",      """(?iu)^Najlepsze\s+z\s+Najgorszych\s*[-–—]\s*""", "'Najlepsze z Najgorszych - <film>' bad-movie-night DASH prefix — sibling of the existing colon-only rule (Big Shark, Brudny Henryk, The Room)"),
+    searchStrip("xtra-najlepsze-suffix",           """(?iu){{SEP}}Najlepsze\s+z\s+Najgorszych\s*$""", "'<film> | Najlepsze z Najgorszych' bad-movie-night SUFFIX form (Brudny Henryk)"),
+    searchStrip("xtra-sztuka-na-ekranie",          """(?iu)^Sztuka\s+na\s+ekranie\s*[-–—]\s*""",     "'Sztuka na ekranie - <film>' art-doc strand (Caravaggio. Arcydzieła niepokornego geniusza) — sibling of Wielka Sztuka w Kinoteatrze Rialto"),
+    searchStrip("xtra-exhibition-on-screen",       """(?iu)^Exhibition\s+On\s+Screen:\s*""",          "'Exhibition On Screen: <film>' art-doc series (David Hockney. Pejzaże, portrety i martwe natury)"),
+    searchStrip("xtra-poranki-dzieciece-suffix",   """(?iu){{SEP}}Poranki\s+dziecięce\s*$""",         "'<film> - Poranki dziecięce' kids-morning suffix (Minionki i straszydła)")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in
