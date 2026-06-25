@@ -145,7 +145,11 @@ object CpuCreditPoller {
    *    (proactive trigger — fires 10–30 min before the floor given the observed
    *    drain rates of 3 000–7 000 ms/min on 2026-06-25)
    *
-   *  Exit condition: balance > exitAbove (unchanged — hysteresis band holds).
+   *  Exit condition: balance > exitAbove AND the projection is no longer firing.
+   *  Both conditions must clear: this prevents the projection-triggered throttle
+   *  from releasing on the very next poll (balance was already above exitAbove
+   *  when projection fired) and then immediately re-engaging, oscillating every
+   *  30 s.  The throttle holds until the drain rate itself eases.
    *
    *  `balance = Some(b)` is a good read; `None` is failed/unparseable — hold the
    *  prior decision until `maxConsecutiveFailures` in a row, then fail open.
@@ -169,10 +173,14 @@ object CpuCreditPoller {
         val secsToFloor = (b - enterBelow) / rate
         secsToFloor > 0 && secsToFloor < lookaheadSeconds
       }
-      // Enter on floor OR adverse trajectory; once throttled, hold until exitAbove.
-      val throttled =
-        if (prev.throttled) !(b > exitAbove)
-        else b < enterBelow || projectedLow
+      // The floor-hysteresis arm: hold while balance <= exitAbove (same as before),
+      // release when it clears.  The projection arm: hold while drain is still
+      // threatening, release when the rate eases (secsToFloor >= lookaheadSeconds).
+      // OR-ing them means: stay throttled if EITHER condition holds; exit only when
+      // BOTH clear.  This prevents the projection-triggered throttle from bouncing
+      // every poll when balance is well above exitAbove.
+      val floorHysteresis = if (prev.throttled) !(b > exitAbove) else b < enterBelow
+      val throttled = floorHysteresis || projectedLow
       State(throttled, failures = 0, prevBalance = Some(b))
 
     case None =>

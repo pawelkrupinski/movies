@@ -49,11 +49,11 @@ class CpuCreditPollerSpec extends AnyFlatSpec with Matchers {
     step(healthy, Some(9000)).throttled shouldBe false
   }
 
-  it should "hold throttled through the band, then release only above the exit threshold" in {
+  it should "hold throttled through the hysteresis band, release above exitAbove when not projecting" in {
     val tripped = step(healthy, Some(5000))
     tripped.throttled shouldBe true
     step(tripped, Some(9000)).throttled shouldBe true   // still in band → hold
-    step(tripped, Some(13000)).throttled shouldBe false // cleared exitAbove → release
+    step(tripped, Some(13000)).throttled shouldBe false // above exitAbove + gaining → release
   }
 
   it should "hold the prior decision on a single failed read, then fail open after the limit" in {
@@ -127,6 +127,24 @@ class CpuCreditPollerSpec extends AnyFlatSpec with Matchers {
       pollIntervalSeconds = 30.0, lookaheadSeconds = 600L
     )
     after3.throttled shouldBe true
+  }
+
+  it should "hold projection-triggered throttle while drain continues (no oscillation)" in {
+    // Bug guard: with the old exit-only-on-exitAbove logic, a projection-triggered
+    // throttle at 22 000 ms would release on the very next poll (22 000 > exitAbove=12 000)
+    // then immediately re-engage — oscillating every 30 s.  The fix ORs projectedLow
+    // into the exit condition so throttle holds as long as drain is still threatening.
+    def step3(b1: Double, b2: Double, b3: Double): CpuCreditPoller.State = {
+      val s1 = CpuCreditPoller.nextState(healthy, Some(b1), 6000, 12000, 3, 30.0, 600L)
+      val s2 = CpuCreditPoller.nextState(s1,      Some(b2), 6000, 12000, 3, 30.0, 600L)
+      CpuCreditPoller.nextState(s2,                Some(b3), 6000, 12000, 3, 30.0, 600L)
+    }
+    // Poll 1: 25 500 — no prevBalance yet, healthy
+    // Poll 2: 22 000 — projection fires (138 s to floor), throttled
+    // Poll 3: 19 500 — still draining at same rate, should stay throttled
+    step3(25500, 22000, 19500).throttled shouldBe true
+    // Poll 3: 24 000 — gaining (drain reversed), projection clears, above exitAbove → releases
+    step3(25500, 22000, 24000).throttled shouldBe false
   }
 
   // ── pollOnce: end-to-end through the HTTP seam with a real fixture ─────────
