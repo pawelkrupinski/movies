@@ -3,6 +3,7 @@ package services.cinemas
 import models.{Cinema, CinemaCityChain, CinemaMovie, Source}
 
 import java.net.URI
+import java.time.LocalDate
 
 /**
  * Single contract every cinema-source obeys: a name (`cinema`), a thunk
@@ -94,8 +95,14 @@ class CinemaCityScraper(
   client:   CinemaCityClient,
   cinemaId: String,
   val cinema: Cinema
-) extends CinemaScraper with DetailEnricher {
-  def fetch(): Seq[CinemaMovie] = client.fetch(cinemaId, cinema)
+) extends ChunkedCinemaScraper with DetailEnricher {
+  // Chunked per-date: one ScrapeChunk task per screening date (30–60 of them),
+  // each an independent `/at-date` fetch, merged by Cinema City film id. The
+  // chain-shared deferred detail path (detailGroup "cinema-city") is orthogonal.
+  def planChunks(): Seq[String] = client.dates(cinemaId).map(_.toString)
+  def fetchChunk(date: String): Seq[CinemaMovie] = client.fetchDay(cinemaId, cinema, LocalDate.parse(date))
+  override def reduceChunks(chunks: Map[String, Seq[CinemaMovie]]): Seq[CinemaMovie] =
+    client.reduce(chunks.values.flatten.toSeq)
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(CinemaCityClient.BaseApiUrl)
   // The numeric `cinemaId` is Cinema City's externalCode (e.g. 1078 = Poznań
   // Plaza); the public venue page is `/kina/<slug>/<id>` where the id is

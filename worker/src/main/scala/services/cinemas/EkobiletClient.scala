@@ -3,10 +3,9 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -48,7 +47,7 @@ class EkobiletClient(
   slug:   String,
   override val cinema: Cinema,
   today:  LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-) extends CinemaScraper with DetailEnricher with OnlyMovieEventsFilter {
+) extends ChunkedCinemaScraper with DetailEnricher {
 
   import EkobiletClient._
 
@@ -74,49 +73,53 @@ class EkobiletClient(
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     Try(detailHttp.get(ref)).toOption.map(html => parseDetail(Jsoup.parse(html)))
 
-  protected def fetchUnfiltered(): Seq[CinemaMovie] = {
+  // Two-level scrape: the listing (landing + dated pages) discovers the films and
+  // their detail-page URLs (the PLAN), then each film's detail page yields its
+  // showtimes (the per-film CHUNK). The chunk key carries `title<US>detailUrl`
+  // because the cleaned title comes from the listing, not the detail page.
+  def planChunks(): Seq[String] = {
     val landing = http.get(s"$BaseUrl/$slug")
     val dates   = availableDates(landing)
-
-    // Each `?date=` page renders only that day's film cards, so sweep every
-    // upcoming day the strip marks as screening. The bare landing covers today.
-    val byDate = ParallelDetailFetch.keyed("ekobilet-day", dates, 1.minute)(
-      date => s"$BaseUrl/$slug?date=$date"
-    )(url => Try(http.get(url)).toOption.map(parseLanding))
-
-    // (cleaned title, detail-page URL) across today's landing + every dated
-    // listing, deduped by detail URL (a film recurs across days).
-    val films = (parseLanding(landing) ++ dates.flatMap(d => byDate.get(d).flatten.getOrElse(Nil)))
+    // Per-date discovery is best-effort (a failed day just contributes no films),
+    // matching the old swallow-and-continue; the landing fetch is essential.
+    val films = (parseLanding(landing) ++ dates.flatMap(d =>
+      Try(http.get(s"$BaseUrl/$slug?date=$d")).toOption.map(parseLanding).getOrElse(Nil)))
       .distinctBy(_._2)
-    val urls  = films.map(_._2).distinct
-
-    val byUrl = ParallelDetailFetch("ekobilet", urls, 1.minute) { url =>
-      Try(http.get(url)).toOption.map(html => parseShowtimes(html, today))
-    }
-
-    films.groupBy(_._1).toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .flatMap { case (_, url) => byUrl.get(url).flatten.getOrElse(Seq.empty) }
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = group.headOption.map(_._2),
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+    films.map { case (title, url) => s"$title$KeySep$url" }
   }
+
+  /** One film's detail page → its showtimes. A throw reschedules just this film's
+   *  chunk. */
+  def fetchChunk(key: String): Seq[CinemaMovie] = {
+    val i     = key.indexOf(KeySep)
+    val title = key.substring(0, i)
+    val url   = key.substring(i + 1)
+    val showtimes = parseShowtimes(http.get(url), today)
+    if (showtimes.isEmpty) Seq.empty
+    else Seq(CinemaMovie(Movie(title), cinema, None, Some(url), None, Seq.empty, Seq.empty, showtimes))
+  }
+
+  /** Merge a film's showtimes across its detail URLs (by title), then drop
+   *  non-film live events — the same filter the old `OnlyMovieEventsFilter` mixin
+   *  applied, moved here so the queue (reduce) path filters too. */
+  override def reduceChunks(chunks: Map[String, Seq[CinemaMovie]]): Seq[CinemaMovie] =
+    chunks.toSeq.sortBy(_._1).flatMap(_._2)
+      .groupBy(_.movie.title).toSeq.sortBy(_._1)
+      .flatMap { case (_, group) =>
+        val showtimes = group.flatMap(_.showtimes).distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
+        if (showtimes.isEmpty) None else Some(group.head.copy(showtimes = showtimes))
+      }
+      .filterNot(cm => NonMovieEventClassifier.isLiveEvent(cm.movie.title))
 }
 
 object EkobiletClient {
 
   val BaseUrl = "https://ekobilet.pl"
+
+  /** Separator packing `title` + `detailUrl` into one chunk key (the cleaned
+   *  title comes from the listing, the showtimes from the detail page). A unit
+   *  separator never appears in a title or URL. */
+  private val KeySep = '\u001F'
 
   // "10 cze" — day + abbreviated Polish month (shared map with the MSI scraper).
   private val RowDate = """(\d{1,2})\s+(\p{L}+)""".r

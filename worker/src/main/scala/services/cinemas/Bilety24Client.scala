@@ -3,11 +3,10 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import services.movies.TitleNormalizer
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.HttpFetch
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -28,22 +27,23 @@ class Bilety24Client(
   baseUrl:     String,
   override val cinema: Cinema,
   listingPath: String = "/repertuar/"
-) extends CinemaScraper {
+) extends ChunkedCinemaScraper {
 
   private val EventLinkPat = """/wydarzenie/\?id=(\d+)""".r
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
   override def sourceUrl: Option[String] = Some(baseUrl)
 
-  def fetch(): Seq[CinemaMovie] = {
-    val listing  = http.get(baseUrl + listingPath)
-    val eventIds = EventLinkPat.findAllMatchIn(listing).map(_.group(1)).toSeq.distinct
+  /** The repertoire page links one `/wydarzenie/?id=N` per event = one chunk per
+   *  event. */
+  def planChunks(): Seq[String] =
+    EventLinkPat.findAllMatchIn(http.get(baseUrl + listingPath)).map(_.group(1)).toSeq.distinct
 
-    val pages = ParallelDetailFetch.keyed("bilety24-events", eventIds, 1.minute)(id => s"$baseUrl/wydarzenie/?id=$id") { url =>
-      Try(http.get(url)).toOption
-    }
-    eventIds.flatMap(id => pages.getOrElse(id, None).flatMap(html => Bilety24Client.parseEvent(html, cinema, baseUrl, id)))
-  }
+  /** One event page → its film (0 or 1). A throw reschedules just this event's
+   *  chunk. The default `reduceChunks` groups by `filmUrl` (the unique event URL),
+   *  so each event stays its own entry exactly as the old flat scrape produced. */
+  def fetchChunk(eventId: String): Seq[CinemaMovie] =
+    Bilety24Client.parseEvent(http.get(s"$baseUrl/wydarzenie/?id=$eventId"), cinema, baseUrl, eventId).toSeq
 }
 
 object Bilety24Client {

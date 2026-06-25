@@ -2,10 +2,9 @@ package services.cinemas
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import play.api.libs.json._
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime}
-import scala.concurrent.duration._
 import scala.util.Try
 
 class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
@@ -23,7 +22,28 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
   // task that calls `fetchFilmDetail` for countries/genres/synopsis/cast/
   // director/trailer.
   def fetch(cinemaId: String, cinema: Cinema): Seq[CinemaMovie] =
-    fetchBare(cinemaId, cinema)
+    reduce(dates(cinemaId).flatMap(d => fetchDay(cinemaId, cinema, d)))
+
+  /** The cinema's available screening dates = the chunk keys. Best-effort: an
+   *  empty/failed dates call yields no chunks (an empty scrape keeps the venue's
+   *  slots), matching the old behaviour. */
+  def dates(cinemaId: String): Seq[LocalDate] = {
+    val datesUrl = s"$BaseApiUrl/dates/in-cinema/$cinemaId/until/$FarFuture?attr=&lang=pl_PL"
+    Try((Json.parse(http.get(datesUrl)) \ "body" \ "dates").as[Seq[String]]
+      .flatMap(d => Try(LocalDate.parse(d)).toOption)).getOrElse(Seq.empty)
+  }
+
+  /** One day's film-events response → that day's films (bare, with that day's
+   *  showtimes). A throw reschedules just this day's chunk task. */
+  def fetchDay(cinemaId: String, cinema: Cinema, date: LocalDate): Seq[CinemaMovie] =
+    parseDay(http.get(s"$BaseApiUrl/film-events/in-cinema/$cinemaId/at-date/$date?attr=&lang=pl_PL"), cinema)
+
+  /** Merge per-day films by Cinema City film id (externalIds "cc"), concatenating
+   *  + sorting their showtimes — the cross-day fold the old whole-venue scrape did
+   *  (deterministic by id; first day's film metadata wins, as before). */
+  def reduce(movies: Seq[CinemaMovie]): Seq[CinemaMovie] =
+    movies.groupBy(m => m.externalIds.getOrElse("cc", m.movie.title)).toSeq.sortBy(_._1)
+      .map { case (_, group) => group.head.copy(showtimes = group.flatMap(_.showtimes).sortBy(_.dateTime)) }
 
   /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
    *  movie's film-page URL (Cinema City's `link`). Goes through the shared
@@ -42,112 +62,68 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
       )
     }
 
-  private def fetchBare(cinemaId: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val datesUrl = s"$BaseApiUrl/dates/in-cinema/$cinemaId/until/$FarFuture?attr=&lang=pl_PL"
-    val dates: Seq[LocalDate] = Try {
-      (Json.parse(http.get(datesUrl)) \ "body" \ "dates")
-        .as[Seq[String]]
-        .flatMap(d => Try(LocalDate.parse(d)).toOption)
-    }.getOrElse(Seq.empty)
+  private case class FilmInfo(
+    name:           String,
+    posterLink:     Option[String],
+    filmLink:       Option[String],
+    runtimeMinutes: Option[Int],
+    releaseYear:    Option[Int]
+  )
 
-    val dayBodies = ParallelDetailFetch.keyed("cinema-city-days", dates, 1.minute, maxConcurrent = 1)(date =>
-      s"$BaseApiUrl/film-events/in-cinema/$cinemaId/at-date/$date?attr=&lang=pl_PL") { url =>
-      Try(http.get(url)).toOption
-    }
+  /** Parse ONE day's `film-events` response into that day's bare movies: title/
+   *  runtime/year/poster + the film-page link as filmUrl (the detail ref).
+   *  Countries/genres/synopsis/cast/director/trailer are NOT in this JSON — they
+   *  come from the per-film page via `fetchFilmDetail` (deferred). A malformed
+   *  body yields no films (matching the old per-day `Try` swallow). */
+  private def parseDay(raw: String, cinema: Cinema): Seq[CinemaMovie] = Try {
+    val body   = Json.parse(raw) \ "body"
+    val films  = (body \ "films").as[JsArray].value
+    val events = (body \ "events").as[JsArray].value
 
-    case class FilmInfo(
-      name:           String,
-      posterLink:     Option[String],
-      filmLink:       Option[String],
-      runtimeMinutes: Option[Int],
-      releaseYear:    Option[Int]
-    )
+    val info: Map[String, FilmInfo] = films.iterator.map { film =>
+      (film \ "id").as[String] -> FilmInfo(
+        name           = (film \ "name").as[String],
+        posterLink     = (film \ "posterLink").asOpt[String].filter(_.nonEmpty),
+        filmLink       = (film \ "link").asOpt[String].filter(_.nonEmpty),
+        runtimeMinutes = (film \ "length").asOpt[Int],
+        // releaseYear comes through as a String in the API (`"releaseYear":"2026"`);
+        // asOpt[Int] silently fails on a String, so try String first.
+        releaseYear    = (film \ "releaseYear").asOpt[String].flatMap(s => Try(s.toInt).toOption)
+          .orElse((film \ "releaseYear").asOpt[Int]))
+    }.toMap
 
-    val allFilms  = collection.mutable.Map[String, FilmInfo]()
-    val allEvents = collection.mutable.ListBuffer[(String, LocalDateTime, Option[String], Option[String], List[String])]()
+    val slotsByFilm = events.iterator.flatMap { event =>
+      val filmId     = (event \ "filmId").as[String]
+      val bookingUrl = (event \ "bookingLink").asOpt[String].filter(_.nonEmpty)
+      val room       = (event \ "auditorium").asOpt[String].filter(_.nonEmpty).map(CinemaCityClient.normalizeAuditorium)
+      val attrs      = (event \ "attributeIds").asOpt[Seq[String]].getOrElse(Seq.empty).toSet
+      // attrs is a kitchen-sink list (genre, 2d/3d, dubbed/subbed, IMAX, seating, age…);
+      // pick out the screen-feature tokens we display.
+      val format = List(
+        if (attrs.contains("imax")) Some("IMAX") else None,
+        if (attrs.contains("3d")) Some("3D") else if (attrs.contains("2d")) Some("2D") else None,
+        if (attrs.contains("dubbed")) Some("DUB") else if (attrs.contains("subbed")) Some("NAP") else None
+      ).flatten
+      Try(LocalDateTime.parse((event \ "eventDateTime").as[String])).toOption
+        .map(dt => filmId -> Showtime(dt, bookingUrl, room, format))
+    }.toSeq.groupBy(_._1)
 
-    for (date <- dates; raw <- dayBodies.getOrElse(date, None)) {
-      Try {
-        val body   = Json.parse(raw) \ "body"
-        val films  = (body \ "films").as[JsArray].value
-        val events = (body \ "events").as[JsArray].value
-
-        for (film <- films) {
-          val id = (film \ "id").as[String]
-          if (!allFilms.contains(id)) {
-            allFilms(id) = FilmInfo(
-              name           = (film \ "name").as[String],
-              posterLink     = (film \ "posterLink").asOpt[String].filter(_.nonEmpty),
-              filmLink       = (film \ "link").asOpt[String].filter(_.nonEmpty),
-              runtimeMinutes = (film \ "length").asOpt[Int],
-              // releaseYear comes through as a String in the API
-              // (`"releaseYear":"2026"`) — asOpt[Int] silently fails on a
-              // String and the field stayed None for every film.
-              releaseYear    = (film \ "releaseYear").asOpt[String].flatMap(s => Try(s.toInt).toOption)
-                .orElse((film \ "releaseYear").asOpt[Int])
-            )
-          }
-        }
-
-        for (event <- events) {
-          val filmId      = (event \ "filmId").as[String]
-          val dateTimeStr = (event \ "eventDateTime").as[String]
-          val bookingUrl  = (event \ "bookingLink").asOpt[String].filter(_.nonEmpty)
-          val room        = (event \ "auditorium").asOpt[String].filter(_.nonEmpty)
-                            .map(CinemaCityClient.normalizeAuditorium)
-          val attrs       = (event \ "attributeIds").asOpt[Seq[String]].getOrElse(Seq.empty).toSet
-          // attrs comes in as a kitchen-sink list (genre, 2d/3d, dubbed/subbed/original-lang-*, IMAX,
-          // seating type, age rating…). Pick out the screen-feature tokens we want to display.
-          val format      = List(
-            if (attrs.contains("imax"))  Some("IMAX") else None,
-            if (attrs.contains("3d"))    Some("3D")
-            else if (attrs.contains("2d")) Some("2D")
-            else None,
-            if (attrs.contains("dubbed")) Some("DUB")
-            else if (attrs.contains("subbed")) Some("NAP")
-            else None
-          ).flatten
-          Try(LocalDateTime.parse(dateTimeStr)).foreach { dateTime =>
-            allEvents += ((filmId, dateTime, bookingUrl, room, format))
-          }
-        }
+    slotsByFilm.toSeq.flatMap { case (filmId, slots) =>
+      info.get(filmId).map { fi =>
+        CinemaMovie(
+          movie       = Movie(CinemaCityClient.cleanTitle(fi.name), fi.runtimeMinutes, fi.releaseYear, rawTitle = Some(fi.name)),
+          cinema      = cinema,
+          posterUrl   = fi.posterLink,
+          filmUrl     = fi.filmLink,
+          synopsis    = None,
+          cast        = Seq.empty,
+          director    = Seq.empty,
+          showtimes   = slots.map(_._2).sortBy(_.dateTime),
+          externalIds = Map("cc" -> filmId),
+          trailerUrl  = None)
       }
     }
-
-    // Bare movies: title/runtime/year/poster + the film-page link as filmUrl (the
-    // detail ref). Countries/genres/synopsis/cast/director/trailer are NOT in the
-    // film-events JSON — they come from the per-film page via `fetchFilmDetail`,
-    // inline or deferred.
-    allEvents
-      .groupBy(_._1)
-      .toSeq
-      .flatMap { case (filmId, slots) =>
-        allFilms.get(filmId).map { info =>
-          CinemaMovie(
-            movie       = Movie(
-              // Title cleaned via the editable "cinema-city" rules; `info.name`
-              // (the pre-strip string) rides along as rawTitle so the merge key
-              // stays re-derivable when those rules change.
-              CinemaCityClient.cleanTitle(info.name),
-              info.runtimeMinutes,
-              info.releaseYear,
-              rawTitle = Some(info.name)
-            ),
-            cinema      = cinema,
-            posterUrl   = info.posterLink,
-            filmUrl     = info.filmLink,
-            synopsis    = None,
-            cast        = Seq.empty,
-            director    = Seq.empty,
-            showtimes   = slots.toSeq.map { case (_, dateTime, bookingUrl, room, format) =>
-              Showtime(dateTime, bookingUrl, room, format)
-            }.sortBy(_.dateTime),
-            externalIds = Map("cc" -> filmId),
-            trailerUrl  = None
-          )
-        }
-      }
-  }
+  }.getOrElse(Seq.empty)
 }
 
 object CinemaCityClient {
