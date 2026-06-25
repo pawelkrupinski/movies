@@ -34,6 +34,18 @@ import scala.util.Try
  * — so if this poller can't reach `api.fly.io` (or its read-only token lapses)
  * and fails open, the Grafana path still catches a genuine credit crunch.
  *
+ * == Proactive / projection throttle ==
+ *
+ * The reactive floor trigger (balance < 6 000 ms) fires only 1–6 minutes before
+ * the actual floor, given observed drain rates of 3 000–7 000 ms/min.  By then
+ * up to 8 in-flight tasks keep burning CPU and the floor still hits.
+ *
+ * The projection trigger catches the drop earlier: consecutive balance readings
+ * give a drain rate (ms/s); if the projected time to `enterBelow` is within
+ * `lookaheadSeconds` (default 10 min), throttle trips immediately.  On
+ * 2026-06-25 this would have tripped 16 min (afternoon) and 26 min (evening)
+ * before the floor, preventing both episodes.
+ *
  * Fail-open: a failed or unparseable read doesn't flip the decision on a single
  * blip (a transient `api.fly.io` error); only after `maxConsecutiveFailures`
  * reads in a row fail does it force healthy. Under-throttling (the gate covers
@@ -55,7 +67,10 @@ class CpuCreditPoller(
   exitAbove: Long = Env.positiveLong("KINOWO_CREDIT_THROTTLE_EXIT_ABOVE", 12000L),
   pollInterval: FiniteDuration = Env.positiveLong("KINOWO_CREDIT_POLL_SECONDS", 30L).seconds,
   // Consecutive failed reads before we give up and fail open (default healthy).
-  maxConsecutiveFailures: Int = Env.positiveInt("KINOWO_CREDIT_MAX_READ_FAILURES", 3)
+  maxConsecutiveFailures: Int = Env.positiveInt("KINOWO_CREDIT_MAX_READ_FAILURES", 3),
+  // Proactive: trip throttled if (at current drain rate) balance would hit enterBelow
+  // within this many seconds.  Default 600 (10 min).  Set to 0 to disable projection.
+  lookaheadSeconds: Long = Env.positiveLong("KINOWO_CREDIT_LOOKAHEAD_SECONDS", 600L)
 ) extends Stoppable with ScrapeThrottleSignal with Logging {
 
   import CpuCreditPoller.State
@@ -64,7 +79,7 @@ class CpuCreditPoller(
   private val url =
     s"https://api.fly.io/prometheus/$org/api/v1/query?query=${URLEncoder.encode(query, StandardCharsets.UTF_8)}"
 
-  private val state = new AtomicReference(State(throttled = false, failures = 0))
+  private val state = new AtomicReference(State(throttled = false, failures = 0, prevBalance = None))
   // The most recent good balance read (None until the first success / after a run
   // of failures). Exposed for the ThrottleStuckWatchdog's trend guard, which needs
   // the raw number — not just the throttled boolean — to tell recovery from a wedge.
@@ -73,21 +88,36 @@ class CpuCreditPoller(
 
   def start(): Unit = {
     scheduler.scheduleWithFixedDelay(() => Try(pollOnce()), 0L, pollInterval.toMillis, TimeUnit.MILLISECONDS)
-    logger.info(s"CpuCreditPoller started: $url every ${pollInterval.toSeconds}s (enter<$enterBelow, exit>$exitAbove).")
+    logger.info(s"CpuCreditPoller started: $url every ${pollInterval.toSeconds}s " +
+      s"(enter<$enterBelow, exit>$exitAbove, lookahead=${lookaheadSeconds}s).")
   }
 
   /** One poll: read the balance, fold it into the hysteretic state, log on a
    *  throttle transition. Package-private so a test can drive it without a clock. */
   private[tasks] def pollOnce(): Unit = {
     val balance = Try(http.get(url, Map("Authorization" -> token))).toOption.flatMap(CpuCreditPoller.parseBalance)
-    val prev = state.get()
-    val next = CpuCreditPoller.nextState(prev, balance, enterBelow, exitAbove, maxConsecutiveFailures)
+    val prev    = state.get()
+    val next    = CpuCreditPoller.nextState(prev, balance, enterBelow, exitAbove, maxConsecutiveFailures,
+                    pollInterval.toSeconds.toDouble, lookaheadSeconds)
     state.set(next)
     balance.foreach(b => lastBalanceRef.set(Some(b)))
-    if (next.throttled != prev.throttled)
-      logger.warn(s"CpuCreditPoller: throttle ${if (next.throttled) "ENGAGED" else "RELEASED"} " +
+    if (next.throttled != prev.throttled) {
+      val reason = if (next.throttled) {
+        balance match {
+          case Some(b) if b >= enterBelow =>
+            // Triggered by projection: balance still above the floor threshold.
+            val drainPerSec = prev.prevBalance.flatMap(p => Some((p - b) / pollInterval.toSeconds).filter(_ > 0))
+            val minsToFloor = drainPerSec.map(r => (b - enterBelow) / r / 60.0)
+            (drainPerSec, minsToFloor) match {
+              case (Some(d), Some(m)) => f"projected: ${d}%.0f ms/s drain, ${m}%.1f min to floor"
+              case _                  => "projected"
+            }
+          case _ => s"floor"
+        }
+      } else "RELEASED"
+      logger.warn(s"CpuCreditPoller: throttle $reason " +
         s"(credit=${balance.map(_.round).getOrElse("?")}, enter<$enterBelow, exit>$exitAbove).")
-    else if (balance.isEmpty && next.failures >= maxConsecutiveFailures && prev.failures < maxConsecutiveFailures)
+    } else if (balance.isEmpty && next.failures >= maxConsecutiveFailures && prev.failures < maxConsecutiveFailures)
       logger.warn(s"CpuCreditPoller: $maxConsecutiveFailures consecutive credit reads failed — failing open (relying on the external gate).")
   }
 
@@ -103,22 +133,57 @@ class CpuCreditPoller(
 
 object CpuCreditPoller {
 
-  private[tasks] case class State(throttled: Boolean, failures: Int)
+  // prevBalance is the last good reading, used to compute the drain rate for
+  // projection.  Defaults to None so existing call sites (tests, etc.) don't break.
+  private[tasks] case class State(throttled: Boolean, failures: Int, prevBalance: Option[Double] = None)
 
-  /** Pure hysteretic state transition. `balance = Some(b)` is a good read (reset
-   *  the failure count); `None` is a failed/unparseable read — hold the prior
-   *  decision until `maxConsecutiveFailures` in a row, then fail open (healthy). */
+  /** Pure hysteretic state transition with proactive projection.
+   *
+   *  Entry conditions (either is sufficient):
+   *  - balance < enterBelow  (reactive floor trigger)
+   *  - projected time to enterBelow < lookaheadSeconds at current drain rate
+   *    (proactive trigger — fires 10–30 min before the floor given the observed
+   *    drain rates of 3 000–7 000 ms/min on 2026-06-25)
+   *
+   *  Exit condition: balance > exitAbove (unchanged — hysteresis band holds).
+   *
+   *  `balance = Some(b)` is a good read; `None` is failed/unparseable — hold the
+   *  prior decision until `maxConsecutiveFailures` in a row, then fail open.
+   *  `prevBalance` is preserved across failed reads so a transient gap doesn't
+   *  reset the slope window.
+   */
   private[tasks] def nextState(
     prev: State, balance: Option[Double],
-    enterBelow: Long, exitAbove: Long, maxConsecutiveFailures: Int
+    enterBelow: Long, exitAbove: Long, maxConsecutiveFailures: Int,
+    pollIntervalSeconds: Double = 30.0,
+    lookaheadSeconds: Long = 600L
   ): State = balance match {
     case Some(b) =>
-      // Enter on a floored balance; once throttled, hold until it clears exitAbove.
-      val throttled = if (prev.throttled) !(b > exitAbove) else b < enterBelow
-      State(throttled, failures = 0)
+      // Drain rate from consecutive good readings (ms/s, positive = losing credit).
+      val drainPerSec: Option[Double] = prev.prevBalance.flatMap { prevB =>
+        val rate = (prevB - b) / pollIntervalSeconds
+        if (rate > 0) Some(rate) else None
+      }
+      // Projected seconds until balance reaches enterBelow at the current rate.
+      val projectedLow: Boolean = lookaheadSeconds > 0 && drainPerSec.exists { rate =>
+        val secsToFloor = (b - enterBelow) / rate
+        secsToFloor > 0 && secsToFloor < lookaheadSeconds
+      }
+      // Enter on floor OR adverse trajectory; once throttled, hold until exitAbove.
+      val throttled =
+        if (prev.throttled) !(b > exitAbove)
+        else b < enterBelow || projectedLow
+      State(throttled, failures = 0, prevBalance = Some(b))
+
     case None =>
       val failures = prev.failures + 1
-      State(throttled = if (failures >= maxConsecutiveFailures) false else prev.throttled, failures)
+      // Preserve prevBalance across failed reads — a transient gap must not reset
+      // the slope window; the last known value is still useful context.
+      State(
+        throttled   = if (failures >= maxConsecutiveFailures) false else prev.throttled,
+        failures    = failures,
+        prevBalance = prev.prevBalance
+      )
   }
 
   /** Extract the scalar credit balance from a Prometheus instant-query response.

@@ -30,6 +30,8 @@ class CpuCreditPollerSpec extends AnyFlatSpec with Matchers {
   // ── nextState: hysteresis around the 6000/12000 band ──────────────────────
 
   private val healthy = CpuCreditPoller.State(throttled = false, failures = 0)
+  // step uses defaults (pollIntervalSeconds=30, lookaheadSeconds=600) so existing
+  // floor-threshold tests are unaffected by the new projection parameter.
   private def step(prev: CpuCreditPoller.State, balance: Option[Double]) =
     CpuCreditPoller.nextState(prev, balance, enterBelow = 6000, exitAbove = 12000, maxConsecutiveFailures = 3)
 
@@ -65,6 +67,66 @@ class CpuCreditPollerSpec extends AnyFlatSpec with Matchers {
     val twoFails = step(step(healthy, None), None)
     twoFails.failures shouldBe 2
     step(twoFails, Some(5000)).failures shouldBe 0
+  }
+
+  // ── nextState: projection trigger (proactive) ─────────────────────────────
+
+  // Helper that drives two consecutive readings with full projection params.
+  private def stepWithProjection(
+    prevBalance: Double, currBalance: Double,
+    pollSecs: Double = 30.0, lookahead: Long = 600L
+  ): CpuCreditPoller.State = {
+    val after1 = CpuCreditPoller.nextState(
+      healthy, Some(prevBalance),
+      enterBelow = 6000, exitAbove = 12000, maxConsecutiveFailures = 3,
+      pollIntervalSeconds = pollSecs, lookaheadSeconds = lookahead
+    )
+    CpuCreditPoller.nextState(
+      after1, Some(currBalance),
+      enterBelow = 6000, exitAbove = 12000, maxConsecutiveFailures = 3,
+      pollIntervalSeconds = pollSecs, lookaheadSeconds = lookahead
+    )
+  }
+
+  it should "trip via projection when drain rate puts the floor inside the lookahead window" in {
+    // Reproduces the 2026-06-25 afternoon episode: balance 22 000 ms draining at
+    // ~3 500 ms/30 s = 116 ms/s; time to 6 000 = (22 000 – 6 000)/116 ≈ 138 s < 600 s.
+    stepWithProjection(prevBalance = 25500, currBalance = 22000).throttled shouldBe true
+  }
+
+  it should "NOT trip via projection when the floor is still far away" in {
+    // Balance 40 000 ms dropping 200 ms/30 s = 6.7 ms/s; time to 6 000 ≈ 5 070 s >> 600 s.
+    stepWithProjection(prevBalance = 40200, currBalance = 40000).throttled shouldBe false
+  }
+
+  it should "NOT trip via projection when balance is gaining (drain rate negative)" in {
+    stepWithProjection(prevBalance = 20000, currBalance = 22000).throttled shouldBe false
+  }
+
+  it should "NOT trip via projection when lookahead is disabled (0)" in {
+    // Same drain as the first projection test, but lookahead=0 disables projection.
+    stepWithProjection(prevBalance = 25500, currBalance = 22000, lookahead = 0L).throttled shouldBe false
+  }
+
+  it should "preserve prevBalance across a failed read so the slope window survives a transient gap" in {
+    val after1 = CpuCreditPoller.nextState(
+      healthy, Some(25500),
+      enterBelow = 6000, exitAbove = 12000, maxConsecutiveFailures = 3
+    )
+    after1.prevBalance shouldBe Some(25500)
+    // One failed read — prevBalance must survive.
+    val afterFail = CpuCreditPoller.nextState(
+      after1, None,
+      enterBelow = 6000, exitAbove = 12000, maxConsecutiveFailures = 3
+    )
+    afterFail.prevBalance shouldBe Some(25500)
+    // Good read after the gap — projection still computes correctly.
+    val after3 = CpuCreditPoller.nextState(
+      afterFail, Some(22000),
+      enterBelow = 6000, exitAbove = 12000, maxConsecutiveFailures = 3,
+      pollIntervalSeconds = 30.0, lookaheadSeconds = 600L
+    )
+    after3.throttled shouldBe true
   }
 
   // ── pollOnce: end-to-end through the HTTP seam with a real fixture ─────────
