@@ -287,7 +287,12 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Brudny Henryk | Najlepsze z Najgorszych"                -> "Brudny Henryk",
     "Sztuka na ekranie - Caravaggio. Arcydzieła niepokornego geniusza" -> "Caravaggio. Arcydzieła niepokornego geniusza",
     "Exhibition On Screen: David Hockney. Pejzaże, portrety i martwe natury" -> "David Hockney. Pejzaże, portrety i martwe natury",
-    "Minionki i straszydła - Poranki dziecięce"              -> "Minionki i straszydła"
+    "Minionki i straszydła - Poranki dziecięce"              -> "Minionki i straszydła",
+    // Fourteenth-wave (2026-06-25) programme-cycle prefixes from the
+    // resolve-by-synopsis report (each stripped query verified on TMDB).
+    "Kinowy Poranek: Lato, kiedy nauczyłam się latać"        -> "Lato, kiedy nauczyłam się latać",
+    "Przybliżenia - okiem psychoanalizy: Perfect days"       -> "Perfect days",
+    "Kino bez barier dla dzieci: Oskar, Patka i Złoto Bałtyku" -> "Oskar, Patka i Złoto Bałtyku"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {

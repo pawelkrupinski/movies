@@ -352,7 +352,20 @@ object ExtraTitleRules {
     searchStrip("xtra-najlepsze-suffix",           """(?iu){{SEP}}Najlepsze\s+z\s+Najgorszych\s*$""", "'<film> | Najlepsze z Najgorszych' bad-movie-night SUFFIX form (Brudny Henryk)"),
     searchStrip("xtra-sztuka-na-ekranie",          """(?iu)^Sztuka\s+na\s+ekranie\s*[-–—]\s*""",     "'Sztuka na ekranie - <film>' art-doc strand (Caravaggio. Arcydzieła niepokornego geniusza) — sibling of Wielka Sztuka w Kinoteatrze Rialto"),
     searchStrip("xtra-exhibition-on-screen",       """(?iu)^Exhibition\s+On\s+Screen:\s*""",          "'Exhibition On Screen: <film>' art-doc series (David Hockney. Pejzaże, portrety i martwe natury)"),
-    searchStrip("xtra-poranki-dzieciece-suffix",   """(?iu){{SEP}}Poranki\s+dziecięce\s*$""",         "'<film> - Poranki dziecięce' kids-morning suffix (Minionki i straszydła)")
+    searchStrip("xtra-poranki-dzieciece-suffix",   """(?iu){{SEP}}Poranki\s+dziecięce\s*$""",         "'<film> - Poranki dziecięce' kids-morning suffix (Minionki i straszydła)"),
+    // Fourteenth-wave (2026-06-25) audit of the TMDB-no-match corpus via the
+    // resolve-by-synopsis report: programme-cycle banners that PREFIX a real,
+    // TMDB-resolvable film and weren't yet covered. Query-only strips (the
+    // screening keeps its own decorated display row); each stripped query was
+    // verified to return a TMDB hit. The broadcast/concert/festival-compilation
+    // prefixes the same audit surfaced (NT Live:, Royal Ballet and Opera …:,
+    // Pavarotti concerts, Animator/Annecy compilations, Cirque du Soleil:, Sia:,
+    // 'Seans w ciemno:' surprise-screenings) are DELIBERATELY left alone — they're
+    // distinct entities, not a banner over one film, and resolving them to the
+    // underlying play/film is wrong (a ballet 'Manon' is not Pagnol's 'Manon').
+    searchStrip("xtra-kinowy-poranek",             """(?iu)^Kinowy\s+Poranek{{SEP}}""",              "'Kinowy Poranek: <film>' kids-morning strand (Lato, kiedy nauczyłam się latać → TMDB) — distinct from the seed 'Filmowy/Zimowe Poranki'"),
+    searchStrip("xtra-przyblizenia-psychoanaliza", """(?iu)^Przybliżenia\s+[-–—]\s+okiem\s+psychoanalizy{{SEP}}""", "'Przybliżenia - okiem psychoanalizy: <film>' psychoanalysis cycle (Perfect Days)"),
+    searchStrip("xtra-kino-bez-barier-dzieci",     """(?iu)^Kino\s+bez\s+barier\s+dla\s+dzieci{{SEP}}""", "'Kino bez barier dla dzieci: <film>' accessibility kids-strand — the seed 'Kino bez barier:' wants the colon right after 'barier', so this longer form never matched (Oskar, Patka i złoto Bałtyku)")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in
