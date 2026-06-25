@@ -14,7 +14,7 @@ import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadMod
 import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
-import services.tasks.{BulkRefreshHandler, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
+import services.tasks.{BulkRefreshHandler, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
 import tools.{DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
@@ -257,21 +257,29 @@ class WorkerWiring extends play.api.Logging {
       .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
       .map { raw =>
         val retried = new RetryingCinemaScraper(raw, maxAttempts = math.min(raw.maxFetchAttempts, scrapeAttemptCeiling))
-        // Bound the whole scrape (retries included) to an adaptive per-host
-        // budget, OUTSIDE retry but INSIDE the uptime recorder so a cut surfaces
-        // as a normal failure. See AdaptiveTimeoutScraper.
-        val timed = new AdaptiveTimeoutScraper(retried, hostScrapeStats, adaptiveTimeoutExecutor)
-        if (FallbackEligibility.eligible(raw))
-          new FilmwebFallbackScraper(
-            timed,
-            () => filmwebFallbackFor(raw.cinema),
-            () => filmwebFallbackIds.get(raw.cinema),
-            uptimeMonitor,
-            filmwebFallbackStore,
-            onEvent = filmwebFallbackOnEvent)
-        else
-          new UptimeRecordingScraper(timed, uptimeMonitor, scrapeOutcomeListener)
+        // A chunked cinema is scraped via the task fan-out (ScrapeCinemaHandler
+        // routes it to ChunkScrapePlanner) and its outcome is recorded at the
+        // reduce step, so it skips the per-scrape AdaptiveTimeout — each chunk is
+        // already its own bounded task. Everything else is bounded here: the whole
+        // scrape (retries included) to an adaptive per-host budget, OUTSIDE retry
+        // but INSIDE the uptime recorder so a cut surfaces as a normal failure.
+        val inner: CinemaScraper =
+          if (raw.isInstanceOf[ChunkedCinemaScraper]) retried
+          else new AdaptiveTimeoutScraper(retried, hostScrapeStats, adaptiveTimeoutExecutor)
+        recordingScraper(inner, FallbackEligibility.eligible(raw))
       }
+
+  /** Wrap a scrape source with the outcome recorder: the Filmweb fallback for an
+   *  eligible single venue, else the plain uptime recorder. Extracted so the
+   *  chunked reduce step (`publishScrape`) records uptime + falls back exactly
+   *  like a live scrape. */
+  private def recordingScraper(inner: CinemaScraper, eligible: Boolean): CinemaScraper =
+    if (eligible)
+      new FilmwebFallbackScraper(inner,
+        () => filmwebFallbackFor(inner.cinema), () => filmwebFallbackIds.get(inner.cinema),
+        uptimeMonitor, filmwebFallbackStore, onEvent = filmwebFallbackOnEvent)
+    else
+      new UptimeRecordingScraper(inner, uptimeMonitor, scrapeOutcomeListener)
 
   /** Rolling per-host scrape-duration stats backing the adaptive scrape timeout.
    *  In-memory by design — it adds no Mongo write load (the throttle this guards
@@ -506,13 +514,43 @@ class WorkerWiring extends play.api.Logging {
   // MovieDetailsComplete only for rows that don't await deferred detail.
   lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus, deferredDetailCinemas)
 
+  // ── Chunked (map-reduce) scrape machinery ──────────────────────────────────
+  // A chunked cinema (ChunkedCinemaScraper) is scraped as one ScrapeChunk task
+  // per chunk, gathered by ChunkScrapeCoordinator + the ChunkScrapeReaper backstop
+  // and aggregated by one ScrapeChunkReduce task — namespaced by a per-run id so a
+  // re-scrape can't conflict with an in-flight one. See ChunkScrapeStore.
+  lazy val chunkScrapeStore: ChunkScrapeStore = new MongoChunkScrapeStore(mongoConnection.database)
+
+  /** Raw chunked clients keyed by displayName — the plan/fetchChunk/reduce
+   *  functions the chunk tasks call. Empty until a client opts in. */
+  lazy val chunkScrapers: Map[String, ChunkedCinemaScraper] =
+    City.all
+      .filter(c => scrapeCities(c.slug))
+      .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
+      .collect { case cs: ChunkedCinemaScraper => ScrapeCinemaHandler.scraperKey(cs.cinema) -> cs }
+      .toMap
+
+  /** Publish a (pre-scraped) listing through the SAME recorder + runner a live
+   *  scrape uses — so the chunked reduce records uptime and falls back to Filmweb
+   *  identically. Also the sink for plan-step (nav-fetch) failures. */
+  private val publishScrape: CinemaScraper => Unit =
+    inner => { cinemaScrapeRunner.run(recordingScraper(inner, FallbackEligibility.eligible(inner))); () }
+
+  lazy val chunkScrapePlanner       = new ChunkScrapePlanner(chunkScrapers, chunkScrapeStore, taskQueue, publishScrape)
+  lazy val scrapeChunkHandler       = new ScrapeChunkHandler(chunkScrapers, chunkScrapeStore)
+  lazy val scrapeChunkReduceHandler = new ScrapeChunkReduceHandler(chunkScrapers, chunkScrapeStore, publishScrape, freshnessStore)
+  lazy val chunkScrapeCoordinator   = new ChunkScrapeCoordinator(chunkScrapeStore, taskQueue)
+  lazy val chunkScrapeReaper        = new ChunkScrapeReaper(chunkScrapeStore, taskQueue, chunkScrapeCoordinator,
+    runStore = scheduledRunStore)
+
   // ONE shared due schedule backs both the scrape reaper (enqueue) and the scrape
   // handler (pickup re-gate), so they agree on what's due and a cinema's scrapes
   // spread across the freshness window instead of falling due in a lockstep wave.
   val scrapeDueWindow = new services.tasks.DueWindow(services.freshness.Freshness.defaultScrapeTtl)
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
-    cinemaScrapeRunner, freshnessStore, scrapeDueWindow
+    cinemaScrapeRunner, freshnessStore, scrapeDueWindow,
+    chunkPlanner = Some(chunkScrapePlanner)
   )
   // Shared detail refresh schedule. Its period is the DetailEnrich TTL (6h,
   // `Freshness.ttlFor`); the SAME instance backs the reaper (enqueue gate) and the
@@ -686,7 +724,7 @@ class WorkerWiring extends play.api.Logging {
   // spiral of 2026-06-23. Live-tunable via KINOWO_WORKER_THROTTLE_PAUSE_MILLIS.
   def workerThrottlePauseMillis: Long = Env.positiveLong("KINOWO_WORKER_THROTTLE_PAUSE_MILLIS", 2000L)
   lazy val taskWorker = new TaskWorker(
-    taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler) ++ ratingHandlers ++ operatorHandlers ++ stagingHandlers,
+    taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler, scrapeChunkHandler, scrapeChunkReduceHandler) ++ ratingHandlers ++ operatorHandlers ++ stagingHandlers,
     poolSize = workerPoolSize,
     // The SAME composite credit-throttle signal the reapers read, so the pool
     // duty-cycles in lockstep with the enqueue-backoff under a credit crunch.
@@ -763,6 +801,9 @@ class WorkerWiring extends play.api.Logging {
   // The reaper advances the staging chain (detail → resolve → imdb → fold) one
   // step per finished staging task.
   eventBus.subscribe(stagingReaper.onTaskFinished)
+  // The coordinator enqueues a chunked scrape's reduce once its last chunk task
+  // finishes (the ChunkScrapeReaper backstop covers lost completions).
+  eventBus.subscribe(chunkScrapeCoordinator.onTaskFinished)
 
   def start(): Unit = {
     // Force Mongo at boot so connection errors surface in the boot timeline.
@@ -812,6 +853,9 @@ class WorkerWiring extends play.api.Logging {
     detailReaper.start()
     settleReaper.start()
     scrapeReaper.start()
+    // Backstop the chunked-scrape fan-in: recover complete runs whose completion
+    // event was lost, and partial-reduce abandoned runs.
+    chunkScrapeReaper.start()
     // Incubate pending_movies through the queue: the reaper kicks new newcomers
     // and backstops stalled chains; the TaskWorker (above) drains the steps.
     stagingReaper.start()
@@ -834,6 +878,7 @@ class WorkerWiring extends play.api.Logging {
     stagingStuckAlerter.foreach(_.stop())
     stagingReaper.stop()
     scrapeReaper.stop()
+    chunkScrapeReaper.stop()
     enrichmentReaper.stop()
     unresolvedTmdbReaper.stop()
     detailReaper.stop()

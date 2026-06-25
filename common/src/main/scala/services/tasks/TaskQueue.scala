@@ -37,10 +37,21 @@ object TaskType {
   case object StagingResolveImdbId extends TaskType { val name = "StagingResolveImdbId" }
   case object StagingFold          extends TaskType { val name = "StagingFold"          }
 
+  // Chunked (map-reduce) scrape: a cinema whose listing fans out over many
+  // independent units (per-day pages, per-event pages) is scraped as one
+  // ScrapeChunk task PER unit (the map — each stores a keyed slice of the
+  // showtimes), gathered by `ChunkScrapeCoordinator` and aggregated by one
+  // ScrapeChunkReduce task (the reduce — publishes the full listing). The whole
+  // run is namespaced by a unique runId so a re-scrape can't mix data with an
+  // in-flight one. See ChunkedCinemaScraper / ChunkScrapeStore.
+  case object ScrapeChunk       extends TaskType { val name = "ScrapeChunk"       }
+  case object ScrapeChunkReduce extends TaskType { val name = "ScrapeChunkReduce" }
+
   val all: Seq[TaskType] =
     Seq(ScrapeCinema, EnrichDetails, ResolveTmdb, ResolveImdbId, ImdbRating, FilmwebRating, RtRating, McRating,
         RefreshAllTmdb, RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt,
-        StagingDetail, StagingResolveTmdb, StagingResolveImdbId, StagingFold)
+        StagingDetail, StagingResolveTmdb, StagingResolveImdbId, StagingFold,
+        ScrapeChunk, ScrapeChunkReduce)
 
   def byName(s: String): Option[TaskType] = all.find(_.name == s)
 }

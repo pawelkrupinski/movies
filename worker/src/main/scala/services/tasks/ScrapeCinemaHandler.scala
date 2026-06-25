@@ -29,7 +29,8 @@ class ScrapeCinemaHandler(
   runner:        CinemaScrapeRunner,
   freshness:     FreshnessStore,
   dueWindow:     DueWindow = new DueWindow(Freshness.defaultScrapeTtl),
-  clock:         Clock = Clock.systemUTC()
+  clock:         Clock = Clock.systemUTC(),
+  chunkPlanner:  Option[ChunkScrapePlanner] = None
 ) extends TaskHandler with Logging {
   import ScrapeCinemaHandler._
   import HandlerOutcome._
@@ -40,7 +41,21 @@ class ScrapeCinemaHandler(
     val key = task.dedupKey
     if (!dueWindow.isDue(key, freshness.lastFetchedAt(key), clock.instant())) return Skipped
 
-    scrapersByKey.get(task.payload.getOrElse(CinemaKey, "")) match {
+    val cinemaName = task.payload.getOrElse(CinemaKey, "")
+    chunkPlanner.filter(_.isChunked(cinemaName)) match {
+      case Some(planner) =>
+        // Chunked cinema: fan out into ScrapeChunk tasks (or no-op if a run is
+        // already active). Freshness is marked by the terminal reduce, not here —
+        // the run doc is the per-cinema mutex, so a duplicate ScrapeCinema while a
+        // run is in flight just no-ops. A plan throw can't escape (it records the
+        // outcome itself), but guard anyway so the queue never reschedules.
+        try { val _ = planner.plan(cinemaName) }
+        catch { case e: Exception => logger.error(s"chunked plan for $cinemaName threw", e) }
+        return Done
+      case None =>
+    }
+
+    scrapersByKey.get(cinemaName) match {
       case None =>
         // Cinema no longer in the catalogue (deploy changed it) — drop the task.
         logger.warn(s"No scraper for task $key; dropping.")

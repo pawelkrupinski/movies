@@ -8,7 +8,7 @@ import services.events.{DomainEvent, EventBus}
 import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
 import services.movies.MovieService
 import services.resolution.ResolutionCache
-import services.tasks.{EnrichDetailsHandler, HandlerOutcome, InMemoryTaskQueue, TaskQueue, TaskType}
+import services.tasks.{ChunkScrapeStore, EnrichDetailsHandler, HandlerOutcome, InMemoryChunkScrapeStore, InMemoryTaskQueue, TaskQueue, TaskType}
 
 import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 import scala.concurrent.duration._
@@ -45,6 +45,11 @@ trait TestWiring extends WorkerWiring {
   // virtual thread production uses to make a real timeout interruptible.
   override protected lazy val adaptiveTimeoutExecutor: java.util.concurrent.ExecutorService =
     DaemonExecutors.directExecutor()
+
+  // In-memory chunked-scrape coordination/store: Mongo is disabled in tests, and
+  // the deterministic harness drives plan→chunk→reduce through this (and the
+  // task-path specs need real coordination, not Mongo no-ops).
+  override lazy val chunkScrapeStore: ChunkScrapeStore = new InMemoryChunkScrapeStore()
 
   // Passthrough resolution caches: the fixture harness proves the pipeline is a
   // pure function of the corpus, and a shared stateful cache (whose value for a
