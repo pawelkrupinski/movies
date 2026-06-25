@@ -163,6 +163,10 @@ class FilmwebRatings(
     val tmdbDirectors   = e.tmdbId.map(tmdb.directorsFor).getOrElse(Set.empty)
     val cinemaDirectors = e.cinemaData.values.flatMap(_.director).toSet
     val directors       = tmdbDirectors ++ cinemaDirectors
+    // TMDB's Polish blurb (same language as Filmweb's `plot`) breaks a same-year
+    // same-title tie inside `lookup`; None when TMDB hasn't resolved a synopsis.
+    val referenceSynopsis = e.data.get(models.Tmdb).flatMap(_.synopsis)
+      .orElse(e.retainedSynopses.get(models.Tmdb))
 
     // Cache the url discovery (the expensive search + /info + /preview probes)
     // keyed by the Filmweb hints. `fresh` carries the full FilmwebInfo on a
@@ -170,7 +174,7 @@ class FilmwebRatings(
     // HIT only the url is known, so rebuild the rating + genres from it.
     var fresh: Option[FilmwebClient.FilmwebInfo] = None
     val cachedUrl = filmwebLinkCache.getOrResolve(ResolutionKeys.filmweb(linkTitle, key.year, fallback, directors)) {
-      val info = Try(filmweb.lookup(linkTitle, key.year, fallback, directors)).toOption.flatten
+      val info = Try(filmweb.lookup(linkTitle, key.year, fallback, directors, referenceSynopsis)).toOption.flatten
       fresh = info
       info.map(_.url)
     }

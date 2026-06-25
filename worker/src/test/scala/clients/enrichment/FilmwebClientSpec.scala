@@ -140,6 +140,22 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     client.parsePreview("""{"directors":[]}""").genres shouldBe empty
   }
 
+  it should "extract the Polish plot from plot.synopsis" in {
+    // Real-shape /preview payload — plot nested under `plot.synopsis`
+    // (alongside sourceType + author), confirmed against /film/469476/preview.
+    val json =
+      """{
+        |  "directors":[{"id":57013,"name":"Denis Villeneuve"}],
+        |  "plot":{"synopsis":"Szlachetny ród Atrydów przybywa na Diunę.","sourceType":7,"author":"Yankes06"}
+        |}""".stripMargin
+    client.parsePreview(json).plot shouldBe Some("Szlachetny ród Atrydów przybywa na Diunę.")
+  }
+
+  it should "leave plot empty when /preview omits it or it's blank" in {
+    client.parsePreview("""{"directors":[]}""").plot shouldBe None
+    client.parsePreview("""{"plot":{"synopsis":""}}""").plot shouldBe None
+  }
+
   // ── parseRating ─────────────────────────────────────────────────────────────
 
   "parseRating" should "extract the 1-10 rate value" in {
@@ -420,5 +436,32 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     r should not be empty
     r.get.url    shouldBe "https://www.filmweb.pl/serial/Kicia+Kocia+w+podr%C3%B3%C5%BCy-2026-10113677"
     r.get.rating shouldBe Some(6.7)
+  }
+
+  // ── pickBest: synopsis tie-break among same-year same-title films ────────────
+  //
+  // Two "Niedźwiedzica" films, same year, both passing the title bar with no
+  // director to separate them — sortKey ties, so the legacy picker keeps the
+  // first. The TMDB reference blurb is about the she-bear documentary, so it
+  // must flip the pick to that candidate.
+
+  private val bearDoc = candidate(id = 200, title = "Niedźwiedzica", year = Some(2026))
+    .copy(plot = Some("Przyrodniczy dokument śledzący niedźwiedzicę i jej młode w Tatrach przez cały rok, gdy uczą się przetrwać w dzikich górach."))
+  private val bankThriller = candidate(id = 100, title = "Niedźwiedzica", year = Some(2026))
+    .copy(plot = Some("Trzymający w napięciu thriller o napadzie na bank, w którym grupa złodziei zostaje uwięziona przez policję w centrum miasta."))
+  private val bearReference =
+    "Dokument o matczynej niedźwiedzicy, która w Tatrach prowadzi swoje młode przez pierwszy rok życia, ucząc je przetrwania w dzikich górach."
+
+  it should "keep the first same-year same-title candidate without a reference synopsis (regression guard)" in {
+    client.pickBest(Seq(bankThriller, bearDoc), "Niedźwiedzica", Some(2026), Set.empty).map(_.id) shouldBe Some(100)
+  }
+
+  it should "break a same-year same-title tie toward the plot-matching film when a reference is given" in {
+    client.pickBest(Seq(bankThriller, bearDoc), "Niedźwiedzica", Some(2026), Set.empty, Some(bearReference)).map(_.id) shouldBe Some(200)
+  }
+
+  it should "keep the legacy pick when the reference matches neither plot" in {
+    val unrelated = "Komedia o grupie przyjaciół otwierających food truck nad morzem."
+    client.pickBest(Seq(bankThriller, bearDoc), "Niedźwiedzica", Some(2026), Set.empty, Some(unrelated)).map(_.id) shouldBe Some(100)
   }
 }

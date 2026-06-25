@@ -1,7 +1,7 @@
 package services.enrichment
 
 import play.api.libs.json._
-import tools.{HttpFetch, TextNormalization}
+import tools.{HttpFetch, SynopsisSimilarity, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -48,17 +48,18 @@ class FilmwebClient(http: HttpFetch) {
    *  trip that goes with it).
    */
   def lookup(
-    title:     String,
-    year:      Option[Int]    = None,
-    fallback:  Option[String] = None,
-    directors: Set[String]    = Set.empty
+    title:             String,
+    year:              Option[Int]    = None,
+    fallback:          Option[String] = None,
+    directors:         Set[String]    = Set.empty,
+    referenceSynopsis: Option[String] = None
   ): Option[FilmwebInfo] = {
-    val primary = lookupWithQuery(title, year, directors)
+    val primary = lookupWithQuery(title, year, directors, referenceSynopsis)
     val effectiveFallback = fallback.filterNot(_.equalsIgnoreCase(title))
-    primary.orElse(effectiveFallback.flatMap(t => lookupWithQuery(t, year, directors)))
+    primary.orElse(effectiveFallback.flatMap(t => lookupWithQuery(t, year, directors, referenceSynopsis)))
   }
 
-  private def lookupWithQuery(query: String, year: Option[Int], directors: Set[String]): Option[FilmwebInfo] =
+  private def lookupWithQuery(query: String, year: Option[Int], directors: Set[String], referenceSynopsis: Option[String]): Option[FilmwebInfo] =
     Try {
       val hits = search(query).take(MaxCandidates)
       // Step 1 (cheap): /info per candidate → title acceptance bar.
@@ -77,12 +78,12 @@ class FilmwebClient(http: HttpFetch) {
           val titleAccepted = infoCandidates.filter(c => matchesByTitle(c, query))
           titleAccepted.map { c =>
             preview(c.id) match {
-              case Some(p) => c.copy(directors = p.directors, genres = p.genres)
+              case Some(p) => c.copy(directors = p.directors, genres = p.genres, plot = p.plot)
               case None    => c
             }
           }
         }
-      pickBest(candidates, query, year, directors).flatMap { c =>
+      pickBest(candidates, query, year, directors, referenceSynopsis).flatMap { c =>
         val url = canonicalUrl(c.id, c.kind, c.title, c.year)
         // Fall back to a winner-only /preview when director verification was
         // skipped (caller didn't supply directors) so the Filmweb slot still
@@ -165,7 +166,10 @@ class FilmwebClient(http: HttpFetch) {
     val genres = (json \ "genres").asOpt[JsArray].map(_.value).getOrElse(Nil)
       .flatMap(j => (j \ "name" \ "text").asOpt[String].filter(_.nonEmpty))
       .toSeq
-    FilmPreview(directors, genres)
+    // Filmweb nests the Polish plot under `plot.synopsis` (alongside sourceType
+    // + author). Used only as the synopsis-tie-break signal, never displayed.
+    val plot = (json \ "plot" \ "synopsis").asOpt[String].filter(_.nonEmpty)
+    FilmPreview(directors, genres, plot)
   }
 
   def parseRating(body: String): Option[Double] =
@@ -184,13 +188,15 @@ class FilmwebClient(http: HttpFetch) {
    *  either direction passes so the cinema reporting "M. Szumowska" still
    *  hits "Małgorzata Szumowska".
    *
-   *  Year breaks ties among accepted candidates.
+   *  Year breaks ties among accepted candidates; a `referenceSynopsis` (the
+   *  row's TMDB Polish blurb) breaks a remaining tie on plot closeness.
    */
   def pickBest(
-    candidates: Seq[Candidate],
-    query:      String,
-    year:       Option[Int],
-    directors:  Set[String]
+    candidates:        Seq[Candidate],
+    query:             String,
+    year:              Option[Int],
+    directors:         Set[String],
+    referenceSynopsis: Option[String] = None
   ): Option[Candidate] = {
     if (candidates.isEmpty || query.trim.isEmpty) return None
     val titleAccepted = candidates.filter(c => matchesByTitle(c, query))
@@ -201,9 +207,22 @@ class FilmwebClient(http: HttpFetch) {
     // often the series. A cinema is screening the film, so the film wins when one
     // clears the bar; a `serial` is still used when it's the only match (Polish
     // children's shows — Kicia Kocia, Basia, Pucio — are filed only as serials).
-    directorAccepted
-      .sortBy(c => (c.kind != "film", year.flatMap(y => c.year.map(yy => math.abs(yy - y))).getOrElse(Int.MaxValue)))
-      .headOption
+    def sortKey(c: Candidate): (Boolean, Int) =
+      (c.kind != "film", year.flatMap(y => c.year.map(yy => math.abs(yy - y))).getOrElse(Int.MaxValue))
+    val sorted = directorAccepted.sortBy(sortKey)
+    // Among candidates TIED at the best (film-first, year-distance) key, the one
+    // whose Filmweb `plot` is the confident closest match to the TMDB blurb wins;
+    // with no reference, no plots, or no confident winner, the stable-sort head
+    // (legacy behaviour) stands.
+    sorted.headOption.map { top =>
+      val tied = sorted.takeWhile(c => sortKey(c) == sortKey(top))
+      if (tied.lengthCompare(1) > 0)
+        referenceSynopsis
+          .flatMap(ref => SynopsisSimilarity.confidentTieBreak(ref, tied.map(_.plot.getOrElse(""))))
+          .map(tied)
+          .getOrElse(top)
+      else top
+    }
   }
 
   private[enrichment] def matchesByTitle(c: Candidate, query: String): Boolean = {
@@ -233,10 +252,12 @@ object FilmwebClient {
   /** /info response — canonical title + optional originalTitle + year. */
   case class FilmInfo(title: String, originalTitle: Option[String], year: Option[Int])
 
-  /** /preview response — director names + Polish genre labels. Other fields
-   *  (cast, plot, duration, countries) are present in the JSON but unused;
-   *  extend if a future caller needs them. */
-  case class FilmPreview(directors: Set[String], genres: Seq[String] = Seq.empty)
+  /** /preview response — director names + Polish genre labels + the Polish
+   *  plot blurb (`plot.synopsis`). `plot` feeds the synopsis tie-break in
+   *  [[FilmwebClient.pickBest]] only; it is NOT stored on the Filmweb slot (the
+   *  row's displayed synopsis stays TMDB/cinema-sourced). Other /preview fields
+   *  (cast, duration, countries) are present in the JSON but unused. */
+  case class FilmPreview(directors: Set[String], genres: Seq[String] = Seq.empty, plot: Option[String] = None)
 
   /** Resolved Filmweb metadata for a film — canonical URL + optional 1–10
    *  user rating + Polish genre labels (empty when /preview didn't return any). */
@@ -258,7 +279,11 @@ object FilmwebClient {
     originalTitle: Option[String],
     year:          Option[Int],
     directors:     Set[String],
-    genres:        Seq[String] = Seq.empty
+    genres:        Seq[String] = Seq.empty,
+    // Polish plot blurb from /preview, present only on candidates whose
+    // /preview was fetched (the director-verification path). Feeds the synopsis
+    // tie-break in `pickBest`; empty otherwise (then the tie-break no-ops).
+    plot:          Option[String] = None
   )
 
   /**
