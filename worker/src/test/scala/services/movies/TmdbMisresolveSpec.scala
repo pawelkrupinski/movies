@@ -9,25 +9,22 @@ import tools.GetOnlyHttpFetch
 
 /**
  * Regression guard: a director-less first scrape of a same-title, same-year TMDB
- * ambiguity must not lock the row onto the wrong (popular) film before the real
- * director arrives. The resolver now REFUSES a director-less ambiguous title
- * (resolves only when the title search is unique), leaving the row tmdbId=None
- * rather than mis-resolved — so when the director hint arrives it resolves cleanly
- * (director-walk) instead of being stranded behind the "already resolved" guard.
+ * ambiguity resolves to the most-popular exact match — but when the real director
+ * arrives and doesn't verify against that film's credits, the row re-resolves via
+ * director-walk to the correct film.
  *
  * Modelled on a real same-title, SAME-YEAR TMDB ambiguity (captured from the
  * live API), where the year can't disambiguate — only the director can:
- *   - tmdb 881487  "The Visitor" (2022), directory Justin P. Lange, imdb tt15558152.
- *     PL title "Gość", original_title "The Visitor", popularity 1.41. `pickBest`
- *     (exact-title incl. original_title → year-distance → popularity-first)
- *     returns THIS for a director-less "The Visitor"/2022 query.
- *   - tmdb 1026057 "The Visitor" (2022), directory Itay Gordon (person 3706395),
+ *   - tmdb 881487  "The Visitor" (2022), director Justin P. Lange, imdb tt15558152.
+ *     PL title "Gość", original_title "The Visitor", popularity 1.41. The most-
+ *     popular exact match for a director-less "The Visitor"/2022 query.
+ *   - tmdb 1026057 "The Visitor" (2022), director Itay Gordon (person 3706395),
  *     popularity 0.15 — the film the cinema is actually showing.
  *
- * CinemaCity scrapes first WITHOUT a director → the row REFUSES (no-match, the
- * search is ambiguous). Helios then reports the real director "Itay Gordon"; the
- * now-unresolved row resolves cleanly, director-walking past the popular decoy
- * 881487 (credits = Justin P. Lange) to the CORRECT 1026057 the cinema is showing.
+ * CinemaCity scrapes first WITHOUT a director → resolves to the popular decoy 881487.
+ * Helios then reports the real director "Itay Gordon"; the verify step finds "Itay
+ * Gordon" absent from 881487's credits (Justin P. Lange) → re-resolves via
+ * director-walk to the CORRECT 1026057 the cinema is showing.
  */
 class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
 
@@ -79,15 +76,11 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     val service   = new MovieService(cache, bus, visitorTmdb())
     val key   = cache.keyOf(Title, Year)
 
-    // 1. Resolve against the director-less row → mis-resolves to the popular
-    //    same-year decoy. `reEnrichSync` force-resolves (bypasses the guard) so
-    //    the setup is deterministic.
+    // 1. Resolve against the director-less row — no director to pick between the two
+    //    same-year "The Visitor" films, so searchYearExactTop picks the most-popular
+    //    exact match: the decoy (881487, Justin P. Lange).
     service.reEnrichSync(Title, Year)
-    // With no director to tell the same-year "The Visitor" pair apart, the resolver
-    // now REFUSES rather than guessing the popular decoy (the generalised "Zaproszenie"
-    // guard: a director-less ambiguous title resolves only when the search is unique),
-    // so the row stays unresolved until a disambiguating hint arrives.
-    cache.get(key).flatMap(_.tmdbId) shouldBe None
+    cache.get(key).flatMap(_.tmdbId) shouldBe Some(Decoy)
 
     // 2. Helios now reports the real director "Itay Gordon".
     cache.putIfPresent(key, r =>
@@ -99,9 +92,9 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     bus.publish(MovieDetailsComplete(Title, Year, originalTitle = None, director = Some(Director)))
     service.stop()
 
-    // The director hint now resolves it to Itay Gordon's "The Visitor": the row was
-    // left unresolved (refused) rather than mis-resolved, so the director arrival
-    // resolves it cleanly — director-walking to the correct film.
+    // The director hint triggers a re-verify: "Itay Gordon" is not in 881487's
+    // credits (Justin P. Lange is) → the row re-resolves via director-walk to
+    // the correct film, 1026057.
     cache.get(key).flatMap(_.tmdbId) shouldBe Some(Correct)
   }
 }

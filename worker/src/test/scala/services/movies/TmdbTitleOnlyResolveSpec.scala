@@ -132,10 +132,10 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Labirynt", Some(2024))).flatMap(_.tmdbId) shouldBe None
   }
 
-  it should "NOT resolve a year-bearing row when MULTIPLE exact-title matches exist (same-year same-original-title ambiguity)" in {
-    // Two 2022 films share original_title "The Visitor": the popular decoy matches
-    // via original_title; the correct one matches via its Polish/display title.
-    // Multiple exact matches → refuse (director hint still required).
+  it should "resolve a year-bearing row to the most-popular exact match when multiple results are exact (same-year same-original-title)" in {
+    // Two 2022 "The Visitor" films: the popular one (881487) matches via
+    // original_title; the less-popular one (1026057) matches via title.
+    // Both are exact matches — searchYearExactTop picks the most-popular one.
     val seed = MovieRecord(data = Map[Source, SourceData](
       CinemaCityPoznanPlaza -> SourceData(title = Some("The Visitor"), releaseYear = Some(2022))))
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("The Visitor", Some(2022), seed))))
@@ -144,9 +144,12 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
       |{"id":1026057,"title":"The Visitor","original_title":"The Visitor","release_date":"2022-06-01","popularity":0.145}
       |]}""".stripMargin
     val service = new MovieService(cache, new InProcessEventBus(),
-      tmdb("/search/movie" -> search)) // no /external_ids stub — a resolve would throw
+      tmdb(
+        "/search/movie"              -> search,
+        "/movie/881487/external_ids" -> """{"id":881487,"imdb_id":"tt15558152"}"""
+      ))
 
     service.reEnrichSync("The Visitor", Some(2022))
-    cache.get(cache.keyOf("The Visitor", Some(2022))).flatMap(_.tmdbId) shouldBe None
+    cache.get(cache.keyOf("The Visitor", Some(2022))).flatMap(_.tmdbId) shouldBe Some(881487)
   }
 }

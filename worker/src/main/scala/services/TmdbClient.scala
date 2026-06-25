@@ -85,22 +85,20 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
     if (results.lengthCompare(1) == 0) results.headOption else None
   }
 
-  /** Resolve when a YEAR is present AND the year-scoped search yields EXACTLY ONE
-   *  exact-title match (Polish or original). Broader than [[searchUnique]] (which
-   *  needs the whole result set to be a singleton): the year scopes to the right
-   *  era, so a row whose year-scoped search returns several same-year films
+  /** Resolve when a YEAR is present AND the year-scoped search returns at least
+   *  one EXACT title match (Polish or original). Returns the most-popular exact
+   *  match (first after [[parseSearchResults]]'s popularity sort). Broader than
+   *  [[searchUnique]] (which needs the whole result set to be a singleton): the
+   *  year scopes to the right era and a verbatim title in the results is the
+   *  confidence, so a row whose year-scoped search returns several same-year films
    *  ("Sundown" alongside "Sundown Town", "DJ at Sundown") still resolves to the
-   *  one the cinema named — provided only that one is an exact match.
-   *  Refuses when multiple results are exact matches (e.g. two same-year films
-   *  with the same original title) — that's still an ambiguity a director hint
-   *  must resolve. No-op without a year; yearless rows stay refused. */
+   *  one the cinema named. Still refuses when NO result is an exact match — that's
+   *  the popularity guess [[searchUnique]] exists to avoid. No-op without a year,
+   *  so yearless rows stay refused. */
   def searchYearExactTop(title: String, year: Option[Int]): Option[TmdbClient.SearchResult] =
     if (year.isEmpty) None
     else authHeader.flatMap { auth =>
-      searchOnce(title, year, auth).filter(TmdbClient.isExactTitleMatch(_, title)) match {
-        case Seq(single) => Some(single)
-        case _           => None
-      }
+      searchOnce(title, year, auth).filter(TmdbClient.isExactTitleMatch(_, title)).headOption
     }
 
   /**
