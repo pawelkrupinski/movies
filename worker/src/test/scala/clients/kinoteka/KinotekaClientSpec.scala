@@ -5,10 +5,8 @@ import models.{Kinoteka, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{FilmDetail, KinotekaClient}
-import tools.HttpFetch
 
 import java.time.LocalDateTime
-import java.util.concurrent.atomic.AtomicInteger
 
 class KinotekaClientSpec extends AnyFlatSpec with Matchers {
 
@@ -85,32 +83,15 @@ class KinotekaClientSpec extends AnyFlatSpec with Matchers {
     synopses.foreach(_ should not include "Harmonogram")
   }
 
-  // Kinoteka's ~2 weeks of day pages used to be fetched ONE at a time, summing
-  // to a ~30-70s scrape that pinned a worker slot and drained the shared-cpu
-  // credit into a throttle. They're independent `?date=` GETs, so they now fetch
-  // a few at a time — assert the listing/day fetches actually overlap.
-  it should "fetch the date pages concurrently rather than one at a time" in {
-    val probe = new KinotekaClientSpec.ConcurrencyProbeHttpFetch(new FakeHttpFetch("kinoteka"))
-    new KinotekaClient(probe).fetch()
-    probe.maxConcurrent should be > 1
-  }
-}
-
-object KinotekaClientSpec {
-  /** Wraps a fetch and tracks the peak number of `get`s in flight at once. Each
-   *  call sleeps briefly so concurrent fetches actually overlap and are counted. */
-  private class ConcurrencyProbeHttpFetch(inner: HttpFetch) extends HttpFetch {
-    private val inFlight = new AtomicInteger(0)
-    private val maxSeen  = new AtomicInteger(0)
-    def maxConcurrent: Int = maxSeen.get
-
-    override def get(url: String): String = {
-      val now = inFlight.incrementAndGet()
-      maxSeen.updateAndGet(m => math.max(m, now))
-      try { Thread.sleep(40); inner.get(url) } finally inFlight.decrementAndGet()
-    }
-
-    override def post(url: String, body: String, contentType: String): String =
-      inner.post(url, body, contentType)
+  // Chunked scrape: the day pages are now fanned out as independent ScrapeChunk
+  // tasks (one per date) instead of one synchronous scrape, so a slow day can't
+  // pin the whole ~2-week scrape. The split must be behaviour-preserving — the
+  // assertions above run through the synchronous `fetch()` (= reduce∘fetchChunk∘
+  // planChunks) and still see 82 films / 268 showtimes.
+  "KinotekaClient.planChunks" should "enumerate the date nav as the chunk keys" in {
+    val dates = client.planChunks()
+    dates.size should be > 1
+    all(dates) should fullyMatch regex """\d{4}-\d{2}-\d{2}"""
+    client.fetchChunk(dates.head) should not be empty // a single day yields films
   }
 }

@@ -2,10 +2,9 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch}
 
 import java.time.LocalDateTime
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -16,8 +15,14 @@ import scala.util.Try
  * `/film/<slug>/` detail page adds runtime / director / countries / year /
  * original title / synopsis. Dates come from the page's own nav, so the replay
  * is deterministic.
+ *
+ * Chunked scrape: `planChunks` enumerates the date nav, each `fetchChunk(date)`
+ * pulls + parses one day page independently (its own queued task, so a slow day
+ * can't pin the whole ~2-week scrape), and `reduceChunks` merges the per-day
+ * films by `/film/<slug>/`. The synchronous `fetch()` (the harness path) composes
+ * these to exactly the old whole-scrape output.
  */
-class KinotekaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
+class KinotekaClient(http: HttpFetch) extends ChunkedCinemaScraper with DetailEnricher {
 
   // Static detail pages cached across passes (CachingDetailFetch); the listing
   // and day pages keep the live `http` since their showtimes change every pass.
@@ -36,23 +41,30 @@ class KinotekaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  def fetch(): Seq[CinemaMovie] = fetchBare()
+  /** The date nav off the listing page = one chunk per day. A failed fetch here
+   *  fails the whole scrape (recorded as a normal outcome), as before. */
+  def planChunks(): Seq[String] =
+    DatePat.findAllMatchIn(http.get(ListingUrl)).map(_.group(1)).toSeq.distinct
 
-  private def fetchBare(): Seq[CinemaMovie] = {
-    val base  = http.get(ListingUrl)
-    val dates = DatePat.findAllMatchIn(base).map(_.group(1)).toSeq.distinct
-    // Fetch the ~2 weeks of day pages a few at a time rather than one-at-a-time:
-    // serially they summed to ~30–70s and pinned a scrape slot long enough to
-    // drain the worker's shared-cpu credit into a throttle. The pages are
-    // independent GETs of the same listing keyed by `?date=`, so concurrency is
-    // safe; 4 keeps us polite to a small site while cutting the wall-clock ~4×.
-    val dayPages = ParallelDetailFetch.keyed("kinoteka-days", dates, 1.minute, maxConcurrent = 4)(d => s"$ListingUrl?date=$d") { url =>
-      Try(http.get(url)).toOption
-    }
-    val slots = dates.flatMap(d => dayPages.getOrElse(d, None).toSeq.flatMap(parsePage))
+  /** One day page → that day's films (slots grouped by slug). A throw reschedules
+   *  just this day's chunk task. */
+  def fetchChunk(date: String): Seq[CinemaMovie] =
+    moviesFrom(parsePage(http.get(s"$ListingUrl?date=$date")))
 
-    val bySlug = slots.groupBy(_.slug)
-    bySlug.toSeq.flatMap { case (slug, group) =>
+  /** Merge the per-day films by `/film/<slug>/`, unioning showtimes — the same
+   *  cross-day fold the old whole-scrape did (deterministic by film URL; poster is
+   *  the first non-empty across days). */
+  override def reduceChunks(chunks: Map[String, Seq[CinemaMovie]]): Seq[CinemaMovie] =
+    chunks.toSeq.sortBy(_._1).flatMap(_._2)
+      .groupBy(_.filmUrl).toSeq.sortBy(_._1.map(_.toString).getOrElse(""))
+      .map { case (_, group) =>
+        val showtimes = group.flatMap(_.showtimes).distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
+        group.head.copy(showtimes = showtimes, posterUrl = group.flatMap(_.posterUrl).headOption)
+      }
+
+  /** This day's slots → one film per slug, with that day's showtimes. */
+  private def moviesFrom(slots: Seq[RawSlot]): Seq[CinemaMovie] =
+    slots.groupBy(_.slug).toSeq.flatMap { case (slug, group) =>
       val primary   = group.head
       val showtimes = group.map(s => Showtime(s.dateTime, s.booking, None, Nil))
                        .distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
@@ -69,7 +81,6 @@ class KinotekaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
         trailerUrl = None
       ))
     }
-  }
 
   override val detailGroup: String = "kinoteka"
 
