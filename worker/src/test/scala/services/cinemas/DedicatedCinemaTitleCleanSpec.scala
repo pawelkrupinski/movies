@@ -3,9 +3,8 @@ package services.cinemas
 import models.{KinoBajka, KinoCyfroweKino, KinoFarys, KinoNaStarowce, KinoOskard, KinoStaryMlyn}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import scripts.ExtraTitleRules
 import services.movies.TitleNormalizer
-import services.titlerules.{TitleRuleDefaults, TitleRuleSet}
+import services.titlerules.{ExtraTitleRules, TitleRuleDefaults, TitleRuleSet}
 import tools.HttpFetch
 
 import java.time.YearMonth
