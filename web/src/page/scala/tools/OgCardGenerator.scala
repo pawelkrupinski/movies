@@ -62,16 +62,30 @@ object OgCardGenerator {
     try {
       cities.foreach { city =>
         val t0 = System.currentTimeMillis()
-        try {
-          val bg   = screenshotCity(chrome, s"$baseUrl/${city.slug}/")
-          val card = renderCard(chrome, bg, s"Repertuar kin ${city.locativePhrase}")
-          val out  = outDir.resolve(s"og-${city.slug}.png")
-          Files.write(out, downscale(card))
-          ok += 1
-          println(f"✓ ${city.slug}%-20s ${(System.currentTimeMillis() - t0) / 1000.0}%4.1fs  $out")
-        } catch {
-          case e: Throwable =>
-            System.err.println(s"✗ ${city.slug}: ${e.getMessage}")
+        // Retry transient load failures (the offline dino page, a momentary
+        // 5xx / rate-limit near the end of a long run) before giving up. A
+        // genuine failure after `Attempts` tries leaves the prior card on disk
+        // untouched — never overwritten with a broken render.
+        val Attempts = 3
+        var attempt  = 0
+        var written  = false
+        while (!written && attempt < Attempts) {
+          attempt += 1
+          try {
+            val bg   = screenshotCity(chrome, s"$baseUrl/${city.slug}/")
+            val card = renderCard(chrome, bg, s"Repertuar kin ${city.locativePhrase}")
+            val out  = outDir.resolve(s"og-${city.slug}.png")
+            Files.write(out, downscale(card))
+            ok += 1
+            written = true
+            println(f"✓ ${city.slug}%-20s ${(System.currentTimeMillis() - t0) / 1000.0}%4.1fs  $out")
+          } catch {
+            case e: Throwable =>
+              if (attempt < Attempts) {
+                System.err.println(s"… ${city.slug}: ${e.getMessage} (attempt $attempt/$Attempts, retrying)")
+                Thread.sleep(1500)
+              } else System.err.println(s"✗ ${city.slug}: ${e.getMessage} (gave up after $Attempts attempts)")
+          }
         }
       }
     } finally chrome.close()
@@ -80,16 +94,53 @@ object OgCardGenerator {
     println(f"done: $ok/${cities.size} cards in $secs%.1fs (~${secs / cities.size}%.1fs/city)")
   }
 
+  /** JS predicate: the repertoire page's inline JS ran. `pickDay` is defined
+   *  on every successful render (empty repertoire or not), so it doubles as a
+   *  "the site actually loaded" probe — false on Chrome's offline error page,
+   *  a 5xx body, or any non-repertoire response that still reaches readyState
+   *  `complete`. */
+  private[tools] val RepertoireLoadedJs: String = "typeof pickDay==='function'"
+
+  /** JS predicate: every poster `<img>` currently intersecting the viewport
+   *  has either decoded (`complete` with a non-zero natural size) or been
+   *  hidden by its `onerror` fallback chain (the "Brak plakatu" placeholder
+   *  took over). The screenshot waits on this instead of a fixed sleep: the
+   *  proxied poster `<img>`s are `loading="lazy"` and decode at variable
+   *  speed, so a fixed wait raced the decode and left whichever cities were
+   *  slow with blank posters on their card. Only viewport-intersecting
+   *  posters matter — that's all the screenshot captures — so lazy posters
+   *  below the fold are excluded (they never load and would hang the poll). */
+  private[tools] val PostersReadyJs: String =
+    "[].slice.call(document.querySelectorAll('img[data-original-src]'))" +
+      ".filter(function(i){var r=i.getBoundingClientRect();" +
+      "return r.bottom>0&&r.top<window.innerHeight&&r.right>0&&r.left<window.innerWidth;})" +
+      ".every(function(i){return (i.complete&&i.naturalWidth>0)||i.offsetParent===null;})"
+
   /** Screenshot the live city page at desktop 2×, with every date shown so the
-   *  grid is populated regardless of the hour. Returns Base64 PNG bytes. */
+   *  grid is populated regardless of the hour. Returns Base64 PNG bytes.
+   *
+   *  Throws when the page didn't actually load (Chrome's offline error page, a
+   *  5xx, prod rate-limiting): such a navigation still reaches readyState
+   *  `complete`, so without this guard we'd screenshot the dino error page and
+   *  emit a blank card. `pickDay` is defined inline on every repertoire render
+   *  — empty repertoire or not — so its absence means the site never loaded.
+   *  The caller treats the throw as a skip + retry rather than overwriting a
+   *  previously-good card with garbage. */
   private def screenshotCity(chrome: Chrome, url: String): String =
     chrome.openPage(url) { page =>
       setMetrics(page, 1180, 760, 2)
+      try page.waitFor(RepertoireLoadedJs, timeoutMs = 4000, pollMs = 100)
+      catch { case _: Throwable => throw new RuntimeException("repertoire page did not load (no pickDay)") }
       // The date tabs are JS-only (`pickDay`); "anytime" shows all upcoming
       // days so a late-night "Dziś" empty view doesn't yield an empty card.
-      try page.eval("(typeof pickDay==='function') ? (pickDay('anytime'), true) : false")
+      try page.eval("pickDay('anytime')")
       catch { case _: Throwable => () }
-      Thread.sleep(900) // let the filter re-layout + the top posters decode
+      // Wait for the in-viewport posters to actually decode (see PostersReadyJs).
+      // Capped so a genuinely broken poster can't hang the run — we screenshot
+      // whatever decoded once the cap elapses.
+      try page.waitFor(PostersReadyJs, timeoutMs = 8000, pollMs = 150)
+      catch { case _: Throwable => () }
+      Thread.sleep(400) // final layout + paint settle
       page.screenshot()
     }
 
