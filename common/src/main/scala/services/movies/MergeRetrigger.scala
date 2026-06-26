@@ -70,6 +70,7 @@ object MergeRetrigger {
     val originalTitleChanged = before.originalTitle != after.originalTitle
     val directorChanged      = before.director != after.director
     val tmdbIdChanged        = before.tmdbId != after.tmdbId
+    val tmdbNoMatchChanged   = before.tmdbNoMatch != after.tmdbNoMatch
     val imdbIdChanged        = before.imdbId != after.imdbId
     val searchTitleChanged   = before.searchTitle != after.searchTitle
     // The inputs the search-title-driven ratings (Filmweb/RT/Metacritic) resolve
@@ -81,8 +82,8 @@ object MergeRetrigger {
     val builder = Set.newBuilder[RetriggerKind]
     if ((titleOrYearChanged || originalTitleChanged || directorChanged) && after.tmdbId.isEmpty && !after.tmdbNoMatch)
       builder += RetriggerKind.ResolveTmdb
-    if ((tmdbIdChanged || searchTitleChanged || titleOrYearChanged || directorChanged || originalTitleChanged)
-        && after.tmdbId.isDefined && after.imdbId.isEmpty)
+    if ((tmdbIdChanged || tmdbNoMatchChanged || searchTitleChanged || titleOrYearChanged || directorChanged || originalTitleChanged)
+        && (after.tmdbId.isDefined || after.tmdbNoMatch) && after.imdbId.isEmpty)
       builder += RetriggerKind.ResolveImdbId
     if (imdbIdChanged && after.imdbId.isDefined)
       builder += RetriggerKind.ImdbRating

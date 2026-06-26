@@ -88,4 +88,22 @@ class MergeRetriggerSpec extends AnyFlatSpec with Matchers {
     val afterRec  = beforeRec.copy(data = Map(Tmdb -> SourceData(director = Seq("Jan Nowak"))))
     decide(beforeRec, k("Foo"), afterRec, k("Foo")) should not contain ResolveImdbId
   }
+
+  it should "re-kick IMDb-id resolution when tmdbNoMatch flips to true (film not on TMDB but may be on IMDb)" in {
+    val before = rec(tmdbId = None, tmdbNoMatch = false, imdbId = None)
+    val after  = rec(tmdbId = None, tmdbNoMatch = true,  imdbId = None)
+    decide(before, k("Nomadland"), after, k("Nomadland")) should contain (ResolveImdbId)
+  }
+
+  it should "re-kick IMDb-id resolution when a tmdbNoMatch row gains an originalTitle hint" in {
+    val before = rec(tmdbId = None, tmdbNoMatch = true, imdbId = None, original = None)
+    val after  = rec(tmdbId = None, tmdbNoMatch = true, imdbId = None, original = Some("Past Lives"))
+    decide(before, k("Poprzednie życie"), after, k("Poprzednie życie")) should contain (ResolveImdbId)
+  }
+
+  it should "NOT re-kick IMDb-id resolution for a tmdbNoMatch row that already has an imdbId" in {
+    val before = rec(tmdbId = None, tmdbNoMatch = true, imdbId = Some("tt13238346"))
+    val after  = rec(tmdbId = None, tmdbNoMatch = true, imdbId = Some("tt13238346"), original = Some("Past Lives"))
+    decide(before, k("Poprzednie życie"), after, k("Poprzednie życie")) should not contain ResolveImdbId
+  }
 }
