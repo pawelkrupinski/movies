@@ -7,16 +7,15 @@ import services.alerts.{FallbackAlert, FilmwebDropAlerter, StagingStuckAlerter, 
 import services.cinemas._
 import services.enrichment._
 import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
-import services.events.{EventBus, ImdbIdMissing, InProcessEventBus, MovieDetailsComplete, StagingFilmEnriched, TaskFinished}
+import services.events.{EventBus, ImdbIdMissing, InProcessEventBus, StagingFilmEnriched, TaskFinished}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
-import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepository, MovieService, MongoNormalizationReportRepository, NormalizationRebuilder, NormalizationReport, NormalizationReportRepository, QueueResolveDispatcher, UnscreenedCleanup}
+import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepository, MovieService, QueueResolveDispatcher, UnscreenedCleanup}
 import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
 import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
 import services.tasks.{BulkRefreshHandler, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
-import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
 import tools.{DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
 
 import java.lang.management.ManagementFactory
@@ -339,26 +338,6 @@ class WorkerWiring extends play.api.Logging {
   // defaults so behaviour is unchanged from the hardcoded baseline. When an edit
   // arrives over the change stream, re-merge existing records so the rule applies
   // retroactively, not just to future scrapes.
-  lazy val normalizationRebuilder = new NormalizationRebuilder(movieCache,
-    onSplitOff = (title, year) => eventBus.publish(MovieDetailsComplete(title, year)),
-    mergeMetrics = taskMetrics, splitMetrics = taskMetrics)
-  lazy val normalizationReportRepository: NormalizationReportRepository =
-    new MongoNormalizationReportRepository(mongoConnection.database, fallbackToOwnInit = false)
-  lazy val titleRulesRepository: TitleRulesRepository = new MongoTitleRulesRepository(mongoConnection.database, fallbackToOwnInit = false)
-  lazy val titleRulesCache: TitleRulesCache =
-    new TitleRulesCache(titleRulesRepository, seedIfEmpty = true,
-      onRulesChanged = (oldRules, newRules) => {
-        // Merge-key changes (per-cinema / structural / canonical) → re-merge /
-        // un-merge existing rows.
-        val result = normalizationRebuilder.rebuild()
-        // Search-tier changes → re-resolve the rows whose upstream query moved.
-        val reEnriched = normalizationRebuilder.reEnrichSearchChanges(
-          TitleRuleSet(oldRules), TitleRuleSet(newRules),
-          (title, year) => eventBus.publish(MovieDetailsComplete(title, year)))
-        // Publish the realized outcome so the admin editor can show what happened.
-        normalizationReportRepository.writeLatest(
-          NormalizationReport.render(result, reEnriched, System.currentTimeMillis()))
-      })
 
   // The *Ratings classes refresh synchronously (the queue's RatingHandler / the
   // operator bulk walk), so they own no EC — only imdbIdResolver still runs
@@ -860,9 +839,6 @@ class WorkerWiring extends play.api.Logging {
     mongoConnection.database
     // Install the override source first so boot-time knob reads already see flips.
     envConfigService.start()
-    // Seed + install title rules before the cache hydrates so scrape/merge keys
-    // are computed with the active rules from the very first tick.
-    titleRulesCache.start()
     // Boot ordering, tuned to not drain the shared-CPU credit balance on a cold
     // JVM: the cache hydrate (synchronous findAll — the first scrape tick needs a
     // populated cache for sibling/redirect checks) and the projector's state seed
@@ -944,10 +920,8 @@ class WorkerWiring extends play.api.Logging {
     unscreenedCleanup.stop()
     readModelProjector.stop()
     movieCache.stop()
-    titleRulesCache.stop()
     readModelRepository.close()
     movieRepository.close()
-    titleRulesRepository.close()
     mongoConnection.close()
   }
 }

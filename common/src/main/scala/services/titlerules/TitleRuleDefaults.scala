@@ -2,19 +2,12 @@ package services.titlerules
 
 import RuleScope._
 
-/** The seed rule set — every formerly-hardcoded `TitleNormalizer` regex,
- *  transcribed verbatim and tagged with the tier it ran in. This is BOTH:
+/** The baseline rule set — every formerly-hardcoded `TitleNormalizer` regex,
+ *  transcribed verbatim and tagged with the tier it ran in. Loaded at class-load
+ *  as part of the combined `TitleRuleDefaults.all ++ ExtraTitleRules.all` set.
  *
- *   1. the in-code fallback `TitleNormalizer` installs at class-load, so the
- *      normaliser behaves correctly before Mongo is read and in tests that
- *      don't wire a rules store; and
- *   2. the documents `SeedTitleRules` upserts into an empty `titleRules`
- *      collection.
- *
- *  `TitleRuleMigrationSpec` asserts that running titles through this set
- *  produces byte-identical output to the pre-rules implementation. DO NOT edit a
- *  pattern here to change behaviour — edit the rule in the DB via the admin page;
- *  this set only exists to reproduce the original baseline.
+ *  `ProdTitlesNormalizationSpec` pins this set byte-for-byte against the pre-rules
+ *  code on a prod-title snapshot. New normalisation behaviour goes in `ExtraTitleRules`.
  *
  *  Per-cinema rules (the old per-client `cleanTitle`) are added in a later step;
  *  at this baseline the per-cinema tier is empty and clients still clean inline. */

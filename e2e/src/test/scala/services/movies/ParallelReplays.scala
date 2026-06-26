@@ -14,12 +14,11 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  * Safe to run in one JVM because every replay builds a fully isolated
  * `FixtureTestWiring` (its own cache, repository, staging folder, read model and
  * thread pools). The one process-global on the path — `TitleNormalizer.active` —
- * is only ever WRITTEN by `WorkerWiring.start()` → `titleRulesCache.start()`,
- * which `FixtureTestWiring` never calls (it has no Mongo, so the lazy
- * `titleRulesCache` is never initialised). Concurrent replays therefore only
- * READ an immutable, never-reassigned rule set. The caller's own cross-replay
- * byte-equality assertion is the backstop: any accidental shared mutable state
- * would surface as a divergence here, not a silent pass.
+ * is loaded at class-init from `TitleRuleDefaults ++ ExtraTitleRules` and
+ * never reassigned in tests. Concurrent replays therefore only READ an
+ * immutable rule set. The caller's cross-replay byte-equality assertion is
+ * the backstop: accidental shared mutable state would surface as a
+ * divergence, not a silent pass.
  */
 object ParallelReplays {
 

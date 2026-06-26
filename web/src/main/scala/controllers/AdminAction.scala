@@ -10,8 +10,8 @@ import scala.concurrent.{ExecutionContext, Future}
  *  trigger. The Play session carries our internal user UUID (set by
  *  `AuthController.callback`); this resolves it and requires the user's email be
  *  on the `ADMIN_ALLOWLIST`. 401 when not logged in, 403 when logged in but not
- *  an admin — the contract `AdminTitleRulesController` used to enforce inline,
- *  now shared so every gated controller behaves identically.
+ *  an admin —
+ *  now shared so every admin controller behaves identically.
  *
  *  Use as an `ActionBuilder`: `adminAction { Ok(...) }` for a no-body action, or
  *  `adminAction(parse.json) { request => ... }` when the action reads a body. */

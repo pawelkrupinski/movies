@@ -1,17 +1,17 @@
 package services.movies
 
-import services.titlerules.{TitleRuleSet, TitleRuleDefaults}
+import services.titlerules.{TitleRuleSet, TitleRuleDefaults, ExtraTitleRules}
 
 import java.util.Locale
 import java.util.regex.Pattern
 
 object TitleNormalizer {
-  // The active rule set drives every prefix/suffix/canonical strip below. It's
-  // swapped wholesale by the change-stream consumer when an admin edits a rule;
-  // seeded with the migrated defaults so behaviour is correct before Mongo loads
-  // and in tests that don't wire a rules store. `@volatile` makes the swap
-  // visible to scrape/enrich threads without locking the hot path.
-  @volatile private var active: TitleRuleSet = TitleRuleDefaults.ruleSet
+  // The active rule set drives every prefix/suffix/canonical strip below.
+  // Rules live in code (TitleRuleDefaults + ExtraTitleRules) and are loaded once
+  // at class-load. `@volatile` makes the reference visible to scrape/enrich
+  // threads; tests can swap it thread-locally via `withRules`.
+  @volatile private var active: TitleRuleSet =
+    TitleRuleSet(TitleRuleDefaults.all ++ ExtraTitleRules.all)
 
   // A THREAD-SCOPED override that, when set, shadows `active` for the current
   // thread only. Tests that need a custom rule set install it here via
@@ -29,7 +29,7 @@ object TitleNormalizer {
     case rs   => rs
   }
 
-  /** Install a new rule set (called by the `titleRules` change-stream consumer). */
+  /** Install a rule set — used by tests that want to exercise a custom set globally. */
   def installRules(rs: TitleRuleSet): Unit = active = rs
 
   /** Run `body` with `rs` as the active rule set for the CURRENT THREAD only,
@@ -48,8 +48,8 @@ object TitleNormalizer {
    *  (which run without a thread scope, so they see what `installRules` set). */
   def currentRules: TitleRuleSet = active
 
-  /** Restore the in-code defaults on the GLOBAL rule set. */
-  def resetToDefaults(): Unit = active = TitleRuleDefaults.ruleSet
+  /** Restore the full in-code rule set on the GLOBAL slot — used by tests after a global swap. */
+  def resetToDefaults(): Unit = active = TitleRuleSet(TitleRuleDefaults.all ++ ExtraTitleRules.all)
 
   /** Apply a cinema's per-cinema cleanup rules to a raw scraped title. */
   def cinemaClean(cinemaId: String, raw: String): String = effective.perCinema(cinemaId, raw)
@@ -317,10 +317,9 @@ object TitleNormalizer {
     (-punct, -diacritic, -mixedCase, junk, c.length, c)
   }
 
-  /** The deterministic display-title ladder shared by the live merge
-   *  (`MovieRecord.displayTitle`) and the admin rule-merge preview
-   *  (`RuleMergePreview`): from the per-cinema cleaned spellings of one merged
-   *  row, pick the form to show (no scrape-order dependence).
+  /** The deterministic display-title ladder used by the live merge
+   *  (`MovieRecord.displayTitle`): from the per-cinema cleaned spellings of one
+   *  merged row, pick the form to show (no scrape-order dependence).
    *
    *   A. **Dominant identity** — group the spellings by `sanitize` key and take
    *      the key the most cinemas agree on (ties → lexicographically-smallest),

@@ -1,22 +1,12 @@
-package scripts
+package services.titlerules
 
-import services.titlerules.RuleScope._
-import services.titlerules.TitleRule
+import RuleScope._
 
-/** Post-baseline title-rule ADDITIONS, curated from a 2026-06 audit of the prod
- *  `movies` corpus (the senior / DKF / Konesera / przedpremiera long tail that
- *  fragments one film across 15–25 rows, none of which enrich because the banner
- *  isn't stripped for the external-API query).
+/** Post-baseline title-rule ADDITIONS: programme-cycle banners, search strips,
+ *  canonical unifications, and per-cinema cleanups curated from a 2026-06 audit
+ *  of the prod `movies` corpus. Rules in code; no DB or workflow needed.
  *
- *  These are deliberately NOT in [[services.titlerules.TitleRuleDefaults]]: that
- *  set is the FROZEN migration baseline `TitleRuleMigrationSpec` /
- *  `ProdTitlesNormalizationSpec` pin byte-for-byte against the pre-rules code, so
- *  a behaviour-changing rule can't live there. New normalisation is operational
- *  data in the `titleRules` collection. This object is the version-controlled,
- *  regression-tested (`ExtraTitleRulesSpec`) source for those records;
- *  [[ApplyExtraTitleRules]] merges them into prod, where the worker's change-stream
- *  backfill (`NormalizationRebuilder` + `reEnrichSearchChanges`) re-keys and
- *  re-enriches the affected rows.
+ *  Regression-tested by `ExtraTitleRulesSpec`.
  *
  *  Three tiers, matching the existing pipeline:
  *   - `programmePrefixes` — GlobalStructural scope, `tag = programmePrefix`: a
@@ -33,12 +23,9 @@ import services.titlerules.TitleRule
  *  GlobalStructural decoration MERGES (`/Kino Cafe` collapsing into the base film)
  *  are still intentionally left out: a GlobalStructural rule does NOT change the
  *  `sanitize` key, so the stale "X/Kino Cafe" and the base "X" collide on cache
- *  hydration — Caffeine last-write-wins drops one before
- *  `NormalizationRebuilder.rebuild` ever sees two entries to union. PerCinema and
- *  Canonical rules DON'T hit this: they change the key, so the rebuilder re-keys
- *  and unions on collision — which is why the seed's per-cinema migrations and the
- *  `canonical` additions below back-fill fine. A GlobalStructural decoration merge
- *  still waits on a rebuild union-on-collision fix (or per-cinema scoping). */
+ *  hydration and Caffeine last-write-wins drops one. PerCinema and Canonical rules
+ *  DON'T hit this: they change the key, so two rows have distinct keys before they
+ *  collide. A GlobalStructural decoration merge requires per-cinema scoping. */
 object ExtraTitleRules {
 
   private def prog(id: String, pattern: String, note: String): TitleRule =
@@ -131,6 +118,12 @@ object ExtraTitleRules {
   /** Strips that fix enrichment without merging the row away — a premiere or a
    *  DKF screening keeps its own line, it just resolves ratings now. */
   val searchStrips: Seq[TitleRule] = Seq(
+    // Normalise Polish typographic quotes to plain ASCII (GlobalStructural,
+    // replaceAll so every quote in the title is folded).
+    TitleRule("search-quote-right", GlobalStructural, None, "”", "\"", applyAll = true, order = 0,
+      note = Some("Polish right double quote ” → plain ASCII \"")),
+    TitleRule("search-quote-low9", GlobalStructural, None, "„", "\"", applyAll = true, order = 0,
+      note = Some("Polish low-9 double quote „ → plain ASCII \"")),
     searchStrip("xtra-dkf-suffix-pipe-underscore", """(?i)\s*[|_]\s*DKF\b.*$""",                      "'| DKF' / '_DKF' suffix"),
     searchStrip("xtra-dkf-suffix-dash",            """(?i)\s*[-–—]\s*DKF\b.*$""",                     "'- DKF KOT' / '- DKF III W' suffix"),
     searchStrip("xtra-dyskusyjny-suffix",          """(?i)\s*[-–—]\s*dyskusyjny\s+klub\s+filmowy\s*$""", "'- dyskusyjny klub filmowy' suffix"),
@@ -370,11 +363,9 @@ object ExtraTitleRules {
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in
    *  `sanitize`, so they COLLAPSE spelling variants of one film into a single
-   *  `movies` row — and re-merge the fragments already in prod: a Canonical edit
-   *  changes the sanitize key, so `NormalizationRebuilder` re-keys every affected
-   *  row and unions on collision (`MovieRecordMerge.unionAll`). That back-fill is
-   *  clean, so the GlobalStructural caveat in the header (decoration MERGES left
-   *  out) does NOT apply to this tier — only to merges that DON'T change the key.
+   *  `movies` row. The GlobalStructural caveat in the header (decoration MERGES left
+   *  out) does NOT apply to this tier — Canonical rules change the key, so two rows
+   *  have distinct keys before they collide.
    *
    *  Curated from the 2026-06 corpus where one film fragments across many rows
    *  that never share showtimes — "Mandalorian i Grogu" split ~19 ways by a
@@ -441,9 +432,7 @@ object ExtraTitleRules {
     perCinemaReplace("xtra-farys-tot-story", "kino-farys", """(?i)^Tot\s+story\s+5$""", "Toy Story 5",        "Kino Farys source typo 'Tot story 5' → 'Toy Story 5'")
   )
 
-  /** Orders stamped by position so the additions fold AFTER the seed rules of
-   *  their scope (matching how [[ApplyExtraTitleRules]] appends them to the
-   *  existing record). */
+  /** Orders stamped by position so the extras fold AFTER the seed rules. */
   val all: Seq[TitleRule] =
     (programmePrefixes ++ searchStrips ++ canonical ++ perCinemaRules).zipWithIndex.map {
       case (r, i) => r.copy(order = 100 + i)

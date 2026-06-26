@@ -1,15 +1,14 @@
 package modules
 
-import controllers.{AdminAction, AdminTitleRulesController, AuthController, DebugStreamController, EnvConfigController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController, WebMovieMetrics, WellKnownController}
+import controllers.{AdminAction, AuthController, DebugStreamController, EnvConfigController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController, WebMovieMetrics, WellKnownController}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
 import services.auth.{AppleTokenValidator, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, OauthProvider}
 import services.fallback.{FilmwebFallbackStore, MongoFilmwebFallbackStore}
-import services.movies.{MongoMovieRepository, MongoNormalizationReportRepository, MovieRepository, NormalizationReportRepository}
+import services.movies.{MongoMovieRepository, MovieRepository}
 import services.readmodel.{MongoReadModelRepository, ReadModelReader, WebReadModel}
 import services.tasks.{MongoTaskQueue, TaskQueue}
-import services.titlerules.{MongoTitleRulesRepository, TitleRulesCache, TitleRulesRepository}
 import services.users.{AccountDeletion, CachingUserRepository, CachingUserStateRepository, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
 
@@ -51,8 +50,8 @@ trait Wiring {
   // `web_screenings` collections via `WebReadModel`, kept warm by their change
   // streams. It deliberately does NOT watch `movies` — a showtime edit there
   // now reaches the web as one small screening-document delta, not a full-record
-  // re-push. `movieRepository` survives only for the on-demand /debug corpus dump and
-  // the admin rule-merge preview (a one-off `findAll`, no change stream).
+  // re-push. `movieRepository` survives only for the on-demand /debug corpus dump
+  // (a one-off `findAll`, no change stream).
   //
   // Local read-mirror: `/debug`'s `movieRepository.findAll()` is a full `movies`
   // scan. Run locally it goes over the prod `flyctl` tunnel, where 1200+ full
@@ -83,15 +82,6 @@ trait Wiring {
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(movieMirrorConnection.database, fallbackToOwnInit = false)
   lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database)
   lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository)
-
-  // Title-stripping rules, shared with the worker via Mongo. The web app reads
-  // and never seeds (the worker owns seeding); it watches the change stream so
-  // an admin edit takes effect here without a redeploy.
-  lazy val titleRulesRepository: TitleRulesRepository = new MongoTitleRulesRepository(mongoConnection.database, fallbackToOwnInit = false)
-  lazy val titleRulesCache: TitleRulesCache = new TitleRulesCache(titleRulesRepository, seedIfEmpty = false)
-  // The worker writes the backfill outcome here; the editor reads it.
-  lazy val normalizationReportRepository: NormalizationReportRepository =
-    new MongoNormalizationReportRepository(mongoConnection.database, fallbackToOwnInit = false)
 
   // Reads come straight from the read model; enrichment + projection happen in
   // the worker process.
@@ -143,7 +133,7 @@ trait Wiring {
   lazy val ogCardService     = new tools.OgCardService(new tools.HttpPosterFetch)
   lazy val cityOgCardService = new tools.CityOgCardService(new tools.HttpPosterFetch)
   // Comma-separated allowlist of admin EMAILS permitted to reach the operational
-  // pages (title-rules editor, /uptime, /tasks) and the rehydrate trigger. Empty
+  // pages (/uptime, /tasks) and the rehydrate trigger. Empty
   // (unset) → nobody is authorised, so those pages are closed by default. The
   // shared AdminAction gate resolves the session's user UUID and checks its email
   // against this set.
@@ -180,9 +170,6 @@ trait Wiring {
   lazy val legalController   = new LegalController(controllerComponents)
   lazy val facebookDataDeletionController =
     new FacebookDataDeletionController(controllerComponents, Env.get("FACEBOOK_APP_SECRET"), userRepository, accountDeletion)
-  lazy val adminTitleRulesController =
-    new AdminTitleRulesController(controllerComponents, adminAction, titleRulesRepository, movieRepository, normalizationReportRepository)
-
   // Live config: install the override cache as Env's source + publish web's knobs
   // to the shared registry, and serve the /admin/config page (see EnvConfigService).
   lazy val envConfigService = new services.config.EnvConfigService(
@@ -199,8 +186,6 @@ trait Wiring {
     mongoConnection.database
     // Install the override source first so boot-time knob reads already see flips.
     envConfigService.start()
-    // Install rules (used by the admin rule-merge preview's normalisation).
-    titleRulesCache.start()
     // Hydrate the read model from the derived collections + open their change
     // streams. (No `movies` watch — see the read-model wiring above.)
     webReadModel.start()
@@ -214,12 +199,10 @@ trait Wiring {
     uptimeMonitor.close()
     webMovieMetrics.stop()
     webReadModel.stop()
-    titleRulesCache.stop()
     // Each repository's close() is a no-op when it borrowed its database from
     // `mongoConnection` — closing the shared MongoClient is owned here.
     readModelRepository.close()
     movieRepository.close()
-    titleRulesRepository.close()
     userRepository.close()
     userStateRepository.close()
     // The /debug read-mirror owns its own MongoClient when distinct from the

@@ -1,9 +1,8 @@
 package services.titlerules
 
 /**
- * A reference copy of the `TitleNormalizer` global normalisation chains. Both
- * the curated `TitleRuleMigrationSpec` and the prod-driven
- * `ProdTitlesNormalizationSpec` assert the default rule set reproduces this
+ * A reference copy of the `TitleNormalizer` global normalisation chains.
+ * `ProdTitlesNormalizationSpec` asserts the default rule set reproduces this
  * byte-for-byte. It mirrors the ENGINE's tier composition, so it tracks
  * deliberate tier changes: `canonical` here drops `searchTitle` because the
  * structural decoration strip no longer feeds identity (it's external-lookup

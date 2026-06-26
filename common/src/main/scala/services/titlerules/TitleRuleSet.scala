@@ -62,8 +62,7 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
    *  the former structural strips, preserving the legacy composition). */
   def structural(t: String): String = fold(structuralRules, t).trim
 
-  /** Alias of [[structural]] — kept so existing `apiQuery`/`search` call sites
-   *  (e.g. `NormalizationRebuilder`) compile after the tier merge. */
+  /** Alias of [[structural]] for `apiQuery`/`search` call sites after the tier merge. */
   def search(t: String): String = structural(t)
 
   /** `canonical` fold used by `sanitize` / `preferredDisplay` — the

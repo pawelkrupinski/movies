@@ -25,10 +25,8 @@ object MergeReason {
    *  with an existing one; the runtime identity gate folds the lower-rank loser
    *  into the canonical at `put` time, before any settle pass. */
   case object TmdbIdentity   extends MergeReason { val label = "tmdb-identity"   }
-  /** `NormalizationRebuilder.rebuild` — a title-rule change re-keys existing rows
-   *  and several now share a merge key, so the rebuild unions them into one. The
-   *  retroactive (rule-driven) counterpart to the runtime folds above; pairs with
-   *  the splits counter, which records the un-merge half of the same rebuild. */
+  /** Retroactive re-key: rows that previously had distinct merge keys now share one
+   *  (e.g. on cache rehydration after a key collision). Pairs with the splits counter. */
   case object NormalizeRebuild extends MergeReason { val label = "normalize-rebuild" }
 
   val all: Seq[MergeReason] = Seq(Canonicalize, ResolvedSettle, TmdbIdentity, NormalizeRebuild)

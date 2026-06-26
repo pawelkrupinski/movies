@@ -2,20 +2,15 @@ package services.movies
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import scripts.ExtraTitleRules
 import services.movies.TitleNormalizer.normalize
-import services.titlerules.{TitleRuleDefaults, TitleRuleSet}
+import services.titlerules.{ExtraTitleRules, TitleRuleDefaults, TitleRuleSet}
 
 import java.util.Locale
 
-/** Locks the behaviour of the post-baseline [[ExtraTitleRules]] before they're
- *  applied to prod. The "load-bearing" pair on each case is the gate: the seed
- *  rules ALONE must NOT strip the banner (fail-before), and seed + extras MUST
- *  (pass-after) — so a rule that silently stops matching is caught here, not in
- *  prod.
- *
- *  `withExtras` is what prod runs once `ApplyExtraTitleRules` lands (seed rules
- *  + the additions); `seedOnly` is today's behaviour. */
+/** Locks the behaviour of [[ExtraTitleRules]]. The "load-bearing" pair on each
+ *  case is the gate: seed rules ALONE must NOT strip the banner (fail-before),
+ *  seed + extras MUST (pass-after) — so a rule that silently stops matching is
+ *  caught here, not in prod. */
 class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
 
   private val withExtras = TitleRuleSet(TitleRuleDefaults.all ++ ExtraTitleRules.all)
