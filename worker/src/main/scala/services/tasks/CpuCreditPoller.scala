@@ -8,7 +8,7 @@ import tools.{DaemonExecutors, Env, HttpFetch}
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -53,6 +53,21 @@ import scala.util.Try
  *
  * The poll runs on a single daemon scheduler thread; the read of `isThrottled`
  * by the reaper threads goes through a lock-free `AtomicReference`.
+ *
+ * == Downslope restart ==
+ *
+ * Throttling alone doesn't stop a fast drain: up to 8 in-flight tasks keep
+ * running and burning CPU after the throttle trips.  `onProjectionThrottle` is
+ * called (once per process lifetime) the first time a PROJECTION-triggered
+ * throttle fires — i.e. while balance is still above the floor but draining too
+ * fast.  In production this is wired to `sys.exit(1)` (subject to a JVM-uptime
+ * cooldown in WorkerWiring), which clears the task backlog and lets the
+ * per-host circuit breaker skip the offending host on the way back up.
+ * Confirmed by the 2026-06-26 incident: projection fired at credit ≈ 50 000
+ * (6 min before floor); an immediate restart there would have avoided 89 min at
+ * the literal floor.  `onProjectionThrottle` does NOT fire on a floor-triggered
+ * throttle (balance already below `enterBelow`) — that path is handled by
+ * [[ThrottleStuckWatchdog]].
  */
 class CpuCreditPoller(
   http: HttpFetch,
@@ -70,7 +85,10 @@ class CpuCreditPoller(
   maxConsecutiveFailures: Int = Env.positiveInt("KINOWO_CREDIT_MAX_READ_FAILURES", 3),
   // Proactive: trip throttled if (at current drain rate) balance would hit enterBelow
   // within this many seconds.  Default 600 (10 min).  Set to 0 to disable projection.
-  lookaheadSeconds: Long = Env.positiveLong("KINOWO_CREDIT_LOOKAHEAD_SECONDS", 600L)
+  lookaheadSeconds: Long = Env.positiveLong("KINOWO_CREDIT_LOOKAHEAD_SECONDS", 600L),
+  // Called once per process when a PROJECTION-triggered throttle fires (balance above
+  // the floor but drain rate threatening).  Default no-op; wire to sys.exit in prod.
+  onProjectionThrottle: () => Unit = () => ()
 ) extends Stoppable with ScrapeThrottleSignal with Logging {
 
   import CpuCreditPoller.State
@@ -83,7 +101,9 @@ class CpuCreditPoller(
   // The most recent good balance read (None until the first success / after a run
   // of failures). Exposed for the ThrottleStuckWatchdog's trend guard, which needs
   // the raw number — not just the throttled boolean — to tell recovery from a wedge.
-  private val lastBalanceRef = new AtomicReference[Option[Double]](None)
+  private val lastBalanceRef     = new AtomicReference[Option[Double]](None)
+  // One-shot: fire onProjectionThrottle at most once per process life.
+  private val projectionFired    = new AtomicBoolean(false)
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("cpu-credit-poller")
 
   def start(): Unit = {
@@ -102,6 +122,7 @@ class CpuCreditPoller(
     state.set(next)
     balance.foreach(b => lastBalanceRef.set(Some(b)))
     if (next.throttled != prev.throttled) {
+      val projectionTriggered = next.throttled && balance.exists(_ >= enterBelow)
       val reason = if (next.throttled) {
         balance match {
           case Some(b) if b >= enterBelow =>
@@ -117,6 +138,8 @@ class CpuCreditPoller(
       } else "RELEASED"
       logger.warn(s"CpuCreditPoller: throttle $reason " +
         s"(credit=${balance.map(_.round).getOrElse("?")}, enter<$enterBelow, exit>$exitAbove).")
+      if (projectionTriggered && projectionFired.compareAndSet(false, true))
+        onProjectionThrottle()
     } else if (balance.isEmpty && next.failures >= maxConsecutiveFailures && prev.failures < maxConsecutiveFailures)
       logger.warn(s"CpuCreditPoller: $maxConsecutiveFailures consecutive credit reads failed — failing open (relying on the external gate).")
   }

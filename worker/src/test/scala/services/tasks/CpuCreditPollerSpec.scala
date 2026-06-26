@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.GetOnlyHttpFetch
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.io.Source
 
 class CpuCreditPollerSpec extends AnyFlatSpec with Matchers {
@@ -168,5 +169,62 @@ class CpuCreditPollerSpec extends AnyFlatSpec with Matchers {
     val poller = new CpuCreditPoller(new StubFetch(throw new RuntimeException("network down")), token = "t")
     poller.pollOnce()
     poller.isThrottled shouldBe false
+  }
+
+  // ── onProjectionThrottle: downslope restart callback ──────────────────────
+
+  // Two-poll helper: drives the poller through a projection trigger using a
+  // fast drain (25 500 → 22 000 in 30 s = 116 ms/s; floor in ~138 s < 600 s).
+  private def projectingPoller(calls: AtomicInteger): CpuCreditPoller = {
+    val readings = Iterator(
+      """{"status":"success","data":{"result":[{"value":[1,"25500"]}]}}""",
+      """{"status":"success","data":{"result":[{"value":[1,"22000"]}]}}"""
+    )
+    new CpuCreditPoller(
+      new StubFetch(readings.next()),
+      token = "t",
+      onProjectionThrottle = () => { calls.incrementAndGet(); () }
+    )
+  }
+
+  "CpuCreditPoller.pollOnce" should "call onProjectionThrottle exactly once when projection trips" in {
+    val calls = new AtomicInteger(0)
+    val poller = projectingPoller(calls)
+    poller.pollOnce()                // poll 1: 25 500 — healthy
+    calls.get() shouldBe 0
+    poller.pollOnce()                // poll 2: 22 000 — projection fires
+    calls.get() shouldBe 1
+    // Additional polls (still throttled, still draining) must NOT fire again.
+    poller.pollOnce()
+    calls.get() shouldBe 1
+  }
+
+  it should "NOT call onProjectionThrottle on a floor-triggered throttle (balance below enterBelow)" in {
+    val calls  = new AtomicInteger(0)
+    val poller = new CpuCreditPoller(
+      new StubFetch("""{"status":"success","data":{"result":[{"value":[1,"4200"]}]}}"""),
+      token = "t",
+      onProjectionThrottle = () => { calls.incrementAndGet(); () }
+    )
+    poller.pollOnce()               // balance 4200 < enterBelow=6000 — floor trigger, not projection
+    poller.isThrottled shouldBe true
+    calls.get() shouldBe 0         // callback must not fire on floor trigger
+  }
+
+  it should "NOT call onProjectionThrottle when still healthy (floor is far away)" in {
+    val calls = new AtomicInteger(0)
+    // Drain 200 ms/30 s = 6.7 ms/s; floor in ~5 070 s >> 600 s lookahead.
+    val readings = Iterator(
+      """{"status":"success","data":{"result":[{"value":[1,"40200"]}]}}""",
+      """{"status":"success","data":{"result":[{"value":[1,"40000"]}]}}"""
+    )
+    val poller = new CpuCreditPoller(
+      new StubFetch(readings.next()), token = "t",
+      onProjectionThrottle = () => { calls.incrementAndGet(); () }
+    )
+    poller.pollOnce()
+    poller.pollOnce()
+    poller.isThrottled shouldBe false
+    calls.get() shouldBe 0
   }
 }

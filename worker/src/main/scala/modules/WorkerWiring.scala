@@ -19,9 +19,10 @@ import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDeta
 import services.titlerules.{MongoTitleRulesRepository, TitleRuleSet, TitleRulesCache, TitleRulesRepository}
 import tools.{DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
 
+import java.lang.management.ManagementFactory
 import java.util.concurrent.ExecutorService
-
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration.DurationLong
 
@@ -458,9 +459,61 @@ class WorkerWiring extends play.api.Logging {
   // is floored, so the box earns idle and rebuilds credit. Needs a read-only Fly
   // token (KINOWO_FLY_PROM_TOKEN); absent it (local dev / tests), there's no
   // poller and only the external gate drives throttling.
+  //
+  // RESTART PATHS — all three share a single one-shot guard (`restartFired`) so
+  // at most one restart fires per process lifetime regardless of which path trips:
+  //
+  //   1. DOWNSLOPE (projection trigger in CpuCreditPoller): fires when the drain
+  //      rate projects a floor hit in < 10 min, while balance is still above 6000.
+  //      Restarts immediately (subject to a JVM-uptime cooldown that prevents a
+  //      rapid-restart loop if the circuit breaker hasn't had time to trip yet).
+  //      Confirmed fastest path: 2026-06-26 incident would have been averted at
+  //      02:33 (credit 50k, 6 min to floor) instead of 89 min at true-floor.
+  //
+  //   2. FLOOR FAST-PATH (ThrottleStuckWatchdog.isFloorStuck): if credit stays
+  //      below floorThreshold (≈ 1000) for 15 min, restart without waiting for
+  //      the 45-min stuckAfter or applying the trend guard. At true-floor the
+  //      oscillations are Fly micro-bursts, not recovery — trend guard is useless.
+  //
+  //   3. STUCK PATH (ThrottleStuckWatchdog.isStuck): if throttled continuously
+  //      for 45 min and credit is NOT trending up — the duty-cycle + reaper backoff
+  //      failed to recover. The trend guard (credit-trending-up check) defers the
+  //      restart while self-recovery is underway, preventing the 30-min crash loop
+  //      of 2026-06-24.
+  //
+  // UPTIME COOLDOWN on the downslope path: if the process is younger than
+  // `projectionRestartCooldownSeconds`, the downslope restart is suppressed.
+  // This prevents a rapid-restart loop where each new process immediately
+  // re-triggers the projection (circuit breaker needs a full scrape cycle to
+  // trip the offending host).  Paths 2 and 3 are NOT cooldown-gated — by the
+  // time they fire, enough time has elapsed that the circuit breaker has had
+  // its chance.
+  private val restartFired = new AtomicBoolean(false)
+  private def doRestart(reason: String): Unit =
+    if (restartFired.compareAndSet(false, true)) {
+      logger.error(s"Worker restart triggered ($reason); exiting non-zero so Fly reschedules the machine.")
+      sys.exit(1)
+    }
+
+  def projectionRestartCooldownSeconds: Long =
+    Env.positiveLong("KINOWO_WORKER_PROJECTION_RESTART_COOLDOWN_SECONDS", 600L)
+
   lazy val cpuCreditPoller: Option[services.tasks.CpuCreditPoller] =
-    Env.get("KINOWO_FLY_PROM_TOKEN").map(token =>
-      new services.tasks.CpuCreditPoller(new RealHttpFetch(), token))
+    Env.get("KINOWO_FLY_PROM_TOKEN").map { token =>
+      new services.tasks.CpuCreditPoller(
+        new RealHttpFetch(), token,
+        onProjectionThrottle = () => {
+          val uptimeSec = ManagementFactory.getRuntimeMXBean.getUptime / 1000
+          if (uptimeSec < projectionRestartCooldownSeconds)
+            logger.warn(s"CpuCreditPoller: projection throttle fired but JVM uptime ${uptimeSec}s is within the " +
+              s"${projectionRestartCooldownSeconds}s cooldown — skipping downslope restart to avoid a rapid-restart " +
+              s"loop (circuit breaker needs time to trip the offending host).")
+          else
+            doRestart(s"projection downslope (uptime ${uptimeSec}s)")
+        }
+      )
+    }
+
   // The credit-balance throttle pushed in from OUTSIDE (the same Grafana alert on
   // fly_instance_cpu_balance → the worker's /throttle endpoint). Kept as an
   // INDEPENDENT backstop to the poller: if the poller can't reach api.fly.io (or
@@ -470,26 +523,12 @@ class WorkerWiring extends play.api.Logging {
     cpuCreditPoller.fold[services.tasks.ScrapeThrottleSignal](externalThrottleGate)(
       poller => services.tasks.ScrapeThrottleSignal.either(externalThrottleGate, poller))
 
-  // Last-resort backstop: if the worker stays throttled CONTINUOUSLY past this many
-  // minutes, the duty-cycle + reaper backoff failed to recover credit (a wedged
-  // spiral) — exit non-zero so Fly restarts the machine. Safe to wire only because
-  // the per-host circuit breaker now skips the offending host on the way back up,
-  // so the restart sticks instead of re-spiralling. Threshold sits FAR above any
-  // healthy backoff (clears in minutes), so it never fires on a normal episode.
-  // The watchdog also reads the live credit balance (from the poller) and DEFERS
-  // the restart while credit is trending up — so a slow-but-real recovery isn't
-  // cut short by a boot-storm that would cost more credit than it saves (the
-  // self-inflicted 30-min crash loop of 2026-06-24).
-  // FLOOR FAST-PATH: when credit stays below floorThreshold (≈ literal zero) for
-  // floorStuckAfter, restart immediately — no trend guard. At true-floor the
-  // oscillations are Fly micro-bursts, not recovery. Cuts the ~89-min incident of
-  // 2026-06-26 to ≤ 15 min + restart time.
   def throttleStuckMinutes: Long  = Env.positiveLong("KINOWO_WORKER_THROTTLE_STUCK_MINUTES", 45L)
   def floorStuckMinutes: Long     = Env.positiveLong("KINOWO_WORKER_FLOOR_STUCK_MINUTES", 15L)
   def floorThreshold: Double      = Env.positiveLong("KINOWO_WORKER_FLOOR_THRESHOLD", 1000L).toDouble
   lazy val throttleStuckWatchdog = new services.tasks.ThrottleStuckWatchdog(
     throttleSignal, stuckAfter = throttleStuckMinutes.minutes,
-    onStuck = () => sys.exit(1),
+    onStuck         = () => doRestart("floor/stuck watchdog"),
     creditBalance   = () => cpuCreditPoller.flatMap(_.lastBalance),
     floorThreshold  = floorThreshold,
     floorStuckAfter = floorStuckMinutes.minutes)
