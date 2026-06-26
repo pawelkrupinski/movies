@@ -200,8 +200,12 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   // ── Restoration / remaster decoration ─────────────────────────────────────
 
   it should "strip a Polish remaster suffix with a period separator" in {
+    MovieService.apiQuery("Rejs. Wersja zremasterowana") shouldBe "Rejs"
+    // For the real Multikino 'Żywot Briana' rows the studio-attribution rule
+    // (xtra-zywot-briana-monty-suffix) folds the query further to the bare film
+    // (TMDB 583, unique), so apiQuery resolves the whole decorated title at once.
     MovieService.apiQuery("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana") shouldBe
-      "Żywot Briana Grupy Monty Pythona"
+      "Żywot Briana"
   }
 
   it should "strip a Polish 'wersja oryginalna' suffix with an en-dash separator" in {
