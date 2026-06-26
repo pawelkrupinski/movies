@@ -478,11 +478,19 @@ class WorkerWiring extends play.api.Logging {
   // the restart while credit is trending up — so a slow-but-real recovery isn't
   // cut short by a boot-storm that would cost more credit than it saves (the
   // self-inflicted 30-min crash loop of 2026-06-24).
-  def throttleStuckMinutes: Long = Env.positiveLong("KINOWO_WORKER_THROTTLE_STUCK_MINUTES", 45L)
+  // FLOOR FAST-PATH: when credit stays below floorThreshold (≈ literal zero) for
+  // floorStuckAfter, restart immediately — no trend guard. At true-floor the
+  // oscillations are Fly micro-bursts, not recovery. Cuts the ~89-min incident of
+  // 2026-06-26 to ≤ 15 min + restart time.
+  def throttleStuckMinutes: Long  = Env.positiveLong("KINOWO_WORKER_THROTTLE_STUCK_MINUTES", 45L)
+  def floorStuckMinutes: Long     = Env.positiveLong("KINOWO_WORKER_FLOOR_STUCK_MINUTES", 15L)
+  def floorThreshold: Double      = Env.positiveLong("KINOWO_WORKER_FLOOR_THRESHOLD", 1000L).toDouble
   lazy val throttleStuckWatchdog = new services.tasks.ThrottleStuckWatchdog(
     throttleSignal, stuckAfter = throttleStuckMinutes.minutes,
     onStuck = () => sys.exit(1),
-    creditBalance = () => cpuCreditPoller.flatMap(_.lastBalance))
+    creditBalance   = () => cpuCreditPoller.flatMap(_.lastBalance),
+    floorThreshold  = floorThreshold,
+    floorStuckAfter = floorStuckMinutes.minutes)
 
   // Cluster-wide occurrence claims gate the reapers' recurring ticks so each
   // scheduled occurrence runs on ONE machine (rotating), not on every machine.
