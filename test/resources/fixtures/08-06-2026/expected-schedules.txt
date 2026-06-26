@@ -1192,8 +1192,8 @@ cinemaScrapes:
 showings:
   2026-06-08  Kino Apollo                   18:30
 
-=== Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) ===
-displayTitle:      Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977)
+=== Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble ===
+displayTitle:      Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble
 cinemaTitles:      Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977)
 runtimeMinutes:    156
 releaseYear:       1977
@@ -1356,6 +1356,7 @@ cinemaScrapes:
   Kino Charlie / Diabeł ubiera się u Prady 2 / —
   Kino Echo / Diabeł ubiera się u Prady 2 / —
   Kino GCK / Diabeł ubiera się u Prady 2 / —
+  Kino Kijów / Diabeł ubiera się u Prady 2 / —
   Kino Kępa / Diabeł ubiera się u Prady 2 / —
   Kino MOKiS / Diabeł ubiera się u Prady 2 / —
   Kino Moskwa / DIABEŁ UBIERA SIĘ U PRADY 2 / —
@@ -1580,7 +1581,7 @@ showings:
 
 === Drzewo magii ===
 displayTitle:      Drzewo magii
-cinemaTitles:      DRZEWO MAGII | Drzewo Magii | Drzewo magii
+cinemaTitles:      DRZEWO MAGII | Drzewo Magii | Drzewo magii | Drzewo magii/dubbing
 runtimeMinutes:    110
 releaseYear:       2026
 countries:         Francja, USA, Wielka Brytania
@@ -1714,6 +1715,7 @@ cinemaScrapes:
   Kino Moskwa / DRZEWO MAGII / —
   Kino NCKF EC1 / Drzewo magii / —
   Kino Na Biegunach / Drzewo magii / —
+  Kino Narie / Drzewo magii/dubbing / —
   Kino Nowe Horyzonty / Drzewo magii / 2026
   Kino ODEON / Drzewo magii / —
   Kino Oskard / Drzewo magii / —
@@ -2441,6 +2443,167 @@ cinemaScrapes:
 showings:
   2026-06-12  Kino Muza                     21:00 Sala 1
 
+=== Gwiezdne wojny: Mandalorian i Grogu ===
+displayTitle:      Gwiezdne wojny: Mandalorian i Grogu
+cinemaTitles:      GWIEZDNE WOJNY : MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN i GROGU | Gwiezdne Wojny: Mandalorian i Grogu | Gwiezdne wojny : mandalorian i grogu | Gwiezdne wojny: Mandalorian i Grogu | Gwiezdne wojny: Mandalorian i Grogu 3D/dubbing | Gwiezdne wojny: mandalorian i grogu | MANDALORIAN I GROGU | Mandalorian & Grogu | Mandalorian i Grogu | Mandalorian i Grogu [napisy] | Mandalorian i Grogu/napisy | Mandalorian i grogu | Mandalorian i grogu | The Mandalorian and Grogu | The mandalorian and grogu
+runtimeMinutes:    132
+releaseYear:       2026
+countries:         USA
+posterUrl:         https://movies.helios.pl/images/MANDALORIANIGROGUnowyplakat.jpg
+synopsis.length:   678
+cast:              Pedro Pascal, Sigourney Weaver, Jeremy Allen White, Steve Blum, Jonny Coyne, Matthew Willig
+director:          Jon Favreau
+tmdbId:            1228710
+imdbId:            tt30825738
+originalTitle:     The Mandalorian and Grogu
+imdbRating:        7.0
+metascore:         —
+rottenTomatoes:    62
+filmwebRating:     6.51288
+metacriticUrl:     —
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_mandalorian_and_grogu
+filmwebUrl:        https://www.filmweb.pl/film/The+Mandalorian+and+Grogu-2026-10046150
+cinemaFilmUrls:
+  Cinema City Kinepolis = https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r
+  Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r
+  Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/mandalorian-grogu-4347
+cinemaScrapes:
+  Centrum / Mandalorian i Grogu / —
+  Chemik / The mandalorian and grogu / —
+  Cinema City / — / —
+  Cinema City Arkadia / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Bemowo / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Bielsko-Biała / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Bonarka / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Bydgoszcz / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Bytom / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Czerwona Droga / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Elbląg / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Felicity / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Galeria Północna / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Gliwice / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Janki / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Jurajska / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Kazimierz / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Kinepolis / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Korona / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Lublin Plaza / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Manufaktura / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Mokotów / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Poznań Plaza / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Promenada / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Punkt 44 / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Ruda Śląska / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Rybnik / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Sadyba / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Silesia / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Sosnowiec / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Toruń Plaza / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Wałbrzych / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Wolność / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Wroclavia / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Zakopianka / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema City Zielona Góra / Gwiezdne Wojny: Mandalorian i Grogu / 2026
+  Cinema Lumiere / Mandalorian i grogu / —
+  Cinema1 / Mandalorian i grogu / —
+  Europa / Mandalorian i Grogu / —
+  Forum / Mandalorian i Grogu / —
+  Fregata / Gwiezdne wojny: Mandalorian i Grogu / —
+  Helios Aleja Bielany / Mandalorian & Grogu / 2025
+  Helios Alfa / Mandalorian & Grogu / 2025
+  Helios Biała / Mandalorian & Grogu / 2025
+  Helios Bielsko-Biała / Mandalorian & Grogu / 2025
+  Helios Blue City / Mandalorian & Grogu / 2025
+  Helios Bydgoszcz / Mandalorian & Grogu / —
+  Helios Dąbrowa Górnicza / Mandalorian & Grogu / 2025
+  Helios Forum / Mandalorian & Grogu / 2025
+  Helios Gorzów Wielkopolski / Mandalorian & Grogu / 2025
+  Helios Jelenia Góra / Mandalorian & Grogu / 2025
+  Helios Jurowiecka / Mandalorian & Grogu / 2025
+  Helios Kalisz / Mandalorian & Grogu / 2025
+  Helios Karolinka / Mandalorian & Grogu / 2025
+  Helios Katowice / Mandalorian & Grogu / 2025
+  Helios Kielce / Mandalorian & Grogu / 2025
+  Helios Konin / Mandalorian & Grogu / 2025
+  Helios Koszalin / Mandalorian & Grogu / 2025
+  Helios Krosno / Mandalorian & Grogu / 2025
+  Helios Kupiec / Mandalorian & Grogu / 2025
+  Helios Kędzierzyn-Koźle / Mandalorian & Grogu / 2025
+  Helios Legnica / Mandalorian & Grogu / 2025
+  Helios Lubin / Mandalorian & Grogu / 2025
+  Helios Magnolia Park / Mandalorian & Grogu / 2025
+  Helios Metropolia / Mandalorian & Grogu / 2025
+  Helios Nowy Sącz / Mandalorian & Grogu / 2025
+  Helios Olsztyn / Mandalorian & Grogu / 2025
+  Helios Ostrów Wlkp. / Mandalorian & Grogu / 2025
+  Helios Outlet Park / Mandalorian & Grogu / 2025
+  Helios Posnania / Mandalorian & Grogu / 2025
+  Helios Przemyśl / Mandalorian & Grogu / 2025
+  Helios Płock / Mandalorian & Grogu / 2025
+  Helios Radom / Mandalorian & Grogu / —
+  Helios Riviera / Mandalorian & Grogu / 2025
+  Helios Rzeszów / Mandalorian & Grogu / 2025
+  Helios Solaris / Mandalorian & Grogu / 2025
+  Helios Sosnowiec / Mandalorian & Grogu / —
+  Helios Starachowice / Mandalorian & Grogu / 2025
+  Helios Tczew / Mandalorian & Grogu / 2025
+  Helios Łódź / Mandalorian & Grogu / 2025
+  Helios Żory / Mandalorian & Grogu / 2025
+  Kino Charlie / Gwiezdne wojny: Mandalorian i Grogu / —
+  Kino Diana / Gwiezdne wojny: mandalorian i grogu / —
+  Kino Echo / Gwiezdne wojny: Mandalorian i Grogu / —
+  Kino GCK / Mandalorian i Grogu / —
+  Kino Górnik / The Mandalorian and Grogu / —
+  Kino Hel / GWIEZDNE WOJNY: MANDALORIAN i GROGU / —
+  Kino Ignacy / Mandalorian i grogu / —
+  Kino KDK / GWIEZDNE WOJNY: MANDALORIAN I GROGU / —
+  Kino Kalejdoskop / Mandalorian i grogu / —
+  Kino Kijów / Gwiezdne wojny: Mandalorian i Grogu / —
+  Kino MCK / Gwiezdne wojny: mandalorian i grogu / —
+  Kino MOK Centrum / GWIEZDNE WOJNY : MANDALORIAN I GROGU / —
+  Kino MOKiS / Mandalorian i Grogu / —
+  Kino Na Biegunach / Mandalorian i grogu / —
+  Kino Narie / Gwiezdne wojny: Mandalorian i Grogu 3D/dubbing / —
+  Kino Nowe Horyzonty / Mandalorian i Grogu / 2026
+  Kino ODEON / Gwiezdne wojny : mandalorian i grogu / —
+  Kino Oskard / Mandalorian i Grogu/napisy / —
+  Kino PCKul / Mandalorian i grogu / —
+  Kino Promień / Gwiezdne wojny: Mandalorian i Grogu / —
+  Kino Przedwiośnie / Mandalorian i Grogu / 2026
+  Kino SDK / Gwiezdne wojny: Mandalorian i Grogu / —
+  Kino Sokół / MANDALORIAN I GROGU / —
+  Kino Tur / Gwiezdne wojny: Mandalorian i Grogu / —
+  Kino Wisła Brzeszcze / Gwiezdne wojny: Mandalorian i Grogu / —
+  Kino Zdrój / Mandalorian i Grogu / —
+  Kino ŚDK / Gwiezdne wojny: mandalorian i grogu / —
+  Kino Śnieżka / Mandalorian i grogu / —
+  KinoGram / Gwiezdne wojny: Mandalorian i Grogu / 2026
+  Kinomax / Gwiezdne wojny: mandalorian i grogu / —
+  Kinoteatr Rondo / Gwiezdne wojny: Mandalorian i Grogu / —
+  Kinoteka / Mandalorian i Grogu [napisy] / 2026
+  Klaps / Mandalorian i Grogu / —
+  Koneckie Centrum Kultury / Mandalorian i Grogu / —
+  Max Kino / Gwiezdne wojny: mandalorian i grogu / —
+  Miejskie Centrum Kultury / Gwiezdne wojny: Mandalorian i Grogu / —
+  Muza / Mandalorian i Grogu / —
+  Na Starówce / Gwiezdne wojny: mandalorian i grogu / —
+  Planet Cinema / Gwiezdne wojny: mandalorian i grogu / —
+  Przedwiośnie / Gwiezdne wojny: Mandalorian i Grogu / —
+  Wybrzeże / Mandalorian i grogu / —
+showings:
+  2026-06-08  Cinema City Kinepolis         12:20 Sala 17 2D/DUB · 13:40 Sala 12 2D/DUB · 15:20 Sala 17 2D/NAP · 15:50 Sala 8 2D/DUB · 16:40 Sala 12 2D/DUB · 17:20 Sala 7 2D/NAP · 18:15 Sala 17 2D/NAP · 19:30 Sala 12 2D/NAP · 20:20 Sala 7 2D/NAP · 21:15 Sala 17 2D/NAP
+  2026-06-08  Cinema City Poznań Plaza      10:00 Sala 9 2D/DUB · 11:30 Sala IMAX IMAX/3D/DUB · 13:00 Sala 9 2D/DUB · 16:00 Sala 9 2D/NAP · 16:20 Sala 3 2D/DUB · 17:30 Sala IMAX IMAX/3D/NAP · 19:00 Sala 9 2D/NAP · 22:00 Sala 9 2D/NAP
+  2026-06-08  Helios Posnania               10:30 Sala 4 2D/DUB · 11:30 Sala 1 2D/DUB · 14:30 Sala 1 2D/NAP · 17:30 Sala 1 2D/DUB · 18:30 Sala 7 - Dream 2D/DUB/ATMOS · 20:30 Sala 1 2D/NAP · 21:20 Sala 7 - Dream 2D/NAP/ATMOS
+  2026-06-09  Cinema City Kinepolis         12:20 Sala 17 2D/DUB · 13:40 Sala 12 2D/DUB · 15:20 Sala 17 2D/NAP · 15:50 Sala 8 2D/DUB · 16:40 Sala 12 2D/DUB · 17:20 Sala 7 2D/NAP · 18:15 Sala 17 2D/NAP · 19:30 Sala 12 2D/NAP · 20:20 Sala 7 2D/NAP · 21:15 Sala 17 2D/NAP
+  2026-06-09  Cinema City Poznań Plaza      09:30 Sala 9 2D/NAP · 11:30 Sala IMAX IMAX/3D/DUB · 13:00 Sala 9 2D/DUB · 16:00 Sala 9 2D/NAP · 16:20 Sala 3 2D/DUB · 17:30 Sala IMAX IMAX/3D/NAP · 19:00 Sala 9 2D/NAP · 22:00 Sala 9 2D/NAP
+  2026-06-09  Helios Posnania               11:30 Sala 1 2D/DUB · 14:30 Sala 1 2D/NAP · 17:30 Sala 1 2D/DUB · 18:30 Sala 7 - Dream 2D/DUB/ATMOS · 20:30 Sala 1 2D/NAP · 21:20 Sala 7 - Dream 2D/NAP/ATMOS
+  2026-06-10  Cinema City Kinepolis         15:50 Sala 8 2D/DUB · 17:20 Sala 7 2D/NAP · 20:20 Sala 7 2D/NAP
+  2026-06-10  Cinema City Poznań Plaza      10:00 Sala 9 2D/DUB · 13:00 Sala 9 2D/DUB · 16:00 Sala 9 2D/NAP · 19:00 Sala 9 2D/NAP · 22:00 Sala 9 2D/NAP
+  2026-06-10  Helios Posnania               11:20 Sala 5 - Dream 2D/DUB/ATMOS · 18:30 Sala 3 2D/NAP · 20:45 Sala 5 - Dream 2D/NAP/ATMOS
+  2026-06-11  Cinema City Kinepolis         15:50 Sala 8 2D/DUB · 17:20 Sala 7 2D/NAP · 20:20 Sala 7 2D/NAP
+  2026-06-11  Cinema City Poznań Plaza      10:00 Sala 9 2D/DUB · 13:00 Sala 9 2D/DUB · 16:00 Sala 9 2D/NAP · 19:00 Sala 9 2D/NAP · 22:00 Sala 9 2D/NAP
+  2026-06-11  Helios Posnania               11:20 Sala 5 - Dream 2D/DUB/ATMOS · 12:15 Sala 6 2D/NAP · 17:15 Sala 4 2D/DUB · 20:15 Sala 4 2D/NAP · 20:45 Sala 5 - Dream 2D/NAP/ATMOS
+
 === Głos Hind Rajab ===
 displayTitle:      Głos Hind Rajab
 cinemaTitles:      Głos Hind Rajab
@@ -2473,7 +2636,7 @@ showings:
 
 === Głos z księżyca ===
 displayTitle:      Głos z księżyca
-cinemaTitles:      Głos z księżyca
+cinemaTitles:      Głos z księżyca | Głos z księżyca (1990)
 runtimeMinutes:    121
 releaseYear:       1990
 countries:         Włochy, Francja
@@ -2497,6 +2660,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Muza / Głos z księżyca / 1990
   Kino Pałacowe / Głos z księżyca / 1990
+  Świt / Głos z księżyca (1990) / —
 showings:
   2026-07-17  Kino Pałacowe                 18:00 Sala 1 - Kinowa
   2026-08-25  Kino Muza                     20:30 Sala 1
@@ -3181,7 +3345,7 @@ showings:
 
 === Kurozając i Świątynia Świstaka ===
 displayTitle:      Kurozając i Świątynia Świstaka
-cinemaTitles:      KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA | Kurozając i Świątynia Świstaka | Kurozając i świątynia Świstaka | Kurozając i świątynia świstaka
+cinemaTitles:      KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA | Kurozając i Świątynia Świstaka | Kurozając i świątynia Świstaka | Kurozając i świątynia Świstaka (2025) | Kurozając i świątynia świstaka
 runtimeMinutes:    88
 releaseYear:       2026
 countries:         Francja, Belgia, USA
@@ -3249,6 +3413,7 @@ cinemaScrapes:
   Kino Scena Kultura / Kurozając i świątynia Świstaka / —
   Kino Sokół / KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA / —
   Kino Studyjne Kadr / Kurozając i świątynia świstaka / —
+  Kinoteatr Rondo / Kurozając i świątynia Świstaka (2025) / —
   Na Starówce / Kurozając i świątynia świstaka / —
   Regis / Kurozając i świątynia świstaka / —
 showings:
@@ -3286,139 +3451,6 @@ cinemaScrapes:
   Kino na Szekspirowskim / La grazia / —
 showings:
   2026-06-11  Kino Malta Charlie Monroe     20:30 Sala Charlie
-
-=== Mandalorian i grogu ===
-displayTitle:      Mandalorian i grogu
-cinemaTitles:      Gwiezdne Wojny: Mandalorian i Grogu | MANDALORIAN I GROGU | Mandalorian & Grogu | Mandalorian i Grogu | Mandalorian i grogu | Mandalorian i grogu
-runtimeMinutes:    132
-releaseYear:       2026
-countries:         USA
-posterUrl:         https://movies.helios.pl/images/MANDALORIANIGROGUnowyplakat.jpg
-synopsis.length:   678
-cast:              Pedro Pascal, Sigourney Weaver, Jeremy Allen White, Steve Blum, Jonny Coyne, Matthew Willig
-director:          Jon Favreau
-tmdbId:            1228710
-imdbId:            tt30825738
-originalTitle:     The Mandalorian and Grogu
-imdbRating:        7.0
-metascore:         —
-rottenTomatoes:    62
-filmwebRating:     6.51288
-metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_mandalorian_and_grogu
-filmwebUrl:        https://www.filmweb.pl/film/The+Mandalorian+and+Grogu-2026-10046150
-cinemaFilmUrls:
-  Cinema City Kinepolis = https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r
-  Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r
-  Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/mandalorian-grogu-4347
-cinemaScrapes:
-  Centrum / Mandalorian i Grogu / —
-  Cinema City / — / —
-  Cinema City Arkadia / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Bemowo / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Bielsko-Biała / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Bonarka / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Bydgoszcz / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Bytom / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Czerwona Droga / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Elbląg / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Felicity / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Galeria Północna / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Gliwice / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Janki / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Jurajska / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Kazimierz / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Kinepolis / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Korona / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Lublin Plaza / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Manufaktura / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Mokotów / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Poznań Plaza / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Promenada / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Punkt 44 / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Ruda Śląska / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Rybnik / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Sadyba / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Silesia / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Sosnowiec / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Toruń Plaza / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Wałbrzych / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Wolność / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Wroclavia / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Zakopianka / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema City Zielona Góra / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Cinema Lumiere / Mandalorian i grogu / —
-  Cinema1 / Mandalorian i grogu / —
-  Europa / Mandalorian i Grogu / —
-  Forum / Mandalorian i Grogu / —
-  Helios Aleja Bielany / Mandalorian & Grogu / 2025
-  Helios Alfa / Mandalorian & Grogu / 2025
-  Helios Biała / Mandalorian & Grogu / 2025
-  Helios Bielsko-Biała / Mandalorian & Grogu / 2025
-  Helios Blue City / Mandalorian & Grogu / 2025
-  Helios Bydgoszcz / Mandalorian & Grogu / —
-  Helios Dąbrowa Górnicza / Mandalorian & Grogu / 2025
-  Helios Forum / Mandalorian & Grogu / 2025
-  Helios Gorzów Wielkopolski / Mandalorian & Grogu / 2025
-  Helios Jelenia Góra / Mandalorian & Grogu / 2025
-  Helios Jurowiecka / Mandalorian & Grogu / 2025
-  Helios Kalisz / Mandalorian & Grogu / 2025
-  Helios Karolinka / Mandalorian & Grogu / 2025
-  Helios Katowice / Mandalorian & Grogu / 2025
-  Helios Kielce / Mandalorian & Grogu / 2025
-  Helios Konin / Mandalorian & Grogu / 2025
-  Helios Koszalin / Mandalorian & Grogu / 2025
-  Helios Krosno / Mandalorian & Grogu / 2025
-  Helios Kupiec / Mandalorian & Grogu / 2025
-  Helios Kędzierzyn-Koźle / Mandalorian & Grogu / 2025
-  Helios Legnica / Mandalorian & Grogu / 2025
-  Helios Lubin / Mandalorian & Grogu / 2025
-  Helios Magnolia Park / Mandalorian & Grogu / 2025
-  Helios Metropolia / Mandalorian & Grogu / 2025
-  Helios Nowy Sącz / Mandalorian & Grogu / 2025
-  Helios Olsztyn / Mandalorian & Grogu / 2025
-  Helios Ostrów Wlkp. / Mandalorian & Grogu / 2025
-  Helios Outlet Park / Mandalorian & Grogu / 2025
-  Helios Posnania / Mandalorian & Grogu / 2025
-  Helios Przemyśl / Mandalorian & Grogu / 2025
-  Helios Płock / Mandalorian & Grogu / 2025
-  Helios Radom / Mandalorian & Grogu / —
-  Helios Riviera / Mandalorian & Grogu / 2025
-  Helios Rzeszów / Mandalorian & Grogu / 2025
-  Helios Solaris / Mandalorian & Grogu / 2025
-  Helios Sosnowiec / Mandalorian & Grogu / —
-  Helios Starachowice / Mandalorian & Grogu / 2025
-  Helios Tczew / Mandalorian & Grogu / 2025
-  Helios Łódź / Mandalorian & Grogu / 2025
-  Helios Żory / Mandalorian & Grogu / 2025
-  Kino GCK / Mandalorian i Grogu / —
-  Kino Ignacy / Mandalorian i grogu / —
-  Kino Kalejdoskop / Mandalorian i grogu / —
-  Kino MOKiS / Mandalorian i Grogu / —
-  Kino Na Biegunach / Mandalorian i grogu / —
-  Kino Nowe Horyzonty / Mandalorian i Grogu / 2026
-  Kino PCKul / Mandalorian i grogu / —
-  Kino Przedwiośnie / Mandalorian i Grogu / 2026
-  Kino Sokół / MANDALORIAN I GROGU / —
-  Kino Zdrój / Mandalorian i Grogu / —
-  Kino Śnieżka / Mandalorian i grogu / —
-  Klaps / Mandalorian i Grogu / —
-  Koneckie Centrum Kultury / Mandalorian i Grogu / —
-  Muza / Mandalorian i Grogu / —
-  Wybrzeże / Mandalorian i grogu / —
-showings:
-  2026-06-08  Cinema City Kinepolis         12:20 Sala 17 2D/DUB · 13:40 Sala 12 2D/DUB · 15:20 Sala 17 2D/NAP · 15:50 Sala 8 2D/DUB · 16:40 Sala 12 2D/DUB · 17:20 Sala 7 2D/NAP · 18:15 Sala 17 2D/NAP · 19:30 Sala 12 2D/NAP · 20:20 Sala 7 2D/NAP · 21:15 Sala 17 2D/NAP
-  2026-06-08  Cinema City Poznań Plaza      10:00 Sala 9 2D/DUB · 11:30 Sala IMAX IMAX/3D/DUB · 13:00 Sala 9 2D/DUB · 16:00 Sala 9 2D/NAP · 16:20 Sala 3 2D/DUB · 17:30 Sala IMAX IMAX/3D/NAP · 19:00 Sala 9 2D/NAP · 22:00 Sala 9 2D/NAP
-  2026-06-08  Helios Posnania               10:30 Sala 4 2D/DUB · 11:30 Sala 1 2D/DUB · 14:30 Sala 1 2D/NAP · 17:30 Sala 1 2D/DUB · 18:30 Sala 7 - Dream 2D/DUB/ATMOS · 20:30 Sala 1 2D/NAP · 21:20 Sala 7 - Dream 2D/NAP/ATMOS
-  2026-06-09  Cinema City Kinepolis         12:20 Sala 17 2D/DUB · 13:40 Sala 12 2D/DUB · 15:20 Sala 17 2D/NAP · 15:50 Sala 8 2D/DUB · 16:40 Sala 12 2D/DUB · 17:20 Sala 7 2D/NAP · 18:15 Sala 17 2D/NAP · 19:30 Sala 12 2D/NAP · 20:20 Sala 7 2D/NAP · 21:15 Sala 17 2D/NAP
-  2026-06-09  Cinema City Poznań Plaza      09:30 Sala 9 2D/NAP · 11:30 Sala IMAX IMAX/3D/DUB · 13:00 Sala 9 2D/DUB · 16:00 Sala 9 2D/NAP · 16:20 Sala 3 2D/DUB · 17:30 Sala IMAX IMAX/3D/NAP · 19:00 Sala 9 2D/NAP · 22:00 Sala 9 2D/NAP
-  2026-06-09  Helios Posnania               11:30 Sala 1 2D/DUB · 14:30 Sala 1 2D/NAP · 17:30 Sala 1 2D/DUB · 18:30 Sala 7 - Dream 2D/DUB/ATMOS · 20:30 Sala 1 2D/NAP · 21:20 Sala 7 - Dream 2D/NAP/ATMOS
-  2026-06-10  Cinema City Kinepolis         15:50 Sala 8 2D/DUB · 17:20 Sala 7 2D/NAP · 20:20 Sala 7 2D/NAP
-  2026-06-10  Cinema City Poznań Plaza      10:00 Sala 9 2D/DUB · 13:00 Sala 9 2D/DUB · 16:00 Sala 9 2D/NAP · 19:00 Sala 9 2D/NAP · 22:00 Sala 9 2D/NAP
-  2026-06-10  Helios Posnania               11:20 Sala 5 - Dream 2D/DUB/ATMOS · 18:30 Sala 3 2D/NAP · 20:45 Sala 5 - Dream 2D/NAP/ATMOS
-  2026-06-11  Cinema City Kinepolis         15:50 Sala 8 2D/DUB · 17:20 Sala 7 2D/NAP · 20:20 Sala 7 2D/NAP
-  2026-06-11  Cinema City Poznań Plaza      10:00 Sala 9 2D/DUB · 13:00 Sala 9 2D/DUB · 16:00 Sala 9 2D/NAP · 19:00 Sala 9 2D/NAP · 22:00 Sala 9 2D/NAP
-  2026-06-11  Helios Posnania               11:20 Sala 5 - Dream 2D/DUB/ATMOS · 12:15 Sala 6 2D/NAP · 17:15 Sala 4 2D/DUB · 20:15 Sala 4 2D/NAP · 20:45 Sala 5 - Dream 2D/NAP/ATMOS
 
 === Maraton Horrorów ===
 displayTitle:      Maraton Horrorów
@@ -3693,7 +3725,7 @@ showings:
 
 === Mikey i Nicky ===
 displayTitle:      Mikey i Nicky
-cinemaTitles:      MIKEY I NICKY | Mikey i Nicky
+cinemaTitles:      MIKEY I NICKY | Mikey i Nicky | Mikey i Nicky (1976)
 runtimeMinutes:    106
 releaseYear:       1976
 countries:         USA
@@ -3718,6 +3750,7 @@ cinemaScrapes:
   DKF Rumcajs / Mikey i Nicky / —
   Gdyńskie Centrum Filmowe / Mikey i Nicky / —
   KINOMUZEUM / Mikey i Nicky / 1976
+  Kino Fenomen (WDK) / Mikey i Nicky (1976) / 1976
   Kino Iluzjon / Mikey i Nicky / 1976
   Kino KDK / Mikey i Nicky / —
   Kino Muzeum / MIKEY I NICKY / 1976
@@ -3730,6 +3763,7 @@ cinemaScrapes:
   Kino U-jazdowski / Mikey i Nicky / 1976
   Kino Żak / Mikey i Nicky / 1976
   Kinoteka / Mikey i Nicky / 2026
+  Świt / Mikey i Nicky (1976) / —
 showings:
   2026-06-08  Kino Pałacowe                 18:00 Sala 1 - Kinowa
   2026-06-08  Kino Rialto                   20:00
@@ -3980,7 +4014,7 @@ showings:
 
 === Minionki i straszydła ===
 displayTitle:      Minionki i straszydła
-cinemaTitles:      MINIONKI I STRASZYDŁA | Minionki i straszydła
+cinemaTitles:      MINIONKI I STRASZYDŁA | Minionki i straszydła | Minionki i straszydła [dubbing PL]
 runtimeMinutes:    85
 releaseYear:       2026
 countries:         USA
@@ -4082,6 +4116,7 @@ cinemaScrapes:
   Kino Kawiarnia / Minionki i straszydła / —
   Kino MOK Centrum / MINIONKI I STRASZYDŁA / —
   Kino Scena Kultura / Minionki i straszydła / —
+  Kinoteka / Minionki i straszydła [dubbing PL] / 2026
   Planet Cinema / Minionki i straszydła / —
   Regis / Minionki i straszydła / —
   Wybrzeże / Minionki i straszydła / —
@@ -4483,16 +4518,16 @@ cinemaScrapes:
 showings:
   2026-06-30  Kino Muza                     20:00 Sala 1
 
-=== Niesamowite przygody skarpetek 3. Ale ko ===
-displayTitle:      Niesamowite przygody skarpetek 3. Ale ko
-cinemaTitles:      Niesamowite przygody skarpetek 3. Ale ko
+=== Niesamowite przygody skarpetek 3. Ale kosmos! ===
+displayTitle:      Niesamowite przygody skarpetek 3. Ale kosmos!
+cinemaTitles:      NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS ! | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! | Niesamowite przygody skarpetek 3. Ale ko | Niesamowite przygody skarpetek 3. Ale kosmos | Niesamowite przygody skarpetek 3. Ale kosmos!
 runtimeMinutes:    55
 releaseYear:       2026
-countries:         Polska
-posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8188D2R.jpg
-synopsis.length:   588
+countries:         Polska, Portugalia
+posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Ale-kosmos-PLAKAT.jpg
+synopsis.length:   910
 cast:              —
-director:          Paweł Wendorff, Elżbieta Wąsik; Jarosław Szyszko, Barbara Koniecka, Mateusz Kmieć, Natalia Bartska-Kmieć
+director:          Elżbieta Wąsik
 tmdbId:            1646671
 imdbId:            tt43351027
 originalTitle:     Niesamowite przygody skarpetek 3. Ale kosmos!
@@ -4506,7 +4541,12 @@ filmwebUrl:        https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/niesamowite-przygody-skarpetek-3-ale-ko/8188d2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/niesamowite-przygody-skarpetek-3-ale-ko/8188d2r
+  Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos-4158
+  Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos
+  Kino Malta Charlie Monroe = https://kinomalta.pl/movies/niesamowite-przygody-skarpetek-3-ale-kosmos
+  Kino Pałacowe = http://kinopalacowe.pl/filmy/14253-poranek-dla-dzieci-niesamowite-przygody-skarpetek-/
 cinemaScrapes:
+  Bałtyk / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Cinema City / — / —
   Cinema City Arkadia / Niesamowite przygody skarpetek 3. Ale ko / 2026
   Cinema City Bemowo / Niesamowite przygody skarpetek 3. Ale ko / 2026
@@ -4540,43 +4580,6 @@ cinemaScrapes:
   Cinema City Wroclavia / Niesamowite przygody skarpetek 3. Ale ko / 2026
   Cinema City Zakopianka / Niesamowite przygody skarpetek 3. Ale ko / 2026
   Cinema City Zielona Góra / Niesamowite przygody skarpetek 3. Ale ko / 2026
-showings:
-  2026-06-08  Cinema City Kinepolis         09:30 Sala 14 2D/DUB · 12:30 Sala 14 2D/DUB · 16:10 Sala 9 2D/DUB
-  2026-06-08  Cinema City Poznań Plaza      10:50 Sala 2 2D/DUB · 12:30 Sala 2 2D/DUB · 14:10 Sala 2 2D/DUB
-  2026-06-09  Cinema City Kinepolis         12:30 Sala 14 2D/DUB · 16:10 Sala 9 2D/DUB
-  2026-06-09  Cinema City Poznań Plaza      10:50 Sala 2 2D/DUB · 12:30 Sala 2 2D/DUB · 14:10 Sala 2 2D/DUB
-  2026-06-10  Cinema City Kinepolis         12:10 Sala 16 2D/DUB · 16:10 Sala 9 2D/DUB
-  2026-06-10  Cinema City Poznań Plaza      12:30 Sala 2 2D/DUB
-  2026-06-11  Cinema City Kinepolis         12:10 Sala 16 2D/DUB · 16:10 Sala 9 2D/DUB
-  2026-06-11  Cinema City Poznań Plaza      10:50 Sala 2 2D/DUB · 12:30 Sala 2 2D/DUB
-
-=== Niesamowite przygody skarpetek 3. Ale kosmos ===
-displayTitle:      Niesamowite przygody skarpetek 3. Ale kosmos
-cinemaTitles:      NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS ! | NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! | Niesamowite przygody skarpetek 3. Ale kosmos | Niesamowite przygody skarpetek 3. Ale kosmos!
-runtimeMinutes:    55
-releaseYear:       2026
-countries:         Polska, Portugalia
-posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Ale-kosmos-PLAKAT.jpg
-synopsis.length:   910
-cast:              —
-director:          Elżbieta Wąsik
-tmdbId:            1646671
-imdbId:            tt43351027
-originalTitle:     Niesamowite przygody skarpetek 3. Ale kosmos!
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     6.09375
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+3.+Ale+kosmos%21-2026-10116428
-cinemaFilmUrls:
-  Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos-4158
-  Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos
-  Kino Malta Charlie Monroe = https://kinomalta.pl/movies/niesamowite-przygody-skarpetek-3-ale-kosmos
-  Kino Pałacowe = http://kinopalacowe.pl/filmy/14253-poranek-dla-dzieci-niesamowite-przygody-skarpetek-/
-cinemaScrapes:
-  Bałtyk / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Cinema Lumiere / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Cinema1 / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Gdyńskie Centrum Filmowe / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -4669,11 +4672,19 @@ cinemaScrapes:
   Wybrzeże / Niesamowite przygody skarpetek 3. Ale kosmos / —
   Świt Zwoleń / Niesamowite przygody skarpetek 3. Ale kosmos! / —
 showings:
+  2026-06-08  Cinema City Kinepolis         09:30 Sala 14 2D/DUB · 12:30 Sala 14 2D/DUB · 16:10 Sala 9 2D/DUB
+  2026-06-08  Cinema City Poznań Plaza      10:50 Sala 2 2D/DUB · 12:30 Sala 2 2D/DUB · 14:10 Sala 2 2D/DUB
   2026-06-08  Helios Posnania               11:50 Sala 8 2D/DUB · 13:30 Sala 8 2D/DUB
+  2026-06-09  Cinema City Kinepolis         12:30 Sala 14 2D/DUB · 16:10 Sala 9 2D/DUB
+  2026-06-09  Cinema City Poznań Plaza      10:50 Sala 2 2D/DUB · 12:30 Sala 2 2D/DUB · 14:10 Sala 2 2D/DUB
   2026-06-09  Helios Posnania               11:50 Sala 8 2D/DUB · 13:30 Sala 8 2D/DUB
   2026-06-09  Kino Bułgarska 19             16:30 Sala Thelma & Louise
   2026-06-09  Kino Malta Charlie Monroe     15:55 Sala Audrey
+  2026-06-10  Cinema City Kinepolis         12:10 Sala 16 2D/DUB · 16:10 Sala 9 2D/DUB
+  2026-06-10  Cinema City Poznań Plaza      12:30 Sala 2 2D/DUB
   2026-06-10  Helios Posnania               11:30 Sala 3 2D/DUB · 15:40 Sala 1 2D/DUB
+  2026-06-11  Cinema City Kinepolis         12:10 Sala 16 2D/DUB · 16:10 Sala 9 2D/DUB
+  2026-06-11  Cinema City Poznań Plaza      10:50 Sala 2 2D/DUB · 12:30 Sala 2 2D/DUB
   2026-06-11  Helios Posnania               12:10 Sala 8 2D/DUB · 15:40 Sala 4 2D/DUB
   2026-06-11  Kino Bułgarska 19             16:30 Sala Thelma & Louise
   2026-06-13  Kino Pałacowe                 11:00 Sala 1 - Kinowa
@@ -4716,7 +4727,7 @@ showings:
 
 === Noce Cabirii ===
 displayTitle:      Noce Cabirii
-cinemaTitles:      Noce Cabirii
+cinemaTitles:      Noce Cabirii | Noce Cabirii (1957)
 runtimeMinutes:    110
 releaseYear:       1957
 countries:         Włochy, Francja
@@ -4744,6 +4755,7 @@ cinemaScrapes:
   Kino Pałacowe / Noce Cabirii / 1957
   Kino za Rogiem Cafe / Noce Cabirii / —
   OKF Iluzja / Noce Cabirii / —
+  Świt / Noce Cabirii (1957) / —
 showings:
   2026-06-20  Kino Pałacowe                 18:00 Sala 1 - Kinowa
   2026-08-04  Kino Muza                     18:15 Sala 1
@@ -5050,7 +5062,7 @@ showings:
 
 === Ojczyzna ===
 displayTitle:      Ojczyzna
-cinemaTitles:      OJCZYZNA | Ojczyzna
+cinemaTitles:      OJCZYZNA | Ojczyzna | Ojczyzna /napisy
 runtimeMinutes:    82
 releaseYear:       2026
 countries:         Polska, Niemcy, Włochy, Francja
@@ -5109,6 +5121,7 @@ cinemaScrapes:
   Kino Muranów / Ojczyzna / 2026
   Kino Muza / Ojczyzna / 2026
   Kino Muzeum / OJCZYZNA / 2026
+  Kino Narie / Ojczyzna /napisy / —
   Kino Nowe Horyzonty / Ojczyzna / 2026
   Kino Orzeł / Ojczyzna / —
   Kino Oskard / Ojczyzna / —
@@ -5244,7 +5257,7 @@ showings:
 
 === Osiem i pół ===
 displayTitle:      Osiem i pół
-cinemaTitles:      Osiem i pół
+cinemaTitles:      Osiem i pół | Osiem i pół (1963)
 runtimeMinutes:    138
 releaseYear:       1963
 countries:         Włochy, Francja
@@ -5268,6 +5281,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Muza / Osiem i pół / 1963
   Kino Pałacowe / Osiem i pół / 1963
+  Świt / Osiem i pół (1963) / —
 showings:
   2026-07-05  Kino Pałacowe                 17:00 Sala 1 - Kinowa
   2026-07-21  Kino Muza                     20:30 Sala 1
@@ -7156,7 +7170,7 @@ showings:
 
 === Straszny film ===
 displayTitle:      Straszny film
-cinemaTitles:      STRASZNY FILM | Straszny film
+cinemaTitles:      STRASZNY FILM | Straszny film | Straszny film /napisy | Straszny film/napisy
 runtimeMinutes:    96
 releaseYear:       2026
 countries:         USA, Wielka Brytania
@@ -7276,6 +7290,7 @@ cinemaScrapes:
   Kino Na Biegunach / Straszny film / —
   Kino Narie / Straszny film / —
   Kino ODEON / Straszny film / —
+  Kino Oskard / Straszny film/napisy / —
   Kino PCKul / Straszny film / —
   Kino Planeta / Straszny film / —
   Kino Przedwiośnie / Straszny film / 2026
@@ -7292,6 +7307,7 @@ cinemaScrapes:
   Pionier / Straszny film / —
   Planet Cinema / Straszny film / —
   Przedwiośnie / Straszny film / —
+  Regis / Straszny film /napisy / —
 showings:
   2026-06-08  Cinema City Kinepolis         12:50 Sala 11 2D/NAP · 14:10 Sala 14 2D/DUB · 15:10 Sala 11 2D/DUB · 16:30 Sala 14 2D/NAP · 17:30 Sala 11 2D/NAP · 18:50 Sala 14 2D/NAP · 19:50 Sala 11 2D/NAP · 21:10 Sala 14 2D/NAP
   2026-06-08  Cinema City Poznań Plaza      11:40 Sala 8 2D/DUB · 14:00 Sala 8 2D/NAP · 16:20 Sala 8 2D/DUB · 18:40 Sala 8 2D/NAP · 21:00 Sala 8 2D/NAP
@@ -7605,7 +7621,7 @@ showings:
 
 === Słodkie życie ===
 displayTitle:      Słodkie życie
-cinemaTitles:      Słodkie życie
+cinemaTitles:      Słodkie życie | Słodkie życie (1960)
 runtimeMinutes:    176
 releaseYear:       1960
 countries:         Włochy, Francja
@@ -7630,6 +7646,7 @@ cinemaScrapes:
   Kino Muza / Słodkie życie / 1960
   Kino Nowe Horyzonty / Słodkie życie / 1960
   Kino Pałacowe / Słodkie życie / 1960
+  Świt / Słodkie życie (1960) / —
 showings:
   2026-06-28  Kino Pałacowe                 17:00 Sala 1 - Kinowa
   2026-08-11  Kino Muza                     20:30 Sala 1
@@ -7795,7 +7812,7 @@ showings:
 
 === Tom i Jerry: Przygoda w muzeum ===
 displayTitle:      Tom i Jerry: Przygoda w muzeum
-cinemaTitles:      TOM I JERRY : PRZYGODA W MUZEUM | TOM I JERRY: PRZYGODA W MUZEUM | TOM I JERRY:PRZYGODA W MUZEUM | Tom i Jerry. Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum | Tom i jerry. Przygoda w muzeum | Tom i jerry: przygoda w muzeum
+cinemaTitles:      TOM I JERRY : PRZYGODA W MUZEUM | TOM I JERRY: PRZYGODA W MUZEUM | TOM I JERRY:PRZYGODA W MUZEUM | Tom i Jerry. Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum /dubbing | Tom i jerry. Przygoda w muzeum | Tom i jerry: przygoda w muzeum
 runtimeMinutes:    100
 releaseYear:       2025
 countries:         USA, Chiny
@@ -7922,6 +7939,7 @@ cinemaScrapes:
   Kino Moskwa / TOM I JERRY: PRZYGODA W MUZEUM / —
   Kino NCKF EC1 / Tom i Jerry: Przygoda w muzeum / —
   Kino Na Biegunach / Tom i jerry: przygoda w muzeum / —
+  Kino Narie / Tom i Jerry: Przygoda w muzeum /dubbing / —
   Kino Nawojka / Tom i Jerry: Przygoda w muzeum / —
   Kino Nowe Horyzonty / Tom i Jerry: Przygoda w muzeum / 2025
   Kino ODEON / Tom i jerry. Przygoda w muzeum / —
@@ -7963,7 +7981,7 @@ showings:
 
 === Toy Story 5 ===
 displayTitle:      Toy Story 5
-cinemaTitles:      TOY STORY 5 | Toy Story 5 | Toy story 5
+cinemaTitles:      TOY STORY 5 | Toy Story 5 | Toy Story 5 (Dubbing PL) | Toy Story 5 /dubbing | Toy story 5
 runtimeMinutes:    102
 releaseYear:       2026
 countries:         Japonia, USA
@@ -8084,8 +8102,10 @@ cinemaScrapes:
   Kino MOKiS / Toy Story 5 / —
   Kino Millenium / Toy story 5 / —
   Kino Na Biegunach / Toy story 5 / —
+  Kino Narie / Toy Story 5 /dubbing / —
   Kino ODEON / Toy story 5 / —
   Kino Oskard / Toy Story 5 / —
+  Kino Pod Baranami / Toy Story 5 (Dubbing PL) / —
   Kino Promień / Toy Story 5 / —
   Kino Przedwiośnie / Toy Story 5 / 2026
   Kino Roma / Toy Story 5 / 2026
@@ -8133,18 +8153,18 @@ releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7784D2R1.jpg
 synopsis.length:   380
-cast:              —
+cast:              Tom Hanks, Tim Allen, Joan Cusack, Greta Lee, Conan O'Brien
 director:          Andrew Stanton
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
+tmdbId:            1084244
+imdbId:            tt29355505
+originalTitle:     Toy Story 5
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
 filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+metacriticUrl:     https://www.metacritic.com/movie/toy-story-5
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/toy_story_5
+filmwebUrl:        https://www.filmweb.pl/film/Toy+Story+5-2026-10051461
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/toy-story-5-ukrainski-dubbing/7784d2r1
 cinemaScrapes:
@@ -8252,7 +8272,7 @@ showings:
 
 === Wałkonie ===
 displayTitle:      Wałkonie
-cinemaTitles:      Wałkonie
+cinemaTitles:      Wałkonie | Wałkonie (1953)
 runtimeMinutes:    103
 releaseYear:       1953
 countries:         Włochy, Francja
@@ -8280,6 +8300,7 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Wałkonie / 1953
   Kino Pałacowe / Wałkonie / 1953
   OKF Iluzja / Wałkonie / —
+  Świt / Wałkonie (1953) / —
 showings:
   2026-06-15  Kino Pałacowe                 18:00 Sala 1 - Kinowa
   2026-07-28  Kino Muza                     20:30 Sala 1
@@ -8746,7 +8767,7 @@ showings:
 
 === Zawieście czerwone latarnie ===
 displayTitle:      Zawieście czerwone latarnie
-cinemaTitles:      ZAWIEŚCIE CZERWONE LATARNIE | Zawieście Czerwone Latarnie | Zawieście czerwone latarnie
+cinemaTitles:      ZAWIEŚCIE CZERWONE LATARNIE | Zawieście Czerwone Latarnie | Zawieście czerwone latarnie | Zawieście czerwone latarnie (1991)
 runtimeMinutes:    125
 releaseYear:       1991
 countries:         Chiny, Hongkong, Tajwan
@@ -8787,6 +8808,7 @@ cinemaScrapes:
   Kino Muranów / Zawieście czerwone latarnie / 1991
   Kino Muza / Zawieście czerwone latarnie / 1991
   Kino Muzeum / ZAWIEŚCIE CZERWONE LATARNIE / 1989
+  Kino NCKF EC1 / Zawieście czerwone latarnie (1991) / —
   Kino Nowe Horyzonty / Zawieście czerwone latarnie / 1991
   Kino Paradox / Zawieście czerwone latarnie / 1991
   Kino Pałacowe / Zawieście czerwone latarnie / 1991
@@ -8805,7 +8827,7 @@ showings:
 
 === Zawodowcy ===
 displayTitle:      Zawodowcy
-cinemaTitles:      ZAWODOWCY | Zawodowcy
+cinemaTitles:      ZAWODOWCY | Zawodowcy | Zawodowcy /napisy
 runtimeMinutes:    97
 releaseYear:       2026
 countries:         Wielka Brytania, USA
@@ -8933,6 +8955,7 @@ cinemaScrapes:
   Kino Malta Charlie Monroe / Zawodowcy / —
   Kino Moskwa / ZAWODOWCY / —
   Kino Na Biegunach / Zawodowcy / —
+  Kino Narie / Zawodowcy /napisy / —
   Kino Nowe Horyzonty / Zawodowcy / —
   Kino ODEON / Zawodowcy / —
   Kino Oskard / ZAWODOWCY / —

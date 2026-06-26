@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.{DetailEnricher, FilmDetail, FilmwebShowtimesClient}
 import services.freshness.InMemoryFreshnessStore
 import services.movies.{MovieService, TitleNormalizer}
+import services.titlerules.{TitleRuleDefaults, TitleRuleSet}
 
 /** Unit specs for the staging enrichment steps factored out of the old
  *  `StagingPromoter` — the same scenarios, now exercised per discrete step (the
@@ -109,24 +110,32 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     // wrote a DUPLICATE under the new key and left the original unconcluded — the
     // reaper re-resolved it forever (320k× observed). Stamping by the row's `id`
     // updates it in place. Fails before, passes now.
-    val repository = new InMemoryStagingRepository
-    val slotTitle  = "Gwiezdne Wojny: Mandalorian i Grogu"            // recase output (capital W → sanitize strips)
-    // Persist under the NON-stripping all-caps spelling so the `_id` prefix and
-    // the re-derived display title sanitize to DIFFERENT keys.
-    repository.upsert(Helios, "GWIEZDNE WOJNY: Mandalorian i Grogu", None,
-      MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some(slotTitle)))))
+    //
+    // Pinned to the DEFAULTS-only rule set so the case-sensitive `canonical-gwiezdne-wojny`
+    // strip creates the all-caps-vs-title-case drift this guards. The full prod set adds
+    // the case-INSENSITIVE `xtra-canonical-gwiezdne-wojny-ci`, which collapses both
+    // spellings to one key — so this exact title no longer drifts in prod; the stamp-by-`id`
+    // invariant is what we exercise, with a rule set where the drift still exists.
+    TitleNormalizer.withRules(TitleRuleSet(TitleRuleDefaults.all)) {
+      val repository = new InMemoryStagingRepository
+      val slotTitle  = "Gwiezdne Wojny: Mandalorian i Grogu"            // recase output (capital W → sanitize strips)
+      // Persist under the NON-stripping all-caps spelling so the `_id` prefix and
+      // the re-derived display title sanitize to DIFFERENT keys.
+      repository.upsert(Helios, "GWIEZDNE WOJNY: Mandalorian i Grogu", None,
+        MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some(slotTitle)))))
 
-    val row    = repository.findAll().head
-    val anchor = TitleNormalizer.sanitize(row.title)
-    anchor should not be row.id.split('|')(1)                          // precondition: the drift exists
+      val row    = repository.findAll().head
+      val anchor = TitleNormalizer.sanitize(row.title)
+      anchor should not be row.id.split('|')(1)                          // precondition: the drift exists
 
-    val s = steps(repository, Seq.empty, (_, _, r) => Some(r.copy(tmdbNoMatch = true)))
-    s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved
-    s.resolveAndStamp(anchor) shouldBe StagingSteps.AlreadyDone        // concluded in place — would LOOP if duplicated
+      val s = steps(repository, Seq.empty, (_, _, r) => Some(r.copy(tmdbNoMatch = true)))
+      s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved
+      s.resolveAndStamp(anchor) shouldBe StagingSteps.AlreadyDone        // concluded in place — would LOOP if duplicated
 
-    val rows = repository.findAll()
-    rows.size                      shouldBe 1                          // no duplicate spawned under the re-keyed sanitize
-    rows.head.record.tmdbNoMatch   shouldBe true
+      val rows = repository.findAll()
+      rows.size                      shouldBe 1                          // no duplicate spawned under the re-keyed sanitize
+      rows.head.record.tmdbNoMatch   shouldBe true
+    }
   }
 
   it should "report DetailNotReady (and NOT call resolve) for a deferred cinema whose detail hasn't landed" in {

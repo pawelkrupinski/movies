@@ -27,13 +27,21 @@ class Bilety24OskardSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "parse runtime + the schedule for a film via the b24-do-miejsc URL" in {
-    val m = oskardByT("Drugie życie")
+    // The per-cinema `xtra-oskard-kino-cafe` rule strips the venue's '/Kino Cafe'
+    // suffix, so BOTH the base "Drugie życie" event and its "Drugie życie /Kino Cafe"
+    // sibling now clean to the same title (they fold into one row downstream, by
+    // sanitize key — not in the client). That makes the title an ambiguous lookup
+    // key, so select the base event by its distinctive b24-do-miejsc showtime.
+    val knownShowtime = Showtime(
+      LocalDateTime.of(2026, 6, 13, 20, 30),
+      Some("https://ckis-konin.bilety24.pl/b24-do-miejsc-numerowanych-i-nienumerowanych/?id=937926"),
+      None, List("2D", "NAP"))
+    val m = oskardRes.find(_.showtimes.contains(knownShowtime))
+      .getOrElse(fail("no 'Drugie życie' event carrying the 2026-06-13 b24-do-miejsc showtime"))
+    m.movie.title          shouldBe "Drugie życie"
     m.movie.runtimeMinutes shouldBe Some(116)
     m.movie.genres         shouldBe Seq("Dramat")
-    m.showtimes.size       shouldBe 4
     m.filmUrl.getOrElse("") should include("/wydarzenie/?id=")
-    m.showtimes.head shouldBe
-      Showtime(LocalDateTime.of(2026, 6, 13, 20, 30), Some("https://ckis-konin.bilety24.pl/b24-do-miejsc-numerowanych-i-nienumerowanych/?id=937926"), None, List("2D", "NAP"))
   }
 
   it should "build booking URLs starting with the venue base URL" in {

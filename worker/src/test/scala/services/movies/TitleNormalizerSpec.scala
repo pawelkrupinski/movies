@@ -2,6 +2,7 @@ package services.movies
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.titlerules.{TitleRuleDefaults, TitleRuleSet}
 
 class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
 
@@ -448,9 +449,18 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     // "Gwiezdne Wojny: " canonical strip fire (it doesn't match the all-caps form),
     // so the row would sanitize to a DIFFERENT key — scattering its merge and
     // spinning the staging fold. recase must leave such a title as scraped.
-    val shout = "GWIEZDNE WOJNY: MANDALORIAN i GROGU"
-    recase(shout) shouldBe shout
-    TitleNormalizer.sanitize(recase(shout)) shouldBe TitleNormalizer.sanitize(shout)
+    //
+    // Pinned to the DEFAULTS-only rule set so the case-sensitive `canonical-gwiezdne-wojny`
+    // strip is the one in play: the full prod set ALSO carries the case-INSENSITIVE
+    // `xtra-canonical-gwiezdne-wojny-ci`, which collapses BOTH spellings to the same
+    // key — so recasing this exact title is then safe and recase rightly down-cases it.
+    // The invariant under test is the guard MECHANISM (refuse a recase that re-keys),
+    // so we exercise it with a rule set where the drift still exists.
+    TitleNormalizer.withRules(TitleRuleSet(TitleRuleDefaults.all)) {
+      val shout = "GWIEZDNE WOJNY: MANDALORIAN i GROGU"
+      recase(shout) shouldBe shout
+      TitleNormalizer.sanitize(recase(shout)) shouldBe TitleNormalizer.sanitize(shout)
+    }
   }
 
   it should "split a programme banner and case the banner and film independently" in {
