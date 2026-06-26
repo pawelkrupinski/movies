@@ -364,8 +364,10 @@ class WorkerWiring extends play.api.Logging {
   // async off the bus and draws a shared-budget EC.
   lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient)
   lazy val imdbIdCache: ResolutionCache = resolutionCache("resolve_imdb")
+  lazy val wikidataClient = new WikidataClient(httoFetch)
   lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient,
-    backgroundBudget.executionContext("imdb-id-resolver"), imdbIdCache = imdbIdCache)
+    backgroundBudget.executionContext("imdb-id-resolver"), imdbIdCache = imdbIdCache,
+    wikidata = Some(wikidataClient))
   lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, resolutionCache("resolve_rt"))
   lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient, resolutionCache("resolve_mc"))
   lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient, resolutionCache("resolve_filmweb"))

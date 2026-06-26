@@ -36,7 +36,13 @@ class ImdbIdResolver(
   // Caches the IMDb suggestion lookup keyed by (search title, year), so the same
   // search resolves once for 24h across the staging and event-driven paths.
   // Defaults to passthrough so unit specs resolve live unless they wire one.
-  imdbIdCache: ResolutionCache = ResolutionCache.passthrough
+  imdbIdCache: ResolutionCache = ResolutionCache.passthrough,
+  // Wikidata cross-reference fallback: when both the IMDb suggestion endpoint and
+  // the director-based path return nothing, try Filmweb-ID → Wikidata P5032 →
+  // IMDb P345. Covers classic/repertoire films whose titles differ too much
+  // between the cinema listing and IMDb for the suggestion endpoint to match.
+  // None disables the fallback (default for tests that don't wire Wikidata).
+  wikidata: Option[WikidataClient] = None
 ) extends Stoppable with Logging {
 
   /** Cached IMDb-id lookup shared by both call sites. Hits-only — a no-match
@@ -101,6 +107,18 @@ class ImdbIdResolver(
           if (directors.nonEmpty)
             yearSeq.iterator.flatMap(y => Try(imdb.findId(searchTitle, y, directors)).toOption.flatten).nextOption()
           else None
+        }
+        .orElse {
+          // Wikidata fallback: cross-reference via Filmweb entity id (P5032 → P345).
+          // Only fires when the filmwebUrl is a real entity page (not a search redirect)
+          // and a WikidataClient has been wired. Never throws — WikidataClient.findImdbIdByFilmwebId
+          // absorbs all network failures and returns None.
+          for {
+            client    <- wikidata
+            url       <- record.filmwebUrl
+            filmwebId <- WikidataClient.filmwebEntityId(url)
+            id        <- client.findImdbIdByFilmwebId(filmwebId)
+          } yield id
         }
       found match {
         case Some(id) =>

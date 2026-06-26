@@ -1,0 +1,28 @@
+{
+  "entities": {
+    "Q722281": {
+      "claims": {
+        "P345": [{
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P345",
+            "datavalue": {"value": "tt0052080", "type": "string"},
+            "datatype": "external-id"
+          },
+          "type": "statement",
+          "rank": "normal"
+        }],
+        "P5032": [{
+          "mainsnak": {
+            "snaktype": "value",
+            "property": "P5032",
+            "datavalue": {"value": "1118", "type": "string"},
+            "datatype": "external-id"
+          },
+          "type": "statement",
+          "rank": "normal"
+        }]
+      }
+    }
+  }
+}

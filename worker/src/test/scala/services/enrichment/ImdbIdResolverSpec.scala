@@ -138,6 +138,64 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     calls.get() shouldBe 2
   }
 
+  // ── Wikidata fallback ────────────────────────────────────────────────────────
+
+  it should "use the Wikidata fallback when both IMDb suggestion and director paths return nothing" in {
+    val bus = new InProcessEventBus()
+    // A film with a real Filmweb entity URL but no IMDb match from the suggestion endpoint
+    val record = MovieRecord(
+      tmdbId     = Some(1024),
+      filmwebUrl = Some("https://www.filmweb.pl/film/Popiol+i+diament-1958-1118"),
+      data       = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Ashes and Diamonds")))
+    )
+    val repository = new InMemoryMovieRepository(Seq(("Popiół i diament", Some(1958), record)))
+    val cache      = new CaffeineMovieCache(repository)
+    // IMDb suggestion returns no match; Wikidata stub returns tt0052080 for filmweb id 1118
+    val wikidataStub = new WikidataClient(new HttpFetch {
+      def get(url: String): String =
+        if (url.contains("haswbstatement"))
+          """{"query":{"search":[{"title":"Q722281"}]}}"""
+        else if (url.contains("wbgetentities"))
+          """{"entities":{"Q722281":{"claims":{"P345":[{"mainsnak":{"datavalue":{"value":"tt0052080"}}}]}}}}"""
+        else throw new RuntimeException(s"unexpected url: $url")
+      override def get(url: String, headers: Map[String, String]): String = get(url)
+      override def post(url: String, body: String, contentType: String): String = ???
+    })
+    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
+      wikidata = Some(wikidataStub))
+    bus.subscribe(resolver.onImdbIdMissing)
+
+    bus.publish(ImdbIdMissing("Popiół i diament", Some(1958), "Ashes and Diamonds"))
+
+    eventually {
+      cache.get(cache.keyOf("Popiół i diament", Some(1958))).flatMap(_.imdbId) shouldBe Some("tt0052080")
+    }
+  }
+
+  it should "skip the Wikidata fallback when filmwebUrl is a search redirect (no entity id)" in {
+    val bus = new InProcessEventBus()
+    val record = MovieRecord(
+      tmdbId     = Some(1025),
+      filmwebUrl = Some("https://www.filmweb.pl/search?query=Unknown+Film"),
+      data       = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Unknown Film")))
+    )
+    val repository = new InMemoryMovieRepository(Seq(("Unknown Film", Some(2024), record)))
+    val cache      = new CaffeineMovieCache(repository)
+    repository.upserts.clear()
+    val wikidataThrows = new WikidataClient(new HttpFetch {
+      def get(url: String): String = throw new RuntimeException("Wikidata should not be called for search URLs")
+      override def get(url: String, headers: Map[String, String]): String = get(url)
+      override def post(url: String, body: String, contentType: String): String = ???
+    })
+    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
+      wikidata = Some(wikidataThrows))
+    bus.subscribe(resolver.onImdbIdMissing)
+
+    noException should be thrownBy bus.publish(ImdbIdMissing("Unknown Film", Some(2024), "Unknown Film"))
+    Thread.sleep(100)
+    repository.upserts shouldBe empty
+  }
+
   // ── Director-based disambiguation ───────────────────────────────────────────
 
   "onImdbIdMissing" should "use director data from the cache record when the film is listed under a different title on IMDb" in {
