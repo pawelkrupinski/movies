@@ -39,7 +39,11 @@ class FilmwebRatings(
   // so the same film's search + /info + /preview probes run once for 24h. Only
   // the url is cached; on a cache hit the rating + genres are rebuilt from the
   // url. Passthrough by default (tests).
-  filmwebLinkCache: ResolutionCache = ResolutionCache.passthrough
+  filmwebLinkCache: ResolutionCache = ResolutionCache.passthrough,
+  // Called whenever we set (or confirm) a filmwebUrl on a row that still has
+  // no imdbId — signals the resolver to attempt the Wikidata fallback.
+  // Args: (title, year, searchTitle) matching ImdbIdMissing. No-op by default.
+  onImdbIdMissing: (String, Option[Int], String) => Unit = (_, _, _) => ()
 ) extends CacheRefresher(cache) {
 
   override protected def sourceName: String = "Filmweb"
@@ -121,6 +125,8 @@ class FilmwebRatings(
       case None =>
         logger.info(s"Filmweb: $label $url → no rating on page")
     }
+    if (e.imdbId.isEmpty)
+      onImdbIdMissing(key.cleanTitle, key.year, e.originalTitle.getOrElse(MovieService.apiQuery(key.cleanTitle)))
   }
 
   // Full URL discovery — only called when the row has no stored filmwebUrl.
@@ -135,6 +141,8 @@ class FilmwebRatings(
         logger.info(s"Filmweb: $label → URL discovered ${fw.url} rating=${fw.rating.getOrElse("—")}")
         cache.putIfPresent(key, r =>
           r.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating, data = withFilmwebGenres(r.data, fw.genres)))
+        if (e.imdbId.isEmpty)
+          onImdbIdMissing(key.cleanTitle, key.year, e.originalTitle.getOrElse(MovieService.apiQuery(key.cleanTitle)))
       case None =>
         logger.info(s"Filmweb: $label → no match")
     }

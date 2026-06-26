@@ -342,6 +342,66 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     })
   }
 
+  // ── onImdbIdMissing callback ─────────────────────────────────────────────────
+
+  "refreshOneSync (url discovered, no imdbId)" should "fire the callback so Wikidata resolution is triggered" in {
+    val url        = "https://www.filmweb.pl/film/Popiół+i+diament-1958-1118"
+    val repository = new InMemoryMovieRepository(Seq(
+      ("Popiół i diament", Some(1958),
+        MovieRecord(tmdbId = Some(1), data = Map(Tmdb -> SourceData(originalTitle = Some("Ashes and Diamonds")))))
+    ))
+    val cache   = new CaffeineMovieCache(repository)
+    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+      "/live/search"    -> s"""{"searchHits":[{"id":1118,"type":"film","matchedTitle":"Popiół i diament"}]}""",
+      "/film/1118/info" -> """{"title":"Popiół i diament","year":1958}""",
+      "/film/1118/rating" -> """{"rate":8.1,"count":2000}"""
+    )))
+    var fired: Option[(String, Option[Int], String)] = None
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb,
+      onImdbIdMissing = (title, year, search) => fired = Some((title, year, search)))
+
+    ratings.refreshOneSync(cache.keyOf("Popiół i diament", Some(1958)))
+
+    fired shouldBe Some(("Popiół i diament", Some(1958), "Ashes and Diamonds"))
+  }
+
+  "refreshOneSync (url already set, no imdbId)" should "fire the callback on rating-only refresh to catch existing rows" in {
+    val url        = "https://www.filmweb.pl/film/Popiół+i+diament-1958-1118"
+    val repository = new InMemoryMovieRepository(Seq(
+      ("Popiół i diament", Some(1958), MovieRecord(tmdbId = Some(1), filmwebUrl = Some(url)))
+    ))
+    val cache   = new CaffeineMovieCache(repository)
+    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+      "/film/1118/rating" -> """{"rate":8.1,"count":2000}"""
+    )))
+    var fired = false
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb,
+      onImdbIdMissing = (_, _, _) => fired = true)
+
+    ratings.refreshOneSync(cache.keyOf("Popiół i diament", Some(1958)))
+
+    fired shouldBe true
+  }
+
+  it should "NOT fire the callback when imdbId is already resolved" in {
+    val url        = "https://www.filmweb.pl/film/Popiół+i+diament-1958-1118"
+    val repository = new InMemoryMovieRepository(Seq(
+      ("Popiół i diament", Some(1958),
+        MovieRecord(imdbId = Some("tt0052080"), tmdbId = Some(1), filmwebUrl = Some(url)))
+    ))
+    val cache   = new CaffeineMovieCache(repository)
+    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+      "/film/1118/rating" -> """{"rate":8.1,"count":2000}"""
+    )))
+    var fired = false
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb,
+      onImdbIdMissing = (_, _, _) => fired = true)
+
+    ratings.refreshOneSync(cache.keyOf("Popiół i diament", Some(1958)))
+
+    fired shouldBe false
+  }
+
   "the Filmweb url cache" should "search once across two audits of the same row" in {
     val searches = new java.util.concurrent.atomic.AtomicInteger(0)
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1")))))

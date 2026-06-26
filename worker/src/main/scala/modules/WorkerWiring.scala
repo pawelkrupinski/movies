@@ -7,7 +7,7 @@ import services.alerts.{FallbackAlert, FilmwebDropAlerter, StagingStuckAlerter, 
 import services.cinemas._
 import services.enrichment._
 import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
-import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete, StagingFilmEnriched, TaskFinished}
+import services.events.{EventBus, ImdbIdMissing, InProcessEventBus, MovieDetailsComplete, StagingFilmEnriched, TaskFinished}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepository, MovieService, MongoNormalizationReportRepository, NormalizationRebuilder, NormalizationReport, NormalizationReportRepository, QueueResolveDispatcher, UnscreenedCleanup}
 import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
@@ -371,7 +371,8 @@ class WorkerWiring extends play.api.Logging {
     wikidata = Some(wikidataClient))
   lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, resolutionCache("resolve_rt"))
   lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient, resolutionCache("resolve_mc"))
-  lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient, resolutionCache("resolve_filmweb"))
+  lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient, resolutionCache("resolve_filmweb"),
+    onImdbIdMissing = (title, year, searchTitle) => eventBus.publish(ImdbIdMissing(title, year, searchTitle)))
   // Single-movie TMDB resolution is dispatched as a `ResolveTmdb` worker task:
   // drained by the TaskWorker, retried (`Reschedule`) + deduped by the queue,
   // and shown with a live queue place on `/debug`. `taskQueue` is a lazy val
