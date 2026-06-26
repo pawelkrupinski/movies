@@ -38,6 +38,29 @@ class DeepLinkTest {
         assertEquals("Lilo & Stitch", dl.filmTitle)
     }
 
+    @Test fun filmDetailParsesEncodedPolishTitle() {
+        val dl = DeepLink.parse("https://kinowo.fly.dev/poznan/film?title=Minionki%20i%20straszyd%C5%82a")!!
+        assertEquals("poznan", dl.citySlug)
+        assertEquals("Minionki i straszydła", dl.filmTitle)
+    }
+
+    // MIUI/Xiaomi hands the activity the App Link with the query already
+    // percent-DECODED, so it arrives with literal spaces (and raw Polish chars).
+    // The strict java.net.URI(String) constructor threw URISyntaxException on
+    // those → parse returned null → the film page never opened (the app stayed
+    // on the current/main screen). parse() must tolerate the decoded delivery.
+    @Test fun filmDetailParsesTitleDeliveredDecoded() {
+        val dl = DeepLink.parse("https://kinowo.fly.dev/poznan/film?title=Minionki i straszydła")!!
+        assertEquals("poznan", dl.citySlug)
+        assertEquals("Minionki i straszydła", dl.filmTitle)
+    }
+
+    @Test fun filmDetailParsesTitleDeliveredDecodedCustomScheme() {
+        val dl = DeepLink.parse("kinowo://poznan/film?title=Minionki i straszydła")!!
+        assertEquals("poznan", dl.citySlug)
+        assertEquals("Minionki i straszydła", dl.filmTitle)
+    }
+
     @Test fun customSchemeCityAndFilm() {
         assertEquals("poznan", DeepLink.parse("kinowo://poznan/")!!.citySlug)
         assertEquals("Wicked", DeepLink.parse("kinowo://krakow/film?title=Wicked")!!.filmTitle)

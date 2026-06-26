@@ -46,8 +46,24 @@ data class DeepLink(
             url: String,
             knownCitySlugs: Set<String> = Cities.all.map { it.slug }.toSet(),
         ): DeepLink? {
+            // Split the query (and any fragment) off the raw string BEFORE
+            // handing the base to java.net.URI. The single-arg URI(String)
+            // constructor is strict — it throws URISyntaxException on a literal
+            // space or other un-percent-encoded character. MIUI/Xiaomi delivers
+            // App Links with the query already percent-DECODED (so
+            // `?title=Minionki i straszydła` arrives with literal spaces), which
+            // made the strict parse throw → parse returned null → the film page
+            // never opened. We parse the query ourselves below; parseQuery
+            // decodes %XX and leaves already-literal chars intact, so it handles
+            // both the encoded and the decoded delivery. The base (scheme / host
+            // / path: a city slug + optional "film") is always ASCII here, so
+            // URI parses it fine.
+            val withoutFragment = url.substringBefore("#")
+            val base = withoutFragment.substringBefore("?")
+            val rawQuery = if (withoutFragment.contains("?")) withoutFragment.substringAfter("?") else null
+
             val uri = try {
-                URI(url)
+                URI(base)
             } catch (_: Exception) {
                 return null
             }
@@ -73,7 +89,7 @@ data class DeepLink(
 
             if (city !in knownCitySlugs) return null
 
-            val query = parseQuery(uri.rawQuery)
+            val query = parseQuery(rawQuery)
             val filmTitle = if (trailing.firstOrNull() == "film") {
                 query.firstOrNull { it.first == "title" }?.second?.takeIf { it.isNotEmpty() }
             } else null
