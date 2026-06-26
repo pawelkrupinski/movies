@@ -154,6 +154,7 @@ class HeliosClient(
 
   private case class ApiMovieInfo(
     title:         Option[String],
+    originalTitle: Option[String],
     duration:      Option[Int],
     description:   Option[String],
     cast:          Seq[String],
@@ -171,6 +172,7 @@ class HeliosClient(
       (js \ "title").asOpt[String].filter(_.nonEmpty).map { title =>
         ApiMovieInfo(
           title         = Some(title),
+          originalTitle = (js \ "originalTitle").asOpt[String].filter(_.nonEmpty),
           duration      = (js \ "duration").asOpt[Int],
           description   = (js \ "description").asOpt[String].filter(_.nonEmpty).map(tools.TextNormalization.stripHtml),
           cast          = (js \ "filmCast").asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
@@ -236,6 +238,7 @@ class HeliosClient(
         movie     = cm.movie.copy(
           runtimeMinutes = cm.movie.runtimeMinutes.orElse(restInfo.flatMap(_.duration)),
           releaseYear    = restInfo.flatMap(_.year),
+          originalTitle  = restInfo.flatMap(_.originalTitle).orElse(cm.movie.originalTitle),
           countries      = restInfo.map(_.countries).getOrElse(cm.movie.countries),
           genres         = restInfo.map(_.genres).getOrElse(cm.movie.genres)
         ),
@@ -264,6 +267,7 @@ class HeliosClient(
               title          = cleanTitle(info.title.getOrElse(movieId)),
               runtimeMinutes = info.duration,
               releaseYear    = info.year,
+              originalTitle  = info.originalTitle,
               countries      = info.countries,
               genres         = info.genres,
               rawTitle       = Some(info.title.getOrElse(movieId))

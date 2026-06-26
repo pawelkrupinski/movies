@@ -57,6 +57,11 @@ class HeliosClientRestEnrichmentRecordedSpec extends AnyFlatSpec with Matchers {
   // title-cases them at the write boundary so display matches TMDB/Filmweb
   // spelling.
 
+  it should "lift originalTitle from the REST movie response" in {
+    val byTitle = fetch().map(m => m.movie.title -> m).toMap
+    byTitle.get("Projekt Hail Mary").flatMap(_.movie.originalTitle) shouldBe Some("Project Hail Mary")
+  }
+
   it should "extract Polish genre labels from REST movie details, title-cased" in {
     val byTitle = fetch().map(m => m.movie.title -> m).toMap
     val kurozajac = byTitle.get("Kurozając i Świątynia Świstaka")
