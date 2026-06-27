@@ -685,12 +685,22 @@ class WorkerWiring extends play.api.Logging {
   // ONE shared due schedule backs both the reaper (enqueue) and every handler
   // (pickup re-gate), so they agree on what's due — see [[DueWindow]].
   // Its period is the rating TTL (4h, `Freshness.ttlFor`).
-  val ratingDueWindow = new services.tasks.DueWindow(4L.hours)
+  // Per-(source, film) change history → adaptive refresh interval. The rating
+  // DueWindow resolves each key's period from its cadence stats instead of a flat
+  // 4h, so a film whose displayed value hasn't moved backs off toward 4 days while
+  // a fresh/volatile one stays at the 2h base. The reaper + handler share this one
+  // instance (their due definitions must agree — see DueWindow).
+  lazy val ratingCadenceStore: services.cadence.RatingCadenceStore =
+    new services.cadence.MongoRatingCadenceStore(mongoConnection.database)
+  val ratingDueWindow = new services.tasks.DueWindow(
+    key => services.cadence.RatingCadence.intervalFor(ratingCadenceStore.statsFor(key)),
+    services.cadence.RatingCadence.BaseInterval
+  )
   lazy val ratingHandlers: Seq[services.tasks.TaskHandler] = Seq(
-    new RatingHandler(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    freshnessStore, ratingDueWindow, imdbRatings.refreshOneSync,         metrics = taskMetrics),
-    new RatingHandler(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, freshnessStore, ratingDueWindow, filmwebRatings.refreshOneSync,      metrics = taskMetrics),
-    new RatingHandler(TaskType.RtRating,      FreshnessKind.RtRating,      freshnessStore, ratingDueWindow, rottenTomatoesRatings.refreshOneSync, metrics = taskMetrics),
-    new RatingHandler(TaskType.McRating,      FreshnessKind.McRating,      freshnessStore, ratingDueWindow, metascoreRatings.refreshOneSync,    metrics = taskMetrics)
+    new RatingHandler(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    freshnessStore, ratingDueWindow, ratingCadenceStore, imdbRatings.refreshOneSync,         metrics = taskMetrics),
+    new RatingHandler(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, freshnessStore, ratingDueWindow, ratingCadenceStore, filmwebRatings.refreshOneSync,      metrics = taskMetrics),
+    new RatingHandler(TaskType.RtRating,      FreshnessKind.RtRating,      freshnessStore, ratingDueWindow, ratingCadenceStore, rottenTomatoesRatings.refreshOneSync, metrics = taskMetrics),
+    new RatingHandler(TaskType.McRating,      FreshnessKind.McRating,      freshnessStore, ratingDueWindow, ratingCadenceStore, metascoreRatings.refreshOneSync,    metrics = taskMetrics)
   )
   // Cap on rating-refresh tasks the EnrichmentReaper enqueues per tick. The phase
   // spread keeps steady-state ticks small (~N·tickInterval/period per source ≈ a

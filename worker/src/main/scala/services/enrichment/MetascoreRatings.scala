@@ -41,14 +41,14 @@ class MetascoreRatings(
   //     details for English title + year disambiguation), write the URL,
   //     then settle the metascore.
   // Per-row failures are swallowed; the next refresh tries again.
-  protected def refreshOne(key: CacheKey): Unit =
-    cache.get(key).foreach { e =>
+  protected def refreshOne(key: CacheKey): Boolean =
+    cache.get(key).fold(false) { e =>
       e.metacriticUrl match {
         case Some(url) => refreshScoreFromUrl(key, e, url)
         case None =>
           resolveAndPersistUrl(key, e) match {
             case Some(resolved) => settleScore(key, resolved)
-            case None           => logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no URL match")
+            case None           => logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no URL match"); false
           }
       }
     }
@@ -104,29 +104,33 @@ class MetascoreRatings(
 
   // Settle a freshly-discovered row's score: use the Metascore the slug probe
   // already parsed when present (no extra fetch), else read it from the URL.
-  private def settleScore(key: CacheKey, resolved: MetacriticClient.Resolved): Unit =
+  // Returns whether the displayed metascore changed.
+  private def settleScore(key: CacheKey, resolved: MetacriticClient.Resolved): Boolean =
     resolved.metascore match {
-      case Some(score) => cache.get(key).foreach(applyScore(key, _, resolved.url, score))
+      case Some(score) => cache.get(key).fold(false)(applyScore(key, _, resolved.url, score))
       // No score off the probe (search-fallback URL, link-cache hit, or a page
       // with no aggregateRating) — read it from the resolved URL. Re-read the
       // post-write row so the score copy doesn't clobber the URL we just wrote.
-      case None        => cache.get(key).foreach(refreshScoreFromUrl(key, _, resolved.url))
+      case None        => cache.get(key).fold(false)(refreshScoreFromUrl(key, _, resolved.url))
     }
 
-  private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Unit =
+  private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Boolean =
     Try(metacritic.metascoreFor(url)).toOption.flatten match {
       case Some(score) => applyScore(key, e, url, score)
-      case None        => logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) $url → no metascore on page")
+      case None        => logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) $url → no metascore on page"); false
     }
 
-  // Write a known score back, skipping the no-op when it's unchanged. The
-  // updater receives the live cached row — that's the merge point for both the
-  // URL we may have just written and any other listener's concurrent updates.
-  private def applyScore(key: CacheKey, e: models.MovieRecord, url: String, score: Int): Unit = {
-    val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
+  // Write a known score back, skipping the no-op when it's unchanged; returns
+  // whether it changed. The updater receives the live cached row — that's the
+  // merge point for both the URL we may have just written and any other
+  // listener's concurrent updates.
+  private def applyScore(key: CacheKey, e: models.MovieRecord, url: String, score: Int): Boolean = {
+    val label   = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
+    val changed = !e.metascore.contains(score)
     logger.info(s"Metacritic: $label $url → metascore $score" +
-      (if (e.metascore.contains(score)) " (unchanged)" else s" (was ${e.metascore.getOrElse("—")})"))
-    if (!e.metascore.contains(score)) cache.putIfPresent(key, _.copy(metascore = Some(score)))
+      (if (changed) s" (was ${e.metascore.getOrElse("—")})" else " (unchanged)"))
+    if (changed) cache.putIfPresent(key, _.copy(metascore = Some(score)))
+    changed
   }
 
   // ── Full-corpus walk ───────────────────────────────────────────────────────

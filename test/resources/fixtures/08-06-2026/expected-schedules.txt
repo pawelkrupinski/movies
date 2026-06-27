@@ -251,7 +251,7 @@ originalTitle:     Babystar
 imdbRating:        6.5
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     5.61765
+filmwebRating:     5.6
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/babystar
 filmwebUrl:        https://www.filmweb.pl/film/Babystar-2025-10094428
@@ -317,7 +317,7 @@ originalTitle:     Backrooms
 imdbRating:        7.1
 metascore:         77
 rottenTomatoes:    88
-filmwebRating:     6.38312
+filmwebRating:     6.4
 metacriticUrl:     https://www.metacritic.com/movie/backrooms
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/backrooms
 filmwebUrl:        https://www.filmweb.pl/film/Backrooms.+Bez+wyj%C5%9Bcia-2026-10099388
@@ -493,7 +493,7 @@ originalTitle:     어쩔수가없다
 imdbRating:        7.5
 metascore:         86
 rottenTomatoes:    97
-filmwebRating:     7.13474
+filmwebRating:     7.1
 metacriticUrl:     https://www.metacritic.com/movie/no-other-choice
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/no_other_choice
 filmwebUrl:        https://www.filmweb.pl/film/Bez+wyj%C5%9Bcia-2025-10058716
@@ -526,7 +526,7 @@ originalTitle:     Bez znieczulenia
 imdbRating:        7.3
 metascore:         —
 rottenTomatoes:    73
-filmwebRating:     7.59394
+filmwebRating:     7.6
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/without_anesthesia
 filmwebUrl:        https://www.filmweb.pl/film/Bez+znieczulenia-1978-4154
@@ -554,7 +554,7 @@ originalTitle:     Brzezina
 imdbRating:        6.9
 metascore:         —
 rottenTomatoes:    80
-filmwebRating:     7.23998
+filmwebRating:     7.2
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/birch_wood
 filmwebUrl:        https://www.filmweb.pl/film/Brzezina-1970-1121
@@ -775,7 +775,7 @@ originalTitle:     The Chronology of Water
 imdbRating:        6.4
 metascore:         78
 rottenTomatoes:    90
-filmwebRating:     6.44005
+filmwebRating:     6.4
 metacriticUrl:     https://www.metacritic.com/movie/the-chronology-of-water
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_chronology_of_water
 filmwebUrl:        https://www.filmweb.pl/film/Chronologia+wody-2025-10056797
@@ -808,7 +808,7 @@ originalTitle:     Chłopiec na krańcach świata
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     6.89
+filmwebRating:     6.9
 metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Ch%C5%82opiec+na+kra%C5%84cach+%C5%9Bwiata-2025-10095535
@@ -857,7 +857,7 @@ originalTitle:     Perfetti sconosciuti
 imdbRating:        7.7
 metascore:         63
 rottenTomatoes:    79
-filmwebRating:     7.6295
+filmwebRating:     7.6
 metacriticUrl:     https://www.metacritic.com/movie/perfect-strangers-perfectos-desconocidos
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/perfetti_sconosciuti_2016
 filmwebUrl:        https://www.filmweb.pl/film/Dobrze+si%C4%99+k%C5%82amie+w+mi%C5%82ym+towarzystwie-2016-752725
@@ -992,7 +992,7 @@ originalTitle:     Le cose non dette
 imdbRating:        6.7
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     7.68518
+filmwebRating:     7.7
 metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/O+czym+sobie+nie+m%C3%B3wimy-2026-10114137
@@ -1019,7 +1019,7 @@ originalTitle:     La valle dei sorrisi
 imdbRating:        6.6
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     5.74152
+filmwebRating:     5.7
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_holy_boy_2025
 filmwebUrl:        https://www.filmweb.pl/film/Przekl%C4%99ty+ch%C5%82opiec-2025-10087232
@@ -1046,7 +1046,7 @@ originalTitle:     2 cuori e 2 capanne
 imdbRating:        6.1
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     6.15625
+filmwebRating:     6.2
 metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Razem+czy+osobno-2026-10113196
@@ -1073,7 +1073,7 @@ originalTitle:     La vita va così
 imdbRating:        6.5
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     7.18919
+filmwebRating:     7.2
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/life_is_life
 filmwebUrl:        https://www.filmweb.pl/film/Takie+jest+%C5%BCycie-2025-10102549
@@ -1127,7 +1127,7 @@ originalTitle:     Fuori
 imdbRating:        6.0
 metascore:         47
 rottenTomatoes:    56
-filmwebRating:     5.68773
+filmwebRating:     5.7
 metacriticUrl:     https://www.metacritic.com/movie/fuori
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/fuori_2025
 filmwebUrl:        https://www.filmweb.pl/film/Wolno%C5%9B%C4%87+po+w%C5%82osku-2025-10075963
@@ -1181,7 +1181,7 @@ originalTitle:     FolleMente
 imdbRating:        6.9
 metascore:         —
 rottenTomatoes:    12
-filmwebRating:     7.19523
+filmwebRating:     7.2
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/somebody_to_love
 filmwebUrl:        https://www.filmweb.pl/film/Follemente.+W+tym+szale%C5%84stwie+jest+metoda-2025-10074839
@@ -1208,7 +1208,7 @@ originalTitle:     Człowiek z marmuru
 imdbRating:        7.6
 metascore:         —
 rottenTomatoes:    75
-filmwebRating:     7.6897
+filmwebRating:     7.7
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/czlowiek_z_marmuru
 filmwebUrl:        https://www.filmweb.pl/film/Cz%C5%82owiek+z+marmuru-1976-1123
@@ -1235,7 +1235,7 @@ originalTitle:     Człowiek z marmuru
 imdbRating:        7.6
 metascore:         —
 rottenTomatoes:    75
-filmwebRating:     7.6897
+filmwebRating:     7.7
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/czlowiek_z_marmuru
 filmwebUrl:        https://www.filmweb.pl/film/Cz%C5%82owiek+z+marmuru-1976-1123
@@ -1275,7 +1275,7 @@ originalTitle:     The Devil Wears Prada 2
 imdbRating:        6.6
 metascore:         63
 rottenTomatoes:    78
-filmwebRating:     6.21144
+filmwebRating:     6.2
 metacriticUrl:     https://www.metacritic.com/movie/the-devil-wears-prada-2
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_devil_wears_prada_2
 filmwebUrl:        https://www.filmweb.pl/film/Diabe%C5%82+ubiera+si%C4%99+u+Prady+2-2026-10083431
@@ -1404,7 +1404,7 @@ originalTitle:     The Drama
 imdbRating:        7.2
 metascore:         59
 rottenTomatoes:    76
-filmwebRating:     7.06402
+filmwebRating:     7.1
 metacriticUrl:     https://www.metacritic.com/movie/the-drama
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_drama
 filmwebUrl:        https://www.filmweb.pl/film/Drama-2026-10063474
@@ -1457,7 +1457,7 @@ originalTitle:     Calle Málaga
 imdbRating:        7.2
 metascore:         73
 rottenTomatoes:    98
-filmwebRating:     7.34511
+filmwebRating:     7.3
 metacriticUrl:     https://www.metacritic.com/movie/calle-malaga
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/calle_malaga
 filmwebUrl:        https://www.filmweb.pl/film/Drugie+%C5%BCycie-2025-10088399
@@ -1595,7 +1595,7 @@ originalTitle:     The Magic Faraway Tree
 imdbRating:        6.4
 metascore:         —
 rottenTomatoes:    91
-filmwebRating:     5.81796
+filmwebRating:     5.8
 metacriticUrl:     https://www.metacritic.com/movie/the-magic-faraway-tree
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_magic_faraway_tree
 filmwebUrl:        https://www.filmweb.pl/film/Drzewo+magii-2026-10104409
@@ -1773,7 +1773,7 @@ originalTitle:     Pigen med nålen
 imdbRating:        7.5
 metascore:         82
 rottenTomatoes:    93
-filmwebRating:     7.57157
+filmwebRating:     7.6
 metacriticUrl:     https://www.metacritic.com/movie/the-girl-with-the-needle
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_girl_with_the_needle
 filmwebUrl:        https://www.filmweb.pl/film/Dziewczyna+z+ig%C5%82%C4%85-2024-10051627
@@ -2024,7 +2024,7 @@ originalTitle:     Born to Be Wild
 imdbRating:        7.5
 metascore:         66
 rottenTomatoes:    98
-filmwebRating:     7.26566
+filmwebRating:     7.3
 metacriticUrl:     https://www.metacritic.com/movie/born-to-be-wild
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/born_to_be_wild_2011
 filmwebUrl:        https://www.filmweb.pl/film/Dzikie+z+natury+3D-2011-604524
@@ -2052,7 +2052,7 @@ originalTitle:     Erupcja
 imdbRating:        6.2
 metascore:         72
 rottenTomatoes:    84
-filmwebRating:     4.8803
+filmwebRating:     4.9
 metacriticUrl:     https://www.metacritic.com/movie/erupcja
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/erupcja
 filmwebUrl:        https://www.filmweb.pl/film/Erupcja-2025-10062503
@@ -2108,7 +2108,7 @@ originalTitle:     L’affaire Bojarski
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     7.14286
+filmwebRating:     7.1
 metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Fa%C5%82szerz+stulecia-2025-10099990
@@ -2259,7 +2259,7 @@ originalTitle:     Calle Málaga
 imdbRating:        7.2
 metascore:         73
 rottenTomatoes:    98
-filmwebRating:     7.34511
+filmwebRating:     7.3
 metacriticUrl:     https://www.metacritic.com/movie/calle-malaga
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/calle_malaga
 filmwebUrl:        https://www.filmweb.pl/film/Drugie+%C5%BCycie-2025-10088399
@@ -2287,7 +2287,7 @@ originalTitle:     Fatherland
 imdbRating:        7.1
 metascore:         90
 rottenTomatoes:    95
-filmwebRating:     7.01019
+filmwebRating:     7.0
 metacriticUrl:     https://www.metacritic.com/movie/fatherland
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/fatherland_2026
 filmwebUrl:        https://www.filmweb.pl/film/Ojczyzna-2026-10074985
@@ -2314,7 +2314,7 @@ originalTitle:     Re-Creation
 imdbRating:        5.6
 metascore:         —
 rottenTomatoes:    71
-filmwebRating:     5.44213
+filmwebRating:     5.4
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/re_creation
 filmwebUrl:        https://www.filmweb.pl/film/Werdykt-2025-10115470
@@ -2341,7 +2341,7 @@ originalTitle:     Following
 imdbRating:        7.4
 metascore:         60
 rottenTomatoes:    82
-filmwebRating:     7.38994
+filmwebRating:     7.4
 metacriticUrl:     https://www.metacritic.com/movie/following
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/following
 filmwebUrl:        https://www.filmweb.pl/film/%C5%9Aledz%C4%85c-1998-93473
@@ -2370,7 +2370,7 @@ originalTitle:     Giulietta degli spiriti
 imdbRating:        7.4
 metascore:         84
 rottenTomatoes:    79
-filmwebRating:     7.371
+filmwebRating:     7.4
 metacriticUrl:     https://www.metacritic.com/movie/juliet-of-the-spirits
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/juliet_of_the_spirits
 filmwebUrl:        https://www.filmweb.pl/film/Giulietta+i+duchy-1965-30829
@@ -2401,7 +2401,7 @@ originalTitle:     Giulietta degli spiriti
 imdbRating:        7.4
 metascore:         84
 rottenTomatoes:    79
-filmwebRating:     7.371
+filmwebRating:     7.4
 metacriticUrl:     https://www.metacritic.com/movie/juliet-of-the-spirits
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/juliet_of_the_spirits
 filmwebUrl:        https://www.filmweb.pl/film/Giulietta+i+duchy-1965-30829
@@ -2459,7 +2459,7 @@ originalTitle:     The Mandalorian and Grogu
 imdbRating:        7.0
 metascore:         —
 rottenTomatoes:    62
-filmwebRating:     6.51288
+filmwebRating:     6.5
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_mandalorian_and_grogu
 filmwebUrl:        https://www.filmweb.pl/film/The+Mandalorian+and+Grogu-2026-10046150
@@ -2620,7 +2620,7 @@ originalTitle:     صوت هند رجب
 imdbRating:        8.2
 metascore:         81
 rottenTomatoes:    94
-filmwebRating:     7.56623
+filmwebRating:     7.6
 metacriticUrl:     https://www.metacritic.com/movie/the-voice-of-hind-rajab
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_voice_of_hind_rajab
 filmwebUrl:        https://www.filmweb.pl/film/G%C5%82os+Hind+Rajab-2025-10089995
@@ -2650,7 +2650,7 @@ originalTitle:     La voce della luna
 imdbRating:        6.3
 metascore:         —
 rottenTomatoes:    61
-filmwebRating:     6.52675
+filmwebRating:     6.5
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/la-voce-della-luna-the-voice-of-the-moon
 filmwebUrl:        https://www.filmweb.pl/film/G%C5%82os+z+ksi%C4%99%C5%BCyca-1990-30818
@@ -2681,7 +2681,7 @@ originalTitle:     Hamnet
 imdbRating:        7.8
 metascore:         84
 rottenTomatoes:    87
-filmwebRating:     7.67262
+filmwebRating:     7.7
 metacriticUrl:     https://www.metacritic.com/movie/hamnet
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/hamnet
 filmwebUrl:        https://www.filmweb.pl/film/Hamnet-2025-10035555
@@ -2762,7 +2762,7 @@ originalTitle:     KPop Demon Hunters
 imdbRating:        7.4
 metascore:         77
 rottenTomatoes:    91
-filmwebRating:     7.24578
+filmwebRating:     7.2
 metacriticUrl:     https://www.metacritic.com/movie/kpop-demon-hunters
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/kpop_demon_hunters
 filmwebUrl:        https://www.filmweb.pl/film/K-popowe+%C5%82owczynie+demon%C3%B3w-2025-10080273
@@ -2928,7 +2928,7 @@ originalTitle:     Kicia Kocia w podróży
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     6.65957
+filmwebRating:     6.7
 metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/serial/Kicia+Kocia+w+podr%C3%B3%C5%BCy-2026-10113677
@@ -2991,7 +2991,7 @@ originalTitle:     Calle Málaga
 imdbRating:        7.2
 metascore:         73
 rottenTomatoes:    98
-filmwebRating:     7.34511
+filmwebRating:     7.3
 metacriticUrl:     https://www.metacritic.com/movie/calle-malaga
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/calle_malaga
 filmwebUrl:        https://www.filmweb.pl/film/Drugie+%C5%BCycie-2025-10088399
@@ -3018,7 +3018,7 @@ originalTitle:     Calle Málaga
 imdbRating:        7.2
 metascore:         73
 rottenTomatoes:    98
-filmwebRating:     7.34511
+filmwebRating:     7.3
 metacriticUrl:     https://www.metacritic.com/movie/calle-malaga
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/calle_malaga
 filmwebUrl:        https://www.filmweb.pl/film/Drugie+%C5%BCycie-2025-10088399
@@ -3072,7 +3072,7 @@ originalTitle:     Freak Show
 imdbRating:        6.5
 metascore:         54
 rottenTomatoes:    54
-filmwebRating:     6.78571
+filmwebRating:     6.8
 metacriticUrl:     https://www.metacritic.com/movie/freak-show
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/freak_show
 filmwebUrl:        https://www.filmweb.pl/film/Freak+Show-2026-10065590
@@ -3126,7 +3126,7 @@ originalTitle:     Klątwa Doliny Węży
 imdbRating:        5.4
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     3.81357
+filmwebRating:     3.8
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/curse_of_snakes_valley
 filmwebUrl:        https://www.filmweb.pl/film/Kl%C4%85twa+Doliny+W%C4%99%C5%BCy-1987-6785
@@ -3156,7 +3156,7 @@ originalTitle:     If I Had Legs I'd Kick You
 imdbRating:        6.6
 metascore:         78
 rottenTomatoes:    92
-filmwebRating:     6.98042
+filmwebRating:     7.0
 metacriticUrl:     https://www.metacritic.com/movie/if-i-had-legs-id-kick-you
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/if_i_had_legs_id_kick_you
 filmwebUrl:        https://www.filmweb.pl/film/Kopn%C4%99%C5%82abym+ci%C4%99%2C+gdybym+mog%C5%82a-2025-10068114
@@ -3186,7 +3186,7 @@ originalTitle:     Space Jam
 imdbRating:        6.5
 metascore:         57
 rottenTomatoes:    46
-filmwebRating:     6.94644
+filmwebRating:     6.9
 metacriticUrl:     https://www.metacritic.com/movie/space-jam
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/space_jam_1996
 filmwebUrl:        https://www.filmweb.pl/film/Kosmiczny+mecz-1996-582
@@ -3254,7 +3254,7 @@ originalTitle:     Krajobraz po bitwie
 imdbRating:        6.9
 metascore:         —
 rottenTomatoes:    80
-filmwebRating:     7.14485
+filmwebRating:     7.1
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/krajobraz_po_bitwie
 filmwebUrl:        https://www.filmweb.pl/film/Krajobraz+po+bitwie-1970-6867
@@ -3282,7 +3282,7 @@ originalTitle:     Kronika wypadków miłosnych
 imdbRating:        6.7
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     6.71892
+filmwebRating:     6.7
 metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Kronika+wypadk%C3%B3w+mi%C5%82osnych-1985-1190
@@ -3313,7 +3313,7 @@ originalTitle:     Kumotry
 imdbRating:        7.5
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     7.70833
+filmwebRating:     7.7
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/double_trouble
 filmwebUrl:        https://www.filmweb.pl/film/Kumotry-2025-10077201
@@ -3438,7 +3438,7 @@ originalTitle:     La grazia
 imdbRating:        7.4
 metascore:         69
 rottenTomatoes:    87
-filmwebRating:     7.15319
+filmwebRating:     7.2
 metacriticUrl:     https://www.metacritic.com/movie/la-grazia
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/la_grazia
 filmwebUrl:        https://www.filmweb.pl/film/La+grazia-2025-10088237
@@ -3620,7 +3620,7 @@ originalTitle:     Michael
 imdbRating:        7.7
 metascore:         38
 rottenTomatoes:    39
-filmwebRating:     6.99052
+filmwebRating:     7.0
 metacriticUrl:     https://www.metacritic.com/movie/michael
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/michael
 filmwebUrl:        https://www.filmweb.pl/film/Michael-2026-10008180
@@ -3739,7 +3739,7 @@ originalTitle:     Mikey and Nicky
 imdbRating:        7.3
 metascore:         81
 rottenTomatoes:    88
-filmwebRating:     7.1572
+filmwebRating:     7.2
 metacriticUrl:     https://www.metacritic.com/movie/mikey-and-nicky
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/mikey_and_nicky
 filmwebUrl:        https://www.filmweb.pl/film/Mikey+i+Nicky-1976-105722
@@ -3785,7 +3785,7 @@ originalTitle:     The Silence of the Lambs
 imdbRating:        8.6
 metascore:         86
 rottenTomatoes:    95
-filmwebRating:     8.25292
+filmwebRating:     8.3
 metacriticUrl:     https://www.metacritic.com/movie/the-silence-of-the-lambs
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_silence_of_the_lambs
 filmwebUrl:        https://www.filmweb.pl/film/Milczenie+owiec-1991-1047
@@ -3893,7 +3893,7 @@ originalTitle:     Stille Freundin
 imdbRating:        7.4
 metascore:         90
 rottenTomatoes:    95
-filmwebRating:     7.12075
+filmwebRating:     7.1
 metacriticUrl:     https://www.metacritic.com/movie/silent-friend
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/silent_friend
 filmwebUrl:        https://www.filmweb.pl/film/Milcz%C4%85ca+przyjaci%C3%B3%C5%82ka-2025-10089999
@@ -4208,7 +4208,7 @@ originalTitle:     Ástin sem eftir er
 imdbRating:        6.8
 metascore:         76
 rottenTomatoes:    94
-filmwebRating:     6.79467
+filmwebRating:     6.8
 metacriticUrl:     https://www.metacritic.com/movie/the-love-that-remains
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_love_that_remains
 filmwebUrl:        https://www.filmweb.pl/film/Mi%C5%82o%C5%9B%C4%87%2C+kt%C3%B3ra+zostaje-2025-10079931
@@ -4241,7 +4241,7 @@ originalTitle:     Monterey Pop
 imdbRating:        7.9
 metascore:         77
 rottenTomatoes:    96
-filmwebRating:     7.87521
+filmwebRating:     7.9
 metacriticUrl:     https://www.metacritic.com/movie/monterey-pop
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/monterey_pop
 filmwebUrl:        https://www.filmweb.pl/film/Monterey+Pop-1968-140039
@@ -4277,7 +4277,7 @@ originalTitle:     Mortal Kombat II
 imdbRating:        6.6
 metascore:         46
 rottenTomatoes:    64
-filmwebRating:     6.46273
+filmwebRating:     6.5
 metacriticUrl:     https://www.metacritic.com/movie/mortal-kombat-ii
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/mortal_kombat_ii
 filmwebUrl:        https://www.filmweb.pl/film/Mortal+Kombat+II-2026-10007434
@@ -4353,7 +4353,7 @@ originalTitle:     La Petite Dernière
 imdbRating:        6.8
 metascore:         71
 rottenTomatoes:    89
-filmwebRating:     6.17931
+filmwebRating:     6.2
 metacriticUrl:     https://www.metacritic.com/movie/the-little-sister
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/la_petite_derniere
 filmwebUrl:        https://www.filmweb.pl/film/M%C5%82odsza+siostra-2025-10070385
@@ -4383,7 +4383,7 @@ originalTitle:     A Star Is Born
 imdbRating:        7.6
 metascore:         88
 rottenTomatoes:    90
-filmwebRating:     7.39283
+filmwebRating:     7.4
 metacriticUrl:     https://www.metacritic.com/movie/a-star-is-born
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/a_star_is_born_2018
 filmwebUrl:        https://www.filmweb.pl/film/Narodziny+gwiazdy-2018-542576
@@ -4432,7 +4432,7 @@ originalTitle:     TKT (T'inquiète)
 imdbRating:        6.2
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     5.83099
+filmwebRating:     5.8
 metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Nie+martw+si%C4%99%2C+nic+mi+nie+jest-2024-10067581
@@ -4507,7 +4507,7 @@ originalTitle:     خرس نیست
 imdbRating:        7.2
 metascore:         93
 rottenTomatoes:    99
-filmwebRating:     6.73075
+filmwebRating:     6.7
 metacriticUrl:     https://www.metacritic.com/movie/no-bears
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/no_bears
 filmwebUrl:        https://www.filmweb.pl/film/Nied%C5%BAwiedzie+nie+istniej%C4%85-2022-10016727
@@ -4534,7 +4534,7 @@ originalTitle:     Niesamowite przygody skarpetek 3. Ale kosmos!
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     6.09375
+filmwebRating:     6.1
 metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+3.+Ale+kosmos%21-2026-10116428
@@ -4706,7 +4706,7 @@ originalTitle:     Wolfgang (Extraordinari)
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     6.13103
+filmwebRating:     6.1
 metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Niezwyk%C5%82y+ch%C5%82opak-2025-10067696
@@ -4741,7 +4741,7 @@ originalTitle:     Le notti di Cabiria
 imdbRating:        8.1
 metascore:         —
 rottenTomatoes:    100
-filmwebRating:     7.88879
+filmwebRating:     7.9
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/nights_of_cabiria
 filmwebUrl:        https://www.filmweb.pl/film/Noce+Cabirii-1957-30934
@@ -4776,7 +4776,7 @@ originalTitle:     Nouvelle Vague
 imdbRating:        7.3
 metascore:         76
 rottenTomatoes:    92
-filmwebRating:     6.55556
+filmwebRating:     6.6
 metacriticUrl:     https://www.metacritic.com/movie/nouvelle-vague
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/nouvelle_vague_2025
 filmwebUrl:        https://www.filmweb.pl/film/Nowa+fala-2025-10053131
@@ -4844,7 +4844,7 @@ originalTitle:     時をかける少女
 imdbRating:        7.6
 metascore:         66
 rottenTomatoes:    —
-filmwebRating:     7.63658
+filmwebRating:     7.6
 metacriticUrl:     https://www.metacritic.com/movie/the-girl-who-leapt-through-time
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_girl_who_leapt_through_time_2006
 filmwebUrl:        https://www.filmweb.pl/film/O+dziewczynie+skacz%C4%85cej+przez+czas-2006-405527
@@ -4925,7 +4925,7 @@ originalTitle:     L'Étranger
 imdbRating:        7.1
 metascore:         32
 rottenTomatoes:    91
-filmwebRating:     6.92949
+filmwebRating:     6.9
 metacriticUrl:     https://www.metacritic.com/movie/the-stranger
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_stranger_2025
 filmwebUrl:        https://www.filmweb.pl/film/Obcy-2025-10089279
@@ -4956,7 +4956,7 @@ originalTitle:     Obsession
 imdbRating:        8.1
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     7.74429
+filmwebRating:     7.7
 metacriticUrl:     https://www.metacritic.com/movie/obsession
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/obsession
 filmwebUrl:        https://www.filmweb.pl/film/Obsesja-2025-10094250
@@ -5076,7 +5076,7 @@ originalTitle:     Fatherland
 imdbRating:        7.1
 metascore:         90
 rottenTomatoes:    95
-filmwebRating:     7.01019
+filmwebRating:     7.0
 metacriticUrl:     https://www.metacritic.com/movie/fatherland
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/fatherland_2026
 filmwebUrl:        https://www.filmweb.pl/film/Ojczyzna-2026-10074985
@@ -5169,7 +5169,7 @@ originalTitle:     نسور الجمهورية
 imdbRating:        6.6
 metascore:         67
 rottenTomatoes:    75
-filmwebRating:     6.61776
+filmwebRating:     6.6
 metacriticUrl:     https://www.metacritic.com/movie/eagles-of-the-republic
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/eagles_of_the_republic
 filmwebUrl:        https://www.filmweb.pl/film/Or%C5%82y+Republiki-2025-10078590
@@ -5271,7 +5271,7 @@ originalTitle:     8½
 imdbRating:        8.0
 metascore:         93
 rottenTomatoes:    20
-filmwebRating:     7.82249
+filmwebRating:     7.8
 metacriticUrl:     https://www.metacritic.com/movie/-1963
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/8
 filmwebUrl:        https://www.filmweb.pl/film/Osiem+i+p%C3%B3%C5%82-1963-30830
@@ -5302,7 +5302,7 @@ originalTitle:     Vie privée
 imdbRating:        6.0
 metascore:         67
 rottenTomatoes:    81
-filmwebRating:     5.67321
+filmwebRating:     5.7
 metacriticUrl:     https://www.metacritic.com/movie/a-private-life
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/a_private_life_2025
 filmwebUrl:        https://www.filmweb.pl/film/Ostatnia+sesja+w+Pary%C5%BCu-2025-10063368
@@ -5341,7 +5341,7 @@ originalTitle:     Mr. Nobody mod Putin
 imdbRating:        7.4
 metascore:         80
 rottenTomatoes:    100
-filmwebRating:     7.55995
+filmwebRating:     7.6
 metacriticUrl:     https://www.metacritic.com/movie/mr-nobody-against-putin
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/mr_nobody_against_putin
 filmwebUrl:        https://www.filmweb.pl/film/Pan+Nikt+kontra+Putin-2025-10071319
@@ -5370,7 +5370,7 @@ originalTitle:     Passenger
 imdbRating:        5.6
 metascore:         52
 rottenTomatoes:    47
-filmwebRating:     5.23279
+filmwebRating:     5.2
 metacriticUrl:     https://www.metacritic.com/movie/passenger
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/passenger_2026
 filmwebUrl:        https://www.filmweb.pl/film/Pasa%C5%BCer-2026-10114919
@@ -5459,7 +5459,7 @@ originalTitle:     Persepolis
 imdbRating:        8.0
 metascore:         90
 rottenTomatoes:    96
-filmwebRating:     7.81491
+filmwebRating:     7.8
 metacriticUrl:     https://www.metacritic.com/movie/persepolis
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/persepolis
 filmwebUrl:        https://www.filmweb.pl/film/Persepolis-2007-338362
@@ -5486,7 +5486,7 @@ originalTitle:     The Pianist
 imdbRating:        8.5
 metascore:         85
 rottenTomatoes:    29
-filmwebRating:     8.2702
+filmwebRating:     8.3
 metacriticUrl:     https://www.metacritic.com/movie/the-pianist
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_pianist
 filmwebUrl:        https://www.filmweb.pl/film/Pianista-2002-32225
@@ -5551,7 +5551,7 @@ originalTitle:     Piep*zyć Mickiewicza 3
 imdbRating:        5.3
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     5.84129
+filmwebRating:     5.8
 metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Piep*zy%C4%87+Mickiewicza+3-2026-10088045
@@ -5658,7 +5658,7 @@ originalTitle:     Bałtyk
 imdbRating:        6.9
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     6.94828
+filmwebRating:     6.9
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_queen_and_the_smokehouse
 filmwebUrl:        https://www.filmweb.pl/film/Ba%C5%82tyk-2025-10076365
@@ -5712,7 +5712,7 @@ originalTitle:     Den stygge stesøsteren
 imdbRating:        7.0
 metascore:         70
 rottenTomatoes:    96
-filmwebRating:     6.75949
+filmwebRating:     6.8
 metacriticUrl:     https://www.metacritic.com/movie/the-ugly-stepsister
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_ugly_stepsister
 filmwebUrl:        https://www.filmweb.pl/film/Brzydka+siostra-2025-10068153
@@ -5739,7 +5739,7 @@ originalTitle:     Elskling
 imdbRating:        7.5
 metascore:         —
 rottenTomatoes:    100
-filmwebRating:     7.4971
+filmwebRating:     7.5
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/loveable
 filmwebUrl:        https://www.filmweb.pl/film/By%C4%87+kochan%C4%85-2024-10055263
@@ -5766,7 +5766,7 @@ originalTitle:     Delicatessen
 imdbRating:        7.5
 metascore:         66
 rottenTomatoes:    90
-filmwebRating:     7.38158
+filmwebRating:     7.4
 metacriticUrl:     https://www.metacritic.com/movie/delicatessen
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/delicatessen
 filmwebUrl:        https://www.filmweb.pl/film/Delicatessen-1991-30859
@@ -5793,7 +5793,7 @@ originalTitle:     Donnie Darko
 imdbRating:        8.0
 metascore:         71
 rottenTomatoes:    88
-filmwebRating:     7.70789
+filmwebRating:     7.7
 metacriticUrl:     https://www.metacritic.com/movie/donnie-darko
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/donnie_darko
 filmwebUrl:        https://www.filmweb.pl/film/Donnie+Darko-2001-5158
@@ -5820,7 +5820,7 @@ originalTitle:     Vermiglio
 imdbRating:        6.9
 metascore:         85
 rottenTomatoes:    93
-filmwebRating:     6.64474
+filmwebRating:     6.6
 metacriticUrl:     https://www.metacritic.com/movie/vermiglio
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/vermiglio
 filmwebUrl:        https://www.filmweb.pl/film/Droga+do+Vermiglio-2024-10057430
@@ -5874,7 +5874,7 @@ originalTitle:     C'è ancora domani
 imdbRating:        7.7
 metascore:         59
 rottenTomatoes:    89
-filmwebRating:     7.93137
+filmwebRating:     7.9
 metacriticUrl:     https://www.metacritic.com/movie/theres-still-tomorrow
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/theres_still_tomorrow
 filmwebUrl:        https://www.filmweb.pl/film/Jutro+b%C4%99dzie+nasze-2023-10042305
@@ -5901,7 +5901,7 @@ originalTitle:     La grazia
 imdbRating:        7.4
 metascore:         69
 rottenTomatoes:    87
-filmwebRating:     7.15319
+filmwebRating:     7.2
 metacriticUrl:     https://www.metacritic.com/movie/la-grazia
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/la_grazia
 filmwebUrl:        https://www.filmweb.pl/film/La+grazia-2025-10088237
@@ -5928,7 +5928,7 @@ originalTitle:     Verdens verste menneske
 imdbRating:        7.7
 metascore:         91
 rottenTomatoes:    96
-filmwebRating:     7.28063
+filmwebRating:     7.3
 metacriticUrl:     https://www.metacritic.com/movie/the-worst-person-in-the-world
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_worst_person_in_the_world
 filmwebUrl:        https://www.filmweb.pl/film/Najgorszy+cz%C5%82owiek+na+%C5%9Bwiecie-2021-874065
@@ -5955,7 +5955,7 @@ originalTitle:     Palm Springs
 imdbRating:        7.4
 metascore:         83
 rottenTomatoes:    95
-filmwebRating:     7.00852
+filmwebRating:     7.0
 metacriticUrl:     https://www.metacritic.com/movie/palm-springs
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/palm_springs_2020
 filmwebUrl:        https://www.filmweb.pl/film/Palm+Springs-2020-839586
@@ -6009,7 +6009,7 @@ originalTitle:     PERFECT DAYS
 imdbRating:        7.9
 metascore:         80
 rottenTomatoes:    96
-filmwebRating:     7.49711
+filmwebRating:     7.5
 metacriticUrl:     https://www.metacritic.com/movie/perfect-days
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/perfect_days_2023
 filmwebUrl:        https://www.filmweb.pl/film/Perfect+Days-2023-10034351
@@ -6036,7 +6036,7 @@ originalTitle:     Picnic at Hanging Rock
 imdbRating:        7.4
 metascore:         81
 rottenTomatoes:    93
-filmwebRating:     7.31216
+filmwebRating:     7.3
 metacriticUrl:     https://www.metacritic.com/movie/picnic-at-hanging-rock
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/picnic_at_hanging_rock
 filmwebUrl:        https://www.filmweb.pl/film/Piknik+pod+Wisz%C4%85c%C4%85+Ska%C5%82%C4%85-1975-30680
@@ -6063,7 +6063,7 @@ originalTitle:     Past Lives
 imdbRating:        7.8
 metascore:         94
 rottenTomatoes:    95
-filmwebRating:     7.29257
+filmwebRating:     7.3
 metacriticUrl:     https://www.metacritic.com/movie/past-lives
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/past_lives
 filmwebUrl:        https://www.filmweb.pl/film/Poprzednie+%C5%BCycie-2023-10029803
@@ -6117,7 +6117,7 @@ originalTitle:     Suspiria
 imdbRating:        7.3
 metascore:         79
 rottenTomatoes:    65
-filmwebRating:     6.95923
+filmwebRating:     7.0
 metacriticUrl:     https://www.metacritic.com/movie/suspiria
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/suspiria
 filmwebUrl:        https://www.filmweb.pl/film/Odg%C5%82osy-1977-90970
@@ -6144,7 +6144,7 @@ originalTitle:     Affeksjonsverdi
 imdbRating:        7.7
 metascore:         86
 rottenTomatoes:    95
-filmwebRating:     7.49443
+filmwebRating:     7.5
 metacriticUrl:     https://www.metacritic.com/movie/sentimental-value
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/sentimental_value
 filmwebUrl:        https://www.filmweb.pl/film/Warto%C5%9B%C4%87+sentymentalna-2025-10058855
@@ -6171,7 +6171,7 @@ originalTitle:     The Salt Path
 imdbRating:        6.6
 metascore:         49
 rottenTomatoes:    85
-filmwebRating:     6.83873
+filmwebRating:     6.8
 metacriticUrl:     https://www.metacritic.com/movie/the-salt-path
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_salt_path
 filmwebUrl:        https://www.filmweb.pl/film/%C5%9Acie%C5%BCki+%C5%BCycia-2024-10058778
@@ -6229,7 +6229,7 @@ originalTitle:     Fight Club
 imdbRating:        8.8
 metascore:         67
 rottenTomatoes:    81
-filmwebRating:     8.29011
+filmwebRating:     8.3
 metacriticUrl:     https://www.metacritic.com/movie/fight-club
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/fight_club
 filmwebUrl:        https://www.filmweb.pl/film/Podziemny+kr%C4%85g-1999-837
@@ -6364,7 +6364,7 @@ originalTitle:     پسر دلفینی ۲
 imdbRating:        6.2
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     4.65625
+filmwebRating:     4.7
 metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Delfinek+i+ja+2-2025-10103515
@@ -6418,7 +6418,7 @@ originalTitle:     Posłani
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     6.42857
+filmwebRating:     6.4
 metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Pos%C5%82ani-2026-10121693
@@ -6527,7 +6527,7 @@ originalTitle:     Back to the Future Part III
 imdbRating:        7.5
 metascore:         55
 rottenTomatoes:    79
-filmwebRating:     7.44777
+filmwebRating:     7.4
 metacriticUrl:     https://www.metacritic.com/movie/back-to-the-future-part-iii
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/back_to_the_future_part_iii
 filmwebUrl:        https://www.filmweb.pl/film/Powr%C3%B3t+do+przysz%C5%82o%C5%9Bci+III-1990-8825
@@ -6592,7 +6592,7 @@ originalTitle:     La ley del deseo
 imdbRating:        7.1
 metascore:         —
 rottenTomatoes:    100
-filmwebRating:     7.06941
+filmwebRating:     7.1
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/law_of_desire
 filmwebUrl:        https://www.filmweb.pl/film/Prawo+po%C5%BC%C4%85dania-1987-7061
@@ -6622,7 +6622,7 @@ originalTitle:     Project Hail Mary
 imdbRating:        8.3
 metascore:         77
 rottenTomatoes:    94
-filmwebRating:     7.8753
+filmwebRating:     7.9
 metacriticUrl:     https://www.metacritic.com/movie/project-hail-mary
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/project_hail_mary
 filmwebUrl:        https://www.filmweb.pl/film/Projekt+Hail+Mary-2026-10047841
@@ -6671,7 +6671,7 @@ originalTitle:     The Straight Story
 imdbRating:        8.0
 metascore:         86
 rottenTomatoes:    95
-filmwebRating:     7.68003
+filmwebRating:     7.7
 metacriticUrl:     https://www.metacritic.com/movie/the-straight-story
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/straight_story
 filmwebUrl:        https://www.filmweb.pl/film/Prosta+historia-1999-821
@@ -6698,7 +6698,7 @@ originalTitle:     The Virgin Suicides
 imdbRating:        7.2
 metascore:         77
 rottenTomatoes:    80
-filmwebRating:     7.2945
+filmwebRating:     7.3
 metacriticUrl:     https://www.metacritic.com/movie/the-virgin-suicides
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/virgin_suicides
 filmwebUrl:        https://www.filmweb.pl/film/Przekle%C5%84stwa+niewinno%C5%9Bci-1999-10981
@@ -6786,7 +6786,7 @@ originalTitle:     Pucio
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     7.10407
+filmwebRating:     7.1
 metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/serial/Pucio-2026-10016294
@@ -6842,7 +6842,7 @@ originalTitle:     Anniversary
 imdbRating:        6.7
 metascore:         57
 rottenTomatoes:    67
-filmwebRating:     6.57635
+filmwebRating:     6.6
 metacriticUrl:     https://www.metacritic.com/movie/anniversary
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/anniversary_2025
 filmwebUrl:        https://www.filmweb.pl/film/Rocznica-2025-856239
@@ -6869,7 +6869,7 @@ originalTitle:     Romería
 imdbRating:        6.8
 metascore:         74
 rottenTomatoes:    91
-filmwebRating:     6.49002
+filmwebRating:     6.5
 metacriticUrl:     https://www.metacritic.com/movie/romeria
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/romeria
 filmwebUrl:        https://www.filmweb.pl/film/Romer%C3%ADa-2025-10072967
@@ -6911,7 +6911,7 @@ originalTitle:     The Conversation
 imdbRating:        7.7
 metascore:         88
 rottenTomatoes:    94
-filmwebRating:     7.41265
+filmwebRating:     7.4
 metacriticUrl:     https://www.metacritic.com/movie/the-conversation
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_conversation
 filmwebUrl:        https://www.filmweb.pl/film/Rozmowa-1974-9253
@@ -7009,7 +7009,7 @@ originalTitle:     Sarnie żniwo, czyli pokusa statuetkowego szlaku
 imdbRating:        6.3
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     7.24899
+filmwebRating:     7.2
 metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Sarnie+%C5%BCniwo%2C+czyli+pokusa+statuetkowego+szlaku-2006-389424
@@ -7040,7 +7040,7 @@ originalTitle:     طعم گيلاس
 imdbRating:        7.7
 metascore:         80
 rottenTomatoes:    83
-filmwebRating:     7.08217
+filmwebRating:     7.1
 metacriticUrl:     https://www.metacritic.com/movie/taste-of-cherry
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/taste_of_cherry
 filmwebUrl:        https://www.filmweb.pl/film/Smak+wi%C5%9Bni-1997-32032
@@ -7067,7 +7067,7 @@ originalTitle:     Ghost Elephants
 imdbRating:        7.0
 metascore:         79
 rottenTomatoes:    98
-filmwebRating:     6.9265
+filmwebRating:     6.9
 metacriticUrl:     https://www.metacritic.com/movie/ghost-elephants
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/ghost_elephants
 filmwebUrl:        https://www.filmweb.pl/film/Sny+o+s%C5%82oniach-2025-10091067
@@ -7109,7 +7109,7 @@ originalTitle:     The Sheep Detectives
 imdbRating:        7.6
 metascore:         72
 rottenTomatoes:    95
-filmwebRating:     7.27589
+filmwebRating:     7.3
 metacriticUrl:     https://www.metacritic.com/movie/the-sheep-detectives
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_sheep_detectives
 filmwebUrl:        https://www.filmweb.pl/film/Sprawiedliwo%C5%9B%C4%87+owiec-2026-10110027
@@ -7184,7 +7184,7 @@ originalTitle:     Scary Movie
 imdbRating:        5.6
 metascore:         48
 rottenTomatoes:    24
-filmwebRating:     5.37727
+filmwebRating:     5.4
 metacriticUrl:     https://www.metacritic.com/movie/scary-movie
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/scary_movie_2026
 filmwebUrl:        https://www.filmweb.pl/film/Straszny+film-2026-10084281
@@ -7338,7 +7338,7 @@ originalTitle:     Scary Movie
 imdbRating:        5.6
 metascore:         48
 rottenTomatoes:    24
-filmwebRating:     5.37727
+filmwebRating:     5.4
 metacriticUrl:     https://www.metacritic.com/movie/scary-movie
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/scary_movie_2026
 filmwebUrl:        https://www.filmweb.pl/film/Straszny+film-2026-10084281
@@ -7378,7 +7378,7 @@ originalTitle:     サマーウォーズ
 imdbRating:        7.4
 metascore:         63
 rottenTomatoes:    81
-filmwebRating:     7.24557
+filmwebRating:     7.2
 metacriticUrl:     https://www.metacritic.com/movie/summer-wars
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/summer_wars
 filmwebUrl:        https://www.filmweb.pl/film/Summer+Wars-2009-507454
@@ -7405,7 +7405,7 @@ originalTitle:     The Super Mario Galaxy Movie
 imdbRating:        6.3
 metascore:         37
 rottenTomatoes:    42
-filmwebRating:     6.00871
+filmwebRating:     6.0
 metacriticUrl:     https://www.metacritic.com/movie/the-super-mario-galaxy-movie
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_super_mario_galaxy_movie
 filmwebUrl:        https://www.filmweb.pl/film/Super+Mario+Galaxy+Film-2026-10093937
@@ -7635,7 +7635,7 @@ originalTitle:     La dolce vita
 imdbRating:        8.0
 metascore:         95
 rottenTomatoes:    95
-filmwebRating:     7.91533
+filmwebRating:     7.9
 metacriticUrl:     https://www.metacritic.com/movie/la-dolce-vita-re-release
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/la_dolce_vita
 filmwebUrl:        https://www.filmweb.pl/film/S%C5%82odkie+%C5%BCycie-1960-30940
@@ -7667,7 +7667,7 @@ originalTitle:     La dolce vita
 imdbRating:        8.0
 metascore:         95
 rottenTomatoes:    95
-filmwebRating:     7.91533
+filmwebRating:     7.9
 metacriticUrl:     https://www.metacritic.com/movie/la-dolce-vita-re-release
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/la_dolce_vita
 filmwebUrl:        https://www.filmweb.pl/film/S%C5%82odkie+%C5%BCycie-1960-30940
@@ -7694,7 +7694,7 @@ originalTitle:     La vita va così
 imdbRating:        6.5
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     7.18919
+filmwebRating:     7.2
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/life_is_life
 filmwebUrl:        https://www.filmweb.pl/film/Takie+jest+%C5%BCycie-2025-10102549
@@ -7734,7 +7734,7 @@ originalTitle:     The Amazing Digital Circus: The Last Act
 imdbRating:        7.9
 metascore:         —
 rottenTomatoes:    94
-filmwebRating:     7.67277
+filmwebRating:     7.7
 metacriticUrl:     https://www.metacritic.com/movie/the-amazing-digital-circus-the-last-act
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_amazing_digital_circus_the_last_act
 filmwebUrl:        https://www.filmweb.pl/film/The+Amazing+Digital+Circus%3A+The+Last+Act-2026-10121762
@@ -7798,7 +7798,7 @@ originalTitle:     Un simple accident
 imdbRating:        7.4
 metascore:         91
 rottenTomatoes:    98
-filmwebRating:     7.08973
+filmwebRating:     7.1
 metacriticUrl:     https://www.metacritic.com/movie/it-was-just-an-accident
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/it_was_just_an_accident
 filmwebUrl:        https://www.filmweb.pl/film/To+by%C5%82+zwyk%C5%82y+przypadek-2025-10078601
@@ -7826,7 +7826,7 @@ originalTitle:     猫和老鼠：星盘奇缘
 imdbRating:        3.4
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     2.17771
+filmwebRating:     2.2
 metacriticUrl:     https://www.metacritic.com/movie/tom-and-jerry-forbidden-compass
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/tom_and_jerry_forbidden_compass
 filmwebUrl:        https://www.filmweb.pl/film/Tom+i+Jerry%3A+Przygoda+w+muzeum-2025-10086986
@@ -8252,7 +8252,7 @@ originalTitle:     Affeksjonsverdi
 imdbRating:        7.7
 metascore:         86
 rottenTomatoes:    95
-filmwebRating:     7.49443
+filmwebRating:     7.5
 metacriticUrl:     https://www.metacritic.com/movie/sentimental-value
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/sentimental_value
 filmwebUrl:        https://www.filmweb.pl/film/Warto%C5%9B%C4%87+sentymentalna-2025-10058855
@@ -8286,7 +8286,7 @@ originalTitle:     I vitelloni
 imdbRating:        7.8
 metascore:         87
 rottenTomatoes:    100
-filmwebRating:     7.39185
+filmwebRating:     7.4
 metacriticUrl:     https://www.metacritic.com/movie/i-vitelloni-re-release
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/i_vitelloni
 filmwebUrl:        https://www.filmweb.pl/film/Wa%C5%82konie-1953-30936
@@ -8321,7 +8321,7 @@ originalTitle:     Re-Creation
 imdbRating:        5.6
 metascore:         —
 rottenTomatoes:    71
-filmwebRating:     5.44213
+filmwebRating:     5.4
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/re_creation
 filmwebUrl:        https://www.filmweb.pl/film/Werdykt-2025-10115470
@@ -8382,7 +8382,7 @@ originalTitle:     L'Inconnu de la Grande Arche
 imdbRating:        6.9
 metascore:         —
 rottenTomatoes:    86
-filmwebRating:     6.48618
+filmwebRating:     6.5
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/linconnu_de_la_grande_arche
 filmwebUrl:        https://www.filmweb.pl/film/Wielki+%C5%81uk-2025-10078595
@@ -8414,7 +8414,7 @@ originalTitle:     おおかみこどもの雨と雪
 imdbRating:        8.1
 metascore:         76
 rottenTomatoes:    95
-filmwebRating:     7.8417
+filmwebRating:     7.8
 metacriticUrl:     https://www.metacritic.com/movie/wolf-children
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/wolf_children
 filmwebUrl:        https://www.filmweb.pl/film/Wilcze+dzieci-2012-644054
@@ -8441,7 +8441,7 @@ originalTitle:     Ascenseur pour l'échafaud
 imdbRating:        7.9
 metascore:         94
 rottenTomatoes:    93
-filmwebRating:     7.62215
+filmwebRating:     7.6
 metacriticUrl:     https://www.metacritic.com/movie/elevator-to-the-gallows
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/elevator_to_the_gallows
 filmwebUrl:        https://www.filmweb.pl/film/Wind%C4%85+na+szafot-1958-34624
@@ -8471,7 +8471,7 @@ originalTitle:     Fuori
 imdbRating:        6.0
 metascore:         47
 rottenTomatoes:    56
-filmwebRating:     5.68773
+filmwebRating:     5.7
 metacriticUrl:     https://www.metacritic.com/movie/fuori
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/fuori_2025
 filmwebUrl:        https://www.filmweb.pl/film/Wolno%C5%9B%C4%87+po+w%C5%82osku-2025-10075963
@@ -8534,7 +8534,7 @@ originalTitle:     Wszystko na sprzedaż
 imdbRating:        6.8
 metascore:         —
 rottenTomatoes:    69
-filmwebRating:     7.21597
+filmwebRating:     7.2
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/everything_for_sale_1987
 filmwebUrl:        https://www.filmweb.pl/film/Wszystko+na+sprzeda%C5%BC-1968-1119
@@ -8562,7 +8562,7 @@ originalTitle:     L'Accident de Piano
 imdbRating:        6.4
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     6.31358
+filmwebRating:     6.3
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_piano_accident
 filmwebUrl:        https://www.filmweb.pl/film/Wypadek+fortepianowy-2025-10069939
@@ -8594,7 +8594,7 @@ originalTitle:     The North
 imdbRating:        6.9
 metascore:         33
 rottenTomatoes:    —
-filmwebRating:     6.16667
+filmwebRating:     6.2
 metacriticUrl:     https://www.metacritic.com/movie/north
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_north
 filmwebUrl:        https://www.filmweb.pl/film/W%C4%99dr%C3%B3wka+na+p%C3%B3%C5%82noc-2025-10090597
@@ -8625,7 +8625,7 @@ originalTitle:     Masters of the Universe
 imdbRating:        7.2
 metascore:         35
 rottenTomatoes:    66
-filmwebRating:     6.62175
+filmwebRating:     6.6
 metacriticUrl:     https://www.metacritic.com/movie/masters-of-the-universe
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/masters_of_the_universe_2026
 filmwebUrl:        https://www.filmweb.pl/film/W%C5%82adcy+Wszech%C5%9Bwiata-2026-176583
@@ -8751,7 +8751,7 @@ originalTitle:     The Invite
 imdbRating:        6.7
 metascore:         77
 rottenTomatoes:    92
-filmwebRating:     6.09091
+filmwebRating:     6.1
 metacriticUrl:     https://www.metacritic.com/movie/the-invite
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_invite
 filmwebUrl:        https://www.filmweb.pl/film/Zaproszenie-2026-10109168
@@ -8781,7 +8781,7 @@ originalTitle:     大红灯笼高高挂
 imdbRating:        8.1
 metascore:         —
 rottenTomatoes:    97
-filmwebRating:     7.83988
+filmwebRating:     7.8
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/raise_the_red_lantern_1991
 filmwebUrl:        https://www.filmweb.pl/film/Zawie%C5%9Bcie+czerwone+latarnie-1991-31273
@@ -8841,7 +8841,7 @@ originalTitle:     In the Grey
 imdbRating:        6.3
 metascore:         53
 rottenTomatoes:    47
-filmwebRating:     6.07988
+filmwebRating:     6.1
 metacriticUrl:     https://www.metacritic.com/movie/in-the-grey
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/in_the_grey
 filmwebUrl:        https://www.filmweb.pl/film/Zawodowcy-2026-10051619
@@ -9029,7 +9029,7 @@ originalTitle:     Ziemia obiecana
 imdbRating:        7.8
 metascore:         77
 rottenTomatoes:    92
-filmwebRating:     7.91049
+filmwebRating:     7.9
 metacriticUrl:     https://www.metacritic.com/movie/the-promised-land
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/ziemia_obiecana
 filmwebUrl:        https://www.filmweb.pl/film/Ziemia+obiecana-1974-1073
@@ -9057,7 +9057,7 @@ originalTitle:     Znaki Pana Śliwki
 imdbRating:        7.4
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     7.84192
+filmwebRating:     7.8
 metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Znaki+Pana+%C5%9Aliwki-2025-10093837
@@ -9108,7 +9108,7 @@ originalTitle:     The Salt Path
 imdbRating:        6.6
 metascore:         49
 rottenTomatoes:    85
-filmwebRating:     6.83873
+filmwebRating:     6.8
 metacriticUrl:     https://www.metacritic.com/movie/the-salt-path
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_salt_path
 filmwebUrl:        https://www.filmweb.pl/film/%C5%9Acie%C5%BCki+%C5%BCycia-2024-10058778

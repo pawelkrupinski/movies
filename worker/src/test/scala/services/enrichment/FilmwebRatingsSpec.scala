@@ -52,7 +52,9 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
 
     ratings.refreshOneSync(cache.keyOf("Mortal Kombat II", Some(2026)))
 
-    cache.get(cache.keyOf("Mortal Kombat II", Some(2026))).flatMap(_.filmwebRating) shouldBe Some(6.72)
+    // Stored at the badge's one-decimal display precision (6.72 → "6.7"), not the
+    // raw vote average — see RatingDisplay.
+    cache.get(cache.keyOf("Mortal Kombat II", Some(2026))).flatMap(_.filmwebRating) shouldBe Some(6.7)
   }
 
   it should "skip search + info when the URL is present (cheap rating-only path)" in {
@@ -206,14 +208,15 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "not write back when the rating drifts below display precision (vote-count noise)" in {
     // Filmweb's vote average creeps by ~1e-5 every fetch; the badge shows one
-    // decimal, so 7.47111 → 7.47116 is invisible. Rewriting the row (and
-    // re-projecting the read model) for it is the steady per-refresh write churn.
+    // decimal, so a stored 7.5 seeing a fresh 7.53 is invisible. Rewriting the row
+    // (and re-projecting the read model) for it is the steady per-refresh write
+    // churn — the stored value already sits at display precision (RatingDisplay).
     val url = "https://www.filmweb.pl/film/Foo-12"
     val repository = new InMemoryMovieRepository(Seq(
-      ("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(7.47111)))))
+      ("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(7.5)))))
     val cache = new CaffeineMovieCache(repository)
     repository.upserts.clear()
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map("/film/12/rating" -> """{"rate":7.47116,"count":1001}""")))
+    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map("/film/12/rating" -> """{"rate":7.53,"count":1001}""")))
     val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Foo", None))

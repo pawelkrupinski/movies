@@ -1,5 +1,6 @@
 package services.tasks
 
+import services.cadence.RatingCadenceStore
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.CacheKey
 
@@ -80,7 +81,8 @@ class RatingHandler(
   kind:                  FreshnessKind,
   freshness:             FreshnessStore,
   dueWindow:             DueWindow,
-  refresh:               (String, Option[Int]) => Unit,
+  cadence:               RatingCadenceStore,
+  refresh:               (String, Option[Int]) => Boolean,
   clock:                 Clock = Clock.systemUTC(),
   metrics:               RatingLatencyMetrics = RatingLatencyMetrics.NoOp
 ) extends TaskHandler {
@@ -97,8 +99,12 @@ class RatingHandler(
       if (lastRated.isEmpty) recordFirstAttemptDelay(key)
       val title = task.payload.getOrElse(RatingTasks.TitleKey, "")
       val year  = task.payload.get(RatingTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
-      refresh(title, year)
-      freshness.markFresh(key, kind, clock.instant())
+      val now     = clock.instant()
+      val changed = refresh(title, year)
+      freshness.markFresh(key, kind, now)
+      // Feed the adaptive cadence: a visible change snaps the refresh interval
+      // back to the base, a no-change refresh lets it back off (up to 4 days).
+      cadence.record(key, changed, now)
       Done
     }
   }

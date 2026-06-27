@@ -14,6 +14,14 @@ class DueWindowSpec extends AnyFlatSpec with Matchers {
     new DueWindow(30.minutes).isDue("scrape|Foo", None, t0) shouldBe true
   }
 
+  it should "resolve the period PER KEY so an adaptive schedule backs some keys off" in {
+    // A key on a long (4-day) period and one on the short base, both stamped at t0.
+    val dw = new DueWindow(key => if (key.contains("stable")) 4.days else 2.hours, 2.hours)
+    val day = t0.plusSeconds(24 * 3600)
+    dw.isDue("mc|stable", Some(t0), day) shouldBe false   // long period → not due a day later
+    dw.isDue("mc|fresh",  Some(t0), day) shouldBe true    // base period → long overdue
+  }
+
   it should "not be due again inside the same window, but is once the key's boundary passes" in {
     val dw  = new DueWindow(30.minutes)
     val key = "scrape|Foo"

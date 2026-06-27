@@ -15,6 +15,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
   // ── RatingHandler ─────────────────────────────────────────────────────────
 
   private val dueWindow = new DueWindow(4.hours)
+  private def cadence    = new services.cadence.InMemoryRatingCadenceStore
 
   private def ratingTask(dedup: String, title: String, year: Option[Int]) =
     Task("id", TaskType.ImdbRating, dedup,
@@ -23,7 +24,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
   "RatingHandler" should "refresh and mark fresh when stale" in {
     var calls = List.empty[(String, Option[Int])]
     val fresh = new InMemoryFreshnessStore
-    val h     = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, (t, y) => calls ::= (t, y))
+    val h     = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, cadence, (t, y) => { calls ::= (t, y); true })
     h.handle(ratingTask("imdb|dune|2024", "dune", Some(2024))) shouldBe HandlerOutcome.Done
     calls shouldBe List(("dune", Some(2024)))
     fresh.isFresh("imdb|dune|2024", FreshnessKind.ImdbRating) shouldBe true
@@ -33,9 +34,33 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     var calls = 0
     val fresh = new InMemoryFreshnessStore
     fresh.markFresh("imdb|dune|", FreshnessKind.ImdbRating)
-    val h = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, (_, _) => calls += 1)
+    val h = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, cadence, (_, _) => { calls += 1; true })
     h.handle(ratingTask("imdb|dune|", "dune", None)) shouldBe HandlerOutcome.Skipped
     calls shouldBe 0
+  }
+
+  it should "record the displayed-value change into the cadence: no-change grows the streak, a change resets it" in {
+    val cad   = new services.cadence.InMemoryRatingCadenceStore
+    val fresh = new InMemoryFreshnessStore
+    // First refresh reports NO visible change → streak grows to 1.
+    new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, new DueWindow(4.hours), cad, (_, _) => false)
+      .handle(ratingTask("imdb|tmdb:7", "X", None)) shouldBe HandlerOutcome.Done
+    cad.statsFor("imdb|tmdb:7").map(_.unchangedStreak) shouldBe Some(1)
+
+    // A later refresh that DOES move the value snaps the streak back to 0.
+    val later = Clock.fixed(Instant.now().plusSeconds(7.hours.toSeconds), ZoneOffset.UTC)
+    new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, new DueWindow(1.hour), cad, (_, _) => true, later)
+      .handle(ratingTask("imdb|tmdb:7", "X", None)) shouldBe HandlerOutcome.Done
+    cad.statsFor("imdb|tmdb:7").map(_.unchangedStreak) shouldBe Some(0)
+  }
+
+  it should "not touch the cadence for a task it skips as still-fresh" in {
+    val cad   = new services.cadence.InMemoryRatingCadenceStore
+    val fresh = new InMemoryFreshnessStore
+    fresh.markFresh("imdb|tmdb:7", FreshnessKind.ImdbRating)
+    new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, cad, (_, _) => true)
+      .handle(ratingTask("imdb|tmdb:7", "X", None)) shouldBe HandlerOutcome.Skipped
+    cad.statsFor("imdb|tmdb:7") shouldBe None
   }
 
   it should "act on (not skip) a task the reaper deems due even when it is still inside the rolling TTL" in {
@@ -54,8 +79,8 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     var calls = 0
     val fresh = new InMemoryFreshnessStore
     fresh.markFresh(dedup, FreshnessKind.ImdbRating, stampedAt)
-    val h = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow,
-      (_, _) => calls += 1, Clock.fixed(now, ZoneOffset.UTC))
+    val h = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, cadence,
+      (_, _) => { calls += 1; true }, Clock.fixed(now, ZoneOffset.UTC))
     h.handle(ratingTask(dedup, "dune", Some(2024))) shouldBe HandlerOutcome.Done
     calls shouldBe 1
   }
@@ -75,8 +100,8 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
 
     val (metrics, seen) = recordingMetrics()
     val dedup = RatingTasks.dedupKey(FreshnessKind.ImdbRating, CacheKey("Kumotry", Some(2026)), Some(1454157)) // imdb|tmdb:1454157
-    val h = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow,
-      (_, _) => (), Clock.fixed(firstAt, ZoneOffset.UTC), metrics = metrics)
+    val h = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, cadence,
+      (_, _) => true, Clock.fixed(firstAt, ZoneOffset.UTC), metrics = metrics)
 
     h.handle(ratingTask(dedup, "Kumotry", Some(2026))) shouldBe HandlerOutcome.Done
     seen.toList shouldBe List(("imdb", 300.0))
@@ -90,7 +115,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     val fresh = new InMemoryFreshnessStore
     fresh.markFresh(RatingTasks.tmdbResolvedAtKey(1454157), FreshnessKind.TmdbResolve, Instant.parse("2026-06-21T10:00:00Z"))
     val (metrics, seen) = recordingMetrics()
-    val h = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, (_, _) => (), metrics = metrics)
+    val h = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, cadence, (_, _) => true, metrics = metrics)
 
     h.handle(ratingTask("imdb|kumotry|2026", "Kumotry", Some(2026))) shouldBe HandlerOutcome.Done
     seen shouldBe empty

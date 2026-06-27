@@ -93,8 +93,9 @@ class EnrichmentReaper(
 
   def start(): Unit = {
     scheduleNext(initialDelay)
-    logger.info(s"EnrichmentReaper started: ${ratingEnqueuer.sourceCount} rating source(s), each row refreshed once per " +
-                s"${dueWindow.period.toHours}h, phase-spread over ticks every ${tickInterval.toSeconds}s.")
+    logger.info(s"EnrichmentReaper started: ${ratingEnqueuer.sourceCount} rating source(s), each row refreshed on an " +
+                s"adaptive cadence (base ${dueWindow.period.toHours}h, backing off per-film toward the cap when its " +
+                s"displayed value is stable), phase-spread over ticks every ${tickInterval.toSeconds}s.")
   }
 
   /** Self-rescheduling tick: run, then schedule the next one reading `tickInterval`

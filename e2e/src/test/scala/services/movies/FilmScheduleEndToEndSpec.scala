@@ -213,7 +213,9 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       enrichment.imdbRating        shouldBe Some(6.3)
       enrichment.metascore         shouldBe Some(53)
       enrichment.rottenTomatoes    shouldBe Some(47)
-      enrichment.filmwebRating     shouldBe Some(6.07988)
+      // Stored at the badge's one-decimal display precision (6.07988 → "6.1"),
+      // not the raw vote average — see RatingDisplay.
+      enrichment.filmwebRating     shouldBe Some(6.1)
       enrichment.metacriticUrl     shouldBe Some("https://www.metacritic.com/movie/in-the-grey")
       enrichment.rottenTomatoesUrl shouldBe Some("https://www.rottentomatoes.com/m/in_the_grey")
       enrichment.filmwebUrl        shouldBe Some("https://www.filmweb.pl/film/Zawodowcy-2026-10051619")

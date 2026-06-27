@@ -34,14 +34,17 @@ class ImdbRatings(
   // the rating refresh and the slot refresh are independent so a failing
   // details fetch doesn't block the rating update. Skips rows without an
   // `imdbId` (TMDB-only — IMDb hasn't cross-referenced the film yet).
-  protected def refreshOne(key: CacheKey): Unit =
-    cache.get(key).foreach { e =>
+  protected def refreshOne(key: CacheKey): Boolean =
+    cache.get(key).fold(false) { e =>
       val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
       e.imdbId match {
         case None =>
           logger.info(s"IMDb: $label → no imdbId yet, skipping rating")
+          false
         case Some(id) =>
-          val freshRating  = Try(imdb.lookup(id)).toOption.flatten
+          // Store at the precision the badge shows (`%.1f`), so a sub-decimal
+          // vote drift the user can't see isn't a "change" — see RatingDisplay.
+          val freshRating  = Try(imdb.lookup(id)).toOption.flatten.map(RatingDisplay.oneDecimal)
           val freshDetails = Try(imdb.details(id)).toOption.flatten
           val ratingUpdate = freshRating.filter(r => !e.imdbRating.contains(r))
           val slotUpdate   = freshDetails.flatMap(d => makeSlot(d).filter(s => !e.data.get(Imdb).contains(s)))
@@ -53,6 +56,9 @@ class ImdbRatings(
               imdbRating = ratingUpdate.orElse(current.imdbRating),
               data       = slotUpdate.map(s => current.data + ((Imdb: Source) -> s)).getOrElse(current.data)
             ))
+          // The cadence signal is the DISPLAYED rating moving; a details-slot-only
+          // refresh isn't a rating change.
+          ratingUpdate.isDefined
       }
     }
 
@@ -109,7 +115,7 @@ class ImdbRatings(
           logger.debug(s"IMDb refresh: $id lookup failed: ${exception.getMessage}")
         case _ => ()
       }
-      val freshRating  = ratingResult.toOption.flatten
+      val freshRating  = ratingResult.toOption.flatten.map(RatingDisplay.oneDecimal)
       val freshDetails = detailsResult.toOption.flatten
       val ratingUpdate = freshRating.filter(r => !enrichment.imdbRating.contains(r))
       val slotUpdate   = freshDetails.flatMap(d => makeSlot(d).filter(s => !enrichment.data.get(Imdb).contains(s)))
