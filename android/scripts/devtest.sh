@@ -6,7 +6,7 @@
 #   1. adb isn't on PATH (the SDK lives at a homebrew path, not /usr/local).
 #   2. A fresh git worktree has no local.properties, so Gradle can't find the
 #      SDK ("SDK location not found").
-#   3. A release-signed pl.kinowo already installed (runOnDevice installs the
+#   3. A release-signed net.pawel.kinowo already installed (runOnDevice installs the
 #      signed `releaseFast`) blocks the debug/test install with a signature
 #      mismatch (INSTALL_FAILED_UPDATE_INCOMPATIBLE).
 #

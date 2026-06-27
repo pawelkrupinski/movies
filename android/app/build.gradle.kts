@@ -30,7 +30,14 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "pl.kinowo"
+        // The Play Store package name. Distinct from `namespace` (the Kotlin
+        // package `pl.kinowo`, kept as-is): AGP lets the installed package id
+        // differ from the code namespace, so renaming for Play doesn't move any
+        // source files. Anything targeting the *installed* app (adb
+        // install/launch below, the Play upload `packageName`) uses this id;
+        // anything matching a FQCN (unit-test filters, the activity class) uses
+        // the `pl.kinowo` namespace.
+        applicationId = "net.pawel.kinowo"
         minSdk = 26
         targetSdk = 37
         // Play rejects re-uploading a versionCode, so CI passes a strictly
@@ -55,12 +62,13 @@ android {
     buildTypes {
         debug {
             // On-device instrumented tests (connectedDebugAndroidTest) install
-            // the debug APK as pl.kinowo, which collides with a release-signed
-            // pl.kinowo already on the device (runOnDevice installs releaseFast) —
-            // the install fails with a signature mismatch. Pass -PdebugSuffix
-            // (android/scripts/devtest.sh does) to install the debug/test build as
-            // pl.kinowo.debug so it coexists. Off by default, so a plain debug
-            // build keeps the prod applicationId.
+            // the debug APK as net.pawel.kinowo, which collides with a
+            // release-signed net.pawel.kinowo already on the device (runOnDevice
+            // installs releaseFast) — the install fails with a signature
+            // mismatch. Pass -PdebugSuffix (android/scripts/devtest.sh does) to
+            // install the debug/test build as net.pawel.kinowo.debug so it
+            // coexists. Off by default, so a plain debug build keeps the prod
+            // applicationId.
             if (project.hasProperty("debugSuffix")) applicationIdSuffix = ".debug"
             // Tuning (the tweak screen + "Kinowo Tune" launcher icon) is on in
             // debug builds.
@@ -246,8 +254,11 @@ val emulatorExe: String? = adbExe?.removeSuffix("/platform-tools/adb")?.let { "$
 val emulatorAvd: String = (findProperty("avd") as String?) ?: "kinowo"
 val emulatorLogFile = layout.buildDirectory.file("emulator.log")
 val debugJdwpPort: String = (findProperty("debugPort") as String?) ?: "5005"
-val appId = "pl.kinowo"
-val mainComponent = "$appId/.MainActivity"
+val appId = "net.pawel.kinowo"
+// Explicit class form: the activity lives in the `pl.kinowo` namespace, which
+// now differs from the applicationId, so the `.MainActivity` shorthand (which
+// resolves relative to the applicationId) would point at the wrong class.
+val mainComponent = "$appId/pl.kinowo.MainActivity"
 val noSdkMessage = "Android SDK not found — set sdk.dir in local.properties or ANDROID_HOME / ANDROID_SDK_ROOT."
 
 tasks.register("bootEmulator") {
