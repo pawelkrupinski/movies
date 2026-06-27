@@ -295,7 +295,12 @@ class WorkerWiring extends play.api.Logging {
   // ── Background concurrency budget ───────────────────────────────────────────
   // Scrape + enrichment + the rating refreshers draw run permits from ONE shared
   // budget so a cold start / hourly rating walk can't peg the worker's vCPU.
-  lazy val backgroundBudget: ExecutionBudget = new SharedExecutionBudget(Env.positiveInt("KINOWO_BG_CONCURRENCY", 8))
+  // Default 4 (was 8): a live A/B on 2026-06-27 showed halving the parallel-parse
+  // cap ~halved the per-tick CPU burst (busy p95 156→58 centi-cores) at unchanged
+  // scrape throughput, which is what drives the shared-cpu credit downslope — the
+  // burst is the CPU of decoding/parsing scrape payloads that land together, not
+  // network wait. Override with KINOWO_BG_CONCURRENCY if a bigger machine lands.
+  lazy val backgroundBudget: ExecutionBudget = new SharedExecutionBudget(Env.positiveInt("KINOWO_BG_CONCURRENCY", 4))
 
   // ── Events ────────────────────────────────────────────────────────────────
   lazy val eventBus: EventBus = new InProcessEventBus()

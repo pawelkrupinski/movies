@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers
 
 import services.events.ImdbIdMissing
 import services.tasks.{ScrapeReaper, UnresolvedTmdbReaper}
-import tools.TestWiring
+import tools.{SharedExecutionBudget, TestWiring}
 
 import scala.concurrent.duration._
 
@@ -71,6 +71,20 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     val wiring = new SpyWiring
     wiring.enrichmentTickInterval should be <= (1.minute: FiniteDuration)
     wiring.detailTickInterval     should be <= (1.minute: FiniteDuration)
+    wiring.stop()
+  }
+
+  // Smoothing default: scrape + enrichment + the rating refreshers share ONE
+  // background concurrency budget; capping it at 4 (was 8) is what flattens the
+  // per-tick CPU burst that drives the shared-cpu credit downslope — a 2026-06-27
+  // live A/B showed 4 ~halved the burst (busy p95 156→58 centi-cores) at unchanged
+  // scrape throughput. Guards the composition-root default against a silent bump.
+  it should "cap the shared background concurrency budget at 4 by default" in {
+    val wiring = new SpyWiring
+    wiring.backgroundBudget match {
+      case budget: SharedExecutionBudget => budget.maxConcurrent shouldBe 4
+      case other                         => fail(s"expected a SharedExecutionBudget, got $other")
+    }
     wiring.stop()
   }
 }

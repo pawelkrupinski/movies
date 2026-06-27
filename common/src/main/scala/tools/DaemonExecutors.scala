@@ -157,7 +157,7 @@ trait ExecutionBudget {
   def executionContext(name: String, subLimit: Int): ExecutionContextExecutorService
 }
 
-final class SharedExecutionBudget(maxConcurrent: Int) extends ExecutionBudget {
+final class SharedExecutionBudget(val maxConcurrent: Int) extends ExecutionBudget {
   private val permits: Option[Semaphore] =
     if (maxConcurrent > 0) Some(new Semaphore(maxConcurrent)) else None
 
