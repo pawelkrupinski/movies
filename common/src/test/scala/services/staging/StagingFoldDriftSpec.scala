@@ -6,15 +6,16 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.TitleNormalizer
 
 /**
- * Regression for the 30-minute staging "fold" rectangle: a concluded newcomer
- * whose re-derived display title sanitizes AWAY from the sanitized middle baked
- * into its `_id` at creation must still be selected (and so folded + deleted),
- * not stranded.
+ * Regression for the staging "fold" loop: a concluded newcomer whose re-derived
+ * display title sanitizes AWAY from the sanitized middle baked into its `_id` at
+ * creation must still be selected (and so folded + deleted), not stranded.
  *
- * The prod culprit was "Toy Story 5- dubbing" @ Kino Mikro: `chooseDisplay`
- * strips the "- dubbing" decoration to "Toy Story 5", whose `sanitize` romanizes
- * the now-trailing "5" → `toystoryv`, drifting from the `_id` middle `toystory5`
- * (sanitize of the un-stripped scrape title). The old `MongoStagingFolder` picked
+ * The live "Toy Story 5- dubbing" drift is now closed at the source — `sanitize`
+ * romanizes AFTER the decoration strip, so the scrape title and its display form
+ * both key on `toystoryv` (see SanitizeDecorationRomanizeSpec). But a row keyed
+ * BEFORE that fix deployed still carries the stale `_id` middle `toystory5` until
+ * it is re-scraped, and its re-derived title now sanitizes to `toystoryv` — a
+ * transitional drift the fold must tolerate. The old `MongoStagingFolder` picked
  * the fold group by a `_id`-middle regex, so the re-sanitized title matched
  * nothing — the fold no-op'd "done" without deleting the row, and the reaper
  * re-enqueued it every minute forever. `StagingFold.selectStagingGroup` keys on
@@ -23,25 +24,22 @@ import services.movies.TitleNormalizer
  */
 class StagingFoldDriftSpec extends AnyFlatSpec with Matchers {
 
-  private val scraped = "Toy Story 5- dubbing"
-  private val id      = StagingRecord.idFor(MikroBronowice, scraped, None)
+  // A row persisted under the PRE-fix key (`toystory5`), read back after the
+  // romanization fix shifted the title's sanitize to `toystoryv`.
+  private val staleId = "Mikro Bronowice|toystory5|"
   private val record  = MovieRecord(
     tmdbNoMatch = true,
-    searchTitle = Some(scraped),
-    data = Map[Source, SourceData](MikroBronowice -> SourceData(title = Some(scraped))))
-  private val row     = StagingRecord.fromStorage(id, record).getOrElse(fail(s"fromStorage($id) returned None"))
+    searchTitle = Some("Toy Story 5- dubbing"),
+    data = Map[Source, SourceData](MikroBronowice -> SourceData(title = Some("Toy Story 5- dubbing"))))
+  private val row     = StagingRecord.fromStorage(staleId, record).getOrElse(fail(s"fromStorage($staleId) returned None"))
+  private val idMiddle = staleId.substring(staleId.indexOf('|') + 1, staleId.lastIndexOf('|'))
 
-  // Guard the premise: this row genuinely drifts (its display title sanitizes
-  // away from its `_id` middle). If TitleNormalizer ever stops drifting here, the
-  // test below would pass trivially and prove nothing — so assert the drift.
-  private val idMiddle = id.substring(id.indexOf('|') + 1, id.lastIndexOf('|'))
-
-  "the Toy Story 5 staging row" should "actually drift (premise check)" in {
+  "a stale-keyed staging row" should "actually drift (premise check)" in {
     TitleNormalizer.sanitize(row.title) should not be idMiddle
     info(s"_id middle=$idMiddle  title='${row.title}'  sanitize(title)=${TitleNormalizer.sanitize(row.title)}")
   }
 
-  "selectStagingGroup" should "select a row whose display title sanitizes away from its _id middle" in {
+  "selectStagingGroup" should "select a row whose title sanitizes away from its _id middle" in {
     StagingFold.selectStagingGroup(Seq(row), row.title) shouldBe Seq(row)
   }
 

@@ -72,7 +72,14 @@ object TitleNormalizer {
     "16" -> "XVI", "17" -> "XVII", "18" -> "XVIII", "19" -> "XIX", "20" -> "XX"
   )
 
-  // Always-applied transformation: standalone Arabic numerals → Roman.
+  // Always-applied transformation: standalone (space-delimited) Arabic numerals →
+  // Roman, so "Mortal Kombat 2" and "Mortal Kombat II" collapse. `sanitize` runs
+  // this AFTER `canonical` (not before): a decoration glued to a numeral with no
+  // separating space ("Toy Story 5- dubbing") leaves the numeral non-standalone
+  // ("5-") until canonical strips the decoration, so romanising first stranded the
+  // numeral as Arabic while the stripped display form ("Toy Story 5") romanised it
+  // to V — the two then sanitized to different keys and the film never settled (the
+  // staging re-divert loop). Romanising after the strip keys both on `toystoryv`.
   def normalize(title: String): String =
     title.split(" ").map(word => ArabicToRoman.getOrElse(word, word)).mkString(" ")
 
@@ -224,7 +231,7 @@ object TitleNormalizer {
    *  (later phase) folds those across scripts. */
   def sanitize(title: String): String =
     NonAlnumUnicode.matcher(
-      tools.TextNormalization.deburr(canonical(normalize(title))).toLowerCase(Locale.ROOT)
+      tools.TextNormalization.deburr(normalize(canonical(title))).toLowerCase(Locale.ROOT)
     ).replaceAll("")
 
   // Group key for merging. Falls back to the plain Roman-numeral form when no

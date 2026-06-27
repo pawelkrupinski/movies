@@ -23,8 +23,10 @@ class ProdTitlesNormalizationSpec extends AnyFlatSpec with Matchers {
   private val rs       = TitleRuleDefaults.ruleSet
   private val fixture  = Paths.get("common/src/test/resources/fixtures/prod-movies/titles.txt")
 
+  // Romanise AFTER the canonical strip (lockstep with TitleNormalizer.sanitize):
+  // a decoration glued to a numeral only becomes standalone once stripped.
   private def sanitize(t: String): String =
-    tools.TextNormalization.deburr(rs.canonical(normalize(t)))
+    tools.TextNormalization.deburr(normalize(rs.canonical(t)))
       .toLowerCase.replaceAll("[^\\p{L}\\p{N}]+", "")
 
   private def titles: Seq[String] =

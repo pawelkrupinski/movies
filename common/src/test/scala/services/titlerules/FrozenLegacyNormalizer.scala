@@ -75,7 +75,7 @@ object FrozenLegacyNormalizer {
   private def canonical(t: String): String =
     t.trim.stripPrefix("Gwiezdne Wojny: ").replace(" & ", " i ")
   def sanitize(title: String): String =
-    tools.TextNormalization.deburr(canonical(normalize(title)))
+    tools.TextNormalization.deburr(normalize(canonical(title)))
       .toLowerCase
       .replaceAll("[^\\p{L}\\p{N}]+", "")
 }
