@@ -21,29 +21,40 @@ import scala.util.hashing.MurmurHash3
  * the handler skips a task iff the reaper would no longer enqueue it, so a due task
  * is always acted on.
  *
- * Each key refreshes once per `period`, at a deterministic phase offset in
+ * Each key refreshes once per its `period`, at a deterministic phase offset in
  * `[0, period)` hashed from its dedup key — stable across restarts and needing no
  * storage — so a synchronized corpus is spread evenly across the period instead of
  * bursting at the boundary. Keys embed their source/cinema, so they land on
  * independent phases.
+ *
+ * The period is resolved PER KEY via `periodFor`, so a schedule can adapt to a
+ * key's own history (the rating reaper feeds the per-film adaptive interval from
+ * [[services.cadence.RatingCadence]]). A constant schedule (scraping) uses the
+ * fixed-period auxiliary constructor.
  */
-class DueWindow(val period: FiniteDuration) {
-  private val periodMillis: Long = period.toMillis
+class DueWindow(periodFor: String => FiniteDuration, val period: FiniteDuration) {
+
+  /** Fixed schedule: every key shares `period` (scrape cadence, tests). */
+  def this(period: FiniteDuration) = this(_ => period, period)
 
   /** Per-key phase offset in `[0, period)`, deterministic from the dedup key. */
-  private def phaseMillis(dedupKey: String): Long =
+  private def phaseMillis(dedupKey: String, periodMillis: Long): Long =
     Math.floorMod(MurmurHash3.stringHash(dedupKey).toLong, periodMillis)
 
   /** Which period-length window (counted from this key's own phase) `atMillis`
    *  falls in. A new window means the key is due for another refresh. */
-  private def windowIndex(atMillis: Long, dedupKey: String): Long =
-    Math.floorDiv(atMillis - phaseMillis(dedupKey), periodMillis)
+  private def windowIndex(atMillis: Long, dedupKey: String, periodMillis: Long): Long =
+    Math.floorDiv(atMillis - phaseMillis(dedupKey, periodMillis), periodMillis)
 
   /** Due iff never refreshed, or `now` has entered a new period-window since the
-   *  last refresh (the key's personal phase boundary has passed). */
+   *  last refresh (the key's personal phase boundary has passed). The key's
+   *  current period is resolved once here, so both window indices compare on the
+   *  same boundary even as the adaptive period shifts between calls. */
   def isDue(dedupKey: String, lastFetchedAt: Option[Instant], now: Instant): Boolean =
     lastFetchedAt match {
       case None    => true
-      case Some(t) => windowIndex(now.toEpochMilli, dedupKey) > windowIndex(t.toEpochMilli, dedupKey)
+      case Some(t) =>
+        val periodMillis = periodFor(dedupKey).toMillis
+        windowIndex(now.toEpochMilli, dedupKey, periodMillis) > windowIndex(t.toEpochMilli, dedupKey, periodMillis)
     }
 }
