@@ -2463,13 +2463,13 @@ showings:
 
 === Giulietta i duchy ===
 displayTitle:      Giulietta i duchy
-cinemaTitles:      Giulietta i duchy
+cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Giulietta i duchy | FEDERICO FELLINI: ciao a tutti! - Giulietta i duchy (1965) | Federico Fellini: GIULIETTA I DUCHY | Federico Fellini: ciao a tutti! – Giulietta i duchy | Giulietta i duchy | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti!
 runtimeMinutes:    139
 releaseYear:       1965
 countries:         Włochy, Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/csm_Giulietta_Poster_45456e2738-566x800.jpg
 synopsis.length:   1073
-cast:              Giulietta Masina, Sandra Milo, Mario Pisu, Valentina Cortese, Valeska Gert
+cast:              Giulietta Masina, Mario Pisu, Sandra Milo, Valentina Cortese, Caterina Boratto, Lou Gilbert, Sylva Koscina
 director:          Federico Fellini
 tmdbId:            19120
 imdbId:            tt0059229
@@ -2485,9 +2485,15 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/giulietta-i-duchy/
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14403-giulietta-i-duchy-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
+  Kino Kinematograf / Federico Fellini: ciao a tutti! – Giulietta i duchy / 1965
   Kino Muza / Giulietta i duchy / 1965
   Kino Pałacowe / Giulietta i duchy / 1965
+  Kino Pionier 1907 / Federico Fellini: GIULIETTA I DUCHY / 1965
+  Kino Spektrum / Giulietta i duchy | FEDERICO FELLINI: ciao a tutti! / —
+  Kino Wisła / FEDERICO FELLINI: ciao a tutti! - Giulietta i duchy (1965) / 1965
   Kino za Rogiem Cafe / Giulietta i duchy / —
+  Kinoteatr Rialto / FEDERICO FELLINI: Ciao a tutti! - Giulietta i duchy / —
+  Kinoteka / Giulietta i duchy | FEDERICO FELLINI: ciao a tutti / 2026
 showings:
   2026-07-13  Kino Pałacowe                 20:00 Sala 1 - Kinowa
   2026-08-18  Kino Muza                     20:30 Sala 1
@@ -2743,7 +2749,7 @@ showings:
 
 === Głos z księżyca ===
 displayTitle:      Głos z księżyca
-cinemaTitles:      Głos z księżyca | Głos z księżyca (1990)
+cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Głos z księżyca | FEDERICO FELLINI: ciao a tutti! - Głos z księżyca (1990) | Federico Fellini: GŁOS Z KSIĘŻYCA | Federico Fellini: ciao a tutti! – Głos z księżyca | Głos z księżyca | Głos z księżyca (1990) | Głos z księżyca | FEDERICO FELLINI: ciao a tutti!
 runtimeMinutes:    121
 releaseYear:       1990
 countries:         Włochy, Francja
@@ -2765,8 +2771,14 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/glos-z-ksiezyca/
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14404-gos-z-ksiezyca-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
+  Kino Kinematograf / Federico Fellini: ciao a tutti! – Głos z księżyca / 1990
   Kino Muza / Głos z księżyca / 1990
   Kino Pałacowe / Głos z księżyca / 1990
+  Kino Pionier 1907 / Federico Fellini: GŁOS Z KSIĘŻYCA / 1990
+  Kino Spektrum / Głos z księżyca | FEDERICO FELLINI: ciao a tutti! / —
+  Kino Wisła / FEDERICO FELLINI: ciao a tutti! - Głos z księżyca (1990) / 1990
+  Kinoteatr Rialto / FEDERICO FELLINI: Ciao a tutti! - Głos z księżyca / —
+  Kinoteka / Głos z księżyca | FEDERICO FELLINI: ciao a tutti! / 2026
   Świt / Głos z księżyca (1990) / —
 showings:
   2026-07-17  Kino Pałacowe                 18:00 Sala 1 - Kinowa
@@ -4842,7 +4854,7 @@ showings:
 
 === Noce Cabirii ===
 displayTitle:      Noce Cabirii
-cinemaTitles:      Noce Cabirii | Noce Cabirii (1957)
+cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Noce Cabirii | FEDERICO FELLINI: ciao a tutti! - Noce Cabirii (1957) | FEDERICO FELLINI: ciao a tutti!: Noce Cabirii | Federico Fellini: NOCE CABIRII | Federico Fellini: ciao a tutti! – Noce Cabirii | Noce Cabirii | Noce Cabirii (1957) | Noce Cabirii (1957) | FEDERICO FELLINI: ciao a tutti! | Noce Cabirii | FEDERICO FELLINI: ciao a tutti!
 runtimeMinutes:    110
 releaseYear:       1957
 countries:         Włochy, Francja
@@ -4864,11 +4876,19 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/noce-cabirii/
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14400-noce-cabirii-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
+  Janosik / FEDERICO FELLINI: ciao a tutti!: Noce Cabirii / —
   Kino 60 Krzeseł / Noce Cabirii / —
+  Kino Kinematograf / Federico Fellini: ciao a tutti! – Noce Cabirii / 1957
   Kino Muza / Noce Cabirii / 1957
   Kino Nowe Horyzonty / Noce Cabirii / 1957
   Kino Pałacowe / Noce Cabirii / 1957
+  Kino Pionier 1907 / Federico Fellini: NOCE CABIRII / 1957
+  Kino Roma / Noce Cabirii (1957) | FEDERICO FELLINI: ciao a tutti! / 1957
+  Kino Spektrum / Noce Cabirii | FEDERICO FELLINI: ciao a tutti! / —
+  Kino Wisła / FEDERICO FELLINI: ciao a tutti! - Noce Cabirii (1957) / 1957
   Kino za Rogiem Cafe / Noce Cabirii / —
+  Kinoteatr Rialto / FEDERICO FELLINI: Ciao a tutti! - Noce Cabirii / —
+  Kinoteka / Noce Cabirii | FEDERICO FELLINI: ciao a tutti! / 2026
   OKF Iluzja / Noce Cabirii / —
   Świt / Noce Cabirii (1957) / —
 showings:
@@ -5346,13 +5366,13 @@ showings:
 
 === Osiem i pół ===
 displayTitle:      Osiem i pół
-cinemaTitles:      Osiem i pół | Osiem i pół (1963)
+cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Osiem i pół | FEDERICO FELLINI: ciao a tutti! - Osiem i pół (1963) | Federico Fellini: OSIEM I PÓŁ | Federico Fellini: ciao a tutti! – Osiem i pół | Osiem i pół | Osiem i pół (1963) | Osiem i pół | FEDERICO FELLINI: ciao a tutti!
 runtimeMinutes:    138
 releaseYear:       1963
 countries:         Włochy, Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/Plakat-8½-560x800.png
 synopsis.length:   1579
-cast:              Marcello Mastroianni, Claudia Cardinale, Anouk Aimée, Sandra Milo, Rossella Falk
+cast:              Marcello Mastroianni, Claudia Cardinale, Anouk Aimée, Sandra Milo, Rossella Falk, Barbara Steele, Guido Alberti
 director:          Federico Fellini
 tmdbId:            422
 imdbId:            tt0056801
@@ -5368,8 +5388,14 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/osiem-i-pol/
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14402-osiem-i-po-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
+  Kino Kinematograf / Federico Fellini: ciao a tutti! – Osiem i pół / 1963
   Kino Muza / Osiem i pół / 1963
   Kino Pałacowe / Osiem i pół / 1963
+  Kino Pionier 1907 / Federico Fellini: OSIEM I PÓŁ / 1963
+  Kino Spektrum / Osiem i pół | FEDERICO FELLINI: ciao a tutti! / —
+  Kino Wisła / FEDERICO FELLINI: ciao a tutti! - Osiem i pół (1963) / 1963
+  Kinoteatr Rialto / FEDERICO FELLINI: Ciao a tutti! - Osiem i pół / —
+  Kinoteka / Osiem i pół | FEDERICO FELLINI: ciao a tutti! / 2026
   Świt / Osiem i pół (1963) / —
 showings:
   2026-07-05  Kino Pałacowe                 17:00 Sala 1 - Kinowa
@@ -7790,7 +7816,7 @@ showings:
 
 === Słodkie życie ===
 displayTitle:      Słodkie życie
-cinemaTitles:      Słodkie życie | Słodkie życie (1960)
+cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Słodkie życie | FEDERICO FELLINI: ciao a tutti! - Słodkie życie (1960) | Federico Fellini: SŁODKIE ŻYCIE | Słodkie życie | Słodkie życie (1960) | Słodkie życie | FEDERICO FELLINI: ciao a tutti!
 runtimeMinutes:    176
 releaseYear:       1960
 countries:         Włochy, Francja
@@ -7815,6 +7841,11 @@ cinemaScrapes:
   Kino Muza / Słodkie życie / 1960
   Kino Nowe Horyzonty / Słodkie życie / 1960
   Kino Pałacowe / Słodkie życie / 1960
+  Kino Pionier 1907 / Federico Fellini: SŁODKIE ŻYCIE / 1960
+  Kino Spektrum / Słodkie życie | FEDERICO FELLINI: ciao a tutti! / —
+  Kino Wisła / FEDERICO FELLINI: ciao a tutti! - Słodkie życie (1960) / 1960
+  Kinoteatr Rialto / FEDERICO FELLINI: Ciao a tutti! - Słodkie życie / —
+  Kinoteka / Słodkie życie | FEDERICO FELLINI: ciao a tutti! / 2026
   Świt / Słodkie życie (1960) / —
 showings:
   2026-06-28  Kino Pałacowe                 17:00 Sala 1 - Kinowa
@@ -8441,13 +8472,13 @@ showings:
 
 === Wałkonie ===
 displayTitle:      Wałkonie
-cinemaTitles:      Wałkonie | Wałkonie (1953)
+cinemaTitles:      FEDERICO FELLINI: ciao a tutti! - Wałkonie (1953) | FEDERICO FELLINI: ciao a tutti!: Wałkonie | Federico Fellini: WAŁKONIE | Wałkonie | Wałkonie (1953) | Wałkonie (1953) | FEDERICO FELLINI: ciao a tutti! | Wałkonie | FEDERICO FELLINI: ciao a tutti!
 runtimeMinutes:    103
 releaseYear:       1953
 countries:         Włochy, Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/JcrTWB1.jpg-585x800.png
 synopsis.length:   1399
-cast:              Franco Interlenghi, Alberto Sordi, Franco Fabrizi, Leopoldo Trieste, Riccardo Fellini
+cast:              Franco Interlenghi, Alberto Sordi, Franco Fabrizi, Leopoldo Trieste, Riccardo Fellini, Eleonora Ruffo
 director:          Federico Fellini
 tmdbId:            12548
 imdbId:            tt0046521
@@ -8463,11 +8494,18 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/walkonie/
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14399-wakonie-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
+  Janosik / FEDERICO FELLINI: ciao a tutti!: Wałkonie / —
   Kino 60 Krzeseł / Wałkonie / —
   Kino Awangarda 2 / Wałkonie / —
   Kino Muza / Wałkonie / 1953
   Kino Nowe Horyzonty / Wałkonie / 1953
+  Kino Oskard / FEDERICO FELLINI: ciao a tutti!: Wałkonie / —
   Kino Pałacowe / Wałkonie / 1953
+  Kino Pionier 1907 / Federico Fellini: WAŁKONIE / 1953
+  Kino Roma / Wałkonie (1953) | FEDERICO FELLINI: ciao a tutti! / 1953
+  Kino Spektrum / Wałkonie | FEDERICO FELLINI: ciao a tutti! / —
+  Kino Wisła / FEDERICO FELLINI: ciao a tutti! - Wałkonie (1953) / 1953
+  Kinoteka / Wałkonie | FEDERICO FELLINI: ciao a tutti! / 2026
   OKF Iluzja / Wałkonie / —
   Świt / Wałkonie (1953) / —
 showings:

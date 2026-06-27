@@ -516,6 +516,51 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // The touring "Federico Fellini: ciao a tutti!" retrospective (Kino Pałacowe,
+  // Gdyńskie Centrum Filmowe, Pionier, … ~12 cinemas) brands each film with the
+  // banner in many shapes: a "Federico Fellini:" / "Fellini." prefix, an optional
+  // "ciao a tutti!" / "Ciao a tutti:" subtitle, and a "| / – przegląd Federico
+  // Fellini …" suffix. The GlobalStructural strip already resolves the bare film on
+  // TMDB (the searchTitle cases above), but the banner stayed in the MERGE KEY — so
+  // the scraped decorated form keyed DIFFERENTLY from the bare TMDB display title
+  // and `MovieCache.recordCinemaScrape` re-diverted the row into staging on every
+  // 30-min scrape, never settling: Trójmiasto's served-films count flapped ~172↔200
+  // (the swing was entirely Gdyńskie Centrum Filmowe). The canonical strip folds
+  // every decorated form onto the bare film's key so the row settles.
+  private val felliniDecorated = Seq(
+    "Federico Fellini: Noce Cabirii"                       -> "Noce Cabirii",
+    "Federico fellini: Noce Cabirii"                       -> "Noce Cabirii",
+    "Federico Fellini: ciao a tutti! Słodkie życie"        -> "Słodkie życie",
+    "FEDERICO FELLINI: ciao a tutti!: Wałkonie"            -> "Wałkonie",
+    "Federico Fellini SŁODKIE ŻYCIE"                       -> "Słodkie życie",
+    "Fellini. Noce Cabirii"                                -> "Noce Cabirii",
+    "Fellini. Ciao a tutti: Wałkonie"                      -> "Wałkonie",
+    "Słodkie życie | Federico Fellini: ciao a tutti!"      -> "Słodkie życie",
+    "Wałkonie – przegląd FEDERICO FELLINI: ciao a tutti!"  -> "Wałkonie",
+    // Suffix banner with the release year glued in BEFORE it ("<film> (1957) |
+    // FEDERICO FELLINI …", Kino Roma's exact prod form, incl. a double space). The
+    // year-in-title is mid-string while the banner is present, so the banner strip
+    // must run BEFORE the trailing-paren-year strip — otherwise the year survives
+    // ("nocecabirii1957") and the row never merges with the bare form, re-diverting
+    // into staging every tick (ReScrapeIdempotencySpec).
+    "Noce Cabirii (1957) | FEDERICO FELLINI: ciao a tutti!" -> "Noce Cabirii",
+    "Wałkonie (1953) |  FEDERICO FELLINI: ciao a tutti!"    -> "Wałkonie"
+  )
+
+  it should "fold every Fellini-retrospective decoration onto the bare film's merge key (the Trójmiasto/GCF served-count flap)" in {
+    felliniDecorated.foreach { case (decorated, bare) =>
+      withClue(s"mergeKey('$decorated') vs '$bare': ")(
+        mergeKey(withExtras, decorated) shouldBe mergeKey(withExtras, bare))
+    }
+  }
+
+  it should "be load-bearing — the seed rules leave the Fellini banner in the key" in {
+    felliniDecorated.foreach { case (decorated, bare) =>
+      withClue(s"seedOnly.mergeKey('$decorated') should NOT yet equal '$bare': ")(
+        mergeKey(seedOnly, decorated) should not be mergeKey(seedOnly, bare))
+    }
+  }
+
   // Ukrainian-language screenings are a DISTINCT version (a separate audience),
   // so the language/format strip must NOT eat a Ukrainian marker — the variant
   // keeps its own key and stays its own row, exactly like a dub/programme

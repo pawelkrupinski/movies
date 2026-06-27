@@ -51,6 +51,28 @@ object ExtraTitleRules {
   private def perCinemaReplace(id: String, cinemaId: String, pattern: String, replacement: String, note: String): TitleRule =
     TitleRule(id, PerCinema, Some(cinemaId), pattern, replacement, applyAll = false, order = 0, note = Some(note))
 
+  /** The touring "Federico Fellini: ciao a tutti!" retrospective (~12 cinemas)
+   *  brands its films in many shapes — a "Federico Fellini:" or bare "Fellini."
+   *  prefix, an optional "ciao a tutti!" / "Ciao a tutti:" subtitle, and a
+   *  "| / – przegląd Federico Fellini …" suffix. These patterns are used in TWO
+   *  tiers: as GlobalStructural search strips (so the bare film resolves on TMDB)
+   *  AND as Canonical merge-key strips (so the scraped decorated form keys the SAME
+   *  as the bare display title). The Canonical tier is load-bearing: without it the
+   *  decorated scrape form keyed differently from the bare TMDB title, so
+   *  `MovieCache.recordCinemaScrape` re-diverted the row into staging every 30-min
+   *  scrape and never settled — the Trójmiasto served-films count flapped ~172↔200
+   *  (the swing was entirely Gdyńskie Centrum Filmowe). The bare colon form
+   *  ("Fellini: …") is deliberately NOT matched (only "Federico Fellini:" or the
+   *  dot "Fellini."), so a real film whose title merely starts "Fellini:" survives.
+   *  The separator-less "Federico Fellini <FILM>" form (KinoMuza's "Federico Fellini
+   *  SŁODKIE ŻYCIE") is matched too, but only with a `(?=\s+\S)` look-ahead so a bare
+   *  "Federico Fellini" (the standalone documentary) is left intact, not amputated to
+   *  an empty key. */
+  private val FelliniPrefix =
+    """(?iu)^(?:Federico\s+Fellini\s*:|Federico\s+Fellini(?=\s+\S)|Fellini\s*\.)\s*(?:ciao\s+a?\s*tutti\s*!?)?\s*[:\-–—]?\s*"""
+  private val FelliniSuffix =
+    """(?i)\s*(?:\|\s*|[–—-]\s*przegl[ąa]d\s+)Federico\s+Fellini\b.*$"""
+
   /** Programme banners not in the seed alternation. Each anchored at `^` and
    *  ending in its delimiter (`: `, ` | `) so it's a true prefix the extractor
    *  can split off. `[^:]+` variants absorb the cycle's sub-name (DKF Kropka,
@@ -146,8 +168,8 @@ object ExtraTitleRules {
     // its own decorated row but finally resolves the bare film.
     searchStrip("xtra-wtf-fest-prefix",            """(?i)^WTF\s+Fest\s*\|\s*""",                     "'WTF Fest | <film>' banner (film after the pipe)"),
     searchStrip("xtra-pipe-festival-suffix",       """(?i)\s*\|\s*(?:6\s+razy\s+Pedro|Kino\s+cyrkularne)\b.*$""", "'<film> | 6 razy Pedro / Kino cyrkularne …' (film before the pipe)"),
-    searchStrip("xtra-fellini-prefix",             """(?i)^Federico\s+Fellini\s*:\s*(?:ciao\s+a?\s*tutti\s*!?)?\s*[:\-–—]?\s*""", "'Federico Fellini: ciao a tutti! …' retrospective prefix"),
-    searchStrip("xtra-fellini-suffix",             """(?i)\s*(?:\|\s*|[–—-]\s*przegl[ąa]d\s+)Federico\s+Fellini\b.*$""", "'… | / – przegląd FEDERICO FELLINI …' retrospective suffix"),
+    searchStrip("xtra-fellini-prefix",             FelliniPrefix, "'Federico Fellini: ciao a tutti! …' / 'Fellini. [Ciao a tutti:] <film>' retrospective prefix (also folded in the canonical tier — see FelliniPrefix)"),
+    searchStrip("xtra-fellini-suffix",             FelliniSuffix, "'… | / – przegląd FEDERICO FELLINI …' retrospective suffix"),
     // Second-wave (2026-06-18) audit: classics / retrospective / cycle banners
     // that SUFFIX the film (the screening keeps its decorated row, the query
     // resolves the bare film). All cross-cinema or otherwise specific enough that
@@ -186,7 +208,7 @@ object ExtraTitleRules {
     // Fourth-wave (2026-06-20) audit of the rating-less corpus.
     // Director-retrospective DOT prefixes ('<Director>. <film>'), siblings of the
     // existing 'Wajda.' / 'Konwicki:' rules; each merges into an already-RATED row.
-    searchStrip("xtra-fellini-dot-prefix",         """(?iu)^Fellini\.\s+""",                          "'Fellini. <film>' retrospective prefix (Giulietta i duchy, Głos z księżyca, Noce Cabirii, Wałkonie — all rated)"),
+    // ('Fellini. <film>' is folded by the shared FelliniPrefix above, query + key.)
     searchStrip("xtra-hosoda-dot-prefix",          """(?iu)^Hosoda\.\s+""",                           "'Hosoda. <film>' Mamoru Hosoda retrospective prefix (Wilcze dzieci rated; Summer Wars, Belle, Scarlet)"),
     searchStrip("xtra-konwicki-dot-prefix",        """(?iu)^Konwicki\.\s+""",                         "'Konwicki. <film>' DOT variant of the existing colon prefix (Ostatni dzień lata, Salto, Lawa)"),
     // Cross-cinema decoration suffixes (banner after the film); query-only strip.
@@ -384,6 +406,24 @@ object ExtraTitleRules {
    *  the English title, and trailing language/format suffixes left in the title by
    *  cinemas whose scraper doesn't run `ScraperParse.extractFormatTags`. */
   val canonical: Seq[TitleRule] = Seq(
+    // The "Federico Fellini: ciao a tutti!" retrospective decoration, stripped at
+    // the MERGE-KEY level (not just the query level above). Without these the
+    // scraped "Federico Fellini: Noce Cabirii" keyed apart from the bare "Noce
+    // Cabirii" display/TMDB title, so the row re-diverted into staging every scrape
+    // and the served-films count flapped (~172↔200 at Trójmiasto / Gdyńskie Centrum
+    // Filmowe). Folds every decorated form onto the bare film's key so it settles.
+    // Shares the exact patterns with the GlobalStructural strips (see FelliniPrefix
+    // / FelliniSuffix) — same shape, two tiers, two purposes.
+    //
+    // Ordered FIRST — before the trailing year/format/sound strips below — so the
+    // banner is removed before they run: a suffix form glues the year in BEFORE the
+    // banner ("Noce Cabirii (1957) | FEDERICO FELLINI …"), where the year is
+    // mid-string until the banner is gone, so the `$`-anchored trailing-paren-year
+    // strip can only catch it once the banner strip has exposed it at the end.
+    canon("xtra-canonical-fellini-prefix", FelliniPrefix, "",
+      "'Federico Fellini: [ciao a tutti!] <film>' / 'Fellini. [Ciao a tutti:] <film>' retrospective prefix — merge-key fold (Noce Cabirii, Słodkie życie, Wałkonie, Giulietta i duchy, Osiem i pół)"),
+    canon("xtra-canonical-fellini-suffix", FelliniSuffix, "",
+      "'<film> [(year)] | / – przegląd Federico Fellini …' retrospective suffix — merge-key fold; runs before the year strip so a '(1957)' glued in before the banner still folds (Noce Cabirii, Wałkonie, Słodkie życie)"),
     canon("xtra-canonical-gwiezdne-wojny-ci",
       """(?iu)^Gwiezdne\s+wojny\s*:\s*""", "",
       "Case-insensitive 'Gwiezdne wojny:' franchise prefix — the seed 'canonical-gwiezdne-wojny' only matches the capitalised 'Gwiezdne Wojny:', so the lower-case spelling (Mandalorian i Grogu) never merged."),
