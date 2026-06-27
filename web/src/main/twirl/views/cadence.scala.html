@@ -26,8 +26,15 @@
     .grp[open] > summary { border-bottom: 1px solid #1a1a2e; }
     .grp > summary .cnt { color: #555; font-weight: normal; margin-left: .3rem; }
     .rows { padding: .2rem 0; }
-    .row { display: flex; align-items: center; gap: .5rem; padding: .15rem .6rem; cursor: help; }
+    .row { position: relative; display: flex; align-items: center; gap: .5rem; padding: .15rem .6rem; cursor: help; }
     .row:hover { background: #1a1a2e; }
+    /* Instant CSS tooltip (the native title= attribute was unreliable/slow). */
+    .row[data-tip]:hover::after {
+      content: attr(data-tip); white-space: pre; position: absolute; left: 2.6em; top: 100%;
+      z-index: 20; background: #05050a; color: #ddd; border: 1px solid #3a3a6e; border-radius: 4px;
+      padding: .35rem .55rem; font-size: 11px; line-height: 1.5; pointer-events: none;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .6);
+    }
     .site { font-weight: bold; border-radius: 3px; padding: 0 .3rem; color: #0d0d0d; min-width: 2.6em; text-align: center; }
     .site-imdb { background: #f5c518; }
     .site-mc   { background: #66cc33; }
@@ -49,7 +56,7 @@
       <summary>every @CadenceReport.intervalLabel(g.interval)<span class="cnt">@g.entries.size</span></summary>
       <div class="rows">
         @for(e <- g.entries) {
-          <div class="row" title="@tooltip(e)">
+          <div class="row" data-tip="@tooltip(e)">
             <span class="site site-@e.site">@e.site</span>
             <span class="ttl">@e.title</span>
             <span class="meta">↻@e.streak ✓@e.windowChanges/@e.windowChecks</span>

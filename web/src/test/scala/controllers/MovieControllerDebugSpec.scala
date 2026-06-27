@@ -78,6 +78,10 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     html should include ("Belle")            // title resolved from the dedup key's tmdbId
     html should include ("every 4d")         // MC stretched to the cap
     html should include ("every 2h")         // IMDb at the base
+    // The hover tooltip is a CSS ::after on a data-tip attribute (the native
+    // title= attribute didn't show reliably).
+    html should include ("""data-tip="""")
+    html should not include ("""class="row" title=""")
     html should include ("last → 85")            // change history surfaces in the hover tooltip
     html should include ("no changes since ever") // the IMDb row has never changed
     // Slowest (most backed-off) group renders first.
