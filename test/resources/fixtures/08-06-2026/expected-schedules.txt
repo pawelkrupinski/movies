@@ -797,8 +797,8 @@ displayTitle:      Chłopiec na krańcach świata
 cinemaTitles:      CHŁOPIEC NA KRAŃCACH ŚWIATA | Chłopiec na krańcach świata
 runtimeMinutes:    88
 releaseYear:       2026
-countries:         Polska, Hiszpania, Turcja, Kanada
-posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Chopiec_na_krancach_swiata_PLAKAT_teaser.jpg
+countries:         Hiszpania, Polska, Turcja, Kanada
+posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/chlopiec-na-krancach-swiata-plakat.jpg
 synopsis.length:   934
 cast:              Mikołaj Wachowski, Jan Szydłowski, Łucja Dobrogowska, Magdalena Herman-Urbańska, Elżbieta Jarosik
 director:          Grzegorz Wacławek, Marta Szymańska
@@ -813,7 +813,6 @@ metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Ch%C5%82opiec+na+kra%C5%84cach+%C5%9Bwiata-2025-10095535
 cinemaFilmUrls:
-  Kino Pałacowe = http://kinopalacowe.pl/filmy/14435-poranek-dla-dzieci-chopiec-na-krancach-swiata/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157449
 cinemaScrapes:
   Cinema City / — / —
@@ -833,13 +832,10 @@ cinemaScrapes:
   Kino Diana / Chłopiec na krańcach świata / —
   Kino Muranów / Chłopiec na krańcach świata / 2025
   Kino Nowe Horyzonty / Chłopiec na krańcach świata / 2025
-  Kino Pałacowe / Chłopiec na krańcach świata / 2025
   Kino Rialto / CHŁOPIEC NA KRAŃCACH ŚWIATA / 2025
   Świt / Chłopiec na krańcach świata / —
 showings:
   2026-06-21  Kino Rialto                   12:00
-  2026-06-27  Kino Pałacowe                 11:00 Sala 1 - Kinowa
-  2026-06-28  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
 === Cinema Italia Oggi: Dobrze się kłamie w miłym towarzystwie ===
 displayTitle:      Cinema Italia Oggi: Dobrze się kłamie w miłym towarzystwie
@@ -1388,6 +1384,87 @@ showings:
   2026-06-11  Cinema City Poznań Plaza      20:20 Sala 6 2D/NAP
   2026-06-11  Helios Posnania               13:50 Sala 8 2D/NAP
 
+=== DKF Zamek: O dziewczynie skaczącej przez czas ===
+displayTitle:      DKF Zamek: O dziewczynie skaczącej przez czas
+cinemaTitles:      DKF Zamek: O dziewczynie skaczącej przez czas
+runtimeMinutes:    98
+releaseYear:       2006
+countries:         Japonia
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1_ODSPC.jpg
+synopsis.length:   505
+cast:              仲里依紗, 石田卓也, 板倉光隆, 垣内彩未, 谷村美月
+director:          Mamoru Hosoda
+tmdbId:            14069
+imdbId:            tt0808506
+originalTitle:     時をかける少女
+imdbRating:        7.6
+metascore:         66
+rottenTomatoes:    —
+filmwebRating:     7.6
+metacriticUrl:     https://www.metacritic.com/movie/the-girl-who-leapt-through-time
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_girl_who_leapt_through_time_2006
+filmwebUrl:        https://www.filmweb.pl/film/O+dziewczynie+skacz%C4%85cej+przez+czas-2006-405527
+cinemaFilmUrls:
+  Kino Pałacowe = http://kinopalacowe.pl/filmy/14416-dkf-zamek-o-dziewczynie-skaczacej-przez-czas/
+cinemaScrapes:
+  Kino Pałacowe / DKF Zamek: O dziewczynie skaczącej przez czas / 2006
+showings:
+  2026-06-24  Kino Pałacowe                 19:30 Sala 1 - Kinowa
+
+=== DKF Zamek: Summer Wars ===
+displayTitle:      DKF Zamek: Summer Wars
+cinemaTitles:      DKF Zamek: Summer Wars
+runtimeMinutes:    114
+releaseYear:       2009
+countries:         Japonia
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1_sUMMER_Wars.jpg
+synopsis.length:   554
+cast:              神木隆之介, 宮内ひとみ, 谷村美月, 富司純子, 斎藤歩
+director:          Mamoru Hosoda
+tmdbId:            28874
+imdbId:            tt1474276
+originalTitle:     サマーウォーズ
+imdbRating:        7.4
+metascore:         63
+rottenTomatoes:    81
+filmwebRating:     7.2
+metacriticUrl:     https://www.metacritic.com/movie/summer-wars
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/summer_wars
+filmwebUrl:        https://www.filmweb.pl/film/Summer+Wars-2009-507454
+cinemaFilmUrls:
+  Kino Pałacowe = http://kinopalacowe.pl/filmy/14415-dkf-zamek-summer-wars/
+cinemaScrapes:
+  Kino Pałacowe / DKF Zamek: Summer Wars / 2009
+showings:
+  2026-06-17  Kino Pałacowe                 19:30 Sala 1 - Kinowa
+
+=== DKF Zamek: Wilcze dzieci ===
+displayTitle:      DKF Zamek: Wilcze dzieci
+cinemaTitles:      DKF Zamek: Wilcze dzieci
+runtimeMinutes:    117
+releaseYear:       2012
+countries:         Japonia
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Wilcze_dzieci_1x1.jpg
+synopsis.length:   485
+cast:              宮﨑あおい, 大沢たかお, 黒木華, 西井幸人, 大野百花
+director:          Mamoru Hosoda
+tmdbId:            110420
+imdbId:            tt2140203
+originalTitle:     おおかみこどもの雨と雪
+imdbRating:        8.1
+metascore:         76
+rottenTomatoes:    95
+filmwebRating:     7.8
+metacriticUrl:     https://www.metacritic.com/movie/wolf-children
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/wolf_children
+filmwebUrl:        https://www.filmweb.pl/film/Wilcze+dzieci-2012-644054
+cinemaFilmUrls:
+  Kino Pałacowe = http://kinopalacowe.pl/filmy/14414-dkf-zamek-wilcze-dzieci/
+cinemaScrapes:
+  Kino Pałacowe / DKF Zamek: Wilcze dzieci / 2012
+showings:
+  2026-06-10  Kino Pałacowe                 19:30 Sala 1 - Kinowa
+
 === Drama ===
 displayTitle:      Drama
 cinemaTitles:      DRAMA | Drama
@@ -1462,7 +1539,6 @@ metacriticUrl:     https://www.metacritic.com/movie/calle-malaga
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/calle_malaga
 filmwebUrl:        https://www.filmweb.pl/film/Drugie+%C5%BCycie-2025-10088399
 cinemaFilmUrls:
-  Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/drugie-zycie-kino-kobiet-2590
   Kino Apollo = https://kinoapollo.pl/kino/drugie-zycie/
   Kino Muza = https://www.kinomuza.pl/movie/drugie-zycie/
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157167
@@ -1483,45 +1559,11 @@ cinemaScrapes:
   Cinema Lumiere / Drugie życie / —
   Dolnośląskie Centrum Filmowe / Drugie życie / 2025
   Forum / Drugie życie / —
-  Helios Aleja Bielany / Drugie życie / —
-  Helios Alfa / Drugie życie / —
-  Helios Biała / Drugie życie / —
-  Helios Bielsko-Biała / Drugie życie / —
-  Helios Blue City / Drugie życie / —
-  Helios Bydgoszcz / Drugie życie / —
-  Helios Dąbrowa Górnicza / Drugie życie / —
-  Helios Forum / Drugie życie / —
-  Helios Gorzów Wielkopolski / Drugie życie / —
-  Helios Jelenia Góra / Drugie życie / —
-  Helios Jurowiecka / Drugie życie / —
-  Helios Kalisz / Drugie życie / —
-  Helios Karolinka / Drugie życie / —
-  Helios Katowice / Drugie życie / —
-  Helios Kielce / Drugie życie / —
-  Helios Konin / Drugie życie / —
-  Helios Koszalin / Drugie życie / —
   Helios Krosno / Drugie życie / —
-  Helios Kupiec / Drugie życie / —
   Helios Kędzierzyn-Koźle / Drugie życie / —
-  Helios Legnica / Drugie życie / —
-  Helios Lubin / Drugie życie / —
-  Helios Magnolia Park / Drugie życie / —
-  Helios Metropolia / Drugie życie / —
-  Helios Nowy Sącz / Drugie życie / —
-  Helios Olsztyn / Drugie życie / —
   Helios Ostrów Wlkp. / Drugie życie / —
-  Helios Outlet Park / Drugie życie / —
-  Helios Posnania / Drugie życie / —
-  Helios Przemyśl / Drugie życie / —
-  Helios Płock / Drugie życie / —
-  Helios Radom / Drugie życie / —
-  Helios Riviera / Drugie życie / —
-  Helios Rzeszów / Drugie życie / —
-  Helios Solaris / Drugie życie / —
-  Helios Sosnowiec / Drugie życie / —
   Helios Starachowice / Drugie życie / —
   Helios Tczew / Drugie życie / —
-  Helios Łódź / Drugie życie / —
   Helios Żory / Drugie życie / —
   Janosik / Drugie życie / —
   Kino 60 Krzeseł / Drugie życie / —
@@ -1568,7 +1610,6 @@ cinemaScrapes:
   Wybrzeże / Drugie życie / —
   Świt / Drugie życie / —
 showings:
-  2026-06-10  Helios Posnania               18:00 Sala 1 2D/NAP
   2026-06-12  Kino Apollo                   17:00 · 19:30
   2026-06-13  Kino Apollo                   15:00 · 20:00
   2026-06-13  Kino Rialto                   17:15
@@ -1578,6 +1619,72 @@ showings:
   2026-06-19  Kino Apollo                   17:00
   2026-06-20  Kino Apollo                   20:15
   2026-06-21  Kino Apollo                   16:30
+
+=== Drugie życie - Kino Kobiet ===
+displayTitle:      Drugie życie - Kino Kobiet
+cinemaTitles:      Drugie życie - Kino Kobiet
+runtimeMinutes:    116
+releaseYear:       2025
+countries:         Maroko, Francja, Hiszpania, Niemcy, Belgia
+posterUrl:         https://img.helios.pl/pliki/film/drugie-zycie/drugie-zycie-plakat-293.jpg
+synopsis.length:   376
+cast:              Carmen Maura, Marta Etura, Ahmed Boulane, Miguel Garcés, María Alfonsa Rosso
+director:          Maryam Touzani
+tmdbId:            1399462
+imdbId:            tt32429174
+originalTitle:     Calle Málaga
+imdbRating:        7.2
+metascore:         73
+rottenTomatoes:    98
+filmwebRating:     7.3
+metacriticUrl:     https://www.metacritic.com/movie/calle-malaga
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/calle_malaga
+filmwebUrl:        https://www.filmweb.pl/film/Drugie+%C5%BCycie-2025-10088399
+cinemaFilmUrls:
+  Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/drugie-zycie-kino-kobiet-2590
+cinemaScrapes:
+  Helios Aleja Bielany / Drugie życie - Kino Kobiet / —
+  Helios Alfa / Drugie życie - Kino Kobiet / —
+  Helios Biała / Drugie życie - Kino Kobiet / —
+  Helios Bielsko-Biała / Drugie życie - Kino Kobiet / —
+  Helios Blue City / Drugie życie - Kino Kobiet / —
+  Helios Bydgoszcz / Drugie życie - Kino Kobiet / —
+  Helios Dąbrowa Górnicza / Drugie życie - Kino Kobiet / —
+  Helios Forum / Drugie życie - Kino Kobiet / —
+  Helios Gorzów Wielkopolski / Drugie życie - Kino Kobiet / —
+  Helios Jelenia Góra / Drugie życie - Kino Kobiet / —
+  Helios Jurowiecka / Drugie życie - Kino Kobiet / —
+  Helios Kalisz / Drugie życie - Kino Kobiet / —
+  Helios Karolinka / Drugie życie - Kino Kobiet / —
+  Helios Katowice / Drugie życie - Kino Kobiet / —
+  Helios Kielce / Drugie życie - Kino Kobiet / —
+  Helios Konin / Drugie życie - Kino Kobiet / —
+  Helios Koszalin / Drugie życie - Kino Kobiet / —
+  Helios Krosno / Drugie życie - Kino Kobiet / —
+  Helios Kupiec / Drugie życie - Kino Kobiet / —
+  Helios Kędzierzyn-Koźle / Drugie życie - Kino Kobiet / —
+  Helios Legnica / Drugie życie - Kino Kobiet / —
+  Helios Lubin / Drugie życie - Kino Kobiet / —
+  Helios Magnolia Park / Drugie życie - Kino Kobiet / —
+  Helios Metropolia / Drugie życie - Kino Kobiet / —
+  Helios Nowy Sącz / Drugie życie - Kino Kobiet / —
+  Helios Olsztyn / Drugie życie - Kino Kobiet / —
+  Helios Ostrów Wlkp. / Drugie życie - Kino Kobiet / —
+  Helios Outlet Park / Drugie życie - Kino Kobiet / —
+  Helios Posnania / Drugie życie - Kino Kobiet / —
+  Helios Przemyśl / Drugie życie - Kino Kobiet / —
+  Helios Płock / Drugie życie - Kino Kobiet / —
+  Helios Radom / Drugie życie - Kino Kobiet / —
+  Helios Riviera / Drugie życie - Kino Kobiet / —
+  Helios Rzeszów / Drugie życie - Kino Kobiet / —
+  Helios Solaris / Drugie życie - Kino Kobiet / —
+  Helios Sosnowiec / Drugie życie - Kino Kobiet / —
+  Helios Starachowice / Drugie życie - Kino Kobiet / —
+  Helios Tczew / Drugie życie - Kino Kobiet / —
+  Helios Łódź / Drugie życie - Kino Kobiet / —
+  Helios Żory / Drugie życie - Kino Kobiet / —
+showings:
+  2026-06-10  Helios Posnania               18:00 Sala 1 2D/NAP
 
 === Drzewo magii ===
 displayTitle:      Drzewo magii
@@ -2912,41 +3019,6 @@ showings:
   2026-06-14  Helios Posnania               13:00 Sala 2 2D/NAP
   2026-06-17  Kino Apollo                   18:00
 
-=== Kicia Kocia w podróży ===
-displayTitle:      Kicia Kocia w podróży
-cinemaTitles:      Kicia Kocia w podróży
-runtimeMinutes:    45
-releaseYear:       2026
-countries:         Polska
-posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Kicia_Kocia_w_podrozy_PLAKAT_B1.jpg
-synopsis.length:   487
-cast:              Dominika Kluźniak, Lidia Sadowa, Jacek Kopczyński, Agnieszka Mrozińska, Julia Kołakowska
-director:          Marta Stróżycka
-tmdbId:            1612090
-imdbId:            —
-originalTitle:     Kicia Kocia w podróży
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     6.7
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        https://www.filmweb.pl/serial/Kicia+Kocia+w+podr%C3%B3%C5%BCy-2026-10113677
-cinemaFilmUrls:
-  Kino Pałacowe = http://kinopalacowe.pl/filmy/13758-poranek-dla-dzieci-kicia-kocia-w-podrozy/
-cinemaScrapes:
-  Cinema City / — / —
-  Cinema City Ruda Śląska / Kicia Kocia w podróży / 2026
-  Cinema City Rybnik / Kicia Kocia w podróży / 2026
-  Helios Jelenia Góra / Kicia Kocia w podróży / 2025
-  Helios Koszalin / Kicia Kocia w podróży / 2025
-  Helios Krosno / Kicia Kocia w podróży / 2025
-  Helios Radom / Kicia Kocia w podróży / 2025
-  Kino Pałacowe / Kicia Kocia w podróży / 2026
-  Służewski Dom Kultury / Kicia Kocia w podróży / —
-showings:
-  2026-06-20  Kino Pałacowe                 11:00 Sala 1 - Kinowa
-
 === Kino bez barier: Błękitny szlak (AD + CC + PJM) ===
 displayTitle:      Kino bez barier: Błękitny szlak (AD + CC + PJM)
 cinemaTitles:      Kino bez barier: Błękitny szlak (AD + CC + PJM)
@@ -3139,6 +3211,53 @@ cinemaScrapes:
   Świt / Klątwa doliny węży / —
 showings:
   2026-06-08  Kino Malta Charlie Monroe     16:30 Sala Marilyn
+
+=== Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas ===
+displayTitle:      Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas
+cinemaTitles:      Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas
+runtimeMinutes:    98
+releaseYear:       2006
+countries:         Japonia
+posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8068S2R.jpg
+synopsis.length:   505
+cast:              仲里依紗, 石田卓也, 板倉光隆, 垣内彩未, 谷村美月
+director:          Mamoru Hosoda
+tmdbId:            14069
+imdbId:            tt0808506
+originalTitle:     時をかける少女
+imdbRating:        7.6
+metascore:         66
+rottenTomatoes:    —
+filmwebRating:     7.6
+metacriticUrl:     https://www.metacritic.com/movie/the-girl-who-leapt-through-time
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_girl_who_leapt_through_time_2006
+filmwebUrl:        https://www.filmweb.pl/film/O+dziewczynie+skacz%C4%85cej+przez+czas-2006-405527
+cinemaFilmUrls:
+  Cinema City Kinepolis = https://www.cinema-city.pl/filmy/kolekcja-mamoru-hosody-o-dziewczynie-skaczacej-przez-czas/8068s2r
+  Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/kolekcja-mamoru-hosody-o-dziewczynie-skaczacej-przez-czas/8068s2r
+cinemaScrapes:
+  Cinema City / — / —
+  Cinema City Arkadia / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+  Cinema City Bielsko-Biała / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+  Cinema City Bonarka / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+  Cinema City Bydgoszcz / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+  Cinema City Czerwona Droga / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+  Cinema City Gliwice / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+  Cinema City Kazimierz / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+  Cinema City Kinepolis / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+  Cinema City Lublin Plaza / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+  Cinema City Manufaktura / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+  Cinema City Mokotów / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+  Cinema City Poznań Plaza / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+  Cinema City Promenada / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+  Cinema City Silesia / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+  Cinema City Wolność / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+  Cinema City Wroclavia / Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas / 2006
+showings:
+  2026-06-13  Cinema City Kinepolis         16:30 Sala 3 2D/NAP
+  2026-06-13  Cinema City Poznań Plaza      16:00 Sala 2 2D/NAP
+  2026-06-14  Cinema City Kinepolis         16:30 Sala 3 2D/NAP
+  2026-06-14  Cinema City Poznań Plaza      16:00 Sala 2 2D/NAP
 
 === Kopnęłabym cię, gdybym mogła ===
 displayTitle:      Kopnęłabym cię, gdybym mogła
@@ -3451,6 +3570,55 @@ cinemaScrapes:
   Kino na Szekspirowskim / La grazia / —
 showings:
   2026-06-11  Kino Malta Charlie Monroe     20:30 Sala Charlie
+
+=== Ladies Night - Narodziny gwiazdy ===
+displayTitle:      Ladies Night - Narodziny gwiazdy
+cinemaTitles:      Ladies Night - Narodziny gwiazdy
+runtimeMinutes:    135
+releaseYear:       2018
+countries:         USA
+posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/3026S2R1.jpg
+synopsis.length:   665
+cast:              Lady Gaga, Bradley Cooper, Sam Elliott, Andrew Dice Clay, Rafi Gavron
+director:          Bradley Cooper
+tmdbId:            332562
+imdbId:            tt1517451
+originalTitle:     A Star Is Born
+imdbRating:        7.6
+metascore:         88
+rottenTomatoes:    90
+filmwebRating:     7.4
+metacriticUrl:     https://www.metacritic.com/movie/a-star-is-born
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/a_star_is_born_2018
+filmwebUrl:        https://www.filmweb.pl/film/Narodziny+gwiazdy-2018-542576
+cinemaFilmUrls:
+  Cinema City Kinepolis = https://www.cinema-city.pl/filmy/ladies-night-narodziny-gwiazdy/3026s2r1
+  Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/ladies-night-narodziny-gwiazdy/3026s2r1
+cinemaScrapes:
+  Cinema City / — / —
+  Cinema City Arkadia / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Bielsko-Biała / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Bonarka / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Bydgoszcz / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Elbląg / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Gliwice / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Jurajska / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Kazimierz / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Kinepolis / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Lublin Plaza / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Manufaktura / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Mokotów / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Poznań Plaza / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Rybnik / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Silesia / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Toruń Plaza / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Wałbrzych / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Wolność / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Wroclavia / Ladies Night - Narodziny gwiazdy / 2018
+  Cinema City Zielona Góra / Ladies Night - Narodziny gwiazdy / 2018
+showings:
+  2026-06-16  Cinema City Kinepolis         19:00 Sala 15 2D/NAP
+  2026-06-16  Cinema City Poznań Plaza      19:00 Sala 6 2D/NAP
 
 === Maraton Horrorów ===
 displayTitle:      Maraton Horrorów
@@ -4367,55 +4535,6 @@ cinemaScrapes:
 showings:
   2026-06-13  Kino Muza                     19:00 Sala 1
 
-=== Narodziny gwiazdy ===
-displayTitle:      Narodziny gwiazdy
-cinemaTitles:      Narodziny gwiazdy
-runtimeMinutes:    135
-releaseYear:       2018
-countries:         USA
-posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/3026S2R1.jpg
-synopsis.length:   665
-cast:              Lady Gaga, Bradley Cooper, Sam Elliott, Andrew Dice Clay, Rafi Gavron
-director:          Bradley Cooper
-tmdbId:            332562
-imdbId:            tt1517451
-originalTitle:     A Star Is Born
-imdbRating:        7.6
-metascore:         88
-rottenTomatoes:    90
-filmwebRating:     7.4
-metacriticUrl:     https://www.metacritic.com/movie/a-star-is-born
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/a_star_is_born_2018
-filmwebUrl:        https://www.filmweb.pl/film/Narodziny+gwiazdy-2018-542576
-cinemaFilmUrls:
-  Cinema City Kinepolis = https://www.cinema-city.pl/filmy/ladies-night-narodziny-gwiazdy/3026s2r1
-  Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/ladies-night-narodziny-gwiazdy/3026s2r1
-cinemaScrapes:
-  Cinema City / — / —
-  Cinema City Arkadia / Narodziny gwiazdy / 2018
-  Cinema City Bielsko-Biała / Narodziny gwiazdy / 2018
-  Cinema City Bonarka / Narodziny gwiazdy / 2018
-  Cinema City Bydgoszcz / Narodziny gwiazdy / 2018
-  Cinema City Elbląg / Narodziny gwiazdy / 2018
-  Cinema City Gliwice / Narodziny gwiazdy / 2018
-  Cinema City Jurajska / Narodziny gwiazdy / 2018
-  Cinema City Kazimierz / Narodziny gwiazdy / 2018
-  Cinema City Kinepolis / Narodziny gwiazdy / 2018
-  Cinema City Lublin Plaza / Narodziny gwiazdy / 2018
-  Cinema City Manufaktura / Narodziny gwiazdy / 2018
-  Cinema City Mokotów / Narodziny gwiazdy / 2018
-  Cinema City Poznań Plaza / Narodziny gwiazdy / 2018
-  Cinema City Rybnik / Narodziny gwiazdy / 2018
-  Cinema City Silesia / Narodziny gwiazdy / 2018
-  Cinema City Toruń Plaza / Narodziny gwiazdy / 2018
-  Cinema City Wałbrzych / Narodziny gwiazdy / 2018
-  Cinema City Wolność / Narodziny gwiazdy / 2018
-  Cinema City Wroclavia / Narodziny gwiazdy / 2018
-  Cinema City Zielona Góra / Narodziny gwiazdy / 2018
-showings:
-  2026-06-16  Cinema City Kinepolis         19:00 Sala 15 2D/NAP
-  2026-06-16  Cinema City Poznań Plaza      19:00 Sala 6 2D/NAP
-
 === Nie martw się, nic mi nie jest ===
 displayTitle:      Nie martw się, nic mi nie jest
 cinemaTitles:      Nie martw się, nic mi nie jest
@@ -4544,7 +4663,6 @@ cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos-4158
   Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/niesamowite-przygody-skarpetek-3-ale-kosmos
-  Kino Pałacowe = http://kinopalacowe.pl/filmy/14253-poranek-dla-dzieci-niesamowite-przygody-skarpetek-/
 cinemaScrapes:
   Bałtyk / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Cinema City / — / —
@@ -4652,7 +4770,6 @@ cinemaScrapes:
   Kino PCA / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino PDK / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Paradox / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
-  Kino Pałacowe / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino Planeta / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Praha / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Przedwiośnie / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
@@ -4687,8 +4804,6 @@ showings:
   2026-06-11  Cinema City Poznań Plaza      10:50 Sala 2 2D/DUB · 12:30 Sala 2 2D/DUB
   2026-06-11  Helios Posnania               12:10 Sala 8 2D/DUB · 15:40 Sala 4 2D/DUB
   2026-06-11  Kino Bułgarska 19             16:30 Sala Thelma & Louise
-  2026-06-13  Kino Pałacowe                 11:00 Sala 1 - Kinowa
-  2026-06-21  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
 === Niezwykły chłopak ===
 displayTitle:      Niezwykły chłopak
@@ -4837,7 +4952,7 @@ countries:         Japonia
 posterUrl:         https://img.helios.pl/pliki/film/o-dziewczynie-skaczacej-przez-czas/o-dziewczynie-skaczacej-przez-czas-plakat-7957.jpg
 synopsis.length:   505
 cast:              仲里依紗, 石田卓也, 板倉光隆, 垣内彩未, 谷村美月
-director:          Mamoru Hosoda
+director:          細田守
 tmdbId:            14069
 imdbId:            tt0808506
 originalTitle:     時をかける少女
@@ -4849,28 +4964,8 @@ metacriticUrl:     https://www.metacritic.com/movie/the-girl-who-leapt-through-t
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_girl_who_leapt_through_time_2006
 filmwebUrl:        https://www.filmweb.pl/film/O+dziewczynie+skacz%C4%85cej+przez+czas-2006-405527
 cinemaFilmUrls:
-  Cinema City Kinepolis = https://www.cinema-city.pl/filmy/kolekcja-mamoru-hosody-o-dziewczynie-skaczacej-przez-czas/8068s2r
-  Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/kolekcja-mamoru-hosody-o-dziewczynie-skaczacej-przez-czas/8068s2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/o-dziewczynie-skaczacej-przez-czas-w-helios-anime-2443
-  Kino Pałacowe = http://kinopalacowe.pl/filmy/14416-dkf-zamek-o-dziewczynie-skaczacej-przez-czas/
 cinemaScrapes:
-  Cinema City / — / —
-  Cinema City Arkadia / O dziewczynie skaczącej przez czas / 2006
-  Cinema City Bielsko-Biała / O dziewczynie skaczącej przez czas / 2006
-  Cinema City Bonarka / O dziewczynie skaczącej przez czas / 2006
-  Cinema City Bydgoszcz / O dziewczynie skaczącej przez czas / 2006
-  Cinema City Czerwona Droga / O dziewczynie skaczącej przez czas / 2006
-  Cinema City Gliwice / O dziewczynie skaczącej przez czas / 2006
-  Cinema City Kazimierz / O dziewczynie skaczącej przez czas / 2006
-  Cinema City Kinepolis / O dziewczynie skaczącej przez czas / 2006
-  Cinema City Lublin Plaza / O dziewczynie skaczącej przez czas / 2006
-  Cinema City Manufaktura / O dziewczynie skaczącej przez czas / 2006
-  Cinema City Mokotów / O dziewczynie skaczącej przez czas / 2006
-  Cinema City Poznań Plaza / O dziewczynie skaczącej przez czas / 2006
-  Cinema City Promenada / O dziewczynie skaczącej przez czas / 2006
-  Cinema City Silesia / O dziewczynie skaczącej przez czas / 2006
-  Cinema City Wolność / O dziewczynie skaczącej przez czas / 2006
-  Cinema City Wroclavia / O dziewczynie skaczącej przez czas / 2006
   Helios Aleja Bielany / O dziewczynie skaczącej przez czas / —
   Helios Biała / O dziewczynie skaczącej przez czas / —
   Helios Bielsko-Biała / O dziewczynie skaczącej przez czas / —
@@ -4900,14 +4995,8 @@ cinemaScrapes:
   Helios Solaris / O dziewczynie skaczącej przez czas / —
   Helios Sosnowiec / O dziewczynie skaczącej przez czas / —
   Helios Łódź / O dziewczynie skaczącej przez czas / —
-  Kino Pałacowe / O dziewczynie skaczącej przez czas / 2006
 showings:
-  2026-06-13  Cinema City Kinepolis         16:30 Sala 3 2D/NAP
-  2026-06-13  Cinema City Poznań Plaza      16:00 Sala 2 2D/NAP
   2026-06-13  Helios Posnania               15:30 Sala 2 2D/NAP
-  2026-06-14  Cinema City Kinepolis         16:30 Sala 3 2D/NAP
-  2026-06-14  Cinema City Poznań Plaza      16:00 Sala 2 2D/NAP
-  2026-06-24  Kino Pałacowe                 19:30 Sala 1 - Kinowa
 
 === Obcy ===
 displayTitle:      Obcy
@@ -6375,6 +6464,118 @@ cinemaScrapes:
 showings:
   2026-06-11  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
+=== Poranek dla dzieci: Chłopiec na krańcach świata ===
+displayTitle:      Poranek dla dzieci: Chłopiec na krańcach świata
+cinemaTitles:      Poranek dla dzieci: Chłopiec na krańcach świata
+runtimeMinutes:    88
+releaseYear:       2026
+countries:         Polska, Hiszpania, Kanada, Turcja
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Chopiec_na_krancach_swiata_PLAKAT_teaser.jpg
+synopsis.length:   657
+cast:              Mikołaj Wachowski, Jan Szydłowski, Łucja Dobrogowska, Magdalena Herman-Urbańska, Elżbieta Jarosik
+director:          Grzegorz Wacławek, Marta Szymańska
+tmdbId:            1277047
+imdbId:            tt39637392
+originalTitle:     Chłopiec na krańcach świata
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     6.9
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        https://www.filmweb.pl/film/Ch%C5%82opiec+na+kra%C5%84cach+%C5%9Bwiata-2025-10095535
+cinemaFilmUrls:
+  Kino Pałacowe = http://kinopalacowe.pl/filmy/14435-poranek-dla-dzieci-chopiec-na-krancach-swiata/
+cinemaScrapes:
+  Kino Pałacowe / Poranek dla dzieci: Chłopiec na krańcach świata / 2025
+showings:
+  2026-06-27  Kino Pałacowe                 11:00 Sala 1 - Kinowa
+  2026-06-28  Kino Pałacowe                 11:00 Sala 1 - Kinowa
+
+=== Poranek dla dzieci: Kicia Kocia w podróży ===
+displayTitle:      Poranek dla dzieci: Kicia Kocia w podróży
+cinemaTitles:      Poranek dla dzieci: Kicia Kocia w podróży
+runtimeMinutes:    45
+releaseYear:       2026
+countries:         Polska
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Kicia_Kocia_w_podrozy_PLAKAT_B1.jpg
+synopsis.length:   487
+cast:              Dominika Kluźniak, Lidia Sadowa, Jacek Kopczyński, Agnieszka Mrozińska, Julia Kołakowska
+director:          Marta Stróżycka
+tmdbId:            1612090
+imdbId:            —
+originalTitle:     Kicia Kocia w podróży
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     6.7
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        https://www.filmweb.pl/serial/Kicia+Kocia+w+podr%C3%B3%C5%BCy-2026-10113677
+cinemaFilmUrls:
+  Kino Pałacowe = http://kinopalacowe.pl/filmy/13758-poranek-dla-dzieci-kicia-kocia-w-podrozy/
+cinemaScrapes:
+  Kino Pałacowe / Poranek dla dzieci: Kicia Kocia w podróży / 2026
+showings:
+  2026-06-20  Kino Pałacowe                 11:00 Sala 1 - Kinowa
+
+=== Poranek dla dzieci: Niesamowite przygody skarpetek 3. Ale kosmos! ===
+displayTitle:      Poranek dla dzieci: Niesamowite przygody skarpetek 3. Ale kosmos!
+cinemaTitles:      Poranek dla dzieci: Niesamowite przygody skarpetek 3. Ale kosmos!
+runtimeMinutes:    55
+releaseYear:       2026
+countries:         Polska, Portugalia
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Skarpetki-3_1080x1080.jpg
+synopsis.length:   443
+cast:              —
+director:          Elżbieta Wąsik, Paweł Wendorff; Jarosław Szyszko, Barbara Koniecka, Mateusz Kmieć, Natalia Bartska-Kmieć
+tmdbId:            1646671
+imdbId:            tt43351027
+originalTitle:     Niesamowite przygody skarpetek 3. Ale kosmos!
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     6.1
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+3.+Ale+kosmos%21-2026-10116428
+cinemaFilmUrls:
+  Kino Pałacowe = http://kinopalacowe.pl/filmy/14253-poranek-dla-dzieci-niesamowite-przygody-skarpetek-/
+cinemaScrapes:
+  Kino Pałacowe / Poranek dla dzieci: Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
+showings:
+  2026-06-13  Kino Pałacowe                 11:00 Sala 1 - Kinowa
+  2026-06-21  Kino Pałacowe                 11:00 Sala 1 - Kinowa
+
+=== Poranek dla dzieci: Pucio ===
+displayTitle:      Poranek dla dzieci: Pucio
+cinemaTitles:      Poranek dla dzieci: Pucio
+runtimeMinutes:    45
+releaseYear:       2026
+countries:         Polska
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Pucio-cover-4-5.jpg
+synopsis.length:   426
+cast:              Joanna Pach, Antonina Żbikowska, Małgorzata Socha, Waldemar Barwiński, Ewa Kania
+director:          Marta Stróżycka; Anna Błaszczyk, Dominik Litwiniak
+tmdbId:            1645035
+imdbId:            tt42003604
+originalTitle:     Pucio
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     7.1
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        https://www.filmweb.pl/serial/Pucio-2026-10016294
+cinemaFilmUrls:
+  Kino Pałacowe = http://kinopalacowe.pl/filmy/14039-poranek-dla-dzieci-pucio/
+cinemaScrapes:
+  Kino Pałacowe / Poranek dla dzieci: Pucio / 2026
+showings:
+  2026-06-14  Kino Pałacowe                 11:00 Sala 1 - Kinowa
+  2026-07-04  Kino Pałacowe                 11:00 Sala 1 - Kinowa
+  2026-07-05  Kino Pałacowe                 11:00 Sala 1 - Kinowa
+
 === Poranek Rodzinny z książką "Myszonek leci samolotem" | Frajda W Muzie! ===
 displayTitle:      Poranek Rodzinny z książką "Myszonek leci samolotem" | Frajda W Muzie!
 cinemaTitles:      Poranek Rodzinny z książką "Myszonek leci samolotem" | FRAJDA W MUZIE!
@@ -6792,7 +6993,6 @@ rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/serial/Pucio-2026-10016294
 cinemaFilmUrls:
   Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/pucio
-  Kino Pałacowe = http://kinopalacowe.pl/filmy/14039-poranek-dla-dzieci-pucio/
 cinemaScrapes:
   Bałtyk / Pucio / —
   Cinema City / — / —
@@ -6814,7 +7014,6 @@ cinemaScrapes:
   Kino Diana / Pucio / —
   Kino Kika / PUCIO / —
   Kino Nowe Horyzonty / Pucio / 2026
-  Kino Pałacowe / Pucio / 2026
   Kino Sokół Dąbrowa Tarnowska / PUCIO / —
   Kino Studyjne Kadr / Pucio / —
   Kino Tur / Pucio / —
@@ -6822,9 +7021,6 @@ cinemaScrapes:
   Teatr Elektryczny / Pucio / —
 showings:
   2026-06-10  Kino Bułgarska 19             16:30 Sala Dzienniki Motocyklowe
-  2026-06-14  Kino Pałacowe                 11:00 Sala 1 - Kinowa
-  2026-07-04  Kino Pałacowe                 11:00 Sala 1 - Kinowa
-  2026-07-05  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
 === Rocznica ===
 displayTitle:      Rocznica
@@ -7361,33 +7557,6 @@ showings:
   2026-06-09  Cinema City Poznań Plaza      14:20 Sala 1 2D/DUB
   2026-06-10  Cinema City Poznań Plaza      13:40 Sala 1 2D/DUB
   2026-06-11  Cinema City Poznań Plaza      13:40 Sala 1 2D/DUB
-
-=== Summer Wars ===
-displayTitle:      Summer Wars
-cinemaTitles:      Summer Wars
-runtimeMinutes:    114
-releaseYear:       2009
-countries:         Japonia
-posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1_sUMMER_Wars.jpg
-synopsis.length:   554
-cast:              神木隆之介, 宮内ひとみ, 谷村美月, 富司純子, 斎藤歩
-director:          Mamoru Hosoda
-tmdbId:            28874
-imdbId:            tt1474276
-originalTitle:     サマーウォーズ
-imdbRating:        7.4
-metascore:         63
-rottenTomatoes:    81
-filmwebRating:     7.2
-metacriticUrl:     https://www.metacritic.com/movie/summer-wars
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/summer_wars
-filmwebUrl:        https://www.filmweb.pl/film/Summer+Wars-2009-507454
-cinemaFilmUrls:
-  Kino Pałacowe = http://kinopalacowe.pl/filmy/14415-dkf-zamek-summer-wars/
-cinemaScrapes:
-  Kino Pałacowe / Summer Wars / 2009
-showings:
-  2026-06-17  Kino Pałacowe                 19:30 Sala 1 - Kinowa
 
 === Super Mario Galaxy Film ===
 displayTitle:      Super Mario Galaxy Film
@@ -8397,33 +8566,6 @@ cinemaScrapes:
   Kino za Rogiem Cafe / Wielki Łuk / —
 showings:
   2026-06-14  Kino Muza                     19:00 Sala 1
-
-=== Wilcze dzieci ===
-displayTitle:      Wilcze dzieci
-cinemaTitles:      Wilcze dzieci
-runtimeMinutes:    117
-releaseYear:       2012
-countries:         Japonia
-posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Wilcze_dzieci_1x1.jpg
-synopsis.length:   485
-cast:              宮﨑あおい, 大沢たかお, 黒木華, 西井幸人, 大野百花
-director:          Mamoru Hosoda
-tmdbId:            110420
-imdbId:            tt2140203
-originalTitle:     おおかみこどもの雨と雪
-imdbRating:        8.1
-metascore:         76
-rottenTomatoes:    95
-filmwebRating:     7.8
-metacriticUrl:     https://www.metacritic.com/movie/wolf-children
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/wolf_children
-filmwebUrl:        https://www.filmweb.pl/film/Wilcze+dzieci-2012-644054
-cinemaFilmUrls:
-  Kino Pałacowe = http://kinopalacowe.pl/filmy/14414-dkf-zamek-wilcze-dzieci/
-cinemaScrapes:
-  Kino Pałacowe / Wilcze dzieci / 2012
-showings:
-  2026-06-10  Kino Pałacowe                 19:30 Sala 1 - Kinowa
 
 === Windą na szafot ===
 displayTitle:      Windą na szafot

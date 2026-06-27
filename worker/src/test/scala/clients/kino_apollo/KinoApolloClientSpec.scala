@@ -20,12 +20,13 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
 
   // ── Totals ────────────────────────────────────────────────────────────────
 
-  "KinoApolloClient.fetch" should "return 13 films from the recorded repertoire page" in {
+  "KinoApolloClient.fetch" should "return 14 films from the recorded repertoire page" in {
     // Two "Drzewo Magii - seans przedpremierowy" screenings merge into the plain
-    // "Drzewo Magii" entry after the suffix is stripped (15 → 14), and the
-    // "DZIEŃ DZIECKA W APOLLO - Drzewo Magii" children's-day event merges in
-    // too after the prefix is stripped (14 → 13).
-    results.size shouldBe 13
+    // "Drzewo Magii" entry after the suffix is stripped (15 → 14). The
+    // "DZIEŃ DZIECKA W APOLLO - Drzewo Magii" children's-day event is NO LONGER
+    // stripped at the client level — it's a GLOBAL query-only banner now, so it
+    // keeps its own row (stays at 14 rather than folding to 13).
+    results.size shouldBe 14
   }
 
   it should "return 30 unique screenings in total" in {
@@ -54,6 +55,7 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
       "Cykl „Wajda: re-wizje\" - Człowiek z marmuru / Man of Marble (1977)",
       "Cykl „Wajda: re-wizje\" - Krajobraz po bitwie / Landscape After the Battle (1970)",
       "Cykl „Wajda: re-wizje\" - Niewinni czarodzieje / Innocent Sorcerers (1960)",
+      "DZIEŃ DZIECKA W APOLLO - Drzewo Magii",
       "Drzewo Magii",
       "Milcząca przyjaciółka",
       "Miłość w czasach apokalipsy",
@@ -68,9 +70,10 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
     val counts = results.map(cm => cm.movie.title -> cm.showtimes.size).toMap
     counts("Miłość w czasach apokalipsy")                                            shouldBe 4
     counts("Milcząca przyjaciółka")                                                  shouldBe 6
-    // 3 plain "Drzewo Magii" + 2 pre-premiere screenings (suffix stripped)
-    // + 2 children's-day screenings (prefix stripped) = 7
-    counts("Drzewo Magii")                                                           shouldBe 7
+    // 3 plain "Drzewo Magii" + 2 pre-premiere screenings (suffix stripped) = 5.
+    // The 2 children's-day screenings keep their own "DZIEŃ DZIECKA…" banner row now.
+    counts("Drzewo Magii")                                                           shouldBe 5
+    counts("DZIEŃ DZIECKA W APOLLO - Drzewo Magii")                                  shouldBe 2
     counts("Znaki Pana Śliwki")                                                      shouldBe 4
     counts("Znaki Pana Śliwki + prelekcja i spotkanie z Damianem Dudkiem")           shouldBe 1
     counts("Cykl „Wajda: re-wizje\" - Niewinni czarodzieje / Innocent Sorcerers (1960)") shouldBe 1
@@ -114,19 +117,18 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
     )
   }
 
-  // Children's-day banner — "DZIEŃ DZIECKA W APOLLO - Drzewo Magii" is the
-  // same film as the regular run. Strip the prefix so the 2 family showtimes
-  // merge into the base "Drzewo Magii" entry rather than competing as a
-  // separate row that no enrichment can resolve (TMDB's title search for the
-  // banner-prefixed string returns nothing, and the row stays at tmdbId=None).
-  it should "strip the 'DZIEŃ DZIECKA W APOLLO - ' prefix and merge with the base title" in {
-    val titles = results.map(_.movie.title).toSet
-    titles.foreach(t => withClue(s"title: $t") {
-      t                            should not startWith "DZIEŃ DZIECKA W APOLLO - "
-    })
+  // Children's-day banner — "DZIEŃ DZIECKA W APOLLO - Drzewo Magii" is now a GLOBAL,
+  // query-only strip (ExtraTitleRules xtra-pp-dzien-dziecka-apollo): enrichment still
+  // resolves the base film's ratings, but the screening keeps its own decorated row
+  // instead of folding into "Drzewo Magii".
+  it should "keep the 'DZIEŃ DZIECKA W APOLLO - ' screening as its own row, not merged into the base" in {
+    val drzewoDzien = byTitle("DZIEŃ DZIECKA W APOLLO - Drzewo Magii").showtimes.flatMap(_.bookingUrl)
+    drzewoDzien                    should contain ("https://bilety.kinoapollo.pl/event/view/id/662084")
+    drzewoDzien                    should contain ("https://bilety.kinoapollo.pl/event/view/id/662085")
+    // …and those family showtimes are NOT on the base "Drzewo Magii" row.
     val drzewo = byTitle("Drzewo Magii").showtimes.flatMap(_.bookingUrl)
-    drzewo                         should contain ("https://bilety.kinoapollo.pl/event/view/id/662084")
-    drzewo                         should contain ("https://bilety.kinoapollo.pl/event/view/id/662085")
+    drzewo                         should not contain "https://bilety.kinoapollo.pl/event/view/id/662084"
+    drzewo                         should not contain "https://bilety.kinoapollo.pl/event/view/id/662085"
   }
 
   it should "return the single far-future showtime for the Wajda cycle's Krajobraz po bitwie" in {
@@ -207,13 +209,13 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Miłość w czasach apokalipsy").filmUrl shouldBe Some("https://kinoapollo.pl/kino/milosc-w-czasach-apokalipsy/")
   }
 
-  // "Drzewo Magii" merges three event variants (regular run, pre-premiere
-  // screening, children's-day screening), each with its own detail-page
-  // slug. The pick should be the canonical `/kino/drzewo-magii/` rather
-  // than `/kino/drzewo-magii-seans-przedpremierowy/` or
-  // `/kino/dzien-dziecka-w-apollo-drzewo-magii/` — otherwise enrichment
-  // chases a sub-page whose Czas-trwania heading is for the *variant*
-  // event, not the film.
+  // "Drzewo Magii" merges two event variants (regular run + pre-premiere
+  // screening), each with its own detail-page slug. (The children's-day
+  // screening keeps its own "DZIEŃ DZIECKA…" row now — a global query-only
+  // banner — so it's no longer one of the merged variants.) The pick should be
+  // the canonical `/kino/drzewo-magii/` rather than
+  // `/kino/drzewo-magii-seans-przedpremierowy/` — otherwise enrichment chases a
+  // sub-page whose Czas-trwania heading is for the *variant* event, not the film.
   it should "prefer the canonical detail-page slug when variants are merged" in {
     byTitle("Drzewo Magii").filmUrl shouldBe Some("https://kinoapollo.pl/kino/drzewo-magii/")
   }

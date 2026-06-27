@@ -37,7 +37,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
 
   it should "return exactly the expected set of movie titles" in {
     results.map(_.movie.title).toSet shouldBe Set(
-      "Chłopiec na krańcach świata",
+      "Poranek dla dzieci: Chłopiec na krańcach świata",
       "Giulietta i duchy",
       "Głos z księżyca",
       "Osiem i pół",
@@ -49,7 +49,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
 
   it should "return correct runtime for every movie" in {
     val runtimes = results.map(m => m.movie.title -> detailFor(m.movie.title).runtimeMinutes).toMap
-    runtimes("Chłopiec na krańcach świata") shouldBe Some(88)
+    runtimes("Poranek dla dzieci: Chłopiec na krańcach świata") shouldBe Some(88)
     runtimes("Giulietta i duchy")           shouldBe Some(139)
     runtimes("Głos z księżyca")             shouldBe Some(121)
     runtimes("Osiem i pół")                 shouldBe Some(138)
@@ -78,7 +78,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   it should "extract director from each film page's meta line" in {
     val directors = results.map(m => m.movie.title -> detailFor(m.movie.title).director).toMap
     // Multiple co-directors before the country are captured together.
-    directors("Chłopiec na krańcach świata") shouldBe Seq("Grzegorz Wacławek", "Marta Szymańska")
+    directors("Poranek dla dzieci: Chłopiec na krańcach świata") shouldBe Seq("Grzegorz Wacławek", "Marta Szymańska")
     directors("Giulietta i duchy")           shouldBe Seq("Federico Fellini")
     directors("Głos z księżyca")             shouldBe Seq("Federico Fellini")
     directors("Osiem i pół")                 shouldBe Seq("Federico Fellini")
@@ -87,7 +87,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
 
   it should "extract countries (one or many) from each film page" in {
     val countries = results.map(m => m.movie.title -> detailFor(m.movie.title).countries).toMap
-    countries("Chłopiec na krańcach świata") shouldBe Seq("Polska")
+    countries("Poranek dla dzieci: Chłopiec na krańcach świata") shouldBe Seq("Polska")
     countries("Giulietta i duchy")           shouldBe Seq("Włochy", "Francja")
     countries("Głos z księżyca")             shouldBe Seq("Włochy")
     countries("Osiem i pół")                 shouldBe Seq("Włochy", "Francja")
@@ -96,7 +96,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
 
   it should "extract release year from each film page" in {
     val years = results.map(m => m.movie.title -> detailFor(m.movie.title).releaseYear).toMap
-    years("Chłopiec na krańcach świata") shouldBe Some(2025)
+    years("Poranek dla dzieci: Chłopiec na krańcach świata") shouldBe Some(2025)
     years("Giulietta i duchy")           shouldBe Some(1965)
     years("Głos z księżyca")             shouldBe Some(1990)
     years("Osiem i pół")                 shouldBe Some(1963)
@@ -107,7 +107,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
 
   it should "return correct poster URL for every movie" in {
     val posters = results.map(m => m.movie.title -> m.posterUrl).toMap
-    posters("Chłopiec na krańcach świata") shouldBe Some("https://kinopalacowe.pl/media/gallery/lg/Chopiec_na_krancach_swiata_PLAKAT_teaser.jpg")
+    posters("Poranek dla dzieci: Chłopiec na krańcach świata") shouldBe Some("https://kinopalacowe.pl/media/gallery/lg/Chopiec_na_krancach_swiata_PLAKAT_teaser.jpg")
     posters("Giulietta i duchy")           shouldBe Some("https://kinopalacowe.pl/media/gallery/lg/Giulietta_degli_2.jpg")
     posters("Głos z księżyca")             shouldBe Some("https://kinopalacowe.pl/media/gallery/lg/La_voce_della_lunba_3.jpg")
     posters("Osiem i pół")                 shouldBe Some("https://kinopalacowe.pl/media/gallery/lg/still2_zqnlD61.jpg")
@@ -118,7 +118,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
 
   it should "return correct film URL for every movie" in {
     val filmUrls = results.map(m => m.movie.title -> m.filmUrl).toMap
-    filmUrls("Chłopiec na krańcach świata") shouldBe Some("http://kinopalacowe.pl/filmy/14435-poranek-dla-dzieci-chopiec-na-krancach-swiata/")
+    filmUrls("Poranek dla dzieci: Chłopiec na krańcach świata") shouldBe Some("http://kinopalacowe.pl/filmy/14435-poranek-dla-dzieci-chopiec-na-krancach-swiata/")
     filmUrls("Giulietta i duchy")           shouldBe Some("http://kinopalacowe.pl/filmy/14403-giulietta-i-duchy-federico-fellini-ciao-a-tutti/")
     filmUrls("Głos z księżyca")             shouldBe Some("http://kinopalacowe.pl/filmy/14404-gos-z-ksiezyca-federico-fellini-ciao-a-tutti/")
     filmUrls("Osiem i pół")                 shouldBe Some("http://kinopalacowe.pl/filmy/14402-osiem-i-po-federico-fellini-ciao-a-tutti/")
@@ -138,7 +138,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "extract correct synopsis for Chłopiec na krańcach świata" in {
-    byTitle("Chłopiec na krańcach świata").synopsis shouldBe Some(
+    byTitle("Poranek dla dzieci: Chłopiec na krańcach świata").synopsis shouldBe Some(
       "Czy odważyłbyś się wyruszyć tam, gdzie kończy się świat, by uratować kogoś bliskiego? Omul rozumie mowę zwierząt, ale..."
     )
   }
@@ -147,7 +147,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
 
   it should "return correct showtime count for every movie" in {
     val counts = results.map(m => m.movie.title -> m.showtimes.size).toMap
-    counts("Chłopiec na krańcach świata") shouldBe 2
+    counts("Poranek dla dzieci: Chłopiec na krańcach świata") shouldBe 2
     counts("Giulietta i duchy")           shouldBe 1
     counts("Głos z księżyca")             shouldBe 1
     counts("Osiem i pół")                 shouldBe 1
@@ -157,7 +157,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   // ── Full showtime details ─────────────────────────────────────────────────
 
   it should "return exact showtimes for Chłopiec na krańcach świata" in {
-    val st = byTitle("Chłopiec na krańcach świata").showtimes
+    val st = byTitle("Poranek dla dzieci: Chłopiec na krańcach świata").showtimes
     st.size shouldBe 2
     st shouldBe Seq(
       Showtime(LocalDateTime.of(2026, 6, 27, 11, 0), Some("https://ckzamek.bilety24.pl/kup-bilety/?id=925494"), Some("Sala 1 - Kinowa"), Nil),
@@ -181,7 +181,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   // don't.
 
   it should "extract a canonical youtube watch URL from the film page" in {
-    detailFor("Chłopiec na krańcach świata").trailerUrl shouldBe
+    detailFor("Poranek dla dzieci: Chłopiec na krańcach świata").trailerUrl shouldBe
       Some("https://www.youtube.com/watch?v=MNwsZzIFF3s")
   }
 
@@ -198,12 +198,13 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   // same canonical row as the regular run. Drop any one strip and the matching
   // assertion fails, exactly as it would have before the strip was added.
 
-  "KinoPalacoweClient.cleanTitle" should "strip the 'Poranek dla dzieci: ' kids-matinee prefix" in {
-    KinoPalacoweClient.cleanTitle("Poranek dla dzieci: Pucio") shouldBe "Pucio"
-  }
-
-  it should "strip the 'DKF Zamek: ' film-club prefix" in {
-    KinoPalacoweClient.cleanTitle("DKF Zamek: Belle") shouldBe "Belle"
+  // The "Poranek dla dzieci: " and "DKF Zamek: " banners are no longer stripped at
+  // the client level — they're covered GLOBALLY now (the seed ProgrammePrefixPattern
+  // 'Poranek dla dzieci' + ExtraTitleRules xtra-pp-dkf-named), query-only, so the
+  // decorated screening keeps its own row. cleanTitle leaves them intact.
+  "KinoPalacoweClient.cleanTitle" should "leave the now-global Poranek / DKF Zamek banners intact" in {
+    KinoPalacoweClient.cleanTitle("Poranek dla dzieci: Pucio") shouldBe "Poranek dla dzieci: Pucio"
+    KinoPalacoweClient.cleanTitle("DKF Zamek: Belle") shouldBe "DKF Zamek: Belle"
   }
 
   it should "strip the 'WAJDA: re-wizje. ' retrospective prefix" in {
@@ -211,6 +212,6 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "leave an undecorated title untouched" in {
-    KinoPalacoweClient.cleanTitle("Chłopiec na krańcach świata") shouldBe "Chłopiec na krańcach świata"
+    KinoPalacoweClient.cleanTitle("Osiem i pół") shouldBe "Osiem i pół"
   }
 }

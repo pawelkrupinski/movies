@@ -68,7 +68,14 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Filmowe popołudnie dla dzieci: Złoto"            -> ("Filmowe popołudnie dla dzieci: ",   "Złoto"),
     "Klasyk w kinie: Milczenie owiec"                 -> ("Klasyk w kinie: ",                  "Milczenie owiec"),
     "Seans Przyjazny Sensorycznie: Willow i tajemniczy las" -> ("Seans Przyjazny Sensorycznie: ", "Willow i tajemniczy las"),
-    "FIESTA KINA HISZPAŃSKIEGO: Prawo pożądania"      -> ("FIESTA KINA HISZPAŃSKIEGO: ",       "Prawo pożądania")
+    "FIESTA KINA HISZPAŃSKIEGO: Prawo pożądania"      -> ("FIESTA KINA HISZPAŃSKIEGO: ",       "Prawo pożądania"),
+    // Chain decoration banners promoted from per-cinema seeds (were TitleRuleDefaults
+    // cleanTitle strips): now GLOBAL query-only, so any cinema's copy resolves the
+    // base film while the decorated screening keeps its own display row.
+    "Kino na obcasach: Zaproszenie"                   -> ("Kino na obcasach: ",                "Zaproszenie"),
+    "Ladies Night - Narodziny gwiazdy"                -> ("Ladies Night - ",                   "Narodziny gwiazdy"),
+    "Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas" -> ("Kolekcja Mamoru Hosody: ", "O dziewczynie skaczącej przez czas"),
+    "DZIEŃ DZIECKA W APOLLO - Drzewo Magii"           -> ("DZIEŃ DZIECKA W APOLLO - ",         "Drzewo Magii")
   )
 
   "ExtraTitleRules programme prefixes" should "extract the banner for the display row" in {
@@ -147,6 +154,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Zimna wojna - przegląd filmów Pawła Pawlikowskiego"       -> "Zimna wojna",
     "Pomoc domowa- kino dla kobiet"                            -> "Pomoc domowa",
     "Mickey i nicky – kino dla seniora"                        -> "Mickey i nicky",
+    "Zaproszenie - Kino Kobiet"                                -> "Zaproszenie",
     "Niesamowite przygody skarpetek 3 - KNTJ"                  -> "Niesamowite przygody skarpetek 3",
     "Opętanie – pokaz specjalny na 60. Urodziny kina zamek"    -> "Opętanie",
     "Mistrzynie | POKAZ PRZEDPREMIEROWY"                       -> "Mistrzynie",

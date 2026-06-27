@@ -112,7 +112,17 @@ object ExtraTitleRules {
     prog("xtra-pp-filmowe-popoludnie", """(?iu)^Filmowe\s+popołudnie\s+dla\s+dzieci:\s+""",  "'Filmowe popołudnie dla dzieci: <film>' kids-afternoon strand (Indianie i kowboje, Złoto)"),
     prog("xtra-pp-klasyk-w-kinie",     """(?iu)^Klasyk\s+w\s+kinie:\s+""",                   "'Klasyk w kinie: <film>' classics strand (Milczenie owiec, Rozmowa)"),
     prog("xtra-pp-seans-sensoryczny",  """(?iu)^Seans\s+Przyjazny\s+Sensorycznie:\s+""",     "'Seans Przyjazny Sensorycznie: <film>' sensory-friendly screening (Willow i tajemniczy las, Chłopiec na krańcach świata)"),
-    prog("xtra-pp-fiesta-hiszpanskiego", """(?iu)^FIESTA\s+KINA\s+HISZPAŃSKIEGO:\s+""",      "'FIESTA KINA HISZPAŃSKIEGO: <film>' Spanish-cinema fiesta prefix (Prawo pożądania); the '| / – fiesta …' suffix forms are handled by xtra-fiesta-hiszpanskiego-suffix")
+    prog("xtra-pp-fiesta-hiszpanskiego", """(?iu)^FIESTA\s+KINA\s+HISZPAŃSKIEGO:\s+""",      "'FIESTA KINA HISZPAŃSKIEGO: <film>' Spanish-cinema fiesta prefix (Prawo pożądania); the '| / – fiesta …' suffix forms are handled by xtra-fiesta-hiszpanskiego-suffix"),
+    // Chain recurring-programme banners that were per-cinema (client `cleanTitle`)
+    // seeds in TitleRuleDefaults — promoted here so the strip is GLOBAL (any cinema
+    // that ships the same banner resolves the base film), query-only so the
+    // decorated screening keeps its own row rather than merging. `(?iu)` for the
+    // Multikino ALL-CAPS raw + Polish letters; `{{SEP}}` for the ':'/'-' the chains
+    // use interchangeably.
+    prog("xtra-pp-kino-na-obcasach",   """(?iu)^Kino\s+na\s+obcasach{{SEP}}""",              "'Kino na obcasach: <film>' Multikino ladies'-programme banner (Zaproszenie, Diabeł ubiera się u Prady 2, Drugie życie)"),
+    prog("xtra-pp-ladies-night",       """(?i)^Ladies\s+Night{{SEP}}""",                     "'Ladies Night - <film>' Cinema City ladies'-programme banner"),
+    prog("xtra-pp-mamoru-hosody",      """(?iu)^Kolekcja\s+Mamoru\s+Hosody{{SEP}}""",        "'Kolekcja Mamoru Hosody: <film>' anime-retrospective banner (Cinema City + Multikino) — sibling of the 'Hosoda. <film>' dot-prefix"),
+    prog("xtra-pp-dzien-dziecka-apollo", """(?iu)^DZIEŃ\s+DZIECKA\s+W\s+APOLLO{{SEP}}""",     "'DZIEŃ DZIECKA W APOLLO - <film>' Kino Apollo Children's-Day banner")
   )
 
   /** Strips that fix enrichment without merging the row away — a premiere or a
@@ -168,6 +178,7 @@ object ExtraTitleRules {
     searchStrip("xtra-jarocinski-festiwal-suffix", """(?iu)\s*[.:\s]*II\s+Jarociński\s+Festiwal\s+Filmowy\s+dla\s+Dzieci\s+i\s+Młodzieży\s*$""", "'<film>: II Jarociński Festiwal Filmowy dla Dzieci i Młodzieży' suffix (~6 films)"),
     searchStrip("xtra-przeglad-filmow-suffix",     """(?i)\s*[-–—]\s*przegląd\s+filmów\s+.*$""",      "'<film> - przegląd filmów <reżyser>' suffix (Ida, Zimna wojna)"),
     searchStrip("xtra-kino-dla-suffix",            """(?i)\s*[-–—]\s*kino\s+dla\s+(?:seniora|seniorów|kobiet|dzieci)\s*$""", "'<film> - kino dla seniora/kobiet' audience suffix"),
+    searchStrip("xtra-kino-kobiet-suffix",         """(?iu)\s*[-–—]\s*Kino\s+Kobiet\s*$""",           "'<film> - Kino Kobiet' Helios ladies'-programme suffix (promoted from the helios per-cinema event tag; sibling of the 'Kino na obcasach' / 'Ladies Night' prefix banners)"),
     searchStrip("xtra-kntj-suffix",                """(?i)\s*[-–—]\s*KNTJ\s*$""",                     "'<film> - KNTJ' cross-cinema strand suffix"),
     searchStrip("xtra-pokaz-suffix",               """(?i)\s*[-–—|]\s*pokaz\b.*$""",                  "'<film> - / | pokaz <specjalny|przedpremierowy|+ dyskusja…>' event suffix"),
     searchStrip("xtra-tadeusz-konwicki-suffix",    """(?i)\s*[-–—]\s*tadeusz\s+konwicki\b.*$""",      "'<film> – Tadeusz Konwicki / 100. rocznica urodzin' suffix"),

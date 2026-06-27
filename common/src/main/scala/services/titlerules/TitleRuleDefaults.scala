@@ -95,24 +95,17 @@ object TitleRuleDefaults {
   // Keyed by `TitleRuleKey.of(cinema)`. A chain shares one key across its venues.
   // As each client's inline `cleanTitle` is removed, its rules land here.
   private val perCinema: Seq[TitleRule] = Seq(
-    // Cinema City (chain) — "Ladies Night - X", "X - powrót do kin",
-    // "Kolekcja Mamoru Hosody: X".
-    TitleRule("cc-ladies-night", PerCinema, Some("cinema-city"),
-      "^Ladies Night - ", "", applyAll = false, order = 10,
-      note = Some("Cinema City ladies-night prefix")),
+    // Cinema City (chain) — "X - powrót do kin" re-release suffix. The
+    // "Ladies Night - X" and "Kolekcja Mamoru Hosody: X" banners are now GLOBAL
+    // GlobalStructural rules (ExtraTitleRules xtra-pp-ladies-night /
+    // xtra-pp-mamoru-hosody): query-only, so the decorated screening keeps its
+    // own row instead of folding into the base film.
     TitleRule("cc-powrot-do-kin", PerCinema, Some("cinema-city"),
       " - powrót do kin$", "", applyAll = false, order = 20,
       note = Some("Cinema City re-release suffix")),
-    TitleRule("cc-mamoru-hosody", PerCinema, Some("cinema-city"),
-      """^Kolekcja\s+Mamoru\s+Hosody:\s*""", "", applyAll = false, order = 30,
-      note = Some("Cinema City anime-retrospective prefix")),
-    // Multikino (chain) — "Kino na obcasach: X", "Kolekcja Mamoru Hosody: X".
-    TitleRule("mk-kino-na-obcasach", PerCinema, Some("multikino"),
-      """^Kino na obcasach:\s*""", "", applyAll = false, order = 10,
-      note = Some("Multikino ladies' programme prefix")),
-    TitleRule("mk-mamoru-hosody", PerCinema, Some("multikino"),
-      """^Kolekcja\s+Mamoru\s+Hosody:\s*""", "", applyAll = false, order = 20,
-      note = Some("Multikino anime-retrospective prefix")),
+    // Multikino's "Kino na obcasach: X" / "Kolekcja Mamoru Hosody: X" banners are
+    // likewise global now (ExtraTitleRules xtra-pp-kino-na-obcasach /
+    // xtra-pp-mamoru-hosody) — no remaining Multikino per-cinema rule.
     // Kino Muza — "X | najlepsze z najgorszych" recurring-programme suffix.
     TitleRule("muza-najlepsze-z-najgorszych", PerCinema, Some("kino-muza"),
       """(?i)\s*\|\s*najlepsze\s+z\s+najgorszych\s*$""", "", applyAll = false, order = 10,
@@ -127,13 +120,10 @@ object TitleRuleDefaults {
     TitleRule("alt-collapse-ws", PerCinema, Some("kino-alternatywy"),
       """\s+""", " ", applyAll = true, order = 30,
       note = Some("Kino Alternatywy whitespace collapse")),
-    // Kino Pałacowe — cycle/programme prefixes.
-    TitleRule("palacowe-poranek", PerCinema, Some("kino-palacowe"),
-      """^Poranek dla dzieci: """, "", applyAll = false, order = 10,
-      note = Some("Kino Pałacowe kids-matinee prefix")),
-    TitleRule("palacowe-dkf-zamek", PerCinema, Some("kino-palacowe"),
-      """^DKF Zamek: """, "", applyAll = false, order = 20,
-      note = Some("Kino Pałacowe film-club prefix")),
+    // Kino Pałacowe — Wajda retrospective prefix. The "Poranek dla dzieci:" and
+    // "DKF Zamek:" banners are already covered GLOBALLY (the ProgrammePrefixPattern
+    // 'Poranek dla dzieci' entry above + ExtraTitleRules xtra-pp-dkf-named), so the
+    // per-cinema seeds are dropped: query-only, the screening keeps its own row.
     TitleRule("palacowe-wajda", PerCinema, Some("kino-palacowe"),
       """^WAJDA: re-wizje\. """, "", applyAll = false, order = 30,
       note = Some("Kino Pałacowe Wajda retrospective prefix")),
@@ -158,10 +148,9 @@ object TitleRuleDefaults {
     TitleRule("bok-pipe-to-colon", PerCinema, Some("bok"),
       """\s*\|\s*""", ": ", applyAll = true, order = 30,
       note = Some("BoK programme-banner '|' → ': '")),
-    // Kino Apollo — kids'-day prefix + pre-premiere suffix.
-    TitleRule("apollo-dzien-dziecka", PerCinema, Some("kino-apollo"),
-      """^DZIEŃ DZIECKA W APOLLO - """, "", applyAll = false, order = 10,
-      note = Some("Kino Apollo Children's-Day prefix")),
+    // Kino Apollo — pre-premiere suffix. The "DZIEŃ DZIECKA W APOLLO -" kids'-day
+    // banner is now global (ExtraTitleRules xtra-pp-dzien-dziecka-apollo):
+    // query-only, the screening keeps its own row.
     TitleRule("apollo-przedpremierowy", PerCinema, Some("kino-apollo"),
       """ - seans przedpremierowy\b.*$""", "", applyAll = false, order = 20,
       note = Some("Kino Apollo pre-premiere suffix (+ any trailing words, e.g. 'w rocznicę koncertu')")),
@@ -182,9 +171,11 @@ object TitleRuleDefaults {
   // matters (matches HeliosNuxt's foldLeft): the event-source tag is peeled so a
   // preceding dubbing/napisy tag becomes the new suffix in the same pass. None of
   // these contain regex metacharacters, so `<suffix>$` is a safe literal match.
+  // (The "- Kino Kobiet" ladies'-programme tag is now a GLOBAL query-only strip —
+  // ExtraTitleRules xtra-kino-kobiet-suffix — so it keeps its own row.)
   private val heliosSuffixes = Seq(
     " w Helios RePlay", " w Helios Anime", " w Helios na Scenie", " w HnS",
-    " - Salon Kultury Helios", " - KNTJ", " - KNT", " - Kino Kobiet",
+    " - Salon Kultury Helios", " - KNTJ", " - KNT",
     " - Kino Konesera", " - seanse z konkursami HDD", " - Event projekt",
     " - dubbing", " - Dubbing", " - napisy", " - NAP", " - DUB", " - AF")
   private val heliosRules: Seq[TitleRule] = heliosSuffixes.zipWithIndex.map { case (sfx, i) =>

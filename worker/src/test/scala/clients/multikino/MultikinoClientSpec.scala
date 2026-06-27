@@ -15,7 +15,9 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
   // casing is applied centrally now (TitleNormalizer.recase); apply it here so assertions read display titles
   private val results = client.fetch()
     .map(cm => cm.copy(movie = cm.movie.copy(title = TitleNormalizer.recase(cm.movie.title))))
-  // "Drugie życie" appears twice; toMap keeps the last entry for duplicate keys
+  // Each entry now has a distinct title — the "Kino na obcasach: …" ladies-programme
+  // screening keeps its banner rather than folding onto the base film — so titles
+  // map 1:1 (the regular "Drugie życie" and "Kino na obcasach: Drugie życie" differ).
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
   // ── Totals ────────────────────────────────────────────────────────────────
@@ -49,6 +51,11 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
       "Diabeł ubiera się u Prady 2",
       "Drama",
       "Drugie życie",
+      // Decorated screenings that now keep their banner: the global query-only
+      // strips resolve the base film's ratings, but each row stays distinct.
+      "Kino na obcasach: Drugie życie",
+      "Kino na obcasach: Zaproszenie",
+      "Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas",
       "Drzewo magii",
       "Erupcja",
       // Multikino's API returns these two titles in ALL CAPS. The parser
@@ -88,7 +95,6 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
       "NT Live: Playboy zachodniego świata",
       "NT Live: Wszyscy moi synowie",
       "Niesamowite przygody skarpetek 3. Ale kosmos!",
-      "O dziewczynie skaczącej przez czas",
       "Obsesja",
       "Odlot",
       "Odrodzony jako galareta. Film: Łzy Morza Lazurowego",
@@ -111,25 +117,27 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
       "Wolność po włosku",
       "Za duży na bajki 3",
       "Zaplątani",
-      "Zaproszenie",
       "Zawieście czerwone latarnie",
       "Żywot Briana Grupy Monty Pythona. Wersja zremasterowana",
     )
   }
 
-  it should "have exactly 2 entries titled Drugie życie" in {
-    results.count(_.movie.title == "Drugie życie") shouldBe 2
+  // The ladies-programme screening keeps its "Kino na obcasach:" banner now, so the
+  // two Drugie życie screenings are two distinctly-titled rows (they no longer fold).
+  it should "keep the regular and Kino-na-obcasach Drugie życie as two distinct rows" in {
+    results.map(_.movie.title).filter(_.endsWith("Drugie życie")).toSet shouldBe
+      Set("Drugie życie", "Kino na obcasach: Drugie życie")
   }
 
   it should "have different poster URLs for the two Drugie życie entries" in {
-    results.filter(_.movie.title == "Drugie życie").flatMap(_.posterUrl).toSet shouldBe Set(
+    results.filter(_.movie.title.endsWith("Drugie życie")).flatMap(_.posterUrl).toSet shouldBe Set(
       "https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3",
       "https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/drugiezycie_plakat.jpg?rev=b3e62875d7b248b78e1a7d07fdf010d2",
     )
   }
 
   it should "have different film URLs for the two Drugie życie entries" in {
-    results.filter(_.movie.title == "Drugie życie").flatMap(_.filmUrl).toSet shouldBe Set(
+    results.filter(_.movie.title.endsWith("Drugie życie")).flatMap(_.filmUrl).toSet shouldBe Set(
       "https://www.multikino.pl/filmy/kino-na-obcasach-drugie-zycie",
       "https://www.multikino.pl/filmy/drugie-zycie",
     )
@@ -169,7 +177,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     runtimes("Iron Maiden: Burning Ambition")                                      shouldBe Some(106)
     runtimes("John Williams - A Tribute")                                          shouldBe Some(83)
     runtimes("Klątwa doliny węży -  z autorską narracją Łony")                     shouldBe Some(0)
-    runtimes("O dziewczynie skaczącej przez czas")         shouldBe Some(98)
+    runtimes("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")         shouldBe Some(98)
     runtimes("Kosmiczny mecz")                                                     shouldBe Some(0)
     runtimes("Kurozając i Świątynia Świstaka")                                     shouldBe Some(89)
     runtimes("Liga Mistrzów Uefa - Finał 2026: Paris Saint-Germain - Arsenal Fc")  shouldBe Some(0)
@@ -210,7 +218,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     runtimes("Wolność po włosku")                                                  shouldBe Some(117)
     runtimes("Za duży na bajki 3")                                                 shouldBe Some(0)
     runtimes("Zaplątani")                                                          shouldBe Some(0)
-    runtimes("Zaproszenie")                                                        shouldBe Some(0)
+    runtimes("Kino na obcasach: Zaproszenie")                                                        shouldBe Some(0)
     runtimes("Zawieście czerwone latarnie")                                        shouldBe Some(0)
     runtimes("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana")            shouldBe Some(94)
   }
@@ -300,7 +308,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     posters("Iron Maiden: Burning Ambition")                                      shouldBe Some("https://www.multikino.pl/-/media/multikino/images/wydarzenia/koncerty/iron-maiden/ironmaiden.jpg?rev=a8cd80d50e264d7baef87d55f4b41156")
     posters("John Williams - A Tribute")                                          shouldBe Some("https://www.multikino.pl/-/media/multikino/images/wydarzenia/koncerty/john-williams/jwilliams_plakat.jpg?rev=c7d1daa261e2416da7adc8881c9a2801")
     posters("Klątwa doliny węży -  z autorską narracją Łony")                     shouldBe Some("https://www.multikino.pl/-/media/multikino/images/kultowe-kino/klatwa-doliny-wezy_plakat.jpg?rev=c58ea807e26643fb8bc1425578f746b0")
-    posters("O dziewczynie skaczącej przez czas")         shouldBe Some("https://www.multikino.pl/-/media/multikino/images/wydarzenia/anime/o-dziewczynie-skaczacej-przez-czas-plakat2.jpg?rev=125e66df557f4228bf3605103ca217f9")
+    posters("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")         shouldBe Some("https://www.multikino.pl/-/media/multikino/images/wydarzenia/anime/o-dziewczynie-skaczacej-przez-czas-plakat2.jpg?rev=125e66df557f4228bf3605103ca217f9")
     posters("Kosmiczny mecz")                                                     shouldBe Some("https://www.multikino.pl/-/media/multikino/images/kultowe-kino/kosmicznymecz96.jpg?rev=5cf7d42444434cff9f803083a634a9ee")
     posters("Kurozając i Świątynia Świstaka")                                     shouldBe Some("https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/kurozajac-i-swiatynia-swistaka/kurozajac_plakat.jpg?rev=8e07534364604957a7cfab295c1dc9ec")
     posters("Liga Mistrzów Uefa - Finał 2026: Paris Saint-Germain - Arsenal Fc")  shouldBe Some("https://www.multikino.pl/-/media/multikino/images/euro/2026/plakat_30maja.jpg?rev=b087764f339d4085af181aa6fc494509")
@@ -341,7 +349,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     posters("Wolność po włosku")                                                  shouldBe Some("https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/wolnosc-po-wlosku/wolnosc-po-wlosku_plakat-cut.jpg?rev=4ea29ca18f8d4b8797416311488768ed")
     posters("Za duży na bajki 3")                                                 shouldBe Some("https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/za-duzy-na-bajki-3/zaduzynabajki3_plakat.jpg?rev=9b8f08e7580848568d5657d0881b4a65")
     posters("Zaplątani")                                                          shouldBe Some("https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3")
-    posters("Zaproszenie")                                                        shouldBe Some("https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3")
+    posters("Kino na obcasach: Zaproszenie")                                                        shouldBe Some("https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3")
     posters("Zawieście czerwone latarnie")                                        shouldBe Some("https://www.multikino.pl/-/media/multikino/images/kultowe-kino/zawiecie_czerwone_laternie_plakat.jpg?rev=300dbab82eef4904a6bb9c1888bbea70")
     posters("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana")            shouldBe Some("https://www.multikino.pl/-/media/multikino/images/kultowe-kino/ywot_briana_plakat.jpg?rev=9ec79149ee78480185000b354a311e71")
   }
@@ -380,7 +388,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     filmUrls("Iron Maiden: Burning Ambition")                                      shouldBe Some("https://www.multikino.pl/filmy/iron-maiden-burning-ambition")
     filmUrls("John Williams - A Tribute")                                          shouldBe Some("https://www.multikino.pl/filmy/john-williams-a-tribute")
     filmUrls("Klątwa doliny węży -  z autorską narracją Łony")                     shouldBe Some("https://www.multikino.pl/filmy/klatwa-doliny-wezy----z-autorska-narracja-ony")
-    filmUrls("O dziewczynie skaczącej przez czas")         shouldBe Some("https://www.multikino.pl/filmy/kolekcja-mamoru-hosody-o-dziewczynie-skaczacej-przez-czas")
+    filmUrls("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")         shouldBe Some("https://www.multikino.pl/filmy/kolekcja-mamoru-hosody-o-dziewczynie-skaczacej-przez-czas")
     filmUrls("Kosmiczny mecz")                                                     shouldBe Some("https://www.multikino.pl/filmy/kosmiczny-mecz")
     filmUrls("Kurozając i Świątynia Świstaka")                                     shouldBe Some("https://www.multikino.pl/filmy/kurozajac-i-swiatynia-swistaka")
     filmUrls("Liga Mistrzów Uefa - Finał 2026: Paris Saint-Germain - Arsenal Fc")  shouldBe Some("https://www.multikino.pl/filmy/liga-mistrzow-uefa-final-2026-30052026")
@@ -421,7 +429,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     filmUrls("Wolność po włosku")                                                  shouldBe Some("https://www.multikino.pl/filmy/wolnosc-po-wlosku")
     filmUrls("Za duży na bajki 3")                                                 shouldBe Some("https://www.multikino.pl/filmy/za-duzy-na-bajki-3")
     filmUrls("Zaplątani")                                                          shouldBe Some("https://www.multikino.pl/filmy/zaplatani")
-    filmUrls("Zaproszenie")                                                        shouldBe Some("https://www.multikino.pl/filmy/kino-na-obcasach-zaproszenie")
+    filmUrls("Kino na obcasach: Zaproszenie")                                                        shouldBe Some("https://www.multikino.pl/filmy/kino-na-obcasach-zaproszenie")
     filmUrls("Zawieście czerwone latarnie")                                        shouldBe Some("https://www.multikino.pl/filmy/zawiescie-czerwone-latarnie")
     filmUrls("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana")            shouldBe Some("https://www.multikino.pl/filmy/zywot-briana-grupy-monty-pythona-wersja-zremasterowana")
   }
@@ -456,7 +464,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Iron Maiden: Burning Ambition").director                                      shouldBe Seq("Malcolm Venville")
     byTitle("John Williams - A Tribute").director                                          shouldBe Seq("Antony Hermus")
     byTitle("Klątwa doliny węży -  z autorską narracją Łony").director                     shouldBe Seq("Marek Piestrak")
-    byTitle("O dziewczynie skaczącej przez czas").director         shouldBe Seq("Mamoru Hosoda")
+    byTitle("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas").director         shouldBe Seq("Mamoru Hosoda")
     byTitle("Kosmiczny mecz").director                                                     shouldBe Seq("Joe Pytka")
     byTitle("Kurozając i Świątynia Świstaka").director                                     shouldBe Seq("Benjamin Mousquet")
     byTitle("La Traviata Verdiego z Arena di Verona").director                             shouldBe Seq("Michele Olcese", "Francesco Ivan Ciampa")
@@ -501,7 +509,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("NT Live: Wszyscy moi synowie").director                                       shouldBe empty
     byTitle("Obsesja").director                                                            shouldBe empty
     byTitle("Straszny film").director                                                      shouldBe empty
-    byTitle("Zaproszenie").director                                                        shouldBe empty
+    byTitle("Kino na obcasach: Zaproszenie").director                                                        shouldBe empty
     byTitle("Zawieście czerwone latarnie").director                                        shouldBe empty
   }
 
@@ -539,7 +547,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     counts("Iron Maiden: Burning Ambition")                                      shouldBe 7
     counts("John Williams - A Tribute")                                          shouldBe 4
     counts("Klątwa doliny węży -  z autorską narracją Łony")                     shouldBe 1
-    counts("O dziewczynie skaczącej przez czas")         shouldBe 2
+    counts("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")         shouldBe 2
     counts("Kosmiczny mecz")                                                     shouldBe 5
     counts("Kurozając i Świątynia Świstaka")                                     shouldBe 33
     counts("Liga Mistrzów Uefa - Finał 2026: Paris Saint-Germain - Arsenal Fc")  shouldBe 1
@@ -580,7 +588,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     counts("Wolność po włosku")                                                  shouldBe 1
     counts("Za duży na bajki 3")                                                 shouldBe 5
     counts("Zaplątani")                                                          shouldBe 2
-    counts("Zaproszenie")                                                        shouldBe 1
+    counts("Kino na obcasach: Zaproszenie")                                                        shouldBe 1
     counts("Zawieście czerwone latarnie")                                        shouldBe 1
     counts("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana")            shouldBe 2
   }
@@ -650,20 +658,19 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     titles should contain ("Liga Mistrzów Uefa - Finał 2026: Paris Saint-Germain - Arsenal Fc")
   }
 
-  // ── cleanTitle: strip cycle decoration ────────────────────────────────────
+  // ── cleanTitle: decoration banners are now GLOBAL, not per-client ──────────
   //
-  // Each strip lets a decorated screening merge onto — and enrich off — the
-  // same row as the regular run. Drop either strip and the matching assertion
-  // fails, exactly as it would have before the strip was added.
+  // The "Kino na obcasach:" and "Kolekcja Mamoru Hosody:" banners are no longer
+  // stripped at the client level — they're GLOBAL, query-only rules now
+  // (ExtraTitleRules xtra-pp-kino-na-obcasach / xtra-pp-mamoru-hosody), so the
+  // decorated screening keeps its own row instead of folding into the base film.
+  // cleanTitle leaves them intact; the query-strip is asserted in ExtraTitleRulesSpec.
 
-  "MultikinoParser.cleanTitle" should "strip the 'Kino na obcasach:' ladies-programme prefix" in {
+  "MultikinoParser.cleanTitle" should "leave the now-global Kino na obcasach / Mamoru Hosody banners intact" in {
     MultikinoParser.cleanTitle("Kino na obcasach: Diabeł ubiera się u Prady 2") shouldBe
-      "Diabeł ubiera się u Prady 2"
-  }
-
-  it should "strip the 'Kolekcja Mamoru Hosody:' anime-retrospective prefix" in {
+      "Kino na obcasach: Diabeł ubiera się u Prady 2"
     MultikinoParser.cleanTitle("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas") shouldBe
-      "O dziewczynie skaczącej przez czas"
+      "Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas"
   }
 
   it should "leave an undecorated title untouched" in {
