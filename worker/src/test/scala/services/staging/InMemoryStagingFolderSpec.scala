@@ -1,6 +1,6 @@
 package services.staging
 
-import models.{Helios, Multikino, MovieRecord, Source, SourceData, Tmdb}
+import models.{Helios, MikroBronowice, Multikino, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{CacheKey, CaffeineMovieCache, EnrichmentRetrigger, InMemoryMovieRepository, RetriggerKind}
@@ -62,6 +62,26 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
     rows.head.year shouldBe Some(2026)
     rows.head.record.data.keySet shouldBe Set(Multikino, Helios, Tmdb)
     settleIsANoOpOver(movies)
+  }
+
+  it should "fold + delete a row whose display title sanitizes away from its _id (the Toy Story 5 drift)" in {
+    // Prod regression: "Toy Story 5- dubbing" keys `_id` on sanitize toystory5,
+    // but `chooseDisplay` strips "- dubbing" → "Toy Story 5" → sanitize toystoryv.
+    // The reaper folds on the re-derived title; selection must follow sanitize(r.title),
+    // not the `_id` middle, or the row strands and re-folds forever.
+    val staging = new InMemoryStagingRepository
+    val movies  = new InMemoryMovieRepository
+    staging.upsert(MikroBronowice, "Toy Story 5- dubbing", None,
+      MovieRecord(tmdbNoMatch = true, searchTitle = Some("Toy Story 5- dubbing"),
+        data = Map[Source, SourceData](MikroBronowice -> SourceData(title = Some("Toy Story 5- dubbing")))))
+    val reaperTitle = staging.findAll().head.title   // what StagingReaper passes to the fold
+
+    new InMemoryStagingFolder(staging, movies).foldGroup(reaperTitle)
+
+    withClue(s"drifting staging row not deleted — it would re-fold forever: ${staging.findAll().map(_.id)}\n")(
+      staging.findAll() shouldBe empty)
+    movies.findAll() should have size 1
+    movies.findAll().head.record.tmdbNoMatch shouldBe true
   }
 
   it should "be a no-op when no staging rows match (already folded)" in {

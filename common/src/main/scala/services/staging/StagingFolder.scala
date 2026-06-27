@@ -41,7 +41,7 @@ class InMemoryStagingFolder(stagingRepository: StagingRepository, movieRepositor
 
   def foldGroup(cleanTitle: String): Seq[(CacheKey, MovieRecord)] = lock.synchronized {
     val key         = TitleNormalizer.sanitize(cleanTitle)
-    val stagingRows = stagingRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == key)
+    val stagingRows = StagingFold.selectStagingGroup(stagingRepository.findAll(), cleanTitle)
     if (stagingRows.isEmpty) Seq.empty
     else {
       val all        = movieRepository.findAll()

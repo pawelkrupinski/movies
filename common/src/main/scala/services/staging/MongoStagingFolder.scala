@@ -58,13 +58,12 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
     staging: MongoCollection[StoredMovieDto],
     cleanTitle: String
   ): Seq[(CacheKey, MovieRecord)] = {
-    val sanitize = TitleNormalizer.sanitize(cleanTitle)
     var attempt  = 0
     var result   = Option.empty[Seq[(CacheKey, MovieRecord)]]
     while (result.isEmpty) {
       attempt += 1
       session.startTransaction()
-      Try(foldOnce(session, movies, staging, sanitize)) match {
+      Try(foldOnce(session, movies, staging, cleanTitle)) match {
         case Success(newPromotions) =>
           await(publisherToFuture(session.commitTransaction())); result = Some(newPromotions)
         case Failure(e: MongoException)
@@ -86,15 +85,24 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
    *  the ±1-year variants and re-key to the TMDB year inside the transaction,
    *  exactly as the cache settle does (see `StagingFolder.foldGroup`). */
   private def foldOnce(
-    session:  ClientSession,
-    movies:   MongoCollection[StoredMovieDto],
-    staging:  MongoCollection[StoredMovieDto],
-    sanitize: String
+    session:    ClientSession,
+    movies:     MongoCollection[StoredMovieDto],
+    staging:    MongoCollection[StoredMovieDto],
+    cleanTitle: String
   ): Seq[(CacheKey, MovieRecord)] = {
-    // Staging `_id` = cinema|sanitize|year — match the middle sanitize segment,
-    // any cinema, any year.
-    val stagingRows = await(staging.find(session, Filters.regex("_id", s"^[^|]+\\|$sanitize\\|")).toFuture())
-      .flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record))
+    val sanitize = TitleNormalizer.sanitize(cleanTitle)
+    // Load every staging row and pick this fold's group by `sanitize(r.title)` —
+    // NOT a `_id`-middle regex. A row's `_id` middle is the sanitize baked at
+    // creation, which DRIFTS from the re-derived display title's sanitize (e.g.
+    // "Toy Story 5- dubbing" → `toystory5` in `_id`, but display "Toy Story 5" →
+    // `toystoryv`); matching the middle missed the row and the fold no-op'd
+    // forever (see StagingFold.selectStagingGroup). The full scan is no costlier
+    // than the old regex — `^[^|]+\|…` can't use the `_id` index either, and prod
+    // staging holds only a handful of trickling newcomers.
+    val stagingRows = StagingFold.selectStagingGroup(
+      await(staging.find(session).toFuture())
+        .flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record)),
+      cleanTitle)
     if (stagingRows.isEmpty) Seq.empty
     else {
       // Movies `_id` = sanitize|year — match the sanitize group, any year.

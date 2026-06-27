@@ -1,7 +1,7 @@
 package services.staging
 
 import models.MovieRecord
-import services.movies.{CacheKey, FilmCanonicalizer, MovieRecordMerge, StoredMovieRecord}
+import services.movies.{CacheKey, FilmCanonicalizer, MovieRecordMerge, StoredMovieRecord, TitleNormalizer}
 
 /**
  * The PURE decision half of folding a newcomer's staging rows into `movies`,
@@ -43,6 +43,27 @@ object StagingFold {
    *  bare-title tmdbId edge does the actual cross-title merge. */
   def reconcileTmdbIds(stagingRows: Seq[StagingRecord], moviesRows: Seq[StoredMovieRecord]): Set[Int] =
     (stagingRows.flatMap(_.record.tmdbId) ++ moviesRows.flatMap(_.record.tmdbId)).toSet
+
+  /** The staging rows that belong to ONE fold group: every loaded row whose
+   *  (re-derived) display title sanitizes to the same key as `cleanTitle`. THE
+   *  one selection both `StagingFolder` impls share, so the real (Mongo) and fake
+   *  (in-memory) folders can't disagree about which rows a fold consumes.
+   *
+   *  Keyed on `sanitize(r.title)` — NOT the sanitized middle segment baked into
+   *  the row's `_id` at creation. The two DRIFT: `StagingRecord.fromStorage`
+   *  re-derives `title` via `chooseDisplay` on every read, and a decoration strip
+   *  can re-expose a trailing numeral that `sanitize` then romanizes (the prod
+   *  "Toy Story 5- dubbing" → display "Toy Story 5" → `toystoryv`, vs the `_id`
+   *  middle `toystory5`). Matching on the `_id` middle (what `MongoStagingFolder`
+   *  used to do) then selected nothing, so the row never folded and the reaper
+   *  re-enqueued the fold forever (the 30-min staging "fold" gauge rectangle). The
+   *  reaper groups + the gauge count on this SAME `sanitize(r.title)` key, so the
+   *  fold now consumes exactly the rows the reaper classified as ready. Deletes
+   *  still go through each row's persisted `id` (drift-proof), per StagingRecord. */
+  def selectStagingGroup(rows: Seq[StagingRecord], cleanTitle: String): Seq[StagingRecord] = {
+    val key = TitleNormalizer.sanitize(cleanTitle)
+    rows.filter(r => TitleNormalizer.sanitize(r.title) == key)
+  }
 
   /** `stagingRows` are every per-cinema row of ONE `sanitize(title)` group (all its
    *  year-variants); `moviesRows` are the existing `movies` rows in that group PLUS
