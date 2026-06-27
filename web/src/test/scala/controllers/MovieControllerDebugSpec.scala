@@ -89,6 +89,8 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     // Groups are collapsible (<details>) and FOLDED by default (no `open`).
     html should include ("<details")
     html should not include ("<details open")
+    // The Filmweb (fw) pill uses Filmweb's orange.
+    html should include (".site-fw   { background: #ff8c00; }")
   }
 
   it should "404 in production" in {
