@@ -130,6 +130,25 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("C", None)).flatMap(_.rottenTomatoes) shouldBe Some(81)
   }
 
+  it should "record each bulk-observed Tomatometer change into the adaptive cadence (and nothing for unchanged rows)" in {
+    val urlA = "https://www.rottentomatoes.com/m/a"
+    val urlB = "https://www.rottentomatoes.com/m/b"
+    val repository = new InMemoryMovieRepository(Seq(
+      ("A", None, MovieRecord(tmdbId = Some(201), rottenTomatoes = Some(50), rottenTomatoesUrl = Some(urlA))),
+      ("B", None, MovieRecord(tmdbId = Some(202), rottenTomatoes = Some(60), rottenTomatoesUrl = Some(urlB)))
+    ))
+    val cache   = new CaffeineMovieCache(repository)
+    val cadence = new services.cadence.InMemoryRatingCadenceStore
+    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
+      rtClient(Map(urlA -> pageWithScore(74), urlB -> pageWithScore(60))),  // A moves, B unchanged
+      cadenceRecorder = (key, tmdbId, v) => cadence.record(services.tasks.RatingTasks.dedupKey(services.freshness.FreshnessKind.RtRating, key, tmdbId), v))
+
+    ratings.refreshAll()
+
+    cadence.statsFor("rt|tmdb:201").flatMap(_.lastChange).map(_.value) shouldBe Some("74%")
+    cadence.statsFor("rt|tmdb:202")                                    shouldBe None
+  }
+
   it should "skip rows without an RT URL (no GET issued, no exception)" in {
     val urlA = "https://www.rottentomatoes.com/m/a"
     val repository = new InMemoryMovieRepository(Seq(

@@ -48,6 +48,17 @@ object RatingTasks {
     }
 }
 
+/** Builds the cadence recorder the full-corpus `*Ratings.refreshAll` walks use to
+ *  feed an operator bulk refresh's displayed-value changes into the SAME
+ *  tmdbId-keyed adaptive cadence the per-row [[RatingHandler]] feeds. Lives here
+ *  (not in the `modules` composition root) because the root can't name the
+ *  `private[services]` [[services.movies.CacheKey]] — it wires the recorder by
+ *  value instead. */
+object BulkCadenceRecorder {
+  def apply(cadence: RatingCadenceStore, kind: FreshnessKind): (CacheKey, Option[Int], Option[String]) => Unit =
+    (key, tmdbId, value) => cadence.record(RatingTasks.dedupKey(kind, key, tmdbId), value)
+}
+
 /** Records how long after a film's TMDB resolution each rating site FIRST tried
  *  to fetch its rating — the latency the [[EnrichmentReaper]]'s first pass now
  *  owns, since ratings are no longer enqueued the instant a film resolves. A

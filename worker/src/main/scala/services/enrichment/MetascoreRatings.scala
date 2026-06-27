@@ -28,8 +28,9 @@ class MetascoreRatings(
   metacritic: MetacriticClient,
   // Caches the MC url discovery keyed by (title, fallback, year), so the same
   // film's slug probe runs once for 24h. Passthrough by default (tests).
-  mcLinkCache: ResolutionCache = ResolutionCache.passthrough
-) extends CacheRefresher(cache) {
+  mcLinkCache: ResolutionCache = ResolutionCache.passthrough,
+  cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
+) extends CacheRefresher(cache, cadenceRecorder) {
 
   override protected def sourceName: String = "Metacritic"
 
@@ -155,6 +156,7 @@ class MetascoreRatings(
         case Success(fresh) if fresh != enrichment.metascore =>
           logger.debug(s"Metascore refresh: ${key.cleanTitle} $url ${enrichment.metascore.getOrElse("—")} → ${fresh.getOrElse("—")}")
           cache.putIfPresent(key, _.copy(metascore = fresh))
+          fresh.foreach(s => recordCadenceChange(key, enrichment.tmdbId, Some(s.toString)))
           changed.incrementAndGet()
         case Success(_) => ()
         case Failure(exception) =>
@@ -166,7 +168,7 @@ class MetascoreRatings(
     BoundedParallel.foreach("Metascore-refresh-discover", missingUrl, refreshConcurrency) { case (key, enrichment) =>
       resolveAndPersistUrl(key, enrichment).foreach { resolved =>
         urlDiscovered.incrementAndGet()
-        settleScore(key, resolved)
+        settleScore(key, resolved).foreach(v => recordCadenceChange(key, enrichment.tmdbId, Some(v)))
       }
     }
 

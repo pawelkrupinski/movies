@@ -43,8 +43,9 @@ class FilmwebRatings(
   // Called whenever we set (or confirm) a filmwebUrl on a row that still has
   // no imdbId — signals the resolver to attempt the Wikidata fallback.
   // Args: (title, year, searchTitle) matching ImdbIdMissing. No-op by default.
-  onImdbIdMissing: (String, Option[Int], String) => Unit = (_, _, _) => ()
-) extends CacheRefresher(cache) {
+  onImdbIdMissing: (String, Option[Int], String) => Unit = (_, _, _) => (),
+  cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
+) extends CacheRefresher(cache, cadenceRecorder) {
 
   override protected def sourceName: String = "Filmweb"
 
@@ -232,6 +233,7 @@ class FilmwebRatings(
         case Success(fresh) if fresh != enrichment.filmwebRating =>
           logger.debug(s"Filmweb refresh: ${key.cleanTitle} $url ${enrichment.filmwebRating.getOrElse("—")} → ${fresh.getOrElse("—")}")
           cache.putIfPresent(key, _.copy(filmwebRating = fresh))
+          fresh.foreach(r => recordCadenceChange(key, enrichment.tmdbId, Some(RatingDisplay.label(r))))
           changed.incrementAndGet()
         case Success(_) => ()
         case Failure(exception) =>
@@ -242,7 +244,8 @@ class FilmwebRatings(
 
     BoundedParallel.foreach("Filmweb-refresh-discover", missingUrl, refreshConcurrency) { case (key, enrichment) =>
       Try(resolveAndPersistUrl(key, enrichment)) match {
-        case Success(_) =>
+        case Success(reported) =>
+          reported.foreach(v => recordCadenceChange(key, enrichment.tmdbId, Some(v)))
           // urlDiscovered: re-read the cache to see if the helper actually
           // stored a URL. Cheap (single Caffeine lookup) and avoids leaking
           // the resolved Option through the helper's API.

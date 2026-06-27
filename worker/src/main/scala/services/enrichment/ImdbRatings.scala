@@ -21,8 +21,9 @@ import scala.util.{Failure, Try}
  */
 class ImdbRatings(
   cache: MovieCache,
-  imdb:  ImdbClient
-) extends CacheRefresher(cache) {
+  imdb:  ImdbClient,
+  cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
+) extends CacheRefresher(cache, cadenceRecorder) {
 
   override protected def sourceName: String = "IMDb"
 
@@ -125,6 +126,7 @@ class ImdbRatings(
           imdbRating = ratingUpdate.orElse(current.imdbRating),
           data       = slotUpdate.map(s => current.data + ((Imdb: Source) -> s)).getOrElse(current.data)
         ))
+        ratingUpdate.foreach(r => recordCadenceChange(key, enrichment.tmdbId, Some(RatingDisplay.label(r))))
         changed.incrementAndGet()
       }
     }

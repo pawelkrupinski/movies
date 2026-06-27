@@ -116,4 +116,20 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("C", None)).flatMap(_.imdbRating) shouldBe Some(8.1)
   }
 
+  it should "record each bulk-observed rating change into the adaptive cadence (and nothing for unchanged rows)" in {
+    val repository = new InMemoryMovieRepository(Seq(
+      ("A", None, MovieRecord(imdbId = Some("tt1"), imdbRating = Some(5.0), tmdbId = Some(101))),
+      ("B", None, MovieRecord(imdbId = Some("tt2"), imdbRating = Some(6.0), tmdbId = Some(102)))
+    ))
+    val cache   = new CaffeineMovieCache(repository)
+    val cadence = new services.cadence.InMemoryRatingCadenceStore
+    val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4, "tt2" -> 6.0)),  // A moves, B unchanged
+      (key, tmdbId, v) => cadence.record(services.tasks.RatingTasks.dedupKey(services.freshness.FreshnessKind.ImdbRating, key, tmdbId), v))
+
+    ratings.refreshAll()
+
+    cadence.statsFor("imdb|tmdb:101").flatMap(_.lastChange).map(_.value) shouldBe Some("7.4")
+    cadence.statsFor("imdb|tmdb:102")                                    shouldBe None  // unchanged → no bulk record
+  }
+
 }

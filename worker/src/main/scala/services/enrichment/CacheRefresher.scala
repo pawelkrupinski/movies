@@ -22,7 +22,24 @@ import services.movies.{CacheKey, MovieCache}
  * so the refresh runs synchronously on the caller's thread (the `TaskWorker`
  * pool in production) — no EC or scheduler to own here.
  */
-abstract class CacheRefresher(protected val cache: MovieCache) extends Logging {
+abstract class CacheRefresher(
+  protected val cache: MovieCache,
+  // Sink for a displayed-value change OBSERVED BY THE FULL-CORPUS WALK. The
+  // per-row path records into the adaptive cadence via `RatingHandler` (which
+  // carries the task's dedup key); the bulk walk has no task, so the composition
+  // root injects a recorder that builds the `(source, film)` cadence key from the
+  // row's `CacheKey` + tmdbId. Without it an operator's corpus refresh would move
+  // a rating without telling the cadence, leaving a gap a later per-row refresh
+  // mis-reads as a fresh change. No-op by default (scripts/tests).
+  recordBulkChange: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
+) extends Logging {
+
+  /** Record a displayed-value change the full-corpus walk just made, so the
+   *  adaptive cadence's change history stays complete across an operator bulk
+   *  refresh. Subclasses call this from `refreshAll` at each write site; the
+   *  cadence itself dedups a value equal to the last recorded one. */
+  protected def recordCadenceChange(key: CacheKey, tmdbId: Option[Int], displayValue: Option[String]): Unit =
+    recordBulkChange(key, tmdbId, displayValue)
 
   /** Short name of the source this refresher owns (`"IMDb"`, `"Metacritic"`,
    *  `"RT"`, `"Filmweb"`) — used to prefix the per-step enrichment logs so a

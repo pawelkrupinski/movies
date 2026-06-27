@@ -27,8 +27,9 @@ class RottenTomatoesRatings(
   rt:    RottenTomatoesClient,
   // Caches the RT url discovery keyed by (title, fallback, year), so the same
   // film's slug probe runs once for 24h. Passthrough by default (tests).
-  rtLinkCache: ResolutionCache = ResolutionCache.passthrough
-) extends CacheRefresher(cache) {
+  rtLinkCache: ResolutionCache = ResolutionCache.passthrough,
+  cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
+) extends CacheRefresher(cache, cadenceRecorder) {
 
   override protected def sourceName: String = "RT"
 
@@ -121,6 +122,7 @@ class RottenTomatoesRatings(
         case Success(fresh) if fresh != enrichment.rottenTomatoes =>
           logger.debug(s"RT refresh: ${key.cleanTitle} $url ${enrichment.rottenTomatoes.getOrElse("—")} → ${fresh.getOrElse("—")}")
           cache.putIfPresent(key, _.copy(rottenTomatoes = fresh))
+          fresh.foreach(s => recordCadenceChange(key, enrichment.tmdbId, Some(s"$s%")))
           changed.incrementAndGet()
         case Success(_) => ()
         case Failure(exception) =>
@@ -132,7 +134,7 @@ class RottenTomatoesRatings(
     BoundedParallel.foreach("RT-refresh-discover", missingUrl, refreshConcurrency) { case (key, enrichment) =>
       resolveAndPersistUrl(key, enrichment).foreach { url =>
         urlDiscovered.incrementAndGet()
-        cache.get(key).foreach(refreshScoreFromUrl(key, _, url))
+        cache.get(key).foreach(e => refreshScoreFromUrl(key, e, url).foreach(v => recordCadenceChange(key, enrichment.tmdbId, Some(v))))
       }
     }
 
