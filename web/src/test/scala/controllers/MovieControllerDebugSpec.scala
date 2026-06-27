@@ -81,6 +81,12 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     html should include ("last → 85")        // change history surfaces in the hover tooltip
     // Slowest (most backed-off) group renders first.
     html.indexOf("every 4d") should be < html.indexOf("every 2h")
+    // Groups are collapsible (<details>) and FOLDED by default (no `open`).
+    html should include ("<details")
+    html should not include ("<details open")
+    // Entries are one-per-line rows, not the old wrapped chips.
+    html should include ("""class="row"""")
+    html should not include ("""class="chip"""")
   }
 
   it should "404 in production" in {

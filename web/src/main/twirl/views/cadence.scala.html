@@ -19,20 +19,22 @@
     body { font: 12px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 1rem; margin: 0; }
     h1 { font-size: 14px; color: #aad4ff; margin: 0 0 .3rem; }
     .summary { color: #666; margin-bottom: .8rem; font-size: 11px; }
-    .grp { margin-bottom: 1rem; }
-    .grp h2 { font-size: 12px; color: #ffd479; margin: 0 0 .4rem; border-bottom: 1px solid #1a1a2e; padding-bottom: .2rem; }
-    .grp h2 .cnt { color: #555; font-weight: normal; margin-left: .3rem; }
-    .chips { display: flex; flex-wrap: wrap; gap: .35rem; }
-    .chip { display: inline-flex; align-items: center; gap: .35rem; background: #15151f;
-      border: 1px solid #26263a; border-radius: 4px; padding: .2rem .45rem; cursor: help; max-width: 100%; }
-    .chip:hover { background: #20203a; border-color: #3a3a6e; }
-    .site { font-weight: bold; border-radius: 3px; padding: 0 .3rem; color: #0d0d0d; }
+    .grp { margin-bottom: .5rem; border: 1px solid #1a1a2e; border-radius: 4px; background: #101018; }
+    .grp > summary { font-size: 12px; color: #ffd479; cursor: pointer; padding: .35rem .5rem;
+      list-style-position: inside; user-select: none; }
+    .grp > summary:hover { background: #15151f; }
+    .grp[open] > summary { border-bottom: 1px solid #1a1a2e; }
+    .grp > summary .cnt { color: #555; font-weight: normal; margin-left: .3rem; }
+    .rows { padding: .2rem 0; }
+    .row { display: flex; align-items: center; gap: .5rem; padding: .15rem .6rem; cursor: help; }
+    .row:hover { background: #1a1a2e; }
+    .site { font-weight: bold; border-radius: 3px; padding: 0 .3rem; color: #0d0d0d; min-width: 2.6em; text-align: center; }
     .site-imdb { background: #f5c518; }
     .site-mc   { background: #66cc33; }
     .site-rt   { background: #fa320a; color: #fff; }
     .site-fw   { background: #ffd000; }
-    .ttl { color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 22ch; }
-    .meta { color: #667; font-size: 10px; }
+    .ttl { color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+    .meta { color: #667; font-size: 10px; white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -40,21 +42,21 @@
   <h1>Rating refresh cadence</h1>
   <div class="summary">
     @groups.map(_.entries.size).sum (source, film) entries across @groups.size interval group(s),
-    slowest first · hover a chip for its last two changes · meta = streak ✓changes/checks
+    slowest first · groups fold open on click · hover a row for its last two changes · meta = streak ✓changes/checks
   </div>
   @for(g <- groups) {
-    <section class="grp">
-      <h2>every @CadenceReport.intervalLabel(g.interval)<span class="cnt">@g.entries.size</span></h2>
-      <div class="chips">
+    <details class="grp">
+      <summary>every @CadenceReport.intervalLabel(g.interval)<span class="cnt">@g.entries.size</span></summary>
+      <div class="rows">
         @for(e <- g.entries) {
-          <span class="chip" title="@tooltip(e)">
+          <div class="row" title="@tooltip(e)">
             <span class="site site-@e.site">@e.site</span>
             <span class="ttl">@e.title</span>
             <span class="meta">↻@e.streak ✓@e.windowChanges/@e.windowChecks</span>
-          </span>
+          </div>
         }
       </div>
-    </section>
+    </details>
   }
 </body>
 </html>
