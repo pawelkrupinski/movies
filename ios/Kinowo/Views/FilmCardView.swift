@@ -44,13 +44,11 @@ struct FilmCardView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                // Runtime + year + the first three genres, mirroring the web
-                // `_cardTitle` (`movie.genres.take(3)`); the detail screen
-                // shows them all.
+                // Runtime + year only — the listing card drops genres
+                // (they stay on the detail screen).
                 MetaPillsView(
                     runtimeMinutes: film.runtimeMinutes,
-                    releaseYear: film.releaseYear,
-                    genres: Array(film.genres.prefix(3))
+                    releaseYear: film.releaseYear
                 )
                 if !film.ratings.isEmpty {
                     RatingBadgesView(ratings: film.ratings)
@@ -78,9 +76,9 @@ struct FilmCardView: View {
 /// counterpart of `_movieCard` / `/film`'s `.pill.runtime`,
 /// `.pill.year`, `.pill.genre` row. The year renders as plain text
 /// (matching the web's `.year { background: transparent; border: none }`),
-/// runtime and genres as capsule pills. Genres default to none; the
-/// listing card passes the first three, the detail page passes them all.
-/// Renders nothing when there's no runtime, year, or genre.
+/// runtime and genres as capsule pills. Genres default to none — the
+/// listing card omits them; the detail page passes them all. Renders
+/// nothing when there's no runtime, year, or genre.
 struct MetaPillsView: View {
     let runtimeMinutes: Int?
     let releaseYear: Int?

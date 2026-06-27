@@ -22,9 +22,9 @@ import pl.kinowo.ui.theme.CardElevated
  * counterpart of the web `_movieCard` / `/film` `.pill.runtime`,
  * `.pill.year`, `.pill.genre` row. The year renders as plain text
  * (matching the web's `.year { background: transparent; border: none }`),
- * runtime and genres as rounded pills. Genres default to none; the
- * listing card passes the first three, the detail screen passes them all.
- * Renders nothing when there's no runtime, year, or genre.
+ * runtime and genres as rounded pills. Genres default to none — the
+ * listing card omits them; the detail screen passes them all. Renders
+ * nothing when there's no runtime, year, or genre.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
