@@ -81,6 +81,15 @@ trait MovieRepository {
   /** Snapshot of every persisted record. Returns empty when disabled. */
   def findAll(): Seq[StoredMovieRecord]
 
+  /** The single row stored under this exact `_id` (the [[StoredMovieRecord.idOf]]
+   *  form), or `None` when absent. Lets the dev `/debug` page render ONE row's
+   *  heavy per-source breakdown lazily, on expand, instead of every row's
+   *  up front — rendering the whole corpus's details in one Twirl pass OOM'd the
+   *  view. The default scans [[findAll]] (fine for the in-memory store);
+   *  `MongoMovieRepository` overrides it with an indexed `_id` lookup. */
+  def findById(id: String): Option[StoredMovieRecord] =
+    findAll().find(row => StoredMovieRecord.idOf(row) == id)
+
   /** Stream every persisted record through `f`, one row at a time, without
    *  materialising the whole collection on the heap. The default loads via
    *  [[findAll]] — fine for the in-memory store — while `MongoMovieRepository`
@@ -268,6 +277,23 @@ class MongoMovieRepository(
           Seq.empty
       }.getOrElse(Seq.empty)
     case None => Seq.empty
+  }
+
+  /** Indexed single-document lookup by `_id` — the `/debug` lazy-details endpoint
+   *  fetches one row's per-source breakdown when its table row is expanded.
+   *  Mirrors [[findAll]]'s decode; an absent `_id` yields `None`. Best-effort:
+   *  failures are logged, not thrown. */
+  override def findById(id: String): Option[StoredMovieRecord] = coll match {
+    case Some(c) =>
+      Try {
+        Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), 10.seconds))
+          .map(StoredMovieDto.toDomain)
+      }.recover {
+        case exception: Throwable =>
+          logger.warn(s"MovieRepository.findById($id) failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+          None
+      }.getOrElse(None)
+    case None => None
   }
 
   /** Page the cursor by `_id` so the caller (the read-model reconcile) never holds

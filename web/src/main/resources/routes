@@ -31,6 +31,10 @@ GET     /:city/api/details          controllers.MovieController.apiDetails(city:
 # enriched row across all cities), so there's nothing per-city about it. Each
 # /film deep-link picks a city the film actually plays in.
 GET     /debug                      controllers.MovieController.debug()
+# Dev-only: one corpus row's per-source breakdown, fetched lazily when the /debug
+# table row is expanded. Rendering every row's breakdown inline OOM'd the view on
+# the full corpus, so it's served per-row on demand. 404 in prod like the rest.
+GET     /debug/details              controllers.MovieController.debugDetails(id: String)
 # Dev-only: dumps what the web is actually serving from — the warm read cache
 # (`web_movies` + `web_screenings`), not the source `movies` corpus /debug shows.
 # 404 in prod like the rest of /debug.

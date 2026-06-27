@@ -7,8 +7,13 @@
  * Extracted from debug.scala.html and ALSO rendered server-side by
  * DebugStreamController on each change event, so the live-inserted row is
  * byte-identical to the initial server render — no markup duplicated in JS.
+ *
+ * The `tr.details` cell ships EMPTY: its heavy per-source breakdown (every
+ * cinema × day × showtime) is fetched lazily from `/debug/details` on first
+ * expand. Rendering every row's breakdown up front built one giant HTML string
+ * that OOM'd the view on the full corpus.
  *@
-@(row: StoredMovieRecord, cinemaUrls: Map[String, String])(implicit city: models.City)
+@(row: StoredMovieRecord)(implicit city: models.City)
 @defining(StoredMovieRecord.idOf(row)) { id =>
 @defining(row.title) { title =>
 @defining(row.year)  { year =>
@@ -75,8 +80,8 @@
             title="Re-enrich TMDB, then ratings">↻</button>
   </td>
 </tr>
-<tr class="details hidden" data-id="@id" data-row-id="@id">
-  <td colspan="9">@debugDetails(title, year, e, cinemaUrls)</td>
+<tr class="details hidden" data-id="@id" data-row-id="@id" data-details-url="@routes.MovieController.debugDetails(id)">
+  <td colspan="9"></td>
 </tr>
 }
 }

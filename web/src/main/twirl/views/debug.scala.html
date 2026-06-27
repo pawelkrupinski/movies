@@ -2,7 +2,7 @@
 @import services.movies.TitleNormalizer
 @import services.staging.StagingRecord
 @import controllers.MovieController
-@(rows: Seq[StoredMovieRecord], cinemaUrls: Map[String, String] = Map.empty, staging: Seq[StagingRecord] = Seq.empty)(implicit city: models.City)
+@(rows: Seq[StoredMovieRecord], staging: Seq[StagingRecord] = Seq.empty)(implicit city: models.City)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -174,7 +174,7 @@
   </thead>
   <tbody>
     @for(row <- rows) {
-      @_debugRow(row, cinemaUrls)
+      @_debugRow(row)
     }
   </tbody>
 </table>
@@ -227,10 +227,13 @@
   const sortBody = table.tBodies[0];
 
   // ── Details rows live OFF-DOM until their row is expanded ───────────────────
-  // Each film's `tr.details` carries a heavy subtree (every cinema × day ×
-  // showtime). Keeping all of them parked in this map — out of the tbody —
-  // instead of interleaved-but-`display:none` is what makes a column sort fast:
-  // the sort reorders only the light data rows, ~6× quicker than dragging every
+  // Each film's `tr.details` is a shell whose heavy subtree (every cinema × day ×
+  // showtime) is NOT in the page: rendering all of them server-side built one
+  // giant HTML string that OOM'd the view on the full corpus, so each shell's
+  // body is fetched from `/debug/details` on first expand (loadDetails below).
+  // Keeping the shells parked in this map — out of the tbody — instead of
+  // interleaved-but-`display:none` is also what makes a column sort fast: the
+  // sort reorders only the light data rows, ~6× quicker than dragging every
   // collapsed details sibling along too (measured on the full corpus). A
   // collapsed row's DOM position is irrelevant (it isn't rendered), and expand /
   // filter / sort all locate a row's details through this map, never adjacency.
@@ -241,11 +244,25 @@
     d.classList.add('hidden');
     d.remove(); // detach — only spliced back in on expand (showDetails)
   }
+  // Fetch + inject a row's per-source breakdown the first time it's expanded.
+  // Cached after (the loaded `<td>` is reused on a re-expand); an SSE row-replace
+  // re-parks a fresh empty shell, so a changed row refetches up-to-date details.
+  function loadDetails(d) {
+    if (d.dataset.loaded || !d.dataset.detailsUrl) return;
+    d.dataset.loaded = '1';
+    const cell = d.querySelector('td');
+    if (cell) cell.textContent = 'loading…';
+    fetch(d.dataset.detailsUrl)
+      .then(r => r.ok ? r.text() : Promise.reject(r.status))
+      .then(html => { if (cell) cell.innerHTML = html; })
+      .catch(() => { if (cell) cell.textContent = '(failed to load details)'; delete d.dataset.loaded; });
+  }
   function showDetails(dataRow) {
     const d = detailsById.get(dataRow.dataset.rowId);
     if (!d) return;
     dataRow.after(d); // place adjacent to wherever the data row sits now
     d.classList.remove('hidden');
+    loadDetails(d);
   }
   function hideDetails(dataRow) {
     const d = detailsById.get(dataRow.dataset.rowId);

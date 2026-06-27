@@ -20,7 +20,7 @@ class DebugViewCinemaCountSpec extends AnyFlatSpec with Matchers {
     StoredMovieRecord(title = "Belle", year = Some(2021), record = MovieRecord(data = data))
 
   "debug view" should "render a header for the cinema-count column" in {
-    val html = views.html.debug(Seq.empty, Map.empty[String, String]).body
+    val html = views.html.debug(Seq.empty).body
     html should include ("""data-key="cinemas"""")
     html should include ("Cinemas")
   }
@@ -28,8 +28,7 @@ class DebugViewCinemaCountSpec extends AnyFlatSpec with Matchers {
   it should "show the number of distinct cinemas screening a title" in {
     val slot = SourceData(title = Some("Belle"))
     val html = views.html.debug(
-      Seq(rowWith(Map(CinemaCityWroclavia -> slot, Multikino -> slot))),
-      Map.empty[String, String]).body
+      Seq(rowWith(Map(CinemaCityWroclavia -> slot, Multikino -> slot)))).body
 
     html should include ("""data-cinemas="2"""")
     html should include ("""<td class="cinemas">2</td>""")
@@ -42,8 +41,7 @@ class DebugViewCinemaCountSpec extends AnyFlatSpec with Matchers {
         CinemaCityWroclavia -> slot,
         models.Tmdb -> SourceData(title = Some("Belle")),
         models.Imdb -> SourceData(title = Some("Belle")),
-      ))),
-      Map.empty[String, String]).body
+      )))).body
 
     html should include ("""data-cinemas="1"""")
     html should include ("""<td class="cinemas">1</td>""")

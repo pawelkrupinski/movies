@@ -33,7 +33,7 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
       data = Map[Source, SourceData](cinema -> SourceData(title = Some(title), releaseYear = year))))
 
   "debug view" should "render the empty staging table (header + both tbodies) when nothing is incubating" in {
-    val html = views.html.debug(Seq.empty, Map.empty[String, String]).body
+    val html = views.html.debug(Seq.empty).body
     html should include ("Pending enrichment (staging)")
     html should include ("<th>Cinemas</th>")
     html should include ("""<th class="tick">Detail</th>""")
@@ -49,7 +49,7 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
 
   it should "emit a hidden per-cinema source row carrying the fold data model" in {
     val html = views.html.debug(
-      Seq.empty, Map.empty[String, String],
+      Seq.empty,
       staging = Seq(stagingRow("Brand New Film", Some(2026), detailPending = true))).body
     // The section appears before the main corpus heading.
     html.indexOf("Pending enrichment") should be < html.indexOf("<h1>Debug</h1>")
@@ -66,7 +66,7 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
 
   it should "carry the concluded-stage flags (detail done, tmdb resolved) on the source row" in {
     val html = views.html.debug(
-      Seq.empty, Map.empty[String, String],
+      Seq.empty,
       staging = Seq(stagingRow("Kumotry", Some(2026),
         tmdbId = Some(1454157), detailPending = false, imdbId = None))).body
     html should include ("""data-detail-done="true"""")
@@ -78,7 +78,7 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
 
   it should "flag a no-match TMDB conclusion as a done stage" in {
     val html = views.html.debug(
-      Seq.empty, Map.empty[String, String],
+      Seq.empty,
       staging = Seq(StagingRecord(Helios, "Obscure One", Some(2026),
         MovieRecord(tmdbNoMatch = true,
           data = Map[Source, SourceData](Helios -> SourceData(title = Some("Obscure One"))))))).body
@@ -91,7 +91,7 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
       stagingRow("Shared Film", Some(2026), cinema = Helios),
       stagingRow("Shared Film", Some(2026), cinema = Multikino),
       stagingRow("Solo Film",   Some(2026), cinema = Helios))
-    val html = views.html.debug(Seq.empty, Map.empty[String, String], staging = rows).body
+    val html = views.html.debug(Seq.empty, staging = rows).body
     // Every cinema gets its own (hidden) source row…
     """<tr class="data" hidden""".r.findAllMatchIn(html).size shouldBe 3
     """data-anchor="sharedfilm"""".r.findAllMatchIn(html).size shouldBe 2

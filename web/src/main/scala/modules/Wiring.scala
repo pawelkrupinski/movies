@@ -161,9 +161,9 @@ trait Wiring {
   lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, filmwebFallbackStore)(using materializer)
   lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue)
   // Dev-only SSE feed for the /debug live view; reuses the same on-demand
-  // movieRepository + cinema-source-URL snapshot the /debug page renders from.
-  lazy val debugStreamController = new DebugStreamController(controllerComponents, movieRepository, stagingRepository, environmentMode,
-    () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()))(using materializer)
+  // movieRepository the /debug page renders from. The live row's details cell
+  // ships empty (lazily fetched on expand), so no cinema-URL snapshot is needed.
+  lazy val debugStreamController = new DebugStreamController(controllerComponents, movieRepository, stagingRepository, environmentMode)(using materializer)
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
   lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion)

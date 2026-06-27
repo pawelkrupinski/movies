@@ -499,8 +499,23 @@ class MovieController( cc: ControllerComponents,
       val staged = staging.sortBy(r => (r.title.toLowerCase, r.cinema.displayName))
       Ok(views.html.debug(
         movies.sortBy(_.title.toLowerCase),
-        cinemaSourceUrls(),
         MovieController.orderStagingByQueue(staged, queue.active)))
+    }
+  }
+
+  /** Dev-only: the heavy per-source breakdown for ONE corpus row, fetched lazily
+   *  by the /debug table when a row is expanded. Rendering every row's breakdown
+   *  inline (each iterates `Cinema.all` × day × showtime) built one giant `Html`
+   *  string that OOM'd the view on the full corpus; serving them per-row on
+   *  demand keeps the initial /debug render to the light data rows only. The `id`
+   *  is the row's Mongo `_id` (`StoredMovieRecord.idOf`), the same value the table
+   *  rows are keyed on. */
+  def debugDetails(id: String): Action[AnyContent] = Action {
+    devOnly {
+      movieRepository.findById(id) match {
+        case Some(row) => Ok(views.html.debugDetails(row.title, row.year, row.record, cinemaSourceUrls()))
+        case None      => NotFound("no such row")
+      }
     }
   }
 

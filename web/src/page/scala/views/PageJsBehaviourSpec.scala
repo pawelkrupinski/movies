@@ -139,7 +139,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         StagingRecord(Helios,              "Staging Film",  Some(2026), MovieRecord(detailPending = true)),
         StagingRecord(CinemaCityWroclavia, "Done Newcomer", Some(2025),
           MovieRecord(detailPending = false, tmdbId = Some(550))))
-      val debugHtml: String = views.html.debug(debugRows, Map.empty[String, String], debugStaging).body
+      val debugHtml: String = views.html.debug(debugRows, debugStaging).body
       // The queue snapshot the page polls (/debug/queue). "Staging Film"'s detail
       // fetch is being worked on (▶ running); "Done Newcomer"'s IMDb recovery
       // waits at place #1 (the only waiting task). The dedup keys mirror the real
@@ -172,6 +172,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case "/landing" => landingHtml
           // The global-corpus /debug page (no city prefix).
           case "/debug" => debugHtml
+          // A corpus row's per-source breakdown, fetched lazily when its /debug
+          // table row is expanded (the heavy subtree is no longer rendered inline).
+          // The `id` query param is the row's `_id`; serve the matching row's
+          // debugDetails, mirroring MovieController.debugDetails.
+          case p if p.startsWith("/debug/details?") =>
+            val id = java.net.URLDecoder.decode(p.split("id=", 2).lift(1).getOrElse(""), "UTF-8")
+            debugRows.find(r => StoredMovieRecord.idOf(r) == id)
+              .map(r => views.html.debugDetails(r.title, r.year, r.record, Map.empty[String, String]).body)
+              .getOrElse("")
         },
         // /debug/queue is JSON the page fetches and parses; served as such.
         jsonRoutes = { case "/debug/queue" => debugQueueJson }
@@ -3048,6 +3057,23 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("""document.querySelector('#t thead th[data-key="title"]').click()""")
       page.evalString(corpusTitles) shouldBe "Unresolved Film|Pending Film|Done Film"
       page.evalBool(expandedDetailsAdjacent) shouldBe true
+    }
+  }
+
+  // The per-source breakdown (every cinema × day × showtime) is NOT in the page
+  // — rendering every row's up front built one giant HTML string that OOM'd the
+  // view on the full corpus. Each row's details cell ships empty and its body is
+  // fetched from /debug/details on first expand. `cacheKey` is a `<dt>` only the
+  // debugDetails partial renders, so it's absent until a row is opened.
+  "the /debug corpus table" should "fetch a row's per-source details lazily on expand" in {
+    onDebug { page =>
+      page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 3""")
+      // Nothing heavy in the initial document — proves the details aren't inline.
+      page.evalBool("""document.body.innerHTML.indexOf('cacheKey') === -1""") shouldBe true
+      // Expand the first row → its details cell fills from the fetched fragment.
+      page.eval("""document.querySelector('#t tbody tr.data').click()""")
+      page.waitFor(
+        """[...document.querySelectorAll('#t tbody tr.details td')].some(td => td.innerHTML.indexOf('cacheKey') !== -1)""")
     }
   }
 

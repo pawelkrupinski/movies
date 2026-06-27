@@ -43,6 +43,14 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     // the staging table is now the only pending-work view. `data-flag` was their
     // distinctive marker.
     html should not include ("data-flag=")
+    // The heavy per-source breakdown is NOT rendered inline anymore — rendering
+    // every row's (cinema × day × showtime) up front built one giant HTML string
+    // that OOM'd the view on the full corpus. It's fetched per-row on expand from
+    // /debug/details, so the page-level dump carries none of it. `cacheKey` is a
+    // `<dt>` unique to the debugDetails partial — its absence proves laziness.
+    html should not include ("cacheKey")
+    // Each row still carries the URL the JS fetches its details from on expand.
+    html should include ("""data-details-url=""")
   }
 
   it should "404 in production" in {
@@ -106,6 +114,34 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     html should include ("""data-anchor="newcomer"""")
     html should include (s"""data-cinema="${CinemaCityWroclavia.displayName}"""")
     html should include ("""data-detail-done="false"""") // detail not yet fetched
+  }
+
+  // ── /debug/details: the heavy per-source breakdown, fetched lazily per row ───
+  // The corpus dump renders only the light data rows (above); a row's full
+  // per-source breakdown is fetched on expand from this endpoint, keyed by the
+  // row's Mongo `_id`. Rendering them all inline OOM'd the view on the full corpus.
+  "GET /debug/details" should "render one row's per-source breakdown in dev" in {
+    val id     = services.movies.StoredMovieRecord.idFor("Belle", Some(2021))
+    val result = buildController(Mode.Dev).debugDetails(id).apply(FakeRequest(GET, s"/debug/details?id=$id"))
+
+    status(result) shouldBe OK
+    val html = contentAsString(result)
+    // `cacheKey` (a `<dt>` unique to debugDetails) + the cinema slot that fed the
+    // row are present here — exactly what the page dump above omits.
+    html should include("cacheKey")
+    html should include("Belle")
+    html should include(CinemaCityWroclavia.displayName)
+  }
+
+  it should "404 an unknown id" in {
+    val result = buildController(Mode.Dev).debugDetails("nope|1999").apply(FakeRequest(GET, "/debug/details?id=nope|1999"))
+    status(result) shouldBe NOT_FOUND
+  }
+
+  it should "404 in production like the rest of /debug" in {
+    val id     = services.movies.StoredMovieRecord.idFor("Belle", Some(2021))
+    val result = buildController(Mode.Prod).debugDetails(id).apply(FakeRequest(GET, s"/debug/details?id=$id"))
+    status(result) shouldBe NOT_FOUND
   }
 
   // ── ordering staging rows by their queue place ──────────────────────────────

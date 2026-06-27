@@ -35,7 +35,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   private def controller(repository: InMemoryMovieRepository, mode: Mode = Mode.Dev,
                          staging: StagingRepository = StagingRepository.empty) =
-    new DebugStreamController(Helpers.stubControllerComponents(), repository, staging, mode, () => Map.empty)
+    new DebugStreamController(Helpers.stubControllerComponents(), repository, staging, mode)
 
   private def record(title: String) =
     MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some(title))))

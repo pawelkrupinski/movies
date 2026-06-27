@@ -31,8 +31,7 @@ class DebugStreamController(
   cc:               ControllerComponents,
   movieRepository:        MovieRepository,
   stagingRepository: StagingRepository,
-  environment:      Mode,
-  cinemaSourceUrls: () => Map[String, String]
+  environment:      Mode
 )(using mat: Materializer) extends AbstractController(cc) {
 
   def stream: Action[AnyContent] = Action {
@@ -41,10 +40,11 @@ class DebugStreamController(
   }
 
   /** SSE frame for an upserted row: render `_debugRow` to HTML and ship it with
-   *  the row's `_id` so the page can replace-or-insert it. */
-  private[controllers] def upsertFrame(row: StoredMovieRecord, urls: Map[String, String]): String = {
+   *  the row's `_id` so the page can replace-or-insert it. The row's details cell
+   *  ships empty (lazily fetched on expand), so no cinema-URL map is needed. */
+  private[controllers] def upsertFrame(row: StoredMovieRecord): String = {
     implicit val city: models.City = models.City.all.head
-    val html = views.html._debugRow(row, urls).body
+    val html = views.html._debugRow(row).body
     s"data: ${Json.stringify(Json.obj("type" -> "upsert", "id" -> StoredMovieRecord.idOf(row), "html" -> html))}\n\n"
   }
 
@@ -69,10 +69,9 @@ class DebugStreamController(
   private[controllers] def eventSource(): Source[String, NotUsed] = {
     val (queue, source) =
       Source.queue[String](DebugStreamController.BufferSize, OverflowStrategy.dropHead).preMaterialize()
-    val urls = cinemaSourceUrls()
     val watches: Seq[AutoCloseable] = Seq(
       movieRepository.watchChanges(
-        onUpsert = row => { queue.offer(upsertFrame(row, urls)); () },
+        onUpsert = row => { queue.offer(upsertFrame(row)); () },
         onDelete = id  => { queue.offer(deleteFrame(id)); () }
       ),
       stagingRepository.watchChanges(
