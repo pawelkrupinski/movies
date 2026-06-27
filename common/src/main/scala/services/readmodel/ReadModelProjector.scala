@@ -71,13 +71,17 @@ class ReadModelProjector(
   // cards, so it must never reach the read model until it has settled.
   private def project(stored: StoredMovieRecord): Unit = {
     if (!stored.record.readyToProject) return
-    val (movie, screenings) = ReadModelProjection.project(stored)
-    if (!lastMovie.get(movie._id).contains(movie)) {
-      writer.upsertMovie(movie)
-      metrics.recordWrite(Target.Movie, Op.Upsert, 1)
-      lastMovie.update(movie._id, movie)
+    // A row fans out into one card per display-title variant (Cyrillic / English
+    // / banner-prefixed listings of one film); the common single-title row yields
+    // exactly one. Each variant card is diffed and written independently.
+    ReadModelProjection.projectAll(stored).foreach { case (movie, screenings) =>
+      if (!lastMovie.get(movie._id).contains(movie)) {
+        writer.upsertMovie(movie)
+        metrics.recordWrite(Target.Movie, Op.Upsert, 1)
+        lastMovie.update(movie._id, movie)
+      }
+      diffScreenings(movie._id, screenings)
     }
-    diffScreenings(movie._id, screenings)
   }
 
   private def diffScreenings(filmId: String, next: Seq[CityScreening]): Unit = {
@@ -134,7 +138,7 @@ class ReadModelProjector(
     val liveIds = scala.collection.mutable.Set.empty[String]
     movieRepository.foreachRecord { row =>
       if (row.record.readyToProject) {
-        liveIds += ReadModelProjection.filmId(row)
+        liveIds ++= ReadModelProjection.filmIds(row)
         try project(row)
         catch { case exception: Throwable =>
           logger.warn(s"read-model reconcile: a row failed to project, continuing: ${exception.getMessage}") }

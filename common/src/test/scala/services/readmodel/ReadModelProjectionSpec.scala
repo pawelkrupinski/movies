@@ -158,4 +158,62 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     m._id shouldBe "kumotry|2026"
     ss.map(_.filmId).distinct shouldBe Seq("kumotry|2026")
   }
+
+  // One film, one stored record (one tmdbId), screened under two different shown
+  // titles — a Polish "Iwan Groźny" (Multikino, Poznań) and a Cyrillic "Иван
+  // Грозный" (Helios, Wrocław). The read model must SPLIT it into two cards keyed
+  // by shown title, while year / director / cast / ratings stay derived from the
+  // whole record, and each card's synopsis is drawn from the cinemas that used
+  // ITS title (TMDB the shared fallback).
+  private val twoTitleRecord = MovieRecord(
+    tmdbId = Some(30530),
+    data = Map[Source, SourceData](
+      Multikino -> SourceData(title = Some("Iwan Groźny"),
+        synopsis = Some("Polski opis kina, wyraźnie dłuższy niż blurb z TMDB."),
+        showtimes = Seq(at("2026-06-12T18:00"))),
+      HeliosMagnolia -> SourceData(title = Some("Иван Грозный"),
+        synopsis = Some("Русское описание кинотеатра, заметно длиннее TMDB."),
+        showtimes = Seq(at("2026-06-13T19:00"))),
+      Tmdb -> SourceData(title = Some("Iwan Groźny"), originalTitle = Some("Ivan Groznyy"),
+        synopsis = Some("Opis z TMDB."), releaseYear = Some(1944),
+        director = Seq("Siergiej Eisenstein"), cast = Seq("Mikołaj Czerkasow", "Ludmiła Cełikowska"),
+        genres = Seq("Dramat"))
+    )
+  )
+  private val twoTitleStored = StoredMovieRecord.fromStorage("iwangrozny|1944", twoTitleRecord)
+
+  "projectAll" should "split one record into a card per shown title" in {
+    val cards = ReadModelProjection.projectAll(twoTitleStored)
+    cards.map(_._1.title) should contain theSameElementsAs Seq("Iwan Groźny", "Иван Грозный")
+    ReadModelProjection.filmIds(twoTitleStored) should contain theSameElementsAs
+      Seq("iwangrozny|1944", s"${TitleNormalizer.sanitize("Иван Грозный")}|1944")
+  }
+
+  it should "derive year, director and cast for every card from the whole record" in {
+    val cards = ReadModelProjection.projectAll(twoTitleStored).map(_._1)
+    all (cards.map(_.releaseYear)) shouldBe Some(1944)
+    all (cards.map(_.directors))   shouldBe Seq("Siergiej Eisenstein")
+    all (cards.map(_.cast))        shouldBe Seq("Mikołaj Czerkasow", "Ludmiła Cełikowska")
+  }
+
+  it should "scope each card's synopsis to the cinemas that used its title, TMDB the fallback" in {
+    val byTitle = ReadModelProjection.projectAll(twoTitleStored).map { case (m, _) => m.title -> m }.toMap
+    val polish   = byTitle("Iwan Groźny")
+    val cyrillic = byTitle("Иван Грозный")
+    // City-independent fallback is the shared TMDB blurb on both cards.
+    polish.synopsis   shouldBe Some("Opis z TMDB.")
+    cyrillic.synopsis shouldBe Some("Opis z TMDB.")
+    // Each card shows only its own title's cinema blurb where that cinema screens,
+    // and the TMDB fallback in the other city.
+    polish.synopsisFor(Poznan).get   should include ("Polski opis")
+    polish.synopsisFor(Wroclaw)      shouldBe Some("Opis z TMDB.")
+    cyrillic.synopsisFor(Wroclaw).get should include ("Русское описание")
+    cyrillic.synopsisFor(Poznan)     shouldBe Some("Opis z TMDB.")
+  }
+
+  it should "give each card only the screenings listed under its title" in {
+    val byTitle = ReadModelProjection.projectAll(twoTitleStored).map { case (m, ss) => m.title -> ss }.toMap
+    byTitle("Iwan Groźny").map(_.cinema)   shouldBe Seq("Multikino Stary Browar")
+    byTitle("Иван Грозный").map(_.cinema)  shouldBe Seq("Helios Magnolia Park")
+  }
 }

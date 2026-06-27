@@ -99,9 +99,14 @@ object ReadModelProjection {
    *  showtimes surface. Showtimes are sorted into a canonical order so the document
    *  is a pure function of the showtime *set*, not of upstream scrape order —
    *  reordering upstream can't churn the diff. */
-  def screenings(stored: StoredMovieRecord): Seq[CityScreening] = {
-    val fid = filmId(stored)
-    stored.record.cinemaData.toSeq.flatMap { case (cinema, slot) =>
+  def screenings(stored: StoredMovieRecord): Seq[CityScreening] =
+    screeningsFor(stored.record.cinemaData, filmId(stored))
+
+  /** One `CityScreening` per (city, cinema) for the given cinema slots, keyed
+   *  under `fid`. Shared by [[screenings]] (all of a row's cinemas) and the
+   *  per-variant split (only the cinemas that reported one display title). */
+  private def screeningsFor(cinemaData: Map[Cinema, SourceData], fid: String): Seq[CityScreening] =
+    cinemaData.toSeq.flatMap { case (cinema, slot) =>
       if (slot.showtimes.isEmpty) None
       else City.forCinema(cinema).map { city =>
         CityScreening(
@@ -115,9 +120,84 @@ object ReadModelProjection {
         )
       }
     }.sortBy(_._id)
+
+  /** Display-title VARIANTS of a row: the row's cinema slots grouped by the
+   *  SANITIZED form of their reported title — the exact key the `movies`
+   *  collection used to split rows by before same-film records were merged
+   *  across titles. So a film a cinema lists under a Cyrillic / English /
+   *  banner-prefixed title forms its own group even though it now shares one
+   *  stored record (one tmdbId, one set of merged facts) with the Polish
+   *  listing. Sorted by key for deterministic output. A cinema slot with no
+   *  reported title falls into the record's anchor key (`sanitize(stored.title)`). */
+  private def variants(stored: StoredMovieRecord): Seq[(String, Set[Cinema])] = {
+    val anchorKey = TitleNormalizer.sanitize(stored.title)
+    stored.record.cinemaData.toSeq
+      .groupBy { case (_, slot) => slot.title.map(TitleNormalizer.sanitize).getOrElse(anchorKey) }
+      .view.mapValues(_.map(_._1).toSet).toSeq
+      .sortBy(_._1)
   }
 
-  /** Both halves of the projection for one row. */
+  /** Every read-model film id a row projects to — one per display-title variant.
+   *  The read-model reconcile uses this to know which `web_movies` ids are still
+   *  live for a row, so a split-off variant card isn't pruned as an orphan. */
+  def filmIds(stored: StoredMovieRecord): Seq[String] = {
+    val groups = variants(stored)
+    if (groups.sizeIs <= 1) Seq(filmId(stored))
+    else groups.map { case (_, cinemas) => variantFilmId(stored, cinemas) }
+  }
+
+  /** The split projection for a row: one `(ResolvedMovie, screenings)` per
+   *  display-title variant. A row whose cinemas all report one title-key (the
+   *  overwhelming common case), or a TMDB-only row with no cinema slots, yields
+   *  exactly ONE entry, byte-identical to [[resolve]]/[[screenings]] — so an
+   *  unsplit film never churns. Only a genuinely multi-title record (Cyrillic /
+   *  English-alias / banner-prefixed listings of one film) fans out into
+   *  several cards that share year/director/cast/ratings but carry their own
+   *  title, synopsis and screening subset. */
+  def projectAll(stored: StoredMovieRecord): Seq[(ResolvedMovie, Seq[CityScreening])] = {
+    val groups = variants(stored)
+    if (groups.sizeIs <= 1) Seq(project(stored))
+    else groups.map { case (_, cinemas) => projectVariant(stored, cinemas) }
+  }
+
+  /** The film id for one display-title variant: `sanitize(variantTitle)|year`,
+   *  where the variant title is derived from only that group's cinemas (so two
+   *  groups never collide — distinct sanitize keys) and the year is the shared
+   *  resolved year. */
+  private def variantFilmId(stored: StoredMovieRecord, cinemas: Set[Cinema]): String = {
+    val scoped = stored.record.scopedToCinemas(cinemas)
+    s"${TitleNormalizer.sanitize(scoped.displayTitle(stored.title))}|${stored.record.resolvedYear.map(_.toString).getOrElse("")}"
+  }
+
+  /** Project one display-title variant. Shared facts (poster, year, genres,
+   *  countries, director, cast, runtime, trailers, rating values, weighted
+   *  rating) come from the FULL record via [[resolve]]; only the title, the
+   *  synopsis pool (this variant's cinemas + the shared TMDB/IMDb fallback) and
+   *  the screening subset are scoped to the group. */
+  private def projectVariant(stored: StoredMovieRecord, cinemas: Set[Cinema]): (ResolvedMovie, Seq[CityScreening]) = {
+    val r      = stored.record
+    val scoped = r.scopedToCinemas(cinemas)
+    val title  = scoped.displayTitle(stored.title)
+    val fid    = s"${TitleNormalizer.sanitize(title)}|${r.resolvedYear.map(_.toString).getOrElse("")}"
+    val movie  = resolve(stored).copy(
+      _id            = fid,
+      title          = title,
+      originalTitle  = r.distinctOriginalTitle(title),
+      // Synopsis is the one field scoped to the shown title: the city overrides
+      // come from THIS variant's cinemas, the city-independent fallback stays
+      // the shared TMDB/IMDb blurb (`synopsisNonCinema` ignores cinema sources,
+      // so it's identical across variants).
+      synopsis       = scoped.synopsisNonCinema,
+      synopsisByCity = synopsisByCity(scoped),
+      ratings        = ratingsFor(r, title)
+    )
+    (movie, screeningsFor(scoped.cinemaData, fid))
+  }
+
+  /** Both halves of the projection for ONE display-title variant — the
+   *  single-card view. [[projectAll]] is the split-aware entry point production
+   *  serves from; this stays the building block for the common single-title row
+   *  and for callers that materialise one card (the `/debug` table, view specs). */
   def project(stored: StoredMovieRecord): (ResolvedMovie, Seq[CityScreening]) =
     (resolve(stored), screenings(stored))
 }

@@ -29,7 +29,7 @@ object BackfillReadModel {
    *  exercises it with in-memory repos. Returns
    *  (moviesWritten, screeningsWritten, moviesPruned, screeningsPruned). */
   def run(movieRepository: MovieRepository, readModel: ReadModelReader & ReadModelWriter): (Int, Int, Int, Int) = {
-    val projected = movieRepository.findAll().map(ReadModelProjection.project)
+    val projected = movieRepository.findAll().flatMap(ReadModelProjection.projectAll)
     projected.foreach { case (movie, screenings) =>
       readModel.upsertMovie(movie)
       screenings.foreach(readModel.upsertScreening)

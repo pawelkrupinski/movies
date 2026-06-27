@@ -107,6 +107,25 @@ case class MovieRecord(
    *  this record. Empty when no cinema is scraping. */
   def cinemaTitles: Set[String] = cinemaData.values.flatMap(_.title).toSet
 
+  /** A view of this record restricted to the given cinema sources, keeping
+   *  every NON-cinema source (TMDB / IMDb / Filmweb) and their retained
+   *  synopses untouched. The read-model split ([[services.readmodel.ReadModelProjection]])
+   *  uses it to derive a single display-title variant's SYNOPSIS from only the
+   *  cinemas that reported that title — while still falling back to the shared
+   *  TMDB/IMDb blurb. The shared facts (year, director, cast, ratings, poster)
+   *  are taken from the FULL record by the projector, never from this scoped
+   *  view, so dropping the other variants' cinema slots here can't narrow them. */
+  def scopedToCinemas(cinemas: Set[Cinema]): MovieRecord = {
+    def keep(source: Source): Boolean = source match {
+      case cinema: Cinema => cinemas.contains(cinema)
+      case _              => true
+    }
+    copy(
+      data             = data.filter { case (source, _) => keep(source) },
+      retainedSynopses = retainedSynopses.filter { case (source, _) => keep(source) }
+    )
+  }
+
   /** Cities whose cinemas currently screen this film, in `City.all` order.
    *  Empty when no listed cinema maps to a city (a stored row with no live
    *  showtimes). The debug page lists the global corpus but the /film page is

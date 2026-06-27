@@ -24,8 +24,12 @@ object TestReadModel {
     val store = new InMemoryReadModelRepository()
     records.foreach { case (title, year, record) =>
       val stored = StoredMovieRecord(title, year, record)
-      store.upsertMovie(ReadModelProjection.resolve(stored))
-      ReadModelProjection.screenings(stored).foreach(store.upsertScreening)
+      // Split-aware: a multi-title record fans out into one card per shown title,
+      // exactly as the worker's projector publishes it.
+      ReadModelProjection.projectAll(stored).foreach { case (movie, screenings) =>
+        store.upsertMovie(movie)
+        screenings.foreach(store.upsertScreening)
+      }
     }
     val readModel = new WebReadModel(store)
     readModel.reload()
