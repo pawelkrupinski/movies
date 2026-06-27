@@ -85,6 +85,22 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
       RealHttpFetch.DefaultRequestTimeout
   }
 
+  "isMetacriticHost" should "match metacritic.com and its sub-domains, not unrelated hosts" in {
+    RealHttpFetch.isMetacriticHost("https://www.metacritic.com/movie/dune-part-two/") shouldBe true
+    RealHttpFetch.isMetacriticHost("https://metacritic.com/search/x/?category=2")     shouldBe true
+    RealHttpFetch.isMetacriticHost("https://api.themoviedb.org/3/movie/1")            shouldBe false
+    RealHttpFetch.isMetacriticHost("not a url")                                       shouldBe false
+  }
+
+  it should "get a budget between the fast-fail and the default — above MC's healthy tail, below 30s" in {
+    // Metacritic's slow Cloudflare origin: ~35% of metascore fetches legitimately
+    // take >5s, so the 8s fast-fail budget would cut them; 15s caps a real hang.
+    RealHttpFetch.requestTimeoutFor("https://www.metacritic.com/movie/dune-part-two/") shouldBe
+      RealHttpFetch.MetacriticRequestTimeout
+    RealHttpFetch.MetacriticRequestTimeout.compareTo(RealHttpFetch.FastFailRequestTimeout) should be > 0
+    RealHttpFetch.MetacriticRequestTimeout.compareTo(RealHttpFetch.DefaultRequestTimeout) should be < 0
+  }
+
   // ── Residential-proxy egress (Decodo static ISP) ──────────────────────────
 
   private def selectedPort(pc: RealHttpFetch.ProxyConfig): Int =

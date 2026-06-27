@@ -299,6 +299,20 @@ object RealHttpFetch {
    *  Matched by exact host or a dotted sub-domain, like SlowTlsHostSuffixes. */
   private val FastFailHostSuffixes: Set[String] = Set("restapi.helios.pl")
 
+  /** A middle budget — above the fast-fail 8s but well under the 30s default —
+   *  for a slow-but-alive Cloudflare-fronted origin. www.metacritic.com answers
+   *  our datacenter egress in ~1-6s on a good day (≈35% of metascore fetches
+   *  legitimately take >5s), but a Cloudflare challenge or hang can stretch a
+   *  single page well past that and pin a rating-refresh slot for the full 30s.
+   *  Capping at 15s frees the slot ~2× sooner while staying clear of the
+   *  healthy tail. Metascore enrichment is best-effort — a dropped fetch just
+   *  means no score this cycle, retried next — so an occasional cut costs
+   *  nothing. The 8s fast-fail budget would be too tight (it'd cut legit slow
+   *  pages); MC needs its own tier. */
+  val MetacriticRequestTimeout: Duration = Duration.ofSeconds(15)
+
+  private val MetacriticHostSuffixes: Set[String] = Set("metacritic.com")
+
   /** True when `url`'s host matches one of `suffixes` (exact host or a dotted
    *  sub-domain, so www.x matches x but an unrelated *.y does not). Swallows a
    *  malformed URL so routing never changes failure semantics — the subsequent
@@ -313,8 +327,13 @@ object RealHttpFetch {
 
   def isFastFailHost(url: String): Boolean = hostMatches(url, FastFailHostSuffixes)
 
+  def isMetacriticHost(url: String): Boolean = hostMatches(url, MetacriticHostSuffixes)
+
   /** The per-request (response-read) timeout for `url`: the tight fast-fail
-   *  budget for a stall-prone enrichment host, the generous default otherwise. */
+   *  budget for a stall-prone enrichment host, the 15s Metacritic cap for MC's
+   *  slow Cloudflare origin, the generous default otherwise. */
   def requestTimeoutFor(url: String): Duration =
-    if (isFastFailHost(url)) FastFailRequestTimeout else DefaultRequestTimeout
+    if (isFastFailHost(url)) FastFailRequestTimeout
+    else if (isMetacriticHost(url)) MetacriticRequestTimeout
+    else DefaultRequestTimeout
 }
