@@ -495,4 +495,42 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     results.find(_.id == 1).flatMap(_.overview) shouldBe Some("Polski opis filmu.")
     results.find(_.id == 2).flatMap(_.overview) shouldBe None   // empty → None
   }
+
+  // Real TMDB pl-PL data: a search for "zaproszenie" returns the 2026 Olivia
+  // Wilde film "The Invite" titled "Zaproszenie." (tmdb 950028, note the
+  // trailing period) alongside the 2022 horror "The Invitation" titled
+  // "Zaproszenie" (tmdb 830788, no period). Cinemas report "Zaproszenie".
+  private val Invite2026      = TmdbClient.SearchResult(950028, "Zaproszenie.", Some("The Invite"),     Some(2026), 40.0)
+  private val Invitation2022  = TmdbClient.SearchResult(830788, "Zaproszenie",  Some("The Invitation"), Some(2022), 30.0)
+  private val Invitation2016  = TmdbClient.SearchResult(306947, "Zaproszenie",  Some("The Invitation"), Some(2016),  5.0)
+  private val Zaproszenie1986 = TmdbClient.SearchResult(572997, "Zaproszenie",  Some("Zaproszenie"),    Some(1986),  2.0)
+
+  "isExactTitleMatch" should "match a TMDB title that differs from the query only by a trailing period" in {
+    // The bug: "Zaproszenie." (the 2026 Olivia Wilde film) was excluded from the
+    // exact-match set against the exhibitor's "Zaproszenie", so it could never
+    // win resolution and the 2022 "Zaproszenie" was picked instead.
+    TmdbClient.isExactTitleMatch(Invite2026, "Zaproszenie") shouldBe true
+  }
+
+  it should "still match case- and whitespace-insensitively (legacy behaviour)" in {
+    TmdbClient.isExactTitleMatch(Invitation2022, "  ZAPROSZENIE  ") shouldBe true
+  }
+
+  it should "not match a genuinely different title" in {
+    TmdbClient.isExactTitleMatch(Invite2026, "Zaproszenie na ślub") shouldBe false
+  }
+
+  it should "preserve diacritics — punctuation-blind is not diacritic-blind" in {
+    TmdbClient.isExactTitleMatch(
+      TmdbClient.SearchResult(1, "Pokłosie", Some("Aftermath"), Some(2012), 1.0), "Poklosie") shouldBe false
+  }
+
+  "pickBest" should "select the trailing-period 2026 film over the period-clean 2022 same-title film for year 2026" in {
+    // Mixed-era result set, query "Zaproszenie", year 2026. Before the
+    // punctuation fix, "Zaproszenie." was dropped from the exact-match set and
+    // the closest-year period-clean exact match (the 2022 horror) won. Now the
+    // 2026 film is an exact match at year-distance 0 and wins.
+    val results = Seq(Zaproszenie1986, Invitation2016, Invitation2022, Invite2026)
+    client.pickBest(results, "Zaproszenie", Some(2026)).map(_.id) shouldBe Some(950028)
+  }
 }

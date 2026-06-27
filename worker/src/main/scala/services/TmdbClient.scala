@@ -401,12 +401,26 @@ object TmdbClient {
     overview:      Option[String] = None
   )
 
-  /** A TMDB hit whose Polish OR original title is a verbatim (case-insensitive,
-   *  trimmed) match for the query — the exactness both [[TmdbClient.pickBest]]
-   *  and [[TmdbClient.searchYearExactTop]] gate on. */
+  /** A TMDB hit whose Polish OR original title matches the query, ignoring case,
+   *  surrounding whitespace AND punctuation — the exactness both
+   *  [[TmdbClient.pickBest]] and [[TmdbClient.searchYearExactTop]] gate on.
+   *
+   *  Punctuation-blind because TMDB's Polish title for a film routinely carries a
+   *  trailing period (or other punctuation) the exhibitor's title omits: tmdb
+   *  950028 ("The Invite", 2026, dir. Olivia Wilde) is titled "Zaproszenie." in
+   *  pl-PL, while cinemas report "Zaproszenie". A raw-text gate dropped it from
+   *  the exact-match set, leaving the punctuation-clean same-title different film
+   *  — "Zaproszenie" (tmdb 830788, "The Invitation", 2022) — to win instead. We
+   *  strip to alphanumerics only; deliberately NOT the full
+   *  `TitleNormalizer.sanitize` (which also romanises numerals, etc.) so this
+   *  stays a near-verbatim match, just blind to punctuation. */
+  private val NonAlphanumeric = java.util.regex.Pattern.compile("[^\\p{L}\\p{N}]+")
+  private def titleMatchKey(s: String): String =
+    NonAlphanumeric.matcher(s).replaceAll("").toLowerCase(java.util.Locale.ROOT)
+
   private[clients] def isExactTitleMatch(r: SearchResult, title: String): Boolean = {
-    val q = title.toLowerCase.trim
-    r.title.toLowerCase.trim == q || r.originalTitle.exists(_.toLowerCase.trim == q)
+    val q = titleMatchKey(title)
+    q.nonEmpty && (titleMatchKey(r.title) == q || r.originalTitle.exists(titleMatchKey(_) == q))
   }
 
   /** Slim shape returned by `details(tmdbId)` — just the fields the ratings
