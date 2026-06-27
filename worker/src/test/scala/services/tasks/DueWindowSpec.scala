@@ -14,6 +14,18 @@ class DueWindowSpec extends AnyFlatSpec with Matchers {
     new DueWindow(30.minutes).isDue("scrape|Foo", None, t0) shouldBe true
   }
 
+  // The cadence dev page shows "next refresh" via CadenceReport.nextRefreshAt — it
+  // must agree with the boundary at which THIS window actually becomes due, or the
+  // page lies about the reaper.
+  it should "agree with CadenceReport.nextRefreshAt on the next-due boundary" in {
+    val key      = "mc|tmdb:1"
+    val interval = 8.hours
+    val next     = services.cadence.CadenceReport.nextRefreshAt(key, t0, interval)
+    val dw       = new DueWindow(interval)
+    dw.isDue(key, Some(t0), next.minusMillis(1)) shouldBe false   // not due just before the boundary
+    dw.isDue(key, Some(t0), next)                shouldBe true    // due exactly at it
+  }
+
   it should "resolve the period PER KEY so an adaptive schedule backs some keys off" in {
     // A key on a long (4-day) period and one on the short base, both stamped at t0.
     val dw = new DueWindow(key => if (key.contains("stable")) 4.days else 2.hours, 2.hours)

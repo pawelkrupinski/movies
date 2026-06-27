@@ -522,7 +522,7 @@ class MovieController( cc: ControllerComponents,
       val (records, rows) = Await.result(recordsFuture.zip(titlesFuture), 70.seconds)
       val titleByTmdb = rows.flatMap(r => r.record.tmdbId.map(_ -> r.title)).toMap
       implicit val c: City = City.all.head   // only for the shared debug navbar's city link
-      Ok(views.html.cadence(services.cadence.CadenceReport.build(records, titleByTmdb.get)))
+      Ok(views.html.cadence(services.cadence.CadenceReport.build(records, titleByTmdb.get), java.time.Instant.now()))
     }
   }
 

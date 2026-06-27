@@ -51,4 +51,22 @@ class CadenceReportSpec extends AnyFlatSpec with Matchers {
     val groups = CadenceReport.build(Seq("rt|tmdb:404" -> stats(0)), titleFor = _ => None)
     groups.flatMap(_.entries).loneElement.title shouldBe "tmdb:404"
   }
+
+  it should "populate each entry's next refresh in (lastChecked, lastChecked + interval]" in {
+    val e = CadenceReport.build(Seq("mc|tmdb:7" -> stats(6)), _ => Some("X")).flatMap(_.entries).loneElement
+    e.interval shouldBe 4.days     // streak 6 → cap
+    e.nextRefreshAt.isAfter(t0) shouldBe true
+    e.nextRefreshAt.isAfter(t0.plus(java.time.Duration.ofDays(4))) shouldBe false
+  }
+
+  "nextRefreshAt" should "land on a phase boundary in (last, last+interval] and be deterministic" in {
+    val interval = 8.hours
+    val next = CadenceReport.nextRefreshAt("mc|tmdb:1", t0, interval)
+    next.isAfter(t0)                                        shouldBe true
+    next.toEpochMilli - t0.toEpochMilli                     should be <= interval.toMillis
+    // A boundary: (next - phase) is a whole number of periods. Equivalently, the
+    // boundary one period earlier is at-or-before `last`.
+    next.minusMillis(interval.toMillis).isAfter(t0)         shouldBe false
+    CadenceReport.nextRefreshAt("mc|tmdb:1", t0, interval)  shouldBe next   // deterministic
+  }
 }

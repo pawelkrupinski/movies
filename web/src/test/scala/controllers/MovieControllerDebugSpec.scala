@@ -78,20 +78,17 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     html should include ("Belle")            // title resolved from the dedup key's tmdbId
     html should include ("every 4d")         // MC stretched to the cap
     html should include ("every 2h")         // IMDb at the base
-    // The hover tooltip is a CSS ::after on a data-tip attribute (the native
-    // title= attribute didn't show reliably).
-    html should include ("""data-tip="""")
-    html should not include ("""class="row" title=""")
-    html should include ("last → 85")            // change history surfaces in the hover tooltip
-    html should include ("no changes since ever") // the IMDb row has never changed
+    // The detail is now columns in a table, not a hover tooltip.
+    html should include ("<table")
+    html should include ("next refresh")     // the new column
+    html should include ("last change")      // change history is a column now
+    html should include ("85")               // the MC row's last-change value, in its column
+    html should include ("(2026-0")          // next-refresh absolute timestamp (within 4d of 06-27)
     // Slowest (most backed-off) group renders first.
     html.indexOf("every 4d") should be < html.indexOf("every 2h")
     // Groups are collapsible (<details>) and FOLDED by default (no `open`).
     html should include ("<details")
     html should not include ("<details open")
-    // Entries are one-per-line rows, not the old wrapped chips.
-    html should include ("""class="row"""")
-    html should not include ("""class="chip"""")
   }
 
   it should "404 in production" in {

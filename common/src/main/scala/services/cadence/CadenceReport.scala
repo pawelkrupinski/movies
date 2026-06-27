@@ -1,6 +1,8 @@
 package services.cadence
 
+import java.time.Instant
 import scala.concurrent.duration.FiniteDuration
+import scala.util.hashing.MurmurHash3
 
 /**
  * Pure shaping of the `rating_cadence` records into the dev cadence page's view
@@ -10,12 +12,13 @@ import scala.concurrent.duration.FiniteDuration
  */
 object CadenceReport {
 
-  /** One (source, film) row: its current interval + streak, volatility counts, and
-   *  the last two displayed-value changes (for the on-hover detail). */
+  /** One (source, film) row: its current interval + streak, volatility counts, the
+   *  last two displayed-value changes, and when the next refresh is due. */
   case class Entry(
     site:          String,
     title:         String,
     interval:      FiniteDuration,
+    nextRefreshAt: Instant,
     streak:        Int,
     windowChecks:  Int,
     windowChanges: Int,
@@ -34,6 +37,20 @@ object CadenceReport {
     else                                s"${d.toMinutes}m"
   }
 
+  /** When this `(source, film)` is next due for a refresh: the next period-boundary
+   *  strictly after its last check. MIRRORS [[services.tasks.DueWindow]]'s phase-spread
+   *  windowing (boundaries at `phase + n·period`, `phase = hash(key) mod period`),
+   *  so the page's "next refresh" matches what the reaper actually does. Always in
+   *  `(lastCheckedAt, lastCheckedAt + interval]`. The reaper still ticks on a cadence
+   *  and gates on throttle/caps, so it's an estimate, not a guarantee. */
+  def nextRefreshAt(key: String, lastCheckedAt: Instant, interval: FiniteDuration): Instant = {
+    val period       = interval.toMillis
+    val phase        = Math.floorMod(MurmurHash3.stringHash(key).toLong, period)
+    val last         = lastCheckedAt.toEpochMilli
+    val nextBoundary = phase + (Math.floorDiv(last - phase, period) + 1) * period
+    Instant.ofEpochMilli(nextBoundary)
+  }
+
   private val TmdbKey = """(.+)\|tmdb:(\d+)""".r
 
   /** Split a cadence dedup key into `(site, tmdbId?)`: `imdb|tmdb:42` →
@@ -50,8 +67,9 @@ object CadenceReport {
   def build(records: Seq[(String, RatingChangeStats)], titleFor: Int => Option[String]): Seq[Group] = {
     val entries = records.map { case (key, stats) =>
       val (site, tmdbId) = parseKey(key)
-      val title = tmdbId.flatMap(titleFor).orElse(tmdbId.map(id => s"tmdb:$id")).getOrElse(key)
-      Entry(site, title, RatingCadence.intervalFor(Some(stats)), stats.unchangedStreak,
+      val title    = tmdbId.flatMap(titleFor).orElse(tmdbId.map(id => s"tmdb:$id")).getOrElse(key)
+      val interval = RatingCadence.intervalFor(Some(stats))
+      Entry(site, title, interval, nextRefreshAt(key, stats.lastCheckedAt, interval), stats.unchangedStreak,
         stats.windowChecks, stats.windowChanges, stats.lastChange, stats.prevChange)
     }
     entries.groupBy(_.interval).toSeq
