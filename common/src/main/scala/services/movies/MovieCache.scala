@@ -789,6 +789,25 @@ class CaffeineMovieCache(
         .collect { case (k, e) if e.tmdbConcluded && FilmCanonicalizer.isBareFilmTitle((k, e)) =>
           e.tmdbTitleAliases.iterator.map(TitleNormalizer.sanitize) }
         .flatten.toSet
+    // Widened recognition: index every movies row by each of its CINEMA SLOTS'
+    // sanitized titles, scoped to the slot's cinema. So a scrape lands on a film
+    // this cinema's data already sits in — even under a decoration NO title rule
+    // strips ("Zzz Nonexistent Fest: Toy Story 5") — instead of re-incubating it.
+    // Without this, a folded row keyed off the BARE display form never matches the
+    // cinema's DECORATED scrape key, so a known film re-diverts into staging every
+    // 30-min tick: the served-count flap (Trójmiasto / GCF), reproduced rule-free in
+    // `UnknownBannerReDivertSpec`. The per-banner canonical rules fix specific known
+    // banners; this catches the general case for unknown ones. Derived fresh each
+    // tick from the rows (exactly like `knownSanitized`), so a merge/split that moves
+    // a cinema's slot to another row is reflected automatically — no persisted map to
+    // keep in sync, nothing to update on fold.
+    val knownByCinemaSlot: Set[(Cinema, String)] =
+      if (staging.isEmpty) Set.empty
+      else positive.asMap().asScala.valuesIterator.flatMap { rec =>
+        rec.cinemaData.iterator.flatMap { case (cin, sd) =>
+          sd.title.iterator.map(t => (cin, TitleNormalizer.sanitize(t)))
+        }
+      }.toSet
     val priorStagingRows: Map[String, services.staging.StagingRecord] =
       staging.fold(Map.empty[String, services.staging.StagingRecord]) {
         _.findAll().iterator.collect { case r if r.cinema == cinema => TitleNormalizer.sanitize(r.title) -> r }.toMap
@@ -804,7 +823,8 @@ class CaffeineMovieCache(
       // `movies` yet — AND it isn't a known film listed under another language (an
       // alias of a concluded row). (Same-tick spelling variants already collapsed
       // in `deduped`.)
-      val divert       = staging.isDefined && !knownSanitized(norm) && !knownAliases(norm)
+      val divert       = staging.isDefined && !knownSanitized(norm) && !knownAliases(norm) &&
+                         !knownByCinemaSlot((cinema, norm))
       // Lock on the row's NORMALISED cleanTitle — `withTitleLock` keys by
       // `sanitize`, the SAME normalised key the TMDB stage and `rekey` acquire.
       // Serialises every read-modify-write on the row (scrape, rekey, TMDB put)
