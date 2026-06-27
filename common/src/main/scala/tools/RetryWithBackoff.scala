@@ -49,7 +49,12 @@ object RetryWithBackoff extends Logging {
     maxAttempts:    Int            = 3,
     initialBackoff: FiniteDuration = 1.second,
     sleep:          Long => Unit   = Thread.sleep,
-    onAttempt:      AttemptOutcome => Unit = _ => ()
+    onAttempt:      AttemptOutcome => Unit = _ => (),
+    // Which failures are worth another attempt. Default retries every NonFatal
+    // (the original behaviour). A caller that knows some failures are permanent
+    // — a 404 / 4xx that won't change on a retry — passes a predicate so those
+    // fail fast instead of burning the remaining attempts (and their backoff).
+    retryOn:        Throwable => Boolean = _ => true
   )(block: => T): T = {
     require(maxAttempts >= 1, s"maxAttempts must be ≥ 1 (got $maxAttempts)")
     var attempt                = 1
@@ -64,17 +69,16 @@ object RetryWithBackoff extends Logging {
         case NonFatal(t) =>
           val ms = (System.nanoTime() - t0) / 1000000L
           lastFailure = t
-          val isFinal = attempt >= maxAttempts
+          val isFinal = attempt >= maxAttempts || !retryOn(t)
           onAttempt(AttemptOutcome.Failure(attempt, t, isFinal, ms))
-          if (!isFinal) {
-            val wait = initialBackoff * (1L << (attempt - 1))   // 1×, 2×, 4×, …
-            logger.warn(
-              s"$label attempt $attempt/$maxAttempts failed: " +
-              s"${t.getClass.getSimpleName}: ${t.getMessage}; " +
-              s"retrying in ${wait.toMillis}ms"
-            )
-            sleep(wait.toMillis)
-          }
+          if (isFinal) throw t   // attempts exhausted, or a non-retryable failure
+          val wait = initialBackoff * (1L << (attempt - 1))   // 1×, 2×, 4×, …
+          logger.warn(
+            s"$label attempt $attempt/$maxAttempts failed: " +
+            s"${t.getClass.getSimpleName}: ${t.getMessage}; " +
+            s"retrying in ${wait.toMillis}ms"
+          )
+          sleep(wait.toMillis)
           attempt += 1
       }
     }

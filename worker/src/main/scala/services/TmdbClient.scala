@@ -1,10 +1,11 @@
 package clients
 
 import play.api.libs.json._
-import tools.{Env, HttpFetch, SynopsisSimilarity}
+import tools.{Env, HttpFetch, HttpStatusException, RetryWithBackoff, SynopsisSimilarity}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import scala.concurrent.duration._
 import scala.util.Try
 
 /**
@@ -46,6 +47,17 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
   private def apiKeyParameter(separator: String): String =
     apiKey.map(k => s"${separator}api_key=$k").getOrElse("")
 
+  /** Every TMDB call routes through here. TMDB's API 5xxs and times out for a
+   *  few minutes now and then (it took down a CI integration run on
+   *  `/movie/{id}/external_ids`); a transient blip almost always succeeds on the
+   *  next try, so retry it a couple of times with a short backoff. A 4xx — a 404
+   *  for an id/title TMDB doesn't know — is NOT transient and fails fast (no point
+   *  burning the remaining attempts). A `None`/empty parse result isn't an
+   *  exception, so the existing graceful-degradation paths are untouched. */
+  private def httpGet(url: String, auth: Map[String, String]): String =
+    RetryWithBackoff("TMDB GET", maxAttempts = 3, initialBackoff = 300.millis,
+      retryOn = TmdbClient.isTransient)(http.get(url, auth))
+
   /**
    * Resolve a Polish title (+ optional year) to its best-match TMDB record.
    * First tries a year-restricted search; if that's empty (common — the year a
@@ -57,7 +69,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
   private def searchOnce(title: String, yearParameter: Option[Int], auth: Map[String, String]): Seq[TmdbClient.SearchResult] = {
     val yp = yearParameter.map(y => s"&year=$y&primary_release_year=$y").getOrElse("")
     val url = s"$ApiBase/search/movie?language=pl-PL&include_adult=false&query=${urlEncode(title)}$yp${apiKeyParameter("&")}"
-    parseSearchResults(http.get(url, auth))
+    parseSearchResults(httpGet(url, auth))
   }
 
   def search(title: String, year: Option[Int], referenceSynopsis: Option[String] = None): Option[TmdbClient.SearchResult] = authHeader.flatMap { auth =>
@@ -149,7 +161,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  releases, common for film festival items).
    */
   def imdbId(tmdbId: Int): Option[String] = authHeader.flatMap { auth =>
-    val body = http.get(s"$ApiBase/movie/$tmdbId/external_ids${apiKeyParameter("?")}", auth)
+    val body = httpGet(s"$ApiBase/movie/$tmdbId/external_ids${apiKeyParameter("?")}", auth)
     (Json.parse(body) \ "imdb_id").asOpt[String].filter(_.startsWith("tt"))
   }
 
@@ -160,7 +172,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  the rest of the enrichment row.
    */
   def findByImdbId(imdbId: String): Option[TmdbClient.SearchResult] = authHeader.flatMap { auth =>
-    val body = http.get(s"$ApiBase/find/$imdbId?external_source=imdb_id&language=pl-PL${apiKeyParameter("&")}", auth)
+    val body = httpGet(s"$ApiBase/find/$imdbId?external_source=imdb_id&language=pl-PL${apiKeyParameter("&")}", auth)
     parseFindMovieResults(body).headOption
   }
 
@@ -170,7 +182,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  field comes back in the production language.
    */
   def originalTitle(tmdbId: Int): Option[String] = authHeader.flatMap { auth =>
-    val body = http.get(s"$ApiBase/movie/$tmdbId${apiKeyParameter("?")}", auth)
+    val body = httpGet(s"$ApiBase/movie/$tmdbId${apiKeyParameter("?")}", auth)
     (Json.parse(body) \ "original_title").asOpt[String].filter(_.nonEmpty)
   }
 
@@ -195,7 +207,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *      title in `title` even for en-US).
    *  Single HTTP for all three fields via `append_to_response`. */
   def details(tmdbId: Int): Option[TmdbClient.Details] = authHeader.flatMap { auth =>
-    Try(http.get(s"$ApiBase/movie/$tmdbId?language=en-US&append_to_response=alternative_titles${apiKeyParameter("&")}", auth))
+    Try(httpGet(s"$ApiBase/movie/$tmdbId?language=en-US&append_to_response=alternative_titles${apiKeyParameter("&")}", auth))
       .toOption.map { body =>
         val js = Json.parse(body)
         // Prefer the "untyped" US alt-title (an actual release title) over
@@ -222,7 +234,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  Grizzly Falls 1999 and the 2026 Helgestad document) the directors disagree. */
   def directorsFor(tmdbId: Int): Set[String] = authHeader.map { auth =>
     Try {
-      val body = http.get(s"$ApiBase/movie/$tmdbId/credits${apiKeyParameter("?")}", auth)
+      val body = httpGet(s"$ApiBase/movie/$tmdbId/credits${apiKeyParameter("?")}", auth)
       (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
         .filter(c => (c \ "job").asOpt[String].contains("Director"))
         .flatMap { c =>
@@ -253,7 +265,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  poster lookup adds a single failure-tolerant `/images` call, so a poster
    *  hiccup never breaks the resolve. */
   def fullDetails(tmdbId: Int): Option[TmdbClient.FullDetails] = authHeader.flatMap { auth =>
-    Try(http.get(s"$ApiBase/movie/$tmdbId?language=pl-PL&append_to_response=credits${apiKeyParameter("&")}", auth))
+    Try(httpGet(s"$ApiBase/movie/$tmdbId?language=pl-PL&append_to_response=credits${apiKeyParameter("&")}", auth))
       .toOption.map { body =>
         val js   = Json.parse(body)
         val crew = (js \ "credits" \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
@@ -306,7 +318,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  back to `poster_path` exactly as before. */
   def posters(tmdbId: Int): Seq[TmdbClient.PosterImage] = authHeader.map { auth =>
     Try {
-      val body = http.get(s"$ApiBase/movie/$tmdbId/images?include_image_language=pl,null${apiKeyParameter("&")}", auth)
+      val body = httpGet(s"$ApiBase/movie/$tmdbId/images?include_image_language=pl,null${apiKeyParameter("&")}", auth)
       TmdbClient.parsePosters(body)
     }.getOrElse(Seq.empty)
   }.getOrElse(Seq.empty)
@@ -317,7 +329,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  who happens to share a name with a director. */
   def findPerson(name: String): Option[Int] = authHeader.flatMap { auth =>
     Try {
-      val body = http.get(s"$ApiBase/search/person?query=${urlEncode(name)}${apiKeyParameter("&")}", auth)
+      val body = httpGet(s"$ApiBase/search/person?query=${urlEncode(name)}${apiKeyParameter("&")}", auth)
       val rows = (Json.parse(body) \ "results").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
       rows.find(r => (r \ "known_for_department").asOpt[String].contains("Directing"))
         .orElse(rows.headOption)
@@ -330,7 +342,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  caller can reuse picking / sorting logic. */
   def personDirectorCredits(personId: Int): Seq[TmdbClient.SearchResult] = authHeader.map { auth =>
     Try {
-      val body = http.get(s"$ApiBase/person/$personId/movie_credits?language=pl-PL${apiKeyParameter("&")}", auth)
+      val body = httpGet(s"$ApiBase/person/$personId/movie_credits?language=pl-PL${apiKeyParameter("&")}", auth)
       (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
         .filter(c => (c \ "department").asOpt[String].contains("Directing"))
         .flatMap { js =>
@@ -387,6 +399,23 @@ object TmdbClient {
   private val MaxPortraitAspectRatio = 0.72
 
   val ApiKey: Option[String] = Env.get("TMDB_API_KEY")
+
+  /** A TMDB HTTP failure worth retrying: a 5xx server error or a 429 rate-limit
+   *  (transient), or any network-level IOException — `HttpTimeoutException`,
+   *  `ConnectException`, a reset socket. A 4xx other than 429 (a 404 for an id
+   *  TMDB doesn't know, a 401 for a bad key) is permanent and must NOT retry.
+   *
+   *  A `FileNotFoundException` is excluded even though it's an `IOException`: prod's
+   *  `RealHttpFetch` never throws it, but the fixture-replay `FakeHttpFetch` throws
+   *  it on a missing fixture — a PERMANENT miss (matching `TestWiring`'s
+   *  "missing fixture is permanent" rule). Retrying it just storms the replay harness
+   *  with thousands of pointless backoff sleeps. */
+  private[clients] def isTransient(t: Throwable): Boolean = t match {
+    case _: java.io.FileNotFoundException => false
+    case e: HttpStatusException           => e.code >= 500 || e.code == 429
+    case _: java.io.IOException           => true
+    case _                                => false
+  }
 
   case class SearchResult(
     id:            Int,
