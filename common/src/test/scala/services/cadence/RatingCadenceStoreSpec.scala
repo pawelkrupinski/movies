@@ -15,16 +15,16 @@ class RatingCadenceStoreSpec extends AnyFlatSpec with Matchers {
 
   it should "accumulate the streak across no-change refreshes and reset on change" in {
     val store = new InMemoryRatingCadenceStore()
-    store.record("mc|tmdb:1", change = None, t0).unchangedStreak             shouldBe 1
-    store.record("mc|tmdb:1", change = None, t0.plusSeconds(7200)).unchangedStreak shouldBe 2
+    store.record("mc|tmdb:1", reportedValue = None, t0).unchangedStreak             shouldBe 1
+    store.record("mc|tmdb:1", reportedValue = None, t0.plusSeconds(7200)).unchangedStreak shouldBe 2
     store.statsFor("mc|tmdb:1").map(_.unchangedStreak)                          shouldBe Some(2)
-    store.record("mc|tmdb:1", change = Some("85"), t0.plusSeconds(9000)).unchangedStreak shouldBe 0
+    store.record("mc|tmdb:1", reportedValue = Some("85"), t0.plusSeconds(9000)).unchangedStreak shouldBe 0
   }
 
   it should "key sources independently" in {
     val store = new InMemoryRatingCadenceStore()
-    store.record("mc|tmdb:1", change = None, t0)
-    store.record("imdb|tmdb:1", change = Some("85"), t0)
+    store.record("mc|tmdb:1", reportedValue = None, t0)
+    store.record("imdb|tmdb:1", reportedValue = Some("85"), t0)
     store.statsFor("mc|tmdb:1").map(_.unchangedStreak)   shouldBe Some(1)
     store.statsFor("imdb|tmdb:1").map(_.unchangedStreak) shouldBe Some(0)
   }

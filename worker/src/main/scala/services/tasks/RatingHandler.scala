@@ -100,11 +100,13 @@ class RatingHandler(
       val title = task.payload.getOrElse(RatingTasks.TitleKey, "")
       val year  = task.payload.get(RatingTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
       val now    = clock.instant()
-      val change = refresh(title, year)   // Some(newDisplayValue) when the badge moved
+      val reported = refresh(title, year)   // Some(displayValue) when the row's badge was (re)set this refresh
       freshness.markFresh(key, kind, now)
-      // Feed the adaptive cadence: a visible change snaps the refresh interval
-      // back to the base, a no-change refresh lets it back off (up to 4 days).
-      cadence.record(key, change, now)
+      // Feed the adaptive cadence: a refresh that moved the DISPLAYED value to a
+      // new badge snaps the interval back to the base; a no-change refresh — or one
+      // that re-reported the same value after a re-key — lets it back off (up to 4
+      // days). The cadence dedups same-value reports, see RatingCadence.record.
+      cadence.record(key, reported, now)
       Done
     }
   }

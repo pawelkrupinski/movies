@@ -49,25 +49,36 @@ object RatingCadence {
   /** Rolling window over which we keep change/check counts ("last week of data"). */
   val Window: FiniteDuration = 7.days
 
-  /** Fold one refresh outcome into the stats. `change` is `Some(displayValue)`
-   *  when the displayed value moved this refresh (the badge text it became), or
-   *  `None` for a no-change / failed refresh. The streak grows on no-change (→
-   *  longer waits) and resets on change; the window counters roll over once the
-   *  window is older than [[Window]] so the volatility view tracks ~the last week;
-   *  a change shifts `lastChange` → `prevChange` and records the new one. */
-  def record(prev: Option[RatingChangeStats], change: Option[String], now: Instant): RatingChangeStats = {
-    val live    = prev.filter(s => withinWindow(s.windowStartedAt, now))
-    val changed = change.isDefined
-    val streak  = if (changed) 0 else live.map(_.unchangedStreak).getOrElse(0) + 1
-    val checks  = live.map(_.windowChecks).getOrElse(0) + 1
-    val changes = live.map(_.windowChanges).getOrElse(0) + (if (changed) 1 else 0)
-    val anchor  = live.map(_.windowStartedAt).getOrElse(now)
+  /** Fold one refresh outcome into the stats. `reportedValue` is `Some(displayValue)`
+   *  when this refresh (re)set the row's displayed badge text, or `None` for a
+   *  no-change / failed refresh.
+   *
+   *  A reported value counts as a CHANGE only when it differs from the last
+   *  recorded displayed value. The per-row refresh reports `Some(value)` whenever
+   *  it writes the row's rating field — including when a re-keyed / re-resolved row
+   *  goes `None → 7.3` and lands on the SAME value the user already saw (e.g. a
+   *  title-rule fold re-keys the cache row while the cadence stays tmdbId-keyed).
+   *  That isn't a visible change, so we dedup against `lastChange.value`; otherwise
+   *  every re-resolution would log a phantom "7.3 → 7.3" change and pin the film to
+   *  the base interval forever.
+   *
+   *  The streak grows on no-change (→ longer waits) and resets on a real change;
+   *  the window counters roll over once the window is older than [[Window]] so the
+   *  volatility view tracks ~the last week; a real change shifts `lastChange` →
+   *  `prevChange` and records the new one. */
+  def record(prev: Option[RatingChangeStats], reportedValue: Option[String], now: Instant): RatingChangeStats = {
+    val live       = prev.filter(s => withinWindow(s.windowStartedAt, now))
+    val priorValue = prev.flatMap(_.lastChange).map(_.value)
+    val changed    = reportedValue.exists(v => !priorValue.contains(v))
+    val streak     = if (changed) 0 else live.map(_.unchangedStreak).getOrElse(0) + 1
+    val checks     = live.map(_.windowChecks).getOrElse(0) + 1
+    val changes    = live.map(_.windowChanges).getOrElse(0) + (if (changed) 1 else 0)
+    val anchor     = live.map(_.windowStartedAt).getOrElse(now)
     // Change history carries from `prev` (NOT `live`) so it survives the window
     // roll — it's the last two changes ever, not last-week.
-    val (lastCh, prevCh) = change match {
-      case Some(v) => (Some(RatingChange(now, v)), prev.flatMap(_.lastChange))
-      case None    => (prev.flatMap(_.lastChange), prev.flatMap(_.prevChange))
-    }
+    val (lastCh, prevCh) =
+      if (changed) (reportedValue.map(RatingChange(now, _)), prev.flatMap(_.lastChange))
+      else         (prev.flatMap(_.lastChange), prev.flatMap(_.prevChange))
     RatingChangeStats(streak, checks, changes, anchor, now, lastCh, prevCh)
   }
 

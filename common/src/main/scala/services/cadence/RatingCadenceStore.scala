@@ -31,12 +31,14 @@ trait RatingCadenceStore {
   /** Persist the updated stats for `key`. */
   protected def persist(key: String, stats: RatingChangeStats): Unit
 
-  /** Fold one refresh outcome into `key`'s stats and store it. `change` is
-   *  `Some(displayValue)` when the displayed value moved this refresh, else `None`.
-   *  Single-writer (one worker, and the queue never runs two refreshes of the same
-   *  key at once), so the read-then-write needs no lock. */
-  final def record(key: String, change: Option[String], at: Instant = Instant.now()): RatingChangeStats = {
-    val next = RatingCadence.record(statsFor(key), change, at)
+  /** Fold one refresh outcome into `key`'s stats and store it. `reportedValue` is
+   *  `Some(displayValue)` when this refresh (re)set the row's badge text, else `None`;
+   *  it counts as a change only if it differs from the last recorded value (see
+   *  [[RatingCadence.record]] — a re-keyed row re-reporting the same value is not a
+   *  visible change). Single-writer (one worker, and the queue never runs two
+   *  refreshes of the same key at once), so the read-then-write needs no lock. */
+  final def record(key: String, reportedValue: Option[String], at: Instant = Instant.now()): RatingChangeStats = {
+    val next = RatingCadence.record(statsFor(key), reportedValue, at)
     persist(key, next)
     next
   }

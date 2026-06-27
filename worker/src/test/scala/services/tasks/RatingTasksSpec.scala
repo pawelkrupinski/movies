@@ -56,6 +56,25 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     cad.statsFor("imdb|tmdb:7").flatMap(_.lastChange).map(_.value) shouldBe Some("7.2")
   }
 
+  it should "not log a phantom change when a re-keyed row re-reports the same displayed value" in {
+    // Reproduces the "Basia" flap: a title-rule fold re-keys the cache row, so the
+    // per-row refresh re-resolves None → 7.3 and re-reports the SAME 7.3 twice. The
+    // tmdbId-keyed cadence must see one change, then a no-change (streak grows) —
+    // not two changes that pin the film to the base interval.
+    val cad   = new services.cadence.InMemoryRatingCadenceStore
+    val fresh = new InMemoryFreshnessStore
+    new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, new DueWindow(4.hours), cad, (_, _) => Some("7.3"))
+      .handle(ratingTask("imdb|tmdb:7", "X", None)) shouldBe HandlerOutcome.Done
+    cad.statsFor("imdb|tmdb:7").map(_.windowChanges) shouldBe Some(1)
+
+    val later = Clock.fixed(Instant.now().plusSeconds(7.hours.toSeconds), ZoneOffset.UTC)
+    new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, new DueWindow(1.hour), cad, (_, _) => Some("7.3"), later)
+      .handle(ratingTask("imdb|tmdb:7", "X", None)) shouldBe HandlerOutcome.Done
+    cad.statsFor("imdb|tmdb:7").map(_.windowChanges)   shouldBe Some(1)  // still one change, no phantom
+    cad.statsFor("imdb|tmdb:7").map(_.unchangedStreak) shouldBe Some(1)  // backed off instead
+    cad.statsFor("imdb|tmdb:7").flatMap(_.prevChange)  shouldBe None
+  }
+
   it should "not touch the cadence for a task it skips as still-fresh" in {
     val cad   = new services.cadence.InMemoryRatingCadenceStore
     val fresh = new InMemoryFreshnessStore
