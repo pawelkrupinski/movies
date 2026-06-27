@@ -6,7 +6,7 @@
     e.lastChange.map(c => s"last → ${c.value}  @ ${at(c.at)}"),
     e.prevChange.map(c => s"before → ${c.value}  @ ${at(c.at)}")
   ).flatten
-  if (parts.isEmpty) "no recorded changes yet" else parts.mkString("\n")
+  if (parts.isEmpty) "no changes since ever" else parts.mkString("\n")
 }
 <!DOCTYPE html>
 <html lang="pl">
