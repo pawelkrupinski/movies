@@ -29,21 +29,19 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
     MovieService.normalize("  Drzewo   Magii  ") shouldBe "drzewomagii"
   }
 
-  it should "preserve Cyrillic letters but drop the Cyrillic-side whitespace + Arabic→Roman fold" in {
+  it should "preserve Cyrillic letters but drop the Cyrillic-side whitespace, keying the numeral in Arabic" in {
     // Non-Latin scripts keep their letters (so the row's documentId isn't empty);
-    // the Arabic '2' is folded to Roman via TitleNormalizer.normalize before
-    // the strip.
-    MovieService.normalize("ДИЯВОЛ НОСИТЬ ПРАДА 2") shouldBe "дияволноситьпрадаii"
+    // the Arabic '2' is kept as Arabic (Roman folds onto it, not the reverse).
+    MovieService.normalize("ДИЯВОЛ НОСИТЬ ПРАДА 2") shouldBe "дияволноситьпрада2"
   }
 
   it should "fold colon/space punctuation differences to the same key" in {
-    // Phase 2 of the MovieCache transition: this is what gives "Prady 2" and
-    // "Prady II" the same documentId, fixing the bug where the display title's
-    // Arabic→Roman folding produced a key that didn't match Mongo storage.
+    // This is what gives "Prady 2" and "Prady II" the same documentId: the Roman
+    // form folds onto the Arabic one, so the key matches the spelling cinemas use.
     MovieService.normalize("Top Gun Maverick")  shouldBe "topgunmaverick"
     MovieService.normalize("Top Gun: Maverick") shouldBe "topgunmaverick"
-    MovieService.normalize("Mortal Kombat 2")   shouldBe "mortalkombatii"
-    MovieService.normalize("Mortal Kombat II")  shouldBe "mortalkombatii"
+    MovieService.normalize("Mortal Kombat 2")   shouldBe "mortalkombat2"
+    MovieService.normalize("Mortal Kombat II")  shouldBe "mortalkombat2"
   }
 
   it should "fold the '& vs i' / 'Gwiezdne Wojny:' display-merge rules into the key" in {

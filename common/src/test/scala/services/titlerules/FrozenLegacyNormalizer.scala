@@ -61,13 +61,13 @@ object FrozenLegacyNormalizer {
   def programmePrefix(title: String): Option[String] =
     ProgrammePrefix.findPrefixMatchOf(title).map(_.matched)
 
-  private val ArabicToRoman = Map(
-    "1" -> "I", "2" -> "II", "3" -> "III", "4" -> "IV", "5" -> "V",
-    "6" -> "VI", "7" -> "VII", "8" -> "VIII", "9" -> "IX", "10" -> "X",
-    "11" -> "XI", "12" -> "XII", "13" -> "XIII", "14" -> "XIV", "15" -> "XV",
-    "16" -> "XVI", "17" -> "XVII", "18" -> "XVIII", "19" -> "XIX", "20" -> "XX")
+  private val RomanToArabic = Map(
+    "II" -> "2", "III" -> "3", "IV" -> "4", "VI" -> "6", "VII" -> "7",
+    "VIII" -> "8", "IX" -> "9", "XI" -> "11", "XII" -> "12", "XIII" -> "13",
+    "XIV" -> "14", "XV" -> "15", "XVI" -> "16", "XVII" -> "17", "XVIII" -> "18",
+    "XIX" -> "19", "XX" -> "20")
   def normalize(title: String): String =
-    title.split(" ").map(w => ArabicToRoman.getOrElse(w, w)).mkString(" ")
+    title.split(" ").map(w => RomanToArabic.getOrElse(w.toUpperCase(java.util.Locale.ROOT), w)).mkString(" ")
   // Identity canonical: the cross-cinema spelling unifications over the trimmed
   // title — NO `searchTitle`/structural decoration strip (that tier is now
   // external-lookup-only, see TitleRuleSet). Decoration editions key by their

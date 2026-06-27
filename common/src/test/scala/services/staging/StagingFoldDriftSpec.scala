@@ -11,11 +11,11 @@ import services.movies.TitleNormalizer
  * creation must still be selected (and so folded + deleted), not stranded.
  *
  * The live "Toy Story 5- dubbing" drift is now closed at the source — `sanitize`
- * romanizes AFTER the decoration strip, so the scrape title and its display form
- * both key on `toystoryv` (see SanitizeDecorationRomanizeSpec). But a row keyed
- * BEFORE that fix deployed still carries the stale `_id` middle `toystory5` until
- * it is re-scraped, and its re-derived title now sanitizes to `toystoryv` — a
- * transitional drift the fold must tolerate. The old `MongoStagingFolder` picked
+ * keys the numeral in Arabic AFTER the decoration strip, so the scrape title and
+ * its display form both key on `toystory5` (see SanitizeNumeralKeySpec). But a row
+ * keyed during the brief romanize-era still carries the stale `_id` middle
+ * `toystoryv` until it is re-scraped, and its re-derived title now sanitizes to
+ * `toystory5` — a transitional drift the fold must tolerate. The old `MongoStagingFolder` picked
  * the fold group by a `_id`-middle regex, so the re-sanitized title matched
  * nothing — the fold no-op'd "done" without deleting the row, and the reaper
  * re-enqueued it every minute forever. `StagingFold.selectStagingGroup` keys on
@@ -24,9 +24,9 @@ import services.movies.TitleNormalizer
  */
 class StagingFoldDriftSpec extends AnyFlatSpec with Matchers {
 
-  // A row persisted under the PRE-fix key (`toystory5`), read back after the
-  // romanization fix shifted the title's sanitize to `toystoryv`.
-  private val staleId = "Mikro Bronowice|toystory5|"
+  // A row persisted under the romanize-era key (`toystoryv`), read back after the
+  // deromanize fix shifted the title's sanitize to `toystory5`.
+  private val staleId = "Mikro Bronowice|toystoryv|"
   private val record  = MovieRecord(
     tmdbNoMatch = true,
     searchTitle = Some("Toy Story 5- dubbing"),

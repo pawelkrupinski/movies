@@ -64,24 +64,32 @@ object TitleNormalizer {
   private val NonAlnumUnicode = Pattern.compile("[^\\p{L}\\p{N}]+")
   private val NonAlnumAscii   = Pattern.compile("[^a-z0-9]+")
 
-  // "Mortal Kombat 2" and "Mortal Kombat II" should collapse.
-  private val ArabicToRoman = Map(
-    "1" -> "I", "2" -> "II", "3" -> "III", "4" -> "IV", "5" -> "V",
-    "6" -> "VI", "7" -> "VII", "8" -> "VIII", "9" -> "IX", "10" -> "X",
-    "11" -> "XI", "12" -> "XII", "13" -> "XIII", "14" -> "XIV", "15" -> "XV",
-    "16" -> "XVI", "17" -> "XVII", "18" -> "XVIII", "19" -> "XIX", "20" -> "XX"
+  // "Mortal Kombat 2" and "Mortal Kombat II" should collapse — onto the ARABIC
+  // form (the spelling cinemas + TMDB actually use), so keys read `mortalkombat2`,
+  // not `mortalkombatii`. Only MULTI-letter Roman numerals are converted: the
+  // single letters I, V, X collide with real title words ("I Am Legend",
+  // "Malcolm X", "V for Vendetta", Polish "i" = and), so converting them would
+  // corrupt those titles. The cost is not unifying a bare Roman single-digit
+  // ("Rocky V") with its Arabic form ("Rocky 5"), which cinema listings
+  // effectively never use.
+  private val RomanToArabic = Map(
+    "II" -> "2", "III" -> "3", "IV" -> "4", "VI" -> "6", "VII" -> "7",
+    "VIII" -> "8", "IX" -> "9", "XI" -> "11", "XII" -> "12", "XIII" -> "13",
+    "XIV" -> "14", "XV" -> "15", "XVI" -> "16", "XVII" -> "17", "XVIII" -> "18",
+    "XIX" -> "19", "XX" -> "20"
   )
 
-  // Always-applied transformation: standalone (space-delimited) Arabic numerals →
-  // Roman, so "Mortal Kombat 2" and "Mortal Kombat II" collapse. `sanitize` runs
-  // this AFTER `canonical` (not before): a decoration glued to a numeral with no
-  // separating space ("Toy Story 5- dubbing") leaves the numeral non-standalone
-  // ("5-") until canonical strips the decoration, so romanising first stranded the
-  // numeral as Arabic while the stripped display form ("Toy Story 5") romanised it
-  // to V — the two then sanitized to different keys and the film never settled (the
-  // staging re-divert loop). Romanising after the strip keys both on `toystoryv`.
+  // Always-applied transformation: standalone (space-delimited) multi-letter Roman
+  // numerals → Arabic, CASE-INSENSITIVELY so "Mortal Kombat II" (chains) and
+  // "Mortal kombat ii" (a lower-casing cinema) fold to the same `mortalkombat2`
+  // rather than splitting. `sanitize` runs this AFTER `canonical` (not before): a
+  // decoration glued to a numeral with no separating space ("Mortal Kombat II-
+  // dubbing" → token "II-") hides the numeral until canonical strips the
+  // decoration, so normalising first stranded it as Roman while the stripped
+  // display form ("Mortal Kombat II") deromanised it — the two then sanitized to
+  // different keys and the film never settled (the staging re-divert loop).
   def normalize(title: String): String =
-    title.split(" ").map(word => ArabicToRoman.getOrElse(word, word)).mkString(" ")
+    title.split(" ").map(word => RomanToArabic.getOrElse(word.toUpperCase(Locale.ROOT), word)).mkString(" ")
 
   // ── Cinema-decoration stripping ────────────────────────────────────────────
   //
