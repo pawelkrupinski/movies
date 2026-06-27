@@ -39,6 +39,10 @@ GET     /debug/details              controllers.MovieController.debugDetails(id:
 # (`web_movies` + `web_screenings`), not the source `movies` corpus /debug shows.
 # 404 in prod like the rest of /debug.
 GET     /debug/readmodel            controllers.MovieController.debugReadModel()
+# Dev-only: per-(rating source, film) adaptive refresh cadence — films grouped by
+# their current refresh interval (slowest/most-stable first), with the last two
+# displayed-value changes on hover. Reads the worker-written `rating_cadence`.
+GET     /debug/cadence              controllers.MovieController.cadence()
 # Dev-only: the /debug row "re-enrich" button enqueues a per-movie ResolveTmdb
 # task (worker re-resolves TMDB, then the event chain re-runs the rest). 404 in
 # prod like the rest of /debug; nocsrf, posted by the page's fetch.

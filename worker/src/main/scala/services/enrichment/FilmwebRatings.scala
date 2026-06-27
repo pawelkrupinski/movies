@@ -106,18 +106,18 @@ class FilmwebRatings(
   //     → /preview per candidate when verifying directors → rating).
   // Per-row failures are swallowed (network blip, Filmweb soft-block); the
   // next refresh tries again.
-  protected def refreshOne(key: CacheKey): Boolean =
-    cache.get(key).fold(false) { e =>
+  protected def refreshOne(key: CacheKey): Option[String] =
+    cache.get(key).flatMap { e =>
       e.filmwebUrl match {
         case Some(url) => refreshRatingFromUrl(key, e, url)
         case None      => resolveAndPersistUrl(key, e)
       }
     }
 
-  // Returns whether the displayed rating changed.
-  private def refreshRatingFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Boolean = {
+  // Returns the new displayed rating (badge text) if it changed, else None.
+  private def refreshRatingFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Option[String] = {
     val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
-    val changed = Try(filmweb.ratingFor(url)).toOption.flatten match {
+    val change = Try(filmweb.ratingFor(url)).toOption.flatten match {
       case Some(rating) =>
         // Store at the precision the badge shows (`%.1f`): a sub-decimal vote
         // drift the user can't see isn't a change — see RatingDisplay.
@@ -125,15 +125,15 @@ class FilmwebRatings(
         val isChanged = !e.filmwebRating.contains(rounded)
         logger.info(s"Filmweb: $label $url → rating $rounded" +
           (if (isChanged) s" (was ${e.filmwebRating.getOrElse("—")})" else " (unchanged)"))
-        if (isChanged) cache.putIfPresent(key, _.copy(filmwebRating = Some(rounded)))
-        isChanged
+        if (isChanged) { cache.putIfPresent(key, _.copy(filmwebRating = Some(rounded))); Some(RatingDisplay.label(rounded)) }
+        else None
       case None =>
         logger.info(s"Filmweb: $label $url → no rating on page")
-        false
+        None
     }
     if (e.imdbId.isEmpty)
       onImdbIdMissing(key.cleanTitle, key.year, e.originalTitle.getOrElse(MovieService.apiQuery(key.cleanTitle)))
-    changed
+    change
   }
 
   // Full URL discovery — only called when the row has no stored filmwebUrl.
@@ -141,9 +141,9 @@ class FilmwebRatings(
   // films whose cinema-reported title doesn't surface a Filmweb hit still
   // resolve, and the union of TMDB credits + every cinema's reported director
   // as `directors` so same-titled films across years disambiguate.
-  // Returns whether the displayed rating changed (a first discovery that lands a
-  // rating counts as a change: None → Some).
-  private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Boolean = {
+  // Returns the new displayed rating (badge text) if it changed, else None (a
+  // first discovery that lands a rating counts as a change: None → Some).
+  private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Option[String] = {
     val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
     resolveUrl(key, e) match {
       case Some(fw) =>
@@ -153,10 +153,10 @@ class FilmwebRatings(
           r.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating, data = withFilmwebGenres(r.data, fw.genres)))
         if (e.imdbId.isEmpty)
           onImdbIdMissing(key.cleanTitle, key.year, e.originalTitle.getOrElse(MovieService.apiQuery(key.cleanTitle)))
-        changed
+        if (changed) fw.rating.map(RatingDisplay.label) else None
       case None =>
         logger.info(s"Filmweb: $label → no match")
-        false
+        None
     }
   }
 

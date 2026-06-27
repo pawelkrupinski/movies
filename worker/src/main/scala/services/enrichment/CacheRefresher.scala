@@ -32,20 +32,21 @@ abstract class CacheRefresher(protected val cache: MovieCache) extends Logging {
   /** Synchronous per-row refresh by `CacheKey` — the queue `RatingHandler`,
    *  scripts, and tests call this. Logs the step boundary at INFO so every
    *  per-film rating resolution is visible; the subclass logs the outcome.
-   *  Returns whether the DISPLAYED value changed this refresh — the signal the
-   *  adaptive [[services.cadence.RatingCadence]] backs off on. */
-  private[services] def refreshOneSync(key: CacheKey): Boolean = {
+   *  Returns `Some(newDisplayValue)` when the DISPLAYED value moved this refresh
+   *  (the badge text it became), else `None` — the signal the adaptive
+   *  [[services.cadence.RatingCadence]] backs off on. */
+  private[services] def refreshOneSync(key: CacheKey): Option[String] = {
     logger.info(s"$sourceName: resolving '${key.cleanTitle}' (${key.year.getOrElse("?")})")
     refreshOne(key)
   }
 
   /** Synchronous refresh by `(title, year)` — public entry point for the
-   *  `RatingHandler` and scripts. Returns whether the displayed value changed. */
-  def refreshOneSync(title: String, year: Option[Int]): Boolean =
+   *  `RatingHandler` and scripts. Returns the new displayed value if it moved. */
+  def refreshOneSync(title: String, year: Option[Int]): Option[String] =
     refreshOneSync(cache.keyOf(title, year))
 
-  /** Subclass hook: the per-row work. Returns whether the displayed value moved. */
-  protected def refreshOne(key: CacheKey): Boolean
+  /** Subclass hook: the per-row work. Returns the new displayed value if it moved. */
+  protected def refreshOne(key: CacheKey): Option[String]
 
   /** Subclass hook: walk every cached row and apply per-row refresh. */
   private[services] def refreshAll(): Unit

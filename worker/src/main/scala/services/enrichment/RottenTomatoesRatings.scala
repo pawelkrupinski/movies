@@ -40,11 +40,11 @@ class RottenTomatoesRatings(
   //     suffix preference + English-title fallback for non-English films),
   //     write the URL, then scrape the score.
   // Per-row failures are swallowed; the next refresh tries again.
-  protected def refreshOne(key: CacheKey): Boolean =
-    cache.get(key).fold(false) { e =>
+  protected def refreshOne(key: CacheKey): Option[String] =
+    cache.get(key).flatMap { e =>
       e.rottenTomatoesUrl.orElse(resolveAndPersistUrl(key, e)) match {
         case Some(url) => refreshScoreFromUrl(key, e, url)
-        case None      => logger.info(s"RT: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no URL match"); false
+        case None      => logger.info(s"RT: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no URL match"); None
       }
     }
 
@@ -85,18 +85,18 @@ class RottenTomatoesRatings(
       resolved
     }
 
-  private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Boolean = {
+  private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Option[String] = {
     val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
     Try(rt.scoreFor(url)).toOption.flatten match {
       case Some(score) =>
         val changed = !e.rottenTomatoes.contains(score)
         logger.info(s"RT: $label $url → Tomatometer $score" +
           (if (changed) s" (was ${e.rottenTomatoes.getOrElse("—")})" else " (unchanged)"))
-        if (changed) cache.putIfPresent(key, _.copy(rottenTomatoes = Some(score)))
-        changed
+        if (changed) { cache.putIfPresent(key, _.copy(rottenTomatoes = Some(score))); Some(s"$score%") }
+        else None
       case None =>
         logger.info(s"RT: $label $url → no Tomatometer on page")
-        false
+        None
     }
   }
 

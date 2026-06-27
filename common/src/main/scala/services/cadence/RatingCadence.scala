@@ -20,14 +20,23 @@ import scala.concurrent.duration._
  *    Kept as the "how volatile is this rating lately" history; not used by the
  *    interval directly (the streak is), but surfaced for observability.
  *  - `windowStartedAt` / `lastCheckedAt` — window anchor and last-refresh stamp.
+ *  - `lastChange` / `prevChange` — the two most recent times the displayed value
+ *    moved, with what it moved TO. Survive the window roll (they're the last two
+ *    changes ever, for the cadence debug page), unlike the volatility counters.
  */
 case class RatingChangeStats(
   unchangedStreak: Int,
   windowChecks:    Int,
   windowChanges:   Int,
   windowStartedAt: Instant,
-  lastCheckedAt:   Instant
+  lastCheckedAt:   Instant,
+  lastChange:      Option[RatingChange] = None,
+  prevChange:      Option[RatingChange] = None
 )
+
+/** One observed change of a rating's DISPLAYED value: when it happened and the
+ *  value it became (the badge text — "7.1", "85", "93%"). */
+case class RatingChange(at: Instant, value: String)
 
 object RatingCadence {
   /** Fastest cadence — a fresh or just-changed film is rechecked this often. */
@@ -40,17 +49,26 @@ object RatingCadence {
   /** Rolling window over which we keep change/check counts ("last week of data"). */
   val Window: FiniteDuration = 7.days
 
-  /** Fold one refresh outcome into the stats. `changed` is whether the displayed
-   *  value differs from the previous scrape. The streak grows on no-change (→
+  /** Fold one refresh outcome into the stats. `change` is `Some(displayValue)`
+   *  when the displayed value moved this refresh (the badge text it became), or
+   *  `None` for a no-change / failed refresh. The streak grows on no-change (→
    *  longer waits) and resets on change; the window counters roll over once the
-   *  window is older than [[Window]] so the volatility view tracks ~the last week. */
-  def record(prev: Option[RatingChangeStats], changed: Boolean, now: Instant): RatingChangeStats = {
+   *  window is older than [[Window]] so the volatility view tracks ~the last week;
+   *  a change shifts `lastChange` → `prevChange` and records the new one. */
+  def record(prev: Option[RatingChangeStats], change: Option[String], now: Instant): RatingChangeStats = {
     val live    = prev.filter(s => withinWindow(s.windowStartedAt, now))
+    val changed = change.isDefined
     val streak  = if (changed) 0 else live.map(_.unchangedStreak).getOrElse(0) + 1
     val checks  = live.map(_.windowChecks).getOrElse(0) + 1
     val changes = live.map(_.windowChanges).getOrElse(0) + (if (changed) 1 else 0)
     val anchor  = live.map(_.windowStartedAt).getOrElse(now)
-    RatingChangeStats(streak, checks, changes, anchor, now)
+    // Change history carries from `prev` (NOT `live`) so it survives the window
+    // roll — it's the last two changes ever, not last-week.
+    val (lastCh, prevCh) = change match {
+      case Some(v) => (Some(RatingChange(now, v)), prev.flatMap(_.lastChange))
+      case None    => (prev.flatMap(_.lastChange), prev.flatMap(_.prevChange))
+    }
+    RatingChangeStats(streak, checks, changes, anchor, now, lastCh, prevCh)
   }
 
   /** Interval before this film's next refresh of this source. Never-seen (None)

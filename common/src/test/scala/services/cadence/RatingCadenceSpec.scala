@@ -26,36 +26,56 @@ class RatingCadenceSpec extends AnyFlatSpec with Matchers {
   }
 
   "record" should "grow the streak on no-change and reset it on a change" in {
-    val s1 = RatingCadence.record(None, changed = false, t0)
+    val s1 = RatingCadence.record(None, change = None, t0)
     s1.unchangedStreak shouldBe 1
-    val s2 = RatingCadence.record(Some(s1), changed = false, later(2.hours))
+    val s2 = RatingCadence.record(Some(s1), change = None, later(2.hours))
     s2.unchangedStreak shouldBe 2
-    val s3 = RatingCadence.record(Some(s2), changed = true, later(6.hours))
+    val s3 = RatingCadence.record(Some(s2), change = Some("7.5"), later(6.hours))
     s3.unchangedStreak shouldBe 0   // a visible change snaps cadence back to the base
   }
 
   it should "count checks and changes within the window" in {
-    val s1 = RatingCadence.record(None, changed = true, t0)
-    val s2 = RatingCadence.record(Some(s1), changed = false, later(2.hours))
-    val s3 = RatingCadence.record(Some(s2), changed = true, later(4.hours))
+    val s1 = RatingCadence.record(None, change = Some("7.5"), t0)
+    val s2 = RatingCadence.record(Some(s1), change = None, later(2.hours))
+    val s3 = RatingCadence.record(Some(s2), change = Some("7.5"), later(4.hours))
     s3.windowChecks  shouldBe 3
     s3.windowChanges shouldBe 2
   }
 
   it should "roll the window over once it is older than a week (drop stale history)" in {
-    val s1 = RatingCadence.record(None, changed = true, t0)
-    val s1b = RatingCadence.record(Some(s1), changed = true, later(1.hour))
+    val s1 = RatingCadence.record(None, change = Some("7.5"), t0)
+    val s1b = RatingCadence.record(Some(s1), change = Some("7.5"), later(1.hour))
     s1b.windowChecks shouldBe 2
     // A refresh more than a week after the window opened starts a fresh window.
-    val stale = RatingCadence.record(Some(s1b), changed = false, later(8.days))
+    val stale = RatingCadence.record(Some(s1b), change = None, later(8.days))
     stale.windowChecks  shouldBe 1
     stale.windowChanges shouldBe 0
     JDuration.between(stale.windowStartedAt, later(8.days)).toMillis shouldBe 0
   }
 
+  it should "keep the last two changes (with value), shifting on each new change and surviving no-change refreshes" in {
+    val c1 = RatingCadence.record(None, change = Some("7.0"), t0)
+    c1.lastChange shouldBe Some(RatingChange(t0, "7.0"))
+    c1.prevChange shouldBe None
+    // A no-change refresh leaves the change history untouched.
+    val c1b = RatingCadence.record(Some(c1), change = None, later(2.hours))
+    c1b.lastChange shouldBe Some(RatingChange(t0, "7.0"))
+    // A second change shifts the first into `prevChange`.
+    val c2 = RatingCadence.record(Some(c1b), change = Some("7.2"), later(5.hours))
+    c2.lastChange shouldBe Some(RatingChange(later(5.hours), "7.2"))
+    c2.prevChange shouldBe Some(RatingChange(t0, "7.0"))
+  }
+
+  it should "keep change history across a window roll-over (it's the last 2 ever, not last-week)" in {
+    val c1   = RatingCadence.record(None, change = Some("80"), t0)
+    val roll = RatingCadence.record(Some(c1), change = None, later(8.days))   // window resets
+    roll.windowChecks shouldBe 1                                              // counters rolled
+    roll.lastChange   shouldBe Some(RatingChange(t0, "80"))                   // change history survived
+  }
+
   it should "drive the interval end-to-end: stable film stretches toward the cap" in {
     val stable = (1 to 6).foldLeft(Option.empty[RatingChangeStats]) { (acc, i) =>
-      Some(RatingCadence.record(acc, changed = false, later(i * 2.hours)))
+      Some(RatingCadence.record(acc, change = None, later(i * 2.hours)))
     }
     RatingCadence.intervalFor(stable) shouldBe RatingCadence.MaxInterval
   }

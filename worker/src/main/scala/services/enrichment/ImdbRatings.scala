@@ -34,13 +34,13 @@ class ImdbRatings(
   // the rating refresh and the slot refresh are independent so a failing
   // details fetch doesn't block the rating update. Skips rows without an
   // `imdbId` (TMDB-only — IMDb hasn't cross-referenced the film yet).
-  protected def refreshOne(key: CacheKey): Boolean =
-    cache.get(key).fold(false) { e =>
+  protected def refreshOne(key: CacheKey): Option[String] =
+    cache.get(key).flatMap { e =>
       val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
       e.imdbId match {
         case None =>
           logger.info(s"IMDb: $label → no imdbId yet, skipping rating")
-          false
+          None
         case Some(id) =>
           // Store at the precision the badge shows (`%.1f`), so a sub-decimal
           // vote drift the user can't see isn't a "change" — see RatingDisplay.
@@ -56,9 +56,9 @@ class ImdbRatings(
               imdbRating = ratingUpdate.orElse(current.imdbRating),
               data       = slotUpdate.map(s => current.data + ((Imdb: Source) -> s)).getOrElse(current.data)
             ))
-          // The cadence signal is the DISPLAYED rating moving; a details-slot-only
-          // refresh isn't a rating change.
-          ratingUpdate.isDefined
+          // The cadence signal is the DISPLAYED rating moving (its badge text); a
+          // details-slot-only refresh isn't a rating change.
+          ratingUpdate.map(RatingDisplay.label)
       }
     }
 

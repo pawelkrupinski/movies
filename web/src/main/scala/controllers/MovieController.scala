@@ -291,6 +291,10 @@ class MovieController( cc: ControllerComponents,
                        // lists the per-cinema newcomer rows incubating in
                        // `pending_movies`. Empty no-op when staging isn't wired.
                        stagingRepository: services.staging.StagingRepository = services.staging.StagingRepository.empty,
+                       // Read-only, on-demand: the dev-only /debug/cadence page reads the
+                       // worker-written `rating_cadence` collection (per-source adaptive
+                       // refresh state). Empty no-op when cadence isn't wired.
+                       ratingCadenceReader: services.cadence.RatingCadenceReader = services.cadence.RatingCadenceReader.empty,
                      ) extends AbstractController(cc) with Logging {
 
   // Read the session's `userId` (set by `AuthController.callback`) and
@@ -503,6 +507,22 @@ class MovieController( cc: ControllerComponents,
       Ok(views.html.debug(
         movies.sortBy(_.title.toLowerCase),
         MovieController.orderStagingByQueue(staged, queue.active)))
+    }
+  }
+
+  /** Dev-only: the per-(rating source, film) adaptive refresh cadence. Films are
+   *  grouped by their current refresh interval, slowest (most backed-off / stable)
+   *  first, with the last two displayed-value changes shown on hover. Reads the
+   *  worker-written `rating_cadence` collection + resolves titles from the corpus. */
+  def cadence(): Action[AnyContent] = Action {
+    devOnly {
+      implicit val ec: scala.concurrent.ExecutionContext = cc.executionContext
+      val recordsFuture = Future(ratingCadenceReader.all())
+      val titlesFuture  = Future(movieRepository.findAllForListing())
+      val (records, rows) = Await.result(recordsFuture.zip(titlesFuture), 70.seconds)
+      val titleByTmdb = rows.flatMap(r => r.record.tmdbId.map(_ -> r.title)).toMap
+      implicit val c: City = City.all.head   // only for the shared debug navbar's city link
+      Ok(views.html.cadence(services.cadence.CadenceReport.build(records, titleByTmdb.get)))
     }
   }
 

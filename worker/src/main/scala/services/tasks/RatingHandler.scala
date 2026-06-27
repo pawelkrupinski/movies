@@ -82,7 +82,7 @@ class RatingHandler(
   freshness:             FreshnessStore,
   dueWindow:             DueWindow,
   cadence:               RatingCadenceStore,
-  refresh:               (String, Option[Int]) => Boolean,
+  refresh:               (String, Option[Int]) => Option[String],
   clock:                 Clock = Clock.systemUTC(),
   metrics:               RatingLatencyMetrics = RatingLatencyMetrics.NoOp
 ) extends TaskHandler {
@@ -99,12 +99,12 @@ class RatingHandler(
       if (lastRated.isEmpty) recordFirstAttemptDelay(key)
       val title = task.payload.getOrElse(RatingTasks.TitleKey, "")
       val year  = task.payload.get(RatingTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
-      val now     = clock.instant()
-      val changed = refresh(title, year)
+      val now    = clock.instant()
+      val change = refresh(title, year)   // Some(newDisplayValue) when the badge moved
       freshness.markFresh(key, kind, now)
       // Feed the adaptive cadence: a visible change snaps the refresh interval
       // back to the base, a no-change refresh lets it back off (up to 4 days).
-      cadence.record(key, changed, now)
+      cadence.record(key, change, now)
       Done
     }
   }

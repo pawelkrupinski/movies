@@ -58,6 +58,36 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe NOT_FOUND
   }
 
+  // ── /debug/cadence ────────────────────────────────────────────────────────
+
+  private val cadenceNow = Instant.parse("2026-06-27T10:00:00Z")
+  // Two sources of the same film (tmdbId 1 = "Belle"): MC backed off to the 4-day
+  // cap (stable, streak 6) with a recorded change; IMDb fresh at the 2h base.
+  private val cadenceReader: services.cadence.RatingCadenceReader = () => Seq(
+    "mc|tmdb:1"   -> services.cadence.RatingChangeStats(6, 7, 1, cadenceNow, cadenceNow,
+                       lastChange = Some(services.cadence.RatingChange(cadenceNow, "85"))),
+    "imdb|tmdb:1" -> services.cadence.RatingChangeStats(0, 1, 0, cadenceNow, cadenceNow)
+  )
+  private val cadenceRecords = Seq(("Belle", Some(2021), MovieRecord(tmdbId = Some(1))))
+
+  "GET /debug/cadence" should "group films by refresh interval (slowest first) with the title and change history" in {
+    val ctrl   = TestMovieController.build(cadenceRecords, Mode.Dev, ratingCadenceReader = cadenceReader)._1
+    val result = ctrl.cadence().apply(FakeRequest(GET, "/debug/cadence"))
+    status(result) shouldBe OK
+    val html = contentAsString(result)
+    html should include ("Belle")            // title resolved from the dedup key's tmdbId
+    html should include ("every 4d")         // MC stretched to the cap
+    html should include ("every 2h")         // IMDb at the base
+    html should include ("last → 85")        // change history surfaces in the hover tooltip
+    // Slowest (most backed-off) group renders first.
+    html.indexOf("every 4d") should be < html.indexOf("every 2h")
+  }
+
+  it should "404 in production" in {
+    val result = TestMovieController.build(Seq.empty, Mode.Prod)._1.cadence().apply(FakeRequest(GET, "/debug/cadence"))
+    status(result) shouldBe NOT_FOUND
+  }
+
   // `/debug` reads two full-collection Mongo scans (`movies` + `pending_movies`).
   // Being dev-only it is always served over the slow local→prod Mongo tunnel,
   // where each cursor is ~6 s, so doing them one-after-another doubled the page's

@@ -23,6 +23,7 @@ object TestMovieController {
     // to assert the two scans run concurrently).
     movieRepository: Option[services.movies.MovieRepository] = None,
     stagingRepository: services.staging.StagingRepository = services.staging.StagingRepository.empty,
+    ratingCadenceReader: services.cadence.RatingCadenceReader = services.cadence.RatingCadenceReader.empty,
   ): (MovieController, WebReadModel) = {
     val readModel = TestReadModel.fromRecords(records)
     val ctrl  = new MovieController(
@@ -43,6 +44,7 @@ object TestMovieController {
       cityOgCardService      = new tools.CityOgCardService((_: String) => None),
       cinemaSourceUrls       = () => cinemaSourceUrls,
       stagingRepository      = stagingRepository,
+      ratingCadenceReader    = ratingCadenceReader,
     )
     (ctrl, readModel)
   }

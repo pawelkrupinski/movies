@@ -142,9 +142,14 @@ trait Wiring {
   lazy val adminAction = new AdminAction(controllerComponents.parsers.anyContent, userRepository, adminAllowlist)(using controllerComponents.executionContext)
   // The /debug "pending enrichment (staging)" table reads + live-watches this.
   lazy val stagingRepository: services.staging.StagingRepository = new services.staging.MongoStagingRepository(mongoConnection.database)
+  // Read-only view of the worker-written `rating_cadence` collection for the
+  // dev-only /debug/cadence page (reads the primary Mongo, like the read model).
+  lazy val ratingCadenceReader: services.cadence.RatingCadenceReader =
+    new services.cadence.MongoRatingCadenceReader(mongoConnection.database)
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, movieRepository, taskQueue, userRepository, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService, cityOgCardService,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),
-    stagingRepository = stagingRepository)
+    stagingRepository = stagingRepository,
+    ratingCadenceReader = ratingCadenceReader)
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepository, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
   lazy val wellKnownController = new WellKnownController(controllerComponents)

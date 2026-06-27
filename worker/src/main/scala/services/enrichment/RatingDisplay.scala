@@ -20,4 +20,8 @@ object RatingDisplay {
    *  `f"$r%.1f"` never disagree on the shown value. */
   def oneDecimal(value: Double): Double =
     BigDecimal(value).setScale(1, BigDecimal.RoundingMode.HALF_UP).toDouble
+
+  /** The badge TEXT for a 0–10 vote average — the one-decimal label IMDb/Filmweb
+   *  render. Used as the "changed to" value recorded in the rating cadence. */
+  def label(value: Double): String = f"$value%.1f"
 }

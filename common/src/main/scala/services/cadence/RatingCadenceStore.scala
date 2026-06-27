@@ -1,6 +1,7 @@
 package services.cadence
 
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
+import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.model.{Filters, Updates}
 import com.mongodb.client.model.UpdateOptions
 import play.api.Logging
@@ -30,12 +31,12 @@ trait RatingCadenceStore {
   /** Persist the updated stats for `key`. */
   protected def persist(key: String, stats: RatingChangeStats): Unit
 
-  /** Fold one refresh outcome into `key`'s stats and store it. `changed` is
-   *  whether the displayed value differs from the previous scrape. Single-writer
-   *  (one worker, and the queue never runs two refreshes of the same key at once),
-   *  so the read-then-write needs no lock. */
-  final def record(key: String, changed: Boolean, at: Instant = Instant.now()): RatingChangeStats = {
-    val next = RatingCadence.record(statsFor(key), changed, at)
+  /** Fold one refresh outcome into `key`'s stats and store it. `change` is
+   *  `Some(displayValue)` when the displayed value moved this refresh, else `None`.
+   *  Single-writer (one worker, and the queue never runs two refreshes of the same
+   *  key at once), so the read-then-write needs no lock. */
+  final def record(key: String, change: Option[String], at: Instant = Instant.now()): RatingChangeStats = {
+    val next = RatingCadence.record(statsFor(key), change, at)
     persist(key, next)
     next
   }
@@ -90,7 +91,9 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
             Updates.set("windowChecks", s.windowChecks),
             Updates.set("windowChanges", s.windowChanges),
             Updates.set("windowStartedAt", new java.util.Date(s.windowStartedAt.toEpochMilli)),
-            Updates.set("lastCheckedAt", new java.util.Date(s.lastCheckedAt.toEpochMilli))
+            Updates.set("lastCheckedAt", new java.util.Date(s.lastCheckedAt.toEpochMilli)),
+            Updates.set("lastChange", MongoRatingCadenceStore.encodeChange(s.lastChange)),
+            Updates.set("prevChange", MongoRatingCadenceStore.encodeChange(s.prevChange))
           ),
           new UpdateOptions().upsert(true)
         ).subscribe(
@@ -103,24 +106,68 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
 
   private def hydrate(c: MongoCollection[Document]): Unit =
     Try {
-      val documents = Await.result(c.find().toFuture(), 60.seconds)
-      var count = 0
-      documents.foreach { document =>
-        for {
-          key     <- Option(document.getString("_id"))
-          started <- Option(document.getDate("windowStartedAt"))
-          checked <- Option(document.getDate("lastCheckedAt"))
-        } {
-          mirror.put(key, RatingChangeStats(
-            unchangedStreak = Option(document.getInteger("unchangedStreak")).map(_.intValue).getOrElse(0),
-            windowChecks    = Option(document.getInteger("windowChecks")).map(_.intValue).getOrElse(0),
-            windowChanges   = Option(document.getInteger("windowChanges")).map(_.intValue).getOrElse(0),
-            windowStartedAt = Instant.ofEpochMilli(started.getTime),
-            lastCheckedAt   = Instant.ofEpochMilli(checked.getTime)
-          ))
-          count += 1
-        }
-      }
-      if (count > 0) logger.info(s"Hydrated $count rating-cadence record(s) from Mongo.")
+      val records = Await.result(c.find().toFuture(), 60.seconds).flatMap(MongoRatingCadenceStore.decodeRecord)
+      records.foreach { case (key, stats) => mirror.put(key, stats) }
+      if (records.nonEmpty) logger.info(s"Hydrated ${records.size} rating-cadence record(s) from Mongo.")
     }.recover { case exception => logger.warn(s"Rating-cadence hydrate failed: ${exception.getMessage}") }
+}
+
+object MongoRatingCadenceStore {
+  /** Encode a change as a `{at, value}` sub-document, or BSON null when absent. */
+  private[cadence] def encodeChange(change: Option[RatingChange]): BsonValue = change match {
+    case Some(c) => BsonDocument("at" -> BsonDateTime(c.at.toEpochMilli), "value" -> BsonString(c.value))
+    case None    => BsonNull()
+  }
+
+  /** Read a `{at, value}` change sub-document back, or None if absent/null/malformed. */
+  private[cadence] def decodeChange(document: Document, field: String): Option[RatingChange] =
+    document.get(field).filter(_.isDocument).map(_.asDocument()).flatMap { d =>
+      for {
+        at <- Option(d.get("at")).filter(_.isDateTime).map(_.asDateTime().getValue)
+        v  <- Option(d.get("value")).filter(_.isString).map(_.asString().getValue)
+      } yield RatingChange(Instant.ofEpochMilli(at), v)
+    }
+
+  /** Parse one `rating_cadence` Mongo document into `(dedupKey, stats)`, or None
+   *  when the required fields are missing. Shared by the worker's boot hydrate and
+   *  the web cadence reader so they decode the document identically. */
+  def decodeRecord(document: Document): Option[(String, RatingChangeStats)] =
+    for {
+      key     <- Option(document.getString("_id"))
+      started <- Option(document.getDate("windowStartedAt"))
+      checked <- Option(document.getDate("lastCheckedAt"))
+    } yield key -> RatingChangeStats(
+      unchangedStreak = Option(document.getInteger("unchangedStreak")).map(_.intValue).getOrElse(0),
+      windowChecks    = Option(document.getInteger("windowChecks")).map(_.intValue).getOrElse(0),
+      windowChanges   = Option(document.getInteger("windowChanges")).map(_.intValue).getOrElse(0),
+      windowStartedAt = Instant.ofEpochMilli(started.getTime),
+      lastCheckedAt   = Instant.ofEpochMilli(checked.getTime),
+      lastChange      = decodeChange(document, "lastChange"),
+      prevChange      = decodeChange(document, "prevChange")
+    )
+}
+
+/** Read-only view of the `rating_cadence` collection for the dev cadence page
+ *  (the web app). A one-shot full read — the page is dev-only and low-traffic, so
+ *  no mirror. Returns `(dedupKey, stats)` pairs; an unreadable/absent Mongo yields
+ *  an empty list rather than throwing. */
+trait RatingCadenceReader {
+  def all(): Seq[(String, RatingChangeStats)]
+}
+
+object RatingCadenceReader {
+  /** No data — the default where cadence isn't wired (tests, Mongo-less dev). */
+  val empty: RatingCadenceReader = () => Seq.empty
+}
+
+class MongoRatingCadenceReader(db: Option[MongoDatabase]) extends RatingCadenceReader with Logging {
+  private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection("rating_cadence"))
+
+  override def all(): Seq[(String, RatingChangeStats)] = coll match {
+    case None => Seq.empty
+    case Some(c) =>
+      Try(Await.result(c.find().toFuture(), 30.seconds).flatMap(MongoRatingCadenceStore.decodeRecord))
+        .recover { case e => logger.warn(s"Rating-cadence read failed: ${e.getMessage}"); Seq.empty }
+        .getOrElse(Seq.empty)
+  }
 }
