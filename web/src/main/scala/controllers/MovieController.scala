@@ -476,7 +476,10 @@ class MovieController( cc: ControllerComponents,
       implicit val c: City = City.all.head
       // Pulled on demand from Mongo: the web doesn't keep the `movies` model
       // warm, so the corpus dump reads the source rows the read model is
-      // projected from directly.
+      // projected from directly. `findAllForListing` drops each row's per-cinema
+      // `showtimes` (~58% of the corpus bytes, measured) server-side — the table
+      // renders only metadata + counts; the showtimes are fetched per-row on
+      // expand via `/debug/details`.
       //
       // Both `movies` and `pending_movies` are full-collection scans. `/debug`
       // is dev-only, so it is ALWAYS served over the local→prod Mongo tunnel,
@@ -486,7 +489,7 @@ class MovieController( cc: ControllerComponents,
       // latency. The 70 s outer wait sits just above each read's own 60 s
       // timeout so an inner timeout fires (and logs) first.
       implicit val ec: scala.concurrent.ExecutionContext = cc.executionContext
-      val moviesFuture  = Future(movieRepository.findAll())
+      val moviesFuture  = Future(movieRepository.findAllForListing())
       val stagingFuture = Future(stagingRepository.findAll())
       // The same bounded, index-backed queue snapshot `/debug/queue` serves —
       // read here too so the staging rows can be ORDERED by their place in the

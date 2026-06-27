@@ -5,7 +5,7 @@ import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.MovieRecord
 import org.mongodb.scala.bson.{BsonDateTime, BsonNull}
-import org.mongodb.scala.model.{Filters, IndexOptions, Indexes, Sorts, Updates}
+import org.mongodb.scala.model.{Aggregates, Filters, IndexOptions, Indexes, Sorts, Updates}
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import org.bson.conversions.Bson
 import play.api.Logging
@@ -90,6 +90,18 @@ trait MovieRepository {
   def findById(id: String): Option[StoredMovieRecord] =
     findAll().find(row => StoredMovieRecord.idOf(row) == id)
 
+  /** Like [[findAll]] but with each source's `showtimes` list dropped — the
+   *  rows for a LISTING that renders only per-cinema metadata + counts, never
+   *  the showtimes themselves (the dev `/debug` corpus table; showtimes there
+   *  are fetched per-row on expand). Measured on prod, `showtimes` are ~58% of
+   *  the corpus bytes, so omitting them roughly halves what the scan transfers
+   *  and holds. Callers that NEED showtimes (cache hydrate, read-model
+   *  projection) must use [[findAll]]/[[findById]]. The default strips in-process
+   *  via [[MovieRepository.withoutShowtimes]]; `MongoMovieRepository` overrides
+   *  it to strip server-side so the bytes never cross the wire. */
+  def findAllForListing(): Seq[StoredMovieRecord] =
+    findAll().map(MovieRepository.withoutShowtimes)
+
   /** Stream every persisted record through `f`, one row at a time, without
    *  materialising the whole collection on the heap. The default loads via
    *  [[findAll]] — fine for the in-memory store — while `MongoMovieRepository`
@@ -153,6 +165,17 @@ trait MovieRepository {
 
   /** Release any underlying resources. No-op when nothing to release. */
   def close(): Unit
+}
+
+object MovieRepository {
+  /** A copy of `row` with every source's `showtimes` dropped — the shared rule
+   *  behind [[MovieRepository.findAllForListing]]. `MongoMovieRepository` strips
+   *  the same field server-side; this keeps the in-memory store's listing view
+   *  byte-for-byte equivalent so both impls honour the same "no showtimes"
+   *  contract (the listing renders cinema metadata + counts, never showtimes). */
+  def withoutShowtimes(row: StoredMovieRecord): StoredMovieRecord =
+    row.copy(record = row.record.copy(
+      data = row.record.data.view.mapValues(_.copy(showtimes = Seq.empty)).toMap))
 }
 
 /**
@@ -294,6 +317,36 @@ class MongoMovieRepository(
           None
       }.getOrElse(None)
     case None => None
+  }
+
+  /** Strips each source's `showtimes` SERVER-SIDE so they never cross the wire:
+   *  rewrites `sourceData` (a dynamic-cinema-keyed subdocument, so a plain
+   *  field-exclusion projection can't target it) by mapping every value through
+   *  `$objectToArray` → `$filter` out the `showtimes` key → `$arrayToObject`.
+   *  Measured ~58% of the corpus bytes, so this roughly halves the `/debug`
+   *  corpus scan. `$sort` on `_id` stays the FIRST stage (index-backed) for the
+   *  same exactly-once guarantee as [[findAll]]. A missing `showtimes` decodes to
+   *  `Seq.empty` (`MovieCodecs.BackwardCompatibleSourceDataCodec`), so the result
+   *  round-trips through the normal `StoredMovieDto` codec. */
+  override def findAllForListing(): Seq[StoredMovieRecord] = coll match {
+    case Some(c) =>
+      Try {
+        val stripShowtimes = org.bson.Document.parse(
+          """{ "$set": { "sourceData": { "$arrayToObject": { "$map": {
+            |  "input": { "$objectToArray": { "$ifNull": ["$sourceData", {}] } },
+            |  "as": "kv",
+            |  "in": { "k": "$$kv.k", "v": { "$arrayToObject": { "$filter": {
+            |    "input": { "$objectToArray": "$$kv.v" },
+            |    "as": "f",
+            |    "cond": { "$ne": ["$$f.k", "showtimes"] } } } } } } } } } }""".stripMargin)
+        val pipeline = Seq[Bson](Aggregates.sort(Sorts.ascending("_id")), stripShowtimes)
+        Await.result(c.aggregate[StoredMovieDto](pipeline).toFuture(), 60.seconds).map(StoredMovieDto.toDomain)
+      }.recover {
+        case exception: Throwable =>
+          logger.warn(s"MovieRepository.findAllForListing failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+          Seq.empty
+      }.getOrElse(Seq.empty)
+    case None => Seq.empty
   }
 
   /** Page the cursor by `_id` so the caller (the read-model reconcile) never holds

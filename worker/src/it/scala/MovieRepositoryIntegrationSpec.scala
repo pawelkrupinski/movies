@@ -1,6 +1,6 @@
 package integration
 
-import models.{Helios, HeliosOstrowWlkp, MovieRecord, Multikino, Source, SourceData, Tmdb}
+import models.{Helios, HeliosOstrowWlkp, MovieRecord, Multikino, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -115,6 +115,34 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     e.tmdbId            shouldBe Some(424242)
     e.metacriticUrl     shouldBe Some("https://www.metacritic.com/movie/integration-test")
     e.rottenTomatoesUrl shouldBe Some("https://www.rottentomatoes.com/m/integration_test")
+  }
+
+  // `findAllForListing` is the /debug corpus-table read: it strips each source's
+  // `showtimes` SERVER-SIDE (an aggregation, since `sourceData`'s dynamic cinema
+  // keys defy a plain field-exclusion projection) so the ~58%-of-bytes showtimes
+  // never cross the wire. This proves the aggregation strips them yet leaves the
+  // rest intact AND still decodes through the normal codec — while `findById`
+  // (the lazy per-row details path) keeps the showtimes.
+  it should "drop showtimes in findAllForListing but keep them in findById" in {
+    import services.movies.StoredMovieRecord
+    val title = "__integration-test-listing__"
+    val year  = Some(1902)
+    val slot  = SourceData(
+      title     = Some("Listing Sentinel"),
+      showtimes = Seq(
+        Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 30), Some("https://book/it-1")),
+        Showtime(java.time.LocalDateTime.of(2026, 6, 1, 21, 0),  Some("https://book/it-2"))))
+    repository.upsert(title, year, MovieRecord(imdbId = Some("tt0000010"), data = Map[Source, SourceData](Multikino -> slot)))
+
+    val listed = repository.findAllForListing().find(_.record.imdbId.contains("tt0000010"))
+    listed should not be empty
+    val lslot = listed.get.record.cinemaData(Multikino)
+    lslot.showtimes shouldBe empty                 // stripped server-side…
+    lslot.title shouldBe Some("Listing Sentinel")  // …but the rest of the slot survives
+
+    // The full-fidelity reads still carry the showtimes (the /debug details path).
+    val full = repository.findById(StoredMovieRecord.idOf(listed.get))
+    full.flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes.size) shouldBe Some(2)
   }
 
   // The /debug live view needs the change stream to surface DELETEs (a merge

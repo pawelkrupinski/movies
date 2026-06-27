@@ -276,6 +276,10 @@
     th.addEventListener('click', () => sortBy(th.dataset.key, th.dataset.type, th));
   });
 
+  // One shared collator for every string-column sort — building a fresh
+  // Intl.Collator per click is needless work (the locale/options never change).
+  const strCollator = new Intl.Collator();
+
   function sortBy(key, type, th) {
     if (!key) return;
     const prevKey = table.dataset.sortKey;
@@ -288,7 +292,7 @@
     // why the heavy details rows are parked off-DOM (above) and only the light
     // data rows are moved here. So just compare against the data-* keys directly.
     const rows = Array.from(sortBody.querySelectorAll('tr.data'));
-    const collator = type === 'num' ? null : new Intl.Collator();
+    const collator = type === 'num' ? null : strCollator;
     rows.sort((a, b) => {
       const av = a.dataset[key] || '', bv = b.dataset[key] || '';
       if (type === 'num') {
