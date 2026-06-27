@@ -1,5 +1,7 @@
 package services.titlerules
 
+import java.util.concurrent.ConcurrentHashMap
+
 /** An immutable, compiled snapshot of all title rules, grouped by tier and
  *  pre-sorted so the hot normalisation path is a fold over a small list of
  *  pre-compiled regexes. `TitleNormalizer` holds one of these in a swappable
@@ -57,10 +59,29 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
 
   private def fold(rs: Seq[TitleRule], in: String): String = rs.foldLeft(in)((s, r) => r(s))
 
+  // Per-title memo caches. These tier folds are pure functions over an IMMUTABLE
+  // rule set, but the pipeline normalises the same ~1k corpus titles millions of
+  // times (hydrate → merge → settle → display), and since ExtraTitleRules merged
+  // into production the structural tier grew ~5× (≈36 → ≈180 rules), so each
+  // uncached fold got proportionally heavier. Memoising collapses the work to one
+  // fold per distinct (title) — caching keeps title normalisation off the
+  // worker's CPU-credit budget and roughly halved the e2e corpus pipeline.
+  //
+  // Lifecycle is automatic: a rule edit builds a brand-new TitleRuleSet (see
+  // TitleNormalizer.installRules / withRules), so the caches die with the stale
+  // set — an immutable set always yields stable results, never staleness.
+  // ConcurrentHashMap for thread-safety (TitleNormalizer is shared, lock-free).
+  private val structuralCache      = new ConcurrentHashMap[String, String]()
+  private val canonicalCache       = new ConcurrentHashMap[String, String]()
+  private val perCinemaCache       = new ConcurrentHashMap[(String, String), String]()
+  private val programmePrefixCache = new ConcurrentHashMap[String, Option[String]]()
+  private val bannerBoundaryCache  = new ConcurrentHashMap[String, Option[Int]]()
+
   /** `apiQuery` tier — the full decoration + programme/access/event strip, then
    *  trim. Folded in rule order (former Search strips are numbered to run before
    *  the former structural strips, preserving the legacy composition). */
-  def structural(t: String): String = fold(structuralRules, t).trim
+  def structural(t: String): String =
+    structuralCache.computeIfAbsent(t, k => fold(structuralRules, k).trim)
 
   /** Alias of [[structural]] for `apiQuery`/`search` call sites after the tier merge. */
   def search(t: String): String = structural(t)
@@ -72,23 +93,25 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
    *  displayed title — it only matters for external lookups (`searchTitle` /
    *  `apiQuery`). So two listings merge only when they resolve to the same key
    *  on their own. */
-  def canonical(t: String): String = fold(canonicalRules, t.trim)
+  def canonical(t: String): String =
+    canonicalCache.computeIfAbsent(t, k => fold(canonicalRules, k.trim))
 
   /** Per-cinema raw → clean cleanup (the old per-client `cleanTitle`). Unknown
    *  cinema → identity. NO implicit trim — clients that trimmed carry an explicit
    *  trim rule, since some legacy clients (Helios, Cinema City, …) deliberately
    *  did NOT trim and preserved trailing whitespace. */
   def perCinema(cinemaId: String, raw: String): String =
-    fold(perCinemaRules.getOrElse(cinemaId, Nil), raw)
+    perCinemaCache.computeIfAbsent((cinemaId, raw), k => fold(perCinemaRules.getOrElse(k._1, Nil), k._2))
 
   /** The programme-prefix banner at the start of `title`, including the trailing
    *  ": " delimiter, when one of the `tag = "programmePrefix"` rules matches at
    *  the start. None otherwise. The tagged subset of [[leadingBannerBoundary]]. */
   def programmePrefix(title: String): Option[String] =
-    structuralRules.iterator
-      .filter(_.tag.contains("programmePrefix"))
-      .flatMap(r => r.compiled.flatMap(_.findPrefixMatchOf(title)).map(_.matched))
-      .find(_.nonEmpty)
+    programmePrefixCache.computeIfAbsent(title, k =>
+      structuralRules.iterator
+        .filter(_.tag.contains("programmePrefix"))
+        .flatMap(r => r.compiled.flatMap(_.findPrefixMatchOf(k)).map(_.matched))
+        .find(_.nonEmpty))
 
   /** The end offset of the longest leading banner on `title` matched by ANY
    *  enabled `^`-anchored rule in the lookup tier (programme prefixes, the Cykl
@@ -97,12 +120,13 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
    *  old Rialto-only, single-prefix casing to every prefix rule. `None` when no
    *  prefix rule matches at the start. */
   def leadingBannerBoundary(title: String): Option[Int] =
-    structuralRules.iterator
-      .filter(r => r.enabled && r.isPrefixAnchored)
-      .flatMap(r => r.compiled.flatMap(_.findPrefixMatchOf(title)))
-      .map(_.end)
-      .filter(_ > 0)
-      .maxOption
+    bannerBoundaryCache.computeIfAbsent(title, k =>
+      structuralRules.iterator
+        .filter(r => r.enabled && r.isPrefixAnchored)
+        .flatMap(r => r.compiled.flatMap(_.findPrefixMatchOf(k)))
+        .map(_.end)
+        .filter(_ > 0)
+        .maxOption)
 
   /** Cinema ids that have at least one per-cinema rule — used by the backfill to
    *  scope which records to re-key after a per-cinema edit. */

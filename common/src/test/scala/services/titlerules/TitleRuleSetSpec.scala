@@ -120,6 +120,30 @@ class TitleRuleSetSpec extends AnyFlatSpec with Matchers {
     TitleRuleSet.empty.perCinema("anything", "Untouched - X") shouldBe "Untouched - X"
   }
 
+  // The tier folds are memoised per-instance for the hot path. The one way that
+  // can go wrong is a cache key that drops `cinemaId`: two cinemas with DIFFERENT
+  // rules but the SAME raw title must NOT collide on a raw-only key. Same raw,
+  // different cinema → each keeps its own rule's result.
+  "the per-cinema memo cache" should "key on (cinemaId, raw), not raw alone" in {
+    val rs = TitleRuleSet(Seq(
+      rule("a", PerCinema, "^Gala: ", "", cinemaId = Some("cc")),
+      rule("b", PerCinema, " - wieczór$", "", cinemaId = Some("bok"))
+    ))
+    rs.perCinema("cc",  "Gala: Wicked - wieczór") shouldBe "Wicked - wieczór" // only cc's strip
+    rs.perCinema("bok", "Gala: Wicked - wieczór") shouldBe "Gala: Wicked"     // only bok's strip
+    // Re-query in the opposite order — a collision would now serve the wrong cached value.
+    rs.perCinema("bok", "Gala: Wicked - wieczór") shouldBe "Gala: Wicked"
+    rs.perCinema("cc",  "Gala: Wicked - wieczór") shouldBe "Wicked - wieczór"
+  }
+
+  it should "return a stable result on repeated calls (cache hit == cold value)" in {
+    val rs = TitleRuleSet(Seq(rule("strip", GlobalStructural, "(?i)\\s*-\\s*restored$", "")))
+    val cold = rs.structural("Top Gun - Restored")
+    cold shouldBe "Top Gun"
+    rs.structural("Top Gun - Restored") shouldBe cold   // second call served from cache
+    rs.structural("Top Gun - Restored") shouldBe cold
+  }
+
   // ── transientAffected: the per-rule "affected films" preview ───────────────
   private val previewSet = TitleRuleSet(Seq(
     rule("g-restored", GlobalStructural, "(?i)\\s*-\\s*restored$", ""),
