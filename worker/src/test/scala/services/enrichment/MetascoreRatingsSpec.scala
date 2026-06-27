@@ -15,15 +15,18 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
 
   // ── Scaffolding ─────────────────────────────────────────────────────────────
 
+  // An MC movie page carrying `score` in its JSON-LD aggregateRating.
+  private def scorePage(score: Int): String =
+    s"""<html><head><script type="application/ld+json">
+       |{"@type":"Movie","aggregateRating":{"@type":"AggregateRating","ratingValue":$score,"bestRating":100,"worstRating":0,"reviewCount":10}}
+       |</script></head><body></body></html>""".stripMargin
+
   // Stub MC client that maps URL → JSON-LD HTML and lets the real parser run.
   private def mcStub(scores: Map[String, Option[Int]]): MetacriticClient = {
     new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         scores.get(url) match {
-          case Some(Some(s)) =>
-            s"""<html><head><script type="application/ld+json">
-               |{"@type":"Movie","aggregateRating":{"@type":"AggregateRating","ratingValue":$s,"bestRating":100,"worstRating":0,"reviewCount":10}}
-               |</script></head><body></body></html>""".stripMargin
+          case Some(Some(s)) => scorePage(s)
           case Some(None) =>
             // Page exists but no aggregated score yet — JSON-LD omits aggregateRating.
             """<html><head><script type="application/ld+json">{"@type":"Movie"}</script></head><body></body></html>"""
@@ -197,45 +200,76 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     row.metascore     shouldBe Some(64)
   }
 
+  // ── no redundant re-fetch on discovery ───────────────────────────────────────
+
+  // Counts every GET. Returns a scored MC page for ANY url — so the only thing
+  // it measures is HOW MANY times the page is fetched.
+  private def countingMc(gets: java.util.concurrent.atomic.AtomicInteger): MetacriticClient =
+    new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String = { gets.incrementAndGet(); scorePage(70) }
+    })
+
+  "refreshOneSync (URL discovery)" should
+    "fetch the movie page only once — the slug-probe body carries the score" in {
+    val gets = new java.util.concurrent.atomic.AtomicInteger(0)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(
+      ("Foo", Some(2024), MovieRecord(tmdbId = Some(42)))   // no metacriticUrl → discovery
+    )))
+    val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), countingMc(gets))
+
+    rates.refreshOneSync(cache.keyOf("Foo", Some(2024)))
+
+    // One GET total: the slug probe doubles as the score fetch. Before this
+    // optimisation the same flow fetched /movie/foo twice — once to validate
+    // the slug (200), then again to read the Metascore.
+    gets.get()                                                       shouldBe 1
+    cache.get(cache.keyOf("Foo", Some(2024))).flatMap(_.metascore)  shouldBe Some(70)
+  }
+
   // ── hint-keyed url cache ─────────────────────────────────────────────────────
 
-  // Same shape as the RT cache test: two rows sharing the MC hints (same
-  // cleanTitle, year None via the apiKey-less TMDB) but distinct tmdbIds keep
-  // them as separate rows. /movie/foo is probed by discovery and scraped for
-  // the score; the cache saves the second row's probe.
-  private def twoFooRows() = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(
-    ("Foo", Some(2024), MovieRecord(tmdbId = Some(42))),
-    ("Foo", Some(2025), MovieRecord(tmdbId = Some(99)))
+  // Two rows sharing the MC hints (same cleanTitle, year None via the
+  // apiKey-less TMDB) but distinct tmdbIds keep them as separate rows. "The
+  // Sting" slugs to two candidates: /movie/the-sting (404) then /movie/sting
+  // (200). Discovery therefore costs two probes; the link cache lets the second
+  // row reuse the resolved /movie/sting and pay only the score fetch.
+  private def twoStingRows() = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(
+    ("The Sting", Some(2024), MovieRecord(tmdbId = Some(42))),
+    ("The Sting", Some(2025), MovieRecord(tmdbId = Some(99)))
   )))
-  private def countingMc(gets: java.util.concurrent.atomic.AtomicInteger): MetacriticClient =
+  private val TheSting = "https://www.metacritic.com/movie/the-sting"
+  private val Sting    = "https://www.metacritic.com/movie/sting"
+  private def stingMc(gets: java.util.concurrent.atomic.AtomicInteger): MetacriticClient =
     new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String = {
         gets.incrementAndGet()
-        """<html><head><script type="application/ld+json">
-          |{"@type":"Movie","aggregateRating":{"@type":"AggregateRating","ratingValue":70,"bestRating":100,"worstRating":0,"reviewCount":10}}
-          |</script></head><body></body></html>""".stripMargin
+        if (url == TheSting) throw new RuntimeException("HTTP 404")
+        else scorePage(70)   // /movie/sting (and any score re-fetch of it)
       }
     })
 
-  "the MC url cache" should "probe the slug once across two rows sharing the hints" in {
+  "the MC url cache" should "resolve the slug once across two rows sharing the hints" in {
     val gets = new java.util.concurrent.atomic.AtomicInteger(0)
-    val cache = twoFooRows()
-    val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), countingMc(gets),
+    val cache = twoStingRows()
+    val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), stingMc(gets),
       new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore()))
 
-    rates.refreshOneSync(cache.keyOf("Foo", Some(2024)))
-    rates.refreshOneSync(cache.keyOf("Foo", Some(2025)))
+    rates.refreshOneSync(cache.keyOf("The Sting", Some(2024)))
+    rates.refreshOneSync(cache.keyOf("The Sting", Some(2025)))
+    // Row 1: probe the-sting (404) + probe sting (200, score read off it) = 2.
+    // Row 2: cache hit on the URL → only the score fetch = 1.  Total 3.
     gets.get() shouldBe 3
   }
 
-  it should "probe again for each row without the cache (control)" in {
+  it should "resolve again for each row without the cache (control)" in {
     val gets = new java.util.concurrent.atomic.AtomicInteger(0)
-    val cache = twoFooRows()
-    val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), countingMc(gets),
+    val cache = twoStingRows()
+    val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), stingMc(gets),
       services.resolution.ResolutionCache.passthrough)
 
-    rates.refreshOneSync(cache.keyOf("Foo", Some(2024)))
-    rates.refreshOneSync(cache.keyOf("Foo", Some(2025)))
+    rates.refreshOneSync(cache.keyOf("The Sting", Some(2024)))
+    rates.refreshOneSync(cache.keyOf("The Sting", Some(2025)))
+    // No cache → each row pays both probes (the 200 probe reads the score). 2×2.
     gets.get() shouldBe 4
   }
 

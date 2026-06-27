@@ -39,20 +39,25 @@ class MetascoreRatings(
   //   - URL already known → cheap: scrape metascore, write back if changed.
   //   - URL missing       → expensive: probe MC slug variants (with TMDB
   //     details for English title + year disambiguation), write the URL,
-  //     then scrape the metascore.
+  //     then settle the metascore.
   // Per-row failures are swallowed; the next refresh tries again.
   protected def refreshOne(key: CacheKey): Unit =
     cache.get(key).foreach { e =>
-      e.metacriticUrl.orElse(resolveAndPersistUrl(key, e)) match {
+      e.metacriticUrl match {
         case Some(url) => refreshScoreFromUrl(key, e, url)
-        case None      => logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no URL match")
+        case None =>
+          resolveAndPersistUrl(key, e) match {
+            case Some(resolved) => settleScore(key, resolved)
+            case None           => logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no URL match")
+          }
       }
     }
 
   // Probe MC for a canonical /movie/ URL using TMDB's title data; write it
-  // back to the cache when found. Returns the new URL (or None if MC didn't
-  // index the film).
-  private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Option[String] =
+  // back to the cache when found. Returns the resolution (URL + any Metascore
+  // the slug-probe fetch already parsed off the page), or None if MC didn't
+  // index the film.
+  private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Option[MetacriticClient.Resolved] =
     e.tmdbId.flatMap { tmdbId =>
       // `apiQuery` strips accessibility-programme decoration so an "Kino
       // bez barier: Arco (AD)" row queries MC as just "Arco". Cache key
@@ -74,34 +79,54 @@ class MetascoreRatings(
         .filterNot(_.equalsIgnoreCase(linkTitle))
         .filterNot(t => mcFallback.exists(_.equalsIgnoreCase(t)))
         .filterNot(t => englishTitle.exists(_.equalsIgnoreCase(t)))
-      // Cache the whole slug-probe chain keyed by the primary identity, so a
-      // cache hit skips the MC HTTP probes entirely (hits-only).
-      val resolved = mcLinkCache.getOrResolve(ResolutionKeys.mc(linkTitle, mcFallback, year)) {
-        Try(metacritic.urlFor(linkTitle, mcFallback, year)).toOption.flatten
-          .orElse(englishTitle.flatMap(t => Try(metacritic.urlFor(t, None, year)).toOption.flatten))
-          .orElse(usTitle.flatMap(t => Try(metacritic.urlFor(t, None, year)).toOption.flatten))
+      // The link cache stores the URL only (the score is read fresh each
+      // refresh). We thread the Metascore the resolving probe already parsed
+      // out-of-band via `freshScore`: it's set ONLY when the resolve closure
+      // actually ran — i.e. on a cache MISS, where we just fetched the movie
+      // page and can hand the score back so the caller skips a redundant
+      // re-fetch. On a cache HIT the closure is skipped, `freshScore` stays
+      // None, and the caller reads the score via `metascoreFor`.
+      var freshScore: Option[Int] = None
+      val url = mcLinkCache.getOrResolve(ResolutionKeys.mc(linkTitle, mcFallback, year)) {
+        val resolved = Try(metacritic.resolve(linkTitle, mcFallback, year)).toOption.flatten
+          .orElse(englishTitle.flatMap(t => Try(metacritic.resolve(t, None, year)).toOption.flatten))
+          .orElse(usTitle.flatMap(t => Try(metacritic.resolve(t, None, year)).toOption.flatten))
+        freshScore = resolved.flatMap(_.metascore)
+        resolved.map(_.url)
       }
 
-      resolved.foreach { url =>
-        logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → URL discovered $url")
-        cache.putIfPresent(key, _.copy(metacriticUrl = Some(url)))
+      url.map { u =>
+        logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → URL discovered $u")
+        cache.putIfPresent(key, _.copy(metacriticUrl = Some(u)))
+        MetacriticClient.Resolved(u, freshScore)
       }
-      resolved
     }
 
-  private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Unit = {
-    val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
+  // Settle a freshly-discovered row's score: use the Metascore the slug probe
+  // already parsed when present (no extra fetch), else read it from the URL.
+  private def settleScore(key: CacheKey, resolved: MetacriticClient.Resolved): Unit =
+    resolved.metascore match {
+      case Some(score) => cache.get(key).foreach(applyScore(key, _, resolved.url, score))
+      // No score off the probe (search-fallback URL, link-cache hit, or a page
+      // with no aggregateRating) — read it from the resolved URL. Re-read the
+      // post-write row so the score copy doesn't clobber the URL we just wrote.
+      case None        => cache.get(key).foreach(refreshScoreFromUrl(key, _, resolved.url))
+    }
+
+  private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Unit =
     Try(metacritic.metascoreFor(url)).toOption.flatten match {
-      case Some(score) =>
-        logger.info(s"Metacritic: $label $url → metascore $score" +
-          (if (e.metascore.contains(score)) " (unchanged)" else s" (was ${e.metascore.getOrElse("—")})"))
-        // The updater receives the live cached row — that's the merge point
-        // for both the URL we may have just written and any other listener's
-        // concurrent updates. No risk of clobbering.
-        if (!e.metascore.contains(score)) cache.putIfPresent(key, _.copy(metascore = Some(score)))
-      case None =>
-        logger.info(s"Metacritic: $label $url → no metascore on page")
+      case Some(score) => applyScore(key, e, url, score)
+      case None        => logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) $url → no metascore on page")
     }
+
+  // Write a known score back, skipping the no-op when it's unchanged. The
+  // updater receives the live cached row — that's the merge point for both the
+  // URL we may have just written and any other listener's concurrent updates.
+  private def applyScore(key: CacheKey, e: models.MovieRecord, url: String, score: Int): Unit = {
+    val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
+    logger.info(s"Metacritic: $label $url → metascore $score" +
+      (if (e.metascore.contains(score)) " (unchanged)" else s" (was ${e.metascore.getOrElse("—")})"))
+    if (!e.metascore.contains(score)) cache.putIfPresent(key, _.copy(metascore = Some(score)))
   }
 
   // ── Full-corpus walk ───────────────────────────────────────────────────────
@@ -135,10 +160,9 @@ class MetascoreRatings(
     }
 
     BoundedParallel.foreach("Metascore-refresh-discover", missingUrl, refreshConcurrency) { case (key, enrichment) =>
-      resolveAndPersistUrl(key, enrichment).foreach { url =>
+      resolveAndPersistUrl(key, enrichment).foreach { resolved =>
         urlDiscovered.incrementAndGet()
-        // Use the post-write row so the score copy doesn't clobber the URL.
-        cache.get(key).foreach(refreshScoreFromUrl(key, _, url))
+        settleScore(key, resolved)
       }
     }
 

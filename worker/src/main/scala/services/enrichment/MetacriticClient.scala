@@ -38,22 +38,45 @@ class MetacriticClient(http: HttpFetch) {
     title:    String,
     fallback: Option[String] = None,
     year:     Option[Int]    = None
-  ): Option[String] = {
+  ): Option[String] = resolve(title, fallback, year).map(_.url)
+
+  /** Like [[urlFor]] but also carries the page's Metascore WHEN the resolving
+   *  fetch already had the movie page in hand — the slug-probe path GETs the
+   *  movie page to validate it (200), so it parses the score from that same
+   *  body and the caller can skip a redundant second GET to read the score.
+   *
+   *  `metascore` is None when the URL was reached via the search-scrape
+   *  fallback (which fetched the SEARCH page, not the movie page) or when the
+   *  movie page carried no aggregated score — in both cases the caller must
+   *  read the score separately via [[metascoreFor]]. */
+  def resolve(
+    title:    String,
+    fallback: Option[String] = None,
+    year:     Option[Int]    = None
+  ): Option[Resolved] = {
     val effectiveFallback = fallback.filterNot(_.equalsIgnoreCase(title))
-    canonicalUrl(title)
-      .orElse(effectiveFallback.flatMap(canonicalUrl))
-      .orElse(searchAndPickBest(title, year))
-      .orElse(effectiveFallback.flatMap(t => searchAndPickBest(t, year)))
+    canonicalResolve(title)
+      .orElse(effectiveFallback.flatMap(canonicalResolve))
+      .orElse(searchAndPickBest(title, year).map(Resolved(_, None)))
+      .orElse(effectiveFallback.flatMap(t => searchAndPickBest(t, year)).map(Resolved(_, None)))
   }
 
   /** Canonical URL ONLY if any candidate returns 200; otherwise None. Tries
    *  the primary slug first and a leading-article-stripped variant second
    *  (some titles index without the article on Metacritic).
    */
-  def canonicalUrl(title: String): Option[String] =
+  def canonicalUrl(title: String): Option[String] = canonicalResolve(title).map(_.url)
+
+  /** Like [[canonicalUrl]] but keeps the validated page's parsed Metascore so
+   *  the caller need not re-fetch the same page to read it. The first candidate
+   *  slug that returns 200 wins; its body is parsed for `aggregateRating` on the
+   *  spot (None when the page has no score yet). Lazy: a 200 on the primary slug
+   *  short-circuits before the de-articled variant is probed. */
+  def canonicalResolve(title: String): Option[Resolved] =
     candidateSlugs(title).iterator
       .map(s => s"$Site/movie/$s")
-      .find(url => Try(http.get(url)).isSuccess)
+      .flatMap(url => Try(http.get(url)).toOption.map(body => Resolved(url, MetacriticClient.parseMetascore(body))))
+      .nextOption()
 
   def candidateSlugs(title: String): Seq[String] = {
     val primary = MetacriticClient.slugify(title)
@@ -154,6 +177,13 @@ object MetacriticClient {
   private val YearRegex = "\\b(19\\d{2}|20\\d{2})\\b".r
 
   case class SearchHit(slug: String, title: String, year: Option[Int])
+
+  /** A resolved Metacritic movie page, plus its Metascore when the resolving
+   *  fetch already downloaded the movie page (the slug probe validates the page
+   *  with a GET, so its body yields the score for free). `metascore` is None
+   *  when the page was reached via the search fallback or carried no score —
+   *  see [[MetacriticClient.resolve]]. */
+  case class Resolved(url: String, metascore: Option[Int])
 
   /**
    * Metacritic-style slug: lowercase, accents stripped, apostrophes dropped
