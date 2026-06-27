@@ -59,6 +59,30 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
     apiKey = Some("stub")
   )
 
+  private val WildePersonId = 47634 // Olivia Wilde
+
+  // The REAL prod ambiguity: a "Zaproszenie" search returns BOTH same-title
+  // films — the 2022 horror "Zaproszenie" (dir. Jessica Thompson) AND the 2026
+  // Olivia Wilde film "Zaproszenie." (note the trailing period). With two hits
+  // the director-less singleton rule refuses; only the director hint can
+  // disambiguate, via a person-credits walk. `/search/person` → Olivia Wilde's
+  // id; her `/movie_credits` lists 950028 as a Directing credit.
+  private def ambiguousTmdb(): TmdbClient = new TmdbClient(
+    http = new StubFetch(Map(
+      "/search/movie" ->
+        s"""{"results":[
+           |  {"id":$Sibling2022,"title":"Zaproszenie","original_title":"The Invitation","release_date":"2022-08-24","popularity":30.0},
+           |  {"id":$Invite2026,"title":"Zaproszenie.","original_title":"The Invite","release_date":"2026-06-25","popularity":4.3}
+           |]}""".stripMargin,
+      "/search/person" ->
+        s"""{"results":[{"id":$WildePersonId,"name":"Olivia Wilde","known_for_department":"Directing"}]}""",
+      s"/person/$WildePersonId/movie_credits" ->
+        s"""{"crew":[{"id":$Invite2026,"title":"Zaproszenie.","original_title":"The Invite","release_date":"2026-06-25","department":"Directing","job":"Director","popularity":4.3}]}""",
+      s"/movie/$Invite2026/external_ids" -> s"""{"id":$Invite2026,"imdb_id":"$InviteImdb"}"""
+    )),
+    apiKey = Some("stub")
+  )
+
   // A resolved 2022 sibling + an unresolved 2026 row that carries its own
   // Helios cinema slot — the exact prod shape read off `movies`.
   private def seededRepository(): InMemoryMovieRepository = new InMemoryMovieRepository(Seq(
@@ -110,5 +134,57 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
     service.stop()
 
     cache.get(cache.keyOf(Title, Some(2026))).flatMap(_.tmdbId) shouldBe None
+  }
+
+  // ---------------------------------------------------------------------------
+  // Heal for the mis-keyed `zaproszenie|2022` row: its 85 cinema slots are all
+  // the 2026 Olivia Wilde film, folded onto the wrong id because the row was
+  // resolved (long ago, stuck via the stored-tmdbId gate) to the 2022 horror.
+  // The heal is to DELETE that source row and let the slots re-scrape. These
+  // two specs prove the re-scrape converges on 950028 and can never recreate a
+  // 2022 row — modelling the slots that come back with NO year (every prod slot
+  // on the row carries `year=undefined`) against the REAL ambiguous search.
+  // ---------------------------------------------------------------------------
+
+  "a re-scrape after deleting the mis-keyed row" should
+    "resolve the director-bearing slots to the 2026 film via director-walk, despite an ambiguous same-title search" in {
+    // The re-scraped Multikino slot: title "Zaproszenie", director "Olivia
+    // Wilde", NO year — landing in a year-less row exactly as prod stores it.
+    val repository = new InMemoryMovieRepository(Seq(
+      (Title, None, MovieRecord(data = Map[Source, SourceData](
+        Helios -> SourceData(title = Some(Title), director = Seq("Olivia Wilde")))))
+    ))
+    val cache   = new CaffeineMovieCache(repository)
+    val bus     = new InProcessEventBus()
+    val service = new MovieService(cache, bus, ambiguousTmdb())
+    bus.subscribe(service.onMovieDetailsComplete)
+
+    bus.publish(MovieDetailsComplete(Title, None, originalTitle = None, director = Some("Olivia Wilde")))
+    service.stop()
+
+    // Lands on the 2026 film + its IMDb id — NOT the 2022 horror.
+    val resolved = cache.entries.find { case (_, e) => e.tmdbId.contains(Invite2026) }.map(_._2)
+    resolved.flatMap(_.imdbId) shouldBe Some(InviteImdb)
+    cache.entries.exists { case (_, e) => e.tmdbId.contains(Sibling2022) } shouldBe false
+  }
+
+  it should "refuse a director-less, year-less re-scrape rather than fall back to the 2022 horror" in {
+    // The director-less art-house slots (Kino MOKiS etc.): title only, no
+    // director, no year. With two same-title hits the singleton rule refuses,
+    // so no tmdbId is stamped — the slots wait to fold onto the resolved 2026
+    // row and can NEVER stamp 830788 and recreate `zaproszenie|2022`.
+    val repository = new InMemoryMovieRepository(Seq(
+      (Title, None, MovieRecord(data = Map[Source, SourceData](
+        Helios -> SourceData(title = Some(Title)))))
+    ))
+    val cache   = new CaffeineMovieCache(repository)
+    val bus     = new InProcessEventBus()
+    val service = new MovieService(cache, bus, ambiguousTmdb())
+    bus.subscribe(service.onMovieDetailsComplete)
+
+    bus.publish(MovieDetailsComplete(Title, None, None, None))
+    service.stop()
+
+    cache.entries.exists { case (_, e) => e.tmdbId.contains(Sibling2022) } shouldBe false
   }
 }
