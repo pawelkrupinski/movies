@@ -28,6 +28,14 @@ val hasReleaseSigning = releaseStorePath?.exists() == true
 android {
     namespace = "pl.kinowo"
     compileSdk = 37
+    // Pinned so the release `ndk { debugSymbolLevel }` extraction below actually
+    // runs: AGP won't auto-download an NDK, and if the installed one doesn't
+    // match the version AGP wants it silently skips symbol extraction (the AAB
+    // ships without native symbols and Play warns). CI installs this exact
+    // version via setup-android `packages`. Only release/tuneRelease/releaseFast
+    // need it (debug's debugSymbolLevel is NONE), so a plain debug build on a
+    // machine without this NDK is unaffected.
+    ndkVersion = "29.0.14206865"
 
     defaultConfig {
         // The Play Store package name. Distinct from `namespace` (the Kotlin
@@ -81,6 +89,15 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Embed native debug symbols (for the prebuilt .so's our deps pull
+            // in — androidx.graphics.path, datastore) into the AAB so Play can
+            // symbolicate native crashes/ANRs. Without this Play warns "you've
+            // not uploaded debug symbols". FULL keeps line numbers too; the
+            // libs are tiny so the size cost is negligible. Inherited by
+            // tuneRelease / releaseFast via their initWith(release).
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
             // The public / Play build never exposes the tweak screen.
             buildConfigField("boolean", "ENABLE_TUNING", "false")
             if (hasReleaseSigning) {

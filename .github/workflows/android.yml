@@ -74,7 +74,11 @@ jobs:
             - name: Set up Android SDK
               uses: android-actions/setup-android@v3
               with:
-                  packages: platform-tools
+                  # platform-tools only (NOT the default `tools`, which drags in
+                  # the flaky emulator download); ndk so the release build can
+                  # extract native debug symbols into the AAB — must match
+                  # `ndkVersion` in app/build.gradle.kts.
+                  packages: platform-tools ndk;29.0.14206865
 
             # Caches ~/.gradle (wrapper dist + dependency + build caches),
             # keyed on the build scripts and wrapper version.
