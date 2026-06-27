@@ -33,7 +33,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // re-keyed sentinel — but `imdbId` never changes.
   private val sentinelImdbIds = Seq(
     "tt0000001", "tt0000002", "tt0000003", "tt0000004",
-    "tt0000005", "tt0000010", "tt0000077", "tt0000099"
+    "tt0000005", "tt0000010", "tt0000011", "tt0000077", "tt0000099"
   )
 
   // Delete every sentinel this spec could have written. Matches BOTH the
@@ -132,16 +132,16 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       showtimes = Seq(
         Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 30), Some("https://book/it-1")),
         Showtime(java.time.LocalDateTime.of(2026, 6, 1, 21, 0),  Some("https://book/it-2"))))
-    repository.upsert(title, year, MovieRecord(imdbId = Some("tt0000010"), data = Map[Source, SourceData](Multikino -> slot)))
+    repository.upsert(title, year, MovieRecord(imdbId = Some("tt0000011"), data = Map[Source, SourceData](Multikino -> slot)))
 
-    val listed = repository.findAllForListing().find(_.record.imdbId.contains("tt0000010"))
+    val listed = repository.findAllForListing().find(_.record.imdbId.contains("tt0000011"))
     listed should not be empty
     val lslot = listed.get.record.cinemaData(Multikino)
     lslot.showtimes shouldBe empty                 // stripped server-side…
     lslot.title shouldBe Some("Listing Sentinel")  // …but the rest of the slot survives
 
     // The full-fidelity reads still carry the showtimes (the /debug details path).
-    val full = repository.findById(StoredMovieRecord.idOf(listed.get))
+    val full = repository.findById(StoredMovieRecord.idOf(listed.get)) // imdbId tt0000011 — distinct from the casededupe sentinel
     full.flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes.size) shouldBe Some(2)
   }
 
