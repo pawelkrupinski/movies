@@ -12,6 +12,7 @@
     pageUrl         = pageUrl,
     fbAppId         = fbAppId,
   )
+  @_jsonLd(controllers.StructuredData.cityPage(pageUrl, city, films))
   @_errorTracking()
   @_analytics()
   @_sharedStyles(devMode)

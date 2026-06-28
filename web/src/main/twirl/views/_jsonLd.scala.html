@@ -1,0 +1,7 @@
+@(json: String)
+@* schema.org JSON-LD block. `json` is built by `controllers.StructuredData`,
+   which already escapes `<` to its `<` JSON unicode escape so an embedded
+   `</script>` in a synopsis can't break out — safe to drop in verbatim via @Html. *@
+@if(json.nonEmpty) {
+<script type="application/ld+json">@Html(json)</script>
+}
