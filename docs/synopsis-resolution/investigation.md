@@ -6,9 +6,43 @@ An investigation into how many currently-unresolved films in the Kinowo corpus
 could be linked to TMDB / IMDb / Filmweb using **fuzzy synopsis matching**,
 gated on an independent corroborator (never resolved on plot text alone).
 
-The investigation is complete. The 142 accepted resolutions are checked-in here
-in `accepts.jsonl`. Phase 2 — wiring these into the production pipeline — is
-not yet built.
+The investigation is complete. Phase 2 — wiring these into the production
+pipeline — is not yet built.
+
+---
+
+## 2026-06-28 refresh
+
+`accepts.jsonl` now holds the **current** corroborated resolutions (18), not the
+original 2026-06-25 snapshot (142, preserved as `accepts-2026-06-25.jsonl`).
+
+Why the re-run: verifying the 142 against live prod showed it had decayed badly —
+only 9 rows were still open gaps, 11 had since resolved through the normal
+pipeline, and **122 no longer existed in the corpus** under their snapshot key
+(they were transient banner / festival / dubbing / repertory keys that folded
+away). Two framing bugs were also found and fixed:
+
+- **IMDb mode was rating-gated, not id-gated.** It selected rows whose IMDb
+  *rating* was empty, which swept in unreleased films that already had an
+  `imdbId` (e.g. *Evil Dead Burn 2026*, `tt31170389`). It now selects rows whose
+  `imdbId` is actually missing (`imdbId.isEmpty && tmdbId.nonEmpty`).
+- **Same-director-sibling false positive.** Director-only corroboration matched
+  *Trzy kolory: Czerwony* → *…: Niebieski* (same director, wrong film). The page
+  build now dedups by external URL, keeping the best title match — which drops
+  that row automatically.
+
+The harness is no longer throwaway: `worker/src/test/scala/scripts/GateReport.scala`
+reads the **live** prod corpus via `MovieRepository.foreachRecord` (paginated —
+a single `findAll` over the flyctl proxy corrupts the BSON stream on the full
+736-doc load) and loops all three modes. Run it with:
+
+```
+MONGODB_URI=… TMDB_API_KEY=… sbt 'worker/Test/runMain scripts.GateReport [out.jsonl] [capPerMode]'
+```
+
+Current result: 18 accepts (TMDB 2, Filmweb 15, IMDb 1), **all** corroborated by
+director or exact-title, 0 domain-only guesses. Regenerate the report page from
+this data with `python3 regenerate_page.py` (writes `~/Desktop/synopsis-resolutions.html`).
 
 ---
 
