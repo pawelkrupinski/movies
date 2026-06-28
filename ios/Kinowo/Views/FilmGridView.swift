@@ -185,12 +185,12 @@ struct CinemaSectionedGridView<Header: View>: View {
         // thin #3a3a6e underline.
         Text(name)
             .font(.system(size: headerStyle.fontSize, weight: headerStyle.fontWeight))
-            .foregroundColor(Color(red: 0.667, green: 0.831, blue: 1.0))
+            .foregroundColor(Color.kinowoLinkAccent)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, headerStyle.titleBottomPadding)
             .overlay(alignment: .bottom) {
                 Rectangle()
-                    .fill(Color(red: 0.227, green: 0.227, blue: 0.431))
+                    .fill(Color.kinowoButtonFill)
                     .frame(height: headerStyle.underlineThickness)
             }
             .accessibilityIdentifier(A11y.CinemaPage.sectionHeader)

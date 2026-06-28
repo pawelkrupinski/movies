@@ -91,7 +91,7 @@ struct FilmDetailView: View {
             Button { openFullScreenPoster() } label: {
                 poster
                     .frame(width: width, height: width * 1.5)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(RoundedRectangle(cornerRadius: PosterMetrics.cornerRadius))
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier(A11y.FilmDetail.poster)
@@ -162,8 +162,8 @@ struct FilmDetailView: View {
 
     private var noPosterPlaceholder: some View {
         Rectangle()
-            .fill(Color(red: 0.165, green: 0.165, blue: 0.243))
-            .aspectRatio(2.0/3.0, contentMode: .fit)
+            .fill(Color.kinowoPanel)
+            .aspectRatio(PosterMetrics.aspectRatio, contentMode: .fit)
             .overlay(
                 Text("Brak plakatu")
                     .font(.system(size: 12)).italic()
@@ -180,11 +180,11 @@ struct FilmDetailView: View {
                     Link(destination: link.url) {
                         Text("\(link.cinema) ↗")
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(Color(red: 0.667, green: 0.831, blue: 1.0))
+                            .foregroundColor(Color.kinowoLinkAccent)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
                             .background(
-                                Color(red: 0.227, green: 0.227, blue: 0.431),
+                                Color.kinowoButtonFill,
                                 in: RoundedRectangle(cornerRadius: 8)
                             )
                     }
@@ -254,7 +254,7 @@ struct FilmDetailView: View {
                 if let active = playingTrailerIndex, trailers.indices.contains(active) {
                     TrailerEmbedView(url: trailers[active])
                         .aspectRatio(16.0/9.0, contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: PosterMetrics.cornerRadius))
                 }
             }
         }
@@ -270,12 +270,12 @@ struct FilmDetailView: View {
         } label: {
             Text("Zwiastun \(index + 1)")
                 .font(.system(size: 13, weight: .medium))
-                .foregroundColor(active ? Color(red: 0.10, green: 0.10, blue: 0.18) : Color(red: 0.667, green: 0.831, blue: 1.0))
+                .foregroundColor(active ? Color(red: 0.10, green: 0.10, blue: 0.18) : Color.kinowoLinkAccent)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
-                    active ? Color(red: 0.667, green: 0.831, blue: 1.0)
-                           : Color(red: 0.227, green: 0.227, blue: 0.431),
+                    active ? Color.kinowoLinkAccent
+                           : Color.kinowoButtonFill,
                     in: RoundedRectangle(cornerRadius: 8)
                 )
         }
@@ -323,11 +323,11 @@ private struct DetailPosterImage<NoPoster: View>: View {
                 image.resizable().aspectRatio(contentMode: .fit)
             case .empty:
                 Rectangle()
-                    .fill(Color(red: 0.165, green: 0.165, blue: 0.243))
-                    .aspectRatio(2.0/3.0, contentMode: .fit)
+                    .fill(Color.kinowoPanel)
+                    .aspectRatio(PosterMetrics.aspectRatio, contentMode: .fit)
                     .overlay(ProgressView().tint(.gray))
             case .failure:
-                if index <= fallbacks.count - 1 {
+                if index < fallbacks.count {
                     Color.clear.onAppear { index += 1 }
                 } else {
                     noPoster()

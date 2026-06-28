@@ -152,31 +152,29 @@ struct ShowingsView: View {
 
     @ViewBuilder
     private func cinemaLabel(_ cinema: CinemaShowings) -> some View {
-        let labelColor = Color(red: 0.40, green: 0.67, blue: 0.87)
         if let url = cinema.cinemaURL {
             Link(destination: url) {
                 Text("\(cinema.cinema) ↗")
                     .font(.system(size: 10))
-                    .foregroundColor(labelColor)
+                    .foregroundColor(.kinowoCinemaLabel)
             }
             .buttonStyle(.plain)
         } else {
             Text(cinema.cinema)
                 .font(.system(size: 10))
-                .foregroundColor(labelColor)
+                .foregroundColor(.kinowoCinemaLabel)
         }
     }
 
     @ViewBuilder
     private func moreLabel(hiddenShowtimes: Int) -> some View {
-        let labelColor = Color(red: 0.40, green: 0.67, blue: 0.87)
         HStack(spacing: 4) {
             Image(systemName: "ellipsis")
                 .font(.system(size: 9, weight: .semibold))
             Text("+\(hiddenShowtimes) \(showtimeNoun(hiddenShowtimes))")
                 .font(.system(size: 11, weight: .medium))
         }
-        .foregroundColor(labelColor)
+        .foregroundColor(.kinowoCinemaLabel)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(Color.white.opacity(0.06), in: Capsule())

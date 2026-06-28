@@ -68,7 +68,7 @@ struct FilmCardView: View {
             .padding(12)
         }
         .background(Color(red: 0.12, green: 0.12, blue: 0.18))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: PosterMetrics.cornerRadius))
     }
 }
 
@@ -145,7 +145,7 @@ private struct PosterView: View {
             // affect the parent's size) and the overflow is clipped.
             Color.clear
                 .frame(maxWidth: .infinity)
-                .aspectRatio(2.0/3.0, contentMode: .fit)
+                .aspectRatio(PosterMetrics.aspectRatio, contentMode: .fit)
                 .overlay { poster }
                 .clipped()
                 // `.clipped()` only masks the *render*: a `.fill` image
@@ -253,7 +253,7 @@ private struct PosterImage<NoPoster: View>: View {
                     .fill(Color(red: 0.16, green: 0.16, blue: 0.24))
                     .overlay(ProgressView().tint(.gray))
             case .failure:
-                if index <= fallbacks.count - 1 {
+                if index < fallbacks.count {
                     Color.clear.onAppear { index += 1 }
                 } else {
                     noPoster()

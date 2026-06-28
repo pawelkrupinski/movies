@@ -74,6 +74,7 @@ let package = Package(
                 "Views/FilmGridView.swift",
                 "Views/FiltersBar.swift",
                 "Views/FlowLayout.swift",
+                "Views/Palette.swift",
                 "Views/RatingBadgesView.swift",
                 "Views/RatingPillStyle.swift",
                 "Views/ShowingsView.swift",

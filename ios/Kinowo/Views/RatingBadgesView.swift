@@ -118,7 +118,7 @@ private enum Badge {
                 .lineLimit(1)
                 .padding(.horizontal, style.valueHInset)
                 .padding(.vertical, style.vInset)
-                .background(Color(red: 0.165, green: 0.165, blue: 0.243))    // #2a2a3e
+                .background(Color.kinowoPanel)    // #2a2a3e
         }
         .clipShape(RoundedRectangle(cornerRadius: style.cornerRadius))
         // Pills render at their intrinsic width — never shrink the
