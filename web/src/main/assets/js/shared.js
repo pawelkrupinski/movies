@@ -851,9 +851,8 @@
   });
 
   function hideFilm(button) {
-    // No scrollY snapshot needed: the sort function's subsequence check
-    // (see `isSubsequence` below) skips the DOM rebuild when cards only got
-    // hidden, so the browser's scroll anchor stays put.
+    // No scrollY snapshot needed: hiding only ever removes a card, never
+    // reorders the visible set, so the browser's scroll anchor stays put.
     const title = button.closest('[data-title]').dataset.title;
     const hidden = getHidden();
     if (!hidden.includes(title)) {
@@ -861,7 +860,12 @@
       setHidden(hidden);
       maybeShowAnonymousNag();  // hide is the other "this will only stick on this device" action
     }
-    applyFilters();
+    // Fast path: drop just this card. The full applyFilters() re-walks every
+    // card and un-/re-truncates all their showings (~0.5s on a busy city) —
+    // wasted work when one card leaves view. Fall back to the full pass if the
+    // view didn't expose the single-card hook (e.g. the self-contained browse
+    // view) or the index isn't built.
+    if (!(window.hideOneFilm && window.hideOneFilm(title))) applyFilters();
     updateNavbar();
   }
 

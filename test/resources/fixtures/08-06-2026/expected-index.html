@@ -23878,6 +23878,16 @@ sortByEarliestVisible(earlyMap);
 truncateAllShowings(!singleCinema);
 updateEmptyState(visibleCount);
 }
+function hideOneFilm(rawTitle) {
+if (!INDEX) return false;
+const col = INDEX.find(c => c.rawTitle === rawTitle);
+if (!col) return false;
+setVisible(col, false);
+let visibleCount = 0;
+for (const c of INDEX) if (c.visible) visibleCount++;
+updateEmptyState(visibleCount);
+return true;
+}
 function sortByEarliestVisible(earlyMap) {
 const visible = [];
 for (let i = 0; i < earlyMap.length; i++) if (earlyMap[i] !== null) visible.push(i);
@@ -23980,6 +23990,7 @@ gridEl.appendChild(frag);
 }
 window.buildIndex = buildIndex;
 window.applyFilters = applyFilters;
+window.hideOneFilm = hideOneFilm;
 window.applyFiltersForDay = applyFiltersForDay;
 })();</script>
 

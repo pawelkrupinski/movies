@@ -2580,6 +2580,43 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // The ✕ used to re-run the whole grid filter (applyFilters), which
+  // un-truncates and re-truncates every card's showings — ~0.5s of wasted work
+  // on a busy city, since hiding one card changes no other card. hideFilm now
+  // takes a single-card fast path; assert it drops the card WITHOUT an
+  // applyFilters() pass (this fails before the fast path: applyFilters ran once
+  // per hide). A second card must stay put so we know we didn't just disable
+  // the whole flow.
+  it should "drop a single card without re-running the full grid filter" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      val title  = firstVisibleTitle(page)
+      val others = page.evalInt(
+        "[...document.querySelectorAll('.col[data-title]')].filter(c => c.style.display !== 'none').length"
+      )
+      others should be > 1  // need at least one card that must survive the hide
+
+      page.eval(
+        "window.__afCalls = 0; const _origAf = window.applyFilters;" +
+        "  window.applyFilters = function () { window.__afCalls++; return _origAf.apply(this, arguments); };"
+      )
+      page.eval(
+        s"(() => { const btn = document.querySelector('.col[data-title=${jsString(title)}] .hide-btn');" +
+        "  hideFilm(btn); })()"
+      )
+
+      page.evalString(
+        s"document.querySelector('.col[data-title=${jsString(title)}]').style.display"
+      ) shouldBe "none"
+      // The fast path leaves every other visible card on screen…
+      page.evalInt(
+        "[...document.querySelectorAll('.col[data-title]')].filter(c => c.style.display !== 'none').length"
+      ) shouldBe (others - 1)
+      // …and never falls back to the full grid filter.
+      page.evalInt("window.__afCalls") shouldBe 0
+    }
+  }
+
   it should "show hidden titles in the modal and restore on unhide" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)

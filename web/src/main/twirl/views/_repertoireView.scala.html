@@ -207,6 +207,26 @@
     updateEmptyState(visibleCount);
   }
 
+  // Fast path for hiding ONE film. The full applyFilters() above un-truncates
+  // (`undoTruncation`) and re-truncates (`truncateAllShowings`) every card's
+  // showings — ~1500 badges on a busy city — and re-walks the whole INDEX,
+  // which is what made a single ✕ click cost ~0.5s. Hiding a film can't change
+  // any OTHER card's visibility, sort position, or truncation, so we flip just
+  // that card off and refresh the empty-state count. Sort order stays a
+  // subsequence of what's on screen (one card left), so no DOM rebuild either.
+  // Returns false — caller falls back to applyFilters() — when the index isn't
+  // built yet or the title isn't known.
+  function hideOneFilm(rawTitle) {
+    if (!INDEX) return false;
+    const col = INDEX.find(c => c.rawTitle === rawTitle);
+    if (!col) return false;
+    setVisible(col, false);
+    let visibleCount = 0;
+    for (const c of INDEX) if (c.visible) visibleCount++;
+    updateEmptyState(visibleCount);
+    return true;
+  }
+
   function sortByEarliestVisible(earlyMap) {
     // Only the VISIBLE cards' DOM order matters — hidden ones are display:none
     // and don't participate in layout. Sort just those by earliest showtime.
@@ -345,6 +365,7 @@
   // Entry points shared.js drives at boot (`bootView`).
   window.buildIndex         = buildIndex;
   window.applyFilters       = applyFilters;
+  window.hideOneFilm        = hideOneFilm;
   window.applyFiltersForDay = applyFiltersForDay;
   })();
 </script>
