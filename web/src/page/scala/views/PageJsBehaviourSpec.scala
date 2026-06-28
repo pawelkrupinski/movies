@@ -1,6 +1,6 @@
 package views
 
-import models.{CinemaCityWroclavia, Helios, MovieRecord, Poznan}
+import models.{CinemaCityWroclavia, CinemaShowing, Helios, MovieRecord, Poznan, SourceData}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -140,6 +140,18 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         StagingRecord(CinemaCityWroclavia, "Done Newcomer", Some(2025),
           MovieRecord(detailPending = false, tmdbId = Some(550))))
       val debugHtml: String = views.html.debug(debugRows, debugStaging).body
+      // A purpose-built corpus row for the Cinemas-cell layout test: ONE venue
+      // (CinemaCityWroclavia) listing the film under TWO titles → `cinemaData` =
+      // 1 distinct cinema, `cinemaSlots` = 2 per-title slots, so `_debugRow`
+      // renders the bracketed slot count `1 (2)`. Served on its own path so the
+      // shared `/debug` corpus-count + sort tests (which assert exactly 3 rows)
+      // stay untouched.
+      val slotsRow = StoredMovieRecord("Slots Film", Some(2024), MovieRecord(
+        tmdbId = Some(99),
+        data = Map(
+          CinemaShowing(CinemaCityWroclavia, "slots-film")     -> SourceData(title = Some("Slots Film")),
+          CinemaShowing(CinemaCityWroclavia, "slots-film-org") -> SourceData(title = Some("Slots Film Org")))))
+      val slotsDebugHtml: String = views.html.debug(Seq(slotsRow), Seq.empty).body
       // The queue snapshot the page polls (/debug/queue). "Staging Film"'s detail
       // fetch is being worked on (▶ running); "Done Newcomer"'s IMDb recovery
       // waits at place #1 (the only waiting task). The dedup keys mirror the real
@@ -172,6 +184,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case "/landing" => landingHtml
           // The global-corpus /debug page (no city prefix).
           case "/debug" => debugHtml
+          // Isolated single-row /debug variant for the Cinemas-cell layout test.
+          case "/debug-slots" => slotsDebugHtml
           // A corpus row's per-source breakdown, fetched lazily when its /debug
           // table row is expanded (the heavy subtree is no longer rendered inline).
           // The `id` query param is the row's `_id`; serve the matching row's
@@ -3095,6 +3109,34 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalString(corpusTitles) shouldBe "Unresolved Film|Pending Film|Done Film"
       // Sorting never dragged a collapsed details row into the DOM.
       page.evalString(attachedDetailsCount) shouldBe "0"
+    }
+  }
+
+  // The corpus Cinemas cell shows the distinct-cinema count plus, when a venue
+  // holds more per-title slots than cinemas, the slot count in parens (`1 (2)`).
+  // That bracket must sit on the SAME line as the count — a regression where the
+  // unrelated expanded-details `.cinemas` grid rule leaked onto `td.cinemas` made
+  // the cell a grid and dropped the `(nr)` span to its own row. Assert the cell
+  // is a normal table-cell and the slot span shares the count's line, to its right.
+  "the /debug Cinemas cell" should "keep the (nr) slot count on the same line as the count" in {
+    chrome match {
+      case None => cancel("Chrome not installed — skipping JS behaviour test")
+      case Some(c) => c.openPage(server.baseUrl + "/debug-slots") { page =>
+        page.waitFor("""!!document.querySelector('#t tbody td.cinemas .slots')""")
+        // The bracket renders because slots (2) exceed distinct cinemas (1).
+        page.evalString(
+          """document.querySelector('#t tbody td.cinemas').textContent.replace(/\s+/g,'')""") shouldBe "1(2)"
+        // Layout: the cell is a plain table-cell (NOT a grid), and the slot span
+        // sits on the count's line (tops aligned within a line) and to its right.
+        page.evalBool("""(function(){
+          var td = document.querySelector('#t tbody td.cinemas');
+          var slot = td.querySelector('.slots');
+          var tdR = td.getBoundingClientRect(), sR = slot.getBoundingClientRect();
+          return getComputedStyle(td).display === 'table-cell'
+              && sR.left > tdR.left
+              && Math.abs(sR.top - tdR.top) < sR.height;
+        })()""") shouldBe true
+      }
     }
   }
 

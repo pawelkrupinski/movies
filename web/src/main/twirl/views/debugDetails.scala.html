@@ -131,7 +131,7 @@
 @if(e.data.isEmpty) {
   <em class="miss">No source data yet for this row.</em>
 } else {
-  <div class="cinemas">
+  <div class="cinema-list">
     @for((source, slot) <- e.cinemaSlots.sortBy { case (s, sd) => (Source.priorityOf(s), sd.title.getOrElse("")) }) {
       @Source.cinemaOf(source).map { cinema =>
         @perSourceSlot(

@@ -76,7 +76,11 @@
       background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 3px;
       padding: 0 .4rem; color: #99b; font-size: 10px;
     }
-    .cinemas { display: grid; gap: .6rem; margin-top: .4rem; }
+    /* The expanded-details per-cinema list. A DISTINCT class from the corpus
+       table's `td.cinemas` count cell — sharing the bare `.cinemas` made this
+       `display: grid` leak onto the cell, turning it into a grid that dropped
+       the parenthesised slot count onto its own row. */
+    .cinema-list { display: grid; gap: .6rem; margin-top: .4rem; }
     .cinema {
       border: 1px solid #1a1a2e; border-radius: 3px;
       padding: .4rem .6rem; background: #0d0d18;
