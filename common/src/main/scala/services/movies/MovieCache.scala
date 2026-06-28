@@ -717,6 +717,22 @@ class CaffeineMovieCache(
     // and trust the slot data we have until the next non-empty tick.
     if (movies.isEmpty) return Seq.empty
 
+    // Cold-mirror guard (only matters when diversion is wired). The newcomer test
+    // further down reads the in-memory mirror (`knownSanitized` / `knownAliases` /
+    // `knownByCinemaSlot`) to tell a genuinely-new film from a known one. A COLD mirror
+    // — empty because a post-reboot `bootHydrate` `findAll()` came back empty while Mongo
+    // was still coming up, and the change stream only carries post-boot writes (see
+    // `bootHydrate`) — makes EVERY known film look new, so a scrape landing in that window
+    // re-diverts the whole corpus into staging and the fold then drags it back over
+    // ~30 min: the panel-36 `kinowo_worker_corpus_movies` boot flap (observed 2026-06-28,
+    // 812→670→814 after a brief worker restart; ColdMirrorReDivertSpec). Sync the mirror
+    // from the repository before deciding, restoring the prod invariant that the mirror
+    // reflects `movies`. Cheap in steady state (the `estimatedSize` check short-circuits);
+    // the `findAll` runs only while the mirror is genuinely cold, and `rehydrate` only
+    // when the corpus actually has rows — a genuinely-empty corpus (a fresh deploy, where
+    // a brand-new film SHOULD incubate) skips it and diverts as before.
+    if (staging.isDefined && positive.estimatedSize() == 0 && repository.findAll().nonEmpty) rehydrate()
+
     // Carry the freshly-written `SourceData` slot alongside the public
     // tuple so the prune below can identify "newly written this tick" by
     // slot reference rather than by cache key — keys can shift mid-tick
