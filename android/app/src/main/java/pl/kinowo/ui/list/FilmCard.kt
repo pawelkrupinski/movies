@@ -46,6 +46,7 @@ import pl.kinowo.ui.common.copyFilmLink
 import pl.kinowo.ui.common.layoutWidthDp
 import pl.kinowo.ui.common.shareFilm
 import pl.kinowo.ui.theme.CardSurface
+import pl.kinowo.ui.theme.PosterHideScrim
 
 /** Test tag on the whole card, so the tap-to-open test can click it. */
 internal const val FilmCardTestTag = "film-card"
@@ -124,7 +125,7 @@ fun FilmCard(
                         .padding((6 * scale).dp)
                         .size((28 * scale).dp)
                         .clip(RoundedCornerShape((14 * scale).dp))
-                        .background(Color.Black.copy(alpha = 0.45f))
+                        .background(PosterHideScrim)
                         .clickable(onClick = onHide),
                     contentAlignment = Alignment.Center,
                 ) {

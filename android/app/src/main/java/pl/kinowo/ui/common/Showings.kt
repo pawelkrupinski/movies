@@ -47,6 +47,7 @@ import pl.kinowo.ui.theme.RoomTooltipBorder
 import pl.kinowo.ui.theme.RoomTooltipText
 import pl.kinowo.ui.theme.ShowtimeChipBackground
 import pl.kinowo.ui.theme.ShowtimeChipBackgroundPressed
+import pl.kinowo.ui.theme.ShowtimeFormatTag
 import pl.kinowo.ui.theme.TextSecondary
 
 /** Test tag on the showtime pill, so the padding/visual tests can find the
@@ -245,7 +246,7 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
                 // 7sp default, not larger: the time's 11sp is the most that still lets
                 // two chips share a row on the narrowest card; an 8sp+ tag pushes
                 // the second chip onto a new line. See ShowtimeChipFitTest.
-                Text(format, color = CinemaBlue.copy(alpha = 0.7f), style = pillTextStyle(style.formatFontSize, style.formatWeight))
+                Text(format, color = ShowtimeFormatTag, style = pillTextStyle(style.formatFontSize, style.formatWeight))
             }
         }
         if (holding && room != null) {

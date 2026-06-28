@@ -11,11 +11,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pl.kinowo.ui.theme.CardElevated
+import pl.kinowo.ui.theme.MetaPillText
+import pl.kinowo.ui.theme.MetaYearText
 
 /**
  * Runtime / year / genre row for a film's title block — the Android
@@ -56,7 +57,7 @@ fun MetaPills(
 private fun Pill(label: String, scale: Float, modifier: Modifier = Modifier) {
     Text(
         label,
-        color = Color(0xFFCCCCCC),
+        color = MetaPillText,
         fontSize = (11 * scale).sp,
         fontWeight = FontWeight.Medium,
         modifier = modifier
@@ -76,7 +77,7 @@ private fun Pill(label: String, scale: Float, modifier: Modifier = Modifier) {
 private fun YearText(label: String, scale: Float, modifier: Modifier = Modifier) {
     Text(
         label,
-        color = Color(0xFF888888),
+        color = MetaYearText,
         fontSize = (13 * scale).sp,
         fontWeight = FontWeight.Medium,
         modifier = modifier.padding(vertical = (3 * scale).dp),

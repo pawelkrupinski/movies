@@ -68,6 +68,7 @@ import pl.kinowo.ui.common.shareFilm
 import pl.kinowo.ui.theme.Brand
 import pl.kinowo.ui.theme.CardElevated
 import pl.kinowo.ui.theme.CinemaBlue
+import pl.kinowo.ui.theme.OriginalTitleText
 import pl.kinowo.ui.theme.TextSecondary
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
@@ -138,7 +139,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                             original,
                             fontSize = style.originalTitleFontSize,
                             fontStyle = FontStyle.Italic,
-                            color = Color(0xFFAAAAAA),
+                            color = OriginalTitleText,
                         )
                     }
                     // Runtime / year / genre pills — the `/film` title block

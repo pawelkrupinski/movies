@@ -35,6 +35,18 @@ val RtRotten = Color(0xFF1A8F1A)
 val FwOrange = Color(0xFFFF6C00)
 val FwOrangeLight = Color(0xFFFF9C4A)
 
+// Title-block text inks (MetaPills + detail header).
+val MetaPillText = Color(0xFFCCCCCC) // runtime/genre pill label
+val MetaYearText = Color(0xFF888888) // plain-text year (web `.year` #888)
+val OriginalTitleText = Color(0xFFAAAAAA) // detail header original-title line
+
+// Scrim behind the poster's hide (⊗) button on a listing card.
+val PosterHideScrim = Color.Black.copy(alpha = 0.45f)
+
+// Dimmed format tag on a showtime chip (the CinemaBlue tag at 0.7 alpha,
+// per the showtime-chip comment above).
+val ShowtimeFormatTag = CinemaBlue.copy(alpha = 0.7f)
+
 private val KinowoColors = darkColorScheme(
     primary = Brand,
     onPrimary = Color(0xFF06121C),
