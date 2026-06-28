@@ -17,11 +17,15 @@ set -eu
 # Prometheus keeps the long history).
 mkdir -p /var/lib/grafana/vmdata
 
+# -enableTCP6 is REQUIRED on Fly: `<app>.internal` 6PN hostnames resolve to IPv6
+# (AAAA) only, and VM dials/listens IPv4-only by default — without it every
+# scrape fails "dial tcp4: ... no such host" and :8428 refuses IPv6 localhost.
 /usr/local/bin/victoria-metrics-prod \
   -promscrape.config=/etc/victoria/scrape.yml \
   -storageDataPath=/var/lib/grafana/vmdata \
   -retentionPeriod=7d \
   -httpListenAddr=:8428 \
+  -enableTCP6 \
   -memory.allowedBytes=128MB \
   -loggerLevel=WARN &
 

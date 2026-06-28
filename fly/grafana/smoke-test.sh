@@ -59,9 +59,9 @@ assert "Fly Prometheus datasource provisioned" \
 
 # The direct-scrape datasource backed by the VictoriaMetrics sidecar (real-time
 # kinowo_* / kinowo_worker_* series). Points at the in-machine VM on :8428.
-assert "App Metrics (live) datasource provisioned at localhost:8428" \
+assert "App Metrics (live) datasource provisioned at 127.0.0.1:8428" \
   "api/datasources" \
-  "any(x.get('uid')=='app-metrics-live' and x.get('url')=='http://localhost:8428' for x in d)"
+  "any(x.get('uid')=='app-metrics-live' and x.get('url')=='http://127.0.0.1:8428' for x in d)"
 
 assert "all $EXPECTED_RULES alert rules provisioned" \
   "api/v1/provisioning/alert-rules" \
