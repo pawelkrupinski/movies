@@ -400,6 +400,10 @@ class MovieController( cc: ControllerComponents,
       pageDescription = meta.description,
       pageUrl         = PageMeta.canonicalUrl(request),
       fbAppId         = PageMeta.fbAppId,
+      // og:url keeps the filtered request URL (so a shared filtered link
+      // previews the filter), but the canonical folds `/{city}/filmy` and every
+      // `?filter` variation back to the bare city listing.
+      canonicalUrl    = PageMeta.origin(request) + s"/${city.slug}/",
     )
   }
 
