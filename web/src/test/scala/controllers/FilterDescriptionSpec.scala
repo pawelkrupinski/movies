@@ -48,16 +48,20 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
 
   // ── Default (no filter) ─────────────────────────────────────────────────────
 
-  "FilterDescription.forIndex with an empty query" should "produce the default Kinowo title" in {
+  "FilterDescription.forIndex with an empty query" should "produce the keyword-rich default city title" in {
     val meta = FilterDescription.forIndex(Poznan,Map.empty, schedules)
-    meta.title       shouldBe FilterDescription.DefaultTitle
+    meta.title       shouldBe FilterDescription.defaultTitle(Poznan)
+    meta.title       should include("Repertuar kin w Poznaniu")
+    meta.title       should include("godziny seansów")
+    meta.title       should endWith("| Kinowo")
     meta.description shouldBe FilterDescription.defaultDescription(Poznan)
     meta.description should include("poznańskich")
+    meta.description should include("godziny seansów")
   }
 
   it should "ignore unrecognised parameters and date=today (the default)" in {
     val meta = FilterDescription.forIndex(Poznan,Map("date" -> Seq("today"), "junk" -> Seq("noise")), schedules)
-    meta.title shouldBe "Kinowo"
+    meta.title shouldBe FilterDescription.defaultTitle(Poznan)
   }
 
   // ── Single-filter phrasing ──────────────────────────────────────────────────
@@ -73,7 +77,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     // values that actually narrow (today is silent too; tomorrow / week /
     // specific ISO surface as their phrase) deserve a phrase.
     val meta = FilterDescription.forIndex(Poznan,Map("date" -> Seq("anytime")), schedules)
-    meta.title shouldBe "Kinowo"
+    meta.title shouldBe FilterDescription.defaultTitle(Poznan)
   }
 
   "date=2026-05-30" should "surface as the ISO date verbatim" in {

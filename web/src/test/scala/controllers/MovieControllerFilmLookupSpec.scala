@@ -52,4 +52,16 @@ class MovieControllerFilmLookupSpec extends AnyFlatSpec with Matchers {
     val result = ctrl.film("poznan", "No Such Film").apply(FakeRequest(GET, "/poznan/film?title=No+Such+Film"))
     status(result) shouldBe NOT_FOUND
   }
+
+  "the film page <title>" should "lead with the film, its year and a seans keyword" in {
+    val title  = "Diuna"
+    val ctrl   = buildController(title, Some(2024))
+    val result = ctrl.film("poznan", title).apply(FakeRequest(GET, s"/poznan/film?title=$title"))
+    val html   = contentAsString(result)
+    val pageTitle = "<title>(.*?)</title>".r.findFirstMatchIn(html).map(_.group(1)).getOrElse("")
+    pageTitle should include("Diuna (2024)")
+    pageTitle should include("godziny seansów")
+    pageTitle should include("Poznań")
+    pageTitle should endWith("| Kinowo")
+  }
 }

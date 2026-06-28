@@ -30,11 +30,25 @@ object FilterDescription {
 
   case class Meta(title: String, description: String)
 
+  /** Brand token, used as the prefix of the FILTERED title ("Kinowo — filmy …")
+   *  and the suffix of the default city title. */
   val DefaultTitle       = "Kinowo"
-  /** Default OG description, parameterized by the city's genitive-plural label
-   *  ("…wszystkich poznańskich kin…"). */
+
+  /** Default (no-filter) `<title>` for a city listing — keyword-first so the tab
+   *  and the Google result lead with what people search ("repertuar kin
+   *  <miasto>", "godziny seansów") rather than the bare brand. */
+  def defaultTitle(city: City): String =
+    truncate(s"Repertuar kin ${city.locativePhrase} – godziny seansów na dziś | $DefaultTitle", MaxTitle)
+
+  /** Default OG/meta description, parameterized by the city's genitive-plural
+   *  label ("…wszystkich poznańskich kin…") and naming the query-shaped phrases
+   *  (godziny seansów, na dziś) plus the four rating sources. */
   def defaultDescription(city: City): String =
-    s"Repertuar wszystkich ${city.labels.genitivePlural} kin w jednym miejscu — z ocenami IMDb, RT i Filmweb."
+    truncate(
+      s"Repertuar wszystkich ${city.labels.genitivePlural} kin – godziny seansów na dziś, " +
+        s"oceny IMDb, Filmweb, Metacritic i Rotten Tomatoes. Sprawdź, co dziś grają w kinie ${city.locativePhrase}.",
+      MaxDescription,
+    )
 
   val MaxTitle       = 65
   val MaxDescription = 180
@@ -45,7 +59,7 @@ object FilterDescription {
    *  cinema universe and the default description. */
   def forIndex(city: City, query: Map[String, Seq[String]], schedules: Seq[FilmSchedule]): Meta = {
     val phrases = buildPhrases(city, query, schedules)
-    if (phrases.isEmpty) Meta(DefaultTitle, defaultDescription(city))
+    if (phrases.isEmpty) Meta(defaultTitle(city), defaultDescription(city))
     else {
       val body  = phrases.mkString(", ")
       val joined = s"$DefaultTitle — filmy $body"
