@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { firstVisibleTitle, waitForCards } from './helpers';
 
 // axe-core mechanical accessibility audit. Catches ~30-57% of WCAG
 // issues without manual review — colour contrast, missing alt text,
@@ -33,12 +34,7 @@ test.describe('axe-core WCAG audit', () => {
 
   test('home page has no axe violations', async ({ page }) => {
     await page.goto('/poznan/');
-    // `state: 'attached'` — the default `'visible'` doesn't hold here.
-    // The home page's inline filter `display:none`-s out-of-window cards
-    // and shuffles them to the front of DOM order, so Playwright's
-    // "first matching element visible" check times out even with cards
-    // rendered.
-    await page.waitForSelector('.col[data-title]', { state: 'attached' });
+    await waitForCards(page);
     const result = await new AxeBuilder({ page })
       .withTags([...WCAG_TAGS])
       // Known-failing rule on the dark navbar / card-body chrome:
@@ -59,16 +55,8 @@ test.describe('axe-core WCAG audit', () => {
 
   test('film detail page has no axe violations', async ({ page }) => {
     await page.goto('/poznan/');
-    // `state: 'attached'` — the default `'visible'` doesn't hold here.
-    // The home page's inline filter `display:none`-s out-of-window cards
-    // and shuffles them to the front of DOM order, so Playwright's
-    // "first matching element visible" check times out even with cards
-    // rendered.
-    await page.waitForSelector('.col[data-title]', { state: 'attached' });
-    const title = await page.evaluate(() => {
-      const cols = [...document.querySelectorAll<HTMLElement>('.col[data-title]')];
-      return cols.find((c) => c.style.display !== 'none')?.dataset.title ?? null;
-    });
+    await waitForCards(page);
+    const title = await firstVisibleTitle(page);
     expect(title).toBeTruthy();
     // `domcontentloaded`: the axe scan runs against the server-rendered
     // DOM, which is complete at DCL — no need to block on the poster-proxy

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getVisibleTitles, setDateFilter } from './helpers';
+import { firstVisibleTitle, getVisibleTitles, setDateFilter, waitForCards } from './helpers';
 
 // Broad-strokes liveness check against kinowo.fly.dev. The home page
 // 200s with at least one visible card, the date filter narrows the
@@ -16,24 +16,14 @@ test.describe('kinowo.fly.dev smoke', { tag: '@agnostic' }, () => {
   test('home page renders at least one visible card', async ({ page }) => {
     const resp = await page.goto('/poznan/');
     expect(resp?.status()).toBe(200);
-    // `state: 'attached'` — the default `'visible'` doesn't hold here.
-    // The home page's inline filter `display:none`-s out-of-window cards
-    // and shuffles them to the front of DOM order, so Playwright's
-    // "first matching element visible" check times out even with cards
-    // rendered.
-    await page.waitForSelector('.col[data-title]', { state: 'attached' });
+    await waitForCards(page);
     await setDateFilter(page, 'anytime');
     expect(await visibleCardCount(page)).toBeGreaterThan(0);
   });
 
   test('date filter narrows the visible set', async ({ page }) => {
     await page.goto('/poznan/');
-    // `state: 'attached'` — the default `'visible'` doesn't hold here.
-    // The home page's inline filter `display:none`-s out-of-window cards
-    // and shuffles them to the front of DOM order, so Playwright's
-    // "first matching element visible" check times out even with cards
-    // rendered.
-    await page.waitForSelector('.col[data-title]', { state: 'attached' });
+    await waitForCards(page);
 
     await setDateFilter(page, 'anytime');
     const anytimeCount = await visibleCardCount(page);
@@ -50,17 +40,9 @@ test.describe('kinowo.fly.dev smoke', { tag: '@agnostic' }, () => {
 
   test('film detail page renders title from home selection', async ({ page }) => {
     await page.goto('/poznan/');
-    // `state: 'attached'` — the default `'visible'` doesn't hold here.
-    // The home page's inline filter `display:none`-s out-of-window cards
-    // and shuffles them to the front of DOM order, so Playwright's
-    // "first matching element visible" check times out even with cards
-    // rendered.
-    await page.waitForSelector('.col[data-title]', { state: 'attached' });
+    await waitForCards(page);
     await setDateFilter(page, 'anytime');
-    const title = await page.evaluate(() => {
-      const cols = [...document.querySelectorAll<HTMLElement>('.col[data-title]')];
-      return cols.find((c) => c.style.display !== 'none')?.dataset.title ?? null;
-    });
+    const title = await firstVisibleTitle(page);
     expect(title).toBeTruthy();
 
     // `domcontentloaded`: the `/film` page's `load` event waits on

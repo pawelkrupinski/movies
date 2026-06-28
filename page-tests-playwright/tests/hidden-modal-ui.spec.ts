@@ -1,5 +1,13 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { setLocalStorageJson } from './helpers';
+
+// Whether the hidden-films modal is currently open, read from the
+// `.open` class on `#hidden-modal-backdrop`. Returns `null` if the
+// backdrop element isn't present at all.
+const isModalOpen = (page: Page): Promise<boolean | null> =>
+  page.evaluate(() =>
+    document.getElementById('hidden-modal-backdrop')?.classList.contains('open') ?? null,
+  );
 
 // Hidden-films modal open/close via UI:
 //   - The `#hidden-row-count` badge (inside the Filtry button area)
@@ -29,18 +37,12 @@ test.describe('hidden films modal UI', { tag: '@agnostic' }, () => {
     await expect(page.locator('#hidden-row-count')).toHaveText(/2/);
 
     // Modal hidden at rest (`.open` not on the backdrop).
-    const openBefore = await page.evaluate(() =>
-      document.getElementById('hidden-modal-backdrop')?.classList.contains('open') ?? null
-    );
-    expect(openBefore).toBe(false);
+    expect(await isModalOpen(page)).toBe(false);
 
     // Click the whole hidden-row — its onclick is `openHiddenModal`.
     await page.locator('#hidden-row').click();
 
-    const openAfter = await page.evaluate(() =>
-      document.getElementById('hidden-modal-backdrop')?.classList.contains('open') ?? null
-    );
-    expect(openAfter).toBe(true);
+    expect(await isModalOpen(page)).toBe(true);
   });
 
   test('the ✕ close button hides the modal again', async ({ page }) => {
@@ -50,10 +52,7 @@ test.describe('hidden films modal UI', { tag: '@agnostic' }, () => {
     await expect(page.locator('#hidden-modal-backdrop')).toHaveClass(/open/);
 
     await page.locator('.hidden-modal .login-modal-close').click();
-    const stillOpen = await page.evaluate(() =>
-      document.getElementById('hidden-modal-backdrop')?.classList.contains('open') ?? null
-    );
-    expect(stillOpen).toBe(false);
+    expect(await isModalOpen(page)).toBe(false);
   });
 
   test('clicking the backdrop dismisses the modal', async ({ page }) => {
@@ -66,9 +65,6 @@ test.describe('hidden films modal UI', { tag: '@agnostic' }, () => {
     // top-left coordinate well outside the modal's content box.
     await page.locator('#hidden-modal-backdrop').click({ position: { x: 5, y: 5 } });
 
-    const stillOpen = await page.evaluate(() =>
-      document.getElementById('hidden-modal-backdrop')?.classList.contains('open') ?? null
-    );
-    expect(stillOpen).toBe(false);
+    expect(await isModalOpen(page)).toBe(false);
   });
 });

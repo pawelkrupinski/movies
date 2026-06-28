@@ -15,6 +15,14 @@ const PL_SHORT_DAY_RE = /(nd|pn|wt|śr|cz|pt|sb)/;
 type Showing = { movie: string; date: string; cinema: string };
 type Bucket = { dates: string[]; cinemas: string[]; count: number };
 
+// Wait for /plan's poster grid to have rendered at least one
+// `.plan-card-col[data-title]`. `state: 'attached'` for the same reason
+// as the listing's `waitForCards` — folded/out-of-window cards are
+// `display:none`, so the default `'visible'` check times out.
+async function waitForPlanCards(page: Page): Promise<void> {
+  await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+}
+
 async function readShowings(page: Page): Promise<Showing[]> {
   return page.evaluate(() =>
     (globalThis as unknown as { SHOWINGS: Showing[] }).SHOWINGS ?? [],
@@ -62,8 +70,11 @@ function spanDays(sortedDates: string[]): number {
   return Math.round((last - first) / 86400000) + 1;
 }
 
-async function selectMovie(page: Page, title: string): Promise<void> {
-  await setLocalStorageJson(page, 'selectedMovies', [title]);
+// Set the `selectedMovies` localStorage list and re-run the page's
+// `applyFilters()` so the "Twoje filmy" section re-renders for the new
+// selection before assertions run.
+async function selectMovies(page: Page, titles: string[]): Promise<void> {
+  await setLocalStorageJson(page, 'selectedMovies', titles);
   await page.evaluate(() =>
     (globalThis as unknown as { applyFilters?: () => void }).applyFilters?.(),
   );
@@ -83,14 +94,14 @@ test.describe('plan availability summary', { tag: '@agnostic' }, () => {
 
   test('"tylko <day>" form for a movie playing on exactly one date', async ({ page }) => {
     await page.goto('/poznan/plan');
-    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    await waitForPlanCards(page);
 
     const byMovie = indexByMovie(await readShowings(page), await readPageToday(page));
     const pick = [...byMovie.entries()].find(([, b]) => b.dates.length === 1);
     test.skip(!pick, 'fixture has no single-date movie');
 
     const [title] = pick!;
-    await selectMovie(page, title);
+    await selectMovies(page, [title]);
 
     const text = await firstMovieBlockSummary(page);
     expect(text).toMatch(new RegExp(`^tylko ${PL_SHORT_DAY_RE.source} \\d{1,2} ${PL_MONTH_RE.source}`));
@@ -98,14 +109,14 @@ test.describe('plan availability summary', { tag: '@agnostic' }, () => {
 
   test('"X i Y" form for a movie playing on exactly two dates', async ({ page }) => {
     await page.goto('/poznan/plan');
-    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    await waitForPlanCards(page);
 
     const byMovie = indexByMovie(await readShowings(page), await readPageToday(page));
     const pick = [...byMovie.entries()].find(([, b]) => b.dates.length === 2);
     test.skip(!pick, 'fixture has no two-date movie');
 
     const [title] = pick!;
-    await selectMovie(page, title);
+    await selectMovies(page, [title]);
 
     const text = await firstMovieBlockSummary(page);
     expect(text).toMatch(new RegExp(`^${PL_SHORT_DAY_RE.source} \\d{1,2} ${PL_MONTH_RE.source} i ${PL_SHORT_DAY_RE.source} \\d{1,2} ${PL_MONTH_RE.source}`));
@@ -115,7 +126,7 @@ test.describe('plan availability summary', { tag: '@agnostic' }, () => {
 
   test('"od X do Y" form for a movie playing continuously over 3+ days', async ({ page }) => {
     await page.goto('/poznan/plan');
-    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    await waitForPlanCards(page);
 
     const byMovie = indexByMovie(await readShowings(page), await readPageToday(page));
     const pick = [...byMovie.entries()].find(([, b]) => {
@@ -124,7 +135,7 @@ test.describe('plan availability summary', { tag: '@agnostic' }, () => {
     test.skip(!pick, 'fixture has no continuous-run movie');
 
     const [title] = pick!;
-    await selectMovie(page, title);
+    await selectMovies(page, [title]);
 
     const text = await firstMovieBlockSummary(page);
     expect(text).toMatch(new RegExp(`^od ${PL_SHORT_DAY_RE.source} \\d{1,2} ${PL_MONTH_RE.source} do ${PL_SHORT_DAY_RE.source} \\d{1,2} ${PL_MONTH_RE.source}`));
@@ -132,7 +143,7 @@ test.describe('plan availability summary', { tag: '@agnostic' }, () => {
 
   test('"tylko: A, B, C" form for a movie playing on 3+ scattered dates', async ({ page }) => {
     await page.goto('/poznan/plan');
-    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    await waitForPlanCards(page);
 
     const byMovie = indexByMovie(await readShowings(page), await readPageToday(page));
     const pick = [...byMovie.entries()].find(([, b]) => {
@@ -141,7 +152,7 @@ test.describe('plan availability summary', { tag: '@agnostic' }, () => {
     test.skip(!pick, 'fixture has no sparse-run movie');
 
     const [title] = pick!;
-    await selectMovie(page, title);
+    await selectMovies(page, [title]);
 
     const text = await firstMovieBlockSummary(page);
     expect(text).toMatch(/^tylko: /);
@@ -151,7 +162,7 @@ test.describe('plan availability summary', { tag: '@agnostic' }, () => {
 
   test('appends the cinema constraint after the date constraint when only one cinema plays the movie', async ({ page }) => {
     await page.goto('/poznan/plan');
-    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    await waitForPlanCards(page);
 
     const byMovie = indexByMovie(await readShowings(page), await readPageToday(page));
     const pick = [...byMovie.entries()].find(([, b]) => b.cinemas.length === 1);
@@ -159,7 +170,7 @@ test.describe('plan availability summary', { tag: '@agnostic' }, () => {
 
     const [title, { cinemas }] = pick!;
     const cinema = cinemas[0];
-    await selectMovie(page, title);
+    await selectMovies(page, [title]);
 
     const text = await firstMovieBlockSummary(page);
     expect(text).toContain(`, w „${cinema}"`);
@@ -172,7 +183,7 @@ test.describe('plan option list', { tag: '@agnostic' }, () => {
 
   test('renders one block per selected movie, each carrying that movie\'s options', async ({ page }) => {
     await page.goto('/poznan/plan');
-    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    await waitForPlanCards(page);
 
     const byMovie = indexByMovie(await readShowings(page), await readPageToday(page));
     // Pick two distinct movies — proves multi-movie selection renders
@@ -181,10 +192,7 @@ test.describe('plan option list', { tag: '@agnostic' }, () => {
     test.skip(entries.length < 2, 'fixture has fewer than two movies');
 
     const [a, b] = [entries[0][0], entries[1][0]];
-    await setLocalStorageJson(page, 'selectedMovies', [a, b]);
-    await page.evaluate(() =>
-      (globalThis as unknown as { applyFilters?: () => void }).applyFilters?.(),
-    );
+    await selectMovies(page, [a, b]);
 
     await expect(page.locator('.plan-movie')).toHaveCount(2);
     await expect(
@@ -200,14 +208,14 @@ test.describe('plan option list', { tag: '@agnostic' }, () => {
 
   test('truncates option lists past 8 entries with a "+ N więcej" tail', async ({ page }) => {
     await page.goto('/poznan/plan');
-    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    await waitForPlanCards(page);
 
     const byMovie = indexByMovie(await readShowings(page), await readPageToday(page));
     const pick = [...byMovie.entries()].find(([, b]) => b.count > 8);
     test.skip(!pick, 'fixture has no movie with more than 8 future showings');
 
     const [title, { count }] = pick!;
-    await selectMovie(page, title);
+    await selectMovies(page, [title]);
 
     await expect(page.locator('.plan-movie .plan-option')).toHaveCount(8);
     const more = await page.locator('.plan-movie .plan-options-more').textContent();
@@ -219,7 +227,7 @@ test.describe('plan option list', { tag: '@agnostic' }, () => {
     // a same-day collision into Ograniczenia. The new model shows
     // every option for both films instead.
     await page.goto('/poznan/plan');
-    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    await waitForPlanCards(page);
 
     const showings = await readShowings(page);
     const today = await readPageToday(page);
@@ -241,10 +249,7 @@ test.describe('plan option list', { tag: '@agnostic' }, () => {
     }
     test.skip(!pair, 'fixture has no two movies sharing a date');
 
-    await setLocalStorageJson(page, 'selectedMovies', [pair![0], pair![1]]);
-    await page.evaluate(() =>
-      (globalThis as unknown as { applyFilters?: () => void }).applyFilters?.(),
-    );
+    await selectMovies(page, [pair![0], pair![1]]);
 
     await expect(
       page.locator('.plan-movie .plan-movie-title', { hasText: pair![0] }),
@@ -259,7 +264,7 @@ test.describe('plan option list', { tag: '@agnostic' }, () => {
     // plays sooner must lead in the rendered list regardless of how the
     // titles sort alphabetically.
     await page.goto('/poznan/plan');
-    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    await waitForPlanCards(page);
 
     const showings = await readShowings(page);
     const today    = await readPageToday(page);
@@ -289,10 +294,7 @@ test.describe('plan option list', { tag: '@agnostic' }, () => {
 
     const [earlyTitle]     = early;
     const [laterTitle]     = lateBeforeAlphabetically!;
-    await setLocalStorageJson(page, 'selectedMovies', [earlyTitle, laterTitle]);
-    await page.evaluate(() =>
-      (globalThis as unknown as { applyFilters?: () => void }).applyFilters?.(),
-    );
+    await selectMovies(page, [earlyTitle, laterTitle]);
 
     const titles = await page.locator('.plan-movie .plan-movie-title').allTextContents();
     expect(titles[0]).toBe(earlyTitle);
@@ -305,7 +307,7 @@ test.describe('plan posters fold', { tag: '@agnostic' }, () => {
 
   test('"Zwiń plakaty" folds the poster grid and persists across reloads', async ({ page }) => {
     await page.goto('/poznan/plan');
-    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    await waitForPlanCards(page);
 
     const section = page.locator('#filmy-section');
     // The whole header bar is the click target now (collapse when expanded,
@@ -327,7 +329,7 @@ test.describe('plan posters fold', { tag: '@agnostic' }, () => {
 
     // Reload — folded state must survive (`localStorage.planPostersFolded`).
     await page.reload();
-    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    await waitForPlanCards(page);
     await expect(page.locator('#filmy-section')).toHaveClass(/folded/);
     await expect(page.locator('#plan-movies-row')).toBeHidden();
     await expect(page.locator('#filmy-section .plan-collapse-label')).toHaveText('Rozwiń plakaty');
@@ -339,17 +341,14 @@ test.describe('plan posters fold', { tag: '@agnostic' }, () => {
 
   test('movie title in the proposed plan is a link to /film', async ({ page }) => {
     await page.goto('/poznan/plan');
-    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    await waitForPlanCards(page);
     const showings = await readShowings(page);
     const today    = await readPageToday(page);
     const byMovie  = indexByMovie(showings, today);
     const titles   = [...byMovie.keys()];
     test.skip(titles.length === 0, 'fixture has no movies');
     const first = titles[0];
-    await setLocalStorageJson(page, 'selectedMovies', [first]);
-    await page.evaluate(() =>
-      (globalThis as unknown as { applyFilters?: () => void }).applyFilters?.(),
-    );
+    await selectMovies(page, [first]);
 
     const link = page.locator('a.plan-movie-title', { hasText: first });
     await expect(link).toHaveAttribute('href', '/poznan/film?title=' + encodeURIComponent(first));

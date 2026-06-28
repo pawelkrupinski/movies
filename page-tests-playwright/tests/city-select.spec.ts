@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { waitForCards } from './helpers';
 
 // Multi-city: the bare `/` is a city-selection landing (every page lives
 // under `/{city}/`). It tries browser geolocation first and falls back to a
@@ -47,7 +48,7 @@ test.describe('geolocation auto-redirect', { tag: '@agnostic' }, () => {
 test.describe('Filtry → Miasto switch', { tag: '@agnostic' }, () => {
   test('selecting another city navigates to its repertoire root', async ({ page }) => {
     await page.goto('/poznan/');
-    await page.waitForSelector('.col[data-title]', { state: 'attached' });
+    await waitForCards(page);
     // Open the Filtry panel, then switch the city select to Wrocław.
     await page.locator('#format-filter-btn').click();
     await page.selectOption('#city-select', 'wroclaw');

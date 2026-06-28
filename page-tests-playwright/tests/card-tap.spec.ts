@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { pinDateFilterAnytime } from './helpers';
+import { firstVisibleTitle, pinDateFilterAnytime } from './helpers';
 
 // Single-tap card navigation — tapping a poster or title link goes
 // straight to the /film detail page on every browser. Icons (★, ✕)
@@ -15,29 +15,10 @@ test.describe('card poster link on WebKit (iPhone emulation)', { tag: '@agnostic
     await pinDateFilterAnytime(page);
   });
 
-  // `applyFilters` re-appends visible cards after hidden ones in the
-  // DOM, so a plain `querySelector` lands on a hidden card. Different
-  // engines also serialise `style.display = 'none'` slightly differently
-  // (`display: none;` vs `display:none;`), making a CSS-attribute
-  // selector brittle. Solve both at once by computing the visible
-  // card's title in JS, then targeting it via `[data-title=…]`.
-  //
-  // Also skip cards whose poster `<img>` has been `display:none`-d by
-  // the inline `onerror` fallback — the upstream poster URL (Multikino,
-  // Helios, etc.) sometimes 404s from GH Actions Linux runners while
-  // resolving from my laptop, leaving a real but visually-hidden img
-  // that would fail `toBeVisible()` below.
-  const firstVisibleTitle = async (page: import('@playwright/test').Page) =>
-    page.evaluate(() => {
-      const cols = [...document.querySelectorAll<HTMLElement>('.col[data-title]')];
-      for (const c of cols) {
-        if (c.style.display === 'none') continue;
-        const image = c.querySelector<HTMLImageElement>('.poster-wrap > a img');
-        if (!image || image.style.display === 'none') continue;
-        return c.dataset.title ?? null;
-      }
-      return null;
-    });
+  // `firstVisibleTitle` (helpers) computes the visible card's title in
+  // JS and skips broken-poster cards, so the `[data-title=…]` target
+  // below resolves to a card whose `<img>` actually passes
+  // `toBeVisible()` — see its doc for the full rationale.
 
   // Target the `<img>` inside the poster-wrap, not the wrapping `<a>`.
   // `.poster-wrap` uses the `padding-top: 148%` aspect-ratio trick for
