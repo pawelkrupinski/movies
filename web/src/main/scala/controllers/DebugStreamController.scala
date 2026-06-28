@@ -35,8 +35,7 @@ class DebugStreamController(
 )(using mat: Materializer) extends AbstractController(cc) {
 
   def stream: Action[AnyContent] = Action {
-    if (environment == Mode.Prod) NotFound("dev-only endpoint")
-    else Ok.chunked(eventSource()).as("text/event-stream")
+    DevMode.gate(environment)(Ok.chunked(eventSource()).as("text/event-stream"))
   }
 
   /** SSE frame for an upserted row: render `_debugRow` to HTML and ship it with

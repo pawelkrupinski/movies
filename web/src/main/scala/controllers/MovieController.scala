@@ -741,14 +741,8 @@ class MovieController( cc: ControllerComponents,
   }
 
 
-  // All /debug/* endpoints return 404 in production so the cache contents
-  // aren't exposed on a deployed instance. Mode defaults to Dev in
-  // `AppLoader` unless APP_MODE=prod is set explicitly.
-  private def devOnly(result: => play.api.mvc.Result): play.api.mvc.Result =
-    if (environment == Mode.Prod) NotFound("dev-only endpoint") else result
-
-  // Same flag the regular navbar uses to gate the Debug tab.
-  private def devMode: Boolean = environment != Mode.Prod
+  private def devOnly(result: => play.api.mvc.Result): play.api.mvc.Result = DevMode.gate(environment)(result)
+  private def devMode: Boolean = DevMode.enabled(environment)
 }
 
 object MovieController {

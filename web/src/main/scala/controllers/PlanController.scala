@@ -77,7 +77,7 @@ class PlanController(
     }
   }
 
-  private def devMode: Boolean = environment != Mode.Prod
+  private def devMode: Boolean = DevMode.enabled(environment)
 }
 
 object PlanController {
