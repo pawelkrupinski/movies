@@ -1,0 +1,29 @@
+apiVersion: 1
+
+# Real-time datasource for the app-emitted series. A VictoriaMetrics sidecar
+# (see ../../Dockerfile + ../../start.sh + ../../victoria/scrape.yml) scrapes
+# kinowo + kinowo-worker `/metrics` DIRECTLY over Fly's private network every
+# 15s and serves a Prometheus-compatible API on :8428. Querying it here gives
+# the kinowo_* / kinowo_worker_* series at ~15s freshness instead of the
+# 15-25 min lag they suffer when read back from Fly's managed Prometheus.
+#
+# This does NOT replace `fly-prometheus`: host metrics (fly_instance_* /
+# fly_edge_* — CPU credit/throttle, memory, 5xx, p95) are produced solely by
+# Fly's host agent and aren't scrapeable from us, so they stay on that one.
+deleteDatasources:
+  - name: App Metrics (live)
+    orgId: 1
+
+datasources:
+  - name: App Metrics (live)
+    uid: app-metrics-live
+    orgId: 1
+    type: prometheus
+    access: proxy
+    url: http://localhost:8428
+    isDefault: false
+    editable: false
+    jsonData:
+      httpMethod: POST
+      prometheusType: Prometheus
+      timeInterval: 15s
