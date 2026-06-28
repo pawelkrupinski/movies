@@ -155,6 +155,27 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     client.search("Camper", None).map(_.id) shouldBe Some(1192319)
   }
 
+  it should "never resolve to a dateless stub/featurette over the dated film (Brzezina / 874482 regression)" in {
+    // 874482 "Brzezina - Andrzej Wajda o filmie" is a dateless companion entry
+    // (no release_date, 0 runtime, no director). Under the OLD un-stripped search
+    // the decorated cinema title queried its OWN full text, which exact-matched
+    // the stub — so it stuck as a SECOND resolved id under "Brzezina" and tripped
+    // clusterByFilm's ambiguity-refuse, leaving the real film's decorated editions
+    // un-folded. A dateless stub must never beat the dated film.
+    val results =
+      """{"results":[
+        |  {"id":42539,"title":"Brzezina","original_title":"Brzezina",
+        |   "release_date":"1970-11-10","popularity":0.40},
+        |  {"id":874482,"title":"Brzezina - Andrzej Wajda o filmie",
+        |   "original_title":"Brzezina - Andrzej Wajda o filmie","popularity":0.03}
+        |]}""".stripMargin
+    val client = fakeClient(Map("query=Brzezina" -> results))
+    // the exact-match of the decorated title (the stub) must lose to the dated film
+    client.search("Brzezina - Andrzej Wajda o filmie", None).map(_.id) shouldBe Some(42539)
+    // and the clean query is unaffected
+    client.search("Brzezina", None).map(_.id) shouldBe Some(42539)
+  }
+
   it should "prefer an exact title match over a far-more-popular partial match (Odlot vs Up)" in {
     val noYear =
       """{"results":[

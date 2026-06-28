@@ -135,12 +135,24 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
     year:              Option[Int],
     referenceSynopsis: Option[String] = None
   ): Option[TmdbClient.SearchResult] = {
-    if (results.isEmpty) None
+    // A TMDB entry with NO release date is a stub/placeholder — a making-of, a
+    // featurette, an unreleased shell — never the theatrical film a cinema is
+    // actually screening. 874482 "Brzezina - Andrzej Wajda o filmie" is exactly
+    // this: a dateless, runtime-0, director-less companion entry that exact-matched
+    // a decorated cinema title under the OLD un-stripped search and stuck as a
+    // SECOND resolved id under "Brzezina", tripping clusterByFilm's ambiguity-refuse
+    // so the real film's decorated editions never folded. Drop dateless entries
+    // whenever a dated candidate exists so a stub can't win the exact-title match;
+    // keep the raw set only when EVERY result is dateless (don't regress an
+    // all-stub query to None).
+    val dated = results.filter(_.releaseYear.isDefined)
+    val pool  = if (dated.nonEmpty) dated else results
+    if (pool.isEmpty) None
     else {
       def yearDistance(r: TmdbClient.SearchResult): Int =
         year.flatMap(y => r.releaseYear.map(ry => math.abs(ry - y))).getOrElse(Int.MaxValue)
-      val exactMatches = results.filter(r => TmdbClient.isExactTitleMatch(r, title))
-      val candidates = if (exactMatches.nonEmpty) exactMatches else results
+      val exactMatches = pool.filter(r => TmdbClient.isExactTitleMatch(r, title))
+      val candidates = if (exactMatches.nonEmpty) exactMatches else pool
       // Stable sort keeps the popularity order within an equal year-distance, so
       // `tied.head` is exactly the legacy winner.
       val sorted = candidates.sortBy(yearDistance)
