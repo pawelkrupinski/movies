@@ -53,7 +53,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, new DueWindow(1.hour), cad, (_, _) => Some("7.2"), later)
       .handle(ratingTask("imdb|tmdb:7", "X", None)) shouldBe HandlerOutcome.Done
     cad.statsFor("imdb|tmdb:7").map(_.unchangedStreak)        shouldBe Some(0)
-    cad.statsFor("imdb|tmdb:7").flatMap(_.lastChange).map(_.value) shouldBe Some("7.2")
+    cad.statsFor("imdb|tmdb:7").flatMap(_.lastChange).map(_.to) shouldBe Some("7.2")
   }
 
   it should "not log a phantom change when a re-keyed row re-reports the same displayed value" in {

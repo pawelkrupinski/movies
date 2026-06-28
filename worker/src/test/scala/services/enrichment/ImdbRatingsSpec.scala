@@ -128,7 +128,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
     ratings.refreshAll()
 
-    cadence.statsFor("imdb|tmdb:101").flatMap(_.lastChange).map(_.value) shouldBe Some("7.4")
+    cadence.statsFor("imdb|tmdb:101").flatMap(_.lastChange).map(_.to) shouldBe Some("7.4")
     cadence.statsFor("imdb|tmdb:102")                                    shouldBe None  // unchanged → no bulk record
   }
 

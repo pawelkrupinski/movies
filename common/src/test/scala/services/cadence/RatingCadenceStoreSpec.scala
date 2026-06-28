@@ -1,5 +1,7 @@
 package services.cadence
 
+import org.mongodb.scala.Document
+import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -27,5 +29,23 @@ class RatingCadenceStoreSpec extends AnyFlatSpec with Matchers {
     store.record("imdb|tmdb:1", reportedValue = Some("85"), t0)
     store.statsFor("mc|tmdb:1").map(_.unchangedStreak)   shouldBe Some(1)
     store.statsFor("imdb|tmdb:1").map(_.unchangedStreak) shouldBe Some(0)
+  }
+
+  "encodeChange / decodeChange" should "round-trip the from → to transition" in {
+    val change = RatingChange(t0, "80", "85")
+    val doc    = Document("lastChange" -> MongoRatingCadenceStore.encodeChange(Some(change)))
+    MongoRatingCadenceStore.decodeChange(doc, "lastChange") shouldBe Some(change)
+  }
+
+  it should "decode a legacy `{at, value}` sub-document (pre-`from`) with an empty from" in {
+    val legacy = Document("lastChange" -> BsonDocument(
+      "at"    -> BsonDateTime(t0.toEpochMilli),
+      "value" -> BsonString("7.2")
+    ))
+    MongoRatingCadenceStore.decodeChange(legacy, "lastChange") shouldBe Some(RatingChange(t0, "", "7.2"))
+  }
+
+  it should "yield None for an absent change field" in {
+    MongoRatingCadenceStore.decodeChange(Document("_id" -> "mc|tmdb:1"), "prevChange") shouldBe None
   }
 }

@@ -21,8 +21,9 @@ import scala.concurrent.duration._
  *    interval directly (the streak is), but surfaced for observability.
  *  - `windowStartedAt` / `lastCheckedAt` — window anchor and last-refresh stamp.
  *  - `lastChange` / `prevChange` — the two most recent times the displayed value
- *    moved, with what it moved TO. Survive the window roll (they're the last two
- *    changes ever, for the cadence debug page), unlike the volatility counters.
+ *    moved, each carrying what it moved FROM and TO. Survive the window roll
+ *    (they're the last two changes ever, for the cadence debug page), unlike the
+ *    volatility counters.
  */
 case class RatingChangeStats(
   unchangedStreak: Int,
@@ -34,9 +35,11 @@ case class RatingChangeStats(
   prevChange:      Option[RatingChange] = None
 )
 
-/** One observed change of a rating's DISPLAYED value: when it happened and the
- *  value it became (the badge text — "7.1", "85", "93%"). */
-case class RatingChange(at: Instant, value: String)
+/** One observed change of a rating's DISPLAYED value: when it happened, the badge
+ *  text it moved away FROM, and the one it became — both as shown ("7.1", "85",
+ *  "93%"). `from` is empty for the very first value ever recorded (nothing to
+ *  move away from), so the debug page renders that one with no arrow. */
+case class RatingChange(at: Instant, from: String, to: String)
 
 object RatingCadence {
   /** Fastest cadence — a fresh or just-changed film is rechecked this often. */
@@ -58,7 +61,7 @@ object RatingCadence {
    *  it writes the row's rating field — including when a re-keyed / re-resolved row
    *  goes `None → 7.3` and lands on the SAME value the user already saw (e.g. a
    *  title-rule fold re-keys the cache row while the cadence stays tmdbId-keyed).
-   *  That isn't a visible change, so we dedup against `lastChange.value`; otherwise
+   *  That isn't a visible change, so we dedup against `lastChange.to`; otherwise
    *  every re-resolution would log a phantom "7.3 → 7.3" change and pin the film to
    *  the base interval forever.
    *
@@ -68,7 +71,7 @@ object RatingCadence {
    *  `prevChange` and records the new one. */
   def record(prev: Option[RatingChangeStats], reportedValue: Option[String], now: Instant): RatingChangeStats = {
     val live       = prev.filter(s => withinWindow(s.windowStartedAt, now))
-    val priorValue = prev.flatMap(_.lastChange).map(_.value)
+    val priorValue = prev.flatMap(_.lastChange).map(_.to)
     val changed    = reportedValue.exists(v => !priorValue.contains(v))
     val streak     = if (changed) 0 else live.map(_.unchangedStreak).getOrElse(0) + 1
     val checks     = live.map(_.windowChecks).getOrElse(0) + 1
@@ -77,7 +80,7 @@ object RatingCadence {
     // Change history carries from `prev` (NOT `live`) so it survives the window
     // roll — it's the last two changes ever, not last-week.
     val (lastCh, prevCh) =
-      if (changed) (reportedValue.map(RatingChange(now, _)), prev.flatMap(_.lastChange))
+      if (changed) (reportedValue.map(v => RatingChange(now, priorValue.getOrElse(""), v)), prev.flatMap(_.lastChange))
       else         (prev.flatMap(_.lastChange), prev.flatMap(_.prevChange))
     RatingChangeStats(streak, checks, changes, anchor, now, lastCh, prevCh)
   }

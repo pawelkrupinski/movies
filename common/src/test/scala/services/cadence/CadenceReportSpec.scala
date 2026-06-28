@@ -37,8 +37,8 @@ class CadenceReportSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "resolve titles via tmdbId and surface the last two changes" in {
-    val last = RatingChange(t0, "7.2")
-    val prev = RatingChange(t0.minusSeconds(86400), "7.0")
+    val last = RatingChange(t0, "7.0", "7.2")
+    val prev = RatingChange(t0.minusSeconds(86400), "6.9", "7.0")
     val groups = CadenceReport.build(Seq("imdb|tmdb:9" -> stats(2, Some(last), Some(prev))), id => Some("Oppenheimer"))
     val e = groups.flatMap(_.entries).loneElement
     e.title      shouldBe "Oppenheimer"

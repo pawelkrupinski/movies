@@ -65,7 +65,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
   // cap (stable, streak 6) with a recorded change; IMDb fresh at the 2h base.
   private val cadenceReader: services.cadence.RatingCadenceReader = () => Seq(
     "mc|tmdb:1"   -> services.cadence.RatingChangeStats(6, 7, 1, cadenceNow, cadenceNow,
-                       lastChange = Some(services.cadence.RatingChange(cadenceNow, "85"))),
+                       lastChange = Some(services.cadence.RatingChange(cadenceNow, "80", "85"))),
     "imdb|tmdb:1" -> services.cadence.RatingChangeStats(0, 1, 0, cadenceNow, cadenceNow)
   )
   private val cadenceRecords = Seq(("Belle", Some(2021), MovieRecord(tmdbId = Some(1))))
@@ -82,7 +82,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     html should include ("<table")
     html should include ("next refresh")     // the new column
     html should include ("last change")      // change history is a column now
-    html should include ("85")               // the MC row's last-change value, in its column
+    html should include ("80 → 85")          // the MC row's last change, rendered as from → to
     html should include ("(2026-0")          // next-refresh absolute timestamp (within 4d of 06-27)
     // Slowest (most backed-off) group renders first.
     html.indexOf("every 4d") should be < html.indexOf("every 2h")

@@ -115,19 +115,26 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
 }
 
 object MongoRatingCadenceStore {
-  /** Encode a change as a `{at, value}` sub-document, or BSON null when absent. */
+  /** Encode a change as a `{at, from, to}` sub-document, or BSON null when absent. */
   private[cadence] def encodeChange(change: Option[RatingChange]): BsonValue = change match {
-    case Some(c) => BsonDocument("at" -> BsonDateTime(c.at.toEpochMilli), "value" -> BsonString(c.value))
+    case Some(c) => BsonDocument(
+      "at"   -> BsonDateTime(c.at.toEpochMilli),
+      "from" -> BsonString(c.from),
+      "to"   -> BsonString(c.to)
+    )
     case None    => BsonNull()
   }
 
-  /** Read a `{at, value}` change sub-document back, or None if absent/null/malformed. */
+  /** Read a `{at, from, to}` change sub-document back, or None if absent/null/malformed.
+   *  Legacy docs stored the new value under `value` with no `from`; read those too so
+   *  history written before this field split still renders (with an empty `from`). */
   private[cadence] def decodeChange(document: Document, field: String): Option[RatingChange] =
     document.get(field).filter(_.isDocument).map(_.asDocument()).flatMap { d =>
+      def str(k: String): Option[String] = Option(d.get(k)).filter(_.isString).map(_.asString().getValue)
       for {
         at <- Option(d.get("at")).filter(_.isDateTime).map(_.asDateTime().getValue)
-        v  <- Option(d.get("value")).filter(_.isString).map(_.asString().getValue)
-      } yield RatingChange(Instant.ofEpochMilli(at), v)
+        to <- str("to").orElse(str("value"))
+      } yield RatingChange(Instant.ofEpochMilli(at), str("from").getOrElse(""), to)
     }
 
   /** Parse one `rating_cadence` Mongo document into `(dedupKey, stats)`, or None

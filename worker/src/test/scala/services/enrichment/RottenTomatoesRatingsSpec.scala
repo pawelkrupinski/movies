@@ -145,7 +145,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
 
     ratings.refreshAll()
 
-    cadence.statsFor("rt|tmdb:201").flatMap(_.lastChange).map(_.value) shouldBe Some("74%")
+    cadence.statsFor("rt|tmdb:201").flatMap(_.lastChange).map(_.to) shouldBe Some("74%")
     cadence.statsFor("rt|tmdb:202")                                    shouldBe None
   }
 

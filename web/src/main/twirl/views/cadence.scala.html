@@ -2,7 +2,10 @@
 @(groups: Seq[CadenceReport.Group], now: java.time.Instant)(implicit city: models.City)
 @at(i: java.time.Instant) = @{ i.toString.take(16).replace("T", " ") }
 @change(c: Option[services.cadence.RatingChange]) = @{
-  c.map(x => x.value + "  @ " + x.at.toString.take(16).replace("T", " ")).getOrElse("—")
+  c.map { x =>
+    val transition = if (x.from.nonEmpty) x.from + " → " + x.to else x.to
+    transition + "  @ " + x.at.toString.take(16).replace("T", " ")
+  }.getOrElse("—")
 }
 @untilNext(target: java.time.Instant) = @{
   val secs = java.time.Duration.between(now, target).getSeconds
@@ -59,7 +62,7 @@
         <thead>
           <tr>
             <th>src</th><th>film</th><th>next refresh</th><th class="num">streak</th>
-            <th class="num">chg/chk</th><th>last change</th><th>before</th>
+            <th class="num">chg/chk</th><th>last change</th><th>prev change</th>
           </tr>
         </thead>
         <tbody>
