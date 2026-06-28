@@ -89,7 +89,7 @@ class AlternatywyClient(
     if (title.isEmpty) return None
     for {
       day        <- Try(dayStr.toInt).toOption
-      month      <- Months.get(monthStr.trim.toLowerCase)
+      month      <- ScraperParse.PolishMonths.get(monthStr.trim.toLowerCase)
       (hh, mm)   <- parseTime(timeStr)
       dateTime   <- Try(inferYear(day, month).atTime(hh, mm)).toOption
     } yield {
@@ -110,12 +110,6 @@ class AlternatywyClient(
 
 object AlternatywyClient {
   val RepertoireUrl = "https://alternatywy.art/repertuar/"
-
-  /** Polish genitive month names as they appear in the date headings. */
-  private val Months: Map[String, Int] = Map(
-    "stycznia" -> 1, "lutego" -> 2, "marca" -> 3, "kwietnia" -> 4, "maja" -> 5, "czerwca" -> 6,
-    "lipca" -> 7, "sierpnia" -> 8, "września" -> 9, "października" -> 10, "listopada" -> 11, "grudnia" -> 12
-  )
 
   private val TimePat = """^(\d{1,2}):(\d{2})$""".r
 
