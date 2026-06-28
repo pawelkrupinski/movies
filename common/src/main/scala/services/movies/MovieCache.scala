@@ -161,6 +161,14 @@ class CaffeineMovieCache(
   private val negative: Cache[CacheKey, java.lang.Boolean] =
     Caffeine.newBuilder().expireAfterWrite(24, TimeUnit.HOURS).build()
 
+  // Fires the cold-mirror sync at most once, on the FIRST scrape (see
+  // `recordCinemaScrape`). One-shot so the sync can't re-trigger at an
+  // arrival-order-dependent later scrape — the mirror only goes cold at boot, and a
+  // later mirror-empty-while-repo-non-empty state is reachable only in a harness
+  // with no change stream (its mirror lags the repo), where re-checking would make
+  // the staging path order-dependent (StagingOrderDeterminismSpec).
+  private val coldMirrorSyncArmed = new java.util.concurrent.atomic.AtomicBoolean(true)
+
   @volatile private var _lastModified: java.time.Instant = java.time.Instant.now()
   def lastModified: java.time.Instant = _lastModified
   private def touch(): Unit = { _lastModified = java.time.Instant.now() }
@@ -730,8 +738,13 @@ class CaffeineMovieCache(
     // reflects `movies`. Cheap in steady state (the `estimatedSize` check short-circuits);
     // the `findAll` runs only while the mirror is genuinely cold, and `rehydrate` only
     // when the corpus actually has rows — a genuinely-empty corpus (a fresh deploy, where
-    // a brand-new film SHOULD incubate) skips it and diverts as before.
-    if (staging.isDefined && positive.estimatedSize() == 0 && repository.findAll().nonEmpty) rehydrate()
+    // a brand-new film SHOULD incubate) skips it and diverts as before. ONE-SHOT, on the
+    // first scrape: at a real boot the repo already holds the corpus when the first scrape
+    // lands, so the sync fires and warms the mirror for the rest; a fresh harness starts
+    // with an empty repo, so the first scrape no-ops and the latch disarms — the sync can
+    // never fire at a later, arrival-order-dependent scrape (StagingOrderDeterminismSpec).
+    if (staging.isDefined && coldMirrorSyncArmed.getAndSet(false)
+        && positive.estimatedSize() == 0 && repository.findAll().nonEmpty) rehydrate()
 
     // Carry the freshly-written `SourceData` slot alongside the public
     // tuple so the prune below can identify "newly written this tick" by
