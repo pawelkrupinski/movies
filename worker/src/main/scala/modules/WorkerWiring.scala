@@ -756,6 +756,7 @@ class WorkerWiring extends play.api.Logging {
     new BulkRefreshHandler(TaskType.RefreshAllFilmweb,    "Filmweb",    () => filmwebRatings.refreshAllNow()),
     new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => metascoreRatings.refreshAllNow()),
     new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => rottenTomatoesRatings.refreshAllNow()),
+    new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => movieService.settle()),
     new ResolveTmdbHandler(movieService.resolveTmdbOnce),
     // Movies-path IMDb-id recovery as a task (was inline off ImdbIdMissing) — so
     // the merge-retrigger path can re-kick it; resolveSync writes the id, and the

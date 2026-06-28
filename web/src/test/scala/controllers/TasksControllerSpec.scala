@@ -108,7 +108,8 @@ class TasksControllerSpec extends AnyFlatSpec with Matchers {
       "imdb"       -> RefreshAllImdb,
       "filmweb"    -> RefreshAllFilmweb,
       "metacritic" -> RefreshAllMetacritic,
-      "rt"         -> RefreshAllRt
+      "rt"         -> RefreshAllRt,
+      "settle"     -> SettleNow
     )
     cases.foreach { case (job, expected) =>
       val q    = new InMemoryTaskQueue

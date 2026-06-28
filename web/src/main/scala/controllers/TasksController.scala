@@ -27,16 +27,17 @@ class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue:
     Ok(snapshotJson(snap))
   }
 
-  /** The corpus-wide refresh runs the `/tasks` page buttons trigger. Each maps a
-   *  short job slug → the bulk TaskType the worker's `BulkRefreshHandler`
-   *  consumes; the worker calls that source's existing `refreshAll` /
-   *  `retryUnresolvedTmdb`. */
+  /** The corpus-wide runs the `/tasks` page buttons trigger. Each maps a short
+   *  job slug → the bulk TaskType the worker's `BulkRefreshHandler` consumes; the
+   *  worker calls that source's existing `refreshAll` / `retryUnresolvedTmdb`, or
+   *  `settle` (consolidate same-film rows, the SettleReaper's job) on demand. */
   private val BulkJobs: Map[String, TaskType] = Map(
     "tmdb"       -> TaskType.RefreshAllTmdb,
     "imdb"       -> TaskType.RefreshAllImdb,
     "filmweb"    -> TaskType.RefreshAllFilmweb,
     "metacritic" -> TaskType.RefreshAllMetacritic,
-    "rt"         -> TaskType.RefreshAllRt
+    "rt"         -> TaskType.RefreshAllRt,
+    "settle"     -> TaskType.SettleNow
   )
 
   /** Enqueue a corpus-wide refresh run. Idempotent: the constant per-type dedup
