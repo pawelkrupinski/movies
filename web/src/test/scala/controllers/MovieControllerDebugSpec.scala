@@ -62,10 +62,11 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
 
   private val cadenceNow = Instant.parse("2026-06-27T10:00:00Z")
   // Two sources of the same film (tmdbId 1 = "Belle"): MC backed off to the 4-day
-  // cap (stable, streak 6) with a recorded change; IMDb fresh at the 2h base.
+  // cap (stable, backoff level 6) with a recorded change; IMDb fresh at the 2h base.
   private val cadenceReader: services.cadence.RatingCadenceReader = () => Seq(
     "mc|tmdb:1"   -> services.cadence.RatingChangeStats(6, 7, 1, cadenceNow, cadenceNow,
-                       lastChange = Some(services.cadence.RatingChange(cadenceNow, "80", "85"))),
+                       lastChange = Some(services.cadence.RatingChange(cadenceNow, "80", "85")),
+                       backoffLevel = 6),
     "imdb|tmdb:1" -> services.cadence.RatingChangeStats(0, 1, 0, cadenceNow, cadenceNow)
   )
   private val cadenceRecords = Seq(("Belle", Some(2021), MovieRecord(tmdbId = Some(1))))

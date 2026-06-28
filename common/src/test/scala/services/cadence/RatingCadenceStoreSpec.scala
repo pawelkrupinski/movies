@@ -48,4 +48,32 @@ class RatingCadenceStoreSpec extends AnyFlatSpec with Matchers {
   it should "yield None for an absent change field" in {
     MongoRatingCadenceStore.decodeChange(Document("_id" -> "mc|tmdb:1"), "prevChange") shouldBe None
   }
+
+  "decodeRecord" should "read the persisted backoffLevel when present" in {
+    val doc = Document(
+      "_id"             -> "mc|tmdb:1",
+      "backoffLevel"    -> 4,
+      "unchangedStreak" -> 1,
+      "windowChecks"    -> 1,
+      "windowChanges"   -> 0,
+      "windowStartedAt" -> new java.util.Date(t0.toEpochMilli),
+      "lastCheckedAt"   -> new java.util.Date(t0.toEpochMilli)
+    )
+    MongoRatingCadenceStore.decodeRecord(doc).map(_._2.backoffLevel) shouldBe Some(4)
+  }
+
+  it should "fall back to the legacy streak as the backoff level when backoffLevel is absent" in {
+    // Pre-backoffLevel rows keyed the interval straight off unchangedStreak, so a
+    // row without the field keeps its current interval (level = old streak) rather
+    // than snapping back to the base.
+    val legacy = Document(
+      "_id"             -> "mc|tmdb:1",
+      "unchangedStreak" -> 5,
+      "windowChecks"    -> 6,
+      "windowChanges"   -> 0,
+      "windowStartedAt" -> new java.util.Date(t0.toEpochMilli),
+      "lastCheckedAt"   -> new java.util.Date(t0.toEpochMilli)
+    )
+    MongoRatingCadenceStore.decodeRecord(legacy).map(_._2.backoffLevel) shouldBe Some(5)
+  }
 }

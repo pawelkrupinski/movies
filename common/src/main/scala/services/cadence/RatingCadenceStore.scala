@@ -55,7 +55,7 @@ class InMemoryRatingCadenceStore extends RatingCadenceStore {
 
 /**
  * Mongo-backed store, collection `rating_cadence` with documents
- * `{ _id: <key>, unchangedStreak, windowChecks, windowChanges,
+ * `{ _id: <key>, backoffLevel, unchangedStreak, windowChecks, windowChanges,
  *    windowStartedAt: ISODate, lastCheckedAt: ISODate }`.
  *
  * Mirrors [[services.freshness.MongoFreshnessStore]]: reads come from an in-memory
@@ -89,6 +89,7 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
         c.updateOne(
           Filters.eq("_id", key),
           Updates.combine(
+            Updates.set("backoffLevel", s.backoffLevel),
             Updates.set("unchangedStreak", s.unchangedStreak),
             Updates.set("windowChecks", s.windowChecks),
             Updates.set("windowChanges", s.windowChanges),
@@ -145,15 +146,22 @@ object MongoRatingCadenceStore {
       key     <- Option(document.getString("_id"))
       started <- Option(document.getDate("windowStartedAt"))
       checked <- Option(document.getDate("lastCheckedAt"))
-    } yield key -> RatingChangeStats(
-      unchangedStreak = Option(document.getInteger("unchangedStreak")).map(_.intValue).getOrElse(0),
-      windowChecks    = Option(document.getInteger("windowChecks")).map(_.intValue).getOrElse(0),
-      windowChanges   = Option(document.getInteger("windowChanges")).map(_.intValue).getOrElse(0),
-      windowStartedAt = Instant.ofEpochMilli(started.getTime),
-      lastCheckedAt   = Instant.ofEpochMilli(checked.getTime),
-      lastChange      = decodeChange(document, "lastChange"),
-      prevChange      = decodeChange(document, "prevChange")
-    )
+    } yield {
+      val streak = Option(document.getInteger("unchangedStreak")).map(_.intValue).getOrElse(0)
+      key -> RatingChangeStats(
+        unchangedStreak = streak,
+        windowChecks    = Option(document.getInteger("windowChecks")).map(_.intValue).getOrElse(0),
+        windowChanges   = Option(document.getInteger("windowChanges")).map(_.intValue).getOrElse(0),
+        windowStartedAt = Instant.ofEpochMilli(started.getTime),
+        lastCheckedAt   = Instant.ofEpochMilli(checked.getTime),
+        lastChange      = decodeChange(document, "lastChange"),
+        prevChange      = decodeChange(document, "prevChange"),
+        // Legacy rows (pre-backoffLevel) keyed the interval straight off the streak,
+        // so fall back to it — the film keeps its current interval across the deploy
+        // instead of snapping back to the base and re-climbing (a refresh storm).
+        backoffLevel    = Option(document.getInteger("backoffLevel")).map(_.intValue).getOrElse(streak)
+      )
+    }
 }
 
 /** Read-only view of the `rating_cadence` collection for the dev cadence page

@@ -15,14 +15,14 @@ class RatingCadenceSpec extends AnyFlatSpec with Matchers {
     RatingCadence.intervalFor(None) shouldBe RatingCadence.BaseInterval
   }
 
-  it should "double per consecutive no-change refresh and clamp at the max" in {
-    RatingCadence.intervalForStreak(0) shouldBe 2.hours
-    RatingCadence.intervalForStreak(1) shouldBe 4.hours
-    RatingCadence.intervalForStreak(2) shouldBe 8.hours
-    RatingCadence.intervalForStreak(3) shouldBe 16.hours
+  it should "double per backoff level and clamp at the max" in {
+    RatingCadence.intervalForLevel(0) shouldBe 2.hours
+    RatingCadence.intervalForLevel(1) shouldBe 4.hours
+    RatingCadence.intervalForLevel(2) shouldBe 8.hours
+    RatingCadence.intervalForLevel(3) shouldBe 16.hours
     // 2h × 2^6 = 128h would exceed the 4-day (96h) cap → clamped.
-    RatingCadence.intervalForStreak(6) shouldBe RatingCadence.MaxInterval
-    RatingCadence.intervalForStreak(99) shouldBe RatingCadence.MaxInterval
+    RatingCadence.intervalForLevel(6) shouldBe RatingCadence.MaxInterval
+    RatingCadence.intervalForLevel(99) shouldBe RatingCadence.MaxInterval
   }
 
   "record" should "grow the streak on no-change and reset it on a change" in {
@@ -31,7 +31,49 @@ class RatingCadenceSpec extends AnyFlatSpec with Matchers {
     val s2 = RatingCadence.record(Some(s1), reportedValue = None, later(2.hours))
     s2.unchangedStreak shouldBe 2
     val s3 = RatingCadence.record(Some(s2), reportedValue = Some("7.5"), later(6.hours))
-    s3.unchangedStreak shouldBe 0   // a visible change snaps cadence back to the base
+    s3.unchangedStreak shouldBe 0   // a visible change resets the no-change streak
+  }
+
+  it should "lengthen the cadence only after StepUpAfter consecutive no-change refreshes" in {
+    RatingCadence.StepUpAfter shouldBe 3
+    // The first StepUpAfter-1 quiet checks accumulate the streak but DON'T back off yet.
+    val s1 = RatingCadence.record(None, reportedValue = None, t0)
+    s1.backoffLevel shouldBe 0
+    RatingCadence.intervalFor(Some(s1)) shouldBe 2.hours
+    val s2 = RatingCadence.record(Some(s1), reportedValue = None, later(2.hours))
+    s2.backoffLevel shouldBe 0
+    RatingCadence.intervalFor(Some(s2)) shouldBe 2.hours
+    // The third consecutive no-change finally steps the cadence up one level.
+    val s3 = RatingCadence.record(Some(s2), reportedValue = None, later(4.hours))
+    s3.backoffLevel shouldBe 1
+    RatingCadence.intervalFor(Some(s3)) shouldBe 4.hours
+    // Another three quiet checks for the next step.
+    val s4 = RatingCadence.record(Some(s3), reportedValue = None, later(8.hours))
+    val s5 = RatingCadence.record(Some(s4), reportedValue = None, later(12.hours))
+    s5.backoffLevel shouldBe 1
+    val s6 = RatingCadence.record(Some(s5), reportedValue = None, later(16.hours))
+    s6.backoffLevel shouldBe 2
+    RatingCadence.intervalFor(Some(s6)) shouldBe 8.hours
+  }
+
+  it should "tighten the cadence one step per change, not all the way to the base" in {
+    // Climb to level 2 (8h) via six quiet checks.
+    val climbed = (1 to 6).foldLeft(Option.empty[RatingChangeStats]) { (acc, i) =>
+      Some(RatingCadence.record(acc, reportedValue = None, later(i * 2.hours)))
+    }
+    climbed.map(_.backoffLevel) shouldBe Some(2)
+    // A single visible change drops the cadence ONE level (8h → 4h), and resets the streak.
+    val moved = RatingCadence.record(climbed, reportedValue = Some("7.5"), later(14.hours))
+    moved.backoffLevel    shouldBe 1
+    moved.unchangedStreak shouldBe 0
+    RatingCadence.intervalFor(Some(moved)) shouldBe 4.hours
+    // A second change drops it another level (4h → 2h, the base).
+    val moved2 = RatingCadence.record(Some(moved), reportedValue = Some("7.6"), later(16.hours))
+    moved2.backoffLevel shouldBe 0
+    RatingCadence.intervalFor(Some(moved2)) shouldBe 2.hours
+    // Already at the base — a further change can't go below level 0.
+    val moved3 = RatingCadence.record(Some(moved2), reportedValue = Some("7.7"), later(18.hours))
+    moved3.backoffLevel shouldBe 0
   }
 
   it should "count checks and changes within the window" in {
@@ -100,7 +142,9 @@ class RatingCadenceSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "drive the interval end-to-end: stable film stretches toward the cap" in {
-    val stable = (1 to 6).foldLeft(Option.empty[RatingChangeStats]) { (acc, i) =>
+    // Six backoff levels to reach the cap, each gated behind StepUpAfter quiet checks.
+    val ticks  = RatingCadence.MaxLevel * RatingCadence.StepUpAfter
+    val stable = (1 to ticks).foldLeft(Option.empty[RatingChangeStats]) { (acc, i) =>
       Some(RatingCadence.record(acc, reportedValue = None, later(i * 2.hours)))
     }
     RatingCadence.intervalFor(stable) shouldBe RatingCadence.MaxInterval

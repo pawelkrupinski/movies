@@ -10,8 +10,10 @@ import scala.concurrent.duration._
 class CadenceReportSpec extends AnyFlatSpec with Matchers {
 
   private val t0 = Instant.parse("2026-06-27T10:00:00Z")
-  private def stats(streak: Int, last: Option[RatingChange] = None, prev: Option[RatingChange] = None) =
-    RatingChangeStats(streak, windowChecks = streak + 1, windowChanges = 0, t0, t0, last, prev)
+  // `level` is the backoff exponent that drives the interval (base × 2^level).
+  private def stats(level: Int, last: Option[RatingChange] = None, prev: Option[RatingChange] = None) =
+    RatingChangeStats(unchangedStreak = level, windowChecks = level + 1, windowChanges = 0,
+      t0, t0, last, prev, backoffLevel = level)
 
   "intervalLabel" should "render compact day/hour labels" in {
     CadenceReport.intervalLabel(2.hours) shouldBe "2h"
@@ -54,7 +56,7 @@ class CadenceReportSpec extends AnyFlatSpec with Matchers {
 
   it should "populate each entry's next refresh in (lastChecked, lastChecked + interval]" in {
     val e = CadenceReport.build(Seq("mc|tmdb:7" -> stats(6)), _ => Some("X")).flatMap(_.entries).loneElement
-    e.interval shouldBe 4.days     // streak 6 → cap
+    e.interval shouldBe 4.days     // level 6 → cap
     e.nextRefreshAt.isAfter(t0) shouldBe true
     e.nextRefreshAt.isAfter(t0.plus(java.time.Duration.ofDays(4))) shouldBe false
   }
