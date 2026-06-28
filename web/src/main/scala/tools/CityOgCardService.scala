@@ -1,9 +1,5 @@
 package tools
 
-import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
-
-import java.util.concurrent.TimeUnit
-
 /**
  * One film column of the city's page-like share card — the data
  * [[OgCardRenderer.renderCityPageCard]] draws per `.card`.
@@ -34,27 +30,22 @@ case class CityCardFilm(
  */
 class CityOgCardService(posters: PosterFetch) {
   private val loader = new PosterImageLoader(posters)
-  private val cache: Cache[String, Array[Byte]] =
-    Caffeine.newBuilder().maximumSize(200).expireAfterWrite(12, TimeUnit.HOURS).build()
+  private val cache  = new OgCardCache(maxSize = 200)
 
   /** Render (and memoise by `cacheKey`, the city slug, for 12h) the page-like
    *  card from the city's first distinct films. A render where no poster decoded
    *  isn't cached, so the next share retries instead of freezing a poster-less
    *  card. */
   def card(cacheKey: String, cityLine: String, films: Seq[CityCardFilm]): Array[Byte] =
-    Option(cache.getIfPresent(cacheKey)).getOrElse {
+    cache.getOrRender(cacheKey) {
       val columns = films.take(CityOgCardService.Columns)
-        .map(f => f -> loader.loadFirst(f.posterUrls.take(CityOgCardService.MaxPosterCandidates)))
+        .map(f => f -> loader.loadFirst(f.posterUrls.take(OgCard.MaxPosterCandidates)))
       val bytes = OgCardRenderer.renderCityPageCard(cityLine, columns)
-      if (columns.exists(_._2.isDefined)) cache.put(cacheKey, bytes)
-      bytes
+      (bytes, columns.exists(_._2.isDefined))
     }
 }
 
 object CityOgCardService {
   /** Film columns in the page grid. */
   private val Columns = 5
-  /** Poster candidates tried per film before falling back to an empty slot —
-   *  caps a pathological all-dead chain (same intent as `OgCardService`). */
-  private val MaxPosterCandidates = 6
 }
