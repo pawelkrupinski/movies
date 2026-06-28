@@ -1,4 +1,4 @@
-@import models.{Cinema, MovieRecord, Showtime, Source, SourceData, Tmdb, Imdb}
+@import models.{Cinema, CinemaShowing, MovieRecord, Showtime, Source, SourceData, Tmdb, Imdb}
 @import services.movies.TitleNormalizer
 @import java.time.format.DateTimeFormatter
 @(title: String, year: Option[Int], e: MovieRecord, cinemaUrls: Map[String, String] = Map.empty)
@@ -65,10 +65,14 @@
   }</dd>
 </dl>
 
-@*-- Per-source breakdown: cinemas first (in Cinema.all order, Multikino
-     prioritised by the resolver), then TMDB, then IMDb. Each slot shows the
-     raw per-source contribution so you can see which source fed which
-     resolved value above. --*@
+@*-- Per-source breakdown: cinema SLOTS first (in venue-priority then title
+     order — Multikino prioritised by the resolver), then TMDB, then IMDb. A
+     venue now holds one `CinemaShowing` slot PER SHOWN TITLE (the same film
+     listed under its Polish and original/transliterated titles at once), so we
+     iterate the slots directly rather than walking `Cinema.all` with a bare
+     `Cinema` key — the latter misses every production slot and renders one slot
+     per venue at most. Each slot shows the raw per-source contribution so you
+     can see which source fed which resolved value above. --*@
 @perSourceSlot(label: String, source: Source, sourceUrl: Option[String] = None) = {
   @e.data.get(source).map { (slot: SourceData) =>
     <div class="cinema">
@@ -78,6 +82,15 @@
            (`filmUrl`, e.g. the TMDB/IMDB page). Plain text only when neither
            exists. No separate "page ↗" chip — the name carries it. *@
         @_serviceNameLink(label, sourceUrl.orElse(slot.filmUrl), "cinema-name-link")
+        @* A cinema lists a film under one shown title per slot; its `titleKey`
+           (= `sanitize(title)`) is the Mongo sub-document discriminator the
+           read-model card split keys on. Surface it so two title-slots of the
+           same venue (its Polish vs original/transliterated title) are
+           distinguishable at a glance. *@
+        @source match {
+          case CinemaShowing(_, titleKey) => { <span class="slot-key" title="per-title slot key">@titleKey</span> }
+          case _ => {}
+        }
       </div>
       <div class="cinema-meta">
         @slot.title.map { t          => <span>title: <em>@t</em></span> }
@@ -119,11 +132,13 @@
   <em class="miss">No source data yet for this row.</em>
 } else {
   <div class="cinemas">
-    @for(cinema <- Cinema.all) {
-      @perSourceSlot(
-        Cinema.cityOf(cinema).fold(cinema.displayName)(city => s"${cinema.displayName} · $city"),
-        cinema,
-        cinemaUrls.get(cinema.displayName))
+    @for((source, slot) <- e.cinemaSlots.sortBy { case (s, sd) => (Source.priorityOf(s), sd.title.getOrElse("")) }) {
+      @Source.cinemaOf(source).map { cinema =>
+        @perSourceSlot(
+          Cinema.cityOf(cinema).fold(cinema.displayName)(city => s"${cinema.displayName} · $city"),
+          source,
+          cinemaUrls.get(cinema.displayName))
+      }
     }
     @perSourceSlot("TMDB", Tmdb)
     @perSourceSlot("IMDB", Imdb)

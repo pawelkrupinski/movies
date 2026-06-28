@@ -45,8 +45,14 @@
   <td class="orig">@if(orig.nonEmpty) { @orig } else { <span class="miss">—</span> }</td>
   <td class="year">@e.releaseYear.map(_.toString).getOrElse("—")</td>
   @* How many distinct cinemas currently screen this title (TMDB/IMDb slots
-     don't count — `cinemaData` is the cinema-only view of `data`). *@
-  <td class="cinemas">@e.cinemaData.size</td>
+     don't count — `cinemaData` is the cinema-only view of `data`). A venue can
+     hold several per-title slots — the same film listed under its Polish and
+     original/transliterated titles at once (decoration variants like "… -
+     dubbing" canonicalise to one `titleKey` and share a slot). When the slot
+     count exceeds the cinema count we show it in parens so the per-title split
+     is visible without expanding the row. The sort key (`data-cinemas`) stays
+     the distinct-cinema count. *@
+  <td class="cinemas">@e.cinemaData.size@if(e.cinemaSlots.size > e.cinemaData.size) { <span class="slots" title="per-title slots">(@e.cinemaSlots.size)</span> }</td>
   <td class="id">
     @e.imdbId match {
       case Some(id) => { <a href="@{s"https://www.imdb.com/title/$id/"}" target="_blank" rel="noopener">@id</a> }

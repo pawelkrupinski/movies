@@ -36,6 +36,8 @@
     .orig  { color: #99b; max-width: 24ch; overflow: hidden; text-overflow: ellipsis; font-style: italic; }
     .year  { color: #888; text-align: right; font-variant-numeric: tabular-nums; }
     .cinemas { color: #888; text-align: right; font-variant-numeric: tabular-nums; }
+    /* Per-title slot count, shown only when a venue holds more than one slot. */
+    td.cinemas .slots { color: #6a8db0; font-size: 10px; margin-left: .2rem; }
     .id    { color: #669fcc; font-size: 10px; }
     .miss  { color: #444; }
     a { color: #669fcc; text-decoration: none; }
@@ -87,6 +89,14 @@
        href /uptime shows). Looks like the heading; underlines on hover. */
     .cinema-head a.cinema-name-link { color: inherit; font-weight: inherit; font-size: inherit; }
     .cinema-head a.cinema-name-link:hover { color: #fff; text-decoration: underline; }
+    /* The per-title slot key (`sanitize(title)`) — the Mongo sub-document
+       discriminator that splits one venue's shown titles (a film's Polish vs
+       original/transliterated title). Shown as a dim monospace chip so two
+       title-slots of the same cinema are distinguishable. */
+    .cinema-head .slot-key {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 10px; font-weight: normal; color: #6a8db0;
+    }
     .cinema-meta { color: #888; font-size: 10px; margin-bottom: .35rem; }
     .cinema-meta span { margin-right: .8rem; }
     .cinema-synopsis {
