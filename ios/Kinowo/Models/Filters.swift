@@ -423,6 +423,18 @@ extension Sequence where Element == Film {
         }
     }
 
+    /// Resolve the complete, all-days film for a listing film handed to the
+    /// detail screen. The day-paged grids navigate with a `filteredFor`
+    /// copy whose `showings` were pruned to the tapped day-page; the detail
+    /// screen is a full-schedule view, so it re-resolves the whole film by
+    /// title from this (unfiltered) `store.films` list — the same lookup the
+    /// deep-link push and Android's `films.firstOrNull { it.title == title }`
+    /// already do. Falls back to `film` itself when the title is no longer in
+    /// the listing (it just left the repertoire).
+    func fullFilm(for film: Film) -> Film {
+        first { $0.title == film.title } ?? film
+    }
+
     /// Pivot the (cross-cinema) film list into per-cinema sections. The
     /// web's `/kina` controller emits this shape directly from
     /// `CinemaSchedule`; iOS only sees the per-film grouping from `/`,

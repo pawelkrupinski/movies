@@ -291,8 +291,10 @@ struct FilmDetailView: View {
                 Text("Seanse")
                     .font(.system(size: style.showingsHeaderFontSize, weight: .semibold))
                     .foregroundColor(.white)
-                // The listing already carries the full showings tree, so
-                // `ShowingsView` renders the same `Film` we were handed.
+                // We were handed the full, all-days film (ContentView's
+                // `navigationDestination` re-resolves it from the unfiltered
+                // `store.films`, undoing the grid's per-day prune), so
+                // `ShowingsView` renders the complete schedule across every day.
                 ShowingsView(film: film)
             }
             .padding(.top, 4)

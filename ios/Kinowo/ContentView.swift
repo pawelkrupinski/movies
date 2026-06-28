@@ -403,8 +403,13 @@ struct ContentView: View {
             // Resolve NavigationLink(value: Film) from the grids to the per-film
             // detail screen — the container owns the destination so the push
             // survives a page change.
+            //
+            // The grids hand us a `filteredFor` copy whose showings were pruned
+            // to the tapped day-page; the detail screen is a full-schedule view,
+            // so re-resolve the complete, all-days film by title from the
+            // unfiltered `store.films` (matching the deep-link push and Android).
             .navigationDestination(for: Film.self) { film in
-                FilmDetailView(film: film)
+                FilmDetailView(film: store.films.fullFilm(for: film))
             }
             // Flash the day name and retire the swipe hint whenever the day
             // changes — by a swipe OR a date-pill tap (both move this selection).

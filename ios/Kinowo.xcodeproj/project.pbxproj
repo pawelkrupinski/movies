@@ -67,6 +67,7 @@
 		DD00000000000000000305 /* RotationColumnsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000305 /* RotationColumnsUITests.swift */; };
 		DD00000000000000000306 /* NavbarFadeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000306 /* NavbarFadeUITests.swift */; };
 		DD00000000000000000307 /* CityChoiceSearchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000307 /* CityChoiceSearchUITests.swift */; };
+		DD000000000000000004A1 /* DetailShowsAllDaysUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000000000000000004A1 /* DetailShowsAllDaysUITests.swift */; };
 		DD0000000000000000001F /* AccessibilityIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001B /* AccessibilityIdentifiers.swift */; };
 
 		DD00000000000000000022 /* RetryBackoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000022 /* RetryBackoff.swift */; };
@@ -155,6 +156,7 @@
 		CC00000000000000000305 /* RotationColumnsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RotationColumnsUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000306 /* NavbarFadeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavbarFadeUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000307 /* CityChoiceSearchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityChoiceSearchUITests.swift; sourceTree = "<group>"; };
+		CC000000000000000004A1 /* DetailShowsAllDaysUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailShowsAllDaysUITests.swift; sourceTree = "<group>"; };
 
 		CC00000000000000000022 /* RetryBackoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetryBackoff.swift; sourceTree = "<group>"; };
 		CC00000000000000000044 /* SwipeHint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeHint.swift; sourceTree = "<group>"; };
@@ -334,6 +336,7 @@
 				CC00000000000000000305 /* RotationColumnsUITests.swift */,
 				CC00000000000000000306 /* NavbarFadeUITests.swift */,
 				CC00000000000000000307 /* CityChoiceSearchUITests.swift */,
+				CC000000000000000004A1 /* DetailShowsAllDaysUITests.swift */,
 			);
 			path = KinowoUITests;
 			sourceTree = "<group>";
@@ -507,6 +510,7 @@
 				DD00000000000000000305 /* RotationColumnsUITests.swift in Sources */,
 				DD00000000000000000306 /* NavbarFadeUITests.swift in Sources */,
 				DD00000000000000000307 /* CityChoiceSearchUITests.swift in Sources */,
+				DD000000000000000004A1 /* DetailShowsAllDaysUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
