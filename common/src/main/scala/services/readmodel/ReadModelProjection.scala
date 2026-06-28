@@ -100,13 +100,14 @@ object ReadModelProjection {
    *  is a pure function of the showtime *set*, not of upstream scrape order —
    *  reordering upstream can't churn the diff. */
   def screenings(stored: StoredMovieRecord): Seq[CityScreening] =
-    screeningsFor(stored.record.cinemaData, filmId(stored))
+    screeningsFor(stored.record.cinemaShowings, filmId(stored))
 
   /** One `CityScreening` per (city, cinema) for the given cinema slots, keyed
-   *  under `fid`. Shared by [[screenings]] (all of a row's cinemas) and the
-   *  per-variant split (only the cinemas that reported one display title). */
-  private def screeningsFor(cinemaData: Map[Cinema, SourceData], fid: String): Seq[CityScreening] =
-    cinemaData.toSeq.flatMap { case (cinema, slot) =>
+   *  under `fid`. Shared by [[screenings]] (all of a row's cinema slots) and the
+   *  per-variant split (only the slots that reported one display title). Within a
+   *  variant a venue has at most one slot, so no two screenings collide on `_id`. */
+  private def screeningsFor(showings: Seq[(Cinema, SourceData)], fid: String): Seq[CityScreening] =
+    showings.flatMap { case (cinema, slot) =>
       if (slot.showtimes.isEmpty) None
       else City.forCinema(cinema).map { city =>
         CityScreening(
@@ -129,9 +130,9 @@ object ReadModelProjection {
    *  stored record (one tmdbId, one set of merged facts) with the Polish
    *  listing. Sorted by key for deterministic output. A cinema slot with no
    *  reported title falls into the record's anchor key (`sanitize(stored.title)`). */
-  private def variants(stored: StoredMovieRecord): Seq[(String, Set[Cinema])] = {
+  private def variants(stored: StoredMovieRecord): Seq[(String, Set[Source])] = {
     val anchorKey = TitleNormalizer.sanitize(stored.title)
-    stored.record.cinemaData.toSeq
+    stored.record.cinemaSlots
       .groupBy { case (_, slot) => slot.title.map(TitleNormalizer.sanitize).getOrElse(anchorKey) }
       .view.mapValues(_.map(_._1).toSet).toSeq
       .sortBy(_._1)
@@ -143,7 +144,7 @@ object ReadModelProjection {
   def filmIds(stored: StoredMovieRecord): Seq[String] = {
     val groups = variants(stored)
     if (groups.sizeIs <= 1) Seq(filmId(stored))
-    else groups.map { case (_, cinemas) => variantFilmId(stored, cinemas) }
+    else groups.map { case (_, sources) => variantFilmId(stored, sources) }
   }
 
   /** The split projection for a row: one `(ResolvedMovie, screenings)` per
@@ -157,15 +158,15 @@ object ReadModelProjection {
   def projectAll(stored: StoredMovieRecord): Seq[(ResolvedMovie, Seq[CityScreening])] = {
     val groups = variants(stored)
     if (groups.sizeIs <= 1) Seq(project(stored))
-    else groups.map { case (_, cinemas) => projectVariant(stored, cinemas) }
+    else groups.map { case (_, sources) => projectVariant(stored, sources) }
   }
 
   /** The film id for one display-title variant: `sanitize(variantTitle)|year`,
-   *  where the variant title is derived from only that group's cinemas (so two
+   *  where the variant title is derived from only that group's slots (so two
    *  groups never collide — distinct sanitize keys) and the year is the shared
    *  resolved year. */
-  private def variantFilmId(stored: StoredMovieRecord, cinemas: Set[Cinema]): String = {
-    val scoped = stored.record.scopedToCinemas(cinemas)
+  private def variantFilmId(stored: StoredMovieRecord, sources: Set[Source]): String = {
+    val scoped = stored.record.scopedToSources(sources)
     s"${TitleNormalizer.sanitize(scoped.displayTitle(stored.title))}|${stored.record.resolvedYear.map(_.toString).getOrElse("")}"
   }
 
@@ -174,9 +175,9 @@ object ReadModelProjection {
    *  rating) come from the FULL record via [[resolve]]; only the title, the
    *  synopsis pool (this variant's cinemas + the shared TMDB/IMDb fallback) and
    *  the screening subset are scoped to the group. */
-  private def projectVariant(stored: StoredMovieRecord, cinemas: Set[Cinema]): (ResolvedMovie, Seq[CityScreening]) = {
+  private def projectVariant(stored: StoredMovieRecord, sources: Set[Source]): (ResolvedMovie, Seq[CityScreening]) = {
     val r      = stored.record
-    val scoped = r.scopedToCinemas(cinemas)
+    val scoped = r.scopedToSources(sources)
     val title  = scoped.displayTitle(stored.title)
     val fid    = s"${TitleNormalizer.sanitize(title)}|${r.resolvedYear.map(_.toString).getOrElse("")}"
     val movie  = resolve(stored).copy(
@@ -191,7 +192,7 @@ object ReadModelProjection {
       synopsisByCity = synopsisByCity(scoped),
       ratings        = ratingsFor(r, title)
     )
-    (movie, screeningsFor(scoped.cinemaData, fid))
+    (movie, screeningsFor(scoped.cinemaShowings, fid))
   }
 
   /** Both halves of the projection for ONE display-title variant — the

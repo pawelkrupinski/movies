@@ -1,6 +1,6 @@
 package services.tasks
 
-import models.SourceData
+import models.{CinemaShowing, SourceData}
 import play.api.Logging
 import services.UptimeMonitor
 import services.cinemas.DetailEnricher
@@ -110,7 +110,14 @@ class EnrichDetailsHandler(
           case Some(detail) =>
             val title  = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, "")
             val year   = task.payload.get(EnrichDetailsTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
-            val target = enricher.detailTarget
+            // For a 1:1 venue the listing slot is keyed per shown title
+            // (`CinemaShowing`), so target THAT slot — a bare-cinema target would
+            // create a separate empty slot and the detail would never merge into the
+            // film's showtimes. A chain redirects detail to its shared network source
+            // (not per-title), which is left as-is.
+            val target =
+              if (enricher.detailTarget == enricher.cinema) CinemaShowing.keyFor(enricher.cinema, title)
+              else enricher.detailTarget
             val rowKey = cache.keyOf(title, year)
             // Was this the detail the row was held back for? Capture before the
             // merge clears the flag, so a periodic re-fetch of an already-done

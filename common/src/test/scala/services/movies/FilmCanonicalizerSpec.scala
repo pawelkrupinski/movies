@@ -233,30 +233,43 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "NOT fold a decorated edition whose key only CONTAINS a resolved row's alias" in {
-    // The alias edge must match the straggler's WHOLE sanitized key, not a substring:
-    // "Zaproszenie | Kinoteka dla rodziców" contains the base alias "Zaproszenie" but
-    // adds a programme banner, so it stays its own component (it is separate by design).
+  it should "fold an UNRESOLVED programme edition onto its base by SEARCH TITLE, not by resolution" in {
+    // "Zaproszenie | Kinoteka dla rodziców" has no tmdbId of its own (its decorated
+    // string can't be searched), but shares the base's SEARCH TITLE — `apiQuery`
+    // strips the "| Kinoteka dla rodziców" programme banner → "Zaproszenie" — so the
+    // search-title edge folds it onto the resolved base DETERMINISTICALLY, regardless
+    // of whether it ever resolves its own id. That's what makes the staging fold
+    // arrival-order-independent (StagingOrderDeterminismSpec): a director-less
+    // edition no longer has to win a director-walk race to join its film. (A
+    // genuinely different film that merely contains the base word — "Moja Ojczyzna"
+    // vs "Ojczyzna" — has a DIFFERENT search title and is NOT folded.)
     val rows = Seq(
       aliased("Zaproszenie", tmdbId = 9001, tmdbYear = 2022, tmdbTitle = "Zaproszenie",
         originalTitle = "The Invitation", cinema = Helios, cinemaTitle = "Zaproszenie"),
       unresolved("Zaproszenie | Kinoteka dla rodziców", None, cinema = Kinoteka)
     )
-    FilmCanonicalizer.groupByFilm(rows) should have size 2
+    FilmCanonicalizer.groupByFilm(rows) should have size 1
   }
 
-  it should "NOT fold a programme/decorated edition that merely carries the base tmdbId" in {
-    // "Zaproszenie | Kinoteka dla rodziców" resolves to the base film's tmdbId, but
-    // its key is NOT a TMDB alias (it adds the programme banner) — it is separate
-    // by design and must stay its own component, while the bare base folds normally.
+  it should "fold a programme/decorated edition sharing the base tmdbId into one record" in {
+    // "Zaproszenie | Kinoteka dla rodziców" resolves to the base film's tmdbId, so
+    // it is the SAME film and folds onto one storage record — even though its key
+    // is not a bare TMDB alias. The programme banner is no longer a separate ROW;
+    // the read-model projection splits it back into its own CARD by shown title
+    // (see ReadModelProjectionSpec's `projectAll` cases). Both cinemas' slots —
+    // and their distinct titles — survive the fold so the split can recover them.
     val rows = Seq(
       aliased("Zaproszenie",                       tmdbId = 9001, tmdbYear = 2022, tmdbTitle = "Zaproszenie", originalTitle = "The Invitation", cinema = Helios,   cinemaTitle = "Zaproszenie"),
       aliased("Zaproszenie | Kinoteka dla rodziców", tmdbId = 9001, tmdbYear = 2022, tmdbTitle = "Zaproszenie", originalTitle = "The Invitation", cinema = Kinoteka, cinemaTitle = "Zaproszenie | Kinoteka dla rodziców")
     )
     val components = FilmCanonicalizer.groupByFilm(rows)
     withClue(s"components: ${components.map(_.map(_._1.cleanTitle))}\n") {
-      components should have size 2
+      components should have size 1
     }
+    val clusters = FilmCanonicalizer.clusterByFilm(components.head)
+    clusters should have size 1                                       // one tmdbId → one film
+    val (_, merged) = FilmCanonicalizer.canonical(clusters.head)
+    merged.cinemaTitles shouldBe Set("Zaproszenie", "Zaproszenie | Kinoteka dla rodziców")
   }
 
   it should "keep a remake (two distinct tmdbIds sharing a title) as one component but two clusters" in {

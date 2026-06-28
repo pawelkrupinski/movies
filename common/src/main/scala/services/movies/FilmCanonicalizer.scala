@@ -168,9 +168,12 @@ object FilmCanonicalizer {
    *  translation ("Tangled" == originalTitle, "Zaplątani" == TMDB Polish title)
    *  qualifies; a dub / programme / festival variant ("Straszny film ukraiński
    *  dubbing", "Zaproszenie | Kinoteka dla rodziców") adds words beyond any alias
-   *  and does NOT. Only bare-title rows are merged across titles by shared tmdbId,
-   *  so an intentionally-separate decorated edition that merely carries the base
-   *  film's tmdbId is never folded onto the base. */
+   *  and does NOT. Rows sharing a tmdbId now ALWAYS merge regardless of spelling
+   *  (the read-model split renders a card per shown title from the one record), so
+   *  this no longer gates the tmdbId fold; it still gates the cross-title ALIAS
+   *  edge — an UNRESOLVED row is adopted onto a resolved row only when the resolved
+   *  row is a bare film title, so a decorated edition's alias never adopts a
+   *  genuinely-new bare film. */
   private[services] def isBareFilmTitle(row: (CacheKey, MovieRecord)): Boolean = {
     val norm = TitleNormalizer.sanitize(row._1.cleanTitle)
     row._2.tmdbTitleAliases.exists(a => TitleNormalizer.sanitize(a) == norm)
@@ -212,10 +215,13 @@ object FilmCanonicalizer {
     // sanitize(title) edges — always (preserves the prior title-scoped grouping).
     rows.indices.groupBy(i => TitleNormalizer.sanitize(rows(i)._1.cleanTitle))
       .valuesIterator.foreach(unionAllIndices)
-    // tmdbId edges — only between BARE film titles, so translation duplicates fold
-    // but decorated editions sharing the base tmdbId stay apart.
+    // tmdbId edges — connect EVERY pair of rows sharing a tmdbId: a film TMDB
+    // resolves to one id is one record, however its rows are spelled (Polish /
+    // Cyrillic / a dubbed or festival-decorated listing). The split back into a
+    // card per shown title now lives in the read-model projection, so a
+    // decorated edition no longer needs its own storage row to stay visible.
     rows.indices
-      .filter(i => rows(i)._2.tmdbId.isDefined && isBareFilmTitle(rows(i)))
+      .filter(i => rows(i)._2.tmdbId.isDefined)
       .groupBy(i => rows(i)._2.tmdbId.get)
       .valuesIterator.foreach(unionAllIndices)
     // tmdbTitleAlias edges — fold an UNRESOLVED row whose key sanitizes to one of a
@@ -242,6 +248,60 @@ object FilmCanonicalizer {
       val norm = TitleNormalizer.sanitize(rows(j)._1.cleanTitle)
       resolvedBareByAlias.get(norm).foreach(_.foreach(union(_, j)))
     }
+    // SEARCH-TITLE edges — union rows whose decoration-STRIPPED title (the
+    // `apiQuery` form the scrape uses for TMDB lookup) matches. A decorated edition
+    // ("WAJDA: re-wizje: Człowiek z marmuru", "Ojczyzna - pokaz przedpremierowy",
+    // "Klątwa doliny węży z autorską narracją", "Straszny film ukraiński dubbing")
+    // has the SAME search title as its base film, so this folds it onto the base as
+    // a PURE function of the titles — independent of whether the edition resolved
+    // its OWN tmdbId. That independence is the whole point: a director-less decorated
+    // string often can't resolve on its own, and whether it does was arrival-order-
+    // dependent (it resolved only if a director-bearing sibling's slot happened to
+    // merge in before the `StagingReaper` concluded it `tmdbNoMatch`) — the
+    // `StagingOrderDeterminismSpec` flap. Anchoring the fold on the search title
+    // removes order from the equation entirely.
+    //
+    // EXACT equality, not a substring: a different film that merely contains the base
+    // words ("Moja Ojczyzna" vs "Ojczyzna") has a different search title and never
+    // matches. Same-search-title REMAKES ("Diuna" 1984 vs 2021) land in one component
+    // but split back into per-tmdbId clusters in `clusterByFilm` (whose rule-4
+    // ambiguity-refuse leaves a yearless edition of an ambiguous title on its own).
+    // `apiQuery` strips only the decorations its rules recognise, so an edition under
+    // an UNrecognised banner keeps its own search title and stays separate —
+    // deterministically, not by an order-dependent resolution race.
+    rows.indices.groupBy(i => TitleNormalizer.sanitize(TitleNormalizer.apiQuery(rows(i)._1.cleanTitle)))
+      .valuesIterator.foreach(unionAllIndices)
+    // title-CONTAINMENT edges — the complement of the search-title edge, for banners
+    // `apiQuery` does NOT recognise ("WAJDA: re-wizje: Człowiek z marmuru",
+    // "Podziemny Krąg (Fight Club)"): those keep their decorated search title, so the
+    // edge above can't fold them, and their own resolution is the arrival-order race
+    // we're killing. Fold an UNRESOLVED edition onto a RESOLVED base whose title (or
+    // alias) appears as a contiguous TOKEN-RUN inside the edition's — a PURE function
+    // of titles + which rows resolved (and a bare base resolves deterministically on
+    // its own title). Safeguards: base ≥2 tokens (so a 1-token "Ojczyzna" can't
+    // swallow "Moja Ojczyzna"), edition strictly longer, and REFUSE ON AMBIGUITY
+    // (runs of two different resolved films → attach to neither).
+    def titleTokens(s: String): Seq[String] =
+      tools.TextNormalization.deburr(s).toLowerCase(java.util.Locale.ROOT)
+        .split("[^\\p{L}\\p{N}]+").iterator.filter(_.nonEmpty).toSeq
+    // PREFIX-or-SUFFIX run, not mid-string: a decoration wraps the base at an EDGE
+    // ("WAJDA: re-wizje: Brzezina", "Podziemny Krąg (Fight Club)"), so even a 1-token
+    // base can't be swallowed by an unrelated title that merely mentions the word in
+    // the middle. The edition must be strictly longer (a real decoration).
+    def isTokenRun(base: Seq[String], whole: Seq[String]): Boolean =
+      base.nonEmpty && whole.lengthIs > base.length && (whole.startsWith(base) || whole.endsWith(base))
+    val resolvedBaseRuns: Seq[(Seq[String], Int)] =
+      rows.indices
+        .filter(i => rows(i)._2.tmdbId.isDefined)
+        .flatMap(i => (rows(i)._2.tmdbTitleAliases + rows(i)._1.cleanTitle).iterator.map(titleTokens(_) -> i))
+        .toSeq
+    rows.indices
+      .filter(j => rows(j)._2.tmdbId.isEmpty)
+      .foreach { j =>
+        val whole   = titleTokens(rows(j)._1.cleanTitle)
+        val matched = resolvedBaseRuns.collect { case (base, i) if isTokenRun(base, whole) => i }
+        if (matched.map(i => rows(i)._2.tmdbId.get).distinct.lengthIs == 1) matched.foreach(union(_, j))
+      }
     rows.indices.groupBy(find).valuesIterator.toSeq
       .map(idxs => idxs.toSeq.sortBy(i => canonicalRank(rows(i)._1)).map(rows))
       .sortBy(comp => comp.map(r => canonicalRank(r._1)).min)

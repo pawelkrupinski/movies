@@ -1,7 +1,7 @@
 package services.movies
 
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
-import models.{Cinema, CinemaMovie, MovieRecord, Source, SourceData}
+import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData}
 import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
@@ -234,29 +234,20 @@ class CaffeineMovieCache(
     negative.getIfPresent(key) != null
 
   /** Persist a row at `key`. **Identity gate**: when `e` carries a `tmdbId`
-   *  AND a cache key with the SAME normalised cleanTitle already holds that
-   *  same tmdbId, the write is folded onto that canonical row instead of
-   *  creating a duplicate — the victim's cinema-side data is unioned in via
-   *  `MovieRecordMerge.union`, the source key is dropped from both cache and
-   *  repository.
+   *  AND any other cache key already holds that same tmdbId, the write is
+   *  folded onto that canonical row instead of creating a duplicate — the
+   *  victim's cinema-side data is unioned in via `MovieRecordMerge.union`, the
+   *  source key is dropped from both cache and repository.
    *
-   *  Identity check: **same `tmdbId` AND same normalised `cleanTitle`**.
-   *  This narrows the gate to the *year-divergence* case ("Viridiana"
-   *  Some(1961) vs Some(1962), "Diabeł ubiera się u Prady 2" None vs
-   *  Some(2026)) — the films TMDB tells us are one row but cinemas have
-   *  reported with different years. Rows that share a tmdbId but have a
-   *  genuinely different cleanTitle — Polish/Latin "Diabeł ubiera się u
-   *  Prady 2" vs Cyrillic "ДИЯВОЛ НОСИТЬ ПРАДА 2" vs the explicit
-   *  Ukrainian-dubbed listing "Diabeł ubiera się u Prady 2 ukraiński
-   *  dubbing" — are intentionally kept as separate cards. They target
-   *  separate audiences and folding them would force one variant's display
-   *  title to be hidden.
-   *
-   *  The rest of the cache (`redirectToExistingVariant`,
-   *  `hasResolvedSiblingByTitle`, `MovieService.sisterRowMatch`) already
-   *  enforces the same per-cleanTitle separation via normalised-cleanTitle
-   *  comparison — this gate is the one remaining bridge that needed an
-   *  explicit guard.
+   *  Identity check: **same `tmdbId`**, regardless of how the two rows spell
+   *  their cleanTitle. A film TMDB resolves to one id is ONE record — the
+   *  year-divergence case ("Viridiana" 1961 vs 1962), the cross-language case
+   *  (Polish "Diabeł ubiera się u Prady 2" vs Cyrillic "ДИЯВОЛ НОСИТЬ ПРАДА 2"),
+   *  and the decorated/dubbed edition ("…ukraiński dubbing") all fold onto it.
+   *  Each shown title is split back into its own CARD by the read-model
+   *  projection (`ReadModelProjection.projectAll`), so keeping one storage
+   *  record per film no longer hides any variant's display title — the split
+   *  moved from storage to display.
    *
    *  This is the only persist path in the codebase — `MovieRepository.upsert` is
    *  called from nowhere else — so the gate is the chokepoint that prevents
@@ -294,23 +285,20 @@ class CaffeineMovieCache(
     rottenTomatoes = e.rottenTomatoes.filter(_ > 0)
   )
 
-  /** Find an existing cache key carrying the same tmdbId as `excluding`,
-   *  filtered to candidates whose normalised cleanTitle matches
-   *  `excluding`'s. Different-cleanTitle candidates are intentionally
-   *  invisible here — see the `put` docstring above. */
+  /** Find an existing cache key carrying the same tmdbId as `excluding` — the
+   *  same film, whatever its cleanTitle spelling (the display split into a card
+   *  per shown title now lives in the read-model projection, see the `put`
+   *  docstring above).
+   *
+   *  `minByOption`, not `find`: a same-tmdbId row can have more than one sibling
+   *  (year + yearless + a dub variant), and `asMap` iteration order is not
+   *  stable across JVM builds / platforms. Pick the canonical-rank minimum so
+   *  the chosen sibling — and therefore the fold result — is a pure function of
+   *  the cache contents, not iteration order. */
   private def siblingKeyByTmdb(tid: Int, excluding: CacheKey): Option[CacheKey] = {
     import scala.jdk.CollectionConverters._
-    val target = TitleNormalizer.sanitize(excluding.cleanTitle)
-    // `minByOption`, not `find`: a same-tmdbId row can have more than one
-    // sibling (year + yearless + a dub variant), and `asMap` iteration order
-    // is not stable across JVM builds / platforms. Pick the canonical-rank
-    // minimum so the chosen sibling — and therefore the fold result — is a
-    // pure function of the cache contents, not iteration order.
     positive.asMap().asScala.iterator
-      .collect { case (k, v)
-        if k != excluding &&
-           v.tmdbId.contains(tid) &&
-           TitleNormalizer.sanitize(k.cleanTitle) == target => k }
+      .collect { case (k, v) if k != excluding && v.tmdbId.contains(tid) => k }
       .minByOption(canonicalRank)
   }
 
@@ -544,24 +532,28 @@ class CaffeineMovieCache(
    *  between arm64 dev boxes and amd64 CI) no longer matters. */
   private def foldDeterministically(newKey: CacheKey, newRecord: MovieRecord, siblingKey: CacheKey): Unit = {
     val siblingRecord = Option(positive.getIfPresent(siblingKey)).getOrElse(newRecord)
-    val newWins    = Ordering[(Boolean, Int, String)].lt(canonicalRank(newKey), canonicalRank(siblingKey))
-    val canonical  = if (newWins) newKey else siblingKey
-    val victim     = if (newWins) siblingKey else newKey
-    // union(canonical, victim): per-source slots are unioned (no loss); the
-    // shared top-level enrichment fields are identical between same-tmdbId
-    // siblings, so the merged record doesn't depend on the union direction.
-    val canonicalRecord = if (newWins) newRecord else siblingRecord
-    val merged = if (newWins) MovieRecordMerge.union(newRecord, siblingRecord)
-                 else         MovieRecordMerge.union(siblingRecord, newRecord)
+    // Key the surviving row exactly as the settle's `canonicalizeBySanitize`
+    // does — `FilmCanonicalizer.canonical` derives the key from the merged
+    // record's `displayTitle` (the dominant cinema spelling) and unions onto the
+    // tmdbId-bearing base. Picking the alphabetical-min raw key instead would, for
+    // a CROSS-language fold ("Tangled" + "Zaplątani"), land on the original-
+    // language title no cinema dominantly reports — so the next localised scrape
+    // (matched by sanitize via `concludedKeyFor`) wouldn't find it and would
+    // re-spawn the duplicate. One rule for both fold paths keeps the stored
+    // result a pure function of the row set, not arrival order.
+    val (canonical, merged) = FilmCanonicalizer.canonical(Seq(siblingKey -> siblingRecord, newKey -> newRecord))
     persist(canonical, merged)
     // The merge may have filled enrichment inputs the canonical lacked (e.g. an
     // imdbId/searchTitle from the victim) — re-kick the affected enrichments.
-    retriggerChangedEnrichments(canonicalRecord, canonical, merged, canonical)
-    if (victim != canonical) {
+    retriggerChangedEnrichments(siblingRecord, siblingKey, merged, canonical)
+    val victims = Seq(siblingKey, newKey).distinct.filterNot(_ == canonical)
+    victims.foreach { victim =>
       positive.invalidate(victim)
       repository.delete(victim.cleanTitle, victim.year)
-      mergeMetrics.recordMerge(MergeReason.TmdbIdentity, 1)
-      logger.info(s"Folded duplicate '${victim.cleanTitle}' (${victim.year.getOrElse("—")}) " +
+    }
+    if (victims.nonEmpty) {
+      mergeMetrics.recordMerge(MergeReason.TmdbIdentity, victims.size)
+      logger.info(s"Folded duplicate(s) ${victims.map(v => s"'${v.cleanTitle}' (${v.year.getOrElse("—")})").mkString(", ")} " +
                   s"into '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}) — same tmdbId=${newRecord.tmdbId.get}.")
     }
   }
@@ -706,6 +698,15 @@ class CaffeineMovieCache(
    *  Records whose cinema-side slots become empty are pruned daily by
    *  `UnscreenedCleanup`; a film that returns after the prune ran will
    *  re-pay the full enrichment cost on its next scrape. */
+  /** The slot key for one cinema's report of a film under a given shown title.
+   *  Every cinema slot is keyed by `(cinema, sanitize(title))` so a venue can hold
+   *  several title-variant slots of one film (the original + a dubbed/decorated
+   *  edition) without collision — the read-model split renders a card each, and
+   *  the same (cinema, title) ALWAYS produces the same key so a re-scrape / fold
+   *  merges in place instead of duplicating. */
+  private def cinemaSlotKey(cinema: Cinema, title: String): Source =
+    CinemaShowing.keyFor(cinema, title)
+
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey, Boolean)] = {
     // Empty `movies` is almost always a silent scraper failure (Cloudflare
     // challenge, parser regex mismatch, proxy 503, blank HTML), not a
@@ -801,13 +802,27 @@ class CaffeineMovieCache(
     // tick from the rows (exactly like `knownSanitized`), so a merge/split that moves
     // a cinema's slot to another row is reflected automatically — no persisted map to
     // keep in sync, nothing to update on fold.
-    val knownByCinemaSlot: Set[(Cinema, String)] =
-      if (staging.isEmpty) Set.empty
-      else positive.asMap().asScala.valuesIterator.flatMap { rec =>
-        rec.cinemaData.iterator.flatMap { case (cin, sd) =>
-          sd.title.iterator.map(t => (cin, TitleNormalizer.sanitize(t)))
+    // Index every movies row by each of its cinema SLOTS' (cinema, sanitized title)
+    // → the row's key. Multi-valued slots are covered by `cinemaShowings` (a venue
+    // can hold the original AND a dubbed edition). Two uses, both derived fresh each
+    // tick from the rows (no persisted map; a merge/split that moves a slot is
+    // reflected automatically):
+    //   - the divert gate (`knownByCinemaSlot`) recognises a film this cinema
+    //     already sits in — even under a decoration no rule strips — so a known
+    //     film isn't re-incubated (Trójmiasto/GCF flap, UnknownBannerReDivertSpec);
+    //   - the land path routes a scrape onto the row that ALREADY HOLDS this exact
+    //     (cinema, title) slot, so a same-cinema dub/decorated edition folded onto
+    //     the base film updates its slot IN PLACE rather than re-spawning a
+    //     title-keyed row and re-folding every tick (the same-cinema churn the
+    //     per-(cinema,title) slot model exists to kill).
+    val rowByCinemaSlot: Map[(Cinema, String), CacheKey] =
+      positive.asMap().asScala.iterator.flatMap { case (k, rec) =>
+        rec.cinemaShowings.iterator.flatMap { case (cin, sd) =>
+          sd.title.iterator.map(t => (cin, TitleNormalizer.sanitize(t)) -> k)
         }
-      }.toSet
+      }.toSeq.groupBy(_._1).view.mapValues(_.map(_._2).minBy(canonicalRank)).toMap
+    val knownByCinemaSlot: Set[(Cinema, String)] =
+      if (staging.isEmpty) Set.empty else rowByCinemaSlot.keySet
     val priorStagingRows: Map[String, services.staging.StagingRecord] =
       staging.fold(Map.empty[String, services.staging.StagingRecord]) {
         _.findAll().iterator.collect { case r if r.cinema == cinema => TitleNormalizer.sanitize(r.title) -> r }.toMap
@@ -839,12 +854,12 @@ class CaffeineMovieCache(
           // out of the read model until it resolves and folds in (the promoter +
           // folder own that). Excluded from `resolved`, so no movies-side
           // prune/publish fires for it.
-          val priorSlot     = priorStagingRows.get(norm).flatMap(_.record.data.get(cinema))
+          val priorSlot     = priorStagingRows.get(norm).flatMap(_.record.data.get(cinemaSlotKey(cinema, displayTitle)))
           val effectiveYear = cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))
           val slot          = buildCinemaSlot(cm, displayTitle, priorSlot, effectiveYear)
           staging.get.upsert(cinema, displayTitle, cm.movie.releaseYear, MovieRecord(
             searchTitle = Some(TitleNormalizer.apiQuery(TitleNormalizer.recase(displayTitle))),
-            data        = Map((cinema: Source) -> slot)
+            data        = Map(cinemaSlotKey(cinema, displayTitle) -> slot)
           ))
           divertedSanitized += norm
           None
@@ -877,12 +892,17 @@ class CaffeineMovieCache(
                   if (canonical != existingKey) rekey(existingKey, canonical, identity)
                   canonical
                 }
-              case None => primary
+              // No title/year match — but if some row ALREADY holds this exact
+              // (cinema, title) slot (a same-cinema dub/decorated edition folded
+              // onto the base film under a different display title), land on THAT
+              // row and update the slot in place, instead of spawning a new
+              // title-keyed row that re-resolves and re-folds every tick.
+              case None => rowByCinemaSlot.getOrElse((cinema, norm), primary)
             }
           }
           val existingOpt   = Option(positive.getIfPresent(key))
           val existing      = existingOpt.getOrElse(MovieRecord())
-          val priorSlot     = existing.data.get(cinema)
+          val priorSlot     = existing.data.get(cinemaSlotKey(cinema, displayTitle))
           val effectiveYear = cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))
           val slot          = buildCinemaSlot(cm, displayTitle, priorSlot, effectiveYear)
           // `isNew` controls whether to publish `MovieDetailsComplete`. Dedup
@@ -892,15 +912,16 @@ class CaffeineMovieCache(
           // Existing rows go through `putIfPresent` (a `$set`-diff that preserves
           // out-of-band edits); first-time scrapes `put` (keeps the tmdbId
           // identity gate live).
+          val slotKey = cinemaSlotKey(cinema, displayTitle)
           existingOpt match {
             case Some(_) =>
-              putIfPresent(key, current => current.copy(data = current.data + ((cinema: Source) -> slot)))
+              putIfPresent(key, current => current.copy(data = current.data + (slotKey -> slot)))
             case None =>
               // `searchTitle` is a STAGING-only field (set on the newcomer that
               // diverts to `pending_movies`); a row landing straight in `movies`
               // carries none, so movies ingestion stays a pure function of the
               // canonical title — no scrape-order dependence.
-              put(key, existing.copy(data = existing.data + ((cinema: Source) -> slot)))
+              put(key, existing.copy(data = existing.data + (slotKey -> slot)))
           }
           // A brand-new cinema observation grows what the TMDB stage can work
           // with; drop any stale "missing" verdict so the imminent publish
@@ -911,32 +932,38 @@ class CaffeineMovieCache(
       }
     }
 
-    // Prune (movies): any cache entry that previously had this cinema's slot but
-    // wasn't touched this tick → drop the slot. The record itself stays.
+    // Prune (movies): any of THIS cinema's slots that existed before but weren't
+    // touched this tick → drop that slot. With per-(cinema,title) slots a venue can
+    // hold several (original + dub); a tick scrapes them all, so an untouched slot
+    // means that specific title stopped screening (or the dub did) — drop just it,
+    // keeping the venue's other slots. The record itself stays.
     //
-    // Identify "touched" by the slot's `SourceData` reference rather than by
-    // cache key. The prune runs OUTSIDE the per-title lock, so a concurrent
-    // `cache.rekey` can move a row to a year-keyed sibling — carrying our just-
-    // written slot along. Slot-identity tracking survives that move because
-    // `cache.rekey` preserves the SourceData reference verbatim.
+    // Identify "touched" by the slot's `SourceData` reference rather than by cache
+    // key. The prune runs OUTSIDE the per-title lock, so a concurrent `cache.rekey`
+    // can move a row to a year-keyed sibling — carrying our just-written slot along.
+    // Slot-identity tracking survives that move because `cache.rekey` preserves the
+    // SourceData reference verbatim.
     val touchedSlots: Set[SourceData] = resolved.iterator.map(_._2).toSet
     positive.asMap().asScala.iterator
-      .filter { case (_, e) =>
-        e.data.get(cinema).exists(slot => !touchedSlots.contains(slot))
+      .flatMap { case (k, e) =>
+        val staleKeys = e.data.iterator.collect {
+          case (s, sd) if Source.cinemaOf(s).contains(cinema) && !touchedSlots.contains(sd) => s
+        }.toSet
+        if (staleKeys.nonEmpty) Iterator.single(k -> staleKeys) else Iterator.empty
       }
-      .map(_._1)
       .toList
-      .foreach { k =>
-        // Drop only our cinema's slot, under the per-title lock, via
-        // `putIfPresent` so a concurrent sibling-slot write isn't clobbered.
-        // Before dropping, retain this cinema's synopsis (longest-seen) so the
-        // displayed synopsis stays sticky once the cinema stops listing the
-        // film — see MovieRecord.retainedSynopses / synopsis.
+      .foreach { case (k, staleKeys) =>
+        // Drop only the stale slot keys, under the per-title lock, via `putIfPresent`
+        // so a concurrent sibling-slot write isn't clobbered. Before dropping, retain
+        // each dropped slot's synopsis (longest-seen, keyed by its source) so the
+        // displayed synopsis stays sticky once a cinema stops listing the film — see
+        // MovieRecord.retainedSynopses / synopsis.
         putIfPresent(k, cur => {
-          val captured = cur.data.get(cinema).flatMap(_.synopsis).filter(_.nonEmpty)
-            .map(s => Map((cinema: Source) -> s)).getOrElse(Map.empty)
+          val captured = staleKeys.iterator.flatMap { s =>
+            cur.data.get(s).flatMap(_.synopsis).filter(_.nonEmpty).map(s -> _)
+          }.toMap
           cur.copy(
-            data             = cur.data - cinema,
+            data             = cur.data -- staleKeys,
             retainedSynopses = MovieRecordMerge.mergeRetainedSynopses(cur.retainedSynopses, captured))
         })
       }

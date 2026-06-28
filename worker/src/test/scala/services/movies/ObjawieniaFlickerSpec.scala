@@ -101,70 +101,64 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
     projectedCinemas(cache) shouldBe Set(Helios, Multikino)
   }
 
-  // The "growing Ukrainian duplicate" bug: the film is also listed by a few
-  // cinemas under its Ukrainian title ("Denʹ istyny - UA" / Cyrillic "День
-  // істини"). That listing is TMDB-resolved to the SAME film, so its row carries
-  // the same tmdbId AND the Polish TMDB title as an alias — yet its KEY is the
-  // Ukrainian spelling, which sorts BEFORE "Dzień objawienia" ("De" < "Dz") in
-  // the canonicalRank tie-break. A plain-Polish scrape must NOT be routed onto
-  // that Ukrainian-keyed sibling just because its alias matches and it sorts
-  // first: a row whose OWN key is the scraped title always wins over an
-  // alias-only match. Otherwise Polish cinemas pile onto the UA row, it starts
-  // displaying "Dzień objawienia" too (display = dominant cinema spelling), and
-  // the corpus shows two ever-growing "Dzień objawienia" rows that never merge.
-  "a plain-Polish scrape" should "land on the Polish-keyed row, not a same-tmdbId Ukrainian sibling whose TMDB alias matches" in {
+  // The "growing Ukrainian duplicate" bug, now structurally impossible: the film
+  // is also listed under its Ukrainian title ("Denʹ istyny - UA"), TMDB-resolved
+  // to the SAME film — same tmdbId. Two same-tmdbId rows used to coexist (the
+  // put-time gate only folded same-title siblings), and Polish cinemas could pile
+  // onto the UA-keyed one, growing two never-merging "Dzień objawienia" rows. The
+  // relaxed gate now folds ANY same-tmdbId rows on the second put, keyed on the
+  // dominant cinema spelling (Polish), so a single row holds the whole film and a
+  // fresh Polish scrape simply lands on it. (The display split into a card per
+  // shown title lives in the read-model projection — see ReadModelProjectionSpec.)
+  "a same-tmdbId Ukrainian sibling" should "fold onto the Polish-keyed row at put time, and a later scrape lands on the one row" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
 
     val uaTitle = "Denʹ istyny - UA"
-    // The Ukrainian-titled sibling: resolved to the same film (tmdbId + the Polish
-    // TMDB title as alias), but keyed under the UA spelling.
+    // The Ukrainian-keyed sibling: resolved to the same film (same tmdbId).
     cache.put(cache.keyOf(uaTitle, Some(2026)),
       MovieRecord(tmdbId = Some(1275779), imdbId = Some("tt15047880"),
         data = Map(slot(Helios, Some(2026)), Tmdb -> SourceData(title = Some(Title)))))
-    // The real Polish row, keyed by the Polish title.
+    // The real Polish row, same tmdbId — the put-time gate folds the two into one.
     cache.put(cache.keyOf(Title, Some(2026)),
       MovieRecord(tmdbId = Some(1275779), imdbId = Some("tt15047880"),
         data = Map(slot(Multikino, Some(2026)), Tmdb -> SourceData(title = Some(Title)))))
 
-    // A fresh plain-"Dzień objawienia" scrape from a third cinema.
-    cache.recordCinemaScrape(CinemaCityKinepolis, Seq(scrape(CinemaCityKinepolis, Some(2026))))
+    // Exactly one row, keyed on the dominant Polish spelling — the UA key is gone.
+    cache.snapshot() should have size 1
+    cache.get(cache.keyOf(uaTitle, Some(2026))) shouldBe None
 
-    // It lands on the Polish-keyed row …
-    cache.get(cache.keyOf(Title, Some(2026))).getOrElse(fail("polish row vanished"))
-      .cinemaData.keySet should contain(CinemaCityKinepolis)
-    // … never on the Ukrainian-keyed sibling.
-    cache.get(cache.keyOf(uaTitle, Some(2026))).getOrElse(fail("ua row vanished"))
-      .cinemaData.keySet should not contain CinemaCityKinepolis
+    // A fresh plain-"Dzień objawienia" scrape from a third cinema lands on it.
+    cache.recordCinemaScrape(CinemaCityKinepolis, Seq(scrape(CinemaCityKinepolis, Some(2026))))
+    val row = cache.get(cache.keyOf(Title, Some(2026))).getOrElse(fail("polish row vanished"))
+    row.cinemaData.keySet should contain allOf (Helios, Multikino, CinemaCityKinepolis)
   }
 
-  // Healing the ALREADY-folded prod state after the Ukrainian-marker rule change:
-  // before the fix, "Dzień objawienia ukraiński dubbing" sanitized to the base
-  // key, so Cinema City's slot lived INSIDE the base "Dzień objawienia" row. Once
-  // the rule no longer strips the marker, that title keys to its own row — and a
-  // backfill isn't needed: the next Cinema City scrape writes the slot on the new
-  // key AND the prune drops the now-stale slot from the base row. This proves the
-  // split + shed happen on one re-scrape (so prod self-heals within a scrape tick).
-  "a re-scrape after the Ukrainian-marker rule change" should "split the dub slot onto its own row and shed it from the base row" in {
+  // Per-(cinema,title) slots: a venue listing both the base film and its dubbed
+  // edition keeps a SLOT for each in ONE record, instead of either collapsing them
+  // (the old single-slot loss) or spinning the dub off into its own movies row. The
+  // read model splits the record into a card per shown title; storage stays one row.
+  "a re-scrape of a same-cinema dub" should "keep the dub as its own per-cinema SLOT in the base record, not a separate row" in {
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepository)
     val dubTitle = "Dzień objawienia ukraiński dubbing"
 
     // Folded prod state: the base row carries Helios (base title) AND Cinema City's
-    // dub slot (the old strip put it here, under the base key).
+    // dub slot (a legacy bare-cinema slot under the base key).
     cache.put(cache.keyOf(Title, Some(2026)), MovieRecord(data = Map(
       slot(Helios, Some(2026)),
       (CinemaCityKinepolis: Source) -> SourceData(title = Some(dubTitle), releaseYear = Some(2026),
         showtimes = Seq(Showtime(When, bookingUrl = None))))))
 
-    // Both cinemas re-scrape under the new rules (the dub title no longer strips).
+    // Both cinemas re-scrape (Helios the base title, Cinema City the dub title).
     cache.recordCinemaScrape(Helios, Seq(scrape(Helios, Some(2026))))
     cache.recordCinemaScrape(CinemaCityKinepolis, Seq(scrapeTitled(CinemaCityKinepolis, dubTitle, Some(2026))))
 
-    // The dub variant is now its OWN row …
-    val dubRow = cache.get(cache.keyOf(dubTitle, Some(2026))).getOrElse(fail("dub row never split out"))
-    dubRow.cinemaData.keySet shouldBe Set(CinemaCityKinepolis)
-    // … and the base row kept Helios but SHED the stale Cinema City dub slot.
-    val baseRow = cache.get(cache.keyOf(Title, Some(2026))).getOrElse(fail("base row vanished"))
-    baseRow.cinemaData.keySet shouldBe Set(Helios)
+    // ONE record — the dub does NOT spawn a separate row; it lands on the base
+    // record as its own per-(cinema,title) slot (the legacy bare slot was re-keyed
+    // and pruned). Both shown titles survive for the read-model split.
+    cache.get(cache.keyOf(dubTitle, Some(2026))) shouldBe None
+    val base = cache.get(cache.keyOf(Title, Some(2026))).getOrElse(fail("base row vanished"))
+    base.cinemaTitles                shouldBe Set(Title, dubTitle)
+    base.cinemaShowings.map(_._1).toSet shouldBe Set(Helios, CinemaCityKinepolis)
   }
 
   // The "two copies of Kumotry" bug: a cinema reports the film at the PRODUCTION

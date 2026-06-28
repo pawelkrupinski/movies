@@ -1,6 +1,6 @@
 package services.staging
 
-import models.{Cinema, Helios, Multikino, MovieRecord, Source, SourceData}
+import models.{Cinema, CinemaShowing, Helios, Multikino, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{DetailEnricher, FilmDetail, FilmwebShowtimesClient}
@@ -20,9 +20,12 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     def fetchFilmDetail(ref: String): Option[FilmDetail] = detail
   }
 
+  // Slot keyed per shown title (`CinemaShowing`), exactly as the scrape-divert path
+  // writes a newcomer's slot — so the staging detail step (which targets the same
+  // key) merges into it.
   private def listingRow(cinema: Cinema, title: String, year: Option[Int]): MovieRecord =
     MovieRecord(data = Map[Source, SourceData](
-      cinema -> SourceData(title = Some(title), releaseYear = year, filmUrl = Some(s"https://x/$title"))))
+      CinemaShowing.keyFor(cinema, title) -> SourceData(title = Some(title), releaseYear = year, filmUrl = Some(s"https://x/$title"))))
 
   private def seeded(cinema: Cinema, title: String, year: Option[Int]): (InMemoryStagingRepository, String) = {
     val repository = new InMemoryStagingRepository
@@ -41,7 +44,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))
 
     s.fetchDetailFor(Helios, anchor) shouldBe true
-    repository.findAll().head.record.data(Helios).synopsis shouldBe Some("A plot")
+    repository.findAll().head.record.cinemaData(Helios).synopsis shouldBe Some("A plot")
   }
 
   it should "owe no native detail for a Filmweb-fallback row (filmweb.pl filmUrl) — ready at once, no native fetch, no loop" in {
@@ -52,14 +55,14 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     // rather than rescheduling until the give-up budget burns.
     val repository = new InMemoryStagingRepository
     repository.upsert(Helios, "Fallback", Some(2026), MovieRecord(data = Map[Source, SourceData](
-      Helios -> SourceData(title = Some("Fallback"), filmUrl = Some(FilmwebShowtimesClient.filmPageUrl(1089))))))
+      CinemaShowing.keyFor(Helios, "Fallback") -> SourceData(title = Some("Fallback"), filmUrl = Some(FilmwebShowtimesClient.filmPageUrl(1089))))))
     val anchor = TitleNormalizer.sanitize("Fallback")
     val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("native")))) // would merge if pointed at the URL
     val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))
 
     s.fetchDetailFor(Helios, anchor) shouldBe true                    // ready at once — no loop, no give-up needed
     s.detailReady(repository.findAll().head) shouldBe true
-    repository.findAll().head.record.data(Helios).synopsis shouldBe None  // native enricher never fetched the filmweb URL
+    repository.findAll().head.record.cinemaData(Helios).synopsis shouldBe None  // native enricher never fetched the filmweb URL
   }
 
   it should "give up (degrade to listing-only) when told to, so a permanently-failing deferred fetch stops blocking the film" in {
@@ -81,7 +84,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     val enricher = new FakeEnricher(Helios, Some(FilmDetail(director = Seq("Jane Doe"))))
     var sawDirector = false
     val s = steps(repository, Seq(enricher), (_, _, record) => {
-      sawDirector = record.data.get(Helios).exists(_.director.contains("Jane Doe"))
+      sawDirector = record.cinemaData.get(Helios).exists(_.director.contains("Jane Doe"))
       Some(record.copy(tmdbId = Some(1275779)))
     })
 
@@ -176,7 +179,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
 
     s.resolveAndStamp(anchor) shouldBe StagingSteps.DetailNotReady          // detail step hasn't run yet
     s.fetchDetailFor(Helios, anchor) shouldBe true
-    repository.findAll().head.record.data(Helios).synopsis shouldBe Some("syn")
+    repository.findAll().head.record.cinemaData(Helios).synopsis shouldBe Some("syn")
     s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved               // now it resolves
   }
 

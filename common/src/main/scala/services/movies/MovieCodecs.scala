@@ -85,9 +85,9 @@ object StoredMovieDto {
       searchTitle       = dto.searchTitle,
       tmdbNoMatch       = dto.tmdbNoMatch.getOrElse(false),
       detailPending     = dto.detailPending.getOrElse(false),
-      data              = dto.sourceData.flatMap { case (k, sd) => Source.byDisplayName.get(k).map(_ -> sd) },
+      data              = dto.sourceData.flatMap { case (k, sd) => Source.byWireKey(k).map(_ -> sd) },
       retainedSynopses  = dto.retainedSynopses.getOrElse(Map.empty)
-                            .flatMap { case (k, v) => Source.byDisplayName.get(k).map(_ -> v) }
+                            .flatMap { case (k, v) => Source.byWireKey(k).map(_ -> v) }
     )
     // title + year are derived from the `_id` + `sourceData`, not stored — see
     // `StoredMovieRecord.fromStorage` (shared with the in-memory repository).

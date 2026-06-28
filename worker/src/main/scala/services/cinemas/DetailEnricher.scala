@@ -92,5 +92,8 @@ trait DetailEnricher {
    *  detail-driving site (scrape classify, the reaper, staging) gates on this
    *  rather than the raw `filmUrl`. */
   final def nativeDetailRef(record: MovieRecord): Option[String] =
-    record.data.get(cinema).flatMap(_.filmUrl).filterNot(FilmwebShowtimesClient.isFilmwebFilmUrl)
+    // `cinemaData` (not `data.get(cinema)`): per-(cinema,title) slots are keyed by
+    // `CinemaShowing`, so a bare-cinema lookup misses them — `cinemaData` collapses
+    // a venue's slots to one representative, whose `filmUrl` is what detail fetches.
+    record.cinemaData.get(cinema).flatMap(_.filmUrl).filterNot(FilmwebShowtimesClient.isFilmwebFilmUrl)
 }

@@ -1,6 +1,6 @@
 package services.staging
 
-import models.{MovieRecord, Source, SourceData, Tmdb}
+import models.{CinemaShowing, MovieRecord, Source, SourceData, Tmdb}
 import play.api.Logging
 import services.cinemas.DetailEnricher
 import services.freshness.{FreshnessKind, FreshnessStore}
@@ -88,7 +88,13 @@ class StagingSteps(
     enricher.nativeDetailRef(row.record) match {
       case None      => true                                             // nothing native to fetch (no filmUrl, or a Filmweb-fallback row) — not owed
       case Some(ref) =>
-        val target = enricher.detailTarget
+        // Mirror EnrichDetailsHandler: a 1:1 venue's listing slot is keyed per shown
+        // title (`CinemaShowing`), so target THAT slot — a bare-cinema target would
+        // strand the detail (with its year/director) in a separate title-less slot
+        // that never merges into the listing. A chain keeps its shared network source.
+        val target =
+          if (enricher.detailTarget == enricher.cinema) CinemaShowing.keyFor(enricher.cinema, row.title)
+          else enricher.detailTarget
         enricher.fetchFilmDetail(ref) match {
           case Some(detail) =>
             val merged = row.record.copy(

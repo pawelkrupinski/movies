@@ -58,7 +58,9 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done
-    val slot = cache.get(cache.keyOf("Dune", None)).flatMap(_.data.get(KinoApollo))
+    // Per-(cinema,title) slot: read via `cinemaData` (the listing slot the detail
+    // merged into is `CinemaShowing`-keyed, not the bare cinema).
+    val slot = cache.get(cache.keyOf("Dune", None)).flatMap(_.cinemaData.get(KinoApollo))
     slot.flatMap(_.synopsis) shouldBe Some("A great film")
     slot.map(_.cast)         shouldBe Some(Seq("Zendaya"))
     slot.map(_.showtimes.size) shouldBe Some(1) // showtimes from the scrape preserved
@@ -117,10 +119,11 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     // Detail landed in the shared network slot (created on demand — no venue scrapes it).
     record.data.get(CinemaCityChain).flatMap(_.synopsis) shouldBe Some("Spice must flow")
     record.data.get(CinemaCityChain).map(_.genres)       shouldBe Some(Seq("Sci-Fi"))
-    // Venue slots keep their showtimes and gained no detail of their own.
-    record.data.get(CinemaCityPoznanPlaza).map(_.showtimes.size) shouldBe Some(1)
-    record.data.get(CinemaCityPoznanPlaza).flatMap(_.synopsis)   shouldBe None
-    record.data.get(CinemaCityKinepolis).flatMap(_.synopsis)     shouldBe None
+    // Venue slots (per-title `CinemaShowing` keys) keep their showtimes and gained
+    // no detail of their own.
+    record.cinemaData.get(CinemaCityPoznanPlaza).map(_.showtimes.size) shouldBe Some(1)
+    record.cinemaData.get(CinemaCityPoznanPlaza).flatMap(_.synopsis)   shouldBe None
+    record.cinemaData.get(CinemaCityKinepolis).flatMap(_.synopsis)     shouldBe None
     // Film-level merged accessors surface the shared detail for the whole row.
     record.synopsis shouldBe Some("Spice must flow")
     record.genres   shouldBe Seq("Sci-Fi")

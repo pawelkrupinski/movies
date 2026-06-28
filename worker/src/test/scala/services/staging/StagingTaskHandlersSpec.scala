@@ -1,6 +1,6 @@
 package services.staging
 
-import models.{Cinema, Helios, MovieRecord, Source, SourceData}
+import models.{Cinema, CinemaShowing, Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{DetailEnricher, FilmDetail}
@@ -19,8 +19,10 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
   private def task(taskType: TaskType, payload: Map[String, String], attempts: Int = 1) =
     Task(id = "t1", taskType = taskType, dedupKey = "k", payload = payload, attempts = attempts)
 
+  // Slot keyed per shown title (`CinemaShowing`), as the scrape-divert path writes
+  // it — so the staging detail step merges into it.
   private def listingRow(title: String): MovieRecord =
-    MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some(title), filmUrl = Some("u"))))
+    MovieRecord(data = Map[Source, SourceData](CinemaShowing.keyFor(Helios, title) -> SourceData(title = Some(title), filmUrl = Some("u"))))
 
   private def steps(repository: InMemoryStagingRepository, enrichers: Seq[DetailEnricher],
                     resolve: (String, Option[Int], MovieRecord) => Option[MovieRecord],
@@ -33,7 +35,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
     val handler = new StagingDetailHandler(steps(repository, Seq(new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("p"))))), (_, _, r) => Some(r)))
 
     handler.handle(task(TaskType.StagingDetail, StagingTaskKeys.detailPayload("Film", Helios.displayName))) shouldBe HandlerOutcome.Done
-    repository.findAll().head.record.data(Helios).synopsis shouldBe Some("p")
+    repository.findAll().head.record.cinemaData(Helios).synopsis shouldBe Some("p")
   }
 
   it should "reschedule when the deferred detail fetch hasn't landed" in {

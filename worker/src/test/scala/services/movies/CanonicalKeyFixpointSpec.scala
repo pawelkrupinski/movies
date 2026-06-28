@@ -78,42 +78,35 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "a bare scrape" should "NOT match a decorated edition that merely carries the bare title as a TMDB alias" in {
-    // The real "Ścieżki życia" flap. A decorated edition (Plenerowe Pałacowe: …)
-    // is enriched off the base film via the apiQuery programme-prefix strip, so
-    // it legitimately carries the base tmdbId AND the base title as a TMDB alias
-    // — but it must stay a SEPARATE row from the bare film (the settle's
-    // `groupByFilm` keeps it apart via `isBareFilmTitle`). A re-scrape must agree:
-    // a bare "Ścieżki życia" tick must land on the bare row, never get pulled onto
-    // the decorated row by `concludedKeyFor`'s alias arm (where canonicalRank's
-    // 'P' < 'Ś' tiebreak would otherwise pick "Plenerowe …").
+  "a bare scrape" should "fold a decorated edition sharing the base tmdbId into one record (split into cards in display)" in {
+    // The "Ścieżki życia" case. A decorated edition (Plenerowe Pałacowe: …) is
+    // enriched off the base film via the apiQuery programme-prefix strip, so it
+    // carries the base tmdbId — it is the SAME film and now folds onto ONE record;
+    // the read-model projection splits it back into its own CARD by shown title.
+    // Both shown titles survive as cinema slots so the split can recover them.
     val tmdbId = 1127625
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
-    // Bare base film: TMDB slot title is the base "Ścieżki życia".
     cache.put(cache.keyOf("Ścieżki życia", Some(2025)),
       MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
         (Tmdb: Source)   -> SourceData(title = Some("Ścieżki życia"), releaseYear = Some(2025)),
         (Helios: Source) -> SourceData(title = Some("Ścieżki życia"), releaseYear = Some(2025)))))
-    // Decorated edition: same base tmdbId (resolved off the prefix-stripped
-    // apiQuery), so its TMDB slot ALSO carries "Ścieżki życia" as a title alias —
-    // but its identity key keeps the "Plenerowe Pałacowe: …" prefix.
     cache.put(cache.keyOf("Plenerowe Pałacowe: Ścieżki życia", Some(2025)),
       MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
         (Tmdb: Source)     -> SourceData(title = Some("Ścieżki życia"), releaseYear = Some(2025)),
         (KinoMuza: Source) -> SourceData(title = Some("Plenerowe Pałacowe: Ścieżki życia"), releaseYear = Some(2025)))))
 
-    // A bare re-scrape from another Helios venue.
+    // A bare re-scrape from another venue.
     cache.recordCinemaScrape(KinoMuranow, Seq(cm(KinoMuranow, "Ścieżki życia", Some(2025))))
     cache.canonicalizeBySanitize()
 
-    val rows = cache.snapshot().map(r => (r.title, r.year)).toSet
-    withClue(s"rows after bare re-scrape: $rows\n") {
-      rows should contain (("Ścieżki życia", Some(2025)))
-      rows should contain (("Plenerowe Pałacowe: Ścieżki życia", Some(2025)))
-    }
-    // The bare venue landed on the bare row, not the decorated one.
-    cache.get(cache.keyOf("Ścieżki życia", Some(2025)))
-      .map(_.cinemaData.keySet).getOrElse(Set.empty) should contain (KinoMuranow: Cinema)
+    // ONE record (same tmdbId), keyed on the dominant bare title — both shown titles
+    // survive as cinema slots, and the bare re-scrape lands on the merged record.
+    val snap = cache.snapshot()
+    withClue(s"rows: ${snap.map(r => (r.title, r.year))}\n")(snap should have size 1)
+    val rec = snap.head.record
+    rec.tmdbId        shouldBe Some(tmdbId)
+    rec.cinemaTitles  should contain allOf ("Ścieżki życia", "Plenerowe Pałacowe: Ścieżki życia")
+    rec.cinemaData.keySet should contain (KinoMuranow: Cinema)
   }
 
   "a re-scrape of a resolved film at an off-by-2 year" should

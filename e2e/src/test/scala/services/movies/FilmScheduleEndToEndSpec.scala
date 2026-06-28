@@ -96,8 +96,13 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
   // tmdbId/imdbId live on the worker's `MovieRecord`. Join back to it by film
   // id so this spec can still assert the full pipeline (worker merge + web
   // render) end to end.
+  // A record can project to SEVERAL cards (one per shown title — the read-model
+  // split), so map EVERY variant film id back to its (shared) source record, not
+  // just the dominant one. A dub card and its base card both join to the one record.
   private lazy val recordByFilmId: Map[String, MovieRecord] =
-    wiring.movieCache.snapshot().map(r => services.readmodel.ReadModelProjection.filmId(r) -> r.record).toMap
+    wiring.movieCache.snapshot().flatMap { r =>
+      services.readmodel.ReadModelProjection.filmIds(r).map(_ -> r.record)
+    }.toMap
   private def recordFor(s: FilmSchedule): Option[MovieRecord] = recordByFilmId.get(s.resolved._id)
 
   "the full enrichment pipeline" should
@@ -290,15 +295,19 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
           fail(s"no dub '$DubTitle' schedule found alongside the regular")
         )
 
-        // Both rows inherit the same TMDB-resolved enrichment — only the
-        // cinema-side data differs.
+        // Both CARDS inherit the same TMDB-resolved enrichment — they are two
+        // display variants of ONE film (one record, one tmdbId).
         recordFor(dubRegular).flatMap(_.tmdbId) shouldBe Some(DubTmdbId)
         dub.movie.title          shouldBe DubTitle
-        dub.movie.runtimeMinutes shouldBe Some(94)
+        // Runtime is a SHARED film fact (derived from the whole record), so the dub
+        // card shows the film's 96 min, not the dub listing's own 94.
+        dub.movie.runtimeMinutes shouldBe Some(96)
         dub.movie.releaseYear    shouldBe Some(2026)
 
-        // Only Cinema City Poznań Plaza scrapes the dub in Poznań — its own
-        // deep-link, its own slot. Anything else here is cross-cleanTitle bleed.
+        // The dub CARD shows only Cinema City Poznań Plaza's dub slot — its own
+        // deep-link, its own 4 showtimes. The split scopes each card to the slots
+        // that reported ITS title, so the dub's showtimes never bleed into the base
+        // card and vice versa.
         dub.cinemaFilmUrls shouldBe Seq(
           CinemaCityPoznanPlaza -> "https://www.cinema-city.pl/filmy/straszny-film-ukrainski-dubbing/8117s2r1"
         )
@@ -306,17 +315,19 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
           .groupBy(_.cinema).view.mapValues(_.flatMap(_.showtimes).size).toMap
         dubByCinema shouldBe Map(CinemaCityPoznanPlaza -> 4)
 
-        val dubEnrichment = recordFor(dub).getOrElse(fail("dub schedule missing enrichment"))
-        dubEnrichment.tmdbId shouldBe Some(DubTmdbId)
-        // Many Cinema City branches across cities scrape the dub and fold onto
-        // one CacheKey, so assert containment of the Poznań slot plus the
-        // cleanliness invariant: every provenance slot carries the dub title,
-        // never the base "Straszny film" — that's the cross-cleanTitle bleed
-        // this guards against.
-        dubEnrichment.cinemaData.keySet                             should contain (CinemaCityPoznanPlaza)
-        dubEnrichment.cinemaData(CinemaCityPoznanPlaza).title       shouldBe Some(DubTitle)
-        dubEnrichment.cinemaData(CinemaCityPoznanPlaza).releaseYear shouldBe Some(2026)
-        dubEnrichment.cinemaData.values.flatMap(_.title).foreach(_ shouldBe DubTitle)
+        // Storage holds ONE record per film: both cards join to it, and Cinema
+        // City Poznań Plaza carries a SLOT for each shown title (per-(cinema,title)
+        // model). Each slot keeps its own title + the shared year; the dub slot has
+        // its own 4 showtimes, never inflated by the base.
+        val sharedRecord = recordFor(dub).getOrElse(fail("dub schedule missing enrichment"))
+        sharedRecord.tmdbId shouldBe Some(DubTmdbId)
+        sharedRecord.cinemaShowings.collect { case (CinemaCityPoznanPlaza, sd) => sd.title }.flatten.toSet shouldBe
+          Set(DubBaseTitle, DubTitle)
+        val dubSlot = sharedRecord.cinemaShowings.collectFirst {
+          case (CinemaCityPoznanPlaza, sd) if sd.title.contains(DubTitle) => sd
+        }.getOrElse(fail("CC Plaza dub slot missing"))
+        dubSlot.releaseYear     shouldBe Some(2026)
+        dubSlot.showtimes.size  shouldBe 4
       }
     }
 
@@ -442,62 +453,44 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     lines.mkString("\n")
   }
 
-  // Reproduction attempt: a dub variant ("Straszny film ukraiński dubbing")
-  // and its base Polish row ("Straszny film") share one tmdbId. Pre-fix data
-  // showed the dub row's per-cinema slots polluted with the base title's
-  // entries (and vice versa). With the cleanTitle-strict fold gate in place,
-  // no current code path should bleed across the two rows; this case proves
-  // it across two scrape ticks back-to-back, which is when accumulation would
-  // normally show.
-  //
-  // (The original guard used Prada's Helios Cyrillic dub "ДИЯВОЛ НОСИТЬ
-  // ПРАДА 2"; that film left cinemas, so the same invariant is now exercised
-  // against the Straszny-film Ukrainian-dub pair — the closest current
-  // secondary-language sibling in the corpus.)
+  // A dub variant ("Straszny film ukraiński dubbing") and its base ("Straszny
+  // film") share one tmdbId, so they fold into ONE record — but Cinema City Poznań
+  // Plaza lists BOTH at the same venue, so the record keeps a per-(cinema,title)
+  // SLOT for each shown title (the read model splits them into a card each). This
+  // case proves the slots stay clean and don't accumulate across two scrape ticks
+  // back-to-back, which is when drift would show.
   //
   // The two-tick shape catches:
-  //   - re-scrape adding cinema slots to the wrong row,
-  //   - identity-gate fold firing on second-pass tmdbId hits,
-  //   - bus events from the second tick triggering a TMDB re-resolve
-  //     that lands on the wrong sibling.
-  //
-  // If this assertion ever fails, the bug is in current code; otherwise
-  // the user's production data is purely legacy folded state.
-  it should "keep the dub variant's cinema slots clean across multiple scrape ticks" in {
+  //   - a re-scrape adding a duplicate slot for an already-known (cinema, title),
+  //   - the per-title slot key drifting so the same listing lands twice,
+  //   - cross-title bleed between the base and dub slots,
+  //   - a same-cinema dub re-spawning a separate row and re-folding every tick
+  //     (the churn the per-(cinema,title) model exists to kill).
+  it should "keep the per-title slots clean across multiple scrape ticks" in {
     // The shared `wiring` boot already ran the canonical first tick (+ drain +
-    // cleanup). One more tick here re-runs every scraper against the same
-    // fixtures — every (cinema, title, year) tuple is unchanged, so
-    // `recordCinemaScrape`'s `isNew` check should suppress every bus event. If
-    // a regression makes the redirect cross cleanTitles, or the identity-gate
-    // fold misbehave on already-resolved rows, the dub row's cinema slots pick
-    // up the base title's entries here.
+    // cleanup). One more identical tick must not duplicate any slot or move the
+    // dub onto its own row.
     wiring.runOneScrapeTick()
 
-    val dubRow = wiring.movieCache.snapshot()
-      .find(_.title == DubTitle)
-      .getOrElse(fail(s"dub row '$DubTitle' missing from cache after two scrape ticks"))
+    val row = wiring.movieCache.snapshot()
+      .find(_.record.tmdbId.contains(DubTmdbId))
+      .getOrElse(fail(s"shared record for the Straszny-film dub pair (tmdbId $DubTmdbId) missing"))
 
-    withClue(s"cinema slot drift after second scrape tick: ${dubRow.record.cinemaData}\n") {
-      // Many Cinema City branches scrape the dub title; they all fold onto one
-      // CacheKey. Every provenance slot must still carry the dub title (year
-      // 2026) and never the base "Straszny film" — any base entry here is the
-      // cross-cleanTitle bleed this guards against.
-      dubRow.record.cinemaData.keySet                             should contain (CinemaCityPoznanPlaza)
-      dubRow.record.cinemaData(CinemaCityPoznanPlaza).title       shouldBe Some(DubTitle)
-      dubRow.record.cinemaData(CinemaCityPoznanPlaza).releaseYear shouldBe Some(2026)
-      dubRow.record.cinemaData.values.flatMap(_.title).foreach(_ shouldBe DubTitle)
+    withClue(s"per-title slot drift after second scrape tick: ${row.record.cinemaShowings}\n") {
+      // CC Poznań Plaza carries a clean slot for EACH shown title — base + dub —
+      // each keeping its own title (year 2026), with no cross-title bleed and no
+      // accumulation (one slot per title after two ticks, not two).
+      val ccPlazaTitles = row.record.cinemaShowings.collect { case (CinemaCityPoznanPlaza, sd) => sd.title }.flatten
+      ccPlazaTitles.toSet         shouldBe Set(DubBaseTitle, DubTitle)
+      ccPlazaTitles.distinct.size shouldBe ccPlazaTitles.size   // no slot accumulation
+      val dubSlot = row.record.cinemaShowings.collectFirst {
+        case (CinemaCityPoznanPlaza, sd) if sd.title.contains(DubTitle) => sd
+      }.getOrElse(fail("CC Plaza dub slot missing"))
+      dubSlot.releaseYear shouldBe Some(2026)
     }
-
-    // Conversely, the regular Polish row mustn't pick up the dub scrape
-    // either — same invariant from the other side.
-    val regularRow = wiring.movieCache.snapshot()
-      .find(_.title == DubBaseTitle)
-      .getOrElse(fail(s"regular '$DubBaseTitle' row missing from cache after two scrape ticks"))
-    withClue(s"base row picked up dub title: ${regularRow.record.cinemaData}\n") {
-      regularRow.record.cinemaData.values
-        .flatMap(_.title)
-        .foreach { t => t should not be DubTitle }
-    }
+    // (The base and dub are ONE record now, so the record legitimately holds both
+    // title-slots; display separation — the regular card not showing the dub's
+    // showtimes — is verified via the split in the anchor test's dub section.)
   }
 
 }

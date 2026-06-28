@@ -387,17 +387,12 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.get(k2) shouldBe defined
   }
 
-  // Rows with the same tmdbId but a different cleanTitle stay separate.
-  // TMDB's identity says "same film", but cinemas surface these as distinct
-  // listings for distinct audiences:
-  //   - Polish/Latin original vs Cyrillic Ukrainian-language listing
-  //     ("Diabeł ubiera się u Prady 2" vs "ДИЯВОЛ НОСИТЬ ПРАДА 2").
-  //   - Original vs explicitly-labelled dub variant ("Diabeł ubiera się u
-  //     Prady 2" vs "Diabeł ubiera się u Prady 2 ukraiński dubbing", both
-  //     listed at the same cinema with their own showtimes).
-  // Folding them would force one card's display title to be hidden. Each
-  // variant gets its own row, its own per-cinema slot, and its own card.
-  it should "NOT fold rows with the same tmdbId when their cleanTitles differ (cross-script)" in {
+  // Rows with the same tmdbId are the SAME FILM and fold onto one record,
+  // however they're spelled. The "distinct listings for distinct audiences"
+  // (Polish vs Cyrillic, original vs dub) are now split back into a CARD per
+  // shown title by the read-model projection, not kept as separate storage rows
+  // — so no variant's display title is hidden while storage stays one-per-film.
+  it should "fold rows with the same tmdbId across different shown titles (cross-script)" in {
     val cache    = new CaffeineMovieCache(new InMemoryMovieRepository())
     val latin    = cache.keyOf("Diabeł ubiera się u Prady 2", Some(2026))
     val cyrillic = cache.keyOf("ДИЯВОЛ НОСИТЬ ПРАДА 2",       Some(2026))
@@ -405,21 +400,36 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.put(latin,    mkResolved(928344, cinemaSlots = Map(Multikino -> SourceData(title = Some("Diabeł ubiera się u Prady 2"), releaseYear = Some(2026)))))
     cache.put(cyrillic, mkResolved(928344, cinemaSlots = Map(Helios    -> SourceData(title = Some("ДИЯВОЛ НОСИТЬ ПРАДА 2"),       releaseYear = Some(2026)))))
 
-    cache.get(latin)    shouldBe defined
-    cache.get(cyrillic) shouldBe defined
-    cache.snapshot().map(_.title).toSet shouldBe Set("Diabeł ubiera się u Prady 2", "ДИЯВОЛ НОСИТЬ ПРАДА 2")
+    // One record per film; the two cinemas' distinct titles live in separate
+    // per-cinema slots, so the read-model projection splits them back into a card
+    // each (see ReadModelProjectionSpec.projectAll).
+    val snap = cache.snapshot()
+    snap should have size 1
+    snap.head.record.tmdbId       shouldBe Some(928344)
+    snap.head.record.cinemaTitles shouldBe Set("Diabeł ubiera się u Prady 2", "ДИЯВОЛ НОСИТЬ ПРАДА 2")
   }
 
-  it should "NOT fold rows with the same tmdbId when their cleanTitles differ (suffix variants)" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository())
-    val regular = cache.keyOf("Diabeł ubiera się u Prady 2",                 Some(2026))
-    val dub     = cache.keyOf("Diabeł ubiera się u Prady 2 ukraiński dubbing", Some(2026))
+  it should "keep a same-tmdbId dub + original at the SAME cinema as two distinct slots" in {
+    val cache     = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val baseTitle = "Diabeł ubiera się u Prady 2"
+    val dubTitle  = "Diabeł ubiera się u Prady 2 ukraiński dubbing"
+    // Each listing's slot is keyed per shown title (`CinemaShowing`), as the scrape
+    // path produces — so the SAME venue holds two title-slots, not one.
+    def rec(slotTitle: String, at: LocalDateTime) = MovieRecord(
+      imdbId = Some("tt-anything"), tmdbId = Some(928344),
+      data = Map[Source, SourceData](
+        CinemaShowing.keyFor(CinemaCityPoznanPlaza, slotTitle) ->
+          SourceData(title = Some(slotTitle), releaseYear = Some(2026), showtimes = Seq(Showtime(at, None))),
+        Tmdb -> SourceData(originalTitle = Some("Original"))))
+    cache.put(cache.keyOf(baseTitle, Some(2026)), rec(baseTitle, LocalDateTime.of(2026, 6, 8, 18, 0)))
+    cache.put(cache.keyOf(dubTitle,  Some(2026)), rec(dubTitle,  LocalDateTime.of(2026, 6, 9, 20, 0)))
 
-    cache.put(regular, mkResolved(928344, cinemaSlots = Map(CinemaCityPoznanPlaza -> SourceData(title = Some("Diabeł ubiera się u Prady 2"),                releaseYear = Some(2026)))))
-    cache.put(dub,     mkResolved(928344, cinemaSlots = Map(CinemaCityPoznanPlaza -> SourceData(title = Some("Diabeł ubiera się u Prady 2 ukraiński dubbing"), releaseYear = Some(2026)))))
-
-    cache.get(regular) shouldBe defined
-    cache.get(dub)     shouldBe defined
+    // Same film → one record, but BOTH shown titles survive as separate slots →
+    // the read-model split renders a card each; no showtime is lost or merged.
+    val snap = cache.snapshot()
+    snap should have size 1
+    snap.head.record.cinemaTitles   shouldBe Set(baseTitle, dubTitle)
+    snap.head.record.cinemaShowings should have size 2
   }
 
   it should "be a no-op when the same key is re-written (regular update, not a fold)" in {
@@ -884,10 +894,12 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       cinemaMovie("Wolność po włosku", KinoMuza, Some(2025), poster = None)
     ))
 
-    // The refresher visits the detail page and upgrades all three fields.
+    // The refresher visits the detail page and upgrades all three fields. The slot
+    // is keyed per shown title (`CinemaShowing`), as detail enrichment now targets.
+    val muzaSlot = CinemaShowing.keyFor(KinoMuza, "Wolność po włosku")
     cache.putIfPresent(key, current =>
-      current.copy(data = current.data + ((KinoMuza: Source) ->
-        current.data(KinoMuza).copy(
+      current.copy(data = current.data + (muzaSlot ->
+        current.data(muzaSlot).copy(
           synopsis   = Some("opis filmu"),
           trailerUrl = Some("https://youtube.com/watch?v=abc"),
           posterUrl  = Some("https://www.kinomuza.pl/2026/04/wolnosc-po-w-1-555x800.jpg")
@@ -900,7 +912,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       cinemaMovie("Wolność po włosku", KinoMuza, Some(2025), poster = None)
     ))
 
-    val slot = cache.get(key).get.data(KinoMuza)
+    val slot = cache.get(key).get.cinemaData(KinoMuza)
     slot.synopsis   shouldBe Some("opis filmu")
     slot.trailerUrl shouldBe Some("https://youtube.com/watch?v=abc")
     slot.posterUrl  shouldBe Some("https://www.kinomuza.pl/2026/04/wolnosc-po-w-1-555x800.jpg")
@@ -1152,7 +1164,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       // and scrape interleave. Without slot-identity prune, the slot
       // is dropped in races where the rekey lands between CC Plaza's
       // write and its prune.
-      val ccPlazaSlots = cache.snapshot().flatMap(_.record.data.get(CinemaCityPoznanPlaza))
+      val ccPlazaSlots = cache.snapshot().flatMap(_.record.cinemaData.get(CinemaCityPoznanPlaza))
       withClue(s"snapshot: ${cache.snapshot().map(r => s"(${r.year}, data=${r.record.data.keys.map(_.displayName).mkString(",")})").mkString(" | ")} ") {
         ccPlazaSlots should not be empty
       }
@@ -1330,7 +1342,9 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
     val row = cache.get(key).get
     row.cinemaData.keySet           shouldBe Set(Helios)            // live slot gone
-    row.retainedSynopses.get(Multikino) shouldBe Some(longSynopsis) // but synopsis kept
+    // Retention is per shown-title SLOT (CinemaShowing), so a dub's blurb stays
+    // attached to its own title rather than bleeding onto the base.
+    row.retainedSynopses.get(CinemaShowing.keyFor(Multikino, "Foo")) shouldBe Some(longSynopsis)
     row.synopsis                    shouldBe Some(longSynopsis)     // still the best one
   }
 
@@ -1359,7 +1373,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val row = cache.get(cache.keyOf("Foo", Some(2026))).get
     // The retention captured the synopsis, but the row has NO cinema slots — so
     // UnscreenedCleanup (which gates on cinemaData.isEmpty) still deletes it.
-    row.retainedSynopses.get(Multikino) shouldBe Some(longSynopsis)
+    row.retainedSynopses.get(CinemaShowing.keyFor(Multikino, "Foo")) shouldBe Some(longSynopsis)
     row.cinemaData                       shouldBe empty
   }
 

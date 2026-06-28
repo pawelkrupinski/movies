@@ -36,7 +36,7 @@ class KinoMuzaSynopsisDrainSpec extends AnyFlatSpec with Matchers {
     w.drainStaging()
 
     val muzaSynopses = w.movieCache.snapshot()
-      .flatMap(_.record.data.get(KinoMuza))
+      .flatMap(_.record.cinemaShowings.collect { case (KinoMuza, slot) => slot })
       .flatMap(_.synopsis)
       .filter(_.nonEmpty)
     muzaSynopses should not be empty

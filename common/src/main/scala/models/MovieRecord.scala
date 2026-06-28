@@ -100,26 +100,45 @@ case class MovieRecord(
   /** Cinema-only view of `data` — used by the per-cinema controller paths
    *  (filmUrl per cinema, showtimes per cinema) where TMDB/IMDb slots are
    *  irrelevant. */
+  /** Every cinema slot paired with its source KEY — a bare [[Cinema]] or a
+   *  per-title [[CinemaShowing]]. Multi-valued per venue: a cinema that lists the
+   *  film under several titles (original + dub) has one entry per title. The
+   *  read-model split and the scrape divert-index iterate these. */
+  def cinemaSlots: Seq[(Source, SourceData)] =
+    data.iterator.filter { case (source, _) => Source.cinemaOf(source).isDefined }.toSeq
+
+  /** Every cinema slot paired with its underlying [[Cinema]] (still multi-valued
+   *  per venue — see [[cinemaSlots]]). */
+  def cinemaShowings: Seq[(Cinema, SourceData)] =
+    cinemaSlots.flatMap { case (source, sd) => Source.cinemaOf(source).map(_ -> sd) }
+
+  /** One representative slot per cinema — the keyed view the per-cinema accessors
+   *  (`filmUrlFor`, `showtimesFor`) and detail enrichment use. When a venue holds
+   *  several title-slots, the highest-priority/title one wins deterministically;
+   *  consumers that need EVERY slot (the display split, divert) use
+   *  [[cinemaShowings]] instead. */
   def cinemaData: Map[Cinema, SourceData] =
-    data.collect { case (c: Cinema, sd) => c -> sd }
+    cinemaSlots
+      .sortBy { case (source, sd) => (Source.priorityOf(source), sd.title.getOrElse("")) }
+      .flatMap { case (source, sd) => Source.cinemaOf(source).map(_ -> sd) }
+      .toMap
 
   /** Derived view of every raw title currently reported by a cinema for
    *  this record. Empty when no cinema is scraping. */
-  def cinemaTitles: Set[String] = cinemaData.values.flatMap(_.title).toSet
+  def cinemaTitles: Set[String] = cinemaShowings.iterator.flatMap(_._2.title).toSet
 
-  /** A view of this record restricted to the given cinema sources, keeping
-   *  every NON-cinema source (TMDB / IMDb / Filmweb) and their retained
-   *  synopses untouched. The read-model split ([[services.readmodel.ReadModelProjection]])
+  /** A view of this record restricted to the given cinema SLOT KEYS, keeping
+   *  every NON-cinema source (TMDB / IMDb / Filmweb) and their retained synopses
+   *  untouched. The read-model split ([[services.readmodel.ReadModelProjection]])
    *  uses it to derive a single display-title variant's SYNOPSIS from only the
-   *  cinemas that reported that title — while still falling back to the shared
-   *  TMDB/IMDb blurb. The shared facts (year, director, cast, ratings, poster)
-   *  are taken from the FULL record by the projector, never from this scoped
-   *  view, so dropping the other variants' cinema slots here can't narrow them. */
-  def scopedToCinemas(cinemas: Set[Cinema]): MovieRecord = {
-    def keep(source: Source): Boolean = source match {
-      case cinema: Cinema => cinemas.contains(cinema)
-      case _              => true
-    }
+   *  slots that reported that title — while still falling back to the shared
+   *  TMDB/IMDb blurb. Keyed on the slot SOURCE (not the cinema) so a venue that
+   *  lists the film under two titles contributes its right slot to each variant.
+   *  The shared facts (year, director, cast, ratings, poster) are taken from the
+   *  FULL record by the projector, never from this scoped view. */
+  def scopedToSources(cinemaSources: Set[Source]): MovieRecord = {
+    def keep(source: Source): Boolean =
+      Source.cinemaOf(source).isEmpty || cinemaSources.contains(source)
     copy(
       data             = data.filter { case (source, _) => keep(source) },
       retainedSynopses = retainedSynopses.filter { case (source, _) => keep(source) }
@@ -153,7 +172,7 @@ case class MovieRecord(
    *  rest of `Cinema.all`, then `Tmdb`, then `Imdb`. Used by every "first
    *  non-empty" merged accessor. */
   private def prioritized: Seq[(Source, SourceData)] =
-    data.toSeq.sortBy { case (s, _) => Source.priority.getOrElse(s, Int.MaxValue) }
+    data.toSeq.sortBy { case (s, _) => Source.priorityOf(s) }
 
   /** Cinema-only iteration in the same priority order — used by accessors
    *  that should *not* fall back to TMDB/IMDb (e.g. `cinemaOriginalTitle`,
@@ -336,7 +355,7 @@ case class MovieRecord(
   private def synopsisCandidatesFor(keep: Source => Boolean): Seq[String] =
     (data.keySet ++ retainedSynopses.keySet).toSeq
       .filter(keep)
-      .sortBy(s => Source.priority.getOrElse(s, Int.MaxValue))
+      .sortBy(s => Source.priorityOf(s))
       .flatMap(s => data.get(s).flatMap(_.synopsis).iterator ++ retainedSynopses.get(s).iterator)
 
   /** Longest non-empty cast list across all sources (ties broken by source

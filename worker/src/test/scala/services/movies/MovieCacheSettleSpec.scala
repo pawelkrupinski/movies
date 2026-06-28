@@ -204,13 +204,11 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
 
   it should "collapse a film keyed under two languages (same tmdbId) into one row keyed on the Polish title" in {
     val c = cache
-    // "Zaplątani" (Polish) and "Tangled" (original) are the same film: same tmdbId,
-    // both keys are TMDB aliases. Their differing sanitized titles dodge the
-    // put-time tmdbId gate, so two rows persist until settle folds them.
+    // "Zaplątani" (Polish) and "Tangled" (original) are the same film: same tmdbId.
+    // The put-time tmdbId gate now folds same-id rows regardless of spelling, so
+    // the SECOND put already collapses them — no two-row intermediate to settle.
     aliasedRow(c, "Tangled",   Multikino, 2010, 38757, "Zaplątani", "Tangled", "Zaplątani")
     aliasedRow(c, "Zaplątani", Helios,    2010, 38757, "Zaplątani", "Tangled", "Zaplątani")
-    rows(c) shouldBe Set(("Tangled", Some(2010)), ("Zaplątani", Some(2010)))
-    c.canonicalizeBySanitize()
     val r = c.snapshot()
     withClue(s"expected ONE row, got ${r.map(x => (x.title, x.year))}\n")(r.size shouldBe 1)
     // Keyed on the cinema-reported Polish title, NOT the original "tangled" (which
@@ -218,6 +216,8 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     TitleNormalizer.sanitize(r.head.title) shouldBe "zaplatani"
     r.head.record.tmdbId shouldBe Some(38757)
     r.head.record.cinemaData.keySet shouldBe Set(Multikino, Helios)
+    c.canonicalizeBySanitize()                       // already canonical — a no-op
+    c.snapshot().size shouldBe 1
   }
 
   it should "not re-write a settled cross-language row on a SECOND canonicalize pass" in {
@@ -240,16 +240,20 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
       repo.upserts.size shouldBe writesAfterSettle)
   }
 
-  it should "keep a decorated edition that carries the base tmdbId as its own row" in {
+  it should "fold a decorated edition that carries the base tmdbId into one record" in {
     val c = cache
-    // The programme edition resolves to the base film's tmdbId but is separate by
-    // design: its key is not a TMDB alias, so the cross-title merge leaves it alone.
+    // The programme edition resolves to the base film's tmdbId, so it is the SAME
+    // film and folds onto one storage record — the read-model projection splits it
+    // back into its own CARD by shown title (see ReadModelProjectionSpec). Both
+    // cinemas' slot titles survive the fold so the split can recover them.
     aliasedRow(c, "Zaproszenie", Helios, 2022, 9001, "Zaproszenie", "The Invitation", "Zaproszenie")
     aliasedRow(c, "Zaproszenie | Kinoteka dla rodziców", KinoMuza, 2022, 9001,
       "Zaproszenie", "The Invitation", "Zaproszenie | Kinoteka dla rodziców")
     c.canonicalizeBySanitize()
-    rows(c).map(r => TitleNormalizer.sanitize(r._1)) shouldBe
-      Set("zaproszenie", "zaproszeniekinotekadlarodzicow")
+    val r = c.snapshot()
+    r.size shouldBe 1
+    TitleNormalizer.sanitize(r.head.title) shouldBe "zaproszenie"
+    r.head.record.cinemaTitles shouldBe Set("Zaproszenie", "Zaproszenie | Kinoteka dla rodziców")
   }
 
   // --- merge metrics: each fold is counted, by reason --------------------------
@@ -260,11 +264,16 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
   }
 
   "the merge counter" should
-    "record a Canonicalize fold (1 victim) when a cross-language same-tmdbId cluster collapses" in {
+    "record a Canonicalize fold (1 victim) when the settle collapses a same-title cluster" in {
     val m = new RecordingMergeMetrics
     val c = new CaffeineMovieCache(new InMemoryMovieRepository, mergeMetrics = m)
-    aliasedRow(c, "Tangled",   Multikino, 2010, 38757, "Zaplątani", "Tangled", "Zaplątani")
-    aliasedRow(c, "Zaplątani", Helios,    2010, 38757, "Zaplątani", "Tangled", "Zaplątani")
+    // A resolved row plus a yearless+idless cinema stray of the SAME title. The
+    // put-time gate can't fold them (the stray has no tmdbId), so it's the SETTLE
+    // — `canonicalizeBySanitize`'s sanitize-edge clustering — that collapses them:
+    // a Canonicalize fold, not the put-time TmdbIdentity one. (A cross-language
+    // same-tmdbId pair now folds at PUT time instead — see the TmdbIdentity test.)
+    aliasedRow(c, "Zaplątani", Helios, 2010, 38757, "Zaplątani", "Tangled", "Zaplątani")
+    cinemaRow(c, "Zaplątani", Multikino, None)
     c.canonicalizeBySanitize()
     m.calls.toList shouldBe List(MergeReason.Canonicalize -> 1)
   }
