@@ -110,7 +110,7 @@
       "id": 8,
       "title": "Worker — throttled (1 = reapers backing off, 0 = full enqueue)",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 25 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "max": 1, "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "lineWidth": 2, "fillOpacity": 35 } }, "overrides": [] },
       "targets": [
@@ -133,7 +133,7 @@
       "title": "Residential proxy — fetches served vs failed (recent 30 min, from web /metrics)",
       "description": "The Decodo residential-proxy leg of the cinema scrape, surfaced from the in-app /uptime health (Mongo) via web's /metrics scrape. A flip from all-green 'served by proxy' to all-red 'failed → Zyte fallback' is a silent cost regression — scraping keeps working via Zyte, so no cinema bar goes red. Drives the 'Residential proxy failing' alert.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 39 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 15 } }, "overrides": [] },
       "targets": [
@@ -146,7 +146,7 @@
       "title": "Worker — task flow (per min): enqueued → started → fully worked",
       "description": "The deferred-work pipeline on kinowo-worker, from worker /metrics. enqueued = new tasks added to the queue (dedup collapses excluded); started = tasks claimed by a worker; fully worked (done) = handlers that did real work (excludes 'skipped' freshness no-ops). In steady state the three track; started ≫ done means lots of skipped/rescheduled, done ≪ enqueued means a growing backlog.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 47 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
@@ -160,7 +160,7 @@
       "title": "Worker — enqueued (non-duplicate) by type (per min)",
       "description": "Rate of tasks ADDED to the queue per task type (kinowo_worker_tasks_enqueued_total{result=\"added\"} — re-enqueues that the dedupKey collapses are excluded, so this is net new work, not churn). The per-type split of the 'enqueued' line in the overall flow panel above. Read with 'started by type' and 'fully-worked throughput by type' as one type's enqueue → claim → done funnel.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 8, "x": 0, "y": 55 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10, "stacking": { "mode": "normal" } } }, "overrides": [] },
       "targets": [
@@ -172,7 +172,7 @@
       "title": "Worker — started (claimed) by type (per min)",
       "description": "Rate of tasks CLAIMED by a worker per task type (kinowo_worker_tasks_started_total). Counts every claim, including ones that then skip (data already fresh) or reschedule, so started ≫ the same type's 'fully-worked throughput' means that type is handing out a lot of no-op work. The per-type split of the 'started' line in the overall flow panel above.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 8, "x": 8, "y": 55 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10, "stacking": { "mode": "normal" } } }, "overrides": [] },
       "targets": [
@@ -184,7 +184,7 @@
       "title": "Worker — fully-worked throughput by type (per min)",
       "description": "rate of done (not skipped) tasks per task type — which kinds of work the worker is actually completing: cinema scrapes, detail enrichment, TMDB/IMDb resolution, the four rating sources, and the staging-incubation steps.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 8, "x": 16, "y": 55 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10, "stacking": { "mode": "normal" } } }, "overrides": [] },
       "targets": [
@@ -196,7 +196,7 @@
       "title": "Worker — task outcomes (per min)",
       "description": "Every handler return, by outcome: done (real work), skipped (data already fresh — the queue handed out work that was no longer needed), rescheduled (transient retry/backoff), failed (handler threw), no_handler (claimed mid-deploy on a node without the handler). A spike in skipped/rescheduled is wasted churn; failed is the error signal.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 63 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [
         { "matcher": { "id": "byName", "options": "failed" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } } ] }
@@ -210,7 +210,7 @@
       "title": "Worker — fully-worked task duration (done, all types)",
       "description": "Handler wall-clock of done tasks, percentiles over the bucketed histogram (kinowo_worker_task_duration_seconds). Skipped/failed runs are excluded. A rising p95/p99 means the upstreams (cinema sites, TMDB/IMDb, Filmweb/RT/Metacritic) or the scrape are getting slower.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 71 },
       "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
       "targets": [
@@ -224,7 +224,7 @@
       "title": "Worker — queue depth",
       "description": "Live size of the durable task queue: waiting (claimable) + worked_on (leased by a worker right now), from worker /metrics. worked_on tracks pool utilization against pool size (the worker runs poolSize workers, one task each). A climbing 'waiting' is a backlog the pool isn't draining — the thing to correlate with the worker CPU-credit/steal panels above.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 71 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [
         { "matcher": { "id": "byName", "options": "pool size" }, "properties": [ { "id": "custom.drawStyle", "value": "line" }, { "id": "custom.lineStyle", "value": { "dash": [ 8, 6 ], "fill": "dash" } }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "gray" } } ] }
@@ -240,7 +240,7 @@
       "title": "Worker — waiting tasks by type",
       "description": "Current backlog broken down by task type (sampled from the bounded active snapshot). Shows WHICH work is piling up — e.g. a wave of staging-incubation steps, or rating refreshes backing up behind a slow source.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 79 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10, "stacking": { "mode": "normal" } } }, "overrides": [] },
       "targets": [
@@ -252,7 +252,7 @@
       "title": "Worker — oldest waiting task age by type (s)",
       "description": "Head-of-line latency: how long the oldest still-waiting task of each type has sat in the queue. A steadily climbing line is starvation — that type's work isn't being picked up (no handler, perpetual backoff, or the pool saturated by another type).",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 79 },
       "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
       "targets": [
@@ -264,7 +264,7 @@
       "title": "Worker — fully-worked task duration p95 by type (s)",
       "description": "Per-type tail latency of done (not skipped) tasks: the 95th-percentile handler wall-clock for each task type, over the bucketed histogram (kinowo_worker_task_duration_seconds). Splits the overall percentiles panel above by task_type so a slowdown localises to one upstream — e.g. ScrapeCinema (a cinema site), the *Rating types (Filmweb/RT/Metacritic/IMDb), or TMDB/IMDb resolution. Change 0.95 → 0.50 for the median.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 87 },
       "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
       "targets": [
@@ -276,7 +276,7 @@
       "title": "Worker — fully-worked task duration p50 (median) by type (s)",
       "description": "Per-type typical latency of done (not skipped) tasks: the 50th-percentile (median) handler wall-clock for each task type, over the bucketed histogram (kinowo_worker_task_duration_seconds). The median companion to the p95-by-type panel above — p50 reads the everyday cost of each work kind, p95 the tail.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 96 },
       "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
       "targets": [
@@ -288,7 +288,7 @@
       "title": "Worker — staging incubation: movies by step (total = all in staging)",
       "description": "Films currently incubating in pending_movies, stacked by the step each needs NEXT on its way into the live `movies` collection: detail (a cinema's synopsis/poster still owed) → resolve_tmdb (no TMDB match yet) → resolve_imdb (TMDB hit, IMDb cross-ref pending) → fold (concluded, about to graduate). Distinct films (a film's multiple cinema rows count once). The stacked total is the total movie count in staging; a step that keeps growing is where incubation is stalling (correlate with the staging task queue panels + StagingStuckAlerter).",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 105 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 25, "stacking": { "mode": "normal" } } }, "overrides": [] },
       "targets": [
@@ -300,7 +300,7 @@
       "title": "Worker — movie-row merges by reason & splits (per min)",
       "description": "Rate of movie rows folded into another row per reason (kinowo_worker_merges_total — one increment per VICTIM absorbed; a cluster of N counts N−1). canonicalize=periodic same-film settle/rehydrate fold (cross-language same-tmdbId rows, or a ±year/spelling drift of one title); resolved-settle=a yearless stray absorbed when TMDB concludes a year; tmdb-identity=the runtime put-time same-tmdbId gate; normalize-rebuild=a title-rule change re-keys rows that now share a key and unions them. Each fold abandons the victim's title|year key, orphaning its DETAIL freshness — so a canonicalize spike here precedes the EnrichDetails → ResolveTmdb re-enrichment cascade that throttled the worker on 2026-06-19. The splits series (kinowo_worker_splits_total) is the inverse — rows a title-rule change un-merged, counted as new rows spawned (a 1→N split = N−1), each born fresh and re-resolving; normalize-rebuild merges are the re-merge half of a rebuild, splits the un-merge half.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 114 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10, "stacking": { "mode": "normal" } } }, "overrides": [] },
       "targets": [
@@ -313,7 +313,7 @@
       "title": "kinowo — films served per city (all future showings)",
       "description": "Distinct films the web is currently serving on each /:city/ page (every film with a future showing), sampled once a minute from the real serving path (toSchedules) and exposed on web /metrics as kinowo_web_movies_served{scope=\"all\"}. A city dropping to 0 here is the read-model-outage signal (a malformed web_movies row empties the whole corpus). The MoviesServedSwing + MoviesServedCityEmpty alerts watch this series.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 9, "w": 12, "x": 0, "y": 122 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
       "targets": [
@@ -325,7 +325,7 @@
       "title": "kinowo — films served per city (showing tomorrow)",
       "description": "Distinct films each /:city/ page shows for tomorrow (≥1 showtime on the next local calendar day, Europe/Warsaw), from kinowo_web_movies_served{scope=\"tomorrow\"}. Same per-minute sample as the all-future panel; the next-day view that fills the gap as today's showings pass.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 9, "w": 12, "x": 12, "y": 122 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
       "targets": [
@@ -337,7 +337,7 @@
       "title": "kinowo — films the movies collection would serve per city (all future)",
       "description": "The SOURCE-collection mirror of the web panel above. Worker-side count of distinct films the live `movies` collection would serve on each /:city/ page (every film with a future showing), sampled off-band every 5 min by WorkerSourceFilmsMetrics through the REAL projection path and gated on the same readyToProject rule the projector writes by — exposed on worker /metrics as kinowo_worker_movies_served{scope=\"all\"}. Compare against kinowo_web_movies_served{scope=\"all\"}: in steady state the two match per city, so a city where worker > web means the read model (web_movies) has drifted behind the corpus — a stuck projection or a malformed/pruned web_movies row.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 9, "w": 12, "x": 0, "y": 131 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
       "targets": [
@@ -349,7 +349,7 @@
       "title": "kinowo — films the movies collection would serve per city (showing tomorrow)",
       "description": "Source-collection mirror of the web tomorrow panel above, from kinowo_worker_movies_served{scope=\"tomorrow\"} (worker-side, projected from `movies`, sampled every 5 min). Compare against kinowo_web_movies_served{scope=\"tomorrow\"}; a per-city gap is the same read-model-drift signal as the all-future pair.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 9, "w": 12, "x": 12, "y": 131 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
       "targets": [
@@ -361,7 +361,7 @@
       "title": "Worker — movies corpus coverage (records, ids, ratings)",
       "description": "Census of the live `movies` collection, sampled off-band every 5 min by WorkerCorpusMetrics and exposed as kinowo_worker_corpus_movies{subset}. total = distinct movie records; with_any_rating = at least one of imdb/fw/rt/mc; with_tmdb_id / with_imdb_id = resolution coverage; imdb_rating/rt_rating/mc_rating/fw_rating = per-source rating coverage. The gap between total and with_*_id is the resolution backlog; the gap between with_tmdb_id and each rating series is each site's enrichment backlog.",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 140 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
       "targets": [

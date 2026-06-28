@@ -22,9 +22,24 @@ Most rules read Fly's host metrics. The **app-uptime** group is different: it
 reads the in-app `/uptime` health (the Mongo `uptimeBuckets` data the public
 page shows), which Fly's host metrics can't see. The `kinowo` web app exposes it
 as Prometheus gauges (`kinowo_uptime_recent_*`) from its `MetricsController`
-(`GET /metrics`), and Fly's managed Prometheus scrapes it via the `[[metrics]]`
-block in the root `fly.toml` — so these rules land in the SAME `fly-prometheus`
-datasource as the host metrics, no extra datasource needed.
+(`GET /metrics`).
+
+There are **two datasources**:
+
+- `fly-prometheus` — Fly's managed Prometheus. The ONLY source of host metrics
+  (`fly_instance_*` / `fly_edge_*` — CPU credit/throttle, memory, 5xx, p95);
+  Fly's host agent produces those and we can't scrape them ourselves. Its
+  downside: ingestion runs **15-25 min behind real time and occasionally
+  stalls** (a Fly-side limitation), so any `to=now` panel has a blank tail.
+- `app-metrics-live` — a **VictoriaMetrics sidecar** (baked into this machine,
+  see `Dockerfile` + `start.sh` + `victoria/scrape.yml`) that scrapes the apps'
+  `/metrics` endpoints **directly over Fly 6PN every 15s**. The app-emitted
+  `kinowo_*` / `kinowo_worker_*` series are real-time here instead of riding
+  Fly's lag. The overview dashboard's app panels query this; host panels stay
+  on `fly-prometheus`. (`<app>.internal` is IPv6-only, hence `-enableTCP6`.)
+
+Alert rules still read `fly-prometheus` — a 15-25 min-late page beats a flaky
+one, and the host-metric rules have no alternative anyway.
 
 ## What it watches (each rule maps to a real past incident)
 
