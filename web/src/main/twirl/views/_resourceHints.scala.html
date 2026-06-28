@@ -1,0 +1,8 @@
+@* Resource hints for the poster CDN. Every card/detail poster loads from
+   images.weserv.nl (see tools.PosterProxy), so opening the TCP + TLS connection
+   to it eagerly takes the first poster's connection setup off the critical path
+   — a measurable LCP / Core-Web-Vitals win on poster-heavy pages. dns-prefetch
+   is the fallback for browsers that ignore preconnect. Included in the <head>
+   of every poster-bearing page (not the landing city-picker, which has none). *@
+<link rel="preconnect" href="https://images.weserv.nl" crossorigin>
+<link rel="dns-prefetch" href="https://images.weserv.nl">

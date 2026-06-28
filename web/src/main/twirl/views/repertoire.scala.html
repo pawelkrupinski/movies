@@ -8,6 +8,7 @@
   <title>@pageTitle</title>
   @_ogTagsApp(pageTitle = pageTitle, pageDescription = pageDescription, pageUrl = pageUrl, fbAppId = fbAppId, imageUrl = s"https://kinowo.fly.dev/assets/img/og-${city.slug}.png", canonicalUrl = canonicalUrl)
   @_jsonLd(controllers.StructuredData.cityPage(pageUrl, city, films))
+  @_resourceHints()
   @_errorTracking()
   @_analytics()
   @* The Filmy view-chrome CSS (`.cinema-label`, film-card content-visibility)

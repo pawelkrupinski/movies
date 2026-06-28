@@ -26,6 +26,7 @@ class MovieControllerFilmLookupSpec extends AnyFlatSpec with Matchers {
         Helios -> SourceData(
           title          = Some(title),
           releaseYear    = year,
+          posterUrl      = Some("https://cinema.example/poster.jpg"),
           showtimes      = Seq(models.Showtime(now.plusHours(2), None, None, Nil))
         ),
         Tmdb -> SourceData(originalTitle = Some("The Devil Wears Prada 2"))
@@ -63,5 +64,15 @@ class MovieControllerFilmLookupSpec extends AnyFlatSpec with Matchers {
     pageTitle should include("godziny seansów")
     pageTitle should include("Poznań")
     pageTitle should endWith("| Kinowo")
+  }
+
+  "the film page" should "preconnect to the poster CDN and prioritise the LCP poster" in {
+    val title  = "Diuna"
+    val ctrl   = buildController(title, Some(2024))
+    val html   = contentAsString(ctrl.film("poznan", title).apply(FakeRequest(GET, s"/poznan/film?title=$title")))
+    html should include("""<link rel="preconnect" href="https://images.weserv.nl" crossorigin>""")
+    // The detail poster is the LCP element — eager + high priority + async decode.
+    html should include("""fetchpriority="high"""")
+    html should include("""decoding="async"""")
   }
 }
