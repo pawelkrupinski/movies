@@ -154,5 +154,11 @@ POST    /admin/config/reset              controllers.EnvConfigController.reset()
 # allowlists every crawler and matches Facebook's stated requirement.
 GET     /robots.txt                 controllers.MovieController.robotsTxt
 
+# ── sitemap.xml ─────────────────────────────────────────────────────────────────
+# Full crawl map (landing + every city listing/plan + every film a city shows),
+# built from the warm read model. Advertised in robots.txt so crawlers index the
+# long-tail film URLs without having to discover them by link-walking.
+GET     /sitemap.xml                controllers.MovieController.sitemap
+
 # ── Static assets ─────────────────────────────────────────────────────────────
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

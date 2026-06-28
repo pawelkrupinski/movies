@@ -431,13 +431,43 @@ class MovieController( cc: ControllerComponents,
     }
   }
 
-  // Permissive robots.txt — link-preview scrapers (Facebook's
-  // `facebookexternalhit` in particular) treat a 404 here as "site not
-  // crawlable" and surface that as a generic 403 to the debugger UI. Serving
-  // an explicit allow-all unblocks their preview fetch. No private endpoints
-  // to gate.
-  def robotsTxt: Action[AnyContent] = Action {
-    Ok("User-agent: *\nAllow: /\n").as("text/plain; charset=utf-8")
+  // robots.txt — link-preview scrapers (Facebook's `facebookexternalhit` in
+  // particular) treat a 404 here as "site not crawlable" and surface that as a
+  // generic 403 to the debugger UI, so we keep the permissive `Allow: /`. The
+  // `/*/og-image` + `/*/film/og-image` PNG endpoints are deliberately NOT
+  // disallowed — Facebook honours robots.txt when fetching `og:image`, so
+  // blocking them would break every share preview. We only fence off the
+  // operational / API / auth noise that has no business in a search index, and
+  // advertise the sitemap so crawlers discover every city + film URL.
+  def robotsTxt: Action[AnyContent] = Action { request =>
+    val body =
+      s"""User-agent: *
+         |Allow: /
+         |Disallow: /debug
+         |Disallow: /admin
+         |Disallow: /tasks
+         |Disallow: /uptime
+         |Disallow: /auth/
+         |Disallow: /*/api/
+         |Disallow: /*/debug/
+         |
+         |Sitemap: ${PageMeta.origin(request)}/sitemap.xml
+         |""".stripMargin
+    Ok(body).as("text/plain; charset=utf-8")
+  }
+
+  /** `sitemap.xml` — the full crawl map: landing, every city listing + plan, and
+   *  every film each city is currently showing. Built from the warm read model
+   *  (`toSchedules` per city is a cheap in-memory join), so it always reflects
+   *  what's actually live. Cached for an hour at the edge/browser; the corpus
+   *  changes on the order of scrape cadence, not per request. */
+  def sitemap: Action[AnyContent] = Action { request =>
+    val entries = City.all.map(c => c -> movieControllerService.toSchedules(c))
+    val lastmod = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
+      .format(readModel.lastModified.atOffset(java.time.ZoneOffset.UTC))
+    val body = SitemapBuilder.build(PageMeta.origin(request), entries, lastmod = Some(lastmod))
+    Ok(body).as("application/xml; charset=utf-8")
+      .withHeaders("Cache-Control" -> "public, max-age=3600")
   }
 
   /** Conditional-GET wrapper for the JSON API endpoints — the same mechanism as
