@@ -10,6 +10,17 @@
  *@
 @screeningCount = @{ screeningsByFilm.values.map(_.size).sum }
 @showtimeCount  = @{ screeningsByFilm.values.flatten.map(_.showtimes.size).sum }
+@* Render one `<dd>` for an optional scalar field — the value, or a dim em-dash. *@
+@metaOpt(value: Option[String]) = {@value match { case Some(v) => {<dd>@v</dd>} case None => {<dd class="miss">—</dd>} }}
+@* Render one `<dd>` for a list field — comma-joined, or a dim em-dash when empty. *@
+@metaSeq(values: Seq[String]) = {@if(values.isEmpty){<dd class="miss">—</dd>}else{<dd>@values.mkString(", ")</dd>}}
+@* Render one `<dd>` for a rating — the score linked to its (always-present) URL,
+   or just the URL when the score is missing, or a dim em-dash when neither. *@
+@metaRating(score: Option[String], url: Option[String]) = {@(score, url) match {
+  case (Some(s), Some(u)) => {<dd><a href="@u" target="_blank" rel="noopener">@s</a></dd>}
+  case (None,    Some(u)) => {<dd><a href="@u" target="_blank" rel="noopener" class="miss">(no score) @u</a></dd>}
+  case _                  => {<dd class="miss">—</dd>}
+}}
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -51,6 +62,22 @@
 
     /* Expanded screenings row */
     tr.details > td { background: #0a0a18; padding: .6rem 1rem 1rem; white-space: normal; }
+
+    /* Movie metadata block (everything the ResolvedMovie holds) */
+    .movie-meta {
+      display: grid; grid-template-columns: max-content minmax(0, 1fr);
+      gap: .15rem .8rem; margin-bottom: .8rem;
+      border: 1px solid #1a1a2e; border-radius: 3px;
+      padding: .5rem .7rem; background: #0d0d18;
+    }
+    .movie-meta dt { color: #8899bb; grid-column: 1; }
+    .movie-meta dd { color: #ccc; grid-column: 2; margin: 0; word-break: break-word; }
+    .movie-meta dd.miss { color: #444; }
+    .movie-meta dd a { word-break: break-all; }
+    .movie-meta .synopsis { white-space: normal; line-height: 1.5; }
+    .meta-section { color: #8899bb; font-weight: bold; margin: .2rem 0 .3rem; }
+    .poster-thumb { max-height: 90px; border-radius: 3px; vertical-align: middle; margin-right: .5rem; }
+
     .no-screenings { color: #6a3a3a; }
     .screenings { display: grid; gap: .4rem; margin-top: .2rem; }
     .screening {
@@ -70,6 +97,9 @@
       padding: 0 .4rem; color: #ccc; font-variant-numeric: tabular-nums;
     }
     .showtime .fmt { color: #669fcc; font-size: 9px; margin-left: .2rem; }
+    .showtime .room { color: #c0a060; font-size: 9px; margin-left: .2rem; }
+    .showtime a.book { color: #7fae6f; font-size: 9px; margin-left: .25rem; }
+    .screening-head .filmurl { color: #555; font-size: 10px; word-break: break-all; }
     .sid { color: #555; font-size: 10px; margin-top: .3rem; word-break: break-all; }
   </style>
   @_ratingStyles()
@@ -95,6 +125,7 @@
       <th>Year</th>
       <th>Genres / Directors</th>
       <th>Ratings</th>
+      <th>Cinemas</th>
       <th>Screenings</th>
       <th>Showtimes</th>
     </tr>
@@ -103,6 +134,7 @@
     @for(m <- movies) {
       @defining(screeningsByFilm.getOrElse(m._id, Seq.empty)) { sc =>
         @defining(sc.map(_.showtimes.size).sum) { showtimes =>
+          @defining(sc.map(_.cinema).distinct.size) { cinemaCount =>
           <tr class="data" data-row-id="@m._id"
               data-haystack="@(s"${m.title} ${m.originalTitle.getOrElse("")} ${m._id}".toLowerCase)">
             <td class="title">@m.title</td>
@@ -110,14 +142,57 @@
             <td class="year">@m.releaseYear.map(_.toString).getOrElse("")</td>
             <td class="meta-cell">@{(m.genres ++ m.directors).mkString(", ")}</td>
             <td>@_ratingBadges(Some(m.ratings))</td>
+            <td class="num cinemas @if(cinemaCount == 0){zero}">@cinemaCount</td>
             <td class="num @if(sc.isEmpty){zero}">@sc.size</td>
             <td class="num @if(showtimes == 0){zero}">@showtimes</td>
           </tr>
           <tr class="details hidden" data-row-id="@m._id">
-            <td colspan="7">
+            <td colspan="8">
+              @* Everything the ResolvedMovie read-model doc holds for this film. *@
+              <dl class="movie-meta">
+                <dt>id</dt>            <dd class="id">@m._id</dd>
+                <dt>title</dt>         <dd>@m.title</dd>
+                <dt>originalTitle</dt> @metaOpt(m.originalTitle)
+                <dt>releaseYear</dt>   @metaOpt(m.releaseYear.map(_.toString))
+                <dt>runtime</dt>       @metaOpt(m.runtimeMinutes.map(r => s"$r min"))
+                <dt>genres</dt>        @metaSeq(m.genres)
+                <dt>countries</dt>     @metaSeq(m.countries)
+                <dt>directors</dt>     @metaSeq(m.directors)
+                <dt>cast</dt>          @metaSeq(m.cast)
+                <dt>weightedRating</dt><dd>@{f"${m.weightedRating}%.2f"}</dd>
+                <dt>imdb</dt>          @metaRating(m.ratings.imdb.map(r => f"$r%.1f"), m.ratings.imdbUrl)
+                <dt>metascore</dt>     @metaRating(m.ratings.metascore.map(_.toString), Some(m.ratings.metacriticUrl))
+                <dt>rottenTomatoes</dt>@metaRating(m.ratings.rottenTomatoes.map(rt => s"$rt%"), Some(m.ratings.rottenTomatoesUrl))
+                <dt>filmweb</dt>       @metaRating(m.ratings.filmweb.map(r => f"$r%.1f"), Some(m.ratings.filmwebUrl))
+                <dt>poster</dt>
+                  @m.posterUrl match {
+                    case Some(u) => { <dd><img class="poster-thumb" src="@u" alt="" loading="lazy"><a href="@u" target="_blank" rel="noopener">@u</a></dd> }
+                    case None    => { <dd class="miss">—</dd> }
+                  }
+                <dt>fallbackPosters</dt>
+                  @if(m.fallbackPosterUrls.isEmpty){ <dd class="miss">—</dd> } else {
+                    <dd>@for(u <- m.fallbackPosterUrls){ <a href="@u" target="_blank" rel="noopener">@u</a> }</dd>
+                  }
+                <dt>trailers</dt>
+                  @if(m.trailerUrls.isEmpty){ <dd class="miss">—</dd> } else {
+                    <dd>@for(u <- m.trailerUrls){ <a href="@u" target="_blank" rel="noopener">@u</a> }</dd>
+                  }
+                <dt>synopsis</dt>
+                  @m.synopsis match {
+                    case Some(s) => { <dd class="synopsis">@s</dd> }
+                    case None    => { <dd class="miss">—</dd> }
+                  }
+                @if(m.synopsisByCity.nonEmpty){
+                  <dt>synopsisByCity</dt>
+                  <dd class="synopsis">@for((slug, text) <- m.synopsisByCity.toSeq.sortBy(_._1)){<b>@slug:</b> @text<br>}</dd>
+                }
+              </dl>
+
+              @* Every per-(city, cinema) screening doc + every field of its showtimes. *@
               @if(sc.isEmpty) {
                 <div class="no-screenings">No screenings in the read cache for this film (id @m._id).</div>
               } else {
+                <div class="meta-section">Screenings — @cinemaCount cinema(s), @sc.size doc(s), @showtimes showtime(s)</div>
                 <div class="screenings">
                   @for(s <- sc.sortBy(x => (x.city, x.cinema))) {
                     <div class="screening">
@@ -125,11 +200,11 @@
                         <span class="cinema">@s.cinema</span>
                         <span class="city">@s.city</span>
                         <span class="count">@s.showtimes.size showtimes</span>
-                        @s.filmUrl.map { u => <a href="@u" target="_blank" rel="noopener">link ↗</a> }
+                        @s.filmUrl.map { u => <a href="@u" target="_blank" rel="noopener">link ↗</a> <span class="filmurl">@u</span> }
                       </div>
                       <div class="showtimes">
                         @for(t <- s.showtimes.sortBy(_.dateTime)) {
-                          <span class="showtime">@t.dateTime.toString.replace("T", " ")@if(t.format.nonEmpty){<span class="fmt">@t.format.mkString("/")</span>}</span>
+                          <span class="showtime">@t.dateTime.toString.replace("T", " ")@if(t.format.nonEmpty){<span class="fmt">@t.format.mkString("/")</span>}@t.room.map { r => <span class="room">@r</span> }@t.bookingUrl.map { b => <a class="book" href="@b" target="_blank" rel="noopener">book ↗</a> }</span>
                         }
                       </div>
                       <div class="sid">@s._id</div>
@@ -139,6 +214,7 @@
               }
             </td>
           </tr>
+          }
         }
       }
     }

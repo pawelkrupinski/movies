@@ -245,6 +245,69 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     html should include("Incepcja")
   }
 
+  // The read-cache dump surfaces a per-film "Cinemas" count (distinct venues
+  // screening the film) AND, on expand, every field the read model holds for a
+  // film + every field its per-cinema screenings hold — so a dev can see exactly
+  // what the web serves without cross-referencing Mongo.
+  it should "show a Cinemas column and every resolved movie/screening field on expand" in {
+    import java.time.LocalDateTime
+    import models.{HeliosMagnolia, Showtime}
+
+    // One film, full metadata, screened by TWO distinct cinemas — so the Cinemas
+    // count is 2 and both the movie-level and cinema-level fields are present.
+    val rich = MovieRecord(data = Map(
+      CinemaCityWroclavia -> SourceData(
+        title          = Some("Belle"),
+        originalTitle  = Some("Ryu to Sobakasu no Hime"),
+        synopsis       = Some("A shy teenager becomes a virtual-world pop star."),
+        cast           = Seq("Kaho Nakamura", "Ryo Narita"),
+        director       = Seq("Mamoru Hosoda"),
+        runtimeMinutes = Some(124),
+        releaseYear    = Some(2021),
+        countries      = Seq("Japonia"),
+        genres         = Seq("Animacja", "Dramat"),
+        posterUrl      = Some("https://img.example/belle.jpg"),
+        trailerUrl     = Some("https://www.youtube.com/watch?v=abcdef12345"),
+        filmUrl        = Some("https://cinema-city.pl/belle"),
+        showtimes      = Seq(Showtime(
+          LocalDateTime.parse("2026-06-28T18:30"),
+          bookingUrl = Some("https://book.example/cc"),
+          room       = Some("Sala 4"),
+          format     = List("2D", "NAP")))),
+      HeliosMagnolia -> SourceData(
+        title     = Some("Belle"),
+        filmUrl   = Some("https://helios.pl/belle"),
+        showtimes = Seq(Showtime(
+          LocalDateTime.parse("2026-06-28T20:00"),
+          bookingUrl = Some("https://book.example/helios"),
+          format     = List("ATMOS"))))))
+
+    val ctrl = TestMovieController.build(Seq(("Belle", Some(2021), rich)), Mode.Dev)._1
+    val html = contentAsString(ctrl.debugReadModel().apply(FakeRequest(GET, "/debug/readmodel")))
+
+    // New column header + the distinct-cinema count for the row.
+    html should include("<th>Cinemas</th>")
+    html should include("""class="num cinemas """)   // the per-row Cinemas cell
+    html should include(""">2</td>""")               // its distinct-venue count
+
+    // Every resolved-movie field surfaced on expand.
+    html should include("Ryu to Sobakasu no Hime")               // originalTitle
+    html should include("124")                                   // runtimeMinutes
+    html should include("Japonia")                               // countries
+    html should include("Mamoru Hosoda")                         // directors
+    html should include("Kaho Nakamura")                         // cast
+    html should include("Animacja")                              // genres
+    html should include("A shy teenager becomes a virtual-world pop star.") // synopsis
+    html should include("https://img.example/belle.jpg")         // posterUrl
+    html should include("youtube.com/embed/abcdef12345")         // trailerUrls (embed-mapped)
+
+    // Every per-cinema / per-showtime field surfaced on expand.
+    html should include("https://cinema-city.pl/belle")          // filmUrl
+    html should include("https://book.example/cc")               // showtime bookingUrl
+    html should include("Sala 4")                                // showtime room
+    html should include("NAP")                                   // showtime format token
+  }
+
   it should "404 in production like the rest of /debug" in {
     val result = buildController(Mode.Prod).debugReadModel().apply(FakeRequest(GET, "/debug/readmodel"))
     status(result) shouldBe NOT_FOUND
