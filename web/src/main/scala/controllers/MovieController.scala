@@ -155,7 +155,7 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
         // this city drops out of its list view (its documents stay in the store).
         val allShowtimes: Seq[(Cinema, Showtime)] = screenings.flatMap { sc =>
           MovieControllerService.cinemaByName(sc.cinema).toSeq.flatMap { cinema =>
-            sc.showtimes.iterator.filter(_.dateTime.isAfter(now.minusMinutes(30))).map(st => (cinema, st))
+            sc.showtimes.iterator.filter(_.isUpcoming(now)).map(st => (cinema, st))
           }
         }
         if (allShowtimes.isEmpty) None

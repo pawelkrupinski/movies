@@ -430,6 +430,11 @@ class WorkerWiring extends play.api.Logging {
   // off-band and exposed on the same registry — see WorkerCorpusMetrics.
   lazy val corpusMetrics: services.metrics.WorkerCorpusMetrics =
     new services.metrics.WorkerCorpusMetrics(movieRepository, metricsRegistry)
+  // Per-city count of films the SOURCE `movies` collection would serve — the
+  // worker-side mirror of the web's kinowo_web_movies_served (read model), so a
+  // Grafana panel overlays the two and a divergence flags read-model drift.
+  lazy val sourceFilmsMetrics: services.metrics.WorkerSourceFilmsMetrics =
+    new services.metrics.WorkerSourceFilmsMetrics(movieRepository, metricsRegistry)
   // Per-site backlog of resolved films whose rating has NEVER run — the never-run
   // latency the first-attempt histogram can't show (see RatingRunCensus).
   lazy val ratingRunCensus: services.metrics.RatingRunCensus =
@@ -911,6 +916,9 @@ class WorkerWiring extends play.api.Logging {
     stagingStuckAlerter.foreach(_.start())
     // Census the corpus for the /metrics gauges (off-band, read-only paged scan).
     corpusMetrics.start()
+    // Per-city would-serve count off the source collection, to overlay against the
+    // web's read-model gauge (off-band, read-only paged scan).
+    sourceFilmsMetrics.start()
     // Census the per-site never-run rating backlog (off-band, in-memory scan).
     ratingRunCensus.start()
   }
@@ -923,6 +931,7 @@ class WorkerWiring extends play.api.Logging {
   def stop(): Unit = {
     envConfigService.stop()
     ratingRunCensus.stop()
+    sourceFilmsMetrics.stop()
     corpusMetrics.stop()
     stagingStuckAlerter.foreach(_.stop())
     stagingReaper.stop()

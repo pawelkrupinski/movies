@@ -333,12 +333,36 @@
       ]
     },
     {
+      "id": 37,
+      "title": "kinowo — films the movies collection would serve per city (all future)",
+      "description": "The SOURCE-collection mirror of the web panel above. Worker-side count of distinct films the live `movies` collection would serve on each /:city/ page (every film with a future showing), sampled off-band every 5 min by WorkerSourceFilmsMetrics through the REAL projection path and gated on the same readyToProject rule the projector writes by — exposed on worker /metrics as kinowo_worker_movies_served{scope=\"all\"}. Compare against kinowo_web_movies_served{scope=\"all\"}: in steady state the two match per city, so a city where worker > web means the read model (web_movies) has drifted behind the corpus — a stuck projection or a malformed/pruned web_movies row.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 131 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "kinowo_worker_movies_served{scope=\"all\"}", "legendFormat": "{{city}}" }
+      ]
+    },
+    {
+      "id": 38,
+      "title": "kinowo — films the movies collection would serve per city (showing tomorrow)",
+      "description": "Source-collection mirror of the web tomorrow panel above, from kinowo_worker_movies_served{scope=\"tomorrow\"} (worker-side, projected from `movies`, sampled every 5 min). Compare against kinowo_web_movies_served{scope=\"tomorrow\"}; a per-city gap is the same read-model-drift signal as the all-future pair.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 131 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "kinowo_worker_movies_served{scope=\"tomorrow\"}", "legendFormat": "{{city}}" }
+      ]
+    },
+    {
       "id": 36,
       "title": "Worker — movies corpus coverage (records, ids, ratings)",
       "description": "Census of the live `movies` collection, sampled off-band every 5 min by WorkerCorpusMetrics and exposed as kinowo_worker_corpus_movies{subset}. total = distinct movie records; with_any_rating = at least one of imdb/fw/rt/mc; with_tmdb_id / with_imdb_id = resolution coverage; imdb_rating/rt_rating/mc_rating/fw_rating = per-source rating coverage. The gap between total and with_*_id is the resolution backlog; the gap between with_tmdb_id and each rating series is each site's enrichment backlog.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 131 },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 140 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "kinowo_worker_corpus_movies", "legendFormat": "{{subset}}" }
