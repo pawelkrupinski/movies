@@ -85,6 +85,27 @@ object Source {
     case s                   => priority.getOrElse(s, Int.MaxValue)
   }
 
+  /** Drop legacy bare-[[Cinema]] slots that a per-title [[CinemaShowing]] slot
+   *  for the SAME cinema now supersedes. Rows written before the per-title split
+   *  (commit 847f555f) keyed a cinema's slot by the bare `Cinema`; once a
+   *  `CinemaShowing(cinema, titleKey)` slot for that film exists they DUPLICATE it
+   *  — identical showtimes under two keys, surfaced as twin slots on `/debug` and
+   *  double-counted by `cinemaSlots`. The per-title key is canonical, so the bare
+   *  one is the redundant copy: drop it (its content is already in the per-title
+   *  slot). A LONE bare slot (no per-title sibling — a dormant legacy row not yet
+   *  re-scraped) is left as-is; it isn't duplicated and gets re-keyed on its next
+   *  scrape. Applied at the storage boundary ([[services.movies.MovieCodecs]]
+   *  decode) so no hydrated record carries a duplicate cinema slot. */
+  def dropSupersededCinemaSlots[A](data: Map[Source, A]): Map[Source, A] = {
+    val perTitleCinemas: Set[Cinema] =
+      data.keysIterator.collect { case CinemaShowing(cinema, _) => cinema }.toSet
+    if (perTitleCinemas.isEmpty) data
+    else data.filter {
+      case (cinema: Cinema, _) => !perTitleCinemas.contains(cinema)
+      case _                   => true
+    }
+  }
+
   /** Resolve a Mongo wire key back to a Source: a known `displayName`, else a
    *  `"<cinema>␟<titleKey>"` per-title cinema slot. None for legacy/dropped
    *  cinemas (the cinema part no longer maps to a known venue). */

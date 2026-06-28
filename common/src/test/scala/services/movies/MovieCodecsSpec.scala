@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{Helios, Imdb, Multikino, MovieRecord, Showtime, Source, SourceData, Tmdb}
+import models.{CinemaShowing, Helios, Imdb, Multikino, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -142,6 +142,38 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     val decoded = outerCodec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build())
     val back = StoredMovieDto.toDomain(decoded)
     back.record.data.keySet shouldBe Set(Tmdb)
+  }
+
+  it should "drop a legacy bare-Cinema slot that a per-title CinemaShowing slot supersedes" in {
+    // A film re-scraped after the per-title split (847f555f) carries the new
+    // CinemaShowing(cinema, titleKey) slot, but a pre-split bare "Multikino" key
+    // still lingers in the Mongo sub-document with the same showtimes. The two
+    // render as twin slots on /debug and double-count `cinemaSlots`. Decode must
+    // collapse them to the single canonical per-title slot.
+    val showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 28, 17, 5), None, Some("Sala 11"), List("2D", "NAP")))
+    val perTitle  = CinemaShowing.keyFor(Multikino, "Dzień objawienia")
+    val slot      = SourceData(title = Some("Dzień objawienia"), showtimes = showtimes)
+    val record    = MovieRecord(data = Map[Source, SourceData](
+      perTitle -> slot,
+      Tmdb     -> SourceData(title = Some("Dzień objawienia"))))
+    val raw = new BsonDocument()
+    codec.encode(new BsonDocumentWriter(raw),
+      StoredMovieDto.fromDomain("dzienobjawienia|2026", record, Instant.now()), EncoderContext.builder().build())
+    // Inject the lingering legacy bare-Cinema slot (the duplicate) under "Multikino".
+    val sourceData = raw.getDocument("sourceData")
+    sourceData.put(Multikino.displayName, sourceData.get(perTitle.displayName))
+
+    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()))
+    back.record.data.keySet          shouldBe Set(perTitle, Tmdb)
+    back.record.cinemaSlots.map(_._1) shouldBe Seq(perTitle)  // exactly one cinema slot — no bare duplicate
+  }
+
+  it should "keep a lone bare-Cinema slot that has no per-title sibling (dormant legacy row)" in {
+    // No CinemaShowing slot for the cinema → the bare slot is the only one, not a
+    // duplicate, so it survives decode untouched (re-keyed on its next scrape).
+    val record = MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some("Legacy"))))
+    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("legacy|2026", record, Instant.now())))
+    back.record.data.keySet shouldBe Set(Helios)
   }
 
   it should "round-trip the tmdbNoMatch / detailPending conclusion markers when set" in {

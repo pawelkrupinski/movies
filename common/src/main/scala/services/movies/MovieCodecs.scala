@@ -85,7 +85,13 @@ object StoredMovieDto {
       searchTitle       = dto.searchTitle,
       tmdbNoMatch       = dto.tmdbNoMatch.getOrElse(false),
       detailPending     = dto.detailPending.getOrElse(false),
-      data              = dto.sourceData.flatMap { case (k, sd) => Source.byWireKey(k).map(_ -> sd) },
+      // Drop any legacy bare-Cinema slot a per-title CinemaShowing slot now
+      // supersedes — pre-split rows (before commit 847f555f) keyed a cinema's
+      // slot by the bare Cinema, so a re-scraped film carries BOTH keys with the
+      // same showtimes (the /debug twin-slot duplication). See
+      // `Source.dropSupersededCinemaSlots`.
+      data              = Source.dropSupersededCinemaSlots(
+                            dto.sourceData.flatMap { case (k, sd) => Source.byWireKey(k).map(_ -> sd) }),
       retainedSynopses  = dto.retainedSynopses.getOrElse(Map.empty)
                             .flatMap { case (k, v) => Source.byWireKey(k).map(_ -> v) }
     )
