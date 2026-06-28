@@ -76,6 +76,25 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
     sleeps shouldBe empty
   }
 
+  it should "outwait a ~25s transient burst under the DEFAULT budget (the MC live-probe flake)" in {
+    // Regression for the flaky Metacritic live probe: MC served a non-2xx /
+    // Cloudflare-challenge burst for longer than the former 10s default budget, so
+    // `canonicalUrl` returned `None` for the whole window and the build flaked
+    // (Yu-Gi-Oh!). The 30s default outwaits a typical burst. Fails under the old 10s
+    // budget (clock can't reach 25s in time), passes under 30s — no explicit budget,
+    // so this pins the DEFAULT.
+    val clock = new FakeClock(0L)
+    val result = RetryWithBackoff(
+      sleep = ms => clock.advance(ms),
+      now = () => clock.now(),
+    )({
+      if (clock.now() < 25000L) throw new RuntimeException("transient 502") else "ok"
+    })
+    result shouldBe "ok"
+    clock.now() should be >= 25000L   // succeeded only because the budget outlasted the burst
+    clock.now() should be <= 30000L   // …and within the 30s default
+  }
+
   private class FakeClock(private var t: Long) {
     def now(): Long = t
     def advance(ms: Long): Unit = t += ms
