@@ -32,20 +32,20 @@
   "panels": [
     {
       "id": 9,
-      "title": "Mongo CPU load — %core (busy = work it does; steal = host throttling). Watch step-ups against Deploys.",
-      "description": "kinowo-mongo is shared-cpu-1x, so 100 = one full core. 'busy' is the work Mongo does (user+system+io); 'steal' is CPU the host withheld because demand crossed the shared-CPU credit — near-zero historically, it only appears when busy saturates the core. A step-up that lines up with a purple Deploy marker means that release added Mongo load.",
+      "title": "CPU load by app — %core (busy = work it does; steal = host throttling). Watch step-ups against Deploys.",
+      "description": "Every app is shared-cpu-1x, so 100 = one full core. '<app> busy' is the work it does (user+system+io); '<app> steal' is CPU the host withheld because demand crossed the shared-CPU credit — near-zero historically, it only appears when busy saturates the core. A step-up that lines up with a purple Deploy marker means that release added load. (schowek excluded — it's a separate app.)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
       "fieldConfig": {
         "defaults": { "unit": "percent", "custom": { "drawStyle": "line", "fillOpacity": 15 } },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "steal" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } } ] }
+          { "matcher": { "id": "byRegexp", "options": "/ steal$/" }, "properties": [ { "id": "custom.fillOpacity", "value": 0 }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [8, 4] } } ] }
         ]
       },
       "targets": [
-        { "refId": "A", "expr": "sum(rate(fly_instance_cpu{app=\"kinowo-mongo\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "busy (user+system+io)" },
-        { "refId": "B", "expr": "sum(rate(fly_instance_cpu{app=\"kinowo-mongo\",mode=\"steal\"}[5m]))", "legendFormat": "steal" }
+        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{app!=\"schowek\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "{{app}} busy" },
+        { "refId": "B", "expr": "sum by (app) (rate(fly_instance_cpu{app!=\"schowek\",mode=\"steal\"}[5m]))", "legendFormat": "{{app}} steal" }
       ]
     },
     {

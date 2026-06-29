@@ -10,7 +10,10 @@
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-IMG="$(grep -m1 '^FROM ' "$DIR/Dockerfile" | awk '{print $2}')"
+# The Dockerfile is multi-stage (a VictoriaMetrics builder stage, then the
+# Grafana runtime stage). We want the FINAL stage — the Grafana image we
+# actually ship — so take the last FROM, not the first.
+IMG="$(grep '^FROM ' "$DIR/Dockerfile" | tail -1 | awk '{print $2}')"
 NAME="kinowo-grafana-smoke"
 PORT="${SMOKE_PORT:-3999}"
 EXPECTED_RULES=19
