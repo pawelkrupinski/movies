@@ -6,144 +6,137 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import tools.GetOnlyHttpFetch
 
+import java.net.URLDecoder
+
 /**
- * Tests for `OmdbBackfill` — the OMDb fallback that fills the three IMDb-keyed
- * ratings (imdbRating / rottenTomatoes / metascore) a row is still MISSING,
- * never overriding a value a canonical source already supplied.
+ * Tests for `OmdbBackfill` — the OMDb IDENTIFIER backfill. It fills a missing
+ * `imdbId` (by title search) and a missing `rottenTomatoesUrl` (OMDb tomatoURL),
+ * never a rating VALUE and never overriding an identifier a canonical writer
+ * already supplied. The rating numbers are left for the canonical refreshers.
  *
- * OMDb HTTP is stubbed via a canned JSON body keyed off the `?i=<imdbId>` URL.
+ * OMDb HTTP is stubbed: a `?t=` request echoes the queried title back with a
+ * canned imdbID (so the title-match guard passes), a `?i=` request returns a
+ * tomatoURL.
  */
 class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
 
-  private val FullBody =
-    """{"imdbRating":"7.5","Metascore":"72","Ratings":[
-       |  {"Source":"Rotten Tomatoes","Value":"85%"},
-       |  {"Source":"Metacritic","Value":"72/100"}
-       |]}""".stripMargin
+  private val RtUrl = "https://www.rottentomatoes.com/m/the_film"
 
-  /** OMDb client whose GET returns `body` for any id-bearing URL (key present). */
-  private def omdbReturning(body: String): OMDbClient =
-    new OMDbClient(
-      http = new GetOnlyHttpFetch { def get(url: String): String = body },
-      apiKey = Some("test-key")
-    )
+  /** Echoes the `?t=` title back (guard passes) with a canned id; serves a
+   *  tomatoURL for `?i=`. Key present so the calls actually fire. */
+  private def omdbStub: OMDbClient = new OMDbClient(
+    http = new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.contains("?t=")) {
+          val t = URLDecoder.decode(url.split("[?&]").find(_.startsWith("t=")).map(_.drop(2)).getOrElse(""), "UTF-8")
+          s"""{"Title":"$t","imdbID":"tt0133093","Response":"True"}"""
+        } else if (url.contains("?i="))
+          s"""{"tomatoURL":"$RtUrl","Response":"True"}"""
+        else """{"Response":"False"}"""
+    },
+    apiKey = Some("test-key")
+  )
 
   private def cacheWith(record: MovieRecord) =
     new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Film", Some(2024), record))))
+  private def keyOf(cache: CaffeineMovieCache) = cache.keyOf("Film", Some(2024))
 
-  // ── golden path ──────────────────────────────────────────────────────────────
+  // ── golden path: recover both identifiers ─────────────────────────────────────
 
-  "refreshOneSync" should "fill all three ratings when the row has an imdbId and none yet" in {
-    val cache = cacheWith(MovieRecord(imdbId = Some("tt0133093")))
-    val backfill = new OmdbBackfill(cache, omdbReturning(FullBody))
+  "refreshOneSync" should "recover imdbId (by title) AND rottenTomatoesUrl (by id) when both are missing" in {
+    val cache = cacheWith(MovieRecord())
+    new OmdbBackfill(cache, omdbStub).refreshOneSync(keyOf(cache))
 
-    backfill.refreshOneSync(cache.keyOf("Film", Some(2024)))
-
-    val e = cache.get(cache.keyOf("Film", Some(2024))).get
-    e.imdbRating     shouldBe Some(7.5)
-    e.rottenTomatoes shouldBe Some(85)
-    e.metascore      shouldBe Some(72)
+    val e = cache.get(keyOf(cache)).get
+    e.imdbId            shouldBe Some("tt0133093")
+    e.rottenTomatoesUrl shouldBe Some(RtUrl)
+    // It must NOT have written any rating value — those stay for the canonical writers.
+    e.imdbRating     shouldBe None
+    e.rottenTomatoes shouldBe None
   }
 
-  // ── never override (the load-bearing rule) ───────────────────────────────────
+  // ── never override an existing identifier ─────────────────────────────────────
 
-  it should "fill ONLY the missing field and never override an existing one" in {
-    // imdbRating + metascore already set by canonical writers; only RT is missing.
-    val cache = cacheWith(MovieRecord(
-      imdbId     = Some("tt0133093"),
-      imdbRating = Some(9.9),   // canonical IMDb value — must survive
-      metascore  = Some(40)     // canonical MC value — must survive
-    ))
-    val backfill = new OmdbBackfill(cache, omdbReturning(FullBody))
+  it should "fill only the missing rottenTomatoesUrl and never touch an existing imdbId" in {
+    val cache = cacheWith(MovieRecord(imdbId = Some("tt7654321")))  // canonical id — must survive
+    new OmdbBackfill(cache, omdbStub).refreshOneSync(keyOf(cache))
 
-    backfill.refreshOneSync(cache.keyOf("Film", Some(2024)))
-
-    val e = cache.get(cache.keyOf("Film", Some(2024))).get
-    e.imdbRating     shouldBe Some(9.9)  // untouched
-    e.metascore      shouldBe Some(40)   // untouched
-    e.rottenTomatoes shouldBe Some(85)   // backfilled
+    val e = cache.get(keyOf(cache)).get
+    e.imdbId            shouldBe Some("tt7654321") // untouched (no title search)
+    e.rottenTomatoesUrl shouldBe Some(RtUrl)       // backfilled via the existing id
   }
 
-  it should "make NO write when every gap-fill the row needs is unavailable from OMDb" in {
-    val repository = new InMemoryMovieRepository(Seq(("Film", Some(2024), MovieRecord(imdbId = Some("tt9999999")))))
+  it should "recover imdbId via title search when only the rottenTomatoesUrl is already set" in {
+    val cache = cacheWith(MovieRecord(rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/existing")))
+    new OmdbBackfill(cache, omdbStub).refreshOneSync(keyOf(cache))
+
+    val e = cache.get(keyOf(cache)).get
+    e.imdbId            shouldBe Some("tt0133093")                                  // recovered
+    e.rottenTomatoesUrl shouldBe Some("https://www.rottentomatoes.com/m/existing")  // untouched
+  }
+
+  it should "make NO write when OMDb can supply neither identifier" in {
+    val repository = new InMemoryMovieRepository(Seq(("Film", Some(2024), MovieRecord())))
     val cache = new CaffeineMovieCache(repository)
     repository.upserts.clear()
-    // OMDb returns all N/A → nothing to fill, so no write-back at all.
-    val backfill = new OmdbBackfill(cache, omdbReturning("""{"imdbRating":"N/A","Metascore":"N/A","Ratings":[]}"""))
-
-    backfill.refreshOneSync(cache.keyOf("Film", Some(2024)))
-
+    // ?t= returns no match, ?i= unreachable (no id) → nothing to write.
+    val omdb = new OMDbClient(
+      http = new GetOnlyHttpFetch { def get(url: String): String = """{"Response":"False"}""" },
+      apiKey = Some("test-key")
+    )
+    new OmdbBackfill(cache, omdb).refreshOneSync(keyOf(cache))
     repository.upserts shouldBe empty
   }
 
   // ── eligibility / gating ─────────────────────────────────────────────────────
 
-  it should "be a no-op (no HTTP call) when the row has no imdbId" in {
-    val cache = cacheWith(MovieRecord(tmdbId = Some(42)))  // no imdbId
+  it should "be a no-op (no HTTP) when the row already has both imdbId and rottenTomatoesUrl" in {
+    val cache = cacheWith(MovieRecord(imdbId = Some("tt0133093"), rottenTomatoesUrl = Some(RtUrl)))
     val backfill = new OmdbBackfill(cache, new OMDbClient(
-      http = new GetOnlyHttpFetch { def get(url: String): String = throw new RuntimeException("must not be called without imdbId") },
+      http = new GetOnlyHttpFetch { def get(url: String): String = throw new RuntimeException("nothing missing — no call") },
       apiKey = Some("test-key")
     ))
-
-    noException should be thrownBy backfill.refreshOneSync(cache.keyOf("Film", Some(2024)))
-  }
-
-  it should "be a no-op (no HTTP call) when all three ratings are already present" in {
-    val cache = cacheWith(MovieRecord(
-      imdbId = Some("tt0133093"), imdbRating = Some(7.0), rottenTomatoes = Some(80), metascore = Some(60)
-    ))
-    val backfill = new OmdbBackfill(cache, new OMDbClient(
-      http = new GetOnlyHttpFetch { def get(url: String): String = throw new RuntimeException("must not be called when nothing missing") },
-      apiKey = Some("test-key")
-    ))
-
-    noException should be thrownBy backfill.refreshOneSync(cache.keyOf("Film", Some(2024)))
+    noException should be thrownBy backfill.refreshOneSync(keyOf(cache))
   }
 
   it should "be a no-op when the OMDb key is unset (feature off — no HTTP call)" in {
-    val cache = cacheWith(MovieRecord(imdbId = Some("tt0133093")))
+    val cache = cacheWith(MovieRecord())
     val keyless = new OMDbClient(
       http = new GetOnlyHttpFetch { def get(url: String): String = throw new RuntimeException("feature off — no call") },
       apiKey = None
     )
-    val backfill = new OmdbBackfill(cache, keyless)
+    new OmdbBackfill(cache, keyless).refreshOneSync(keyOf(cache))
 
-    backfill.refreshOneSync(cache.keyOf("Film", Some(2024)))
-
-    val e = cache.get(cache.keyOf("Film", Some(2024))).get
-    e.imdbRating shouldBe None
-    e.rottenTomatoes shouldBe None
-    e.metascore shouldBe None
+    val e = cache.get(keyOf(cache)).get
+    e.imdbId shouldBe None
+    e.rottenTomatoesUrl shouldBe None
   }
 
   it should "swallow an OMDb failure without throwing and leave the row untouched" in {
-    val cache = cacheWith(MovieRecord(imdbId = Some("tt0133093")))
+    val cache = cacheWith(MovieRecord())
     val failing = new OMDbClient(
       http = new GetOnlyHttpFetch { def get(url: String): String = throw new RuntimeException("HTTP 503") },
       apiKey = Some("test-key")
     )
-    val backfill = new OmdbBackfill(cache, failing)
-
-    noException should be thrownBy backfill.refreshOneSync(cache.keyOf("Film", Some(2024)))
-    cache.get(cache.keyOf("Film", Some(2024))).get.imdbRating shouldBe None
+    noException should be thrownBy new OmdbBackfill(cache, failing).refreshOneSync(keyOf(cache))
+    cache.get(keyOf(cache)).get.imdbId shouldBe None
   }
 
   // ── full-corpus walk ─────────────────────────────────────────────────────────
 
-  "refreshAll" should "backfill every eligible row and skip ineligible ones" in {
+  "refreshAll" should "recover identifiers for every eligible row and skip fully-identified ones" in {
     val repository = new InMemoryMovieRepository(Seq(
-      ("A", None, MovieRecord(imdbId = Some("tt0001"))),                         // eligible
-      ("B", None, MovieRecord(imdbId = Some("tt0002"), rottenTomatoes = Some(99))), // partial gap
-      ("C", None, MovieRecord(tmdbId = Some(7)))                                 // no imdbId → skip
+      ("A", None, MovieRecord()),                                                          // both missing
+      ("B", None, MovieRecord(imdbId = Some("tt0002"))),                                   // only RT url missing
+      ("C", None, MovieRecord(imdbId = Some("tt0003"), rottenTomatoesUrl = Some(RtUrl)))   // fully identified → skip
     ))
     val cache = new CaffeineMovieCache(repository)
-    val backfill = new OmdbBackfill(cache, omdbReturning(FullBody))
+    new OmdbBackfill(cache, omdbStub).refreshAll()
 
-    backfill.refreshAll()
-
-    cache.get(cache.keyOf("A", None)).get.imdbRating     shouldBe Some(7.5)
-    cache.get(cache.keyOf("B", None)).get.rottenTomatoes shouldBe Some(99) // untouched
-    cache.get(cache.keyOf("B", None)).get.metascore      shouldBe Some(72) // backfilled
-    cache.get(cache.keyOf("C", None)).get.imdbRating     shouldBe None     // skipped
+    cache.get(cache.keyOf("A", None)).get.imdbId            shouldBe Some("tt0133093") // recovered
+    cache.get(cache.keyOf("A", None)).get.rottenTomatoesUrl shouldBe Some(RtUrl)
+    cache.get(cache.keyOf("B", None)).get.imdbId            shouldBe Some("tt0002")    // untouched
+    cache.get(cache.keyOf("B", None)).get.rottenTomatoesUrl shouldBe Some(RtUrl)       // backfilled
+    cache.get(cache.keyOf("C", None)).get.imdbId            shouldBe Some("tt0003")    // unchanged
   }
 }

@@ -369,30 +369,21 @@ class WorkerWiring extends play.api.Logging {
   lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient, resolutionCache("resolve_filmweb"),
     onImdbIdMissing = (title, year, searchTitle) => eventBus.publish(ImdbIdMissing(title, year, searchTitle)),
     cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.FilmwebRating))
-  // OMDb fallback backfill — feature-gated by the OMDB_API_KEY secret. `Some`
+  // OMDb IDENTIFIER backfill — feature-gated by the OMDB_API_KEY secret. `Some`
   // only when the key is set, so nothing references the OMDb path on the default
   // (key-absent) deployment and the feature is completely inert. When present it
-  // fills a row's MISSING imdbRating / rottenTomatoes / metascore from a single
-  // OMDb round-trip (keyed by imdbId), never overriding a value the canonical
-  // ImdbRatings / RottenTomatoesRatings / MetascoreRatings already wrote.
+  // recovers a row's MISSING `imdbId` (by title+year search) and
+  // `rottenTomatoesUrl` (OMDb tomatoURL) — never a rating value. The canonical
+  // ImdbRatings / RottenTomatoesRatings then fetch the scores FROM those ids/links
+  // on their next EnrichmentReaper tick, keeping one canonical writer per value.
   //
-  // INTEGRATION SEAM — how to put OMDb on the rating-refresh queue once a key
-  // exists (kept out of the always-on queue here because it would require new
-  // `TaskType.OmdbRating` + `FreshnessKind.OmdbRating` enum cases, which ripple
-  // through ~41 exhaustive matches + the queue/metrics codecs):
-  //   1. Add `TaskType.OmdbRating` (common TaskQueue) + `FreshnessKind.OmdbRating`
-  //      (common Freshness, with a TTL in `ttlFor`).
-  //   2. Add a `RatingSources.all` entry gated on the key so feature-off stays
-  //      inert: `RatingSource(TaskType.OmdbRating, FreshnessKind.OmdbRating,
-  //        r => OMDbClient.ApiKey.isDefined && r.imdbId.isDefined &&
-  //             (r.imdbRating.isEmpty || r.rottenTomatoes.isEmpty || r.metascore.isEmpty))`.
-  //   3. Append a `RatingHandler(TaskType.OmdbRating, FreshnessKind.OmdbRating, …,
-  //      omdbBackfill.get.refreshOneSync, …)` to `ratingHandlers` below.
-  // Until then, an operator can drive a full-corpus backfill via
-  // `omdbBackfill.foreach(_.refreshAllNow())` (e.g. a one-shot tools script).
-  // No cadence recorder: OMDb is a one-shot gap-filler with no dedicated cadence
-  // kind, and recording its writes under another source's key would corrupt that
-  // source's change history. The default no-op recorder is correct here.
+  // Kept OFF the always-on queue: a dedicated TaskType/FreshnessKind would ripple
+  // through ~41 exhaustive matches + the queue/metrics codecs, and OMDb is a
+  // cheap one-shot gap-filler, not a recurring per-row refresh. Drive a full
+  // backfill with the `scripts.OmdbBackfillRun` runMain (calls `refreshAllNow()`
+  // here); re-runnable/schedulable, `orElse` write-back never overrides.
+  // No cadence recorder: recording OMDb's id/url writes under another source's
+  // key would corrupt that source's change history; the default no-op is correct.
   lazy val omdbBackfill: Option[OmdbBackfill] =
     Env.get("OMDB_API_KEY").map(_ => new OmdbBackfill(movieCache, omdbClient))
   // Single-movie TMDB resolution is dispatched as a `ResolveTmdb` worker task:

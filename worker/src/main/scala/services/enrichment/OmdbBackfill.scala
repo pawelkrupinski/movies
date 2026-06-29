@@ -4,23 +4,26 @@ import services.movies.{CacheKey, MovieCache}
 import tools.BoundedParallel
 
 /**
- * OMDb fallback for the three IMDb-keyed external ratings: `imdbRating`,
- * `rottenTomatoes` and `metascore`. A single OMDb round-trip per film (keyed by
- * `imdbId`) can fill any of the three a row is still MISSING after the canonical
- * sources ([[ImdbRatings]] / [[RottenTomatoesRatings]] / [[MetascoreRatings]])
- * have had their turn.
+ * OMDb IDENTIFIER backfill: recovers a missing `imdbId` (by title+year search)
+ * and a missing `rottenTomatoesUrl` (OMDb's `tomatoURL`, keyed by imdb id). It
+ * writes only those two IDENTIFIERS — never a rating value. The canonical
+ * refreshers then fetch the scores FROM them on their next tick:
+ * [[ImdbRatings]] fills `imdbRating` once an `imdbId` is present, and
+ * [[RottenTomatoesRatings]] fills `rottenTomatoes` from a stored
+ * `rottenTomatoesUrl` (skipping its own URL discovery). So each rating keeps
+ * exactly one canonical writer; OMDb only unblocks them.
  *
- * FALLBACK SEMANTICS — this is the whole point of the class:
- *   - It only acts on a row that has an `imdbId` AND is missing at least one of
- *     the three ratings (nothing to gain otherwise — skip the HTTP call).
- *   - It writes ONLY the missing fields, via `orElse` against the live cached
- *     row, so it NEVER overrides a value a canonical writer already supplied.
- *     (Each of the three fields keeps "exactly one canonical writer"; OMDb is a
- *     strictly-additive backfill, not a competing writer.)
+ * FALLBACK SEMANTICS:
+ *   - Acts only on a row MISSING `imdbId` or `rottenTomatoesUrl` (nothing to
+ *     gain otherwise — skip the HTTP call).
+ *   - Writes via `orElse` against the live cached row, so a canonical writer
+ *     that filled the id/url in between keeps its value — OMDb never overrides.
+ *   - The imdb-id search is title-match guarded (see [[OMDbClient]]) so a fuzzy
+ *     OMDb hit can't bind an unrelated film.
  *
  * Feature gate lives one level down in [[OMDbClient]]: with `OMDB_API_KEY`
- * unset, `omdb.ratings` returns `None` without any HTTP call, so every
- * `refreshOne` here is an immediate no-op. The whole refresher is only wired in
+ * unset, every method returns `None` without any HTTP call, so each
+ * `refreshOne` is an immediate no-op. The whole refresher is only wired in
  * `WorkerWiring` when the key is present (see that file).
  *
  * Shares the per-row / full-corpus skeleton with the canonical refreshers via
@@ -36,35 +39,34 @@ class OmdbBackfill(
 
   protected def refreshOne(key: CacheKey): Option[String] =
     cache.get(key).flatMap { e =>
-      val wantImdb = e.imdbRating.isEmpty
-      val wantRt   = e.rottenTomatoes.isEmpty
-      val wantMc   = e.metascore.isEmpty
-      e.imdbId match {
-        // Nothing to backfill unless there's an IMDb id AND a gap to fill.
-        case Some(imdbId) if wantImdb || wantRt || wantMc =>
-          omdb.ratings(imdbId).flatMap { r =>
-            val newImdb = if (wantImdb) r.imdbRating     else None
-            val newRt   = if (wantRt)   r.rottenTomatoes else None
-            val newMc   = if (wantMc)   r.metascore      else None
-            if (newImdb.isEmpty && newRt.isEmpty && newMc.isEmpty) None
-            else {
-              // `orElse` against the LIVE row is the concurrent-safe merge point:
-              // a canonical writer that won the race in between keeps its value.
-              cache.putIfPresent(key, cur => cur.copy(
-                imdbRating     = cur.imdbRating.orElse(newImdb),
-                rottenTomatoes = cur.rottenTomatoes.orElse(newRt),
-                metascore      = cur.metascore.orElse(newMc)
-              ))
-              val badge = Seq(
-                newImdb.map(v => s"IMDb $v"),
-                newRt.map(v => s"RT $v%"),
-                newMc.map(v => s"MC $v")
-              ).flatten.mkString(", ")
-              logger.info(s"OMDb: '${key.cleanTitle}' (${key.year.getOrElse("?")}) backfilled $badge")
-              Some(badge)
-            }
-          }
-        case _ => None
+      val wantImdbId = e.imdbId.isEmpty
+      val wantRtUrl  = e.rottenTomatoesUrl.isEmpty
+      if (!wantImdbId && !wantRtUrl) None
+      else {
+        // 1. Recover a missing IMDb id by title+year search. Original
+        //    (production/English) title first — OMDb is an English DB; the
+        //    cinema display title is the fallback spelling.
+        val foundImdbId =
+          if (wantImdbId)
+            omdb.findImdbId((e.originalTitle.toSeq :+ e.displayTitle(key.cleanTitle)).distinct, key.year)
+          else None
+        // 2. Recover a missing RT url via the imdb id we have (or just found).
+        val effectiveId = e.imdbId.orElse(foundImdbId)
+        val foundRtUrl  = if (wantRtUrl) effectiveId.flatMap(omdb.rottenTomatoesUrl) else None
+        if (foundImdbId.isEmpty && foundRtUrl.isEmpty) None
+        else {
+          // `orElse` against the LIVE row: a canonical writer that won the race
+          // keeps its value — OMDb only fills a still-empty identifier. The
+          // rating numbers are then fetched FROM these by ImdbRatings /
+          // RottenTomatoesRatings on their next tick; OMDb writes no score.
+          cache.putIfPresent(key, cur => cur.copy(
+            imdbId            = cur.imdbId.orElse(foundImdbId),
+            rottenTomatoesUrl = cur.rottenTomatoesUrl.orElse(foundRtUrl)
+          ))
+          val badge = (foundImdbId.map("imdbId " + _).toSeq ++ foundRtUrl.map(_ => "RT-link").toSeq).mkString(", ")
+          logger.info(s"OMDb: '${e.displayTitle(key.cleanTitle)}' (${key.year.getOrElse("?")}) recovered $badge")
+          Some(badge)
+        }
       }
     }
 
