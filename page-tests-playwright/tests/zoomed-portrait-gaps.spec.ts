@@ -13,7 +13,13 @@ test.describe('zoomed portrait card gaps', () => {
     test.skip(!testInfo.project.name.includes('zoomed')
               || testInfo.project.name.includes('landscape'),
       'zoomed portrait only');
-    await page.goto('/poznan/');
+    // Use the date-independent "Wszystkie" view (?date=anytime shows the whole
+    // corpus regardless of the wall clock). The default "Dziś" filter intersects
+    // the static fixture's absolute screening dates with the live date, so as the
+    // calendar advances past the fixture's last screenings it eventually shows
+    // only one film in Poznań — too few for the "two cards on one row" pair this
+    // spec measures the gap between. "anytime" always renders the full grid.
+    await page.goto('/poznan/?date=anytime');
     await waitForCards(page);
   });
 

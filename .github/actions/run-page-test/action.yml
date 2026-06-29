@@ -193,14 +193,16 @@ runs:
       shell: bash
       run: cd page-tests-playwright && npx playwright test --project "${{ inputs.project }}" --grep "axe-core"
 
-    # Sanitise project+shard into an artifact-safe suffix (slashes and
-    # spaces are invalid in v4 artifact names: `1/2` → `1-2`). Used to
-    # keep each matrix row's report/trace upload uniquely named.
+    # Sanitise project+shard into an artifact-safe suffix. v4 artifact names
+    # reject `/`, spaces, commas AND `*` — and the per-phone rows pass a project
+    # GLOB (`chromium-galaxy-s10*`), so the asterisk must be stripped too or the
+    # on-failure trace upload itself errors ("artifact name not valid"). `1/2` →
+    # `1-2`, `chromium-galaxy-s10*` → `chromium-galaxy-s10-`.
     - name: Compute artifact suffix
       if: always() && inputs.kind == 'playwright'
       id: suffix
       shell: bash
-      run: echo "name=$(echo '${{ inputs.project }}-${{ inputs.shard }}' | tr '/ ,' '---')" >> "$GITHUB_OUTPUT"
+      run: echo "name=$(echo '${{ inputs.project }}-${{ inputs.shard }}' | tr '/ ,*' '----')" >> "$GITHUB_OUTPUT"
 
     - name: Publish Playwright report
       if: always() && inputs.kind == 'playwright'
