@@ -5,7 +5,9 @@ package services.cinemas
  *  stand-up nights, kabaret shows, recitals and theatre plays through the same
  *  ticketing/listing surface their film repertoire comes from, so those rows
  *  leak into the scrape (e.g. "Koncert Joscho Stephan Trio", "Piotr Bałtroczyk
- *  Stand-up", "Edyta Geppert - recital").
+ *  Stand-up", "Edyta Geppert - recital", a tribute gig "…- pamięci Amy
+ *  Winehouse", a Silesian "…biesiada z TVS", a gift "Bon podarunkowy", a blind
+ *  "Seans w ciemno", or a festival "…– spotkanie z podróżnikiem…").
  *
  *  This is deliberately HIGH-PRECISION, not high-recall: a stray event slipping
  *  through is cosmetic, but dropping a real film is a regression. So two whole
@@ -46,8 +48,60 @@ object NonMovieEventClassifier {
     """\boperetk""".r,    // operetka / operetki
     """\bkoncert""".r,    // koncert / koncertu
     """\bteatr""".r,      // teatr / teatru / teatrem / teatralne (NOT kinoteatr…)
-    """\bbalet""".r       // baletowa (PL); English "Ballet" stays
+    """\bbalet""".r,      // baletowa (PL); English "Ballet" stays
+    // Music recitals/tributes beyond a bare "koncert". `symfoniczn` matches the
+    // adverb of a pops-symphonic gig ("…symfonicznie") but NOT the real silent
+    // film "Nosferatu - symfonia grozy" (no "-czn"); `\btribute`/`\bpamięci`
+    // ("…- pamięci Amy Winehouse") tag memorial gigs; `\bjazz`/`\borkiestr`/
+    // `\bfilharmoni` are stage-music venues/ensembles. `na żywo` = a live music
+    // performance (broadcasts say "transmisja/retransmisja na żywo" → vetoed).
+    """symfoniczn""".r,
+    """\btribute\b""".r,
+    """\bpamięci\b""".r,
+    """\bjazz\b""".r,
+    """\borkiestr""".r,
+    """\bfilharmoni""".r,
+    """na żywo""".r,
+    // Silesian folk/variety shows. `\bszlagier` covers "Szlagierowa uczta…" and
+    // "Szlagierowy zawrót głowy" without a bare `uczta`/`zawrót głowy` that would
+    // wrongly drop the films "Uczta Babette" / "Zawrót głowy" (PL Vertigo).
+    """\bbiesiad""".r,
+    """\bszlagier""".r,
+    // Gift vouchers sold through the same ticketing surface ("Bon podarunkowy",
+    // collapsed "Bonpodarunkowy"). `\s?` absorbs the lost space.
+    """bon\s?podarunkow""".r,
+    """bon\s?upominkow""".r,
+    """\bvoucher""".r,
+    // Mystery / blind screenings ("Seans w ciemno", "Seans niespodzianka",
+    // collapsed "seanswciemno") — sold as an event, never resolve to a title.
+    """seans\s?w\s?ciemno""".r,
+    """seans\s?niespodziank""".r
   )
+
+  /** Festival panels / author meetings ("…– spotkanie z podróżnikiem…", "panel
+   *  dyskusyjny", "…– debata z udziałem gości…"). Unlike the markers above these
+   *  ALSO appear as an addendum to a real film screening — "The Room + spotkanie
+   *  z Gregiem Sestero", "Salto - pokaz + prelekcja", "…+ Q&A z…" — so they only
+   *  flag an event when NO film-attachment signal ([[FilmAttachmentSignals]]) is
+   *  present. A standalone "spotkanie z X" with no film is dropped; a film with a
+   *  bolted-on talk is kept. */
+  private val DiscussionMarkers = List(
+    """spotkanie ze?\b""".r,
+    """panel\s?dyskusyjn""".r,
+    """\bdebat""".r,
+    """\bprelekcj""".r,
+    """\bdyskusj""".r,
+    """q&a""".r
+  )
+
+  /** Substrings that mark a real film the discussion is bolted onto: a `+`/`|`
+   *  joining film and extra, or a screening word. Their presence vetoes the
+   *  [[DiscussionMarkers]] verdict (but NOT the concert/folk markers above —
+   *  a "Koncert + support" is still an event). */
+  private val FilmAttachmentSignals = List("+", "|", "pokaz", "seans", "przedpremiera")
+  private def hasBoltedOnFilm(t: String): Boolean = FilmAttachmentSignals.exists(t.contains)
+  private def isStandaloneDiscussion(t: String): Boolean =
+    DiscussionMarkers.exists(_.findFirstIn(t).isDefined) && !hasBoltedOnFilm(t)
 
   /** "gala" is handled separately from [[EventMarkers]]: it marks a live event
    *  (Gala Baletowa, Światowa gala muzyczna, Gala Rozdania Nagród) EXCEPT a film
@@ -88,6 +142,9 @@ object NonMovieEventClassifier {
   def isLiveEvent(title: String): Boolean = {
     val t = title.toLowerCase
     if (isScreenedBroadcast(t)) false
-    else EventMarkers.exists(_.findFirstIn(t).isDefined) || isStandaloneGala(t)
+    else
+      EventMarkers.exists(_.findFirstIn(t).isDefined) ||
+      isStandaloneGala(t) ||
+      isStandaloneDiscussion(t)
   }
 }

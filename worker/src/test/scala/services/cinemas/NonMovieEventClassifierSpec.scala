@@ -62,7 +62,26 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
     "Spektakl - Królowe życia",
     "Spektakl „mglisty skarb tutanchamona”",
     "Spektakl_kubuś fatalista i jego pan",              // underscore separator, still a spektakl
-    "Kabaret Paranienormalni"
+    "Kabaret Paranienormalni",
+    // Music recitals/tributes that don't say "koncert" outright.
+    "Back to the 90's symfonicznie",
+    "Bochnia rocks - jazz sabbath",
+    "Back to amy show - pamięci amy winehouse",
+    "Nosferatu - symfonia grozy - halloween z horrorem i muzyką na żywo zespołu czerwie w ramach projektu dom otwarty",
+    // Silesian folk/variety shows — caught via "szlagier"/"biesiada".
+    "Szlagierowa uczta z radiem silesia",
+    "Szlagierowy zawrót głowy",
+    "Śląsko-góralska biesiada z tvs",
+    // Gift vouchers, incl. the space-collapsed spelling.
+    "Bonpodarunkowy",
+    // Blind / mystery screenings, incl. the space-collapsed spelling.
+    "Seans w ciemno_7.26",
+    "Ukrytyseanswciemno",
+    // Standalone festival panels / author meetings — no film attached.
+    "Ravekjavikxnckfbestiawdzunglipaneldyskusyjny",
+    "Opowieści z wojennej ukrainy – spotkanie z tetianą kolesnychenko",
+    "Mundiale polskich spraw – spotkanie ze stefanem szczepłkiem",   // "ze", not "z"
+    "W świecie polikryzysu. Jak chronić wspólnotę, klimat i fakty? – debata z udziałem gości festiwalu"
   )
 
   // Kept on purpose: "event cinema" broadcasts (opera/ballet/theatre/concert
@@ -97,7 +116,23 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
     "Społeczeństwo spektaklu",
     // A film screened under an award-gala banner ("Banner | Film") — the
     // documentary "Pieśni lasu". The pipe keeps it; a bare "gala …" is dropped.
-    "Gala Wręczenia Nagrody Wolności | Pieśni lasu"
+    "Gala Wręczenia Nagrody Wolności | Pieśni lasu",
+    // Real films + a bolted-on talk/Q&A: the film makes them cinema content. A
+    // "+", a "|" banner, or a screening word (pokaz/seans/przedpremiera) vetoes
+    // the discussion verdict — so prelekcja/spotkanie/Q&A here are KEPT.
+    "Salto - pokaz + prelekcja",
+    "Konwicki. Salto + prelekcja",
+    "Frankenstein (2025) + Frankenstein (1910) + prelekcja",
+    "Śmiech przez łzy: Chłopaki nie płaczą + prelekcja",
+    "WAJDA: re-wizje: Brzezina (1970): pokaz z prelekcją wideo Joanny Najbor",
+    "The Room + spotkanie z Gregiem Sestero | Najlepsze z Najgorszych",
+    "Big Shark-Seans specjalny + Q&A z Gregiem Sestero | Najlepsze Z Najgorszych",
+    "Kino letnie 2026: Przekleństwa niewinności (1999) - Pokaz Przedpremierowy + prelekcja Sebastiana Smolińskiego",
+    // Real films whose title collides with a new folk/music marker word — these
+    // must survive (no bare `uczta`/`zawrót głowy`/`symfonia` markers).
+    "Uczta Babette",
+    "Zawrót głowy",                     // PL title of Hitchcock's "Vertigo"
+    "Nosferatu - symfonia grozy"        // the 1922 film itself, no "na żywo" decoration
   )
 
   "isLiveEvent" should "flag every stray live stage/music event" in {
