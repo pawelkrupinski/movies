@@ -391,7 +391,22 @@ object ExtraTitleRules {
     // underlying play/film is wrong (a ballet 'Manon' is not Pagnol's 'Manon').
     searchStrip("xtra-kinowy-poranek",             """(?iu)^Kinowy\s+Poranek{{SEP}}""",              "'Kinowy Poranek: <film>' kids-morning strand (Lato, kiedy nauczyłam się latać → TMDB) — distinct from the seed 'Filmowy/Zimowe Poranki'"),
     searchStrip("xtra-przyblizenia-psychoanaliza", """(?iu)^Przybliżenia\s+[-–—]\s+okiem\s+psychoanalizy{{SEP}}""", "'Przybliżenia - okiem psychoanalizy: <film>' psychoanalysis cycle (Perfect Days)"),
-    searchStrip("xtra-kino-bez-barier-dzieci",     """(?iu)^Kino\s+bez\s+barier\s+dla\s+dzieci{{SEP}}""", "'Kino bez barier dla dzieci: <film>' accessibility kids-strand — the seed 'Kino bez barier:' wants the colon right after 'barier', so this longer form never matched (Oskar, Patka i złoto Bałtyku)")
+    searchStrip("xtra-kino-bez-barier-dzieci",     """(?iu)^Kino\s+bez\s+barier\s+dla\s+dzieci{{SEP}}""", "'Kino bez barier dla dzieci: <film>' accessibility kids-strand — the seed 'Kino bez barier:' wants the colon right after 'barier', so this longer form never matched (Oskar, Patka i złoto Bałtyku)"),
+    // Fifteenth-wave (2026-06-29) centralisation pass: GENERIC screening-cycle /
+    // festival banners — a colon-terminated PREFIX or a keyword-guarded pipe SUFFIX —
+    // each generalising a shape the curated per-banner rules only ever covered for one
+    // named cycle/venue. Query-only strips (the decorated screening keeps its own
+    // display row + merge key), so the bare film resolves before any external resolver
+    // runs. `{{NSEP}}+:` is the established banner-name guard (it stops at the first
+    // hard separator, like the DKF/Klub Filmowy prefixes), anchored on an explicit
+    // ':' so only a colon-terminated cycle prefix is stripped.
+    searchStrip("xtra-poniedzialki-konwicki-prefix", """(?iu)^Poniedziałki\s+z\s+{{NSEP}}+:\s+""", "'Poniedziałki z Konwickim: <film>' Mondays-with-<author> cycle PREFIX — the existing 'xtra-poniedzialki-konwicki' only caught the '| Poniedziałki z Konwickim' SUFFIX (Lawa, Salto, Dolina Issy)"),
+    searchStrip("xtra-klasyka-w-kinie-prefix",      """(?iu)^Klasyka\s+w\s+kinie:\s+""", "'Klasyka w kinie: <film>' classics strand — the bare colon form the venue-specific 'Klasyka w kinie Atlantic:' programme rule doesn't reach"),
+    searchStrip("xtra-cykl-prefix",                 """(?iu)^Cykl\s+{{NSEP}}+:\s+""", "'Cykl <name>: <film>' generic programme-cycle prefix (Cykl Filmowy:, Cykl Dokumentu:) — sibling of the DKF/Klub Filmowy named-cycle prefixes"),
+    searchStrip("xtra-przeglad-colon-prefix",       """(?iu)^Przegląd\s+{{NSEP}}+:\s+""", "'Przegląd <name>: <film>' generic festival/review COLON prefix — complements the dash-form 'Przegląd filmów <reż> - <film>' rule (Przegląd Nowego Kina Francuskiego:, Przegląd Kina Hiszpańskiego:)"),
+    searchStrip("xtra-filmowe-lato-named",          """(?iu)^Filmowe\s+lato\s+{{NSEP}}+:\s+""", "'Filmowe Lato <name>: <film>' named summer strand — the bare 'Filmowe lato:' rule needs the colon right after 'lato' (Filmowe Lato w Kinie:)"),
+    searchStrip("xtra-wakacje-z-klasyka-prefix",    """(?iu)^Wakacje\s+z\s+klasyką(?:\s+{{NSEP}}+)?:\s+""", "'Wakacje z klasyką [kina]: <film>' summer-classics strand — the bare form the LATO-prefixed 'Wakacje z Klasyką Kina' rule doesn't cover"),
+    searchStrip("xtra-pipe-cycle-banner",           """(?iu)\s*\|\s*(?:Cykl|Przegląd|Festiwal|DKF|Retrospektywa|Klasyka|Klub\s+Filmowy|Poniedziałki\s+z|Wtorki\s+z)\b.*$""", "'<film> | <cycle/festival banner>' generic PIPE-suffix strip, keyword-guarded so it only fires when the segment right after the pipe is a recognised cycle word — never amputates a 'Banner | Film' shape where the film FOLLOWS the pipe (KINO SENIORA | Ojczyzna, LATO w LUNIE | Drzewo magii stay intact)")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in

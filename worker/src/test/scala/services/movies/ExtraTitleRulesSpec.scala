@@ -295,7 +295,24 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // resolve-by-synopsis report (each stripped query verified on TMDB).
     "Kinowy Poranek: Lato, kiedy nauczyłam się latać"        -> "Lato, kiedy nauczyłam się latać",
     "Przybliżenia - okiem psychoanalizy: Perfect days"       -> "Perfect days",
-    "Kino bez barier dla dzieci: Oskar, Patka i Złoto Bałtyku" -> "Oskar, Patka i Złoto Bałtyku"
+    "Kino bez barier dla dzieci: Oskar, Patka i Złoto Bałtyku" -> "Oskar, Patka i Złoto Bałtyku",
+    // Fifteenth-wave (2026-06-29) generic cycle/festival banners — colon prefixes
+    // and the keyword-guarded pipe suffix.
+    // The task's flagship pipe-SUFFIX example (also covered by the named Konwicki
+    // rule + the new generic pipe rule); the Polish „…” quotes fold to ASCII.
+    "Lawa - opowieść o \"Dziadach\" | Poniedziałki z Konwickim: pisarz – scenarzysta – reżyser" -> "Lawa - opowieść o \"Dziadach\"",
+    // The new Konwicki PREFIX form (the existing rule only caught the pipe suffix).
+    "Poniedziałki z Konwickim: Lawa"                        -> "Lawa",
+    "Poniedziałki z Konwickim: Dolina Issy"                -> "Dolina Issy",
+    "Klasyka w kinie: Casablanca"                          -> "Casablanca",
+    "Cykl Filmowy: Stalker"                                -> "Stalker",
+    "Przegląd Kina Hiszpańskiego: Volver"                  -> "Volver",
+    "Filmowe Lato w Kinie: Amelia"                         -> "Amelia",
+    "Wakacje z klasyką: Rejs"                              -> "Rejs",
+    "Wakacje z klasyką kina: Rejs"                         -> "Rejs",
+    // The generic keyword-guarded pipe SUFFIX (banner follows the pipe).
+    "Persona | Cykl Bergmana"                              -> "Persona",
+    "Stalker | Przegląd Tarkowskiego"                      -> "Stalker"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
@@ -319,6 +336,22 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // (b) needs the literal 'w ramach cyklu'; a quoted film with an unrelated 'w …'
     // must NOT be amputated to its first word (left untouched, quotes and all).
     withClue("quoted film, unrelated 'w …': ")(withExtras.search("\"Lato w mieście\"") shouldBe "\"Lato w mieście\"")
+  }
+
+  it should "strip a pipe banner only when a cycle keyword follows the pipe" in {
+    // 'Banner | Film' shape: a real film (no cycle keyword) after the pipe is KEPT —
+    // the keyword guard is what stops the generic pipe rule from amputating the film.
+    withClue("film after pipe kept: ")(
+      withExtras.search("Wieczory na tarasie | Persona") shouldBe "Wieczory na tarasie | Persona")
+    // The real corpus 'Banner | Film' inverse shapes stay intact (handled as PREFIXES,
+    // never eaten as a suffix): the segment after the pipe is the film, not a banner.
+    withClue("KINO SENIORA prefix-extracted, not amputated: ")(
+      withExtras.search("KINO SENIORA | Ojczyzna") shouldBe "Ojczyzna")
+    withClue("LATO w LUNIE prefix-extracted, not amputated: ")(
+      withExtras.search("LATO w LUNIE | Drzewo magii") shouldBe "Drzewo magii")
+    // And it DOES fire when a cycle word is the first token after the pipe.
+    withClue("cycle suffix stripped: ")(
+      withExtras.search("Persona | Cykl Bergmana") shouldBe "Persona")
   }
 
   // Real corpus strings the SEED already partially strips (so they can't go in the
