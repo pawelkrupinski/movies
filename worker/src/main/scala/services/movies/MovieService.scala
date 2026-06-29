@@ -252,6 +252,26 @@ class MovieService(
     (eventDirector.toSeq.flatMap(_.split(",")) ++ existing.map(_.data.values.flatMap(_.director).toSeq).getOrElse(Nil))
       .map(_.trim).filter(_.nonEmpty).distinct.sorted.mkString(",")
 
+  /** Reset a row to its scraped-only form ([[MovieRecord.scrapedOnly]]) and re-key it
+   *  onto the SCRAPED year, returning the key to resolve against. The scraped year comes
+   *  from the cinema slots (the stripped row's `resolvedYear` — its `tmdbYear` is gone),
+   *  so a row self-locked on a wrong resolved year escapes: the lookup re-scopes to the
+   *  cinema-reported year. `rekey` invalidates the old key (cache + Mongo) and persists
+   *  the stripped row at the new one, so no stale/duplicate row is left. No-op (returns
+   *  the key unchanged) when no row is cached. Only the forced re-enrich uses this. */
+  private def resetToScrapedData(rawKey: CacheKey): CacheKey = {
+    val live = cache.canonicalKeyFor(rawKey).getOrElse(rawKey)
+    cache.get(live) match {
+      case None      => rawKey
+      case Some(row) =>
+        val newKey = cache.keyOf(live.cleanTitle, row.scrapedOnly.resolvedYear)
+        cache.clearNegative(live)
+        cache.clearNegative(newKey)
+        cache.rekey(live, newKey, _.scrapedOnly)
+        newKey
+    }
+  }
+
   /** Resolve ONE film's TMDB id, synchronously on the calling thread, and bring
    *  the row to a definitive TMDB state. This is the shared work both dispatch
    *  seams run — the worker's `ResolveTmdb` task handler in production, the
@@ -279,11 +299,18 @@ class MovieService(
     director:      Option[String],
     force:         Boolean
   ): Boolean = {
-    val key = cache.keyOf(title, year)
+    // The operator's forced re-enrich (the /debug button — the only caller that sets
+    // `force`) re-resolves off SCRAPED data, not the previously-resolved data: reset the
+    // row to its cinema slots and re-key onto the scraped year, so the lookup below scopes
+    // to the cinema-reported year/titles instead of a stale resolved year that would
+    // re-confirm the same wrong film (a self-locked row — e.g. "Plenerowe Pałacowe:
+    // Parasite" stuck at the 1982 film under key …|1982 while the cinema reports 2019).
+    val key = if (force) resetToScrapedData(cache.keyOf(title, year)) else cache.keyOf(title, year)
     // Fall back to the cached row's accumulated hints when the caller brings
     // none — the operator `/debug` re-enrich enqueues only (title, year), so
     // without this its `directorWalk` would never fire (the inline operator
-    // path used to derive the same hints from the row directly).
+    // path used to derive the same hints from the row directly). After a forced
+    // reset the row holds only scraped slots, so these hints are scraped-only too.
     val (cachedOrig, cachedDirectory) = cache.get(key).map(tmdbHints).getOrElse((None, None))
     val origHint = originalTitle.orElse(cachedOrig)
     val directoryHint  = director.orElse(cachedDirectory)

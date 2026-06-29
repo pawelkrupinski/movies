@@ -145,6 +145,25 @@ case class MovieRecord(
     )
   }
 
+  /** This record reduced to ONLY what the cinemas scraped — every TMDB/IMDb/Filmweb
+   *  slot dropped and every resolved-identity / rating / external-URL field cleared.
+   *  The operator's forced re-enrich resets to this BEFORE re-resolving so the TMDB
+   *  lookup runs off scraped data alone (the cinema-reported year + titles), never the
+   *  previously-resolved data — escaping a row self-locked on a wrong film whose
+   *  TMDB-derived year (and id) keep re-confirming the same wrong match. `releaseYear`
+   *  then falls back to the cinema slot (TMDB's `tmdbYear` is gone), so the row re-keys
+   *  onto the scraped year. The `EnrichmentReaper` re-runs every rating refresher after,
+   *  so the cleared ratings repopulate against the now-correct identity. Cinema-side
+   *  state (`detailPending`, the cinema slots, their retained synopses) is preserved. */
+  def scrapedOnly: MovieRecord = copy(
+    imdbId = None, imdbRating = None, metascore = None,
+    filmwebUrl = None, filmwebRating = None, rottenTomatoes = None,
+    tmdbId = None, metacriticUrl = None, rottenTomatoesUrl = None,
+    searchTitle = None, tmdbNoMatch = false,
+    data             = data.filter { case (source, _) => Source.cinemaOf(source).isDefined },
+    retainedSynopses = retainedSynopses.filter { case (source, _) => Source.cinemaOf(source).isDefined }
+  )
+
   /** Cities whose cinemas currently screen this film, in `City.all` order.
    *  Empty when no listed cinema maps to a city (a stored row with no live
    *  showtimes). The debug page lists the global corpus but the /film page is
