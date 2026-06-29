@@ -38,6 +38,7 @@ object GateReport {
 
   private val ApiKey = sys.env.getOrElse("TMDB_API_KEY", "")
   private val DefaultOut = "/Users/pawel/projects/movies-synopsis-refresh/docs/synopsis-resolution/accepts.jsonl"
+  private val DefaultRatingsOut = "/Users/pawel/projects/movies-synopsis-refresh/docs/synopsis-resolution/ratings-eval.jsonl"
   private val Tau = 0.06 // stem-IDF synopsis floor (scores run low; corroborators carry precision)
   private val http = new RealHttpFetch
   private val filmweb = new FilmwebClient(http)
@@ -51,8 +52,15 @@ object GateReport {
                           queries: Seq[String], cinemaSyn: String, dirs: Set[String])
 
   def main(args: Array[String]): Unit = {
-    val out = args.headOption.filter(_.nonEmpty).getOrElse(DefaultOut)
-    val cap = args.lift(1).map(_.toInt)
+    // `ratings` mode: select the synopsis-matchable rating gaps (link missing,
+    // tmdbId present → a reference synopsis exists) and emit EVERY evaluation,
+    // accepted or abstained, so the report can show how often / how strongly
+    // synopsis actually helps. Default mode emits accepts only (link resolution).
+    val ratings = args.headOption.contains("ratings")
+    val rest = if (ratings) args.drop(1) else args
+    val out = rest.headOption.filter(_.nonEmpty).getOrElse(if (ratings) DefaultRatingsOut else DefaultOut)
+    val cap = rest.lift(1).map(_.toInt)
+    val modes = if (ratings) Seq("imdb-eng", "filmweb-pl") else Modes
 
     val repo = new MongoMovieRepository()
     if (!repo.enabled) { println("MONGODB_URI not set — nothing to read."); sys.exit(1) }
@@ -65,7 +73,7 @@ object GateReport {
     println(s"\ncorpus: ${corpus.size} rows")
 
     Files.write(Paths.get(out), Array.emptyByteArray) // truncate once
-    Modes.foreach(m => runMode(m, corpus, out, cap))
+    modes.foreach(m => runMode(m, corpus, out, cap, emitAll = ratings))
     repo.close()
     println(s"\n→ wrote $out")
   }
@@ -93,7 +101,7 @@ object GateReport {
     }
   }
 
-  private def runMode(mode: String, corpus: Seq[StoredMovieRecord], out: String, cap: Option[Int]): Unit = {
+  private def runMode(mode: String, corpus: Seq[StoredMovieRecord], out: String, cap: Option[Int], emitAll: Boolean = false): Unit = {
     val src = srcFor(mode)
     var films = buildFilms(mode, corpus)
     cap.foreach(c => films = films.take(c))
@@ -131,23 +139,29 @@ object GateReport {
       val eligible = evals.filter { case (_, sim, mChars, mCast, mDirs, exact, yc, dc) =>
         !dc && !(yc && !exact) && (exact || mDirs.nonEmpty || (sim >= Tau && (mChars.nonEmpty || mCast.size >= 2)))
       }
-      eligible.sortBy { case (_, sim, _, _, mDirs, exact, _, _) => (!(exact || mDirs.nonEmpty), -sim) }.headOption match {
-        case None => abstained += 1
-        case Some((c, sim, mChars, mCast, mDirs, exact, _, _)) =>
-          accepted += 1
-          val corroborated = exact || mDirs.nonEmpty
-          if (corroborated) corrob += 1 else domainOnly += 1
-          val via = if (mDirs.nonEmpty) "director" else if (exact) "exact-title" else if (mChars.nonEmpty) "character-name" else "cast"
-          val yearMatch = (for { ry <- knownYear; cy <- c.year } yield ry == cy).getOrElse(false)
-          writer.append(Json.stringify(Json.obj(
-            "src" -> src, "filmId" -> f.id, "filmTitle" -> f.title, "filmYear" -> f.year.map(_.toString).getOrElse(""),
-            "searchTitle" -> f.search, "extUrl" -> c.url, "extTitle" -> c.title, "extYear" -> c.year.map(_.toString).getOrElse(""),
-            "via" -> via, "corroborated" -> corroborated, "sim" -> f"$sim%.3f",
-            "refSyn" -> ref, "candSyn" -> c.text,
-            "rowDirectors" -> knownDirs.toSeq.sorted, "candDirectors" -> c.directors.toSeq.sorted,
-            "matchedDirectors" -> mDirs.sorted, "matchedCharacters" -> mChars.sorted, "matchedCast" -> mCast.sorted,
-            "yearMatch" -> yearMatch
-          ))).append("\n")
+      val accept = eligible.sortBy { case (_, sim, _, _, mDirs, exact, _, _) => (!(exact || mDirs.nonEmpty), -sim) }.headOption
+      // When emitting all evaluations, fall back to the single best-by-synopsis
+      // candidate so abstained rows still appear on the report (with their sim).
+      val toEmit = accept.orElse(if (emitAll) evals.sortBy { case (_, sim, _, _, _, _, _, _) => -sim }.headOption else None)
+      val isAccept = accept.isDefined
+      if (isAccept) accepted += 1 else abstained += 1
+      toEmit.foreach { case (c, sim, mChars, mCast, mDirs, exact, _, _) =>
+        val corroborated = exact || mDirs.nonEmpty
+        if (isAccept) { if (corroborated) corrob += 1 else domainOnly += 1 }
+        val via =
+          if (isAccept) { if (mDirs.nonEmpty) "director" else if (exact) "exact-title" else if (mChars.nonEmpty) "character-name" else "cast" }
+          else "none" // abstained: best candidate failed the corroboration gate
+        val yearMatch = (for { ry <- knownYear; cy <- c.year } yield ry == cy).getOrElse(false)
+        writer.append(Json.stringify(Json.obj(
+          "src" -> src, "outcome" -> (if (isAccept) "accepted" else "abstained"),
+          "filmId" -> f.id, "filmTitle" -> f.title, "filmYear" -> f.year.map(_.toString).getOrElse(""),
+          "searchTitle" -> f.search, "extUrl" -> c.url, "extTitle" -> c.title, "extYear" -> c.year.map(_.toString).getOrElse(""),
+          "via" -> via, "corroborated" -> corroborated, "sim" -> f"$sim%.3f",
+          "refSyn" -> ref, "candSyn" -> c.text,
+          "rowDirectors" -> knownDirs.toSeq.sorted, "candDirectors" -> c.directors.toSeq.sorted,
+          "matchedDirectors" -> mDirs.sorted, "matchedCharacters" -> mChars.sorted, "matchedCast" -> mCast.sorted,
+          "yearMatch" -> yearMatch
+        ))).append("\n")
       }
     }
     Files.write(Paths.get(out), writer.toString.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
