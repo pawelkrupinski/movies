@@ -7,6 +7,8 @@ import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import tools.GetOnlyHttpFetch
 
 import java.net.URLDecoder
+import java.time.{Clock, Instant, ZoneOffset}
+import scala.concurrent.duration._
 
 /**
  * Tests for `OmdbBackfill` — the OMDb IDENTIFIER backfill. It fills a missing
@@ -138,5 +140,54 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("B", None)).get.imdbId            shouldBe Some("tt0002")    // untouched
     cache.get(cache.keyOf("B", None)).get.rottenTomatoesUrl shouldBe Some(RtUrl)       // backfilled
     cache.get(cache.keyOf("C", None)).get.imdbId            shouldBe Some("tt0003")    // unchanged
+  }
+
+  // ── backoff ──────────────────────────────────────────────────────────────────
+
+  private val T0 = Instant.parse("2026-06-01T00:00:00Z")
+  // The film key OmdbBackfill stores under — derived the same way (cleanTitle|year).
+  private def filmKey(cache: CaffeineMovieCache): String = {
+    val k = keyOf(cache); s"${k.cleanTitle}|${k.year.map(_.toString).getOrElse("")}"
+  }
+
+  "backoff" should "skip a film still within its backoff window — no HTTP call" in {
+    val cache = cacheWith(MovieRecord())
+    val attempts = new InMemoryOmdbAttemptStore
+    attempts.record(filmKey(cache), 1, T0) // missed at T0, level 1 → 2-day window
+    var httpCalls = 0
+    val omdb = new OMDbClient(new GetOnlyHttpFetch { def get(url: String): String = { httpCalls += 1; """{"Response":"False"}""" } }, apiKey = Some("k"))
+    val clock = Clock.fixed(T0.plusMillis(1.hour.toMillis), ZoneOffset.UTC) // 1h later — inside the 2d window
+
+    new OmdbBackfill(cache, omdb, attempts, clock).refreshOneSync(keyOf(cache))
+    httpCalls shouldBe 0
+    cache.get(keyOf(cache)).get.imdbId shouldBe None
+  }
+
+  it should "record a miss (level 1) when OMDb resolves nothing" in {
+    val cache = cacheWith(MovieRecord())
+    val attempts = new InMemoryOmdbAttemptStore
+    val omdb = new OMDbClient(new GetOnlyHttpFetch { def get(url: String): String = """{"Response":"False"}""" }, apiKey = Some("k"))
+
+    new OmdbBackfill(cache, omdb, attempts, Clock.fixed(T0, ZoneOffset.UTC)).refreshOneSync(keyOf(cache))
+    attempts.get(filmKey(cache)).map(_.level) shouldBe Some(1)
+  }
+
+  it should "re-probe once the backoff window has elapsed" in {
+    val cache = cacheWith(MovieRecord())
+    val attempts = new InMemoryOmdbAttemptStore
+    attempts.record(filmKey(cache), 1, T0) // 2-day window from T0
+    val clock = Clock.fixed(T0.plusMillis(3.days.toMillis), ZoneOffset.UTC) // past the window
+
+    new OmdbBackfill(cache, omdbStub, attempts, clock).refreshOneSync(keyOf(cache))
+    cache.get(keyOf(cache)).get.imdbId shouldBe Some("tt0133093") // re-probed + recovered
+  }
+
+  "OmdbBackfill.backoffWindow" should "double per consecutive miss and cap at 30 days" in {
+    OmdbBackfill.backoffWindow(0) shouldBe Duration.Zero
+    OmdbBackfill.backoffWindow(1) shouldBe 2.days
+    OmdbBackfill.backoffWindow(2) shouldBe 4.days
+    OmdbBackfill.backoffWindow(4) shouldBe 16.days
+    OmdbBackfill.backoffWindow(5) shouldBe 30.days // 32d capped
+    OmdbBackfill.backoffWindow(9) shouldBe 30.days
   }
 }

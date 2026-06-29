@@ -26,6 +26,7 @@ object TaskType {
   case object RefreshAllFilmweb    extends TaskType { val name = "RefreshAllFilmweb"    }
   case object RefreshAllMetacritic extends TaskType { val name = "RefreshAllMetacritic" }
   case object RefreshAllRt         extends TaskType { val name = "RefreshAllRt"         }
+  case object RefreshAllOmdb       extends TaskType { val name = "RefreshAllOmdb"       }
   // Operator-triggered consolidation: fold same-film rows into one record per
   // tmdbId (MovieService.settle → MovieCache.canonicalizeBySanitize), the same
   // work the periodic SettleReaper does, on demand from the `/tasks` page.
@@ -53,7 +54,7 @@ object TaskType {
 
   val all: Seq[TaskType] =
     Seq(ScrapeCinema, EnrichDetails, ResolveTmdb, ResolveImdbId, ImdbRating, FilmwebRating, RtRating, McRating,
-        RefreshAllTmdb, RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt, SettleNow,
+        RefreshAllTmdb, RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt, RefreshAllOmdb, SettleNow,
         StagingDetail, StagingResolveTmdb, StagingResolveImdbId, StagingFold,
         ScrapeChunk, ScrapeChunkReduce)
 

@@ -3,6 +3,9 @@ package services.enrichment
 import services.movies.{CacheKey, MovieCache}
 import tools.BoundedParallel
 
+import java.time.Clock
+import scala.concurrent.duration._
+
 /**
  * OMDb IDENTIFIER backfill: recovers a missing `imdbId` (by title+year search)
  * and a missing `rottenTomatoesUrl` (OMDb's `tomatoURL`, keyed by imdb id). It
@@ -32,6 +35,11 @@ import tools.BoundedParallel
 class OmdbBackfill(
   cache: MovieCache,
   omdb:  OMDbClient,
+  // Durable per-film backoff so a film OMDb can't resolve isn't re-probed on
+  // every daily sweep (which would burn the free 1000/day quota). Default no-op
+  // = no backoff (tests / Mongo-less wiring).
+  attempts: OmdbAttemptStore = OmdbAttemptStore.noop,
+  clock:    Clock = Clock.systemUTC(),
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
 ) extends CacheRefresher(cache, cadenceRecorder) {
 
@@ -41,7 +49,8 @@ class OmdbBackfill(
     cache.get(key).flatMap { e =>
       val wantImdbId = e.imdbId.isEmpty
       val wantRtUrl  = e.rottenTomatoesUrl.isEmpty
-      if (!wantImdbId && !wantRtUrl) None
+      if (!wantImdbId && !wantRtUrl) None        // already fully identified
+      else if (inBackoff(key)) None              // recently probed + missed → still backing off (no HTTP)
       else {
         // 1. Recover a missing IMDb id by title+year search. Original
         //    (production/English) title first — OMDb is an English DB; the
@@ -53,6 +62,10 @@ class OmdbBackfill(
         // 2. Recover a missing RT url via the imdb id we have (or just found).
         val effectiveId = e.imdbId.orElse(foundImdbId)
         val foundRtUrl  = if (wantRtUrl) effectiveId.flatMap(omdb.rottenTomatoesUrl) else None
+        // Back off when this probe didn't recover everything still wanted — the
+        // next sweep skips the film until the (doubling) window elapses.
+        val recoveredAll = (!wantImdbId || foundImdbId.isDefined) && (!wantRtUrl || foundRtUrl.isDefined)
+        if (!recoveredAll) recordMiss(key)
         if (foundImdbId.isEmpty && foundRtUrl.isEmpty) None
         else {
           // `orElse` against the LIVE row: a canonical writer that won the race
@@ -70,6 +83,18 @@ class OmdbBackfill(
       }
     }
 
+  private def filmKey(key: CacheKey): String =
+    s"${key.cleanTitle}|${key.year.map(_.toString).getOrElse("")}"
+
+  private def inBackoff(key: CacheKey): Boolean =
+    attempts.get(filmKey(key)).exists(a =>
+      clock.instant().isBefore(a.at.plusMillis(OmdbBackfill.backoffWindow(a.level).toMillis)))
+
+  private def recordMiss(key: CacheKey): Unit = {
+    val nextLevel = math.min(attempts.get(filmKey(key)).map(_.level).getOrElse(0) + 1, OmdbBackfill.MaxBackoffLevel)
+    attempts.record(filmKey(key), nextLevel, clock.instant())
+  }
+
   private[services] def refreshAll(): Unit = {
     val snapshot = cache.entries
     logger.info(s"OMDb backfill: starting tick over ${snapshot.size} cached row(s).")
@@ -77,4 +102,21 @@ class OmdbBackfill(
       refreshOne(key).foreach(v => recordCadenceChange(key, e.tmdbId, Some(v)))
     }
   }
+}
+
+object OmdbBackfill {
+  /** Cap on consecutive-miss backoff levels — level 5 already reaches the 30-day
+   *  ceiling. */
+  val MaxBackoffLevel = 5
+  private val BaseBackoff = 2.days
+  private val MaxBackoff  = 30.days
+
+  /** Exponential backoff after `level` consecutive misses: 2d, 4d, 8d, 16d, then
+   *  the 30-day cap. Level 0 (never missed) is immediately eligible. */
+  def backoffWindow(level: Int): FiniteDuration =
+    if (level <= 0) Duration.Zero
+    else {
+      val scaled = BaseBackoff * math.pow(2, (level - 1).toDouble).toLong
+      if (scaled > MaxBackoff) MaxBackoff else scaled
+    }
 }

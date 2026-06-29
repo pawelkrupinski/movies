@@ -384,8 +384,9 @@ class WorkerWiring extends play.api.Logging {
   // here); re-runnable/schedulable, `orElse` write-back never overrides.
   // No cadence recorder: recording OMDb's id/url writes under another source's
   // key would corrupt that source's change history; the default no-op is correct.
+  lazy val omdbAttemptStore: OmdbAttemptStore = new MongoOmdbAttemptStore(mongoConnection.database)
   lazy val omdbBackfill: Option[OmdbBackfill] =
-    Env.get("OMDB_API_KEY").map(_ => new OmdbBackfill(movieCache, omdbClient))
+    Env.get("OMDB_API_KEY").map(_ => new OmdbBackfill(movieCache, omdbClient, omdbAttemptStore))
   // Single-movie TMDB resolution is dispatched as a `ResolveTmdb` worker task:
   // drained by the TaskWorker, retried (`Reschedule`) + deduped by the queue,
   // and shown with a live queue place on `/debug`. `taskQueue` is a lazy val
@@ -666,14 +667,17 @@ class WorkerWiring extends play.api.Logging {
   lazy val settleReaper = new SettleReaper(() => movieService.settle(),
     interval = settleIntervalSeconds, runStore = scheduledRunStore)
 
-  // OMDb identifier backfill on its own daily tick — only when the feature is on
-  // (`omdbBackfill` is `Some`). Recovers missing imdbId / rottenTomatoesUrl so the
-  // canonical refreshers can then fill the scores; a no-op (no HTTP) for any row
-  // already carrying both, so a sweep only hits OMDb for the unresolved tail.
+  // OMDb identifier backfill runs as a coarse worker TASK (TaskType.RefreshAllOmdb,
+  // handled by the BulkRefreshHandler above). This reaper is just the daily,
+  // cluster-claimed ENQUEUER: it puts ONE sweep task on the queue per window (the
+  // constant `bulkDedup` key collapses any overlap), so the work runs on the
+  // TaskWorker with the rest of the pipeline's metrics/retries — not on a private
+  // scheduler thread. Only when the feature is on (`omdbBackfill` is `Some`).
   def omdbBackfillIntervalSeconds: FiniteDuration =
     Env.positiveLong("KINOWO_OMDB_BACKFILL_INTERVAL_SECONDS", OmdbBackfillReaper.DefaultInterval.toSeconds).seconds
   lazy val omdbBackfillReaper: Option[OmdbBackfillReaper] =
-    omdbBackfill.map(ob => new OmdbBackfillReaper(() => ob.refreshAllNow(),
+    omdbBackfill.map(_ => new OmdbBackfillReaper(
+      () => { taskQueue.enqueue(TaskType.RefreshAllOmdb, services.tasks.EnrichTaskKeys.bulkDedup(TaskType.RefreshAllOmdb)); () },
       interval = omdbBackfillIntervalSeconds, runStore = scheduledRunStore))
 
   // ── Staging incubation (resolve-then-fold) ──────────────────────────────────
@@ -799,7 +803,11 @@ class WorkerWiring extends play.api.Logging {
     // the merge-retrigger path can re-kick it; resolveSync writes the id, and the
     // EnrichmentReaper then enqueues the now-eligible IMDb rating on its next pass.
     new ResolveImdbIdHandler(imdbIdResolver)
-  )
+  ) ++
+    // OMDb identifier sweep as a coarse task — only when the feature is on
+    // (`omdbBackfill` is `Some`). Enqueued daily by `omdbBackfillReaper`, run here
+    // off a background EC like the other corpus-wide refreshes.
+    omdbBackfill.map(ob => new BulkRefreshHandler(TaskType.RefreshAllOmdb, "OMDb", () => ob.refreshAllNow())).toSeq
 
   // A fixed pool of workers, each fetching and running ONE task at a time — so
   // the number of scrapes/enrichments in flight at once is hard-capped at the
