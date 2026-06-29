@@ -73,20 +73,20 @@ class FilmwebClient(http: HttpFetch) {
         info(h.id).map(i => Candidate(h.id, h.kind, i.title, i.originalTitle, i.year, Set.empty, Seq.empty))
       )
       // Step 2 (only when caller wants director verification): /preview per
-      // candidate that already passed the title bar. Skipping unaccepted
-      // candidates saves the round-trip on Filmweb's worst search-noise hits.
+      // candidate. We fetch for ALL candidates, not just the title-accepted
+      // ones, because a candidate whose Filmweb title is a transliteration of
+      // the query ("Mavka. Spravzhnij mif" for "Mawka. Prawdziwy mit") fails
+      // the title bar yet is confirmable by director+year — and that override
+      // (in `pickBest`) needs the director data /preview carries.
       // `/preview` carries both directors AND genres; we fold both onto the
       // candidate in one shot so director-verification + genre extraction
       // share the same round-trip.
       val candidates =
         if (directors.isEmpty) infoCandidates
-        else {
-          val titleAccepted = infoCandidates.filter(c => matchesByTitle(c, query))
-          titleAccepted.map { c =>
-            preview(c.id) match {
-              case Some(p) => c.copy(directors = p.directors, genres = p.genres, plot = p.plot)
-              case None    => c
-            }
+        else infoCandidates.map { c =>
+          preview(c.id) match {
+            case Some(p) => c.copy(directors = p.directors, genres = p.genres, plot = p.plot)
+            case None    => c
           }
         }
       pickBest(candidates, query, year, directors, referenceSynopsis).flatMap { c =>
@@ -194,6 +194,13 @@ class FilmwebClient(http: HttpFetch) {
    *  either direction passes so the cinema reporting "M. Szumowska" still
    *  hits "Małgorzata Szumowska".
    *
+   *  Director+year override: a candidate whose title does NOT match is still
+   *  accepted when its director overlaps the caller's AND its year is within
+   *  ±1 of the caller's. This recovers films Filmweb files under a
+   *  transliterated/original title the cinema doesn't report ("Mavka.
+   *  Spravzhnij mif" for "Mawka. Prawdziwy mit"). Both signals are required —
+   *  never override on director alone — to keep precision.
+   *
    *  Year breaks ties among accepted candidates; a `referenceSynopsis` (the
    *  row's TMDB Polish blurb) breaks a remaining tie on plot closeness.
    */
@@ -205,8 +212,10 @@ class FilmwebClient(http: HttpFetch) {
     referenceSynopsis: Option[String] = None
   ): Option[Candidate] = {
     if (candidates.isEmpty || query.trim.isEmpty) return None
-    val titleAccepted = candidates.filter(c => matchesByTitle(c, query))
-    val directorAccepted = titleAccepted.filter(c => matchesByDirector(c, directors))
+    val directorAccepted = candidates.filter { c =>
+      (matchesByTitle(c, query) && matchesByDirector(c, directors)) ||
+        matchesByDirectorAndYear(c, year, directors)
+    }
     // Prefer a `film` over a same-title `serial` BEFORE year-distance: a real
     // film and a TV series share many titles ("Ziemia obiecana" — Wajda's 1974
     // film + a 1975 series; "Beavis i Butt-Head"), and the year-closest hit was
@@ -237,13 +246,25 @@ class FilmwebClient(http: HttpFetch) {
     titles.exists(_ == normalizedQuery) || titles.exists(t => MetacriticClient.isModifierSuffix(t, normalizedQuery))
   }
 
-  private[enrichment] def matchesByDirector(c: Candidate, directors: Set[String]): Boolean = {
-    if (directors.isEmpty || c.directors.isEmpty) true
-    else {
-      val callerNorms = directors.map(deburr)
-      val fwNorms     = c.directors.map(deburr)
-      callerNorms.exists(d => fwNorms.exists(f => d == f || d.contains(f) || f.contains(d)))
-    }
+  private[enrichment] def matchesByDirector(c: Candidate, directors: Set[String]): Boolean =
+    directors.isEmpty || c.directors.isEmpty || directorsOverlap(c.directors, directors)
+
+  /** Strict director+year override: accepts a candidate even when its title
+   *  doesn't match, provided the caller supplied directors AND a year, the
+   *  candidate carries directors that overlap, AND its year is within ±1 of
+   *  the caller's. Both signals are mandatory — director alone never overrides
+   *  (multiple unrelated films can share a director across years). */
+  private[enrichment] def matchesByDirectorAndYear(c: Candidate, year: Option[Int], directors: Set[String]): Boolean =
+    directors.nonEmpty && c.directors.nonEmpty &&
+      year.exists(y => c.year.exists(cy => math.abs(cy - y) <= 1)) &&
+      directorsOverlap(c.directors, directors)
+
+  /** Diacritic-stripped, case-folded director-name overlap; substring match in
+   *  either direction passes so "M. Szumowska" hits "Małgorzata Szumowska". */
+  private def directorsOverlap(filmwebDirectors: Set[String], callerDirectors: Set[String]): Boolean = {
+    val callerNorms = callerDirectors.map(deburr)
+    val fwNorms     = filmwebDirectors.map(deburr)
+    callerNorms.exists(d => fwNorms.exists(f => d == f || d.contains(f) || f.contains(d)))
   }
 }
 
@@ -305,17 +326,12 @@ object FilmwebClient {
 
   private def urlEncode(s: String): String = URLEncoder.encode(s, StandardCharsets.UTF_8)
 
-  // Unicode dash variants (hyphen-minus aside): hyphen, non-breaking hyphen,
-  // figure dash, en dash, em dash, horizontal bar, minus sign. Cinemas and
-  // Filmweb disagree on which one a title uses ("Chainsaw Man – The Movie" vs
-  // "Chainsaw Man - The Movie"), so fold them all to ASCII '-' before comparing.
-  private val DashVariants = Set('‐', '‑', '‒', '–', '—', '―', '−')
-
   /** Lower-case + trim + fold every dash variant to '-', for title-equality
-   *  comparison. Unlike [[deburr]] this keeps diacritics — Filmweb titles carry
-   *  them and the `/info` titles we compare against do too. */
+   *  comparison. Dash folding is shared with the MC/RT/IMDb matchers via
+   *  [[MetacriticClient.foldDashes]]. Unlike [[deburr]] this keeps diacritics —
+   *  Filmweb titles carry them and the `/info` titles we compare against do too. */
   private[enrichment] def normalizeTitle(s: String): String =
-    s.map(c => if (DashVariants(c)) '-' else c).toLowerCase.trim
+    MetacriticClient.foldDashes(s).toLowerCase.trim
 
   /** Extra search queries to try when the raw title carries a screening-cycle or
    *  festival banner the bare film title doesn't. Splits on `|` (each segment is

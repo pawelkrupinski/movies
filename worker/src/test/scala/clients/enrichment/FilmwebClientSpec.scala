@@ -305,6 +305,37 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     client.pickBest(hits, "Foo", Some(2024), Set.empty).map(_.id) shouldBe Some(1)
   }
 
+  // ── pickBest: director + year override for transliterated titles ────────────
+  //
+  // Mavka — cinemas report the Polish "Mawka. Prawdziwy mit" but Filmweb files
+  // the film under its transliterated original "Mavka. Spravzhnij mif". The
+  // title bar alone drops it; a confident director+year pair (Katya Tsarik,
+  // 2026) must override the title mismatch and accept the candidate.
+
+  it should "accept a title-mismatched candidate when director overlaps AND year matches within ±1" in {
+    val hits = Seq(candidate(
+      id = 1, title = "Mavka. Spravzhnij mif", year = Some(2026),
+      directors = Set("Katya Tsarik")
+    ))
+    client.pickBest(hits, "Mawka. Prawdziwy mit", Some(2026), Set("Katya Tsarik")).map(_.id) shouldBe Some(1)
+  }
+
+  it should "NOT override on director alone when the year disagrees (precision)" in {
+    val hits = Seq(candidate(
+      id = 1, title = "Mavka. Spravzhnij mif", year = Some(2010),
+      directors = Set("Katya Tsarik")
+    ))
+    client.pickBest(hits, "Mawka. Prawdziwy mit", Some(2026), Set("Katya Tsarik")) shouldBe None
+  }
+
+  it should "NOT override a title-mismatched candidate whose director differs (precision)" in {
+    val hits = Seq(candidate(
+      id = 1, title = "Mavka. Spravzhnij mif", year = Some(2026),
+      directors = Set("Someone Else")
+    ))
+    client.pickBest(hits, "Mawka. Prawdziwy mit", Some(2026), Set("Katya Tsarik")) shouldBe None
+  }
+
   // ── lookup: end-to-end flow with stubbed HTTP ───────────────────────────────
 
   "lookup" should "return None when no candidate's canonical title matches the query" in {
@@ -455,6 +486,24 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     )
     val fw = new FilmwebClient(new StubFetch(routes))
     fw.lookup("Belle", Some(2013), directors = Set("Christopher Nolan")) shouldBe None
+  }
+
+  it should "resolve a transliterated Filmweb entry via the director+year override (end-to-end)" in {
+    // "Mawka. Prawdziwy mit" (cinema) vs Filmweb's /info title "Mavka.
+    // Spravzhnij mif" — the title bar drops it, but /preview confirms director
+    // Katya Tsarik and the year matches, so the override accepts it. Before the
+    // change /preview was fetched only for title-accepted candidates, so this
+    // never resolved.
+    val routes = Map(
+      "/live/search"    -> """{"searchHits":[{"id":1,"type":"film","matchedTitle":"Mawka"}]}""",
+      "/film/1/info"    -> """{"title":"Mavka. Spravzhnij mif","year":2026}""",
+      "/film/1/preview" -> """{"directors":[{"id":9,"name":"Katya Tsarik"}]}""",
+      "/film/1/rating"  -> """{"rate":6.9,"count":50}"""
+    )
+    val fw = new FilmwebClient(new StubFetch(routes))
+    val r = fw.lookup("Mawka. Prawdziwy mit", Some(2026), directors = Set("Katya Tsarik"))
+    r.map(_.url) should not be empty
+    r.get.url should include ("-1")
   }
 
   // Some Polish children's "films" in cinemas are actually episodic content

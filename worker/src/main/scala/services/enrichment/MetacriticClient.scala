@@ -143,10 +143,10 @@ class MetacriticClient(http: HttpFetch) {
     query: String,
     year:  Option[Int]
   ): Option[SearchHit] = {
-    val normalizedQuery = query.toLowerCase.trim
+    val normalizedQuery = MetacriticClient.foldDashes(query.toLowerCase.trim)
     if (hits.isEmpty || normalizedQuery.isEmpty) None
     else {
-      val exact = hits.filter(_.title.toLowerCase.trim == normalizedQuery)
+      val exact = hits.filter(h => MetacriticClient.foldDashes(h.title.toLowerCase.trim) == normalizedQuery)
       val modifier = hits.filter(h => MetacriticClient.isModifierSuffix(h.title, normalizedQuery))
       val candidates =
         if (exact.nonEmpty) exact
@@ -177,6 +177,20 @@ object MetacriticClient {
   private val YearRegex = "\\b(19\\d{2}|20\\d{2})\\b".r
 
   case class SearchHit(slug: String, title: String, year: Option[Int])
+
+  // Unicode dash variants (hyphen-minus aside): hyphen, non-breaking hyphen,
+  // figure dash, en dash, em dash, horizontal bar, minus sign. Cinemas and the
+  // rating sources disagree on which one a title uses ("Chainsaw Man – The
+  // Movie" vs "Chainsaw Man - The Movie"), so fold them all to ASCII '-' before
+  // comparing titles. Shared across the title matchers of MC/RT (search-hit
+  // acceptance), Filmweb (`normalizeTitle`), and IMDb (suggestion-title
+  // disambiguation) so one rule governs dash equivalence everywhere.
+  private val DashVariants: Set[Char] = Set('‐', '‑', '‒', '–', '—', '―', '−')
+
+  /** Fold every Unicode dash variant in `s` to ASCII '-'. Case- and
+   *  diacritic-preserving — callers lowercase/deburr separately. */
+  private[enrichment] def foldDashes(s: String): String =
+    if (s.exists(DashVariants)) s.map(c => if (DashVariants(c)) '-' else c) else s
 
   /** A resolved Metacritic movie page, plus its Metascore when the resolving
    *  fetch already downloaded the movie page (the slug probe validates the page
@@ -220,12 +234,14 @@ object MetacriticClient {
    *  vs "Deaf" (next char "P" is alphanumeric → different film), and for
    *  exact equals (caller treats those separately).
    *
-   *  `query` is expected pre-lowercased + trimmed.
+   *  `query` is expected pre-lowercased + trimmed. Both sides are dash-folded
+   *  so an en-dash title still prefix-matches a hyphen query (and vice versa).
    */
   def isModifierSuffix(title: String, query: String): Boolean = {
-    val normalizedTitle = title.toLowerCase.trim
-    normalizedTitle.startsWith(query) && normalizedTitle != query && {
-      val rest = normalizedTitle.drop(query.length).dropWhile(_.isWhitespace)
+    val normalizedQuery = foldDashes(query)
+    val normalizedTitle = foldDashes(title.toLowerCase.trim)
+    normalizedTitle.startsWith(normalizedQuery) && normalizedTitle != normalizedQuery && {
+      val rest = normalizedTitle.drop(normalizedQuery.length).dropWhile(_.isWhitespace)
       rest.headOption.exists(c => !c.isLetterOrDigit)
     }
   }

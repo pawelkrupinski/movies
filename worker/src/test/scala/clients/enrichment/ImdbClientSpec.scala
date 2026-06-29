@@ -155,6 +155,16 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
     client.parseSuggestions("not even json",    "anything", None) shouldBe None
   }
 
+  // Regression: cinema title carries an en-dash, IMDb stores a plain hyphen.
+  // Without dash folding the exact-title contains-match fails and the id is
+  // lost. Year is None so the year-corroborated foreign-title fallback can't
+  // rescue it — the match must come from the dash-folded exact-title path.
+  it should "fold dash variants so an en-dash query matches a hyphen IMDb title" in {
+    val body =
+      """{"d":[{"id":"tt0145487","l":"Spider-Man","q":"feature","qid":"movie","rank":3,"y":2002}]}"""
+    client.parseSuggestions(body, "Spider–Man", None) shouldBe Some("tt0145487")
+  }
+
   "findId" should "hit the suggestion endpoint and return the parsed tt-id" in {
     val fixture = loadFixture(MortalKombatFixture)
     val c = new ImdbClient(http = new GetOnlyHttpFetch {

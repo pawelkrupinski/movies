@@ -216,6 +216,18 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     c.pickBestSearchHit(Seq.empty, "anything", None) shouldBe None
   }
 
+  // Regression: cinemas and MC disagree on the dash glyph ("Chainsaw Man – The
+  // Movie" en-dash vs hyphen). Without folding, the exact-title bar fails and
+  // the film is missed despite being identical.
+  it should "fold dash variants so an en-dash title matches a hyphen query" in {
+    val c = new MetacriticClient(stub(Set.empty))
+    val hits = Seq(
+      MetacriticClient.SearchHit("chainsaw-man-the-movie-reze-arc", "Chainsaw Man – The Movie: Reze Arc", Some(2025))
+    )
+    c.pickBestSearchHit(hits, "Chainsaw Man - The Movie: Reze Arc", Some(2025)).map(_.slug) shouldBe
+      Some("chainsaw-man-the-movie-reze-arc")
+  }
+
   // urlFor's full chain falls through to search when every slug probe 404s.
   "urlFor" should "fall through to the search-page scrape when slug probes 404" in {
     val fixture = loadFixture(SearchTopGunFixture)

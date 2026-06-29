@@ -140,10 +140,10 @@ class RottenTomatoesClient(http: HttpFetch) {
     query: String,
     year:  Option[Int]
   ): Option[SearchHit] = {
-    val normalizedQuery = query.toLowerCase.trim
+    val normalizedQuery = MetacriticClient.foldDashes(query.toLowerCase.trim)
     if (hits.isEmpty || normalizedQuery.isEmpty) None
     else {
-      val exact = hits.filter(_.title.toLowerCase.trim == normalizedQuery)
+      val exact = hits.filter(h => MetacriticClient.foldDashes(h.title.toLowerCase.trim) == normalizedQuery)
       val modifier = hits.filter(h => MetacriticClient.isModifierSuffix(h.title, normalizedQuery))
       val candidates =
         if (exact.nonEmpty) exact

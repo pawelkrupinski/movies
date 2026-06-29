@@ -211,7 +211,8 @@ class ImdbClient(http: HttpFetch) {
     // Deburr both sides: IMDb stores titles in ASCII (ł→l, ą→a, ś→s, etc.) while
     // our query titles retain Polish diacritics. `TextNormalization.deburr` handles
     // NFD-based stripping PLUS the explicit ł/Ł→l substitution that NFD alone misses.
-    val normalizedTitle = TextNormalization.deburr(title).toLowerCase.trim
+    // `foldDashes` then aligns en-dash/em-dash titles with hyphen queries.
+    val normalizedTitle = MetacriticClient.foldDashes(TextNormalization.deburr(title).toLowerCase.trim)
     Try(Json.parse(body)).toOption.flatMap { js =>
       // Real film candidates: tt-id, qid "movie". Keep document order — IMDb
       // returns the best query match first, popularity padding after.
@@ -220,7 +221,7 @@ class ImdbClient(http: HttpFetch) {
           for {
             id  <- (entry \ "id").asOpt[String] if id.startsWith("tt")
             qid <- (entry \ "qid").asOpt[String] if qid == "movie"
-          } yield Suggestion(id, (entry \ "l").asOpt[String].map(s => TextNormalization.deburr(s).toLowerCase.trim), (entry \ "y").asOpt[Int], (entry \ "rank").asOpt[Int].getOrElse(Int.MaxValue))
+          } yield Suggestion(id, (entry \ "l").asOpt[String].map(s => MetacriticClient.foldDashes(TextNormalization.deburr(s).toLowerCase.trim)), (entry \ "y").asOpt[Int], (entry \ "rank").asOpt[Int].getOrElse(Int.MaxValue))
         }
       val exact = movies
         .filter(_.title.contains(normalizedTitle))

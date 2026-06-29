@@ -171,6 +171,17 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     c.pickBestSearchHit(Seq.empty, "anything", None) shouldBe None
   }
 
+  // Regression: a query with a plain hyphen must still exact-match an RT title
+  // carrying an en-dash (and vice versa) — both fold to ASCII '-' before compare.
+  it should "fold dash variants so a hyphen query matches an en-dash title" in {
+    val c = new RottenTomatoesClient(stub(Set.empty))
+    val hits = Seq(
+      RottenTomatoesClient.SearchHit("chainsaw_man_the_movie_reze_arc", "Chainsaw Man – The Movie: Reze Arc", Some(2025), None)
+    )
+    c.pickBestSearchHit(hits, "Chainsaw Man - The Movie: Reze Arc", Some(2025)).map(_.slug) shouldBe
+      Some("chainsaw_man_the_movie_reze_arc")
+  }
+
   // urlFor's chain falls through to the search-page scrape when every slug
   // probe 404s — same pattern MC uses.
   "urlFor" should "fall through to the search-page scrape when slug probes 404" in {
