@@ -1,20 +1,24 @@
 package scripts
 
-import services.enrichment.{OMDbClient, OmdbBackfill}
-import services.movies.{CaffeineMovieCache, MongoMovieRepository}
-import tools.RealHttpFetch
+import services.enrichment.OMDbClient
+import services.movies.{MongoMovieRepository, StoredMovieRecord}
+import tools.{DaemonExecutors, RealHttpFetch}
+
+import java.util.concurrent.atomic.AtomicInteger
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 
 /**
- * One-shot OMDb IDENTIFIER backfill over the whole corpus. For every row that
- * lacks them, it recovers a missing `imdbId` (by title+year search) and
- * `rottenTomatoesUrl` (OMDb's `tomatoURL`), writing through to Mongo via the
- * cache. It writes NO rating value — the canonical refreshers (`ImdbRatings` /
- * `RottenTomatoesRatings`) fill `imdbRating` and `rottenTomatoes` from the new
- * ids/links on their next tick.
+ * One-shot OMDb IDENTIFIER backfill: for every Mongo row missing `imdbId` or
+ * `rottenTomatoesUrl`, recover them from OMDb (imdbId by title+year search,
+ * rottenTomatoesUrl from OMDb's `tomatoURL`) and upsert — writing ONLY the
+ * missing identifier, never a rating value, never overriding an existing one.
+ * The canonical refreshers (`ImdbRatings` / `RottenTomatoesRatings`) then fetch
+ * `imdbRating` / `rottenTomatoes` from the new ids/links on their next tick.
  *
- * Feature-gated on `OMDB_API_KEY` (Env / `.env.local` locally, Fly secret in
- * prod); a no-op when unset. Safe to re-run / schedule — `orElse` write-back
- * never overrides an identifier a canonical writer already supplied.
+ * Operates DIRECTLY on the repository (not the `MovieCache`) so it can't trigger
+ * `rehydrate`'s mis-keyed-orphan reap (which would `deleteById` prod rows).
+ * Feature-gated on `OMDB_API_KEY`; a no-op when unset. Safe to re-run.
  *
  * Run: OMDB_API_KEY=… MONGODB_URI=… sbt "worker/Test/runMain scripts.OmdbBackfillRun"
  */
@@ -29,14 +33,37 @@ object OmdbBackfillRun {
       println("OMDB_API_KEY not set — OMDb backfill is off.")
       sys.exit(1)
     }
+    val omdb = new OMDbClient(new RealHttpFetch)
 
-    val cache = new CaffeineMovieCache(repository)
-    val hydrated = cache.rehydrate()
-    println(s"Hydrated $hydrated rows; running OMDb identifier backfill (imdbId + rottenTomatoesUrl)…")
+    val rows       = repository.findAll().sortBy(r => (r.title.toLowerCase, r.year))
+    val candidates = rows.filter(r => r.record.imdbId.isEmpty || r.record.rottenTomatoesUrl.isEmpty)
+    println(s"${rows.size} rows · ${candidates.size} missing imdbId or rottenTomatoesUrl · probing OMDb (8 workers)…\n")
 
-    new OmdbBackfill(cache, new OMDbClient(new RealHttpFetch)).refreshAllNow()
+    implicit val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("omdb-backfill", 8)
+    val idFills  = new AtomicInteger(0)
+    val urlFills = new AtomicInteger(0)
 
+    val tasks = candidates.map { case StoredMovieRecord(title, year, e, _) =>
+      Future {
+        // imdbId by title search (original/English title first — OMDb is an English DB).
+        val foundId  = if (e.imdbId.isEmpty) omdb.findImdbId((e.originalTitle.toSeq :+ title).distinct, year) else None
+        val effId    = e.imdbId.orElse(foundId)
+        // rottenTomatoesUrl via the id we have or just recovered.
+        val foundUrl = if (e.rottenTomatoesUrl.isEmpty) effId.flatMap(omdb.rottenTomatoesUrl) else None
+        if (foundId.isDefined || foundUrl.isDefined) {
+          repository.upsert(title, year, e.copy(
+            imdbId            = e.imdbId.orElse(foundId),
+            rottenTomatoesUrl = e.rottenTomatoesUrl.orElse(foundUrl)))
+          foundId.foreach { id => idFills.incrementAndGet();  println(f"  imdbId  $title (${year.getOrElse("?")}) → $id") }
+          foundUrl.foreach { u  => urlFills.incrementAndGet(); println(f"  RT-link $title (${year.getOrElse("?")}) → $u") }
+        }
+      }
+    }
+    Await.result(Future.sequence(tasks), 30.minutes)
+    ec.shutdown()
     repository.close()
-    println("Done. Canonical refreshers will fill the rating values from the new ids/links on their next tick.")
+
+    println(s"\nDone. imdbId recovered: ${idFills.get} · rottenTomatoesUrl recovered: ${urlFills.get}.")
+    println("Canonical ImdbRatings / RottenTomatoesRatings will fill the rating values from these on their next tick.")
   }
 }
