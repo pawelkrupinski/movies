@@ -3963,34 +3963,35 @@ showings:
 
 === Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie ===
 displayTitle:      Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie
-cinemaTitles:      Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie
+cinemaTitles:      Freak Show | Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie | Kino bez barier: Freak Show (AD + CC)
 runtimeMinutes:    75
 releaseYear:       2026
-countries:         Polska
-posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_post_063_05FcHgm.jpg
-synopsis.length:   114
-cast:              —
+countries:         Polska, USA, Wielka Brytania, Szwecja
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_freak2.jpg
+synopsis.length:   171
+cast:              Alex Lawther, Ian Nelson, AnnaSophia Robb, Celia Weston
 director:          Łukasz Ronduda, Filip Pawlak
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+tmdbId:            1451034
+imdbId:            tt5089534
+originalTitle:     Freak Show
+imdbRating:        6.5
+metascore:         54
+rottenTomatoes:    54
+filmwebRating:     6.8
+metacriticUrl:     https://www.metacritic.com/movie/freak-show
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/freak_show
+filmwebUrl:        https://www.filmweb.pl/film/Freak+Show-2026-10065590
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14482-kino-bez-barier-freak-show-ad-cc-pjm/
 cinemaScrapes:
-  Kino Pałacowe / Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie / 2026
+  Kino Echo / Freak Show / —
+  Kino Pałacowe / Kino bez barier: Freak Show (AD + CC) / 2026
 showings:
   2026-06-11  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
 === Kino bez barier: Freak Show (AD + CC) ===
 displayTitle:      Kino bez barier: Freak Show (AD + CC)
-cinemaTitles:      Freak Show | Kino bez barier: Freak Show (AD + CC)
+cinemaTitles:      Freak Show | Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie | Kino bez barier: Freak Show (AD + CC)
 runtimeMinutes:    75
 releaseYear:       2026
 countries:         Polska, USA, Wielka Brytania, Szwecja
@@ -7223,10 +7224,10 @@ originalTitle:     Sirāt
 imdbRating:        7.0
 metascore:         84
 rottenTomatoes:    90
-filmwebRating:     —
+filmwebRating:     6.8
 metacriticUrl:     https://www.metacritic.com/movie/sirat
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/sirat
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Sir%C3%A2t-2025-10078589
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14611-plenerowe-paacowe-sirat/
 cinemaScrapes:
