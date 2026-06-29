@@ -35,7 +35,11 @@ object OmdbBackfillRun {
     }
     val omdb = new OMDbClient(new RealHttpFetch)
 
-    val rows       = repository.findAll().sortBy(r => (r.title.toLowerCase, r.year))
+    // Paginated read (200/batch) — a single 800-doc `findAll` over the flyctl
+    // proxy intermittently blows its 60s cap; `foreachRecord` is robust.
+    val buf = scala.collection.mutable.ArrayBuffer.empty[StoredMovieRecord]
+    repository.foreachRecord(buf += _)
+    val rows = buf.toSeq.sortBy(r => (r.title.toLowerCase, r.year))
     val candidates = rows.filter(r => r.record.imdbId.isEmpty || r.record.rottenTomatoesUrl.isEmpty)
     println(s"${rows.size} rows · ${candidates.size} missing imdbId or rottenTomatoesUrl · probing OMDb (8 workers)…\n")
 
@@ -46,7 +50,7 @@ object OmdbBackfillRun {
     val tasks = candidates.map { case StoredMovieRecord(title, year, e, _) =>
       Future {
         // imdbId by title search (original/English title first — OMDb is an English DB).
-        val foundId  = if (e.imdbId.isEmpty) omdb.findImdbId((e.originalTitle.toSeq :+ title).distinct, year) else None
+        val foundId  = if (e.imdbId.isEmpty) omdb.findImdbId((e.originalTitle.toSeq :+ title).distinct, year, e.director.toSet) else None
         val effId    = e.imdbId.orElse(foundId)
         // rottenTomatoesUrl via the id we have or just recovered.
         val foundUrl = if (e.rottenTomatoesUrl.isEmpty) effId.flatMap(omdb.rottenTomatoesUrl) else None

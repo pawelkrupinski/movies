@@ -7,99 +7,119 @@ import tools.GetOnlyHttpFetch
 
 class OMDbClientSpec extends AnyFlatSpec with Matchers {
 
-  // Hand-written fixtures mirroring omdbapi.com: a `?t=` title search (carries
-  // `imdbID`) and a `?i=…&tomatoes=true` lookup (carries `tomatoURL`). No live
-  // HTTP in this suite.
-  private def loadFixture(path: String): String = {
-    val stream = getClass.getResourceAsStream(path)
-    require(stream != null, s"fixture not found: $path")
-    try scala.io.Source.fromInputStream(stream, "UTF-8").mkString
-    finally stream.close()
+  /** Stub whose `get` is a url→body function; records every requested url. */
+  private class FnFetch(f: String => String) extends GetOnlyHttpFetch {
+    val urls = scala.collection.mutable.ListBuffer.empty[String]
+    def get(url: String): String = { urls += url; f(url) }
   }
-  private val TitleSearch = loadFixture("/fixtures/omdb/omdb_title_search.json")
-  private val ById        = loadFixture("/fixtures/omdb/omdb_by_id.json")
+  private def client(f: String => String, key: Option[String] = Some("k")) =
+    new OMDbClient(new FnFetch(f), apiKey = key)
 
-  /** Routes `?t=` vs `?i=` requests to the two fixtures; records the last URL. */
-  private class RoutingFetch extends GetOnlyHttpFetch {
-    var lastUrl: String = ""
-    def get(url: String): String = {
-      lastUrl = url
-      if (url.contains("?t=")) TitleSearch
-      else if (url.contains("?i=")) ById
-      else """{"Response":"False"}"""
+  private def tParam(url: String): String =
+    java.net.URLDecoder.decode(url.split("[?&]").find(_.startsWith("t=")).map(_.drop(2)).getOrElse(""), "UTF-8")
+
+  // ── findImdbId: exact-title acceptance ───────────────────────────────────────
+
+  "findImdbId" should "accept OMDb's best movie match on an exact (diacritic-folded) title" in {
+    val omdb = client(_ => """{"Title":"Sirat","Year":"2025","Director":"Oliver Laxe","imdbID":"tt32298285","Response":"True"}""")
+    omdb.findImdbId(Seq("Sirât"), Some(2025), Set.empty) shouldBe Some("tt32298285")
+  }
+
+  it should "REJECT a same-title-different-film match with no corroboration" in {
+    // "Faworyta" (The Favourite) must NOT bind OMDb's "Carska faworyta" (1918):
+    // not an exact title, no director, no year to corroborate.
+    val omdb = client(_ => """{"Title":"Carska faworyta","Year":"1918","Director":"N/A","imdbID":"tt0000001","Response":"True"}""")
+    omdb.findImdbId(Seq("Faworyta"), None, Set.empty) shouldBe None
+  }
+
+  it should "restrict the search to type=movie (never a series)" in {
+    val fetch = new FnFetch(_ => """{"Response":"False"}""")
+    new OMDbClient(fetch, apiKey = Some("k")).findImdbId(Seq("Bodyguard"), None, Set.empty)
+    fetch.urls.head should include ("type=movie")
+  }
+
+  // ── corroboration by director / year ─────────────────────────────────────────
+
+  it should "accept a non-exact title when the director overlaps and the year agrees" in {
+    // Polish "Mawka" → OMDb "Mavka", same director + year → corroborated.
+    val omdb = client(_ => """{"Title":"Mavka","Year":"2026","Director":"Katya Tsarik","imdbID":"tt11808706","Response":"True"}""")
+    omdb.findImdbId(Seq("Mawka"), Some(2026), Set("Katya Tsarik")) shouldBe Some("tt11808706")
+  }
+
+  it should "REJECT a candidate whose year contradicts ours when the title isn't exact" in {
+    val omdb = client(_ => """{"Title":"Mavka","Year":"2018","Director":"Katya Tsarik","imdbID":"tt11808706","Response":"True"}""")
+    omdb.findImdbId(Seq("Mawka"), Some(2026), Set("Katya Tsarik")) shouldBe None
+  }
+
+  it should "REJECT a candidate whose director contradicts ours" in {
+    val omdb = client(_ => """{"Title":"Aftersun","Year":"2022","Director":"Someone Else","imdbID":"tt19770238","Response":"True"}""")
+    omdb.findImdbId(Seq("Aftersun"), Some(2022), Set("Charlotte Wells")) shouldBe None
+  }
+
+  // ── director-walk backstop ───────────────────────────────────────────────────
+
+  it should "fall back to a director walk and accept the LONE director match" in {
+    val omdb = client { url =>
+      if (url.contains("?t=")) """{"Title":"Unrelated","Year":"1990","Director":"Nobody","imdbID":"tt0000009","Response":"True"}"""
+      else if (url.contains("?s=")) """{"Search":[{"imdbID":"ttAAA"},{"imdbID":"ttBBB"}],"Response":"True"}"""
+      else if (url.contains("i=ttAAA")) """{"Title":"Other","Year":"2000","Director":"Other Person","imdbID":"ttAAA","Response":"True"}"""
+      else """{"Title":"Right Film","Year":"2024","Director":"Jane Director","imdbID":"ttBBB","Response":"True"}"""
     }
-  }
-  private def client(http: GetOnlyHttpFetch, key: Option[String] = Some("test-key")) =
-    new OMDbClient(http, apiKey = key)
-
-  // ── findImdbId (title+year search) ───────────────────────────────────────────
-
-  "findImdbId" should "recover an imdb id when OMDb's returned title matches the query" in {
-    // Query "Sirât" (â) vs OMDb "Sirat" — folded match passes the guard.
-    client(new RoutingFetch).findImdbId(Seq("Sirât"), Some(2025)) shouldBe Some("tt32298285")
+    omdb.findImdbId(Seq("Ambiguous"), None, Set("Jane Director")) shouldBe Some("ttBBB")
   }
 
-  it should "reject a fuzzy hit whose returned title is unrelated to the query" in {
-    val fetch = new GetOnlyHttpFetch {
-      def get(url: String): String = """{"Title":"Some Other Film","imdbID":"tt9999999","Response":"True"}"""
+  it should "REFUSE the director walk when more than one candidate's director matches" in {
+    val omdb = client { url =>
+      if (url.contains("?t=")) """{"Response":"False"}"""
+      else if (url.contains("?s=")) """{"Search":[{"imdbID":"ttAAA"},{"imdbID":"ttBBB"}],"Response":"True"}"""
+      else if (url.contains("i=ttAAA")) """{"Title":"Dup A","Year":"2024","Director":"Jane Director","imdbID":"ttAAA","Response":"True"}"""
+      else """{"Title":"Dup B","Year":"2024","Director":"Jane Director","imdbID":"ttBBB","Response":"True"}"""
     }
-    client(fetch).findImdbId(Seq("Mawka"), Some(2026)) shouldBe None
+    omdb.findImdbId(Seq("Ambiguous"), None, Set("Jane Director")) shouldBe None
   }
 
-  it should "try the next title spelling when the first yields no match" in {
-    var calls = 0
-    val fetch = new GetOnlyHttpFetch {
-      def get(url: String): String = {
-        calls += 1
-        if (url.contains("Mawka")) """{"Response":"False"}"""
-        else """{"Title":"Mavka. The Forest Song","imdbID":"tt11808706","Response":"True"}"""
-      }
-    }
-    client(fetch).findImdbId(Seq("Mawka", "Mavka. The Forest Song"), Some(2023)) shouldBe Some("tt11808706")
-    calls shouldBe 2
+  it should "NOT walk (no ?s= call) when we have no director to corroborate with" in {
+    val fetch = new FnFetch(url => if (url.contains("?s=")) fail("must not search without a director") else """{"Response":"False"}""")
+    new OMDbClient(fetch, apiKey = Some("k")).findImdbId(Seq("Whatever"), None, Set.empty) shouldBe None
   }
 
-  it should "include the year in the query when supplied" in {
-    val fetch = new RoutingFetch
-    client(fetch).findImdbId(Seq("Sirat"), Some(2025))
-    fetch.lastUrl should (include ("?t=Sirat") and include ("&y=2025"))
-  }
+  // ── feature gate ─────────────────────────────────────────────────────────────
 
   it should "return None and make NO HTTP call when the key is unset" in {
-    val fetch = new GetOnlyHttpFetch { def get(url: String): String = throw new RuntimeException("no HTTP when key unset") }
-    client(fetch, key = None).findImdbId(Seq("Sirat"), Some(2025)) shouldBe None
+    val omdb = client(_ => throw new RuntimeException("no HTTP when key unset"), key = None)
+    omdb.findImdbId(Seq("Sirat"), Some(2025), Set("X")) shouldBe None
   }
 
-  it should "return None for all-blank titles without a call" in {
-    val fetch = new GetOnlyHttpFetch { def get(url: String): String = throw new RuntimeException("no call for blank titles") }
-    client(fetch).findImdbId(Seq("", "   "), Some(2025)) shouldBe None
+  it should "try the next title spelling when the first abstains" in {
+    val omdb = client { url =>
+      if (tParam(url).startsWith("Mawka")) """{"Response":"False"}"""
+      else """{"Title":"Mavka","Year":"2026","Director":"N/A","imdbID":"tt11808706","Response":"True"}"""
+    }
+    omdb.findImdbId(Seq("Mawka", "Mavka"), Some(2026), Set.empty) shouldBe Some("tt11808706")
   }
 
   // ── rottenTomatoesUrl (by imdb id) ───────────────────────────────────────────
 
   "rottenTomatoesUrl" should "extract OMDb's tomatoURL" in {
-    client(new RoutingFetch).rottenTomatoesUrl("tt5089534") shouldBe
-      Some("https://www.rottentomatoes.com/m/freak_show")
+    val omdb = client(_ => """{"tomatoURL":"https://www.rottentomatoes.com/m/freak_show","Response":"True"}""")
+    omdb.rottenTomatoesUrl("tt5089534") shouldBe Some("https://www.rottentomatoes.com/m/freak_show")
   }
 
   it should "return None when tomatoURL is N/A" in {
-    val fetch = new GetOnlyHttpFetch { def get(url: String): String = """{"tomatoURL":"N/A","Response":"True"}""" }
-    client(fetch).rottenTomatoesUrl("tt0000001") shouldBe None
+    client(_ => """{"tomatoURL":"N/A","Response":"True"}""").rottenTomatoesUrl("tt0000001") shouldBe None
   }
 
   it should "hit the documented endpoint with the id, tomatoes flag and key" in {
-    val fetch = new RoutingFetch
-    client(fetch, key = Some("abc123")).rottenTomatoesUrl("tt5089534")
-    fetch.lastUrl shouldBe "https://www.omdbapi.com/?i=tt5089534&tomatoes=true&apikey=abc123"
+    val fetch = new FnFetch(_ => """{"tomatoURL":"https://www.rottentomatoes.com/m/x","Response":"True"}""")
+    new OMDbClient(fetch, apiKey = Some("abc123")).rottenTomatoesUrl("tt5089534")
+    fetch.urls.head shouldBe "https://www.omdbapi.com/?i=tt5089534&tomatoes=true&apikey=abc123"
   }
 
   it should "return None and make NO HTTP call when the key is unset" in {
-    val fetch = new GetOnlyHttpFetch { def get(url: String): String = throw new RuntimeException("no HTTP when key unset") }
-    client(fetch, key = None).rottenTomatoesUrl("tt5089534") shouldBe None
+    client(_ => throw new RuntimeException("no HTTP when key unset"), key = None).rottenTomatoesUrl("tt5089534") shouldBe None
   }
 
   it should "swallow a network/HTTP failure and return None" in {
-    val fetch = new GetOnlyHttpFetch { def get(url: String): String = throw new RuntimeException("HTTP 503") }
-    client(fetch).rottenTomatoesUrl("tt5089534") shouldBe None
+    client(_ => throw new RuntimeException("HTTP 503")).rottenTomatoesUrl("tt5089534") shouldBe None
   }
 }

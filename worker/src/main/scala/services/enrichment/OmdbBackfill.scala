@@ -48,7 +48,7 @@ class OmdbBackfill(
         //    cinema display title is the fallback spelling.
         val foundImdbId =
           if (wantImdbId)
-            omdb.findImdbId((e.originalTitle.toSeq :+ e.displayTitle(key.cleanTitle)).distinct, key.year)
+            omdb.findImdbId((e.originalTitle.toSeq :+ e.displayTitle(key.cleanTitle)).distinct, key.year, e.director.toSet)
           else None
         // 2. Recover a missing RT url via the imdb id we have (or just found).
         val effectiveId = e.imdbId.orElse(foundImdbId)
