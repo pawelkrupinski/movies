@@ -14,7 +14,7 @@ import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadMod
 import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
-import services.tasks.{BulkRefreshHandler, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
+import services.tasks.{BulkRefreshHandler, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import tools.{DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
 
@@ -666,6 +666,16 @@ class WorkerWiring extends play.api.Logging {
   lazy val settleReaper = new SettleReaper(() => movieService.settle(),
     interval = settleIntervalSeconds, runStore = scheduledRunStore)
 
+  // OMDb identifier backfill on its own daily tick — only when the feature is on
+  // (`omdbBackfill` is `Some`). Recovers missing imdbId / rottenTomatoesUrl so the
+  // canonical refreshers can then fill the scores; a no-op (no HTTP) for any row
+  // already carrying both, so a sweep only hits OMDb for the unresolved tail.
+  def omdbBackfillIntervalSeconds: FiniteDuration =
+    Env.positiveLong("KINOWO_OMDB_BACKFILL_INTERVAL_SECONDS", OmdbBackfillReaper.DefaultInterval.toSeconds).seconds
+  lazy val omdbBackfillReaper: Option[OmdbBackfillReaper] =
+    omdbBackfill.map(ob => new OmdbBackfillReaper(() => ob.refreshAllNow(),
+      interval = omdbBackfillIntervalSeconds, runStore = scheduledRunStore))
+
   // ── Staging incubation (resolve-then-fold) ──────────────────────────────────
   // A newcomer in `pending_movies` walks the SAME steps the direct path runs,
   // but each is now a durable queue task (StagingDetail → StagingResolveTmdb →
@@ -928,6 +938,7 @@ class WorkerWiring extends play.api.Logging {
     unresolvedTmdbReaper.start()
     detailReaper.start()
     settleReaper.start()
+    omdbBackfillReaper.foreach(_.start())
     scrapeReaper.start()
     // Backstop the chunked-scrape fan-in: recover complete runs whose completion
     // event was lost, and partial-reduce abandoned runs.
@@ -963,6 +974,7 @@ class WorkerWiring extends play.api.Logging {
     unresolvedTmdbReaper.stop()
     detailReaper.stop()
     settleReaper.stop()
+    omdbBackfillReaper.foreach(_.stop())
     livenessWatchdog.stop()
     workerHeartbeat.stop()
     throttleStuckWatchdog.stop()
