@@ -105,6 +105,39 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.findAllScreeningsCalls.get() shouldBe 0
   }
 
+  // Prune-safety: `foreachRecord` returns `false` when a Mongo batch read fails
+  // mid-scan (a server-selection / socket timeout while the worker is CPU-throttled —
+  // the 2026-06-29 served-films flap). `liveIds` is then a TRUNCATED view, so pruning
+  // on it would delete the live cards the scan never reached. The reconcile must keep
+  // them and skip the prune until a clean tick.
+  private class IncompleteScanRepository(seed: Seq[(String, Option[Int], MovieRecord)])
+    extends InMemoryMovieRepository(seed) {
+    @volatile var failScan = false
+    // Mirrors the Mongo impl on a mid-scan read failure: deliver nothing further and
+    // report the scan INCOMPLETE (rows before the failure would still have reached `f`;
+    // here the very first batch dies, so none do).
+    override def foreachRecord(f: StoredMovieRecord => Unit): Boolean =
+      if (failScan) false else super.foreachRecord(f)
+  }
+
+  "reconcile" should "NOT prune live read-model rows when the source scan failed mid-way (incomplete)" in {
+    val repository = new IncompleteScanRepository(Seq(("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))))
+    val rm         = new InMemoryReadModelRepository()
+    val projector  = new ReadModelProjector(repository, rm, rm)
+
+    projector.reconcile()                                  // clean scan → Foo is projected
+    rm.findAllMovies().map(_._id) should contain(fid)
+    val deletesBefore = rm.movieDeletes.size
+
+    repository.failScan = true                             // next scan dies mid-way (incomplete)
+    projector.reconcile()
+
+    withClue("a live film was pruned from the read model on an INCOMPLETE source scan — the served-films flap: ") {
+      rm.movieDeletes.size          shouldBe deletesBefore // no prune happened
+      rm.findAllMovies().map(_._id) should contain(fid)    // Foo still served
+    }
+  }
+
   "a showtime-only change" should "move only the one screening document" in {
     val (projector, _, rm) = fixture()
     projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))

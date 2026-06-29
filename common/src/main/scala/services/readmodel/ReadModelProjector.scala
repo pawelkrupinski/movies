@@ -136,7 +136,7 @@ class ReadModelProjector(
     // project nor leave a stale document behind, and a row that becomes ready
     // between ticks gets projected on the next one.
     val liveIds = scala.collection.mutable.Set.empty[String]
-    movieRepository.foreachRecord { row =>
+    val scanComplete = movieRepository.foreachRecord { row =>
       if (row.record.readyToProject) {
         liveIds ++= ReadModelProjection.filmIds(row)
         try project(row)
@@ -144,14 +144,27 @@ class ReadModelProjector(
           logger.warn(s"read-model reconcile: a row failed to project, continuing: ${exception.getMessage}") }
       }
     }
-    // Prune off id-only projections — the prune reads ids/filmIds, never payloads,
-    // so projecting them server-side keeps the whole `web_movies`/`web_screenings`
-    // corpus off the heap (the read model is already resident in memory anyway).
-    reader.findAllMovieIds().iterator.filterNot(liveIds).foreach(deleteFilm)
-    reader.findAllScreeningRefs().iterator.filterNot(ref => liveIds(ref.filmId)).foreach { ref =>
-      writer.deleteScreening(ref._id)
-      metrics.recordWrite(Target.Screening, Op.Delete, 1)
-      lastScreenings.updateWith(ref.filmId)(_.map(_ - ref._id).filter(_.nonEmpty))
+    if (!scanComplete) {
+      // The source scan failed mid-way (a Mongo batch read threw after its retries —
+      // typically a server-selection / socket timeout while the worker is CPU-throttled,
+      // the 2026-06-29 01:34–02:19 served-films flap). `liveIds` is therefore a TRUNCATED
+      // view of the corpus, not the full live set. Pruning on it would delete every
+      // read-model card whose source row this scan never reached — the cards that
+      // "vanished" then "came back" on the next clean tick, under-serving the big cities
+      // in between. Keep the (idempotent) projections we did make and SKIP the
+      // destructive prune; the next tick reconciles cleanly once reads recover.
+      logger.warn("read-model reconcile: source scan was incomplete (Mongo read failed mid-scan) — " +
+        "skipping the prune this tick to avoid deleting live read-model rows; will retry next tick.")
+    } else {
+      // Prune off id-only projections — the prune reads ids/filmIds, never payloads,
+      // so projecting them server-side keeps the whole `web_movies`/`web_screenings`
+      // corpus off the heap (the read model is already resident in memory anyway).
+      reader.findAllMovieIds().iterator.filterNot(liveIds).foreach(deleteFilm)
+      reader.findAllScreeningRefs().iterator.filterNot(ref => liveIds(ref.filmId)).foreach { ref =>
+        writer.deleteScreening(ref._id)
+        metrics.recordWrite(Target.Screening, Op.Delete, 1)
+        lastScreenings.updateWith(ref.filmId)(_.map(_ - ref._id).filter(_.nonEmpty))
+      }
     }
   }
 

@@ -9,7 +9,7 @@ import org.mongodb.scala.model.{Aggregates, Filters, IndexOptions, Indexes, Sort
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import org.bson.conversions.Bson
 import play.api.Logging
-import tools.Env
+import tools.{Env, RetryWithBackoff}
 
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
@@ -109,8 +109,15 @@ trait MovieRepository {
    *  reconcile never holds the full ~13 MB `movies` corpus (incl. multi-MB raw
    *  `sourceData` rows) in memory at once. Ordering and the concurrent-write
    *  no-duplicate/no-skip guarantee match [[findAll]] (keyset pagination on the
-   *  unique, immutable `_id` index). Best-effort: failures are logged, not thrown. */
-  def foreachRecord(f: StoredMovieRecord => Unit): Unit = findAll().foreach(f)
+   *  unique, immutable `_id` index).
+   *
+   *  Returns `true` when the WHOLE corpus was scanned, `false` when a read failed
+   *  mid-scan and the iteration stopped early (rows delivered so far still reached
+   *  `f`). A caller that PRUNES on a row's absence — the read-model reconcile —
+   *  MUST treat `false` as "this set is not the complete corpus" and skip the
+   *  destructive step, or a transient Mongo read failure deletes live rows. The
+   *  in-memory store never fails, so the default reports `true`. */
+  def foreachRecord(f: StoredMovieRecord => Unit): Boolean = { findAll().foreach(f); true }
 
   /** Remove every record matching the given (title, year). Best-effort —
    *  failures are logged, never thrown. */
@@ -210,7 +217,13 @@ class MongoMovieRepository(
   // corpus rows are decoded onto the heap at once. 200 rows × ~13 KB avg ≈ a few
   // hundred KB per batch (vs ~13 MB for the whole corpus). Injectable so tests can
   // force multiple pages with a handful of rows.
-  findAllBatchSize: Int = 200
+  findAllBatchSize: Int = 200,
+  // Per-batch retry budget for `foreachRecord`'s keyset scan. A batch read that
+  // fails transiently (a server-selection / socket timeout while the worker is
+  // CPU-throttled) is retried with 0.5s → 1s → 2s backoff before the whole scan
+  // is declared incomplete. Injectable so a test can force the exhausted path fast.
+  foreachRecordBatchAttempts: Int            = 4,
+  foreachRecordBatchBackoff:  FiniteDuration = 500.millis
 ) extends MovieRepository with Logging {
 
   // Lazy so subclasses that override every wire method (e.g.
@@ -356,25 +369,44 @@ class MongoMovieRepository(
    *  and immutable, and the `gt` filter + sort both run server-side under the
    *  default binary collation, so a concurrent write can neither resurface a
    *  visited row nor hide one whose `_id` doesn't change. A batch shorter than the
-   *  limit is the last page. */
-  override def foreachRecord(f: StoredMovieRecord => Unit): Unit = coll match {
+   *  limit is the last page.
+   *
+   *  Retries each BATCH read independently (keyset pagination makes every batch a
+   *  fresh, idempotent `find`), so a transient read failure under worker CPU
+   *  throttle — the 2026-06-29 served-films flap, where a batch blew its 60s budget
+   *  — doesn't truncate the whole scan. Returns `true` only when the scan ran to
+   *  the last page; if a batch still fails after its retries the throw escapes to
+   *  the outer recover and we report `false` (incomplete) so a PRUNING caller
+   *  (`ReadModelProjector.reconcile`) doesn't treat the rows-so-far as the full
+   *  corpus and delete the live rows it never reached. */
+  override def foreachRecord(f: StoredMovieRecord => Unit): Boolean = coll match {
     case Some(c) =>
       Try {
         var afterId: Option[String] = None
         var more = true
         while (more) {
           val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-          val batch  = Await.result(
-            c.find(filter).sort(Sorts.ascending("_id")).limit(findAllBatchSize).toFuture(), 60.seconds)
+          val batch  = RetryWithBackoff(
+            label          = "MovieRepository.foreachRecord batch",
+            maxAttempts    = foreachRecordBatchAttempts,
+            initialBackoff = foreachRecordBatchBackoff
+          ) {
+            Await.result(
+              c.find(filter).sort(Sorts.ascending("_id")).limit(findAllBatchSize).toFuture(), 60.seconds)
+          }
           batch.foreach(dto => f(StoredMovieDto.toDomain(dto)))
           afterId = batch.lastOption.map(_._id)
           more    = batch.sizeIs == findAllBatchSize
         }
+        true
       }.recover {
         case exception: Throwable =>
-          logger.warn(s"MovieRepository.foreachRecord failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
-      }
-    case None => ()
+          logger.warn(s"MovieRepository.foreachRecord failed after retries: " +
+            s"${exception.getClass.getSimpleName}: ${exception.getMessage} — scan incomplete, reporting partial")
+          false
+      }.getOrElse(false)
+    // Mongo not wired: no corpus was scanned, so we can't vouch for completeness.
+    case None => false
   }
 
   /** Deletes by `_id` (the current `documentId` formula) OR by the legacy `title` +
