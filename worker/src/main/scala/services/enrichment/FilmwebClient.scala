@@ -54,9 +54,15 @@ class FilmwebClient(http: HttpFetch) {
     directors:         Set[String]    = Set.empty,
     referenceSynopsis: Option[String] = None
   ): Option[FilmwebInfo] = {
-    val primary = lookupWithQuery(title, year, directors, referenceSynopsis)
-    val effectiveFallback = fallback.filterNot(_.equalsIgnoreCase(title))
-    primary.orElse(effectiveFallback.flatMap(t => lookupWithQuery(t, year, directors, referenceSynopsis)))
+    // Try the raw title first, then banner/cycle-stripped variants (so a title
+    // polluted with a screening cycle — "Film | Poniedziałki z Konwickim: …" —
+    // still surfaces the bare film), then the caller's fallback. `view` keeps it
+    // lazy: an undecorated title yields no variants and costs no extra requests,
+    // and the first query that resolves short-circuits the rest.
+    val variants = searchQueryVariants(title)
+    val effectiveFallback = fallback.filter(f => !f.equalsIgnoreCase(title) && !variants.exists(_.equalsIgnoreCase(f)))
+    val queries = (title +: (variants ++ effectiveFallback.toSeq)).distinct
+    queries.view.flatMap(q => lookupWithQuery(q, year, directors, referenceSynopsis)).headOption
   }
 
   private def lookupWithQuery(query: String, year: Option[Int], directors: Set[String], referenceSynopsis: Option[String]): Option[FilmwebInfo] =
@@ -226,8 +232,8 @@ class FilmwebClient(http: HttpFetch) {
   }
 
   private[enrichment] def matchesByTitle(c: Candidate, query: String): Boolean = {
-    val normalizedQuery = query.toLowerCase.trim
-    val titles = (c.title +: c.originalTitle.toSeq).map(_.toLowerCase.trim)
+    val normalizedQuery = normalizeTitle(query)
+    val titles = (c.title +: c.originalTitle.toSeq).map(normalizeTitle)
     titles.exists(_ == normalizedQuery) || titles.exists(t => MetacriticClient.isModifierSuffix(t, normalizedQuery))
   }
 
@@ -298,6 +304,30 @@ object FilmwebClient {
   }
 
   private def urlEncode(s: String): String = URLEncoder.encode(s, StandardCharsets.UTF_8)
+
+  // Unicode dash variants (hyphen-minus aside): hyphen, non-breaking hyphen,
+  // figure dash, en dash, em dash, horizontal bar, minus sign. Cinemas and
+  // Filmweb disagree on which one a title uses ("Chainsaw Man – The Movie" vs
+  // "Chainsaw Man - The Movie"), so fold them all to ASCII '-' before comparing.
+  private val DashVariants = Set('‐', '‑', '‒', '–', '—', '―', '−')
+
+  /** Lower-case + trim + fold every dash variant to '-', for title-equality
+   *  comparison. Unlike [[deburr]] this keeps diacritics — Filmweb titles carry
+   *  them and the `/info` titles we compare against do too. */
+  private[enrichment] def normalizeTitle(s: String): String =
+    s.map(c => if (DashVariants(c)) '-' else c).toLowerCase.trim
+
+  /** Extra search queries to try when the raw title carries a screening-cycle or
+   *  festival banner the bare film title doesn't. Splits on `|` (each segment is
+   *  a candidate title) and strips trailing parentheticals. Returns ONLY the
+   *  variants that differ from the raw title — an undecorated title yields an
+   *  empty sequence, so the common path costs no extra Filmweb requests. */
+  def searchQueryVariants(title: String): Seq[String] = {
+    val trimmed = title.trim
+    val noParen = trimmed.replaceAll("\\s*\\([^)]*\\)", "").trim
+    val pipeSegments = trimmed.split("\\|").iterator.map(_.trim).filter(_.nonEmpty).toSeq
+    (pipeSegments :+ noParen).map(_.trim).filter(_.nonEmpty).distinct.filterNot(_.equalsIgnoreCase(trimmed))
+  }
 
   /** Lower-case + strip diacritics for fuzzy director comparison. Cinemas
    *  sometimes drop diacritics ("Malgorzata Szumowska"); Filmweb keeps them

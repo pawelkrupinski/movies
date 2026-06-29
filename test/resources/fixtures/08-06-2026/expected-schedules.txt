@@ -768,7 +768,7 @@ rottenTomatoes:    96
 filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/chainsaw-man---the-movie-reze-arc
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/chainsaw_man_the_movie_reze_arc
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Chainsaw+Man+-+The+Movie%3A+Reze+Arc-2025-10093832
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/chainsaw-man-the-movie-reze-arc/
 cinemaScrapes:

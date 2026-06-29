@@ -220,6 +220,15 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     client.pickBest(hits, "La Dolce Vita", Some(1960), Set.empty).map(_.id) shouldBe Some(1)
   }
 
+  it should "match titles that differ only by a dash variant (en-dash vs hyphen)" in {
+    // "Chainsaw Man – The Movie: Reze Arc" — the cinema title uses an en-dash,
+    // Filmweb's /info uses a plain hyphen. Without dash folding the exact-title
+    // bar fails (and isModifierSuffix needs a prefix match, which the dash also
+    // breaks), so the film is missed despite being identical.
+    val hits = Seq(candidate(id = 1, title = "Chainsaw Man - The Movie: Reze Arc", year = Some(2025)))
+    client.pickBest(hits, "Chainsaw Man – The Movie: Reze Arc", Some(2025), Set.empty).map(_.id) shouldBe Some(1)
+  }
+
   // ── pickBest: year disambiguation ───────────────────────────────────────────
 
   it should "prefer the year-closest candidate among accepted ones" in {
@@ -371,6 +380,40 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     val r = fw.lookup("Diuna", Some(2024), fallback = Some("Dune: Part Two"))
     r should not be empty
     r.get.url should include ("-779836")
+  }
+
+  it should "find the film when a screening-cycle banner hides the bare title behind a pipe" in {
+    // "Reze Arc | 26. Festiwal Filmowy" — the raw query (with the festival
+    // banner) returns nothing; the pipe-stripped "Reze Arc" variant surfaces the
+    // film. Stub returns empty for any search whose query still carries the
+    // banner, the hit otherwise.
+    val fw = new FilmwebClient(new GetOnlyHttpFetch {
+      override def get(url: String): String =
+        if (url.contains("/live/search"))
+          if (url.contains("festiwal")) """{"searchHits":[]}"""
+          else """{"searchHits":[{"id":7,"type":"film","matchedTitle":"Reze Arc"}]}"""
+        else if (url.contains("/film/7/info"))   """{"title":"Reze Arc","year":2025}"""
+        else if (url.contains("/film/7/rating")) """{"rate":7.5,"count":10}"""
+        else throw new RuntimeException(s"HTTP 404 for $url")
+    })
+    val r = fw.lookup("Reze Arc | 26. Festiwal Filmowy", Some(2025))
+    r should not be empty
+    r.get.url should include ("-7")
+  }
+
+  // ── searchQueryVariants: banner / decoration stripping ───────────────────────
+
+  "searchQueryVariants" should "expose the bare film title behind a pipe-separated cycle banner" in {
+    FilmwebClient.searchQueryVariants("""Lawa - opowieść o "Dziadach" | Poniedziałki z Konwickim: pisarz""") should
+      contain ("""Lawa - opowieść o "Dziadach"""")
+  }
+
+  it should "strip a trailing parenthetical" in {
+    FilmwebClient.searchQueryVariants("Mama Mu wraca do domu (2021)") should contain ("Mama Mu wraca do domu")
+  }
+
+  it should "yield no variants for an undecorated title (no extra requests on the common path)" in {
+    FilmwebClient.searchQueryVariants("Pulp Fiction") shouldBe empty
   }
 
   it should "consult /preview only when the caller passes directors" in {
