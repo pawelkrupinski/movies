@@ -72,16 +72,84 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
     parseSearchResults(httpGet(url, auth))
   }
 
-  def search(title: String, year: Option[Int], referenceSynopsis: Option[String] = None): Option[TmdbClient.SearchResult] = authHeader.flatMap { auth =>
-    // Try year-restricted first (more precise when TMDB has the film for that
-    // year), then year-less fallback. pickBest runs at BOTH levels so we don't
-    // silently grab the most popular film that merely contains the query word:
+  def search(
+    title:             String,
+    year:              Option[Int],
+    referenceSynopsis: Option[String] = None,
+    // Cinema-reported director(s), comma-separated. When present it corroborates a
+    // NON-exact year-less / banner-stripped hit (see `corroboratedYearless`); when
+    // absent only an exact-title hit survives those riskier tiers. Optional with a
+    // default so existing callers compile unchanged.
+    director:          Option[String] = None
+  ): Option[TmdbClient.SearchResult] = authHeader.flatMap { auth =>
+    // Tier 1 — year-restricted. Most precise: TMDB only returns films of that
+    // year, so a non-exact pickBest hit there is same-year and safe. Unchanged.
     //   - "Camper" (year=None) → would otherwise pick "Sleepaway Camper"
     //   - "Odlot"  (year=None) → would otherwise pick Pixar's "Up" (pop 21)
-    //   - "Rocznica" (year=None) → would otherwise pick "Harry Potter 20th
-    //     Anniversary: Return to Hogwarts"
     val yearScoped = if (year.isDefined) pickBest(searchOnce(title, year, auth), title, year, referenceSynopsis) else None
-    yearScoped.orElse(pickBest(searchOnce(title, None, auth), title, year, referenceSynopsis))
+
+    // Tier 2 — year-less retry on the RAW title. Broader than Tier 1 (the cinema's
+    // "year" can be a re-release/production year TMDB doesn't index), so it accepts
+    // ONLY a corroborated candidate: an exact-title match, or — when a director is
+    // reported — a hit whose TMDB credits overlap it. A bare fuzzy/year-distance hit
+    // is REFUSED here (that's the "Zaproszenie / Sleepaway Camper" mis-resolve).
+    def yearlessRaw = corroboratedYearless(title, year, referenceSynopsis, director, auth)
+
+    // Tier 3 — banner-stripped / dash-normalised query VARIANTS, for decorated
+    // exhibitor titles the raw query can't find ("POKAZ | Film (2024)", an em-dash
+    // where TMDB indexes a hyphen). Each variant is tried year-restricted (exact
+    // only) then year-less (corroborated), with the same precision gate as Tier 2.
+    def variantRecovery = TmdbClient.bannerStrippedVariants(title).iterator.flatMap { variant =>
+      val vScoped =
+        if (year.isDefined)
+          pickBest(searchOnce(variant, year, auth), variant, year, referenceSynopsis)
+            .filter(TmdbClient.isExactTitleMatch(_, variant))
+        else None
+      vScoped.orElse(corroboratedYearless(variant, year, referenceSynopsis, director, auth))
+    }.nextOption()
+
+    yearScoped.orElse(yearlessRaw).orElse(variantRecovery)
+  }
+
+  /** Year-less search for `query` accepting ONLY a corroborated candidate:
+   *    1. pickBest's choice when it's an exact-title match (keeps the exact +
+   *       year-distance semantics — e.g. "Odlot" → the year-closest "Odlot");
+   *    2. otherwise, when the result set has exactly ONE dated film, that singleton
+   *       (the `searchUnique` precedent — an unambiguous lone hit is safe even when
+   *       the verbatim title differs, e.g. a decorated cinema query whose only dated
+   *       result is the real film, the dateless companion stub having been dropped);
+   *    3. otherwise, when the row reports a director, the first hit whose TMDB
+   *       credits overlap it.
+   *  Returns None on a bare fuzzy hit picked from SEVERAL candidates by
+   *  year-distance/popularity — the precision gate the year-less tier needs because
+   *  it isn't scoped to a year (the "pick the year-closest of two unrelated films"
+   *  mis-resolve). */
+  private def corroboratedYearless(
+    query:             String,
+    year:              Option[Int],
+    referenceSynopsis: Option[String],
+    director:          Option[String],
+    auth:              Map[String, String]
+  ): Option[TmdbClient.SearchResult] = {
+    val results       = searchOnce(query, None, auth)
+    val onlyOneDated  = results.count(_.releaseYear.isDefined) == 1
+    pickBest(results, query, year, referenceSynopsis)
+      .filter(b => TmdbClient.isExactTitleMatch(b, query) || onlyOneDated)
+      .orElse(directorOverlapHit(results, director))
+  }
+
+  /** First result whose TMDB credits overlap the cinema-reported director(s).
+   *  None (and no HTTP) when no director is reported — so production rows that
+   *  don't pass a director, and the precision-guard path, never accept a fuzzy
+   *  hit here. `directorsFor` is failure-tolerant (missing credits → empty set →
+   *  no match), so an unresolvable candidate is simply skipped. */
+  private def directorOverlapHit(
+    results:  Seq[TmdbClient.SearchResult],
+    director: Option[String]
+  ): Option[TmdbClient.SearchResult] = {
+    val cinemaNames = director.toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
+    if (cinemaNames.isEmpty) None
+    else results.find(r => TmdbClient.directorNamesOverlap(cinemaNames, directorsFor(r.id)))
   }
 
   /** Resolve ONLY when the title search is unambiguous — exactly one result.
@@ -462,6 +530,54 @@ object TmdbClient {
   private[clients] def isExactTitleMatch(r: SearchResult, title: String): Boolean = {
     val q = titleMatchKey(title)
     q.nonEmpty && (titleMatchKey(r.title) == q || r.originalTitle.exists(titleMatchKey(_) == q))
+  }
+
+  /** Fold every Unicode dash variant a cinema might emit — hyphen-minus through
+   *  em-dash/horizontal-bar, the math minus sign (U+2212), and the fullwidth /
+   *  small CJK-compat forms — to a plain ASCII hyphen. `titleMatchKey` already
+   *  strips dashes for exact-match comparison, so this matters at the QUERY level:
+   *  TMDB's search tokeniser treats "Wicked — Część 2" and "Wicked - Część 2" as
+   *  different strings, so a verbatim em-dash query can miss a film that a
+   *  hyphenated one finds. The normalised form is offered as a query variant. */
+  private val DashVariants =
+    java.util.regex.Pattern.compile("[\\u2010-\\u2015\\u2212\\u2043\\uFE58\\uFE63\\uFF0D]")
+  private[clients] def normalizeDashes(s: String): String =
+    DashVariants.matcher(s).replaceAll("-")
+
+  /** Trailing parenthetical at the end of a title — "Freak Show (AD)", "Wymazać
+   *  (2024)". Stripped to recover the bare film title. */
+  private val TrailingParenthetical =
+    java.util.regex.Pattern.compile("\\s*\\([^()]*\\)\\s*$")
+
+  /** Decoration-stripped query variants for a decorated exhibitor title, used by
+   *  `search`'s Tier-3 recovery. Folds dash variants, splits a "Banner | Film"
+   *  pipe into each side, and drops a trailing parenthetical from each piece. The
+   *  raw `title` itself is excluded — Tiers 1/2 already tried it — so an
+   *  undecorated title yields no variants (Tier 3 is a no-op for it). Deliberately
+   *  self-contained: no cross-client title-normalisation import. */
+  private[clients] def bannerStrippedVariants(title: String): Seq[String] = {
+    val dashNormalized = normalizeDashes(title).trim
+    val pieces         = (Seq(dashNormalized) ++ dashNormalized.split("\\|").toSeq)
+      .map(_.trim).filter(_.nonEmpty)
+    pieces
+      .flatMap(p => Seq(p, TrailingParenthetical.matcher(p).replaceAll("").trim))
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .distinct
+      .filterNot(_ == title)
+  }
+
+  /** Loose director-name overlap between the cinema's reported names and a TMDB
+   *  film's credited directors: punctuation/case-blind, matching when either
+   *  collapsed name contains the other (so "Asgeir Helgestad" ties TMDB's same
+   *  name, and a single cinema name ties one of several co-directors). Self-
+   *  contained — the richer token-set match lives in MovieService and isn't
+   *  imported here. */
+  private[clients] def directorNamesOverlap(cinemaNames: Seq[String], tmdbDirectors: Set[String]): Boolean = {
+    def key(s: String): String = titleMatchKey(s)
+    val cinemaKeys = cinemaNames.map(key).filter(_.nonEmpty)
+    val tmdbKeys   = tmdbDirectors.map(key).filter(_.nonEmpty)
+    cinemaKeys.exists(c => tmdbKeys.exists(t => c.contains(t) || t.contains(c)))
   }
 
   /** Slim shape returned by `details(tmdbId)` — just the fields the ratings

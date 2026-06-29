@@ -105,20 +105,80 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     client.search("Top Gun", Some(2026)).map(_.id) shouldBe Some(744)
   }
 
-  it should "still pick the closest-year hit when no exact title match exists" in {
+  // Precision guard: a year-LESS retry must NOT accept a bare fuzzy hit. The cinema
+  // reported year 2026 (a re-release year TMDB doesn't index), so the year-scoped
+  // search is empty and we retry year-less. Neither candidate is an exact title
+  // match and no director is reported, so there is nothing corroborating either —
+  // the search must REFUSE rather than guess by year-distance/popularity. (Before
+  // the corroboration gate this returned the year-closest hit, id 10.)
+  it should "refuse an uncorroborated fuzzy hit in the year-less retry (no exact title, no director)" in {
     val noYear =
       """{"results":[
         |  {"id":10,"title":"Some Other Title","original_title":"Foreign Original",
         |   "release_date":"2025-01-01","popularity":50.0},
-        |  {"id":11,"title":"Unrelated","original_title":"Unrelated",
+        |  {"id":11,"title":"Foo po polsku","original_title":"Foo Origins",
         |   "release_date":"1990-01-01","popularity":10.0}
         |]}""".stripMargin
     val client = fakeClient(Map(
       "&year=2026" -> """{"results":[]}""",
       "query=Foo"  -> noYear
     ))
-    // No exact match → fall back to year distance: 2025 (1) beats 1990 (36).
-    client.search("Foo", Some(2026)).map(_.id) shouldBe Some(10)
+    client.search("Foo", Some(2026)) shouldBe None
+  }
+
+  it should "recover a wrong-corpus-year film via the year-less retry when the reported director corroborates a hit" in {
+    // Same shape as the guard above, but now the cinema reports a director. The
+    // year-distance pick (id 10, closest to 2026) has a different director; the
+    // REAL film (id 11, 1990) is non-exact but its credited director matches — so
+    // the director-overlap corroboration flips the resolution to id 11. Before the
+    // change the year-less retry blindly took the year-closest id 10.
+    val noYear =
+      """{"results":[
+        |  {"id":10,"title":"Some Other Title","original_title":"Foreign Original",
+        |   "release_date":"2025-01-01","popularity":50.0},
+        |  {"id":11,"title":"Foo po polsku","original_title":"Foo Origins",
+        |   "release_date":"1990-01-01","popularity":10.0}
+        |]}""".stripMargin
+    val client = fakeClient(Map(
+      "&year=2026"          -> """{"results":[]}""",
+      "query=Foo"           -> noYear,
+      "/movie/10/credits"   -> """{"crew":[{"job":"Director","name":"Inny Reżyser"}],"cast":[]}""",
+      "/movie/11/credits"   -> """{"crew":[{"job":"Director","name":"Jane Director"}],"cast":[]}"""
+    ))
+    client.search("Foo", Some(2026), director = Some("Jane Director")).map(_.id) shouldBe Some(11)
+  }
+
+  it should "recover an em-dash decorated title via a dash-normalized query variant" in {
+    // The cinema reports an em-dash ("—"); TMDB indexes the film under a plain
+    // hyphen. TMDB's search tokeniser treats the two as different strings, so the
+    // verbatim em-dash query returns nothing — the dash-normalized variant query
+    // ("Mission - Impossible") is what finds (and exact-matches) the film.
+    val hyphenHit =
+      """{"results":[
+        |  {"id":777,"title":"Mission - Impossible","original_title":"Mission - Impossible",
+        |   "release_date":"2024-01-01","popularity":50.0}
+        |]}""".stripMargin
+    val client = fakeClient(Map(
+      "%E2%80%94"            -> """{"results":[]}""",  // any query carrying the em-dash → empty
+      "Mission+-+Impossible" -> hyphenHit              // dash-normalized variant → the film
+    ))
+    client.search("Mission — Impossible", None).map(_.id) shouldBe Some(777)
+  }
+
+  it should "recover a banner-decorated title by stripping the pipe banner and trailing parenthetical" in {
+    // "POKAZ SPECJALNY | Wymazać (2024)" — the verbatim decorated query finds
+    // nothing; stripping the festival banner (left of the pipe) and the trailing
+    // year parenthetical yields the bare title "Wymazać", which exact-matches.
+    val cleanHit =
+      """{"results":[
+        |  {"id":888,"title":"Wymazać","original_title":"Wymazać",
+        |   "release_date":"2024-05-01","popularity":10.0}
+        |]}""".stripMargin
+    val client = fakeClient(Map(
+      "query=POKAZ"   -> """{"results":[]}""",  // any banner-led query → nothing
+      "query=Wymaza"  -> cleanHit               // stripped bare-title variant → the film
+    ))
+    client.search("POKAZ SPECJALNY | Wymazać (2024)", None).map(_.id) shouldBe Some(888)
   }
 
   it should "match on original_title when the Polish title differs from the query" in {
