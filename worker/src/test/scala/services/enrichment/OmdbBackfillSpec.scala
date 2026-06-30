@@ -142,6 +142,34 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("C", None)).get.imdbId            shouldBe Some("tt0003")    // unchanged
   }
 
+  it should "read the backoff store ONCE for the whole sweep, not a blocking read per candidate row" in {
+    // The credit-drain bug: refreshAll did a per-row Mongo `get` (inBackoff) for
+    // every row missing an id, corpus-wide, every sweep. It must now do ONE
+    // batched `all()` read instead.
+    val repository = new InMemoryMovieRepository(Seq(
+      ("A", None, MovieRecord()),                                                       // missing both
+      ("B", None, MovieRecord()),                                                       // missing both
+      ("C", None, MovieRecord()),                                                       // missing both
+      ("D", None, MovieRecord(imdbId = Some("tt9"), rottenTomatoesUrl = Some(RtUrl)))   // fully identified
+    ))
+    val cache    = new CaffeineMovieCache(repository)
+    val attempts = new CountingOmdbAttemptStore
+    new OmdbBackfill(cache, omdbStub, attempts).refreshAll()
+
+    attempts.allCalls shouldBe 1 // one batched read for the whole sweep
+    attempts.getCalls shouldBe 0 // never a per-row blocking read (the drain)
+  }
+
+  /** Counts reads so a per-row `get` regression in the sweep is caught. */
+  private class CountingOmdbAttemptStore extends OmdbAttemptStore {
+    var getCalls = 0
+    var allCalls = 0
+    private val inner = new InMemoryOmdbAttemptStore
+    def get(filmKey: String): Option[OmdbAttempt] = { getCalls += 1; inner.get(filmKey) }
+    def all(): Map[String, OmdbAttempt] = { allCalls += 1; inner.all() }
+    def record(filmKey: String, level: Int, at: Instant): Unit = inner.record(filmKey, level, at)
+  }
+
   // ── backoff ──────────────────────────────────────────────────────────────────
 
   private val T0 = Instant.parse("2026-06-01T00:00:00Z")

@@ -26,6 +26,12 @@ case class OmdbAttempt(at: Instant, level: Int)
  */
 trait OmdbAttemptStore {
   def get(filmKey: String): Option[OmdbAttempt]
+  /** Every recorded attempt, loaded in ONE read. The daily [[OmdbBackfill]] sweep
+   *  pre-loads this so its per-film backoff check is an in-memory map lookup, not
+   *  a blocking Mongo `find` per candidate row — that per-row read, run
+   *  corpus-wide every sweep, is what drained the worker's shared-CPU credit to
+   *  the floor. */
+  def all(): Map[String, OmdbAttempt]
   def record(filmKey: String, level: Int, at: Instant): Unit
 }
 
@@ -34,6 +40,7 @@ object OmdbAttemptStore {
    *  and Mongo-less wiring. */
   val noop: OmdbAttemptStore = new OmdbAttemptStore {
     def get(filmKey: String): Option[OmdbAttempt] = None
+    def all(): Map[String, OmdbAttempt] = Map.empty
     def record(filmKey: String, level: Int, at: Instant): Unit = ()
   }
 }
@@ -42,6 +49,10 @@ object OmdbAttemptStore {
 class InMemoryOmdbAttemptStore extends OmdbAttemptStore {
   private val entries = new ConcurrentHashMap[String, OmdbAttempt]()
   def get(filmKey: String): Option[OmdbAttempt] = Option(entries.get(filmKey))
+  def all(): Map[String, OmdbAttempt] = {
+    import scala.jdk.CollectionConverters._
+    entries.asScala.toMap
+  }
   def record(filmKey: String, level: Int, at: Instant): Unit = { entries.put(filmKey, OmdbAttempt(at, level)); () }
 }
 
@@ -69,6 +80,18 @@ class MongoOmdbAttemptStore(db: Option[MongoDatabase], clock: Clock = Clock.syst
       Option(d.getDate("at")).map(date => OmdbAttempt(Instant.ofEpochMilli(date.getTime), d.getInteger("level", 0)))
     }
   }
+
+  /** One read of the whole (TTL-bounded) collection, keyed by filmKey. Used by the
+   *  sweep to avoid a per-row `get`; on a read failure returns empty so the sweep
+   *  fails OPEN (every film eligible) rather than wedging. */
+  def all(): Map[String, OmdbAttempt] = coll.map { c =>
+    Try(Await.result(c.find().toFuture(), 30.seconds)).toOption.getOrElse(Seq.empty).flatMap { d =>
+      for {
+        key  <- Option(d.getString("_id"))
+        date <- Option(d.getDate("at"))
+      } yield key -> OmdbAttempt(Instant.ofEpochMilli(date.getTime), d.getInteger("level", 0))
+    }.toMap
+  }.getOrElse(Map.empty)
 
   def record(filmKey: String, level: Int, at: Instant): Unit = coll.foreach { c =>
     Try {

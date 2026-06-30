@@ -86,21 +86,38 @@ class OmdbBackfill(
   private def filmKey(key: CacheKey): String =
     s"${key.cleanTitle}|${key.year.map(_.toString).getOrElse("")}"
 
+  // Pre-loaded once per `refreshAll` sweep so the per-film backoff read is an
+  // in-memory lookup instead of a blocking Mongo `get` per candidate row. `None`
+  // on the single-film path (`refreshOneSync`), which reads the store directly.
+  @volatile private var sweepBackoff: Option[Map[String, OmdbAttempt]] = None
+
+  private def attemptFor(key: CacheKey): Option[OmdbAttempt] = sweepBackoff match {
+    case Some(snapshot) => snapshot.get(filmKey(key))
+    case None           => attempts.get(filmKey(key))
+  }
+
   private def inBackoff(key: CacheKey): Boolean =
-    attempts.get(filmKey(key)).exists(a =>
+    attemptFor(key).exists(a =>
       clock.instant().isBefore(a.at.plusMillis(OmdbBackfill.backoffWindow(a.level).toMillis)))
 
   private def recordMiss(key: CacheKey): Unit = {
-    val nextLevel = math.min(attempts.get(filmKey(key)).map(_.level).getOrElse(0) + 1, OmdbBackfill.MaxBackoffLevel)
+    val nextLevel = math.min(attemptFor(key).map(_.level).getOrElse(0) + 1, OmdbBackfill.MaxBackoffLevel)
     attempts.record(filmKey(key), nextLevel, clock.instant())
   }
 
   private[services] def refreshAll(): Unit = {
     val snapshot = cache.entries
-    logger.info(s"OMDb backfill: starting tick over ${snapshot.size} cached row(s).")
-    BoundedParallel.foreach("OMDb-backfill", snapshot, refreshConcurrency) { case (key, e) =>
-      refreshOne(key).foreach(v => recordCadenceChange(key, e.tmdbId, Some(v)))
-    }
+    // ONE batched read of the backoff stamps for the whole sweep. Previously each
+    // candidate row triggered a blocking Mongo `get` inside `inBackoff`; run
+    // corpus-wide every sweep, those per-row reads drained the worker's shared-CPU
+    // credit to the floor (see OmdbAttemptStore.all).
+    sweepBackoff = Some(attempts.all())
+    try {
+      logger.info(s"OMDb backfill: starting tick over ${snapshot.size} cached row(s).")
+      BoundedParallel.foreach("OMDb-backfill", snapshot, refreshConcurrency) { case (key, e) =>
+        refreshOne(key).foreach(v => recordCadenceChange(key, e.tmdbId, Some(v)))
+      }
+    } finally sweepBackoff = None
   }
 }
 
