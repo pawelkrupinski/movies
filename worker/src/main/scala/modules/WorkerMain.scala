@@ -104,11 +104,6 @@ object WorkerMain extends Logging {
     server
   }
 
-  /** Worker task-pipeline metrics for Fly's Prometheus scrape (the `[[metrics]]`
-   *  block in fly.worker.toml). Registered on the SAME HttpServer as /health,
-   *  AFTER WorkerWiring is up since it reads the live queue + metrics. Renders
-   *  the current snapshot; on a Mongo hiccup it answers 500 (empty) rather than
-   *  throwing, so a transient blip is a gap in the series, not a crash. */
   /** External throttle control: the credit-balance logic lives outside the worker
    *  (a Grafana alert on `fly_instance_cpu_balance`), and toggles the worker's
    *  reaper backoff through this endpoint. Accepts a simple `?state=on|off`
@@ -134,17 +129,28 @@ object WorkerMain extends Logging {
       new String(exchange.getRequestBody.readAllBytes(), "UTF-8"))
 
   private val MetricsActiveLimit = 1000
+
+  /** Worker task-pipeline metrics for the VictoriaMetrics scrape (the `[[metrics]]`
+   *  block in fly.worker.toml). Registered on the SAME HttpServer as /health, AFTER
+   *  WorkerWiring is up since it reads the live queue + metrics. Served from a
+   *  [[services.metrics.MetricsSnapshotCache]] so the scrape never blocks on the
+   *  Mongo reads taskMetrics.scrape performs — see that class for why. */
   private def addMetricsEndpoint(server: HttpServer, wiring: WorkerWiring): Unit = {
+    // Render the exposition OFF the scrape request path. taskMetrics.scrape reads
+    // the queue depth + staging counts from Mongo (a find + three countDocuments +
+    // a full staging scan, each a 10s Await); doing that inside the handler made a
+    // momentarily-slow Mongo blow VictoriaMetrics' 10s scrape_timeout → up=0 →
+    // every kinowo_worker_* panel blank for that window. The cache refreshes on a
+    // daemon thread and the handler just returns the last rendered bytes.
+    val snapshot = new services.metrics.MetricsSnapshotCache(render = () =>
+      wiring.taskMetrics.scrape(
+        wiring.taskQueue.monitor(MetricsActiveLimit), wiring.stagingReaper.stepCounts(),
+        Instant.now(), wiring.throttleSignal.isThrottled))
+    snapshot.start()
     server.createContext("/metrics", exchange => {
-      val body =
-        try wiring.taskMetrics.scrape(wiring.taskQueue.monitor(MetricsActiveLimit), wiring.stagingReaper.stepCounts(), Instant.now(), wiring.throttleSignal.isThrottled).getBytes("UTF-8")
-        catch {
-          case e: Throwable =>
-            logger.warn(s"/metrics scrape failed: ${e.getMessage}")
-            Array.emptyByteArray
-        }
+      val body = snapshot.current()
       if (body.isEmpty) {
-        exchange.sendResponseHeaders(500, -1)
+        exchange.sendResponseHeaders(503, -1) // only before the first refresh completes
         exchange.close()
       } else {
         exchange.getResponseHeaders.set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
