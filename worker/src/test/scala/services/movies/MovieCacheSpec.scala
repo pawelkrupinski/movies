@@ -4,7 +4,7 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.time.LocalDateTime
+import java.time.{Clock, LocalDateTime, ZoneOffset}
 
 class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
@@ -689,6 +689,20 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // change-stream event). Without the ingestion sort this fired a redundant write.
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Foo", Multikino, showtimes = Seq(c, a, b))))
     repository.upserts shouldBe empty
+  }
+
+  it should "NOT delete an already-past showing when a re-scrape drops it (retain it → no churn write)" in {
+    val now   = LocalDateTime.of(2026, 6, 8, 21, 0)  // 21:00 is "now"
+    val repo  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repo, clock = Clock.fixed(now.toInstant(ZoneOffset.UTC), ZoneOffset.UTC))
+    val past   = showtime("2026-06-08T18:00")  // before now → past
+    val future = showtime("2026-06-08T22:30")  // after now → future
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Foo", Multikino, showtimes = Seq(past, future))))
+    repo.upserts should not be empty      // first scrape established the slot
+    repo.upserts.clear()
+    // Cinema no longer lists the now-past 18:00 showing; only the future one.
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Foo", Multikino, showtimes = Seq(future))))
+    repo.upserts shouldBe empty           // past showing retained → slot unchanged → no write
   }
 
   it should "flag the second cinema as new when it scrapes a film already in the cache from another cinema" in {

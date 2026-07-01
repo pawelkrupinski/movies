@@ -145,4 +145,21 @@ object MovieRecordMerge {
    *  showings always collapse to the same sequence. */
   def sortShowtimes(showtimes: Seq[Showtime]): Seq[Showtime] =
     showtimes.sortBy(s => (s.dateTime.toString, s.room.getOrElse(""), s.format.mkString(","), s.bookingUrl.getOrElse("")))
+
+  /** Merge a fresh cinema scrape's showtimes over the prior stored ones, NEVER
+   *  deleting a screening that is already in the PAST. A re-scrape is authoritative
+   *  for the future (adds/removes upcoming showings) but a past showing it no longer
+   *  lists is kept, not dropped: dropping it is pure churn — it no longer displays
+   *  (the web filters past showtimes at render) and nothing reaps it, so re-writing
+   *  the slot just to remove an aged-out time would fire a change event + reprojection
+   *  for no visible effect. With the past retained, an aging-only re-scrape yields a
+   *  slot equal to what's stored, so `MovieCache`'s `updated == before` guard skips
+   *  the write. "Past" is STRICT (`dateTime <= now`, no grace); result is canonical
+   *  order. A genuine future change still replaces the slot (and drops stale past
+   *  the fresh scrape didn't re-list, since it rebuilds from `fresh`). */
+  def retainPastShowtimes(prior: Seq[Showtime], fresh: Seq[Showtime], now: java.time.LocalDateTime): Seq[Showtime] = {
+    val freshSet = fresh.toSet
+    val keptPast = prior.filter(s => !s.dateTime.isAfter(now) && !freshSet.contains(s))
+    sortShowtimes(fresh ++ keptPast)
+  }
 }

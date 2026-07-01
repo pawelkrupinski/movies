@@ -154,7 +154,11 @@ class CaffeineMovieCache(
   // tmdb-identity) so the worker can chart the merge rate that drives re-key
   // re-enrichment load. No-op for web + unit tests; the worker wires
   // `WorkerTaskMetrics`.
-  mergeMetrics: MergeMetrics = MergeMetrics.noop
+  mergeMetrics: MergeMetrics = MergeMetrics.noop,
+  // Clock for the "now" used to tell past from future when a scrape merges its
+  // showtimes (see `buildCinemaSlot` → `MovieRecordMerge.retainPastShowtimes`).
+  // Injectable so tests can fix "now" deterministically.
+  clock: java.time.Clock = java.time.Clock.systemDefaultZone()
 ) extends MovieCache with Stoppable with Logging {
 
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
@@ -1054,10 +1058,13 @@ class CaffeineMovieCache(
       posterUrl      = cm.posterUrl.orElse(priorSlot.flatMap(_.posterUrl)),
       filmUrl        = cm.filmUrl,
       trailerUrl     = cm.trailerUrl.orElse(priorSlot.flatMap(_.trailerUrl)),
-      // Canonical order so a re-scrape returning the same showings in a different
-      // order stores an identical slot and the write-through guard skips the
-      // redundant write + change-stream event. See MovieRecordMerge.sortShowtimes.
-      showtimes      = MovieRecordMerge.sortShowtimes(cm.showtimes)
+      // Canonical order (a reorder-only re-scrape stores an identical slot so the
+      // write-through guard skips it) AND retain already-past showings the scrape
+      // dropped — deleting a past showtime is pure churn (it no longer displays,
+      // nothing reaps it), so keeping it lets an aging-only re-scrape hit the guard.
+      // See MovieRecordMerge.sortShowtimes / retainPastShowtimes.
+      showtimes      = MovieRecordMerge.retainPastShowtimes(
+                         priorSlot.map(_.showtimes).getOrElse(Seq.empty), cm.showtimes, java.time.LocalDateTime.now(clock))
     )
 
   /** If `primary` doesn't currently exist in the cache, look for an existing
