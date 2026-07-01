@@ -97,7 +97,7 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema)
     Jsoup.parse(html).select("tr.repertoire-movie-tr").asScala.toSeq.flatMap { row =>
       val link = Option(row.selectFirst("div.repertoire-movie-title a"))
       val id   = link.flatMap(a => FilmIdPat.findFirstMatchIn(a.attr("href")).map(_.group(1)))
-      val parsed = link.map(_.text.trim).filter(_.nonEmpty).map(NoveKinoClient.parseTitle)
+      val parsed = link.map(_.text.trim).filter(_.nonEmpty).map(ScraperParse.extractFormatTags)
       (id, parsed) match {
         case (Some(filmId), Some((t, fmt))) =>
           val poster = Option(row.selectFirst("div.repertoire-movie-poster img[src]")).map(_.attr("src")).filter(_.nonEmpty)
@@ -118,21 +118,11 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema)
 
 object NoveKinoClient {
 
-  /** Split a Nove Kino title into its clean form + format tokens. The site
-   *  appends the presentation as a suffix ("Zawodowcy - napisy"); strip it only
-   *  when the trailing segment is entirely format words, so real dash-bearing
-   *  titles ("Mission - Impossible") stay intact. Tokens map via the shared
-   *  [[ScraperParse.FormatToken]] vocabulary. */
-  def parseTitle(raw: String): (String, List[String]) = {
-    val i = raw.lastIndexOf(" - ")
-    if (i <= 0) (raw, Nil)
-    else {
-      val tail = raw.substring(i + 3).trim.toLowerCase.split("\\s+").toList.filter(_.nonEmpty)
-      if (tail.nonEmpty && tail.forall(ScraperParse.FormatToken.contains))
-        (raw.substring(0, i).trim, tail.flatMap(ScraperParse.FormatToken.get).distinct)
-      else (raw, Nil)
-    }
-  }
+  // The site appends the presentation as a title suffix ("Zawodowcy - napisy",
+  // "Wielkie piękno – napisy"); `ScraperParse.extractFormatTags` peels it into
+  // format tokens (handling every separator + trailing tag shape) while leaving a
+  // real dash-bearing title ("Mission - Impossible") intact, and the clean title
+  // groups the presentation variants into one row (see `fetchBare`).
 
   def parseDateTime(day: String, hour: String): Option[LocalDateTime] =
     """(\d{1,2}):(\d{2})""".r.findFirstMatchIn(hour).flatMap(m =>
