@@ -104,8 +104,8 @@ private[cinemas] object ScraperParse {
   // Words that, alone, mark a trailing screening-format/version tag.
   private val FormatVersionWords = Set(
     "2d", "3d", "imax", "dolby", "atmos", "4dx", "dubbing", "napisy", "lektor",
-    "dubb", "dub", "nap", "premiera", "krajowa", "pokaz", "jednorazowy",
-    "specjalny", "przedpremierowy", "vood", "vod", "hd")
+    "dubb", "dub", "nap", "premiera", "przedpremiera", "krajowa", "pokaz",
+    "jednorazowy", "specjalny", "przedpremierowy", "vood", "vod", "hd", "sps")
   private val FormatSeparators = Set("-", "–", "—", "|", "/", ":")
   private val FormatBracketTag = """\s*\[[^\]]*\]\s*$""".r
   private val FormatParenTag   =
