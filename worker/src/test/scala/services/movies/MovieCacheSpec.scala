@@ -194,6 +194,16 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     seen.toList shouldBe List(("A", Some(2024), None), ("A", Some(2024), Some(8.0)))
   }
 
+  it should "fan out every write to ALL registered watchers, not just the last (prod attaches cache + projector)" in {
+    val repository = new InMemoryMovieRepository()
+    val a, b = scala.collection.mutable.ListBuffer.empty[String]
+    repository.watchUpserts(r => a += r.title)
+    repository.watchUpserts(r => b += r.title)  // must NOT clobber the first watcher
+    repository.upsert("A", Some(2024), mkEnrichment("tt-a"))
+    a.toList shouldBe List("A")
+    b.toList shouldBe List("A")
+  }
+
   "InMemoryMovieRepository.findAll" should "re-derive title/year from the _id + record like Mongo, not return them verbatim" in {
     // The fake must match `MongoMovieRepository`, which persists only `_id` +
     // `sourceData` and re-derives the display title on read. Stored under an

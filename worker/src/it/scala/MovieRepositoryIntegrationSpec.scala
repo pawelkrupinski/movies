@@ -176,6 +176,38 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally handle.foreach(_.close())
   }
 
+  // The worker attaches two change-stream consumers (MovieCache + ReadModelProjector).
+  // They now share ONE underlying cursor (ChangeStreamFanout) instead of one cursor
+  // each — the CPU optimization. Prove it against real Mongo: a single write reaches
+  // BOTH listeners, and the shared cursor stays up until the LAST listener detaches.
+  it should "feed two listeners from a single shared cursor, stopping it only when the last detaches" in {
+    import java.util.concurrent.{CountDownLatch, TimeUnit}
+
+    val title = "__integration-test-shared-cursor__"
+    val year  = Some(1902)
+    val id    = StoredMovieRecord.idFor(title, year)
+    val gotA  = new CountDownLatch(1)
+    val gotB  = new CountDownLatch(1)
+
+    val handleA = repository.watchChanges(r => if (StoredMovieRecord.idOf(r) == id) gotA.countDown(), _ => ())
+    val handleB = repository.watchChanges(r => if (StoredMovieRecord.idOf(r) == id) gotB.countDown(), _ => ())
+    handleA should not be empty
+    handleB should not be empty
+    repository.isWatchingChangeStream shouldBe true
+
+    try {
+      Thread.sleep(1500) // let the stream establish before the write
+      repository.upsert(title, year, MovieRecord(imdbId = Some("tt0000077")))
+      gotA.await(15, TimeUnit.SECONDS) shouldBe true // one write reached BOTH consumers
+      gotB.await(15, TimeUnit.SECONDS) shouldBe true
+
+      handleA.foreach(_.close())
+      repository.isWatchingChangeStream shouldBe true // B still attached — cursor stays up
+    } finally handleB.foreach(_.close())
+
+    repository.isWatchingChangeStream shouldBe false // last listener gone — cursor stopped
+  }
+
   it should "handle Enrichments with all-None optional fields" in {
     val title = "__integration-test-sparse__"
     val toStore = MovieRecord(

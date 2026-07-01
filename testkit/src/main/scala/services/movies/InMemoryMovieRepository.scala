@@ -35,20 +35,18 @@ class InMemoryMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Se
 
   // Stand-in for Mongo's change stream: any write (in-process or simulated
   // out-of-band) notifies the registered watchers, just like a real change
-  // stream fires for every persisted edit — upserts AND deletes.
-  @volatile private var upsertWatcher: Option[StoredMovieRecord => Unit] = None
-  @volatile private var deleteWatcher: Option[String => Unit]            = None
+  // stream fires for every persisted edit — upserts AND deletes. Like the real
+  // repository it fans ONE write path out to every registered listener (prod
+  // attaches the cache AND the read-model projector); a single-watcher stub
+  // would model only one and hide the multiplexing the real cursor now does.
+  private val changes = new ChangeStreamFanout[StoredMovieRecord]("InMemoryMovieRepository")
   private def notifyWatcher(t: String, y: Option[Int], e: MovieRecord): Unit =
-    upsertWatcher.foreach(_(StoredMovieRecord.fromStorage(idOf(t, y), e)))
+    changes.dispatchUpsert(StoredMovieRecord.fromStorage(idOf(t, y), e))
 
   override def watchChanges(
     onUpsert: StoredMovieRecord => Unit,
     onDelete: String => Unit
-  ): Option[AutoCloseable] = {
-    upsertWatcher = Some(onUpsert)
-    deleteWatcher = Some(onDelete)
-    Some(new AutoCloseable { override def close(): Unit = { upsertWatcher = None; deleteWatcher = None } })
-  }
+  ): Option[AutoCloseable] = Some(changes.register(onUpsert, onDelete))
 
   seed.foreach { case (t, y, e) => store.put(idOf(t, y), StoredMovieRecord(t, y, e)) }
 
@@ -95,13 +93,13 @@ class InMemoryMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Se
     val id = idOf(t, y)
     store.remove(id)
     deletes.append((t, y))
-    deleteWatcher.foreach(_(id))
+    changes.dispatchDelete(id)
   }
 
   def deleteById(id: String): Unit = lock.synchronized {
     if (store.remove(id).isDefined) {
       deletes.append((id, None))
-      deleteWatcher.foreach(_(id))
+      changes.dispatchDelete(id)
     }
   }
 

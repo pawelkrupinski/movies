@@ -156,7 +156,9 @@ trait MovieRepository {
    *  the stream reconnects are left to the periodic backstop rehydrate, so a
    *  store that can't stream (disabled, or a standalone Mongo with no change
    *  streams) may return `None` and the caller simply relies on that backstop.
-   *  The returned handle stops watching. Default: not supported. */
+   *  Multiple consumers may attach — they share ONE underlying stream (see
+   *  [[ChangeStreamFanout]]); the returned handle detaches just that consumer.
+   *  Default: not supported. */
   def watchUpserts(onUpsert: StoredMovieRecord => Unit): Option[AutoCloseable] =
     watchChanges(onUpsert, _ => ())
 
@@ -538,36 +540,65 @@ class MongoMovieRepository(
    *  error just logs. Requires a replica set (a single-node RS counts); on a
    *  standalone Mongo the stream errors out and the caller falls back to its
    *  backstop. */
+  // ONE shared change-stream cursor feeds every registered listener through this
+  // fan-out, rather than a cursor per caller. The worker attaches two consumers
+  // (MovieCache + ReadModelProjector); a cursor-per-caller decoded every write
+  // twice, and a profiler showed that async change-stream I/O completion was the
+  // worker's dominant CPU cost. Decode once here, dispatch to all. The cursor
+  // starts on the first listener and stops when the last one detaches.
+  private val movieChanges = new ChangeStreamFanout[StoredMovieRecord]("MovieRepository")
+  private val changeSub    = new AtomicReference[Subscription]()
+  private val changeLock   = new AnyRef
+
   override def watchChanges(
     onUpsert: StoredMovieRecord => Unit,
     onDelete: String => Unit
   ): Option[AutoCloseable] = coll.map { c =>
-    val subRef = new AtomicReference[Subscription]()
-    c.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
-      .subscribe(new Observer[ChangeStreamDocument[StoredMovieDto]] {
-        override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
-        override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit =
-          Option(change.getFullDocument) match {
-            case Some(dto) =>
-              try onUpsert(StoredMovieDto.toDomain(dto))
-              catch { case exception: Throwable => logger.warn(s"MovieRepository change-stream apply failed: ${exception.getMessage}") }
-            case None =>
-              // No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't
-              // back-fill). Surface its _id so the consumer can drop the row.
-              Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
-                .map(v => if (v.isString) v.asString.getValue else v.toString)
-                .foreach { id =>
-                  try onDelete(id)
-                  catch { case exception: Throwable => logger.warn(s"MovieRepository change-stream delete apply failed: ${exception.getMessage}") }
-                }
-          }
-        override def onError(e: Throwable): Unit =
-          logger.warn(s"MovieRepository change stream ended (${e.getMessage}) — relying on the periodic backstop rehydrate.")
-        override def onComplete(): Unit = ()
-      })
-    logger.info("MongoMovieRepository: watching change stream for incremental cache updates.")
-    new AutoCloseable { override def close(): Unit = Option(subRef.get()).foreach(_.unsubscribe()) }
+    val handle = movieChanges.register(onUpsert, onDelete)
+    ensureWatching(c)
+    new AutoCloseable { override def close(): Unit = { handle.close(); stopWatchingIfIdle() } }
   }
+
+  /** Start the single shared cursor if it isn't already running. Each event is
+   *  decoded once and fanned out to every listener; a delete (no post-image) is
+   *  surfaced by `_id`. Terminal errors clear the subscription so a later
+   *  registration can re-open, and existing listeners fall back to their
+   *  periodic backstop (cache rehydrate / projector reconcile) meanwhile. */
+  private def ensureWatching(c: MongoCollection[StoredMovieDto]): Unit = changeLock.synchronized {
+    if (changeSub.get() == null) {
+      c.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
+        .subscribe(new Observer[ChangeStreamDocument[StoredMovieDto]] {
+          override def onSubscribe(s: Subscription): Unit = { changeSub.set(s); s.request(Long.MaxValue) }
+          override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit =
+            Option(change.getFullDocument) match {
+              case Some(dto) => movieChanges.dispatchUpsert(StoredMovieDto.toDomain(dto))
+              case None =>
+                // No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't
+                // back-fill). Surface its _id so consumers can drop the row.
+                Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
+                  .map(v => if (v.isString) v.asString.getValue else v.toString)
+                  .foreach(movieChanges.dispatchDelete)
+            }
+          override def onError(e: Throwable): Unit = {
+            logger.warn(s"MovieRepository change stream ended (${e.getMessage}) — relying on the periodic backstop rehydrate.")
+            changeSub.set(null)
+          }
+          override def onComplete(): Unit = changeSub.set(null)
+        })
+      logger.info("MongoMovieRepository: watching change stream (shared by all listeners).")
+    }
+  }
+
+  /** Stop the shared cursor once no listener remains, so an idle repository
+   *  (e.g. web /debug after every viewer disconnects) doesn't keep decoding
+   *  every write for nothing. */
+  private def stopWatchingIfIdle(): Unit = changeLock.synchronized {
+    if (movieChanges.isEmpty) Option(changeSub.getAndSet(null)).foreach(_.unsubscribe())
+  }
+
+  /** Whether the single shared change-stream cursor is currently running — for
+   *  diagnostics/tests (it starts on the first listener, stops after the last). */
+  def isWatchingChangeStream: Boolean = changeSub.get() != null
 
   def close(): Unit = clientOpt.foreach(_.close())
 
