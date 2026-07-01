@@ -209,6 +209,11 @@ lazy val web = (project in file("web"))
     PageTest / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u",
       ((LocalRootProject / baseDirectory).value / "target" / "test-reports" / "page").toString),
     pipelineStages := Seq(digest),
+    // Don't let a detached `run` (no controlling terminal — stdin at /dev/null,
+    // nohup'd, or the launching terminal closed) busy-spin Play's "press Enter to
+    // stop" reader at ~300% CPU. Falls back to Play's default when a real console
+    // is attached (see project/HeadlessSafeInteractionMode.scala).
+    PlayKeys.playInteractionMode := HeadlessSafeInteractionMode,
     // Eagerly trigger AppLoader on `sbt run` (see project/Warmup.scala) and start
     // the Mongo proxy for local dev (see project/MongoProxy.scala).
     PlayKeys.playRunHooks += Warmup(),
