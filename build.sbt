@@ -159,8 +159,11 @@ lazy val worker = (project in file("worker"))
       logbackClassic,
       // Prometheus client: build + expose the worker's task-pipeline metrics
       // (scraped by Fly Prometheus via the [[metrics]] block in fly.worker.toml).
+      // `-instrumentation-jvm` adds the standard process/JVM resource collectors
+      // (process CPU, memory, GC, threads) — see JvmProcessMetrics.
       prometheusCore,
       prometheusText,
+      prometheusJvm,
       scalatestPlay % Test,
     )
   )

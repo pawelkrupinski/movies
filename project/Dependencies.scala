@@ -44,4 +44,5 @@ object Dependencies {
   val scalatestPlay    = "org.scalatestplus.play"        %% "scalatestplus-play" % scalatestPlayVersion
   val prometheusCore   = "io.prometheus"                  %  "prometheus-metrics-core"               % prometheusVersion
   val prometheusText   = "io.prometheus"                  %  "prometheus-metrics-exposition-formats" % prometheusVersion
+  val prometheusJvm    = "io.prometheus"                  %  "prometheus-metrics-instrumentation-jvm" % prometheusVersion
 }

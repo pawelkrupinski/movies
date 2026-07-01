@@ -446,8 +446,13 @@ class WorkerWiring extends play.api.Logging {
   // One registry shared by every worker metric so a single /metrics scrape (and
   // the existing `taskMetrics.scrape()` render) exposes the task pipeline AND the
   // corpus census together.
-  lazy val metricsRegistry: io.prometheus.metrics.model.registry.PrometheusRegistry =
-    new io.prometheus.metrics.model.registry.PrometheusRegistry()
+  lazy val metricsRegistry: io.prometheus.metrics.model.registry.PrometheusRegistry = {
+    val registry = new io.prometheus.metrics.model.registry.PrometheusRegistry()
+    // Process/JVM resource metrics (process CPU, RSS, GC, threads) on the same
+    // registry, so one /metrics scrape carries them alongside the task pipeline.
+    services.metrics.JvmProcessMetrics.register(registry)
+    registry
+  }
   lazy val taskMetrics: WorkerTaskMetrics = new WorkerTaskMetrics(workerPoolSize, metricsRegistry)
   // Periodic census of the movies corpus (counts of resolved/rated rows), sampled
   // off-band and exposed on the same registry — see WorkerCorpusMetrics.
