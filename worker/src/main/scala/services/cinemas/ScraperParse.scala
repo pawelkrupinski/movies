@@ -117,6 +117,14 @@ private[cinemas] object ScraperParse {
   // the "_DKF"/"_FKS" programme tags) is left intact and those titles aren't re-split.
   private val GluedFormatUnderscore =
     ("(?i)_(?=(?:" + FormatVersionWords.toSeq.sortBy(-_.length).mkString("|") + """)\b)""").r
+  // Slash-glued version tag with no surrounding spaces — some bilety24 venues
+  // (Kino Oskard) join it straight on: "Supergirl/dubbing", "…dzień/napisy".
+  // Un-glue ONLY before a known version word (via the look-ahead), so a real
+  // slashed title ("AC/DC", "Face/Off", "either/or") is never split — its word
+  // after the slash isn't a version word. The spaced form (" / 2D dubbing") is
+  // left to the trailing-token loop; only the zero-space glue needs this.
+  private val GluedFormatSlash =
+    ("(?i)/(?=(?:" + FormatVersionWords.toSeq.sortBy(-_.length).mkString("|") + """)\b)""").r
 
   /** The bare lower-cased word of a title token (paren/bracket/punctuation
    *  peeled), or `""` for an empty token. */
@@ -144,7 +152,8 @@ private[cinemas] object ScraperParse {
    *  the original title (e.g. "(2D NAPISY)" → `List("2D", "NAP")`). Stripped
    *  words with no version meaning (dolby, atmos, premiera, …) yield no token. */
   def extractFormatTags(raw: String): (String, List[String]) = {
-    var t    = GluedFormatUnderscore.replaceAllIn(raw.replaceAll("\\s+", " ").trim, " ")
+    var t    = GluedFormatSlash.replaceAllIn(
+                 GluedFormatUnderscore.replaceAllIn(raw.replaceAll("\\s+", " ").trim, " "), " ")
     var previous = ""
     val dropped = scala.collection.mutable.Set.empty[String]
     while (t != previous) {

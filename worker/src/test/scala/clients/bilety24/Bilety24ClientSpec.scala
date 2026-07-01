@@ -1,7 +1,8 @@
 package clients.bilety24
 
 import clients.tools.FakeHttpFetch
-import models.{KinoLuna, Showtime}
+import models.{KinoLuna, KinoOskard, Showtime}
+import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.Bilety24Client
@@ -9,7 +10,7 @@ import services.cinemas.Bilety24Client
 import java.time.LocalDateTime
 
 /** One shared client, exercised against two recorded Bilety24-hosted cinemas. */
-class Bilety24ClientSpec extends AnyFlatSpec with Matchers {
+class Bilety24ClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   // ── Kino Luna ──────────────────────────────────────────────────────────────
   private val luna     = new Bilety24Client(new FakeHttpFetch("kino-luna"), "https://kinoluna.bilety24.pl", KinoLuna)
@@ -40,6 +41,19 @@ class Bilety24ClientSpec extends AnyFlatSpec with Matchers {
     lunaRes.flatMap(_.showtimes).flatMap(_.bookingUrl).foreach { u =>
       u should startWith ("https://kinoluna.bilety24.pl/kup-bilety/")
     }
+  }
+
+  // Kino Oskard glues the language onto the title with a slash ("Supergirl/dubbing").
+  // Peel it into the showings' format so the dub/subtitle editions collapse onto
+  // one clean-titled film instead of each event fragmenting into its own row.
+  it should "strip a slash-glued language suffix off the title and badge the showings" in {
+    val html =
+      """<div class="title-name" title="Supergirl/dubbing">Supergirl/dubbing</div>
+        |<a class="b24-button" href="/kup-bilety/?id=5" title="Kup bilet - Film: Supergirl/dubbing - 2026-07-02 18:00 - Konin">
+        |<span class="b24-button__format format status"></span></a>""".stripMargin
+    val m = Bilety24Client.parseEvent(html, KinoOskard, "https://ckis-konin.bilety24.pl", "5").value
+    m.movie.title             shouldBe "Supergirl"
+    m.showtimes.map(_.format) shouldBe Seq(List("DUB"))
   }
 
   // Regression: cycle/concert event descriptions carry a "czytaj więcej" toggle

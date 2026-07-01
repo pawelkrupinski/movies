@@ -1993,7 +1993,7 @@ showings:
 
 === Drzewo magii ===
 displayTitle:      Drzewo magii
-cinemaTitles:      DRZEWO MAGII | Drzewo Magii | Drzewo magii | Drzewo magii/dubbing
+cinemaTitles:      DRZEWO MAGII | Drzewo Magii | Drzewo magii
 runtimeMinutes:    110
 releaseYear:       2026
 countries:         Francja, USA, Wielka Brytania
@@ -2127,7 +2127,7 @@ cinemaScrapes:
   Kino Moskwa / DRZEWO MAGII / —
   Kino NCKF EC1 / Drzewo magii / —
   Kino Na Biegunach / Drzewo magii / —
-  Kino Narie / Drzewo magii/dubbing / —
+  Kino Narie / Drzewo magii / —
   Kino Nowe Horyzonty / Drzewo magii / 2026
   Kino ODEON / Drzewo magii / —
   Kino Oskard / Drzewo magii / —
@@ -2915,7 +2915,7 @@ showings:
 
 === Filmowy Klub Seniora: Ojczyzna ===
 displayTitle:      Filmowy Klub Seniora: Ojczyzna
-cinemaTitles:      Filmowy Klub Seniora: OJCZYZNA | OJCZYZNA | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna - pokaz przedpremierowy | Ojczyzna /napisy | Ojczyzna | Pokaz przedpremierowy | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy
+cinemaTitles:      Filmowy Klub Seniora: OJCZYZNA | OJCZYZNA | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna | Zobacz przedpremierowo
 runtimeMinutes:    82
 releaseYear:       2026
 countries:         Polska, Niemcy, Włochy, Francja
@@ -2957,7 +2957,7 @@ cinemaScrapes:
   Kino 60 Krzeseł / Ojczyzna / —
   Kino Agrafka / OJCZYZNA / 2026
   Kino Apollo / Ojczyzna / —
-  Kino Apollo Wałbrzych / Ojczyzna | pokaz przedpremierowy / —
+  Kino Apollo Wałbrzych / Ojczyzna / —
   Kino Atlantic / Ojczyzna / 2026
   Kino Awangarda 2 / Ojczyzna / —
   Kino Bajka / Ojczyzna / —
@@ -2969,18 +2969,18 @@ cinemaScrapes:
   Kino Kolory / Ojczyzna / —
   Kino Kreska / Ojczyzna / —
   Kino Kultura / Ojczyzna / —
-  Kino Lot / Ojczyzna | pokaz przedpremierowy / —
+  Kino Lot / Ojczyzna / —
   Kino Millenium / Ojczyzna / —
   Kino Muranów / Ojczyzna / 2026
   Kino Muza / Ojczyzna / 2026
   Kino Muzeum / OJCZYZNA / 2026
-  Kino Narie / Ojczyzna /napisy / —
+  Kino Narie / Ojczyzna / —
   Kino Nowe Horyzonty / Ojczyzna / 2026
   Kino Orzeł / Ojczyzna / —
   Kino Oskard / Ojczyzna / —
   Kino PDK / Ojczyzna / —
   Kino Paradox / Ojczyzna / 2026
-  Kino Piast / Ojczyzna | Pokaz przedpremierowy / —
+  Kino Piast / Ojczyzna / —
   Kino Pionier 1907 / OJCZYZNA / 2026
   Kino Pod Baranami / Ojczyzna / —
   Kino Rialto / OJCZYZNA / 2026
@@ -2992,7 +2992,7 @@ cinemaScrapes:
   Kino Wisła / Ojczyzna / 2026
   KinoGram / Ojczyzna / —
   Kinomax / Ojczyzna / —
-  Kinoteatr Rialto / Ojczyzna - pokaz przedpremierowy / —
+  Kinoteatr Rialto / Ojczyzna / —
   Kinoteka / Ojczyzna | Zobacz przedpremierowo / 2026
   Max Kino / Ojczyzna / —
   Patria / Ojczyzna / —
@@ -3188,7 +3188,7 @@ showings:
 
 === Gwiezdne wojny: Mandalorian i Grogu ===
 displayTitle:      Gwiezdne wojny: Mandalorian i Grogu
-cinemaTitles:      GWIEZDNE WOJNY : MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN i GROGU | Gwiezdne Wojny: Mandalorian i Grogu | Gwiezdne wojny : mandalorian i grogu | Gwiezdne wojny: Mandalorian i Grogu | Gwiezdne wojny: Mandalorian i Grogu 3D/dubbing | Gwiezdne wojny: mandalorian i grogu | MANDALORIAN I GROGU | Mandalorian & Grogu | Mandalorian i Grogu | Mandalorian i Grogu [napisy] | Mandalorian i Grogu/napisy | Mandalorian i grogu | Mandalorian i grogu | The Mandalorian and Grogu | The mandalorian and grogu | Мандалорець і Ґроґу
+cinemaTitles:      GWIEZDNE WOJNY : MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN i GROGU | Gwiezdne Wojny: Mandalorian i Grogu | Gwiezdne wojny : mandalorian i grogu | Gwiezdne wojny: Mandalorian i Grogu | Gwiezdne wojny: mandalorian i grogu | MANDALORIAN I GROGU | Mandalorian & Grogu | Mandalorian i Grogu | Mandalorian i Grogu [napisy] | Mandalorian i grogu | Mandalorian i grogu | The Mandalorian and Grogu | The mandalorian and grogu | Мандалорець і Ґроґу
 runtimeMinutes:    132
 releaseYear:       2026
 countries:         USA
@@ -3306,10 +3306,10 @@ cinemaScrapes:
   Kino MOK Centrum / GWIEZDNE WOJNY : MANDALORIAN I GROGU / —
   Kino MOKiS / Mandalorian i Grogu / —
   Kino Na Biegunach / Mandalorian i grogu / —
-  Kino Narie / Gwiezdne wojny: Mandalorian i Grogu 3D/dubbing / —
+  Kino Narie / Gwiezdne wojny: Mandalorian i Grogu / —
   Kino Nowe Horyzonty / Mandalorian i Grogu / 2026
   Kino ODEON / Gwiezdne wojny : mandalorian i grogu / —
-  Kino Oskard / Mandalorian i Grogu/napisy / —
+  Kino Oskard / Mandalorian i Grogu / —
   Kino PCKul / Mandalorian i grogu / —
   Kino Promień / Gwiezdne wojny: Mandalorian i Grogu / —
   Kino Przedwiośnie / Mandalorian i Grogu / 2026
@@ -6162,12 +6162,12 @@ showings:
 
 === Ojczyzna ===
 displayTitle:      Ojczyzna
-cinemaTitles:      Filmowy Klub Seniora: OJCZYZNA | OJCZYZNA | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna - pokaz przedpremierowy | Ojczyzna /napisy | Ojczyzna | Pokaz przedpremierowy | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy
+cinemaTitles:      Filmowy Klub Seniora: OJCZYZNA | OJCZYZNA | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna | Zobacz przedpremierowo
 runtimeMinutes:    82
 releaseYear:       2026
 countries:         Polska, Niemcy, Włochy, Francja
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/unnamed.jpg
-synopsis.length:   2387
+synopsis.length:   2535
 cast:              Sandra Hüller, Hanns Zischler, August Diehl, Anna Madeley, Devid Striesov, Joanna Kulig
 director:          Paweł Pawlikowski
 tmdbId:            1437696
@@ -6206,7 +6206,7 @@ cinemaScrapes:
   Kino 60 Krzeseł / Ojczyzna / —
   Kino Agrafka / OJCZYZNA / 2026
   Kino Apollo / Ojczyzna / —
-  Kino Apollo Wałbrzych / Ojczyzna | pokaz przedpremierowy / —
+  Kino Apollo Wałbrzych / Ojczyzna / —
   Kino Atlantic / Ojczyzna / 2026
   Kino Awangarda 2 / Ojczyzna / —
   Kino Bajka / Ojczyzna / —
@@ -6218,18 +6218,18 @@ cinemaScrapes:
   Kino Kolory / Ojczyzna / —
   Kino Kreska / Ojczyzna / —
   Kino Kultura / Ojczyzna / —
-  Kino Lot / Ojczyzna | pokaz przedpremierowy / —
+  Kino Lot / Ojczyzna / —
   Kino Millenium / Ojczyzna / —
   Kino Muranów / Ojczyzna / 2026
   Kino Muza / Ojczyzna / 2026
   Kino Muzeum / OJCZYZNA / 2026
-  Kino Narie / Ojczyzna /napisy / —
+  Kino Narie / Ojczyzna / —
   Kino Nowe Horyzonty / Ojczyzna / 2026
   Kino Orzeł / Ojczyzna / —
   Kino Oskard / Ojczyzna / —
   Kino PDK / Ojczyzna / —
   Kino Paradox / Ojczyzna / 2026
-  Kino Piast / Ojczyzna | Pokaz przedpremierowy / —
+  Kino Piast / Ojczyzna / —
   Kino Pionier 1907 / OJCZYZNA / 2026
   Kino Pod Baranami / Ojczyzna / —
   Kino Rialto / OJCZYZNA / 2026
@@ -6241,7 +6241,7 @@ cinemaScrapes:
   Kino Wisła / Ojczyzna / 2026
   KinoGram / Ojczyzna / —
   Kinomax / Ojczyzna / —
-  Kinoteatr Rialto / Ojczyzna - pokaz przedpremierowy / —
+  Kinoteatr Rialto / Ojczyzna / —
   Kinoteka / Ojczyzna | Zobacz przedpremierowo / 2026
   Max Kino / Ojczyzna / —
   Patria / Ojczyzna / —
@@ -8230,7 +8230,7 @@ showings:
 
 === Przygoda w muzeum ===
 displayTitle:      Przygoda w muzeum
-cinemaTitles:      Przygoda w muzeum | TOM I JERRY : PRZYGODA W MUZEUM | TOM I JERRY: PRZYGODA W MUZEUM | TOM I JERRY:PRZYGODA W MUZEUM | Tom i Jerry. Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum /dubbing | Tom i jerry. Przygoda w muzeum | Tom i jerry: przygoda w muzeum
+cinemaTitles:      Przygoda w muzeum | TOM I JERRY : PRZYGODA W MUZEUM | TOM I JERRY: PRZYGODA W MUZEUM | TOM I JERRY:PRZYGODA W MUZEUM | Tom i Jerry. Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum | Tom i jerry. Przygoda w muzeum | Tom i jerry: przygoda w muzeum
 runtimeMinutes:    100
 releaseYear:       2025
 countries:         USA, Chiny
@@ -8355,7 +8355,7 @@ cinemaScrapes:
   Kino Moskwa / TOM I JERRY: PRZYGODA W MUZEUM / —
   Kino NCKF EC1 / Tom i Jerry: Przygoda w muzeum / —
   Kino Na Biegunach / Tom i jerry: przygoda w muzeum / —
-  Kino Narie / Tom i Jerry: Przygoda w muzeum /dubbing / —
+  Kino Narie / Tom i Jerry: Przygoda w muzeum / —
   Kino Nawojka / Tom i Jerry: Przygoda w muzeum / —
   Kino Nowe Horyzonty / Tom i Jerry: Przygoda w muzeum / 2025
   Kino ODEON / Tom i jerry. Przygoda w muzeum / —
@@ -8790,7 +8790,7 @@ showings:
 
 === Straszny film ===
 displayTitle:      Straszny film
-cinemaTitles:      STRASZNY FILM | Straszny film | Straszny film /napisy | Straszny film ukraiński dubbing | Straszny film/napisy | Дуже страшне кіно 6
+cinemaTitles:      STRASZNY FILM | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
 runtimeMinutes:    96
 releaseYear:       2026
 countries:         USA, Wielka Brytania
@@ -8910,7 +8910,7 @@ cinemaScrapes:
   Kino Na Biegunach / Straszny film / —
   Kino Narie / Straszny film / —
   Kino ODEON / Straszny film / —
-  Kino Oskard / Straszny film/napisy / —
+  Kino Oskard / Straszny film / —
   Kino PCKul / Straszny film / —
   Kino Planeta / Straszny film / —
   Kino Przedwiośnie / Straszny film / 2026
@@ -8927,7 +8927,7 @@ cinemaScrapes:
   Pionier / Straszny film / —
   Planet Cinema / Straszny film / —
   Przedwiośnie / Straszny film / —
-  Regis / Straszny film /napisy / —
+  Regis / Straszny film / —
 showings:
   2026-06-08  Cinema City Kinepolis         12:50 Sala 11 2D/NAP · 14:10 Sala 14 2D/DUB · 15:10 Sala 11 2D/DUB · 16:30 Sala 14 2D/NAP · 17:30 Sala 11 2D/NAP · 18:50 Sala 14 2D/NAP · 19:50 Sala 11 2D/NAP · 21:10 Sala 14 2D/NAP
   2026-06-08  Cinema City Poznań Plaza      11:40 Sala 8 2D/DUB · 14:00 Sala 8 2D/NAP · 16:20 Sala 8 2D/DUB · 18:40 Sala 8 2D/NAP · 21:00 Sala 8 2D/NAP
@@ -8944,7 +8944,7 @@ showings:
 
 === Straszny film ukraiński dubbing ===
 displayTitle:      Straszny film ukraiński dubbing
-cinemaTitles:      STRASZNY FILM | Straszny film | Straszny film /napisy | Straszny film ukraiński dubbing | Straszny film/napisy | Дуже страшне кіно 6
+cinemaTitles:      STRASZNY FILM | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
 runtimeMinutes:    96
 releaseYear:       2026
 countries:         USA, Wielka Brytania
@@ -9062,7 +9062,7 @@ cinemaScrapes:
   Kino Na Biegunach / Straszny film / —
   Kino Narie / Straszny film / —
   Kino ODEON / Straszny film / —
-  Kino Oskard / Straszny film/napisy / —
+  Kino Oskard / Straszny film / —
   Kino PCKul / Straszny film / —
   Kino Planeta / Straszny film / —
   Kino Przedwiośnie / Straszny film / 2026
@@ -9079,7 +9079,7 @@ cinemaScrapes:
   Pionier / Straszny film / —
   Planet Cinema / Straszny film / —
   Przedwiośnie / Straszny film / —
-  Regis / Straszny film /napisy / —
+  Regis / Straszny film / —
 showings:
   2026-06-08  Cinema City Poznań Plaza      14:20 Sala 1 2D/DUB
   2026-06-09  Cinema City Poznań Plaza      14:20 Sala 1 2D/DUB
@@ -9533,7 +9533,7 @@ showings:
 
 === Tom i Jerry: Przygoda w muzeum ===
 displayTitle:      Tom i Jerry: Przygoda w muzeum
-cinemaTitles:      Przygoda w muzeum | TOM I JERRY : PRZYGODA W MUZEUM | TOM I JERRY: PRZYGODA W MUZEUM | TOM I JERRY:PRZYGODA W MUZEUM | Tom i Jerry. Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum /dubbing | Tom i jerry. Przygoda w muzeum | Tom i jerry: przygoda w muzeum
+cinemaTitles:      Przygoda w muzeum | TOM I JERRY : PRZYGODA W MUZEUM | TOM I JERRY: PRZYGODA W MUZEUM | TOM I JERRY:PRZYGODA W MUZEUM | Tom i Jerry. Przygoda w muzeum | Tom i Jerry: Przygoda w muzeum | Tom i jerry. Przygoda w muzeum | Tom i jerry: przygoda w muzeum
 runtimeMinutes:    100
 releaseYear:       2025
 countries:         USA, Chiny
@@ -9660,7 +9660,7 @@ cinemaScrapes:
   Kino Moskwa / TOM I JERRY: PRZYGODA W MUZEUM / —
   Kino NCKF EC1 / Tom i Jerry: Przygoda w muzeum / —
   Kino Na Biegunach / Tom i jerry: przygoda w muzeum / —
-  Kino Narie / Tom i Jerry: Przygoda w muzeum /dubbing / —
+  Kino Narie / Tom i Jerry: Przygoda w muzeum / —
   Kino Nawojka / Tom i Jerry: Przygoda w muzeum / —
   Kino Nowe Horyzonty / Tom i Jerry: Przygoda w muzeum / 2025
   Kino ODEON / Tom i jerry. Przygoda w muzeum / —
@@ -9703,7 +9703,7 @@ showings:
 
 === Toy Story 5 ===
 displayTitle:      Toy Story 5
-cinemaTitles:      TOY STORY 5 | Toy Story 5 | Toy Story 5 /dubbing | Toy Story 5 ukraiński dubbing | Toy story 5 | ІСТОРІЯ ІГРАШОК 5
+cinemaTitles:      TOY STORY 5 | Toy Story 5 | Toy Story 5 ukraiński dubbing | Toy story 5 | ІСТОРІЯ ІГРАШОК 5
 runtimeMinutes:    102
 releaseYear:       2026
 countries:         Japonia, USA
@@ -9824,7 +9824,7 @@ cinemaScrapes:
   Kino MOKiS / Toy Story 5 / —
   Kino Millenium / Toy story 5 / —
   Kino Na Biegunach / Toy story 5 / —
-  Kino Narie / Toy Story 5 /dubbing / —
+  Kino Narie / Toy Story 5 / —
   Kino ODEON / Toy story 5 / —
   Kino Oskard / Toy Story 5 / —
   Kino Pod Baranami / Toy Story 5 / —
@@ -9869,7 +9869,7 @@ showings:
 
 === Toy Story 5 ukraiński dubbing ===
 displayTitle:      Toy Story 5 ukraiński dubbing
-cinemaTitles:      TOY STORY 5 | Toy Story 5 | Toy Story 5 /dubbing | Toy Story 5 ukraiński dubbing | Toy story 5 | ІСТОРІЯ ІГРАШОК 5
+cinemaTitles:      TOY STORY 5 | Toy Story 5 | Toy Story 5 ukraiński dubbing | Toy story 5 | ІСТОРІЯ ІГРАШОК 5
 runtimeMinutes:    102
 releaseYear:       2026
 countries:         Japonia, USA
@@ -9988,7 +9988,7 @@ cinemaScrapes:
   Kino MOKiS / Toy Story 5 / —
   Kino Millenium / Toy story 5 / —
   Kino Na Biegunach / Toy story 5 / —
-  Kino Narie / Toy Story 5 /dubbing / —
+  Kino Narie / Toy Story 5 / —
   Kino ODEON / Toy story 5 / —
   Kino Oskard / Toy Story 5 / —
   Kino Pod Baranami / Toy Story 5 / —
@@ -10660,7 +10660,7 @@ showings:
 
 === Zawodowcy ===
 displayTitle:      Zawodowcy
-cinemaTitles:      ZAWODOWCY | Zawodowcy | Zawodowcy /napisy
+cinemaTitles:      ZAWODOWCY | Zawodowcy
 runtimeMinutes:    97
 releaseYear:       2026
 countries:         Wielka Brytania, USA
@@ -10788,7 +10788,7 @@ cinemaScrapes:
   Kino Malta Charlie Monroe / Zawodowcy / —
   Kino Moskwa / ZAWODOWCY / —
   Kino Na Biegunach / Zawodowcy / —
-  Kino Narie / Zawodowcy /napisy / —
+  Kino Narie / Zawodowcy / —
   Kino Nowe Horyzonty / Zawodowcy / —
   Kino ODEON / Zawodowcy / —
   Kino Oskard / ZAWODOWCY / —

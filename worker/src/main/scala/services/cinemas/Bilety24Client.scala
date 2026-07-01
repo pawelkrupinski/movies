@@ -56,10 +56,18 @@ object Bilety24Client {
   def parseEvent(html: String, cinema: Cinema, baseUrl: String, eventId: String): Option[CinemaMovie] = {
     val document = Jsoup.parse(html)
 
-    val title = Option(document.selectFirst("div.title-name[title]")).map(_.attr("title").trim)
+    // Peel a language/format suffix ("Supergirl/dubbing", "… /napisy") off the
+    // title into format tokens, so the dub/subtitle editions collapse onto one
+    // clean-titled film instead of each fragmenting into its own row. The buy
+    // button carries its own per-screening format when present; the title token
+    // is the fallback for the (common) case where the button format span is empty.
+    val titled   = Option(document.selectFirst("div.title-name[title]")).map(_.attr("title").trim)
       .orElse(Option(document.selectFirst(".title-name")).map(_.text.trim))
       .map(t => TitleNormalizer.cinemaClean(cinema.slug, t))
       .filter(_.nonEmpty)
+      .map(ScraperParse.extractFormatTags)
+    val title    = titled.map(_._1)
+    val titleFmt = titled.map(_._2).getOrElse(Nil)
 
     // Buy buttons are rendered twice (desktop + mobile) — dedup by booking URL.
     val slots = document.select("a.b24-button[title^=\"Kup bilet - Film:\"]").asScala.toSeq.flatMap { a =>
@@ -72,9 +80,9 @@ object Bilety24Client {
       else ButtonTitlePat.findFirstMatchIn(a.attr("title")).flatMap { m =>
         Try(LocalDateTime.parse(s"${m.group(2)} ${m.group(3)}", DateTimeFmt)).toOption.map { dt =>
           val booking = if (href.startsWith("http")) href else baseUrl + href
-          val format  = Option(a.selectFirst("span.b24-button__format")).map(_.text.trim)
+          val buttonFmt = Option(a.selectFirst("span.b24-button__format")).map(_.text.trim)
                           .filter(_.nonEmpty).map(_.split("\\s+").toList.filter(_.nonEmpty)).getOrElse(Nil)
-          Showtime(dt, Some(booking), None, format)
+          Showtime(dt, Some(booking), None, if (buttonFmt.nonEmpty) buttonFmt else titleFmt)
         }
       }
     }.distinctBy(_.dateTime).sortBy(_.dateTime)
