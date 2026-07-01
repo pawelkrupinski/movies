@@ -157,28 +157,42 @@ jobs:
                   if-no-files-found: error
 
             # Manually-triggered publish of the signed AAB to Google Play's
-            # `internal` testing track. workflow_dispatch ONLY — a normal push/PR
-            # never ships to Play; you click "Run workflow" in the Actions tab
-            # when you want to release. Gated on PLAY_SERVICE_ACCOUNT_JSON: absent
-            # → the step below is skipped and a notice explains how to enable it,
-            # so the workflow still passes without the secret.
+            # `internal` testing track via Gradle Play Publisher (the `play {}`
+            # block in app/build.gradle.kts). workflow_dispatch ONLY — a normal
+            # push/PR never ships to Play; you click "Run workflow" in the Actions
+            # tab when you want to release. Gated on PLAY_SERVICE_ACCOUNT_JSON:
+            # absent → the step below is skipped and a notice explains how to
+            # enable it, so the workflow still passes without the secret.
             #
-            # Prerequisites (one-time, outside CI): the app `pl.kinowo` must
-            # already exist in the Play Console with its FIRST AAB uploaded
+            # `publishReleaseBundle` uploads ONLY the app binary + its R8 mapping
+            # (auto-detected → Play can symbolicate crashes); it does NOT touch
+            # the store listing/description. Editing descriptions is a separate,
+            # deliberate `publishReleaseListing` — see android/PLAY_PUBLISHING.md —
+            # so a routine deploy can't clobber the live listing. (Switch the task
+            # to `publishRelease` here if you ever want CI to push both.)
+            #
+            # Prerequisites (one-time, outside CI): the app `net.pawel.kinowo`
+            # must already exist in the Play Console with its FIRST AAB uploaded
             # manually once; a Google Cloud service account with the Play Android
             # Developer API enabled + release permission in the Console; its JSON
-            # key stored as the PLAY_SERVICE_ACCOUNT_JSON repo secret. mappingFile
-            # uploads the R8 deobfuscation map so Play can symbolicate crashes.
+            # key stored as the PLAY_SERVICE_ACCOUNT_JSON repo secret.
             - name: Publish to Google Play (internal)
               if: ${{ github.event_name == 'workflow_dispatch' && env.PLAY_JSON != '' }}
-              uses: r0adkll/upload-google-play@v1
-              with:
-                  serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-                  packageName: net.pawel.kinowo
-                  releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
-                  mappingFile: android/app/build/outputs/mapping/release/mapping.txt
-                  track: internal
-                  status: completed
+              env:
+                  # GPP reads the service-account key from a file; write the
+                  # secret out and point the build at it (same env-var-or-local
+                  # -file shape build.gradle.kts uses). Reuse the signing env +
+                  # version code so the re-resolved bundleRelease is the identical
+                  # signed AAB assembled above (up-to-date, not rebuilt).
+                  KINOWO_RELEASE_STORE_FILE: ${{ steps.keystore.outputs.store_file }}
+                  KINOWO_RELEASE_STORE_PASSWORD: ${{ secrets.KINOWO_RELEASE_STORE_PASSWORD }}
+                  KINOWO_RELEASE_KEY_ALIAS: ${{ secrets.KINOWO_RELEASE_KEY_ALIAS }}
+                  KINOWO_RELEASE_KEY_PASSWORD: ${{ secrets.KINOWO_RELEASE_KEY_PASSWORD }}
+                  KINOWO_VERSION_CODE: ${{ github.run_number }}
+              run: |
+                  printf '%s' "$PLAY_JSON" > "$RUNNER_TEMP/play-credentials.json"
+                  KINOWO_PLAY_CREDENTIALS_FILE="$RUNNER_TEMP/play-credentials.json" \
+                      ./gradlew --no-daemon :app:publishReleaseBundle
 
             - name: Note skipped Play publish
               if: ${{ github.event_name == 'workflow_dispatch' && env.PLAY_JSON == '' }}

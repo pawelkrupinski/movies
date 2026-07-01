@@ -1,3 +1,4 @@
+import com.github.triplet.gradle.androidpublisher.ReleaseStatus
 import java.io.File
 import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -6,6 +7,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("com.github.triplet.play")
 }
 
 // Release signing is wired only when credentials are present — from CI env
@@ -24,6 +26,17 @@ fun signingValue(envName: String, propName: String): String? =
 val releaseStorePath = signingValue("KINOWO_RELEASE_STORE_FILE", "storeFile")
     ?.let { rootProject.file(it) }
 val hasReleaseSigning = releaseStorePath?.exists() == true
+
+// Google Play publishing (Gradle Play Publisher) reads a service-account JSON
+// key. Same env-var-or-local-file shape as release signing above: CI decodes the
+// PLAY_SERVICE_ACCOUNT_JSON secret to a file and points KINOWO_PLAY_CREDENTIALS_FILE
+// at it; locally, drop a gitignored `play-credentials.json` in android/. With
+// neither, the play tasks stay unconfigured and fail fast only if invoked — a
+// normal build never needs Play credentials.
+val playCredentialsFile: File? =
+    (System.getenv("KINOWO_PLAY_CREDENTIALS_FILE") ?: "play-credentials.json")
+        .let { rootProject.file(it) }
+        .takeIf { it.exists() }
 
 android {
     namespace = "pl.kinowo"
@@ -158,6 +171,39 @@ android {
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
+
+    // Only the prod `release` variant may ever reach Play. `tuneRelease` and
+    // `releaseFast` share the `net.pawel.kinowo` applicationId, so leaving their
+    // Play tasks enabled would let a stray `publishBundle` (all-variants) push a
+    // tweak/unminified build over the real listing — disable them explicitly.
+    playConfigs {
+        register("tuneRelease") { enabled.set(false) }
+        register("releaseFast") { enabled.set(false) }
+    }
+}
+
+// ── Google Play publishing (Gradle Play Publisher) ───────────────────────────
+// `./gradlew publishReleaseBundle`  — build the signed AAB and upload it to the
+//                                     `internal` track (what CI runs on a manual
+//                                     release; see .github/workflows/android.yml).
+// `./gradlew bootstrapReleaseListing` — download the CURRENT live store listing
+//                                     (title/short/full description, graphics)
+//                                     into src/main/play/ so you can edit it.
+// `./gradlew publishReleaseListing`  — push ONLY the store listing/description
+//                                     from src/main/play/ (see android/PLAY_PUBLISHING.md).
+//                                     No-op if no metadata files exist, so it
+//                                     never wipes the live listing blindly.
+// `./gradlew promoteReleaseArtifact -Ptrack=production` — promote the latest
+//                                     internal release to a wider track.
+// All of these need the service-account key (playCredentialsFile above).
+play {
+    playCredentialsFile?.let { serviceAccountCredentials.set(it) }
+    // Play requires an App Bundle, not an APK.
+    defaultToAppBundles.set(true)
+    // Land on the closed `internal` testing track, fully rolled out — matches
+    // the manual-deploy behaviour we already had. Promote onward deliberately.
+    track.set("internal")
+    releaseStatus.set(ReleaseStatus.COMPLETED)
 }
 
 // AGP 9 removed the `android.kotlinOptions` DSL; Kotlin compiler settings now

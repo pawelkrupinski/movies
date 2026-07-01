@@ -16,3 +16,6 @@ local.properties
 *.keystore
 *.jks.base64
 keystore.properties
+
+# Google Play service-account key — never commit it (grants release access).
+play-credentials.json
