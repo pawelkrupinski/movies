@@ -391,6 +391,30 @@
       "targets": [
         { "refId": "A", "expr": "sum by (kind) (rate(kinowo_worker_movie_change_update_kinds_total[$__rate_interval])) * 60", "legendFormat": "{{kind}}" }
       ]
+    },
+    {
+      "id": 41,
+      "title": "kinowo — total upcoming showtimes served (all cities)",
+      "description": "The general total of individual upcoming showtimes (single dated slots) the source `movies` collection would serve across every city — sum(kinowo_worker_showtimes), sampled off-band every 5 min by WorkerShowtimesMetrics through the REAL projection path, gated on the same readyToProject rule the projector writes by, counting only slots still in the future in each city's own zone. The slot-volume complement to the films-served panels above: films can hold steady while showtime volume swings (a chain adds evening slots, a venue drops a screen). A cliff here with the film count flat means slots were lost without a whole film disappearing.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 157 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(kinowo_worker_showtimes)", "legendFormat": "total showtimes" }
+      ]
+    },
+    {
+      "id": 42,
+      "title": "kinowo — upcoming showtimes served per city",
+      "description": "Per-city breakdown of the panel to the left: individual upcoming showtimes (single dated slots) the source `movies` collection would serve on each /:city/ page, from kinowo_worker_showtimes{city} (worker-side, projected from `movies`, sampled every 5 min, upcoming-only, readyToProject-gated). Every slot belongs to exactly one city, so these series sum to the total panel. A single city's showtime volume cratering while its film count holds is a venue that lost screens/sessions.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 157 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "kinowo_worker_showtimes", "legendFormat": "{{city}}" }
+      ]
     }
   ]
 }

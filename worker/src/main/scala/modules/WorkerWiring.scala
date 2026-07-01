@@ -463,6 +463,11 @@ class WorkerWiring extends play.api.Logging {
   // Grafana panel overlays the two and a divergence flags read-model drift.
   lazy val sourceFilmsMetrics: services.metrics.WorkerSourceFilmsMetrics =
     new services.metrics.WorkerSourceFilmsMetrics(movieRepository, metricsRegistry)
+  // Per-city (and, summed, total) count of individual upcoming SHOWTIMES the source
+  // `movies` collection would serve — the slot-volume complement to sourceFilmsMetrics
+  // (which counts distinct films), exposed as kinowo_worker_showtimes{city}.
+  lazy val showtimesMetrics: services.metrics.WorkerShowtimesMetrics =
+    new services.metrics.WorkerShowtimesMetrics(movieRepository, metricsRegistry)
   // Per-site backlog of resolved films whose rating has NEVER run — the never-run
   // latency the first-attempt histogram can't show (see RatingRunCensus).
   lazy val ratingRunCensus: services.metrics.RatingRunCensus =
@@ -965,6 +970,8 @@ class WorkerWiring extends play.api.Logging {
     // Per-city would-serve count off the source collection, to overlay against the
     // web's read-model gauge (off-band, read-only paged scan).
     sourceFilmsMetrics.start()
+    // Per-city upcoming-showtime volume off the source collection (off-band scan).
+    showtimesMetrics.start()
     // Census the per-site never-run rating backlog (off-band, in-memory scan).
     ratingRunCensus.start()
   }
@@ -977,6 +984,7 @@ class WorkerWiring extends play.api.Logging {
   def stop(): Unit = {
     envConfigService.stop()
     ratingRunCensus.stop()
+    showtimesMetrics.stop()
     sourceFilmsMetrics.stop()
     corpusMetrics.stop()
     stagingStuckAlerter.foreach(_.stop())
