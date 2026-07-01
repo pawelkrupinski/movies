@@ -204,6 +204,17 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     b.toList shouldBe List("A")
   }
 
+  "InMemoryMovieRepository.updateIfPresent" should "skip the write and the change notification when nothing changed (empty patch)" in {
+    val repository = new InMemoryMovieRepository(Seq(("A", Some(2024), mkEnrichment("tt-a"))))
+    val seen = scala.collection.mutable.ListBuffer.empty[String]
+    repository.watchUpserts(r => seen += r.title)
+    repository.upserts.clear()
+    val unchanged = mkEnrichment("tt-a")
+    repository.updateIfPresent("A", Some(2024), unchanged, unchanged) shouldBe true  // present, already up to date
+    repository.upserts shouldBe empty   // no pure-updatedAt no-op write
+    seen shouldBe empty                 // and no change-stream event
+  }
+
   "InMemoryMovieRepository.findAll" should "re-derive title/year from the _id + record like Mongo, not return them verbatim" in {
     // The fake must match `MongoMovieRepository`, which persists only `_id` +
     // `sourceData` and re-derives the display title on read. Stored under an

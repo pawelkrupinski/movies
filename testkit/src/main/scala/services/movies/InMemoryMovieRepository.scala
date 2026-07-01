@@ -80,12 +80,17 @@ class InMemoryMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Se
         // `before` and `after` differ get overwritten; everything else keeps
         // whatever the current store has. Tests for the audit-clobber race
         // depend on this.
-        val patch  = MovieRecordPatch.diff(before, after)
-        val merged = patch.applyTo(stored.record)
-        store.put(id, StoredMovieRecord(t, y, merged))
-        upserts.append((t, y, merged))
-        notifyWatcher(t, y, merged)
-        true
+        val patch = MovieRecordPatch.diff(before, after)
+        // Nothing changed — skip the write + change notification, exactly as
+        // MongoMovieRepository does (no pure-`updatedAt` no-op event).
+        if (patch.isEmpty) true
+        else {
+          val merged = patch.applyTo(stored.record)
+          store.put(id, StoredMovieRecord(t, y, merged))
+          upserts.append((t, y, merged))
+          notifyWatcher(t, y, merged)
+          true
+        }
     }
   }
 

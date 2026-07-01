@@ -471,7 +471,14 @@ class MongoMovieRepository(
     case Some(c) =>
       val id    = documentId(title, year)
       val patch = MovieRecordPatch.diff(before, after)
-      Try {
+      // Nothing actually changed — the stored row already equals `after`. Skip
+      // the write, and with it the pure-`updatedAt` no-op `$set` this used to emit
+      // plus the change-stream event that wakes the cache + read-model projector
+      // for nothing. "Present and already up to date" is still success; the sole
+      // guarded caller (MovieCache.putIfPresent) never reaches here with an empty
+      // patch, so this only fires for other/defensive callers.
+      if (patch.isEmpty) true
+      else Try {
         // MongoDB update-operator paths treat '.' as a nesting separator, so a
         // per-source `$set`/`$unset` on `sourceData.<displayName>` is rejected
         // (code 56, "empty field name") when a source's displayName contains a
@@ -500,8 +507,9 @@ class MongoMovieRepository(
   // Translate a `MovieRecordPatch` into a `$set`/`$unset` Mongo update. Each
   // scalar field gets its own atom; the `data` map gets per-source
   // `sourceData.<sourceName>` paths so a Tmdb-only refresh doesn't touch a
-  // cinema's slot and vice versa. `updatedAt` always bumps so write tracking
-  // works even when the patch is otherwise empty (the row was touched).
+  // cinema's slot and vice versa. `updatedAt` bumps alongside the real change;
+  // `updateIfPresent` skips an empty patch before reaching here, so this never
+  // emits an `updatedAt`-only no-op write.
   private def patchToUpdate(p: MovieRecordPatch): Bson = {
     val atoms = scala.collection.mutable.ListBuffer.empty[Bson]
     def scalar[A](field: String, u: FieldUpdate[A], toBson: A => org.bson.BsonValue): Unit = u match {
