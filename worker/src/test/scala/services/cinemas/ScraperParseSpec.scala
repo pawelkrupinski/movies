@@ -75,6 +75,15 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.extractFormatTags("Film lektor")                shouldBe (("Film", List("LEK")))
   }
 
+  // Nove Kino (Atlantic/Wisła) separates the format with an EN-DASH, not a hyphen
+  // ("Wielkie piękno – napisy"); the bespoke ` - `-only splitter it used to have
+  // missed that and left the suffix in the title (lost the badge, risked the
+  // dub/napisy slot flip-flop). A real dash-bearing title still survives.
+  it should "strip a format suffix after an en-dash, leaving a real dash-bearing title intact" in {
+    ScraperParse.extractFormatTags("Wielkie piękno – napisy") shouldBe (("Wielkie piękno", List("NAP")))
+    ScraperParse.extractFormatTags("Mission - Impossible")    shouldBe (("Mission - Impossible", Nil))
+  }
+
   // Planet Cinema Oświęcim glues the separator to the LAST title word, then
   // space-separates the format: "Straszny Film- 2D dubbing". Dropping the format
   // words must not leave a dangling "Film-", or the dubbed/subtitled variants

@@ -1713,7 +1713,7 @@ showings:
 
 === Drugie życie ===
 displayTitle:      Drugie życie
-cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie (calle málaga) | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie - pokaz przedpremierowy | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
+cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie (calle málaga) | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
 runtimeMinutes:    116
 releaseYear:       2025
 countries:         Hiszpania, Niemcy, Francja, Belgia, Maroko
@@ -1799,7 +1799,7 @@ cinemaScrapes:
   Kino Amok / Drugie życie | przedpremierowo / —
   Kino Apollo / Drugie życie / —
   Kino Apollo Wałbrzych / Drugie życie / —
-  Kino Atlantic / Pora dla Seniora: Drugie życie - pokaz przedpremierowy / 2025
+  Kino Atlantic / Pora dla Seniora: Drugie życie / 2025
   Kino Awangarda 2 / Drugie życie / —
   Kino Bajka / Drugie życie / —
   Kino CK Lublin / Filmoterapia z Inspirą: Drugie życie / —
@@ -1858,7 +1858,7 @@ showings:
 
 === Drugie życie - Kino Kobiet ===
 displayTitle:      Drugie życie - Kino Kobiet
-cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie (calle málaga) | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie - pokaz przedpremierowy | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
+cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie (calle málaga) | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
 runtimeMinutes:    116
 releaseYear:       2025
 countries:         Hiszpania, Niemcy, Francja, Belgia, Maroko
@@ -1942,7 +1942,7 @@ cinemaScrapes:
   Kino Amok / Drugie życie | przedpremierowo / —
   Kino Apollo / Drugie życie / —
   Kino Apollo Wałbrzych / Drugie życie / —
-  Kino Atlantic / Pora dla Seniora: Drugie życie - pokaz przedpremierowy / 2025
+  Kino Atlantic / Pora dla Seniora: Drugie życie / 2025
   Kino Awangarda 2 / Drugie życie / —
   Kino Bajka / Drugie życie / —
   Kino CK Lublin / Filmoterapia z Inspirą: Drugie życie / —
@@ -2780,7 +2780,7 @@ showings:
 
 === Filmowy Klub Seniora: Drugie życie ===
 displayTitle:      Filmowy Klub Seniora: Drugie życie
-cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie (calle málaga) | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie - pokaz przedpremierowy | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
+cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie (calle málaga) | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
 runtimeMinutes:    116
 releaseYear:       2025
 countries:         Hiszpania, Niemcy, Francja, Belgia, Maroko
@@ -2864,7 +2864,7 @@ cinemaScrapes:
   Kino Amok / Drugie życie | przedpremierowo / —
   Kino Apollo / Drugie życie / —
   Kino Apollo Wałbrzych / Drugie życie / —
-  Kino Atlantic / Pora dla Seniora: Drugie życie - pokaz przedpremierowy / 2025
+  Kino Atlantic / Pora dla Seniora: Drugie życie / 2025
   Kino Awangarda 2 / Drugie życie / —
   Kino Bajka / Drugie życie / —
   Kino CK Lublin / Filmoterapia z Inspirą: Drugie życie / —
@@ -2958,7 +2958,7 @@ cinemaScrapes:
   Kino Agrafka / OJCZYZNA / 2026
   Kino Apollo / Ojczyzna / —
   Kino Apollo Wałbrzych / Ojczyzna | pokaz przedpremierowy / —
-  Kino Atlantic / Ojczyzna - pokaz przedpremierowy / 2026
+  Kino Atlantic / Ojczyzna / 2026
   Kino Awangarda 2 / Ojczyzna / —
   Kino Bajka / Ojczyzna / —
   Kino Bajka Kluczbork / Ojczyzna / —
@@ -2989,7 +2989,7 @@ cinemaScrapes:
   Kino Stary Młyn / Ojczyzna / —
   Kino Studyjne Kadr / Ojczyzna / —
   Kino Twierdza / Ojczyzna / —
-  Kino Wisła / Ojczyzna - pokaz przedpremierowy / 2026
+  Kino Wisła / Ojczyzna / 2026
   KinoGram / Ojczyzna / —
   Kinomax / Ojczyzna / —
   Kinoteatr Rialto / Ojczyzna - pokaz przedpremierowy / —
@@ -3693,7 +3693,7 @@ showings:
 
 === Kino bez barier: Drugie życie (AD + CC + PJM) ===
 displayTitle:      Kino bez barier: Drugie życie (AD + CC + PJM)
-cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie (calle málaga) | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie - pokaz przedpremierowy | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
+cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie (calle málaga) | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
 runtimeMinutes:    116
 releaseYear:       2025
 countries:         Hiszpania, Niemcy, Francja, Belgia, Maroko
@@ -3777,7 +3777,7 @@ cinemaScrapes:
   Kino Amok / Drugie życie | przedpremierowo / —
   Kino Apollo / Drugie życie / —
   Kino Apollo Wałbrzych / Drugie życie / —
-  Kino Atlantic / Pora dla Seniora: Drugie życie - pokaz przedpremierowy / 2025
+  Kino Atlantic / Pora dla Seniora: Drugie życie / 2025
   Kino Awangarda 2 / Drugie życie / —
   Kino Bajka / Drugie życie / —
   Kino CK Lublin / Filmoterapia z Inspirą: Drugie życie / —
@@ -3828,7 +3828,7 @@ showings:
 
 === Kino bez barier: Drugie życie (AD + CC) ===
 displayTitle:      Kino bez barier: Drugie życie (AD + CC)
-cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie (calle málaga) | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie - pokaz przedpremierowy | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
+cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie (calle málaga) | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
 runtimeMinutes:    116
 releaseYear:       2025
 countries:         Hiszpania, Niemcy, Francja, Belgia, Maroko
@@ -3912,7 +3912,7 @@ cinemaScrapes:
   Kino Amok / Drugie życie | przedpremierowo / —
   Kino Apollo / Drugie życie / —
   Kino Apollo Wałbrzych / Drugie życie / —
-  Kino Atlantic / Pora dla Seniora: Drugie życie - pokaz przedpremierowy / 2025
+  Kino Atlantic / Pora dla Seniora: Drugie życie / 2025
   Kino Awangarda 2 / Drugie życie / —
   Kino Bajka / Drugie życie / —
   Kino CK Lublin / Filmoterapia z Inspirą: Drugie życie / —
@@ -6207,7 +6207,7 @@ cinemaScrapes:
   Kino Agrafka / OJCZYZNA / 2026
   Kino Apollo / Ojczyzna / —
   Kino Apollo Wałbrzych / Ojczyzna | pokaz przedpremierowy / —
-  Kino Atlantic / Ojczyzna - pokaz przedpremierowy / 2026
+  Kino Atlantic / Ojczyzna / 2026
   Kino Awangarda 2 / Ojczyzna / —
   Kino Bajka / Ojczyzna / —
   Kino Bajka Kluczbork / Ojczyzna / —
@@ -6238,7 +6238,7 @@ cinemaScrapes:
   Kino Stary Młyn / Ojczyzna / —
   Kino Studyjne Kadr / Ojczyzna / —
   Kino Twierdza / Ojczyzna / —
-  Kino Wisła / Ojczyzna - pokaz przedpremierowy / 2026
+  Kino Wisła / Ojczyzna / 2026
   KinoGram / Ojczyzna / —
   Kinomax / Ojczyzna / —
   Kinoteatr Rialto / Ojczyzna - pokaz przedpremierowy / —

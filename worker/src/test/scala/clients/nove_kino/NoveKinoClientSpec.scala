@@ -58,9 +58,4 @@ class NoveKinoClientSpec extends AnyFlatSpec with Matchers {
     synopsis should not include ("Opis filmu")             // the panel header is dropped
   }
 
-  "NoveKinoClient.parseTitle" should "split format suffixes but leave dash-bearing titles intact" in {
-    NoveKinoClient.parseTitle("Zawodowcy - napisy")     shouldBe ("Zawodowcy", List("NAP"))
-    NoveKinoClient.parseTitle("Coco - dubbing 3D")      shouldBe ("Coco", List("DUB", "3D"))
-    NoveKinoClient.parseTitle("Mission - Impossible")   shouldBe ("Mission - Impossible", Nil)
-  }
 }
