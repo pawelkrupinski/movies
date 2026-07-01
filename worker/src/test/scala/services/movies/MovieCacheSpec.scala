@@ -632,6 +632,18 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     Showtime(parsed, bookingUrl = None)
   }
 
+  // Register a change-stream watcher on the repo and return a counter that ticks
+  // for every emission — upsert OR delete — the fan-out fires. Prod attaches the
+  // MovieCache AND the ReadModelProjector to this stream, so an emission means a
+  // reprojection. Asserting the counter stays 0 across a re-scrape proves the
+  // scrape produced no downstream churn, a strictly stronger claim than an empty
+  // `upserts` buffer (which counts only one of the two write paths).
+  private def changeStreamEmissions(repo: InMemoryMovieRepository): java.util.concurrent.atomic.AtomicInteger = {
+    val emitted = new java.util.concurrent.atomic.AtomicInteger(0)
+    repo.watchChanges(_ => { emitted.incrementAndGet(); () }, _ => { emitted.incrementAndGet(); () })
+    emitted
+  }
+
   private def cinemaMovie(title: String, cinema: Cinema, year: Option[Int] = Some(2026),
                           poster: Option[String] = None, showtimes: Seq[Showtime] = Seq.empty,
                           countries: Seq[String] = Seq.empty, synopsis: Option[String] = None): CinemaMovie =
@@ -684,11 +696,13 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Foo", Multikino, showtimes = Seq(a, b, c))))
     repository.upserts should not be empty   // first scrape established the slot
     repository.upserts.clear()
+    val emissions = changeStreamEmissions(repository)
     // Same three showings, different order — the canonical sort makes the stored
     // slot identical, so the write-through equality guard skips it (no write, no
     // change-stream event). Without the ingestion sort this fired a redundant write.
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Foo", Multikino, showtimes = Seq(c, a, b))))
     repository.upserts shouldBe empty
+    emissions.get() shouldBe 0               // no write-through → no change-stream emission → no reprojection
   }
 
   it should "NOT delete an already-past showing when a re-scrape drops it (retain it → no churn write)" in {
@@ -700,9 +714,11 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Foo", Multikino, showtimes = Seq(past, future))))
     repo.upserts should not be empty      // first scrape established the slot
     repo.upserts.clear()
+    val emissions = changeStreamEmissions(repo)
     // Cinema no longer lists the now-past 18:00 showing; only the future one.
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Foo", Multikino, showtimes = Seq(future))))
     repo.upserts shouldBe empty           // past showing retained → slot unchanged → no write
+    emissions.get() shouldBe 0            // no write → nothing on the change stream → no reprojection
   }
 
   it should "flag the second cinema as new when it scrapes a film already in the cache from another cinema" in {
