@@ -21,6 +21,27 @@ class KinoParadoxClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     client.fetch() should not be empty
   }
 
+  it should "fetch per-film detail (synopsis, director, genre, runtime, country, poster, language) from the /naekranie page" in {
+    // Deferred detail: the EnrichDetails task calls fetchFilmDetail with the
+    // slot's /naekranie/<slug> filmUrl. Replays the recorded detail page.
+    val d = client.fetchFilmDetail("https://kinoparadox.pl/naekranie/chlopiec-na-krancach-swiata").value
+    d.director        should contain("Grzegorz Wacławek")
+    d.genres          should contain("animacja")
+    d.runtimeMinutes  shouldBe Some(88)
+    d.releaseYear     shouldBe Some(2026)
+    d.countries       should contain allOf ("Polska", "Kanada", "Hiszpania")
+    d.synopsis.value  should include("Omul")
+    d.posterUrl.value should include("uploads/event")
+    // "Wersja językowa: polski lektor" → a per-film LEK badge for the showings.
+    d.format          shouldBe List("LEK")
+  }
+
+  it should "expose itself as a deferred DetailEnricher resolving TMDB from the listing" in {
+    client                       shouldBe a[services.cinemas.DetailEnricher]
+    client.detailGroup           shouldBe "kino-paradox"
+    client.defersTmdbResolution  shouldBe false
+  }
+
   it should "tag every film with KinoParadox" in {
     client.fetch().map(_.cinema).toSet shouldBe Set(KinoParadox)
   }

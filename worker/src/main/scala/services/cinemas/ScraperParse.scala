@@ -187,6 +187,28 @@ private[cinemas] object ScraperParse {
       .filter(FormatToken.contains)
       .foreach(out.add)
 
+  /** The [[FormatToken]]s (NAP/DUB/LEK/2D/…) named as whole words anywhere in
+   *  `text` — a language/version line like "polski lektor" or "napisy polskie",
+   *  which some cinemas expose as a detail-page field rather than a title suffix.
+   *  De-duplicated and sorted for a stable order. */
+  def formatTokensIn(text: String): List[String] = {
+    val words = text.toLowerCase(Locale.ROOT).split("""[^\p{L}\p{N}]+""").toSet
+    FormatToken.iterator.collect { case (w, t) if words.contains(w) => t }.toList.distinct.sorted
+  }
+
+  private val FourDigitYear = """(?:19|20)\d{2}""".r
+
+  /** A cinema "production" line — "USA 2026", "Polska, Kanada, Hiszpania, 2026" —
+   *  split into (production countries, release year). The year is the 4-digit
+   *  part; the remaining comma/slash-separated parts are the countries (verbatim,
+   *  canonicalised later in `recordCinemaScrape`). */
+  def productionMeta(s: String): (List[String], Option[Int]) = {
+    val year = FourDigitYear.findFirstIn(s).map(_.toInt)
+    val countries = year.foldLeft(s)((acc, y) => acc.replace(y.toString, ""))
+      .split("[,/]").iterator.map(_.trim).filter(_.nonEmpty).toList
+    (countries, year)
+  }
+
   /** Canonical `https://www.youtube.com/watch?v=<id>` form for a YouTube
     * embed / watch / `youtu.be` URL; Vimeo URLs pass through unchanged for the
     * view layer's `TrailerEmbed` to reshape, and anything else is dropped. Each
