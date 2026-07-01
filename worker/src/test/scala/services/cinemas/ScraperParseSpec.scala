@@ -109,6 +109,17 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.extractFormatTags("Monterey Pop_DKF")    shouldBe (("Monterey Pop_DKF", Nil))
   }
 
+  // Kino Oskard (bilety24) glues the version word with a SLASH and no spaces —
+  // "Supergirl/dubbing", "…dzień/napisy" — so the variants must un-glue + merge
+  // like the underscore case; a real slashed title ("AC/DC", "Face/Off") whose
+  // word after the slash isn't a version word must be left whole.
+  it should "un-glue a slash-glued version word but keep a real slashed title" in {
+    ScraperParse.extractFormatTags("Supergirl/dubbing")             shouldBe (("Supergirl", List("DUB")))
+    ScraperParse.extractFormatTags("Spider-Man. Nowy dzień/napisy") shouldBe (("Spider-Man. Nowy dzień", List("NAP")))
+    ScraperParse.extractFormatTags("AC/DC")                         shouldBe (("AC/DC", Nil))
+    ScraperParse.extractFormatTags("Face/Off")                      shouldBe (("Face/Off", Nil))
+  }
+
   it should "strip non-version words (dolby, atmos) without emitting a token for them" in {
     ScraperParse.extractFormatTags("Dzień objawienia (2D NAPISY DOLBY ATMOS)") shouldBe
       (("Dzień objawienia", List("2D", "NAP")))
