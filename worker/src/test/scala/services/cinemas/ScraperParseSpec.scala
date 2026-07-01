@@ -120,6 +120,15 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.extractFormatTags("Face/Off")                      shouldBe (("Face/Off", Nil))
   }
 
+  // A trailing screening tag ("sps" — Kino Bajka Darłowo/MSI) or a programme
+  // label AFTER the format ("Pokaz specjalny", "przedpremiera") used to block the
+  // strip, leaving the format words stuck in the title. They now peel too.
+  it should "drop a trailing screening tag or programme label that follows the format" in {
+    ScraperParse.extractFormatTags("Toy story 5 2d dub. sps")          shouldBe (("Toy story 5", List("2D", "DUB")))
+    ScraperParse.extractFormatTags("Spider-Man - 2D/DUB - Pokaz specjalny") shouldBe (("Spider-Man", List("2D", "DUB")))
+    ScraperParse.extractFormatTags("Zaproszenie - napisy - przedpremiera")  shouldBe (("Zaproszenie", List("NAP")))
+  }
+
   it should "strip non-version words (dolby, atmos) without emitting a token for them" in {
     ScraperParse.extractFormatTags("Dzień objawienia (2D NAPISY DOLBY ATMOS)") shouldBe
       (("Dzień objawienia", List("2D", "NAP")))

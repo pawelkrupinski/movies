@@ -1108,7 +1108,7 @@ showings:
 
 === Cinema Italia Oggi: Takie jest życie ===
 displayTitle:      Cinema Italia Oggi: Takie jest życie
-cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE
+cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE
 runtimeMinutes:    118
 releaseYear:       2025
 countries:         Włochy
@@ -1134,7 +1134,7 @@ cinemaScrapes:
   Gdyńskie Centrum Filmowe / Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE / —
   Kino 60 Krzeseł / Takie jest życie / —
   Kino Apollo / Takie jest życie / —
-  Kino Atlantic / Best Film ON Tour: Takie jest życie - przedpremiera / 2025
+  Kino Atlantic / Best Film ON Tour: Takie jest życie / 2025
   Kino Bajka / Takie jest życie / —
   Kino CK Lublin / Takie jest życie / —
   Kino Forum / Best Film on Tour: Takie jest życie / —
@@ -4318,7 +4318,7 @@ showings:
 
 === Kumotry ===
 displayTitle:      Kumotry
-cinemaTitles:      "Kumotry" i "All The Diamonds": wystawa i film w dialogu | KUMOTRY | Kino Dostępne: Kumotry | Kumotry | Kumotry (uroczysta premiera + spotkanie z twórcami) | Kumotry - przedpremiera | Kumotry| POKAZ+SPOTKANIE | Niedziela z Dokumentem: Kumotry | Tani wtorek: KUMOTRY
+cinemaTitles:      "Kumotry" i "All The Diamonds": wystawa i film w dialogu | KUMOTRY | Kino Dostępne: Kumotry | Kumotry | Kumotry (uroczysta premiera + spotkanie z twórcami) | Kumotry| POKAZ+SPOTKANIE | Niedziela z Dokumentem: Kumotry | Tani wtorek: KUMOTRY
 runtimeMinutes:    70
 releaseYear:       2026
 countries:         Polska, Niemcy
@@ -4343,7 +4343,7 @@ cinemaScrapes:
   Gdyńskie Centrum Filmowe / Kumotry| POKAZ+SPOTKANIE / —
   Janosik / Niedziela z Dokumentem: Kumotry / —
   KINOMUZEUM / Kumotry / 2025
-  Kino 60 Krzeseł / Kumotry - przedpremiera / —
+  Kino 60 Krzeseł / Kumotry / —
   Kino Amok / Kumotry / —
   Kino Awangarda 2 / Kumotry / —
   Kino CK Lublin / Kumotry / —
@@ -9395,7 +9395,7 @@ showings:
 
 === Takie jest życie ===
 displayTitle:      Takie jest życie
-cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE
+cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE
 runtimeMinutes:    118
 releaseYear:       2025
 countries:         Włochy
@@ -9422,7 +9422,7 @@ cinemaScrapes:
   Gdyńskie Centrum Filmowe / Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE / —
   Kino 60 Krzeseł / Takie jest życie / —
   Kino Apollo / Takie jest życie / —
-  Kino Atlantic / Best Film ON Tour: Takie jest życie - przedpremiera / 2025
+  Kino Atlantic / Best Film ON Tour: Takie jest życie / 2025
   Kino Bajka / Takie jest życie / —
   Kino CK Lublin / Takie jest życie / —
   Kino Forum / Best Film on Tour: Takie jest życie / —

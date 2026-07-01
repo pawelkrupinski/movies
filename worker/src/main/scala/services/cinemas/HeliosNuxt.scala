@@ -97,7 +97,11 @@ object HeliosNuxt {
   // Showtime.format (see above), so stripping it from the title loses nothing.
   // Anchored on the separator that precedes the tag, so a bare in-title "3D"
   // ("Billie Eilish … The Tour Live in 3D") and trailing whitespace are left
-  // alone — only a clearly-delimited format tail is removed.
+  // alone — only a clearly-delimited format tail is removed. Deliberately NOT the
+  // shared extractFormatTags: Helios's varied non-format suffixes ("UROCZYSTA
+  // POLSKA PREMIERA") would partial-strip (only the trailing version word drops),
+  // leaving a worse title — so a "- 2D/DUB - Pokaz specjalny"-style label after
+  // the format is left in place rather than risk that.
   def cleanTitle(title: String): String = {
     val cleaned = services.movies.TitleNormalizer.cinemaClean("helios", title)
     if (FormatTail.findFirstMatchIn(cleaned).isDefined) FormatTail.replaceFirstIn(cleaned, "").trim
