@@ -33,7 +33,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // re-keyed sentinel — but `imdbId` never changes.
   private val sentinelImdbIds = Seq(
     "tt0000001", "tt0000002", "tt0000003", "tt0000004",
-    "tt0000005", "tt0000010", "tt0000011", "tt0000077", "tt0000099"
+    "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000077", "tt0000099"
   )
 
   // Delete every sentinel this spec could have written. Matches BOTH the
@@ -226,7 +226,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     handle should not be empty
     try {
       Thread.sleep(1500)
-      repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000010")))
+      repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000012"))) // own sentinel — no collision with other specs' imdbId queries
       seen.await(15, TimeUnit.SECONDS) shouldBe true
       recorded.synchronized(recorded.toList) should not be empty // an event was counted for the write
     } finally { handle.foreach(_.close()); repo.close() }
