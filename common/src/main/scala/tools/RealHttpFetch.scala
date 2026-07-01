@@ -29,9 +29,9 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
   // films that *are* reachable. The request (response-read) timeout is separate
   // and bounds reading the response, where a slow upstream legitimately needs
   // longer — so trimming connect doesn't cut off slow-but-alive servers. It is
-  // per-host (see RealHttpFetch.requestTimeoutFor): the default 30s, but the
-  // fast-fail hosts get a tight budget so one stalling enrichment origin can't
-  // pin a fan-out slot for the full default.
+  // per-host (see RealHttpFetch.HostPolicies): the default 30s, but a stall-prone
+  // host gets a tight budget so one stalling origin can't pin a fan-out slot for
+  // the full default. The connect budget is per-host the same way.
 
   // `CookieManager` makes the client a well-behaved HTTP citizen: any
   // `Set-Cookie` header lands in the in-memory store and is sent back on
@@ -60,17 +60,21 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
     builder.build()
   }
 
-  private val underlying   = buildClient(RealHttpFetch.DefaultConnectTimeout)
-  // A second client with a much longer connect budget for the handful of hosts
-  // whose TLS handshake is pathologically slow (see RealHttpFetch.isSlowTlsHost).
-  private val slowTlsClient = buildClient(RealHttpFetch.SlowTlsConnectTimeout)
+  // One HttpClient per distinct connect budget the host-policy table can ask for
+  // (plus the default). Building a client isn't free and the distinct connect
+  // timeouts are few, so prebuild them all and pick per host by connect budget.
+  private val clientsByConnectTimeout: Map[Duration, HttpClient] =
+    (RealHttpFetch.DefaultConnectTimeout +: RealHttpFetch.HostPolicies.map(_.connectTimeout))
+      .distinct
+      .map(connectTimeout => connectTimeout -> buildClient(connectTimeout))
+      .toMap
 
-  /** Pick the client by host: the slow-TLS hosts get the long connect budget,
-   *  everything else keeps the tight 5s. Package-private so the spec can assert
-   *  the routing (the actual slow-handshake behaviour needs a real server and
-   *  can't be reached in a unit test). */
+  /** Pick the client whose connect budget matches the host policy: the slow-TLS
+   *  hosts get their long handshake budget, everything else the tight default.
+   *  Package-private so the spec can assert the routing (the real slow-handshake
+   *  behaviour needs a live server and can't be reached in a unit test). */
   private[tools] def clientFor(url: String): HttpClient =
-    if (RealHttpFetch.isSlowTlsHost(url)) slowTlsClient else underlying
+    clientsByConnectTimeout(RealHttpFetch.connectTimeoutFor(url))
 
   override def get(url: String): String = get(url, Map.empty)
 
@@ -255,63 +259,68 @@ object RealHttpFetch {
     }
   }
 
-  /** The tight default: a live host's TCP+TLS handshake finishes in well under a
-   *  second, so 5s frees a stalled fan-out slot fast. See the comment on the
-   *  client builder for why low matters. */
+  // ── Per-host network policy ────────────────────────────────────────────────
+  // A host that needs anything other than the default connect/request timeouts
+  // gets ONE row in `HostPolicies` below — no bespoke predicate, constant, or
+  // if-branch per host. `connectTimeoutFor`, `requestTimeoutFor`, and the client
+  // selection all read that one table (first matching row wins). Add a host =
+  // append a row; nothing else changes.
+
+  /** The tight default connect budget: a live host's TCP+TLS handshake finishes
+   *  in well under a second, so 5s frees a stalled fan-out slot fast. See the
+   *  comment on the client builder for why low matters. */
   val DefaultConnectTimeout: Duration = Duration.ofSeconds(5)
-
-  /** The long budget for the slow-TLS hosts below. Sized above the worst
-   *  handshake we measured (~27s) with headroom; the response read is bounded
-   *  separately by RequestTimeout, so this only stretches the connect phase. */
-  val SlowTlsConnectTimeout: Duration = Duration.ofSeconds(40)
-
-  /** Hosts whose TLS handshake is pathologically slow — the TCP connect lands
-   *  instantly but the handshake itself takes 20-30s (the server's own latency,
-   *  reproducible with curl/openssl, not our cert path). Under the 5s default
-   *  every fetch died with HttpConnectTimeoutException, leaving the cinema
-   *  perpetually red on /uptime even though the page returns HTTP 200 when given
-   *  enough time:
-   *    - iluzjon.fn.org.pl — Kino Iluzjon (Filmoteka Narodowa, Warszawa).
-   *  Matched by exact host or a dotted sub-domain (so www.iluzjon.fn.org.pl
-   *  matches, an unrelated *.fn.org.pl does not). */
-  private val SlowTlsHostSuffixes: Set[String] = Set("iluzjon.fn.org.pl")
 
   /** The default per-request (response-read) budget: a slow-but-alive upstream
    *  legitimately needs longer than the connect phase, so this stays generous. */
   val DefaultRequestTimeout: Duration = Duration.ofSeconds(30)
 
-  /** The tight per-request budget for the fast-fail hosts below — well above the
-   *  ~1-3s a healthy response takes, but far under the 30s default so a stalling
-   *  origin frees its fan-out slot fast instead of pinning it. */
-  val FastFailRequestTimeout: Duration = Duration.ofSeconds(8)
+  /** A per-host override of the network timeouts. `connectTimeout` bounds the
+   *  TCP+TLS handshake (the JVM throws HttpConnectTimeoutException if either runs
+   *  over); `requestTimeout` bounds the response read. Each defaults to the
+   *  matching RealHttpFetch default, so a row overrides only what it names.
+   *  `hostSuffixes` matches by exact host or a dotted sub-domain (see
+   *  `hostMatches`), so `www.x` matches `x` but an unrelated `*.y` does not. */
+  final case class HostPolicy(
+    hostSuffixes: Set[String],
+    connectTimeout: Duration = DefaultConnectTimeout,
+    requestTimeout: Duration = DefaultRequestTimeout,
+  )
 
-  /** Hosts that must fast-fail when they stall rather than hold a ParallelDetail-
-   *  Fetch slot for the full DefaultRequestTimeout. The TCP+TLS connect is fine;
-   *  it's the response read that hangs.
-   *    - restapi.helios.pl — Helios's per-screen/detail REST API. On 2026-06-23
-   *      its detail endpoints started hanging ~30s for our datacenter egress;
-   *      with the fan-out cap at 2 and many Helios venues × screens, each 30s
-   *      hang ballooned Helios scrapes from ~2s to 100s+ and drained the worker's
-   *      shared-cpu credit into a throttle spiral. These endpoints only ENRICH —
-   *      HeliosClient degrades to its NUXT repertoire when REST is unavailable —
-   *      so dropping a slow call costs at most some screen-name detail, never the
-   *      listing.
-   *  Matched by exact host or a dotted sub-domain, like SlowTlsHostSuffixes. */
-  private val FastFailHostSuffixes: Set[String] = Set("restapi.helios.pl")
+  /** The per-host policy table — the single place a host earns a non-default
+   *  timeout. First matching row wins. */
+  val HostPolicies: Seq[HostPolicy] = Seq(
+    // Helios's per-screen/detail REST API. On 2026-06-23 its detail endpoints
+    // started hanging ~30s for our datacenter egress; with the fan-out cap at 2
+    // and many Helios venues × screens, each hang ballooned Helios scrapes from
+    // ~2s to 100s+ and drained the worker's shared-cpu credit into a throttle
+    // spiral. These endpoints only ENRICH — HeliosClient degrades to its NUXT
+    // repertoire — so dropping a slow call costs at most some screen-name detail.
+    // 8s is well above the ~1-3s a healthy call takes but far under the default.
+    HostPolicy(Set("restapi.helios.pl"), requestTimeout = Duration.ofSeconds(8)),
 
-  /** A middle budget — above the fast-fail 8s but well under the 30s default —
-   *  for a slow-but-alive Cloudflare-fronted origin. www.metacritic.com answers
-   *  our datacenter egress in ~1-6s on a good day (≈35% of metascore fetches
-   *  legitimately take >5s), but a Cloudflare challenge or hang can stretch a
-   *  single page well past that and pin a rating-refresh slot for the full 30s.
-   *  Capping at 15s frees the slot ~2× sooner while staying clear of the
-   *  healthy tail. Metascore enrichment is best-effort — a dropped fetch just
-   *  means no score this cycle, retried next — so an occasional cut costs
-   *  nothing. The 8s fast-fail budget would be too tight (it'd cut legit slow
-   *  pages); MC needs its own tier. */
-  val MetacriticRequestTimeout: Duration = Duration.ofSeconds(15)
+    // Metacritic's slow Cloudflare-fronted origin. It answers our datacenter
+    // egress in ~1-6s on a good day (≈35% of metascore fetches legitimately take
+    // >5s, so the 8s budget above would cut them), but a Cloudflare challenge or
+    // hang can stretch a page past the 30s default and pin a rating-refresh slot.
+    // 15s frees the slot ~2× sooner while clearing the healthy tail; metascore
+    // enrichment is best-effort, retried next cycle, so an occasional cut is free.
+    HostPolicy(Set("metacritic.com"), requestTimeout = Duration.ofSeconds(15)),
 
-  private val MetacriticHostSuffixes: Set[String] = Set("metacritic.com")
+    // The Fly Prometheus CPU-credit poll (CpuCreditPoller, on its own thread). A
+    // healthy query answers in ~1s; the 30s default let it hang the full budget
+    // when the worker was starved at the credit floor. A dropped poll just skips
+    // one balance sample, retried next tick — never load-bearing.
+    HostPolicy(Set("api.fly.io"), requestTimeout = Duration.ofSeconds(5)),
+
+    // Kino Iluzjon (Filmoteka Narodowa). Its TLS handshake is pathologically slow
+    // — the TCP connect lands instantly but the handshake itself takes 20-30s (the
+    // server's own latency, reproducible with openssl, not our cert path). Under
+    // the 5s default connect budget every fetch died with HttpConnectTimeout-
+    // Exception, leaving it perpetually red on /uptime though the page returns 200
+    // given time. 40s covers the handshake; the read budget stays the default.
+    HostPolicy(Set("iluzjon.fn.org.pl"), connectTimeout = Duration.ofSeconds(40)),
+  )
 
   /** True when `url`'s host matches one of `suffixes` (exact host or a dotted
    *  sub-domain, so www.x matches x but an unrelated *.y does not). Swallows a
@@ -323,17 +332,17 @@ object RealHttpFetch {
       suffixes.exists(suffix => lowerHost == suffix || lowerHost.endsWith("." + suffix))
     }
 
-  def isSlowTlsHost(url: String): Boolean = hostMatches(url, SlowTlsHostSuffixes)
+  /** The first host policy matching `url`, if any. */
+  private def policyFor(url: String): Option[HostPolicy] =
+    HostPolicies.find(policy => hostMatches(url, policy.hostSuffixes))
 
-  def isFastFailHost(url: String): Boolean = hostMatches(url, FastFailHostSuffixes)
+  /** The connect (TCP+TLS handshake) budget for `url`: the matching host policy's,
+   *  else the tight default. */
+  def connectTimeoutFor(url: String): Duration =
+    policyFor(url).map(_.connectTimeout).getOrElse(DefaultConnectTimeout)
 
-  def isMetacriticHost(url: String): Boolean = hostMatches(url, MetacriticHostSuffixes)
-
-  /** The per-request (response-read) timeout for `url`: the tight fast-fail
-   *  budget for a stall-prone enrichment host, the 15s Metacritic cap for MC's
-   *  slow Cloudflare origin, the generous default otherwise. */
+  /** The per-request (response-read) budget for `url`: the matching host policy's,
+   *  else the generous default. */
   def requestTimeoutFor(url: String): Duration =
-    if (isFastFailHost(url)) FastFailRequestTimeout
-    else if (isMetacriticHost(url)) MetacriticRequestTimeout
-    else DefaultRequestTimeout
+    policyFor(url).map(_.requestTimeout).getOrElse(DefaultRequestTimeout)
 }

@@ -50,8 +50,8 @@ class WorkerWiring extends play.api.Logging {
   // timeouts/5xx from a host it OPENS and fast-fails every further call to that
   // host for a cooldown, so a slow/hanging origin (Helios's restapi, 2026-06-23)
   // stops pinning the ParallelDetailFetch slots for its whole timeout on every
-  // call. Generalises RealHttpFetch's static per-host FastFailRequestTimeout to any
-  // host, with no allowlist. Wrapped by ThrottledHttpFetch (429 gate) and
+  // call. Generalises RealHttpFetch's static per-host timeout policy (HostPolicies) to
+  // any host, with no allowlist. Wrapped by ThrottledHttpFetch (429 gate) and
   // MonitoringHttpFetch (so a fast-fail still shows as the real unavailability).
   lazy val httoFetch: HttpFetch =
     new MonitoringHttpFetch(

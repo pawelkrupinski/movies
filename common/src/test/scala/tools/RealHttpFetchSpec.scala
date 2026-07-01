@@ -7,98 +7,96 @@ import java.net.{InetSocketAddress, URI}
 import java.time.Duration
 
 /**
- * The slow-TLS host routing — the only branch of RealHttpFetch reachable
- * without a live server. The actual slow-handshake behaviour (a host whose TLS
- * handshake runs 20-30s under our 5s default and dies with
- * HttpConnectTimeoutException) needs a real upstream and can't be reproduced in
- * a unit test, so we assert the closest reachable mechanism: that Iluzjon's host
- * is classified slow and gets a client whose actual connect timeout is the long
- * budget, while every other host keeps the tight default.
+ * RealHttpFetch's per-host timeout policy (RealHttpFetch.HostPolicies) — the only
+ * part reachable without a live server. The actual slow-handshake / slow-read
+ * behaviour (a host whose TLS handshake or response read runs far past our
+ * defaults and dies with HttpConnectTimeoutException / HttpTimeoutException) needs
+ * a real upstream and can't be reproduced in a unit test, so we assert the closest
+ * reachable mechanism: that each policied host resolves to its intended connect /
+ * request budget (and a real client carries the connect budget), while every other
+ * host keeps the defaults. Host matching is exact-host-or-dotted-sub-domain, so
+ * `www.x` matches `x` but an unrelated `*.y` does not, and a malformed URL falls
+ * through to the defaults.
  */
 class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
 
-  "isSlowTlsHost" should "match Kino Iluzjon's host and its sub-domains" in {
-    RealHttpFetch.isSlowTlsHost("https://www.iluzjon.fn.org.pl/repertuar.html") shouldBe true
-    RealHttpFetch.isSlowTlsHost("https://iluzjon.fn.org.pl/filmy/info/42/x.html") shouldBe true
+  // ── Slow-TLS connect budget (Kino Iluzjon) ────────────────────────────────
+  // Iluzjon's TLS handshake runs 20-30s server-side; under the 5s default connect
+  // budget every fetch died with HttpConnectTimeoutException. Its host policy gives
+  // it a long connect budget; the response-read budget stays the default.
+
+  "connectTimeoutFor" should "give Kino Iluzjon's host and its sub-domains the long connect budget" in {
+    RealHttpFetch.connectTimeoutFor("https://www.iluzjon.fn.org.pl/repertuar.html") shouldBe Duration.ofSeconds(40)
+    RealHttpFetch.connectTimeoutFor("https://iluzjon.fn.org.pl/filmy/info/42/x.html") shouldBe Duration.ofSeconds(40)
   }
 
-  it should "not match unrelated hosts (including a different fn.org.pl sub-domain)" in {
-    RealHttpFetch.isSlowTlsHost("https://www.multikino.pl/repertuar") shouldBe false
-    RealHttpFetch.isSlowTlsHost("https://api.themoviedb.org/3/movie/1") shouldBe false
-    RealHttpFetch.isSlowTlsHost("https://other.fn.org.pl/x") shouldBe false
+  it should "keep the tight default for unrelated hosts (incl. a different fn.org.pl sub-domain) and a malformed URL" in {
+    RealHttpFetch.connectTimeoutFor("https://www.multikino.pl/repertuar") shouldBe RealHttpFetch.DefaultConnectTimeout
+    RealHttpFetch.connectTimeoutFor("https://api.themoviedb.org/3/movie/1") shouldBe RealHttpFetch.DefaultConnectTimeout
+    RealHttpFetch.connectTimeoutFor("https://other.fn.org.pl/x") shouldBe RealHttpFetch.DefaultConnectTimeout
+    RealHttpFetch.connectTimeoutFor("not a url") shouldBe RealHttpFetch.DefaultConnectTimeout
   }
 
-  it should "not throw on a malformed URL" in {
-    RealHttpFetch.isSlowTlsHost("not a url") shouldBe false
-  }
-
-  "the slow-TLS budget" should "be longer than the tight default" in {
-    RealHttpFetch.SlowTlsConnectTimeout.compareTo(RealHttpFetch.DefaultConnectTimeout) should be > 0
-    // Above the worst handshake measured (~27s) so a slow-but-alive Iluzjon
-    // completes instead of timing out.
-    RealHttpFetch.SlowTlsConnectTimeout.compareTo(Duration.ofSeconds(30)) should be > 0
+  it should "be longer than the tight default and above the worst handshake measured (~27s)" in {
+    val iluzjon = RealHttpFetch.connectTimeoutFor("https://iluzjon.fn.org.pl/x")
+    iluzjon.compareTo(RealHttpFetch.DefaultConnectTimeout) should be > 0
+    iluzjon.compareTo(Duration.ofSeconds(30)) should be > 0
   }
 
   "clientFor" should "give Iluzjon the long connect budget and everyone else the default" in {
     val http = new RealHttpFetch()
     http.clientFor("https://www.iluzjon.fn.org.pl/repertuar.html")
-      .connectTimeout().orElseThrow() shouldBe RealHttpFetch.SlowTlsConnectTimeout
+      .connectTimeout().orElseThrow() shouldBe RealHttpFetch.connectTimeoutFor("https://iluzjon.fn.org.pl/x")
     http.clientFor("https://www.multikino.pl/repertuar")
       .connectTimeout().orElseThrow() shouldBe RealHttpFetch.DefaultConnectTimeout
   }
 
-  // ── Fast-fail per-request timeout (stall-prone enrichment hosts) ───────────
-  //
+  // ── Fast-fail request budget (stall-prone enrichment host: Helios REST) ────
   // restapi.helios.pl's detail endpoints intermittently hang ~30s for our
   // datacenter egress; under the 30s default each hang pinned a ParallelDetail-
-  // Fetch slot, ballooning Helios scrapes and draining the worker's CPU credit
-  // into a throttle spiral (2026-06-23). We assert the closest reachable
-  // mechanism — that the host is classified fast-fail and gets the tight
-  // response-read budget, while every other host keeps the generous default.
+  // Fetch slot, draining the worker's CPU credit into a throttle spiral
+  // (2026-06-23). Its host policy gives the tight response-read budget, while
+  // every other host keeps the generous default.
 
-  "isFastFailHost" should "match Helios's REST API host and its sub-domains" in {
-    RealHttpFetch.isFastFailHost("https://restapi.helios.pl/api/cinema/4b/screen/6c") shouldBe true
-    RealHttpFetch.isFastFailHost("https://www.restapi.helios.pl/api/movie/1") shouldBe true
+  "requestTimeoutFor" should "give Helios's REST host and its sub-domains the tight fast-fail budget" in {
+    RealHttpFetch.requestTimeoutFor("https://restapi.helios.pl/api/cinema/4b/screen/6c") shouldBe Duration.ofSeconds(8)
+    RealHttpFetch.requestTimeoutFor("https://www.restapi.helios.pl/api/movie/1") shouldBe Duration.ofSeconds(8)
   }
 
-  it should "not match unrelated hosts (including Helios's own NUXT site)" in {
-    RealHttpFetch.isFastFailHost("https://www.helios.pl/poznan/kino-helios/repertuar") shouldBe false
-    RealHttpFetch.isFastFailHost("https://api.themoviedb.org/3/movie/1") shouldBe false
+  it should "keep the default for Helios's own NUXT site, an unrelated host, and a malformed URL" in {
+    RealHttpFetch.requestTimeoutFor("https://www.helios.pl/poznan/kino-helios/repertuar") shouldBe RealHttpFetch.DefaultRequestTimeout
+    RealHttpFetch.requestTimeoutFor("https://api.themoviedb.org/3/movie/1") shouldBe RealHttpFetch.DefaultRequestTimeout
+    RealHttpFetch.requestTimeoutFor("not a url") shouldBe RealHttpFetch.DefaultRequestTimeout
   }
 
-  it should "not throw on a malformed URL" in {
-    RealHttpFetch.isFastFailHost("not a url") shouldBe false
+  it should "make Helios's budget much tighter than the default but above the ~1-3s healthy call" in {
+    val helios = RealHttpFetch.requestTimeoutFor("https://restapi.helios.pl/api/x")
+    helios.compareTo(RealHttpFetch.DefaultRequestTimeout) should be < 0
+    helios.compareTo(Duration.ofSeconds(5)) should be > 0
   }
 
-  "the fast-fail request budget" should "be much tighter than the default" in {
-    RealHttpFetch.FastFailRequestTimeout.compareTo(RealHttpFetch.DefaultRequestTimeout) should be < 0
-    // Above the ~1-3s a healthy Helios detail call takes, with headroom.
-    RealHttpFetch.FastFailRequestTimeout.compareTo(Duration.ofSeconds(5)) should be > 0
+  // ── Metacritic middle budget (slow Cloudflare origin) ─────────────────────
+
+  it should "give Metacritic and its sub-domains a budget between the fast-fail and the default" in {
+    // ~35% of metascore fetches legitimately take >5s, so the 8s fast-fail budget
+    // would cut them; 15s caps a real hang while clearing the healthy tail.
+    RealHttpFetch.requestTimeoutFor("https://www.metacritic.com/movie/dune-part-two/") shouldBe Duration.ofSeconds(15)
+    RealHttpFetch.requestTimeoutFor("https://metacritic.com/search/x/?category=2") shouldBe Duration.ofSeconds(15)
+    val mc = RealHttpFetch.requestTimeoutFor("https://www.metacritic.com/x")
+    mc.compareTo(RealHttpFetch.requestTimeoutFor("https://restapi.helios.pl/api/x")) should be > 0
+    mc.compareTo(RealHttpFetch.DefaultRequestTimeout) should be < 0
   }
 
-  "requestTimeoutFor" should "give Helios's REST host the tight budget and everyone else the default" in {
-    RealHttpFetch.requestTimeoutFor("https://restapi.helios.pl/api/cinema/4b/screen/6c") shouldBe
-      RealHttpFetch.FastFailRequestTimeout
-    RealHttpFetch.requestTimeoutFor("https://www.helios.pl/poznan/kino-helios/repertuar") shouldBe
-      RealHttpFetch.DefaultRequestTimeout
-    RealHttpFetch.requestTimeoutFor("https://api.themoviedb.org/3/movie/1") shouldBe
-      RealHttpFetch.DefaultRequestTimeout
-  }
+  // ── Fly Prometheus credit poll (api.fly.io) ───────────────────────────────
+  // The CpuCreditPoller reads the machine's CPU-credit balance from api.fly.io on
+  // its own thread. A healthy query answers in ~1s; the 30s default let it hang
+  // the full budget when the worker was starved at the credit floor. Its policy
+  // caps it — a dropped poll just skips one balance sample, never load-bearing.
 
-  "isMetacriticHost" should "match metacritic.com and its sub-domains, not unrelated hosts" in {
-    RealHttpFetch.isMetacriticHost("https://www.metacritic.com/movie/dune-part-two/") shouldBe true
-    RealHttpFetch.isMetacriticHost("https://metacritic.com/search/x/?category=2")     shouldBe true
-    RealHttpFetch.isMetacriticHost("https://api.themoviedb.org/3/movie/1")            shouldBe false
-    RealHttpFetch.isMetacriticHost("not a url")                                       shouldBe false
-  }
-
-  it should "get a budget between the fast-fail and the default — above MC's healthy tail, below 30s" in {
-    // Metacritic's slow Cloudflare origin: ~35% of metascore fetches legitimately
-    // take >5s, so the 8s fast-fail budget would cut them; 15s caps a real hang.
-    RealHttpFetch.requestTimeoutFor("https://www.metacritic.com/movie/dune-part-two/") shouldBe
-      RealHttpFetch.MetacriticRequestTimeout
-    RealHttpFetch.MetacriticRequestTimeout.compareTo(RealHttpFetch.FastFailRequestTimeout) should be > 0
-    RealHttpFetch.MetacriticRequestTimeout.compareTo(RealHttpFetch.DefaultRequestTimeout) should be < 0
+  it should "give the Fly Prometheus host a tight budget, tighter than the default" in {
+    val fly = RealHttpFetch.requestTimeoutFor("https://api.fly.io/prometheus/org/api/v1/query?q=x")
+    fly shouldBe Duration.ofSeconds(5)
+    fly.compareTo(RealHttpFetch.DefaultRequestTimeout) should be < 0
   }
 
   // ── Residential-proxy egress (Decodo static ISP) ──────────────────────────
