@@ -6,6 +6,7 @@ import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -25,7 +26,7 @@ import scala.util.Try
  * The date is parsed from the `data-date` attribute (`DD.MM.YYYY`), so the
  * year is unambiguous and no inference is needed.
  */
-class KinoParadoxClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper {
+class KinoParadoxClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper with DetailEnricher {
 
   import KinoParadoxClient._
 
@@ -59,6 +60,20 @@ class KinoParadoxClient(http: HttpFetch, override val cinema: Cinema) extends Ci
       ))
     }.sortBy(_.movie.title)
   }
+
+  // The listing already carries director + release year (TMDB-identity hints),
+  // so the film resolves immediately from the listing; the detail page adds the
+  // synopsis, poster, genres, and the per-film language badge (`Wersja
+  // językowa`), merged in asynchronously by the EnrichDetails task.
+  override val detailGroup: String = "kino-paradox"
+  override def defersTmdbResolution: Boolean = false
+
+  /** Deferred per-film detail — the EnrichDetails task calls this with the slot's
+   *  `/naekranie/<slug>` filmUrl (UTF-8). None when nothing useful parsed, so the
+   *  task stays stale and retries rather than recording an empty result fresh. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(http.get(ref)).toOption.map(parseDetail)
+      .filter(d => d.synopsis.nonEmpty || d.director.nonEmpty || d.runtimeMinutes.nonEmpty || d.genres.nonEmpty)
 }
 
 object KinoParadoxClient {
@@ -144,5 +159,41 @@ object KinoParadoxClient {
       } yield RawSlot(n, filmUrl, LocalDateTime.of(d, t), bookingUrl,
                       meta.directors, meta.countries, meta.year, meta.runtime)
     }
+  }
+
+  /** Parse a `/naekranie/<slug>` detail page into a [[FilmDetail]]. The film
+   *  facts sit in a repeated `div.single-os-hero__item` block, each a
+   *  `.single-os-hero__label` + `.single-os-hero__value`; the synopsis is
+   *  `div.single-os-hero__desc-col`; the poster is the `div.single-os-hero__img-col`
+   *  image. The `Wersja językowa` row carries the film's language, surfaced as a
+   *  format badge on its showings. */
+  private[cinemas] def parseDetail(html: String): FilmDetail = {
+    val doc = Jsoup.parse(html)
+    // The layout duplicates the item block (desktop + mobile) with identical
+    // values, so a simple label -> value map (last wins == first) is fine.
+    val fields = doc.select("div.single-os-hero__item").asScala.iterator.flatMap { item =>
+      val label = Option(item.selectFirst(".single-os-hero__label")).map(_.text.trim.toLowerCase(Locale.ROOT))
+      val value = Option(item.selectFirst(".single-os-hero__value")).map(_.text.trim).filter(_.nonEmpty)
+      for { l <- label; v <- value } yield l -> v
+    }.toMap
+    def people(label: String): Seq[String] =
+      fields.get(label).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+    val (countries, year) = fields.get("produkcja").map(ScraperParse.productionMeta).getOrElse((Nil, None))
+    val runtime  = fields.get("czas trwania").flatMap(v => """(\d+)""".r.findFirstIn(v)).map(_.toInt).filter(_ > 0)
+    val format   = fields.get("wersja językowa").map(ScraperParse.formatTokensIn).getOrElse(Nil)
+    val synopsis = Option(doc.selectFirst("div.single-os-hero__desc-col"))
+      .map(el => ScraperParse.cleanSynopsis(el)).filter(_.length > 20)
+    val poster   = Option(doc.selectFirst("div.single-os-hero__img-col img[src]"))
+      .map(_.attr("src").trim).filter(_.nonEmpty)
+    FilmDetail(
+      synopsis       = synopsis,
+      director       = people("reżyseria"),
+      runtimeMinutes = runtime,
+      releaseYear    = year,
+      countries      = countries,
+      genres         = people("gatunek"),
+      posterUrl      = poster,
+      format         = format
+    )
   }
 }

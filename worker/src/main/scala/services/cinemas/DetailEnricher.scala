@@ -21,7 +21,13 @@ case class FilmDetail(
   countries:      Seq[String]    = Seq.empty,
   genres:         Seq[String]    = Seq.empty,
   posterUrl:      Option[String] = None,
-  trailerUrl:     Option[String] = None
+  trailerUrl:     Option[String] = None,
+  // A per-FILM language/format (NAP/DUB/LEK) some cinemas expose only on the
+  // detail page (a "Wersja językowa: polski lektor" row), never in the listing
+  // title. Applied to the film's showings so the language badge is preserved
+  // even where the listing carries no per-screening suffix. Empty for cinemas
+  // whose language is already per-screening on the listing.
+  format:         List[String]   = Nil
 ) {
   /** Fill gaps in an existing cinema `SourceData` slot from these detail fields,
    *  preserving the slot's showtimes/title/filmUrl. Treats the listing/bare
@@ -38,7 +44,11 @@ case class FilmDetail(
     countries      = if (slot.countries.nonEmpty) slot.countries else countries,
     genres         = if (slot.genres.nonEmpty) slot.genres else genres,
     posterUrl      = slot.posterUrl.orElse(posterUrl),
-    trailerUrl     = slot.trailerUrl.orElse(trailerUrl)
+    trailerUrl     = slot.trailerUrl.orElse(trailerUrl),
+    // Badge the film's showings with the detail-page language, but never
+    // overwrite a per-screening format the listing already set.
+    showtimes      = if (format.isEmpty) slot.showtimes
+                     else slot.showtimes.map(st => if (st.format.isEmpty) st.copy(format = format) else st)
   )
 }
 

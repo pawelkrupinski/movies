@@ -215,7 +215,7 @@ object KinoPodBaranamiClient {
     def people(label: String): Seq[String] =
       fields.get(label).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
     val runtime = fields.get("czas trwania").flatMap(v => """(\d+)""".r.findFirstIn(v)).map(_.toInt).filter(_ > 0)
-    val (countries, prodYear) = fields.get("produkcja").map(parseProduction).getOrElse((Seq.empty, None))
+    val (countries, prodYear) = fields.get("produkcja").map(ScraperParse.productionMeta).getOrElse((Seq.empty, None))
     val premieraYear = fields.get("premiera").flatMap(v => YearPat.findFirstIn(v)).map(_.toInt)
     val synopsis = Option(doc.selectFirst("div#column_wide div.bot > p"))
       .map(p => ScraperParse.cleanSynopsis(p, "div")).filter(_.length > 20)
@@ -231,14 +231,6 @@ object KinoPodBaranamiClient {
       countries      = countries,
       posterUrl      = poster
     )
-  }
-
-  /** "USA 2026", "Polska, Francja 2025" → (countries, releaseYear). */
-  private def parseProduction(v: String): (Seq[String], Option[Int]) = {
-    val year      = YearPat.findFirstIn(v).map(_.toInt)
-    val countries = year.foldLeft(v)((s, y) => s.replace(y.toString, ""))
-      .split("[,/]").map(_.trim).filter(_.nonEmpty).toSeq
-    (countries, year)
   }
 
   /** Map the `<strong>label:</strong> value<br>` metadata pairs inside `container`
