@@ -109,10 +109,40 @@ runs:
       shell: bash
       run: cd page-tests-playwright && npm ci
 
-    - name: Install Playwright browser
+    # Cache the .deb archives that `playwright install --with-deps` pulls in via
+    # apt. The browser BINARY cache above doesn't cover these OS libraries
+    # (libgtk-4, gstreamer, …); on a cold apt run they're fetched from
+    # azure.archive.ubuntu.com, and a throttled mirror has ballooned that fetch
+    # to ~10 min for a single row (run 28513478061, iphone-13 2/2 = 14m). Seeding
+    # apt's archive dir from a per-engine cache lets apt reuse the debs instead of
+    # re-downloading, so a slow mirror can't dominate the row. Keyed on the
+    # package-lock (deps only change with the Playwright version); restore-keys
+    # falls back to the newest cache for this engine, and unused/stale debs are
+    # harmless — apt just installs the versions it needs and re-fetches any that
+    # drifted. Every step is best-effort (`|| true`): on a cold cache or any copy
+    # error the install runs exactly as before, just without the speed-up.
+    - uses: actions/cache@v4
+      if: inputs.kind == 'playwright'
+      with:
+        path: ~/apt-deb-cache/${{ inputs.browser }}
+        key: playwright-aptdebs-${{ runner.os }}-${{ inputs.browser }}-${{ hashFiles('page-tests-playwright/package-lock.json') }}
+        restore-keys: |
+          playwright-aptdebs-${{ runner.os }}-${{ inputs.browser }}-
+
+    - name: Install Playwright browser + system deps
       if: inputs.kind == 'playwright'
       shell: bash
-      run: cd page-tests-playwright && npx playwright install --with-deps ${{ inputs.browser }}
+      run: |
+        APT_CACHE="$HOME/apt-deb-cache/${{ inputs.browser }}"
+        mkdir -p "$APT_CACHE"
+        # Seed apt's archive dir from the restored cache so already-fetched debs
+        # aren't re-downloaded (root-owned dir → needs sudo; -n keeps any newer
+        # copy apt already has).
+        sudo cp -n "$APT_CACHE"/*.deb /var/cache/apt/archives/ 2>/dev/null || true
+        cd page-tests-playwright && npx playwright install --with-deps ${{ inputs.browser }}
+        # Persist whatever apt now holds (seeded + freshly fetched) back to the
+        # cache dir for next time.
+        cp -n /var/cache/apt/archives/*.deb "$APT_CACHE"/ 2>/dev/null || true
 
     # Start the fixture server in the background. Writes the chosen
     # free port to a file so we can read it from the next step without
