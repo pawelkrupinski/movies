@@ -1,0 +1,403 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-2" />
+	<meta http-equiv="EXPIRES" content="0"/>
+	<meta http-equiv="CACHE-CONTROL" content="no-cache"/>
+	<meta http-equiv="Pragma" content="no-cache"/>
+	<meta property="og:title" content="Kino Pod Baranami: Toy Story 5 (Napisy PL)" />
+	<meta property="og:image" content="https://kinopodbaranami.pl/img/hidden_logo.png" />
+
+	<title>Kino Pod Baranami: Toy Story 5 (Napisy PL)
+
+	</title>
+	<link href="kino.css?v=4" rel="stylesheet" type="text/css" />
+		<link href="css/jquery-ui-1.9.2.custom.min.css" rel="stylesheet" type="text/css" />
+	<link href="css/custom.css?v=2" rel="stylesheet" type="text/css" />
+
+	<!-- #### MENU FILES / THIS IS THE PART THAT DRIVES THE MENU / KEEP THIS #### -->
+	<link rel="shortcut icon" href="/img/favicon.ico" type="image/x-icon" />
+	<style type="text/css" media="screen, tv, projection"> @import "Menu.css?2"; </style>
+	<link rel="icon" type="image/png" href="favicon.ico"/>
+	<!--[if lte IE 6]>
+	<style type="text/css">
+		@import "Menu4IE.css";
+		body { behavior:url("ADxMenu.htc"); }
+	</style>
+	<link href="ie6.css?2" rel="stylesheet" type="text/css" />
+	<![endif]-->
+	<!--[if lte IE 8]>
+	<link href="ie8.css?2" rel="stylesheet" type="text/css" />
+	<![endif]-->
+	<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-MD6H3V33');</script>
+<!-- End Google Tag Manager -->
+
+  <script type="text/javascript" src="https://s7.addthis.com/js/250/addthis_widget.js#username=kinopodbaranami"></script>
+
+	<script src="/javascripts/prototype.js" type="text/javascript"></script>
+	<script type="text/javascript" src="/javascripts/jquery-1.8.3.min.js"></script>
+	<script type="text/javascript" src="/javascripts/jquery-ui-1.9.2.custom.min.js?v=1"></script>
+	<script language="JavaScript" type="text/javascript">
+		var $j = jQuery.noConflict();
+		  function reloadBanners()
+		  {
+		  	 new Ajax.Updater('banner-horizontal', '/ajax_banner.php?place_id=1', {asynchronous:true, evalScripts:true, onComplete:function(request){dashboardInit();}});
+		  	 new Ajax.Updater('banner-vertical', '/ajax_banner.php?place_id=2', {asynchronous:true, evalScripts:true, onComplete:function(request){dashboardInit();}});
+		  	 //bannerRotate();
+		  }
+		  function bannerRotate()
+		  {
+		  	setTimeout(reloadBanners, 60000);
+		  }
+		  function init()
+		  {
+		  	bannerRotate();
+		  	if (checkCookie() != '1'){
+            	showInfo();
+        	}
+		  }
+		   var COOKIE_NAME ='baranki_cookie';
+
+	    function setCookie(){
+    	    document.cookie=COOKIE_NAME + "=1";
+	    }
+	    function checkCookie(){
+    	    var value = document.cookie;
+	        return value.substr(value.indexOf(COOKIE_NAME)+COOKIE_NAME.length+1,1);
+	    }
+	    function cookieOK(){
+	        setCookie();
+	        jQuery('#cookieBox').css({
+	            'display':'none'
+	        });
+	    }
+    	function showInfo(){
+        	jQuery('body').append('<div id="cookieBox">' +
+            	                    'Ta strona używa mechanizmu ciasteczek. Kontynuując korzystanie ze strony zgadzasz na jego działanie.' +
+                	                ' <button onclick="cookieOK();" tabindex="1" id="cookieOK">OK</button><div>');
+
+	        jQuery('#cookieBox').css({
+    	        'position':'absolute','right':'10px','float':'right','border-radius':'5px',
+        	    'top':'5px','z-index':'1000','padding':'5px','text-align':'right','font-size':'12px',
+            	'font-family':'Arial, serif','background':'#efefef','color':'#333'});
+	        jQuery('#cookieOK').css({
+    	        'border':'0px','border-radius':'5px',
+           	 'background':'#333333','color':'#ffffff','cursor':'pointer',
+        	    'font-weight':'bold','margin':'0 20px','padding':'4px 12px'
+	        });
+    	}
+	</script>
+
+	<script type="text/javascript">
+
+	  var _gaq = _gaq || [];
+	  _gaq.push(['_setAccount', 'UA-17225671-1']);
+	  _gaq.push(['_trackPageview']);
+
+	  (function() {
+	    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+	    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+	  })();
+
+	</script>
+<script data-ad-client="ca-pub-5390852434904811" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+</head>
+<body onload="init();" >
+
+	<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MD6H3V33"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+	<div style="display:none;">
+		<img src="img/hidden_logo.png" />
+	</div>
+	<div id="bannerssmall2">kpb</div>
+
+<div id="body" class="fleft">
+	<div id="header">
+		<h1>
+			<a href="./" title="Kino Pod Baranami - strona gďż˝ďż˝wna"><span class="no">Kino Pod Baranami</span></a>
+		</h1>
+		<!--
+		<div class="best"></div>
+    <a href="http://www.kinastudyjne.pl/" title="Sieďż˝ Kin Studyjnych" class="sks"></a>
+		<a href="http://www.europa-cinemas.com/" title="Europa Cinemas" class="europa-cinemas"></a>
+		-->
+	</div>
+	<div id="menubar">
+		<div id="menu">
+			<ul id="menuList" class="adxm">
+				<li id="home"><a href="index.php" class="disabled"><span class="no">strona główna</span></a></li>
+				<li id="reper" class="submenu"><a href="repertuar.php"><span class="no">repertuar</span></a>
+					<ul>
+						<li class="wybierzfilm"><a href="repertuar.php?wersja=wg_filmow"><span class="no">wybierz film</span></a></li>
+						<li class="wybierzdzie"><a href="repertuar.php"><span class="no">wybierz dzień˝</span></a></li>
+						<li class="subskrypcja"><a href="rejestracja.php"><span class="no">subskrybuj</span></a></li>
+						<li class="cenybiletow"><a href="kino.php?txt_acro=ceny_biletow"><span class="no">ceny biletów</span></a></li>
+					</ul>
+				</li>
+				<li id="events"><a href="wydarzenia.php" class="disabled"><span class="no">wydarzenia</span></a></li>
+				<li id="movies" class="submenu"><a href="filmy_baza.php"><span class="no">filmy</span></a>
+					<ul>
+						<li class="naekranach"><a href="filmy_baza.php"><span class="no">na ekranach</span></a></li>
+						<li class="zapowiedzi"><a href="filmy_baza.php?ktore=zapowiedzi"><span class="no">zapowiedzi</span></a></li>
+					</ul>
+				</li>
+				<li id="club"><a href="klub.php" class="disabled"><span class="no">klub przyjaciół KPB</span></a></li>
+				<li id="kino" class="submenu"><a href="#" onclick="return false;"><span class="no">kino</span></a>
+					<ul>
+						<li class="okinie"><a href="kino.php"><span class="no">o kinie</span></a></li>
+						<li class="jaktrafic"><a href="kino.php?txt_acro=kino_trafic"><span class="no">jak trafić</span></a></li>
+						<li class="historia"><a href="kino.php?txt_acro=kino_historia"><span class="no">historia</span></a></li>
+						<li class="galerie"><a href="galerie.php"><span class="no">galerie</span></a></li>
+						<li class="kontakt"><a href="kino.php?txt_acro=kino_kontakt"><span class="no">kontakt</span></a></li>
+						<li class="partnerzy"><a href="kino.php?txt_acro=kino_partnerzy"><span class="no">partnerzy i przyjaciele</span></a></li>
+					</ul>
+				</li>
+				<li id="edu"><a href="edu.php" class="disabled"><span class="no">edukacja</span></a>
+					<ul>
+						<li class="eduoprog"><a href="edu.php?txt_acro=edu_oprogramie"><span class="no">o programach</span></a></li>
+						<li class="edupatro"><a href="edu.php?txt_acro=edu_patroni"><span class="no">Nowe Horyzonty Edukacji Filmowej</span></a></li>
+						<li class="eduofert"><a href="edu.php?txt_acro=edu_oferta"><span class="no">oferty edukacyjne dla szkół</span></a></li>
+						<li class="edukonta"><a href="edu.php?txt_acro=edu_kontakt"><span class="no">kontakt</span></a></li>
+					</ul>
+				</li>
+			</ul>
+		</div><!-- menu -->
+	</div>
+	<!-- banner -->
+			<div class="banner-horizontal">
+		  <a href="http://www.europa-cinemas.com/" title="Europa Cinemas" class="europa-cinemas"></a>
+      <a href="http://www.kinastudyjne.pl/" title="Sieďż˝ Kin Studyjnych" class="sks"></a>
+      <div id="bannter-horizontal">
+			 <A href="https://www.kinopodbaranami.pl/film.php?film_id=12944"><img src="/upload/Ojczyzna_750x100.png" width="750" height="100" border="0"title="od 19 czerwca"></A>		  </div>
+		</div>
+
+
+
+		<!-- /banner -->
+
+	<!-- content start -->
+	<div id="wrapper">
+		<div id="main">
+	<div class="under_head">
+
+	</div>
+	<div id="column_wide" class="movie">
+	
+			<div class="paragraph"><div class="bot">
+			<table border="0" width="99%">
+				<tr>
+					<td width="130">
+											<a href="images_lib/doc_16437_0.jpg">
+						    <img src="images_lib/doc_16437_0_mini.jpg" />
+						</a>
+											</td>
+
+					<td>
+
+						<div class="indent">
+
+						<h2>
+							Toy Story 5 (Napisy PL)							<span>
+
+							</span>
+						</h2>
+
+													<p>
+							<strong>tytuł oryginalny:</strong>
+							Toy Story 5<br />
+							</p>
+							
+
+						<p>
+													<strong>reżyseria:</strong> Andrew Stanton, McKenna Harris<br />
+							
+													<strong>aktorzy:</strong> Tom Hanks, Tim Allen, Joan Cusack, Greta Lee, Conan O'Brien<br />
+													</p>
+
+						<p>
+													<strong>czas trwania: </strong>
+							102 min. <br />
+														<strong>produkcja:    </strong>
+							USA
+							2026 <br />
+							                        <strong>premiera:</strong> 2026-06-17<br />
+                                                <strong>jezyk:    </strong>
+                            angielski                         <br />
+                        
+                            <strong>napisy:    </strong>
+                            polskie<br />
+                                        <span class="en-additional-info" style="color: #A5253C">in English with Polish subtitles</span>
+
+                
+						</p>
+						</div>
+
+					</td>
+
+				</tr>
+			</table>
+
+
+			<p>
+							<strong>Zabawki powracają w filmie Disneya i Pixara <em>Toy Story 5</em>, w kt&oacute;rym na scenę wkracza technologia.</strong><br /><br />Buzz,  Chudy, Jessie i reszta ekipy mają trudne zadanie, gdy przychodzi im  zmierzyć się z zupełnie nowym zagrożeniem. Reżyserem filmu jest Andrew  Stanton, wsp&oacute;łreżyserem Kenna Harris, a producentem Lindsey Collins.<br /><br /><em><font color="#333399">|  When Bonnie receives a Lilypad tablet as a gift and becomes obsessed,  Buzz, Woody, Jessie and the rest of the gang&rsquo;s jobs become exponentially  harder when they have to go head to head with the all-new threat to  playtime.</font></em>
+<div><strong><br /></strong></div>
+<div><strong>Prezentowany r&oacute;wnież w ramach:&nbsp;<a href="https://www.kinopodbaranami.pl/wydarzenie.php?evnt_id=7060" target="_blank">Toy Story 5 - pokazy filmu w dw&oacute;ch wersjach językowych</a>.</strong></div>							</p>
+			</div></div>
+			
+<!--						<div class="addthis">
+
+	
+							<script type="text/javascript">var addthis_config = {"data_track_clickback":true};</script>
+							<a class="addthis_button" href="http://www.addthis.com/bookmark.php?v=250&amp;username=kinopodbaranami">
+							  <img src="https://s7.addthis.com/static/btn/v2/lg-share-en.gif" width="125" height="16" alt="Bookmark and Share" style="border:0"/>
+
+								<a class="addthis_button_facebook_like"></a>
+							</a>
+							<script type="text/javascript" src="https://s7.addthis.com/js/250/addthis_widget.js#username=kinopodbaranami"></script>
+	
+						</div>
+-->
+
+		
+								<h2 class="unas"><a href="repertuar.php">Zobacz ten film: </a></h2>
+
+						<ul class="when">
+							
+								<li style="clear: both;"></li>
+
+															<li>
+								<div class="head">
+									<span>Środa</span><br /> 1 lipca									<span class="en">Wednesday</span> July 1								</div>
+									<div class="cont">
+									18:00<br />
+                                        								</div>
+							</li>
+														<li>
+								<div class="head">
+									<span>Czwartek</span><br /> 2 lipca									<span class="en">Thursday</span> July 2								</div>
+									<div class="cont">
+									
+                                                  <a href="/rezerwacja_start.php?event_id=125831" title="kup bilet | Sala Biała  "
+	                                                     onclick="return validateAndShowOrderDialog(125831,'Toy Story 5 (Napisy PL)','2026','07','02','18:00','Czwartek, 2 lipca 2026','Sala Biała  ', 1, 1, 0);">
+                                                        18:00                                                        </a>
+                                        <br />
+                                        								</div>
+							</li>
+																					<li class="foot"></li>
+						</ul>
+
+
+
+
+				</div>
+		<!-- content koniec -->
+			<div id="column_right" class="film">
+
+						<h1 class="hFilmy"><span class="no">filmy</span></h1>
+			
+			<ul class="buttons buttons_iefix">
+				<li class="naekranach"><a href="filmy_baza.php"><span class="no">na ekranach</span></a></li>
+				<li class="zapowiedzi"><a href="filmy_baza.php?ktore=zapowiedzi"><span class="no">zapowiedzi</span></a></li>
+			</ul>
+
+						
+				</div>
+
+	<div class="clear" style="height: 20px;"><a class="goback" href="#"><span class="no">Powrót na górę strony</span></a></div>
+	<div id="pfr"></div>
+		</div>
+
+	</div>
+
+<div id="footer">
+
+	<!-- Poczatek kodu statystyk Countomat  Oficjalna strona krakowskiego Kina Pod Baranami   -->
+
+	<!-- Tytul: Kino Pod Baranami -->
+
+	<!-- URL: http://www.kinopodbaranami.pl -->
+
+	
+	<a href="http://www.countomat.com/1457.html"  title="Countomat - licznik oraz statystyki webowe (Statystyki &amp; Analiza danych, Wykresy, Licznik, Dane statystyczne)"  style="text-decoration:none; float:right;">
+	<img border="0" src="https://log1.countomat.com/_log/kinopodbaranami.pl;~noparameter/ct.gif" alt="Countomat - licznik oraz statystyki webowe (Statystyki &amp; Analiza danych, Wykresy, Licznik, Dane statystyczne)" title="Countomat - licznik oraz statystyki webowe (Statystyki &amp; Analiza danych, Wykresy, Licznik, Dane statystyczne)"/>
+	</a>
+		<!-- Koniec kodu statystyk Countomat  Oficjalna strona krakowskiego Kina Pod Baranami -->
+
+	Copyright &copy;
+	<a href="kino.php?txt_acro=kino_kontakt" title="kontakt">Kino Pod Baranami</a>
+
+	Projekt i wykonanie
+	<a href="http://www.kino.krakow.pl/" title="Kraków - repertuar kin" target="_blank">
+		kino.krakow.pl
+	</a>
+
+</div>
+
+</div>
+
+	<div id="bannerssmall">
+		<ul>
+			<li class="search"><a href="szukaj.php"><span>szukaj</span></a></li>
+			<li class="brit"><a href="english.php"><span>english version</span></a></li>
+			<li class="facebook"><a href="http://www.facebook.com/pages/Krakow-Poland/Kino-Pod-Baranami/29546594493?ref=ts"><span>facebook</span></a></li>
+			<!--<li class="gadu"><a href="gg://5911809"><span>gadu-gadu</span></a></li>
+			<li class="myspace"><a href="http://www.myspace.com/kinopodbaranami"><span>myspace</span></a></li>-->
+			<li class="newsletter"><a href="rejestracja.php"><span>newsletter</span></a></li>
+			<li class="rezerwacja"><a href="repertuar.php"><span>rezerwacja</span></a></li>
+			<!--<li class="seanszhej"><a href="wydarzenie.php?evnt_id=11"><span>seans z hejnałem</span></a></li>-->
+			<li class="klub"><a href="klub.php"><span>klub przyjaciół</span></a></li>
+			<li class="findex"><a href="wiadomosc.php?news_id=2"><span>filmowy index</span></a></li>
+		</ul>
+	</div>
+<script type="text/javascript" src="/javascripts/facebookfix.js"></script>
+<script type="text/javascript" src="/javascripts/custom.js?v=3"></script>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-42852347-1', 'kinopodbaranami.pl');
+  ga('send', 'pageview');
+
+</script>
+<div id="buy-order-dialog" style="display:none">
+	<h4></h4>
+	<div class="data-info">
+		<span class="date"></span><span class="time"></span><br />
+		<span class="event-place"></span><br />
+		<span style="display: none;" class="warning event-warning-text">Uwaga! Seans w innym obiekcie.</span>
+		<span style="display: none;" class="warning event-sold-out">Bilety wyprzedane. Wybierz inny seans.</span>
+		<span style="display: none;" class="warning event-reservation-times-up">Do seansu pozostało mniej niż 30 minut, rezerwacja i sprzedaż online są niemożliwe. Zapraszamy do kas.</span>
+	</div>
+	<div class="links">
+		<a class="book"  target="_blank"><img src="img/rezerwuj.png" alt="Rezerwuj" /></a>
+		<span>lub</span>
+		<a class="buy" target="_blank"><img src="img/kup_bilet.png" alt="Kup bilet" /></a>
+	</div>
+	<div class="disclaimer" style="font-size:10px;text-align:center;">
+		<!--<p>Ze względu na obowiązujące obostrzenia, liczba dostępnych miejsc jest ograniczona.</p>
+		<p>W limity nie wliczają się osoby zaszczepione.</p>
+		<p>Jeśli chcą Państwo dobrowolnie poinformować nas o byciu zaszczepionym, prosimy o wybranie biletu z dopiskiem "mam certyfikat"</p>
+		<!/ -- Ze względu na obowiązujące obostrzenia, liczba dostępnych miejsc jest ograniczona. W limity nie wliczają się osoby zaszczepione.
+		W przypadku braku miejsc, można dobrowolnie poinformować nas o byciu zaszczepionym. Pozwoli to zwiększyć pulę miejsc. Prosimy o kontakt z Kasą Kina. - - >
+		-->
+		<strong>Kupując</strong> bilet przez internet nie musisz czekać w kolejkach. <br />
+		Wydrukuj bilet na drukarce lub okaż do kontroli na urządzeniu mobilnym.<br />
+		<strong>Zarezerwowane</strong> bilety należy odebrać w kasie najpóźniej 30 minut przed seansem
+		- po tym czasie rezerwacja zostanie automatycznie anulowana.
+	</div>
+</div>
+<div style="display:none;" id="mos-banner">
+	<img src="img_new/mos_okienko.png" />
+</div>
+</body>
+</html>

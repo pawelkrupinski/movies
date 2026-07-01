@@ -9703,7 +9703,7 @@ showings:
 
 === Toy Story 5 ===
 displayTitle:      Toy Story 5
-cinemaTitles:      TOY STORY 5 | Toy Story 5 | Toy Story 5 (Dubbing PL) | Toy Story 5 /dubbing | Toy Story 5 ukraiński dubbing | Toy story 5 | ІСТОРІЯ ІГРАШОК 5
+cinemaTitles:      TOY STORY 5 | Toy Story 5 | Toy Story 5 /dubbing | Toy Story 5 ukraiński dubbing | Toy story 5 | ІСТОРІЯ ІГРАШОК 5
 runtimeMinutes:    102
 releaseYear:       2026
 countries:         Japonia, USA
@@ -9827,7 +9827,7 @@ cinemaScrapes:
   Kino Narie / Toy Story 5 /dubbing / —
   Kino ODEON / Toy story 5 / —
   Kino Oskard / Toy Story 5 / —
-  Kino Pod Baranami / Toy Story 5 (Dubbing PL) / —
+  Kino Pod Baranami / Toy Story 5 / —
   Kino Promień / Toy Story 5 / —
   Kino Przedwiośnie / Toy Story 5 / 2026
   Kino Roma / Toy Story 5 / 2026
@@ -9869,7 +9869,7 @@ showings:
 
 === Toy Story 5 ukraiński dubbing ===
 displayTitle:      Toy Story 5 ukraiński dubbing
-cinemaTitles:      TOY STORY 5 | Toy Story 5 | Toy Story 5 (Dubbing PL) | Toy Story 5 /dubbing | Toy Story 5 ukraiński dubbing | Toy story 5 | ІСТОРІЯ ІГРАШОК 5
+cinemaTitles:      TOY STORY 5 | Toy Story 5 | Toy Story 5 /dubbing | Toy Story 5 ukraiński dubbing | Toy story 5 | ІСТОРІЯ ІГРАШОК 5
 runtimeMinutes:    102
 releaseYear:       2026
 countries:         Japonia, USA
@@ -9991,7 +9991,7 @@ cinemaScrapes:
   Kino Narie / Toy Story 5 /dubbing / —
   Kino ODEON / Toy story 5 / —
   Kino Oskard / Toy Story 5 / —
-  Kino Pod Baranami / Toy Story 5 (Dubbing PL) / —
+  Kino Pod Baranami / Toy Story 5 / —
   Kino Promień / Toy Story 5 / —
   Kino Przedwiośnie / Toy Story 5 / 2026
   Kino Roma / Toy Story 5 / 2026

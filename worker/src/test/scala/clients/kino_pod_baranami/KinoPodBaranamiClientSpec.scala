@@ -6,7 +6,9 @@ import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.KinoPodBaranamiClient
+import tools.GetOnlyHttpFetch
 
+import java.nio.charset.Charset
 import java.time.{LocalDate, LocalDateTime}
 
 /** Replays the recorded `/repertuar.php` page (07-06-2026 capture, ISO-8859-2)
@@ -65,5 +67,66 @@ class KinoPodBaranamiClientSpec extends AnyFlatSpec with Matchers with OptionVal
     // distinct original — don't store a redundant one.
     client.fetch().find(_.movie.title.equalsIgnoreCase("Hamnet"))
       .foreach(_.movie.originalTitle shouldBe None)
+  }
+
+  it should "fold a film's (Napisy PL) / (Dubbing PL) editions into one movie, surfacing each screening's language as a Showtime format" in {
+    // The cinema lists the subtitled and dubbed editions of the same film as two
+    // separate `film.php?film_id=` entries whose only title difference is a
+    // trailing "(Napisy PL)" / "(Dubbing PL)" language tag. Left in the title,
+    // both sanitize to the SAME slot key and clobber each other every scrape
+    // (only the last edition's showtimes survive). Stripping the tag at parse
+    // time collapses them to one film with the UNION of screenings, and the
+    // language is carried per-screening on `Showtime.format` (NAP / DUB).
+    val html =
+      """<html><body>
+        |<p class="rep_date">Niedziela 7 czerwca // Sunday, June 7</p>
+        |<ul class="program_list">
+        |  <li><a href="film.php?film_id=12964" title="Toy Story 5">Toy Story 5 (Napisy PL)</a>
+        |      <span><a href="/rezerwacja_start.php?event_id=1">18:00</a></span></li>
+        |  <li><a href="film.php?film_id=12963" title="Toy Story 5">Toy Story 5 (Dubbing PL)</a>
+        |      <span><a href="/rezerwacja_start.php?event_id=2">15:45</a></span></li>
+        |</ul>
+        |</body></html>""".stripMargin
+    val fake = new GetOnlyHttpFetch {
+      def get(url: String): String = html
+      override def getBytes(url: String): Array[Byte] = html.getBytes(Charset.forName("ISO-8859-2"))
+    }
+    val movies = new KinoPodBaranamiClient(fake, KinoPodBaranami, LocalDate.of(2026, 6, 7)).fetch()
+
+    movies should have size 1
+    val toy = movies.head
+    toy.movie.title shouldBe "Toy Story 5"
+    toy.showtimes.map(_.dateTime) should contain allOf (
+      LocalDateTime.of(2026, 6, 7, 15, 45), LocalDateTime.of(2026, 6, 7, 18, 0))
+    toy.showtimes.find(_.dateTime == LocalDateTime.of(2026, 6, 7, 18, 0)).value.format shouldBe List("NAP")
+    toy.showtimes.find(_.dateTime == LocalDateTime.of(2026, 6, 7, 15, 45)).value.format shouldBe List("DUB")
+  }
+
+  it should "fetch per-film detail (synopsis, director, cast, runtime, original title, poster) from the film.php page" in {
+    // Deferred detail: the EnrichDetails task calls fetchFilmDetail with the
+    // slot's filmUrl. Replays the recorded ISO-8859-2 detail pages for the two
+    // Toy Story 5 editions (film_id 12963 = Dubbing, 12964 = Napisy).
+    val napisy = client.fetchFilmDetail("https://kinopodbaranami.pl/film.php?film_id=12964").value
+    napisy.originalTitle          shouldBe Some("Toy Story 5")
+    napisy.director               should contain("Andrew Stanton")
+    // `aktorzy` is present on the subtitle page — prove the parser reads it.
+    napisy.cast                   should contain("Tom Hanks")
+    napisy.runtimeMinutes         shouldBe Some(102)
+    napisy.releaseYear            shouldBe Some(2026)
+    napisy.countries              should contain("USA")
+    napisy.synopsis.value         should include("Toy Story 5")
+    napisy.posterUrl.value        should (startWith("https://kinopodbaranami.pl/") and include("images_lib/"))
+
+    // The dubbing page carries the same shared facts (director/runtime/synopsis).
+    val dubbing = client.fetchFilmDetail("https://kinopodbaranami.pl/film.php?film_id=12963").value
+    dubbing.director              should contain("Andrew Stanton")
+    dubbing.runtimeMinutes        shouldBe Some(102)
+    dubbing.synopsis              shouldBe defined
+  }
+
+  it should "expose itself as a deferred DetailEnricher that resolves TMDB from the listing" in {
+    client shouldBe a[services.cinemas.DetailEnricher]
+    client.detailGroup            shouldBe "kino-pod-baranami"
+    client.defersTmdbResolution   shouldBe false
   }
 }
