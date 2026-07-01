@@ -189,6 +189,13 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
       Seq("iwangrozny|1944", s"${TitleNormalizer.sanitize("Иван Грозный")}|1944")
   }
 
+  "screeningsAll" should "return exactly projectAll's screenings (metadata-free), for single- and multi-variant rows" in {
+    // The source-films census counts off screeningsAll instead of projectAll to skip
+    // the unused ResolvedMovie work; the counts only stay identical if the screenings do.
+    ReadModelProjection.screeningsAll(stored)         shouldBe ReadModelProjection.projectAll(stored).map(_._2)
+    ReadModelProjection.screeningsAll(twoTitleStored) shouldBe ReadModelProjection.projectAll(twoTitleStored).map(_._2)
+  }
+
   it should "derive year, director and cast for every card from the whole record" in {
     val cards = ReadModelProjection.projectAll(twoTitleStored).map(_._1)
     all (cards.map(_.releaseYear)) shouldBe Some(1944)

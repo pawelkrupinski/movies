@@ -25,8 +25,9 @@ import scala.util.{Failure, Success, Try}
  * outage (a malformed `web_movies` doc silently empties a city) needs.
  *
  * Apples-to-apples by construction: the count runs each row through the REAL
- * projection path ([[ReadModelProjection.projectAll]]) — same per-title card split,
- * same cinema→city bucketing — and gates on the same `readyToProject` predicate the
+ * projection's screenings path ([[ReadModelProjection.screeningsAll]] — the screenings
+ * half of `projectAll`, same per-title card split + cinema→city bucketing, minus the
+ * unused `ResolvedMovie` metadata) and gates on the same `readyToProject` predicate the
  * projector writes by, so a film still pending TMDB enrichment is absent from BOTH
  * sides rather than inflating the source count.
  *
@@ -101,9 +102,13 @@ object WorkerSourceFilmsMetrics {
     val acc    = scala.collection.mutable.Map.empty[(String, String), Int].withDefaultValue(0)
     repository.foreachRecord { stored =>
       if (stored.record.readyToProject)
-        Try(ReadModelProjection.projectAll(stored)) match {
+        // Only the SCREENINGS half is needed to count qualifying cards per city;
+        // `screeningsAll` skips the `resolve`/synopsis/ratings materialisation
+        // `projectAll` does (this census re-scanned the whole corpus every 5 min,
+        // and that metadata work was the worker's single biggest CPU consumer).
+        Try(ReadModelProjection.screeningsAll(stored)) match {
           case Success(cards) =>
-            cards.foreach { case (_, screenings) =>
+            cards.foreach { screenings =>
               qualifyingKeys(screenings, bySlug, clock).foreach(key => acc(key) += 1)
             }
           case Failure(_) => () // a row that won't project simply doesn't count

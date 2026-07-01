@@ -161,6 +161,21 @@ object ReadModelProjection {
     else groups.map { case (_, sources) => projectVariant(stored, sources) }
   }
 
+  /** The SCREENINGS half of [[projectAll]] — one screenings list per display-title
+   *  variant — WITHOUT materialising the `ResolvedMovie` metadata. Byte-identical to
+   *  `projectAll(stored).map(_._2)`, but skips the costly `resolve` /
+   *  [[synopsisByCity]] / ratings work per row. For callers that only need the
+   *  per-(city,cinema) showtime buckets — the source-films census counts qualifying
+   *  cards per city and never looks at the metadata half, so re-projecting it over
+   *  the whole corpus on a timer was pure waste. */
+  def screeningsAll(stored: StoredMovieRecord): Seq[Seq[CityScreening]] = {
+    val groups = variants(stored)
+    if (groups.sizeIs <= 1) Seq(screenings(stored))
+    else groups.map { case (_, sources) =>
+      screeningsFor(stored.record.scopedToSources(sources).cinemaShowings, variantFilmId(stored, sources))
+    }
+  }
+
   /** The film id for one display-title variant: `sanitize(variantTitle)|year`,
    *  where the variant title is derived from only that group's slots (so two
    *  groups never collide — distinct sanitize keys) and the year is the shared
