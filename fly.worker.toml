@@ -7,16 +7,26 @@ app = 'kinowo-worker'
 # Same region as `kinowo` + the self-hosted Mongo (`fly/mongo`) so writes run
 # on Fly's private network at ~1 ms RTT instead of a cross-region hop.
 primary_region = 'arn'
-# Runs as ONE machine (scale set out-of-band: `fly scale count N -a kinowo-worker`;
-# `flyctl deploy` preserves the count and rolls all). Scaled back from 2 to 1 on
-# 2026-06-13: a 2nd competing-consumer doubled the worker's *write burst* onto the
-# shared-cpu-1x Mongo (boot re-scrape + projection cascade) and pushed it into
-# sustained CPU-credit throttling — while NOT increasing useful throughput, since
-# Mongo (not the worker) is the bottleneck. The competing-consumer design still
-# supports N machines (each drains the shared Mongo task queue via an atomic
-# `findOneAndUpdate` claim — Waiting→WorkedOn + workerId + lease — so no task runs
-# twice; the always-on singletons run on each, idempotent/enqueue-deduped). Scale
-# back up only once Mongo has CPU-credit headroom (see KINOWO_SCRAPE_FRESHNESS_MINUTES).
+# Runs as TWO machines (scale set out-of-band: `fly scale count N -a kinowo-worker`,
+# or add one with `fly machine clone <id> --region arn` which auto-provisions the
+# per-machine heapdump volume; `flyctl deploy` preserves the count and rolls all).
+# The competing-consumer design supports N machines: each drains the shared Mongo
+# task queue via an atomic `findOneAndUpdate` claim (Waiting→WorkedOn + workerId +
+# 5-min lease, expired leases reaped back to Waiting) so no task runs twice; the
+# always-on singletons (the *Reapers) run on each machine but gate every occurrence
+# through MongoScheduledRunStore's atomic dup-key claim, so exactly one machine per
+# occurrence does the work; enqueue is deduped by the unique partial index on
+# `dedupKey`. Two machines split the fixed task load, so each does ~half the CPU work.
+#
+# History: scaled back 2→1 on 2026-06-13 because a 2nd consumer doubled the worker's
+# *write burst* onto a then-starved Mongo and pushed it into CPU-credit throttling
+# without adding throughput (Mongo, not the worker, was the bottleneck). Scaled back
+# UP 2→ on 2026-07-01: after the OMDb-backfill fixes (@75e86608 batch read, @8ab322bb
+# /metrics snapshot) Mongo credit sits pinned at its 50k ceiling (full headroom, the
+# documented precondition), while the *single* worker was chronically credit-floored
+# (balance ~2) — exactly the case where a 2nd competing consumer helps. Watch Mongo
+# cpu_balance/throttle after any scrape-write change; scale back to 1 if it starves
+# again (see KINOWO_SCRAPE_FRESHNESS_MINUTES, the dominant write-rate lever).
 
 [build]
   dockerfile = 'Dockerfile'
@@ -160,7 +170,9 @@ primary_region = 'arn'
 # JVM's HeapDumpOnOutOfMemoryError (hard-OOM path) and the LivenessWatchdog
 # (death-spiral path) both write `*.hprof` into /data/heapdumps; ephemeral
 # rootfs would lose them the instant the process exits + Fly reschedules. One
-# machine ⇒ one volume in the worker's region. Create out-of-band before deploy:
+# volume per machine in the worker's region (Fly binds a named mount 1:1 to a machine).
+# `fly machine clone` provisions the clone's volume automatically; to add a machine
+# manually, create its volume out-of-band first:
 #   flyctl volume create worker_heapdumps --size 1 --region arn --app kinowo-worker
 [[mounts]]
   source = 'worker_heapdumps'
