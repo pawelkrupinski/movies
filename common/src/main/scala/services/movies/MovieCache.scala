@@ -1054,7 +1054,10 @@ class CaffeineMovieCache(
       posterUrl      = cm.posterUrl.orElse(priorSlot.flatMap(_.posterUrl)),
       filmUrl        = cm.filmUrl,
       trailerUrl     = cm.trailerUrl.orElse(priorSlot.flatMap(_.trailerUrl)),
-      showtimes      = cm.showtimes
+      // Canonical order so a re-scrape returning the same showings in a different
+      // order stores an identical slot and the write-through guard skips the
+      // redundant write + change-stream event. See MovieRecordMerge.sortShowtimes.
+      showtimes      = MovieRecordMerge.sortShowtimes(cm.showtimes)
     )
 
   /** If `primary` doesn't currently exist in the cache, look for an existing

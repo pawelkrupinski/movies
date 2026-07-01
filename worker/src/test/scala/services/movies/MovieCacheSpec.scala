@@ -666,6 +666,20 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     secondTick.head._3 shouldBe false
   }
 
+  it should "NOT re-write the row when a re-scrape returns the same showings in a different order" in {
+    val repository = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
+    val a = showtime("2026-06-08T18:00"); val b = showtime("2026-06-08T20:30"); val c = showtime("2026-06-08T22:45")
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Foo", Multikino, showtimes = Seq(a, b, c))))
+    repository.upserts should not be empty   // first scrape established the slot
+    repository.upserts.clear()
+    // Same three showings, different order — the canonical sort makes the stored
+    // slot identical, so the write-through equality guard skips it (no write, no
+    // change-stream event). Without the ingestion sort this fired a redundant write.
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Foo", Multikino, showtimes = Seq(c, a, b))))
+    repository.upserts shouldBe empty
+  }
+
   it should "flag the second cinema as new when it scrapes a film already in the cache from another cinema" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Top Gun: Maverick", Multikino, Some(2022))))

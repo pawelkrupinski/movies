@@ -127,11 +127,22 @@ object MovieRecordMerge {
       (s.dateTime, s.room, s.format)
     def rank(s: Showtime): (Boolean, String) =
       (s.bookingUrl.isEmpty, s.bookingUrl.getOrElse(""))
-    showtimes
-      .groupBy(identity)
-      .values
-      .map(_.minBy(rank))
-      .toSeq
-      .sortBy(_.dateTime)
+    // Total order (not just dateTime): `groupBy(...).values` iteration order is
+    // non-deterministic, so same-time showings could otherwise land in a
+    // scrape/merge-order-dependent sequence — a re-fold would then re-write the
+    // same content in a different order (the churn `sortShowtimes` exists to kill).
+    sortShowtimes(showtimes.groupBy(identity).values.map(_.minBy(rank)).toSeq)
   }
+
+  /** Canonical TOTAL order for a cinema slot's showtimes. Sorting at the
+   *  ingestion boundary means a re-scrape that returns the same showings in a
+   *  different order stores a byte-identical slot, so `MovieCache`'s write-through
+   *  equality guard (`updated == before`) skips the write — and with it the
+   *  change-stream event and reprojection that a reorder-only "change" would
+   *  otherwise trigger. Total across every field (unlike [[dedupShowtimes]]'s
+   *  `dateTime`-only sort): `dateTime` first (its ISO string sorts
+   *  chronologically), then room/format/bookingUrl, so equal multisets of
+   *  showings always collapse to the same sequence. */
+  def sortShowtimes(showtimes: Seq[Showtime]): Seq[Showtime] =
+    showtimes.sortBy(s => (s.dateTime.toString, s.room.getOrElse(""), s.format.mkString(","), s.bookingUrl.getOrElse("")))
 }
