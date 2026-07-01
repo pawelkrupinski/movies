@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
-import services.movies.{MongoMovieRepository, StoredMovieRecord}
+import services.movies.{ChangeStreamMetrics, MongoMovieRepository, StoredMovieRecord}
 import tools.Env
 
 import scala.concurrent.Await
@@ -206,6 +206,30 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally handleB.foreach(_.close())
 
     repository.isWatchingChangeStream shouldBe false // last listener gone — cursor stopped
+  }
+
+  // The shared cursor's onNext feeds the change-stream stats sink (op + update-field
+  // kind). Prove it fires against a real event with a recording sink.
+  it should "record change-stream event stats onto the injected sink" in {
+    import java.util.concurrent.{CountDownLatch, TimeUnit}
+    val recorded = scala.collection.mutable.ListBuffer.empty[String]
+    val sink = new ChangeStreamMetrics {
+      def recordEvent(op: String): Unit        = recorded.synchronized(recorded += op)
+      def recordUpdateKind(kind: String): Unit = ()
+    }
+    val repo  = new MongoMovieRepository(changeStreamMetrics = sink)
+    val title = "__integration-test-changestream-stats__"
+    val year  = Some(1903)
+    val id    = StoredMovieRecord.idFor(title, year)
+    val seen  = new CountDownLatch(1)
+    val handle = repo.watchChanges(r => if (StoredMovieRecord.idOf(r) == id) seen.countDown(), _ => ())
+    handle should not be empty
+    try {
+      Thread.sleep(1500)
+      repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000010")))
+      seen.await(15, TimeUnit.SECONDS) shouldBe true
+      recorded.synchronized(recorded.toList) should not be empty // an event was counted for the write
+    } finally { handle.foreach(_.close()); repo.close() }
   }
 
   it should "handle Enrichments with all-None optional fields" in {

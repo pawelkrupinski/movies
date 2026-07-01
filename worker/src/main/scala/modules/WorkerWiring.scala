@@ -319,7 +319,7 @@ class WorkerWiring extends play.api.Logging {
   }
 
   // ── MovieRecord cache (write-through) ───────────────────────────────────────
-  lazy val movieRepository: MovieRepository = new MongoMovieRepository(mongoConnection.database, fallbackToOwnInit = false)
+  lazy val movieRepository: MovieRepository = new MongoMovieRepository(mongoConnection.database, fallbackToOwnInit = false, changeStreamMetrics = taskMetrics)
 
   // Staging-ingest: a genuinely-new film incubates in `pending_movies`
   // (resolve-then-fold) instead of landing straight in `movies`; a film already

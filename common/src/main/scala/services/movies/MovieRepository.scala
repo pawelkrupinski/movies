@@ -225,7 +225,11 @@ class MongoMovieRepository(
   // CPU-throttled) is retried with 0.5s → 1s → 2s backoff before the whole scan
   // is declared incomplete. Injectable so a test can force the exhausted path fast.
   foreachRecordBatchAttempts: Int            = 4,
-  foreachRecordBatchBackoff:  FiniteDuration = 500.millis
+  foreachRecordBatchBackoff:  FiniteDuration = 500.millis,
+  // Observability sink for the shared change stream — counts events by op and
+  // update-field kind. Noop for scripts/web/tests; the worker injects the
+  // Prometheus-backed sink so /metrics carries change-stream stats.
+  changeStreamMetrics: ChangeStreamMetrics = ChangeStreamMetrics.noop
 ) extends MovieRepository with Logging {
 
   // Lazy so subclasses that override every wire method (e.g.
@@ -577,7 +581,8 @@ class MongoMovieRepository(
       c.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
         .subscribe(new Observer[ChangeStreamDocument[StoredMovieDto]] {
           override def onSubscribe(s: Subscription): Unit = { changeSub.set(s); s.request(Long.MaxValue) }
-          override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit =
+          override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit = {
+            recordChangeMetrics(change)
             Option(change.getFullDocument) match {
               case Some(dto) => movieChanges.dispatchUpsert(StoredMovieDto.toDomain(dto))
               case None =>
@@ -587,6 +592,7 @@ class MongoMovieRepository(
                   .map(v => if (v.isString) v.asString.getValue else v.toString)
                   .foreach(movieChanges.dispatchDelete)
             }
+          }
           override def onError(e: Throwable): Unit = {
             logger.warn(s"MovieRepository change stream ended (${e.getMessage}) — relying on the periodic backstop rehydrate.")
             changeSub.set(null)
@@ -607,6 +613,20 @@ class MongoMovieRepository(
   /** Whether the single shared change-stream cursor is currently running — for
    *  diagnostics/tests (it starts on the first listener, stops after the last). */
   def isWatchingChangeStream: Boolean = changeSub.get() != null
+
+  /** Count each change event by op, and each UPDATE by which field kind changed,
+   *  onto the injected sink (noop unless the worker wired the Prometheus one). Best
+   *  effort — instrumentation must never break the stream. */
+  private def recordChangeMetrics(change: ChangeStreamDocument[StoredMovieDto]): Unit = Try {
+    import scala.jdk.CollectionConverters._
+    val op = ChangeStreamMetrics.normalizeOp(Option(change.getOperationType).map(_.getValue).getOrElse(""))
+    changeStreamMetrics.recordEvent(op)
+    if (op == ChangeStreamMetrics.Op.Update) {
+      val keys = Option(change.getUpdateDescription).flatMap(d => Option(d.getUpdatedFields))
+        .map(_.keySet.asScala.toSet).getOrElse(Set.empty[String])
+      ChangeStreamMetrics.updateKinds(keys).foreach(changeStreamMetrics.recordUpdateKind)
+    }
+  }.recover { case exception => logger.warn(s"change-stream metrics failed: ${exception.getMessage}") }.getOrElse(())
 
   def close(): Unit = clientOpt.foreach(_.close())
 

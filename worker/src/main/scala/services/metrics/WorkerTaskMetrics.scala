@@ -4,7 +4,7 @@ import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
-import services.movies.{MergeMetrics, MergeReason, SplitMetrics}
+import services.movies.{ChangeStreamMetrics, MergeMetrics, MergeReason, SplitMetrics}
 import services.readmodel.ReadModelProjectionMetrics
 import services.staging.StagingStep
 import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState, TaskType}
@@ -61,7 +61,7 @@ object TaskObserver {
  * gauges are refreshed from a `QueueSnapshot` each `scrape()`.
  */
 class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new PrometheusRegistry())
-  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics {
+  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ChangeStreamMetrics {
   import WorkerTaskMetrics._
 
   // The client auto-appends `_total` to counter names, so they're declared without it.
@@ -159,6 +159,18 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     .help("Films whose derived documents were removed from the read model during reconcile since boot — a source row that vanished or was re-keyed (its filmId changed). The event that can briefly 404 a film deep-link until the new key propagates to the web; pair with kinowo_worker_merges_total for the re-key cause.")
     .register(registry)
 
+  private val changeEvents = Counter.builder()
+    .name("kinowo_worker_movie_change_events")
+    .help("Movie change-stream events the shared cursor consumed since boot, by op (insert|update|replace|delete). rate() is the change-stream volume the cache + read-model projector reproject from.")
+    .labelNames("op")
+    .register(registry)
+
+  private val changeUpdateKinds = Counter.builder()
+    .name("kinowo_worker_movie_change_update_kinds")
+    .help("For UPDATE events, which field kind changed since boot: source_data=a cinema slot (scrape write), rating=a rating value/url, identity=tmdb/imdb id + resolution lifecycle, updated_at_only=a no-op that touched only updatedAt (a redundant-write canary — should stay ~0). A multi-field update counts under each kind it touched.")
+    .labelNames("kind")
+    .register(registry)
+
   private val writer = PrometheusTextFormatWriter.create()
 
   seed()
@@ -181,6 +193,8 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     ReadModelProjectionMetrics.Targets.foreach(t =>
       ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(t, o)))
     readModelFilmsPruned.inc(0.0) // materialize the single series at 0 so Grafana draws a continuous line
+    ChangeStreamMetrics.Ops.foreach(o => changeEvents.labelValues(o))
+    ChangeStreamMetrics.Kinds.foreach(k => changeUpdateKinds.labelValues(k))
     poolSizeGauge.set(poolSize.toDouble)
     throttledGauge.set(0.0) // materialize at 0 so Grafana draws a continuous on/off line
   }
@@ -203,6 +217,10 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
 
   def recordFilmPruned(count: Int): Unit =
     if (count > 0) readModelFilmsPruned.inc(count.toDouble)
+
+  // ── ChangeStreamMetrics ─────────────────────────────────────────────────────
+  def recordEvent(op: String): Unit           = changeEvents.labelValues(op).inc()
+  def recordUpdateKind(kind: String): Unit     = changeUpdateKinds.labelValues(kind).inc()
 
   def recordEnqueue(taskType: TaskType, result: String): Unit =
     enqueued.labelValues(taskType.name, result).inc()
