@@ -3188,7 +3188,7 @@ showings:
 
 === Gwiezdne wojny: Mandalorian i Grogu ===
 displayTitle:      Gwiezdne wojny: Mandalorian i Grogu
-cinemaTitles:      GWIEZDNE WOJNY : MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN i GROGU | Gwiezdne Wojny: Mandalorian i Grogu | Gwiezdne wojny : mandalorian i grogu | Gwiezdne wojny: Mandalorian i Grogu | Gwiezdne wojny: mandalorian i grogu | MANDALORIAN I GROGU | Mandalorian & Grogu | Mandalorian i Grogu | Mandalorian i Grogu [napisy] | Mandalorian i grogu | Mandalorian i grogu | The Mandalorian and Grogu | The mandalorian and grogu | Мандалорець і Ґроґу
+cinemaTitles:      GWIEZDNE WOJNY : MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN i GROGU | Gwiezdne Wojny: Mandalorian i Grogu | Gwiezdne wojny : mandalorian i grogu | Gwiezdne wojny: Mandalorian i Grogu | Gwiezdne wojny: mandalorian i grogu | MANDALORIAN I GROGU | Mandalorian & Grogu | Mandalorian i Grogu | Mandalorian i grogu | Mandalorian i grogu | The Mandalorian and Grogu | The mandalorian and grogu | Мандалорець і Ґроґу
 runtimeMinutes:    132
 releaseYear:       2026
 countries:         USA
@@ -3323,7 +3323,7 @@ cinemaScrapes:
   KinoGram / Gwiezdne wojny: Mandalorian i Grogu / 2026
   Kinomax / Gwiezdne wojny: mandalorian i grogu / —
   Kinoteatr Rondo / Gwiezdne wojny: Mandalorian i Grogu / —
-  Kinoteka / Mandalorian i Grogu [napisy] / 2026
+  Kinoteka / Mandalorian i Grogu / 2026
   Klaps / Mandalorian i Grogu / —
   Koneckie Centrum Kultury / Mandalorian i Grogu / —
   Max Kino / Gwiezdne wojny: mandalorian i grogu / —
@@ -5093,7 +5093,7 @@ showings:
 
 === Minionki i straszydła ===
 displayTitle:      Minionki i straszydła
-cinemaTitles:      MINIONKI I STRASZYDŁA | Minionki i straszydła | Minionki i straszydła [dubbing PL] | Minionki i straszydła ukraiński dubbing | Посіпаки і Монстряки
+cinemaTitles:      MINIONKI I STRASZYDŁA | Minionki i straszydła | Minionki i straszydła ukraiński dubbing | Посіпаки і Монстряки
 runtimeMinutes:    85
 releaseYear:       2026
 countries:         USA
@@ -5195,7 +5195,7 @@ cinemaScrapes:
   Kino Kawiarnia / Minionki i straszydła / —
   Kino MOK Centrum / MINIONKI I STRASZYDŁA / —
   Kino Scena Kultura / Minionki i straszydła / —
-  Kinoteka / Minionki i straszydła [dubbing PL] / 2026
+  Kinoteka / Minionki i straszydła / 2026
   Planet Cinema / Minionki i straszydła / —
   Regis / Minionki i straszydła / —
   Wybrzeże / Minionki i straszydła / —
@@ -5227,7 +5227,7 @@ showings:
 
 === Minionki i straszydła ukraiński dubbing ===
 displayTitle:      Minionki i straszydła ukraiński dubbing
-cinemaTitles:      MINIONKI I STRASZYDŁA | Minionki i straszydła | Minionki i straszydła [dubbing PL] | Minionki i straszydła ukraiński dubbing | Посіпаки і Монстряки
+cinemaTitles:      MINIONKI I STRASZYDŁA | Minionki i straszydła | Minionki i straszydła ukraiński dubbing | Посіпаки і Монстряки
 runtimeMinutes:    85
 releaseYear:       2026
 countries:         USA
@@ -5327,7 +5327,7 @@ cinemaScrapes:
   Kino Kawiarnia / Minionki i straszydła / —
   Kino MOK Centrum / MINIONKI I STRASZYDŁA / —
   Kino Scena Kultura / Minionki i straszydła / —
-  Kinoteka / Minionki i straszydła [dubbing PL] / 2026
+  Kinoteka / Minionki i straszydła / 2026
   Planet Cinema / Minionki i straszydła / —
   Regis / Minionki i straszydła / —
   Wybrzeże / Minionki i straszydła / —
@@ -7295,6 +7295,7 @@ cinemaScrapes:
   Kino Mikro / Wartość sentymentalna / —
   Kino Pałacowe / Plenerowe Pałacowe: Wartość sentymentalna / 2025
   Kino na Szekspirowskim / Wartość sentymentalna / —
+  Kinoteka / Wartość sentymentalna / 2026
 showings:
   2026-06-25  Kino Pałacowe                 21:30 Dziedziniec Zamkowy
 
@@ -10076,7 +10077,7 @@ runtimeMinutes:    133
 releaseYear:       2025
 countries:         Turcja, Norwegia, Francja, Dania, Szwecja, Niemcy, Wielka Brytania
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/02/WartoscSentymentalna_plakat_NET-po-zmniejszeniu-200x288.jpg
-synopsis.length:   768
+synopsis.length:   936
 cast:              Renate Reinsve, Stellan Skarsgård, Inga Ibsdotter Lilleaas, Elle Fanning, Anders Danielsen Lie
 director:          Joachim Trier
 tmdbId:            1124566
@@ -10100,6 +10101,7 @@ cinemaScrapes:
   Kino Mikro / Wartość sentymentalna / —
   Kino Pałacowe / Plenerowe Pałacowe: Wartość sentymentalna / 2025
   Kino na Szekspirowskim / Wartość sentymentalna / —
+  Kinoteka / Wartość sentymentalna / 2026
 showings:
   2026-06-09  Kino Malta Charlie Monroe     18:00 Sala Marilyn
   2026-06-11  Kino Malta Charlie Monroe     20:30 Sala Marilyn

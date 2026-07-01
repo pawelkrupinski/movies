@@ -94,4 +94,16 @@ class KinotekaClientSpec extends AnyFlatSpec with Matchers {
     all(dates) should fullyMatch regex """\d{4}-\d{2}-\d{2}"""
     client.fetchChunk(dates.head) should not be empty // a single day yields films
   }
+
+  it should "strip a '[dubbing PL]'/'[napisy PL]' tag into the showtime format and merge the editions" in {
+    val html =
+      """<article class="e-movie"><h3 class="e-movie__heading"><a href="/film/toy-story-5/">Toy Story 5 [dubbing PL]</a></h3>
+        |<a data-day="2026-07-02" data-hour="18:00" data-buy-link="/b/1"></a></article>
+        |<article class="e-movie"><h3 class="e-movie__heading"><a href="/film/toy-story-5/">Toy Story 5 [napisy PL]</a></h3>
+        |<a data-day="2026-07-02" data-hour="20:00" data-buy-link="/b/2"></a></article>""".stripMargin
+    val movies = client.parseMovies(html)
+    movies should have size 1
+    movies.head.movie.title             shouldBe "Toy Story 5"
+    movies.head.showtimes.map(_.format).toSet shouldBe Set(List("DUB"), List("NAP"))
+  }
 }

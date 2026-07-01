@@ -94,4 +94,14 @@ class KinoMikroClientSpec extends AnyFlatSpec with Matchers with OptionValues {
       Seq("Joel Coen", "Ethan Coen")
     directorOf("<div>Gatunek: dramat</div>") shouldBe empty
   }
+
+  it should "strip a '- dubbing'/'- napisy' language suffix into the showtime format and merge the editions" in {
+    def ev(title: String, hm: String) =
+      s"""{"location_institution_name":"Kino Mikro","event_title":"$title","event_date":"02.07.2026 $hm","slug":"toy-story-5","event_id":"1"}"""
+    val json   = s"""{"data":[${ev("Toy Story 5- dubbing", "18:00")},${ev("Toy Story 5- napisy", "20:00")}]}"""
+    val movies = KinoMikroParser.parse(Seq(json), "Kino Mikro", KinoMikro)
+    movies should have size 1
+    movies.head.movie.title             shouldBe "Toy Story 5"
+    movies.head.showtimes.map(_.format).toSet shouldBe Set(List("DUB"), List("NAP"))
+  }
 }

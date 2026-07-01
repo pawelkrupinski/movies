@@ -36,7 +36,7 @@ class KinotekaClient(http: HttpFetch) extends ChunkedCinemaScraper with DetailEn
   private val SlugPat    = """/film/([^/"?#]+)""".r
 
   private case class RawSlot(slug: String, title: String, genres: Seq[String], dateTime: LocalDateTime,
-                             booking: Option[String], poster: Option[String])
+                             booking: Option[String], poster: Option[String], format: List[String])
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
@@ -50,6 +50,9 @@ class KinotekaClient(http: HttpFetch) extends ChunkedCinemaScraper with DetailEn
    *  just this day's chunk task. */
   def fetchChunk(date: String): Seq[CinemaMovie] =
     moviesFrom(parsePage(http.get(s"$ListingUrl?date=$date")))
+
+  /** Parse a listing HTML straight to films, skipping the fetch (test seam). */
+  def parseMovies(html: String): Seq[CinemaMovie] = moviesFrom(parsePage(html))
 
   /** Merge the per-day films by `/film/<slug>/`, unioning showtimes — the same
    *  cross-day fold the old whole-scrape did (deterministic by film URL; poster is
@@ -66,7 +69,7 @@ class KinotekaClient(http: HttpFetch) extends ChunkedCinemaScraper with DetailEn
   private def moviesFrom(slots: Seq[RawSlot]): Seq[CinemaMovie] =
     slots.groupBy(_.slug).toSeq.flatMap { case (slug, group) =>
       val primary   = group.head
-      val showtimes = group.map(s => Showtime(s.dateTime, s.booking, None, Nil))
+      val showtimes = group.map(s => Showtime(s.dateTime, s.booking, None, s.format))
                        .distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
       if (showtimes.isEmpty) None
       else Some(CinemaMovie(
@@ -109,9 +112,11 @@ class KinotekaClient(http: HttpFetch) extends ChunkedCinemaScraper with DetailEn
     Jsoup.parse(html).select("article.e-movie").asScala.toSeq.flatMap { art =>
       val link = Option(art.selectFirst("h3.e-movie__heading a[href]"))
       val slug = link.flatMap(a => SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1)))
-      val title = link.map(_.text.trim).filter(_.nonEmpty)
+      // Peel a "[dubbing PL]"/"[napisy PL]" language tag off the title into a
+      // format token so the dub/subtitle editions merge onto one clean-titled row.
+      val title = link.map(_.text.trim).filter(_.nonEmpty).map(ScraperParse.extractFormatTags)
       (slug, title) match {
-        case (Some(s), Some(t)) =>
+        case (Some(s), Some((t, fmt))) =>
           val genres = Option(art.selectFirst("p.e-movie__category")).map(_.text.trim).filter(_.nonEmpty)
                          .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)).map(tools.TextNormalization.titleCaseIfAllLower)
           art.select("a[data-hour][data-day]").asScala.toSeq.flatMap { a =>
@@ -119,7 +124,7 @@ class KinotekaClient(http: HttpFetch) extends ChunkedCinemaScraper with DetailEn
             KinotekaClient.parseDateTime(day, hour).map { dt =>
               val booking = Seq("data-buy-link", "href").map(a.attr).find(v => v.nonEmpty && v != "#")
               val poster  = Option(a.attr("data-poster-link")).filter(_.nonEmpty)
-              RawSlot(s, t, genres, dt, booking, poster)
+              RawSlot(s, t, genres, dt, booking, poster, fmt)
             }
           }
         case _ => Seq.empty
