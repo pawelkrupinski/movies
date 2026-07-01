@@ -69,11 +69,16 @@ Listing file layout GPP expects (per locale directory):
 
 Store-listing changes still go through Google's review before they appear live.
 
-**Safety:** `app/src/main/play/` is intentionally empty in the repo until you
-bootstrap it — with no metadata files present, `publishReleaseListing` is a
-no-op, so a deploy can never blank out the live listing by accident. Only
-`release` publishes: the `tuneRelease` / `releaseFast` variants are disabled in
-`app/build.gradle.kts` so a stray all-variants `publishBundle` can't push a
-tweak/unminified build over the real app.
+**What's committed:** the listing **text** (`title` / `short-description` /
+`full-description` per locale, plus `contact-*` and `default-language`) lives in
+git under `app/src/main/play/`, so edits are reviewable diffs. The **graphics**
+(icon / feature graphic / screenshots) are git-ignored — large binaries that
+change rarely; `bootstrapReleaseListing` re-fetches them on demand, and GPP
+no-ops on absent graphics, so a repo-driven `publishReleaseListing` pushes only
+the committed text (it never blanks the live graphics).
+
+**Safety:** only `release` publishes — the `tuneRelease` / `releaseFast`
+variants are disabled in `app/build.gradle.kts` so a stray all-variants
+`publishBundle` can't push a tweak/unminified build over the real app.
 
 [gpp]: https://github.com/Triple-T/gradle-play-publisher

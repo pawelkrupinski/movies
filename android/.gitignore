@@ -19,3 +19,10 @@ keystore.properties
 
 # Google Play service-account key — never commit it (grants release access).
 play-credentials.json
+
+# Play store-listing graphics (icon/feature/screenshots) are large binaries that
+# change rarely — keep them out of git. Re-fetch with `bootstrapReleaseListing`
+# when you need to touch them; GPP no-ops on absent graphics, so a repo-driven
+# `publishReleaseListing` pushes only the committed text. The listing TEXT
+# (title/short/full descriptions) IS committed under app/src/main/play/.
+app/src/main/play/listings/*/graphics/
