@@ -7,26 +7,29 @@ app = 'kinowo-worker'
 # Same region as `kinowo` + the self-hosted Mongo (`fly/mongo`) so writes run
 # on Fly's private network at ~1 ms RTT instead of a cross-region hop.
 primary_region = 'arn'
-# Runs as TWO machines (scale set out-of-band: `fly scale count N -a kinowo-worker`,
-# or add one with `fly machine clone <id> --region arn` which auto-provisions the
-# per-machine heapdump volume; `flyctl deploy` preserves the count and rolls all).
-# The competing-consumer design supports N machines: each drains the shared Mongo
-# task queue via an atomic `findOneAndUpdate` claim (Waiting→WorkedOn + workerId +
-# 5-min lease, expired leases reaped back to Waiting) so no task runs twice; the
-# always-on singletons (the *Reapers) run on each machine but gate every occurrence
-# through MongoScheduledRunStore's atomic dup-key claim, so exactly one machine per
-# occurrence does the work; enqueue is deduped by the unique partial index on
-# `dedupKey`. Two machines split the fixed task load, so each does ~half the CPU work.
+# Runs as ONE machine (scale set out-of-band: `fly scale count N -a kinowo-worker`;
+# `flyctl deploy` preserves the count and rolls all). The competing-consumer design
+# DOES support N machines — each drains the shared Mongo task queue via an atomic
+# `findOneAndUpdate` claim (Waiting→WorkedOn + workerId + 5-min lease, expired leases
+# reaped) so no task runs twice, the *Reapers gate each occurrence through
+# MongoScheduledRunStore's atomic dup-key claim (one machine per occurrence), and
+# enqueue dedups on the unique `dedupKey` index — but scaling out does NOT help, for
+# a structural reason (see below). Keep it at 1.
 #
-# History: scaled back 2→1 on 2026-06-13 because a 2nd consumer doubled the worker's
-# *write burst* onto a then-starved Mongo and pushed it into CPU-credit throttling
-# without adding throughput (Mongo, not the worker, was the bottleneck). Scaled back
-# UP 2→ on 2026-07-01: after the OMDb-backfill fixes (@75e86608 batch read, @8ab322bb
-# /metrics snapshot) Mongo credit sits pinned at its 50k ceiling (full headroom, the
-# documented precondition), while the *single* worker was chronically credit-floored
-# (balance ~2) — exactly the case where a 2nd competing consumer helps. Watch Mongo
-# cpu_balance/throttle after any scrape-write change; scale back to 1 if it starves
-# again (see KINOWO_SCRAPE_FRESHNESS_MINUTES, the dominant write-rate lever).
+# WHY MORE MACHINES DON'T HELP (measured twice: 2026-06-13 and again 2026-07-01 with
+# a live profiler): the worker's CPU sink is NOT the task handlers — scrape/enrich are
+# I/O-bound (network to cinemas, ~0.5 CPU-s/s total) and split fine across machines.
+# It's the worker's own Mongo-CLIENT I/O: the `movies` change stream + read-model
+# projection. Each machine independently runs `MovieCache.start()` AND
+# `ReadModelProjector.start()`, each opening a change-stream cursor that receives and
+# BSON-decodes EVERY write to `movies` and re-projects it. That work is fixed PER
+# MACHINE — it does not split — so a 2nd machine just runs a 2nd full copy of it. On
+# 2026-07-01 both machines sat pinned at cpu_balance≈2 (the floor), identical to the
+# single machine before them: the 2nd box added a 2nd starved machine, zero throughput.
+# The real lever is making that projection/change-stream path cheaper (a server-side
+# `$match` so the projector isn't woken for every non-`readyToProject` intermediate
+# enrichment write), not adding machines. See KINOWO_SCRAPE_FRESHNESS_MINUTES for the
+# write-rate lever and KINOWO_READMODEL_RECONCILE_SECONDS for the reconcile cadence.
 
 [build]
   dockerfile = 'Dockerfile'
