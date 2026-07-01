@@ -4,7 +4,7 @@
   "tags": ["fly", "kinowo"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 4,
+  "version": 5,
   "refresh": "1m",
   "time": { "from": "now-6h", "to": "now" },
   "annotations": {
@@ -366,6 +366,30 @@
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "kinowo_worker_corpus_movies", "legendFormat": "{{subset}}" }
+      ]
+    },
+    {
+      "id": 39,
+      "title": "Worker — movies change-stream events (per min, by op)",
+      "description": "Change events the shared cursor consumes from the movies collection, by operation. rate() is the change-stream volume the cache + read-model projector reproject from.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 149 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (op) (rate(kinowo_worker_movie_change_events_total[$__rate_interval])) * 60", "legendFormat": "{{op}}" }
+      ]
+    },
+    {
+      "id": 40,
+      "title": "Worker — change-stream UPDATE field kinds (per min)",
+      "description": "For UPDATE events, which field kind changed: source_data = a cinema slot (scrape write), rating, identity = tmdb/imdb id + resolution, updated_at_only = a no-op touching only updatedAt (redundant-write canary — should stay ~0).",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 149 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (kind) (rate(kinowo_worker_movie_change_update_kinds_total[$__rate_interval])) * 60", "legendFormat": "{{kind}}" }
       ]
     }
   ]
