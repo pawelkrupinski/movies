@@ -102,4 +102,19 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
     // booking link is the VisualSoft kup-bilet deep link
     film.showtimes.flatMap(_.bookingUrl).head should include("kup-bilet")
   }
+
+  it should "carry the stripped language onto each showing as a format badge, merging the editions" in {
+    // The version tag was already stripped from the title; now it's also surfaced
+    // as a per-screening format, so the dubbed + subtitled showings share one row
+    // AND keep their language.
+    val html =
+      """<div class="event-item" data-date="2026-07-02" data-time="18:00">
+        |<h3 class="event-title">Toy Story 5 - dubbing</h3><a href="/kup-bilet/1">buy</a></div>
+        |<div class="event-item" data-date="2026-07-02" data-time="20:00">
+        |<h3 class="event-title">Toy Story 5 - napisy</h3><a href="/kup-bilet/2">buy</a></div>""".stripMargin
+    val movies = SystemBiletowyClient.parse(html, KinoKawiarnia, "https://kawiarnia.systembiletowy.pl")
+    movies should have size 1
+    movies.head.movie.title.toLowerCase        should include("toy story 5")
+    movies.head.showtimes.map(_.format).toSet shouldBe Set(List("DUB"), List("NAP"))
+  }
 }

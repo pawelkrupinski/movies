@@ -46,29 +46,33 @@ object SystemBiletowyClient {
   // "12 czerwca 2026" — day, Polish genitive month, year (all present).
   private val DatePat = """(\d{1,2})\s+(\p{L}+)\s+(\d{4})""".r
 
-  private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String])
+  private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String], format: List[String])
 
   def parse(html: String, cinema: Cinema, baseUrl: String): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, baseUrl)
-    // Per-cinema title cleanup (PerCinema rules) on top of the shared cleanTitle.
-    def clean(raw: String): String = TitleNormalizer.cinemaClean(cinema.slug, cleanTitle(raw))
+    // Per-cinema title cleanup (PerCinema rules) on top of the shared cleanTitle,
+    // plus the format/language tokens peeled off the title so the dub/subtitle
+    // screenings merge onto one row AND each keeps its language badge.
+    def clean(raw: String): (String, List[String]) =
+      (TitleNormalizer.cinemaClean(cinema.slug, cleanTitle(raw)), ScraperParse.extractFormatTags(raw)._2)
 
     val tblSlots = document.select("table.tbl_repertoire tr").asScala.toSeq.flatMap { tr =>
       // Only rows that are a real screening carry a repertoire/booking link.
       if (tr.selectFirst("a[href*=repertoire.html]") == null) None
       else for {
         titleElement <- Option(tr.selectFirst("td.title a"))
-        title    = clean(titleElement.text) if title.nonEmpty
+        titled   = clean(titleElement.text) if titled._1.nonEmpty
         dayText <- Option(tr.selectFirst("td.date span.day")).map(_.text)
         d       <- DatePat.findFirstMatchIn(dayText)
         month   <- ScraperParse.PolishMonths.get(d.group(2).toLowerCase)
         time    <- Option(tr.selectFirst("td.date span.hour")).flatMap(h => ScraperParse.parseHHmm(h.text))
         dt      <- Try(LocalDateTime.of(d.group(3).toInt, month, d.group(1).toInt, time.getHour, time.getMinute)).toOption
       } yield RawSlot(
-        title    = title,
+        title    = titled._1,
         dateTime = dt,
         booking  = Option(tr.selectFirst("td.link a[href]")).map(_.attr("abs:href"))
-                     .filter(_.nonEmpty).orElse(Option(titleElement.attr("abs:href")).filter(_.nonEmpty))
+                     .filter(_.nonEmpty).orElse(Option(titleElement.attr("abs:href")).filter(_.nonEmpty)),
+        format   = titled._2
       )
     }
 
@@ -79,16 +83,17 @@ object SystemBiletowyClient {
     val altSlots = document.select("div.event-item:has(a[href*=repertoire.html])").asScala.toSeq.flatMap { item =>
       for {
         titleElement <- Option(item.selectFirst("div.title a"))
-        title    = clean(titleElement.text) if title.nonEmpty
+        titled   = clean(titleElement.text) if titled._1.nonEmpty
         dateText <- Option(item.selectFirst("div.date")).map(_.text)
         d       <- DatePat.findFirstMatchIn(dateText)
         month   <- ScraperParse.PolishMonths.get(d.group(2).toLowerCase)
         time    <- ScraperParse.parseHHmm(dateText)
         dt      <- Try(LocalDateTime.of(d.group(3).toInt, month, d.group(1).toInt, time.getHour, time.getMinute)).toOption
       } yield RawSlot(
-        title    = title,
+        title    = titled._1,
         dateTime = dt,
-        booking  = Option(titleElement.attr("abs:href")).filter(_.nonEmpty)
+        booking  = Option(titleElement.attr("abs:href")).filter(_.nonEmpty),
+        format   = titled._2
       )
     }
 
@@ -100,18 +105,19 @@ object SystemBiletowyClient {
     val attrSlots = document.select("div.event-item[data-date]").asScala.toSeq.flatMap { item =>
       for {
         titleElement <- Option(item.selectFirst("h3.event-title"))
-        title    = clean(titleElement.text) if title.nonEmpty
+        titled   = clean(titleElement.text) if titled._1.nonEmpty
         day     <- Try(LocalDate.parse(item.attr("data-date"))).toOption
         time    <- ScraperParse.parseHHmm(item.attr("data-time"))
       } yield RawSlot(
-        title    = title,
+        title    = titled._1,
         dateTime = day.atTime(time),
-        booking  = Option(item.selectFirst("a[href*=kup-bilet]")).map(_.attr("abs:href")).filter(_.nonEmpty)
+        booking  = Option(item.selectFirst("a[href*=kup-bilet]")).map(_.attr("abs:href")).filter(_.nonEmpty),
+        format   = titled._2
       )
     }
 
     val slots = (tblSlots ++ altSlots ++ attrSlots).distinctBy(s => (s.title, s.dateTime, s.booking))
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, _, showtimes) =>
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format)) { (title, _, showtimes) =>
       CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
