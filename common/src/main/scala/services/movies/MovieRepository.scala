@@ -622,9 +622,10 @@ class MongoMovieRepository(
     val op = ChangeStreamMetrics.normalizeOp(Option(change.getOperationType).map(_.getValue).getOrElse(""))
     changeStreamMetrics.recordEvent(op)
     if (op == ChangeStreamMetrics.Op.Update) {
-      val keys = Option(change.getUpdateDescription).flatMap(d => Option(d.getUpdatedFields))
-        .map(_.keySet.asScala.toSet).getOrElse(Set.empty[String])
-      ChangeStreamMetrics.updateKinds(keys).foreach(changeStreamMetrics.recordUpdateKind)
+      val desc    = Option(change.getUpdateDescription)
+      val updated = desc.flatMap(d => Option(d.getUpdatedFields)).map(_.keySet.asScala.toSet).getOrElse(Set.empty[String])
+      val removed = desc.flatMap(d => Option(d.getRemovedFields)).map(_.asScala.toSet).getOrElse(Set.empty[String])
+      ChangeStreamMetrics.updateKinds(updated, removed).foreach(changeStreamMetrics.recordUpdateKind)
     }
   }.recover { case exception => logger.warn(s"change-stream metrics failed: ${exception.getMessage}") }.getOrElse(())
 

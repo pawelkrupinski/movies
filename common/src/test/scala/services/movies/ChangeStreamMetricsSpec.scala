@@ -34,6 +34,16 @@ class ChangeStreamMetricsSpec extends AnyFlatSpec with Matchers {
     ChangeStreamMetrics.updateKinds(Set("someNewField", "updatedAt")) shouldBe Set(Kind.Other)
   }
 
+  it should "treat a REMOVED cinema slot as source_data, not a no-op" in {
+    // A prune ($unset sourceData.X) leaves only updatedAt in updatedFields and the
+    // slot in removedFields — a real change, so both must be considered.
+    ChangeStreamMetrics.updateKinds(Set("updatedAt"), Set("sourceData.Multikino")) shouldBe Set(Kind.SourceData)
+  }
+
+  it should "flag a genuine no-op (nothing set OR removed) as updated_at_only" in {
+    ChangeStreamMetrics.updateKinds(Set("updatedAt"), Set.empty) shouldBe Set(Kind.UpdatedAtOnly)
+  }
+
   "normalizeOp" should "keep known ops and collapse the rest to other" in {
     ChangeStreamMetrics.normalizeOp("update")     shouldBe ChangeStreamMetrics.Op.Update
     ChangeStreamMetrics.normalizeOp("delete")     shouldBe ChangeStreamMetrics.Op.Delete

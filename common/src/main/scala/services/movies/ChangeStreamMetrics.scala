@@ -44,7 +44,15 @@ object ChangeStreamMetrics {
    *  (invalidate / drop / rename) doesn't spawn a new series. */
   def normalizeOp(raw: String): String = if (Ops.contains(raw)) raw else Op.Other
 
-  /** Categorise an UPDATE event's changed `$set`/`$unset` field paths into kinds.
+  /** Categorise an UPDATE from BOTH its `$set` (`updatedFields`) and `$unset`
+   *  (`removedFields`) paths. A removed cinema slot (`$unset sourceData.X`, e.g. a
+   *  cinema stopped showing the film) lands `updatedAt` in `updatedFields` and the
+   *  slot in `removedFields` — a REAL source_data change, not a no-op — so both
+   *  must be considered or a prune reads as `updated_at_only`. */
+  def updateKinds(updatedFieldKeys: Set[String], removedFieldKeys: Set[String]): Set[String] =
+    updateKinds(updatedFieldKeys ++ removedFieldKeys)
+
+  /** Categorise an UPDATE event's changed field paths into kinds.
    *  `updatedAt` always bumps, so classify on the OTHER fields: none left ⇒
    *  `updated_at_only` (the no-op canary). A multi-field update maps to every kind
    *  it touched (e.g. a scrape that also settled `detailPending` ⇒ source_data +
