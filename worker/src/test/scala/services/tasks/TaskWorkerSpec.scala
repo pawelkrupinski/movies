@@ -28,21 +28,31 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     def slowScrapeMillis: Long = 0L
   }
 
-  "claimAndRun" should "claim a waiting task, run its handler, and tombstone it on Done" in {
+  "claimAndRun" should "claim a waiting task, run its handler, and remove it on Done" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ScrapeCinema, "scrape|x", Map("cinema" -> "x"), submittedAt = t0)
     val h = new RecordingHandler(ScrapeCinema, HandlerOutcome.Done)
     worker(q, Seq(h)).claimAndRun("w0") shouldBe PollResult.Completed
     h.seen.map(_.dedupKey) shouldBe List("scrape|x")
-    q.countByState().getOrElse(TaskState.Deleted, 0L) shouldBe 1L
-    q.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
+    q.countByState() shouldBe empty // completed → removed outright
   }
 
-  it should "tombstone on Skipped just like Done" in {
+  it should "remove the task on Skipped just like Done" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
     worker(q, Seq(new RecordingHandler(ImdbRating, HandlerOutcome.Skipped))).claimAndRun("w0") shouldBe PollResult.Completed
-    q.countByState().getOrElse(TaskState.Deleted, 0L) shouldBe 1L
+    q.countByState() shouldBe empty
+  }
+
+  it should "ring the doorbell once on a successful claim (baton hand-off) but not on an idle one" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)
+    val w = worker(q, Seq(new RecordingHandler(ScrapeCinema, HandlerOutcome.Done)))
+    val before = w.doorbellGeneration
+    w.claimAndRun("w0") shouldBe PollResult.Completed
+    w.doorbellGeneration shouldBe before + 1L // baton woke the next worker for the next task
+    w.claimAndRun("w0") shouldBe PollResult.Idle
+    w.doorbellGeneration shouldBe before + 1L // an empty claim must NOT ring
   }
 
   it should "return a task to waiting on Reschedule" in {
@@ -122,14 +132,14 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     // First call takes exactly one task (the oldest); the second is still waiting.
     w.claimAndRun("w0") shouldBe PollResult.Completed
     q.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
-    q.countByState().getOrElse(TaskState.Deleted, 0L) shouldBe 1L
+    q.countByState().getOrElse(TaskState.WorkedOn, 0L) shouldBe 0L // first task removed, not lingering
 
     // A second call drains the rest; each task routed to its own handler.
     w.claimAndRun("w0") shouldBe PollResult.Completed
     w.claimAndRun("w0") shouldBe PollResult.Idle
     scrape.seen.map(_.dedupKey) shouldBe List("scrape|x")
     imdb.seen.map(_.dedupKey) shouldBe List("imdb|y")
-    q.countByState().getOrElse(TaskState.Deleted, 0L) shouldBe 2L
+    q.countByState() shouldBe empty // both completed → removed
   }
 
   it should "let two workers each hold one of two waiting tasks at once" in {
@@ -156,8 +166,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     val h = new RecordingHandler(ScrapeCinema, HandlerOutcome.Done)
     worker(q, Seq(h)).claimAndRun("w0") shouldBe PollResult.Completed
     h.seen.map(_.dedupKey) shouldBe List("scrape|x")
-    q.countByState().getOrElse(TaskState.Deleted, 0L) shouldBe 1L
-    q.countByState().getOrElse(TaskState.WorkedOn, 0L) shouldBe 0L
+    q.countByState() shouldBe empty // completed → removed
   }
 
   "InMemoryTaskQueue.watchWaiting" should "ring on a fresh enqueue, not on a duplicate, and stop after close" in {
@@ -219,7 +228,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
       Thread.sleep(100) // let the lone worker reach its idle park
       q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)
       eventually(timeout(Span(3, Seconds)), interval(Span(20, Millis))) {
-        q.countByState().getOrElse(TaskState.Deleted, 0L) shouldBe 1L
+        q.countByState() shouldBe empty // picked up + completed (removed) via the doorbell
       }
       h.seen.map(_.dedupKey) shouldBe List("scrape|x")
     } finally w.stop()

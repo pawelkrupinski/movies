@@ -18,7 +18,7 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
     q.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 
-  it should "allow re-enqueue once the prior task is completed (tombstoned)" in {
+  it should "allow re-enqueue once the prior task is completed (removed)" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ScrapeCinema, "scrape|kino-x", submittedAt = t0)
     val task = q.claim("w1", 1.minute, t0).get
@@ -44,14 +44,14 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
     q.claim("w2", 1.minute, t0) shouldBe None
   }
 
-  "complete" should "tombstone only when the caller still holds the lease" in {
+  "complete" should "remove the task only when the caller still holds the lease" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)
     val task = q.claim("w1", 1.minute, t0).get
     q.complete(task.id, "w2") // wrong owner — no-op
     q.countByState().getOrElse(TaskState.WorkedOn, 0L) shouldBe 1L
-    q.complete(task.id, "w1") // real owner
-    q.countByState().getOrElse(TaskState.Deleted, 0L) shouldBe 1L
+    q.complete(task.id, "w1") // real owner — removed outright (no tombstone)
+    q.countByState() shouldBe empty
   }
 
   "release" should "return a task to waiting so it can be claimed again" in {
@@ -99,10 +99,10 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
     q.reapExpiredLeases(t0.plusSeconds(120)) shouldBe 1 // lease (t0+60s) expired by t0+120s
     val reclaimed = q.claim("w2", 1.minute, t0.plusSeconds(120)).get
     reclaimed.id shouldBe first.id
-    q.complete(first.id, "w1") // original worker's late call — must not delete w2's task
+    q.complete(first.id, "w1") // original worker's late call — must not remove w2's task
     q.countByState().getOrElse(TaskState.WorkedOn, 0L) shouldBe 1L
     q.complete(reclaimed.id, "w2")
-    q.countByState().getOrElse(TaskState.Deleted, 0L) shouldBe 1L
+    q.countByState() shouldBe empty // removed outright (no tombstone)
   }
 
   it should "not reap a lease that has not yet expired" in {
@@ -112,7 +112,7 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
     q.reapExpiredLeases(t0.plusSeconds(60)) shouldBe 0
   }
 
-  "waitingCount" should "count only WAITING tasks of the given type (not worked-on/deleted/other types)" in {
+  "waitingCount" should "count only WAITING tasks of the given type (not worked-on/completed/other types)" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ScrapeCinema, "scrape|a", submittedAt = t0)
     q.enqueue(ScrapeCinema, "scrape|b", submittedAt = t0.plusSeconds(1))
@@ -122,24 +122,24 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
 
     val claimed = q.claim("w1", 1.minute, t0).get // scrape|a → worked_on, no longer waiting
     q.waitingCount(ScrapeCinema) shouldBe 1
-    q.complete(claimed.id, "w1")                   // scrape|a → deleted
+    q.complete(claimed.id, "w1")                   // scrape|a → removed
     q.waitingCount(ScrapeCinema) shouldBe 1        // only scrape|b still waiting
   }
 
-  "monitor" should "list active tasks oldest-first with their live state, and exclude tombstones" in {
+  "monitor" should "list active tasks oldest-first with their live state, and exclude completed ones" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ScrapeCinema, "scrape|a", submittedAt = t0)
     q.enqueue(ImdbRating, "imdb|b", submittedAt = t0.plusSeconds(10))
     q.enqueue(RtRating, "rt|c", submittedAt = t0.plusSeconds(20))
-    // Claim the oldest so it shows as worked_on with a worker + lease; complete one so it tombstones.
+    // Claim the oldest so it shows as worked_on with a worker + lease; complete one so it's removed.
     val claimed = q.claim("w1", 1.minute, t0).get // scrape|a → worked_on
     q.enqueue(McRating, "mc|d", submittedAt = t0.plusSeconds(30))
     val toFinish = q.claim("w1", 1.minute, t0).get // imdb|b → worked_on
-    q.complete(toFinish.id, "w1")                   // imdb|b → deleted (tombstone)
+    q.complete(toFinish.id, "w1")                   // imdb|b → removed
 
     val snap = q.monitor()
-    snap.active.map(_.dedupKey) shouldBe Seq("scrape|a", "rt|c", "mc|d") // oldest-first, no tombstone
-    snap.counts.getOrElse(TaskState.Deleted, 0L) shouldBe 1L            // tombstone counted, not listed
+    snap.active.map(_.dedupKey) shouldBe Seq("scrape|a", "rt|c", "mc|d") // oldest-first, completed one gone
+    snap.counts.getOrElse(TaskState.Deleted, 0L) shouldBe 0L            // completed task removed, not counted
 
     val head = snap.active.head
     head.dedupKey shouldBe "scrape|a"

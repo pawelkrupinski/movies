@@ -84,16 +84,17 @@ object EnqueueResult {
 /** What a handler decided about a claimed task. */
 sealed trait HandlerOutcome
 object HandlerOutcome {
-  /** Work done — remove the task (tombstone). */
+  /** Work done — remove the task. */
   case object Done extends HandlerOutcome
-  /** Data was already fresh; nothing to do — remove the task (tombstone). */
+  /** Data was already fresh; nothing to do — remove the task. */
   case object Skipped extends HandlerOutcome
   /** Couldn't finish now; return the task to waiting to retry later. */
   case class Reschedule(error: Option[String] = None) extends HandlerOutcome
 }
 
-/** The three states a task moves through. `deleted` is a tombstone reaped by a
- *  TTL index, kept briefly so a finishing worker can't race a re-enqueue. */
+/** The states a task moves through. `complete` now removes the document outright,
+ *  so a live task is only ever `waiting` or `worked_on`; `deleted` remains defined
+ *  only to read tombstones written by the pre-deploy build until they age out. */
 object TaskState {
   val Waiting  = "waiting"
   val WorkedOn = "worked_on"
@@ -129,7 +130,7 @@ trait TaskQueue {
    *  so a perpetually-failing task can't hot-loop ahead of newer work. */
   def claim(workerId: String, lease: FiniteDuration, now: Instant = Instant.now()): Option[Task]
 
-  /** Mark a worked-on task done (tombstone). No-op unless `workerId` still holds
+  /** Mark a worked-on task done — removes it. No-op unless `workerId` still holds
    *  it — so a late call from a worker whose lease was reaped can't clobber a
    *  task another worker has since reclaimed. */
   def complete(id: String, workerId: String): Unit
@@ -157,8 +158,8 @@ trait TaskQueue {
 
   /** Read-only snapshot for the monitoring page: per-state counts plus the live
    *  ACTIVE tasks (waiting + worked-on), oldest-first, capped at `activeLimit`.
-   *  Tombstones are counted but not listed. Index-backed + bounded so the web
-   *  can poll it cheaply. */
+   *  Completed tasks are removed, so only active tasks appear. Index-backed +
+   *  bounded so the web can poll it cheaply. */
   def monitor(activeLimit: Int = 200): QueueSnapshot
 
   /** Push: ring `onWaiting` whenever fresh work becomes claimable (a newly

@@ -56,13 +56,13 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     queue.claim("w2", 5.minutes).foreach(t => t.dedupKey should not be key)
   }
 
-  it should "tombstone on complete only for the holder, and allow re-enqueue after" in {
+  it should "remove on complete only for the holder, and allow re-enqueue after" in {
     val key = s"scrape|it-complete-${System.nanoTime()}"
     queue.enqueue(TaskType.ScrapeCinema, key, submittedAt = t0)
     val task = drainUntil(_.dedupKey == key, "w1")
     queue.complete(task.id, "intruder") // wrong owner — no-op
     queue.enqueue(TaskType.ScrapeCinema, key, submittedAt = t0) shouldBe EnqueueResult.Duplicate
-    queue.complete(task.id, "w1") // real owner — tombstones
+    queue.complete(task.id, "w1") // real owner — removes the task outright
     queue.enqueue(TaskType.ScrapeCinema, key, submittedAt = t0) shouldBe EnqueueResult.Added
   }
 
@@ -100,7 +100,7 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     workedSummary.leaseExpiresAt should be (defined)
     workedSummary.id shouldBe worked.id
 
-    // A tombstoned task is counted but not listed.
+    // A completed task is removed — gone from the active listing.
     queue.complete(worked.id, "mon-w1")
     queue.monitor(500).active.map(_.dedupKey) should not contain workKey
   }

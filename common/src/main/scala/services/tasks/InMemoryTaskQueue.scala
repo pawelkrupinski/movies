@@ -70,10 +70,13 @@ class InMemoryTaskQueue extends TaskQueue {
       }
   }
 
+  // Finishing removes the row outright (parity with MongoTaskQueue's delete-on-
+  // complete) — a gone row allows re-enqueue just as an old tombstone did, and
+  // nothing lists finished tasks. Ownership-guarded so a reaped worker's late call
+  // can't remove a task another worker reclaimed.
   override def complete(id: String, workerId: String): Unit = lock.synchronized {
     rows.get(id).foreach { r =>
-      if (r.state == TaskState.WorkedOn && r.workerId.contains(workerId))
-        rows.put(id, r.copy(state = TaskState.Deleted, workerId = None, leaseExpiresAt = None))
+      if (r.state == TaskState.WorkedOn && r.workerId.contains(workerId)) rows.remove(id)
     }
   }
 

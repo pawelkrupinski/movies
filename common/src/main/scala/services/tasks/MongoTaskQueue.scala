@@ -5,7 +5,7 @@ import com.mongodb.client.model.{IndexOptions => JIndexOptions}
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, OperationType}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription, documentToUntypedDocument}
 import org.mongodb.scala.bson.BsonString
-import org.mongodb.scala.model.{Filters, FindOneAndUpdateOptions, Indexes, ReturnDocument, Updates}
+import org.mongodb.scala.model.{Aggregates, Filters, FindOneAndUpdateOptions, Indexes, ReturnDocument, Updates}
 
 import play.api.Logging
 
@@ -23,10 +23,10 @@ import scala.util.Try
  * {{{
  *   { _id: <uuid>, taskType: "ScrapeCinema", dedupKey: "scrape|kino-x",
  *     payload: { ... },              // string→string sub-document
- *     state: "waiting"|"worked_on"|"deleted",
- *     active: Bool,                  // true iff state != deleted (drives the dedup index)
+ *     state: "waiting"|"worked_on",  // "deleted" only survives transiently, pre-deploy — see `complete`
+ *     active: Bool,                  // always true now (drives the dedup index)
  *     submittedAt: ISODate, attempts: Int,
- *     workerId: String?, leaseExpiresAt: ISODate?, deletedAt: ISODate? }
+ *     workerId: String?, leaseExpiresAt: ISODate? }
  * }}}
  *
  * Idempotent enqueue and atomic claim are expressed declaratively through
@@ -36,10 +36,10 @@ import scala.util.Try
  *
  * Dedup uses a **unique partial index** on `dedupKey` over `active: true`.
  * Partial filters only allow equality/$exists (not `$in`), hence the explicit
- * `active` flag rather than a `state ∈ {waiting,worked_on}` predicate. A
- * `deleted` tombstone (active:false) is outside the index, so re-enqueuing a
- * finished key is allowed; concurrent inserts race on the index and the loser's
- * duplicate-key error is caught as `Duplicate` (see [[services.MongoErrors]]).
+ * `active` flag rather than a `state ∈ {waiting,worked_on}` predicate. `complete`
+ * deletes the document, so a finished key has no row in the index and re-enqueuing
+ * it is allowed; concurrent inserts race on the index and the loser's duplicate-key
+ * error is caught as `Duplicate` (see [[services.MongoErrors]]).
  *
  * Blocking `.toFuture()` throughout — callers are daemon worker/reaper threads.
  *
@@ -141,16 +141,21 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       }.getOrElse(None)
   }
 
+  // Finishing a task DELETES the document outright rather than tombstoning it
+  // (state=deleted + a 6h TTL). A tombstone bought nothing the delete doesn't: the
+  // dedup index is partial on `active:true`, so a gone doc allows re-enqueue exactly
+  // as a `active:false` tombstone did; `monitor` never listed deleted rows anyway;
+  // and the finished-count lives in the Prometheus counter, not the collection. The
+  // payoff is a `tasks` collection holding only the few active tasks instead of ~6h
+  // of tombstones (≈thousands) — smaller working set + faster claim index scans —
+  // and one change-stream/oplog event per completion (the delete) instead of two
+  // (the update, then the TTL delete). The ownership guard is unchanged, so a late
+  // call from a reaped worker still can't remove a task another worker reclaimed.
+  // (The `deleted`-state + TTL index remain only to age out tombstones written by
+  // the pre-deploy build; they can be dropped once those have expired.)
   override def complete(id: String, workerId: String): Unit = coll.foreach { c =>
     val filter = Filters.and(Filters.eq("_id", id), Filters.eq("state", TaskState.WorkedOn), Filters.eq("workerId", workerId))
-    val update = Updates.combine(
-      Updates.set("state", TaskState.Deleted),
-      Updates.set("active", false),
-      Updates.set("deletedAt", new java.util.Date(Instant.now().toEpochMilli)),
-      Updates.unset("workerId"),
-      Updates.unset("leaseExpiresAt")
-    )
-    Try(Await.result(c.updateOne(filter, update).toFuture(), 10.seconds))
+    Try(Await.result(c.deleteOne(filter).toFuture(), 10.seconds))
       .recover { case exception => logger.warn(s"TaskQueue.complete($id) failed: ${exception.getMessage}") }
   }
 
@@ -238,13 +243,20 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
    *  only path that inserts a document and it always inserts in `waiting`, so an
    *  insert event is exactly "new claimable work" — releases and reaps (updates)
    *  are left to the worker pool's own reaper-ring + idle backstop, which keeps a
-   *  perpetually-failing task from waking the whole pool on every retry. Mirrors
+   *  perpetually-failing task from waking the whole pool on every retry.
+   *
+   *  The stream carries a server-side `$match` on `operationType == insert`, so the
+   *  primary never ships the claim/complete/release/reap events — the vast majority
+   *  of writes to `tasks` — down this cursor. Each instance's doorbell then decodes
+   *  only actual new work (in a prod sample, ~527 of 1811 task events/15min), not
+   *  every lifecycle write it would immediately discard. The client-side INSERT
+   *  guard below is kept as defence-in-depth. Mirrors
    *  [[services.movies.MovieRepository.watchUpserts]]: the driver auto-resumes across
    *  transient blips, and on a standalone (non-replica-set) Mongo the stream just
    *  errors out and the pool falls back to its backstop. */
   override def watchWaiting(onWaiting: () => Unit): Option[AutoCloseable] = coll.map { c =>
     val subRef = new AtomicReference[Subscription]()
-    c.watch().subscribe(new Observer[ChangeStreamDocument[Document]] {
+    c.watch(Seq(Aggregates.filter(Filters.eq("operationType", "insert")))).subscribe(new Observer[ChangeStreamDocument[Document]] {
       override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
       override def onNext(change: ChangeStreamDocument[Document]): Unit =
         if (change.getOperationType == OperationType.INSERT)

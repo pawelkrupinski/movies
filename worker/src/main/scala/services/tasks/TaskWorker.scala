@@ -179,9 +179,16 @@ class TaskWorker(
     queue.claim(workerId, processingTimeout) match {
       case None       => PollResult.Idle
       case Some(task) =>
+        // Baton: this claim consumed one task, so wake one more parked worker in
+        // case another is waiting. A burst of N tasks thus wakes ≈N workers (each
+        // successful claimer hands off) instead of the whole pool per enqueue.
+        doorbell.ring()
         observer.onStarted(task)          // claimed and kicked off
         runHandler(task, workerId)
     }
+
+  /** The doorbell's ring count — for tests asserting the baton hand-off. */
+  private[tasks] def doorbellGeneration: Long = doorbell.generation
 
   private def runHandler(task: Task, workerId: String): PollResult = byType.get(task.taskType) match {
     case None =>
@@ -228,7 +235,7 @@ class TaskWorker(
     running.set(false)
     watchHandle.foreach(h => Try(h.close()))
     reaper.shutdown()
-    doorbell.ring()                // wake every parked worker so it sees running=false
+    doorbell.ringAll()             // wake every parked worker so it sees running=false
     workers.foreach(_.interrupt()) // break any in-flight retryBackoff sleep
     ()
   }
@@ -259,12 +266,19 @@ object TaskWorker {
 /**
  * A monotone "new work might be waiting" doorbell decoupling the change-stream
  * producer from the worker threads. `ring()` bumps a generation counter and
- * wakes every parked worker; a worker parks with `awaitSince(gen, timeoutMs)`,
+ * wakes ONE parked worker; a worker parks with `awaitSince(gen, timeoutMs)`,
  * having snapshotted `generation` *before* its failed claim — so a ring that
  * lands in the gap between the claim and the park advances the counter past the
  * snapshot and the park returns at once, closing the lost-wakeup window. The
  * timeout is the pool's idle backstop. No task travels through it; it's purely a
  * wakeup signal, so over- or under-ringing only ever costs an extra cheap claim.
+ *
+ * `ring()` wakes ONE waiter, not all: a single enqueue-insert is one new task, so
+ * waking the whole pool means `poolSize - 1` empty claims (and, with N instances,
+ * N×poolSize). Instead a woken worker that actually claims work rings again (the
+ * baton, in [[TaskWorker.claimAndRun]]), so N available tasks wake ≈N workers with
+ * ~one trailing empty claim per burst. `ringAll()` (used only by `stop`) still
+ * wakes everyone.
  */
 private[tasks] final class TaskDoorbell {
   private val lock = new Object
@@ -273,8 +287,12 @@ private[tasks] final class TaskDoorbell {
   /** The current ring count; snapshot it before a claim, pass to `awaitSince`. */
   def generation: Long = lock.synchronized(gen)
 
-  /** Wake every parked worker and advance the generation. */
-  def ring(): Unit = lock.synchronized { gen += 1L; lock.notifyAll() }
+  /** Wake ONE parked worker and advance the generation (the baton hands off to the
+   *  next as each claim succeeds — see the class doc). */
+  def ring(): Unit = lock.synchronized { gen += 1L; lock.notify() }
+
+  /** Wake EVERY parked worker (shutdown only — so all see `running=false`). */
+  def ringAll(): Unit = lock.synchronized { gen += 1L; lock.notifyAll() }
 
   /** Park until `generation` moves past `since`, or `timeoutMs` elapses
    *  (whichever first). Interrupt-safe so `stop()` can break it. */
