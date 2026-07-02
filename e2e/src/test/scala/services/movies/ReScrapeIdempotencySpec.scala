@@ -33,8 +33,13 @@ import scala.util.{Random, Try}
  *
  * Signals captured per tick, AFTER the corpus has settled:
  *   - merge churn: `MergeMetrics` increments during the tick's settle/fold,
- *   - staging diversions: a known film re-pushed into `pending_movies`.
- * Both must be zero once settled (asserted). Key-spelling drift (a settled title
+ *   - staging diversions: a known film re-pushed into `pending_movies`,
+ *   - change-stream emissions: any persisted DB edit fires the repository's
+ *     change stream → a read-model re-projection (the write axis the two counters
+ *     above don't see — a write-through that rewrote a cinema slot without folding
+ *     a row still emits; this caught the same-cinema dub/napisy slot ping-pong,
+ *     fixed by folding same-slot title variants in `MovieCache.recordCinemaScrape`).
+ * All three must be zero once settled (asserted). Key-spelling drift (a settled title
  * re-cased by the scrape path) is reported informationally — no merge/freshness
  * cost — and tracked as a separate, smaller follow-up.
  */
@@ -169,41 +174,76 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
     val settledKeys = keySet(w)
     info(s"settled corpus: ${settledKeys.size} films")
 
-    // Now run several IDENTICAL re-scrape ticks. We assert the prod-meaningful
-    // CHURN invariant: once settled, an identical re-scrape must trigger NO
-    // merges (each fold orphans a row's freshness → re-enrichment load) and NO
-    // re-diversion of a known film back into staging. Key-spelling drift (a
-    // settled title re-cased by the scrape path) is reported informationally —
-    // it carries no merge/freshness cost and is tracked separately.
-    // Seeded so every tick re-scrapes in a different but REPRODUCIBLE cinema
-    // order (one `rnd`, its state advancing per tick) — an order-dependent
-    // regression fails deterministically here, never as a flake.
+    // Every persisted edit fires the repository's change stream — the fan-out
+    // prod attaches the MovieCache AND the ReadModelProjector to, so an emission
+    // means a re-projection. This is the DB-write axis the merge/divert counters
+    // above don't see: a write-through that rewrote a cinema slot without folding
+    // a row still emits. It caught the same-cinema same-slot ping-pong — one
+    // venue listing a film under two variants that share the year-less slot key
+    // `CinemaShowing(cinema, sanitize(title))` (napisy↔dubbing, yearless↔yeared).
+    // Each variant overwrote the one slot in turn, so EVERY identical re-scrape
+    // re-fired a change event + reprojection, forever — a fixpoint was never
+    // reached. Fixed by folding same-slot variants in `recordCinemaScrape`.
+    // Registered on the SETTLED repo so only the re-scrape ticks below count.
+    val emissions = new AtomicInteger(0)
+    w.movieRepository.watchChanges(_ => { emissions.incrementAndGet(); () }, _ => { emissions.incrementAndGet(); () })
+
+    // Run IDENTICAL re-scrape ticks until the corpus reaches an emission-free
+    // FIXPOINT — two consecutive zero-emission ticks. The prod-meaningful CHURN
+    // invariants (NO fold merges, NO re-diversion of a known film) must hold on
+    // EVERY tick — those orphan freshness / re-incubate and are asserted immediately.
+    // Change-stream emissions may be non-zero for the first ticks purely because
+    // `bootSettled` doesn't fully drain the boot's enrichment cascade (IMDb detail
+    // / rating write-backs complete over the first re-scrape drains); that tail
+    // CONVERGES. The same-slot ping-pong does NOT converge — so requiring a
+    // two-tick zero-emission fixpoint within a bounded number of ticks is the
+    // exact discriminator (perpetual churn → bound exhausted → fails).
+    // Seeded so every tick re-scrapes in a different but REPRODUCIBLE cinema order
+    // (one `rnd`, advancing per tick) — an order-dependent regression fails
+    // deterministically here, never as a flake.
     val rnd = new Random(0x2026_06_23L)
-    val Ticks = 4
+    val MaxTicks = 12
     val churn    = mutable.ListBuffer.empty[String]
     val keyDrift = mutable.ListBuffer.empty[String]
-    (1 to Ticks).foreach { t =>
-      val mergesBefore = merges.byReason
+    val perTick  = mutable.ListBuffer.empty[Int]      // emissions per tick, for the clue
+    var consecutiveZeroEmission = 0
+    var t = 0
+    while (consecutiveZeroEmission < 2 && t < MaxTicks) {
+      t += 1
+      val mergesBefore    = merges.byReason
+      val emissionsBefore = emissions.get
       val diversions = settleTick(w, rnd)
       val mergesDelta = MergeReason.all.map(r => r -> (merges.byReason(r) - mergesBefore(r))).filter(_._2 > 0)
+      val emissionsDelta = emissions.get - emissionsBefore
       val keysNow = keySet(w)
       val added = keysNow -- settledKeys
       val removed = settledKeys -- keysNow
 
+      perTick += emissionsDelta
+      consecutiveZeroEmission = if (emissionsDelta == 0) consecutiveZeroEmission + 1 else 0
       mergesDelta.foreach { case (r, n) => churn += f"tick $t%d: ${n}%3d merge(s) reason=${r.label}" }
       if (diversions.nonEmpty)
         churn += s"tick $t: ${diversions.size} known film(s) RE-DIVERTED to staging: ${diversions.take(12).mkString(", ")}"
       if (added.nonEmpty)   keyDrift += s"tick $t: keys APPEARED: ${added.take(8).mkString(", ")}"
       if (removed.nonEmpty) keyDrift += s"tick $t: keys VANISHED: ${removed.take(8).mkString(", ")}"
     }
+    info(s"per-tick change-stream emissions until fixpoint: ${perTick.mkString(", ")}")
 
     if (keyDrift.nonEmpty)
       info(s"key-spelling drift (informational, no merge/freshness cost):\n${keyDrift.mkString("\n")}")
 
+    // 1) No fold/divert churn on ANY tick (the original invariant).
     withClue(
-      s"A settled corpus must be churn-free under identical re-scrape, but merges/re-diversions were observed:\n" +
+      s"A settled corpus must not re-fold or re-divert under identical re-scrape, but:\n" +
         s"${churn.mkString("\n")}\n") {
       churn.toList shouldBe empty
+    }
+    // 2) Re-scrape reaches an emission-free fixpoint — the same-slot ping-pong
+    //    would keep it churning forever, never hitting two zero-emission ticks.
+    withClue(
+      s"Re-scrape never reached a two-tick emission-free fixpoint within $MaxTicks ticks " +
+        s"(per-tick emissions: ${perTick.mkString(", ")}) — a slot is being rewritten on every tick.\n") {
+      consecutiveZeroEmission should be >= 2
     }
   }
 }

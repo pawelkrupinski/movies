@@ -791,16 +791,29 @@ class CaffeineMovieCache(
     }
 
     // A single cinema can report one film as several rows — one per screening
-    // page (Kino Nowe Horyzonty's per-event `op.s?id=…` URLs), which all
-    // normalise to the same `(cleanTitle, year)` slot. Recording them one by
-    // one let the LAST win, keeping only its filmUrl + showtimes and silently
-    // dropping every other screening — and which row won depended on the order
-    // the scraper emitted them. Fold each cinema's same-key rows into one:
-    // union every screening's showtimes (deduped, ordered) so none is lost, and
-    // keep a deterministic representative for the scalar film fields.
+    // page (Kino Nowe Horyzonty's per-event `op.s?id=…` URLs), or under two
+    // spellings that share the slot but differ by year (bare "Ojczyzna" +
+    // "Ojczyzna" (2024)) or by a canonical unification the `cleaned` title keeps
+    // apart (`&`↔`i`, the "Gwiezdne Wojny:" prefix). They all land on the SAME
+    // cinema slot: `CinemaShowing(cinema, sanitize(title))` with NO year (see
+    // `cinemaSlotKey`). Recording them one by one let the LAST win, keeping only
+    // its filmUrl + showtimes and silently dropping every other screening — and
+    // which row won depended on the scraper's emit order; worse, when two variants
+    // both survived to write the slot, each identical re-scrape overwrote it in
+    // turn — a permanent ping-pong that re-fired a change event + reprojection
+    // forever (ReScrapeIdempotencySpec). (The format/language class — napisy /
+    // dubbing / 2D — is already folded upstream by the `FormatTags` strip above,
+    // which makes those editions `cleaned`-equal; this fold catches the residual
+    // year / canonical collisions it can't.) Fold each cinema's same-slot rows
+    // into one by grouping at EXACTLY the slot-key `sanitize(title)` granularity —
+    // not `(cleaned, year)`, which is finer than the slot and so leaves same-slot
+    // variants un-folded. Union every screening's showtimes (deduped, ordered) so
+    // none is lost, and keep a deterministic representative for the scalar film
+    // fields (incl. the year the row keys on).
+    val slotGroupKey: CinemaMovie => String = cm => TitleNormalizer.sanitize(cleaned(cm))
     val deduped: Seq[CinemaMovie] =
-      formatted.groupBy(cm => (cleaned(cm), cm.movie.releaseYear)).toSeq
-        .sortBy { case ((t, y), _) => (t, y.getOrElse(Int.MinValue)) }
+      formatted.groupBy(slotGroupKey).toSeq
+        .sortBy { case (k, _) => k }
         .map { case (_, group) =>
           if (group.lengthCompare(1) == 0) group.head
           else {

@@ -779,6 +779,28 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     emissions.get() shouldBe 0            // no write → nothing on the change stream → no reprojection
   }
 
+  it should "fold same-cinema title variants that share a sanitized slot key, so a re-scrape doesn't ping-pong the slot" in {
+    val repo  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repo)
+    // One cinema lists the SAME film under two spellings that CLEAN differently
+    // but SANITIZE identically (canonical maps "&"→"i"), so both target the one
+    // slot key CinemaShowing(Multikino, "mandalorianigrogu"). Future showtimes so
+    // the past-retention path isn't involved — this is purely the slot collision.
+    val amp = cinemaMovie("Mandalorian & Grogu", Multikino, showtimes = Seq(showtime("2027-06-08T18:00")))
+    val iii = cinemaMovie("Mandalorian i Grogu", Multikino, showtimes = Seq(showtime("2027-06-08T20:30")))
+    cache.recordCinemaScrape(Multikino, Seq(amp, iii))
+    repo.upserts should not be empty      // first scrape established the slot
+    repo.upserts.clear()
+    val emissions = changeStreamEmissions(repo)
+    // Identical re-scrape: the two variants fold into ONE slot (deduped at the
+    // sanitize granularity), so the stored slot is unchanged → no write. Before
+    // the slot-key-aligned dedup they alternately overwrote the single slot, so
+    // every tick fired two writes + two change-stream emissions, forever.
+    cache.recordCinemaScrape(Multikino, Seq(amp, iii))
+    repo.upserts shouldBe empty
+    emissions.get() shouldBe 0
+  }
+
   it should "flag the second cinema as new when it scrapes a film already in the cache from another cinema" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Top Gun: Maverick", Multikino, Some(2022))))
