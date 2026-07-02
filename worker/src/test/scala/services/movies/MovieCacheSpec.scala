@@ -679,15 +679,17 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   private def cinemaMovie(title: String, cinema: Cinema, year: Option[Int] = Some(2026),
                           poster: Option[String] = None, showtimes: Seq[Showtime] = Seq.empty,
-                          countries: Seq[String] = Seq.empty, synopsis: Option[String] = None): CinemaMovie =
+                          countries: Seq[String] = Seq.empty, synopsis: Option[String] = None,
+                          cast: Seq[String] = Seq.empty, director: Seq[String] = Seq.empty,
+                          runtimeMinutes: Option[Int] = None): CinemaMovie =
     CinemaMovie(
-      movie     = Movie(title = title, releaseYear = year, countries = countries),
+      movie     = Movie(title = title, releaseYear = year, countries = countries, runtimeMinutes = runtimeMinutes),
       cinema    = cinema,
       posterUrl = poster,
       filmUrl   = None,
       synopsis  = synopsis,
-      cast      = Seq.empty,
-      director  = Seq.empty,
+      cast      = cast,
+      director  = director,
       showtimes = showtimes
     )
 
@@ -799,6 +801,31 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.recordCinemaScrape(Multikino, Seq(amp, iii))
     repo.upserts shouldBe empty
     emissions.get() shouldBe 0
+  }
+
+  it should "carry a slot's detail fields (director/cast/runtime) forward when a later scrape's listing omits them (no strip, no churn)" in {
+    val repo  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repo)
+    val show  = Seq(showtime("2027-06-08T18:00"))
+    // First scrape carries detail — as a deferred detail-page fetch would have
+    // populated the slot (director/cast/runtime live on the venue's film page).
+    cache.recordCinemaScrape(Multikino, Seq(
+      cinemaMovie("Nino", Multikino, showtimes = show,
+                  cast = Seq("A", "B"), director = Seq("Pauline Loquès"), runtimeMinutes = Some(96))))
+    repo.upserts should not be empty
+    repo.upserts.clear()
+    val emissions = changeStreamEmissions(repo)
+    // Next scrape is the bare listing — no cast/director/runtime (they're only on
+    // the detail page, not re-parsed). Carry-forward keeps them, so the stored slot
+    // is identical → no write. Before the fix the rebuild stripped them → churn,
+    // and a TMDB-unresolved film lost its only director.
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Nino", Multikino, showtimes = show)))
+    repo.upserts shouldBe empty
+    emissions.get() shouldBe 0
+    val slot = cache.get(cache.keyOf("Nino", Some(2026)))
+      .flatMap(_.data.collectFirst { case (_: CinemaShowing, sd) => sd })
+    slot.map(_.director)       shouldBe Some(Seq("Pauline Loquès"))
+    slot.map(_.runtimeMinutes) shouldBe Some(Some(96))
   }
 
   it should "flag the second cinema as new when it scrapes a film already in the cache from another cinema" in {

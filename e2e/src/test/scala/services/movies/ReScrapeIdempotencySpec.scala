@@ -193,11 +193,16 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
     // invariants (NO fold merges, NO re-diversion of a known film) must hold on
     // EVERY tick — those orphan freshness / re-incubate and are asserted immediately.
     // Change-stream emissions may be non-zero for the first ticks purely because
-    // `bootSettled` doesn't fully drain the boot's enrichment cascade (IMDb detail
-    // / rating write-backs complete over the first re-scrape drains); that tail
-    // CONVERGES. The same-slot ping-pong does NOT converge — so requiring a
-    // two-tick zero-emission fixpoint within a bounded number of ticks is the
-    // exact discriminator (perpetual churn → bound exhausted → fails).
+    // `bootSettled` doesn't fully drain the boot's enrichment cascade (rating
+    // write-backs complete over the first re-scrape drains); that tail CONVERGES.
+    // A NON-idempotent re-scrape does NOT converge — so requiring a two-tick
+    // zero-emission fixpoint within a bounded number of ticks is the exact
+    // discriminator (perpetual churn → bound exhausted → fails). This caught two
+    // such sources, both fixed in `buildCinemaSlot`/`recordCinemaScrape`: the
+    // same-slot title ping-pong, and detail fields (director/cast/runtime, served
+    // only on a per-film detail page) being STRIPPED every re-scrape because the
+    // slot rebuild didn't carry them forward — that alone was ~860 redundant
+    // writes/tick (the tick-1 count dropped 945→~87 once carried forward).
     // Seeded so every tick re-scrapes in a different but REPRODUCIBLE cinema order
     // (one `rnd`, advancing per tick) — an order-dependent regression fails
     // deterministically here, never as a flake.
