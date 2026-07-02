@@ -22,7 +22,14 @@
 
   function buildIndex() {
     const grid = document.getElementById('film-grid');
-    INDEX = [...grid.querySelectorAll('.col[data-title]')].map(col => ({
+    INDEX = [...grid.querySelectorAll('.col[data-title]')].map((col, i) => {
+      // Stamp the original server position onto the DOM so the day-carousel
+      // preview (applyFiltersForDay, working off a clone with no INDEX) breaks
+      // sort ties by the SAME stable key the commit uses — not the clone's
+      // current order (the previously-shown day's), which would make equal-
+      // earliest cards snap into place the frame the preview is committed.
+      col.dataset.idx = String(i);
+      return {
       element:       col,
       title:    col.dataset.title.toLowerCase(),
       rawTitle: col.dataset.title,
@@ -69,7 +76,8 @@
           })
         }))
       }))
-    }));
+      };
+    });
   }
 
   // ── Master filter ─────────────────────────────────────────────────────────
@@ -297,7 +305,12 @@
     // ("<date>T<HH:MM>", matching applyFilters) + rating + original DOM index.
     const visible = [];
     const cols = [...gridEl.querySelectorAll('.col[data-title]')];
-    cols.forEach((col, idx) => {
+    cols.forEach((col, pos) => {
+      // Tiebreak on the ORIGINAL server position (stamped by buildIndex),
+      // never the clone's current DOM order — the clone is cloned from the
+      // live grid, already reordered to the previously-shown day. Falling
+      // back to `pos` only if the stamp is somehow absent.
+      const idx = col.dataset.idx !== undefined ? parseInt(col.dataset.idx, 10) : pos;
       const countries = new Set((col.dataset.countries || '').split('|').filter(Boolean));
       const genres    = new Set((col.dataset.genres    || '').split('|').filter(Boolean));
       const directors = new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean));

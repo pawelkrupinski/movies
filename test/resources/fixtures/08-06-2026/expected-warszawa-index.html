@@ -50406,7 +50406,9 @@
 let INDEX = null;
 function buildIndex() {
 const grid = document.getElementById('film-grid');
-INDEX = [...grid.querySelectorAll('.col[data-title]')].map(col => ({
+INDEX = [...grid.querySelectorAll('.col[data-title]')].map((col, i) => {
+col.dataset.idx = String(i);
+return {
 element: col,
 title: col.dataset.title.toLowerCase(),
 rawTitle: col.dataset.title,
@@ -50442,7 +50444,8 @@ visible: true
 })
 }))
 }))
-}));
+};
+});
 }
 function setVisible(node, want) {
 if (node.visible !== want) {
@@ -50599,7 +50602,8 @@ const has = (filter, get) => filter !== null && !filter.some(get);
 const sortBy = (document.getElementById('sort-by')?.value === 'rating') ? 'rating' : 'earliest';
 const visible = [];
 const cols = [...gridEl.querySelectorAll('.col[data-title]')];
-cols.forEach((col, idx) => {
+cols.forEach((col, pos) => {
+const idx = col.dataset.idx !== undefined ? parseInt(col.dataset.idx, 10) : pos;
 const countries = new Set((col.dataset.countries || '').split('|').filter(Boolean));
 const genres = new Set((col.dataset.genres || '').split('|').filter(Boolean));
 const directors = new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean));
