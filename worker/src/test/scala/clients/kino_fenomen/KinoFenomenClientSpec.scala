@@ -84,4 +84,22 @@ class KinoFenomenClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     orly.director          shouldBe empty
     orly.movie.releaseYear shouldBe None
   }
+
+  it should "fetch cast, director, synopsis, runtime, country/year, genre and poster from the artist detail page" in {
+    val d = client.fetchFilmDetail("https://iframe639.biletyna.pl/artist/view/id/57079").value
+    d.director        should contain("Joachim Trier")
+    d.cast            should contain allOf ("Renate Reinsve", "Stellan Skarsgard")
+    d.runtimeMinutes  shouldBe Some(133)
+    d.releaseYear     shouldBe Some(2025)
+    d.countries       should contain("Norwegia")
+    d.genres          should contain("dramat")
+    d.synopsis.value  should include("Joachima Triera")
+    d.posterUrl.value should include("/file/get/")
+  }
+
+  it should "expose itself as a deferred DetailEnricher resolving TMDB from the listing" in {
+    client                       shouldBe a[services.cinemas.DetailEnricher]
+    client.detailGroup           shouldBe "kino-fenomen"
+    client.defersTmdbResolution  shouldBe false
+  }
 }

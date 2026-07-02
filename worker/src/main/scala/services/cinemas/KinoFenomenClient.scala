@@ -30,7 +30,7 @@ import scala.util.Try
 class KinoFenomenClient(
   http: HttpFetch,
   override val cinema: Cinema = KinoFenomen
-) extends CinemaScraper {
+) extends CinemaScraper with DetailEnricher {
 
   import KinoFenomenClient._
 
@@ -49,7 +49,10 @@ class KinoFenomenClient(
         movie     = Movie(title, releaseYear = head.year),
         cinema    = cinema,
         posterUrl = head.poster,
-        filmUrl   = head.booking.map(u => if (u.startsWith("http")) u else BaseUrl + u),
+        // The `/artist/view/id/` page is the film's detail page (fetched below);
+        // use it as the filmUrl. Each showing keeps its own `/event/view/id/`
+        // booking link.
+        filmUrl   = head.artistUrl,
         synopsis  = None,
         cast      = Seq.empty,
         director  = head.directors,
@@ -57,6 +60,18 @@ class KinoFenomenClient(
       )
     }
   }
+
+  // The listing already carries the director/year/format, so the film resolves
+  // from the listing; the artist detail page adds synopsis, cast, poster (and
+  // countries/genres), merged in asynchronously by the EnrichDetails task.
+  override val detailGroup: String = "kino-fenomen"
+  override def defersTmdbResolution: Boolean = false
+
+  /** Deferred per-film detail — the EnrichDetails task calls this with the slot's
+   *  `/artist/view/id/<id>` filmUrl. None when nothing useful parsed. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(http.get(ref)).toOption.map(parseDetail)
+      .filter(d => d.synopsis.nonEmpty || d.cast.nonEmpty || d.director.nonEmpty)
 }
 
 object KinoFenomenClient {
@@ -101,7 +116,8 @@ object KinoFenomenClient {
     poster:    Option[String],
     format:    List[String],
     directors: Seq[String],
-    year:      Option[Int]
+    year:      Option[Int],
+    artistUrl: Option[String]
   )
 
   private[cinemas] def parseSlot(row: org.jsoup.nodes.Element): Option[RawSlot] = {
@@ -119,9 +135,10 @@ object KinoFenomenClient {
     } yield ldt
 
     // Raw title from the artist link — strip pipe-separated metadata + format tag.
-    val rawTitle = Option(row.selectFirst("div.iframe_all_event_title a[href^=\"/artist/view/id/\"]"))
-      .map(_.text.trim)
-      .filter(_.nonEmpty)
+    // The same link's href is the film's detail (artist) page.
+    val artistLink = Option(row.selectFirst("div.iframe_all_event_title a[href^=\"/artist/view/id/\"]"))
+    val rawTitle   = artistLink.map(_.text.trim).filter(_.nonEmpty)
+    val artistUrl  = artistLink.map(a => BaseUrl + a.attr("href"))
 
     val title = rawTitle.map { t =>
       val beforePipe = t.split('|').head.trim
@@ -146,6 +163,47 @@ object KinoFenomenClient {
     for {
       t  <- title
       ldt <- dt
-    } yield RawSlot(t, ldt, booking, poster, format, directors, year)
+    } yield RawSlot(t, ldt, booking, poster, format, directors, year, artistUrl)
+  }
+
+  private val RuntimeMinPat = """(\d+)\s*min""".r
+
+  /** Parse an `/artist/view/id/<id>` detail page into a [[FilmDetail]]. The
+   *  `#artist-view-description` block holds `<p>`/`<br>`-separated lines: an
+   *  optional "reżyseria: …" / "występują: …" pair, an optional
+   *  "/ <countries> / <genre> / <year> / <NNN min.>" meta line, and the synopsis
+   *  prose. Some films carry only the prose. */
+  private[cinemas] def parseDetail(html: String): FilmDetail = {
+    val doc   = Jsoup.parse(html)
+    val lines = Option(doc.selectFirst("#artist-view-description")).toSeq
+      .flatMap(_.select("p").asScala)
+      .flatMap(_.html.split("(?i)<br\\s*/?>").iterator.map(s => Jsoup.parse(s).text.trim))
+      .filter(_.nonEmpty)
+    def after(marker: String): Seq[String] =
+      lines.find(_.toLowerCase.startsWith(marker)).toSeq
+        .flatMap(_.replaceFirst("(?i)^" + marker + ":?\\s*", "").split(",").map(_.trim).filter(_.nonEmpty))
+    val metaParts = lines.find(_.startsWith("/")).toSeq
+      .flatMap(_.stripPrefix("/").split("/").map(_.trim).filter(_.nonEmpty))
+    val year      = metaParts.flatMap(YearTokenPat.findFirstIn).headOption.map(_.toInt)
+    val runtime   = metaParts.flatMap(p => RuntimeMinPat.findFirstMatchIn(p).map(_.group(1).toInt)).headOption
+    val countries = metaParts.headOption.toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+    val genres    = metaParts.drop(1)
+      .filterNot(p => YearTokenPat.findFirstIn(p).isDefined || RuntimeMinPat.findFirstMatchIn(p).isDefined)
+    // Synopsis = the prose lines: long, and not one of the marker/meta/title lines.
+    val synopsis  = lines.filter(l => l.length > 60 && !l.startsWith("/") &&
+                      !l.toLowerCase.startsWith("reżyseria") && !l.toLowerCase.startsWith("występują"))
+      .mkString("\n").trim
+    val poster    = Option(doc.selectFirst("a.artist-poster img[src]")).map(_.attr("src").trim)
+      .filter(_.nonEmpty).map(u => if (u.startsWith("http")) u else BaseUrl + u)
+    FilmDetail(
+      synopsis       = Some(synopsis).filter(_.length > 20),
+      cast           = after("występują"),
+      director       = after("reżyseria"),
+      runtimeMinutes = runtime,
+      releaseYear    = year,
+      countries      = countries,
+      genres         = genres,
+      posterUrl      = poster
+    )
   }
 }

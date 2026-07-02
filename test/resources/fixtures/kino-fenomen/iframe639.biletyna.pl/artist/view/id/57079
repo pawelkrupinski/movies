@@ -1,0 +1,582 @@
+<!DOCTYPE html>  <script>
+    window.bnkInpostGeowidgetToken = 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJzQlpXVzFNZzVlQnpDYU1XU3JvTlBjRWFveFpXcW9Ua2FuZVB3X291LWxvIn0.eyJleHAiOjIwODA3NDUyNzYsImlhdCI6MTc2NTM4NTI3NiwianRpIjoiZjNkMWUyNTEtNGNiNS00YmFlLTk0ZjMtNWI3OTdhYWYxZWNkIiwiaXNzIjoiaHR0cHM6Ly9sb2dpbi5pbnBvc3QucGwvYXV0aC9yZWFsbXMvZXh0ZXJuYWwiLCJzdWIiOiJmOjEyNDc1MDUxLTFjMDMtNGU1OS1iYTBjLTJiNDU2OTVlZjUzNTprVzdLOV94UW5oT3oyc1A5OGM5UlZvbG0xQ2tNOXgweGM2a3Q3dlhESFl3IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoic2hpcHgiLCJzZXNzaW9uX3N0YXRlIjoiY2U3ZDIyYWYtZDU2Zi00ODRkLWI3ZDItMDM1ZDAyOTRhMTlkIiwic2NvcGUiOiJvcGVuaWQgYXBpOmFwaXBvaW50cyIsInNpZCI6ImNlN2QyMmFmLWQ1NmYtNDg0ZC1iN2QyLTAzNWQwMjk0YTE5ZCIsImFsbG93ZWRfcmVmZXJyZXJzIjoiIiwidXVpZCI6IjAxZmM4MzEyLTc0ZmQtNDQ0My04YzJjLWE4NzNjMmJmMDYxYiJ9.ogKGuiU9Eoc-u268I63rY-5XOg9afAiaYZo1YHQmiZjKaK89OKJ17tZKniTHOFqr_DjQb8HQOAiIF7fe-ZhTttbVbT0Vul7C5q6BOXUtwbY8I_MA3bLga9cdcFL4c1JsAr4SWJHuZHJcHb4bP1R12Wbcba3Po3Zd00pCDBOFic2MVuEtaRo0O7QH19uiIWfaVTkEjdvpafqj4vqewpiUIlUZhSnJfU_yfoDnJjewjhMaQ-GDbAeyWKgyeJSCBM0oPJBmqOCMjkBqr0u2LKw4GNKCziYy-9nLrm1XM_sz12kggbLCxlz0jIX427l1Eld689BqbITKQCb6OFaCFfPVEQ';
+  </script>
+  <script>
+    window.bnkInpostGeowidgetConfig = {
+      token: window.bnkInpostGeowidgetToken,
+      cssUrl: 'https://geowidget.inpost.pl/inpost-geowidget.css',
+      jsUrl: 'https://geowidget.inpost.pl/inpost-geowidget.js'
+    };
+  </script>
+<!DOCTYPE html>
+<html lang="pl-PL">
+<head>
+  <script>
+    var get_filter = [];
+  </script>
+  <link rel="stylesheet" type="text/css" href="/fonts/montserrat/font.css?v=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Google Tag Manager -->
+      <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+                new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-5JPX6BJ');</script>
+    <!-- End Google Tag Manager -->
+
+  <script type="text/javascript">
+      var bnk_sid = 'a9836b2eb5604e054f6d8f07114e29c2';
+      var site_language = 'pl';
+                  var BNK_context = {"theme_name":"iframe","page_metadata":{}};
+  </script>
+  <!-- start of webpack files -->
+<script  type="text/javascript" src="/dist/shared/js/app-e96e9bea-02c43ad04cfe9ee600d7.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-1fd18a3a-f104719d1f026406bb4c.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-4684ec84-108c91715aef5ac46328.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-a189ee2e-53e0252bc81bdf150930.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-d9cd5f2e-0d887d203f70e1b30b7b.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-a6481472-fab9bc86de8895243900.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-9585abe4-b68ad806b0366ed599c7.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-67028aca-85d1f291f881caf21139.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-daddcf13-9f0ae2a3e368a3641ea2.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-1f88bf92-28e82aba4a60b913e42a.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-65cb2941-479bed98bbcddaa5bae1.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-e883c8fb-58219e901c0ba8971bbc.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-da221d79-9b73866b619591a3c3a3.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-1199201b-fc86c4ee29a77a906b3e.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/rxjs.vendor-abab9e4bf3a490327a6c.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/moment.vendor-9e25310042aca09cb34e.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/moment-range.vendor-fa85da4acb75537a5380.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/jquery.vendor-c2be2383022f6e9b642b.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/rxjs.ecdc5b47e7.vendor-f52ac0500ead39bd8bfb.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/tslib.vendor-bdb3cab83566982fecd0.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/bootstrap-sass.vendor-d1c62770c481728be2e4.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/js-cookie.vendor-b612e527b3ce4b6de72f.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/rxjs.b928308be6.vendor-b2c7cd1497d718e79de3.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/rxjs.673bb9f1b1.vendor-66d8538355b20ed768db.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/rxjs.a598e4f2af.vendor-824281a6f5e894446067.js"></script>
+<script  type="text/javascript" src="/dist/iframe/js/app-1cc9b60bed93446ce1bc.js"></script>
+<link rel="preload" href="/dist/shared/css/app-3574871a-2517cbcc2c6006951eba.css" as="style">
+<link rel="stylesheet" type="text/css" href="/dist/shared/css/app-3574871a-2517cbcc2c6006951eba.css"/>
+<link rel="preload" href="/dist/iframe/css/app-d67d1873212a1d12d6a5.css" as="style">
+<link rel="stylesheet" type="text/css" href="/dist/iframe/css/app-d67d1873212a1d12d6a5.css"/>
+<!-- end of webpack files -->
+  <title>biletyna.pl</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" >
+<meta charset="UTF-8"><script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.0/jquery-ui.min.js"></script>
+<script src="/js/gnp.js?ver=1.0"></script>
+<script src="/lib/easyXDM.min.js"></script><link href="https://biletyna.pl/film/Wartosc-sentymentalna" rel="canonical" >      <link rel="apple-touch-icon" sizes="180x180" href="/gfx/favicon/biletyna/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/gfx/favicon/biletyna/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/gfx/favicon/biletyna/favicon-16x16.png">
+    <link rel="manifest" href="/gfx/favicon/biletyna/site.webmanifest?ver=1.1">
+    <link rel="mask-icon" href="/gfx/favicon/biletyna/safari-pinned-tab.svg" color="#ae347a">
+    <link rel="shortcut icon" href="/gfx/favicon/biletyna/favicon.ico">
+    <meta name="apple-mobile-web-app-title" content="Biletyna.pl">
+    <meta name="application-name" content="Biletyna.pl">
+    <meta name="msapplication-TileColor" content="#ae347a">
+    <meta name="msapplication-config" content="/gfx/favicon/biletyna/browserconfig.xml?ver=1.1">
+    <meta name="theme-color" content="#ae347a">
+    <meta name="Author" content="biletyna.pl" />
+  <meta property="fb:app_id" content="178433258981904"/>
+  <meta property="fb:admins" content="100000669639818" />
+
+  <meta name="google-site-verification" content="dw9NZ8jh0MLPUjF-hNBtWegCSFUBOYQNRFMON3qyqsA" />
+  <meta name="msvalidate.01" content="E3F633C1890A1EE8824259D085D0A07C" />
+  
+      <!-- Facebook start -->
+      <div id="fb-root"></div>
+      <script>
+        window.fbAsyncInit = function() {
+          // init the FB JS SDK
+          FB.init({
+            appId      : "178433258981904",                    // App ID from the app dashboard
+            status     : true,                                 // Check Facebook Login status
+            xfbml      : true                                  // Look for social plugins on the page
+          });
+
+          // Additional initialization code such as adding Event Listeners goes here
+          FB.Event.subscribe("comment.create", function(response) {
+            //console.log(response);
+            out = $.ajax({ url: response.href+"/fbupdate/1" });
+            //console.log(out);
+          });
+        };
+
+        // Load the SDK asynchronously
+        (function(){
+           if (document.getElementById("facebook-jssdk")) {return;}
+           var firstScriptElement = document.getElementsByTagName("script")[0];
+           var facebookJS = document.createElement("script"); 
+           facebookJS.id = "facebook-jssdk";
+           facebookJS.src = "//connect.facebook.net/pl_PL/all.js";
+           // Insert the Facebook JS SDK into the DOM
+           firstScriptElement.parentNode.insertBefore(facebookJS, firstScriptElement);
+         }());
+      </script>
+      <!-- Facebook end -->
+    
+  
+  <link rel="stylesheet" href="/lib/jq-fancybox/jquery.fancybox.css?v=2.1.5" type="text/css" media="screen" />
+  <script type="text/javascript" src="/lib/jq-fancybox/jquery.fancybox.pack.js?v=2.1.5"></script>
+  <script type='text/javascript'>
+      $(document).ready(function() {
+          // fancybox
+          // TODO: Fix this workaround
+          if (typeof $(".fancybox").fancybox !== 'function') {
+              return;
+          }
+          $(".fancybox").fancybox({
+              type : 'image' // to zmusza rowniez linki bez rozszerzen .jpg lub innych do bycia traktowane jak obrazki
+          });
+      });
+  </script>
+
+      <script type='text/javascript'>
+        var googletag = googletag || {};
+        googletag.cmd = googletag.cmd || [];
+        (function() {
+            var gads = document.createElement('script');
+            gads.async = true;
+            gads.type = 'text/javascript';
+            var useSSL = 'https:' == document.location.protocol;
+            gads.src = (useSSL ? 'https:' : 'http:') +
+                '//www.googletagservices.com/tag/js/gpt.js';
+            var node = document.getElementsByTagName('script')[0];
+            node.parentNode.insertBefore(gads, node);
+        })();
+    </script>
+  
+  
+  
+  
+  <script>
+      $(document).ready(function() {
+          if(self !== top){
+              // iframe is embedded
+              $('body').addClass('B-iframe-embedded');
+          }
+      });
+  </script>
+
+  <style>
+      :root {
+          --iframe--accent: #C31013;
+          --iframe--accent-contra: #fff;
+          --iframe--secondary: #626262;
+          --iframe--secondary-contra: #fff;
+          --iframe--box-background: #fff;
+          --iframe--main-background: transparent;
+
+          /*TODO: update in sql main-background*/
+                                    --iframe--main-background: #f2f2f2;
+                      
+                        --iframe--btn-disabled-color: rgb(150, 150, 150);
+              --iframe--form-input-background: #f2f2f2;
+              --iframe--dark-color-ratio: 0%;
+              --iframe--box-background-darker: rgba(0, 0, 0, 0.06);
+          
+          --iframe--text-color: #333;
+          --iframe--subtext-color: hsla(0, 0%, var(--iframe--dark-color-ratio), 0.6);
+          --iframe--box-border-radius: 5px;
+          --iframe--button-border-radius: 20px;
+
+          --iframe--header-background: #333;
+          --iframe--header-font-color: #999;
+      }
+  </style>
+  </head>
+<body id="bnk-iframe" class="ifid-639 " data-current_view="artist-view">
+<!--  reset svg icons file cache  -->
+<svg display="none"><use href="/gfx/bnk-icons.svg?v=1.3#icon-bag"></use></svg>
+
+  <!-- Google Tag Manager (noscript) -->
+      <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5JPX6BJ"
+                      height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+      <script type="text/javascript">
+        var _gaq = _gaq || [];
+        _gaq.push(['_setAccount', 'UA-2380619-6']);
+        _gaq.push(['_setDomainName', 'biletyna.pl']);
+        _gaq.push(['_trackPageview']);
+    </script>
+  
+  <div id="B-iframe__header" class="B-iframe--outside">
+      </div>
+
+  <div class="B-under-nav">
+    <div class="container">
+      <nav class="B-nav gray-bcg" aria-label="Główna nawigacja">
+                  <a href="/">
+            <p class="B-nav__title">Bilety</p>
+          </a>
+                <div id="main-search-bar" class="B-nav__search header-search dark-grey-font search-bar">
+          <i id="close-search-bar" class="icon-svg close"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-cancel"></use></svg></i>
+          <header-search
+            form-action="/artist/view/id/57079?id=57079"
+            :auto-focus="false"
+            search-endpoint="searchIframe"
+          >
+            <input id="main_search" value="" type="text" name="q" role="search" autocomplete="off">
+            <i class="icon-svg search-icon"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-wyszukaj"></use></svg></i>
+            <div slot="inputs">
+              <input type="hidden" name="display" value="events">
+                          </div>
+          </header-search>
+        </div>
+        <div class="B-flex">
+          <div id="show-search-bar" class="B-nav__icon visible-xxs">
+            <a href="#">
+              <i class="icon-svg filter-icon"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-wyszukaj"></use></svg></i>
+            </a>
+          </div>
+          <div class="B-nav__icon cart-button">
+            <a href="#" role="button" aria-label="Zobacz koszyk">
+              <i class="icon-svg" aria-hidden="true"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-bag"></use></svg></i>
+              <span class="indicator"></span>
+            </a>
+          </div>
+          <div class="B-nav__icon dropdown">
+            <button class="icon-svg dropdown-toggle"
+                    id="optionsMenuButton"
+                    aria-label="Menu opcji"
+                    data-toggle="dropdown"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                    aria-controls="optionsMenu"
+            >
+              <i aria-hidden="true" class="icon-svg"><svg aria-hidden="true" class="svg-icon"><use href="/gfx/bnk-icons.svg#mobile-app-menu"></use></svg></i>
+            </button>
+            <ul id="optionsMenu" aria-labelledby="optionsMenuButton" role="menu" class="dropdown-menu accessibility">
+              <li role="none" class="dropdown-header">Przydatne linki</li>
+              <li role="none">
+                <a role="menuitem" href="/order/status">
+                  <i aria-hidden="true" class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-bilety"></use></svg></i>
+                  <span>Sprawdź rezerwację</span>
+                </a>
+              </li>
+              <li role="none">
+                <a role="menuitem" href="/static/regulamin">
+                  <i aria-hidden="true" class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-www"></use></svg></i>
+                  <span>Regulamin</span>
+                </a>
+              </li>
+              <li role="none">
+                <a role="menuitem" href="/static/deklaracja-dostepnosci">
+                  <i aria-hidden="true" class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-info"></use></svg></i>
+                  <span>Deklaracja dostępności</span>
+                </a>
+              </li>
+              <li role="none" class="dropdown-header">Ustawienia</li>
+              <li role="none" title="100%">
+                <button role="menuitem" class="accessibility-font active" data-font_size="1">
+                  <i aria-hidden="true" class="icon-svg">A</i><span>Powiększenie 100%</span>
+                </button>
+              </li>
+              <li role="none" title="120%">
+                <button role="menuitem" class="accessibility-font" data-font_size="1.2">
+                  <i aria-hidden="true" class="icon-svg">A+</i><span>Powiększenie 120%</span>
+                </button>
+              </li>
+              <li role="none" title="130%">
+                <button role="menuitem" class="accessibility-font" data-font_size="1.3">
+                  <i aria-hidden="true" class="icon-svg">A++</i><span>Powiększenie 130%</span>
+                </button>
+              </li>
+              <li role="none" title="Wysoki kontrast">
+                <button role="menuitem" class="accessibility-negative-colors">
+                  <i aria-hidden="true" class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-adjust"></use></svg></i>
+                  <span>Wysoki kontrast</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+          <div class="B-nav__icon dropdown">
+            <button class="icon-svg dropdown-toggle B-text-transform--uppercase"
+                    id="languageMenuButton"
+                    aria-label="Wybierz język"
+                    data-toggle="dropdown"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                    aria-controls="optionsMenu"
+            >
+              pl            </button>
+            <ul id="languageMenu" aria-labelledby="languageMenuButton" role="menu" class="dropdown-menu language">
+              <li role="none">
+                <a href="?lang=pl"
+                   type="button"
+                   role="menuitem"
+                   class="accessibility-language"
+                   data-language="pl"
+                  <span>PL - polski</span>
+                </a>
+              </li>
+              <li role="none">
+                <a href="?lang=en"
+                   type="button"
+                   role="menuitem"
+                   class="accessibility-language"
+                   data-language="en"
+                  <span>EN - English</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+    </div>
+    <div class="container">
+      <div class="B-breadcrumbs-border">
+        <nav aria-label="Breadcrumbs">
+  <ol class="breadcrumbs">
+                  <li>
+          <a class="text-ellipsis" href="/">
+            <span>Strona główna</span>
+          </a>
+        </li>
+              <li aria-hidden="true" class="breadcrumbs__chevron">
+          <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#mobile-app-chevron-left"></use></svg></i>
+        </li>
+                  <li aria-current="page">
+          <span class="text-ellipsis nolink">
+            <strong>Wartość sentymentalna</strong>
+          </span>
+        </li>
+              <li aria-hidden="true" class="breadcrumbs__chevron">
+          <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#mobile-app-chevron-left"></use></svg></i>
+        </li>
+      </ol>
+</nav>
+      </div>
+    </div>
+  </div>
+
+  <div id="wrapper" class="override">
+    <div id="artist-view" class="container">
+  <div class="view_box background_color event_view">
+    <header class="B-m-0 visible-xs artist-header">
+    <p class="artist-header__name B-m-0">Wartość sentymentalna</p>
+</header>
+
+<div class="visible-xs artist-content">
+  <div>
+        <div class="artist-youtube media-placeholder media-placeholder--yt">
+      <lite-youtube
+              class="artist-youtube__wrapper media-placeholder__content"
+              id="youtube-player"
+              videoid="PpNkb27A3Qs"
+              posterquality="maxresdefault"
+              params="rel=0&autoplay=0&showInfo=0&loop=1"
+      ></lite-youtube>
+    </div>
+    
+
+    <section class="artist-actions">
+      <div class="B-flex B-flex--align-items-center B-flex--justify-content-space-between">
+        <div class="B-flex B-flex--justify-content-space-between artist-actions__buttons">
+                            </div>
+        <div class="B-flex">
+          <button id="open-artist-modal" class="important-text B-mr-15 B-text-transform--uppercase" data-toggle="modal" data-target="#mobile-artist-description-modal">
+            opis
+          </button>
+          <a class="B-btn B-btn--accent" href="#bilety">
+            <i class="icon-svg" aria-hidden="true"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-bilet"></use></svg></i>&nbsp;&nbsp;Kup Bilety
+          </a>
+        </div>
+      </div>
+    </section>
+  </div>
+  </div>
+
+
+<section class="artist container hidden-xs">
+  <span id="opis" class="B-anchor__target"></span>
+  <div class="artist-grid ">
+          <div class="artist-youtube media-placeholder media-placeholder--yt">
+        <lite-youtube
+          class="artist-youtube__wrapper media-placeholder__content"
+          id="youtube-player-desktop"
+          videoid="PpNkb27A3Qs"
+          posterquality="maxresdefault"
+          params="rel=0&autoplay=0&showInfo=0&loop=1"
+        ></lite-youtube>
+      </div>
+        <a class="artist-poster media-placeholder media-placeholder--poster" href="/file/get/id/342597" data-lightbox="image-2" data-title="Wartość sentymentalna" aria-label="Powiększ plakat wydarzenia">
+      <figure>
+        <picture>
+          <img
+              fetchpriority="high"
+              loading="eager"
+              class="img-responsive B-border-radius--standard"
+              src="/file/get/id/342597/w/450"
+              onerror="this.onerror=null;this.src='/th/biletyna-v2/gfx/zaslepka.jpg';"
+              alt="Wartość sentymentalna"
+          >
+        </picture>
+      </figure>
+    </a>
+
+    <div class="artist-description">
+      <header>
+        <div class="artist-subtitle-actions">
+                    <div class="event-title hidden-xs">
+            Wartość sentymentalna
+          </div>
+          <br>
+          <a class="B-btn B-btn--accent B-btn--small" href="#bilety" style="padding: 6px 15px;margin-right: 4px">
+            <i class="icon-svg" aria-hidden="true"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-bilet"></use></svg></i>&nbsp;<span class="hidden-xs">Kup </span>Bilety
+          </a>
+
+          
+          
+                  </div>
+      </header>
+
+      <div id="artist-view-description" class="description-text content-hidden">
+                <p>reżyseria: Joachim Trier</p>
+<p>występują: Renate Reinsve, Stellan Skarsgard, Inga Ibsdotter Lilleaas</p>
+<p>/ Norwegia, Niemcy, Dania, Francja, Szwecja, Wlk. Brytania, Turcja / dramat / 2025 / 133 min.</p>
+<p>Nominowany do dziewięciu Oscarów najnowszy film Joachima Triera, reżysera „Najgorszego człowieka na świecie", z nominowanymi do Oscara w kategoriach aktorskich Renate Reinsve, Stellanem Skarsgårdem, Ingą Ibsdotter Lilleaas i Elle Fanning w rolach głównych. Jeden z najczęściej nagradzanych i najważniejszych filmów tego roku, z muzyką skomponowaną przez polską kompozytorkę Hanię Rani.</p>
+<p>Siostry Nora (Renate Reinsve) i Agnes (Inga Ibsdotter Lilleaas) spotykają się ze swoim dawno niewidzianym ojcem, charyzmatycznym, niegdyś wielkim reżyserem filmowym Gustavem (Stellan Skarsgård). Proponuje on Norze, aktorce teatralnej, rolę w swoim najnowszym filmie, który ma być jego powrotem do świata filmu. Gdy dziewczyna odrzuca propozycję, ten zatrudnia młodą gwiazdę Hollywood (Elle Fanning). Teraz siostry muszą poradzić sobie nie tylko ze swoją skomplikowaną sytuacją z ojcem, ale też z amerykańską gwiazdą, która zmienia ich rodzinną dynamikę.</p>
+      </div>
+      <div class="show-more-wrapper">
+        <button
+          class="show-more important-text hidden-xs B-text-transform--uppercase"
+          data-target="#artist-view-description"
+          data-visible-text="zwiń"
+          data-hidden-text="czytaj więcej"
+        >
+          <span>czytaj więcej</span>
+          <i class="icon-svg rotate-icon" aria-hidden="true"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-strzalka-dol"></use></svg></i>
+        </button>
+        <button
+          id="open-artist-modal"
+          class="important-text visible-xs B-text-transform--uppercase"
+          data-toggle="modal"
+          data-target="#mobile-artist-description-modal">
+          <span>czytaj więcej</span>
+        </button>
+      </div>
+
+      
+    </div>
+  </div>
+    <div class="clearfix"></div>
+</section>
+
+
+<!-- Modal -->
+<div class="modal fade artist-modal-description" id="mobile-artist-description-modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header modal-header--with-btn primary-bcg white-font">
+        <button type="button" class="close white-font" data-dismiss="modal" aria-label="Zamknij"><span aria-hidden="true">&times;</span></button>
+        <div class="modal-title table-display modal-header-thumbnail">
+          <p class="h3">Wartość sentymentalna</p>
+        </div>
+      </div>
+      <div class="modal-body">
+        <!-- DYNAMIC CONTENT FROM ARTIST/VIEW.TS -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="B-btn B-btn--hover-primary B-btn--border-primary" data-dismiss="modal">Zamknij</button>
+      </div>
+    </div>
+  </div>
+</div>
+  </div>
+
+<h1 id="bilety" class="B-page-title">Bilety</h1>
+
+
+<style>
+    @media (max-width: 767px) {
+        .B-flex-column-xs {
+            flex-direction: column;
+        }
+        #course-list {
+            margin: 0;
+        }
+    }
+</style>
+
+  <div class="small_title B-sticky-element">
+    <p>Lipiec 2026</p>
+  </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">19.07.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">21:00</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="B-flex B-flex--direction-column@xs iframe_all_event_city">
+                  <div>
+                    <p>Kielce</p>
+                    <p>Wojewódzki Dom Kultury - Dziedziniec Wewnętrzny</p>
+                  </div>
+                                      <div class="B-mx-15 B-mx-0@xs B-mt-10@xs">
+                                              <div class="tag rounded grey-font">napisy</div>
+                                                                    <div class="tag rounded grey-font">2D</div>
+                                          </div>
+                                  </div>
+                          </div>
+          </div>
+                      <div class="B-pl-5 iframe_all_event_title">
+              <p class="B-font-weight--bold B-m-0">
+                Wartość sentymentalna              </p>
+                              <p class="B-font-weight--light B-m-0">
+                  KINO LETNIE  Z KLIMATEM - NA LEŻAKACH                </p>
+                          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>90</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/681213"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+  
+
+</div>
+</div>
+
+      </div>
+
+  <button id="go-site-up" class="rotate-icon rotate-up B-btn B-btn--accent B-btn--circle B-btn--small" aria-label="Przejdź na górę strony">
+    <i class="icon-svg B-btn__icon" aria-hidden="true"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-strzalka-lewa"></use></svg></i>
+  </button>
+
+  <footer class="B-footer">
+          system dostarczany przez &copy; <a href="https://biletyna.pl" target="_blank">biletyna.pl</a> 2006-2026      </footer>
+
+  <div id="B-iframe__footer" class="B-iframe--outside">
+      </div>
+
+      <script type="text/javascript">
+        (function() {
+            var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+            ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+        })();
+    </script>
+  </body>
+</html>
