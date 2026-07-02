@@ -6,6 +6,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>@pageTitle</title>
+  @* Anti-FOUC: hide #film-grid until shared.js has run its first filter pass
+     (see the `grid-cloak` rule in _sharedStyles). Added synchronously in the
+     head so the unfiltered grid never paints; JS-only, so no-JS users still
+     get the full list. The timeout is a failsafe that reveals the grid even if
+     shared.js never loads / bootView throws, so a broken boot can't leave a
+     permanently blank page. *@
+  <script>(function(e){e.classList.add('grid-cloak');setTimeout(function(){e.classList.remove('grid-cloak')},2000)})(document.documentElement)</script>
   @_ogTagsApp(pageTitle = pageTitle, pageDescription = pageDescription, pageUrl = pageUrl, fbAppId = fbAppId, imageUrl = s"https://kinowo.fly.dev/assets/img/og-${city.slug}.png", canonicalUrl = canonicalUrl)
   @_jsonLd(controllers.StructuredData.cityPage(pageUrl, city, films))
   @_resourceHints()

@@ -1690,6 +1690,10 @@
     if (dateSel) _appliedDay = dateSel.value;
     syncDayPills();
     applyFilters();
+    // Reveal the grid now that the first filter pass has set final visibility —
+    // drops the anti-FOUC cloak the head script added (repertoire.scala.html /
+    // the `grid-cloak` rule in _sharedStyles). No-op on views without the class.
+    document.documentElement.classList.remove('grid-cloak');
   }
   window.bootView = bootView;
 
