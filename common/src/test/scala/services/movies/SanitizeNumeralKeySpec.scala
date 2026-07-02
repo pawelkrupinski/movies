@@ -22,10 +22,16 @@ class SanitizeNumeralKeySpec extends AnyFlatSpec with Matchers {
     sanitize("Mortal kombat ii") shouldBe "mortalkombat2"   // a lower-casing cinema must still fold
   }
 
-  it should "stay invariant to a decoration glued to the numeral (the re-divert bug)" in {
-    sanitize("Toy Story 5- dubbing")      shouldBe sanitize("Toy Story 5")
-    sanitize("Mortal Kombat II- dubbing") shouldBe sanitize("Mortal Kombat II")
-    sanitize("Dune 2 (dubbing)")          shouldBe "dune2"
+  // Format stripping moved OUT of the canonical/sanitize rules into the shared
+  // `FormatTags`, applied centrally at ingest (MovieCache.recordCinemaScrape) so
+  // it also badges the screenings. So the "decoration glued to the numeral"
+  // invariance (the re-divert bug) is now provided by `extractFormatTags` BEFORE
+  // sanitize — sanitize itself no longer strips a format tag.
+  it should "stay invariant to a format decoration glued to the numeral (stripped by extractFormatTags, then keyed)" in {
+    def key(s: String) = sanitize(FormatTags.extractFormatTags(s)._1)
+    key("Toy Story 5- dubbing")      shouldBe sanitize("Toy Story 5")
+    key("Mortal Kombat II- dubbing") shouldBe sanitize("Mortal Kombat II")
+    key("Dune 2 (dubbing)")          shouldBe "dune2"
   }
 
   it should "NOT convert single-letter Roman that collides with real title words" in {

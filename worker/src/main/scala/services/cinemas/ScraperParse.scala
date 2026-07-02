@@ -1,9 +1,9 @@
 package services.cinemas
 
 import org.jsoup.nodes.{Document, Element}
+import services.movies.FormatTags
 
 import java.time.LocalTime
-import java.util.Locale
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -90,120 +90,15 @@ private[cinemas] object ScraperParse {
   def sentenceCase(title: String): String =
     tools.TextNormalization.sentenceCase(title.replaceAll("""(\d)\.(\p{L})""", "$1. $2"))
 
-  /** Lower-case format/version word → the display token it maps to, shared with
-   *  the cinema clients that surface a screening's version as a `Showtime.format`
-   *  badge. The token vocabulary is fixed across the app — 2D, 3D, IMAX, 4DX,
-   *  DUB (dubbing), NAP (subtitles/napisy), LEK (lektor) — so all sources agree.
-   *  Words droppable from a title but with no version meaning (premiera, dolby,
-   *  atmos, vod, …) are NOT here; they're stripped without yielding a token. */
-  val FormatToken: Map[String, String] = Map(
-    "napisy" -> "NAP", "nap" -> "NAP", "dubbing" -> "DUB", "dub" -> "DUB", "dubb" -> "DUB",
-    "lektor" -> "LEK", "2d" -> "2D", "3d" -> "3D", "imax" -> "IMAX", "4dx" -> "4DX"
-  )
-
-  // Words that, alone, mark a trailing screening-format/version tag.
-  private val FormatVersionWords = Set(
-    "2d", "3d", "imax", "dolby", "atmos", "4dx", "dubbing", "napisy", "lektor",
-    "dubb", "dub", "nap", "premiera", "przedpremiera", "krajowa", "pokaz",
-    "jednorazowy", "specjalny", "przedpremierowy", "vood", "vod", "hd", "sps")
-  private val FormatSeparators = Set("-", "–", "—", "|", "/", ":")
-  private val FormatBracketTag = """\s*\[[^\]]*\]\s*$""".r
-  private val FormatParenTag   =
-    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|4DX|dubbing|napisy|lektor|pokaz)\b[^)]*)\)\s*$""".r
-  // Underscore-glued format/version tag — some bilety24 portals (Forum Bolesławiec)
-  // join the version word straight to the title with an underscore:
-  // "Supergirl_dubbing", "Spider-Man. Całkiem nowy dzień_3D". Un-glue ONLY before a
-  // known format/version word so a legitimate underscore ("Seans w ciemno_7.26",
-  // the "_DKF"/"_FKS" programme tags) is left intact and those titles aren't re-split.
-  private val GluedFormatUnderscore =
-    ("(?i)_(?=(?:" + FormatVersionWords.toSeq.sortBy(-_.length).mkString("|") + """)\b)""").r
-  // Slash-glued version tag with no surrounding spaces — some bilety24 venues
-  // (Kino Oskard) join it straight on: "Supergirl/dubbing", "…dzień/napisy".
-  // Un-glue ONLY before a known version word (via the look-ahead), so a real
-  // slashed title ("AC/DC", "Face/Off", "either/or") is never split — its word
-  // after the slash isn't a version word. The spaced form (" / 2D dubbing") is
-  // left to the trailing-token loop; only the zero-space glue needs this.
-  private val GluedFormatSlash =
-    ("(?i)/(?=(?:" + FormatVersionWords.toSeq.sortBy(-_.length).mkString("|") + """)\b)""").r
-
-  /** The bare lower-cased word of a title token (paren/bracket/punctuation
-   *  peeled), or `""` for an empty token. */
-  private def bareWord(tok: String): String =
-    tok.toLowerCase(Locale.ROOT).replaceAll("""[\[\]().,]""", "")
-
-  private def isDroppableTag(tok: String): Boolean = {
-    val w = bareWord(tok)
-    w.isEmpty || FormatSeparators.contains(w) || FormatVersionWords.contains(w)
-  }
-
-  /** Strip the trailing format/version tags a ticketing-portal title carries —
-   *  `[2D napisy]`, `(2D dubbing)`, ` - napisy`, ` / 2D dubbing`, ` NAPISY 2D`,
-   *  ` dubb` — so the same film's screening variants collapse to one title and
-   *  merge. Removes trailing tokens that are pure separators or format/version
-   *  words after peeling any bracket/paren tag, repeating until stable. A
-   *  leading programme tag (e.g. "DKF -") is never trailing, so it survives. */
-  def stripFormatTags(raw: String): String = extractFormatTags(raw)._1
-
-  /** Like [[stripFormatTags]], but also returns the display [[FormatToken]]s
-   *  (2D, NAP, DUB, …) recognised among the stripped trailing tags, so a
-   *  scraper can surface the screening's version as a `Showtime.format` badge
-   *  while keeping the cleaned title byte-identical to `stripFormatTags`.
-   *  Tokens are de-duplicated, and ordered as they appeared left-to-right in
-   *  the original title (e.g. "(2D NAPISY)" → `List("2D", "NAP")`). Stripped
-   *  words with no version meaning (dolby, atmos, premiera, …) yield no token. */
-  def extractFormatTags(raw: String): (String, List[String]) = {
-    var t    = GluedFormatSlash.replaceAllIn(
-                 GluedFormatUnderscore.replaceAllIn(raw.replaceAll("\\s+", " ").trim, " "), " ")
-    var previous = ""
-    val dropped = scala.collection.mutable.Set.empty[String]
-    while (t != previous) {
-      previous = t
-      // Tokens peeled inside a [..]/(..) tag also carry version meaning, so
-      // capture them before the regex deletes the whole tag.
-      FormatBracketTag.findFirstIn(t).foreach(captureTagWords(_, dropped))
-      t = FormatBracketTag.replaceFirstIn(t, "").trim
-      FormatParenTag.findFirstIn(t).foreach(captureTagWords(_, dropped))
-      t = FormatParenTag.replaceFirstIn(t, "").trim
-      var toks = t.split(" ").filter(_.nonEmpty).toVector
-      while (toks.length > 1 && isDroppableTag(toks.last)) {
-        captureTagWords(toks.last, dropped)
-        toks = toks.dropRight(1)
-      }
-      // Some portals glue the format tag to the title with a separator and a
-      // space ("Straszny Film- 2D dubbing"): dropping "2D"/"dubbing" leaves a
-      // dangling "Film-". Trim a trailing separator so the variants collapse to
-      // the canonical title and merge across cinemas. Re-runs via the outer loop.
-      t = toks.mkString(" ").replaceAll("""\s*[-–—|/:]+\s*$""", "").trim
-    }
-    // Order the display tokens by where their word first appears in the raw
-    // title (left-to-right), so "(2D NAPISY)" → List("2D","NAP") regardless of
-    // the right-to-left order the strip loop peeled them off.
-    val tokens = raw.toLowerCase(Locale.ROOT)
-      .split("""[\s\[\]().,/|:_-]+""")
-      .iterator
-      .filter(dropped.contains)
-      .flatMap(FormatToken.get)
-      .distinct
-      .toList
-    (t, tokens)
-  }
-
-  /** Record every [[FormatToken]]-bearing word found in `chunk` (a single token
-   *  or a whole `(...)`/`[...]` tag) into `out`. */
-  private def captureTagWords(chunk: String, out: scala.collection.mutable.Set[String]): Unit =
-    chunk.split("""[\s\[\]()]+""").iterator
-      .map(w => bareWord(w))
-      .filter(FormatToken.contains)
-      .foreach(out.add)
-
-  /** The [[FormatToken]]s (NAP/DUB/LEK/2D/…) named as whole words anywhere in
-   *  `text` — a language/version line like "polski lektor" or "napisy polskie",
-   *  which some cinemas expose as a detail-page field rather than a title suffix.
-   *  De-duplicated and sorted for a stable order. */
-  def formatTokensIn(text: String): List[String] = {
-    val words = text.toLowerCase(Locale.ROOT).split("""[^\p{L}\p{N}]+""").toSet
-    FormatToken.iterator.collect { case (w, t) if words.contains(w) => t }.toList.distinct.sorted
-  }
+  // Format/version tag extraction now lives in the shared `services.movies.FormatTags`
+  // (common), so the ingest choke point (`MovieCache.recordCinemaScrape`) and the
+  // cinema clients share ONE implementation. These delegate — every existing call
+  // site (`ScraperParse.extractFormatTags` / `.stripFormatTags` / `.formatTokensIn`
+  // / `.FormatToken`) is unchanged.
+  val FormatToken: Map[String, String] = FormatTags.FormatToken
+  def stripFormatTags(raw: String): String = FormatTags.stripFormatTags(raw)
+  def extractFormatTags(raw: String): (String, List[String]) = FormatTags.extractFormatTags(raw)
+  def formatTokensIn(text: String): List[String] = FormatTags.formatTokensIn(text)
 
   private val FourDigitYear = """(?:19|20)\d{2}""".r
 

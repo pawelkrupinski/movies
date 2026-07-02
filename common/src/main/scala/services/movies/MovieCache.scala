@@ -772,7 +772,23 @@ class CaffeineMovieCache(
     // `displayTitle` picker can rank on it (an all-caps variant signals low
     // quality); casing is applied to the chosen title in `MovieRecord.displayTitle`.
     val ruleKey = TitleRuleKey.of(cinema)
-    val cleaned: CinemaMovie => String = cm => TitleNormalizer.cinemaClean(ruleKey, cm.movie.title)
+    // Central format strip: peel a screen-format/language tag ("(Napisy PL)",
+    // "- 2D dubbing", "/napisy", "[2D DUB]") off EVERY cinema's title into the
+    // showings' `format`, so a film's dub/subtitle/2D editions fold onto ONE clean
+    // slot (each showing keeping its language) for every cinema — existing or new —
+    // with no per-client code. `FormatTags` strips only format words, so a programme
+    // prefix ("Kino Dostępne:"), a "+ event" suffix, or a Ukrainian screening keep
+    // their title and stay their own card (see FormatTags' Ukrainian guard).
+    def cleanAndFormat(cm: CinemaMovie): (String, List[String]) =
+      FormatTags.extractFormatTags(TitleNormalizer.cinemaClean(ruleKey, cm.movie.title))
+    val cleaned: CinemaMovie => String = cm => cleanAndFormat(cm)._1
+    // Badge each screening with its film's format tokens (unless the client already
+    // set one), BEFORE the same-title fold below unions them.
+    val formatted: Seq[CinemaMovie] = movies.map { cm =>
+      val tokens = cleanAndFormat(cm)._2
+      if (tokens.isEmpty) cm
+      else cm.copy(showtimes = cm.showtimes.map(st => if (st.format.isEmpty) st.copy(format = tokens) else st))
+    }
 
     // A single cinema can report one film as several rows — one per screening
     // page (Kino Nowe Horyzonty's per-event `op.s?id=…` URLs), which all
@@ -783,7 +799,7 @@ class CaffeineMovieCache(
     // union every screening's showtimes (deduped, ordered) so none is lost, and
     // keep a deterministic representative for the scalar film fields.
     val deduped: Seq[CinemaMovie] =
-      movies.groupBy(cm => (cleaned(cm), cm.movie.releaseYear)).toSeq
+      formatted.groupBy(cm => (cleaned(cm), cm.movie.releaseYear)).toSeq
         .sortBy { case ((t, y), _) => (t, y.getOrElse(Int.MinValue)) }
         .map { case (_, group) =>
           if (group.lengthCompare(1) == 0) group.head
