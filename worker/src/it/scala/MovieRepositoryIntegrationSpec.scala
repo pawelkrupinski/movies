@@ -574,4 +574,32 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     sentinels.distinct should have size 5
     sentinels          shouldBe sentinels.sorted          // …in _id order across the boundaries
   }
+
+  // `findAll` now pages the cursor by `_id` (the same keyset scan `foreachRecord` uses)
+  // instead of pulling the whole corpus through ONE unbounded `find().toFuture()` — that
+  // single cursor recursed the async Mongo driver's per-message read-completion chain
+  // (`AsyncSupplier.finish` → `AsyncCompletionHandler` → `SingleResultCallback`) deep
+  // enough to StackOverflow on a driver I/O thread once the corpus grew large (Sentry
+  // KINOWO-19), which crash-looped the worker's cold-cache rehydrate on boot.
+  //
+  // The StackOverflow itself only reproduces against the real driver under a LARGE
+  // buffered corpus — a stack-depth/timing-dependent driver-internal symptom no test
+  // layer can force deterministically (matching the `_id`-order test above, whose
+  // duplication "only reproduces under live concurrent write load"). So this guards the
+  // fix MECHANISM: with batchSize 2 forcing several page boundaries, findAll returns
+  // every seeded row exactly once, in `_id` order — the keyset-paging correctness the
+  // refactor introduces to findAll.
+  it should "page findAll by _id across batch boundaries, returning every row exactly once" in {
+    Seq("a", "b", "c", "d", "e").foreach(s =>
+      repository.upsert(s"__integration-test-findall-page-${s}__", None, MovieRecord()))
+
+    val paged = new MongoMovieRepository(findAllBatchSize = 2)
+    val ids   = try paged.findAll().map(StoredMovieRecord.idOf) finally paged.close()
+
+    ids.size shouldBe ids.distinct.size          // no row re-visited at a page boundary
+    val sentinels = ids.filter(_.startsWith("integrationtestfindallpage"))
+    sentinels          should have size 5        // every seeded row returned — no skip/dup
+    sentinels.distinct should have size 5
+    sentinels          shouldBe sentinels.sorted // …in _id order across the boundaries
+  }
 }

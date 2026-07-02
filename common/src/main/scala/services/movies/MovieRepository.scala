@@ -215,15 +215,18 @@ class MongoMovieRepository(
   // same DNS / TLS timeout twice. Saves ~15s of boot time on the
   // offline / unreachable-cluster path.
   fallbackToOwnInit: Boolean = true,
-  // Cursor page size for `foreachRecord`'s keyset pagination — the cap on how many
-  // corpus rows are decoded onto the heap at once. 200 rows × ~13 KB avg ≈ a few
-  // hundred KB per batch (vs ~13 MB for the whole corpus). Injectable so tests can
-  // force multiple pages with a handful of rows.
+  // Cursor page size for the keyset-paged corpus scan shared by `findAll` and
+  // `foreachRecord` — the cap on how many rows any ONE cursor delivers before the
+  // next `_id`-keyset page. Bounds the async driver's synchronous read-completion
+  // depth so a full-corpus read can't StackOverflow (a single unbounded cursor did —
+  // see `findAll`), and for `foreachRecord` also caps heap: 200 rows × ~13 KB avg ≈
+  // a few hundred KB per batch (vs ~13 MB for the whole corpus). Injectable so tests
+  // can force multiple pages with a handful of rows.
   findAllBatchSize: Int = 200,
-  // Per-batch retry budget for `foreachRecord`'s keyset scan. A batch read that
-  // fails transiently (a server-selection / socket timeout while the worker is
-  // CPU-throttled) is retried with 0.5s → 1s → 2s backoff before the whole scan
-  // is declared incomplete. Injectable so a test can force the exhausted path fast.
+  // Per-batch retry budget for the keyset corpus scan (`findAll` + `foreachRecord`).
+  // A batch read that fails transiently (a server-selection / socket timeout while the
+  // worker is CPU-throttled) is retried with 0.5s → 1s → 2s backoff before the whole
+  // scan is declared incomplete. Injectable so a test can force the exhausted path fast.
   foreachRecordBatchAttempts: Int            = 4,
   foreachRecordBatchBackoff:  FiniteDuration = 500.millis,
   // Observability sink for the shared change stream — counts events by op and
@@ -289,60 +292,90 @@ class MongoMovieRepository(
   /** Test seam: the write concern configured on the `movies` collection. */
   def collectionWriteConcern: Option[WriteConcern] = coll.map(_.writeConcern)
 
-  /** Boot-time + periodic full reload: a single `find()` over the whole
-   *  collection. The earlier discover-then-fan-out (project the `_id`s, split
-   *  them into contiguous half-open `_id` ranges, fire four parallel ranged
-   *  finds, join) existed to dodge Atlas serialising single cursors at
-   *  ~50 ms/document. We have since moved to a self-hosted Mongo, where that
-   *  pathology is gone: on the prod app→Mongo LAN one cursor ties the fan-out
-   *  — measured (N=20, warm) p50 ~108 ms for ~600 documents vs ~128 ms, inside the
-   *  run-to-run noise. Dropping it also removes the range-gap correctness
-   *  hazard — a single cursor reads a consistent set by construction.
+  /** Boot-time + periodic full reload of every persisted row. Pages the cursor by
+   *  `_id` (keyset, via [[scanByKeyset]]) and collects the batches, rather than pulling
+   *  the whole corpus through ONE unbounded `find().toFuture()`.
    *
-   *  Deliberate trade-off (measured, not assumed): the fan-out's one remaining
-   *  benefit is parallelising read latency across 4 connections over a HIGH-
-   *  latency link. Over a local→prod `flyctl` tunnel the fan-out stayed ~2.7 s
-   *  while a single cursor ran ~6 s p50 (up to ~8.5 s, high variance); a large
-   *  `batchSize` was measured NOT to help (the limiter is single-connection
-   *  serial throughput, not `getMore` count). We accept that *local-dev-only*
-   *  cost for the far simpler single-cursor shape, since prod — the path that
-   *  matters — is a tie. Note: on a bad tunnel night the slow hydrate can
-   *  approach the timeout below; local dev that needs fast/reliable boots
-   *  should point at a local Mongo rather than tunnelling to prod.
+   *  Why paged, not one cursor: a single unbounded find over the whole (~13 MB,
+   *  ~1400-row) corpus recursed the async Mongo driver's per-message read-completion
+   *  chain (`AsyncSupplier.finish` → `AsyncCompletionHandler` → `SingleResultCallback`)
+   *  deep enough to throw `StackOverflowError` on a driver I/O thread once the corpus
+   *  grew past a threshold (Sentry KINOWO-19, 2026-07-02). Because the crash lands on
+   *  an uncaught I/O thread — NOT on the `Await` here — it isn't caught by any
+   *  `Try.recover`; it killed the worker's cold-cache rehydrate and left it in a boot
+   *  crash-loop that never warmed the cache. Keyset paging caps how many rows any ONE
+   *  cursor delivers synchronously, so the completion chain stays shallow. The result
+   *  is still the full corpus on the heap (findAll's contract), just read in
+   *  `findAllBatchSize`-row bites.
    *
-   *  The 60s timeout (not the 10s used by point writes) covers a cold
-   *  WiredTiger first read after a process boot, which can take 10–20 s even
-   *  when steady-state finds are <100 ms; a short timeout there silently
-   *  strands the cache empty (the surrounding `Try.getOrElse(Seq.empty)`
-   *  swallows the `TimeoutException` with no log line — what a
-   *  stale-page-on-startup bug looks like from the outside). */
+   *  `scanByKeyset` sorts each page by the unique, immutable `_id` index, so — exactly
+   *  as the old single sorted cursor did — the scan returns each document once (no
+   *  duplicate at a page boundary, no skipped row) even under concurrent writes.
+   *
+   *  On an INCOMPLETE scan (a batch still failing after its retries) returns
+   *  `Seq.empty` — findAll's historical failure contract: `MovieCache.rehydrate` treats
+   *  an empty result as "transient Mongo failure, keep the current cache" rather than
+   *  acting on a partial corpus. The 60s per-batch timeout (vs the 10s on point writes)
+   *  still covers a cold WiredTiger first read after a process boot (10–20 s even when
+   *  steady-state finds are <100 ms). */
   def findAll(): Seq[StoredMovieRecord] = coll match {
+    case Some(_) =>
+      // Read-split: one bulk `screenings.findAll()` then stitch each row's showtimes
+      // back in (embedded fallback per slot for not-yet-migrated films).
+      val allScr   = if (splitReads) screenings.map(_.findAll()).getOrElse(Map.empty) else Map.empty
+      val buf      = Vector.newBuilder[StoredMovieRecord]
+      val complete = scanByKeyset { batch =>
+        batch.foreach(dto => buf += stitchRow(StoredMovieDto.toDomain(dto), dto._id, allScr.getOrElse(dto._id, Map.empty)))
+      }
+      if (complete) buf.result() else Seq.empty
+    case None => Seq.empty
+  }
+
+  /** Keyset-paged scan of the whole `movies` collection by `_id`, shared by [[findAll]]
+   *  and [[foreachRecord]]. Reads one `findAllBatchSize`-row page at a time — each a
+   *  fresh, bounded `find(_id > lastSeen).sort(_id).limit(n)` — and hands every decoded
+   *  batch to `onBatch`. Two guarantees both callers rely on:
+   *
+   *   - Exactly-once: `_id` is unique and immutable and the `gt`/sort run server-side,
+   *     so a concurrent write (the worker re-keys years, clears `detailPending`, …) can
+   *     neither resurface a visited row nor hide one — no duplicate at a page boundary,
+   *     no skip. (The prior single `_id`-sorted cursor gave the same guarantee.)
+   *   - Bounded: no single cursor buffers the entire corpus, so the async driver's
+   *     synchronous read-completion chain can't recurse into a `StackOverflowError`
+   *     (see [[findAll]]).
+   *
+   *  Each BATCH read is retried independently (keyset pagination makes every batch a
+   *  fresh, idempotent `find`) before the scan is declared incomplete. Returns `true`
+   *  only when the scan reached the last page; `false` when a batch still failed after
+   *  its retries — rows delivered so far still reached `onBatch`, so a PRUNING caller
+   *  must treat `false` as "not the complete corpus" and skip its destructive step. */
+  private def scanByKeyset(onBatch: Seq[StoredMovieDto] => Unit): Boolean = coll match {
     case Some(c) =>
       Try {
-        // Sort by the immutable, unique `_id` index. An UNSORTED scan over a
-        // collection being written concurrently (the worker resolves TMDB,
-        // clears `detailPending`, re-keys years on `movies` continuously) can
-        // return the same document more than once — and skip others — when an
-        // intervening write relocates it mid-scan. That surfaced on `/debug` as
-        // phantom duplicate rows (the same `_id` rendered twice, one a stale
-        // pre-write image) that never cleared, plus silently-dropped rows. An
-        // `_id`-ordered IXSCAN returns each document exactly once (the key is unique
-        // and never changes), so it can neither duplicate nor skip.
-        val dtos = Await.result(c.find().sort(Sorts.ascending("_id")).toFuture(), 60.seconds)
-        // Read-split: one bulk `screenings.findAll()` then stitch each row's showtimes
-        // back in (embedded fallback per slot for not-yet-migrated films).
-        val allScr = if (splitReads) screenings.map(_.findAll()).getOrElse(Map.empty) else Map.empty
-        dtos.map(dto => stitchRow(StoredMovieDto.toDomain(dto), dto._id, allScr.getOrElse(dto._id, Map.empty)))
+        var afterId: Option[String] = None
+        var more = true
+        while (more) {
+          val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
+          val batch  = RetryWithBackoff(
+            label          = "MovieRepository keyset batch",
+            maxAttempts    = foreachRecordBatchAttempts,
+            initialBackoff = foreachRecordBatchBackoff
+          ) {
+            Await.result(
+              c.find(filter).sort(Sorts.ascending("_id")).limit(findAllBatchSize).toFuture(), 60.seconds)
+          }
+          onBatch(batch)
+          afterId = batch.lastOption.map(_._id)
+          more    = batch.sizeIs == findAllBatchSize
+        }
+        true
       }.recover {
-        // Catch every throwable, not just MongoException — TimeoutException
-        // (Java `j.u.c.TimeoutException` from `Await.result`) and BSON decode
-        // errors must be logged, not swallowed into `.getOrElse(Seq.empty)`,
-        // which would strand the cache empty on the boot path with no log line.
         case exception: Throwable =>
-          logger.warn(s"MovieRepository.findAll failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
-          Seq.empty
-      }.getOrElse(Seq.empty)
-    case None => Seq.empty
+          logger.warn(s"MovieRepository keyset scan failed after retries: " +
+            s"${exception.getClass.getSimpleName}: ${exception.getMessage} — scan incomplete")
+          false
+      }.getOrElse(false)
+    case None => false
   }
 
   /** Indexed single-document lookup by `_id` — the `/debug` lazy-details endpoint
@@ -393,52 +426,18 @@ class MongoMovieRepository(
     case None => Seq.empty
   }
 
-  /** Page the cursor by `_id` so the caller (the read-model reconcile) never holds
-   *  more than one batch — `findAllBatchSize` rows — of the ~13 MB corpus at once.
-   *  Keyset pagination (`_id > lastSeen`, sorted ascending) gives the SAME
-   *  no-duplicate/no-skip guarantee as [[findAll]]'s sorted scan: `_id` is unique
-   *  and immutable, and the `gt` filter + sort both run server-side under the
-   *  default binary collation, so a concurrent write can neither resurface a
-   *  visited row nor hide one whose `_id` doesn't change. A batch shorter than the
-   *  limit is the last page.
-   *
-   *  Retries each BATCH read independently (keyset pagination makes every batch a
-   *  fresh, idempotent `find`), so a transient read failure under worker CPU
-   *  throttle — the 2026-06-29 served-films flap, where a batch blew its 60s budget
-   *  — doesn't truncate the whole scan. Returns `true` only when the scan ran to
-   *  the last page; if a batch still fails after its retries the throw escapes to
-   *  the outer recover and we report `false` (incomplete) so a PRUNING caller
-   *  (`ReadModelProjector.reconcile`) doesn't treat the rows-so-far as the full
-   *  corpus and delete the live rows it never reached. */
-  override def foreachRecord(f: StoredMovieRecord => Unit): Boolean = coll match {
-    case Some(c) =>
-      Try {
-        var afterId: Option[String] = None
-        var more = true
-        while (more) {
-          val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-          val batch  = RetryWithBackoff(
-            label          = "MovieRepository.foreachRecord batch",
-            maxAttempts    = foreachRecordBatchAttempts,
-            initialBackoff = foreachRecordBatchBackoff
-          ) {
-            Await.result(
-              c.find(filter).sort(Sorts.ascending("_id")).limit(findAllBatchSize).toFuture(), 60.seconds)
-          }
-          batch.foreach(dto => f(StoredMovieDto.toDomain(dto)))
-          afterId = batch.lastOption.map(_._id)
-          more    = batch.sizeIs == findAllBatchSize
-        }
-        true
-      }.recover {
-        case exception: Throwable =>
-          logger.warn(s"MovieRepository.foreachRecord failed after retries: " +
-            s"${exception.getClass.getSimpleName}: ${exception.getMessage} — scan incomplete, reporting partial")
-          false
-      }.getOrElse(false)
-    // Mongo not wired: no corpus was scanned, so we can't vouch for completeness.
-    case None => false
-  }
+  /** Stream every persisted record through `f`, one keyset page at a time (via
+   *  [[scanByKeyset]]), so the caller (the read-model reconcile) never holds more than
+   *  one batch — `findAllBatchSize` rows — of the ~13 MB corpus at once. See
+   *  [[scanByKeyset]] for the exactly-once + bounded guarantees and the per-batch retry
+   *  (the 2026-06-29 served-films flap, where a batch blew its 60s budget under worker
+   *  CPU throttle). Returns `true` only when the scan ran to the last page; `false` when
+   *  a batch still fails after its retries — so a PRUNING caller
+   *  (`ReadModelProjector.reconcile`) doesn't treat the rows-so-far as the full corpus
+   *  and delete the live rows it never reached. Unlike [[findAll]] this does NOT stitch
+   *  split-read showtimes (its callers don't need them — matches the pre-split behaviour). */
+  override def foreachRecord(f: StoredMovieRecord => Unit): Boolean =
+    scanByKeyset(_.foreach(dto => f(StoredMovieDto.toDomain(dto))))
 
   /** Deletes by `_id` (the current `documentId` formula) OR by the legacy `title` +
    *  `year` fields. Current documents no longer persist `title`/`year` (the `_id`
