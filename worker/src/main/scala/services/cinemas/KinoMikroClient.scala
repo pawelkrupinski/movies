@@ -105,10 +105,7 @@ object KinoMikroParser {
           .map(u => if (u.startsWith("http")) u else s"https://bilety.kinomikro.pl$u")
         val director = (r \ "event_description").asOpt[String]
           .map(parseDirector).getOrElse(Seq.empty)
-        // Peel a "- dubbing"/"/napisy" language suffix off the title into a format
-        // token so the dub/subtitle editions merge onto one clean-titled row.
-        val (cleanTitle, format) = ScraperParse.extractFormatTags(title)
-        RawSlot(cleanTitle, dt, booking, poster, director, format)
+        RawSlot(title, dt, booking, poster, director)
       }
     }
 
@@ -122,7 +119,7 @@ object KinoMikroParser {
         synopsis  = None,
         cast      = Seq.empty,
         director  = sorted.map(_.director).find(_.nonEmpty).getOrElse(Seq.empty),
-        showtimes = sorted.map(s => Showtime(s.dateTime, s.booking, None, s.format)).distinctBy(s => (s.dateTime, s.bookingUrl))
+        showtimes = sorted.map(s => Showtime(s.dateTime, s.booking)).distinctBy(s => (s.dateTime, s.bookingUrl))
       )
     }.sortBy(_.movie.title)
   }
@@ -132,7 +129,6 @@ object KinoMikroParser {
     dateTime: LocalDateTime,
     booking: Option[String],
     poster: Option[String],
-    director: Seq[String],
-    format: List[String]
+    director: Seq[String]
   )
 }
