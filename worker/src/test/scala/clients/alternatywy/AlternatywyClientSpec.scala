@@ -61,4 +61,19 @@ class AlternatywyClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     AlternatywyClient.cleanTitle("Okładka \"Bravo lata 90!\"") shouldBe "Bravo lata 90!"
     AlternatywyClient.cleanTitle("Okładka „Flying Lion”  Adam Święs Trio") shouldBe "Flying Lion Adam Święs Trio"
   }
+
+  it should "fetch synopsis, director, and production country/year from the detail page" in {
+    val d = client.fetchFilmDetail(
+      "https://alternatywy.art/500-mil-rezyseria-morgan-matthews-irlandia-wielka-brytania-cypr-2026/").value
+    d.director        should contain("Morgan Matthews")
+    d.countries       should contain allOf ("Irlandia", "Wielka Brytania", "Cypr")
+    d.releaseYear     shouldBe Some(2026)
+    d.synopsis.value  should include("Finn")
+  }
+
+  it should "expose itself as a deferred DetailEnricher resolving TMDB from the listing" in {
+    client                       shouldBe a[services.cinemas.DetailEnricher]
+    client.detailGroup           shouldBe "kino-alternatywy"
+    client.defersTmdbResolution  shouldBe false
+  }
 }

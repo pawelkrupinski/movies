@@ -6,6 +6,7 @@ import org.jsoup.nodes.Element
 import tools.HttpFetch
 
 import java.time.{LocalDate, ZoneId}
+import java.util.Locale
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -35,13 +36,27 @@ import scala.util.Try
 class AlternatywyClient(
   http:  HttpFetch,
   today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-) extends CinemaScraper with OnlyMovieEventsFilter {
+) extends CinemaScraper with OnlyMovieEventsFilter with DetailEnricher {
   import AlternatywyClient._
 
   val cinema: Cinema = KinoAlternatywy
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl)
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
+
+  // The listing carries only the title + poster, so the film resolves from the
+  // title (no held detailPending); the detail page adds synopsis, director, and
+  // production countries + year, merged in asynchronously by the EnrichDetails
+  // task.
+  override val detailGroup: String = "kino-alternatywy"
+  override def defersTmdbResolution: Boolean = false
+
+  /** Deferred per-film detail — the EnrichDetails task calls this with the slot's
+   *  `/<slug>/` filmUrl (UTF-8 WordPress/Elementor). None when nothing useful
+   *  parsed, so the task stays stale and retries. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(http.get(ref)).toOption.map(parseDetail)
+      .filter(d => d.synopsis.nonEmpty || d.director.nonEmpty)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] =
     SlotsToMovies.fold(
@@ -127,4 +142,23 @@ object AlternatywyClient {
    *  unit-testable here. */
   def cleanTitle(alt: String): String =
     services.movies.TitleNormalizer.cinemaClean("kino-alternatywy", alt)
+
+  /** Parse a `/<slug>/` detail page into a [[FilmDetail]]. The synopsis prose is
+   *  the post-content widget; the director + production countries/year sit in a
+   *  single `h2.elementor-heading-title` ("reżyseria: <dir> <br> <countries> <year>"). */
+  private[cinemas] def parseDetail(html: String): FilmDetail = {
+    val doc      = Jsoup.parse(html)
+    val synopsis = Option(doc.selectFirst("div.elementor-widget-theme-post-content div.elementor-widget-container"))
+      .map(el => ScraperParse.cleanSynopsis(el)).filter(_.length > 20)
+    val (director, countries, year) = doc.select("h2.elementor-heading-title").asScala
+      .find(_.text.trim.toLowerCase(Locale.ROOT).startsWith("reżyseria"))
+      .map { h2 =>
+        val lines    = h2.html.split("(?i)<br\\s*/?>").iterator.map(p => Jsoup.parse(p).text.trim).filter(_.nonEmpty).toSeq
+        val dir      = lines.headOption.map(_.replaceFirst("(?i)^reżyseria:?\\s*", ""))
+                         .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+        val (cs, yr) = lines.drop(1).headOption.map(ScraperParse.productionMeta).getOrElse((Nil, None))
+        (dir, cs, yr)
+      }.getOrElse((Seq.empty, Nil, None))
+    FilmDetail(synopsis = synopsis, director = director, countries = countries, releaseYear = year)
+  }
 }
