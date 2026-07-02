@@ -48,19 +48,15 @@ class KinoPodBaranamiClient(
     val str   = new String(html, "ISO-8859-2")
     val slots = parseDocument(str, today)
 
-    // Group by the LANGUAGE-STRIPPED title, not by `film.php?film_id=` URL: the
-    // cinema lists a film's subtitled and dubbed editions as two separate
-    // `film_id` entries differing only by a trailing "(Napisy PL)"/"(Dubbing PL)"
-    // tag (already stripped into `RawSlot.format` at parse time). Keyed by URL
-    // they'd be two `CinemaMovie`s that sanitize to the same slot and clobber
-    // each other every scrape; keyed by title they fold into one film with the
-    // UNION of screenings, each screening keeping its own language on
-    // `Showtime.format` (NAP / DUB). A deterministic representative `filmUrl` is
-    // picked so the merged movie is stable run-to-run.
-    val byTitle = slots.groupBy(_.title)
-    byTitle.toSeq.flatMap { case (title, group) =>
+    // One CinemaMovie per (title, film.php?film_id=): a film's subtitled/dubbed
+    // editions are separate `film_id` entries whose titles differ only by a
+    // "(Napisy PL)"/"(Dubbing PL)" tag. The shared FormatTags at ingest peels that
+    // tag (into each showing's format badge) and folds the editions onto one film
+    // — no per-client stripping/merging here.
+    val byFilmUrl = slots.groupBy(s => (s.title, s.filmUrl))
+    byFilmUrl.toSeq.flatMap { case ((title, filmUrl), group) =>
       val showtimes = group
-        .map(s => Showtime(s.dateTime, s.bookingUrl, format = s.format))
+        .map(s => Showtime(s.dateTime, s.bookingUrl))
         .distinctBy(s => (s.dateTime, s.bookingUrl))
         .sortBy(_.dateTime)
       if (showtimes.isEmpty) None
@@ -68,7 +64,7 @@ class KinoPodBaranamiClient(
         movie     = Movie(title, originalTitle = group.flatMap(_.originalTitle).headOption),
         cinema    = cinema,
         posterUrl = None,
-        filmUrl   = group.flatMap(_.filmUrl).distinct.sorted.headOption,
+        filmUrl   = filmUrl,
         synopsis  = None,
         cast      = Seq.empty,
         director  = Seq.empty,
@@ -123,8 +119,7 @@ object KinoPodBaranamiClient {
     originalTitle: Option[String],
     filmUrl:       Option[String],
     dateTime:      LocalDateTime,
-    bookingUrl:    Option[String],
-    format:        List[String]
+    bookingUrl:    Option[String]
   )
 
   /** Infer year: if the date falls more than 60 days in the past relative to
@@ -160,16 +155,10 @@ object KinoPodBaranamiClient {
           currentDate.foreach { date =>
             element.select("li").asScala.foreach { li =>
               val titleAnchor = Option(li.selectFirst("a[href^=\"film.php\"]"))
-              // Peel the trailing language/format tag ("(Napisy PL)", "(Dubbing
-              // PL)") off the title and surface it as `format` tokens (NAP/DUB/…),
-              // so a film's subtitled and dubbed editions collapse to one title
-              // and their screenings merge (each keeping its own language badge)
-              // instead of clobbering one slot. `(SMAK)` is peeled first (it has no
-              // format word, so `extractFormatTags` would leave it) — see
-              // `stripProgrammeLabel`.
-              val (title, format) = titleAnchor
-                .map(a => ScraperParse.extractFormatTags(stripProgrammeLabel(a.text.trim)))
-                .getOrElse(("", Nil))
+              // The trailing "(Napisy PL)"/"(Dubbing PL)" language tag is peeled by
+              // the shared FormatTags at ingest; here we only drop the "(SMAK)"
+              // discussion-club label (not a format word) so it doesn't fork the row.
+              val title       = titleAnchor.map(a => stripProgrammeLabel(a.text.trim)).filter(_.nonEmpty).getOrElse("")
               val filmUrl     = titleAnchor.map(a => s"$BaseUrl/${a.attr("href").trim}").filter(_.nonEmpty)
               // The anchor's `title=` attribute carries the film's original
               // (usually international/English) title — "Gourou" for "Guru",
@@ -188,7 +177,7 @@ object KinoPodBaranamiClient {
                   val bookingUrl = Some(a.attr("href").trim).filter(_.nonEmpty)
                     .map(h => if (h.startsWith("http")) h else s"$BaseUrl$h")
                   time.foreach { t =>
-                    slots += RawSlot(title, originalTitle, filmUrl, LocalDateTime.of(date, t), bookingUrl, format)
+                    slots += RawSlot(title, originalTitle, filmUrl, LocalDateTime.of(date, t), bookingUrl)
                   }
                 }
               }
