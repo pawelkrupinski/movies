@@ -1041,8 +1041,10 @@ class CaffeineMovieCache(
   /** Build one cinema's `SourceData` slot for a scraped film — shared by the
    *  `movies` write and the staging divert so both apply the same rules:
    *    - two-stage detail preservation: a deferred cinema (e.g. Kino Muza) ships
-   *      `posterUrl`/`synopsis`/`trailerUrl` as None on the listing tick — keep
-   *      whatever the detail refresher already wrote (`priorSlot` carry-forward);
+   *      `posterUrl`/`synopsis`/`trailerUrl` AND the detail fields
+   *      (cast/director/runtime/originalTitle/countries/genres) as None/empty on
+   *      the listing tick — keep whatever the detail refresher already wrote
+   *      (`priorSlot` carry-forward); else a listing tick WIPES the enrichment;
    *    - year fallback (`effectiveYear`): keep the prior year when a tick drops it
    *      (Helios' REST year flakes), treating a dropped year as loss not a change;
    *    - cast/director Title-Cased when ALL CAPS (Cinema City), runtime-zero
@@ -1059,18 +1061,29 @@ class CaffeineMovieCache(
       // per-cinema rules change. A rule-driven client carries the pre-strip
       // string in `movie.rawTitle`; others leave it None and `title` is raw.
       rawTitle       = cm.movie.rawTitle.orElse(Some(cm.movie.title)),
-      originalTitle  = cm.movie.originalTitle,
+      originalTitle  = cm.movie.originalTitle.orElse(priorSlot.flatMap(_.originalTitle)),
       // Collapse a blurb the cinema CMS pasted N× into one description field
       // (Bilety24's Kino Piast shipped the "Ojczyzna" synopsis 9× glued together)
       // at the ingestion boundary, so we never store the duplicate — not just hide
       // it at read time. See tools.SynopsisMarkdown.collapseRepeats.
       synopsis       = cm.synopsis.map(tools.SynopsisMarkdown.collapseRepeats).orElse(priorSlot.flatMap(_.synopsis)),
-      cast           = cm.cast.map(TextNormalization.titleCaseIfAllCaps),
-      director       = cm.director.map(TextNormalization.titleCaseIfAllCaps),
-      runtimeMinutes = cm.movie.runtimeMinutes.filter(_ > 0),
+      // Detail fields (cast/director/runtime/originalTitle/countries/genres) are
+      // filled by the deferred EnrichDetails merge; a listing-only cinema's re-scrape
+      // carries none of them. Carry the prior slot's values forward when the fresh
+      // listing lacks them — exactly as synopsis/poster/trailer above — so a listing
+      // tick doesn't WIPE the enrichment (which EnrichDetails then re-adds, flapping
+      // the row + doubling its change-stream writes). A listing that DOES carry the
+      // field still wins, matching FilmDetail.mergeInto's "fill only if empty" rule.
+      cast           = if (cm.cast.nonEmpty) cm.cast.map(TextNormalization.titleCaseIfAllCaps)
+                       else priorSlot.map(_.cast).getOrElse(Seq.empty),
+      director       = if (cm.director.nonEmpty) cm.director.map(TextNormalization.titleCaseIfAllCaps)
+                       else priorSlot.map(_.director).getOrElse(Seq.empty),
+      runtimeMinutes = cm.movie.runtimeMinutes.filter(_ > 0).orElse(priorSlot.flatMap(_.runtimeMinutes)),
       releaseYear    = effectiveYear,
-      countries      = cm.movie.countries.map(CountryNames.canonical).distinct,
-      genres         = cm.movie.genres,
+      countries      = { val cs = cm.movie.countries.map(CountryNames.canonical).distinct
+                         if (cs.nonEmpty) cs else priorSlot.map(_.countries).getOrElse(Seq.empty) },
+      genres         = if (cm.movie.genres.nonEmpty) cm.movie.genres
+                       else priorSlot.map(_.genres).getOrElse(Seq.empty),
       posterUrl      = cm.posterUrl.orElse(priorSlot.flatMap(_.posterUrl)),
       filmUrl        = cm.filmUrl,
       trailerUrl     = cm.trailerUrl.orElse(priorSlot.flatMap(_.trailerUrl)),

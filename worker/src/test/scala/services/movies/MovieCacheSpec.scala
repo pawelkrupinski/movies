@@ -25,6 +25,39 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       Tmdb              -> SourceData(title = Some(tmdbTitle), originalTitle = Some(originalTitle), releaseYear = Some(year)),
       (cinema: Source)  -> SourceData(title = Some(tmdbTitle), releaseYear = Some(year))))
 
+  it should "carry enriched detail forward when a listing-only cinema re-scrapes (no metadata-wipe flap)" in {
+    // A listing-only cinema (arthouse: Muranów, Kinoteka…) scrapes title+showtimes
+    // with no director/cast/etc; EnrichDetails fills those later. Pre-fix, the next
+    // listing re-scrape rebuilt the slot from the (detail-less) listing and WIPED the
+    // enrichment — which EnrichDetails then re-added, flapping the row and doubling
+    // its change-stream writes. The re-scrape must now preserve the enriched fields.
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val key   = cache.recordCinemaScrape(KinoMuranow, Seq(cm(KinoMuranow, "Atlantis", Some(1991)))).head._2
+
+    // Detail enrichment lands on the slot (as EnrichDetails' mergeInto would).
+    cache.putIfPresent(key, r => r.copy(data = r.data.view.mapValues(_.copy(
+      director       = Seq("Andrew Stanton"),
+      cast           = Seq("Tom Hanks"),
+      runtimeMinutes = Some(102),
+      originalTitle  = Some("Atlantis"),
+      countries      = Seq("USA"),
+      genres         = Seq("Drama"))).toMap))
+
+    // A later listing re-scrape (still no detail), with a new showtime.
+    val reScrape = cm(KinoMuranow, "Atlantis", Some(1991))
+      .copy(showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 9, 20, 0), None)))
+    cache.recordCinemaScrape(KinoMuranow, Seq(reScrape))
+
+    val slot = cache.get(key).get.data.values.head
+    slot.director       shouldBe Seq("Andrew Stanton") // preserved, not wiped
+    slot.cast           shouldBe Seq("Tom Hanks")
+    slot.runtimeMinutes shouldBe Some(102)
+    slot.originalTitle  shouldBe Some("Atlantis")
+    slot.countries      shouldBe Seq("USA")
+    slot.genres         shouldBe Seq("Drama")
+    slot.showtimes.map(_.dateTime) should contain (LocalDateTime.of(2026, 6, 9, 20, 0)) // listing still applied
+  }
+
   "MovieCache" should "hydrate from the repository on construction" in {
     // Carry the title in a cinema slot, as a scraped row does: the repository
     // re-derives the display title from the record on read (like Mongo), so a
