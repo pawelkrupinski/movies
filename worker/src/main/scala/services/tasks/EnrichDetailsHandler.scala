@@ -1,6 +1,6 @@
 package services.tasks
 
-import models.{CinemaShowing, SourceData}
+import models.{CinemaShowing, Source, SourceData}
 import play.api.Logging
 import services.UptimeMonitor
 import services.cinemas.DetailEnricher
@@ -110,15 +110,31 @@ class EnrichDetailsHandler(
           case Some(detail) =>
             val title  = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, "")
             val year   = task.payload.get(EnrichDetailsTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
+            val rowKey = cache.keyOf(title, year)
             // For a 1:1 venue the listing slot is keyed per shown title
             // (`CinemaShowing`), so target THAT slot — a bare-cinema target would
             // create a separate empty slot and the detail would never merge into the
             // film's showtimes. A chain redirects detail to its shared network source
             // (not per-title), which is left as-is.
+            //
+            // `title` is the film's BASE (row) title, but a DECORATED edition
+            // ("Plenerowe Pałacowe: X", folded onto the base row) has its listing slot
+            // keyed by the decorated shown title — so `keyFor(cinema, base)` derives a
+            // slot the scrape never wrote, fabricating a phantom bare slot the next
+            // scrape prunes (per-tick churn + the detail never reaches the real slot).
+            // Prefer the row's EXISTING slot for this cinema when there's exactly one.
             val target =
-              if (enricher.detailTarget == enricher.cinema) CinemaShowing.keyFor(enricher.cinema, title)
-              else enricher.detailTarget
-            val rowKey = cache.keyOf(title, year)
+              if (enricher.detailTarget != enricher.cinema) enricher.detailTarget
+              else {
+                val derived     = CinemaShowing.keyFor(enricher.cinema, title)
+                val cinemaSlots = cache.get(rowKey).toList
+                  .flatMap(_.data.keys.filter(s => Source.cinemaOf(s).contains(enricher.cinema)))
+                if (cinemaSlots.contains(derived)) derived
+                else cinemaSlots match {
+                  case single :: Nil => single   // decorated single-slot venue → merge in place
+                  case _             => derived   // chain/first-time (0) or multi-edition (dub) → as before
+                }
+              }
             // Was this the detail the row was held back for? Capture before the
             // merge clears the flag, so a periodic re-fetch of an already-done
             // row (DetailReaper refreshing showtimes) doesn't re-trigger TMDB.

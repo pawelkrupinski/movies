@@ -1,6 +1,6 @@
 package services.tasks
 
-import models.{CinemaCityChain, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, KinoApollo, Movie, Showtime}
+import models.{CinemaCityChain, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, CinemaShowing, KinoApollo, Movie, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.UptimeMonitor
@@ -66,6 +66,32 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     slot.map(_.showtimes.size) shouldBe Some(1) // showtimes from the scrape preserved
     fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich) shouldBe true
     successes(uptime, EnrichmentService) shouldBe 1 // recorded under "<cinema>|enrichment"
+  }
+
+  it should "merge detail into a decorated edition's EXISTING slot, not fabricate a base-title phantom slot" in {
+    // A decorated edition ("Kino Konesera: Dune") folded onto the base "Dune" row:
+    // the row is keyed by the base title, but its KinoApollo listing slot is keyed
+    // by the decorated shown title. The EnrichDetails task carries the base title.
+    val decorated = CinemaShowing(KinoApollo, "decorateddune") // != sanitize("Dune")
+    val cache     = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
+    // Seed the base "Dune" row directly (bypassing repo title-re-derivation) with only
+    // the decorated KinoApollo slot, as the fold would leave it.
+    cache.put(cache.keyOf("Dune", None), MovieRecord(data = Map(decorated -> SourceData(
+      title = Some("Kino Konesera: Dune"),
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book")))))))
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo",
+      Some(FilmDetail(synopsis = Some("Spice"), director = Seq("Denis Villeneuve"))))
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(), noBus, dueWindow)
+
+    h.handle(taskFor("kino-apollo", cache, "Dune", enricher)) shouldBe Done
+    val row = cache.get(cache.keyOf("Dune", None)).get
+    // Detail merged INTO the decorated slot (showtimes preserved) — not lost to a phantom.
+    row.data.get(decorated).flatMap(_.synopsis)     shouldBe Some("Spice")
+    row.data.get(decorated).map(_.director)         shouldBe Some(Seq("Denis Villeneuve"))
+    row.data.get(decorated).map(_.showtimes.size)   shouldBe Some(1)
+    // No base-title phantom fabricated: still exactly one KinoApollo slot.
+    row.data.keys.count(s => Source.cinemaOf(s).contains(KinoApollo)) shouldBe 1
+    row.data.get(CinemaShowing.keyFor(KinoApollo, "Dune"))            shouldBe None
   }
 
   it should "clear detailPending and publish MovieDetailsComplete (the TMDB re-trigger) once a held-back row's detail lands" in {
