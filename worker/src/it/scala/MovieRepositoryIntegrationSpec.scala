@@ -310,55 +310,47 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     found.get.record.cinemaData.get(HeliosOstrowWlkp).flatMap(_.synopsis) shouldBe Some("from Ostrów")
   }
 
-  // Showtimes-split Phase 1 (additive dual-write): a movies write ALSO mirrors the
-  // film's cinema showtimes into `screenings`. A metadata-only change must NOT
-  // rewrite screenings; a showtime change must; a delete cascades. (Reads still use
-  // the embedded copy in Phase 1, so this only proves the mirror is maintained.)
-  it should "dual-write cinema showtimes into the screenings collection" in {
+  // The one-shot boot migration: a film whose showtimes are still EMBEDDED in movies
+  // (written before the split, or by a maintenance script with no screenings repo)
+  // gets copied into `screenings`, and a split repo then stitches them back on read.
+  // Additive — a film already split-written (stripped) is untouched.
+  it should "backfill still-embedded showtimes into screenings" in {
     import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
     val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
     val scr    = new MongoScreeningsRepository(Some(db))
-    val repo   = new MongoMovieRepository(Some(db), screenings = Some(scr))
+    val plain  = new MongoMovieRepository(Some(db))                          // no screenings → writes EMBEDDED
+    val split  = new MongoMovieRepository(Some(db), screenings = Some(scr))  // strips + stitches
     try {
-      val title = "__integration-test-screenings-dualwrite__"
+      val title = "__integration-test-screenings-backfill__"
       val year  = Some(1904)
       val id    = StoredMovieRecord.idFor(title, year)
       val key   = Multikino.displayName
-      val slot  = SourceData(title = Some("DW"),
-        showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/dw-1"))))
-      val base  = MovieRecord(imdbId = Some("tt0000013"), data = Map[Source, SourceData](Multikino -> slot))
+      val slot  = SourceData(title = Some("BF"),
+        showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/bf-1"))))
+      plain.upsert(title, year, MovieRecord(imdbId = Some("tt0000013"), data = Map[Source, SourceData](Multikino -> slot)))
+      scr.findForFilm(id) shouldBe empty // not yet in screenings (embedded only)
 
-      repo.upsert(title, year, base)
-      scr.findForFilm(id).get(key).map(_.size) shouldBe Some(1) // mirrored on upsert
+      split.backfillScreenings() should be >= 1
+      scr.findForFilm(id).get(key).map(_.size) shouldBe Some(1)                                    // copied across
+      split.findById(id).flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes.size) shouldBe Some(1) // stitched back
 
-      // metadata-only change → screenings untouched
-      val afterMeta = base.copy(data = Map[Source, SourceData](Multikino -> slot.copy(director = Seq("New Dir"))))
-      repo.updateIfPresent(title, year, base, afterMeta)
-      scr.findForFilm(id).get(key).map(_.size) shouldBe Some(1)
-
-      // showtime change → screenings updated
-      val afterShow = base.copy(data = Map[Source, SourceData](Multikino ->
-        slot.copy(showtimes = slot.showtimes :+ Showtime(java.time.LocalDateTime.of(2026, 6, 1, 21, 0), Some("https://book/dw-2")))))
-      repo.updateIfPresent(title, year, afterMeta, afterShow)
-      scr.findForFilm(id).get(key).map(_.size) shouldBe Some(2)
-
-      repo.delete(title, year)     // delete cascades to screenings
+      split.delete(title, year) // delete cascades to screenings
       scr.findForFilm(id) shouldBe empty
     } finally client.close()
   }
 
-  // Showtimes-split Phase 2 (read cutover, splitReads=true): `movies` is written
-  // WITHOUT showtimes, reads stitch them from `screenings`, a showtimes-only change
-  // leaves `movies` untouched, and a `screenings` change fans out a stitched upsert
-  // (so the projector re-projects). Everything verified against a real replica set.
+  // The split is on whenever a screenings repo is wired: `movies` is written WITHOUT
+  // showtimes, reads stitch them from `screenings`, a showtimes-only change leaves
+  // `movies` untouched, and a `screenings` change fans out a stitched upsert (so the
+  // projector re-projects). Verified against a real replica set.
   it should "split reads: strip showtimes from movies, stitch from screenings, and fan out screenings changes" in {
     import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
     import java.util.concurrent.{CountDownLatch, TimeUnit}
     val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
     val scr    = new MongoScreeningsRepository(Some(db))
-    val repo   = new MongoMovieRepository(Some(db), screenings = Some(scr), splitReads = true)
+    val repo   = new MongoMovieRepository(Some(db), screenings = Some(scr))
     val plain  = new MongoMovieRepository(Some(db)) // no stitch → sees the raw movies doc
     try {
       val title = "__integration-test-splitreads__"

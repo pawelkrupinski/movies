@@ -80,15 +80,13 @@ trait Wiring {
         serverSelectionTimeout = Some(MongoConnection.LocalMirrorTimeout)),
       mongoConnection)
   // Showtimes split: /debug's movieRepository is read-only, so it only needs the
-  // read-stitch — re-inject showtimes from `screenings` (on the same connection it
-  // reads `movies` from) when the cutover flag is on. Falls back to embedded
-  // showtimes per slot, so an un-migrated film still shows them.
+  // read-stitch — re-inject showtimes from `screenings` on the same connection it
+  // reads `movies` from. The worker owns the backfill; here we just read.
   lazy val screeningsRepository: services.movies.ScreeningsRepository =
     new services.movies.MongoScreeningsRepository(movieMirrorConnection.database)
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
     movieMirrorConnection.database, fallbackToOwnInit = false,
-    screenings = Some(screeningsRepository),
-    splitReads = Env.get("KINOWO_SCREENINGS_READ_SPLIT").exists(v => v == "true" || v == "1"))
+    screenings = Some(screeningsRepository))
   lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database)
   lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository)
 

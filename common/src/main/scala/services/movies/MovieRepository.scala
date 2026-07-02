@@ -172,6 +172,12 @@ trait MovieRepository {
     onDelete: String => Unit
   ): Option[AutoCloseable] = None
 
+  /** One-shot migration: copy any still-embedded `movies` showtimes into the
+   *  `screenings` collection, so the read-stitch (which treats `screenings` as
+   *  authoritative) has every film's showtimes. Idempotent + additive; returns how
+   *  many slots were backfilled. Default no-op (no screenings repo / in-memory store). */
+  def backfillScreenings(): Int = 0
+
   /** Release any underlying resources. No-op when nothing to release. */
   def close(): Unit
 }
@@ -238,21 +244,25 @@ class MongoMovieRepository(
   // reads still use the embedded copy, so this can't lose data or change
   // behaviour). None = the pre-split behaviour (embedded only). All screenings
   // writes are Try-guarded inside the repo, so they can never break a movies write.
-  screenings: Option[ScreeningsRepository] = None,
-  // Phase 2 read cutover (default OFF): when true, `movies` is written WITHOUT
-  // showtimes (they live in `screenings`), reads stitch them back (with an embedded
-  // fallback for not-yet-migrated films), and a `screenings` change is fanned out as
-  // a stitched record. Ships inert; flip on only once `screenings` is backfilled.
-  splitReads: Boolean = false
+  // Showtimes live in the separate `screenings` collection, not embedded in the
+  // `movies` document — so a showtime change no longer rewrites the (formerly
+  // 1-2MB) film doc the change stream re-decodes on every write. Wiring `screenings`
+  // turns the split ON: `movies` is written WITHOUT showtimes, reads stitch them
+  // back from `screenings`, and a `screenings` change is fanned out as a stitched
+  // record. The one-shot [[backfillScreenings]] (run at worker boot, before the
+  // cache hydrates) copies any still-embedded showtimes across, so the stitch is
+  // authoritative — a slot with no `screenings` doc has no showtimes. Maintenance
+  // scripts/tests that pass `None` keep the plain embedded shape (they don't serve).
+  screenings: Option[ScreeningsRepository] = None
 ) extends MovieRepository with Logging {
 
   private def stripFor(data: Map[Source, SourceData]): Map[Source, SourceData] =
-    if (splitReads) ScreeningsRepository.stripShowtimes(data) else data
+    if (screenings.isDefined) ScreeningsRepository.stripShowtimes(data) else data
 
-  /** Re-inject a stored row's showtimes from `screenings` when the read-split is on.
-   *  `filmId` is the row's `_id` (== the screenings `filmId`). */
+  /** Re-inject a stored row's showtimes from `screenings` (its authority under the
+   *  split). `filmId` is the row's `_id` (== the screenings `filmId`). */
   private def stitchRow(r: StoredMovieRecord, filmId: String, scr: Map[String, Seq[Showtime]]): StoredMovieRecord =
-    if (!splitReads || scr.isEmpty) r
+    if (screenings.isEmpty) r
     else r.copy(record = r.record.copy(data = ScreeningsRepository.stitch(r.record.data, scr)))
 
   // Lazy so subclasses that override every wire method (e.g.
@@ -320,15 +330,38 @@ class MongoMovieRepository(
    *  steady-state finds are <100 ms). */
   def findAll(): Seq[StoredMovieRecord] = coll match {
     case Some(_) =>
-      // Read-split: one bulk `screenings.findAll()` then stitch each row's showtimes
-      // back in (embedded fallback per slot for not-yet-migrated films).
-      val allScr   = if (splitReads) screenings.map(_.findAll()).getOrElse(Map.empty) else Map.empty
+      // One bulk `screenings.findAll()`, then stitch each row's showtimes back in
+      // (no-op when no screenings repo is wired — the maintenance-script path).
+      val allScr   = screenings.map(_.findAll()).getOrElse(Map.empty)
       val buf      = Vector.newBuilder[StoredMovieRecord]
       val complete = scanByKeyset { batch =>
         batch.foreach(dto => buf += stitchRow(StoredMovieDto.toDomain(dto), dto._id, allScr.getOrElse(dto._id, Map.empty)))
       }
       if (complete) buf.result() else Seq.empty
     case None => Seq.empty
+  }
+
+  /** Copy still-embedded `movies` showtimes into `screenings` (keyset-paged so it
+   *  never holds the corpus on the heap). ADDITIVE + idempotent: it only upserts
+   *  slots that STILL carry embedded showtimes — a film already written under the
+   *  split has none embedded, so it's skipped and its authoritative `screenings`
+   *  docs are never clobbered (never `replaceFilm`, which would delete them). Run
+   *  once at boot before the cache hydrates so the first served read is complete. */
+  override def backfillScreenings(): Int = (coll, screenings) match {
+    case (Some(_), Some(scr)) =>
+      var slots = 0
+      scanByKeyset { batch =>
+        batch.foreach { dto =>
+          Try {
+            ScreeningsRepository.showtimesOf(StoredMovieDto.toDomain(dto).record.data).foreach {
+              case (k, st) => scr.upsertSlot(dto._id, k, st); slots += 1
+            }
+          }.recover { case e => logger.warn(s"backfillScreenings(${dto._id}) failed: ${e.getMessage}") }
+        }
+      }
+      logger.info(s"backfillScreenings: upserted $slots slot(s) from embedded showtimes.")
+      slots
+    case _ => 0
   }
 
   /** Keyset-paged scan of the whole `movies` collection by `_id`, shared by [[findAll]]
@@ -387,7 +420,7 @@ class MongoMovieRepository(
       Try {
         Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), 10.seconds))
           .map(dto => stitchRow(StoredMovieDto.toDomain(dto), dto._id,
-            if (splitReads) screenings.map(_.findForFilm(dto._id)).getOrElse(Map.empty) else Map.empty))
+            screenings.map(_.findForFilm(dto._id)).getOrElse(Map.empty)))
       }.recover {
         case exception: Throwable =>
           logger.warn(s"MovieRepository.findById($id) failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
@@ -529,10 +562,10 @@ class MongoMovieRepository(
               Await.result(c.updateOne(Filters.eq("_id", id), patchToUpdate(patch), new UpdateOptions().upsert(false)).toFuture(), 10.seconds)
                 .getMatchedCount
             })
-        // Apply the screenings deltas. Non-split keeps the Phase-1 guard (write only
-        // when the movies row matched); under the split a showtimes-only change
-        // writes no movies, so apply regardless.
-        if (splitReads || moviesMatched.exists(_ > 0)) screenings.foreach { s =>
+        // Apply the screenings deltas — a showtimes-only change has no movies write
+        // (empty patch → None), so apply unless the movies write explicitly matched
+        // nothing (Some(0) = the row is absent, so don't create orphan screenings).
+        if (moviesMatched.forall(_ > 0)) screenings.foreach { s =>
           ops.foreach {
             case (k, Some(st)) => s.upsertSlot(id, k, st)
             case (k, None)     => s.deleteSlot(id, k)
@@ -630,9 +663,9 @@ class MongoMovieRepository(
             recordChangeMetrics(change)
             Option(change.getFullDocument) match {
               case Some(dto) =>
-                // Under the split the movies doc has no showtimes — stitch them back
-                // from `screenings` before fanning out, so consumers get a full row.
-                val scr = if (splitReads) screenings.map(_.findForFilm(dto._id)).getOrElse(Map.empty) else Map.empty
+                // The movies doc has no showtimes — stitch them back from `screenings`
+                // before fanning out, so consumers get a full row.
+                val scr = screenings.map(_.findForFilm(dto._id)).getOrElse(Map.empty)
                 movieChanges.dispatchUpsert(stitchRow(StoredMovieDto.toDomain(dto), dto._id, scr))
               case None =>
                 // No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't
@@ -649,10 +682,10 @@ class MongoMovieRepository(
           override def onComplete(): Unit = changeSub.set(null)
         })
       logger.info("MongoMovieRepository: watching change stream (shared by all listeners).")
-      // Under the split, also watch `screenings`: a showtime change fires there, not
-      // on `movies`. Re-read + stitch (findById already stitches) + fan out so the
-      // projector re-projects the film.
-      if (splitReads && screeningsWatch.get().isEmpty)
+      // Also watch `screenings`: a showtime change fires there, not on `movies`.
+      // Re-read + stitch (findById already stitches) + fan out so the projector
+      // re-projects the film.
+      if (screeningsWatch.get().isEmpty)
         screeningsWatch.set(screenings.flatMap(_.watch(filmId => findById(filmId).foreach(movieChanges.dispatchUpsert))))
     }
   }

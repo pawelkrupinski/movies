@@ -319,18 +319,16 @@ class WorkerWiring extends play.api.Logging {
   }
 
   // ── MovieRecord cache (write-through) ───────────────────────────────────────
-  // Showtimes-split Phase 1 (additive dual-write): the movies repo mirrors each
-  // film's cinema showtimes into the `screenings` collection alongside the embedded
-  // copy. Reads still use the embedded copy, so this is behaviour-neutral.
+  // Showtimes split: per-cinema showtimes live in the separate `screenings`
+  // collection, not embedded in the (formerly 1-2MB) movies doc the change stream
+  // re-decodes on every write. Wiring the screenings repo turns the split on — movies
+  // is written without showtimes, reads stitch them from `screenings`. `start()` runs
+  // the one-shot backfill before the cache hydrates.
   lazy val screeningsRepository: services.movies.ScreeningsRepository =
     new services.movies.MongoScreeningsRepository(mongoConnection.database)
-  // Phase 2 read cutover — OFF until `screenings` is backfilled + validated in prod.
-  // Flip `KINOWO_SCREENINGS_READ_SPLIT=true` to write movies without showtimes, stitch
-  // them from `screenings` on read, and fan out screenings changes. Rollback = unset.
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
     mongoConnection.database, fallbackToOwnInit = false, changeStreamMetrics = taskMetrics,
-    screenings = Some(screeningsRepository),
-    splitReads = Env.get("KINOWO_SCREENINGS_READ_SPLIT").exists(v => v == "true" || v == "1"))
+    screenings = Some(screeningsRepository))
 
   // Staging-ingest: a genuinely-new film incubates in `pending_movies`
   // (resolve-then-fold) instead of landing straight in `movies`; a film already
@@ -940,6 +938,11 @@ class WorkerWiring extends play.api.Logging {
     // run at boot, but the two heaviest jobs are deferred off the boot window —
     // the first scrape pass (KINOWO_SCRAPE_INITIAL_DELAY_SECONDS) and the
     // projector's full reconcile (KINOWO_READMODEL_RECONCILE_BOOT_DELAY_SECONDS).
+    // One-shot showtimes-split migration: copy any still-embedded showtimes into
+    // `screenings` BEFORE the cache hydrates, so the first stitched read (hydrate,
+    // projection) is complete. Additive + idempotent, so it's safe every boot.
+    val backfilled = movieRepository.backfillScreenings()
+    if (backfilled > 0) logger.info(s"Showtimes-split backfill: $backfilled slot(s) migrated at boot.")
     movieCache.start()
     // Start the read-model projector after the cache so its state seed (and the
     // first deferred reconcile) read a hydrated `movies` collection; it watches the

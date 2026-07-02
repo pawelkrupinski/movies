@@ -103,16 +103,17 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
     stripped(Tmdb)                  shouldBe data(Tmdb) // untouched (no showtimes)
   }
 
-  "stitch" should "re-inject showtimes from screenings, falling back to the embedded copy per slot" in {
+  "stitch" should "take showtimes from screenings authoritatively, dropping any embedded copy without a doc" in {
     val data = Map[models.Source, SourceData](
       KinoMuranow -> SourceData(director = Seq("D"), showtimes = Seq.empty),          // stripped on disk
-      Kinoteka    -> SourceData(showtimes = Seq(st(9))))                              // not-yet-migrated (embedded)
+      Kinoteka    -> SourceData(showtimes = Seq(st(9))))                              // stray embedded, no screenings doc
     val screenings = Map("Kino Muranów" -> Seq(st(18), st(20)))                       // only Muranów in screenings
     val stitched = ScreeningsRepository.stitch(data, screenings)
     stitched(KinoMuranow).showtimes shouldBe Seq(st(18), st(20)) // from screenings
     stitched(KinoMuranow).director  shouldBe Seq("D")            // metadata kept
-    stitched(Kinoteka).showtimes    shouldBe Seq(st(9))          // embedded fallback (no screenings doc)
+    stitched(Kinoteka).showtimes    shouldBe empty               // no screenings doc → dropped (authoritative)
 
-    ScreeningsRepository.stitch(data, Map.empty) shouldBe data   // no screenings → unchanged
+    // no screenings at all → every slot's showtimes dropped
+    ScreeningsRepository.stitch(data, Map.empty)(Kinoteka).showtimes shouldBe empty
   }
 }
