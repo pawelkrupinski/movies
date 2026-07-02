@@ -1,9 +1,18 @@
 package services.movies
 
-import models.Showtime
+import com.mongodb.WriteConcern
+import com.mongodb.client.model.ReplaceOptions
+import models.{Showtime, Source, SourceData}
+import org.mongodb.scala.model.{Filters, Indexes}
+import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import play.api.Logging
 
+import java.time.Instant
 import java.util.concurrent.CopyOnWriteArrayList
+import scala.concurrent.Await
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 /**
  * Per-cinema showtimes, split out of the embedded `movies.sourceData` map into
@@ -113,4 +122,100 @@ class InMemoryScreeningsRepository extends ScreeningsRepository {
 
   // Ring outside the lock, only for genuine changes (see the per-method guards).
   private def ring(filmId: String): Unit = listeners.asScala.foreach(_(filmId))
+}
+
+object ScreeningsRepository {
+
+  /** The cinema slots that carry showtimes, keyed by slot wire-key
+   *  (`Source.displayName`). Tmdb/Imdb slots never have showtimes, so they're
+   *  excluded. Pure — the write paths derive their screenings docs from this. */
+  def showtimesOf(data: Map[Source, SourceData]): Map[String, Seq[Showtime]] =
+    data.iterator.collect { case (s, sd) if sd.showtimes.nonEmpty => s.displayName -> sd.showtimes }.toMap
+
+  /** The per-slot screening writes needed to turn `before`'s showtimes into
+   *  `after`'s: `slotKey -> Some(showtimes)` to upsert, `slotKey -> None` to
+   *  delete. Only slots whose showtimes actually changed appear — so a
+   *  metadata-only change yields an empty map (no screening write) and a
+   *  showtimes-only change writes ONLY here. Pure + unit-tested. */
+  def slotOps(before: Map[Source, SourceData], after: Map[Source, SourceData]): Map[String, Option[Seq[Showtime]]] =
+    (before.keySet ++ after.keySet).iterator.flatMap { s =>
+      val b = before.get(s).map(_.showtimes).getOrElse(Seq.empty)
+      val a = after.get(s).map(_.showtimes).getOrElse(Seq.empty)
+      if (a == b) None
+      else Some(s.displayName -> (if (a.nonEmpty) Some(a) else None))
+    }.toMap
+
+  // Non-printable separator so the composite `_id` never collides with a slot key.
+  private[movies] val IdSep: Char = '\u001f'
+}
+
+/** Storage DTO for one cinema slot's screenings — the macro codec target for the
+ *  `screenings` collection. `_id = "<filmId><slotKey>"`; `filmId` is indexed
+ *  for per-film reads/deletes. */
+case class StoredScreeningsDto(
+  _id:       String,
+  filmId:    String,
+  slotKey:   String,
+  showtimes: Seq[Showtime],
+  updatedAt: Instant
+)
+
+/**
+ * Mongo-backed `ScreeningsRepository`, collection `screenings`. Relaxed write
+ * concern like `movies` (re-scraped continuously; a lost write self-heals next
+ * scrape). Every method is defensively `Try`-guarded so a screenings failure can
+ * never break the caller's `movies` write.
+ */
+class MongoScreeningsRepository(sharedDb: Option[MongoDatabase]) extends ScreeningsRepository with Logging {
+  import ScreeningsRepository.IdSep
+
+  private lazy val coll: Option[MongoCollection[StoredScreeningsDto]] = sharedDb.map { db =>
+    val c = db.withCodecRegistry(MovieCodecs.registry).getCollection[StoredScreeningsDto]("screenings")
+      .withWriteConcern(WriteConcern.W1.withJournal(false))
+    Try(Await.result(c.createIndex(Indexes.ascending("filmId")).toFuture(), 10.seconds))
+    c
+  }
+
+  private def idOf(filmId: String, slotKey: String): String = s"$filmId$IdSep$slotKey"
+
+  def findForFilm(filmId: String): Map[String, Seq[Showtime]] = coll.fold(Map.empty[String, Seq[Showtime]]) { c =>
+    Try(Await.result(c.find(Filters.eq("filmId", filmId)).toFuture(), 30.seconds))
+      .getOrElse(Seq.empty).map(d => d.slotKey -> d.showtimes).toMap
+  }
+
+  def findAll(): Map[String, Map[String, Seq[Showtime]]] = coll.fold(Map.empty[String, Map[String, Seq[Showtime]]]) { c =>
+    Try(Await.result(c.find().toFuture(), 60.seconds)).getOrElse(Seq.empty)
+      .groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap
+  }
+
+  def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit = coll.foreach { c =>
+    Try {
+      slots.foreach { case (k, st) => upsertOne(c, filmId, k, st) }
+      (findForFilm(filmId).keySet -- slots.keySet).foreach(k => deleteOne(c, filmId, k))
+    }.recover { case e => logger.warn(s"ScreeningsRepository.replaceFilm($filmId) failed: ${e.getMessage}") }
+  }
+
+  def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): Unit = coll.foreach { c =>
+    Try(upsertOne(c, filmId, slotKey, showtimes))
+      .recover { case e => logger.warn(s"ScreeningsRepository.upsertSlot($filmId,$slotKey) failed: ${e.getMessage}") }
+  }
+
+  def deleteSlot(filmId: String, slotKey: String): Unit = coll.foreach { c =>
+    Try(deleteOne(c, filmId, slotKey))
+      .recover { case e => logger.warn(s"ScreeningsRepository.deleteSlot($filmId,$slotKey) failed: ${e.getMessage}") }
+  }
+
+  def deleteFilm(filmId: String): Unit = coll.foreach { c =>
+    Try(Await.result(c.deleteMany(Filters.eq("filmId", filmId)).toFuture(), 10.seconds))
+      .recover { case e => logger.warn(s"ScreeningsRepository.deleteFilm($filmId) failed: ${e.getMessage}") }
+  }
+
+  private def upsertOne(c: MongoCollection[StoredScreeningsDto], filmId: String, slotKey: String, st: Seq[Showtime]): Unit = {
+    val dto = StoredScreeningsDto(idOf(filmId, slotKey), filmId, slotKey, st, Instant.now())
+    Await.result(c.replaceOne(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds); ()
+  }
+
+  private def deleteOne(c: MongoCollection[StoredScreeningsDto], filmId: String, slotKey: String): Unit = {
+    Await.result(c.deleteOne(Filters.eq("_id", idOf(filmId, slotKey))).toFuture(), 10.seconds); ()
+  }
 }

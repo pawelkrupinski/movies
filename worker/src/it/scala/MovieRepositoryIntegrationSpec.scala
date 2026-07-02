@@ -33,7 +33,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // re-keyed sentinel — but `imdbId` never changes.
   private val sentinelImdbIds = Seq(
     "tt0000001", "tt0000002", "tt0000003", "tt0000004",
-    "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000077", "tt0000099"
+    "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000077", "tt0000099"
   )
 
   // Delete every sentinel this spec could have written. Matches BOTH the
@@ -308,6 +308,44 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val found = repository.findAll().find(r => r.record.imdbId.contains("tt0000004"))
     found should not be empty
     found.get.record.cinemaData.get(HeliosOstrowWlkp).flatMap(_.synopsis) shouldBe Some("from Ostrów")
+  }
+
+  // Showtimes-split Phase 1 (additive dual-write): a movies write ALSO mirrors the
+  // film's cinema showtimes into `screenings`. A metadata-only change must NOT
+  // rewrite screenings; a showtime change must; a delete cascades. (Reads still use
+  // the embedded copy in Phase 1, so this only proves the mirror is maintained.)
+  it should "dual-write cinema showtimes into the screenings collection" in {
+    import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val repo   = new MongoMovieRepository(Some(db), screenings = Some(scr))
+    try {
+      val title = "__integration-test-screenings-dualwrite__"
+      val year  = Some(1904)
+      val id    = StoredMovieRecord.idFor(title, year)
+      val key   = Multikino.displayName
+      val slot  = SourceData(title = Some("DW"),
+        showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/dw-1"))))
+      val base  = MovieRecord(imdbId = Some("tt0000013"), data = Map[Source, SourceData](Multikino -> slot))
+
+      repo.upsert(title, year, base)
+      scr.findForFilm(id).get(key).map(_.size) shouldBe Some(1) // mirrored on upsert
+
+      // metadata-only change → screenings untouched
+      val afterMeta = base.copy(data = Map[Source, SourceData](Multikino -> slot.copy(director = Seq("New Dir"))))
+      repo.updateIfPresent(title, year, base, afterMeta)
+      scr.findForFilm(id).get(key).map(_.size) shouldBe Some(1)
+
+      // showtime change → screenings updated
+      val afterShow = base.copy(data = Map[Source, SourceData](Multikino ->
+        slot.copy(showtimes = slot.showtimes :+ Showtime(java.time.LocalDateTime.of(2026, 6, 1, 21, 0), Some("https://book/dw-2")))))
+      repo.updateIfPresent(title, year, afterMeta, afterShow)
+      scr.findForFilm(id).get(key).map(_.size) shouldBe Some(2)
+
+      repo.delete(title, year)     // delete cascades to screenings
+      scr.findForFilm(id) shouldBe empty
+    } finally client.close()
   }
 
   it should "leave countries empty when a slot was written without them" in {

@@ -186,7 +186,10 @@ object MovieCodecs {
     fromProviders(
       sourceDataProvider,
       Macros.createCodecProviderIgnoreNone[Showtime](),
-      Macros.createCodecProvider[StoredMovieDto]()
+      Macros.createCodecProvider[StoredMovieDto](),
+      // The `screenings` collection (showtimes split out of `movies`) — same
+      // Showtime + LocalDateTime codecs as above.
+      Macros.createCodecProvider[StoredScreeningsDto]()
     ),
     DEFAULT_CODEC_REGISTRY
   )

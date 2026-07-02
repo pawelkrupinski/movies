@@ -319,7 +319,14 @@ class WorkerWiring extends play.api.Logging {
   }
 
   // ── MovieRecord cache (write-through) ───────────────────────────────────────
-  lazy val movieRepository: MovieRepository = new MongoMovieRepository(mongoConnection.database, fallbackToOwnInit = false, changeStreamMetrics = taskMetrics)
+  // Showtimes-split Phase 1 (additive dual-write): the movies repo mirrors each
+  // film's cinema showtimes into the `screenings` collection alongside the embedded
+  // copy. Reads still use the embedded copy, so this is behaviour-neutral.
+  lazy val screeningsRepository: services.movies.ScreeningsRepository =
+    new services.movies.MongoScreeningsRepository(mongoConnection.database)
+  lazy val movieRepository: MovieRepository = new MongoMovieRepository(
+    mongoConnection.database, fallbackToOwnInit = false, changeStreamMetrics = taskMetrics,
+    screenings = Some(screeningsRepository))
 
   // Staging-ingest: a genuinely-new film incubates in `pending_movies`
   // (resolve-then-fold) instead of landing straight in `movies`; a film already

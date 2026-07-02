@@ -1,6 +1,6 @@
 package services.movies
 
-import models.Showtime
+import models.{KinoMuranow, Kinoteka, Showtime, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -65,5 +65,31 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
     handle.close()
     repo.upsertSlot("f|2026", "B␟f", Seq(st(13))) // unsubscribed → no more rings
     rings.get() shouldBe 2
+  }
+
+  // ── pure split helpers (the write-routing logic) ────────────────────────────
+  "showtimesOf" should "keep only cinema slots that carry showtimes, keyed by wire-key" in {
+    val data = Map[models.Source, SourceData](
+      KinoMuranow -> SourceData(title = Some("Wonka"), showtimes = Seq(st(18), st(20))),
+      Kinoteka    -> SourceData(title = Some("Wonka")),                              // no showtimes → excluded
+      Tmdb        -> SourceData(title = Some("Wonka"), showtimes = Seq.empty))       // Tmdb never has showtimes
+    ScreeningsRepository.showtimesOf(data) shouldBe Map("Kino Muranów" -> Seq(st(18), st(20)))
+  }
+
+  "slotOps" should "emit an upsert only for a slot whose showtimes changed, a delete when they empty, and nothing for a metadata-only change" in {
+    val before = Map[models.Source, SourceData](
+      KinoMuranow -> SourceData(director = Seq("X"), showtimes = Seq(st(18))),
+      Kinoteka    -> SourceData(showtimes = Seq(st(19))))
+    val after = Map[models.Source, SourceData](
+      KinoMuranow -> SourceData(director = Seq("Y"), showtimes = Seq(st(18))),       // metadata-only → no op
+      Kinoteka    -> SourceData(showtimes = Seq.empty))                              // emptied → delete
+    ScreeningsRepository.slotOps(before, after) shouldBe Map("Kinoteka" -> None)
+
+    // a genuine showtime change → upsert
+    val after2 = before + (KinoMuranow -> SourceData(showtimes = Seq(st(18), st(21))))
+    ScreeningsRepository.slotOps(before, after2) shouldBe Map("Kino Muranów" -> Some(Seq(st(18), st(21))))
+
+    // a slot removed entirely → delete
+    ScreeningsRepository.slotOps(before, Map(KinoMuranow -> before(KinoMuranow))) shouldBe Map("Kinoteka" -> None)
   }
 }

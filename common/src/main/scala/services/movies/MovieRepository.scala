@@ -229,7 +229,13 @@ class MongoMovieRepository(
   // Observability sink for the shared change stream — counts events by op and
   // update-field kind. Noop for scripts/web/tests; the worker injects the
   // Prometheus-backed sink so /metrics carries change-stream stats.
-  changeStreamMetrics: ChangeStreamMetrics = ChangeStreamMetrics.noop
+  changeStreamMetrics: ChangeStreamMetrics = ChangeStreamMetrics.noop,
+  // Phase 1 of the showtimes split: when set, every movies write ALSO writes the
+  // per-cinema showtimes to the `screenings` collection (additive dual-write —
+  // reads still use the embedded copy, so this can't lose data or change
+  // behaviour). None = the pre-split behaviour (embedded only). All screenings
+  // writes are Try-guarded inside the repo, so they can never break a movies write.
+  screenings: Option[ScreeningsRepository] = None
 ) extends MovieRepository with Logging {
 
   // Lazy so subclasses that override every wire method (e.g.
@@ -437,6 +443,7 @@ class MongoMovieRepository(
       val result = Await.result(c.deleteMany(filter).toFuture(), 10.seconds)
       if (result.getDeletedCount > 1)
         logger.info(s"MovieRepository.delete($title, $year) removed ${result.getDeletedCount} document(s).")
+      screenings.foreach(_.deleteFilm(documentId(title, year)))
       ()
     }.recover {
       case exception: Throwable => logger.warn(s"MovieRepository.delete($title, $year) failed: ${exception.getMessage}")
@@ -446,6 +453,7 @@ class MongoMovieRepository(
   def deleteById(id: String): Unit = coll.foreach { c =>
     Try {
       Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
+      screenings.foreach(_.deleteFilm(id))
       ()
     }.recover {
       case exception: Throwable => logger.warn(s"MovieRepository.deleteById($id) failed: ${exception.getMessage}")
@@ -458,6 +466,8 @@ class MongoMovieRepository(
     val opts = new ReplaceOptions().upsert(true)
     Try {
       Await.result(c.replaceOne(Filters.eq("_id", id), dto, opts).toFuture(), 10.seconds)
+      // Dual-write: mirror this film's cinema showtimes into `screenings`.
+      screenings.foreach(_.replaceFilm(id, ScreeningsRepository.showtimesOf(e.data)))
       ()
     }.recover {
       case exception: Throwable if isClusterClosed(exception) =>
@@ -499,6 +509,15 @@ class MongoMovieRepository(
             Await.result(c.updateOne(Filters.eq("_id", id), patchToUpdate(patch), new UpdateOptions().upsert(false)).toFuture(), 10.seconds)
               .getMatchedCount
           }
+        // Dual-write: apply this change's showtime deltas to `screenings`. Only
+        // slots whose showtimes changed are written; a metadata-only change is a
+        // no-op here (see ScreeningsRepository.slotOps).
+        if (matched > 0) screenings.foreach { s =>
+          ScreeningsRepository.slotOps(before.data, after.data).foreach {
+            case (k, Some(st)) => s.upsertSlot(id, k, st)
+            case (k, None)     => s.deleteSlot(id, k)
+          }
+        }
         matched > 0
       }.recover {
         case exception: Throwable if isClusterClosed(exception) => false
