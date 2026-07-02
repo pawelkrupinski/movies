@@ -330,15 +330,30 @@ class MongoMovieRepository(
    *  steady-state finds are <100 ms). */
   def findAll(): Seq[StoredMovieRecord] = coll match {
     case Some(_) =>
-      // One bulk `screenings.findAll()`, then stitch each row's showtimes back in
-      // (no-op when no screenings repo is wired — the maintenance-script path).
-      val allScr   = screenings.map(_.findAll()).getOrElse(Map.empty)
       val buf      = Vector.newBuilder[StoredMovieRecord]
-      val complete = scanByKeyset { batch =>
-        batch.foreach(dto => buf += stitchRow(StoredMovieDto.toDomain(dto), dto._id, allScr.getOrElse(dto._id, Map.empty)))
-      }
+      val complete = scanStitched(batch => buf ++= batch)
       if (complete) buf.result() else Seq.empty
     case None => Seq.empty
+  }
+
+  /** The ONE stitched corpus scan — keyset-paged movies + showtimes re-injected from
+   *  `screenings` — shared by [[findAll]] and [[foreachRecord]] so the two can never
+   *  disagree on a film's showtimes (the divergence that dropped 129 films: a reader
+   *  that forgot to stitch made the reconcile prune live `web_screenings`). Loads the
+   *  (small) screenings map once, then hands each batch, stitched, to `onBatch`.
+   *
+   *  Prune-safety: a screenings repo wired but returning an EMPTY map means the bulk
+   *  load failed — projecting the stripped (empty-showtime) rows would let a pruning
+   *  caller wipe the read model — so bail as "incomplete" (`false`), exactly like a
+   *  failed movies batch. The movies pages stay keyset-bounded; only the screenings
+   *  map (separate small docs) is held. */
+  private def scanStitched(onBatch: Seq[StoredMovieRecord] => Unit): Boolean = {
+    val allScr = screenings.map(_.findAll()).getOrElse(Map.empty)
+    if (screenings.isDefined && allScr.isEmpty) {
+      logger.warn("MovieRepository.scanStitched: screenings load empty — treating scan as incomplete so a reconcile can't prune on stripped rows.")
+      false
+    } else scanByKeyset(batch =>
+      onBatch(batch.map(dto => stitchRow(StoredMovieDto.toDomain(dto), dto._id, allScr.getOrElse(dto._id, Map.empty)))))
   }
 
   /** Copy still-embedded `movies` showtimes into `screenings` (keyset-paged so it
@@ -469,22 +484,13 @@ class MongoMovieRepository(
    *  (`ReadModelProjector.reconcile`) doesn't treat the rows-so-far as the full corpus
    *  and delete the live rows it never reached.
    *
-   *  Stitches split-read showtimes back in like [[findAll]] — its callers need them:
-   *  `ReadModelProjector.reconcile` PROJECTS screenings (un-stitched empty showtimes
-   *  would make it prune every film's `web_screenings`), and `WorkerShowtimesMetrics`
-   *  counts them. CRITICAL: a screenings repo wired but returning an EMPTY map means
-   *  the bulk load failed — projecting the (stripped) rows would prune the whole read
-   *  model — so bail as "incomplete" (`false`), exactly like a failed movies batch, so
-   *  the caller skips its prune. (The movies pages stay bounded/keyset-paged; the
-   *  screenings map is small — a few MB of separate showtime docs.) */
-  override def foreachRecord(f: StoredMovieRecord => Unit): Boolean = {
-    val allScr = screenings.map(_.findAll()).getOrElse(Map.empty)
-    if (screenings.isDefined && allScr.isEmpty) {
-      logger.warn("MovieRepository.foreachRecord: screenings load empty — treating scan as incomplete so the reconcile can't prune on stripped rows.")
-      false
-    } else scanByKeyset(_.foreach(dto =>
-      f(stitchRow(StoredMovieDto.toDomain(dto), dto._id, allScr.getOrElse(dto._id, Map.empty)))))
-  }
+   *  Stitches split-read showtimes back in via the SAME [[scanStitched]] path as
+   *  [[findAll]] — its callers need them: `ReadModelProjector.reconcile` PROJECTS
+   *  screenings (un-stitched empty showtimes would make it prune every film's
+   *  `web_screenings`), and `WorkerShowtimesMetrics` counts them. Prune-safety +
+   *  bounded-heap guarantees live in `scanStitched`. */
+  override def foreachRecord(f: StoredMovieRecord => Unit): Boolean =
+    scanStitched(_.foreach(f))
 
   /** Deletes by `_id` (the current `documentId` formula) OR by the legacy `title` +
    *  `year` fields. Current documents no longer persist `title`/`year` (the `_id`

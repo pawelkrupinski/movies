@@ -1,6 +1,6 @@
 package integration
 
-import models.{Helios, HeliosOstrowWlkp, MovieRecord, Multikino, Showtime, Source, SourceData, Tmdb}
+import models.{Helios, HeliosOstrowWlkp, KinoMuranow, MovieRecord, Multikino, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -33,7 +33,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // re-keyed sentinel — but `imdbId` never changes.
   private val sentinelImdbIds = Seq(
     "tt0000001", "tt0000002", "tt0000003", "tt0000004",
-    "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000014", "tt0000077", "tt0000099"
+    "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000014", "tt0000015", "tt0000077", "tt0000099"
   )
 
   // Delete every sentinel this spec could have written. Matches BOTH the
@@ -396,6 +396,85 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       repo.delete(title, year)
       scr.findForFilm(id) shouldBe empty
     } finally { plain.close(); client.close() }
+  }
+
+  // (C) Read-path parity: every corpus reader must agree on a film's showtimes under
+  // the split. findAll and foreachRecord diverging (one forgot to stitch) is what
+  // dropped 129 films; this guards against ANY future divergence between the readers.
+  it should "return identical showtimes from findAll, findById and foreachRecord (read-path parity)" in {
+    import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val repo   = new MongoMovieRepository(Some(db), screenings = Some(scr))
+    try {
+      val title = "__integration-test-readpath-parity__"
+      val year  = Some(1906)
+      val id    = StoredMovieRecord.idFor(title, year)
+      val slot  = SourceData(title = Some("Parity"), showtimes = Seq(
+        Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/p-1")),
+        Showtime(java.time.LocalDateTime.of(2026, 6, 1, 21, 0), Some("https://book/p-2"))))
+      repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000015"), data = Map[Source, SourceData](Multikino -> slot)))
+
+      def showtimesVia(r: Option[StoredMovieRecord]) = r.flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes).getOrElse(Seq.empty)
+      val viaFindById = showtimesVia(repo.findById(id))
+      val viaFindAll  = showtimesVia(repo.findAll().find(r => StoredMovieRecord.idOf(r) == id))
+      var viaForeach  = Seq.empty[Showtime]
+      repo.foreachRecord(r => if (StoredMovieRecord.idOf(r) == id) viaForeach = r.record.cinemaData.get(Multikino).map(_.showtimes).getOrElse(Seq.empty))
+
+      viaFindById.size shouldBe 2
+      viaFindAll  shouldBe viaFindById
+      viaForeach  shouldBe viaFindById // all three agree — no reader silently strips
+
+      repo.delete(title, year)
+    } finally client.close()
+  }
+
+  // (B) The exact regression, end to end: the read-model RECONCILE reads the corpus
+  // via foreachRecord under the split; if that read doesn't stitch, reconcile projects
+  // empty showtimes and DELETES the film's web_screenings. Wire the real projector to a
+  // split repo + read model, reconcile, and assert the film's screening is RETAINED.
+  it should "not prune a split film's web_screenings on reconcile (foreachRecord stitches)" in {
+    import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
+    import services.readmodel.{MongoReadModelRepository, ReadModelProjector}
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val repo   = new MongoMovieRepository(Some(db), screenings = Some(scr))
+    val rm     = new MongoReadModelRepository(Some(db))
+    val title  = "__integration-test-reconcile-noprune__"
+    val year   = Some(1907)
+    val id     = StoredMovieRecord.idFor(title, year)
+    var expectedScrIds = Set.empty[String]
+    var expectedMovIds = Set.empty[String]
+    try {
+      // A split film: showtimes go to screenings, movies is stripped. KinoMuranow maps
+      // to a city (warszawa) so projection yields a CityScreening; tmdbId makes it
+      // readyToProject (the reconcile only projects ready rows).
+      repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000012"), tmdbId = Some(500123),
+        data = Map[Source, SourceData](KinoMuranow -> SourceData(title = Some("Reconcile"),
+          showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/rc-1")))))))
+
+      // What the film SHOULD project to (via the stitched findById read path) — the
+      // screening ids the reconcile must WRITE and RETAIN. Non-empty proves the film
+      // is projectable at all; the reconcile then must produce the same set.
+      val projected  = services.readmodel.ReadModelProjection.projectAll(repo.findById(id).get)
+      expectedScrIds = projected.flatMap(_._2).map(_._id).toSet
+      expectedMovIds = projected.map(_._1._id).toSet
+      expectedScrIds should not be empty
+
+      new ReadModelProjector(repo, rm, rm).reconcile() // full re-project from foreachRecord (stitched)
+
+      // The reconcile RETAINED the film's screenings (pre-fix, foreachRecord returned
+      // empty showtimes → projectAll produced 0 → the screenings were pruned/never written).
+      rm.findAllScreeningRefs().map(_._id).toSet should contain allElementsOf expectedScrIds
+    } finally {
+      // Tidy the web_* the projector wrote (keyed by the projection-derived ids).
+      expectedScrIds.foreach(rm.deleteScreening)
+      expectedMovIds.foreach(rm.deleteMovie)
+      repo.delete(title, year)
+      rm.close(); client.close()
+    }
   }
 
   it should "leave countries empty when a slot was written without them" in {
