@@ -467,10 +467,24 @@ class MongoMovieRepository(
    *  CPU throttle). Returns `true` only when the scan ran to the last page; `false` when
    *  a batch still fails after its retries — so a PRUNING caller
    *  (`ReadModelProjector.reconcile`) doesn't treat the rows-so-far as the full corpus
-   *  and delete the live rows it never reached. Unlike [[findAll]] this does NOT stitch
-   *  split-read showtimes (its callers don't need them — matches the pre-split behaviour). */
-  override def foreachRecord(f: StoredMovieRecord => Unit): Boolean =
-    scanByKeyset(_.foreach(dto => f(StoredMovieDto.toDomain(dto))))
+   *  and delete the live rows it never reached.
+   *
+   *  Stitches split-read showtimes back in like [[findAll]] — its callers need them:
+   *  `ReadModelProjector.reconcile` PROJECTS screenings (un-stitched empty showtimes
+   *  would make it prune every film's `web_screenings`), and `WorkerShowtimesMetrics`
+   *  counts them. CRITICAL: a screenings repo wired but returning an EMPTY map means
+   *  the bulk load failed — projecting the (stripped) rows would prune the whole read
+   *  model — so bail as "incomplete" (`false`), exactly like a failed movies batch, so
+   *  the caller skips its prune. (The movies pages stay bounded/keyset-paged; the
+   *  screenings map is small — a few MB of separate showtime docs.) */
+  override def foreachRecord(f: StoredMovieRecord => Unit): Boolean = {
+    val allScr = screenings.map(_.findAll()).getOrElse(Map.empty)
+    if (screenings.isDefined && allScr.isEmpty) {
+      logger.warn("MovieRepository.foreachRecord: screenings load empty — treating scan as incomplete so the reconcile can't prune on stripped rows.")
+      false
+    } else scanByKeyset(_.foreach(dto =>
+      f(stitchRow(StoredMovieDto.toDomain(dto), dto._id, allScr.getOrElse(dto._id, Map.empty)))))
+  }
 
   /** Deletes by `_id` (the current `documentId` formula) OR by the legacy `title` +
    *  `year` fields. Current documents no longer persist `title`/`year` (the `_id`

@@ -373,6 +373,14 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       scr.findForFilm(id).get(key).map(_.size) shouldBe Some(2)
       repo.findById(id).flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes.size) shouldBe Some(2)
 
+      // foreachRecord (the read-model RECONCILE + showtime metrics) must ALSO stitch —
+      // else the reconcile projects empty showtimes and prunes web_screenings for every
+      // film not re-scraped since boot (the 2026-07-02 served-films drop).
+      var seen = 0
+      repo.foreachRecord(r => if (StoredMovieRecord.idOf(r) == id)
+        seen = r.record.cinemaData.get(Multikino).map(_.showtimes.size).getOrElse(0))
+      seen shouldBe 2
+
       // a screenings change fans out a (stitched) upsert on the movies change stream
       val got    = new CountDownLatch(1)
       val handle = repo.watchChanges(r => if (StoredMovieRecord.idOf(r) == id) got.countDown(), _ => ())
