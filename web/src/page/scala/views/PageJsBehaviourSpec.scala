@@ -1489,6 +1489,39 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Anti-FOUC grid cloak ────────────────────────────────────────────────────
+  //
+  // The server renders every film for every date (no server-side day filter);
+  // `bootView` prunes to the selected day + the viewer's locally-hidden films
+  // only on DOMContentLoaded — after first paint. To stop the full unfiltered
+  // grid flashing then visibly collapsing, a blocking head script cloaks <html>
+  // with `grid-cloak` (a CSS rule hides #film-grid), and bootView drops it once
+  // the first applyFilters() pass has set final visibility. These guard both
+  // ends of that mechanism.
+
+  "the anti-FOUC grid cloak" should "hide #film-grid whenever html.grid-cloak is set" in {
+    onPath("/") { page =>
+      // At rest (bootView already ran) the cloak is gone and the grid shows.
+      page.evalBool("document.documentElement.classList.contains('grid-cloak')") shouldBe false
+      page.evalString("getComputedStyle(document.getElementById('film-grid')).visibility") shouldBe "visible"
+
+      // Re-adding the class hides the whole grid — this is the rule that
+      // suppresses the unfiltered pre-filter paint on load.
+      page.eval("document.documentElement.classList.add('grid-cloak')")
+      page.evalString("getComputedStyle(document.getElementById('film-grid')).visibility") shouldBe "hidden"
+    }
+  }
+
+  it should "be dropped by bootView once the first filter pass has run" in {
+    onPath("/") { page =>
+      // Restore the load-time cloak, then re-run boot: bootView must reveal the
+      // grid (drop the class) after it has applied the filters.
+      page.eval("document.documentElement.classList.add('grid-cloak'); bootView()")
+      page.evalBool("document.documentElement.classList.contains('grid-cloak')") shouldBe false
+      page.evalString("getComputedStyle(document.getElementById('film-grid')).visibility") shouldBe "visible"
+    }
+  }
+
   // ── Day-stepping wrap (horizontal swipe) ────────────────────────────────────
   //
   // A horizontal swipe steps the selected day via `window.stepDateWrap(directory)`

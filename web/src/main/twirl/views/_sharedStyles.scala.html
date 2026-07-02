@@ -1101,6 +1101,14 @@
   /* Off-screen film cards skip layout + paint until scrolled into view
      (~460 px intrinsic-size keeps the scrollbar from jumping on measure). */
   #film-grid > .col { content-visibility: auto; contain-intrinsic-size: 0 460px; }
+  /* Anti-FOUC cloak: the server renders every film for every date (no server-
+     side day filter), and shared.js `bootView` prunes to the selected day +
+     the viewer's locally-hidden films only on DOMContentLoaded — after first
+     paint. Without this the full unfiltered grid flashes for a frame, then
+     visibly collapses. The `grid-cloak` class is added to <html> by a blocking
+     head script (JS-only, so no-JS users still see the full unfiltered list)
+     and removed once the first `applyFilters()` pass has set final visibility. */
+  html.grid-cloak #film-grid { visibility: hidden; }
   .cinema-label { font-size: .65rem; color: #66aadd; margin-bottom: var(--gap-cinema-pills, .1rem); margin-top: var(--gap-cinema-top, .3rem); }
   .cinema-label-link { color: #66aadd; text-decoration: none; }
   .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }
