@@ -7,6 +7,7 @@ import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -193,20 +194,23 @@ object MongoConnection {
       .filter(_.nonEmpty)
       .getOrElse(Env.get("MONGODB_DB").getOrElse("kinowo"))
 
-  /** Driver settings for a connection string, defaulting wire compression to
-   *  zlib. The wire payload is uncompressed BSON regardless of WiredTiger's
-   *  on-disk snappy, so on a slow link transfer bytes dominate query time —
-   *  the local `flyctl proxy` hop and the prod boot hydrate both pull the
-   *  whole `movies` collection. Measured: zlib shrinks that ~6.6x (4.4MB →
-   *  0.65MB), turning a ~36s tunnel hydrate into ~5s. zlib is built into the
-   *  JDK (no extra dependency); we only force it when the URI hasn't already
-   *  named its own `compressors=`, so an explicit choice (e.g. zstd) wins. */
+  /** Driver settings for a connection string. Wire compression (zlib — built into
+   *  the JDK, no dependency) is forced ONLY when the host is loopback: the slow
+   *  links are the local `flyctl proxy` tunnel and a loopback read-mirror, where
+   *  transfer bytes dominate. Measured there: zlib shrinks the whole-`movies` pull
+   *  ~6.6x (4.4MB → 0.65MB), a ~36s tunnel hydrate → ~5s.
+   *
+   *  Over a direct 6PN link (prod worker/web → `*.internal` mongo) the network is a
+   *  fast, already-encrypted local datacenter hop, so compressing every message
+   *  would only burn CPU on the driver's async-IO threads — the worker's measured
+   *  CPU sink — for bandwidth we don't need. So a non-loopback link stays
+   *  uncompressed. A URI that names its own `compressors=` always wins either way. */
   private[services] def clientSettings(
       connectionString: String,
       serverSelectionTimeout: Option[FiniteDuration] = None): MongoClientSettings = {
     val cs      = new ConnectionString(connectionString)
     val builder = MongoClientSettings.builder().applyConnectionString(cs)
-    if (cs.getCompressorList == null || cs.getCompressorList.isEmpty)
+    if ((cs.getCompressorList == null || cs.getCompressorList.isEmpty) && isLoopbackLink(cs))
       builder.compressorList(java.util.List.of(MongoCompressor.createZlibCompressor()))
     serverSelectionTimeout.foreach { timeout =>
       builder.applyToClusterSettings { b =>
@@ -215,4 +219,22 @@ object MongoConnection {
     }
     builder.build()
   }
+
+  /** True when every host in the connection string is loopback — i.e. this is the
+   *  slow local `flyctl proxy` tunnel or a loopback mirror, not a direct 6PN link.
+   *  Wire compression earns its CPU only on such a link (see `clientSettings`). */
+  private[services] def isLoopbackLink(cs: ConnectionString): Boolean = {
+    val hosts = Option(cs.getHosts).map(_.asScala.toList).getOrElse(Nil)
+    hosts.nonEmpty && hosts.forall { hostAndPort =>
+      val host = hostOf(hostAndPort)
+      host == "localhost" || host == "::1" || host == "0:0:0:0:0:0:0:1" || host.startsWith("127.")
+    }
+  }
+
+  /** The host part of a `host:port` (or bracketed `[ipv6]:port`) entry. */
+  private def hostOf(hostAndPort: String): String =
+    if (hostAndPort.startsWith("[")) {
+      val end = hostAndPort.indexOf(']')
+      if (end > 1) hostAndPort.substring(1, end) else hostAndPort
+    } else hostAndPort.takeWhile(_ != ':')
 }

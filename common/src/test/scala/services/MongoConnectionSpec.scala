@@ -79,15 +79,22 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
       "mongodb://127.0.0.1:28017/?directConnection=true") shouldBe tools.Env.get("MONGODB_DB").getOrElse("kinowo")
   }
 
-  // Wire compression: the payload over the wire is uncompressed BSON, so on a
-  // slow link (the local flyctl tunnel, or the prod boot hydrate) transfer
-  // bytes dominate. We default to zlib — built into the JDK, no extra
-  // dependency — unless the URI explicitly chose its own compressors.
-  private val ValidUri = "mongodb://user:pass@127.0.0.1:27017/kinowo?authSource=kinowo"
+  // Wire compression earns its CPU only on a SLOW link (the local flyctl proxy
+  // tunnel / a loopback mirror), where transfer bytes dominate. Over a direct 6PN
+  // link (prod worker/web → `*.internal` mongo) the hop is fast + already
+  // encrypted, so zlib would only burn CPU on the driver's async-IO threads for
+  // bandwidth we don't need. So: zlib for loopback, none for a remote host, and a
+  // URI-named `compressors=` always wins.
+  private val ValidUri  = "mongodb://user:pass@127.0.0.1:27017/kinowo?authSource=kinowo"
+  private val RemoteUri = "mongodb://user:pass@kinowo-mongo.internal:27017/kinowo?authSource=kinowo"
 
-  "MongoConnection.clientSettings" should "default to zlib wire compression when the URI names none" in {
+  "MongoConnection.clientSettings" should "force zlib for a loopback link (the local proxy tunnel) when the URI names none" in {
     val names = MongoConnection.clientSettings(ValidUri).getCompressorList.asScala.map(_.getName)
     names should contain ("zlib")
+  }
+
+  it should "leave compression OFF over a direct 6PN link (fast + encrypted, so zlib would only burn CPU)" in {
+    MongoConnection.clientSettings(RemoteUri).getCompressorList.asScala.map(_.getName) shouldBe empty
   }
 
   it should "respect compressors the URI specifies rather than forcing zlib" in {
@@ -96,6 +103,16 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
       .getCompressorList.asScala.map(_.getName)
     names should contain ("snappy")
     names should not contain "zlib"
+  }
+
+  "MongoConnection.isLoopbackLink" should "recognise loopback hosts (localhost / 127.x / [::1]) and reject a 6PN host" in {
+    import com.mongodb.ConnectionString
+    def loopback(uri: String) = MongoConnection.isLoopbackLink(new ConnectionString(uri))
+    loopback("mongodb://127.0.0.1:27017/db")               shouldBe true
+    loopback("mongodb://localhost:27017/db")               shouldBe true
+    loopback("mongodb://[::1]:27017/db")                   shouldBe true
+    loopback("mongodb://kinowo-mongo.internal:27017/db")   shouldBe false
+    loopback("mongodb://fdaa-0-1-2.flycast:27017/db")      shouldBe false
   }
 
   // Server-selection cap: the loopback /debug read-mirror passes a short timeout
