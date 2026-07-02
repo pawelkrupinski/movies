@@ -28,8 +28,9 @@ class RottenTomatoesRatings(
   // Caches the RT url discovery keyed by (title, fallback, year), so the same
   // film's slug probe runs once for 24h. Passthrough by default (tests).
   rtLinkCache: ResolutionCache = ResolutionCache.passthrough,
-  cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
-) extends CacheRefresher(cache, cadenceRecorder) {
+  cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => (),
+  deadbandConfirmationsFor: (CacheKey, Option[Int]) => Int = (_, _) => RatingDeadband.Off
+) extends CacheRefresher(cache, cadenceRecorder, deadbandConfirmationsFor) {
 
   override protected def sourceName: String = "RT"
 
@@ -90,10 +91,12 @@ class RottenTomatoesRatings(
     val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
     Try(rt.scoreFor(url)).toOption.flatten match {
       case Some(score) =>
-        val changed = !e.rottenTomatoes.contains(score)
+        // A change that clears the deadband (a rounding-boundary blip that
+        // reverts next tick is held) — see ratingSettled.
+        val commit = ratingSettled(key, e.tmdbId, e.rottenTomatoes.map(s => s"$s%"), Some(s"$score%"))
         logger.info(s"RT: $label $url → Tomatometer $score" +
-          (if (changed) s" (was ${e.rottenTomatoes.getOrElse("—")})" else " (unchanged)"))
-        if (changed) { cache.putIfPresent(key, _.copy(rottenTomatoes = Some(score))); Some(s"$score%") }
+          (if (commit) s" (was ${e.rottenTomatoes.getOrElse("—")})" else " (unchanged or held)"))
+        if (commit) { cache.putIfPresent(key, _.copy(rottenTomatoes = Some(score))); Some(s"$score%") }
         else None
       case None =>
         logger.info(s"RT: $label $url → no Tomatometer on page")

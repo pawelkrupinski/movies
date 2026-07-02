@@ -103,6 +103,65 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     noException should be thrownBy ratings.refreshOneSync(cache.keyOf("Missing", None))
   }
 
+  // ── confirmation deadband ────────────────────────────────────────────────────
+
+  /** RT client whose successive GETs of the SAME url return the scripted scores
+   *  in order (last one sticks) — lets a test drive a sequence of per-row
+   *  refreshes through the deadband. The row already has a URL, so each
+   *  `refreshOneSync` issues exactly one score GET. */
+  private def sequencedRt(scores: List[Int]): RottenTomatoesClient = {
+    val i = new java.util.concurrent.atomic.AtomicInteger(0)
+    new RottenTomatoesClient(http = new GetOnlyHttpFetch {
+      def get(url: String): String = pageWithScore(scores(math.min(i.getAndIncrement(), scores.size - 1)))
+    })
+  }
+
+  "the confirmation deadband (base cadence, 2 confirmations)" should
+    "hold a single-refresh Tomatometer blip that reverts on the next fetch, writing nothing" in {
+    val url        = "https://www.rottentomatoes.com/m/x"
+    val repository = new InMemoryMovieRepository(Seq(("X", Some(2026), mkEnrichment(Some(url), score = Some(67)))))
+    val cache      = new CaffeineMovieCache(repository)
+    repository.upserts.clear()
+    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
+      sequencedRt(List(66, 67)), deadbandConfirmationsFor = (_, _) => 2)
+    val key = cache.keyOf("X", Some(2026))
+
+    ratings.refreshOneSync(key)                                 // 66 — single blip, held pending confirmation
+    cache.get(key).flatMap(_.rottenTomatoes) shouldBe Some(67)  // NOT written
+    ratings.refreshOneSync(key)                                 // 67 — reverted; candidate cleared
+    cache.get(key).flatMap(_.rottenTomatoes) shouldBe Some(67)
+    repository.upserts shouldBe empty                           // zero writes across the A→B→A
+  }
+
+  it should "commit the change once two consecutive refreshes confirm it" in {
+    val url        = "https://www.rottentomatoes.com/m/x"
+    val repository = new InMemoryMovieRepository(Seq(("X", Some(2026), mkEnrichment(Some(url), score = Some(67)))))
+    val cache      = new CaffeineMovieCache(repository)
+    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
+      sequencedRt(List(66, 66)), deadbandConfirmationsFor = (_, _) => 2)
+    val key = cache.keyOf("X", Some(2026))
+
+    ratings.refreshOneSync(key)                                 // 66 — held (1/2)
+    cache.get(key).flatMap(_.rottenTomatoes) shouldBe Some(67)
+    ratings.refreshOneSync(key)                                 // 66 — confirmed (2/2) → committed
+    cache.get(key).flatMap(_.rottenTomatoes) shouldBe Some(66)
+  }
+
+  it should "write a blip immediately when the deadband is off (backed-off cadence / control)" in {
+    // Confirmations 1 stands in for a film that has backed off the base cadence:
+    // the same 66 blip that was held above is written on first sight — the flap
+    // the deadband exists to suppress.
+    val url        = "https://www.rottentomatoes.com/m/x"
+    val repository = new InMemoryMovieRepository(Seq(("X", Some(2026), mkEnrichment(Some(url), score = Some(67)))))
+    val cache      = new CaffeineMovieCache(repository)
+    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
+      sequencedRt(List(66, 67)), deadbandConfirmationsFor = (_, _) => RatingDeadband.Off)
+    val key = cache.keyOf("X", Some(2026))
+
+    ratings.refreshOneSync(key)                                 // 66 — written immediately, no deadband
+    cache.get(key).flatMap(_.rottenTomatoes) shouldBe Some(66)
+  }
+
   // ── refreshAll ──────────────────────────────────────────────────────────────
 
   "refreshAll" should "walk every cached row with an RT URL and update each score that changed" in {
