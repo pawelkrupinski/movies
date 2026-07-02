@@ -2,13 +2,15 @@ package services.movies
 
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
+import com.mongodb.client.model.changestream.ChangeStreamDocument
 import models.{Showtime, Source, SourceData}
 import org.mongodb.scala.model.{Filters, Indexes}
-import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, Observer, SingleObservableFuture, Subscription}
 import play.api.Logging
 
 import java.time.Instant
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
@@ -231,5 +233,29 @@ class MongoScreeningsRepository(sharedDb: Option[MongoDatabase]) extends Screeni
 
   private def deleteOne(c: MongoCollection[StoredScreeningsDto], filmId: String, slotKey: String): Unit = {
     Await.result(c.deleteOne(Filters.eq("_id", idOf(filmId, slotKey))).toFuture(), 10.seconds); ()
+  }
+
+  /** Watch the `screenings` collection; ring `onChange(filmId)` for every change
+   *  (insert/update/replace carry the doc's `filmId`; a delete carries only the
+   *  composite `_id`, from which the `filmId` prefix is parsed). The caller re-reads
+   *  + stitches the film. Requires a replica set (like the movies stream). */
+  override def watch(onChange: String => Unit): Option[AutoCloseable] = coll.map { c =>
+    val subRef = new AtomicReference[Subscription]()
+    c.watch().subscribe(new Observer[ChangeStreamDocument[StoredScreeningsDto]] {
+      override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
+      override def onNext(change: ChangeStreamDocument[StoredScreeningsDto]): Unit = {
+        val filmId = Option(change.getFullDocument).map(_.filmId).orElse(
+          Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
+            .map(v => if (v.isString) v.asString.getValue else v.toString)
+            .map(_.takeWhile(_ != IdSep))) // delete carries no post-image — split the _id
+        filmId.foreach(fid => try onChange(fid)
+          catch { case e: Throwable => logger.warn(s"screenings watch onChange($fid) failed: ${e.getMessage}") })
+      }
+      override def onError(e: Throwable): Unit =
+        logger.warn(s"screenings change stream ended (${e.getMessage}).")
+      override def onComplete(): Unit = ()
+    })
+    logger.info("MongoScreeningsRepository: watching screenings change stream.")
+    new AutoCloseable { override def close(): Unit = Option(subRef.get()).foreach(_.unsubscribe()) }
   }
 }

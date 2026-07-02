@@ -33,7 +33,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // re-keyed sentinel — but `imdbId` never changes.
   private val sentinelImdbIds = Seq(
     "tt0000001", "tt0000002", "tt0000003", "tt0000004",
-    "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000077", "tt0000099"
+    "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000014", "tt0000077", "tt0000099"
   )
 
   // Delete every sentinel this spec could have written. Matches BOTH the
@@ -346,6 +346,56 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       repo.delete(title, year)     // delete cascades to screenings
       scr.findForFilm(id) shouldBe empty
     } finally client.close()
+  }
+
+  // Showtimes-split Phase 2 (read cutover, splitReads=true): `movies` is written
+  // WITHOUT showtimes, reads stitch them from `screenings`, a showtimes-only change
+  // leaves `movies` untouched, and a `screenings` change fans out a stitched upsert
+  // (so the projector re-projects). Everything verified against a real replica set.
+  it should "split reads: strip showtimes from movies, stitch from screenings, and fan out screenings changes" in {
+    import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
+    import java.util.concurrent.{CountDownLatch, TimeUnit}
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val repo   = new MongoMovieRepository(Some(db), screenings = Some(scr), splitReads = true)
+    val plain  = new MongoMovieRepository(Some(db)) // no stitch → sees the raw movies doc
+    try {
+      val title = "__integration-test-splitreads__"
+      val year  = Some(1905)
+      val id    = StoredMovieRecord.idFor(title, year)
+      val key   = Multikino.displayName
+      val slot  = SourceData(title = Some("SR"),
+        showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/sr-1"))))
+      val base  = MovieRecord(imdbId = Some("tt0000014"), data = Map[Source, SourceData](Multikino -> slot))
+
+      repo.upsert(title, year, base)
+      scr.findForFilm(id).get(key).map(_.size) shouldBe Some(1)                                   // showtimes in screenings
+      plain.findById(id).flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes.size) shouldBe Some(0) // …stripped from movies
+      repo.findById(id).flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes.size) shouldBe Some(1)  // …stitched back on read
+
+      // showtimes-only change → screenings grows, movies stays put, read reflects it
+      val after = base.copy(data = Map[Source, SourceData](Multikino ->
+        slot.copy(showtimes = slot.showtimes :+ Showtime(java.time.LocalDateTime.of(2026, 6, 1, 21, 0), Some("https://book/sr-2")))))
+      repo.updateIfPresent(title, year, base, after) shouldBe true
+      scr.findForFilm(id).get(key).map(_.size) shouldBe Some(2)
+      repo.findById(id).flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes.size) shouldBe Some(2)
+
+      // a screenings change fans out a (stitched) upsert on the movies change stream
+      val got    = new CountDownLatch(1)
+      val handle = repo.watchChanges(r => if (StoredMovieRecord.idOf(r) == id) got.countDown(), _ => ())
+      try {
+        Thread.sleep(1500)
+        val after2 = after.copy(data = Map[Source, SourceData](Multikino ->
+          after.data(Multikino).copy(showtimes = after.data(Multikino).showtimes :+
+            Showtime(java.time.LocalDateTime.of(2026, 6, 1, 22, 0), Some("https://book/sr-3")))))
+        repo.updateIfPresent(title, year, after, after2) // showtimes-only → screenings write → fanout
+        got.await(15, TimeUnit.SECONDS) shouldBe true
+      } finally handle.foreach(_.close())
+
+      repo.delete(title, year)
+      scr.findForFilm(id) shouldBe empty
+    } finally { plain.close(); client.close() }
   }
 
   it should "leave countries empty when a slot was written without them" in {

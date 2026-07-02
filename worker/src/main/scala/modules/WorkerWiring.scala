@@ -324,9 +324,13 @@ class WorkerWiring extends play.api.Logging {
   // copy. Reads still use the embedded copy, so this is behaviour-neutral.
   lazy val screeningsRepository: services.movies.ScreeningsRepository =
     new services.movies.MongoScreeningsRepository(mongoConnection.database)
+  // Phase 2 read cutover — OFF until `screenings` is backfilled + validated in prod.
+  // Flip `KINOWO_SCREENINGS_READ_SPLIT=true` to write movies without showtimes, stitch
+  // them from `screenings` on read, and fan out screenings changes. Rollback = unset.
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
     mongoConnection.database, fallbackToOwnInit = false, changeStreamMetrics = taskMetrics,
-    screenings = Some(screeningsRepository))
+    screenings = Some(screeningsRepository),
+    splitReads = Env.get("KINOWO_SCREENINGS_READ_SPLIT").exists(v => v == "true" || v == "1"))
 
   // Staging-ingest: a genuinely-new film incubates in `pending_movies`
   // (resolve-then-fold) instead of landing straight in `movies`; a film already
