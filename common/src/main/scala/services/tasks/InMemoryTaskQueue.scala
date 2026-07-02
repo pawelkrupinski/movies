@@ -38,7 +38,8 @@ class InMemoryTaskQueue extends TaskQueue {
     submittedAt: Instant
   ): EnqueueResult = {
     val result = lock.synchronized {
-      val active = rows.values.exists(r => r.dedupKey == dedupKey && r.state != TaskState.Deleted)
+      // `complete` removes the row, so any row still present with this key is active.
+      val active = rows.values.exists(_.dedupKey == dedupKey)
       if (active) EnqueueResult.Duplicate
       else {
         val id = UUID.randomUUID().toString

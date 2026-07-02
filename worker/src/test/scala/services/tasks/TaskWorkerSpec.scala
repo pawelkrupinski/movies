@@ -60,7 +60,6 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
     worker(q, Seq(new RecordingHandler(ImdbRating, HandlerOutcome.Reschedule(Some("later"))))).claimAndRun("w0") shouldBe PollResult.Returned
     q.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
-    q.countByState().getOrElse(TaskState.Deleted, 0L) shouldBe 0L
   }
 
   it should "hold a Rescheduled task back from immediate re-claim (per-task backoff)" in {

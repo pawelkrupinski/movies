@@ -11,7 +11,6 @@ import play.api.Logging
 
 import java.time.Instant
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -23,7 +22,7 @@ import scala.util.Try
  * {{{
  *   { _id: <uuid>, taskType: "ScrapeCinema", dedupKey: "scrape|kino-x",
  *     payload: { ... },              // string→string sub-document
- *     state: "waiting"|"worked_on",  // "deleted" only survives transiently, pre-deploy — see `complete`
+ *     state: "waiting"|"worked_on",  // `complete` deletes the document — no tombstone
  *     active: Bool,                  // always true now (drives the dedup index)
  *     submittedAt: ISODate, attempts: Int,
  *     workerId: String?, leaseExpiresAt: ISODate? }
@@ -76,10 +75,6 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
     ).toFuture(), 10.seconds)
     Await.result(c.createIndex(Indexes.compoundIndex(Indexes.ascending("state"), Indexes.ascending("submittedAt"))).toFuture(), 10.seconds)
     Await.result(c.createIndex(Indexes.compoundIndex(Indexes.ascending("state"), Indexes.ascending("leaseExpiresAt"))).toFuture(), 10.seconds)
-    Await.result(c.createIndex(
-      Indexes.ascending("deletedAt"),
-      new JIndexOptions().expireAfter(6L, TimeUnit.HOURS).partialFilterExpression(Filters.exists("deletedAt", true))
-    ).toFuture(), 10.seconds)
   }.recover { case exception => logger.warn(s"Task queue index creation failed: ${exception.getMessage}") }
 
   override def enqueue(
@@ -141,18 +136,12 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       }.getOrElse(None)
   }
 
-  // Finishing a task DELETES the document outright rather than tombstoning it
-  // (state=deleted + a 6h TTL). A tombstone bought nothing the delete doesn't: the
-  // dedup index is partial on `active:true`, so a gone doc allows re-enqueue exactly
-  // as a `active:false` tombstone did; `monitor` never listed deleted rows anyway;
-  // and the finished-count lives in the Prometheus counter, not the collection. The
-  // payoff is a `tasks` collection holding only the few active tasks instead of ~6h
-  // of tombstones (≈thousands) — smaller working set + faster claim index scans —
-  // and one change-stream/oplog event per completion (the delete) instead of two
-  // (the update, then the TTL delete). The ownership guard is unchanged, so a late
-  // call from a reaped worker still can't remove a task another worker reclaimed.
-  // (The `deleted`-state + TTL index remain only to age out tombstones written by
-  // the pre-deploy build; they can be dropped once those have expired.)
+  // Finishing a task DELETES the document outright (no tombstone): the dedup index is
+  // partial on `active:true`, so a gone doc allows re-enqueue; `monitor` never listed
+  // finished tasks; and the finished-count lives in the Prometheus counter. So `tasks`
+  // holds only the few active tasks (smaller working set, faster claim scans) with one
+  // change-stream/oplog event per completion. The ownership guard is unchanged, so a
+  // late call from a reaped worker can't remove a task another worker reclaimed.
   override def complete(id: String, workerId: String): Unit = coll.foreach { c =>
     val filter = Filters.and(Filters.eq("_id", id), Filters.eq("state", TaskState.WorkedOn), Filters.eq("workerId", workerId))
     Try(Await.result(c.deleteOne(filter).toFuture(), 10.seconds))
@@ -201,7 +190,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
   override def countByState(): Map[String, Long] = coll match {
     case None => Map.empty
     case Some(c) =>
-      Seq(TaskState.Waiting, TaskState.WorkedOn, TaskState.Deleted).flatMap { state =>
+      Seq(TaskState.Waiting, TaskState.WorkedOn).flatMap { state =>
         Try(Await.result(c.countDocuments(Filters.eq("state", state)).toFuture(), 10.seconds)).toOption
           .filter(_ > 0).map(state -> _)
       }.toMap

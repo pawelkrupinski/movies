@@ -92,13 +92,11 @@ object HandlerOutcome {
   case class Reschedule(error: Option[String] = None) extends HandlerOutcome
 }
 
-/** The states a task moves through. `complete` now removes the document outright,
- *  so a live task is only ever `waiting` or `worked_on`; `deleted` remains defined
- *  only to read tombstones written by the pre-deploy build until they age out. */
+/** The two states a task moves through. `complete` removes the document outright, so
+ *  a live task is only ever `waiting` or `worked_on` — there is no tombstone state. */
 object TaskState {
   val Waiting  = "waiting"
   val WorkedOn = "worked_on"
-  val Deleted  = "deleted"
 }
 
 /**

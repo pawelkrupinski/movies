@@ -139,7 +139,7 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
 
     val snap = q.monitor()
     snap.active.map(_.dedupKey) shouldBe Seq("scrape|a", "rt|c", "mc|d") // oldest-first, completed one gone
-    snap.counts.getOrElse(TaskState.Deleted, 0L) shouldBe 0L            // completed task removed, not counted
+    snap.counts.keySet shouldBe Set(TaskState.Waiting, TaskState.WorkedOn) // only active states — no tombstone
 
     val head = snap.active.head
     head.dedupKey shouldBe "scrape|a"
