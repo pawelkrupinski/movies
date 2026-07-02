@@ -691,6 +691,31 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     repository.upserts shouldBe empty
   }
 
+  it should "centrally strip format from the title: fold a cinema's format editions into one badged slot, keeping programme + Ukrainian screenings separate" in {
+    val repository = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
+    val t10 = showtime("2026-06-08T10:00"); val t12 = showtime("2026-06-08T12:00")
+    val t14 = showtime("2026-06-08T14:00"); val t16 = showtime("2026-06-08T16:00")
+    // No per-client strip: the central FormatTags handles every shape at ingest.
+    val touched = cache.recordCinemaScrape(Multikino, Seq(
+      cinemaMovie("Wonka (2D dubbing)",       Multikino, showtimes = Seq(t10)),
+      cinemaMovie("Wonka /napisy",            Multikino, showtimes = Seq(t12)),
+      cinemaMovie("Kino Dostępne: Wonka",     Multikino, showtimes = Seq(t14)),
+      cinemaMovie("Wonka ukraiński dubbing",  Multikino, showtimes = Seq(t16))
+    ))
+    val slots = touched.map(_._2).distinct.flatMap(k => cache.get(k))
+      .flatMap(_.cinemaShowings.collect { case (Multikino, sd) => sd })
+    // Three slots: the two format editions folded into one clean "Wonka", plus the
+    // programme-prefixed and the Ukrainian screening (kept whole → their own cards).
+    slots should have size 3
+    val wonka = slots.filter(_.title.exists(_.equalsIgnoreCase("Wonka")))
+    wonka should have size 1
+    wonka.head.showtimes.map(_.dateTime.getHour).toSet shouldBe Set(10, 12)
+    wonka.head.showtimes.flatMap(_.format).toSet       shouldBe Set("2D", "DUB", "NAP")
+    slots.flatMap(_.title).exists(_.toLowerCase.contains("dostępne")) shouldBe true
+    slots.flatMap(_.title).exists(_.toLowerCase.contains("ukrai"))    shouldBe true
+  }
+
   it should "NOT delete an already-past showing when a re-scrape drops it (retain it → no churn write)" in {
     val now   = LocalDateTime.of(2026, 6, 8, 21, 0)  // 21:00 is "now"
     val repo  = new InMemoryMovieRepository()

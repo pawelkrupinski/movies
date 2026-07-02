@@ -442,16 +442,17 @@ object ExtraTitleRules {
     canon("xtra-canonical-gwiezdne-wojny-ci",
       """(?iu)^Gwiezdne\s+wojny\s*:\s*""", "",
       "Case-insensitive 'Gwiezdne wojny:' franchise prefix — the seed 'canonical-gwiezdne-wojny' only matches the capitalised 'Gwiezdne Wojny:', so the lower-case spelling (Mandalorian i Grogu) never merged."),
-    canon("xtra-canonical-trailing-lang-format",
-      """(?iu)(?:\s+|\s*[\[/|.,–—-]\s*)(?<!ukrai[ńn]ski\W)(?<!ukrainian\W)(?:(?:2D|3D|4DX)\s*[/-]?\s*(?:dubbing|napisy|lektor|dub|nap|lek)|(?:dubbing|napisy|lektor))\s*\]?\s*$""",
-      "",
-      "Trailing POLISH language/format suffix glued to the title ('… 2D DUBBING', '… / napisy', '… - 2D DUB', '… [napisy]', '… – LEKTOR') — merges the 2D/3D × dub/napisy/lektor variants a non-extractFormatTags scraper left in the title. The suffix must follow a space/separator (so a bare 'Lektor'/'Napisy' title isn't eaten) and the short 'dub/nap/lek' abbreviations only strip behind a 2D/3D qualifier. A 'ukraiński/ukrainian <dub|napisy|lektor>' suffix is DELIBERATELY excluded by the negative look-behinds: a Ukrainian-language screening is a distinct version (separate audience), so it keeps its own key and stays its own row instead of folding into the base film."),
-    canon("xtra-canonical-trailing-sound-paren",
-      """(?iu)\s*[\[(]\s*(?:dolby(?:\s+atmos)?|atmos|imax|4dx|2d|3d)\s*[\])]\s*$""", "",
-      "Trailing parenthesised sound/format tag ('(Dolby Atmos)', '[2D]', '(IMAX)') — never part of a film's identity, so the format-decorated row merges into the bare film."),
+    // The trailing screen-format/language rules — 2D/3D/dub/napisy/lektor in the
+    // space·dash·slash·bracket shapes, plus the "(Dolby Atmos)"/"[2D]"/"(IMAX)"
+    // sound-tag — moved to the shared `services.movies.FormatTags` and are applied
+    // centrally at ingest (`MovieCache.recordCinemaScrape`), which rewrites the
+    // title AND badges the screenings for EVERY cinema. The Ukrainian-screening
+    // guard moved there too. (`xtra-canonical-trailing-paren-lang` below is kept:
+    // it still carries the non-format "wersja oryginalna" paren the extractor
+    // doesn't own.)
     canon("xtra-canonical-trailing-paren-lang",
-      """(?iu)\s*[\[(]\s*(?:(?:dubbing|napisy|lektor|dub|nap)|wersja\s+oryginalna)(?:\s+pl)?\s*[\])]\s*$""", "",
-      "Trailing PARENTHESISED POLISH language/format tag ('(Dubbing PL)', '(Napisy PL)', '(lektor)', '[dubbing PL]') — the parenthesised sibling of `xtra-canonical-trailing-lang-format`, which only handled the space/dash form. Merges e.g. 'Toy Story 5 (Dubbing PL)' and '500 mil (lektor)' into the base. A '(ukraiński dubbing)' tag is NOT stripped (the format word no longer follows the opening bracket once 'ukraiński' precedes it), so a Ukrainian-language screening stays its own row — matching `xtra-canonical-trailing-lang-format`."),
+      """(?iu)\s*[\[(]\s*wersja\s+oryginalna(?:\s+pl)?\s*[\])]\s*$""", "",
+      "Trailing PARENTHESISED 'wersja oryginalna' (original-language, no-dub) tag ('(wersja oryginalna)', '[wersja oryginalna PL]') — merges the original-language edition onto the base. The parenthesised FORMAT tags this rule used to also strip ('(Dubbing PL)', '(Napisy PL)', '(lektor)', '[dubbing PL]') now peel via the shared `FormatTags` at ingest, which also keeps a '(ukraiński dubbing)' whole."),
     canon("xtra-canonical-trailing-org-wersja",
       """(?iu)\s*[/|.,–—-]\s*(?:wersja\s+oryginalna|org)\s*$""", "",
       "Trailing 'wersja oryginalna' / 'ORG' (original-language, no-dub) marker after a separator ('Toy Story 5 - wersja oryginalna', 'Toy Story 5 - ORG'). Requires a separator so a film that merely ends in those letters isn't eaten."),

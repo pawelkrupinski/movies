@@ -120,13 +120,29 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.extractFormatTags("Face/Off")                      shouldBe (("Face/Off", Nil))
   }
 
-  // A trailing screening tag ("sps" — Kino Bajka Darłowo/MSI) or a programme
-  // label AFTER the format ("Pokaz specjalny", "przedpremiera") used to block the
-  // strip, leaving the format words stuck in the title. They now peel too.
-  it should "drop a trailing screening tag or programme label that follows the format" in {
-    ScraperParse.extractFormatTags("Toy story 5 2d dub. sps")          shouldBe (("Toy story 5", List("2D", "DUB")))
-    ScraperParse.extractFormatTags("Spider-Man - 2D/DUB - Pokaz specjalny") shouldBe (("Spider-Man", List("2D", "DUB")))
-    ScraperParse.extractFormatTags("Zaproszenie - napisy - przedpremiera")  shouldBe (("Zaproszenie", List("NAP")))
+  // Screening-type labels (premiere / special / pre-premiere / a cinema's own
+  // code) are NOT format — they keep the screening its own card, so
+  // extractFormatTags leaves them (and any format word sitting behind them) in
+  // place rather than stripping/partial-stripping.
+  it should "keep a screening-type label in the title (not treated as a format tag)" in {
+    ScraperParse.extractFormatTags("Spider-Man - Pokaz specjalny")     shouldBe (("Spider-Man - Pokaz specjalny", Nil))
+    ScraperParse.extractFormatTags("Zaproszenie - przedpremiera")      shouldBe (("Zaproszenie - przedpremiera", Nil))
+    ScraperParse.extractFormatTags("Ojczyzna - pokaz przedpremierowy") shouldBe (("Ojczyzna - pokaz przedpremierowy", Nil))
+    ScraperParse.extractFormatTags("Backrooms - UROCZYSTA POLSKA PREMIERA") shouldBe (("Backrooms - UROCZYSTA POLSKA PREMIERA", Nil))
+  }
+
+  // Ukrainian-screening guard: a dub/lektor word directly after "ukraiński"/
+  // "ukrainian" is NOT a format tag — that screening is a distinct audience and
+  // keeps its whole title (stays its own card). Must hold in bare, paren AND
+  // bracket shapes (the paren form otherwise collapses onto the base). Only
+  // dub/lektor are guarded — napisy/2D still strip.
+  it should "keep a Ukrainian dub/lektor screening whole in every shape (guard)" in {
+    ScraperParse.extractFormatTags("Toy Story 5 ukraiński dubbing")   shouldBe (("Toy Story 5 ukraiński dubbing", Nil))
+    ScraperParse.extractFormatTags("Toy Story 5 (ukraiński dubbing)") shouldBe (("Toy Story 5 (ukraiński dubbing)", Nil))
+    ScraperParse.extractFormatTags("Toy Story 5 [ukraiński dubbing]") shouldBe (("Toy Story 5 [ukraiński dubbing]", Nil))
+    ScraperParse.extractFormatTags("Straszny film ukrainian lektor")  shouldBe (("Straszny film ukrainian lektor", Nil))
+    // a NON-guarded format word (napisy) still strips even next to "ukraiński"
+    ScraperParse.extractFormatTags("Toy Story 5 ukraiński napisy")    shouldBe (("Toy Story 5 ukraiński", List("NAP")))
   }
 
   it should "strip non-version words (dolby, atmos) without emitting a token for them" in {

@@ -424,6 +424,13 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     tools.TextNormalization.deburr(rs.canonical(normalize(t)))
       .toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", "")
 
+  // The merge key a scraped title actually lands on: format/version tags are
+  // peeled by the shared `FormatTags` at ingest (MovieCache.recordCinemaScrape)
+  // BEFORE the title is keyed, so a fold check must strip first. (Spelling/prefix
+  // variants carry no format tag → extractFormatTags is a no-op for them.)
+  private def foldKey(rs: TitleRuleSet, t: String): String =
+    mergeKey(rs, services.movies.FormatTags.extractFormatTags(t)._1)
+
   private val canonicalFilm = "Mandalorian i Grogu"
 
   // Variants that the SEED alone already merges (the capitalised franchise prefix,
@@ -456,7 +463,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
 
   "ExtraTitleRules canonical merges" should "fold every Mandalorian i Grogu spelling onto one key" in {
     (seedAlreadyMerges ++ additionsMerge).foreach { v =>
-      withClue(s"mergeKey('$v'): ")(mergeKey(withExtras, v) shouldBe canonicalKey)
+      withClue(s"foldKey('$v'): ")(foldKey(withExtras, v) shouldBe canonicalKey)
     }
   }
 
@@ -479,8 +486,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
       "Babystar - lektor"             -> "Babystar"
     )
     cases.foreach { case (variant, base) =>
-      withClue(s"mergeKey('$variant') vs '$base': ")(
-        mergeKey(withExtras, variant) shouldBe mergeKey(withExtras, base))
+      withClue(s"foldKey('$variant') vs '$base': ")(
+        foldKey(withExtras, variant) shouldBe foldKey(withExtras, base))
     }
   }
 
@@ -496,8 +503,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
       "Mikey i Nicky (1976)"            -> "Mikey i Nicky"
     )
     cases.foreach { case (variant, base) =>
-      withClue(s"mergeKey('$variant') vs '$base': ")(
-        mergeKey(withExtras, variant) shouldBe mergeKey(withExtras, base))
+      withClue(s"foldKey('$variant') vs '$base': ")(
+        foldKey(withExtras, variant) shouldBe foldKey(withExtras, base))
     }
   }
 
