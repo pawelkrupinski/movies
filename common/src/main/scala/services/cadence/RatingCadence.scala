@@ -119,6 +119,14 @@ object RatingCadence {
   def intervalFor(stats: Option[RatingChangeStats]): FiniteDuration =
     stats.map(s => intervalForLevel(s.backoffLevel)).getOrElse(BaseInterval)
 
+  /** True when this film is on the fastest (base ~2h) cadence — backoff level 0,
+   *  or never seen. The rating confirmation deadband only engages here: the
+   *  A→B→A rounding-boundary flap concentrates at the base interval (each flip
+   *  re-tightens the cadence), while a film that has backed off is stable and a
+   *  genuine change on it shouldn't be held for the multi-day interval. */
+  def atBaseInterval(stats: Option[RatingChangeStats]): Boolean =
+    intervalFor(stats) <= BaseInterval
+
   /** base × 2^level, clamped to [base, max]. The shift is bounded before it can
    *  overflow a Long; the clamp to `MaxInterval` makes anything past [[MaxLevel]]
    *  a no-op. */

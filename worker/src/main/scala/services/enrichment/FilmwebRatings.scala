@@ -44,8 +44,9 @@ class FilmwebRatings(
   // no imdbId — signals the resolver to attempt the Wikidata fallback.
   // Args: (title, year, searchTitle) matching ImdbIdMissing. No-op by default.
   onImdbIdMissing: (String, Option[Int], String) => Unit = (_, _, _) => (),
-  cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
-) extends CacheRefresher(cache, cadenceRecorder) {
+  cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => (),
+  deadbandConfirmationsFor: (CacheKey, Option[Int]) => Int = (_, _) => RatingDeadband.Off
+) extends CacheRefresher(cache, cadenceRecorder, deadbandConfirmationsFor) {
 
   override protected def sourceName: String = "Filmweb"
 
@@ -121,12 +122,14 @@ class FilmwebRatings(
     val change = Try(filmweb.ratingFor(url)).toOption.flatten match {
       case Some(rating) =>
         // Store at the precision the badge shows (`%.1f`): a sub-decimal vote
-        // drift the user can't see isn't a change — see RatingDisplay.
-        val rounded   = RatingDisplay.oneDecimal(rating)
-        val isChanged = !e.filmwebRating.contains(rounded)
+        // drift the user can't see isn't a change — see RatingDisplay. A change
+        // that clears the deadband (a rounding-boundary blip that reverts next
+        // tick is held) — see ratingSettled.
+        val rounded = RatingDisplay.oneDecimal(rating)
+        val commit  = ratingSettled(key, e.tmdbId, e.filmwebRating.map(RatingDisplay.label), Some(RatingDisplay.label(rounded)))
         logger.info(s"Filmweb: $label $url → rating $rounded" +
-          (if (isChanged) s" (was ${e.filmwebRating.getOrElse("—")})" else " (unchanged)"))
-        if (isChanged) { cache.putIfPresent(key, _.copy(filmwebRating = Some(rounded))); Some(RatingDisplay.label(rounded)) }
+          (if (commit) s" (was ${e.filmwebRating.getOrElse("—")})" else " (unchanged or held)"))
+        if (commit) { cache.putIfPresent(key, _.copy(filmwebRating = Some(rounded))); Some(RatingDisplay.label(rounded)) }
         else None
       case None =>
         logger.info(s"Filmweb: $label $url → no rating on page")

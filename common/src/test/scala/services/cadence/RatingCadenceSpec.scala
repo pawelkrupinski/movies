@@ -25,6 +25,15 @@ class RatingCadenceSpec extends AnyFlatSpec with Matchers {
     RatingCadence.intervalForLevel(99) shouldBe RatingCadence.MaxInterval
   }
 
+  "atBaseInterval" should "hold only for a never-seen or level-0 film, not once backed off" in {
+    RatingCadence.atBaseInterval(None) shouldBe true          // never seen → base
+    val base = RatingChangeStats(unchangedStreak = 0, windowChecks = 1, windowChanges = 0,
+      windowStartedAt = t0, lastCheckedAt = t0, backoffLevel = 0)
+    RatingCadence.atBaseInterval(Some(base)) shouldBe true    // level 0 = 2h
+    RatingCadence.atBaseInterval(Some(base.copy(backoffLevel = 1))) shouldBe false  // 4h — backed off
+    RatingCadence.atBaseInterval(Some(base.copy(backoffLevel = 6))) shouldBe false  // capped at 4d
+  }
+
   "record" should "grow the streak on no-change and reset it on a change" in {
     val s1 = RatingCadence.record(None, reportedValue = None, t0)
     s1.unchangedStreak shouldBe 1

@@ -1,6 +1,7 @@
 package services.tasks
 
-import services.cadence.RatingCadenceStore
+import services.cadence.{RatingCadence, RatingCadenceStore}
+import services.enrichment.RatingDeadband
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.CacheKey
 
@@ -57,6 +58,24 @@ object RatingTasks {
 object BulkCadenceRecorder {
   def apply(cadence: RatingCadenceStore, kind: FreshnessKind): (CacheKey, Option[Int], Option[String]) => Unit =
     (key, tmdbId, value) => cadence.record(RatingTasks.dedupKey(kind, key, tmdbId), value)
+}
+
+/** Builds the base-cadence-gated confirmation deadband a `*Ratings` refresher
+ *  applies to its per-row writes (see [[services.enrichment.RatingDeadband]]).
+ *  Returns 2 while the film is on the base (~2h) cadence — where the A→B→A
+ *  rounding-boundary rating flap concentrates — and 1 ([[RatingDeadband.Off]])
+ *  once it has backed off, so a genuine change on a slow-cadence film isn't held
+ *  for the multi-day interval. Lives here (not the `modules` root) for the same
+ *  reason as [[BulkCadenceRecorder]]: the root can't name the `private[services]`
+ *  [[services.movies.CacheKey]] the refresher's hook is typed on. */
+object RatingDeadbandPolicy {
+  /** Consecutive confirming refreshes a new displayed value needs at base cadence. */
+  val BaseCadenceConfirmations: Int = 2
+
+  def apply(cadence: RatingCadenceStore, kind: FreshnessKind): (CacheKey, Option[Int]) => Int =
+    (key, tmdbId) =>
+      if (RatingCadence.atBaseInterval(cadence.statsFor(RatingTasks.dedupKey(kind, key, tmdbId)))) BaseCadenceConfirmations
+      else RatingDeadband.Off
 }
 
 /** Records how long after a film's TMDB resolution each rating site FIRST tried

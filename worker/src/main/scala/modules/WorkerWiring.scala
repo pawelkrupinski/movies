@@ -14,7 +14,7 @@ import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadMod
 import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
-import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
+import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, RatingDeadbandPolicy, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import tools.{DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
 
@@ -367,19 +367,23 @@ class WorkerWiring extends play.api.Logging {
   // adaptive cadence the per-row RatingHandler feeds (BulkCadenceRecorder), so an
   // operator's corpus refresh can't move a rating without the cadence seeing it —
   // which a later per-row refresh would otherwise mis-read as a fresh change.
-  lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.ImdbRating))
+  lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.ImdbRating),
+    deadbandConfirmationsFor = RatingDeadbandPolicy(ratingCadenceStore, FreshnessKind.ImdbRating))
   lazy val imdbIdCache: ResolutionCache = resolutionCache("resolve_imdb")
   lazy val wikidataClient = new WikidataClient(httoFetch)
   lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient,
     backgroundBudget.executionContext("imdb-id-resolver"), imdbIdCache = imdbIdCache,
     wikidata = Some(wikidataClient))
   lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, resolutionCache("resolve_rt"),
-    cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.RtRating))
+    cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.RtRating),
+    deadbandConfirmationsFor = RatingDeadbandPolicy(ratingCadenceStore, FreshnessKind.RtRating))
   lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient, resolutionCache("resolve_mc"),
-    cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.McRating))
+    cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.McRating),
+    deadbandConfirmationsFor = RatingDeadbandPolicy(ratingCadenceStore, FreshnessKind.McRating))
   lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient, resolutionCache("resolve_filmweb"),
     onImdbIdMissing = (title, year, searchTitle) => eventBus.publish(ImdbIdMissing(title, year, searchTitle)),
-    cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.FilmwebRating))
+    cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.FilmwebRating),
+    deadbandConfirmationsFor = RatingDeadbandPolicy(ratingCadenceStore, FreshnessKind.FilmwebRating))
   // OMDb IDENTIFIER backfill — feature-gated by the OMDB_API_KEY secret. `Some`
   // only when the key is set, so nothing references the OMDb path on the default
   // (key-absent) deployment and the feature is completely inert. When present it
