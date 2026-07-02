@@ -92,4 +92,27 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
     // a slot removed entirely → delete
     ScreeningsRepository.slotOps(before, Map(KinoMuranow -> before(KinoMuranow))) shouldBe Map("Kinoteka" -> None)
   }
+
+  "stripShowtimes" should "empty every slot's showtimes, leaving the rest intact" in {
+    val data = Map[models.Source, SourceData](
+      KinoMuranow -> SourceData(title = Some("W"), director = Seq("D"), showtimes = Seq(st(18))),
+      Tmdb        -> SourceData(title = Some("W")))
+    val stripped = ScreeningsRepository.stripShowtimes(data)
+    stripped(KinoMuranow).showtimes shouldBe empty
+    stripped(KinoMuranow).director  shouldBe Seq("D") // metadata preserved
+    stripped(Tmdb)                  shouldBe data(Tmdb) // untouched (no showtimes)
+  }
+
+  "stitch" should "re-inject showtimes from screenings, falling back to the embedded copy per slot" in {
+    val data = Map[models.Source, SourceData](
+      KinoMuranow -> SourceData(director = Seq("D"), showtimes = Seq.empty),          // stripped on disk
+      Kinoteka    -> SourceData(showtimes = Seq(st(9))))                              // not-yet-migrated (embedded)
+    val screenings = Map("Kino Muranów" -> Seq(st(18), st(20)))                       // only Muranów in screenings
+    val stitched = ScreeningsRepository.stitch(data, screenings)
+    stitched(KinoMuranow).showtimes shouldBe Seq(st(18), st(20)) // from screenings
+    stitched(KinoMuranow).director  shouldBe Seq("D")            // metadata kept
+    stitched(Kinoteka).showtimes    shouldBe Seq(st(9))          // embedded fallback (no screenings doc)
+
+    ScreeningsRepository.stitch(data, Map.empty) shouldBe data   // no screenings → unchanged
+  }
 }

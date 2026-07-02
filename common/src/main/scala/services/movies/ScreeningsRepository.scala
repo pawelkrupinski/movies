@@ -145,6 +145,20 @@ object ScreeningsRepository {
       else Some(s.displayName -> (if (a.nonEmpty) Some(a) else None))
     }.toMap
 
+  /** Movies-side view of a record's data with every slot's showtimes emptied — they
+   *  live in `screenings` now. Used when WRITING `movies` under the read-split, so a
+   *  showtime change doesn't rewrite the (fat) film document. */
+  def stripShowtimes(data: Map[Source, SourceData]): Map[Source, SourceData] =
+    data.view.mapValues(sd => if (sd.showtimes.isEmpty) sd else sd.copy(showtimes = Seq.empty)).toMap
+
+  /** Re-inject each slot's showtimes from `screenings` (keyed by slot wire-key) when
+   *  READING, falling back to whatever the record already carries for a slot with no
+   *  screenings doc yet — so a not-yet-migrated film still shows its embedded
+   *  showtimes. Pure + unit-tested. */
+  def stitch(data: Map[Source, SourceData], screenings: Map[String, Seq[Showtime]]): Map[Source, SourceData] =
+    if (screenings.isEmpty) data
+    else data.map { case (s, sd) => s -> screenings.get(s.displayName).fold(sd)(st => sd.copy(showtimes = st)) }
+
   // Non-printable separator so the composite `_id` never collides with a slot key.
   private[movies] val IdSep: Char = '\u001f'
 }
