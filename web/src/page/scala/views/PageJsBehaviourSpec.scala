@@ -1787,6 +1787,77 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // Regression: switching jutro→dziś swiped the cards in, then snapped them into
+  // a different order "in a heartbeat". Root cause — the preview clone
+  // (applyFiltersForDay) broke earliest-showtime TIES by the clone's current DOM
+  // order (i.e. the previously-shown day's), while the commit (sortByEarliestVisible)
+  // breaks the same ties by each card's ORIGINAL server position. When the grid was
+  // already reordered by a prior day, tied films landed one way in the preview and
+  // snapped to the commit order on release. Both must tiebreak on the stamped
+  // server index.
+  "the day-carousel preview" should "order equal-earliest films by server position even when the source grid was left reordered by a prior day" in {
+    onPath("/") { page =>
+      // A fixture date carrying several films that share an earliest showtime.
+      // (The aged fixture only populates 'anytime' via the live clock, so the
+      // ties live on specific dates, reached through the isSpecific branch.)
+      val day = "2026-06-10"
+
+      // Commit that day through the REAL path to capture the authoritative order.
+      // The static #date-filter only carries today/tomorrow/week/anytime, so add
+      // the specific-date option the URL-sync / stepDate path would otherwise add.
+      page.eval(
+        s"(() => { const sel = document.getElementById('date-filter');" +
+        s"  const o = document.createElement('option'); o.value = ${jsString(day)};" +
+        s"  sel.appendChild(o); sel.value = ${jsString(day)}; applyFilters(); })()"
+      )
+      val committedOrder = visibleTitleOrder(page)
+      committedOrder.nonEmpty shouldBe true
+
+      // Guard against a silently vacuous test: the tiebreak only fires when two
+      // visible films share an earliest showtime. If the fixture ever drifts and
+      // loses its ties on `day`, fail loudly here rather than pass for free.
+      val hasTie = page.evalBool(
+        s"""(() => {
+          |  const earliest = c => {
+          |    let best = null;
+          |    c.querySelectorAll('.date-group[data-date="$day"] .badge-time').forEach(b => {
+          |      if (b.style.display === 'none') return;
+          |      const t = (b.dataset.time || '').trim();
+          |      if (t && (best === null || t < best)) best = t;
+          |    });
+          |    return best;
+          |  };
+          |  const times = [...document.querySelectorAll('#film-grid > .col[data-title]')]
+          |    .filter(c => c.style.display !== 'none').map(earliest).filter(Boolean);
+          |  return new Set(times).size < times.length;
+          |})()""".stripMargin
+      )
+      hasTie shouldBe true
+
+      // Simulate what a prior day (e.g. having viewed 'jutro' first) leaves behind:
+      // the live #film-grid in a NON-server order. A full reverse guarantees every
+      // tied pair now sits opposite to its server order.
+      page.eval(
+        "(() => { const g = document.getElementById('film-grid');" +
+        "  [...g.querySelectorAll('.col[data-title]')].reverse().forEach(c => g.appendChild(c)); })()"
+      )
+
+      // The carousel preview clones that reordered grid and re-sorts it for `day`.
+      // Its order must match the committed order — equal-earliest films tiebroken
+      // by the stamped server index, not the clone's current (reversed) position.
+      val previewOrder = page.evalString(
+        s"""(() => {
+          |  const clone = document.getElementById('film-grid').cloneNode(true);
+          |  applyFiltersForDay(clone, ${jsString(day)});
+          |  return [...clone.querySelectorAll('.col[data-title]')]
+          |    .filter(c => c.style.display !== 'none').map(c => c.dataset.title).join('|');
+          |})()""".stripMargin
+      )
+
+      previewOrder shouldBe committedOrder
+    }
+  }
+
   // ── Day-filter pills (the visible day picker) ────────────────────────────────
   //
   // The four presets render as a `.day-pill` row driving a visually-hidden
