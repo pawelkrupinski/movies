@@ -7,8 +7,9 @@ import services.freshness.{Freshness, FreshnessKind, FreshnessStore}
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
 import tools.DaemonExecutors
 
-import java.time.{Clock, Instant}
+import java.time.{Clock, Duration => JDuration, Instant}
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
@@ -66,6 +67,17 @@ class ScrapeReaper(
   // queue dedups, so already-in-flight cinemas don't re-count against the cap.
   // Default unbounded so the tests that drive `tick()` directly are unaffected.
   maxEnqueuePerTick: Int = Int.MaxValue,
+  // Post-boot enqueue RAMP: for this long after the FIRST tick, the (non-throttled)
+  // per-tick cap ramps linearly from ~1/5 of `maxEnqueuePerTick` up to the full cap.
+  // Even capped, enqueuing the FULL `maxEnqueuePerTick` every tick from the first
+  // one drains a restart's whole-corpus backlog flat-out (~12 min with no idle gap),
+  // re-draining the shared-CPU credit balance that the restart just reset — the
+  // residual boot-storm spike. Ramping the cap up over the first few minutes lets
+  // the pool idle between the early ticks so credit rebuilds while the backlog still
+  // clears. Anchored at the first tick (post-hydrate), so it covers exactly the
+  // cold-restart window. Default 0 disables it, leaving tests/harness that drive
+  // `tick()` directly (and the deterministic snapshot) unaffected.
+  bootRamp: FiniteDuration = 0.seconds,
   // While the worker is CPU-credit throttled (see [[CpuCreditPoller]]), this bounds
   // the OUTSTANDING waiting scrapes (not just the per-tick additions): each tick
   // tops the waiting ScrapeCinema backlog up to THIS many, so once it's at budget
@@ -83,6 +95,25 @@ class ScrapeReaper(
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("scrape-reaper")
+  // Instant of the first tick, anchoring the post-boot ramp; set once, then read-only.
+  private val rampAnchor = new AtomicReference[Option[Instant]](None)
+
+  /** The non-throttled per-tick cap, ramped up over `bootRamp` from the first tick.
+   *  A no-op (returns `maxEnqueuePerTick`) when the ramp is disabled or the cap is
+   *  unbounded — so the default configuration and direct-`tick()` tests are unchanged.
+   *  Pure given `now` and the (once-set) anchor. */
+  private[tasks] def rampedCap(now: Instant): Int =
+    if (bootRamp.toMillis <= 0 || maxEnqueuePerTick == Int.MaxValue) maxEnqueuePerTick
+    else {
+      val anchor  = rampAnchor.updateAndGet(prev => if (prev.isDefined) prev else Some(now)).get
+      val elapsed = math.max(0L, JDuration.between(anchor, now).toMillis)
+      if (elapsed >= bootRamp.toMillis) maxEnqueuePerTick
+      else {
+        val floorCap = math.max(1, maxEnqueuePerTick / 5)
+        val scaled   = math.ceil(maxEnqueuePerTick.toDouble * elapsed / bootRamp.toMillis).toInt
+        math.min(maxEnqueuePerTick, math.max(floorCap, scaled))
+      }
+    }
 
   def start(): Unit = {
     if (scrapers.isEmpty) { logger.info("ScrapeReaper: no cinemas; not starting."); return }
@@ -149,7 +180,7 @@ class ScrapeReaper(
     val throttled = throttle.isThrottled
     val cap =
       if (throttled) math.max(0, throttledMaxEnqueuePerTick - queue.waitingCount(TaskType.ScrapeCinema))
-      else maxEnqueuePerTick
+      else rampedCap(now)
 
     var enqueued = 0
     due.iterator.takeWhile(_ => enqueued < cap).foreach { case (key, displayName) =>

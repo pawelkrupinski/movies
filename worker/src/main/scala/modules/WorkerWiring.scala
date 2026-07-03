@@ -866,10 +866,16 @@ class WorkerWiring extends play.api.Logging {
   def throttledScrapeEnqueuePerTick: Int =
     Env.positiveInt("KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK",
       services.tasks.ScrapeCadence.ThrottledMaxEnqueuePerTick)
+  // Post-boot enqueue ramp window: after a restart, ramp the per-tick scrape cap up
+  // over this long instead of enqueuing the full `maxScrapeEnqueuePerTick` from the
+  // first tick, so the whole-corpus backlog drains gradually (pool idles → the just-
+  // reset CPU-credit balance rebuilds) rather than pinning the pool flat-out and
+  // re-draining credit — the residual boot-storm spike. See ScrapeReaper.bootRamp.
+  def scrapeBootRampMinutes: Long = Env.positiveLong("KINOWO_SCRAPE_BOOT_RAMP_MINUTES", 5L)
   lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, dueWindow = scrapeDueWindow,
       initialDelay = initialScrapeDelaySeconds.seconds,
-      maxEnqueuePerTick = maxScrapeEnqueuePerTick,
+      maxEnqueuePerTick = maxScrapeEnqueuePerTick, bootRamp = scrapeBootRampMinutes.minutes,
       throttledMaxEnqueuePerTick = throttledScrapeEnqueuePerTick, throttle = throttleSignal,
       runStore = scheduledRunStore)
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
