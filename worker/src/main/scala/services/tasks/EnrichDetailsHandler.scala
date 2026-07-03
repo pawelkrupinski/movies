@@ -122,31 +122,35 @@ class EnrichDetailsHandler(
             // keyed by the decorated shown title — so `keyFor(cinema, base)` derives a
             // slot the scrape never wrote, fabricating a phantom bare slot the next
             // scrape prunes (per-tick churn + the detail never reaches the real slot).
-            // Prefer the row's EXISTING slot for this cinema when there's exactly one.
-            val target =
-              if (enricher.detailTarget != enricher.cinema) enricher.detailTarget
+            // One cinema can run the same film as SEVERAL programme editions ("Kino bez
+            // barier: X", "Pora dla seniora: X", "X przedpremierowo") — each its own
+            // card/slot; the detail is the SAME film's, so land it on EVERY one of this
+            // cinema's existing slots, never fabricating a bare phantom. Only when NONE
+            // exists (a chain's network source, or a not-yet-scraped row) create the
+            // derived key. A chain redirects to its shared network source, left as-is.
+            val targets: Seq[Source] =
+              if (enricher.detailTarget != enricher.cinema) Seq(enricher.detailTarget)
               else {
                 val derived     = CinemaShowing.keyFor(enricher.cinema, title)
                 val cinemaSlots = cache.get(rowKey).toList
                   .flatMap(_.data.keys.filter(s => Source.cinemaOf(s).contains(enricher.cinema)))
-                if (cinemaSlots.contains(derived)) derived
-                else cinemaSlots match {
-                  case single :: Nil => single   // decorated single-slot venue → merge in place
-                  case _             => derived   // chain/first-time (0) or multi-edition (dub) → as before
-                }
+                if (cinemaSlots.contains(derived)) Seq(derived)  // scrape wrote the base title too
+                else if (cinemaSlots.nonEmpty) cinemaSlots       // decorated edition(s) → merge into the real slot(s)
+                else Seq(derived)                                 // chain / not-yet-scraped → create it
               }
             // Was this the detail the row was held back for? Capture before the
             // merge clears the flag, so a periodic re-fetch of an already-done
             // row (DetailReaper refreshing showtimes) doesn't re-trigger TMDB.
             val wasPending = cache.get(rowKey).exists(_.detailPending)
-            // Merge into the target slot, creating it if absent: a chain's network
+            // Merge into the target slot(s), creating one if absent: a chain's network
             // source has no slot from a listing scrape, so it must be added here;
             // a 1:1 cinema's slot already exists, so this preserves its showtimes.
             // Clearing `detailPending` releases the row to the read model + the
             // TMDB stage now that its detail (director/originalTitle/year) is in.
             cache.putIfPresent(rowKey, current =>
               current.copy(
-                data          = current.data + (target -> detail.mergeInto(current.data.getOrElse(target, SourceData()))),
+                data          = targets.foldLeft(current.data)((d, tgt) =>
+                                  d + (tgt -> detail.mergeInto(d.getOrElse(tgt, SourceData())))),
                 detailPending = false))
             freshness.markFresh(key, FreshnessKind.DetailEnrich)
             uptime.recordSuccess(service)

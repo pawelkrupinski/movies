@@ -94,6 +94,28 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     row.data.get(CinemaShowing.keyFor(KinoApollo, "Dune"))            shouldBe None
   }
 
+  it should "land detail on EVERY programme-edition slot of a cinema (no phantom) when the film runs as several editions" in {
+    // Kino Atlantic runs "Ojczyzna" as three programme editions — each its own card.
+    val a = CinemaShowing(KinoApollo, "poradlaseniorao")
+    val b = CinemaShowing(KinoApollo, "zadrzwiamio")
+    val c = CinemaShowing(KinoApollo, "opokazprzedpremierowy")
+    def slot(t: String) = SourceData(title = Some(t),
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
+    cache.put(cache.keyOf("Ojczyzna", None),
+      MovieRecord(data = Map(a -> slot("Pora dla seniora: Ojczyzna"), b -> slot("Za drzwiami: Ojczyzna"), c -> slot("Ojczyzna przedpremierowo"))))
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(director = Seq("Jan Komasa"))))
+    val h = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(), noBus, dueWindow)
+
+    h.handle(taskFor("kino-apollo", cache, "Ojczyzna", enricher)) shouldBe Done
+    val row = cache.get(cache.keyOf("Ojczyzna", None)).get
+    // Every edition slot gained the film's director; showtimes preserved.
+    Seq(a, b, c).foreach { s => row.data.get(s).map(_.director) shouldBe Some(Seq("Jan Komasa")) }
+    // Still exactly three slots — no base-title phantom fabricated.
+    row.data.keys.count(s => Source.cinemaOf(s).contains(KinoApollo)) shouldBe 3
+    row.data.get(CinemaShowing.keyFor(KinoApollo, "Ojczyzna")) shouldBe None
+  }
+
   it should "clear detailPending and publish MovieDetailsComplete (the TMDB re-trigger) once a held-back row's detail lands" in {
     val cache    = seededCache("Hamnet")
     val key      = cache.keyOf("Hamnet", None)
