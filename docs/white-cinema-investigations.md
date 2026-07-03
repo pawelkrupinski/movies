@@ -32,6 +32,142 @@ and so you can re-check whether a previously-broken venue has recovered.
 
 ---
 
+## 2026-07-03
+
+**14 cinemas were 3-scrape-white. Thirteen are genuinely film-dormant (parsers
+verified working live — summer breaks or non-film programming); one (Kino Malta
+Charlie Monroe) is `needs-human` — its site is mid-redesign and serves NO
+fetchable showtime data anywhere.** No code change shipped this run.
+
+Window caveat: the worker had booted ~06:45Z, so the 3 white buckets for every
+venue span only this morning (07:45–08:45 local). The list still matches
+`UptimeController`'s predicate exactly, but a couple of the *new* whites below
+(vs 2026-06-28) could be early-morning "next repertoire not loaded yet" states —
+re-check them next run before treating as settled.
+
+**Still-white since 2026-06-28** (re-verified dormant, no recovery): DKF
+Politechnika, Kino PDK, Kino Warszawa (Przeworsk), Studio (Opole), Żuławski
+Ośrodek Kultury, Kino nad Wartą, Kino Chatka Żaka.
+**New white this run** (not white on 2026-06-28): ADA Kino Studyjne, Kino CK
+Lublin, Kino Krapkowice, Kino Malta Charlie Monroe, Kino Świt, Kino Wisła
+Brzeszcze, Teatr Ziemi Rybnickiej.
+**Fell off the white set since 2026-06-28** (recovered or no longer 3-white):
+Kino MOK Nowa Ruda, Kino Zamek (Szczecin — was `needs-human`; not 3-white now).
+
+### Kino Malta Charlie Monroe (Poznań) — `needs-human`
+- Client: `CharlieMonroeClient` @ `https://kinomalta.pl/seanse`. Parser keys on
+  `article.movie-card` + `application/ld+json` `ScreeningEvent` blocks — **both
+  are gone**. The redesigned page now renders an **empty** `<div
+  class="movie-list"></div>` with no server-side data behind it.
+- Deep-probed the new site: **no HTTP-fetchable showtime source exists.** The
+  schedule is filled client-side from *hardcoded demo JS* (the "Kup Bilet" modal
+  literally reads `btn.dataset.id === "101" ? "La Grazia" : "Flow"` and
+  `parseInt(btn.dataset.mockSeats)` — mock data, not a backend). `wp-json/` is
+  blanket `401 rest_login_required`; every plausible `admin-ajax.php` action
+  (`wpmoly_get_grid`, `get_showtimes`, …) returns `0` (unregistered); individual
+  `/movies/<slug>` pages have an always-empty `div.screening-times`;
+  `/baza-filmow` + the movie sitemap give titles/slugs only, no dates/times/booking
+  links. Even a real browser would get an empty schedule + a fake ticket modal.
+- Filmweb fallback can't rescue it either: **Charlie Monroe is not on Filmweb.**
+  It's absent from the `/showtimes/Poznań` listing (so `FilmwebCinemaIdResolver`
+  correctly leaves it UNMATCHED — no fallback id), Filmweb live-search returns no
+  cinema entity (only films/people named "Charlie"), and the address-listed
+  `Bułgarska 19` id 1618 returns `[]` seances for today. So the white bar is the
+  *correct* output — own site broken AND Filmweb has nothing.
+- Why no fix: there is literally no data to parse and no test-backable change to
+  ship — the repo gate forbids a speculative parser against a nonexistent source.
+- Action: **needs-human** — the cinema owner's redesign is unfinished/broken.
+  Either wait for them to wire a real backend to `.movie-list` and re-probe
+  `/seanse` for `fetch(`/`admin-ajax`/`wp-json` wiring, or (if they never do)
+  accept it stays white until Filmweb picks the venue up. Nothing actionable in
+  our code today.
+
+### ADA Kino Studyjne (Warszawa) — `intentionally-dormant`
+- Client: `BiletynaClient` @ `https://www.biletyna.pl/Warszawa/ADA-Kino-Studyjne`.
+- Live ld+json `Place.events` is `[]`; the page renders "Brak wydarzeń" (no
+  events) and only lists unrelated concerts/kabaret as suggestions. Parser
+  correct; venue has no screenings listed right now. (New white this run — could
+  be a between-repertoires gap; re-check next run.)
+
+### Kino Świt (DK Świt, Warszawa) — `intentionally-dormant`
+- Client: `SwitClient` @ `https://dkswit.com.pl/kino/`. Parser keys on
+  `div.cks-movie-card` — **0** in the live page, which itself reads "Brak
+  nadchodzących seansów filmowych" (an admin empty-state). No films programmed.
+
+### Kino Krapkowice — `intentionally-dormant` (summer break to 31 Jul 2026)
+- Client: `KdkKrapkowiceClient` @ `https://kdk.krapkowice.pl/kino`. The
+  `div.view-kino` container is present but has **0** `li.latest-kino-item`;
+  selectors unchanged. The venue posted "Przerwa Wakacyjna w Kinie Krapkowice"
+  (29.06.2026), reopening **31 Jul 2026**. Re-check after then.
+
+### Teatr Ziemi Rybnickiej (Rybnik) — `intentionally-dormant`
+- Client: `TeatrZiemiRybnickiejClient` @ `https://www.teatrziemirybnickiej.pl`.
+  Parser requests `?type[]=film` → 0 tiles; the same `div.events-list a.item`
+  markup returns 27 tiles for `?type[]=all`, all non-film
+  (Koncert/Spektakl/Festiwal/Warsztaty/Wystawa/Kabaret). Parser healthy; no film
+  programme.
+
+### Kino CK Lublin — `intentionally-dormant`
+- Client: `Bilety24Client` @ `https://ck-lublin.bilety24.pl`. `planChunks()`
+  finds 20 event links on `/repertuar/` (pattern intact) but `parseEvent`'s
+  `a.b24-button[title^="Kup bilet - Film:"]` matches none — all 20 live events are
+  `Spektakl:` (14) or `Koncert:` (6). Cultural centre running only theatre/concert
+  programming. (New white — re-check next run.)
+
+### Kino Wisła Brzeszcze — `intentionally-dormant`
+- Client: `Bilety24OrganizerClient` @
+  `https://www.bilety24.pl/kino/organizator/kino-wisla-w-brzeszczach-1539`.
+  200 (117 KB), 203 event anchors: **0** `Film:`, but 18 `Koncert:`, 4
+  `Spektakl:`, etc. Parser keys on `Film:` → correctly empty.
+
+### Kino nad Wartą (Koło) — `intentionally-dormant` (still, since 2026-06-28)
+- Client: `Bilety24OrganizerClient` @
+  `https://www.bilety24.pl/kino/organizator/koninskie-centrum-kultury-1626`.
+  200 (134 KB), 239 anchors: **0** `Film:` (22 `Koncert:`, 6 `Spektakl:`, …).
+  Unchanged from last run.
+
+### Kino Chatka Żaka (Lublin/UMCS) — `intentionally-dormant`
+- Client: `KinoChatkaZakaClient`, fetches
+  `https://www.umcs.pl/pl/kalendarz-wydarzen,9469,1.lhtm`. Parser targets
+  `h3.header-light` + `div.box-row`: **0** each; the calendar renders "Brak
+  wydarzeń". Genuinely empty. (Consistent with the standing memory that Chatka
+  Żaka is often film-dormant.)
+
+### DKF Politechnika (Wrocław) — `intentionally-dormant` (still; summer break)
+- Client: `FilmwebShowtimesClient` (Filmweb cinemaId **1645**).
+  `/api/v1/cinema/1645/seances?date=…` returns `[]` for every date
+  2026-07-03…07-10. University film club still on the summer break diagnosed
+  2026-06-28. Expect recovery in the autumn term.
+
+### Kino PDK (Pyrzyce) — `intentionally-dormant` (still, since 2026-06-25)
+- Client: `BiletynaClient` @ `https://biletyna.pl/Pyrzyce/Pyrzycki-Dom-Kultury`.
+  ld+json has 2 events, both non-film (`ComedyEvent`, `TheaterEvent`); **0**
+  `ScreeningEvent`. Unchanged.
+
+### Kino Warszawa (Przeworsk) — `intentionally-dormant` (still, since 2026-06-28)
+- Client: `MsiClient` @ `https://bilety-kino.przeworsk.um.gov.pl` (NOTE: the
+  2026-06-28 entry mentioned a `GetShortEventsWithFilters` endpoint — that string
+  is **not** in the codebase; `MsiClient` GETs `<base>/MSI/mvc/pl?sort=Name&date=YYYY-MM`).
+  July + August 2026 pages both 200 with **0** `div.movies-movie__single`. Empty
+  repertoire.
+
+### Studio (Opole) — `intentionally-dormant` (still on summer break to 3 Sept)
+- Client: `KinoStudioClient` @ `https://mdk.opole.pl/kino-studio.html`.
+  `kino-studio.html` still soft-404s (no `div.ckeditor`);
+  `kino-studio-przerwa.html` carries "…nasze kino jest nieczynne… Startujemy już
+  3 września". Re-check after ~3 Sept (confirm the repertoire URL/slug is back).
+- Incidental (no scraping impact): `mdk.opole.pl` is now serving injected
+  Russian-language casino spam in its `<head>`/meta — the host looks compromised.
+  Our parser reads only `div.ckeditor`, which is unaffected, so no action, but
+  worth knowing if their pages start misbehaving.
+
+### Żuławski Ośrodek Kultury (Nowy Dwór Gdański) — `intentionally-dormant` (still)
+- Client: `BiletynaClient` @
+  `https://biletyna.pl/Nowy-Dwor-Gdanski/Zulawski-Osrodek-Kultury`. ld+json has 1
+  event, `ComedyEvent` (kabaret); **0** `ScreeningEvent`. Unchanged from 2026-06-28.
+
+---
+
 ## 2026-06-28
 
 8 cinemas were 3-scrape-white. **Seven are genuinely film-dormant (parsers
