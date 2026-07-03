@@ -30,7 +30,6 @@ import pl.kinowo.data.UserPreferences
 import pl.kinowo.model.Cities
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
-import pl.kinowo.TestData
 import pl.kinowo.net.KinowoApi
 import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.ui.KinowoViewModel
@@ -146,59 +145,8 @@ class FiltersSheetOrderTest {
         assertTrue("Clicking Wyczyść should close the sheet", closed)
     }
 
-    /**
-     * Expanding Kina shows every cinema, not a capped inner-scrolling slice —
-     * a cinema well past the old 280dp cap renders. Fails the old nested
-     * LazyColumn, which only composed the first handful.
-     */
-    @Test
-    fun expandedKinaShowsEveryCinema() {
-        // 30 cinemas — far more than the old 280dp inner scroll could compose.
-        val cinemas = (1..30).map { i ->
-            TestData.cinema("Kino %02d".format(i), listOf(TestData.slot("18:00")))
-        }
-        val films = listOf(TestData.film("Film", listOf(TestData.day("2026-06-14", cinemas))))
-
-        compose.setContent {
-            FiltersSheetContent(viewModel(), films = films)
-        }
-
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Kina"))
-        compose.onNodeWithText("Kina").performClick() // expand the section
-
-        // The last cinema (well below the old cap) is now in the tree.
-        compose.onNodeWithText("Kino 30").assertExists()
-    }
-
-    /**
-     * Expanded Kina stays expanded after it scrolls out of view and back. The
-     * expanded section is one tall LazyColumn item; scrolling past it disposes
-     * the item, and a plain `remember` would reset it to collapsed (CollapsibleSection
-     * now uses rememberSaveable). Fails — "Kino 01" can't be found after the round
-     * trip — if the expanded state is lost on disposal.
-     */
-    @Test
-    fun expandedKinaStaysExpandedAfterScrollingPastIt() {
-        val cinemas = (1..30).map { i ->
-            TestData.cinema("Kino %02d".format(i), listOf(TestData.slot("18:00")))
-        }
-        val films = listOf(TestData.film("Film", listOf(TestData.day("2026-06-14", cinemas))))
-
-        compose.setContent {
-            FiltersSheetContent(viewModel(), films = films)
-        }
-
-        val list = compose.onNode(hasScrollAction())
-        list.performScrollToNode(hasText("Kina"))
-        compose.onNodeWithText("Kina").performClick() // expand
-
-        // Scroll all the way past the (now tall) Kina item so it disposes, then back.
-        list.performScrollToNode(hasText("Zaloguj przez Google"))
-        list.performScrollToNode(hasText("Kino 01"))
-
-        // Still expanded — the cinemas survived the round trip.
-        compose.onNodeWithText("Kino 01").assertExists()
-    }
+    // (Cinema selection moved out of the Filtry sheet into the top-bar pill row —
+    // see CinemaPillBarTest. The old Kina-collapsible tests were removed with it.)
 
     @Test
     fun cityPickerSitsBelowTheFiltersAndAboveTheAccountSection() {

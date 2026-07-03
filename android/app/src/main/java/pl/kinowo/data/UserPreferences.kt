@@ -45,6 +45,17 @@ class UserPreferences(private val context: Context) : SyncPrefs {
     override val disabledCinemas: Flow<Set<String>> =
         context.dataStore.data.map { it[KEY_DISABLED] ?: emptySet() }
 
+    /** The single cinema the top-bar pill row narrows the listing to, or null
+     *  ("Wszystkie"). Device-local — NOT part of [SyncPrefs], since it's a
+     *  single per-session pick rather than the cross-platform disabled-cinema
+     *  set. Reset when the city changes (see [pl.kinowo.ui.KinowoViewModel]). */
+    val selectedCinema: Flow<String?> =
+        context.dataStore.data.map { it[KEY_SELECTED_CINEMA] }
+
+    suspend fun setSelectedCinema(cinema: String?) = context.dataStore.edit { prefs ->
+        if (cinema == null) prefs.remove(KEY_SELECTED_CINEMA) else prefs[KEY_SELECTED_CINEMA] = cinema
+    }
+
     /** Slug of the city the user picked (or was located into), or null until
      *  the first-launch city gate resolves one. Gates the repertoire fetch. */
     val selectedCity: Flow<String?> =
@@ -109,11 +120,6 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         context.dataStore.edit { prefs -> prefs[KEY_SERVER_SYNCED] = synced }
     }
 
-    suspend fun toggleCinema(cinema: String, disabled: Boolean) = context.dataStore.edit { prefs ->
-        val current = prefs[KEY_DISABLED] ?: emptySet()
-        prefs[KEY_DISABLED] = if (disabled) current + cinema else current - cinema
-    }
-
     suspend fun markSwiped() = context.dataStore.edit { prefs ->
         prefs[KEY_SWIPED] = true
     }
@@ -133,6 +139,7 @@ class UserPreferences(private val context: Context) : SyncPrefs {
     private companion object {
         val KEY_HIDDEN = stringSetPreferencesKey("hiddenFilms")
         val KEY_DISABLED = stringSetPreferencesKey("disabledCinemas")
+        val KEY_SELECTED_CINEMA = stringPreferencesKey("selectedCinema")
         val KEY_CITY = stringPreferencesKey("selectedCity")
         val KEY_CITY_SWITCH_PROMPT = stringPreferencesKey("citySwitchPromptKey")
         val KEY_SWIPED = booleanPreferencesKey("swipedScreens")

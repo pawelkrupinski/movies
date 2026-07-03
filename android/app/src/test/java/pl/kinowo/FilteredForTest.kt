@@ -2,6 +2,7 @@ package pl.kinowo
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import pl.kinowo.TestData.cinema
 import pl.kinowo.TestData.day
@@ -47,7 +48,7 @@ class FilteredForTest {
     fun dateTodayFiltersToTodayOnly() {
         val result = fixture().filteredFor(
             date = DateFilter.Today, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), now = now,
+            hidden = emptySet(), selectedCinema = null, now = now,
         )
         assertEquals(listOf("Mandalorian and Grogu", "Title2"), result.map { it.title }.sorted())
         for (f in result) {
@@ -62,7 +63,7 @@ class FilteredForTest {
         // the real filter and assert it is NON-EMPTY and dated to tomorrow only.
         val result = fixture().filteredFor(
             date = DateFilter.Tomorrow, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), now = now,
+            hidden = emptySet(), selectedCinema = null, now = now,
         )
         assertEquals(listOf("Mandalorian and Grogu", "Title3"), result.map { it.title }.sorted())
         for (f in result) {
@@ -85,7 +86,7 @@ class FilteredForTest {
 
         val filtered = films.filteredFor(
             date = DateFilter.Tomorrow, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), now = lateNightNow,
+            hidden = emptySet(), selectedCinema = null, now = lateNightNow,
         )
         assertEquals(listOf("B"), filtered.map { it.title })
         assertEquals(listOf(fixedTomorrow), filtered[0].showings.map { it.date })
@@ -95,13 +96,13 @@ class FilteredForTest {
     fun queryMatchesCaseInsensitiveSubstring() {
         val result = fixture().filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "Mand",
-            hidden = emptySet(), disabledCinemas = emptySet(), now = now,
+            hidden = emptySet(), selectedCinema = null, now = now,
         )
         assertEquals(listOf("Mandalorian and Grogu"), result.map { it.title })
 
         val lowered = fixture().filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "mand",
-            hidden = emptySet(), disabledCinemas = emptySet(), now = now,
+            hidden = emptySet(), selectedCinema = null, now = now,
         )
         assertEquals(listOf("Mandalorian and Grogu"), lowered.map { it.title })
     }
@@ -110,23 +111,50 @@ class FilteredForTest {
     fun hiddenDropsFilmEntirely() {
         val result = fixture().filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = setOf("Title2"), disabledCinemas = emptySet(), now = now,
+            hidden = setOf("Title2"), selectedCinema = null, now = now,
         )
         assertFalse(result.any { it.title == "Title2" })
         assertEquals(2, result.size)
     }
 
     @Test
-    fun disabledCinemasDropsCinemaGroupAndCollapsesEmptyDays() {
+    fun selectedCinemaNullKeepsEveryCinemasShowings() {
         val result = fixture().filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = setOf("Apollo"), now = now,
+            hidden = emptySet(), selectedCinema = null, now = now,
         )
-        // Title2 only ever played at Apollo today → film drops entirely.
-        assertFalse(result.any { it.title == "Title2" })
+        // All three films survive and Mandalorian keeps BOTH of today's cinemas.
+        assertEquals(listOf("Mandalorian and Grogu", "Title2", "Title3"), result.map { it.title }.sorted())
         val mando = result.first { it.title == "Mandalorian and Grogu" }
         val todayDay = mando.showings.first { it.date == today }
-        assertEquals(listOf("Helonki"), todayDay.cinemas.map { it.cinema })
+        assertEquals(listOf("Helonki", "Apollo"), todayDay.cinemas.map { it.cinema })
+    }
+
+    @Test
+    fun selectedCinemaKeepsOnlyThatCinemaAndDropsFilmsWithNone() {
+        val result = fixture().filteredFor(
+            date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
+            hidden = emptySet(), selectedCinema = "Apollo", now = now,
+        )
+        // Only Apollo screenings remain: Mandalorian (today) + Title2 (today).
+        // Title3 (Helonki only) drops; Mandalorian's Helonki + Muza groups drop.
+        assertEquals(listOf("Mandalorian and Grogu", "Title2"), result.map { it.title }.sorted())
+        val mando = result.first { it.title == "Mandalorian and Grogu" }
+        assertEquals(listOf(today), mando.showings.map { it.date })
+        assertEquals(listOf("Apollo"), mando.showings.first().cinemas.map { it.cinema })
+    }
+
+    @Test
+    fun selectedCinemaAbsentFromListingDropsEveryFilm() {
+        // The cross-city guard is applied UPSTREAM (the pill bar passes null when
+        // the pick isn't in the current city), so filteredFor itself honours the
+        // name literally: a cinema that appears nowhere keeps nothing. This pins
+        // that behaviour so the upstream guard is load-bearing, not incidental.
+        val result = fixture().filteredFor(
+            date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
+            hidden = emptySet(), selectedCinema = "Nonexistent Cinema", now = now,
+        )
+        assertTrue(result.isEmpty())
     }
 
     @Test
@@ -134,7 +162,7 @@ class FilteredForTest {
         val f = FormatFilter(dimension = "3D")
         val result = fixture().filteredFor(
             date = DateFilter.Anytime, format = f, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), now = now,
+            hidden = emptySet(), selectedCinema = null, now = now,
         )
         assertEquals(listOf("Mandalorian and Grogu"), result.map { it.title })
         val mando = result[0]
@@ -148,16 +176,18 @@ class FilteredForTest {
     fun emptyQueryTrimsWhitespace() {
         val result = fixture().filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "   ",
-            hidden = emptySet(), disabledCinemas = emptySet(), now = now,
+            hidden = emptySet(), selectedCinema = null, now = now,
         )
         assertEquals(3, result.size)
     }
 
     @Test
     fun combinedFiltersIntersect() {
+        // Date=Today ∧ query="Mand" ∧ hidden={Title2} ∧ selectedCinema="Helonki":
+        // only Mandalorian survives, narrowed to its Helonki group today.
         val result = fixture().filteredFor(
             date = DateFilter.Today, format = FormatFilter.EMPTY, query = "Mand",
-            hidden = setOf("Title2"), disabledCinemas = setOf("Apollo"), now = now,
+            hidden = setOf("Title2"), selectedCinema = "Helonki", now = now,
         )
         assertEquals(listOf("Mandalorian and Grogu"), result.map { it.title })
         val todayDay = result[0].showings[0]
@@ -177,7 +207,7 @@ class FilteredForTest {
 
         val filtered = films.filteredFor(
             date = DateFilter.Today, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), now = pinnedNow,
+            hidden = emptySet(), selectedCinema = null, now = pinnedNow,
         )
         assertEquals(listOf("A"), filtered.map { it.title })
         assertEquals(listOf(fixedToday), filtered[0].showings.map { it.date })
@@ -194,7 +224,7 @@ class FilteredForTest {
         )
         val filtered = films.filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), excludedCountries = setOf("Polska"), now = now,
+            hidden = emptySet(), selectedCinema = null, excludedCountries = setOf("Polska"), now = now,
         )
         assertEquals(listOf("Co-prod", "US Film"), filtered.map { it.title }.sorted())
     }
@@ -206,13 +236,13 @@ class FilteredForTest {
         )
         val still = films.filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), excludedCountries = setOf("Polska"), now = now,
+            hidden = emptySet(), selectedCinema = null, excludedCountries = setOf("Polska"), now = now,
         )
         assertEquals("co-prod stays when only one country is excluded", 1, still.size)
 
         val gone = films.filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), excludedCountries = setOf("Polska", "Francja"), now = now,
+            hidden = emptySet(), selectedCinema = null, excludedCountries = setOf("Polska", "Francja"), now = now,
         )
         assertEquals("co-prod drops when all its countries are excluded", 0, gone.size)
     }
@@ -226,7 +256,7 @@ class FilteredForTest {
         )
         val filtered = films.filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), excludedCountries = setOf("Polska"), now = now,
+            hidden = emptySet(), selectedCinema = null, excludedCountries = setOf("Polska"), now = now,
         )
         assertEquals(0, filtered.size)
     }
@@ -239,7 +269,7 @@ class FilteredForTest {
         )
         val filtered = films.filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), excludedCountries = emptySet(), now = now,
+            hidden = emptySet(), selectedCinema = null, excludedCountries = emptySet(), now = now,
         )
         assertEquals(2, filtered.size)
     }
@@ -255,7 +285,7 @@ class FilteredForTest {
         )
         val filtered = films.filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), excludedGenres = setOf("Komedia"), now = now,
+            hidden = emptySet(), selectedCinema = null, excludedGenres = setOf("Komedia"), now = now,
         )
         assertEquals(listOf("Drama", "Mix"), filtered.map { it.title }.sorted())
     }
@@ -267,11 +297,11 @@ class FilteredForTest {
         )
         assertEquals(1, films.filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), excludedGenres = setOf("Komedia"), now = now,
+            hidden = emptySet(), selectedCinema = null, excludedGenres = setOf("Komedia"), now = now,
         ).size)
         assertEquals(0, films.filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), excludedGenres = setOf("Komedia", "Dramat"), now = now,
+            hidden = emptySet(), selectedCinema = null, excludedGenres = setOf("Komedia", "Dramat"), now = now,
         ).size)
     }
 
@@ -283,7 +313,7 @@ class FilteredForTest {
         )
         val filtered = films.filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), excludedGenres = setOf("Komedia"), now = now,
+            hidden = emptySet(), selectedCinema = null, excludedGenres = setOf("Komedia"), now = now,
         )
         assertEquals(1, filtered.size)
     }
@@ -299,7 +329,7 @@ class FilteredForTest {
         )
         val filtered = films.filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), excludedDirectors = setOf("Spielberg"), now = now,
+            hidden = emptySet(), selectedCinema = null, excludedDirectors = setOf("Spielberg"), now = now,
         )
         assertEquals(listOf("B", "C"), filtered.map { it.title }.sorted())
     }
@@ -312,7 +342,7 @@ class FilteredForTest {
         )
         val filtered = films.filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), excludedDirectors = setOf("Spielberg"), now = now,
+            hidden = emptySet(), selectedCinema = null, excludedDirectors = setOf("Spielberg"), now = now,
         )
         assertEquals(listOf("Unknown"), filtered.map { it.title })
     }
@@ -327,7 +357,7 @@ class FilteredForTest {
         )
         val filtered = films.filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), excludedCast = setOf("DiCaprio", "Pitt"), now = now,
+            hidden = emptySet(), selectedCinema = null, excludedCast = setOf("DiCaprio", "Pitt"), now = now,
         )
         assertEquals(listOf("B"), filtered.map { it.title })
     }
@@ -339,7 +369,7 @@ class FilteredForTest {
         )
         val filtered = films.filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), excludedCast = setOf("DiCaprio"), now = now,
+            hidden = emptySet(), selectedCinema = null, excludedCast = setOf("DiCaprio"), now = now,
         )
         assertEquals("film stays when only part of its cast is excluded", 1, filtered.size)
     }
@@ -352,7 +382,7 @@ class FilteredForTest {
         )
         val filtered = films.filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
-            hidden = emptySet(), disabledCinemas = emptySet(), excludedCast = setOf("Hanks"), now = now,
+            hidden = emptySet(), selectedCinema = null, excludedCast = setOf("Hanks"), now = now,
         )
         assertEquals(listOf("Unknown"), filtered.map { it.title })
     }

@@ -77,8 +77,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
-import pl.kinowo.filter.CinemaCityFilter
-import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.FormatFilter
 import pl.kinowo.model.Cities
 import pl.kinowo.filter.SortOption
@@ -148,8 +146,6 @@ private fun FiltersList(
     onClose: () -> Unit,
 ) {
     val hidden by viewModel.hiddenFilms.collectAsState()
-    val disabled by viewModel.disabledCinemas.collectAsState()
-    val allCinemas = remember(films) { viewModel.allCinemas(films) }
     val allCountries = remember(films) { viewModel.allCountries(films) }
     val allGenres = remember(films) { viewModel.allGenres(films) }
     val allDirectors = remember(films) { viewModel.allDirectors(films) }
@@ -197,8 +193,9 @@ private fun FiltersList(
             }
 
             // Section order mirrors the web Filtry panel (app/views/_navbar.scala.html):
-            // Sortuj → Ukryte filmy → Kina → Kraj/Gatunek/Reżyseria/Obsada → Wymiar/Wersja/IMAX/Od godziny.
-            // (Web's "Sale" room picker has no Android equivalent.)
+            // Sortuj → Ukryte filmy → Kraj/Gatunek/Reżyseria/Obsada → Wymiar/Wersja/IMAX/Od godziny.
+            // Cinema choice lives in the top-bar pill row (see CinemaPillBar), not
+            // here. (Web's "Sale" room picker has no Android equivalent either.)
 
             // Ukryte filmy — a nav row that opens its own card (HiddenFilmsCard),
             // mirroring iOS; the inline list would crowd out every other filter
@@ -206,31 +203,6 @@ private fun FiltersList(
             if (hidden.isNotEmpty()) {
                 item(key = "sec_hidden") {
                     HiddenFilmsRow(count = hidden.size, onClick = onOpenHidden)
-                }
-            }
-
-            // Kina — collapsible, matching Ukryte filmy and the name filters.
-            if (allCinemas.isNotEmpty()) {
-                item(key = "sec_cinemas") {
-                    // Scope the badge + master toggle to THIS city's cinemas — a
-                    // cinema deselected in another city lingers in the global set
-                    // (see CinemaCityFilter) and must not be counted here.
-                    val disabledHere = CinemaCityFilter.disabledIn(disabled, allCinemas)
-                    CollapsibleSection("Kina", if (disabledHere.isNotEmpty()) "${disabledHere.size} wyłączonych" else null) {
-                        // A plain Column (not a capped, inner-scrolling LazyColumn)
-                        // so expanding shows EVERY cinema — the outer sheet scrolls.
-                        Column(Modifier.fillMaxWidth()) {
-                            ToggleRow("Wszystkie kina", CinemaCityFilter.allSelected(disabled, allCinemas)) { on ->
-                                viewModel.setAllCinemas(allCinemas, on)
-                            }
-                            allCinemas.forEach { cinema ->
-                                CheckRow(
-                                    label = CinemaSection.pillName(cinema),
-                                    checked = cinema !in disabled,
-                                ) { on -> viewModel.toggleCinema(cinema, disabled = !on) }
-                            }
-                        }
-                    }
                 }
             }
 

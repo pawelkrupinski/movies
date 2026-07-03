@@ -1,6 +1,8 @@
 package pl.kinowo.ui.list
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,11 +33,14 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Swipe
@@ -53,11 +58,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
@@ -97,9 +104,14 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     // Observed here (not read off the StateFlow inside the VM) so hiding a film
-    // or toggling a cinema recomposes the grid — see filmsForFilmsTab's comment.
+    // or picking a cinema recomposes the grid — see filmsFor's comment.
     val hidden by viewModel.hiddenFilms.collectAsState()
-    val disabled by viewModel.disabledCinemas.collectAsState()
+    val selectedCinema by viewModel.selectedCinema.collectAsState()
+    // The cinema pill row's universe is the current city's cinemas; a persisted
+    // pick absent from them (a leftover from another city) reads as null
+    // ("Wszystkie") so the grid never blanks on a stale cross-city name.
+    val cityCinemas = remember(films) { viewModel.allCinemas(films) }
+    val effectiveCinema = selectedCinema?.takeIf { it in cityCinemas }
 
     // Wide viewports (tablets, and phones rotated to landscape) host search
     // inline on the top bar; narrow ones (portrait phones) keep it as the
@@ -204,11 +216,20 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
             DateBar(
                 wide = wide,
                 highlighted = previewDay,
-                filtersActive = viewModel.filtersActive(viewModel.allCinemas(films)),
+                filtersActive = viewModel.filtersActive(),
                 search = viewModel.search,
                 onSearch = { viewModel.search = it },
                 onSelect = { day -> selectDayKeepingTopFlat(sharedScroll) { viewModel.dateFilter = day } },
                 onOpenFilters = { showFilters = true },
+            )
+
+            // A slim, low-emphasis handle directly under the date bar that
+            // unfolds a horizontally-scrolling row of cinema pills — the
+            // single-select cinema filter. Mirrors iOS's parallel CinemaPillBar.
+            CinemaPillBar(
+                cinemas = cityCinemas,
+                selected = effectiveCinema,
+                onSelect = { viewModel.selectCinema(it) },
             )
 
             // ── content ───────────────────────────────────────────────────────
@@ -246,7 +267,7 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                                 onCommitDay = onCommitDay,
                                 onPreviewDay = { previewDay = it },
                             ) { day, state, columnModifier ->
-                                val visible = viewModel.filmsFor(day, films, hidden, disabled)
+                                val visible = viewModel.filmsFor(day, films, hidden, effectiveCinema)
                                 // Suppress the per-card cinema label when the
                                 // repertoire on show narrows to a single cinema —
                                 // it's the same name on every card.
@@ -530,6 +551,98 @@ private fun DatePill(label: String, selected: Boolean, wide: Boolean, modifier: 
             // 360dp phone (Galaxy S24) instead of clipping. Guarded by
             // DayPillFitTest.
             .padding(horizontal = if (wide) 12.dp else 6.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            color = Color.White,
+        )
+    }
+}
+
+// A slim expand-handle under the DateBar that unfolds a horizontally-scrolling
+// row of cinema pills — the single-select cinema filter. Collapsed it shows the
+// current pick ("Wszystkie kina" or the cinema's short name) beside a chevron
+// that rotates as the row unfolds; expanded it reveals a leading "Wszystkie"
+// pill and one pill per cinema in the current city, styled like the date pills
+// (capsule, Brand tint when active). Deliberately low emphasis — a secondary
+// control, not a second app bar. Renders nothing until the city has cinemas.
+// [selected] is the EFFECTIVE pick (a cross-city leftover already resolved to
+// null upstream). Mirrors iOS's parallel CinemaPillBar. Exercised by
+// CinemaPillBarTest.
+@Composable
+internal fun CinemaPillBar(
+    cinemas: List<String>,
+    selected: String?,
+    onSelect: (String?) -> Unit,
+) {
+    if (cinemas.isEmpty()) return
+    // rememberSaveable so the unfolded state survives config changes; the bar
+    // sits above the grid and is never disposed by scrolling.
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "cinemaChevron")
+    Column(Modifier.fillMaxWidth().animateContentSize()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { expanded = !expanded }
+                .padding(start = 14.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = selected?.let { CinemaSection.pillName(it) } ?: "Wszystkie kina",
+                color = TextSecondary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                Icons.Filled.ExpandMore,
+                contentDescription = if (expanded) "Zwiń kina" else "Rozwiń kina",
+                tint = TextSecondary,
+                modifier = Modifier.size(20.dp).rotate(chevronRotation),
+            )
+        }
+        if (expanded) {
+            LazyRow(
+                Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                item(key = "cinema_all") {
+                    CinemaPill(label = "Wszystkie", selected = selected == null) { onSelect(null) }
+                }
+                items(cinemas, key = { it }) { cinema ->
+                    CinemaPill(
+                        label = CinemaSection.pillName(cinema),
+                        selected = cinema == selected,
+                    ) { onSelect(cinema) }
+                }
+            }
+        }
+    }
+}
+
+// One cinema capsule in [CinemaPillBar], sharing the date pill's visual style:
+// a CircleShape capsule, Brand-tinted when active, a faint fill otherwise.
+@Composable
+private fun CinemaPill(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .clip(CircleShape)
+            .background(if (selected) Brand.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.08f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { onClick() }
+            .padding(horizontal = 14.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(

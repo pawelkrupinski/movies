@@ -38,7 +38,6 @@ import pl.kinowo.location.LocationCityResolver
 import pl.kinowo.model.Cities
 import pl.kinowo.model.CitySwitchSuggestion
 import pl.kinowo.model.FilmDetails
-import pl.kinowo.filter.CinemaCityFilter
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
 import pl.kinowo.filter.FormatFilter
@@ -98,6 +97,13 @@ class KinowoViewModel(
     val disabledCinemas: StateFlow<Set<String>> =
         prefs.disabledCinemas.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
+    /** The cinema the top-bar pill row narrows the listing to, or null
+     *  ("Wszystkie"). Persisted device-locally; the pill bar / [filmsFor] treat
+     *  a value absent from the current city as null so a cross-city leftover
+     *  never blanks the grid. */
+    val selectedCinema: StateFlow<String?> =
+        prefs.selectedCinema.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     // Per-screen filter axes (Compose state).
     /** A pending "you're nearer another city — switch?" prompt, or null. Set by
      *  [checkCitySwitch] when a granted-only location lands nearer a different
@@ -123,36 +129,30 @@ class KinowoViewModel(
 
     fun clearPendingFilmNav() { pendingFilmNav = null }
 
-    // `allCinemas` of the current city is passed in so the cinema clause is
-    // scoped to it — a cinema deselected in another city lingers in the global
-    // set but must not light up the Filtry icon here. See [CinemaCityFilter].
-    fun filtersActive(allCinemas: List<String>): Boolean =
+    // The cinema pill row shows the current selection directly, so cinema
+    // choice no longer feeds the Filtry icon — only the sheet's own axes do.
+    fun filtersActive(): Boolean =
         !formatFilter.isEmpty ||
-            CinemaCityFilter.disabledIn(disabledCinemas.value, allCinemas).isNotEmpty() ||
             hiddenFilms.value.isNotEmpty() ||
             excludedCountries.isNotEmpty() ||
             excludedGenres.isNotEmpty() ||
             excludedDirectors.isNotEmpty() ||
             excludedCast.isNotEmpty()
 
-    // `hidden`/`disabled` are passed in (not read off the StateFlow here) so the
-    // caller composable observes them via collectAsState — reading them at the
-    // call site is what makes Compose recompute the grid when a film is hidden
-    // or a cinema toggled. Reading `.value` here would be invisible to Compose.
-    fun filmsForFilmsTab(all: List<Film>, hidden: Set<String>, disabled: Set<String>): List<Film> =
-        filmsFor(dateFilter, all, hidden, disabled)
-
-    // The day-swipe carousel needs the listing for an ARBITRARY day preset (the
+    // `hidden`/`selectedCinema` are passed in (not read off the StateFlow here)
+    // so the caller composable observes them via collectAsState — reading them at
+    // the call site is what makes Compose recompute the grid when a film is hidden
+    // or a cinema picked. Reading `.value` here would be invisible to Compose. The
+    // day-swipe carousel needs the listing for an ARBITRARY day preset (the
     // revealed previous/next neighbour), not just the selected one — so the date is
-    // an explicit parameter here. [filmsForFilmsTab] is the special case of the
-    // currently-selected day.
-    fun filmsFor(date: DateFilter, all: List<Film>, hidden: Set<String>, disabled: Set<String>): List<Film> =
+    // an explicit parameter here.
+    fun filmsFor(date: DateFilter, all: List<Film>, hidden: Set<String>, selectedCinema: String?): List<Film> =
         all.filteredFor(
             date = date,
             format = formatFilter,
             query = search,
             hidden = hidden,
-            disabledCinemas = disabled,
+            selectedCinema = selectedCinema,
             excludedCountries = excludedCountries,
             excludedGenres = excludedGenres,
             excludedDirectors = excludedDirectors,
@@ -185,7 +185,7 @@ class KinowoViewModel(
         excludedGenres = emptySet()
         excludedDirectors = emptySet()
         excludedCast = emptySet()
-        viewModelScope.launch { prefs.setDisabledCinemas(emptySet()) }
+        selectCinema(null)
     }
 
     // ── lifecycle / data ──────────────────────────────────────────────────
@@ -334,6 +334,8 @@ class KinowoViewModel(
      *  Also clears any pending switch prompt, since accepting one lands here. */
     fun setCity(slug: String) = viewModelScope.launch {
         citySwitchSuggestion = null
+        // A new city has its own cinemas — drop any cinema pick from the old one.
+        prefs.setSelectedCinema(null)
         prefs.setCity(slug)
     }
 
@@ -345,6 +347,7 @@ class KinowoViewModel(
     fun chooseCityAtGate(slug: String, nearestSlug: String?) = viewModelScope.launch {
         Cities.initialChoiceSuppressKey(slug, nearestSlug)?.let { prefs.setCitySwitchPromptKey(it) }
         citySwitchSuggestion = null
+        prefs.setSelectedCinema(null)
         prefs.setCity(slug)
     }
 
@@ -381,15 +384,16 @@ class KinowoViewModel(
     fun hide(title: String) = viewModelScope.launch { prefs.hide(title) }
     fun unhide(title: String) = viewModelScope.launch { prefs.unhide(title) }
     fun unhideAll() = viewModelScope.launch { prefs.unhideAll() }
-    fun toggleCinema(cinema: String, disabled: Boolean) =
-        viewModelScope.launch { prefs.toggleCinema(cinema, disabled) }
+    // Deep links still carry the cross-platform `disabledCinemas` set (mirrored
+    // to the server for web/iOS); Android persists it via this path even though
+    // its own listing is now narrowed by [selectedCinema] instead.
     fun setDisabledCinemas(set: Set<String>) =
         viewModelScope.launch { prefs.setDisabledCinemas(set) }
 
-    /** Scoped "Wszystkie kina" select-all / deselect-all: flips only this
-     *  city's cinemas, preserving deselections made in other cities. */
-    fun setAllCinemas(allCinemas: List<String>, selected: Boolean) =
-        setDisabledCinemas(CinemaCityFilter.afterToggleAll(disabledCinemas.value, allCinemas, selected))
+    /** Pick the single cinema the top-bar pill row narrows the listing to, or
+     *  null for "Wszystkie". */
+    fun selectCinema(cinema: String?) =
+        viewModelScope.launch { prefs.setSelectedCinema(cinema) }
 
     fun filmByTitle(title: String): Film? = films.value.firstOrNull { it.title == title }
     fun detailsByTitle(title: String): FilmDetails? = details.value[title]
@@ -418,6 +422,7 @@ class KinowoViewModel(
         authRepository.deleteAccount()
         prefs.unhideAll()
         prefs.setDisabledCinemas(emptySet())
+        prefs.setSelectedCinema(null)
     }
 
     class Factory(
