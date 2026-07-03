@@ -55,7 +55,9 @@ class WorkerCorpusMetrics(
    *  how often Fly scrapes `/metrics`. */
   def sample(): Unit = {
     var counts = CorpusCounts.empty
-    repository.foreachRecord(row => counts = counts.add(row.record))
+    // Counts ratings/ids only — no showtimes — so use the cheaper scan that skips the
+    // per-scan `screenings` load (this runs on a 5-min timer).
+    repository.foreachRecordWithoutShowtimes(row => counts = counts.add(row.record))
     counts.bySubset.foreach { case (subset, value) => corpus.labelValues(subset).set(value.toDouble) }
   }
 

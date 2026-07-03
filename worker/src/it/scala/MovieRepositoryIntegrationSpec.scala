@@ -426,6 +426,13 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       viaFindAll  shouldBe viaFindById
       viaForeach  shouldBe viaFindById // all three agree — no reader silently strips
 
+      // The count-only scan deliberately does NOT stitch (empty showtimes) — it skips
+      // the screenings load. Contract guard so a future "fix" to stitch it (and re-add
+      // the per-scan cost) is caught.
+      var viaNoStitch = Seq.empty[Showtime]
+      repo.foreachRecordWithoutShowtimes(r => if (StoredMovieRecord.idOf(r) == id) viaNoStitch = r.record.cinemaData.get(Multikino).map(_.showtimes).getOrElse(Seq.empty))
+      viaNoStitch shouldBe empty
+
       repo.delete(title, year)
     } finally client.close()
   }

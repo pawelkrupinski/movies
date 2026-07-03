@@ -119,6 +119,15 @@ trait MovieRepository {
    *  in-memory store never fails, so the default reports `true`. */
   def foreachRecord(f: StoredMovieRecord => Unit): Boolean = { findAll().foreach(f); true }
 
+  /** Like [[foreachRecord]] but WITHOUT re-injecting showtimes from `screenings` —
+   *  so under the split each row's showtimes are EMPTY. For count-only callers that
+   *  never read showtimes (`WorkerCorpusMetrics`, ad-hoc rating/audit scripts): it
+   *  skips the full-collection `screenings` load [[foreachRecord]] pays on every
+   *  scan, which on a 5-min metrics timer is a wasteful repeated read. Any caller
+   *  that reads `.showtimes` MUST use [[foreachRecord]] instead — the name here is
+   *  the guard. Default delegates to the (stitched, safe) [[foreachRecord]]. */
+  def foreachRecordWithoutShowtimes(f: StoredMovieRecord => Unit): Boolean = foreachRecord(f)
+
   /** Remove every record matching the given (title, year). Best-effort —
    *  failures are logged, never thrown. */
   def delete(title: String, year: Option[Int]): Unit
@@ -491,6 +500,12 @@ class MongoMovieRepository(
    *  bounded-heap guarantees live in `scanStitched`. */
   override def foreachRecord(f: StoredMovieRecord => Unit): Boolean =
     scanStitched(_.foreach(f))
+
+  /** Count-only scan: pages the movies cursor WITHOUT the `screenings` load [[foreachRecord]]
+   *  does, so each row's showtimes are empty. Cheap enough to run on a 5-min metrics timer
+   *  without a repeated full-collection screenings read. See the trait doc for the invariant. */
+  override def foreachRecordWithoutShowtimes(f: StoredMovieRecord => Unit): Boolean =
+    scanByKeyset(_.foreach(dto => f(StoredMovieDto.toDomain(dto))))
 
   /** Deletes by `_id` (the current `documentId` formula) OR by the legacy `title` +
    *  `year` fields. Current documents no longer persist `title`/`year` (the `_id`
