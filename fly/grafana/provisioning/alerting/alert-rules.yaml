@@ -718,16 +718,16 @@ groups:
   # ---- Worker CPU-credit throttle CONTROL (drives the worker's /throttle) -----
   # NOT a page. The worker runs credit-starved by design; this rule is the
   # external "credit logic" for its self-heal backoff. When kinowo-worker's
-  # shared-CPU credit balance drops below 2500 (its 2x cap is ~8k) the rule FIRES →
+  # shared-CPU credit balance drops below ~5k (its 2x cap is ~8k) the rule FIRES →
   # the WorkerThrottle webhook POSTs http://kinowo-worker.internal:9000/throttle →
   # ExternalThrottleGate flips on → all reapers (scrape/ratings/detail/tmdb) back
-  # off enqueue → the pool idles → credit rebuilds → balance climbs back above 5000 →
+  # off enqueue → the pool idles → credit rebuilds → balance climbs back above 5k →
   # the alert RESOLVES → webhook (status=resolved) → reapers resume. The threshold
   # lives HERE, outside the worker (it only receives firing/resolved). 30s eval over
   # a 2-min AVERAGE of the balance + `for: 1m` so a single spurious low/zero scrape
   # sample (fly_instance_cpu_balance is occasionally noisy) can't trip the backoff —
-  # it was firing while the dashboard balance sat well above the trip line because the
-  # old rule read ONE instantaneous sample with `for: 0`. Routed to WorkerThrottle (NOT
+  # it was firing while the dashboard balance sat well above 6k because the old rule
+  # read ONE instantaneous sample with `for: 0`. Routed to WorkerThrottle (NOT
   # Telegram) by the `notify: worker-throttle` label. noData/execErr = OK (never
   # throttle on a missing/erroring balance — fail-safe).
   - orgId: 1
@@ -740,18 +740,16 @@ groups:
         condition: C
         for: 1m
         # VALUE hysteresis (see the threshold's evaluator + unloadEvaluator below):
-        # FIRE only when credit drops under 2500, RECOVER (resolve) only once it
-        # climbs back over 5000. The 2.5k→5k band is scaled to the shared-cpu-2x
-        # ceiling (~8k; when on 4x it was 6k/12k for the ~19k cap). The recovery
-        # threshold (5000) MUST stay under the ~8k 2x cap — set it above the cap and
-        # the balance can never reach it, latching the gate "throttled" forever. The
-        # band keeps the worker backed off long enough for the idle pool to rebuild a
-        # real buffer before resuming — otherwise it resumed the instant credit touched
+        # FIRE only when credit drops under 6000, RECOVER (resolve) only once it
+        # climbs back over 12000. The 6k→12k band is scaled to the shared-cpu-4x
+        # ceiling (~19k; on 2x it was 2.5k/5k for the ~8k cap). The wide band keeps
+        # the worker backed off long enough for the idle pool to rebuild a real
+        # buffer before resuming — otherwise it resumed the instant credit touched
         # the trip line and a rating sweep right after drained it to the floor
-        # (measured on 2x: 4922→1 as ratings burst to 118/min). On 2x credit routinely
-        # dips into this band under load, so it's an active control loop — but a single
-        # noisy zero sample still shouldn't trip it, hence the 2-min avg + `for: 1m`
-        # debounce on the query below. (A top-level
+        # (measured on 2x: 4922→1 as ratings burst to 118/min). At 4x credit rarely
+        # dips into this band at all, so it's mostly a deep safety net — which is why
+        # a fire here is far more likely a noisy sample than a real drain, hence the
+        # 2-min avg + `for: 1m` debounce on the query below. (A top-level
         # `keep_firing_for` is silently ignored by file provisioning — the API
         # showed keepFiringFor=None — so the hysteresis lives in the threshold's
         # unloadEvaluator, which IS honoured.)
@@ -760,8 +758,8 @@ groups:
         labels:
           notify: worker-throttle
         annotations:
-          summary: 'kinowo-worker shared-CPU credit < 2.5k — backing off its reapers until it rebuilds past 5k'
-          description: 'fly_instance_cpu_balance{app="kinowo-worker"} dropped below 2500; the WorkerThrottle webhook tells the worker to throttle all reapers and HOLDS until credit climbs back over 5000 (the recovery threshold), so the idle pool builds a buffer before resuming. Band scaled to the 2x ~8k cap. By design — not an incident.'
+          summary: 'kinowo-worker shared-CPU credit < 6k — backing off its reapers until it rebuilds past 12k'
+          description: 'fly_instance_cpu_balance{app="kinowo-worker"} dropped below 6000; the WorkerThrottle webhook tells the worker to throttle all reapers and HOLDS until credit climbs back over 12000 (the recovery threshold), so the idle pool builds a buffer before resuming. Band scaled to the 4x ~19k cap. By design — not an incident.'
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -771,8 +769,8 @@ groups:
               editorMode: code
               # 2-min trailing average, not the raw instantaneous gauge: one spurious
               # low/zero scrape (the gauge is occasionally noisy) gets diluted by the
-              # ~3 healthy samples around it, so it never alone pulls the mean
-              # under 2500. Window (120s) < relativeTimeRange.from (300s), so it's fully
+              # ~3 healthy ~19k samples around it, so it never alone pulls the mean
+              # under 6k. Window (120s) < relativeTimeRange.from (300s), so it's fully
               # covered. Single venue still evaluated instantly at eval time.
               expr: 'min by (app, instance) (avg_over_time(fly_instance_cpu_balance{app="kinowo-worker"}[2m]))'
               instant: true
@@ -789,12 +787,11 @@ groups:
               expression: A
               conditions:
                 - type: query
-                  evaluator: { type: lt, params: [2500] }
+                  evaluator: { type: lt, params: [6000] }
                   # Recovery threshold (hysteresis): once firing, stay firing until
-                  # the balance climbs back OVER 5000 — not the moment it re-crosses
-                  # the 2500 trip line. Scaled to the 2x ~8k cap; MUST stay under it or
-                  # the gate never resolves. Coupled to fly.worker.toml `cpus`.
-                  unloadEvaluator: { type: gt, params: [5000] }
+                  # the balance climbs back OVER 12000 — not the moment it re-crosses
+                  # the 6000 trip line. Scaled to the 4x ~19k cap.
+                  unloadEvaluator: { type: gt, params: [12000] }
                   operator: { type: and }
                   query: { params: [] }
                   reducer: { type: last, params: [] }
