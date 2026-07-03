@@ -407,6 +407,40 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally client.close()
   }
 
+  // `ScreeningsRepository.findAll` now keyset-pages by `_id` (via KeysetScan) instead of
+  // pulling the whole `screenings` collection through ONE unbounded `find().toFuture()`.
+  // That single cursor recursed the async Mongo driver's read-completion chain
+  // (`AsyncSupplier.finish` → `AsyncCompletionHandler` → `SingleResultCallback`) into a
+  // StackOverflowError once the collection grew (Sentry KINOWO-19) — and because
+  // `MovieRepository.scanStitched` calls `screenings.findAll()` FIRST, that crash killed
+  // the worker's cold-cache rehydrate (findAll reported empty, the pages served no films).
+  // The StackOverflow only reproduces against the real driver under a large buffered read,
+  // so this guards the fix MECHANISM: with batchSize 2 forcing several page boundaries,
+  // findAll returns every seeded slot exactly once, grouped by film — the keyset-paging
+  // correctness the refactor introduces.
+  it should "page screenings.findAll by _id across batch boundaries, returning every slot exactly once" in {
+    import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val writer = new MongoScreeningsRepository(Some(db))
+    // batchSize 2 forces several page boundaries over the 5 seeded slots.
+    val paged  = new MongoScreeningsRepository(Some(db), findAllBatchSize = 2)
+    try {
+      val filmA = StoredMovieRecord.idFor("__integration-test-scr-page-A__", Some(1908))
+      val filmB = StoredMovieRecord.idFor("__integration-test-scr-page-B__", Some(1908))
+      val st    = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/p")))
+      writer.replaceFilm(filmA, Map("aa" -> st, "bb" -> st, "cc" -> st))
+      writer.replaceFilm(filmB, Map("dd" -> st, "ee" -> st))
+
+      val all = paged.findAll()
+      all.getOrElse(filmA, Map.empty).keySet shouldBe Set("aa", "bb", "cc") // every slot, no skip
+      all.getOrElse(filmB, Map.empty).keySet shouldBe Set("dd", "ee")       // …across the boundary
+      all.getOrElse(filmA, Map.empty).values.flatten.toSeq shouldBe Seq.fill(3)(st).flatten // no duplicate slot
+
+      writer.deleteFilm(filmA); writer.deleteFilm(filmB)
+    } finally client.close()
+  }
+
   // (B) The exact regression, end to end: the read-model RECONCILE reads the corpus
   // via foreachRecord under the split; if that read doesn't stitch, reconcile projects
   // empty showtimes and DELETES the film's web_screenings. Wire the real projector to a

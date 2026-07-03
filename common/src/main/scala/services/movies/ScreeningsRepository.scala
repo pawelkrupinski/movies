@@ -4,7 +4,7 @@ import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.changestream.ChangeStreamDocument
 import models.{Showtime, Source, SourceData}
-import org.mongodb.scala.model.{Filters, Indexes}
+import org.mongodb.scala.model.{Filters, Indexes, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, Observer, SingleObservableFuture, Subscription}
 import play.api.Logging
 
@@ -183,7 +183,20 @@ case class StoredScreeningsDto(
  * scrape). Every method is defensively `Try`-guarded so a screenings failure can
  * never break the caller's `movies` write.
  */
-class MongoScreeningsRepository(sharedDb: Option[MongoDatabase]) extends ScreeningsRepository with Logging {
+class MongoScreeningsRepository(
+  sharedDb: Option[MongoDatabase],
+  // Cursor page size for the keyset-paged full-collection scan in `findAll`. Caps how
+  // many rows any ONE async cursor delivers before the next `_id`-keyset page, so a
+  // full `screenings` read can't recurse the async Mongo driver's read-completion chain
+  // into a StackOverflowError the way one unbounded `find().toFuture()` did once the
+  // collection grew (Sentry KINOWO-19 first hit `movies.findAll`, then `screenings`).
+  // These are small, single-slot docs, so 500/page keeps round-trips low while staying
+  // far under the recursion depth. Injectable so tests can force multiple pages with a
+  // handful of rows. See [[KeysetScan]].
+  findAllBatchSize:     Int            = 500,
+  findAllBatchAttempts: Int            = 4,
+  findAllBatchBackoff:  FiniteDuration = 500.millis
+) extends ScreeningsRepository with Logging {
   import ScreeningsRepository.IdSep
 
   private lazy val coll: Option[MongoCollection[StoredScreeningsDto]] = sharedDb.map { db =>
@@ -200,9 +213,35 @@ class MongoScreeningsRepository(sharedDb: Option[MongoDatabase]) extends Screeni
       .getOrElse(Seq.empty).map(d => d.slotKey -> d.showtimes).toMap
   }
 
-  def findAll(): Map[String, Map[String, Seq[Showtime]]] = coll.fold(Map.empty[String, Map[String, Seq[Showtime]]]) { c =>
-    Try(Await.result(c.find().toFuture(), 60.seconds)).getOrElse(Seq.empty)
-      .groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap
+  /** Every film's screenings, keyset-paged by `_id` (via [[KeysetScan]]) rather than pulled
+   *  through ONE unbounded `find().toFuture()`. That single cursor over the whole
+   *  `screenings` collection recursed the async Mongo driver into a `StackOverflowError`
+   *  on a driver I/O thread once the collection grew (Sentry KINOWO-19) — and because it
+   *  runs FIRST inside `MovieRepository.scanStitched`, that crash killed the worker's
+   *  cold-cache rehydrate, so `findAll()` reported empty and the pages served no films.
+   *  Paging caps how many rows any one cursor delivers synchronously. On an INCOMPLETE
+   *  scan (a page still failing after retries) returns an empty map — `scanStitched`
+   *  treats that as "incomplete" and won't let a reconcile prune on stripped rows. */
+  def findAll(): Map[String, Map[String, Seq[Showtime]]] = coll match {
+    case Some(c) =>
+      val buf = Vector.newBuilder[StoredScreeningsDto]
+      val complete = KeysetScan.scan[StoredScreeningsDto](
+        label          = "ScreeningsRepository keyset batch",
+        batchSize      = findAllBatchSize,
+        maxAttempts    = findAllBatchAttempts,
+        initialBackoff = findAllBatchBackoff,
+        keyOf          = _._id,
+        fetchPage      = (afterId, limit) => {
+          val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
+          Await.result(c.find(filter).sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
+        },
+        onIncomplete   = exception =>
+          logger.warn(s"ScreeningsRepository.findAll keyset scan failed after retries: " +
+            s"${exception.getClass.getSimpleName}: ${exception.getMessage} — returning empty")
+      )(batch => buf ++= batch)
+      if (complete) buf.result().groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap
+      else Map.empty
+    case None => Map.empty
   }
 
   def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit = coll.foreach { c =>

@@ -9,7 +9,7 @@ import org.mongodb.scala.model.{Aggregates, Filters, IndexOptions, Indexes, Sort
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import org.bson.conversions.Bson
 import play.api.Logging
-import tools.{Env, RetryWithBackoff}
+import tools.Env
 
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
@@ -379,30 +379,21 @@ class MongoMovieRepository(
    *  must treat `false` as "not the complete corpus" and skip its destructive step. */
   private def scanByKeyset(onBatch: Seq[StoredMovieDto] => Unit): Boolean = coll match {
     case Some(c) =>
-      Try {
-        var afterId: Option[String] = None
-        var more = true
-        while (more) {
+      KeysetScan.scan[StoredMovieDto](
+        label          = "MovieRepository keyset batch",
+        batchSize      = findAllBatchSize,
+        maxAttempts    = foreachRecordBatchAttempts,
+        initialBackoff = foreachRecordBatchBackoff,
+        keyOf          = _._id,
+        fetchPage      = (afterId, limit) => {
           val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-          val batch  = RetryWithBackoff(
-            label          = "MovieRepository keyset batch",
-            maxAttempts    = foreachRecordBatchAttempts,
-            initialBackoff = foreachRecordBatchBackoff
-          ) {
-            Await.result(
-              c.find(filter).sort(Sorts.ascending("_id")).limit(findAllBatchSize).toFuture(), 60.seconds)
-          }
-          onBatch(batch)
-          afterId = batch.lastOption.map(_._id)
-          more    = batch.sizeIs == findAllBatchSize
-        }
-        true
-      }.recover {
-        case exception: Throwable =>
+          Await.result(
+            c.find(filter).sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
+        },
+        onIncomplete   = exception =>
           logger.warn(s"MovieRepository keyset scan failed after retries: " +
             s"${exception.getClass.getSimpleName}: ${exception.getMessage} — scan incomplete")
-          false
-      }.getOrElse(false)
+      )(onBatch)
     case None => false
   }
 
