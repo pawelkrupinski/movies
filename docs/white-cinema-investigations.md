@@ -76,11 +76,17 @@ Kino MOK Nowa Ruda, Kino Zamek (Szczecin — was `needs-human`; not 3-white now)
   *correct* output — own site broken AND Filmweb has nothing.
 - Why no fix: there is literally no data to parse and no test-backable change to
   ship — the repo gate forbids a speculative parser against a nonexistent source.
-- Action: **needs-human** — the cinema owner's redesign is unfinished/broken.
-  Either wait for them to wire a real backend to `.movie-list` and re-probe
-  `/seanse` for `fetch(`/`admin-ajax`/`wp-json` wiring, or (if they never do)
-  accept it stays white until Filmweb picks the venue up. Nothing actionable in
-  our code today.
+- **Hiatus note (from Paweł, 2026-07-03): the cinema is on a break 3–16 Jul
+  2026.** So during that window the empty schedule is *expected* — even a working
+  scraper would show nothing. The redesign breakage above is a *separate*,
+  still-real problem that only becomes observable once films should return.
+- Action: **needs-human — re-check AFTER 16 Jul 2026.** If films are back on
+  `kinomalta.pl/seanse` but the bar is still white, the redesign breakage is
+  confirmed live: look for whatever backend now fills `.movie-list` (re-probe for
+  `fetch(`/`admin-ajax`/`wp-json` wiring) and build a parser against it. If the
+  site still serves only the hardcoded demo JS with no real feed, it stays
+  needs-human until the owner finishes it (Filmweb won't help — the venue isn't
+  listed there). Nothing actionable in our code today.
 
 ### ADA Kino Studyjne (Warszawa) — `intentionally-dormant`
 - Client: `BiletynaClient` @ `https://www.biletyna.pl/Warszawa/ADA-Kino-Studyjne`.
