@@ -44,6 +44,11 @@ trait ScreeningsRepository {
    *  hydrate / `findAll` read-stitch. */
   def findAll(): Map[String, Map[String, Seq[Showtime]]]
 
+  /** Cheap "is this collection already populated?" — an estimated document count, so
+   *  the one-time boot backfill can skip its full-corpus scan once the migration is
+   *  done (it's additive, so re-running it every boot is pure waste). */
+  def estimatedCount(): Long
+
   /** Set a film's screenings to EXACTLY `slots` — upsert those present, delete any
    *  no longer present. The whole-record write path (`MovieRepository.upsert`). */
   def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit
@@ -85,6 +90,8 @@ class InMemoryScreeningsRepository extends ScreeningsRepository {
 
   def findAll(): Map[String, Map[String, Seq[Showtime]]] =
     lock.synchronized(byFilm.toMap)
+
+  def estimatedCount(): Long = lock.synchronized(byFilm.valuesIterator.map(_.size.toLong).sum)
 
   def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit = {
     val changed = lock.synchronized {
@@ -205,6 +212,9 @@ class MongoScreeningsRepository(sharedDb: Option[MongoDatabase]) extends Screeni
     Try(Await.result(c.find().toFuture(), 60.seconds)).getOrElse(Seq.empty)
       .groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap
   }
+
+  def estimatedCount(): Long = coll.fold(0L)(c =>
+    Try(Await.result(c.estimatedDocumentCount().toFuture(), 10.seconds)).getOrElse(0L))
 
   def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit = coll.foreach { c =>
     Try {

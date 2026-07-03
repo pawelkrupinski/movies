@@ -20,6 +20,11 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
       "Kinoteka␟wonka"     -> Seq(st(19)))
     repo.findForFilm("absent|2026") shouldBe empty
     repo.findAll().keySet shouldBe Set("wonka|2026")
+    repo.estimatedCount() should be > 0L // populated → the boot backfill's gate skips
+  }
+
+  "estimatedCount" should "be 0 on an empty repo (so the boot backfill runs the migration once)" in {
+    new InMemoryScreeningsRepository().estimatedCount() shouldBe 0L
   }
 
   "replaceFilm" should "set a film's screenings to exactly the given slots (deleting the rest)" in {

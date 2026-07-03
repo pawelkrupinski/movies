@@ -940,9 +940,14 @@ class WorkerWiring extends play.api.Logging {
     // projector's full reconcile (KINOWO_READMODEL_RECONCILE_BOOT_DELAY_SECONDS).
     // One-shot showtimes-split migration: copy any still-embedded showtimes into
     // `screenings` BEFORE the cache hydrates, so the first stitched read (hydrate,
-    // projection) is complete. Additive + idempotent, so it's safe every boot.
-    val backfilled = movieRepository.backfillScreenings()
-    if (backfilled > 0) logger.info(s"Showtimes-split backfill: $backfilled slot(s) migrated at boot.")
+    // projection) is complete. Run ONLY when `screenings` is still empty — once it's
+    // populated the migration is done, and re-running the full-corpus scan every boot
+    // is pure waste that (on a CPU-credit-throttled box) feeds a restart→heavy-boot
+    // spiral. Stragglers drain on their next scrape's split write.
+    if (screeningsRepository.estimatedCount() == 0) {
+      val backfilled = movieRepository.backfillScreenings()
+      if (backfilled > 0) logger.info(s"Showtimes-split backfill: $backfilled slot(s) migrated at boot.")
+    } else logger.info("Showtimes-split backfill: screenings already populated — skipping the boot scan.")
     movieCache.start()
     // Start the read-model projector after the cache so its state seed (and the
     // first deferred reconcile) read a hydrated `movies` collection; it watches the
