@@ -181,12 +181,6 @@ trait MovieRepository {
     onDelete: String => Unit
   ): Option[AutoCloseable] = None
 
-  /** One-shot migration: copy any still-embedded `movies` showtimes into the
-   *  `screenings` collection, so the read-stitch (which treats `screenings` as
-   *  authoritative) has every film's showtimes. Idempotent + additive; returns how
-   *  many slots were backfilled. Default no-op (no screenings repo / in-memory store). */
-  def backfillScreenings(): Int = 0
-
   /** Release any underlying resources. No-op when nothing to release. */
   def close(): Unit
 }
@@ -258,10 +252,10 @@ class MongoMovieRepository(
   // 1-2MB) film doc the change stream re-decodes on every write. Wiring `screenings`
   // turns the split ON: `movies` is written WITHOUT showtimes, reads stitch them
   // back from `screenings`, and a `screenings` change is fanned out as a stitched
-  // record. The one-shot [[backfillScreenings]] (run at worker boot, before the
-  // cache hydrates) copies any still-embedded showtimes across, so the stitch is
-  // authoritative — a slot with no `screenings` doc has no showtimes. Maintenance
-  // scripts/tests that pass `None` keep the plain embedded shape (they don't serve).
+  // record. The stitch is authoritative — a slot with no `screenings` doc has no
+  // showtimes (the one-time embedded→screenings migration is complete, so `movies`
+  // carries no showtimes). Maintenance scripts/tests that pass `None` keep the plain
+  // embedded shape (they don't serve).
   screenings: Option[ScreeningsRepository] = None
 ) extends MovieRepository with Logging {
 
@@ -363,29 +357,6 @@ class MongoMovieRepository(
       false
     } else scanByKeyset(batch =>
       onBatch(batch.map(dto => stitchRow(StoredMovieDto.toDomain(dto), dto._id, allScr.getOrElse(dto._id, Map.empty)))))
-  }
-
-  /** Copy still-embedded `movies` showtimes into `screenings` (keyset-paged so it
-   *  never holds the corpus on the heap). ADDITIVE + idempotent: it only upserts
-   *  slots that STILL carry embedded showtimes — a film already written under the
-   *  split has none embedded, so it's skipped and its authoritative `screenings`
-   *  docs are never clobbered (never `replaceFilm`, which would delete them). Run
-   *  once at boot before the cache hydrates so the first served read is complete. */
-  override def backfillScreenings(): Int = (coll, screenings) match {
-    case (Some(_), Some(scr)) =>
-      var slots = 0
-      scanByKeyset { batch =>
-        batch.foreach { dto =>
-          Try {
-            ScreeningsRepository.showtimesOf(StoredMovieDto.toDomain(dto).record.data).foreach {
-              case (k, st) => scr.upsertSlot(dto._id, k, st); slots += 1
-            }
-          }.recover { case e => logger.warn(s"backfillScreenings(${dto._id}) failed: ${e.getMessage}") }
-        }
-      }
-      logger.info(s"backfillScreenings: upserted $slots slot(s) from embedded showtimes.")
-      slots
-    case _ => 0
   }
 
   /** Keyset-paged scan of the whole `movies` collection by `_id`, shared by [[findAll]]

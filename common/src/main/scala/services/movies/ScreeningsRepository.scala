@@ -44,11 +44,6 @@ trait ScreeningsRepository {
    *  hydrate / `findAll` read-stitch. */
   def findAll(): Map[String, Map[String, Seq[Showtime]]]
 
-  /** Cheap "is this collection already populated?" — an estimated document count, so
-   *  the one-time boot backfill can skip its full-corpus scan once the migration is
-   *  done (it's additive, so re-running it every boot is pure waste). */
-  def estimatedCount(): Long
-
   /** Set a film's screenings to EXACTLY `slots` — upsert those present, delete any
    *  no longer present. The whole-record write path (`MovieRepository.upsert`). */
   def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit
@@ -90,8 +85,6 @@ class InMemoryScreeningsRepository extends ScreeningsRepository {
 
   def findAll(): Map[String, Map[String, Seq[Showtime]]] =
     lock.synchronized(byFilm.toMap)
-
-  def estimatedCount(): Long = lock.synchronized(byFilm.valuesIterator.map(_.size.toLong).sum)
 
   def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit = {
     val changed = lock.synchronized {
@@ -162,9 +155,8 @@ object ScreeningsRepository {
 
   /** Re-inject each slot's showtimes from `screenings` (keyed by slot wire-key) when
    *  READING. `screenings` is AUTHORITATIVE: a slot with a screenings doc takes its
-   *  showtimes; a slot without one has none (the embedded copy — if any survives from
-   *  before the split — is dropped, not used). Safe because `backfillScreenings` copies
-   *  every embedded showtime across before serving. Pure + unit-tested. */
+   *  showtimes; a slot without one has none. (`movies` no longer stores showtimes —
+   *  the one-time embedded→screenings migration is complete.) Pure + unit-tested. */
   def stitch(data: Map[Source, SourceData], screenings: Map[String, Seq[Showtime]]): Map[Source, SourceData] =
     data.map { case (s, sd) =>
       s -> screenings.get(s.displayName).fold(if (sd.showtimes.isEmpty) sd else sd.copy(showtimes = Seq.empty))(st => sd.copy(showtimes = st))
@@ -212,9 +204,6 @@ class MongoScreeningsRepository(sharedDb: Option[MongoDatabase]) extends Screeni
     Try(Await.result(c.find().toFuture(), 60.seconds)).getOrElse(Seq.empty)
       .groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap
   }
-
-  def estimatedCount(): Long = coll.fold(0L)(c =>
-    Try(Await.result(c.estimatedDocumentCount().toFuture(), 10.seconds)).getOrElse(0L))
 
   def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit = coll.foreach { c =>
     Try {

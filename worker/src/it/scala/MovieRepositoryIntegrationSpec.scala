@@ -310,36 +310,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     found.get.record.cinemaData.get(HeliosOstrowWlkp).flatMap(_.synopsis) shouldBe Some("from Ostrów")
   }
 
-  // The one-shot boot migration: a film whose showtimes are still EMBEDDED in movies
-  // (written before the split, or by a maintenance script with no screenings repo)
-  // gets copied into `screenings`, and a split repo then stitches them back on read.
-  // Additive — a film already split-written (stripped) is untouched.
-  it should "backfill still-embedded showtimes into screenings" in {
-    import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
-    val client = MongoClient(Env.get("MONGODB_URI").get)
-    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
-    val scr    = new MongoScreeningsRepository(Some(db))
-    val plain  = new MongoMovieRepository(Some(db))                          // no screenings → writes EMBEDDED
-    val split  = new MongoMovieRepository(Some(db), screenings = Some(scr))  // strips + stitches
-    try {
-      val title = "__integration-test-screenings-backfill__"
-      val year  = Some(1904)
-      val id    = StoredMovieRecord.idFor(title, year)
-      val key   = Multikino.displayName
-      val slot  = SourceData(title = Some("BF"),
-        showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/bf-1"))))
-      plain.upsert(title, year, MovieRecord(imdbId = Some("tt0000013"), data = Map[Source, SourceData](Multikino -> slot)))
-      scr.findForFilm(id) shouldBe empty // not yet in screenings (embedded only)
-
-      split.backfillScreenings() should be >= 1
-      scr.findForFilm(id).get(key).map(_.size) shouldBe Some(1)                                    // copied across
-      split.findById(id).flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes.size) shouldBe Some(1) // stitched back
-
-      split.delete(title, year) // delete cascades to screenings
-      scr.findForFilm(id) shouldBe empty
-    } finally client.close()
-  }
-
   // The split is on whenever a screenings repo is wired: `movies` is written WITHOUT
   // showtimes, reads stitch them from `screenings`, a showtimes-only change leaves
   // `movies` untouched, and a `screenings` change fans out a stitched upsert (so the
