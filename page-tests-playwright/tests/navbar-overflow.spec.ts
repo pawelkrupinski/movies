@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { waitForCards } from './helpers';
+import { gotoAndWaitForCards } from './helpers';
 
 // Layout-stress spec. The navbar holds (in some combination):
 //   logo · tabs · search · date · Filtry · auth-pill
@@ -166,8 +166,7 @@ async function navbarRowCount(page: Page, tolerance = 6): Promise<number> {
 // regressions that push "Zaloguj się" or the date row onto a third line.
 test.describe('navbar row count at project viewport', () => {
   test('≤ 2 rows in default state', async ({ page }) => {
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
 
     const rowCount = await navbarRowCount(page);
     const viewport = page.viewportSize()!;
@@ -180,8 +179,7 @@ test.describe('navbar row count at project viewport', () => {
 
 test.describe('navbar overflow under maxed filters + long logged-in name', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   for (const v of VIEWPORTS) {
