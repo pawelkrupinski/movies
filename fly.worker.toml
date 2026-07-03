@@ -61,15 +61,16 @@ primary_region = 'arn'
   KINOWO_WORKER_POOL_SIZE = '4'
   # Cinema-scrape freshness window (uniform across ALL venues — Multikino's
   # separate 60min path was removed once it moved onto the flat-fee residential
-  # proxy). It's the dominant lever on the worker's Mongo write rate. RAISED back
-  # to 30min after the 2026-06-19 incident: c323cb34 had dropped it to the 15min
-  # code default, ~2-4x-ing the scrape→Mongo write rate; stacked on a rating-
-  # refresh re-key surge that exhausted the shared-cpu-1x credit, this pinned
-  # CPU-steal at ~80% with the 4-worker pool stuck on ~12s scrapes (each cinema
-  # is 10-20 page fetches, so duration is inherent, not network — the lever is
-  # volume, not speed). 30min was the prior known-good value (v136). Lower it
-  # again only once the box has CPU-credit headroom.
-  KINOWO_SCRAPE_FRESHNESS_MINUTES = '30'
+  # proxy). It's the dominant lever on the worker's CPU + Mongo write rate (each
+  # cinema is 10-20 page fetches, so cost is inherent volume, not speed). RAISED to
+  # 60min on 2026-07-03: at 30min the steady daytime scrape+enrich load held CPU
+  # above the shared-cpu-4x baseline entitlement, so credit sat pinned at the floor
+  # through active hours and only rebuilt in overnight lulls (a fresh ~17k post-
+  # deploy grant drained back to the floor in ~30 min). 60min halves the steady
+  # scrape rate so credit recovers during the day, paired with the smaller throttled
+  # enqueue cap in ScrapeCadence. Lower it again only if the box gains dedicated CPU
+  # (performance-*, no credit bucket).
+  KINOWO_SCRAPE_FRESHNESS_MINUTES = '60'
   # No KINOWO_SCRAPE_CITIES: the worker now scrapes EVERY modelled city by
   # default (ScrapeCities.allCities). The var still exists as a load-shedding
   # escape hatch — `fly secrets set KINOWO_SCRAPE_CITIES=poznan,wroclaw` NARROWS
