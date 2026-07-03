@@ -38,9 +38,19 @@ enum A11y {
         static let closeButton = "filmdetail.poster.close"
     }
 
+    /// Slim expand-handle row + horizontally-scrolling cinema pills, sitting
+    /// directly under the top bar.
+    enum CinemaBar {
+        /// The collapsed handle row (label + chevron); tap toggles the pills.
+        static let handle = "cinemabar.handle"
+        /// The leading "Wszystkie" pill (nil selection).
+        static let allPill = "cinemabar.pill.all"
+        /// Prefix; a per-cinema pill is `"cinemabar.pill.\(cinema)"`.
+        static let pillPrefix = "cinemabar.pill"
+    }
+
     enum FiltersSheet {
         static let root            = "filters.sheet"
-        static let cinemaSection   = "filters.cinema"
         static let dimensionSection = "filters.dimension"
         static let versionSection  = "filters.version"
         static let imaxToggle      = "filters.imax"

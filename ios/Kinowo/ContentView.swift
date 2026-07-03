@@ -105,6 +105,19 @@ struct ContentView: View {
                 )
                 .background(Color(.systemBackground).ignoresSafeArea(edges: .top))
 
+                // Slim expand-handle + horizontally-scrolling cinema pills,
+                // directly under the top bar. Hidden until the repertoire (hence
+                // the cinema universe) has loaded, so it never shows an empty
+                // handle over the loading / error state.
+                if !allCinemas.isEmpty {
+                    CinemaPillBar(
+                        cinemas: allCinemas,
+                        selectedCinema: prefs.selectedCinema,
+                        onSelect: { prefs.setSelectedCinema($0) }
+                    )
+                    .background(Color(.systemBackground))
+                }
+
                 content
             }
                 // Tap-to-dismiss: a transparent backdrop sits behind the
@@ -153,7 +166,6 @@ struct ContentView: View {
                         excludedDirectors: $excludedDirectors,
                         excludedCast: $excludedCast,
                         prefs: prefs,
-                        allCinemas: allCinemas,
                         allCountries: allCountries,
                         allGenres: allGenres,
                         allDirectors: allDirectors,
@@ -342,9 +354,11 @@ struct ContentView: View {
         if !filters.includedCast.isEmpty {
             excludedCast = filters.excluded(filters.includedCast, universe: Set(allCast.map(\.name)))
         }
-        // Cinemas are a single global set across cities; only re-derive the ones
-        // in THIS city, preserving any disabled in other cities (mirrors
-        // `UserPreferences.setAllCinemas(in:selected:)`).
+        // `?cinema=` deep links still write the web-compat `disabledCinemas`
+        // mirror (single global set across cities), preserving any disabled in
+        // other cities. iOS filtering itself is driven by the `selectedCinema`
+        // pill, not this set — so the write only affects account state that
+        // syncs back to the web (see `UserPreferences.disabledCinemas`).
         let cityCinemas = Set(allCinemas)
         if let disabledHere = filters.disabledCinemas(allCinemas: cityCinemas) {
             let others = prefs.disabledCinemas.subtracting(cityCinemas)
@@ -441,9 +455,9 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // Sorted, de-duplicated cinema names that appear at least once
-    // somewhere in `store.films`. Drives the Kina list in FiltersSheet
-    // and the "Wszystkie kina" master toggle.
+    // Sorted, de-duplicated cinema names that appear at least once somewhere in
+    // `store.films`, ordered by their short pill label. Drives the cinema pill
+    // bar and scopes the `?cinema=` deep-link's web-compat write.
     private var allCinemas: [String] {
         var seen = Set<String>()
         var out: [String] = []
@@ -500,7 +514,7 @@ struct ContentView: View {
             format: formatFilter,
             query: search,
             hidden: prefs.hiddenFilms,
-            disabledCinemas: prefs.disabledCinemas,
+            selectedCinema: prefs.selectedCinema,
             excludedCountries: excludedCountries,
             excludedGenres: excludedGenres,
             excludedDirectors: excludedDirectors,

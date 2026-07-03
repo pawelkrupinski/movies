@@ -98,7 +98,7 @@ final class StateSyncServiceTests: XCTestCase {
 
     func testLoginPushesMergedStateToServer() async throws {
         prefs.hide("Already Hidden")
-        prefs.toggleCinema("Local Cinema", disabled: true)
+        prefs.setDisabledCinemas(["Local Cinema"])
         client.remoteState = UserSyncState(hiddenFilms: ["From Server"], disabledCinemas: ["Remote Cinema"])
         let pushed = expectation(description: "state pushed to server")
         client.onPut = { _ in pushed.fulfill() }

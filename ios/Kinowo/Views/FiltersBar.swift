@@ -97,7 +97,9 @@ struct TopBar: View {
     /// produce a comically scaled bar. Read once at view init via
     /// `UIScreen.main` — the value is constant per launch on iPhone,
     /// which is where this app runs.
-    private static let viewportScale: CGFloat = {
+    // Shared with `CinemaPillBar` so the cinema pills scale identically to the
+    // day pills above them.
+    static let viewportScale: CGFloat = {
         let width = UIScreen.main.bounds.width
         return max(0.85, min(1.2, width / 393))
     }()
@@ -375,10 +377,10 @@ private struct GlassyPillBackground: ViewModifier {
     }
 }
 
-// Filtry sheet — mirrors the web's Filtry dropdown: cinema multi-select,
-// Wymiar / Wersja radios, Tylko IMAX toggle, and Od godziny lower-bound.
-// Cinema state is persisted (UserPreferences.disabledCinemas, same key
-// as the web's localStorage); format/from-hour are ephemeral session
+// Filtry sheet — mirrors the web's Filtry dropdown: Wymiar / Wersja radios,
+// Tylko IMAX toggle, and Od godziny lower-bound (plus sort, hidden films,
+// name filters, city, account). Cinema selection lives on the top-bar cinema
+// pill row (`CinemaPillBar`), not here; format/from-hour are ephemeral session
 // state owned by ContentView.
 struct FiltersSheet: View {
     @Binding var sortOption: SortOption
@@ -388,7 +390,6 @@ struct FiltersSheet: View {
     @Binding var excludedDirectors: Set<String>
     @Binding var excludedCast: Set<String>
     @ObservedObject var prefs: UserPreferences
-    let allCinemas: [String]
     let allCountries: [(name: String, count: Int)]
     let allGenres: [(name: String, count: Int)]
     let allDirectors: [(name: String, count: Int)]
@@ -435,23 +436,6 @@ struct FiltersSheet: View {
                                 Text("\(prefs.hiddenFilms.count)")
                                     .foregroundStyle(.secondary)
                             }
-                        }
-                    }
-                }
-
-                if !allCinemas.isEmpty {
-                    Section("Kina") {
-                        Toggle("Wszystkie kina", isOn: Binding(
-                            get: { prefs.allCinemasSelected(in: allCinemas) },
-                            set: { on in
-                                prefs.setAllCinemas(in: allCinemas, selected: on)
-                            }
-                        ))
-                        ForEach(allCinemas, id: \.self) { cinema in
-                            Toggle(CinemaSection.pillName(for: cinema), isOn: Binding(
-                                get: { !prefs.disabledCinemas.contains(cinema) },
-                                set: { on in prefs.toggleCinema(cinema, disabled: !on) }
-                            ))
                         }
                     }
                 }
@@ -562,6 +546,7 @@ struct FiltersSheet: View {
                                 await authService.deleteAccount()
                                 prefs.unhideAll()
                                 prefs.setDisabledCinemas([])
+                                prefs.setSelectedCinema(nil)
                             }
                         }
                     }

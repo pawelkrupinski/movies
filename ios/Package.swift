@@ -67,6 +67,7 @@ let package = Package(
                 "Views/CachedAsyncImage.swift",
                 "Views/CardSpacingStyle.swift",
                 "Views/CinemaHeaderStyle.swift",
+                "Views/CinemaPillBar.swift",
                 "Views/CityGate.swift",
                 "Views/FilmCardView.swift",
                 "Views/FilmDetailStyle.swift",

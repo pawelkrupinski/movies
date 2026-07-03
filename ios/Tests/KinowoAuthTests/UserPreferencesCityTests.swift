@@ -44,6 +44,56 @@ final class UserPreferencesCityTests: XCTestCase {
         XCTAssertEqual(reloaded.selectedCity, "warszawa")
     }
 
+    // MARK: - Selected cinema pill
+
+    func testSelectedCinemaStartsNil() {
+        let prefs = UserPreferences(store: defaults)
+        XCTAssertNil(prefs.selectedCinema)
+    }
+
+    func testSetSelectedCinemaPersistsAndSurvivesAReload() {
+        let prefs = UserPreferences(store: defaults)
+        prefs.setSelectedCinema("Kino Muza")
+        XCTAssertEqual(prefs.selectedCinema, "Kino Muza")
+
+        let reloaded = UserPreferences(store: defaults)
+        XCTAssertEqual(reloaded.selectedCinema, "Kino Muza")
+    }
+
+    func testSetSelectedCinemaNilClearsThePersistedValue() {
+        let prefs = UserPreferences(store: defaults)
+        prefs.setSelectedCinema("Kino Muza")
+        prefs.setSelectedCinema(nil)
+        XCTAssertNil(prefs.selectedCinema)
+
+        let reloaded = UserPreferences(store: defaults)
+        XCTAssertNil(reloaded.selectedCinema)
+    }
+
+    func testSwitchingCityClearsTheSelectedCinema() {
+        // A cinema pill belongs to one city's cinema list; leaving that city
+        // must drop it so the new city can't open on a stale, guarded-away
+        // (empty) selection.
+        let prefs = UserPreferences(store: defaults)
+        prefs.setCity("poznan")
+        prefs.setSelectedCinema("Kino Muza")
+        prefs.setCity("warszawa")
+        XCTAssertNil(prefs.selectedCinema)
+
+        let reloaded = UserPreferences(store: defaults)
+        XCTAssertNil(reloaded.selectedCinema)
+    }
+
+    func testSettingTheSameCityKeepsTheSelectedCinema() {
+        // `setCity` early-returns when the slug is unchanged, so a redundant
+        // set must not wipe the current pick.
+        let prefs = UserPreferences(store: defaults)
+        prefs.setCity("poznan")
+        prefs.setSelectedCinema("Kino Muza")
+        prefs.setCity("poznan")
+        XCTAssertEqual(prefs.selectedCinema, "Kino Muza")
+    }
+
     func testCitySwitchPromptKeyStartsNil() {
         let prefs = UserPreferences(store: defaults)
         XCTAssertNil(prefs.citySwitchPromptKey)

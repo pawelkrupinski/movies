@@ -363,12 +363,16 @@ extension Sequence where Element == Film {
     }
 
     /// Apply the cross-screen filter stack — date / format / search /
-    /// hidden / per-cinema — to a list of films. Both `/` (Filmy) and
-    /// `/kina` go through this; they only differ in which set of
-    /// cinemas is passed as `disabledCinemas` (Filtry's persistent set
-    /// on Filmy, every-cinema-except-pinned on Kina).
+    /// hidden / single-cinema — to a list of films.
     ///
-    /// Semantics mirror the web's `applyFilters()`: drop a showtime
+    /// `selectedCinema` is the single-select cinema pill (nil = Wszystkie,
+    /// no cinema constraint). When set, every cinema-group whose name isn't
+    /// the selected one is dropped, so the listing shows only that cinema's
+    /// screenings. A `selectedCinema` that matches none of the films' cinemas
+    /// — e.g. a value persisted while browsing another city — is treated as
+    /// Wszystkie, so a stale cross-city selection can't empty the whole screen.
+    ///
+    /// Semantics otherwise mirror the web's `applyFilters()`: drop a showtime
     /// whose format/time-from doesn't pass, drop a cinema-group whose
     /// every showtime fell out, drop a day whose every cinema-group
     /// fell out, drop a film whose every day fell out. A film stays
@@ -378,15 +382,24 @@ extension Sequence where Element == Film {
         format: FormatFilter,
         query: String,
         hidden: Set<String>,
-        disabledCinemas: Set<String>,
+        selectedCinema: String? = nil,
         excludedCountries: Set<String> = [],
         excludedGenres: Set<String> = [],
         excludedDirectors: Set<String> = [],
         excludedCast: Set<String> = [],
         now: Date = Date()
     ) -> [Film] {
+        let films = Array(self)
+        // Guard cross-city (feature point 5): a selection made in another city
+        // won't name any cinema present here; fall back to "all" rather than
+        // filtering every film away into an empty screen.
+        let effectiveCinema: String? = selectedCinema.flatMap { name in
+            films.contains { film in
+                film.showings.contains { $0.cinemas.contains { $0.cinema == name } }
+            } ? name : nil
+        }
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return self.compactMap { film in
+        return films.compactMap { film in
             if hidden.contains(film.title) { return nil }
             if !trimmedQuery.isEmpty && !film.title.lowercased().contains(trimmedQuery) { return nil }
             if !excludedCountries.isEmpty && Set(film.countries).isSubset(of: excludedCountries) { return nil }
@@ -396,7 +409,7 @@ extension Sequence where Element == Film {
             let days: [DayShowings] = film.showings.compactMap { day in
                 if !date.matches(date: day.date, now: now) { return nil }
                 let cinemas: [CinemaShowings] = day.cinemas.compactMap { cg in
-                    if disabledCinemas.contains(cg.cinema) { return nil }
+                    if let sel = effectiveCinema, cg.cinema != sel { return nil }
                     let times = format.isEmpty
                         ? cg.showtimes
                         : cg.showtimes.filter { format.matches(showtime: $0) }

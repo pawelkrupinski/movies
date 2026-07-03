@@ -63,7 +63,7 @@ final class ParsePruneFilterPipelineTests: XCTestCase {
         let pruned = films.prunedPastShowings(now: now)
         let filtered = pruned.filteredFor(
             date: .today, format: .empty, query: "",
-            hidden: [], disabledCinemas: [],
+            hidden: [],
             now: now
         )
         XCTAssertFalse(filtered.isEmpty, "expected films on \(today) but got none")
@@ -86,7 +86,7 @@ final class ParsePruneFilterPipelineTests: XCTestCase {
         // "Mandalorets'" UA card, which isn't an exact substring match.
         let lowercased = pruned.filteredFor(
             date: .anytime, format: .empty, query: "mandalorian ",
-            hidden: [], disabledCinemas: []
+            hidden: []
         )
         XCTAssertFalse(lowercased.isEmpty)
         for film in lowercased {
@@ -98,7 +98,7 @@ final class ParsePruneFilterPipelineTests: XCTestCase {
 
         let uppercased = pruned.filteredFor(
             date: .anytime, format: .empty, query: "MANDALORIAN ",
-            hidden: [], disabledCinemas: []
+            hidden: []
         )
         XCTAssertEqual(uppercased.map(\.title), lowercased.map(\.title),
                        "query should be case-insensitive")
@@ -115,33 +115,33 @@ final class ParsePruneFilterPipelineTests: XCTestCase {
 
         let visible = pruned.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: ["Michael"], disabledCinemas: []
+            hidden: ["Michael"]
         )
         XCTAssertFalse(visible.contains { $0.title == "Michael" },
                        "'Michael' survived the hidden filter")
     }
 
-    func testDisabledCinemaIsExcludedFromFilms() throws {
+    func testSelectedCinemaKeepsOnlyThatCinema() throws {
         let html = try Fixtures.load("home")
         let films = HTMLParser.parse(html: html)
         let now = try nowAtEarliestDay(films)
         let pruned = films.prunedPastShowings(now: now)
 
-        let disabled = "Kino Muza"
+        let selected = "Kino Muza"
         let filtered = pruned.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: [disabled]
+            hidden: [], selectedCinema: selected
         )
         for film in filtered {
             for day in film.showings {
                 for cinema in day.cinemas {
-                    XCTAssertNotEqual(cinema.cinema, disabled,
-                                      "disabled cinema \(disabled) survived on film \(film.title)")
+                    XCTAssertEqual(cinema.cinema, selected,
+                                   "non-selected cinema \(cinema.cinema) survived on film \(film.title)")
                 }
             }
         }
         XCTAssertLessThanOrEqual(filtered.count, pruned.count,
-                                 "disabling a cinema should never grow the result")
+                                 "narrowing to one cinema should never grow the result")
     }
 
     func testPrunedPastShowingsIsIdempotent() throws {

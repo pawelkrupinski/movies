@@ -53,7 +53,7 @@ final class FilteredForTests: XCTestCase {
     func testDateTodayFiltersToTodayOnly() {
         let result = fixture().filteredFor(
             date: .today, format: .empty, query: "",
-            hidden: [], disabledCinemas: []
+            hidden: []
         )
         XCTAssertEqual(result.map(\.title).sorted(), ["Mandalorian and Grogu", "Title2"])
         for f in result {
@@ -64,13 +64,13 @@ final class FilteredForTests: XCTestCase {
     func testQueryMatchesCaseInsensitiveSubstring() {
         let result = fixture().filteredFor(
             date: .anytime, format: .empty, query: "Mand",
-            hidden: [], disabledCinemas: []
+            hidden: []
         )
         XCTAssertEqual(result.map(\.title), ["Mandalorian and Grogu"])
 
         let lowered = fixture().filteredFor(
             date: .anytime, format: .empty, query: "mand",
-            hidden: [], disabledCinemas: []
+            hidden: []
         )
         XCTAssertEqual(lowered.map(\.title), ["Mandalorian and Grogu"])
     }
@@ -78,22 +78,52 @@ final class FilteredForTests: XCTestCase {
     func testHiddenDropsFilmEntirely() {
         let result = fixture().filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: ["Title2"], disabledCinemas: []
+            hidden: ["Title2"]
         )
         XCTAssertFalse(result.contains { $0.title == "Title2" })
         XCTAssertEqual(result.count, 2)
     }
 
-    func testDisabledCinemasDropsCinemaGroupAndCollapsesEmptyDays() {
+    // MARK: - selectedCinema axis (single-select cinema pill)
+
+    func testNilSelectedCinemaRetainsEveryCinemasShowings() {
         let result = fixture().filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: ["Apollo"]
+            hidden: [], selectedCinema: nil
         )
-        // Title2 only ever played at Apollo today → film drops entirely.
-        XCTAssertFalse(result.contains { $0.title == "Title2" })
+        // No cinema constraint: all three films survive with every cinema-group intact.
+        XCTAssertEqual(result.map(\.title).sorted(), ["Mandalorian and Grogu", "Title2", "Title3"])
         let mando = result.first { $0.title == "Mandalorian and Grogu" }!
         let todayDay = mando.showings.first { $0.date == today }!
-        XCTAssertEqual(todayDay.cinemas.map(\.cinema), ["Helonki"])
+        XCTAssertEqual(todayDay.cinemas.map(\.cinema).sorted(), ["Apollo", "Helonki"])
+    }
+
+    func testSelectedCinemaKeepsOnlyThatCinemaAndDropsFilmsWithNone() {
+        let result = fixture().filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], selectedCinema: "Apollo"
+        )
+        // Only Apollo's screenings remain. Title2 played only at Apollo → survives;
+        // Title3 played only at Helonki → drops entirely.
+        XCTAssertEqual(result.map(\.title).sorted(), ["Mandalorian and Grogu", "Title2"])
+        for film in result {
+            for day in film.showings {
+                XCTAssertEqual(day.cinemas.map(\.cinema), ["Apollo"])
+            }
+        }
+    }
+
+    func testSelectedCinemaAbsentFromCurrentCinemasTreatedAsAll() {
+        // A cinema persisted while browsing another city names nothing here —
+        // the guard must fall back to "all", never blank the whole screen.
+        let result = fixture().filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], selectedCinema: "Cinema In Another City"
+        )
+        XCTAssertEqual(result.map(\.title).sorted(), ["Mandalorian and Grogu", "Title2", "Title3"])
+        let mando = result.first { $0.title == "Mandalorian and Grogu" }!
+        let todayDay = mando.showings.first { $0.date == today }!
+        XCTAssertEqual(todayDay.cinemas.map(\.cinema).sorted(), ["Apollo", "Helonki"])
     }
 
     func testFormatNarrowsShowtimesButKeepsFilmIfAnySlotRemains() {
@@ -101,7 +131,7 @@ final class FilteredForTests: XCTestCase {
         f.dimension = "3D"
         let result = fixture().filteredFor(
             date: .anytime, format: f, query: "",
-            hidden: [], disabledCinemas: []
+            hidden: []
         )
         XCTAssertEqual(result.map(\.title), ["Mandalorian and Grogu"])
         let mando = result[0]
@@ -114,7 +144,7 @@ final class FilteredForTests: XCTestCase {
     func testEmptyQueryTrimsWhitespace() {
         let result = fixture().filteredFor(
             date: .anytime, format: .empty, query: "   ",
-            hidden: [], disabledCinemas: []
+            hidden: []
         )
         XCTAssertEqual(result.count, 3)
     }
@@ -122,7 +152,7 @@ final class FilteredForTests: XCTestCase {
     func testCombinedFiltersIntersect() {
         let result = fixture().filteredFor(
             date: .today, format: .empty, query: "Mand",
-            hidden: ["Title2"], disabledCinemas: ["Apollo"]
+            hidden: ["Title2"], selectedCinema: "Helonki"
         )
         XCTAssertEqual(result.map(\.title), ["Mandalorian and Grogu"])
         let todayDay = result[0].showings[0]
@@ -143,7 +173,7 @@ final class FilteredForTests: XCTestCase {
 
         let filtered = films.filteredFor(
             date: .today, format: .empty, query: "",
-            hidden: [], disabledCinemas: [],
+            hidden: [],
             now: now
         )
         XCTAssertEqual(filtered.map(\.title), ["A"])
@@ -160,7 +190,7 @@ final class FilteredForTests: XCTestCase {
         ]
         let filtered = films.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: [], excludedCountries: ["Polska"]
+            hidden: [], excludedCountries: ["Polska"]
         )
         XCTAssertEqual(filtered.map(\.title).sorted(), ["Co-prod", "US Film"])
     }
@@ -171,13 +201,13 @@ final class FilteredForTests: XCTestCase {
         ]
         let still = films.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: [], excludedCountries: ["Polska"]
+            hidden: [], excludedCountries: ["Polska"]
         )
         XCTAssertEqual(still.count, 1, "co-prod stays when only one country is excluded")
 
         let gone = films.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: [], excludedCountries: ["Polska", "Francja"]
+            hidden: [], excludedCountries: ["Polska", "Francja"]
         )
         XCTAssertEqual(gone.count, 0, "co-prod drops when all its countries are excluded")
     }
@@ -189,7 +219,7 @@ final class FilteredForTests: XCTestCase {
         ]
         let filtered = films.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: [], excludedCountries: []
+            hidden: [], excludedCountries: []
         )
         XCTAssertEqual(filtered.count, 2)
     }
@@ -204,7 +234,7 @@ final class FilteredForTests: XCTestCase {
         ]
         let filtered = films.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: [], excludedGenres: ["Komedia"]
+            hidden: [], excludedGenres: ["Komedia"]
         )
         XCTAssertEqual(filtered.map(\.title).sorted(), ["Drama", "Mix"])
     }
@@ -215,11 +245,11 @@ final class FilteredForTests: XCTestCase {
         ]
         XCTAssertEqual(
             films.filteredFor(date: .anytime, format: .empty, query: "",
-                              hidden: [], disabledCinemas: [], excludedGenres: ["Komedia"]).count,
+                              hidden: [], excludedGenres: ["Komedia"]).count,
             1, "stays when only one of its genres is excluded")
         XCTAssertEqual(
             films.filteredFor(date: .anytime, format: .empty, query: "",
-                              hidden: [], disabledCinemas: [], excludedGenres: ["Komedia", "Dramat"]).count,
+                              hidden: [], excludedGenres: ["Komedia", "Dramat"]).count,
             0, "drops when all its genres are excluded")
     }
 
@@ -229,7 +259,7 @@ final class FilteredForTests: XCTestCase {
         let films = [film("No genres", [day(today, [cinema("A", [slot("18:00")])])], genres: [])]
         let filtered = films.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: [], excludedGenres: ["Komedia"]
+            hidden: [], excludedGenres: ["Komedia"]
         )
         XCTAssertEqual(filtered.count, 1)
     }
@@ -244,7 +274,7 @@ final class FilteredForTests: XCTestCase {
         ]
         let filtered = films.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: [], excludedDirectors: ["Spielberg"]
+            hidden: [], excludedDirectors: ["Spielberg"]
         )
         XCTAssertEqual(filtered.map(\.title).sorted(), ["B", "C"])
     }
@@ -256,7 +286,7 @@ final class FilteredForTests: XCTestCase {
         ]
         let filtered = films.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: [], excludedDirectors: ["Spielberg"]
+            hidden: [], excludedDirectors: ["Spielberg"]
         )
         XCTAssertEqual(filtered.map(\.title), ["Unknown"])
     }
@@ -270,7 +300,7 @@ final class FilteredForTests: XCTestCase {
         ]
         let filtered = films.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: [], excludedCast: ["DiCaprio", "Pitt"]
+            hidden: [], excludedCast: ["DiCaprio", "Pitt"]
         )
         XCTAssertEqual(filtered.map(\.title), ["B"])
     }
@@ -281,7 +311,7 @@ final class FilteredForTests: XCTestCase {
         ]
         let filtered = films.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: [], excludedCast: ["DiCaprio"]
+            hidden: [], excludedCast: ["DiCaprio"]
         )
         XCTAssertEqual(filtered.count, 1, "film stays when only part of its cast is excluded")
     }
@@ -293,7 +323,7 @@ final class FilteredForTests: XCTestCase {
         ]
         let filtered = films.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: [], excludedCast: ["Hanks"]
+            hidden: [], excludedCast: ["Hanks"]
         )
         XCTAssertEqual(filtered.map(\.title), ["Unknown"])
     }

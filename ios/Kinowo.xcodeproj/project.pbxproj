@@ -38,6 +38,7 @@
 		DD00000000000000000097 /* ShowtimePillStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000097 /* ShowtimePillStyle.swift */; };
 		DD00000000000000000200 /* CardSpacingStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000200 /* CardSpacingStyle.swift */; };
 		DD00000000000000000210 /* CinemaHeaderStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000210 /* CinemaHeaderStyle.swift */; };
+		DD00000000000000000212 /* CinemaPillBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000212 /* CinemaPillBar.swift */; };
 		DD00000000000000000211 /* FilmDetailStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000211 /* FilmDetailStyle.swift */; };
 		DD00000000000000000096 /* ShowtimeTuningScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000096 /* ShowtimeTuningScreen.swift */; };
 		DD00000000000000000095 /* RatingPillStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000095 /* RatingPillStyle.swift */; };
@@ -54,6 +55,7 @@
 		DD0000000000000000001C /* RepertoireLaunchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001C /* RepertoireLaunchUITests.swift */; };
 		DD0000000000000000001D /* TabSwipeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001D /* TabSwipeUITests.swift */; };
 		DD000000000000000000A0 /* DayPillTapUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000000000000000000A0 /* DayPillTapUITests.swift */; };
+		DD00000000000000000213 /* CinemaPillBarUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000213 /* CinemaPillBarUITests.swift */; };
 		DD00000000000000000D01 /* DeepLinkUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000D01 /* DeepLinkUITests.swift */; };
 		DD00000000000000000C01 /* CardsVisibleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000C01 /* CardsVisibleUITests.swift */; };
 		DD00000000000000000C02 /* DaySwipeCardsVisibleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000C02 /* DaySwipeCardsVisibleUITests.swift */; };
@@ -128,6 +130,7 @@
 		CC00000000000000000097 /* ShowtimePillStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowtimePillStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000200 /* CardSpacingStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSpacingStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000210 /* CinemaHeaderStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaHeaderStyle.swift; sourceTree = "<group>"; };
+		CC00000000000000000212 /* CinemaPillBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaPillBar.swift; sourceTree = "<group>"; };
 		CC00000000000000000211 /* FilmDetailStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000096 /* ShowtimeTuningScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowtimeTuningScreen.swift; sourceTree = "<group>"; };
 		CC00000000000000000095 /* RatingPillStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingPillStyle.swift; sourceTree = "<group>"; };
@@ -145,6 +148,7 @@
 		CC0000000000000000001C /* RepertoireLaunchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepertoireLaunchUITests.swift; sourceTree = "<group>"; };
 		CC0000000000000000001D /* TabSwipeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabSwipeUITests.swift; sourceTree = "<group>"; };
 		CC000000000000000000A0 /* DayPillTapUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayPillTapUITests.swift; sourceTree = "<group>"; };
+		CC00000000000000000213 /* CinemaPillBarUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaPillBarUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000D01 /* DeepLinkUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000C01 /* CardsVisibleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardsVisibleUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000C02 /* DaySwipeCardsVisibleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaySwipeCardsVisibleUITests.swift; sourceTree = "<group>"; };
@@ -311,6 +315,7 @@
 				CC00000000000000000097 /* ShowtimePillStyle.swift */,
 				CC00000000000000000200 /* CardSpacingStyle.swift */,
 				CC00000000000000000210 /* CinemaHeaderStyle.swift */,
+				CC00000000000000000212 /* CinemaPillBar.swift */,
 				CC00000000000000000211 /* FilmDetailStyle.swift */,
 				CC00000000000000000096 /* ShowtimeTuningScreen.swift */,
 				CC00000000000000000095 /* RatingPillStyle.swift */,
@@ -327,6 +332,7 @@
 				CC0000000000000000001C /* RepertoireLaunchUITests.swift */,
 				CC0000000000000000001D /* TabSwipeUITests.swift */,
 				CC000000000000000000A0 /* DayPillTapUITests.swift */,
+				CC00000000000000000213 /* CinemaPillBarUITests.swift */,
 				CC00000000000000000D01 /* DeepLinkUITests.swift */,
 				CC00000000000000000C01 /* CardsVisibleUITests.swift */,
 				CC00000000000000000C02 /* DaySwipeCardsVisibleUITests.swift */,
@@ -468,6 +474,7 @@
 				DD00000000000000000097 /* ShowtimePillStyle.swift in Sources */,
 				DD00000000000000000200 /* CardSpacingStyle.swift in Sources */,
 				DD00000000000000000210 /* CinemaHeaderStyle.swift in Sources */,
+				DD00000000000000000212 /* CinemaPillBar.swift in Sources */,
 				DD00000000000000000211 /* FilmDetailStyle.swift in Sources */,
 				DD00000000000000000096 /* ShowtimeTuningScreen.swift in Sources */,
 				DD00000000000000000095 /* RatingPillStyle.swift in Sources */,
@@ -503,6 +510,7 @@
 				DD0000000000000000001C /* RepertoireLaunchUITests.swift in Sources */,
 				DD0000000000000000001D /* TabSwipeUITests.swift in Sources */,
 				DD000000000000000000A0 /* DayPillTapUITests.swift in Sources */,
+				DD00000000000000000213 /* CinemaPillBarUITests.swift in Sources */,
 				DD00000000000000000D01 /* DeepLinkUITests.swift in Sources */,
 				DD00000000000000000C01 /* CardsVisibleUITests.swift in Sources */,
 				DD00000000000000000C02 /* DaySwipeCardsVisibleUITests.swift in Sources */,

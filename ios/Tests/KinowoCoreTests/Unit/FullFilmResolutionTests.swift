@@ -44,7 +44,7 @@ final class FullFilmResolutionTests: XCTestCase {
         // What the "Dziś" grid page hands the detail screen: only today.
         let gridCopy = store.filteredFor(
             date: .today, format: .empty, query: "",
-            hidden: [], disabledCinemas: [], now: now
+            hidden: [], now: now
         )
         XCTAssertEqual(gridCopy.first?.showings.map(\.date), ["2026-05-22"],
                        "Precondition: the day-page grid copy is pruned to one day")
