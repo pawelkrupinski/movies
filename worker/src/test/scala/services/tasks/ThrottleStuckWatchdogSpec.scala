@@ -7,6 +7,10 @@ import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 
+// NOTE: "restart" in the descriptions below is historical shorthand for "fire the
+// `onStuck` hook". As of 2026-07-03 that hook is wired to a log-only alarm, not a
+// machine restart (see WorkerWiring.onThrottleWedged) — the assertions here are about
+// WHEN the watchdog escalates (fires onStuck) vs defers, which is unchanged.
 class ThrottleStuckWatchdogSpec extends AnyFlatSpec with Matchers {
 
   private class MutableSignal(var throttled: Boolean) extends ScrapeThrottleSignal {

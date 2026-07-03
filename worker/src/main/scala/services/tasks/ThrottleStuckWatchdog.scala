@@ -11,12 +11,20 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 /**
+ * NOTE (2026-07-03): the RESTART was DROPPED. `onStuck` is now wired to a log-only
+ * alarm (`WorkerWiring.onThrottleWedged`), not a machine restart — a sustained
+ * credit floor turned out to be a STRUCTURAL deficit (steady CPU just over the
+ * shared-cpu earn rate), not a wedge a reboot could clear, so restarting only
+ * burned the boot re-grant and looped. This watchdog now merely ALARMS on a genuine
+ * >`stuckAfter` wedge; the detection + trend-guard logic below is unchanged and the
+ * restart-era rationale is retained as history.
+ *
  * Last-resort backstop against a WEDGED sustained-throttle spiral. If the worker
  * stays CPU-credit throttled CONTINUOUSLY longer than `stuckAfter`, the pool
  * duty-cycle ([[TaskWorker.throttlePauseMillis]]) and reaper enqueue-backoff have
  * failed to recover it — the self-sustaining loop of 2026-06-23, where the box
- * stayed pinned at the throttle ceiling for two hours. Exit non-zero so Fly
- * restarts the machine (the worker already relies on this: see WorkerMain).
+ * stayed pinned at the throttle ceiling for two hours. Historically it exited
+ * non-zero so Fly restarted the machine.
  *
  * A bare restart did NOT recover on its own that day — the slow host was still
  * hammered, so the spiral re-formed. This is safe to wire NOW only because it
@@ -124,8 +132,7 @@ class ThrottleStuckWatchdog(
           s"cost would set recovery back).")
       else if (fired.compareAndSet(false, true)) {
         logger.error(s"Worker throttled continuously > ${stuckAfter.toMinutes}min and credit is NOT recovering — the " +
-          s"duty-cycle + reaper backoff did not rebuild credit; restarting the machine (Fly reschedules on the " +
-          s"non-zero exit, and the per-host circuit breaker skips the offending host on the way back up).")
+          s"duty-cycle + reaper backoff did not rebuild credit; escalating to the wedge handler.")
         onStuck()
       }
     }
@@ -133,7 +140,7 @@ class ThrottleStuckWatchdog(
 
   def start(): Unit = {
     scheduler.scheduleWithFixedDelay(() => Try(check()), checkEvery.toMillis, checkEvery.toMillis, TimeUnit.MILLISECONDS)
-    logger.info(s"ThrottleStuckWatchdog armed: restart after ${stuckAfter.toMinutes}min continuous throttle " +
+    logger.info(s"ThrottleStuckWatchdog armed: alarm after ${stuckAfter.toMinutes}min continuous throttle " +
       s"only when credit is NOT recovering (trend-guarded; checked every ${checkEvery.toSeconds}s).")
   }
 

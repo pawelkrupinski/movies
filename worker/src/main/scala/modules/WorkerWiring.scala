@@ -18,7 +18,6 @@ import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordina
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import tools.{DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
 
-import java.lang.management.ManagementFactory
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -505,61 +504,52 @@ class WorkerWiring extends play.api.Logging {
   // token (KINOWO_FLY_PROM_TOKEN); absent it (local dev / tests), there's no
   // poller and only the external gate drives throttling.
   //
-  // RESTART PATHS — all three share a single one-shot guard (`restartFired`) so
-  // at most one restart fires per process lifetime regardless of which path trips:
+  // THROTTLE RESPONSE — a sustained credit-floor throttle used to RESTART the
+  // machine (exit non-zero → Fly reschedule), on the theory that a fresh boot's
+  // ~16k credit re-grant would break the wedge. DROPPED 2026-07-03: the floor is
+  // STRUCTURAL, not a wedge a restart can clear. The worker's steady CPU (~0.30
+  // cores, dominated by Mongo async-NIO2 I/O) sits just ABOVE the shared-cpu-4x
+  // credit earn rate (~0.26 cores), so the boot re-grant drains back to the floor
+  // in ~10 min AND the boot burst itself (~0.55 cores) costs more credit than it
+  // saves. Restarting was a self-inflicted ~45-min loop that PREVENTED the very
+  // recovery it meant to force (measured 4 restarts/3h while the box was near-idle,
+  // credit pinned at the floor throughout). So both throttle paths now only ALARM
+  // (`onThrottleWedged`); the reaper duty-cycle + enqueue backoff rides the throttle
+  // out in place, and credit climbs on its own whenever load dips below the earn
+  // line. (An earlier FLOOR FAST-PATH — restart once credit sat < ~1000 for 15 min —
+  // was already removed 2026-07-03 for the same reason; this drops the two
+  // survivors: the CpuCreditPoller downslope projection and the ThrottleStuckWatchdog
+  // 45-min wedge.)
   //
-  //   1. DOWNSLOPE (projection trigger in CpuCreditPoller): fires when the drain
-  //      rate projects a floor hit in < 10 min, while balance is still above 6000.
-  //      Restarts immediately (subject to a JVM-uptime cooldown that prevents a
-  //      rapid-restart loop if the circuit breaker hasn't had time to trip yet).
-  //      Confirmed fastest path: 2026-06-26 incident would have been averted at
-  //      02:33 (credit 50k, 6 min to floor) instead of 89 min at true-floor.
-  //
-  //   2. STUCK PATH (ThrottleStuckWatchdog.isStuck): if throttled continuously
-  //      for 45 min and credit is NOT trending up — the duty-cycle + reaper backoff
-  //      failed to recover. The trend guard (credit-trending-up check) defers the
-  //      restart while self-recovery is underway, preventing the 30-min crash loop
-  //      of 2026-06-24.
-  //
-  // (A former FLOOR FAST-PATH — restart once credit sat below ~1000 for 15 min —
-  //  was REMOVED 2026-07-03: it was the dominant restarter, 20 of 27 restarts in a
-  //  9.5h window, and each restart's boot storm re-drained credit to the floor,
-  //  looping every ~18 min and PREVENTING the recovery it meant to force. Credit
-  //  climbs off the floor on its own once the reaper backoff bites — 2→99k measured
-  //  in a quiet window — so low credit alone no longer restarts. See
-  //  ThrottleStuckWatchdog's NO FLOOR FAST-PATH note.)
-  //
-  // UPTIME COOLDOWN on the downslope path: if the process is younger than
-  // `projectionRestartCooldownSeconds`, the downslope restart is suppressed.
-  // This prevents a rapid-restart loop where each new process immediately
-  // re-triggers the projection (circuit breaker needs a full scrape cycle to
-  // trip the offending host).  Paths 2 and 3 are NOT cooldown-gated — by the
-  // time they fire, enough time has elapsed that the circuit breaker has had
-  // its chance.
+  // `restartMachine` stays as the machine-restart primitive, but the throttle paths
+  // deliberately do NOT call it — WorkerWiringSpec guards that a wedge alarms instead
+  // of exiting. (The liveness/OOM path exits on its own with code 70, further down.)
   private val restartFired = new AtomicBoolean(false)
-  private def doRestart(reason: String): Unit =
+  protected[modules] def restartMachine(reason: String): Unit =
     if (restartFired.compareAndSet(false, true)) {
       logger.error(s"Worker restart triggered ($reason); exiting non-zero so Fly reschedules the machine.")
       sys.exit(1)
     }
 
-  def projectionRestartCooldownSeconds: Long =
-    Env.positiveLong("KINOWO_WORKER_PROJECTION_RESTART_COOLDOWN_SECONDS", 600L)
+  /** Response to a detected CPU-credit throttle wedge / fast drain: ALARM, don't
+   *  restart. A restart can't clear a structural credit deficit (see the note
+   *  above) — it just burns the boot re-grant and loops — so we log loudly and let
+   *  the reaper backoff ride it out. Overridable so a test can observe the wedge
+   *  response without a real process exit. */
+  protected[modules] def onThrottleWedged(reason: String): Unit =
+    logger.error(s"Worker CPU-credit throttle wedged ($reason) — NOT restarting; riding it out on the reaper " +
+      s"backoff. A restart can't clear a structural credit deficit (steady CPU sits just over the shared-cpu " +
+      s"earn rate), so the boot re-grant would only drain back to the floor. Credit recovers once load dips " +
+      s"below the earn line.")
 
   lazy val cpuCreditPoller: Option[services.tasks.CpuCreditPoller] =
     Env.get("KINOWO_FLY_PROM_TOKEN").map { token =>
       new services.tasks.CpuCreditPoller(
         new RealHttpFetch(), token,
-        onProjectionThrottle = () => {
-          val uptimeSec = ManagementFactory.getRuntimeMXBean.getUptime / 1000
-          if (uptimeSec < projectionRestartCooldownSeconds)
-            logger.warn(s"CpuCreditPoller: projection throttle fired but JVM uptime ${uptimeSec}s is within the " +
-              s"${projectionRestartCooldownSeconds}s cooldown — skipping downslope restart to avoid a rapid-restart " +
-              s"loop (circuit breaker needs time to trip the offending host).")
-          else
-            doRestart(s"projection downslope (uptime ${uptimeSec}s)")
-        }
-      )
+        // A projection-triggered throttle (fast drain, still above the floor) only
+        // ALARMS now — the reaper backoff the throttle itself engages is the response;
+        // a restart can't clear a structural credit deficit. See onThrottleWedged.
+        onProjectionThrottle = () => onThrottleWedged("projection downslope"))
     }
 
   // The credit-balance throttle pushed in from OUTSIDE (the same Grafana alert on
@@ -574,7 +564,7 @@ class WorkerWiring extends play.api.Logging {
   def throttleStuckMinutes: Long  = Env.positiveLong("KINOWO_WORKER_THROTTLE_STUCK_MINUTES", 45L)
   lazy val throttleStuckWatchdog = new services.tasks.ThrottleStuckWatchdog(
     throttleSignal, stuckAfter = throttleStuckMinutes.minutes,
-    onStuck         = () => doRestart("stuck watchdog"),
+    onStuck         = () => onThrottleWedged("stuck watchdog"),
     creditBalance   = () => cpuCreditPoller.flatMap(_.lastBalance))
 
   // Cluster-wide occurrence claims gate the reapers' recurring ticks so each

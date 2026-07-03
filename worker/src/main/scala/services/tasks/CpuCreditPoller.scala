@@ -54,20 +54,18 @@ import scala.util.Try
  * The poll runs on a single daemon scheduler thread; the read of `isThrottled`
  * by the reaper threads goes through a lock-free `AtomicReference`.
  *
- * == Downslope restart ==
+ * == Downslope alarm ==
  *
- * Throttling alone doesn't stop a fast drain: up to 8 in-flight tasks keep
- * running and burning CPU after the throttle trips.  `onProjectionThrottle` is
- * called (once per process lifetime) the first time a PROJECTION-triggered
- * throttle fires — i.e. while balance is still above the floor but draining too
- * fast.  In production this is wired to `sys.exit(1)` (subject to a JVM-uptime
- * cooldown in WorkerWiring), which clears the task backlog and lets the
- * per-host circuit breaker skip the offending host on the way back up.
- * Confirmed by the 2026-06-26 incident: projection fired at credit ≈ 50 000
- * (6 min before floor); an immediate restart there would have avoided 89 min at
- * the literal floor.  `onProjectionThrottle` does NOT fire on a floor-triggered
- * throttle (balance already below `enterBelow`) — that path is handled by
- * [[ThrottleStuckWatchdog]].
+ * `onProjectionThrottle` is called (once per process lifetime) the first time a
+ * PROJECTION-triggered throttle fires — while balance is still above the floor but
+ * draining too fast. Historically prod wired it to `sys.exit(1)` to restart the
+ * machine; that RESTART was dropped 2026-07-03 (a structural credit deficit — steady
+ * CPU just over the shared-cpu earn rate — can't be cleared by a reboot; the boot
+ * re-grant just drains back to the floor, see `WorkerWiring.onThrottleWedged`), so it
+ * now only ALARMS. The response is the proactive throttle it rides in on: the reaper
+ * backoff eases CPU so credit can recover in place. `onProjectionThrottle` does NOT
+ * fire on a floor-triggered throttle (balance already below `enterBelow`) — that path
+ * is the [[ThrottleStuckWatchdog]] wedge alarm.
  */
 class CpuCreditPoller(
   http: HttpFetch,
@@ -87,7 +85,8 @@ class CpuCreditPoller(
   // within this many seconds.  Default 600 (10 min).  Set to 0 to disable projection.
   lookaheadSeconds: Long = Env.positiveLong("KINOWO_CREDIT_LOOKAHEAD_SECONDS", 600L),
   // Called once per process when a PROJECTION-triggered throttle fires (balance above
-  // the floor but drain rate threatening).  Default no-op; wire to sys.exit in prod.
+  // the floor but drain rate threatening).  Default no-op; wired to a log-only alarm
+  // in prod (the downslope RESTART was dropped 2026-07-03 — see WorkerWiring).
   onProjectionThrottle: () => Unit = () => ()
 ) extends Stoppable with ScrapeThrottleSignal with Logging {
 
