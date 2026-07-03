@@ -109,6 +109,25 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     q.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 
+  // Regression: `stop()` interrupts every worker to break an in-flight fetch/sleep. When
+  // the interrupt lands while a handler is blocked in an HTTP fetch (RealHttpFetch.send →
+  // CompletableFuture.get), it surfaces as an InterruptedException — which `NonFatal`
+  // (and so the `Try` wrappers in claimAndRun/runHandler) treats as FATAL and rethrows.
+  // It then escaped the worker thread's run method uncaught and was reported to Sentry as
+  // a FATAL InterruptedException on EVERY worker restart (mechanism UncaughtExceptionHandler,
+  // 133+ occurrences) — pure shutdown noise. `tick` now swallows it as the stop signal, so
+  // the loop's `while (running.get())` ends the thread cleanly. Fails before the fix
+  // (`tick` rethrows the InterruptedException), passes after.
+  it should "swallow a handler's InterruptedException (stop interrupt) instead of escaping the worker thread" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
+    val interrupted = new TaskHandler {
+      val taskType = ImdbRating
+      def handle(task: Task) = throw new InterruptedException("interrupted mid-fetch")
+    }
+    noException should be thrownBy worker(q, Seq(interrupted)).tick("w0")
+  }
+
   it should "return a task to waiting when no handler is registered for its type" in {
     val q = new InMemoryTaskQueue
     q.enqueue(McRating, "mc|x", submittedAt = t0)

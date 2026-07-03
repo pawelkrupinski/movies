@@ -144,7 +144,23 @@ class TaskWorker(
    *  gap between a failed claim and the park advances the counter past the
    *  snapshot and the park returns at once — the lost-wakeup window is closed. */
   private def runLoop(workerId: String): Unit =
-    while (running.get()) {
+    while (running.get()) tick(workerId)
+
+  /** One scheduling tick: claim+run a task (or park when idle), swallowing a stop
+   *  interrupt. Package-private so a test can drive a single iteration deterministically.
+   *
+   *  `stop()` interrupts every worker (`workers.foreach(_.interrupt())`) to break an
+   *  in-flight retry sleep OR an in-flight HTTP fetch. When the interrupt lands while a
+   *  handler is blocked in a fetch (`RealHttpFetch.send` → `CompletableFuture.get`), it
+   *  surfaces as an `InterruptedException` — which `NonFatal` treats as FATAL, so the
+   *  `Try` wrappers below rethrow it. Left uncaught it escaped the worker thread's run
+   *  method and was reported to Sentry as a FATAL `InterruptedException` on EVERY worker
+   *  restart (mechanism `UncaughtExceptionHandler`) — pure shutdown noise, not a real
+   *  fault. Swallow it here as the expected stop signal: clear the interrupt flag and let
+   *  `while (running.get())` end the loop (`stop()` sets `running=false` before
+   *  interrupting). A spurious interrupt while still running simply resumes the loop. */
+  private[tasks] def tick(workerId: String): Unit =
+    try {
       // Duty-cycle the pool while CPU-credit throttled so the box idles enough to
       // rebuild credit (see throttlePauseMillis). No-op when healthy.
       val pause = throttlePauseMillis()
@@ -155,6 +171,8 @@ class TaskWorker(
         case PollResult.Returned  => sleepFor(retryBackoff.toMillis) // bounded retry; ignore the doorbell
         case PollResult.Idle      => doorbell.awaitSince(since, idleBackstop.toMillis)
       }
+    } catch {
+      case _: InterruptedException => Thread.interrupted(); ()
     }
 
   /** How long a worker pauses before its next claim: the shed pause while the
