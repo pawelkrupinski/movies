@@ -40,15 +40,18 @@ import scala.util.Try
  * (the [[CpuCreditPoller]]'s last sample); `None` (no Fly-Prometheus token, or a
  * failed read) disables the guard and falls back to the bare stuck behavior.
  *
- * FLOOR FAST-PATH: the main path (stuckAfter + trend guard) waits up to 45 min
- * after the throttle trips. When credit is already at the TRUE floor (≤ a few
- * hundred units, effectively zero), those oscillations are Fly micro-bursts —
- * not real recovery — and the trend guard can defer indefinitely on the noise.
- * Observed 2026-06-26: credit hit 2 at 03:13, stayed below 1000 for ~89 min.
- * The floor fast-path bypasses the trend guard: if credit stays below
- * `floorThreshold` for `floorStuckAfter`, restart immediately. At true-floor
- * there is no meaningful self-recovery; only clearing the backlog via a restart
- * lets the circuit breaker skip the offending host and credits rebuild.
+ * NO FLOOR FAST-PATH (removed 2026-07-03): an earlier version restarted as soon
+ * as credit sat below a floor threshold for 15 min, on the premise that "at the
+ * true floor there is no self-recovery". That premise is obsolete now that the
+ * change-stream CPU sink is fixed (ChangeStreamFanout): credit DOES climb off the
+ * floor once the reaper backoff bites — measured 2→99k in one quiet window on
+ * 2026-07-03. The floor restart's OWN boot storm (freshness-hydrate + ~300-cinema
+ * re-scrape) re-drained credit to the floor, so the watchdog kept restarting every
+ * ~18 min — a self-inflicted loop that PREVENTED the very recovery it was meant to
+ * force (48 restarts/24h measured, 20 of them this floor path). The trend-guarded
+ * stuck path below is now the SOLE restart trigger: a genuine wedge (credit flat or
+ * declining across `stuckAfter`) still restarts, but credit merely sitting low —
+ * the normal throttled-by-design state — rides out on the reaper backoff instead.
  */
 class ThrottleStuckWatchdog(
   throttle:       ScrapeThrottleSignal,
@@ -63,15 +66,6 @@ class ThrottleStuckWatchdog(
   // strictly rising; a stall (flat) or decline does NOT defer, so a true wedge
   // (balance pinned) still restarts.
   minRise:        Double               = 0.0,
-  // Floor fast-path: restart sooner when credit has been below this for floorStuckAfter.
-  // At true-floor (credit ≈ 0–200) the tiny oscillations are Fly micro-bursts, not
-  // recovery — the trend guard is useless there. Default 1000, well below the
-  // hysteresis exit (12000), clearly above the 2–560 noise seen at the literal floor.
-  floorThreshold: Double               = 1000.0,
-  // How long credit must stay below floorThreshold before the fast-path fires.
-  // 15 min is long enough to rule out a brief dip through the floor, short enough
-  // to cut the ~89-min incident of 2026-06-26 to under 20 min.
-  floorStuckAfter: FiniteDuration      = 15.minutes,
   checkEvery:     FiniteDuration       = 1.minute,
   now:            () => Instant        = () => Instant.now()
 ) extends Stoppable with Logging {
@@ -85,9 +79,6 @@ class ThrottleStuckWatchdog(
   // Recorded only while throttled and cleared on release, so a healthy stretch's
   // readings can't leak into a later episode's trend.
   private val creditSamples  = new AtomicReference[Vector[(Instant, Double)]](Vector.empty)
-  // Floor fast-path: when credit first dropped below floorThreshold while throttled.
-  // Cleared when throttle releases OR credit rises back above the floor threshold.
-  private val floorSince     = new AtomicReference[Option[Instant]](None)
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("throttle-stuck-watchdog")
 
   /** True once throttle has been continuously engaged for at least `stuckAfter`.
@@ -98,19 +89,6 @@ class ThrottleStuckWatchdog(
       val since = throttledSince.updateAndGet(prev => if (prev.isDefined) prev else Some(now()))
       since.exists(start => JDuration.between(start, now()).toMillis >= stuckAfter.toMillis)
     }
-
-  /** True when credit has been below `floorThreshold` continuously for at least
-   *  `floorStuckAfter` while throttled. No trend guard: at the literal floor the
-   *  tiny oscillations are noise, and only a restart can clear the backlog.
-   *  Resets when throttle releases or credit rises above the floor. */
-  private[tasks] def isFloorStuck(balance: Option[Double]): Boolean = {
-    val atFloor = throttle.isThrottled && balance.exists(_ < floorThreshold)
-    if (!atFloor) { floorSince.set(None); false }
-    else {
-      val since = floorSince.updateAndGet(prev => if (prev.isDefined) prev else Some(now()))
-      since.exists(start => JDuration.between(start, now()).toMillis >= floorStuckAfter.toMillis)
-    }
-  }
 
   /** Append the current credit reading (if any) and drop samples older than the
    *  trend window. No-op when the balance source is unavailable. */
@@ -133,21 +111,13 @@ class ThrottleStuckWatchdog(
     }
   }
 
-  /** One watchdog tick: fire `onStuck` exactly once if the throttle is wedged and
-   *  credit isn't recovering, OR if credit has been at the literal floor long enough
-   *  that the trend guard is irrelevant. */
+  /** One watchdog tick: fire `onStuck` exactly once if the throttle has been wedged
+   *  past `stuckAfter` and credit isn't recovering. Credit sitting low on its own is
+   *  NOT a restart trigger — that's the normal throttled-by-design state, which the
+   *  reaper backoff rebuilds in place (see the NO FLOOR FAST-PATH note above). */
   private[tasks] def check(): Unit = {
-    val balance = creditBalance()
     if (throttle.isThrottled) recordCredit() else creditSamples.set(Vector.empty)
-    if (isFloorStuck(balance)) {
-      if (fired.compareAndSet(false, true)) {
-        logger.error(s"Worker throttled with credit pinned below ${floorThreshold.toInt} for " +
-          s">${floorStuckAfter.toMinutes}min (credit=${balance.map(_.round).getOrElse("?")}); " +
-          s"the machine cannot self-recover at the literal floor — restarting now so the circuit " +
-          s"breaker skips the offending host and credits can rebuild.")
-        onStuck()
-      }
-    } else if (isStuck()) {
+    if (isStuck()) {
       if (creditTrendingUp())
         logger.warn(s"Worker throttled continuously > ${stuckAfter.toMinutes}min, but credit is TRENDING UP — " +
           s"the duty-cycle + reaper backoff is rebuilding it; DEFERRING the restart (a restart's boot-storm credit " +
@@ -163,9 +133,8 @@ class ThrottleStuckWatchdog(
 
   def start(): Unit = {
     scheduler.scheduleWithFixedDelay(() => Try(check()), checkEvery.toMillis, checkEvery.toMillis, TimeUnit.MILLISECONDS)
-    logger.info(s"ThrottleStuckWatchdog armed: floor-restart after ${floorStuckAfter.toMinutes}min " +
-      s"at credit<${floorThreshold.toInt}; stuck-restart after ${stuckAfter.toMinutes}min continuous throttle " +
-      s"(checked every ${checkEvery.toSeconds}s).")
+    logger.info(s"ThrottleStuckWatchdog armed: restart after ${stuckAfter.toMinutes}min continuous throttle " +
+      s"only when credit is NOT recovering (trend-guarded; checked every ${checkEvery.toSeconds}s).")
   }
 
   def stop(): Unit = { scheduler.shutdownNow(); () }

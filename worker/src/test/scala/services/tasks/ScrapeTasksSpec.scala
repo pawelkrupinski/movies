@@ -137,6 +137,45 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 5L
   }
 
+  // Post-boot enqueue RAMP: even with the per-tick cap, enqueuing the FULL cap from
+  // the very first tick drains a restart's whole-corpus backlog flat-out, re-draining
+  // the CPU-credit the restart just reset (the residual boot-storm spike). The ramp
+  // grows the cap from ~1/5 up to full over `bootRamp` so the early ticks stay small
+  // and the pool idles to rebuild credit. `rampedCap` is the pure curve.
+  it should "ramp the per-tick cap from a fraction up to the full cap over bootRamp" in {
+    val t0 = Instant.parse("2026-07-03T09:40:00Z")
+    val reaper = new ScrapeReaper(Seq(new FakeScraper(Multikino, movieAt(Multikino))),
+      new InMemoryTaskQueue, new InMemoryFreshnessStore,
+      maxEnqueuePerTick = 10, bootRamp = 10.minutes)
+    reaper.rampedCap(t0) shouldBe 2                       // first tick: floor = max(1, 10/5)
+    reaper.rampedCap(t0.plusSeconds(5 * 60)) shouldBe 5   // half-way through the ramp
+    reaper.rampedCap(t0.plusSeconds(10 * 60)) shouldBe 10 // ramp complete → full cap
+    reaper.rampedCap(t0.plusSeconds(30 * 60)) shouldBe 10 // stays at full cap afterwards
+  }
+
+  it should "leave the cap unramped when bootRamp is disabled (the default) or the cap is unbounded" in {
+    val t0 = Instant.parse("2026-07-03T09:40:00Z")
+    // bootRamp defaults to 0 → no ramp, full cap from the first tick.
+    val noRamp = new ScrapeReaper(Seq(new FakeScraper(Multikino, movieAt(Multikino))),
+      new InMemoryTaskQueue, new InMemoryFreshnessStore, maxEnqueuePerTick = 10)
+    noRamp.rampedCap(t0) shouldBe 10
+    // Unbounded cap (the direct-tick test default) is never ramped.
+    val unbounded = new ScrapeReaper(Seq(new FakeScraper(Multikino, movieAt(Multikino))),
+      new InMemoryTaskQueue, new InMemoryFreshnessStore, bootRamp = 10.minutes)
+    unbounded.rampedCap(t0) shouldBe Int.MaxValue
+  }
+
+  it should "enqueue only the ramped floor on the first post-boot tick, then the full cap once the ramp elapses" in {
+    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
+    val queue    = new InMemoryTaskQueue
+    val reaper   = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
+      maxEnqueuePerTick = 5, bootRamp = 10.minutes)
+    val t0 = Instant.parse("2026-07-03T09:40:00Z")
+    reaper.tick(t0) shouldBe 1                        // ramped floor max(1,5/5)=1 — NOT all 5 due (the pre-ramp behaviour)
+    reaper.tick(t0.plusSeconds(10 * 60)) shouldBe 4   // ramp done → full cap 5, minus the 1 still waiting (deduped)
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 5L
+  }
+
   // Fairness under the cap: when more cinemas are due than the per-tick cap allows,
   // the reaper must enqueue the MOST-OVERDUE first, not the head of its fixed
   // city→catalogue list. Otherwise a credit-throttled worker that drains slowly
