@@ -883,7 +883,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // showtimes and flipped isNew, the recurring "Refreshed Kino Kultura: …
   // (2 new)" worker log.
   it should "keep a '+ event' screening as its own row and not churn isNew on repeat passes" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val repository = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     def pass() = cache.recordCinemaScrape(KinoKultura, Seq(
       cinemaMovie("Ojczyzna", KinoKultura, None, showtimes = Seq(showtime("2026-06-08T18:00"))),
       cinemaMovie("Ojczyzna + spotkanie z producentką Ewą Puszczyńską", KinoKultura, None,
@@ -900,8 +901,11 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     plain.cinemaData(KinoKultura).showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.parse("2026-06-08T18:00"))
     event.cinemaData(KinoKultura).showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.parse("2026-06-09T20:00"))
 
-    // Steady state: same two screenings reported again → no "(2 new)" churn.
+    // Steady state: same two screenings reported again → no "(2 new)" churn, and
+    // no write/change-stream emission (an identical re-scrape is a full no-op).
+    val emissions = changeStreamEmissions(repository)
     pass().map(_._3) shouldBe Seq(false, false)
+    emissions.get() shouldBe 0
   }
 
   it should "create a new record when no matching row exists yet" in {
@@ -1058,7 +1062,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // The next listing tick mustn't undo that upgrade: the merge rule keeps
   // the existing slot's value whenever the cinema reports `None`.
   it should "preserve detail-upgraded synopsis / trailerUrl / posterUrl across listing scrapes" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val repository = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
     val key   = cache.keyOf("Wolność po włosku", Some(2025))
 
     // Tick 1: listing scrape carries no detail-page fields.
@@ -1079,10 +1084,14 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       ))
     )
 
-    // Tick 2: listing scrape with the same None payload.
+    // Tick 2: listing scrape with the same None payload. Carry-forward keeps the
+    // detail-upgraded fields, so the rebuilt slot is identical → no write, no
+    // change-stream emission (the re-scrape is a no-op).
+    val emissions = changeStreamEmissions(repository)
     cache.recordCinemaScrape(KinoMuza, Seq(
       cinemaMovie("Wolność po włosku", KinoMuza, Some(2025), poster = None)
     ))
+    emissions.get() shouldBe 0
 
     val slot = cache.get(key).get.cinemaData(KinoMuza)
     slot.synopsis   shouldBe Some("opis filmu")
