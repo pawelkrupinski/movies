@@ -242,11 +242,6 @@ class MongoMovieRepository(
   // update-field kind. Noop for scripts/web/tests; the worker injects the
   // Prometheus-backed sink so /metrics carries change-stream stats.
   changeStreamMetrics: ChangeStreamMetrics = ChangeStreamMetrics.noop,
-  // Phase 1 of the showtimes split: when set, every movies write ALSO writes the
-  // per-cinema showtimes to the `screenings` collection (additive dual-write —
-  // reads still use the embedded copy, so this can't lose data or change
-  // behaviour). None = the pre-split behaviour (embedded only). All screenings
-  // writes are Try-guarded inside the repo, so they can never break a movies write.
   // Showtimes live in the separate `screenings` collection, not embedded in the
   // `movies` document — so a showtime change no longer rewrites the (formerly
   // 1-2MB) film doc the change stream re-decodes on every write. Wiring `screenings`
@@ -263,10 +258,15 @@ class MongoMovieRepository(
     if (screenings.isDefined) ScreeningsRepository.stripShowtimes(data) else data
 
   /** Re-inject a stored row's showtimes from `screenings` (its authority under the
-   *  split). `filmId` is the row's `_id` (== the screenings `filmId`). */
-  private def stitchRow(r: StoredMovieRecord, filmId: String, scr: Map[String, Seq[Showtime]]): StoredMovieRecord =
+   *  split), given that film's `slotKey -> showtimes` map. No-op without a split. */
+  private def stitchRow(r: StoredMovieRecord, scr: Map[String, Seq[Showtime]]): StoredMovieRecord =
     if (screenings.isEmpty) r
     else r.copy(record = r.record.copy(data = ScreeningsRepository.stitch(r.record.data, scr)))
+
+  /** Decode one stored row and re-inject its showtimes from `screenings` — the
+   *  per-film read-stitch shared by [[findById]] and the change-stream fan-out. */
+  private def decodeStitched(dto: StoredMovieDto): StoredMovieRecord =
+    stitchRow(StoredMovieDto.toDomain(dto), screenings.map(_.findForFilm(dto._id)).getOrElse(Map.empty))
 
   // Lazy so subclasses that override every wire method (e.g.
   // `InMemoryMovieRepository` in tests) never trigger a Mongo connection
@@ -356,7 +356,7 @@ class MongoMovieRepository(
       logger.warn("MovieRepository.scanStitched: screenings load empty — treating scan as incomplete so a reconcile can't prune on stripped rows.")
       false
     } else scanByKeyset(batch =>
-      onBatch(batch.map(dto => stitchRow(StoredMovieDto.toDomain(dto), dto._id, allScr.getOrElse(dto._id, Map.empty)))))
+      onBatch(batch.map(dto => stitchRow(StoredMovieDto.toDomain(dto), allScr.getOrElse(dto._id, Map.empty)))))
   }
 
   /** Keyset-paged scan of the whole `movies` collection by `_id`, shared by [[findAll]]
@@ -414,8 +414,7 @@ class MongoMovieRepository(
     case Some(c) =>
       Try {
         Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), 10.seconds))
-          .map(dto => stitchRow(StoredMovieDto.toDomain(dto), dto._id,
-            screenings.map(_.findForFilm(dto._id)).getOrElse(Map.empty)))
+          .map(decodeStitched)
       }.recover {
         case exception: Throwable =>
           logger.warn(s"MovieRepository.findById($id) failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
@@ -524,7 +523,7 @@ class MongoMovieRepository(
     val opts = new ReplaceOptions().upsert(true)
     Try {
       Await.result(c.replaceOne(Filters.eq("_id", id), dto, opts).toFuture(), 10.seconds)
-      // Dual-write: mirror this film's cinema showtimes into `screenings`.
+      // Write this film's cinema showtimes to `screenings` (their authority).
       screenings.foreach(_.replaceFilm(id, ScreeningsRepository.showtimesOf(e.data)))
       ()
     }.recover {
@@ -550,7 +549,8 @@ class MongoMovieRepository(
       // yields an EMPTY movies patch — movies stays put, no fat change event. When
       // both are empty the row already equals `after`: skip the write (and its no-op
       // `$set` + change event). "Present and up to date" is still success.
-      val patch = MovieRecordPatch.diff(before.copy(data = stripFor(before.data)), after.copy(data = stripFor(after.data)))
+      val strippedAfter = after.copy(data = stripFor(after.data))
+      val patch = MovieRecordPatch.diff(before.copy(data = stripFor(before.data)), strippedAfter)
       if (patch.isEmpty && ops.isEmpty) true
       else Try {
         // MongoDB update-operator paths treat '.' as a nesting separator, so a
@@ -561,26 +561,24 @@ class MongoMovieRepository(
           if (patch.isEmpty) None
           else Some(
             if (patch.data.keysIterator.exists(_.displayName.contains('.'))) {
-              val dto = StoredMovieDto.fromDomain(id, after.copy(data = stripFor(after.data)), Instant.now())
+              val dto = StoredMovieDto.fromDomain(id, strippedAfter, Instant.now())
               Await.result(c.replaceOne(Filters.eq("_id", id), dto, new ReplaceOptions().upsert(false)).toFuture(), 10.seconds)
                 .getMatchedCount
             } else {
               Await.result(c.updateOne(Filters.eq("_id", id), patchToUpdate(patch), new UpdateOptions().upsert(false)).toFuture(), 10.seconds)
                 .getMatchedCount
             })
-        // Apply the screenings deltas — a showtimes-only change has no movies write
-        // (empty patch → None), so apply unless the movies write explicitly matched
-        // nothing (Some(0) = the row is absent, so don't create orphan screenings).
-        if (moviesMatched.forall(_ > 0)) screenings.foreach { s =>
+        // Present when the movies write matched, OR a screenings-only change (no movies
+        // write, None); false only on Some(0) — the row is absent, so don't apply the
+        // screenings deltas (no orphan screenings) and report not-present.
+        val present = moviesMatched.forall(_ > 0)
+        if (present) screenings.foreach { s =>
           ops.foreach {
             case (k, Some(st)) => s.upsertSlot(id, k, st)
             case (k, None)     => s.deleteSlot(id, k)
           }
         }
-        // Present if the movies write matched; a screenings-only change (no movies
-        // write) is treated as present — the guarded caller only reaches here for a
-        // row it holds.
-        moviesMatched.forall(_ > 0)
+        present
       }.recover {
         case exception: Throwable if isClusterClosed(exception) => false
         case exception: Throwable =>
@@ -670,9 +668,8 @@ class MongoMovieRepository(
             Option(change.getFullDocument) match {
               case Some(dto) =>
                 // The movies doc has no showtimes — stitch them back from `screenings`
-                // before fanning out, so consumers get a full row.
-                val scr = screenings.map(_.findForFilm(dto._id)).getOrElse(Map.empty)
-                movieChanges.dispatchUpsert(stitchRow(StoredMovieDto.toDomain(dto), dto._id, scr))
+                // (via decodeStitched) before fanning out, so consumers get a full row.
+                movieChanges.dispatchUpsert(decodeStitched(dto))
               case None =>
                 // No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't
                 // back-fill). Surface its _id so consumers can drop the row.
