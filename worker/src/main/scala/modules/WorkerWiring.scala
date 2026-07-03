@@ -515,16 +515,19 @@ class WorkerWiring extends play.api.Logging {
   //      Confirmed fastest path: 2026-06-26 incident would have been averted at
   //      02:33 (credit 50k, 6 min to floor) instead of 89 min at true-floor.
   //
-  //   2. FLOOR FAST-PATH (ThrottleStuckWatchdog.isFloorStuck): if credit stays
-  //      below floorThreshold (≈ 1000) for 15 min, restart without waiting for
-  //      the 45-min stuckAfter or applying the trend guard. At true-floor the
-  //      oscillations are Fly micro-bursts, not recovery — trend guard is useless.
-  //
-  //   3. STUCK PATH (ThrottleStuckWatchdog.isStuck): if throttled continuously
+  //   2. STUCK PATH (ThrottleStuckWatchdog.isStuck): if throttled continuously
   //      for 45 min and credit is NOT trending up — the duty-cycle + reaper backoff
   //      failed to recover. The trend guard (credit-trending-up check) defers the
   //      restart while self-recovery is underway, preventing the 30-min crash loop
   //      of 2026-06-24.
+  //
+  // (A former FLOOR FAST-PATH — restart once credit sat below ~1000 for 15 min —
+  //  was REMOVED 2026-07-03: it was the dominant restarter, 20 of 27 restarts in a
+  //  9.5h window, and each restart's boot storm re-drained credit to the floor,
+  //  looping every ~18 min and PREVENTING the recovery it meant to force. Credit
+  //  climbs off the floor on its own once the reaper backoff bites — 2→99k measured
+  //  in a quiet window — so low credit alone no longer restarts. See
+  //  ThrottleStuckWatchdog's NO FLOOR FAST-PATH note.)
   //
   // UPTIME COOLDOWN on the downslope path: if the process is younger than
   // `projectionRestartCooldownSeconds`, the downslope restart is suppressed.
@@ -569,14 +572,10 @@ class WorkerWiring extends play.api.Logging {
       poller => services.tasks.ScrapeThrottleSignal.either(externalThrottleGate, poller))
 
   def throttleStuckMinutes: Long  = Env.positiveLong("KINOWO_WORKER_THROTTLE_STUCK_MINUTES", 45L)
-  def floorStuckMinutes: Long     = Env.positiveLong("KINOWO_WORKER_FLOOR_STUCK_MINUTES", 15L)
-  def floorThreshold: Double      = Env.positiveLong("KINOWO_WORKER_FLOOR_THRESHOLD", 1000L).toDouble
   lazy val throttleStuckWatchdog = new services.tasks.ThrottleStuckWatchdog(
     throttleSignal, stuckAfter = throttleStuckMinutes.minutes,
-    onStuck         = () => doRestart("floor/stuck watchdog"),
-    creditBalance   = () => cpuCreditPoller.flatMap(_.lastBalance),
-    floorThreshold  = floorThreshold,
-    floorStuckAfter = floorStuckMinutes.minutes)
+    onStuck         = () => doRestart("stuck watchdog"),
+    creditBalance   = () => cpuCreditPoller.flatMap(_.lastBalance))
 
   // Cluster-wide occurrence claims gate the reapers' recurring ticks so each
   // scheduled occurrence runs on ONE machine (rotating), not on every machine.
