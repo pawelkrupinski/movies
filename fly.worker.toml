@@ -73,7 +73,7 @@ primary_region = 'arn'
   # No KINOWO_SCRAPE_CITIES: the worker now scrapes EVERY modelled city by
   # default (ScrapeCities.allCities). The var still exists as a load-shedding
   # escape hatch — `fly secrets set KINOWO_SCRAPE_CITIES=poznan,wroclaw` NARROWS
-  # the set — but the steady state is all ~19 cities on 4 shared vCPUs / 1 GB.
+  # the set — but the steady state is all ~19 cities on 2 shared vCPUs / 1 GB.
   # Watch this worker's RSS/CPU: if it throttles or OOMs, narrow via the secret
   # or bump the [[vm]] (see below).
   # Per-app JVM sizing (moved out of the shared Dockerfile), tuned for memory on
@@ -117,8 +117,8 @@ primary_region = 'arn'
   # is why it fits where G1 didn't. If it ever OOM-restarts anyway, the next lever is
   # RAISING
   # [[vm]] memory back toward 2 GB (extra RAM is ~$5.19/GB-mo and 1.25 GB / 1280 MB
-  # is a valid 256 MB-increment step) — the 4 vCPUs already include 1 GB at the
-  # shared-cpu-4x base price, so RAM is the only thing this trades.
+  # is a valid 256 MB-increment step) — the 2 vCPUs already include 1 GB at the
+  # shared-cpu base price, so RAM is the only thing this trades.
   #
   # LOAD-BEARING trailing flag `-Djdk.http.auth.tunneling.disabledSchemes=` (empty):
   # re-enables Basic auth on HTTPS CONNECT tunnels, which the JDK disables by
@@ -182,32 +182,36 @@ primary_region = 'arn'
   destination = '/data'
 
 [[vm]]
-  # 4 shared vCPUs / 1 GB. 2x is steady-state-adequate (real scrape load ~10/min ≈
-  # 300 cinemas / 30-min TTL; the "~200/min" once feared was a metrics artifact —
-  # `rate(tasks_enqueued{ScrapeCinema})` double-counts deduped re-attempts ~11×,
-  # filter to result="added"), and the all-reaper credit watchdog DOES break the
-  # metastable deadlock on 2x (measured: credit climbs 1→7k once the whole pipeline
-  # backs off). BUT on 2x the cap is only ~8k, so the band sits low and a rating
-  # sweep landing right after a resume could still drain credit to the floor (the
-  # 4922→1 sawtooth). 4x lifts the credit ceiling to ~19k and 4× the accrual rate,
-  # so credit rarely dips into the band at all — the watchdog becomes a deep safety
-  # net rather than a constant control loop, and freshness doesn't lag during peaks.
+  # 2 shared vCPUs / 1 GB (DOWNGRADED from 4x on 2026-07-03 to cut cost). 2x is
+  # steady-state-adequate: real scrape load is ~10/min ≈ 300 cinemas / 30-min TTL
+  # (the "~200/min" once feared was a metrics artifact — `rate(tasks_enqueued
+  # {ScrapeCinema})` double-counts deduped re-attempts ~11×; filter to
+  # result="added"), and the all-reaper credit watchdog DOES break the metastable
+  # deadlock on 2x (measured: credit climbs 1→7k once the whole pipeline backs off).
+  # The tradeoff we're accepting back: on 2x the credit cap is only ~8k, so the
+  # throttle band sits low and a rating sweep landing right after a resume can drain
+  # credit toward the floor (the 4922→1 sawtooth) — i.e. the credit gate becomes a
+  # constant control loop rather than a deep safety net, and freshness can lag during
+  # peaks. That's the price of 4x's ~19k ceiling + 4× accrual we're giving up.
   #
-  # The self-heal stays wired regardless: `ScrapeThrottleMonitor` (in-process
-  # scrape-duration backstop) + the EXTERNAL Grafana credit gate (fly_instance_cpu_
-  # balance < 6000 → /throttle webhook, recover > 12000 — band SCALED to the ~19k 4x
-  # cap; on 2x it was 2500/5000 for the ~8k cap) tell ALL reapers to back off to a
-  # trickle (KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK / KINOWO_THROTTLED_ENQUEUE_
-  # PER_TICK) so the pool idles and credit rebuilds. If 4x still ever pins, go
+  # If 2x pins under load, the levers in order: narrow KINOWO_SCRAPE_CITIES, raise
+  # KINOWO_SCRAPE_FRESHNESS_MINUTES (cuts write rate), go back to 4x, or go
   # performance-2x (dedicated, no credit throttle).
   #
-  # RAM is INDEPENDENT of the CPU choice: 1 GB is the shared-cpu-4x base (`flyctl
-  # platform vm-sizes`), included in the 4x price — so this keeps all 4 vCPUs and
-  # the full ~19k credit ceiling above while dropping the +1 GB extra-RAM charge
-  # (~$5.19/mo). Back down from 2 GB on 2026-06-21: the old ~890 MB OOM history was
-  # the G1 config; the SerialGC + tightened-cap config above fits 1 GB with ~290 MB
-  # worst-case headroom (NMT-measured, see the JAVA_OPTS note). The earlier comment
-  # that "2 GB is the 4x minimum" was wrong — the 4x minimum is 1 GB.
+  # The self-heal stays wired: `ScrapeThrottleMonitor` (in-process scrape-duration
+  # backstop) + the EXTERNAL Grafana credit gate (fly_instance_cpu_balance < 2500 →
+  # /throttle webhook, recover > 5000 — band SCALED to the ~8k 2x cap; when on 4x it
+  # was 6000/12000 for the ~19k cap) tell ALL reapers to back off to a trickle
+  # (KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK / KINOWO_THROTTLED_ENQUEUE_PER_TICK)
+  # so the pool idles and credit rebuilds. The recovery threshold MUST stay under the
+  # ~8k cap or the gate can never resolve — see the kinowo-worker-credit-low rule in
+  # fly/grafana/provisioning/alerting/alert-rules.yaml (it's coupled to this cpus value).
+  #
+  # RAM is INDEPENDENT of the CPU choice: 1 GB is the shared-cpu base (`flyctl
+  # platform vm-sizes`) included in the price at every shared tier — so this keeps
+  # 1 GB regardless of the vCPU count. Back down from 2 GB on 2026-06-21: the old
+  # ~890 MB OOM history was the G1 config; the SerialGC + tightened-cap config above
+  # fits 1 GB with ~290 MB worst-case headroom (NMT-measured, see the JAVA_OPTS note).
   memory = '1gb'
   cpu_kind = 'shared'
-  cpus = 4
+  cpus = 2
