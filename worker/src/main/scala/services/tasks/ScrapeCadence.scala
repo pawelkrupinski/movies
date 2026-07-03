@@ -10,7 +10,7 @@ import scala.concurrent.duration._
  * The reaper ticks once a minute and enqueues the cinemas due under the shared
  * [[DueWindow]] (period = `Freshness.defaultScrapeTtl`, the scrape freshness
  * window). The ~290-cinema corpus is phase-spread across that window, so the
- * steady-state due rate is `corpus / ticksPerWindow` (~10/tick at the 30-min
+ * steady-state due rate is `corpus / ticksPerWindow` (~5/tick at the 60-min
  * window). The caps only bite under a backlog (cold boot, or a throttle episode
  * that parked work); in steady state far fewer than either cap is due.
  *
@@ -18,10 +18,10 @@ import scala.concurrent.duration._
  * CPU-credit safety net is engaged (`ScrapeThrottleSignal`) the reaper backs off
  * to it instead of the healthy cap. It must still drain the whole catalogue
  * within one freshness window — otherwise a throttle blip parks the corpus stale
- * (the old cap of 3 cleared ~290 cinemas only every ~97 ticks, i.e. ~1.5h out of
- * date, blowing freshness for every cinema). It stays well below the healthy cap
- * so the small worker pool still earns idle to rebuild credit — backing off, not
- * keeping full pace.
+ * (a cap of 3 cleared ~290 cinemas only every ~97 ticks, i.e. ~1.5h out of date,
+ * blowing freshness for every cinema). It stays well below the healthy cap so the
+ * small worker pool still earns idle to rebuild credit — backing off, not keeping
+ * full pace.
  */
 object ScrapeCadence {
   /** ScrapeReaper tick cadence (also the phase-spread granularity). */
@@ -34,16 +34,22 @@ object ScrapeCadence {
    *  ScrapeReaper treats this as a bound on the OUTSTANDING waiting-scrape backlog
    *  (not just per-tick additions): while throttled it tops the waiting set up to
    *  this many, so the credit-starved pool drains it to near-empty and idles
-   *  between ticks, rebuilding credit. 15 outstanding still serves the stalest
-   *  cinemas each tick while leaving the pool real idle gaps — recovery pressure a
-   *  flat per-tick cap could NOT provide (it let the backlog grow to the whole
-   *  corpus and pinned the pool busy, the 2026-06-24 spiral). Freshness during a
-   *  sustained throttle is deliberately sacrificed for recovery; it catches up once
-   *  the throttle clears and the full [[MaxEnqueuePerTick]] resumes. */
-  val ThrottledMaxEnqueuePerTick: Int = 15
+   *  between ticks, rebuilding credit. Set to the SMALLEST cap the sustainability
+   *  guard allows (`cap × ticksPerWindow ≥ corpus`, ~5 at the 60-min window), so a
+   *  credit-starved pool — which Fly caps to baseline, clearing only a scrape or two
+   *  per minute — reaches idle as fast as the freshness guard permits. The old cap
+   *  of 15 let a standing backlog of 15 keep the throttled pool pinned busy, so
+   *  credit sat at the floor through active hours (measured 2026-07-03: a fresh
+   *  ~17k post-deploy grant drained back to the floor in ~30 min under daytime
+   *  load). Freshness during a sustained throttle is deliberately sacrificed for
+   *  recovery; it catches up once the throttle clears and the full
+   *  [[MaxEnqueuePerTick]] resumes. */
+  val ThrottledMaxEnqueuePerTick: Int = 5
 
   /** Per-tick enqueue cap for the SECONDARY reapers (detail/rating/tmdb-retry)
-   *  while throttled (`KINOWO_THROTTLED_ENQUEUE_PER_TICK`). Their TTLs are 4–6h,
-   *  so even 5/tick drains the corpus many times over within a window. */
-  val ThrottledSecondaryEnqueuePerTick: Int = 5
+   *  while throttled (`KINOWO_THROTTLED_ENQUEUE_PER_TICK`). Their TTLs are 4–6h, so
+   *  even 3/tick drains the corpus many times over within a window — and quieting
+   *  them further (from 5) matters because credit only rebuilds when the WHOLE pool
+   *  idles: scrapes backing off alone left the detail/rating reapers feeding it. */
+  val ThrottledSecondaryEnqueuePerTick: Int = 3
 }

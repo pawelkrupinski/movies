@@ -18,7 +18,7 @@ import scala.util.Try
  * Periodically enqueues a `ScrapeCinema` task for every cinema that is due under
  * the shared [[DueWindow]] — its phase-window boundary has passed since the last
  * successful scrape, or it has never been scraped. The window's period is the
- * freshness setting (default 30min, `KINOWO_SCRAPE_FRESHNESS_MINUTES`); each
+ * freshness setting (default 60min, `KINOWO_SCRAPE_FRESHNESS_MINUTES`); each
  * cinema's boundary sits at a deterministic phase offset hashed from its key, so
  * the ~300 cinemas spread evenly across the period instead of all falling due
  * together and scraping in a lockstep wave. Enqueue is deduped by the queue, so a

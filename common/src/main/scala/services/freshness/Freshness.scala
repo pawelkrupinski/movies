@@ -40,20 +40,22 @@ object FreshnessKind {
  * introduces. The scrape TTL is the dominant lever on the worker's Mongo write
  * rate (each pass that finds a real change writes through to `movies` and
  * cascades to the read model), so it's tunable via `KINOWO_SCRAPE_FRESHNESS_MINUTES`
- * and defaults to 30min — short enough that showtimes stay current, long enough
- * that the ~290-cinema corpus drains within one window even while the CPU-credit
- * safety net throttles the reaper (see [[services.tasks.ScrapeCadence]]). At 15min
- * even the healthy enqueue cap had barely any headroom, so 30min is the sustainable
- * operating point — and `fly.worker.toml` already deploys it as `=30`. It applies
- * uniformly to EVERY cinema (Multikino included, now that it's on a flat-fee
- * residential proxy rather than per-request Zyte — no reason to scrape it less).
+ * and defaults to 60min — long enough that the ~290-cinema corpus's steady scrape
+ * rate (corpus / window) sits below the shared-cpu-4x baseline CPU entitlement, so
+ * CPU credit rebuilds during active hours instead of pinning at the floor (measured
+ * 2026-07-03: at 30min the daytime scrape+enrich load kept credit floored, and a
+ * fresh ~17k post-deploy grant drained back to the floor in ~30 min). 60min still
+ * keeps showtimes current for a listings app (showtimes don't change minute-to-
+ * minute) while halving the dominant CPU/write driver. It applies uniformly to
+ * EVERY cinema (Multikino included, now that it's on a flat-fee residential proxy
+ * rather than per-request Zyte — no reason to scrape it less).
  */
 object Freshness {
   import FreshnessKind._
 
   /** The cinema-scrape freshness window for every venue, tunable via
-   *  `KINOWO_SCRAPE_FRESHNESS_MINUTES` (default 30min). */
-  def defaultScrapeTtl: FiniteDuration = Env.positiveLong("KINOWO_SCRAPE_FRESHNESS_MINUTES", 30L).minutes
+   *  `KINOWO_SCRAPE_FRESHNESS_MINUTES` (default 60min). */
+  def defaultScrapeTtl: FiniteDuration = Env.positiveLong("KINOWO_SCRAPE_FRESHNESS_MINUTES", 60L).minutes
 
   def ttlFor(kind: FreshnessKind): Option[FiniteDuration] = kind match {
     case CinemaScrape  => Some(defaultScrapeTtl)
