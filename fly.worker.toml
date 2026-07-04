@@ -186,32 +186,31 @@ primary_region = 'arn'
   destination = '/data'
 
 [[vm]]
-  # 4 shared vCPUs / 1 GB. 2x is steady-state-adequate (real scrape load ~10/min ≈
-  # 300 cinemas / 30-min TTL; the "~200/min" once feared was a metrics artifact —
-  # `rate(tasks_enqueued{ScrapeCinema})` double-counts deduped re-attempts ~11×,
-  # filter to result="added"), and the all-reaper credit watchdog DOES break the
-  # metastable deadlock on 2x (measured: credit climbs 1→7k once the whole pipeline
-  # backs off). BUT on 2x the cap is only ~8k, so the band sits low and a rating
-  # sweep landing right after a resume could still drain credit to the floor (the
-  # 4922→1 sawtooth). 4x lifts the credit ceiling to ~19k and 4× the accrual rate,
-  # so credit rarely dips into the band at all — the watchdog becomes a deep safety
-  # net rather than a constant control loop, and freshness doesn't lag during peaks.
+  # 2 shared vCPUs / 1 GB. Downgraded 4x→2x 2026-07-05, after the boot-path
+  # optimizations removed the CPU bursts that used to drain credit: the read-model
+  # boot reproject is now GATED on stream availability (no boot reproject when the
+  # change stream can replay the gap, @7c01226f) and the read-model + freshness boot
+  # seeds are keyset-PAGED (they timed out at 60s → empty seed → whole-corpus rewrite
+  # every restart). MEASURED on 2x: steady-state busy ~10 centi-cores (below the ~13 cc
+  # 2x breakeven), credit balance climbs +~10/s off the restart floor to 34k+ and sits
+  # there, throttled=0. The old "on 2x a rating sweep sawtooths credit to the floor"
+  # note is stale twice over: Fly's credit cap is now ~10× higher (4x sat at ~150k, 2x
+  # climbs past 34k, NOT the ~8k this comment once assumed), and the bursts that caused
+  # the sawtooth are the ones the fixes above removed.
   #
-  # The self-heal stays wired regardless: `ScrapeThrottleMonitor` (in-process
-  # scrape-duration backstop) + the EXTERNAL Grafana credit gate (fly_instance_cpu_
-  # balance < 6000 → /throttle webhook, recover > 12000 — band SCALED to the ~19k 4x
-  # cap; on 2x it was 2500/5000 for the ~8k cap) tell ALL reapers to back off to a
-  # trickle (KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK / KINOWO_THROTTLED_ENQUEUE_
-  # PER_TICK) so the pool idles and credit rebuilds. If 4x still ever pins, go
-  # performance-2x (dedicated, no credit throttle).
+  # Self-heal stays wired: `ScrapeThrottleMonitor` (in-process scrape-duration backstop)
+  # + the EXTERNAL Grafana credit gate (fly_instance_cpu_balance < 6000 → /throttle
+  # webhook, recover > 12000) tell ALL reapers to back off to a trickle
+  # (KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK / KINOWO_THROTTLED_ENQUEUE_PER_TICK) so
+  # the pool idles and credit rebuilds. The 6000/12000 band still fits: the 2x balance
+  # sits at 34k+, so the gate stays a dormant deep-safety-net (it only ever fired during
+  # the now-removed boot bursts). If 2x ever pins, revert with `flyctl scale vm
+  # shared-cpu-4x --memory 1024 -a kinowo-worker` (+ redeploy), or go performance-2x
+  # (dedicated, no credit throttle).
   #
-  # RAM is INDEPENDENT of the CPU choice: 1 GB is the shared-cpu-4x base (`flyctl
-  # platform vm-sizes`), included in the 4x price — so this keeps all 4 vCPUs and
-  # the full ~19k credit ceiling above while dropping the +1 GB extra-RAM charge
-  # (~$5.19/mo). Back down from 2 GB on 2026-06-21: the old ~890 MB OOM history was
-  # the G1 config; the SerialGC + tightened-cap config above fits 1 GB with ~290 MB
-  # worst-case headroom (NMT-measured, see the JAVA_OPTS note). The earlier comment
-  # that "2 GB is the 4x minimum" was wrong — the 4x minimum is 1 GB.
+  # RAM is INDEPENDENT of the CPU choice: 1 GB fits the SerialGC + tightened-cap JVM
+  # config (JVM ~346 MB used live, ~290 MB worst-case headroom, NMT-measured — see the
+  # JAVA_OPTS note), so the downgrade keeps 1 GB and only drops the CPU tier.
   memory = '1gb'
   cpu_kind = 'shared'
-  cpus = 4
+  cpus = 2
