@@ -255,6 +255,49 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.tick() shouldBe 1
   }
 
+  // Parse-wave smoothing: a healthy tick's due batch otherwise hits the queue at one
+  // instant, so the scrapes fetch in parallel and their payloads PARSE together — a
+  // CPU spike that floors the shared-CPU credit balance. `planSlices` splits the
+  // batch into staggered groups (same total, lower peak). Pure-curve check: 5 items
+  // into 3 slices → sizes [2,2,1] at offsets 0/20/40s of the 1-min interval.
+  it should "plan the tick's batch into staggered, size-balanced slices" in {
+    val reaper = new ScrapeReaper(Seq(new FakeScraper(Multikino, movieAt(Multikino))),
+      new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    val batch  = Vector("a" -> "A", "b" -> "B", "c" -> "C", "d" -> "D", "e" -> "E")
+    val plan   = reaper.planSlices(batch, slices = 3)
+    plan.map(_._2.size) shouldBe Vector(2, 2, 1)                 // remainder to the earlier groups
+    plan.map(_._1)      shouldBe Vector(0.seconds, 20.seconds, 40.seconds) // spread across the 1-min tick
+    plan.flatMap(_._2)  shouldBe batch                          // every cinema kept, in order
+  }
+
+  it should "leave the batch a single un-staggered group when spread is disabled (slices <= 1)" in {
+    val reaper = new ScrapeReaper(Seq(new FakeScraper(Multikino, movieAt(Multikino))),
+      new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    reaper.planSlices(Vector("a" -> "A", "b" -> "B"), slices = 1) shouldBe
+      Vector((0.seconds, Vector("a" -> "A", "b" -> "B")))
+  }
+
+  // End-to-end: with enqueueSpread > 1 a healthy tick enqueues only the FIRST slice
+  // synchronously and DEFERS the rest onto the scheduler, so the parses don't clump.
+  // (With the un-spread default the whole batch would enqueue at once — the pre-change
+  // behaviour this asserts against.) A capturing `scheduleSlice` observes the stagger
+  // deterministically without wall-clock waits.
+  it should "enqueue only the first slice synchronously and defer the rest when enqueueSpread > 1" in {
+    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
+    val queue    = new InMemoryTaskQueue
+    val deferred = scala.collection.mutable.ArrayBuffer[Runnable]()
+    val reaper   = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore, enqueueSpread = 3) {
+      override protected def scheduleSlice(delay: FiniteDuration, task: Runnable): Unit = { deferred += task; () }
+    }
+    // 5 due → slices [2,2,1]; only the first 2 enqueue now, the two later slices defer.
+    reaper.tick() shouldBe 2
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 2L
+    deferred.size shouldBe 2
+    // Draining the deferred slices enqueues the remaining cinemas — same total, spread out.
+    deferred.foreach(_.run())
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 5L
+  }
+
   it should "not enqueue when another machine has claimed this minute's occurrence" in {
     val scraper = new FakeScraper(Multikino, movieAt(Multikino))
     val queue   = new InMemoryTaskQueue

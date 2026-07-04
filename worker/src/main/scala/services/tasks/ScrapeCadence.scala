@@ -46,6 +46,16 @@ object ScrapeCadence {
    *  [[MaxEnqueuePerTick]] resumes. */
   val ThrottledMaxEnqueuePerTick: Int = 5
 
+  /** How many staggered sub-slices each (non-throttled) ScrapeReaper tick enqueues
+   *  the due batch in (`KINOWO_SCRAPE_ENQUEUE_SPREAD_SLICES`). The tick's clump of
+   *  due cinemas otherwise fetches in parallel and PARSES together — a CPU spike that
+   *  floors the shared-CPU credit balance. Spreading the SAME batch across the 1-min
+   *  interval in this many groups keeps the parses from landing together (lower peak,
+   *  unchanged total work and freshness — a sub-minute stagger is nothing against the
+   *  60-min scrape window). 4 slices → the batch enqueues at 0/15/30/45s. 1 disables
+   *  the spread. */
+  val EnqueueSpreadSlices: Int = 4
+
   /** Per-tick enqueue cap for the SECONDARY reapers (detail/rating/tmdb-retry)
    *  while throttled (`KINOWO_THROTTLED_ENQUEUE_PER_TICK`). Their TTLs are 4–6h, so
    *  even 3/tick drains the corpus many times over within a window — and quieting

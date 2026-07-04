@@ -90,6 +90,18 @@ class ScrapeReaper(
   // behaviour (the not-throttled path is unaffected).
   throttledMaxEnqueuePerTick: Int = Int.MaxValue,
   throttle: ScrapeThrottleSignal = ScrapeThrottleSignal.AlwaysHealthy,
+  // SPREAD the (non-throttled) per-tick batch across the tick interval instead of
+  // dumping it all at the tick instant. The reaper enqueues a clump of due cinemas
+  // each tick; they fetch in parallel and their HTML/JSON payloads PARSE together —
+  // a CPU spike that floors the shared-CPU credit balance (the parse-wave burst).
+  // Slicing the same batch into `enqueueSpread` groups enqueued at staggered offsets
+  // within the interval keeps the parses from landing together: SAME total work and
+  // freshness (a sub-minute stagger is negligible against the 60-min scrape window),
+  // lower CPU peak. Applies only to the healthy path — the throttled path already
+  // trickles a tiny, backlog-bounded amount whose accounting must stay synchronous.
+  // Default 1 disables it (single group at offset 0), leaving tests that drive
+  // `tick()` directly — and the deterministic snapshot — unaffected.
+  enqueueSpread: Int = 1,
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:    Clock = Clock.systemUTC()
 ) extends Stoppable with Logging {
@@ -177,25 +189,87 @@ class ScrapeReaper(
     // backlog lets the pool drain to near-empty and idle between ticks → credit
     // recovers, then the full cap resumes. Most-overdue-first (above) means the
     // bounded trickle still serves the stalest cinemas.
-    val throttled = throttle.isThrottled
-    val cap =
-      if (throttled) math.max(0, throttledMaxEnqueuePerTick - queue.waitingCount(TaskType.ScrapeCinema))
-      else rampedCap(now)
+    if (throttle.isThrottled) {
+      val cap      = math.max(0, throttledMaxEnqueuePerTick - queue.waitingCount(TaskType.ScrapeCinema))
+      val enqueued = enqueueUpTo(due, cap)
+      if (enqueued > 0)
+        logger.warn(s"ScrapeReaper: CPU-credit throttle (slowest recent scrape ${throttle.slowScrapeMillis}ms) — " +
+          s"backlog-capped to $cap new; enqueued $enqueued most-overdue cinema(s) of ${due.size} due, " +
+          s"letting the pool drain + rebuild credit.")
+      enqueued
+    } else if (enqueueSpread <= 1) {
+      // Un-spread healthy path (the default): enqueue the whole capped batch now.
+      val enqueued = enqueueUpTo(due, rampedCap(now))
+      if (enqueued > 0) logger.info(s"ScrapeReaper enqueued $enqueued stale cinema(s).")
+      enqueued
+    } else {
+      // Spread the capped batch across the interval so the parses don't clump — see
+      // `enqueueSpread`. Enqueue the first slice now; defer the rest onto staggered
+      // offsets. The queue dedups, so a slice landing near the next tick can't
+      // double-enqueue. `tick` returns only what it enqueued SYNCHRONOUSLY (slice 0),
+      // matching the un-spread contract for the first-of-batch.
+      val plan = planSlices(due.take(rampedCap(now)), enqueueSpread)
+      val enqueuedNow = plan.headOption.map { case (_, first) => enqueueUpTo(first, first.size) }.getOrElse(0)
+      plan.drop(1).foreach { case (offset, group) =>
+        scheduleSlice(offset, () => {
+          val n = Try(enqueueUpTo(group, group.size)).getOrElse(0)
+          if (n > 0) logger.info(s"ScrapeReaper enqueued $n stale cinema(s) (spread slice at +${offset.toSeconds}s).")
+        })
+      }
+      val deferred = plan.drop(1).map(_._2.size).sum
+      if (enqueuedNow > 0 || deferred > 0)
+        logger.info(s"ScrapeReaper enqueued $enqueuedNow stale cinema(s) now, spreading $deferred more across the tick in ${plan.size - 1} slice(s).")
+      enqueuedNow
+    }
+  }
 
+  /** Enqueue due cinemas in order until `cap` NEW tasks have been added; already-
+   *  waiting/working cinemas dedup for free (they don't count against the cap).
+   *  Returns the number of tasks actually added. */
+  private def enqueueUpTo(due: Vector[(String, String)], cap: Int): Int = {
     var enqueued = 0
     due.iterator.takeWhile(_ => enqueued < cap).foreach { case (key, displayName) =>
       if (queue.enqueue(TaskType.ScrapeCinema, key,
             Map(ScrapeCinemaHandler.CinemaKey -> displayName)) == EnqueueResult.Added)
         enqueued += 1
     }
-    if (enqueued > 0) {
-      if (throttled)
-        logger.warn(s"ScrapeReaper: CPU-credit throttle (slowest recent scrape ${throttle.slowScrapeMillis}ms) — " +
-          s"backlog-capped to $cap new; enqueued $enqueued most-overdue cinema(s) of ${due.size} due, " +
-          s"letting the pool drain + rebuild credit.")
-      else logger.info(s"ScrapeReaper enqueued $enqueued stale cinema(s).")
-    }
     enqueued
+  }
+
+  /** Split the tick's due-and-capped batch into `slices` contiguous groups, each
+   *  tagged with the within-interval offset at which it should be enqueued (group
+   *  k at k/groupCount of the interval), so their scrape parses land staggered
+   *  across the tick rather than clumping at the tick instant — same total work,
+   *  lower CPU peak. Group sizes differ by at most one (earlier groups take the
+   *  remainder). `slices <= 1` or a batch of one → a single group at offset 0 (the
+   *  un-spread default). Pure given the batch, `slices`, and `interval`. */
+  private[tasks] def planSlices(
+    batch:  Vector[(String, String)],
+    slices: Int
+  ): Vector[(FiniteDuration, Vector[(String, String)])] = {
+    val n = math.max(1, slices)
+    if (n <= 1 || batch.size <= 1) Vector((Duration.Zero, batch))
+    else {
+      val groupCount = math.min(n, batch.size)
+      val base       = batch.size / groupCount
+      val remainder  = batch.size % groupCount
+      var idx        = 0
+      (0 until groupCount).iterator.map { k =>
+        val size   = base + (if (k < remainder) 1 else 0)
+        val group  = batch.slice(idx, idx + size)
+        idx += size
+        ((interval.toMillis * k / groupCount).millis, group)
+      }.toVector
+    }
+  }
+
+  /** Deferral seam for the spread slices (overridable in tests so the staggering is
+   *  observed deterministically without wall-clock waits). Runs `task` after `delay`
+   *  on the reaper's scheduler; the returned handle is intentionally discarded — a
+   *  dropped slice on shutdown just re-enqueues on the next tick. */
+  protected def scheduleSlice(delay: FiniteDuration, task: Runnable): Unit = {
+    scheduler.schedule(task, delay.toMillis, TimeUnit.MILLISECONDS)
+    ()
   }
 
   override def stop(): Unit = { scheduler.shutdown(); () }

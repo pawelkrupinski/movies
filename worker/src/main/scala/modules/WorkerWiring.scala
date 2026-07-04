@@ -862,12 +862,19 @@ class WorkerWiring extends play.api.Logging {
   // reset CPU-credit balance rebuilds) rather than pinning the pool flat-out and
   // re-draining credit — the residual boot-storm spike. See ScrapeReaper.bootRamp.
   def scrapeBootRampMinutes: Long = Env.positiveLong("KINOWO_SCRAPE_BOOT_RAMP_MINUTES", 5L)
+  // How many staggered sub-slices each healthy reaper tick spreads its due batch
+  // over the 1-min interval, so the batch's scrape parses don't clump into a single
+  // CPU spike that floors the CPU-credit balance (the parse-wave burst). Same total
+  // work and freshness; only the enqueue timing is staggered. Sized in ScrapeCadence;
+  // 1 disables the spread. See ScrapeReaper.enqueueSpread.
+  def scrapeEnqueueSpreadSlices: Int =
+    Env.positiveInt("KINOWO_SCRAPE_ENQUEUE_SPREAD_SLICES", services.tasks.ScrapeCadence.EnqueueSpreadSlices)
   lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, dueWindow = scrapeDueWindow,
       initialDelay = initialScrapeDelaySeconds.seconds,
       maxEnqueuePerTick = maxScrapeEnqueuePerTick, bootRamp = scrapeBootRampMinutes.minutes,
       throttledMaxEnqueuePerTick = throttledScrapeEnqueuePerTick, throttle = throttleSignal,
-      runStore = scheduledRunStore)
+      enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore)
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing
   // when the 2026-06-12 worker-steal episode had to be reconstructed from metrics).
