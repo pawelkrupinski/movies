@@ -310,4 +310,17 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.movieDeletes should contain(yearKey(2025))
     p2.stop()
   }
+
+  // The boot catch-up reproject is GATED on change-stream availability. With an active stream
+  // the resume token replays the missed-while-down gap, so a boot reproject would only re-catch
+  // what the stream is already delivering — a false-positive did_work on every restart. So when
+  // the stream is active the first reproject is deferred to the periodic one (hours out); only a
+  // DOWN stream (nothing to replay) runs the boot catch-up soon.
+  "the boot reproject" should "be gated on stream availability — deferred to the periodic reproject when the stream is active, run soon only when it's down" in {
+    val (projector, _, _) = fixture()
+    val active   = projector.reconcileInitialDelaySeconds(streamActive = true)
+    val inactive = projector.reconcileInitialDelaySeconds(streamActive = false)
+    inactive should be < active     // stream down → boot catch-up runs soon (no replay to wait for)
+    active   should be >= 3600L      // stream up → NO boot reproject; deferred to the periodic (hours), not a boot delay
+  }
 }

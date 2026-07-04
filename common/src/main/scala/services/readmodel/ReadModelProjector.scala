@@ -65,8 +65,8 @@ class ReadModelProjector(
   private val ReconcileSeconds = Env.positiveLong("KINOWO_READMODEL_RECONCILE_SECONDS", 21600L) // 6 h (was 30 min)
   // Both are deferred off the boot path — running a full scan synchronously at `start()`
   // stacked a second scan onto the cache hydrate + first scrape on a cold JVM (the boot
-  // CPU-credit drain). The full reproject runs first (short delay) as the boot catch-up
-  // for anything missed while the worker was down; the prune staggers a little later.
+  // CPU-credit drain). The boot catch-up reproject runs ONLY when the change stream is
+  // UNAVAILABLE (see `reconcileInitialDelaySeconds`); the prune staggers a little later.
   private val ReconcileBootDelaySeconds = Env.positiveLong("KINOWO_READMODEL_RECONCILE_BOOT_DELAY_SECONDS", 60L)
   private val PruneBootDelaySeconds     = Env.positiveLong("KINOWO_READMODEL_PRUNE_BOOT_DELAY_SECONDS", 300L)
   @volatile private var watchHandle: Option[AutoCloseable] = None
@@ -206,6 +206,17 @@ class ReadModelProjector(
   /** Cheap id-only orphan prune — the frequent backstop for deleted/re-keyed rows. */
   def pruneOrphans(): Unit = sweep(reproject = false)
 
+  /** Initial delay for the periodic full reproject. When the change stream is ACTIVE it
+   *  replays events missed while the worker was down from the persisted resume token, so a
+   *  boot catch-up reproject would only re-project what the stream is already delivering — a
+   *  ~13-doc write burst counted as a false-positive `did_work` on every restart. So gate it:
+   *  with an active stream the FIRST reproject is the periodic one (`ReconcileSeconds`), i.e.
+   *  no boot reproject; only when the stream is UNAVAILABLE (no replica set / failed to open,
+   *  nothing to replay) does the boot catch-up run at `ReconcileBootDelaySeconds`. The +300s
+   *  prune and the eventual periodic reproject remain the backstops either way. */
+  private[readmodel] def reconcileInitialDelaySeconds(streamActive: Boolean): Long =
+    if (streamActive) ReconcileSeconds else ReconcileBootDelaySeconds
+
   def start(): Unit = if (enabled) {
     // Seed the last-projection state from the derived collections, so a restart
     // doesn't rewrite documents that are already correct.
@@ -219,16 +230,18 @@ class ReadModelProjector(
     // means incremental writes are no-ops for already-correct documents. Both sweeps are
     // deferred off the boot path so they don't compete with boot hydrate + the first scrape.
     watchHandle = movieRepository.watchUpserts(onMovieUpsert)
-    // Full re-projection: boot catch-up (missed-while-down upserts) then rarely.
+    // Full re-projection: periodic, plus a boot catch-up ONLY when the stream can't replay.
+    val reconcileInitialDelay = reconcileInitialDelaySeconds(watchHandle.isDefined)
     scheduler.scheduleAtFixedRate(
       () => Try(reconcile()).recover { case exception => logger.warn(s"read-model reconcile tick failed: ${exception.getMessage}") },
-      ReconcileBootDelaySeconds, ReconcileSeconds, TimeUnit.SECONDS)
+      reconcileInitialDelay, ReconcileSeconds, TimeUnit.SECONDS)
     // Cheap orphan prune: frequent, no per-row re-projection (can't spike CPU).
     scheduler.scheduleAtFixedRate(
       () => Try(pruneOrphans()).recover { case exception => logger.warn(s"read-model prune tick failed: ${exception.getMessage}") },
       PruneBootDelaySeconds, PruneSeconds, TimeUnit.SECONDS)
     logger.info(s"ReadModelProjector started; orphan-prune every ${PruneSeconds}s (first in ${PruneBootDelaySeconds}s), " +
-      s"full reproject every ${ReconcileSeconds}s (first in ${ReconcileBootDelaySeconds}s); " +
+      s"full reproject every ${ReconcileSeconds}s (first in ${reconcileInitialDelay}s — " +
+      s"${if (watchHandle.isDefined) "no boot reproject, stream replays the gap" else "boot catch-up, stream unavailable"}); " +
       s"change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — reconcile only"}.")
   } else logger.info("ReadModelProjector disabled (read model or movies repository not enabled).")
 
