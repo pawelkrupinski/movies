@@ -1,6 +1,6 @@
 package services.readmodel
 
-import models.{CityScreening, ResolvedMovie}
+import models.CityScreening
 import play.api.Logging
 import services.Stoppable
 import services.movies.{MovieRepository, StoredMovieRecord}
@@ -44,8 +44,16 @@ class ReadModelProjector(
 ) extends Stoppable with Logging {
   import ReadModelProjectionMetrics.{Op, ReconcileKind, Target}
 
-  private val lastMovie      = scala.collection.mutable.Map.empty[String, ResolvedMovie]
-  private val lastScreenings = scala.collection.mutable.Map.empty[String, Map[String, CityScreening]]
+  // Diff state for minimal writes: the CONTENT HASH of the last-projected document per
+  // film (and per screening), NOT the full document. The projection is deterministic, so
+  // an unchanged row hashes to the same value and its write is skipped; keeping only the
+  // hash resident holds the whole read model for diffing at a few bytes per doc instead of
+  // the full ResolvedMovie / CityScreening object graph (which also lives in Mongo — this
+  // is a pure duplicate we don't need to keep inflated). A 32-bit hash collision
+  // (astronomically rare) would skip one genuine write, leaving a stale doc until the
+  // row's next real change re-projects it — self-healing, never permanently wrong.
+  private val lastMovie      = scala.collection.mutable.Map.empty[String, Int]
+  private val lastScreenings = scala.collection.mutable.Map.empty[String, Map[String, Int]]
   private val lock           = new AnyRef
 
   private val scheduler = DaemonExecutors.scheduler("read-model-projector")
@@ -84,10 +92,10 @@ class ReadModelProjector(
     // exactly one. Each variant card is diffed and written independently.
     var written = 0
     ReadModelProjection.projectAll(stored).foreach { case (movie, screenings) =>
-      if (!lastMovie.get(movie._id).contains(movie)) {
+      if (!lastMovie.get(movie._id).contains(movie.##)) {
         writer.upsertMovie(movie)
         metrics.recordWrite(Target.Movie, Op.Upsert, 1)
-        lastMovie.update(movie._id, movie)
+        lastMovie.update(movie._id, movie.##)
         written += 1
       }
       written += diffScreenings(movie._id, screenings)
@@ -98,14 +106,14 @@ class ReadModelProjector(
   /** Returns the number of screening documents written (upserts + deletes). */
   private def diffScreenings(filmId: String, next: Seq[CityScreening]): Int = {
     val nextById = next.map(s => s._id -> s).toMap
-    val previous     = lastScreenings.getOrElse(filmId, Map.empty)
+    val previous = lastScreenings.getOrElse(filmId, Map.empty)
     var upserted = 0
-    nextById.foreach { case (id, s) => if (!previous.get(id).contains(s)) { writer.upsertScreening(s); upserted += 1 } }
+    nextById.foreach { case (id, s) => if (!previous.get(id).contains(s.##)) { writer.upsertScreening(s); upserted += 1 } }
     val deletes = previous.keysIterator.filterNot(nextById.contains).toSeq
     deletes.foreach(writer.deleteScreening)
     if (upserted > 0)        metrics.recordWrite(Target.Screening, Op.Upsert, upserted)
     if (deletes.nonEmpty)    metrics.recordWrite(Target.Screening, Op.Delete, deletes.size)
-    if (nextById.isEmpty) lastScreenings.remove(filmId) else lastScreenings.update(filmId, nextById)
+    if (nextById.isEmpty) lastScreenings.remove(filmId) else lastScreenings.update(filmId, nextById.view.mapValues(_.##).toMap)
     upserted + deletes.size
   }
 
@@ -202,9 +210,9 @@ class ReadModelProjector(
     // Seed the last-projection state from the derived collections, so a restart
     // doesn't rewrite documents that are already correct.
     lock.synchronized {
-      reader.findAllMovies().foreach(m => lastMovie.update(m._id, m))
+      reader.findAllMovies().foreach(m => lastMovie.update(m._id, m.##))
       reader.findAllScreenings().groupBy(_.filmId).foreach { case (fid, ss) =>
-        lastScreenings.update(fid, ss.map(s => s._id -> s).toMap)
+        lastScreenings.update(fid, ss.map(s => s._id -> s.##).toMap)
       }
     }
     // The change-stream watch covers live changes from now on; the seeded state above

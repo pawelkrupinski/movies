@@ -149,6 +149,20 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.screeningUpserts should have size 2  // the one changed screening document, again
   }
 
+  // Hash-diff: the resident diff-state keeps only a 32-bit content HASH of each projected
+  // document, not the full document (a heap-footprint cut — the read model already lives in
+  // Mongo). Re-projecting byte-identical content must still hash-match and skip the write;
+  // the change cases below (rating / showtime) guard that a differing field hash-differs and
+  // writes. Together they lock the store-hash / compare-hash path.
+  "re-projecting identical content" should "write nothing (hash-diff skip)" in {
+    val (projector, _, rm) = fixture()
+    val rec = record(Some(8.0), Seq(at("2026-06-12T20:00")))
+    projector.onMovieUpsert(stored(rec))
+    projector.onMovieUpsert(stored(rec))   // identical → hash matches → no rewrite
+    rm.movieUpserts     should have size 1
+    rm.screeningUpserts should have size 1
+  }
+
   "a rating-only change" should "move only the movie document" in {
     val (projector, _, rm) = fixture()
     val shows = Seq(at("2026-06-12T20:00"))
