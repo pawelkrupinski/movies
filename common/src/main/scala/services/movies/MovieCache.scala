@@ -1274,20 +1274,22 @@ class CaffeineMovieCache(
   //     shared vCPU continuously and starved page renders. The change stream makes the
   //     cost proportional to real edits instead of corpus size.
   //
-  //  2. BACKSTOP (safety net): an INFREQUENT full `rehydrate()` still runs to close any
-  //     gap the stream missed (a terminal error / restart before resume tokens replay,
-  //     a rare drifted-key delete `applyDelete` can't map) and to be the only mechanism
-  //     on a standalone Mongo that can't stream. Now that upserts AND deletes apply
-  //     incrementally and the stream persists a resume token (worker), this is pure
-  //     safety — a candidate to retire once its redundancy is measured. The expensive
-  //     findAll fires every `BackstopIntervalSeconds` (default 30 min), was every 30 s.
-  //     Tunable via KINOWO_CACHE_REHYDRATE_SECONDS.
+  //  2. BACKSTOP (safety net): a RARE full `rehydrate()` — now that upserts (`applyUpsert`),
+  //     deletes (`applyDelete`) and CacheKey collisions (the settle-reaper's
+  //     `canonicalizeBySanitize` merges them in the source, and the stream propagates the
+  //     result) all resolve incrementally, and the stream resumes from a persisted token
+  //     across restarts, its three former jobs (deletes / gaps / collisions) are covered
+  //     elsewhere. What's left is belt-and-suspenders + the rare orphan-reap (drifted-`_id`
+  //     Mongo hygiene, below), so the expensive findAll dropped from every 30 s → 30 min →
+  //     now every `BackstopIntervalSeconds` (default 6 h). A full retire would need a
+  //     source-id↔key reverse-index across all 9 cache write paths — not worth it for a
+  //     case the reaper already self-heals. Tunable via KINOWO_CACHE_REHYDRATE_SECONDS.
   //
   // The scheduler + watch only start when `start()` is called (Wiring does,
   // tests don't), so unit tests still get a single one-shot hydrate at
   // construction unless they opt into the live sync.
   private val refreshScheduler        = DaemonExecutors.scheduler("movie-cache-refresh")
-  private val BackstopIntervalSeconds = Env.positiveLong("KINOWO_CACHE_REHYDRATE_SECONDS", 1800L)
+  private val BackstopIntervalSeconds = Env.positiveLong("KINOWO_CACHE_REHYDRATE_SECONDS", 21600L)
   @volatile private var watchHandle: Option[AutoCloseable] = None
 
   /** Apply one out-of-band upsert from the change stream to the in-memory cache.
