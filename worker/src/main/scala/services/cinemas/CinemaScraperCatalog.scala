@@ -257,7 +257,11 @@ class CinemaScraperCatalog(
   private val kielceScrapers: Seq[CinemaScraper] = Seq(
     helios(HeliosNuxt.Kielce),
     new MultikinoClient(mkFetch, "0029", MultikinoKielce),
-    new KinoFenomenClient(http, KinoFenomen),
+    // iframe639.biletyna.pl 403s our Fly datacenter IP (Cloudflare) on the
+    // per-film /artist/view/id detail pages, so route through the biletyna seam
+    // (residential proxy → Zyte) like every other biletyna venue — else the
+    // deferred detail enrichment fetches all 403 and the enrichment bar goes red.
+    new KinoFenomenClient(bnFetch, KinoFenomen),
     new KinoMoskwaClient(http, KinoMoskwa, today),
   )
 

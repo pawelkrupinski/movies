@@ -1,7 +1,7 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, Cinema, KinoKameralne, KinoKryterium, KinoPort}
+import models.{AdaKinoStudyjne, Cinema, KinoFenomen, KinoKameralne, KinoKryterium, KinoPort}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -54,6 +54,19 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val movies  = scraper.fetch()  // reads the ada-kino-studyjne fixture via bnFetch
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(AdaKinoStudyjne)
+  }
+
+  // Kino Fenomen (WDK) is iframe639.biletyna.pl — a biletyna host whose per-film
+  // /artist/view/id detail pages 403 our Fly IP behind Cloudflare, so its deferred
+  // detail enrichment must fetch through `bnFetch`, not the shared `http`. Wired
+  // on `http` (as it was when the venue was added), every detail fetch 403s → the
+  // enrichment /uptime bar goes red; here the fixture-less `http` makes the leak a
+  // hard failure. Fixture captured 2026-07-04 from `iframe639.biletyna.pl/?display=events`.
+  it should "route Kino Fenomen through the injected biletyna seam, not the shared http" in {
+    val scraper = catalog(biletyna = "kino-fenomen").all.find(_.cinema == KinoFenomen).value
+    val movies  = scraper.fetch()  // reads the kino-fenomen fixture via bnFetch
+    movies should not be empty
+    movies.map(_.cinema).toSet shouldBe Set(KinoFenomen)
   }
 
   // Kino Kryterium's origin (bilety.ck105.koszalin.pl) silently times out our Fly

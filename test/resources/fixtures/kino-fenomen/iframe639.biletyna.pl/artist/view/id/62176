@@ -26,7 +26,7 @@
     <!-- End Google Tag Manager -->
 
   <script type="text/javascript">
-      var bnk_sid = 'f6ca3589ca60711024332dcbd761d8ae';
+      var bnk_sid = '11ee205917063c38425f38da78d32a98';
       var site_language = 'pl';
                   var BNK_context = {"theme_name":"iframe","page_metadata":{}};
   </script>
@@ -65,7 +65,7 @@
   <title>biletyna.pl</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" >
 <meta charset="UTF-8"><script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.0/jquery-ui.min.js"></script>
 <script src="/js/gnp.js?ver=1.0"></script>
-<script src="/lib/easyXDM.min.js"></script><link href="https://biletyna.pl/film/Wartosc-sentymentalna" rel="canonical" >      <link rel="apple-touch-icon" sizes="180x180" href="/gfx/favicon/biletyna/apple-touch-icon.png">
+<script src="/lib/easyXDM.min.js"></script><link href="https://biletyna.pl/film/Ojczyzna" rel="canonical" >      <link rel="apple-touch-icon" sizes="180x180" href="/gfx/favicon/biletyna/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/gfx/favicon/biletyna/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/gfx/favicon/biletyna/favicon-16x16.png">
     <link rel="manifest" href="/gfx/favicon/biletyna/site.webmanifest?ver=1.1">
@@ -212,7 +212,7 @@
                 <div id="main-search-bar" class="B-nav__search header-search dark-grey-font search-bar">
           <i id="close-search-bar" class="icon-svg close"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-cancel"></use></svg></i>
           <header-search
-            form-action="/artist/view/id/57079?id=57079"
+            form-action="/artist/view/id/62176?id=62176"
             :auto-focus="false"
             search-endpoint="searchIframe"
           >
@@ -338,7 +338,7 @@
         </li>
                   <li aria-current="page">
           <span class="text-ellipsis nolink">
-            <strong>Wartość sentymentalna</strong>
+            <strong>Ojczyzna</strong>
           </span>
         </li>
               <li aria-hidden="true" class="breadcrumbs__chevron">
@@ -354,7 +354,7 @@
     <div id="artist-view" class="container">
   <div class="view_box background_color event_view">
     <header class="B-m-0 visible-xs artist-header">
-    <p class="artist-header__name B-m-0">Wartość sentymentalna</p>
+    <p class="artist-header__name B-m-0">Ojczyzna</p>
 </header>
 
 <div class="visible-xs artist-content">
@@ -363,7 +363,7 @@
       <lite-youtube
               class="artist-youtube__wrapper media-placeholder__content"
               id="youtube-player"
-              videoid="PpNkb27A3Qs"
+              videoid="Ny7JujsNhNc"
               posterquality="maxresdefault"
               params="rel=0&autoplay=0&showInfo=0&loop=1"
       ></lite-youtube>
@@ -395,21 +395,21 @@
         <lite-youtube
           class="artist-youtube__wrapper media-placeholder__content"
           id="youtube-player-desktop"
-          videoid="PpNkb27A3Qs"
+          videoid="Ny7JujsNhNc"
           posterquality="maxresdefault"
           params="rel=0&autoplay=0&showInfo=0&loop=1"
         ></lite-youtube>
       </div>
-        <a class="artist-poster media-placeholder media-placeholder--poster" href="/file/get/id/342597" data-lightbox="image-2" data-title="Wartość sentymentalna" aria-label="Powiększ plakat wydarzenia">
+        <a class="artist-poster media-placeholder media-placeholder--poster" href="/file/get/id/367932" data-lightbox="image-2" data-title="Ojczyzna" aria-label="Powiększ plakat wydarzenia">
       <figure>
         <picture>
           <img
               fetchpriority="high"
               loading="eager"
               class="img-responsive B-border-radius--standard"
-              src="/file/get/id/342597/w/450"
+              src="/file/get/id/367932/w/450"
               onerror="this.onerror=null;this.src='/th/biletyna-v2/gfx/zaslepka.jpg';"
-              alt="Wartość sentymentalna"
+              alt="Ojczyzna"
           >
         </picture>
       </figure>
@@ -419,7 +419,7 @@
       <header>
         <div class="artist-subtitle-actions">
                     <div class="event-title hidden-xs">
-            Wartość sentymentalna
+            Ojczyzna
           </div>
           <br>
           <a class="B-btn B-btn--accent B-btn--small" href="#bilety" style="padding: 6px 15px;margin-right: 4px">
@@ -432,11 +432,7 @@
       </header>
 
       <div id="artist-view-description" class="description-text content-hidden">
-                <p>reżyseria: Joachim Trier</p>
-<p>występują: Renate Reinsve, Stellan Skarsgard, Inga Ibsdotter Lilleaas</p>
-<p>/ Norwegia, Niemcy, Dania, Francja, Szwecja, Wlk. Brytania, Turcja / dramat / 2025 / 133 min.</p>
-<p>Nominowany do dziewięciu Oscarów najnowszy film Joachima Triera, reżysera „Najgorszego człowieka na świecie", z nominowanymi do Oscara w kategoriach aktorskich Renate Reinsve, Stellanem Skarsgårdem, Ingą Ibsdotter Lilleaas i Elle Fanning w rolach głównych. Jeden z najczęściej nagradzanych i najważniejszych filmów tego roku, z muzyką skomponowaną przez polską kompozytorkę Hanię Rani.</p>
-<p>Siostry Nora (Renate Reinsve) i Agnes (Inga Ibsdotter Lilleaas) spotykają się ze swoim dawno niewidzianym ojcem, charyzmatycznym, niegdyś wielkim reżyserem filmowym Gustavem (Stellan Skarsgård). Proponuje on Norze, aktorce teatralnej, rolę w swoim najnowszym filmie, który ma być jego powrotem do świata filmu. Gdy dziewczyna odrzuca propozycję, ten zatrudnia młodą gwiazdę Hollywood (Elle Fanning). Teraz siostry muszą poradzić sobie nie tylko ze swoją skomplikowaną sytuacją z ojcem, ale też z amerykańską gwiazdą, która zmienia ich rodzinną dynamikę.</p>
+                <p>"Ojczyzna" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.</p>
       </div>
       <div class="show-more-wrapper">
         <button
@@ -471,7 +467,7 @@
       <div class="modal-header modal-header--with-btn primary-bcg white-font">
         <button type="button" class="close white-font" data-dismiss="modal" aria-label="Zamknij"><span aria-hidden="true">&times;</span></button>
         <div class="modal-title table-display modal-header-thumbnail">
-          <p class="h3">Wartość sentymentalna</p>
+          <p class="h3">Ojczyzna</p>
         </div>
       </div>
       <div class="modal-body">
@@ -511,10 +507,10 @@
           
           <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
             <div>
-                              <span class="B-font-weight--bold">19.07.2026</span><br class="hidden-xs">
+                              <span class="B-font-weight--bold">05.07.2026</span><br class="hidden-xs">
                 <span class="B-m-0 B-text--nowrap">
                   <span class="B-font-weight--light">godz. </span>
-                  <span class="B-font-weight--bold">21:00</span>
+                  <span class="B-font-weight--bold">16:00</span>
                 </span>
                             </p>
             </div>
@@ -526,7 +522,7 @@
                               <div class="B-flex B-flex--direction-column@xs iframe_all_event_city">
                   <div>
                     <p>Kielce</p>
-                    <p>Wojewódzki Dom Kultury - Dziedziniec Wewnętrzny</p>
+                    <p>Wojewódzki Dom Kultury - sala teatralna</p>
                   </div>
                                       <div class="B-mx-15 B-mx-0@xs B-mt-10@xs">
                                               <div class="tag rounded grey-font">napisy</div>
@@ -537,19 +533,67 @@
           </div>
                       <div class="B-pl-5 iframe_all_event_title">
               <p class="B-font-weight--bold B-m-0">
-                Wartość sentymentalna              </p>
-                              <p class="B-font-weight--light B-m-0">
-                  KINO LETNIE  Z KLIMATEM - NA LEŻAKACH                </p>
+                Ojczyzna              </p>
                           </div>
                   </div>
       </div>
                       <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
               <p class="event-free-places">
                 <span>dostępne bilety:</span>
-                <strong>86</strong>
+                <strong>227</strong>
               </p>
                               <a style="min-width: 130px;" class="B-btn B-btn--accent "
-             href="/event/view/id/681213"
+             href="/event/view/id/681094"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">06.07.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">18:30</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="B-flex B-flex--direction-column@xs iframe_all_event_city">
+                  <div>
+                    <p>Kielce</p>
+                    <p>Wojewódzki Dom Kultury - sala teatralna</p>
+                  </div>
+                                      <div class="B-mx-15 B-mx-0@xs B-mt-10@xs">
+                                              <div class="tag rounded grey-font">napisy</div>
+                                                                    <div class="tag rounded grey-font">2D</div>
+                                          </div>
+                                  </div>
+                          </div>
+          </div>
+                      <div class="B-pl-5 iframe_all_event_title">
+              <p class="B-font-weight--bold B-m-0">
+                Ojczyzna              </p>
+                          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/681095"
                       >
             kup bilet          </a>
         </div>

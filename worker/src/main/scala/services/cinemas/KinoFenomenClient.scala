@@ -19,9 +19,11 @@ import scala.util.Try
  *   - Date: `span.B-font-weight--bold` — `DD.MM.YYYY`
  *   - Time: the second `span.B-font-weight--bold` — `HH:MM`
  *   - Title: `div.iframe_all_event_title a[href^="/artist/view/id/"]` — raw title
- *     with a trailing `(2D/napisy)` / `(2D/oryginalny)` format tag and,
- *     for some entries, `| reżyseria: …` metadata after a pipe. Both are
- *     stripped before the title is stored.
+ *     with a trailing `(2D/napisy)` / `(2D/oryginalny)` format tag (stripped) and
+ *     an optional `(YYYY)` paren year for older films. (Biletyna used to append
+ *     `| reżyseria: … | Country YYYY` pipe metadata here; it has since dropped it,
+ *     so [[parseDirectors]] / the pipe branch of [[parseYear]] are now defensive —
+ *     the director now comes from the artist detail page instead.)
  *   - Booking URL: `a.B-btn--accent[href^="/event/view/id/"]`
  *   - Poster: `img.img-responsive[src^="/file/get/"]` (first one, optional)
  *
@@ -61,9 +63,12 @@ class KinoFenomenClient(
     }
   }
 
-  // The listing already carries the director/year/format, so the film resolves
-  // from the listing; the artist detail page adds synopsis, cast, poster (and
-  // countries/genres), merged in asynchronously by the EnrichDetails task.
+  // The listing carries the title (+ a `(YYYY)` paren year for older films), so the
+  // film resolves from the listing; the artist detail page adds director, cast,
+  // synopsis, poster, runtime, countries/genres, merged in asynchronously by the
+  // EnrichDetails task. That detail fetch 403s our datacenter IP behind biletyna's
+  // Cloudflare, so this client is wired through the residential-proxy `bnFetch` seam
+  // in CinemaScraperCatalog — not the shared `http` — or every detail fetch fails.
   override val detailGroup: String = "kino-fenomen"
   override def defersTmdbResolution: Boolean = false
 
@@ -168,17 +173,39 @@ object KinoFenomenClient {
 
   private val RuntimeMinPat = """(\d+)\s*min""".r
 
+  private val HeadMarkerPat = """(?i)^(reżyseria|występują):""".r
+
+  /** Normalise one description line into the per-marker lines the parser expects.
+   *  The newer detail layout runs the structured head together in a single `<p>`
+   *  ("reżyseria: X występują: Y / country / genre / year / N min."); split it
+   *  before "występują:" and then, on a marker segment (never on synopsis prose),
+   *  before the first " / " that starts the trailing meta run. A line in the older
+   *  separate-`<p>` layout (or plain prose) has no such boundary and passes through
+   *  whole — prose keeping any internal " / " intact. */
+  private[cinemas] def splitHead(line: String): Seq[String] =
+    line.split("(?i)(?=występują:)").toSeq.flatMap { seg =>
+      val trimmed = seg.trim
+      val metaAt  = if (HeadMarkerPat.findPrefixMatchOf(trimmed).isDefined) trimmed.indexOf(" / ") else -1
+      if (metaAt >= 0) Seq(trimmed.substring(0, metaAt).trim, trimmed.substring(metaAt + 1).trim)
+      else Seq(trimmed)
+    }.filter(_.nonEmpty)
+
   /** Parse an `/artist/view/id/<id>` detail page into a [[FilmDetail]]. The
    *  `#artist-view-description` block holds `<p>`/`<br>`-separated lines: an
    *  optional "reżyseria: …" / "występują: …" pair, an optional
    *  "/ <countries> / <genre> / <year> / <NNN min.>" meta line, and the synopsis
-   *  prose. Some films carry only the prose. */
+   *  prose. Some films carry only the prose. The structured head is emitted EITHER
+   *  as those separate lines OR (newer layout) run together in one `<p>`:
+   *  "reżyseria: X występują: Y / country / genre / year / N min." — [[splitHead]]
+   *  normalises the collapsed form back to the per-marker lines so one parser
+   *  handles both. */
   private[cinemas] def parseDetail(html: String): FilmDetail = {
     val doc   = Jsoup.parse(html)
     val lines = Option(doc.selectFirst("#artist-view-description")).toSeq
       .flatMap(_.select("p").asScala)
       .flatMap(_.html.split("(?i)<br\\s*/?>").iterator.map(s => Jsoup.parse(s).text.trim))
       .filter(_.nonEmpty)
+      .flatMap(splitHead)
     def after(marker: String): Seq[String] =
       lines.find(_.toLowerCase.startsWith(marker)).toSeq
         .flatMap(_.replaceFirst("(?i)^" + marker + ":?\\s*", "").split(",").map(_.trim).filter(_.nonEmpty))

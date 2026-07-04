@@ -26,7 +26,7 @@
     <!-- End Google Tag Manager -->
 
   <script type="text/javascript">
-      var bnk_sid = 'f6ca3589ca60711024332dcbd761d8ae';
+      var bnk_sid = '0e443ab4eb932d12c510df741f88e9a4';
       var site_language = 'pl';
                   var BNK_context = {"theme_name":"iframe","page_metadata":{}};
   </script>
@@ -65,7 +65,7 @@
   <title>biletyna.pl</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" >
 <meta charset="UTF-8"><script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.0/jquery-ui.min.js"></script>
 <script src="/js/gnp.js?ver=1.0"></script>
-<script src="/lib/easyXDM.min.js"></script><link href="https://biletyna.pl/film/Wartosc-sentymentalna" rel="canonical" >      <link rel="apple-touch-icon" sizes="180x180" href="/gfx/favicon/biletyna/apple-touch-icon.png">
+<script src="/lib/easyXDM.min.js"></script><link href="https://biletyna.pl/film/Truposz" rel="canonical" >      <link rel="apple-touch-icon" sizes="180x180" href="/gfx/favicon/biletyna/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/gfx/favicon/biletyna/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/gfx/favicon/biletyna/favicon-16x16.png">
     <link rel="manifest" href="/gfx/favicon/biletyna/site.webmanifest?ver=1.1">
@@ -212,7 +212,7 @@
                 <div id="main-search-bar" class="B-nav__search header-search dark-grey-font search-bar">
           <i id="close-search-bar" class="icon-svg close"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-cancel"></use></svg></i>
           <header-search
-            form-action="/artist/view/id/57079?id=57079"
+            form-action="/artist/view/id/23224?id=23224"
             :auto-focus="false"
             search-endpoint="searchIframe"
           >
@@ -338,7 +338,7 @@
         </li>
                   <li aria-current="page">
           <span class="text-ellipsis nolink">
-            <strong>Wartość sentymentalna</strong>
+            <strong>Truposz</strong>
           </span>
         </li>
               <li aria-hidden="true" class="breadcrumbs__chevron">
@@ -354,20 +354,25 @@
     <div id="artist-view" class="container">
   <div class="view_box background_color event_view">
     <header class="B-m-0 visible-xs artist-header">
-    <p class="artist-header__name B-m-0">Wartość sentymentalna</p>
+    <p class="artist-header__name B-m-0">Truposz</p>
 </header>
 
 <div class="visible-xs artist-content">
   <div>
-        <div class="artist-youtube media-placeholder media-placeholder--yt">
-      <lite-youtube
-              class="artist-youtube__wrapper media-placeholder__content"
-              id="youtube-player"
-              videoid="PpNkb27A3Qs"
-              posterquality="maxresdefault"
-              params="rel=0&autoplay=0&showInfo=0&loop=1"
-      ></lite-youtube>
-    </div>
+        <a class="artist-poster media-placeholder media-placeholder--poster" href="/file/get/id/66337" data-lightbox="image-1" data-title="Truposz" aria-label="Powiększ plakat wydarzenia">
+      <figure class="artist-poster__figure">
+        <picture class="artist-poster__picture">
+          <img
+                  fetchpriority="high"
+                  loading="eager"
+                  class="img-responsive img-responsive--contain B-border-radius--standard"
+                  src="/file/get/id/66337/w/450"
+                  onerror="this.onerror=null;this.src='/th/biletyna-v2/gfx/zaslepka.jpg';"
+                  alt="Truposz"
+          >
+        </picture>
+      </figure>
+    </a>
     
 
     <section class="artist-actions">
@@ -390,26 +395,17 @@
 
 <section class="artist container hidden-xs">
   <span id="opis" class="B-anchor__target"></span>
-  <div class="artist-grid ">
-          <div class="artist-youtube media-placeholder media-placeholder--yt">
-        <lite-youtube
-          class="artist-youtube__wrapper media-placeholder__content"
-          id="youtube-player-desktop"
-          videoid="PpNkb27A3Qs"
-          posterquality="maxresdefault"
-          params="rel=0&autoplay=0&showInfo=0&loop=1"
-        ></lite-youtube>
-      </div>
-        <a class="artist-poster media-placeholder media-placeholder--poster" href="/file/get/id/342597" data-lightbox="image-2" data-title="Wartość sentymentalna" aria-label="Powiększ plakat wydarzenia">
+  <div class="artist-grid artist-grid--no-youtube">
+        <a class="artist-poster media-placeholder media-placeholder--poster" href="/file/get/id/66337" data-lightbox="image-2" data-title="Truposz" aria-label="Powiększ plakat wydarzenia">
       <figure>
         <picture>
           <img
               fetchpriority="high"
               loading="eager"
               class="img-responsive B-border-radius--standard"
-              src="/file/get/id/342597/w/450"
+              src="/file/get/id/66337/w/450"
               onerror="this.onerror=null;this.src='/th/biletyna-v2/gfx/zaslepka.jpg';"
-              alt="Wartość sentymentalna"
+              alt="Truposz"
           >
         </picture>
       </figure>
@@ -419,7 +415,7 @@
       <header>
         <div class="artist-subtitle-actions">
                     <div class="event-title hidden-xs">
-            Wartość sentymentalna
+            Truposz
           </div>
           <br>
           <a class="B-btn B-btn--accent B-btn--small" href="#bilety" style="padding: 6px 15px;margin-right: 4px">
@@ -432,11 +428,9 @@
       </header>
 
       <div id="artist-view-description" class="description-text content-hidden">
-                <p>reżyseria: Joachim Trier</p>
-<p>występują: Renate Reinsve, Stellan Skarsgard, Inga Ibsdotter Lilleaas</p>
-<p>/ Norwegia, Niemcy, Dania, Francja, Szwecja, Wlk. Brytania, Turcja / dramat / 2025 / 133 min.</p>
-<p>Nominowany do dziewięciu Oscarów najnowszy film Joachima Triera, reżysera „Najgorszego człowieka na świecie", z nominowanymi do Oscara w kategoriach aktorskich Renate Reinsve, Stellanem Skarsgårdem, Ingą Ibsdotter Lilleaas i Elle Fanning w rolach głównych. Jeden z najczęściej nagradzanych i najważniejszych filmów tego roku, z muzyką skomponowaną przez polską kompozytorkę Hanię Rani.</p>
-<p>Siostry Nora (Renate Reinsve) i Agnes (Inga Ibsdotter Lilleaas) spotykają się ze swoim dawno niewidzianym ojcem, charyzmatycznym, niegdyś wielkim reżyserem filmowym Gustavem (Stellan Skarsgård). Proponuje on Norze, aktorce teatralnej, rolę w swoim najnowszym filmie, który ma być jego powrotem do świata filmu. Gdy dziewczyna odrzuca propozycję, ten zatrudnia młodą gwiazdę Hollywood (Elle Fanning). Teraz siostry muszą poradzić sobie nie tylko ze swoją skomplikowaną sytuacją z ojcem, ale też z amerykańską gwiazdą, która zmienia ich rodzinną dynamikę.</p>
+                <p>reżyseria: Jim Jarmusch występują: Johnny Depp, Gary Farmer, Crispin Glover / USA / dramat / 1995 / 121 min.</p>
+<p>„Psychodeliczny western”, jak nazwał „Truposza” sam Jim Jarmusch, to zaskakująca w dorobku amerykańskiego reżysera podróż w czasie. Ta opowieść przenosi nas na mityczny Dziki Zachód, gdzie młody księgowy (Johnny Depp) dokonuje przypadkowego zabójstwa, stając się tym samym człowiekiem wyjętym spod prawa. W ucieczce pomaga mu tajemniczy Indianin Nikt (Gary Farmer), przekonany, że księgowy William Blake to wielki poeta we własnej osobie. Ich wspólna podróż przeistacza się w oniryczną, egzystencjalną wędrówkę, której celem jest duchowe przebudzenie. Po drodze reżyser rozlicza filmowy western, a przede wszystkim obnaża skierowaną przeciw ludziom i naturze przemoc, na jakiej ufundowany został założycielski amerykański mit.</p>
+<p>Czarno-biały „Truposz” to jeden z najmroczniejszych filmów Jarmuscha, a charakterystyczne dla reżysera komediowe tony tym razem ustępują chropowatym gitarowym riffom Neila Younga, wnoszącym do jarmuschowego świata niepokój. Ale podobnie, jak wiele innych dzieł Amerykanina, i to jest artystycznym spotkaniem na szczycie. Poza Neilem Youngiem, oryginalny świat tego antywesternu współtworzył operator Robby Müller, a na ekranie spotkali się wybitni aktorzy i muzycy: Johny Depp, Crispin Glover, Robert Mitchum, John Hurt, Gabriel Byrne i Iggy Pop. „Truposz” jest zdobywcą Europejskiej Nagrody Filmowej.</p>
       </div>
       <div class="show-more-wrapper">
         <button
@@ -471,7 +465,7 @@
       <div class="modal-header modal-header--with-btn primary-bcg white-font">
         <button type="button" class="close white-font" data-dismiss="modal" aria-label="Zamknij"><span aria-hidden="true">&times;</span></button>
         <div class="modal-title table-display modal-header-thumbnail">
-          <p class="h3">Wartość sentymentalna</p>
+          <p class="h3">Truposz</p>
         </div>
       </div>
       <div class="modal-body">
@@ -511,7 +505,7 @@
           
           <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
             <div>
-                              <span class="B-font-weight--bold">19.07.2026</span><br class="hidden-xs">
+                              <span class="B-font-weight--bold">05.07.2026</span><br class="hidden-xs">
                 <span class="B-m-0 B-text--nowrap">
                   <span class="B-font-weight--light">godz. </span>
                   <span class="B-font-weight--bold">21:00</span>
@@ -537,7 +531,7 @@
           </div>
                       <div class="B-pl-5 iframe_all_event_title">
               <p class="B-font-weight--bold B-m-0">
-                Wartość sentymentalna              </p>
+                Truposz              </p>
                               <p class="B-font-weight--light B-m-0">
                   KINO LETNIE  Z KLIMATEM - NA LEŻAKACH                </p>
                           </div>
@@ -546,10 +540,10 @@
                       <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
               <p class="event-free-places">
                 <span>dostępne bilety:</span>
-                <strong>86</strong>
+                <strong>82</strong>
               </p>
                               <a style="min-width: 130px;" class="B-btn B-btn--accent "
-             href="/event/view/id/681213"
+             href="/event/view/id/681204"
                       >
             kup bilet          </a>
         </div>
