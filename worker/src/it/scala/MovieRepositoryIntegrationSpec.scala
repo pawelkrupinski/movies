@@ -261,6 +261,34 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     }
   }
 
+  // End-to-end: the MovieCache now applies change-stream DELETES incrementally
+  // (`applyDelete`), so a removed source row leaves the cache the moment the delete lands
+  // — no waiting for the 30-min backstop rehydrate. Real stream against a replica set.
+  it should "drop a MovieCache row when its source is deleted on the change stream" in {
+    import services.movies.CaffeineMovieCache
+    def eventually(timeoutMs: Long)(cond: => Boolean): Boolean = {
+      val end = System.currentTimeMillis + timeoutMs
+      while (System.currentTimeMillis < end && !cond) Thread.sleep(100)
+      cond
+    }
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val repo   = new MongoMovieRepository(Some(db))
+    val cache  = new CaffeineMovieCache(repo)
+    val title  = "__integration-test-cache-delete__"
+    val year   = Some(1910)
+    val id     = StoredMovieRecord.idFor(title, year)
+    def present = cache.snapshot().exists(r => StoredMovieRecord.idOf(r) == id)
+    try {
+      cache.start()
+      Thread.sleep(1500) // let the stream establish
+      repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000013")))
+      eventually(15000)(present) shouldBe true  // applied via the stream (applyUpsert)
+      repo.delete(title, year)
+      eventually(15000)(!present) shouldBe true  // dropped via applyDelete, not the backstop
+    } finally { cache.stop(); repo.delete(title, year); client.close() }
+  }
+
   // The shared cursor's onNext feeds the change-stream stats sink (op + update-field
   // kind). Prove it fires against a real event with a recording sink.
   it should "record change-stream event stats onto the injected sink" in {

@@ -69,6 +69,27 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.snapshot().map(r => (r.title, r.year)) shouldBe Seq(("Drzewo Magii", Some(2024)))
   }
 
+  // Change-stream DELETE handling: a removed source row (a fold/merge loser, an
+  // UnscreenedCleanup removal, a re-key's old id) is dropped from the cache
+  // INCREMENTALLY via `applyDelete` — the stream carries only the `_id`, mapped back
+  // to its CacheKey by `idFor` — so the periodic backstop rehydrate is no longer the
+  // ONLY thing that catches deletes. Pre-fix the cache ignored delete events entirely.
+  it should "drop a cached row when its source _id is deleted on the change stream" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val key   = cache.keyOf("Foo", Some(2024))
+    cache.put(key, mkEnrichment("tt-foo"))
+    cache.get(key) should not be empty
+
+    cache.applyDelete(StoredMovieRecord.idFor("Foo", Some(2024)))
+    cache.get(key) shouldBe None
+
+    // A delete for an unknown id is a harmless no-op — it must not clear other rows.
+    val barKey = cache.keyOf("Bar", Some(2024))
+    cache.put(barKey, mkEnrichment("tt-bar"))
+    cache.applyDelete("does-not-exist|1900")
+    cache.get(barKey) should not be empty
+  }
+
   it should "not write to the repository when putIfPresent produces no change (kills the no-op re-scrape churn)" in {
     val repository  = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository)

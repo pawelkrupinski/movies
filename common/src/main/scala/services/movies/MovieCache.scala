@@ -1250,21 +1250,23 @@ class CaffeineMovieCache(
   // `db.movies.update(...)` to fix one row — bypass the in-memory cache. Two
   // mechanisms keep the cache current:
   //
-  //  1. INCREMENTAL (primary): a change stream (`repository.watchUpserts`) applies
-  //     each inserted/updated/replaced row to the cache the moment it lands in
-  //     Mongo — O(changes), near-instant, and costs nothing when nothing
-  //     changes. This replaced a periodic full `findAll()` that re-read the
-  //     ENTIRE collection on a timer: at ~200 rows that was ~150 ms (so the old
-  //     30-s cadence felt free), but at 500+ rows it climbed to 6–9 s and, run
-  //     twice a minute, burned 20–30% of the single shared vCPU continuously and
-  //     starved page renders. The change stream makes the cost proportional to
-  //     real edits instead of corpus size.
+  //  1. INCREMENTAL (primary): a change stream (`repository.watchChanges`) applies
+  //     each inserted/updated/replaced row (`applyUpsert`) AND each DELETE
+  //     (`applyDelete`) to the cache the moment it lands in Mongo — O(changes),
+  //     near-instant, and costs nothing when nothing changes. This replaced a
+  //     periodic full `findAll()` that re-read the ENTIRE collection on a timer: at
+  //     ~200 rows that was ~150 ms (so the old 30-s cadence felt free), but at 500+
+  //     rows it climbed to 6–9 s and, run twice a minute, burned 20–30% of the single
+  //     shared vCPU continuously and starved page renders. The change stream makes the
+  //     cost proportional to real edits instead of corpus size.
   //
-  //  2. BACKSTOP (safety net): an INFREQUENT full `rehydrate()` still runs to
-  //     catch out-of-band DELETES (change-stream delete events aren't applied)
-  //     and to close any gap if the stream dropped, or to be the only mechanism
-  //     on a standalone Mongo that can't stream. The expensive findAll now fires
-  //     every `BackstopIntervalSeconds` (default 30 min) instead of every 30 s.
+  //  2. BACKSTOP (safety net): an INFREQUENT full `rehydrate()` still runs to close any
+  //     gap the stream missed (a terminal error / restart before resume tokens replay,
+  //     a rare drifted-key delete `applyDelete` can't map) and to be the only mechanism
+  //     on a standalone Mongo that can't stream. Now that upserts AND deletes apply
+  //     incrementally and the stream persists a resume token (worker), this is pure
+  //     safety — a candidate to retire once its redundancy is measured. The expensive
+  //     findAll fires every `BackstopIntervalSeconds` (default 30 min), was every 30 s.
   //     Tunable via KINOWO_CACHE_REHYDRATE_SECONDS.
   //
   // The scheduler + watch only start when `start()` is called (Wiring does,
@@ -1277,14 +1279,27 @@ class CaffeineMovieCache(
   /** Apply one out-of-band upsert from the change stream to the in-memory cache.
    *  Mirrors a single row of `rehydrate` — a direct `positive.put`, bypassing
    *  the identity-gate `put` (Mongo is already the source of truth here, no
-   *  re-folding needed). Deletes are not streamed; the backstop reconciles them. */
+   *  re-folding needed). */
   private def applyUpsert(r: StoredMovieRecord): Unit = {
     positive.put(CacheKey(r.title, r.year), r.record)
     touch()
   }
 
+  /** Apply an out-of-band DELETE from the change stream: drop the mirrored row whose
+   *  source `_id` was removed (a fold/merge loser, an `UnscreenedCleanup` removal, a
+   *  re-key's old id). The stream carries only the `_id`, so map it back to the CacheKey
+   *  the row was stored under via `idFor`. Applying deletes incrementally is what lets the
+   *  backstop rehydrate stop being the ONLY thing that catches them; a rare drifted /
+   *  duplicate key that doesn't map is still swept by the backstop. */
+  private[services] def applyDelete(id: String): Unit = {
+    import scala.jdk.CollectionConverters._
+    positive.asMap().keySet().asScala
+      .find(k => StoredMovieRecord.idFor(k.cleanTitle, k.year) == id)
+      .foreach { k => positive.invalidate(k); touch() }
+  }
+
   def start(): Unit = {
-    watchHandle = repository.watchUpserts(applyUpsert)
+    watchHandle = repository.watchChanges(applyUpsert, applyDelete)
     logger.info(
       s"MovieCache incremental change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — backstop only"}; " +
       s"backstop rehydrate every ${BackstopIntervalSeconds}s.")
