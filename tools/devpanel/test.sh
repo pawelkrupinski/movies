@@ -87,11 +87,42 @@ echo "▶ android unlock wait (adb resolution)"
   [[ $rc -eq 0 && "$out" == *"skipping unlock wait"* ]] \
     && echo "  ok   skips gracefully when adb is missing" || { echo "  FAIL adb-missing rc=$rc out=$out"; exit 9; }
   fake="$(mktemp)"
-  printf '#!/bin/sh\ncase "$1" in wait-for-device) exit 0;; shell) echo "mDreamingLockscreen=false";; esac\n' > "$fake"
+  printf '#!/bin/sh\ncase "$1" in devices) printf "List of devices attached\\nSER\\tdevice\\n";; shell) echo "mDreamingLockscreen=false";; esac\n' > "$fake"
   chmod +x "$fake"
   out="$(DEVPANEL_ADB="$fake" wait_for_android_unlock 2>&1)"; rc=$?
   rm -f "$fake"
   [[ $rc -eq 0 ]] && echo "  ok   proceeds when device reports unlocked" || { echo "  FAIL unlocked rc=$rc out=$out"; exit 9; }
+) || fails=$((fails + 1))
+
+echo "▶ android unauthorized device (no silent hang)"
+(
+  SCRIPT_DIR="$SCRIPTS"; source "$SCRIPTS/lib.sh"
+  # An unauthorized device (USB-debugging prompt not accepted) is the real hang:
+  # `adb wait-for-device` blocks silently forever. The fake reports "unauthorized"
+  # once, then "device" — wait_for_android_unlock must announce it and proceed,
+  # never block without output. First assert the state helper reads it directly.
+  fake="$(mktemp)"
+  printf '#!/bin/sh\n[ "$1" = devices ] && printf "List of devices attached\\nSER\\tunauthorized usb:1-1\\n"\n' > "$fake"
+  chmod +x "$fake"
+  st="$(DEVPANEL_ADB="$fake" android_device_state 2>/dev/null)"
+  [[ "$st" == unauthorized ]] && echo "  ok   android_device_state reads unauthorized" || { echo "  FAIL state=$st"; exit 9; }
+
+  cnt="$(mktemp)"; echo 0 > "$cnt"
+  cat > "$fake" <<FAKE
+#!/bin/sh
+case "\$1" in
+  devices)
+    n=\$(( \$(cat "$cnt") + 1 )); echo \$n > "$cnt"
+    if [ "\$n" -eq 1 ]; then printf 'List of devices attached\nSER\tunauthorized usb:1-1\n'
+    else printf 'List of devices attached\nSER\tdevice\n'; fi ;;
+  shell) echo "mKeyguardShowing=false" ;;
+esac
+FAKE
+  chmod +x "$fake"
+  out="$(DEVPANEL_ADB="$fake" wait_for_android_unlock 2>&1)"; rc=$?   # ~2s: one unauthorized poll
+  rm -f "$fake" "$cnt"
+  [[ $rc -eq 0 && "$out" == *unauthorized* && "$out" == *"USB debugging"* ]] \
+    && echo "  ok   surfaces unauthorized device then proceeds" || { echo "  FAIL rc=$rc out=$out"; exit 9; }
 ) || fails=$((fails + 1))
 
 echo "▶ android device selection (android_serial)"

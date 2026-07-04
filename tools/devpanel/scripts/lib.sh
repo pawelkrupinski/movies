@@ -150,12 +150,34 @@ android_serial() {
   fi
 }
 
+# android_device_state [serial] — echo the adb connection state of the target
+# device: "device" (authorized + ready), "unauthorized" (USB-debugging prompt
+# not yet accepted), "offline" (reconnecting), or empty when no matching device
+# is attached. With a serial, reports that device; without, the single/first
+# attached one. Empty when adb can't be resolved.
+android_device_state() {
+  local serial="${1:-}" adb; adb="$(resolve_adb)"
+  { [[ -z "$adb" ]] || ! command -v "$adb" >/dev/null 2>&1; } && return 0
+  "$adb" devices 2>/dev/null | awk -v s="$serial" '
+    NR==1 { next }                          # skip "List of devices attached"
+    NF < 2 { next }                         # skip blank lines / daemon noise
+    s != "" { if ($1 == s) { print $2; exit } next }
+    { print $2; exit }                      # no serial: first attached device
+  '
+}
+
 # wait_for_android_unlock [serial]
 #
-# Block until the (optionally serial-pinned) cabled Android device is present
-# and its keyguard is dismissed. Uses dumpsys window's lockscreen/keyguard flag;
-# if the device exposes no recognised flag we don't block (degrade to "assume
-# unlocked") rather than hang forever. No-op under DEVPANEL_PRINT_ONLY.
+# Block until the (optionally serial-pinned) cabled Android device is authorized
+# AND its keyguard is dismissed. First waits for the device to reach adb's
+# "device" state: a plugged-in phone that hasn't had its "Allow USB debugging"
+# prompt accepted sits in "unauthorized" (and "offline" while reconnecting), and
+# `adb wait-for-device` blocks SILENTLY forever on both — the exact hang that
+# leaves the panel stuck at a blank banner. So we poll the state ourselves and
+# tell the user what to do instead. Then checks dumpsys window's
+# lockscreen/keyguard flag; if the device exposes no recognised flag we don't
+# block (degrade to "assume unlocked") rather than hang forever. No-op under
+# DEVPANEL_PRINT_ONLY.
 wait_for_android_unlock() {
   [[ "${DEVPANEL_PRINT_ONLY:-}" == "1" ]] && { echo "wait_for_android_unlock"; return 0; }
   local serial="${1:-}" adb
@@ -164,8 +186,24 @@ wait_for_android_unlock() {
     echo "  (adb not found — skipping unlock wait; set DEVPANEL_ADB or ANDROID_HOME)"
     return 0
   fi
+
+  local state announced_state=
+  while :; do
+    state="$(android_device_state "$serial")"
+    [[ "$state" == device ]] && { [[ -n "$announced_state" ]] && echo "  device ready."; break; }
+    case "$state" in
+      unauthorized) [[ "$announced_state" != unauthorized ]] && \
+        echo "🔒 Android device is unauthorized — accept the “Allow USB debugging” prompt on the device…" ;;
+      offline)      [[ "$announced_state" != offline ]] && \
+        echo "⏳ Android device is offline — reconnecting…" ;;
+      *)            [[ "$announced_state" != absent ]] && \
+        echo "🔌 waiting for an Android device to be attached…" ;;
+    esac
+    announced_state="${state:-absent}"
+    sleep 2
+  done
+
   local s=""; [[ -n "$serial" ]] && s="-s $serial"   # serials have no spaces
-  "$adb" $s wait-for-device
   local announced= win lock
   while :; do
     win="$("$adb" $s shell dumpsys window 2>/dev/null)"
