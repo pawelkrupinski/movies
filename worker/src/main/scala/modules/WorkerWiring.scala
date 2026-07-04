@@ -324,7 +324,10 @@ class WorkerWiring extends play.api.Logging {
   // is written without showtimes, reads stitch them from `screenings`. `start()` runs
   // the one-shot backfill before the cache hydrates.
   lazy val screeningsRepository: services.movies.ScreeningsRepository =
-    new services.movies.MongoScreeningsRepository(mongoConnection.database)
+    // Persist the screenings stream's resume token too (like `movies`): a showtime change
+    // writes only `screenings`, so without this a restart drops showtime edits made while
+    // down and only the full reproject catches them — the gap that kept it non-redundant.
+    new services.movies.MongoScreeningsRepository(mongoConnection.database, persistResumeToken = true)
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
     mongoConnection.database, fallbackToOwnInit = false, changeStreamMetrics = taskMetrics,
     screenings = Some(screeningsRepository),

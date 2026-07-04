@@ -5,7 +5,7 @@ import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.changestream.ChangeStreamDocument
 import models.{Showtime, Source, SourceData}
 import org.mongodb.scala.model.{Filters, Indexes, Sorts}
-import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, Observer, SingleObservableFuture, Subscription}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, Observer, SingleObservableFuture, Subscription}
 import play.api.Logging
 
 import java.time.Instant
@@ -195,7 +195,11 @@ class MongoScreeningsRepository(
   // handful of rows. See [[KeysetScan]].
   findAllBatchSize:     Int            = 500,
   findAllBatchAttempts: Int            = 4,
-  findAllBatchBackoff:  FiniteDuration = 500.millis
+  findAllBatchBackoff:  FiniteDuration = 500.millis,
+  // Persist THIS stream's resume token so a restart replays showtime changes that landed
+  // while down — the `movies` stream can't, a showtime write never touches `movies`. ON only
+  // in the worker (the durable mirror); OFF for web /debug + scripts. See [[ChangeStreamResumeToken]].
+  persistResumeToken:   Boolean        = false
 ) extends ScreeningsRepository with Logging {
   import ScreeningsRepository.IdSep
 
@@ -205,6 +209,8 @@ class MongoScreeningsRepository(
     Try(Await.result(c.createIndex(Indexes.ascending("filmId")).toFuture(), 10.seconds))
     c
   }
+
+  private val resumeToken = new ChangeStreamResumeToken("screenings", sharedDb, persistResumeToken)
 
   private def idOf(filmId: String, slotKey: String): String = s"$filmId$IdSep$slotKey"
 
@@ -281,21 +287,44 @@ class MongoScreeningsRepository(
    *  + stitches the film. Requires a replica set (like the movies stream). */
   override def watch(onChange: String => Unit): Option[AutoCloseable] = coll.map { c =>
     val subRef = new AtomicReference[Subscription]()
-    c.watch().subscribe(new Observer[ChangeStreamDocument[StoredScreeningsDto]] {
-      override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
-      override def onNext(change: ChangeStreamDocument[StoredScreeningsDto]): Unit = {
-        val filmId = Option(change.getFullDocument).map(_.filmId).orElse(
-          Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
-            .map(v => if (v.isString) v.asString.getValue else v.toString)
-            .map(_.takeWhile(_ != IdSep))) // delete carries no post-image — split the _id
-        filmId.foreach(fid => try onChange(fid)
-          catch { case e: Throwable => logger.warn(s"screenings watch onChange($fid) failed: ${e.getMessage}") })
-      }
-      override def onError(e: Throwable): Unit =
-        logger.warn(s"screenings change stream ended (${e.getMessage}).")
-      override def onComplete(): Unit = ()
-    })
-    logger.info("MongoScreeningsRepository: watching screenings change stream.")
-    new AutoCloseable { override def close(): Unit = Option(subRef.get()).foreach(_.unsubscribe()) }
+    // Resume from the last persisted token (a restart / prior terminal error) so showtime
+    // changes that landed while down are replayed; else open at "now".
+    val resumeFrom = resumeToken.load()
+    val base       = c.watch()
+    resumeFrom.fold(base)(t => base.resumeAfter(Document(t)))
+      .subscribe(new Observer[ChangeStreamDocument[StoredScreeningsDto]] {
+        override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
+        override def onNext(change: ChangeStreamDocument[StoredScreeningsDto]): Unit = {
+          // Advance the resume position BEFORE ringing onChange, so a re-stitch can never
+          // observe the change before the token moves past it.
+          resumeToken.advance(change.getResumeToken)
+          val filmId = Option(change.getFullDocument).map(_.filmId).orElse(
+            Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
+              .map(v => if (v.isString) v.asString.getValue else v.toString)
+              .map(_.takeWhile(_ != IdSep))) // delete carries no post-image — split the _id
+          filmId.foreach(fid => try onChange(fid)
+            catch { case e: Throwable => logger.warn(s"screenings watch onChange($fid) failed: ${e.getMessage}") })
+          resumeToken.save(force = false) // time-throttled, fire-and-forget
+        }
+        override def onError(e: Throwable): Unit = {
+          if (ChangeStreamResumeToken.isInvalid(e)) {
+            logger.warn(s"screenings change stream: resume token invalid (${e.getMessage}) — clearing it; " +
+              "the next open starts fresh and the backstop resyncs the gap.")
+            resumeToken.clear()
+          } else
+            logger.warn(s"screenings change stream ended (${e.getMessage}) — a reopen resumes from the " +
+              "persisted token; the backstop covers the meantime.")
+          subRef.set(null)
+        }
+        override def onComplete(): Unit = subRef.set(null)
+      })
+    logger.info(s"MongoScreeningsRepository: watching screenings change stream" +
+      s"${if (resumeFrom.isDefined) ", resumed from persisted token" else ""}.")
+    new AutoCloseable { override def close(): Unit = {
+      resumeToken.save(force = true) // final position synchronously so the next process resumes here
+      Option(subRef.get()).foreach(_.unsubscribe())
+    } }
   }
+
+  override def close(): Unit = resumeToken.save(force = true)
 }

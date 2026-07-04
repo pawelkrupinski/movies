@@ -261,6 +261,59 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     }
   }
 
+  // The SCREENINGS stream now persists its own resume token too — the asymmetry that
+  // kept the full reproject non-redundant: a showtime change writes only `screenings`, so
+  // without this a restart (frequent on the worker) dropped the showtime edits made while
+  // down and ONLY the projector's whole-corpus reproject caught them. Same two-instance
+  // simulation as the movies test: repo1 sees slot A, then "dies"; slots B and C are written
+  // while nothing watches; a fresh repo2 resumes from the token and replays B and C.
+  it should "resume the screenings change stream from the persisted token, replaying showtime changes missed while down" in {
+    import java.util.concurrent.{ConcurrentHashMap, CountDownLatch, TimeUnit}
+    import java.time.LocalDateTime
+    import services.movies.MongoScreeningsRepository
+    import scala.jdk.CollectionConverters._
+
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    def clearToken(): Unit = Await.ready(
+      db.getCollection("change_stream_tokens").deleteOne(Filters.eq("_id", "screenings")).toFuture(), 10.seconds)
+    def at(h: Int): Seq[Showtime] = Seq(Showtime(LocalDateTime.of(2099, 1, 1, h, 0), bookingUrl = Some("https://book")))
+    clearToken() // start clean → repo1 opens at "now", not a stale prior-run token
+
+    val filmA = "__it-screenings-resume-A__"
+    val filmB = "__it-screenings-resume-B__"
+    val filmC = "__it-screenings-resume-C__"
+    val repo1 = new MongoScreeningsRepository(Some(db), persistResumeToken = true)
+    val gotA  = new CountDownLatch(1)
+    val handle1 = repo1.watch(fid => if (fid == filmA) gotA.countDown())
+    handle1 should not be empty
+    try {
+      Thread.sleep(1500) // let the stream establish before the write
+      repo1.upsertSlot(filmA, "Multikino␟A", at(10))
+      gotA.await(15, TimeUnit.SECONDS) shouldBe true
+      handle1.foreach(_.close()) // watcher gone → force-saves the token (position: after A)
+
+      // "Down": B and C land while nothing is watching the screenings stream.
+      repo1.upsertSlot(filmB, "Multikino␟B", at(11))
+      repo1.upsertSlot(filmC, "Multikino␟C", at(12))
+
+      // A fresh process (empty in-memory state) resumes from the persisted token.
+      val repo2   = new MongoScreeningsRepository(Some(db), persistResumeToken = true)
+      val seen    = ConcurrentHashMap.newKeySet[String]()
+      val gotBC   = new CountDownLatch(2)
+      val handle2 = repo2.watch(fid => if ((fid == filmB || fid == filmC) && seen.add(fid)) gotBC.countDown())
+      try {
+        // No fresh write: B and C are delivered purely by resuming past the token.
+        gotBC.await(15, TimeUnit.SECONDS) shouldBe true
+        seen.asScala should contain allOf (filmB, filmC)
+      } finally { handle2.foreach(_.close()); repo2.close() }
+    } finally {
+      Seq(filmA, filmB, filmC).foreach(repo1.deleteFilm)
+      clearToken()
+      repo1.close(); client.close()
+    }
+  }
+
   // End-to-end: the MovieCache now applies change-stream DELETES incrementally
   // (`applyDelete`), so a removed source row leaves the cache the moment the delete lands
   // — no waiting for the 30-min backstop rehydrate. Real stream against a replica set.
