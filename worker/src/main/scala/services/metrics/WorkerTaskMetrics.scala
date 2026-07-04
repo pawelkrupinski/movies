@@ -159,6 +159,12 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     .help("Films whose derived documents were removed from the read model during reconcile since boot — a source row that vanished or was re-keyed (its filmId changed). The event that can briefly 404 a film deep-link until the new key propagates to the web; pair with kinowo_worker_merges_total for the re-key cause.")
     .register(registry)
 
+  private val readModelReconcileSweeps = Counter.builder()
+    .name("kinowo_worker_readmodel_reconcile_sweeps")
+    .help("Read-model reconciliation sweeps since boot, by kind (prune=cheap id-only orphan prune, frequent; reproject=full re-projection catching change-stream gaps, rare) and did_work (true=pruned or reprojected >=1 doc, false=no-op). A reproject that is almost always did_work=false proves the change stream is reliable and the full sweep is redundant; a prune with did_work=true is the deletes/re-keys the stream can't deliver. rate(did_work=true) vs rate(did_work=false) is the redundancy signal.")
+    .labelNames("kind", "did_work")
+    .register(registry)
+
   private val changeEvents = Counter.builder()
     .name("kinowo_worker_movie_change_events")
     .help("Movie change-stream events the shared cursor consumed since boot, by op (insert|update|replace|delete). rate() is the change-stream volume the cache + read-model projector reproject from.")
@@ -193,6 +199,8 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     ReadModelProjectionMetrics.Targets.foreach(t =>
       ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(t, o)))
     readModelFilmsPruned.inc(0.0) // materialize the single series at 0 so Grafana draws a continuous line
+    ReadModelProjectionMetrics.ReconcileKinds.foreach(k =>
+      Seq("true", "false").foreach(w => readModelReconcileSweeps.labelValues(k, w)))
     ChangeStreamMetrics.Ops.foreach(o => changeEvents.labelValues(o))
     ChangeStreamMetrics.Kinds.foreach(k => changeUpdateKinds.labelValues(k))
     poolSizeGauge.set(poolSize.toDouble)
@@ -217,6 +225,9 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
 
   def recordFilmPruned(count: Int): Unit =
     if (count > 0) readModelFilmsPruned.inc(count.toDouble)
+
+  def recordReconcileSweep(kind: String, didWork: Boolean): Unit =
+    readModelReconcileSweeps.labelValues(kind, didWork.toString).inc()
 
   // ── ChangeStreamMetrics ─────────────────────────────────────────────────────
   def recordEvent(op: String): Unit           = changeEvents.labelValues(op).inc()

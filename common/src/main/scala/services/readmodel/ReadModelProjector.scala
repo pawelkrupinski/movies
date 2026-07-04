@@ -42,49 +42,61 @@ class ReadModelProjector(
   reader:    ReadModelReader,
   metrics:   ReadModelProjectionMetrics = ReadModelProjectionMetrics.noop
 ) extends Stoppable with Logging {
-  import ReadModelProjectionMetrics.{Op, Target}
+  import ReadModelProjectionMetrics.{Op, ReconcileKind, Target}
 
   private val lastMovie      = scala.collection.mutable.Map.empty[String, ResolvedMovie]
   private val lastScreenings = scala.collection.mutable.Map.empty[String, Map[String, CityScreening]]
   private val lock           = new AnyRef
 
-  private val scheduler        = DaemonExecutors.scheduler("read-model-projector")
-  private val ReconcileSeconds = Env.positiveLong("KINOWO_READMODEL_RECONCILE_SECONDS", 1800L)
-  // The boot reconcile is a full `movieRepository.foreachRecord` project-every-row scan.
-  // Running it synchronously at `start()` stacked a second full scan onto the
-  // cache hydrate and the first scrape on a cold JVM (the boot CPU-credit drain).
-  // Defer it to the first scheduled tick this many seconds in — short, NOT the
-  // full ReconcileSeconds, so stale-prune latency stays seconds not 30 min.
-  private val ReconcileBootDelaySeconds =
-    Env.positiveLong("KINOWO_READMODEL_RECONCILE_BOOT_DELAY_SECONDS", 60L)
+  private val scheduler = DaemonExecutors.scheduler("read-model-projector")
+  // The cheap id-only orphan prune runs FREQUENTLY (deletes/re-keys the change stream
+  // drops must clear within a tick); the expensive full re-projection runs RARELY
+  // (its only unique job is catching upserts missed during a stream outage — a ~1-core
+  // whole-corpus burst, formerly every 30 min, was the reprojection credit-drain).
+  private val PruneSeconds     = Env.positiveLong("KINOWO_READMODEL_PRUNE_SECONDS", 1800L)      // 30 min
+  private val ReconcileSeconds = Env.positiveLong("KINOWO_READMODEL_RECONCILE_SECONDS", 21600L) // 6 h (was 30 min)
+  // Both are deferred off the boot path — running a full scan synchronously at `start()`
+  // stacked a second scan onto the cache hydrate + first scrape on a cold JVM (the boot
+  // CPU-credit drain). The full reproject runs first (short delay) as the boot catch-up
+  // for anything missed while the worker was down; the prune staggers a little later.
+  private val ReconcileBootDelaySeconds = Env.positiveLong("KINOWO_READMODEL_RECONCILE_BOOT_DELAY_SECONDS", 60L)
+  private val PruneBootDelaySeconds     = Env.positiveLong("KINOWO_READMODEL_PRUNE_BOOT_DELAY_SECONDS", 300L)
   @volatile private var watchHandle: Option[AutoCloseable] = None
 
   def enabled: Boolean = writer.enabled && movieRepository.enabled
 
   /** Apply one source-row change from the change stream. */
-  def onMovieUpsert(stored: StoredMovieRecord): Unit = lock.synchronized(project(stored))
+  def onMovieUpsert(stored: StoredMovieRecord): Unit = lock.synchronized { project(stored); () }
 
   // Caller holds `lock`. Project the row and write only what changed, movie
   // document before screenings. A row whose enrichment hasn't concluded
   // (`readyToProject` false) is held back — publishing the pre-enrichment,
   // yearless row is exactly what creates the duplicate `foo|` + `foo|2025`
   // cards, so it must never reach the read model until it has settled.
-  private def project(stored: StoredMovieRecord): Unit = {
-    if (!stored.record.readyToProject) return
+  /** Returns the number of derived documents actually (re)written for this row —
+   *  0 when the projection was byte-identical to what's already stored. The
+   *  reconcile sweep sums this to know whether a full re-projection caught
+   *  anything the change stream missed. */
+  private def project(stored: StoredMovieRecord): Int = {
+    if (!stored.record.readyToProject) return 0
     // A row fans out into one card per display-title variant (Cyrillic / English
     // / banner-prefixed listings of one film); the common single-title row yields
     // exactly one. Each variant card is diffed and written independently.
+    var written = 0
     ReadModelProjection.projectAll(stored).foreach { case (movie, screenings) =>
       if (!lastMovie.get(movie._id).contains(movie)) {
         writer.upsertMovie(movie)
         metrics.recordWrite(Target.Movie, Op.Upsert, 1)
         lastMovie.update(movie._id, movie)
+        written += 1
       }
-      diffScreenings(movie._id, screenings)
+      written += diffScreenings(movie._id, screenings)
     }
+    written
   }
 
-  private def diffScreenings(filmId: String, next: Seq[CityScreening]): Unit = {
+  /** Returns the number of screening documents written (upserts + deletes). */
+  private def diffScreenings(filmId: String, next: Seq[CityScreening]): Int = {
     val nextById = next.map(s => s._id -> s).toMap
     val previous     = lastScreenings.getOrElse(filmId, Map.empty)
     var upserted = 0
@@ -94,6 +106,7 @@ class ReadModelProjector(
     if (upserted > 0)        metrics.recordWrite(Target.Screening, Op.Upsert, upserted)
     if (deletes.nonEmpty)    metrics.recordWrite(Target.Screening, Op.Delete, deletes.size)
     if (nextById.isEmpty) lastScreenings.remove(filmId) else lastScreenings.update(filmId, nextById)
+    upserted + deletes.size
   }
 
   // Only `reconcile` calls this — a film whose source row vanished or was re-keyed
@@ -110,63 +123,80 @@ class ReadModelProjector(
     lastScreenings.remove(filmId)
   }
 
-  /** Re-project every source row (the diff keeps it cheap — only genuinely
-   *  changed documents are written) and prune derived documents whose source film is gone.
+  /** One reconciliation pass over the whole corpus.
    *
-   *  Self-healing: the prune diffs the ACTUAL read model ids
-   *  (`reader.findAllMovieIds`/`findAllScreeningRefs`) against the live source,
-   *  NOT this process's in-memory `lastMovie`. The
-   *  change stream delivers no deletes, so a film the worker re-keyed — a scrape
-   *  pins a raw cinema year, enrichment resolves a different TMDB year, `settle`
-   *  folds same-tmdbId variants — leaves its old `web_movies`/`web_screenings`
-   *  documents behind. Those orphans may have been written by a PRIOR worker process
-   *  and so were never in this process's `lastMovie`; a memory-based prune can't
-   *  see them, which is how a re-key across a restart leaked a duplicate card
-   *  permanently. Reading the read model's own ids closes that gap.
+   *  `reproject = true` — the FULL sweep: re-project every ready row (the diff keeps
+   *  writes minimal — only genuinely changed documents are written) AND prune. This
+   *  is the expensive path (projecting ~1400 rows is a ~1-core burst that, on the old
+   *  30-min cadence, filled the 320m heap → GC thrash → CPU-credit starvation). Its
+   *  only unique job over the change-stream path is catching upserts MISSED while the
+   *  stream was down or terminally errored, so it now runs rarely (boot + `ReconcileSeconds`).
    *
-   *  A row that fails to project must not abort the prune (the prune is what
-   *  removes the duplicates), so each projection is guarded individually. */
-  def reconcile(): Unit = lock.synchronized {
-    // Stream the source rows one at a time (`foreachRecord`) rather than
-    // materialising the whole ~13 MB corpus — the projector already holds the read
-    // model resident in `lastMovie`/`lastScreenings`, and a second full copy on top
-    // (plus the prune's read-model copies below) is the transient that exhausted the
-    // worker's 320m heap on the 30-min reconcile tick. Only READY rows are part of
-    // the read model — held-back rows are absent from `liveIds`, so they neither
-    // project nor leave a stale document behind, and a row that becomes ready
-    // between ticks gets projected on the next one.
+   *  `reproject = false` — the CHEAP sweep (`pruneOrphans`): build the live-id set from
+   *  `ReadModelProjection.filmIds` (no projection) and prune only. This is the frequent
+   *  backstop for DELETES / re-keys, which the change stream drops (`watchUpserts` nulls
+   *  onDelete) — the film-id is `sanitize(title)|resolvedYear`, many source rows to one
+   *  card, so a single source delete can't be mapped to a card without a reverse index;
+   *  the set-difference prune is the correct, cheap way to reconcile them.
+   *
+   *  Self-healing: the prune diffs the ACTUAL read-model ids
+   *  (`reader.findAllMovieIds`/`findAllScreeningRefs`) against the live source, NOT this
+   *  process's in-memory `lastMovie` — a film a PRIOR worker process wrote and re-keyed
+   *  is invisible to a memory-based prune, which is how a re-key across a restart leaked a
+   *  duplicate card permanently. Streaming `foreachRecord` (not a whole-corpus `findAll`)
+   *  and id-only read-model reads keep the whole corpus off the heap.
+   *
+   *  A row that fails to project must not abort the prune (the prune is what removes the
+   *  duplicates), so each projection is guarded individually. */
+  private def sweep(reproject: Boolean): Unit = lock.synchronized {
+    val kind = if (reproject) ReconcileKind.Reproject else ReconcileKind.Prune
     val liveIds = scala.collection.mutable.Set.empty[String]
+    var reprojected = 0
     val scanComplete = movieRepository.foreachRecord { row =>
       if (row.record.readyToProject) {
         liveIds ++= ReadModelProjection.filmIds(row)
-        try project(row)
-        catch { case exception: Throwable =>
-          logger.warn(s"read-model reconcile: a row failed to project, continuing: ${exception.getMessage}") }
+        if (reproject)
+          try reprojected += project(row)
+          catch { case exception: Throwable =>
+            logger.warn(s"read-model $kind: a row failed to project, continuing: ${exception.getMessage}") }
       }
     }
+    var prunedFilms      = 0
+    var prunedScreenings = 0
     if (!scanComplete) {
       // The source scan failed mid-way (a Mongo batch read threw after its retries —
       // typically a server-selection / socket timeout while the worker is CPU-throttled,
       // the 2026-06-29 01:34–02:19 served-films flap). `liveIds` is therefore a TRUNCATED
-      // view of the corpus, not the full live set. Pruning on it would delete every
-      // read-model card whose source row this scan never reached — the cards that
-      // "vanished" then "came back" on the next clean tick, under-serving the big cities
-      // in between. Keep the (idempotent) projections we did make and SKIP the
+      // view, so pruning on it would delete every read-model card whose source row this
+      // scan never reached. Keep the (idempotent) projections we did make and SKIP the
       // destructive prune; the next tick reconciles cleanly once reads recover.
-      logger.warn("read-model reconcile: source scan was incomplete (Mongo read failed mid-scan) — " +
+      logger.warn(s"read-model $kind: source scan was incomplete (Mongo read failed mid-scan) — " +
         "skipping the prune this tick to avoid deleting live read-model rows; will retry next tick.")
     } else {
-      // Prune off id-only projections — the prune reads ids/filmIds, never payloads,
-      // so projecting them server-side keeps the whole `web_movies`/`web_screenings`
-      // corpus off the heap (the read model is already resident in memory anyway).
-      reader.findAllMovieIds().iterator.filterNot(liveIds).foreach(deleteFilm)
+      // Prune off id-only projections — the prune reads ids/filmIds, never payloads.
+      reader.findAllMovieIds().iterator.filterNot(liveIds).foreach { id => deleteFilm(id); prunedFilms += 1 }
       reader.findAllScreeningRefs().iterator.filterNot(ref => liveIds(ref.filmId)).foreach { ref =>
         writer.deleteScreening(ref._id)
         metrics.recordWrite(Target.Screening, Op.Delete, 1)
         lastScreenings.updateWith(ref.filmId)(_.map(_ - ref._id).filter(_.nonEmpty))
+        prunedScreenings += 1
       }
     }
+    // Measurement: does this sweep still do anything? A `reproject` sweep that is
+    // consistently didWork=false proves the change stream is reliable and the full
+    // sweep is redundant; a `prune` sweep with didWork=true is the deletes/re-keys the
+    // stream can't deliver. Surfaced as kinowo_worker_readmodel_reconcile_sweeps.
+    val didWork = reprojected > 0 || prunedFilms > 0 || prunedScreenings > 0
+    metrics.recordReconcileSweep(kind, didWork)
+    logger.info(s"read-model $kind sweep: reprojected $reprojected doc(s), pruned $prunedFilms film(s) + " +
+      s"$prunedScreenings orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
   }
+
+  /** Full re-projection + prune — the boot/periodic gap backstop (expensive). */
+  def reconcile(): Unit = sweep(reproject = true)
+
+  /** Cheap id-only orphan prune — the frequent backstop for deleted/re-keyed rows. */
+  def pruneOrphans(): Unit = sweep(reproject = false)
 
   def start(): Unit = if (enabled) {
     // Seed the last-projection state from the derived collections, so a restart
@@ -177,17 +207,20 @@ class ReadModelProjector(
         lastScreenings.update(fid, ss.map(s => s._id -> s).toMap)
       }
     }
-    // The change-stream watch covers live changes from now on; the seeded state
-    // above means incremental writes are no-ops for already-correct documents. The
-    // full reconcile (which additionally prunes derived documents whose source row
-    // vanished while the worker was down) is deferred to the first scheduled tick
-    // so it doesn't compete with boot hydrate + the first scrape.
+    // The change-stream watch covers live changes from now on; the seeded state above
+    // means incremental writes are no-ops for already-correct documents. Both sweeps are
+    // deferred off the boot path so they don't compete with boot hydrate + the first scrape.
     watchHandle = movieRepository.watchUpserts(onMovieUpsert)
+    // Full re-projection: boot catch-up (missed-while-down upserts) then rarely.
     scheduler.scheduleAtFixedRate(
       () => Try(reconcile()).recover { case exception => logger.warn(s"read-model reconcile tick failed: ${exception.getMessage}") },
       ReconcileBootDelaySeconds, ReconcileSeconds, TimeUnit.SECONDS)
-    logger.info(s"ReadModelProjector started; first reconcile in ${ReconcileBootDelaySeconds}s, " +
-      s"then every ${ReconcileSeconds}s; " +
+    // Cheap orphan prune: frequent, no per-row re-projection (can't spike CPU).
+    scheduler.scheduleAtFixedRate(
+      () => Try(pruneOrphans()).recover { case exception => logger.warn(s"read-model prune tick failed: ${exception.getMessage}") },
+      PruneBootDelaySeconds, PruneSeconds, TimeUnit.SECONDS)
+    logger.info(s"ReadModelProjector started; orphan-prune every ${PruneSeconds}s (first in ${PruneBootDelaySeconds}s), " +
+      s"full reproject every ${ReconcileSeconds}s (first in ${ReconcileBootDelaySeconds}s); " +
       s"change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — reconcile only"}.")
   } else logger.info("ReadModelProjector disabled (read model or movies repository not enabled).")
 

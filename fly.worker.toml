@@ -29,7 +29,10 @@ primary_region = 'arn'
 # The real lever is making that projection/change-stream path cheaper (a server-side
 # `$match` so the projector isn't woken for every non-`readyToProject` intermediate
 # enrichment write), not adding machines. See KINOWO_SCRAPE_FRESHNESS_MINUTES for the
-# write-rate lever and KINOWO_READMODEL_RECONCILE_SECONDS for the reconcile cadence.
+# write-rate lever; the read-model sweep splits into KINOWO_READMODEL_PRUNE_SECONDS
+# (cheap id-only orphan prune, frequent) and KINOWO_READMODEL_RECONCILE_SECONDS (the
+# expensive full re-projection, now rare — watch kinowo_worker_readmodel_reconcile_sweeps
+# to see if it still catches anything).
 
 [build]
   dockerfile = 'Dockerfile'

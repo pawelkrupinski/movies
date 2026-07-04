@@ -35,12 +35,14 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     (new ReadModelProjector(repository, rm, rm), repository, rm)
   }
 
-  /** Spy sink: tallies the reprojection writes + film prunes the projector emits. */
+  /** Spy sink: tallies the reprojection writes + film prunes + sweep results. */
   private class RecordingMetrics extends ReadModelProjectionMetrics {
     val writes = scala.collection.mutable.Map.empty[(String, String), Int].withDefaultValue(0)
     var prunes = 0
+    val sweeps = scala.collection.mutable.Buffer.empty[(String, Boolean)]
     def recordWrite(target: String, op: String, count: Int): Unit = writes((target, op)) += count
     def recordFilmPruned(count: Int): Unit                        = prunes += count
+    def recordReconcileSweep(kind: String, didWork: Boolean): Unit = sweeps += (kind -> didWork)
   }
 
   "the first projection of a row" should "write the movie document before its screenings" in {
@@ -203,7 +205,43 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   // The worker exposes these as kinowo_worker_readmodel_writes_total{target,op}
   // and kinowo_worker_readmodel_films_pruned_total so the rate of reprojection
   // churn — and the link-breaking film-prune events — is visible in Grafana.
-  import ReadModelProjectionMetrics.{Op, Target}
+  import ReadModelProjectionMetrics.{Op, ReconcileKind, Target}
+
+  // ── Split sweep: cheap prune vs expensive full re-projection ─────────────────
+  // The 30-min full re-projection (project EVERY row) was the ~1-core corpus burst
+  // that filled the heap → GC thrash → credit starvation. Its only unique job over
+  // the change-stream path is catching missed upserts, so it now runs rarely; the
+  // FREQUENT backstop is a cheap id-only prune that removes deleted/re-keyed rows
+  // WITHOUT re-projecting anything.
+  "pruneOrphans" should "prune a vanished film WITHOUT re-projecting live rows" in {
+    val (projector, repository, rm) = fixture()
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.reconcile()                     // full sweep: projects Foo
+    rm.movieUpserts should have size 1
+    // A live row's metadata changes: the CHEAP prune must NOT re-project it — that's
+    // the whole point (no per-row projection = no CPU burst).
+    repository.upsert("Foo", Some(2024), record(Some(9.9), Seq(at("2026-06-12T20:00"))))
+    projector.pruneOrphans()
+    rm.movieUpserts should have size 1        // unchanged — prune did not reproject
+    // …but a vanished film IS still pruned by the cheap sweep (the load-bearing job).
+    repository.delete("Foo", Some(2024))
+    projector.pruneOrphans()
+    rm.movieDeletes should contain(fid)
+  }
+
+  "the reconcile-sweep metric" should "record kind + whether the sweep did any work" in {
+    val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
+    val m = new RecordingMetrics()
+    val projector = new ReadModelProjector(repository, rm, rm, m)
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.reconcile()                                    // full reproject that writes Foo
+    m.sweeps.last shouldBe (ReconcileKind.Reproject -> true)
+    projector.pruneOrphans()                                 // nothing to prune (Foo live) → no-op
+    m.sweeps.last shouldBe (ReconcileKind.Prune -> false)
+    repository.delete("Foo", Some(2024))
+    projector.pruneOrphans()                                 // prunes Foo → did work
+    m.sweeps.last shouldBe (ReconcileKind.Prune -> true)
+  }
 
   "the projector" should "meter the movie + screening upserts of a first projection" in {
     val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()

@@ -24,6 +24,13 @@ package services.readmodel
 trait ReadModelProjectionMetrics {
   def recordWrite(target: String, op: String, count: Int): Unit
   def recordFilmPruned(count: Int): Unit
+
+  /** One reconciliation sweep finished. `kind` distinguishes the cheap frequent
+   *  orphan prune from the expensive periodic full re-projection; `didWork` is
+   *  whether it pruned or reprojected at least one document. The point of the
+   *  signal: a `reproject` sweep that is almost always `didWork=false` proves the
+   *  change stream is reliable and the full sweep is redundant. */
+  def recordReconcileSweep(kind: String, didWork: Boolean): Unit
 }
 
 object ReadModelProjectionMetrics {
@@ -31,12 +38,16 @@ object ReadModelProjectionMetrics {
   object Target { val Movie = "movie"; val Screening = "screening" }
   /** Prometheus `op` label values for the writes counter. */
   object Op { val Upsert = "upsert"; val Delete = "delete" }
+  /** `kind` label values for the reconcile-sweep counter. */
+  object ReconcileKind { val Prune = "prune"; val Reproject = "reproject" }
 
-  val Targets: Seq[String] = Seq(Target.Movie, Target.Screening)
-  val Ops:     Seq[String] = Seq(Op.Upsert, Op.Delete)
+  val Targets: Seq[String]        = Seq(Target.Movie, Target.Screening)
+  val Ops:     Seq[String]        = Seq(Op.Upsert, Op.Delete)
+  val ReconcileKinds: Seq[String] = Seq(ReconcileKind.Prune, ReconcileKind.Reproject)
 
   val noop: ReadModelProjectionMetrics = new ReadModelProjectionMetrics {
     def recordWrite(target: String, op: String, count: Int): Unit = ()
     def recordFilmPruned(count: Int): Unit                        = ()
+    def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()
   }
 }
