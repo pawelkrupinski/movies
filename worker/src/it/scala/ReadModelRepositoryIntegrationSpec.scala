@@ -35,4 +35,24 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
     rm.findAllScreeningRefs().map(r => r._id -> r.filmId).toSet shouldBe
       rm.findAllScreenings().map(s => s._id -> s.filmId).toSet
   }
+
+  // findAllScreenings is now keyset-PAGED (KeysetScan), not one unbounded find().toFuture().
+  // At corpus scale that single cursor timed out at 60s and returned Seq.empty, so the
+  // projector's boot SEED was empty and every boot reproject rewrote the whole ~6.5k-screening
+  // corpus (the reproject's phantom did_work). The 60s timeout only reproduces at prod scale
+  // (7 real timeouts logged 2026-07-04); this guards the paging MECHANISM instead — every row
+  // comes back exactly once across page boundaries (batchSize forced to 2 over 5 sentinels → 3
+  // pages), the boundary correctness the empty-seed fix depends on.
+  "findAllScreenings" should "page across batch boundaries, returning every written screening exactly once in _id order" in {
+    import models.CityScreening
+    val paged = new MongoReadModelRepository(Some(db), findAllBatchSize = 2)
+    val ids   = (0 until 5).map(i => s"__it-rm-page-${i}__")
+    val docs  = ids.map(id => CityScreening(_id = id, filmId = "__it-rm-page-film__",
+      city = "poznan", cinema = "Cinema", filmUrl = None, showtimes = Nil))
+    try {
+      docs.foreach(paged.upsertScreening)
+      val got = paged.findAllScreenings().filter(_._id.startsWith("__it-rm-page-")).map(_._id)
+      got shouldBe ids            // all 5, _id-sorted, no dup or skip across the 3 keyset pages
+    } finally ids.foreach(paged.deleteScreening)
+  }
 }

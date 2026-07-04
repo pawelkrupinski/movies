@@ -5,9 +5,10 @@ import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument, OperationType}
 import models.{CityScreening, ResolvedMovie}
 import org.mongodb.scala.bson.BsonDocument
-import org.mongodb.scala.model.{Filters, IndexOptions, Indexes, Projections}
+import org.mongodb.scala.model.{Filters, IndexOptions, Indexes, Projections, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import play.api.Logging
+import services.movies.KeysetScan
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import scala.concurrent.Await
@@ -28,7 +29,14 @@ import scala.util.Try
  * When `sharedDb` is `None` (Mongo disabled in local dev / tests without a
  * cluster) the repository is a silent no-op, mirroring `MongoMovieRepository`.
  */
-class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadModelReader with ReadModelWriter with Logging {
+class MongoReadModelRepository(
+  sharedDb:             Option[MongoDatabase],
+  // Cursor page size for the keyset-paged full scans (findAllMovies / findAllScreenings).
+  // Injectable so tests force multiple pages with a handful of rows; see [[KeysetScan]].
+  findAllBatchSize:     Int            = 500,
+  findAllBatchAttempts: Int            = 4,
+  findAllBatchBackoff:  FiniteDuration = 500.millis
+) extends ReadModelReader with ReadModelWriter with Logging {
 
   // Relaxed write concern (w:1, j:false): the read model is a pure projection of
   // `movies` — every document is re-derived by the projector's reconcile, so a write
@@ -57,25 +65,36 @@ class MongoReadModelRepository(sharedDb: Option[MongoDatabase]) extends ReadMode
 
   // ── Reads ─────────────────────────────────────────────────────────────────
 
-  def findAllMovies(): Seq[ResolvedMovie] = movies match {
-    case Some(c) =>
-      Try(Await.result(c.find().toFuture(), 60.seconds)).recover {
-        case exception: Throwable =>
-          logger.warn(s"ReadModelRepository.findAllMovies failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
-          Seq.empty
-      }.getOrElse(Seq.empty)
-    case None => Seq.empty
-  }
+  // A whole-collection decode goes through KeysetScan, NOT one unbounded `find().toFuture()`.
+  // At corpus scale (~6.5k web_screenings) that single cursor timed out at 60s (and can
+  // StackOverflow the async driver, Sentry KINOWO-19) and returned Seq.empty — which made the
+  // projector's BOOT SEED empty, so every boot reproject saw all screenings as new and rewrote
+  // the whole corpus (the reproject's phantom "did_work", ~6.5k writes per restart). Paged,
+  // bounded, retried reads complete quickly. Empty on an incomplete scan, matching
+  // MongoScreeningsRepository.findAll (neither of these callers prunes on the result).
+  private def pagedFindAll[A: ClassTag](coll: Option[MongoCollection[A]], label: String, keyOf: A => String): Seq[A] =
+    coll match {
+      case Some(c) =>
+        val buf = Vector.newBuilder[A]
+        val complete = KeysetScan.scan[A](
+          label          = label,
+          batchSize      = findAllBatchSize,
+          maxAttempts    = findAllBatchAttempts,
+          initialBackoff = findAllBatchBackoff,
+          keyOf          = keyOf,
+          fetchPage      = (afterId, limit) => {
+            val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
+            Await.result(c.find(filter).sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
+          },
+          onIncomplete   = exception =>
+            logger.warn(s"$label keyset scan failed after retries: ${exception.getClass.getSimpleName}: ${exception.getMessage} — returning empty")
+        )(batch => buf ++= batch)
+        if (complete) buf.result() else Seq.empty
+      case None => Seq.empty
+    }
 
-  def findAllScreenings(): Seq[CityScreening] = screenings match {
-    case Some(c) =>
-      Try(Await.result(c.find().toFuture(), 60.seconds)).recover {
-        case exception: Throwable =>
-          logger.warn(s"ReadModelRepository.findAllScreenings failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
-          Seq.empty
-      }.getOrElse(Seq.empty)
-    case None => Seq.empty
-  }
+  def findAllMovies():     Seq[ResolvedMovie] = pagedFindAll(movies,     "ReadModelRepository.findAllMovies",     _._id)
+  def findAllScreenings(): Seq[CityScreening] = pagedFindAll(screenings, "ReadModelRepository.findAllScreenings", _._id)
 
   // ── Id-only projections (the reconcile prune) ───────────────────────────────
   // The prune needs only ids/filmIds to spot orphaned documents; projecting them
