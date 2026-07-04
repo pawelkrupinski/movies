@@ -3,8 +3,9 @@ package services.freshness
 import com.mongodb.client.model.UpdateOptions
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.{Filters, Updates}
+import org.mongodb.scala.model.{Filters, Sorts, Updates}
 import play.api.Logging
+import services.movies.KeysetScan
 
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
@@ -96,7 +97,11 @@ class InMemoryFreshnessStore extends FreshnessStore {
  * Single-writer by design (one worker process). A `null` db disables
  * persistence — the mirror still works, it just doesn't survive a restart.
  */
-class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessStore with Logging {
+class MongoFreshnessStore(
+  db:               Option[MongoDatabase] = None,
+  // Page size for the keyset-paged boot hydrate; injectable so tests force multiple pages.
+  hydrateBatchSize: Int = 2000
+) extends FreshnessStore with Logging {
   private val mirror = new ConcurrentHashMap[String, Instant]()
   // Relaxed `{w:1, j:false}` like the task queue: freshness stamps are a cache
   // (a lost write just means a redundant re-fetch later), so the journal/majority
@@ -192,22 +197,33 @@ class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessSto
    *  read COMPLETED (cursor exhausted) — matching nothing still counts, that's a
    *  genuine empty result. Returns false if it timed out or failed, which the
    *  caller retries rather than treating the empty mirror as authoritative. */
-  private def hydrateInto(c: MongoCollection[Document], filter: Bson, timeout: FiniteDuration, label: String): Boolean =
-    Try {
-      val documents = Await.result(c.find(filter).toFuture(), timeout)
-      var count = 0
-      documents.foreach { document =>
-        for {
-          key  <- Option(document.getString("_id"))
-          date <- Option(document.getDate("lastFetchedAt"))
-        } { mirror.put(key, Instant.ofEpochMilli(date.getTime)); count += 1 }
-      }
-      if (count > 0) logger.info(s"Hydrated $count $label freshness stamp(s) from Mongo.")
-    } match {
-      case scala.util.Success(_) => true
-      case scala.util.Failure(exception) =>
-        logger.warn(s"Freshness $label hydrate failed: ${exception.getMessage}"); false
-    }
+  private def hydrateInto(c: MongoCollection[Document], filter: Bson, timeout: FiniteDuration, label: String): Boolean = {
+    // Keyset-paged, NOT one unbounded `find(filter).toFuture()`: the enrichment phase is
+    // one stamp per film per source (~13k and growing with the corpus) and a single cursor
+    // over it brushes the timeout / can StackOverflow the async driver as it grows (Sentry
+    // KINOWO-19, the same class that emptied the read-model boot seed). Each page is a bounded
+    // `find(filter AND _id > last).sort(_id).limit`. Completed-or-not maps onto the old return.
+    var count = 0
+    val complete = KeysetScan.scan[Document](
+      label          = s"FreshnessStore $label hydrate",
+      batchSize      = hydrateBatchSize,
+      maxAttempts    = 3,
+      initialBackoff = 500.millis,
+      keyOf          = _.getString("_id"),
+      fetchPage      = (afterId, limit) => {
+        val paged = afterId.fold(filter)(a => Filters.and(filter, Filters.gt("_id", a)))
+        Await.result(c.find(paged).sort(Sorts.ascending("_id")).limit(limit).toFuture(), timeout)
+      },
+      onIncomplete   = exception => logger.warn(s"Freshness $label hydrate keyset scan failed: ${exception.getMessage}")
+    )(batch => batch.foreach { document =>
+      for {
+        key  <- Option(document.getString("_id"))
+        date <- Option(document.getDate("lastFetchedAt"))
+      } { mirror.put(key, Instant.ofEpochMilli(date.getTime)); count += 1 }
+    })
+    if (count > 0) logger.info(s"Hydrated $count $label freshness stamp(s) from Mongo.")
+    complete
+  }
 }
 
 object MongoFreshnessStore {
