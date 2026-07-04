@@ -327,7 +327,10 @@ class WorkerWiring extends play.api.Logging {
     new services.movies.MongoScreeningsRepository(mongoConnection.database)
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
     mongoConnection.database, fallbackToOwnInit = false, changeStreamMetrics = taskMetrics,
-    screenings = Some(screeningsRepository))
+    screenings = Some(screeningsRepository),
+    // The worker is the durable read-model/cache mirror: persist the change-stream resume
+    // token so a restart replays events missed while down instead of leaning on the backstop.
+    persistResumeToken = true)
 
   // Staging-ingest: a genuinely-new film incubates in `pending_movies`
   // (resolve-then-fold) instead of landing straight in `movies`; a film already

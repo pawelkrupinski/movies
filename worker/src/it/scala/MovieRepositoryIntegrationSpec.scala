@@ -208,6 +208,59 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     repository.isWatchingChangeStream shouldBe false // last listener gone — cursor stopped
   }
 
+  // Resume-token persistence: the shared cursor reopens from the last persisted token
+  // (a WORKER RESTART / terminal error) instead of "now", so writes that landed while
+  // this process was DOWN are REPLAYED — closing the downtime gap the consumers' periodic
+  // backstops (cache rehydrate / projector reconcile) exist for. Simulated with two repo
+  // instances sharing the token collection: repo1 sees A then "dies"; B and C are written
+  // while nothing watches; a fresh repo2 resumes from the token and replays B and C.
+  it should "resume the change stream from the persisted token, replaying events missed while down" in {
+    import java.util.concurrent.{ConcurrentHashMap, CountDownLatch, TimeUnit}
+    import scala.jdk.CollectionConverters._
+
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    def clearToken(): Unit = Await.ready(
+      db.getCollection("change_stream_tokens").deleteOne(Filters.eq("_id", "movies")).toFuture(), 10.seconds)
+    clearToken() // start clean → repo1 opens at "now", not a stale prior-run token
+
+    val repo1   = new MongoMovieRepository(Some(db), persistResumeToken = true)
+    val idA     = StoredMovieRecord.idFor("__integration-test-resume-A__", Some(1909))
+    val gotA    = new CountDownLatch(1)
+    val handle1 = repo1.watchChanges(r => if (StoredMovieRecord.idOf(r) == idA) gotA.countDown(), _ => ())
+    handle1 should not be empty
+    try {
+      Thread.sleep(1500) // let the stream establish before the write
+      repo1.upsert("__integration-test-resume-A__", Some(1909), MovieRecord(imdbId = Some("tt0000013")))
+      gotA.await(15, TimeUnit.SECONDS) shouldBe true
+      handle1.foreach(_.close()) // last listener gone → stopWatchingIfIdle force-saves the token (position: after A)
+
+      // "Down": B and C land while nothing is watching the stream.
+      repo1.upsert("__integration-test-resume-B__", Some(1909), MovieRecord(imdbId = Some("tt0000013")))
+      repo1.upsert("__integration-test-resume-C__", Some(1909), MovieRecord(imdbId = Some("tt0000013")))
+
+      // A fresh process (empty in-memory state) resumes from the persisted token.
+      val repo2   = new MongoMovieRepository(Some(db), persistResumeToken = true)
+      val idB     = StoredMovieRecord.idFor("__integration-test-resume-B__", Some(1909))
+      val idC     = StoredMovieRecord.idFor("__integration-test-resume-C__", Some(1909))
+      val seen    = ConcurrentHashMap.newKeySet[String]()
+      val gotBC   = new CountDownLatch(2)
+      val handle2 = repo2.watchChanges(r => {
+        val id = StoredMovieRecord.idOf(r)
+        if ((id == idB || id == idC) && seen.add(id)) gotBC.countDown()
+      }, _ => ())
+      try {
+        // No fresh write: B and C are delivered purely by resuming past the token.
+        gotBC.await(15, TimeUnit.SECONDS) shouldBe true
+        seen.asScala should contain allOf (idB, idC)
+      } finally { handle2.foreach(_.close()); repo2.close() }
+    } finally {
+      Seq("A", "B", "C").foreach(s => repo1.delete(s"__integration-test-resume-${s}__", Some(1909)))
+      clearToken()
+      repo1.close(); client.close()
+    }
+  }
+
   // The shared cursor's onNext feeds the change-stream stats sink (op + update-field
   // kind). Prove it fires against a real event with a recording sink.
   it should "record change-stream event stats onto the injected sink" in {

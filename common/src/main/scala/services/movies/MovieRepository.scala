@@ -6,13 +6,14 @@ import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument
 import models.{MovieRecord, Showtime, Source, SourceData}
 import org.mongodb.scala.bson.{BsonDateTime, BsonNull}
 import org.mongodb.scala.model.{Aggregates, Filters, IndexOptions, Indexes, Sorts, Updates}
-import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
+import org.mongodb.scala.{Document, MongoClient, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
+import org.bson.BsonDocument
 import org.bson.conversions.Bson
 import play.api.Logging
 import tools.Env
 
 import java.time.Instant
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
@@ -251,7 +252,13 @@ class MongoMovieRepository(
   // showtimes (the one-time embedded→screenings migration is complete, so `movies`
   // carries no showtimes). Maintenance scripts/tests that pass `None` keep the plain
   // embedded shape (they don't serve).
-  screenings: Option[ScreeningsRepository] = None
+  screenings: Option[ScreeningsRepository] = None,
+  // Persist the change-stream resume token so the shared cursor reopens (after a terminal
+  // error or a WORKER RESTART) from where it left off — replaying events that landed while
+  // this process was down, closing the gap the consumers' periodic backstops exist for. ON
+  // only in the WORKER (the durable read-model / cache mirror); OFF for web /debug + scripts,
+  // whose ephemeral cursor position must not clobber the worker's in the shared token doc.
+  persistResumeToken: Boolean = false
 ) extends MovieRepository with Logging {
 
   private def stripFor(data: Map[Source, SourceData]): Map[Source, SourceData] =
@@ -282,7 +289,7 @@ class MongoMovieRepository(
   // `sharedDb = None` (legacy path used by ad-hoc scripts under
   // test/scala/scripts/): we build our own MongoClient from `MONGODB_URI`
   // and own its close().
-  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[StoredMovieDto]]) =
+  private lazy val initResult: (Option[MongoClient], Option[MongoDatabase], Option[MongoCollection[StoredMovieDto]]) =
     sharedDb match {
       case Some(db) =>
         val withRegistry = db.withCodecRegistry(MovieCodecs.registry)
@@ -293,12 +300,13 @@ class MongoMovieRepository(
         val coll = withRegistry.getCollection[StoredMovieDto]("movies")
           .withWriteConcern(WriteConcern.W1.withJournal(false))
         ensureIndexes(coll)
-        (None, Some(coll))
+        (None, Some(withRegistry), Some(coll))
       case None if fallbackToOwnInit => init()
-      case None                      => (None, None)
+      case None                      => (None, None, None)
     }
   private def clientOpt: Option[MongoClient]                     = initResult._1
-  private def coll:      Option[MongoCollection[StoredMovieDto]] = initResult._2
+  private def database:  Option[MongoDatabase]                   = initResult._2
+  private def coll:      Option[MongoCollection[StoredMovieDto]] = initResult._3
 
   def enabled: Boolean = coll.isDefined
 
@@ -635,6 +643,60 @@ class MongoMovieRepository(
   // `screenings` (movies stays put), so without this the projector would never see it.
   private val screeningsWatch = new AtomicReference[Option[AutoCloseable]](None)
 
+  // ── Resume-token persistence ────────────────────────────────────────────────
+  // The shared cursor reopens (after a terminal error, and — the big win — after a
+  // WORKER RESTART) from the last-seen change-stream token instead of "now", so writes
+  // that landed while this process was down are REPLAYED. That closes the downtime gap
+  // the consumers' periodic backstops (cache rehydrate / projector reconcile) exist for.
+  // Best-effort: the token is a sibling doc in `change_stream_tokens`; a too-old token
+  // (oplog window exceeded → ChangeStreamHistoryLost) is cleared and the open falls back
+  // to a fresh "now" + the backstop resyncs. Persist is time-throttled + fire-and-forget
+  // so the driver thread never blocks on a Mongo write per event; a clean shutdown forces
+  // one synchronous final save so a restart's resume is deterministic.
+  private val ResumeStream        = "movies"
+  private val TokenSaveThrottleMs = 5000L
+  private val lastToken           = new AtomicReference[BsonDocument](null)
+  private val lastTokenSaveMs     = new AtomicLong(0L)
+  private lazy val resumeTokenColl: Option[MongoCollection[Document]] =
+    if (!persistResumeToken) None
+    else database.map(_.getCollection[Document]("change_stream_tokens").withWriteConcern(WriteConcern.W1.withJournal(false)))
+
+  private def loadResumeToken(): Option[BsonDocument] =
+    resumeTokenColl.flatMap { c =>
+      Try(Option(Await.result(c.find(Filters.eq("_id", ResumeStream)).first().toFuture(), 5.seconds)))
+        .toOption.flatten.flatMap(_.get("token")).map(_.asDocument())
+    }
+
+  /** Persist `lastToken`. `force` (clean shutdown) writes SYNCHRONOUSLY so a restart
+   *  resumes deterministically; otherwise fire-and-forget + time-throttled. */
+  private def saveResumeToken(force: Boolean): Unit = {
+    val token = lastToken.get()
+    if (token != null) resumeTokenColl.foreach { c =>
+      val nowMs = System.currentTimeMillis()
+      if (force || nowMs - lastTokenSaveMs.get() >= TokenSaveThrottleMs) {
+        lastTokenSaveMs.set(nowMs)
+        val write = c.replaceOne(Filters.eq("_id", ResumeStream),
+          Document("_id" -> ResumeStream, "token" -> token), new ReplaceOptions().upsert(true)).toFuture()
+        if (force) Try(Await.result(write, 5.seconds))
+      }
+    }
+  }
+
+  private def clearResumeToken(): Unit = {
+    lastToken.set(null)
+    resumeTokenColl.foreach(c => Try(Await.result(c.deleteOne(Filters.eq("_id", ResumeStream)).toFuture(), 5.seconds)))
+  }
+
+  /** The one error where KEEPING the token loops: a too-old / invalidated token (oplog
+   *  window exceeded). Clearing it makes the next open start fresh + the backstop resync. */
+  private def isResumeTokenInvalid(e: Throwable): Boolean = e match {
+    case m: com.mongodb.MongoException =>
+      m.getCode == 286 /* ChangeStreamHistoryLost */ ||
+        Option(m.getMessage).exists(s => s.contains("ChangeStreamHistoryLost") ||
+          s.toLowerCase.contains("resume of change stream was not possible"))
+    case _ => false
+  }
+
   override def watchChanges(
     onUpsert: StoredMovieRecord => Unit,
     onDelete: String => Unit
@@ -651,11 +713,18 @@ class MongoMovieRepository(
    *  periodic backstop (cache rehydrate / projector reconcile) meanwhile. */
   private def ensureWatching(c: MongoCollection[StoredMovieDto]): Unit = changeLock.synchronized {
     if (changeSub.get() == null) {
-      c.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
+      // Resume from the last persisted token if we have one (a restart / prior terminal
+      // error) so events missed while down are replayed; else open at "now".
+      val resumeFrom = loadResumeToken()
+      val base       = c.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
+      resumeFrom.fold(base)(t => base.resumeAfter(Document(t)))
         .subscribe(new Observer[ChangeStreamDocument[StoredMovieDto]] {
           override def onSubscribe(s: Subscription): Unit = { changeSub.set(s); s.request(Long.MaxValue) }
           override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit = {
             recordChangeMetrics(change)
+            // Advance the resume position BEFORE fanning out, so a consumer signal (a
+            // downstream latch / write) can never observe an event before the token moves.
+            lastToken.set(change.getResumeToken)
             Option(change.getFullDocument) match {
               case Some(dto) =>
                 // The movies doc has no showtimes — stitch them back from `screenings`
@@ -668,14 +737,23 @@ class MongoMovieRepository(
                   .map(v => if (v.isString) v.asString.getValue else v.toString)
                   .foreach(movieChanges.dispatchDelete)
             }
+            // Persist the advanced position (time-throttled, fire-and-forget).
+            saveResumeToken(force = false)
           }
           override def onError(e: Throwable): Unit = {
-            logger.warn(s"MovieRepository change stream ended (${e.getMessage}) — relying on the periodic backstop rehydrate.")
+            if (isResumeTokenInvalid(e)) {
+              logger.warn(s"MovieRepository change stream: resume token invalid (${e.getMessage}) — clearing it; " +
+                "the next open starts fresh and the backstop resyncs the gap.")
+              clearResumeToken()
+            } else
+              logger.warn(s"MovieRepository change stream ended (${e.getMessage}) — a reopen resumes from the " +
+                "persisted token; the backstop covers the meantime.")
             changeSub.set(null)
           }
           override def onComplete(): Unit = changeSub.set(null)
         })
-      logger.info("MongoMovieRepository: watching change stream (shared by all listeners).")
+      logger.info(s"MongoMovieRepository: watching change stream (shared by all listeners)" +
+        s"${if (resumeFrom.isDefined) ", resumed from persisted token" else ""}.")
       // Also watch `screenings`: a showtime change fires there, not on `movies`.
       // Re-read + stitch (findById already stitches) + fan out so the projector
       // re-projects the film.
@@ -689,6 +767,8 @@ class MongoMovieRepository(
    *  every write for nothing. */
   private def stopWatchingIfIdle(): Unit = changeLock.synchronized {
     if (movieChanges.isEmpty) {
+      // Persist the final position synchronously so the next process resumes from here.
+      saveResumeToken(force = true)
       Option(changeSub.getAndSet(null)).foreach(_.unsubscribe())
       screeningsWatch.getAndSet(None).foreach(h => Try(h.close()))
     }
@@ -713,7 +793,7 @@ class MongoMovieRepository(
     }
   }.recover { case exception => logger.warn(s"change-stream metrics failed: ${exception.getMessage}") }.getOrElse(())
 
-  def close(): Unit = clientOpt.foreach(_.close())
+  def close(): Unit = { saveResumeToken(force = true); clientOpt.foreach(_.close()) }
 
   /** Index `(title, year)` so [[delete]]'s `$or(_id, title+year)` filter resolves
    *  by index union instead of a full collection scan. The stored documents no longer
@@ -736,11 +816,11 @@ class MongoMovieRepository(
       case exception: Throwable => logger.warn(s"movies (title, year) index creation failed: ${exception.getMessage}")
     }
 
-  private def init(): (Option[MongoClient], Option[MongoCollection[StoredMovieDto]]) =
+  private def init(): (Option[MongoClient], Option[MongoDatabase], Option[MongoCollection[StoredMovieDto]]) =
     Env.get("MONGODB_URI") match {
       case None =>
         logger.info("MONGODB_URI not set — MongoMovieRepository disabled (in-memory cache only).")
-        (None, None)
+        (None, None, None)
       case Some(uri) =>
         Try {
           val dbName  = Env.get("MONGODB_DB").getOrElse("kinowo")
@@ -754,14 +834,14 @@ class MongoMovieRepository(
           Await.result(coll.countDocuments().toFuture(), 10.seconds)
           ensureIndexes(coll)
           logger.info(s"MongoMovieRepository connected to $dbName.movies")
-          (client, coll)
+          (client, db, coll)
         }.recover {
           case exception: Throwable =>
             logger.error(s"MongoMovieRepository init failed (${exception.getMessage}) — falling back to in-memory cache.")
             null
         }.toOption.filter(_ != null) match {
-          case Some((c, coll)) => (Some(c), Some(coll))
-          case None            => (None, None)
+          case Some((c, db, coll)) => (Some(c), Some(db), Some(coll))
+          case None                => (None, None, None)
         }
     }
 
