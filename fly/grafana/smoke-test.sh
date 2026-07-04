@@ -165,6 +165,13 @@ assert "enqueued/started/fully-worked by-type panels share one row" \
   "api/dashboards/uid/fly-overview" \
   "(lambda ps: len(ps)==3 and len({p['gridPos']['y'] for p in ps})==1 and len({p['gridPos']['x'] for p in ps})==3)([p for p in d['dashboard']['panels'] if any(s in p.get('title','') for s in ['enqueued (non-duplicate) by type','started (claimed) by type','fully-worked throughput by type'])])"
 
+# The worker JVM/host memory panel must carry the host-free-memory series (the
+# whole point of the panel — how much RAM the machine has left) and be a Mixed
+# panel so it can join the worker's own jvm_* exports with Fly host metrics.
+assert "worker memory panel queries host free memory (Mixed datasource)" \
+  "api/dashboards/uid/fly-overview" \
+  "any(t.get('expr')=='fly_instance_memory_mem_available{app=\"kinowo-worker\"}' for p in d['dashboard']['panels'] if p.get('datasource',{}).get('uid')=='-- Mixed --' for t in p.get('targets',[]))"
+
 echo "==> scanning Grafana logs for provisioning errors"
 # Ignore the benign "no plugins provisioning dir" line — we ship none.
 if docker logs "$NAME" 2>&1 | grep -Ei 'failed to provision|failure to map|failure parsing|provisioning\.datasources.*level=error'; then
