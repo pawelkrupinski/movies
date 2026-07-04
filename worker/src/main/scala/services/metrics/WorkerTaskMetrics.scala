@@ -4,7 +4,7 @@ import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
-import services.movies.{ChangeStreamMetrics, MergeMetrics, MergeReason, SplitMetrics}
+import services.movies.{CacheSyncMetrics, ChangeStreamMetrics, MergeMetrics, MergeReason, SplitMetrics}
 import services.readmodel.ReadModelProjectionMetrics
 import services.staging.StagingStep
 import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState, TaskType}
@@ -61,7 +61,7 @@ object TaskObserver {
  * gauges are refreshed from a `QueueSnapshot` each `scrape()`.
  */
 class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new PrometheusRegistry())
-  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ChangeStreamMetrics {
+  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ChangeStreamMetrics with CacheSyncMetrics {
   import WorkerTaskMetrics._
 
   // The client auto-appends `_total` to counter names, so they're declared without it.
@@ -159,6 +159,12 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     .help("Films whose derived documents were removed from the read model during reconcile since boot — a source row that vanished or was re-keyed (its filmId changed). The event that can briefly 404 a film deep-link until the new key propagates to the web; pair with kinowo_worker_merges_total for the re-key cause.")
     .register(registry)
 
+  private val cacheRehydrateChanges = Counter.builder()
+    .name("kinowo_worker_cache_rehydrate_changes")
+    .help("Rows the MovieCache's periodic backstop rehydrate (full findAll reload) caught that the INCREMENTAL change stream missed, by kind (changed=a put whose cached value differed = a missed upsert; deleted=a key gone from Mongo the delete-apply didn't drop). After resume-token persistence + cache delete-apply this should be ~0 in steady state; a rate flat at 0 proves the 30-min rehydrate is redundant and can be retired. NOTE: the one-time BOOT hydrate counts EVERY row as changed — read the rate over steady state, not the raw counter.")
+    .labelNames("kind")
+    .register(registry)
+
   private val readModelReconcileSweeps = Counter.builder()
     .name("kinowo_worker_readmodel_reconcile_sweeps")
     .help("Read-model reconciliation sweeps since boot, by kind (prune=cheap id-only orphan prune, frequent; reproject=full re-projection catching change-stream gaps, rare) and did_work (true=pruned or reprojected >=1 doc, false=no-op). A reproject that is almost always did_work=false proves the change stream is reliable and the full sweep is redundant; a prune with did_work=true is the deletes/re-keys the stream can't deliver. rate(did_work=true) vs rate(did_work=false) is the redundancy signal.")
@@ -201,6 +207,7 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     readModelFilmsPruned.inc(0.0) // materialize the single series at 0 so Grafana draws a continuous line
     ReadModelProjectionMetrics.ReconcileKinds.foreach(k =>
       Seq("true", "false").foreach(w => readModelReconcileSweeps.labelValues(k, w)))
+    Seq("changed", "deleted").foreach(k => cacheRehydrateChanges.labelValues(k))
     ChangeStreamMetrics.Ops.foreach(o => changeEvents.labelValues(o))
     ChangeStreamMetrics.Kinds.foreach(k => changeUpdateKinds.labelValues(k))
     poolSizeGauge.set(poolSize.toDouble)
@@ -228,6 +235,12 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
 
   def recordReconcileSweep(kind: String, didWork: Boolean): Unit =
     readModelReconcileSweeps.labelValues(kind, didWork.toString).inc()
+
+  // ── CacheSyncMetrics ────────────────────────────────────────────────────────
+  def recordRehydrate(changedUpserts: Int, deletes: Int): Unit = {
+    if (changedUpserts > 0) cacheRehydrateChanges.labelValues("changed").inc(changedUpserts.toDouble)
+    if (deletes > 0)        cacheRehydrateChanges.labelValues("deleted").inc(deletes.toDouble)
+  }
 
   // ── ChangeStreamMetrics ─────────────────────────────────────────────────────
   def recordEvent(op: String): Unit           = changeEvents.labelValues(op).inc()

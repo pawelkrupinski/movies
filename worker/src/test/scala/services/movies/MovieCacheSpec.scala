@@ -90,6 +90,29 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.get(barKey) should not be empty
   }
 
+  // Redundancy signal for retiring the backstop rehydrate (step 3a): the rehydrate
+  // reports how much its full reload caught that the incremental change stream missed —
+  // a put whose value DIFFERED (missed upsert) and a key gone from Mongo (missed delete).
+  // Once resume-tokens + delete-apply are working this should be ~0 in steady state.
+  it should "meter what the backstop rehydrate catches that the change stream missed" in {
+    val repo  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt-foo"))))
+    val m     = new RecordingCacheMetrics
+    val cache = new CaffeineMovieCache(repo, cacheMetrics = m) // boot hydrate counts Foo as changed
+    m.reset()
+    // The source diverged out-of-band while no stream applied it: Foo removed, Bar added.
+    repo.delete("Foo", Some(2024))
+    repo.upsert("Bar", Some(2024), mkEnrichment("tt-bar"))
+    cache.rehydrate()
+    m.changed shouldBe 1 // Bar — a missed upsert
+    m.deleted shouldBe 1 // Foo — a missed delete
+  }
+
+  private class RecordingCacheMetrics extends CacheSyncMetrics {
+    var changed = 0; var deleted = 0
+    def recordRehydrate(c: Int, d: Int): Unit = { changed += c; deleted += d }
+    def reset(): Unit = { changed = 0; deleted = 0 }
+  }
+
   it should "not write to the repository when putIfPresent produces no change (kills the no-op re-scrape churn)" in {
     val repository  = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository)

@@ -155,6 +155,9 @@ class CaffeineMovieCache(
   // re-enrichment load. No-op for web + unit tests; the worker wires
   // `WorkerTaskMetrics`.
   mergeMetrics: MergeMetrics = MergeMetrics.noop,
+  // Measures what the periodic backstop rehydrate catches that the incremental change
+  // stream missed — the redundancy signal for retiring the rehydrate. No-op for web/tests.
+  cacheMetrics: CacheSyncMetrics = CacheSyncMetrics.noop,
   // Clock for the "now" used to tell past from future when a scrape merges its
   // showtimes (see `buildCinemaSlot` → `MovieRecordMerge.retainPastShowtimes`).
   // Injectable so tests can fix "now" deterministically.
@@ -1204,10 +1207,21 @@ class CaffeineMovieCache(
     val byKey: Map[CacheKey, MovieRecord] =
       rows.groupBy(r => CacheKey(r.title, r.year))
         .map { case (k, rs) => k -> MovieRecordMerge.unionAll(rs.map(_.record)) }
-    byKey.foreach { case (k, record) => positive.put(k, record) }
-    positive.asMap().keySet().asScala.toSeq
-      .filterNot(byKey.keySet.contains)
-      .foreach(positive.invalidate)
+    // Count what this backstop reload catches that the incremental change stream missed:
+    // a put whose cached value DIFFERED (a missed upsert) and a key no longer in Mongo (a
+    // missed delete). After resume tokens + delete-apply these should be ~0 in steady state
+    // — the signal (kinowo_worker_cache_rehydrate_changes) that the rehydrate is redundant.
+    var changed = 0
+    byKey.foreach { case (k, record) =>
+      if (!Option(positive.getIfPresent(k)).contains(record)) changed += 1
+      positive.put(k, record)
+    }
+    val removed = positive.asMap().keySet().asScala.toSeq.filterNot(byKey.keySet.contains)
+    removed.foreach(positive.invalidate)
+    cacheMetrics.recordRehydrate(changed, removed.size)
+    if (changed > 0 || removed.nonEmpty)
+      logger.info(s"MovieCache rehydrate: caught $changed changed row(s) + ${removed.size} orphan-delete(s) " +
+        "the change stream missed.")
     // Reap mis-keyed Mongo orphans. A stored row whose persisted `_id` no longer
     // equals the canonical id for its RE-DERIVED identity — `idFor(displayTitle,
     // year)` — was first stored under one title and later drifted to another (a
