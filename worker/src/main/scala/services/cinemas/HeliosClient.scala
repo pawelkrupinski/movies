@@ -89,8 +89,14 @@ class HeliosClient(
     // sports broadcasts) are excluded from it but carry the same id→screenId mapping
     // under `/event`. Merge both so room/format enrichment covers events too. The two
     // sets are disjoint; on the (unexpected) collision the regular screening wins.
-    val regular         = parseApiScreenings(Try(http.getAsync(screeningsUrl).join()).getOrElse("[]"))
-    val eventScreenings = parseEventScreenings(Try(http.getAsync(eventsUrl).join()).getOrElse("[]"))
+    // Synchronous `get` (NOT getAsync): the two fetches are already sequential (each
+    // `.join()`s immediately), so getAsync bought no concurrency — it just bounced a
+    // BLOCKING GET onto the shared ForkJoinPool.commonPool, where ~30 slow Helios
+    // venues pegged the pool and floored the worker's CPU credit (2026-07-05). Plain
+    // `get` keeps the blocking on the bounded scrape worker (isolated), and the
+    // per-host 4s timeout + circuit breaker bound how long each one holds it.
+    val regular         = parseApiScreenings(Try(http.get(screeningsUrl)).getOrElse("[]"))
+    val eventScreenings = parseEventScreenings(Try(http.get(eventsUrl)).getOrElse("[]"))
     val screeningsById  = eventScreenings ++ regular
 
     val movieBodies    = fetchBodies("helios-movies", screeningsById.values.map(_.movieId).filter(_.nonEmpty).toSeq.distinct)(id => s"$ApiBase/movie/$id")

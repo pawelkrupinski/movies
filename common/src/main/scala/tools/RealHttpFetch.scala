@@ -290,14 +290,16 @@ object RealHttpFetch {
   /** The per-host policy table — the single place a host earns a non-default
    *  timeout. First matching row wins. */
   val HostPolicies: Seq[HostPolicy] = Seq(
-    // Helios's per-screen/detail REST API. On 2026-06-23 its detail endpoints
-    // started hanging ~30s for our datacenter egress; with the fan-out cap at 2
-    // and many Helios venues × screens, each hang ballooned Helios scrapes from
-    // ~2s to 100s+ and drained the worker's shared-cpu credit into a throttle
-    // spiral. These endpoints only ENRICH — HeliosClient degrades to its NUXT
-    // repertoire — so dropping a slow call costs at most some screen-name detail.
-    // 8s is well above the ~1-3s a healthy call takes but far under the default.
-    HostPolicy(Set("restapi.helios.pl"), requestTimeout = Duration.ofSeconds(8)),
+    // Helios's REST API (restapi.helios.pl) — both the screening/event LIST that
+    // HeliosClient fetches per cinema AND the per-screen/detail enrichment. On
+    // 2026-07-05 the host degraded to answering in ~5-7s: UNDER the old 8s budget,
+    // so calls SUCCEEDED (slow) instead of timing out — the HostCircuitBreaker only
+    // trips on timeouts/5xx, so it never opened, and ~30 Helios venues each holding
+    // a fetch ~5-7s pinned the worker's CPU and drained shared-cpu credit to the
+    // floor for hours. 4s is above the ~1-3s a healthy call takes but BELOW the slow
+    // tail, so a degraded host now TIMES OUT → the breaker opens → Helios is skipped
+    // for the cooldown (it degrades to its NUXT repertoire; detail only enriches).
+    HostPolicy(Set("restapi.helios.pl"), requestTimeout = Duration.ofSeconds(4)),
 
     // Metacritic's slow Cloudflare-fronted origin. It answers our datacenter
     // egress in ~1-6s on a good day (≈35% of metascore fetches legitimately take

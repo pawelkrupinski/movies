@@ -59,8 +59,8 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
   // every other host keeps the generous default.
 
   "requestTimeoutFor" should "give Helios's REST host and its sub-domains the tight fast-fail budget" in {
-    RealHttpFetch.requestTimeoutFor("https://restapi.helios.pl/api/cinema/4b/screen/6c") shouldBe Duration.ofSeconds(8)
-    RealHttpFetch.requestTimeoutFor("https://www.restapi.helios.pl/api/movie/1") shouldBe Duration.ofSeconds(8)
+    RealHttpFetch.requestTimeoutFor("https://restapi.helios.pl/api/cinema/4b/screen/6c") shouldBe Duration.ofSeconds(4)
+    RealHttpFetch.requestTimeoutFor("https://www.restapi.helios.pl/api/movie/1") shouldBe Duration.ofSeconds(4)
   }
 
   it should "keep the default for Helios's own NUXT site, an unrelated host, and a malformed URL" in {
@@ -69,10 +69,10 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
     RealHttpFetch.requestTimeoutFor("not a url") shouldBe RealHttpFetch.DefaultRequestTimeout
   }
 
-  it should "make Helios's budget much tighter than the default but above the ~1-3s healthy call" in {
+  it should "make Helios's budget below the ~5-7s degraded tail (so a slow host times out and trips the breaker) but above the ~1-3s healthy call" in {
     val helios = RealHttpFetch.requestTimeoutFor("https://restapi.helios.pl/api/x")
-    helios.compareTo(RealHttpFetch.DefaultRequestTimeout) should be < 0
-    helios.compareTo(Duration.ofSeconds(5)) should be > 0
+    helios.compareTo(Duration.ofSeconds(5)) should be < 0   // below the degraded tail → slow host times out
+    helios.compareTo(Duration.ofSeconds(3)) should be > 0   // above the healthy ~1-3s call
   }
 
   // ── Metacritic middle budget (slow Cloudflare origin) ─────────────────────
