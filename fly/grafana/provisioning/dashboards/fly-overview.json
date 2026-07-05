@@ -444,6 +444,29 @@
         { "refId": "A", "expr": "sum(increase(kinowo_worker_readmodel_reconcile_sweeps_total{kind=\"reproject\",did_work=\"true\"}[$__rate_interval]))", "legendFormat": "reproject — still catching work (did_work=true)" },
         { "refId": "B", "expr": "sum(increase(kinowo_worker_readmodel_reconcile_sweeps_total{kind=\"reproject\",did_work=\"false\"}[$__rate_interval]))", "legendFormat": "reproject — redundant (did_work=false)" }
       ]
+    },
+    {
+      "id": 45,
+      "title": "kinowo-worker CPU vs credit-earn breakeven (centi-cores) — sustained ABOVE the line drains credit",
+      "description": "Worker CPU in centi-cores (100 = 1 core). 'java (fresh)' is the JVM's own process CPU from the app-metrics sidecar (~15s fresh, leading); 'host busy (authoritative)' is sum(rate(fly_instance_cpu{mode!=idle|steal})) — what Fly actually bills credit against (~15-25min lagged). The dashed breakeven line (~26cc) is the shared-cpu-4x credit EARN rate (empirical): while CPU sits ABOVE it the credit bucket drains, below it refills. Dead-flat CPU pinned above the line with no dips = a spin (the JDK-NIO2 epoll wedge) OR a structural overload — a reboot re-grant just re-drains; a bursty CPU that dips well under the line rebuilds credit. Pair with 'CPU credit balance'.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 182 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 12, "lineWidth": 2, "axisLabel": "centi-cores (100 = 1 core)" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "breakeven ~26cc (drains above)" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 6] } }, { "id": "custom.fillOpacity", "value": 0 } ] },
+          { "matcher": { "id": "byName", "options": "host busy (cc, authoritative — lagged)" }, "properties": [ { "id": "custom.fillOpacity", "value": 0 }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [4, 4] } } ] }
+        ]
+      },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "rate(process_cpu_seconds_total{app=\"kinowo-worker\"}[5m])*100", "legendFormat": "java (cc, fresh)" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "sum(rate(fly_instance_cpu{app=\"kinowo-worker\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "host busy (cc, authoritative — lagged)" },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "vector(26)", "legendFormat": "breakeven ~26cc (drains above)" }
+      ]
     }
   ]
 }
