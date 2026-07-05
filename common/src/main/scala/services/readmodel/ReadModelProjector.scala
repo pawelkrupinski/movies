@@ -57,6 +57,17 @@ class ReadModelProjector(
   private val lock           = new AnyRef
 
   private val scheduler = DaemonExecutors.scheduler("read-model-projector")
+
+  // [DIAG-TEMP] pin the projection-frequency driver (remove after diagnosis): count
+  // project() calls, by calling thread + by film, logged every 20s.
+  private val diagCount    = new java.util.concurrent.atomic.AtomicLong(0)
+  private val diagByThread = new java.util.concurrent.ConcurrentHashMap[String, java.util.concurrent.atomic.AtomicLong]()
+  private val diagById     = new java.util.concurrent.ConcurrentHashMap[String, java.util.concurrent.atomic.AtomicLong]()
+  private def diagTick(id: String): Unit = {
+    diagCount.incrementAndGet()
+    diagByThread.computeIfAbsent(Thread.currentThread.getName, _ => new java.util.concurrent.atomic.AtomicLong).incrementAndGet()
+    diagById.computeIfAbsent(id, _ => new java.util.concurrent.atomic.AtomicLong).incrementAndGet()
+  }
   // The cheap id-only orphan prune runs FREQUENTLY (deletes/re-keys the change stream
   // drops must clear within a tick); the expensive full re-projection runs RARELY
   // (its only unique job is catching upserts missed during a stream outage — a ~1-core
@@ -87,6 +98,7 @@ class ReadModelProjector(
    *  anything the change stream missed. */
   private def project(stored: StoredMovieRecord): Int = {
     if (!stored.record.readyToProject) return 0
+    diagTick(services.movies.StoredMovieRecord.idOf(stored))  // [DIAG-TEMP]
     // A row fans out into one card per display-title variant (Cyrillic / English
     // / banner-prefixed listings of one film); the common single-title row yields
     // exactly one. Each variant card is diffed and written independently.
@@ -230,6 +242,15 @@ class ReadModelProjector(
     // means incremental writes are no-ops for already-correct documents. Both sweeps are
     // deferred off the boot path so they don't compete with boot hydrate + the first scrape.
     watchHandle = movieRepository.watchUpserts(onMovieUpsert)
+    // [DIAG-TEMP] log the projection rate + driver every 20s (remove after diagnosis).
+    scheduler.scheduleAtFixedRate(() => {
+      val n = diagCount.getAndSet(0)
+      import scala.jdk.CollectionConverters._
+      val threads = diagByThread.asScala.map { case (k, v) => s"$k=${v.getAndSet(0)}" }.mkString(", ")
+      val topIds  = diagById.asScala.toSeq.sortBy(-_._2.get).take(6).map { case (k, v) => s"$k×${v.get}" }.mkString(", ")
+      diagById.clear()
+      logger.info(s"[DIAG] project() calls in 20s: $n | by-thread: {$threads} | top-films: $topIds")
+    }, 20L, 20L, TimeUnit.SECONDS)
     // Full re-projection: periodic, plus a boot catch-up ONLY when the stream can't replay.
     val reconcileInitialDelay = reconcileInitialDelaySeconds(watchHandle.isDefined)
     scheduler.scheduleAtFixedRate(
