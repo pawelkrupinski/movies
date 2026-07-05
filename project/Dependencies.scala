@@ -15,15 +15,20 @@ object Dependencies {
   // ── Versions ───────────────────────────────────────────────────────────────
   private val playVersion          = "3.0.11"
   private val mongoScalaVersion    = "5.8.0"
-  // Netty 4.1.x transport for the Mongo reactive driver. The driver's DEFAULT
-  // transport is JDK NIO2 (`AsynchronousChannelGroup` → `sun.nio.ch.EPollPort`),
-  // whose epoll reactor busy-spins at ~100% on a half-closed/wedged socket (the
-  // recurring worker CPU-credit floor — a wedged FD adds ~15-24cc of dead-flat
-  // CPU that eats the idle troughs credit refills on). Netty's NIO event loop
-  // has a selector-auto-rebuild spin fix (`SELECTOR_AUTO_REBUILD_THRESHOLD`) that
-  // JDK NIO2 lacks, so routing Mongo socket I/O through it kills the spin at the
-  // source. Default Netty transport is NIO (no native-epoll classifier), so this
-  // stays arch-independent across the x86_64/aarch64 Fly builders.
+  // Netty 4.1.x NATIVE-EPOLL transport for the Mongo reactive driver. The worker's
+  // recurring CPU-credit floor is a busy-spin in the JDK `sun.nio.ch` epoll selector
+  // (`EPollSelectorImpl.doSelect`) — PROVEN on-box: one selector thread burns ~31cc
+  // while making only ~1.5 voluntary context switches/sec (a healthy selector parks
+  // thousands of times/sec — one per `epoll_wait` block), i.e. it never sleeps, it
+  // loops; and the CPU is decoupled from real work (change-events ~0.1/s). It is NOT
+  // a wedged/half-closed Mongo socket (0 CLOSE_WAIT on-box, all Mongo conns healthy) —
+  // the trigger FD is a spurious selector readiness, the classic JDK NIO epoll spin.
+  // Neither the driver's default NIO2 transport NOR Netty's default NIO transport
+  // avoids it — both sit on `sun.nio.ch`, and Netty's select-auto-rebuild only trips on
+  // ZERO-key wakeups, not this one (the spin re-formed after we moved to Netty NIO).
+  // Netty's NATIVE epoll runs its OWN JNI epoll loop, not the JDK selector, so the
+  // sun.nio.ch spin can't occur. Native lib is per-arch (classifier jars below); off
+  // Linux / missing lib → `Epoll.isAvailable` false → fall back to Netty NIO.
   private val nettyVersion         = "4.1.118.Final"
   private val caffeineVersion      = "3.2.4"
   private val jsoupVersion         = "1.22.2"
@@ -53,6 +58,13 @@ object Dependencies {
   val nettyBuffer      = "io.netty"                       %  "netty-buffer"       % nettyVersion
   val nettyTransport   = "io.netty"                       %  "netty-transport"    % nettyVersion
   val nettyHandler     = "io.netty"                       %  "netty-handler"      % nettyVersion
+  // Native-epoll transport: the Java classes (arch-independent, so compiles on macOS)
+  // plus the native `.so` for each Linux arch the worker might run on (Fly = x86_64
+  // today, aarch64 kept for safety — whichever matches loads, the other is inert).
+  // Only these reap EPOLLRDHUP on a wedged half-closed FD instead of spinning on it.
+  val nettyEpollClasses = "io.netty" % "netty-transport-classes-epoll" % nettyVersion
+  val nettyEpollX86     = "io.netty" % "netty-transport-native-epoll"  % nettyVersion classifier "linux-x86_64"
+  val nettyEpollArm     = "io.netty" % "netty-transport-native-epoll"  % nettyVersion classifier "linux-aarch_64"
   val caffeine         = "com.github.ben-manes.caffeine" %  "caffeine"           % caffeineVersion
   val jsoup            = "org.jsoup"                      %  "jsoup"              % jsoupVersion
   val imageioWebp      = "com.twelvemonkeys.imageio"      %  "imageio-webp"       % twelveMonkeysVersion

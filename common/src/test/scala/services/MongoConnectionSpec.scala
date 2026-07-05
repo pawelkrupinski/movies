@@ -105,16 +105,22 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     names should not contain "zlib"
   }
 
-  // Route Mongo socket I/O through Netty, not the driver's default JDK NIO2
-  // transport. NIO2's epoll reactor (`sun.nio.ch.EPollPort`) busy-spins at ~100%
-  // on a wedged socket — the recurring worker CPU-credit floor — where Netty's NIO
-  // event loop rebuilds a spinning selector instead. Every connection (loopback +
-  // 6PN) gets it, since a wedged FD can happen on any link. Before this was wired
-  // `getTransportSettings` was null (driver default = NIO2); now it's a
-  // NettyTransportSettings on both a loopback and a remote URI.
-  "MongoConnection.clientSettings" should "route socket I/O through the Netty transport (NIO2 epoll spins on a wedged FD)" in {
-    MongoConnection.clientSettings(ValidUri).getTransportSettings  shouldBe a [com.mongodb.connection.NettyTransportSettings]
-    MongoConnection.clientSettings(RemoteUri).getTransportSettings shouldBe a [com.mongodb.connection.NettyTransportSettings]
+  // Route Mongo socket I/O through Netty NATIVE-epoll, not the driver's default JDK
+  // NIO2 transport. Both NIO2 and Netty's default NIO transport sit on the JDK
+  // `sun.nio.ch` epoll selector, which busy-spins (~31cc, ~1.5 voluntary ctxt-switches/s
+  // = never parks — the recurring credit floor, proven on-box); native epoll runs its
+  // own JNI epoll loop instead, so the spin can't occur. Where the native lib loads
+  // (Linux — CI + the prod worker's arch) the channel is an EpollSocketChannel; off-Linux
+  // (macOS dev) `Epoll.isAvailable` is false and it falls back to Netty NIO. Either way
+  // the transport is a NettyTransportSettings (before this it was null — driver NIO2).
+  "MongoConnection.clientSettings" should "route socket I/O through Netty, preferring native epoll where the lib loads" in {
+    def transport(uri: String) =
+      MongoConnection.clientSettings(uri).getTransportSettings.asInstanceOf[com.mongodb.connection.NettyTransportSettings]
+    transport(ValidUri)  should not be null
+    transport(RemoteUri) should not be null
+    if (io.netty.channel.epoll.Epoll.isAvailable)   // Linux (CI + prod): the actual spin fix
+      transport(ValidUri).getSocketChannelClass shouldBe classOf[io.netty.channel.epoll.EpollSocketChannel]
+    // else macOS/dev: NIO fallback — socketChannelClass left null, driver fills NioSocketChannel.
   }
 
   "MongoConnection.isLoopbackLink" should "recognise loopback hosts (localhost / 127.x / [::1]) and reject a 6PN host" in {

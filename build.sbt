@@ -78,10 +78,12 @@ lazy val common = (project in file("common"))
     libraryDependencies ++= Seq(
       play,             // play.api.Logging (the only Play API the shared code uses)
       mongoScalaDriver,
-      // Netty transport for the Mongo driver (see Dependencies.nettyVersion): its
-      // NIO event loop's selector-auto-rebuild kills the JDK NIO2 epoll busy-spin
-      // that recurringly floors the worker's CPU credit on a wedged socket.
+      // Netty NATIVE-epoll transport for the Mongo driver (see Dependencies.nettyVersion):
+      // native epoll reaps EPOLLRDHUP on a wedged half-closed socket instead of
+      // busy-spinning on it — the JDK-NIO2/Netty-NIO epoll spin that recurringly floors
+      // the worker's CPU credit. Classes compile everywhere; the native .so loads on Linux.
       nettyBuffer, nettyTransport, nettyHandler,
+      nettyEpollClasses, nettyEpollX86, nettyEpollArm,
       Dependencies.caffeine,   // qualified: Play's autoImport also defines `caffeine`
       jsoup,
       // common's test config covers ONLY its own specs (models, codecs, Mongo,
