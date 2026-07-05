@@ -510,26 +510,26 @@ class WorkerWiring extends play.api.Logging {
   // token (KINOWO_FLY_PROM_TOKEN); absent it (local dev / tests), there's no
   // poller and only the external gate drives throttling.
   //
-  // THROTTLE RESPONSE — a sustained credit-floor throttle used to RESTART the
-  // machine (exit non-zero → Fly reschedule), on the theory that a fresh boot's
-  // ~16k credit re-grant would break the wedge. DROPPED 2026-07-03: the floor is
-  // STRUCTURAL, not a wedge a restart can clear. The worker's steady CPU (~0.30
-  // cores, dominated by Mongo async-NIO2 I/O) sits just ABOVE the shared-cpu-4x
-  // credit earn rate (~0.26 cores), so the boot re-grant drains back to the floor
-  // in ~10 min AND the boot burst itself (~0.55 cores) costs more credit than it
-  // saves. Restarting was a self-inflicted ~45-min loop that PREVENTED the very
-  // recovery it meant to force (measured 4 restarts/3h while the box was near-idle,
-  // credit pinned at the floor throughout). So both throttle paths now only ALARM
-  // (`onThrottleWedged`); the reaper duty-cycle + enqueue backoff rides the throttle
-  // out in place, and credit climbs on its own whenever load dips below the earn
-  // line. (An earlier FLOOR FAST-PATH — restart once credit sat < ~1000 for 15 min —
-  // was already removed 2026-07-03 for the same reason; this drops the two
-  // survivors: the CpuCreditPoller downslope projection and the ThrottleStuckWatchdog
-  // 45-min wedge.)
+  // THROTTLE RESPONSE — there are TWO throttle signals, with DIFFERENT responses:
   //
-  // `restartMachine` stays as the machine-restart primitive, but the throttle paths
-  // deliberately do NOT call it — WorkerWiringSpec guards that a wedge alarms instead
-  // of exiting. (The liveness/OOM path exits on its own with code 70, further down.)
+  //  - PROJECTION DOWNSLOPE (CpuCreditPoller: credit still ABOVE the floor, draining
+  //    fast) → ALARM only. A fast drain isn't a wedge; the reaper backoff the throttle
+  //    engages IS the response, and a restart would only throw away the boot re-grant.
+  //
+  //  - STUCK WEDGE (ThrottleStuckWatchdog: throttled continuously > `stuckAfter` AND
+  //    credit flat/declining, not recovering) → RATE-LIMITED RESTART. Restart was
+  //    dropped 2026-07-03 on the belief a sustained floor was always STRUCTURAL (steady
+  //    CPU just over the shared-cpu earn rate) — a reboot can't clear that, and it
+  //    looped every ~45min. But 2026-07-05 proved the floor is usually a client-side
+  //    JDK-NIO2 epoll BUSY-SPIN on a wedged Mongo socket (~15-24cc dead-flat wasted CPU
+  //    that eats the idle troughs credit refills on) — which a reboot (fresh sockets)
+  //    DOES clear. The Netty transport removes that spin at the source; this restart is
+  //    the residual-wedge net. The old loop is defeated by a COOLDOWN persisted across
+  //    the reboot it gates (see `wedgeRestartPolicy`): one reboot per cooldown, never a
+  //    spiral. Within the cooldown a still-wedged worker only alarms and rides it out.
+  //
+  // `restartMachine` is the machine-restart primitive; the liveness/OOM path exits on
+  // its own with code 70, further down.
   private val restartFired = new AtomicBoolean(false)
   protected[modules] def restartMachine(reason: String): Unit =
     if (restartFired.compareAndSet(false, true)) {
@@ -537,16 +537,45 @@ class WorkerWiring extends play.api.Logging {
       sys.exit(1)
     }
 
-  /** Response to a detected CPU-credit throttle wedge / fast drain: ALARM, don't
-   *  restart. A restart can't clear a structural credit deficit (see the note
-   *  above) — it just burns the boot re-grant and loops — so we log loudly and let
-   *  the reaper backoff ride it out. Overridable so a test can observe the wedge
-   *  response without a real process exit. */
+  /** Response to the CpuCreditPoller's fast-drain DOWNSLOPE projection: ALARM, don't
+   *  restart. A fast drain (credit still above the floor) is not a wedge — the reaper
+   *  backoff the throttle itself engages is the response; a restart would only burn the
+   *  boot re-grant. Overridable so a test can observe the response without a process exit. */
   protected[modules] def onThrottleWedged(reason: String): Unit =
-    logger.error(s"Worker CPU-credit throttle wedged ($reason) — NOT restarting; riding it out on the reaper " +
-      s"backoff. A restart can't clear a structural credit deficit (steady CPU sits just over the shared-cpu " +
-      s"earn rate), so the boot re-grant would only drain back to the floor. Credit recovers once load dips " +
-      s"below the earn line.")
+    logger.error(s"Worker CPU-credit fast-drain throttle ($reason) — NOT restarting; the reaper backoff the " +
+      s"throttle engages is the response, and credit recovers once load dips below the earn line. Restart is " +
+      s"reserved for a genuine STUCK wedge (see onCreditWedgeStuck).")
+
+  // The wedge-restart cooldown must survive the very reboot it gates, so it's persisted
+  // on the /data volume: without it, every boot would start with a blank cooldown and a
+  // re-wedge could reboot immediately — the exact ~45min loop the 2026-07-03 removal
+  // fought. A missing/corrupt/unwritable marker degrades safely: an unreadable marker
+  // reads as None (→ restart allowed, the net still works), a failed write only warns.
+  def wedgeRestartMarkerPath: String =
+    Env.get("KINOWO_WEDGE_RESTART_MARKER").getOrElse("/data/last-wedge-restart")
+  def wedgeRestartCooldown: FiniteDuration =
+    Env.positiveLong("KINOWO_WEDGE_RESTART_COOLDOWN_MINUTES", 120L).minutes
+
+  protected[modules] def lastWedgeRestartAt: Option[java.time.Instant] =
+    scala.util.Try(java.nio.file.Files.readString(java.nio.file.Path.of(wedgeRestartMarkerPath)).trim.toLong)
+      .toOption.map(java.time.Instant.ofEpochMilli)
+
+  protected[modules] def recordWedgeRestart(at: java.time.Instant): Unit =
+    scala.util.Try(java.nio.file.Files.writeString(java.nio.file.Path.of(wedgeRestartMarkerPath), at.toEpochMilli.toString))
+      .failed.foreach(e => logger.warn(s"Could not persist the wedge-restart marker to $wedgeRestartMarkerPath " +
+        s"(cooldown won't survive this reboot): $e"))
+
+  lazy val wedgeRestartPolicy = new services.tasks.WedgeRestartPolicy(
+    cooldown      = wedgeRestartCooldown,
+    lastRestartAt = () => lastWedgeRestartAt,
+    recordRestart = recordWedgeRestart,
+    restart       = restartMachine)
+
+  /** Response to a genuine, non-recovering CPU-credit STUCK wedge: restart to clear it
+   *  (a wedged Mongo socket's epoll spin is reboot-clearable) — but rate-limited by the
+   *  persisted cooldown so a re-wedge can't loop the machine. Overridable for tests. */
+  protected[modules] def onCreditWedgeStuck(reason: String): Unit =
+    wedgeRestartPolicy.onWedge(reason)
 
   lazy val cpuCreditPoller: Option[services.tasks.CpuCreditPoller] =
     Env.get("KINOWO_FLY_PROM_TOKEN").map { token =>
@@ -570,7 +599,9 @@ class WorkerWiring extends play.api.Logging {
   def throttleStuckMinutes: Long  = Env.positiveLong("KINOWO_WORKER_THROTTLE_STUCK_MINUTES", 45L)
   lazy val throttleStuckWatchdog = new services.tasks.ThrottleStuckWatchdog(
     throttleSignal, stuckAfter = throttleStuckMinutes.minutes,
-    onStuck         = () => onThrottleWedged("stuck watchdog"),
+    // A genuine non-recovering wedge (the watchdog's trend guard has already ruled out
+    // "credit climbing") → rate-limited restart to clear a reboot-clearable spin.
+    onStuck         = () => onCreditWedgeStuck("stuck watchdog"),
     creditBalance   = () => cpuCreditPoller.flatMap(_.lastBalance))
 
   // Cluster-wide occurrence claims gate the reapers' recurring ticks so each

@@ -29,6 +29,10 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     // Records restart requests instead of exiting the JVM, so a wedge response is observable.
     @volatile var restartRequests = Vector.empty[String]
     override protected[modules] def restartMachine(reason: String): Unit = restartRequests :+= reason
+    // In-memory wedge-restart marker (no /data volume in tests) so the cooldown is drivable.
+    @volatile var wedgeMarker: Option[java.time.Instant] = None
+    override protected[modules] def lastWedgeRestartAt: Option[java.time.Instant] = wedgeMarker
+    override protected[modules] def recordWedgeRestart(at: java.time.Instant): Unit = wedgeMarker = Some(at)
 
     override lazy val scrapeReaper: ScrapeReaper =
       new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore) {
@@ -91,16 +95,35 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
-  // Dropping the throttle restart (2026-07-03): a sustained credit-floor throttle is a
-  // STRUCTURAL deficit (steady CPU ~0.30 cores just over the shared-cpu-4x earn rate
-  // ~0.26), NOT a wedge a reboot can clear — restarting only burned the ~16k boot
-  // re-grant and looped every ~45min while the box was near-idle. Both throttle paths
-  // (the CpuCreditPoller downslope projection and the ThrottleStuckWatchdog 45-min
-  // wedge) are wired to `onThrottleWedged`, which must ALARM, never restart the machine.
-  it should "alarm, not restart the machine, when the CPU-credit throttle wedges" in {
+  // The CpuCreditPoller's fast-drain DOWNSLOPE projection (credit still above the floor)
+  // is NOT a wedge — the reaper backoff the throttle engages is the response, and a
+  // restart would only burn the boot re-grant. So the projection path must ALARM only.
+  it should "alarm, not restart, on the CpuCreditPoller fast-drain downslope" in {
     val wiring = new SpyWiring
-    wiring.onThrottleWedged("stuck watchdog")
     wiring.onThrottleWedged("projection downslope")
+    wiring.restartRequests shouldBe empty
+    wiring.stop()
+  }
+
+  // A genuine STUCK wedge (ThrottleStuckWatchdog: throttled continuously past the
+  // threshold AND credit not recovering) is usually a reboot-clearable epoll spin on a
+  // wedged Mongo socket — restarting drops the wedged FD. With no prior restart marker,
+  // the first wedge restarts (and stamps the marker so the cooldown survives the reboot).
+  it should "restart the machine on the first genuine stuck credit wedge" in {
+    val wiring = new SpyWiring
+    wiring.onCreditWedgeStuck("stuck watchdog")
+    wiring.restartRequests shouldBe Vector("stuck watchdog")
+    wiring.wedgeMarker      should not be empty  // stamped so a re-wedge hits the cooldown
+    wiring.stop()
+  }
+
+  // The loop guard: a second stuck wedge WITHIN the cooldown must NOT restart again — a
+  // re-wedge (or a structural floor a reboot can't clear) can never spiral the machine,
+  // the ~45min loop the 2026-07-03 removal fought. The cooldown persists across reboots.
+  it should "NOT restart again on a stuck wedge within the cooldown (rides it out)" in {
+    val wiring = new SpyWiring
+    wiring.wedgeMarker = Some(java.time.Instant.now().minusSeconds(60))  // just restarted
+    wiring.onCreditWedgeStuck("stuck watchdog")
     wiring.restartRequests shouldBe empty
     wiring.stop()
   }
