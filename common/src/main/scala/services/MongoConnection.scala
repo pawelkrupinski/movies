@@ -1,6 +1,7 @@
 package services
 
 import com.mongodb.{ConnectionString, MongoCompressor}
+import com.mongodb.connection.TransportSettings
 import org.mongodb.scala.{ClientSession, MongoClient, MongoClientSettings, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
 import tools.Env
@@ -202,14 +203,27 @@ object MongoConnection {
    *
    *  Over a direct 6PN link (prod worker/web → `*.internal` mongo) the network is a
    *  fast, already-encrypted local datacenter hop, so compressing every message
-   *  would only burn CPU on the driver's async-IO threads — the worker's measured
-   *  CPU sink — for bandwidth we don't need. So a non-loopback link stays
+   *  would only burn CPU on the driver's I/O event-loop threads — the worker's
+   *  measured CPU sink — for bandwidth we don't need. So a non-loopback link stays
    *  uncompressed. A URI that names its own `compressors=` always wins either way. */
   private[services] def clientSettings(
       connectionString: String,
       serverSelectionTimeout: Option[FiniteDuration] = None): MongoClientSettings = {
     val cs      = new ConnectionString(connectionString)
     val builder = MongoClientSettings.builder().applyConnectionString(cs)
+    // Route socket I/O through Netty instead of the driver's default JDK NIO2
+    // transport. NIO2's `AsynchronousChannelGroup` epoll reactor
+    // (`sun.nio.ch.EPollPort$EventHandlerTask`) busy-spins at ~100% forever on a
+    // half-closed/wedged socket — the recurring worker CPU-credit floor: a single
+    // wedged FD pins ~15-24cc of dead-flat CPU (confirmed by /proc thread diffing:
+    // 1-2 hot `InnocuousThread` epoll handlers, siblings idle), which eats the idle
+    // troughs the shared-CPU credit bucket refills on, so the balance only drains.
+    // Netty's NIO event loop rebuilds a spinning selector (`SELECTOR_AUTO_REBUILD_
+    // THRESHOLD`, the canonical JDK-epoll-spin workaround) that NIO2 has no
+    // equivalent of. Default Netty transport is NIO (not native epoll), so no
+    // per-arch classifier is needed. Applies to every connection (prod 6PN + the
+    // loopback proxy/mirror alike — a wedged socket can happen on any of them).
+    builder.transportSettings(TransportSettings.nettyBuilder().build())
     if ((cs.getCompressorList == null || cs.getCompressorList.isEmpty) && isLoopbackLink(cs))
       builder.compressorList(java.util.List.of(MongoCompressor.createZlibCompressor()))
     serverSelectionTimeout.foreach { timeout =>

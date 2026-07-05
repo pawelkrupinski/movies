@@ -105,6 +105,18 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     names should not contain "zlib"
   }
 
+  // Route Mongo socket I/O through Netty, not the driver's default JDK NIO2
+  // transport. NIO2's epoll reactor (`sun.nio.ch.EPollPort`) busy-spins at ~100%
+  // on a wedged socket — the recurring worker CPU-credit floor — where Netty's NIO
+  // event loop rebuilds a spinning selector instead. Every connection (loopback +
+  // 6PN) gets it, since a wedged FD can happen on any link. Before this was wired
+  // `getTransportSettings` was null (driver default = NIO2); now it's a
+  // NettyTransportSettings on both a loopback and a remote URI.
+  "MongoConnection.clientSettings" should "route socket I/O through the Netty transport (NIO2 epoll spins on a wedged FD)" in {
+    MongoConnection.clientSettings(ValidUri).getTransportSettings  shouldBe a [com.mongodb.connection.NettyTransportSettings]
+    MongoConnection.clientSettings(RemoteUri).getTransportSettings shouldBe a [com.mongodb.connection.NettyTransportSettings]
+  }
+
   "MongoConnection.isLoopbackLink" should "recognise loopback hosts (localhost / 127.x / [::1]) and reject a 6PN host" in {
     import com.mongodb.ConnectionString
     def loopback(uri: String) = MongoConnection.isLoopbackLink(new ConnectionString(uri))

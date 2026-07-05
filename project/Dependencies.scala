@@ -15,6 +15,16 @@ object Dependencies {
   // ── Versions ───────────────────────────────────────────────────────────────
   private val playVersion          = "3.0.11"
   private val mongoScalaVersion    = "5.8.0"
+  // Netty 4.1.x transport for the Mongo reactive driver. The driver's DEFAULT
+  // transport is JDK NIO2 (`AsynchronousChannelGroup` → `sun.nio.ch.EPollPort`),
+  // whose epoll reactor busy-spins at ~100% on a half-closed/wedged socket (the
+  // recurring worker CPU-credit floor — a wedged FD adds ~15-24cc of dead-flat
+  // CPU that eats the idle troughs credit refills on). Netty's NIO event loop
+  // has a selector-auto-rebuild spin fix (`SELECTOR_AUTO_REBUILD_THRESHOLD`) that
+  // JDK NIO2 lacks, so routing Mongo socket I/O through it kills the spin at the
+  // source. Default Netty transport is NIO (no native-epoll classifier), so this
+  // stays arch-independent across the x86_64/aarch64 Fly builders.
+  private val nettyVersion         = "4.1.118.Final"
   private val caffeineVersion      = "3.2.4"
   private val jsoupVersion         = "1.22.2"
   // Pure-Java webp ImageReader (no native libs), so the OG-card compositor can
@@ -36,6 +46,13 @@ object Dependencies {
   // ── Artifacts ──────────────────────────────────────────────────────────────
   val play             = "org.playframework"             %% "play"               % playVersion
   val mongoScalaDriver = "org.mongodb.scala"             %% "mongo-scala-driver" % mongoScalaVersion
+  // The Mongo driver declares netty as an OPTIONAL dependency (it isn't pulled
+  // transitively), so the three modules its NettyStreamFactory needs are declared
+  // explicitly here: buffer + transport for the socket I/O, handler for TLS. See
+  // `nettyVersion` above for why we route Mongo I/O through Netty at all.
+  val nettyBuffer      = "io.netty"                       %  "netty-buffer"       % nettyVersion
+  val nettyTransport   = "io.netty"                       %  "netty-transport"    % nettyVersion
+  val nettyHandler     = "io.netty"                       %  "netty-handler"      % nettyVersion
   val caffeine         = "com.github.ben-manes.caffeine" %  "caffeine"           % caffeineVersion
   val jsoup            = "org.jsoup"                      %  "jsoup"              % jsoupVersion
   val imageioWebp      = "com.twelvemonkeys.imageio"      %  "imageio-webp"       % twelveMonkeysVersion
