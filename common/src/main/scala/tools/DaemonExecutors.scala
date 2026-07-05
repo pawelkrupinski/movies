@@ -105,6 +105,20 @@ object DaemonExecutors {
       thread.setDaemon(true)
       thread
     }
+
+  /** Single daemon platform thread with a FIFO queue, named `name`. Use to move
+   *  ORDERED, potentially-blocking work off a thread that must not block —
+   *  notably the Mongo driver's Netty I/O event loops: running the change-stream
+   *  apply (a blocking stitch read + the synchronized read-model projection) on
+   *  those loops made them contend and spin their wakeup eventfds, flooring the
+   *  worker's CPU credit. A single thread keeps change events applied strictly in
+   *  order; blocking on it is fine — that's the point, it isn't an I/O loop. */
+  def singleThreadExecutor(name: String): ExecutorService =
+    dropRejectedAfterShutdown(Executors.newSingleThreadExecutor { r =>
+      val thread = new Thread(r, name)
+      thread.setDaemon(true)
+      thread
+    })
 }
 
 /** An `AbstractExecutorService` whose lifecycle (`shutdown` / `shutdownNow` /

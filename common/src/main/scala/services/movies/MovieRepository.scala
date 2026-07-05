@@ -638,6 +638,13 @@ class MongoMovieRepository(
   private val movieChanges = new ChangeStreamFanout[StoredMovieRecord]("MovieRepository")
   private val changeSub    = new AtomicReference[Subscription]()
   private val changeLock   = new AnyRef
+  // Applies change-stream events OFF the Mongo driver's Netty I/O event loops. The
+  // apply does a blocking stitch read (`decodeStitched` / `findById`) plus the
+  // synchronized read-model projection; running that on the I/O loops made the two
+  // loops contend the projection monitor and busy-spin their wakeup eventfds (~24cc,
+  // ~0 voluntary ctx-switches — proven on-box), flooring the shared-CPU credit. A
+  // SINGLE thread keeps events applied strictly in order.
+  private val changeApply  = tools.DaemonExecutors.singleThreadExecutor("movie-change-apply")
   // Read-split only: a second cursor on `screenings`. A showtime change writes only
   // `screenings` (movies stays put), so without this the projector would never see it.
   private val screeningsWatch = new AtomicReference[Option[AutoCloseable]](None)
@@ -675,21 +682,25 @@ class MongoMovieRepository(
             recordChangeMetrics(change)
             // Advance the resume position BEFORE fanning out, so a consumer signal (a
             // downstream latch / write) can never observe an event before the token moves.
+            // This stays on the I/O thread (a cheap atomic set) to preserve that ordering.
             resumeToken.advance(change.getResumeToken)
-            Option(change.getFullDocument) match {
-              case Some(dto) =>
+            val fullDocument = Option(change.getFullDocument)
+            val deletedId    = Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
+              .map(v => if (v.isString) v.asString.getValue else v.toString)
+            // Apply OFF the Netty I/O loop: the stitch read + projection must not run
+            // there (they made the loops contend + spin — see `changeApply`).
+            changeApply.execute { () =>
+              fullDocument match {
                 // The movies doc has no showtimes — stitch them back from `screenings`
                 // (via decodeStitched) before fanning out, so consumers get a full row.
-                movieChanges.dispatchUpsert(decodeStitched(dto))
-              case None =>
-                // No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't
-                // back-fill). Surface its _id so consumers can drop the row.
-                Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
-                  .map(v => if (v.isString) v.asString.getValue else v.toString)
-                  .foreach(movieChanges.dispatchDelete)
+                case Some(dto) => movieChanges.dispatchUpsert(decodeStitched(dto))
+                // No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't back-fill).
+                // Surface its _id so consumers can drop the row.
+                case None      => deletedId.foreach(movieChanges.dispatchDelete)
+              }
+              // Persist the advanced position (time-throttled, fire-and-forget).
+              resumeToken.save(force = false)
             }
-            // Persist the advanced position (time-throttled, fire-and-forget).
-            resumeToken.save(force = false)
           }
           override def onError(e: Throwable): Unit = {
             if (ChangeStreamResumeToken.isInvalid(e)) {
@@ -707,9 +718,11 @@ class MongoMovieRepository(
         s"${if (resumeFrom.isDefined) ", resumed from persisted token" else ""}.")
       // Also watch `screenings`: a showtime change fires there, not on `movies`.
       // Re-read + stitch (findById already stitches) + fan out so the projector
-      // re-projects the film.
+      // re-projects the film — the findById is a BLOCKING read, so run it (and the
+      // fanout) on `changeApply`, never on the screenings cursor's I/O event loop.
       if (screeningsWatch.get().isEmpty)
-        screeningsWatch.set(screenings.flatMap(_.watch(filmId => findById(filmId).foreach(movieChanges.dispatchUpsert))))
+        screeningsWatch.set(screenings.flatMap(_.watch(filmId =>
+          changeApply.execute(() => findById(filmId).foreach(movieChanges.dispatchUpsert)))))
     }
   }
 
@@ -744,7 +757,7 @@ class MongoMovieRepository(
     }
   }.recover { case exception => logger.warn(s"change-stream metrics failed: ${exception.getMessage}") }.getOrElse(())
 
-  def close(): Unit = { resumeToken.save(force = true); clientOpt.foreach(_.close()) }
+  def close(): Unit = { resumeToken.save(force = true); changeApply.shutdown(); clientOpt.foreach(_.close()) }
 
   /** Index `(title, year)` so [[delete]]'s `$or(_id, title+year)` filter resolves
    *  by index union instead of a full collection scan. The stored documents no longer

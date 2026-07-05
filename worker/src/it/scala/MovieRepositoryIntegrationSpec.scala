@@ -176,6 +176,38 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally handle.foreach(_.close())
   }
 
+  // The change-stream apply does a blocking stitch read + the synchronized read-model
+  // projection. Running that on the Mongo driver's Netty I/O event loops made the two
+  // loops contend the projection monitor and busy-spin their wakeup eventfds (~24cc,
+  // ~0 voluntary ctx-switches — proven on-box), flooring the worker's CPU credit. So
+  // the fanout listeners must fire on the dedicated `movie-change-apply` thread, NEVER
+  // on a Mongo I/O thread. Before the offload the listener ran on the driver thread
+  // (nioEventLoop / epollEventLoop / InnocuousThread); this asserts it now doesn't.
+  it should "apply change-stream events off the Mongo I/O loop, on the movie-change-apply thread" in {
+    import java.util.concurrent.{CountDownLatch, TimeUnit}
+    import java.util.concurrent.atomic.AtomicReference
+
+    val title       = "__integration-test-apply-thread__"
+    val year        = Some(1903)
+    val id          = StoredMovieRecord.idFor(title, year)
+    val applied     = new CountDownLatch(1)
+    val applyThread = new AtomicReference[String]("")
+
+    val handle = repository.watchChanges(
+      onUpsert = r => if (StoredMovieRecord.idOf(r) == id) { applyThread.set(Thread.currentThread().getName); applied.countDown() },
+      onDelete = _ => ()
+    )
+    handle should not be empty
+    try {
+      Thread.sleep(1500)
+      repository.upsert(title, year, MovieRecord(imdbId = Some("tt0000077")))
+      applied.await(15, TimeUnit.SECONDS) shouldBe true
+      applyThread.get              should startWith ("movie-change-apply")
+      applyThread.get.toLowerCase  should not include "eventloop"      // not a Netty I/O loop
+      applyThread.get              should not include "InnocuousThread" // not the NIO2 async pool
+    } finally handle.foreach(_.close())
+  }
+
   // The worker attaches two change-stream consumers (MovieCache + ReadModelProjector).
   // They now share ONE underlying cursor (ChangeStreamFanout) instead of one cursor
   // each — the CPU optimization. Prove it against real Mongo: a single write reaches
