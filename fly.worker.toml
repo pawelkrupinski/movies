@@ -186,31 +186,31 @@ primary_region = 'arn'
   destination = '/data'
 
 [[vm]]
-  # 2 shared vCPUs / 1 GB. Downgraded 4x→2x 2026-07-05, after the boot-path
-  # optimizations removed the CPU bursts that used to drain credit: the read-model
-  # boot reproject is now GATED on stream availability (no boot reproject when the
-  # change stream can replay the gap, @7c01226f) and the read-model + freshness boot
-  # seeds are keyset-PAGED (they timed out at 60s → empty seed → whole-corpus rewrite
-  # every restart). MEASURED on 2x: steady-state busy ~10 centi-cores (below the ~13 cc
-  # 2x breakeven), credit balance climbs +~10/s off the restart floor to 34k+ and sits
-  # there, throttled=0. The old "on 2x a rating sweep sawtooths credit to the floor"
-  # note is stale twice over: Fly's credit cap is now ~10× higher (4x sat at ~150k, 2x
-  # climbs past 34k, NOT the ~8k this comment once assumed), and the bursts that caused
-  # the sawtooth are the ones the fixes above removed.
+  # 4 shared vCPUs / 1 GB. A 2x downgrade was TRIED and REVERTED on 2026-07-05 — do not
+  # retry without re-measuring on a genuinely-2x machine. What went wrong: on 2x the
+  # baseline (~13 cc) is below what the JVM needs to WARM UP. Profiled the floored 2x
+  # machine — process CPU ~17 cc of which JIT compilation was ~14 cc (~80%, sustained
+  # for hours, never tapering): the throttle (steal ~150 cc) starves the compiler so
+  # tiered JIT never completes, so the JVM stays hot on compilation, so credit stays
+  # floored (balance stuck at 1), so the health check/watchdog restarts it, so the cold
+  # JVM re-JITs from scratch — a death spiral (uptime never exceeded ~90 min). The
+  # earlier "2x viable, credit climbs +10/s" reading was CONTAMINATED: a co-agent deploy
+  # had reverted the machine to 4x mid-observation, so that climb was on 4x, not 2x.
+  # On 4x the compiler has headroom to finish warmup (JIT → ~0) and warm steady-state
+  # real work is only ~10 cc, so credit climbs and the machine stays up. The boot-path
+  # fixes (gated boot reproject @7c01226f, keyset-paged read-model/freshness seeds) DID
+  # remove the big bursts — they're why 4x now hoards ~150k credit — but they don't
+  # shrink the JVM's warmup CPU, which is the real 4x-vs-2x deciding cost.
   #
   # Self-heal stays wired: `ScrapeThrottleMonitor` (in-process scrape-duration backstop)
   # + the EXTERNAL Grafana credit gate (fly_instance_cpu_balance < 6000 → /throttle
-  # webhook, recover > 12000) tell ALL reapers to back off to a trickle
-  # (KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK / KINOWO_THROTTLED_ENQUEUE_PER_TICK) so
-  # the pool idles and credit rebuilds. The 6000/12000 band still fits: the 2x balance
-  # sits at 34k+, so the gate stays a dormant deep-safety-net (it only ever fired during
-  # the now-removed boot bursts). If 2x ever pins, revert with `flyctl scale vm
-  # shared-cpu-4x --memory 1024 -a kinowo-worker` (+ redeploy), or go performance-2x
-  # (dedicated, no credit throttle).
+  # webhook, recover > 12000) tell ALL reapers to trickle so the pool idles and credit
+  # rebuilds. On 4x this gate is a dormant deep-safety-net. If 4x ever genuinely pins,
+  # go performance-2x (dedicated, no credit throttle) rather than shared-2x.
   #
   # RAM is INDEPENDENT of the CPU choice: 1 GB fits the SerialGC + tightened-cap JVM
-  # config (JVM ~346 MB used live, ~290 MB worst-case headroom, NMT-measured — see the
-  # JAVA_OPTS note), so the downgrade keeps 1 GB and only drops the CPU tier.
+  # config (JVM ~210-346 MB used live, ~290 MB worst-case headroom, NMT-measured — see
+  # the JAVA_OPTS note); the 4x price includes 1 GB, so this is the cheapest 4x.
   memory = '1gb'
   cpu_kind = 'shared'
-  cpus = 2
+  cpus = 4
