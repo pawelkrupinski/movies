@@ -248,6 +248,41 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     client.pickBest(hits, "Belle", None, Set.empty).map(_.id) shouldBe Some(1)
   }
 
+  // ── pickBest: no-director exact-title year gate (false-positive guard) ───────
+  //
+  // A yearless retrospective screening ("Konwicki: Lawa (1989)") that TMDB never
+  // resolved carries no director. The `(1989)` read off the title is the only
+  // disambiguator — without gating on it, Filmweb's fuzzy search took the sole
+  // exact-"Lawa" hit, which is the UNRELATED "Lawa"/orig "Lava" (2014), id
+  // 719437. When we have no director and a year IS known, an EXACT same-title
+  // candidate must sit within ±1 of that year, or it's the same-title-different-
+  // film collision and must be rejected.
+
+  it should "reject an exact-title candidate whose year is far off when no director is available" in {
+    // Konwicki's "Lawa" (1989) must NOT take the 2014 "Lava".
+    val hits = Seq(candidate(id = 719437, title = "Lawa", originalTitle = Some("Lava"), year = Some(2014)))
+    client.pickBest(hits, "Lawa", Some(1989), Set.empty) shouldBe None
+  }
+
+  it should "accept an exact-title candidate within ±1 of the supplied year with no director" in {
+    val hits = Seq(candidate(id = 1, title = "Lawa", year = Some(1989)))
+    client.pickBest(hits, "Lawa", Some(1989), Set.empty).map(_.id) shouldBe Some(1)
+  }
+
+  it should "still accept a modifier-suffix candidate whose year is far off (re-release exemption)" in {
+    // The year gate is for EXACT same-title collisions only — a legitimate
+    // "Title - Re-Release" re-dates by design and must survive.
+    val hits = Seq(candidate(id = 1, title = "La Dolce Vita - Re-Release", year = Some(2020)))
+    client.pickBest(hits, "La Dolce Vita", Some(1960), Set.empty).map(_.id) shouldBe Some(1)
+  }
+
+  it should "not gate the year when a matching director confirms the far-year candidate" in {
+    // A director-verified match is already disambiguated; the year gate is a
+    // no-director fallback and must not fire here.
+    val hits = Seq(candidate(id = 1, title = "Lawa", year = Some(2014), directors = Set("Tadeusz Konwicki")))
+    client.pickBest(hits, "Lawa", Some(1989), Set("Tadeusz Konwicki")).map(_.id) shouldBe Some(1)
+  }
+
   // ── pickBest: prefer film over serial ────────────────────────────────────────
 
   it should "prefer a film over a same-title serial even when the serial's year is closer" in {

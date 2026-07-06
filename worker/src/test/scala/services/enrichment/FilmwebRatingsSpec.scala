@@ -174,6 +174,42 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     after.filmwebRating shouldBe None
   }
 
+  it should "read a parenthesised (YYYY) off the cinema title as the Filmweb lookup year for a year-less row" in {
+    // "Konwicki: Lawa (1989)" — a yearless retrospective TMDB never resolved (no
+    // tmdbId, no director). Filmweb's fuzzy search surfaces BOTH the unrelated
+    // "Lawa"/orig "Lava" (2014, id 719437) and the real 1989 Konwicki film
+    // (id 111). Without the embedded-year hint the lookup had no year to gate the
+    // collision and took the first hit (2014); reading "(1989)" off the cinema
+    // title lets the year gate drop the 2014 film and land the 1989 one.
+    val repository = new InMemoryMovieRepository(Seq(
+      ("Lawa", None, MovieRecord(
+        data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Konwicki: Lawa (1989)")))
+      ))
+    ))
+    val cache = new CaffeineMovieCache(repository)
+    val fetch = new RoutingHttpFetch(Map(
+      "/live/search"      -> """{"searchHits":[
+        |  {"id":719437,"type":"film","matchedTitle":"Lawa"},
+        |  {"id":111,"type":"film","matchedTitle":"Lawa"}
+        |]}""".stripMargin,
+      "/film/719437/info" -> """{"title":"Lawa","originalTitle":"Lava","year":2014}""",
+      "/film/111/info"    -> """{"title":"Lawa","year":1989}""",
+      "/film/111/rating"  -> """{"rate":7.1,"count":500}"""
+    ))
+    val filmweb = new FilmwebClient(fetch)
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+
+    // The row keys on its derived display title (year-less scraped key); grab it
+    // rather than reconstruct the sanitisation here.
+    val key = cache.entries.head._1
+    key.year shouldBe None
+    ratings.refreshOneSync(key)
+
+    val after = cache.get(key).get
+    after.filmwebUrl.get should include ("-111")
+    after.filmwebUrl.get should not include ("719437")
+  }
+
   // ── Failure handling ───────────────────────────────────────────────────────
 
   it should "swallow Filmweb fetch failures without throwing" in {

@@ -213,7 +213,7 @@ class FilmwebClient(http: HttpFetch) {
   ): Option[Candidate] = {
     if (candidates.isEmpty || query.trim.isEmpty) return None
     val directorAccepted = candidates.filter { c =>
-      (matchesByTitle(c, query) && matchesByDirector(c, directors)) ||
+      (matchesByTitle(c, query) && matchesByDirector(c, directors) && yearGateOk(c, query, year, directors)) ||
         matchesByDirectorAndYear(c, year, directors)
     }
     // Prefer a `film` over a same-title `serial` BEFORE year-distance: a real
@@ -248,6 +248,31 @@ class FilmwebClient(http: HttpFetch) {
 
   private[enrichment] def matchesByDirector(c: Candidate, directors: Set[String]): Boolean =
     directors.isEmpty || c.directors.isEmpty || directorsOverlap(c.directors, directors)
+
+  /** True iff `c`'s canonical title (or originalTitle) EQUALS the query — the
+   *  strict half of [[matchesByTitle]], excluding the looser modifier-suffix
+   *  branch. */
+  private[enrichment] def matchesByExactTitle(c: Candidate, query: String): Boolean = {
+    val normalizedQuery = normalizeTitle(query)
+    (c.title +: c.originalTitle.toSeq).map(normalizeTitle).contains(normalizedQuery)
+  }
+
+  /** False-positive guard for the no-director path. When neither the caller nor
+   *  the merge gives us a director to disambiguate AND the row carries a year,
+   *  an EXACT same-title candidate must sit within ±1 of that year — a large gap
+   *  is the same-title-different-film collision signature (a yearless "Konwicki:
+   *  Lawa (1989)" screening must not take the unrelated "Lawa"/orig "Lava" 2014;
+   *  "Belle" 1973 must not answer a 2022 query). Exemptions, all already
+   *  disambiguated by something other than the bare title+year:
+   *    - caller HAS directors → director verification / the director+year
+   *      override decides, not this gate;
+   *    - year is unknown → nothing to gate against (legacy first-hit behaviour);
+   *    - the match is a modifier-suffix, not exact → a "Title - Re-Release"
+   *      legitimately re-dates and must survive;
+   *    - the candidate carries no year → can't be gated. */
+  private[enrichment] def yearGateOk(c: Candidate, query: String, year: Option[Int], directors: Set[String]): Boolean =
+    directors.nonEmpty || year.isEmpty || !matchesByExactTitle(c, query) ||
+      c.year.forall(cy => math.abs(cy - year.get) <= 1)
 
   /** Strict director+year override: accepts a candidate even when its title
    *  doesn't match, provided the caller supplied directors AND a year, the

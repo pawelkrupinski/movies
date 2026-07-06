@@ -187,6 +187,13 @@ class FilmwebRatings(
     val tmdbDirectors   = e.tmdbId.map(tmdb.directorsFor).getOrElse(Set.empty)
     val cinemaDirectors = e.cinemaData.values.flatMap(_.director).toSet
     val directors       = tmdbDirectors ++ cinemaDirectors
+    // A yearless retrospective ("Konwicki: Lawa (1989)") carries no scraped year,
+    // so the Filmweb search had nothing to gate a same-title collision against and
+    // took the unrelated "Lawa"/orig "Lava" (2014). Read the parenthesised "(YYYY)"
+    // off the row's raw cinema titles as the lookup year — the SAME deterministic
+    // hint `resolveTmdbId` uses (MovieService.embeddedYear), fed here so the
+    // Filmweb side gets the same disambiguation. Falls back to the scraped key year.
+    val effectiveYear = key.year.orElse(MovieService.embeddedYear(key.cleanTitle +: e.cinemaTitles.toSeq))
     // TMDB's Polish blurb (same language as Filmweb's `plot`) breaks a same-year
     // same-title tie inside `lookup`; None when TMDB hasn't resolved a synopsis.
     val referenceSynopsis = e.data.get(models.Tmdb).flatMap(_.synopsis)
@@ -197,8 +204,8 @@ class FilmwebRatings(
     // cache MISS so the rating + genres are kept exactly as before; on a cache
     // HIT only the url is known, so rebuild the rating + genres from it.
     var fresh: Option[FilmwebClient.FilmwebInfo] = None
-    val cachedUrl = filmwebLinkCache.getOrResolve(ResolutionKeys.filmweb(linkTitle, key.year, fallback, directors)) {
-      val info = Try(filmweb.lookup(linkTitle, key.year, fallback, directors, referenceSynopsis)).toOption.flatten
+    val cachedUrl = filmwebLinkCache.getOrResolve(ResolutionKeys.filmweb(linkTitle, effectiveYear, fallback, directors)) {
+      val info = Try(filmweb.lookup(linkTitle, effectiveYear, fallback, directors, referenceSynopsis)).toOption.flatten
       fresh = info
       info.map(_.url)
     }
