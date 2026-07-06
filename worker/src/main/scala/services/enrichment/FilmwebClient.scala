@@ -236,7 +236,10 @@ class FilmwebClient(http: HttpFetch) {
    *  never override on director alone — to keep precision.
    *
    *  Year breaks ties among accepted candidates; a `referenceSynopsis` (the
-   *  row's TMDB Polish blurb) breaks a remaining tie on plot closeness.
+   *  row's TMDB Polish blurb) breaks a remaining tie on plot closeness. When a tie
+   *  remains AND there is neither a year nor a director to disambiguate, the
+   *  candidate is DROPPED (None) rather than guessed — several unrelated films can
+   *  share an exact title (three "Scarlet"s), and a wrong rating is worse than none.
    */
   def pickBest(
     candidates:        Seq[Candidate],
@@ -263,14 +266,22 @@ class FilmwebClient(http: HttpFetch) {
     // whose Filmweb `plot` is the confident closest match to the TMDB blurb wins;
     // with no reference, no plots, or no confident winner, the stable-sort head
     // (legacy behaviour) stands.
-    sorted.headOption.map { top =>
+    sorted.headOption.flatMap { top =>
       val tied = sorted.takeWhile(c => sortKey(c) == sortKey(top))
       if (tied.lengthCompare(1) > 0)
+        // Multiple candidates tie at the best (film-first, year-distance) key. A
+        // confident synopsis match breaks the tie; otherwise, when we ALSO have no
+        // year and no director to disambiguate, the pick is a coin-flip among
+        // same-title UNRELATED films (a 2012, a 2021 and Hosoda's 2025 are all exact
+        // "Scarlet") — DROP rather than guess: a wrong rating is worse than none, and
+        // the row heals once a year/director arrives (from the cinema or a TMDB
+        // resolution). With a year OR director the tie is already narrowed, so the
+        // stable-sort head stands (legacy behaviour).
         referenceSynopsis
           .flatMap(ref => SynopsisSimilarity.confidentTieBreak(ref, tied.map(_.plot.getOrElse(""))))
           .map(tied)
-          .getOrElse(top)
-      else top
+          .orElse(if (year.isEmpty && directors.isEmpty) None else Some(top))
+      else Some(top)
     }
   }
 

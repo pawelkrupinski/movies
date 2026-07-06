@@ -240,12 +240,32 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     client.pickBest(hits, "Belle", Some(2022), Set.empty).map(_.id) shouldBe Some(2)
   }
 
-  it should "fall back to the first accepted candidate when no year is supplied" in {
+  it should "DROP an ambiguous tie when no year and no director can disambiguate" in {
+    // Two exact-"Belle" films, no year, no director — a coin-flip, so store nothing
+    // rather than guess (the "Scarlet" failure mode: several unrelated same-title
+    // films). Previously this fell back to the stable-sort head.
     val hits = Seq(
       candidate(id = 1, title = "Belle", year = Some(1973)),
       candidate(id = 2, title = "Belle", year = Some(2021))
     )
-    client.pickBest(hits, "Belle", None, Set.empty).map(_.id) shouldBe Some(1)
+    client.pickBest(hits, "Belle", None, Set.empty) shouldBe None
+  }
+
+  it should "keep a UNIQUE exact-title match even with no year and no director" in {
+    // A distinctive title with a single Filmweb match is unambiguous — resolve it
+    // (the drop-gate is only for genuine ties).
+    val hits = Seq(candidate(id = 7, title = "Ostatni konsjerż", year = Some(2025)))
+    client.pickBest(hits, "Ostatni konsjerż", None, Set.empty).map(_.id) shouldBe Some(7)
+  }
+
+  it should "keep the stable head of a same-YEAR tie (a year narrows it, so not dropped)" in {
+    // With a year present the tie is already narrowed; keep legacy behaviour (the
+    // synopsis tie-break, else stable head) — the drop-gate is for year-less ties.
+    val hits = Seq(
+      candidate(id = 1, title = "Belle", year = Some(2021)),
+      candidate(id = 2, title = "Belle", year = Some(2021))
+    )
+    client.pickBest(hits, "Belle", Some(2021), Set.empty).map(_.id) shouldBe Some(1)
   }
 
   // ── pickBest: no-director exact-title year gate (false-positive guard) ───────
@@ -415,6 +435,25 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     )
     val fw = new FilmwebClient(new StubFetch(routes))
     fw.lookup("Cirque du Soleil: Kooza", Some(2008)) shouldBe None
+  }
+
+  it should "return None for a year-less title with several unrelated same-title films (the Scarlet case)" in {
+    // "Hosoda. Scarlet" (banner-stripped to "Scarlet") with no scraped year and no
+    // director: Filmweb has THREE exact "Scarlet" films — Hosoda's 2025, plus a 2012
+    // and a 2021 — and nothing tells them apart, so we must store nothing rather than
+    // pick a wrong sibling. It resolves later once a year/director arrives.
+    val routes = Map(
+      "/live/search"        -> """{"searchHits":[
+        |{"id":10086295,"type":"film","matchedTitle":"Scarlet"},
+        |{"id":690834,"type":"film","matchedTitle":"Scarlet"},
+        |{"id":849495,"type":"film","matchedTitle":"Scarlet"}
+        |]}""".stripMargin,
+      "/film/10086295/info" -> """{"title":"Hateshinaki Scarlet","originalTitle":"Scarlet","year":2025}""",
+      "/film/690834/info"   -> """{"title":"Scarlet","year":2012}""",
+      "/film/849495/info"   -> """{"title":"Scarlet","year":2021}"""
+    )
+    val fw = new FilmwebClient(new StubFetch(routes))
+    fw.lookup("Scarlet", None) shouldBe None
   }
 
   it should "pick the candidate whose canonical title matches and skip the search-noise ones" in {
