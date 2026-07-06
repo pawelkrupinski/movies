@@ -35,6 +35,27 @@ object ReadModelProjection {
   def filmId(stored: StoredMovieRecord): String =
     s"${TitleNormalizer.sanitize(stored.title)}|${stored.record.resolvedYear.map(_.toString).getOrElse("")}"
 
+  /** A cheap content hash over EXACTLY the inputs the projected METADATA depends on —
+   *  everything the row carries EXCEPT `SourceData.showtimes`. The metadata half of a
+   *  projection ([[resolve]] / [[synopsisByCity]] / [[ratingsFor]] and the display-title
+   *  [[variants]] partition) never reads showtimes: `MovieRecord.cities` / `synopsisForCity`
+   *  key off cinema-slot PRESENCE (`cinemaData.keySet`), and `variants` groups slots by their
+   *  reported title — so a showtime-only change at an already-present cinema leaves this hash
+   *  UNCHANGED, while a rating / synopsis / new-cinema (→ new city, new title-variant) change
+   *  SHIFTS it. [[ReadModelProjector]] keys its metadata cache on this to reuse the projected
+   *  `ResolvedMovie` across showtime-only churn and recompute only the cheap screenings half.
+   *
+   *  Hashing a showtimes-stripped view of the WHOLE record — not an enumerated field list — is
+   *  deliberate: the load-bearing danger is a MISSED metadata input serving stale metadata, and
+   *  a whole-record hash cannot miss one (no metadata accessor reads showtimes, so stripping only
+   *  them is provably a superset of every metadata input). A 32-bit collision would reuse stale
+   *  metadata until the row's next change re-projects it — self-healing, the same tolerance the
+   *  projector's `##` document diff already accepts. */
+  def metadataHash(stored: StoredMovieRecord): Int = {
+    val metaSlots = stored.record.data.view.mapValues(_.copy(showtimes = Nil)).toMap
+    (stored.title, stored.year, stored.record.copy(data = metaSlots)).##
+  }
+
   /** Materialise the merged metadata view. `stored.title` is the cache-key
    *  anchor (`StoredMovieRecord.fromStorage` derives it from the `_id`); we
    *  pass it through `displayTitle` exactly as the web's `toSchedules` does so

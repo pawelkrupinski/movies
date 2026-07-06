@@ -171,6 +171,12 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     .help("Source rows projected (projectAll invoked) since boot — the throughput denominator for readmodel_project_duration_seconds. Spikes during the periodic full reproject sweep (~800 rows) and on the boot catch-up.")
     .register(registry)
 
+  private val readModelMetadataProjections = Counter.builder()
+    .name("kinowo_worker_readmodel_metadata_projections")
+    .help("Projections by whether the metadata half (resolve/synopsisByCity/ratingsFor) was REUSED from the per-film cache (outcome=reused — a showtime-only change at an already-present cinema, only the cheap screenings half re-ran) or RECOMPUTED (outcome=recomputed — a rating/synopsis/new-cinema change, or a first projection). rate(reused) / rate(reused+recomputed) is opt-1's hit ratio — high reuse under reproject/enrich showtime churn is the CPU win.")
+    .labelNames("outcome")
+    .register(registry)
+
   private val cacheRehydrateChanges = Counter.builder()
     .name("kinowo_worker_cache_rehydrate_changes")
     .help("Rows the MovieCache's periodic backstop rehydrate (full findAll reload) caught that the INCREMENTAL change stream missed, by kind (changed=a put whose cached value differed = a missed upsert; deleted=a key gone from Mongo the delete-apply didn't drop). After resume-token persistence + cache delete-apply this should be ~0 in steady state; a rate flat at 0 proves the 30-min rehydrate is redundant and can be retired. NOTE: the one-time BOOT hydrate counts EVERY row as changed — read the rate over steady state, not the raw counter.")
@@ -219,6 +225,7 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     readModelFilmsPruned.inc(0.0) // materialize the single series at 0 so Grafana draws a continuous line
     readModelProjectCalls.inc(0.0)     // materialize at 0 so the counter series (+ its _created) exists from boot
     readModelProjectDuration.observe(0.0) // materialize the histogram (_sum/_count/_bucket) from boot — no Grafana gap
+    ReadModelProjectionMetrics.MetadataOutcomes.foreach(o => readModelMetadataProjections.labelValues(o))
     ReadModelProjectionMetrics.ReconcileKinds.foreach(k =>
       Seq("true", "false").foreach(w => readModelReconcileSweeps.labelValues(k, w)))
     Seq("changed", "deleted").foreach(k => cacheRehydrateChanges.labelValues(k))
@@ -251,6 +258,11 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     readModelProjectDuration.observe(math.max(0.0, seconds))
     readModelProjectCalls.inc()
   }
+
+  def recordMetadataProjection(reused: Boolean): Unit =
+    readModelMetadataProjections.labelValues(
+      if (reused) ReadModelProjectionMetrics.MetadataOutcome.Reused
+      else ReadModelProjectionMetrics.MetadataOutcome.Recomputed).inc()
 
   def recordReconcileSweep(kind: String, didWork: Boolean): Unit =
     readModelReconcileSweeps.labelValues(kind, didWork.toString).inc()

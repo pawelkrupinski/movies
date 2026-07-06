@@ -1,6 +1,6 @@
 package services.readmodel
 
-import models.CityScreening
+import models.{CityScreening, ResolvedMovie}
 import play.api.Logging
 import services.Stoppable
 import services.movies.{MovieRepository, StoredMovieRecord}
@@ -54,6 +54,17 @@ class ReadModelProjector(
   // row's next real change re-projects it — self-healing, never permanently wrong.
   private val lastMovie      = scala.collection.mutable.Map.empty[String, Int]
   private val lastScreenings = scala.collection.mutable.Map.empty[String, Map[String, Int]]
+  // Metadata-reuse cache (optimisation #1): per SOURCE ROW (keyed by the anchor
+  // `ReadModelProjection.filmId`, stable across the display-title split), the
+  // `metadataHash` of the last projection plus the projected `ResolvedMovie` variant(s)
+  // it produced, in `projectAll` order. The projected metadata is a pure function of the
+  // row's cinema STRUCTURE, not its SHOWTIMES (see `ReadModelProjection.metadataHash`), so
+  // a showtime-only change re-uses these and recomputes only the cheap screenings half —
+  // skipping resolve/synopsisByCity/ratings, the expensive projection work the reproject/
+  // enrich churn spends its CPU on. Unlike `lastMovie`/`lastScreenings` (which hold a few
+  // bytes per doc) this holds the ResolvedMovie object graph resident — but only for rows
+  // actually projected, ~corpus-sized (few MB on the 320m heap), and evicted on prune.
+  private val lastMetadata   = scala.collection.mutable.Map.empty[String, (Int, Seq[ResolvedMovie])]
   private val lock           = new AnyRef
 
   private val scheduler = DaemonExecutors.scheduler("read-model-projector")
@@ -93,7 +104,7 @@ class ReadModelProjector(
     // pure projection (CPU-bound, no I/O) — its rate() in centi-cores attributes how
     // much worker CPU the reproject/enrich churn spends here (the credit-floor driver).
     val projectStart = System.nanoTime()
-    val variants     = ReadModelProjection.projectAll(stored)
+    val variants     = projectReusingMetadata(stored)
     metrics.recordProject((System.nanoTime() - projectStart) / 1e9)
     var written = 0
     variants.foreach { case (movie, screenings) =>
@@ -106,6 +117,37 @@ class ReadModelProjector(
       written += diffScreenings(movie._id, screenings)
     }
     written
+  }
+
+  // Caller holds `lock`. Project the row, REUSING the cached `ResolvedMovie` metadata when
+  // the row's metadata inputs are unchanged (a showtime-only change at an already-present
+  // cinema — the overwhelming common case under reproject/enrich showtime churn). Correctness:
+  // an unchanged `metadataHash` guarantees an unchanged metadata output AND an unchanged
+  // display-title variant partition (the hash covers the whole record bar showtimes, and no
+  // metadata accessor reads showtimes), so `screeningsAll` — which re-runs the SAME `variants`
+  // split in the SAME order — lines up 1:1 with the cached movie(s). The size guard is a
+  // belt-and-suspenders fallback to a full re-projection: it can never pair a movie with the
+  // wrong screenings. `screeningsAll` is byte-identical to `projectAll(...).map(_._2)` but skips
+  // the resolve/synopsisByCity/ratings work — that skip is the whole optimisation.
+  private def projectReusingMetadata(stored: StoredMovieRecord): Seq[(ResolvedMovie, Seq[CityScreening])] = {
+    val rowKey = ReadModelProjection.filmId(stored)
+    val hash   = ReadModelProjection.metadataHash(stored)
+    lastMetadata.get(rowKey) match {
+      case Some((cachedHash, movies)) if cachedHash == hash =>
+        val screenings = ReadModelProjection.screeningsAll(stored)
+        if (screenings.sizeIs == movies.size) {
+          metrics.recordMetadataProjection(reused = true)
+          movies.zip(screenings)
+        } else recomputeMetadata(rowKey, hash, stored)
+      case _ => recomputeMetadata(rowKey, hash, stored)
+    }
+  }
+
+  private def recomputeMetadata(rowKey: String, hash: Int, stored: StoredMovieRecord): Seq[(ResolvedMovie, Seq[CityScreening])] = {
+    val variants = ReadModelProjection.projectAll(stored)
+    lastMetadata.update(rowKey, hash -> variants.map(_._1))
+    metrics.recordMetadataProjection(reused = false)
+    variants
   }
 
   /** Returns the number of screening documents written (upserts + deletes). */
@@ -134,6 +176,11 @@ class ReadModelProjector(
     metrics.recordFilmPruned(1)
     lastMovie.remove(filmId)
     lastScreenings.remove(filmId)
+    // Evict the metadata-reuse entry. Keyed by the row's ANCHOR filmId, which equals the
+    // pruned `filmId` for a single-variant row (the common case); a split row's anchor may
+    // differ, so this is best-effort — a lingering entry is harmless (a future row reusing the
+    // same key with a matching hash would reuse identical metadata) and bounded by corpus size.
+    lastMetadata.remove(filmId)
   }
 
   /** One reconciliation pass over the whole corpus.

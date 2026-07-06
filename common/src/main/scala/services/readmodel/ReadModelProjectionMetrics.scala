@@ -33,6 +33,15 @@ trait ReadModelProjectionMetrics {
    *  rows were projected. The observability gap that made attributing that CPU hard. */
   def recordProject(seconds: Double): Unit
 
+  /** One projection decided whether to REUSE cached metadata or RECOMPUTE it.
+   *  `reused=true` is the optimisation win: the row's metadata inputs were unchanged
+   *  (a showtime-only change at an already-present cinema), so `resolve`/`synopsisByCity`/
+   *  `ratingsFor` were skipped and only the cheap screenings half re-ran. `reused=false`
+   *  is a genuine metadata change (rating / synopsis / new cinema) or a first projection.
+   *  The rate of reused vs recomputed is the opt's effectiveness — high reuse under the
+   *  showtime-churn the reproject/enrich pipeline generates is the whole point. */
+  def recordMetadataProjection(reused: Boolean): Unit
+
   /** One reconciliation sweep finished. `kind` distinguishes the cheap frequent
    *  orphan prune from the expensive periodic full re-projection; `didWork` is
    *  whether it pruned or reprojected at least one document. The point of the
@@ -48,15 +57,19 @@ object ReadModelProjectionMetrics {
   object Op { val Upsert = "upsert"; val Delete = "delete" }
   /** `kind` label values for the reconcile-sweep counter. */
   object ReconcileKind { val Prune = "prune"; val Reproject = "reproject" }
+  /** `outcome` label values for the metadata-projection counter. */
+  object MetadataOutcome { val Reused = "reused"; val Recomputed = "recomputed" }
 
   val Targets: Seq[String]        = Seq(Target.Movie, Target.Screening)
   val Ops:     Seq[String]        = Seq(Op.Upsert, Op.Delete)
   val ReconcileKinds: Seq[String] = Seq(ReconcileKind.Prune, ReconcileKind.Reproject)
+  val MetadataOutcomes: Seq[String] = Seq(MetadataOutcome.Reused, MetadataOutcome.Recomputed)
 
   val noop: ReadModelProjectionMetrics = new ReadModelProjectionMetrics {
     def recordWrite(target: String, op: String, count: Int): Unit = ()
     def recordFilmPruned(count: Int): Unit                        = ()
     def recordProject(seconds: Double): Unit                      = ()
+    def recordMetadataProjection(reused: Boolean): Unit           = ()
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()
   }
 }

@@ -41,10 +41,13 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     var prunes = 0
     val sweeps = scala.collection.mutable.Buffer.empty[(String, Boolean)]
     val projectDurations = scala.collection.mutable.Buffer.empty[Double]
+    var metadataReused = 0
+    var metadataRecomputed = 0
     def projectCalls: Int = projectDurations.size
     def recordWrite(target: String, op: String, count: Int): Unit = writes((target, op)) += count
     def recordFilmPruned(count: Int): Unit                        = prunes += count
     def recordProject(seconds: Double): Unit                      = projectDurations += seconds
+    def recordMetadataProjection(reused: Boolean): Unit          = if (reused) metadataReused += 1 else metadataRecomputed += 1
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = sweeps += (kind -> didWork)
   }
 
@@ -174,6 +177,83 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
     rm.movieUpserts     should have size 2  // rating changed → movie document rewritten
     rm.screeningUpserts should have size 1  // showtimes unchanged → no screening write
+  }
+
+  // ── Optimisation #1: metadata reuse across showtime-only changes ─────────────
+  // The projected metadata (ResolvedMovie: title/synopsis/ratings/cast/…) is a pure
+  // function of the row's cinema STRUCTURE, not its SHOWTIMES. A showtime-only change at
+  // an already-present cinema must REUSE the cached ResolvedMovie (skip resolve/synopsis/
+  // ratings) and recompute only the cheap screenings half; a genuine metadata change
+  // (rating / synopsis / a NEW cinema→city) must RECOMPUTE and rewrite the movie document.
+  "a showtime-only change at an existing cinema" should "REUSE cached metadata, not recompute it" in {
+    val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
+    val m = new RecordingMetrics()
+    val projector = new ReadModelProjector(repository, rm, rm, m)
+
+    projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
+    m.metadataRecomputed shouldBe 1   // first projection → recomputed + cached
+    m.metadataReused     shouldBe 0
+
+    // Add a showtime at the SAME cinema — metadata inputs unchanged.
+    projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00"), at("2026-06-13T18:00")))))
+    withClue("metadata should have been reused (resolve/synopsisByCity/ratings NOT recomputed): ") {
+      m.metadataReused     shouldBe 1
+      m.metadataRecomputed shouldBe 1  // still just the first
+    }
+    rm.movieUpserts     should have size 1  // movie document NOT rewritten
+    rm.screeningUpserts should have size 2  // the one changed screening document, re-written
+  }
+
+  "a rating change" should "RECOMPUTE metadata and rewrite the movie document" in {
+    val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
+    val m = new RecordingMetrics()
+    val projector = new ReadModelProjector(repository, rm, rm, m)
+    val shows = Seq(at("2026-06-12T20:00"))
+
+    projector.onMovieUpsert(stored(record(Some(8.0), shows)))
+    projector.onMovieUpsert(stored(record(Some(9.1), shows)))  // rating changed, showtimes identical
+    withClue("a rating change is a metadata change → must recompute, never reuse: ") {
+      m.metadataRecomputed shouldBe 2
+      m.metadataReused     shouldBe 0
+    }
+    rm.movieUpserts     should have size 2  // movie document rewritten
+    rm.screeningUpserts should have size 1  // showtimes unchanged → no screening write
+  }
+
+  "a synopsis change at a cinema" should "RECOMPUTE metadata (a showtimes-stripped hash still sees it)" in {
+    val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
+    val m = new RecordingMetrics()
+    val projector = new ReadModelProjector(repository, rm, rm, m)
+    val shows = Seq(at("2026-06-12T20:00"))
+    def withSynopsis(s: String) = MovieRecord(tmdbId = Some(1),
+      data = Map[Source, SourceData](Multikino -> slot(shows).copy(synopsis = Some(s))))
+
+    projector.onMovieUpsert(stored(withSynopsis("A short blurb.")))
+    projector.onMovieUpsert(stored(withSynopsis("A different, longer blurb entirely.")))
+    m.metadataRecomputed shouldBe 2
+    m.metadataReused     shouldBe 0
+    rm.movieUpserts should have size 2  // synopsis is metadata → movie rewritten
+  }
+
+  "a film gaining a cinema in a NEW city" should "RECOMPUTE metadata (new city → new synopsisByCity)" in {
+    val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
+    val m = new RecordingMetrics()
+    val projector = new ReadModelProjector(repository, rm, rm, m)
+    val shows = Seq(at("2026-06-12T20:00"))
+    def wroclawSlot = SourceData(title = Some("Foo"), releaseYear = Some(2024),
+      filmUrl = Some("https://mk/foo-wro"), showtimes = shows)
+
+    projector.onMovieUpsert(stored(record(Some(8.0), shows)))  // Poznań only
+    m.metadataRecomputed shouldBe 1
+    // The film now also screens in Wrocław (MultikinoPasazGrunwaldzki) — the city set grows,
+    // so the metadata (cities / synopsisByCity) genuinely changes and must NOT be reused.
+    val twoCities = record(Some(8.0), shows).copy(
+      data = Map[Source, SourceData](Multikino -> slot(shows), MultikinoPasazGrunwaldzki -> wroclawSlot))
+    projector.onMovieUpsert(stored(twoCities))
+    withClue("a new city is a metadata change → must recompute, never reuse: ") {
+      m.metadataReused     shouldBe 0
+      m.metadataRecomputed shouldBe 2
+    }
   }
 
   "a film leaving a cinema" should "delete that cinema's screening document" in {
