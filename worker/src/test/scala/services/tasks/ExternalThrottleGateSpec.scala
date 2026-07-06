@@ -36,8 +36,21 @@ class ExternalThrottleGateSpec extends AnyFlatSpec with Matchers {
     ExternalThrottleGate.parse(None, """{"status":"resolved","alerts":[]}""") shouldBe Some(false)
   }
 
+  it should "read a RESOLVED webhook as off even when 'firing' appears elsewhere in the body" in {
+    // Regression: the old `raw.contains(\"firing\")` whole-body substring read this
+    // resolved webhook as throttle-ON (the word "firing" is in a per-alert status, an
+    // annotation, and the alert history), leaving the gate stuck on. Only the TOP-LEVEL
+    // status decides now.
+    val resolvedButMentionsFiring =
+      """{"status":"resolved","alerts":[{"status":"firing","annotations":{"summary":"was firing"}}],
+         |"message":"alert changed from firing to resolved"}""".stripMargin
+    ExternalThrottleGate.parse(None, resolvedButMentionsFiring) shouldBe Some(false)
+  }
+
   it should "return None for an unrecognised request (→ 400)" in {
-    ExternalThrottleGate.parse(None, "")                shouldBe None
-    ExternalThrottleGate.parse(Some("foo=bar"), "{}")   shouldBe None
+    ExternalThrottleGate.parse(None, "")                     shouldBe None
+    ExternalThrottleGate.parse(Some("foo=bar"), "{}")        shouldBe None
+    ExternalThrottleGate.parse(None, "not json at all")      shouldBe None
+    ExternalThrottleGate.parse(None, """{"status":"pending"}""") shouldBe None
   }
 }

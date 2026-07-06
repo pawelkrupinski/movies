@@ -1,6 +1,9 @@
 package services.tasks
 
+import play.api.libs.json.Json
+
 import java.util.concurrent.atomic.AtomicBoolean
+import scala.util.Try
 
 /**
  * A throttle signal toggled from OUTSIDE the worker — the credit-balance logic
@@ -29,16 +32,24 @@ object ExternalThrottleGate {
   /** The desired throttle state from a `/throttle` request — pure so it's
    *  testable apart from the HTTP plumbing. Accepts a `state=on|off` or
    *  `throttled=true|false` query param (manual/curl), or a Grafana webhook body
-   *  whose `"status"` is `"firing"` (credit low → on) / `"resolved"` (→ off).
-   *  None ⇒ unrecognised (the endpoint answers 400). */
+   *  whose TOP-LEVEL `"status"` is `"firing"` (credit low → on) / `"resolved"`
+   *  (→ off).  None ⇒ unrecognised (the endpoint answers 400).
+   *
+   *  The body is parsed as JSON and only the top-level `status` field is read — the
+   *  earlier `raw.contains("firing")` whole-body substring misclassified a RESOLVED
+   *  webhook as throttle-ON whenever the word "firing" appeared anywhere in it (a
+   *  per-alert `status`, an annotation, the alert history, a `valueString`), leaving
+   *  the gate stuck on. */
   def parse(query: Option[String], body: => String): Option[Boolean] = {
     val params = query.getOrElse("").split("&")
       .flatMap(_.split("=", 2) match { case Array(k, v) => Some(k.toLowerCase -> v); case _ => None }).toMap
     params.get("state").map(_.equalsIgnoreCase("on"))
       .orElse(params.get("throttled").map(_.equalsIgnoreCase("true")))
       .orElse {
-        val raw = body
-        if (raw.contains("\"status\"")) Some(raw.contains("firing")) else None
+        Try(Json.parse(body)).toOption.flatMap(json => (json \ "status").asOpt[String]).collect {
+          case "firing"   => true
+          case "resolved" => false
+        }
       }
   }
 }

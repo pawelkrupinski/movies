@@ -40,11 +40,20 @@ import scala.util.Try
  * the actual floor, given observed drain rates of 3 000–7 000 ms/min.  By then
  * up to 8 in-flight tasks keep burning CPU and the floor still hits.
  *
- * The projection trigger catches the drop earlier: consecutive balance readings
- * give a drain rate (ms/s); if the projected time to `enterBelow` is within
- * `lookaheadSeconds` (default 10 min), throttle trips immediately.  On
- * 2026-06-25 this would have tripped 16 min (afternoon) and 26 min (evening)
- * before the floor, preventing both episodes.
+ * The projection trigger catches the drop earlier: a rolling window of recent
+ * balances gives a drain rate (ms/s); if the projected time to `enterBelow` is
+ * within `lookaheadSeconds` (default 10 min), throttle trips.  On 2026-06-25 this
+ * would have tripped 16 min (afternoon) and 26 min (evening) before the floor,
+ * preventing both episodes.
+ *
+ * The rate is the MEDIAN of the window's consecutive deltas ([[nextState]] via
+ * `drainPerSec`), NOT a single 30 s delta.  A single-delta rate made the projection
+ * fire on any one noisy poll — a GC pause, a read-model projection burst, a batch of
+ * slow scrapes all finishing — reading as a huge instantaneous drain: prod logged
+ * 575 projected trips vs 5 genuine floor trips over 2026-06-24…07-06, 59 of them at
+ * credit 30k–59k (5–10× above the floor) and instantaneous rates as high as
+ * 6 039 ms/s.  Smoothing over the window requires a SUSTAINED downslope before the
+ * proactive throttle engages, so the lone spikes no longer trip it.
  *
  * Fail-open: a failed or unparseable read doesn't flip the decision on a single
  * blip (a transient `api.fly.io` error); only after `maxConsecutiveFailures`
@@ -96,7 +105,7 @@ class CpuCreditPoller(
   private val url =
     s"https://api.fly.io/prometheus/$org/api/v1/query?query=${URLEncoder.encode(query, StandardCharsets.UTF_8)}"
 
-  private val state = new AtomicReference(State(throttled = false, failures = 0, prevBalance = None))
+  private val state = new AtomicReference(State(throttled = false, failures = 0))
   // The most recent good balance read (None until the first success / after a run
   // of failures). Exposed for the ThrottleStuckWatchdog's trend guard, which needs
   // the raw number — not just the throttled boolean — to tell recovery from a wedge.
@@ -125,8 +134,11 @@ class CpuCreditPoller(
       val reason = if (next.throttled) {
         balance match {
           case Some(b) if b >= enterBelow =>
-            // Triggered by projection: balance still above the floor threshold.
-            val drainPerSec = prev.prevBalance.flatMap(p => Some((p - b) / pollInterval.toSeconds).filter(_ > 0))
+            // Triggered by projection: balance still above the floor threshold. Report
+            // the SMOOTHED drain rate that actually tripped it (median over the window),
+            // not the last single-poll delta — the whole point of the fix is that a lone
+            // spike no longer drives the decision, so it mustn't drive the log either.
+            val drainPerSec = CpuCreditPoller.drainPerSec(next.recent, pollInterval.toSeconds.toDouble)
             val minsToFloor = drainPerSec.map(r => (b - enterBelow) / r / 60.0)
             (drainPerSec, minsToFloor) match {
               case (Some(d), Some(m)) => f"projected: ${d}%.0f ms/s drain, ${m}%.1f min to floor"
@@ -155,17 +167,54 @@ class CpuCreditPoller(
 
 object CpuCreditPoller {
 
-  // prevBalance is the last good reading, used to compute the drain rate for
-  // projection.  Defaults to None so existing call sites (tests, etc.) don't break.
-  private[tasks] case class State(throttled: Boolean, failures: Int, prevBalance: Option[Double] = None)
+  // How many recent good balances the projection slope is computed over. The drain
+  // rate is a MEDIAN of the consecutive deltas across this window, not a single
+  // delta — so one noisy poll (a GC pause, a read-model projection burst, a batch of
+  // slow scrapes all finishing) can't drive the decision. Sized so the median
+  // survives a lone outlier: `SlopeWindow` balances give up to `SlopeWindow-1`
+  // deltas, and the median ignores one spike once there are `MinDeltasForProjection`
+  // of them.  (Before this, the rate was a single 30 s delta and prod saw 575
+  // projected throttle trips vs 5 genuine floor trips over 2026-06-24…07-06, 59 of
+  // them at credit 30k–59k — 5–10× above the 6 000 floor — driven by instantaneous
+  // blips as high as 6 039 ms/s.)
+  private[tasks] val SlopeWindow            = 5
+  // Minimum consecutive deltas before projection is allowed to trip. 3 ⇒ the median
+  // of the window rejects a single spike; below this there isn't enough history to
+  // tell a sustained downslope from one noisy poll, so projection stays disabled (the
+  // reactive floor arm still guards a genuine crunch).
+  private[tasks] val MinDeltasForProjection = 3
+
+  // `recent` is the rolling window of the last `SlopeWindow` good balances, oldest
+  // first.  Empty by default so existing call sites (tests, etc.) don't break.
+  private[tasks] case class State(throttled: Boolean, failures: Int, recent: Vector[Double] = Vector.empty)
+
+  /** The projection drain rate (ms/s, positive = losing credit): the MEDIAN of the
+   *  consecutive deltas across `recent`.  `None` when there's too little history
+   *  (< `MinDeltasForProjection` deltas) or the robust slope isn't a net drain.
+   *  The median — not the mean, and not the last single delta — is what makes a
+   *  lone spike poll unable to trip the projection. */
+  private[tasks] def drainPerSec(recent: Vector[Double], pollIntervalSeconds: Double): Option[Double] = {
+    val deltas = recent.zip(recent.drop(1)).map { case (older, newer) => (older - newer) / pollIntervalSeconds }
+    if (deltas.size < MinDeltasForProjection) None
+    else {
+      val sorted = deltas.sorted
+      val n      = sorted.size
+      val median = if (n % 2 == 1) sorted(n / 2) else (sorted(n / 2 - 1) + sorted(n / 2)) / 2.0
+      if (median > 0) Some(median) else None
+    }
+  }
 
   /** Pure hysteretic state transition with proactive projection.
    *
    *  Entry conditions (either is sufficient):
    *  - balance < enterBelow  (reactive floor trigger)
-   *  - projected time to enterBelow < lookaheadSeconds at current drain rate
-   *    (proactive trigger — fires 10–30 min before the floor given the observed
-   *    drain rates of 3 000–7 000 ms/min on 2026-06-25)
+   *  - projected time to enterBelow < lookaheadSeconds at the SMOOTHED drain rate
+   *    (proactive trigger — fires 8–28 min before the floor given the observed
+   *    drain rates of 3 000–7 000 ms/min on 2026-06-25).  The rate is the median of
+   *    the last `SlopeWindow` deltas (see [[drainPerSec]]), so a single noisy poll
+   *    can't trip it; it needs a SUSTAINED downslope.  A ~2 min warm-up while the
+   *    window fills is the cost — acceptable against the 10 min lookahead, and the
+   *    floor arm still covers a genuine crunch during it.
    *
    *  Exit condition: balance > exitAbove AND the projection is no longer firing.
    *  Both conditions must clear: this prevents the projection-triggered throttle
@@ -174,9 +223,9 @@ object CpuCreditPoller {
    *  30 s.  The throttle holds until the drain rate itself eases.
    *
    *  `balance = Some(b)` is a good read; `None` is failed/unparseable — hold the
-   *  prior decision until `maxConsecutiveFailures` in a row, then fail open.
-   *  `prevBalance` is preserved across failed reads so a transient gap doesn't
-   *  reset the slope window.
+   *  prior decision until `maxConsecutiveFailures` in a row, then fail open.  The
+   *  `recent` window is preserved across failed reads so a transient gap doesn't
+   *  reset the slope.
    */
   private[tasks] def nextState(
     prev: State, balance: Option[Double],
@@ -185,13 +234,9 @@ object CpuCreditPoller {
     lookaheadSeconds: Long = 600L
   ): State = balance match {
     case Some(b) =>
-      // Drain rate from consecutive good readings (ms/s, positive = losing credit).
-      val drainPerSec: Option[Double] = prev.prevBalance.flatMap { prevB =>
-        val rate = (prevB - b) / pollIntervalSeconds
-        if (rate > 0) Some(rate) else None
-      }
-      // Projected seconds until balance reaches enterBelow at the current rate.
-      val projectedLow: Boolean = lookaheadSeconds > 0 && drainPerSec.exists { rate =>
+      val recent = (prev.recent :+ b).takeRight(SlopeWindow)
+      // Projected seconds until balance reaches enterBelow at the smoothed rate.
+      val projectedLow: Boolean = lookaheadSeconds > 0 && drainPerSec(recent, pollIntervalSeconds).exists { rate =>
         val secsToFloor = (b - enterBelow) / rate
         secsToFloor > 0 && secsToFloor < lookaheadSeconds
       }
@@ -203,16 +248,16 @@ object CpuCreditPoller {
       // every poll when balance is well above exitAbove.
       val floorHysteresis = if (prev.throttled) !(b > exitAbove) else b < enterBelow
       val throttled = floorHysteresis || projectedLow
-      State(throttled, failures = 0, prevBalance = Some(b))
+      State(throttled, failures = 0, recent = recent)
 
     case None =>
       val failures = prev.failures + 1
-      // Preserve prevBalance across failed reads — a transient gap must not reset
-      // the slope window; the last known value is still useful context.
+      // Preserve the window across failed reads — a transient gap must not reset the
+      // slope; the recent history is still the best context for the next good read.
       State(
-        throttled   = if (failures >= maxConsecutiveFailures) false else prev.throttled,
-        failures    = failures,
-        prevBalance = prev.prevBalance
+        throttled = if (failures >= maxConsecutiveFailures) false else prev.throttled,
+        failures  = failures,
+        recent    = prev.recent
       )
   }
 
