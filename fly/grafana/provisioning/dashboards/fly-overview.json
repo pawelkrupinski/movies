@@ -467,6 +467,28 @@
         { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "sum(rate(fly_instance_cpu{app=\"kinowo-worker\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "host busy (cc, authoritative — lagged)" },
         { "refId": "C", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "vector(26)", "legendFormat": "breakeven ~26cc (drains above)" }
       ]
+    },
+    {
+      "id": 46,
+      "title": "kinowo-worker CPU drivers — is it JIT / scrape / projection?",
+      "description": "Attribute the worker's CPU (left axis, centi-cores) to a driver by what it TRACKS (right axis). JIT (cc) high + process CPU high = boot warm-up (transient). tasks-started/s high + CPU high = scrape/enrich work (normal). CPU high while JIT≈0 AND tasks/writes are LOW = DECOUPLED — the read-model projection signature (the 2026-07 credit-floor cause: synopsisByCity re-projecting festival/wide-release films on every screenings change; ~22cc on the movie-change-apply thread, invisible here because most projections dedupe to a no-op write). change-events/s is the projection TRIGGER (a movies/screenings write); readmodel-writes/s is the projection OUTPUT (post-dedup, near-0 even when projection is hot). NOTE the load is DAY-shaped: ~30cc daytime, ~5cc overnight (schedules static → no screenings changes). There is no direct projection-CPU metric yet — add a readmodel_project_duration histogram to make this a one-glance query. See toolkit memory.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 191 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 8, "axisLabel": "centi-cores" } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/\\/s$/" }, "properties": [ { "id": "custom.axisPlacement", "value": "right" }, { "id": "custom.axisLabel", "value": "events / writes / tasks per sec" }, { "id": "custom.fillOpacity", "value": 0 }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [6, 4] } } ] },
+          { "matcher": { "id": "byName", "options": "JIT (cc)" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "purple" } } ] }
+        ]
+      },
+      "targets": [
+        { "refId": "A", "expr": "rate(process_cpu_seconds_total{app=\"kinowo-worker\"}[5m])*100", "legendFormat": "process CPU (cc)" },
+        { "refId": "B", "expr": "rate(jvm_compilation_time_seconds_total{app=\"kinowo-worker\"}[5m])*100", "legendFormat": "JIT (cc)" },
+        { "refId": "C", "expr": "sum(rate(kinowo_worker_tasks_started_total{app=\"kinowo-worker\"}[5m]))", "legendFormat": "tasks started /s" },
+        { "refId": "D", "expr": "sum(rate(kinowo_worker_movie_change_events_total{app=\"kinowo-worker\"}[5m]))", "legendFormat": "movie change-events /s (projection trigger)" },
+        { "refId": "E", "expr": "sum(rate(kinowo_worker_readmodel_writes_total{app=\"kinowo-worker\"}[5m]))", "legendFormat": "readmodel writes /s (projection output)" }
+      ]
     }
   ]
 }
