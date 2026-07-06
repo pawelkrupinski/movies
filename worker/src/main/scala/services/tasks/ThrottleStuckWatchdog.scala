@@ -11,14 +11,13 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 /**
- * NOTE (2026-07-05): `onStuck` RESTARTS again, but rate-limited. The restart was
- * dropped 2026-07-03 on the belief a sustained floor was always a STRUCTURAL deficit
- * (steady CPU just over the shared-cpu earn rate) a reboot can't clear — but the floor
- * turned out to usually be a client-side JDK-NIO2 epoll BUSY-SPIN on a wedged Mongo
- * socket, which a reboot (fresh sockets) DOES clear. So `onStuck` is now wired to
- * `WorkerWiring.onCreditWedgeStuck` → [[WedgeRestartPolicy]], which restarts once per
- * persisted cooldown (never a loop). The detection + trend-guard logic below is
- * unchanged: it still fires only on a genuine, non-recovering >`stuckAfter` wedge.
+ * NOTE (2026-07-03): the RESTART was DROPPED. `onStuck` is now wired to a log-only
+ * alarm (`WorkerWiring.onThrottleWedged`), not a machine restart — a sustained
+ * credit floor turned out to be a STRUCTURAL deficit (steady CPU just over the
+ * shared-cpu earn rate), not a wedge a reboot could clear, so restarting only
+ * burned the boot re-grant and looped. This watchdog now merely ALARMS on a genuine
+ * >`stuckAfter` wedge; the detection + trend-guard logic below is unchanged and the
+ * restart-era rationale is retained as history.
  *
  * Last-resort backstop against a WEDGED sustained-throttle spiral. If the worker
  * stays CPU-credit throttled CONTINUOUSLY longer than `stuckAfter`, the pool
