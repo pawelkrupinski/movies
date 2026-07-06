@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.time.LocalDateTime
-import models.{CinemaShowing, Multikino, MovieRecord, Showtime, Source, SourceData}
+import models.{CinemaShowing, Filmweb, Multikino, MovieRecord, Showtime, Source, SourceData}
 import services.movies.StoredMovieRecord
 
 /**
@@ -62,6 +62,25 @@ class DebugViewPerTitleSlotSpec extends AnyFlatSpec with Matchers {
     original.titleKey should not be polish.titleKey
     html should include (original.titleKey)
     html should include (polish.titleKey)
+  }
+
+  it should "render the Filmweb source slot's enrichment (originalTitle, director, genres, synopsis)" in {
+    // Filmweb is a full content source now, not just a URL+rating — its per-source
+    // slot must be legible in /debug so a Filmweb-only row's contributed metadata
+    // is visible.
+    val html = detailsOf(Map[Source, SourceData](
+      Filmweb -> SourceData(
+        originalTitle = Some("Hateshinaki Scarlet"),
+        director      = Seq("Mamoru Hosoda"),
+        genres        = Seq("Anime", "Fantasy"),
+        synopsis      = Some("Księżniczka, która przekracza granice czasu.")
+      )
+    ))
+    html should include ("Filmweb")
+    html should include ("Hateshinaki Scarlet")
+    html should include ("Mamoru Hosoda")
+    html should include ("Anime")
+    html should include ("Księżniczka, która przekracza granice czasu.")
   }
 
   "debug table row" should "show the per-title slot count when a venue holds several" in {

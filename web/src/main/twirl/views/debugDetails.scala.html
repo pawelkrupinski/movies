@@ -1,4 +1,4 @@
-@import models.{Cinema, CinemaShowing, MovieRecord, Showtime, Source, SourceData, Tmdb, Imdb}
+@import models.{Cinema, CinemaShowing, MovieRecord, Showtime, Source, SourceData, Tmdb, Imdb, Filmweb}
 @import services.movies.TitleNormalizer
 @import java.time.format.DateTimeFormatter
 @(title: String, year: Option[Int], e: MovieRecord, cinemaUrls: Map[String, String] = Map.empty)
@@ -98,6 +98,7 @@
         @slot.releaseYear.map { y    => <span>year: @y</span> }
         @slot.runtimeMinutes.map { m => <span>runtime: @m min</span> }
         @if(slot.director.nonEmpty) { <span>dir: @slot.director.mkString(", ")</span> }
+        @if(slot.genres.nonEmpty) { <span>genres: @slot.genres.mkString(", ")</span> }
         @if(slot.cast.nonEmpty) { <span>cast: <em>@slot.cast.mkString(", ")</em></span> }
         @if(slot.countries.nonEmpty) { <span>countries: @slot.countries.mkString(", ")</span> }
         @slot.posterUrl.map { u      => <span>poster: <a href="@u" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗</a></span> }
@@ -142,5 +143,6 @@
     }
     @perSourceSlot("TMDB", Tmdb)
     @perSourceSlot("IMDB", Imdb)
+    @perSourceSlot("Filmweb", Filmweb, e.filmwebUrl)
   </div>
 }
