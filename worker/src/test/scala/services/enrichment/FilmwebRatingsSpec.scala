@@ -240,6 +240,34 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     slot.synopsis      shouldBe Some("Lucius Glantz walczy o hotel.")
   }
 
+  it should "re-kick TMDB + IMDb resolution when URL discovery adds a director/originalTitle to a tmdbNoMatch row" in {
+    // End-to-end: a film TMDB missed (tmdbNoMatch) gains a Filmweb slot with an
+    // original title + director; the write must fire the enrichment retrigger with
+    // ResolveTmdb + ResolveImdbId so Filmweb's data re-attempts the resolution.
+    import services.movies.RetriggerKind
+    val captured = scala.collection.mutable.ListBuffer.empty[Set[RetriggerKind]]
+    val repository = new InMemoryMovieRepository(Seq(
+      ("Ostatni konsjerż", None, MovieRecord(
+        tmdbNoMatch = true,
+        data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Ostatni konsjerż")))
+      ))
+    ))
+    val cache = new CaffeineMovieCache(repository, retrigger = (_, _, kinds) => { captured += kinds; () })
+    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+      "/live/search"      -> """{"searchHits":[{"id":900,"type":"film","matchedTitle":"Ostatni konsjerż"}]}""",
+      "/film/900/info"    -> """{"title":"Ostatni konsjerż","originalTitle":"Der letzte Concierge","year":2025}""",
+      "/film/900/preview" -> """{"directors":[{"id":1,"name":"Gastón Solnicki"}],"genres":[{"id":2,"name":{"text":"Dramat"}}]}""",
+      "/film/900/rating"  -> """{"rate":4.7,"count":50}"""
+    )))
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+
+    ratings.refreshOneSync(cache.entries.head._1)
+
+    val kinds = captured.flatten.toSet
+    kinds should contain (RetriggerKind.ResolveTmdb)
+    kinds should contain (RetriggerKind.ResolveImdbId)
+  }
+
   // ── Failure handling ───────────────────────────────────────────────────────
 
   it should "swallow Filmweb fetch failures without throwing" in {

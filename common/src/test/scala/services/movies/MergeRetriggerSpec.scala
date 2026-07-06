@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{MovieRecord, Source, SourceData, Tmdb}
+import models.{Filmweb, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.RetriggerKind._
@@ -62,6 +62,29 @@ class MergeRetriggerSpec extends AnyFlatSpec with Matchers {
     val before = rec(tmdbId = None, tmdbNoMatch = true)
     val after  = rec(tmdbId = None, tmdbNoMatch = true)
     decide(before, k("Foo"), after, k("Bar")) should not contain ResolveTmdb
+  }
+
+  it should "re-resolve TMDB for a tmdbNoMatch row when a NEW originalTitle hint arrives (Filmweb crack)" in {
+    // The whole point of Filmweb-driven re-resolution: a film TMDB missed gains a
+    // Filmweb original title, which is a new search term that might now resolve it.
+    val before = rec(tmdbId = None, tmdbNoMatch = true)
+    val after  = before.copy(data = Map[Source, SourceData](Filmweb -> SourceData(originalTitle = Some("Der letzte Concierge"))))
+    val kinds  = decide(before, k("Ostatni konsjerż"), after, k("Ostatni konsjerż"))
+    kinds should contain (ResolveTmdb)
+    kinds should contain (ResolveImdbId)   // no imdbId + a new hint
+  }
+
+  it should "re-resolve TMDB for a tmdbNoMatch row when a director arrives from Filmweb" in {
+    val before = rec(tmdbId = None, tmdbNoMatch = true)
+    val after  = before.copy(data = Map[Source, SourceData](Filmweb -> SourceData(director = Seq("Gastón Solnicki"))))
+    decide(before, k("Ostatni konsjerż"), after, k("Ostatni konsjerż")) should contain (ResolveTmdb)
+  }
+
+  it should "NOT re-resolve TMDB for a tmdbNoMatch row on a Filmweb write that adds no new hint (rating/genres only)" in {
+    // A bare rating/genres refresh isn't a disambiguator — must not churn a re-resolve.
+    val before = rec(tmdbId = None, tmdbNoMatch = true)
+    val after  = before.copy(data = Map[Source, SourceData](Filmweb -> SourceData(genres = Seq("Dramat"))))
+    decide(before, k("Ostatni konsjerż"), after, k("Ostatni konsjerż")) should not contain ResolveTmdb
   }
 
   it should "re-resolve TMDB when an unresolved row gains an originalTitle hint from the merge" in {

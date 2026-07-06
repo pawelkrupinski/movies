@@ -506,6 +506,16 @@ case class MovieRecord(
       .orElse(data.get(Imdb).flatMap(_.originalTitle))
       .orElse(cinemaOriginalTitle)
 
+  /** Original (production-language) titles contributed by the resolved-metadata
+   *  sources — TMDB, IMDb, Filmweb. These are the alternate search terms the
+   *  resolution lookups mine (`resolveTmdbId` folds every slot's `originalTitle`
+   *  into its candidate set), so a CHANGE in this set is what re-kicks TMDB / IMDb
+   *  resolution when a new source (e.g. Filmweb) supplies an original title a film
+   *  TMDB missed can now be found by. Broader than the TMDB-only display
+   *  `originalTitle` — used by [[services.movies.MergeRetrigger]], not for display. */
+  def resolverOriginalTitles: Set[String] =
+    Seq(Tmdb, Imdb, Filmweb).flatMap(s => data.get(s).flatMap(_.originalTitle)).toSet
+
   /** The original title worth showing alongside `displayed` — present, and
    *  not merely a case/whitespace re-spelling of the title already on screen.
    *  An English-language film carries the same string as both its cinema

@@ -5229,7 +5229,7 @@ runtimeMinutes:    85
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://img.helios.pl/pliki/film/minionki-i-straszydla/minionki-i-straszydla-plakat-88882.jpg
-synopsis.length:   80
+synopsis.length:   115
 cast:              Pierre Coffin, Trey Parker, Allison Janney, Christoph Waltz, Jeff Bridges
 director:          Pierre Coffin
 tmdbId:            1315772

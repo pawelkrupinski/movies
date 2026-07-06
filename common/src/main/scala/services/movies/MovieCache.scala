@@ -111,6 +111,15 @@ trait MovieCache extends MovieCacheReader {
    *  the record to write at `newKey` — so a concurrent cinema-slot write
    *  that landed before `update` runs is visible to it. */
   private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord): Unit
+
+  /** Re-kick the enrichments whose INPUT fields an enrichment write (not a merge)
+   *  changed — e.g. Filmweb writing a director / originalTitle onto its slot
+   *  re-attempts the TMDB / IMDb resolution its new hint might now crack, and the
+   *  title-ratings when the row is resolved. Same pure decision + retrigger port as
+   *  the merge path ([[MergeRetrigger.changedEnrichments]]); `before`/`after` are
+   *  the row at `key` around the write, so they share the key. No-op when nothing an
+   *  enrichment reads changed. */
+  private[services] def retriggerAfterEnrichment(key: CacheKey, before: MovieRecord, after: MovieRecord): Unit
 }
 
 /**
@@ -432,6 +441,11 @@ class CaffeineMovieCache(
     val kinds = MergeRetrigger.changedEnrichments(before, beforeKey, after, afterKey)
     if (kinds.nonEmpty) retrigger.retrigger(afterKey, after, kinds)
   }
+
+  // An enrichment write (Filmweb slot, IMDb slot, …) at a stable key: before/after
+  // share the key, so the merge decision reduces to the input-field deltas.
+  private[services] def retriggerAfterEnrichment(key: CacheKey, before: MovieRecord, after: MovieRecord): Unit =
+    retriggerChangedEnrichments(before, key, after, key)
 
   def settleResolved(oldKey: CacheKey, resolved: MovieRecord): CacheKey =
     withTitleLock(oldKey.cleanTitle) {

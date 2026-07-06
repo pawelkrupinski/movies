@@ -85,6 +85,7 @@ class FilmwebRatings(
             val before = e.filmwebUrl
             cache.putIfPresent(key, r =>
               r.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating, data = withFilmwebData(r.data, fw)))
+            cache.get(key).foreach(after => cache.retriggerAfterEnrichment(key, e, after))
             before match {
               case Some(b) => FilmwebRatings.Corrected(b, fw.url)
               case None    => FilmwebRatings.Kept(fw.url) // first-time discovery counts as Kept-like.
@@ -155,6 +156,10 @@ class FilmwebRatings(
         logger.info(s"Filmweb: $label → URL discovered ${fw.url} rating=${fw.rating.getOrElse("—")}")
         cache.putIfPresent(key, r =>
           r.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating, data = withFilmwebData(r.data, fw)))
+        // The freshly-stored Filmweb slot (originalTitle / director / year) is a new
+        // resolution hint — re-kick TMDB / IMDb / (when resolved) the title-ratings
+        // so a film TMDB missed can now be found via Filmweb's data.
+        cache.get(key).foreach(after => cache.retriggerAfterEnrichment(key, e, after))
         if (e.imdbId.isEmpty)
           onImdbIdMissing(key.cleanTitle, key.year, e.originalTitle.getOrElse(MovieService.apiQuery(key.cleanTitle)))
         if (changed) fw.rating.map(RatingDisplay.label) else None
