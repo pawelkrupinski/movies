@@ -574,6 +574,78 @@
           "legendFormat": "tasks started /s"
         }
       ]
+    },
+    {
+      "id": 48,
+      "title": "Read-model projection efficiency",
+      "description": "How hard the read-model projection works. Over-triggering shows as high projection calls/s (the reproject/enrich churn re-projecting rows); an expensive-film tail shows as high p99 ms (one row whose resolve/synopsis work is costly). p50/p95/p99 are per-projection wall-clock in ms (LEFT axis); projections/s is the trigger rate (RIGHT axis). After the metadata-reuse cache, showtime-only churn keeps the percentiles low even when calls/s is high.",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "app-metrics-live"},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 207},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {"spanNulls": 300000, "drawStyle": "line", "fillOpacity": 0, "axisLabel": "ms (per projection)"}
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "projections /s"},
+            "properties": [
+              {"id": "unit", "value": "short"},
+              {"id": "custom.axisPlacement", "value": "right"},
+              {"id": "custom.axisLabel", "value": "projections / s"},
+              {"id": "custom.fillOpacity", "value": 8}
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(kinowo_worker_readmodel_project_calls_total{app=\"kinowo-worker\"}[5m]))",
+          "legendFormat": "projections /s"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.5, sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{app=\"kinowo-worker\"}[5m])) by (le))*1000",
+          "legendFormat": "p50 ms"
+        },
+        {
+          "refId": "C",
+          "expr": "histogram_quantile(0.95, sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{app=\"kinowo-worker\"}[5m])) by (le))*1000",
+          "legendFormat": "p95 ms"
+        },
+        {
+          "refId": "D",
+          "expr": "histogram_quantile(0.99, sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{app=\"kinowo-worker\"}[5m])) by (le))*1000",
+          "legendFormat": "p99 ms"
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "title": "projection duration heatmap — bright band high = expensive-film spikes",
+      "description": "Distribution of per-projection wall-clock over time, from the readmodel_project_duration_seconds histogram buckets. A bright band that jumps to a higher latency row = a burst of expensive-film projections (the resolve/synopsis tail); a band pinned low = cheap projections (incl. the metadata-reuse fast path recomputing only the screenings half).",
+      "type": "heatmap",
+      "datasource": {"type": "prometheus", "uid": "app-metrics-live"},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 216},
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": {"scheme": "Spectral", "mode": "scheme", "steps": 64, "reverse": false, "exponent": 0.5, "fill": "dark-orange"},
+        "yAxis": {"unit": "s", "axisPlacement": "left"},
+        "legend": {"show": true},
+        "tooltip": {"show": true, "yHistogram": false},
+        "rowsFrame": {"layout": "auto"}
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{app=\"kinowo-worker\"}[5m])) by (le)",
+          "format": "heatmap",
+          "legendFormat": "{{le}}"
+        }
+      ]
     }
   ]
 }
