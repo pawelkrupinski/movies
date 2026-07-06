@@ -88,6 +88,19 @@ trait MovieCache extends MovieCacheReader {
   private[services] def markMissing(key: CacheKey): Unit
   private[services] def clearNegatives(): Unit
   private[services] def clearNegative(key: CacheKey): Unit
+  /** Settle-path persistence for the title-embedded year: re-key every yearless
+   *  row whose cinema-slot titles carry an unambiguous delimited `EmbeddedYear`
+   *  ("Konwicki: Lawa (1989)", "Following (1998)") onto that year, and stamp the
+   *  year onto its yearless slots — so a scrape that reported no year still keys,
+   *  resolves and displays as if it had. Runs OFF the async scrape/resolve path
+   *  (over the already-settled corpus), so — unlike a scrape-time re-key — it can't
+   *  race `canonicalRank`: TMDB-resolved rows are already keyed on their TMDB year,
+   *  so this only ever moves rows a year source hasn't otherwise claimed. Reuses the
+   *  vetted `rekey` (merging into any existing occupant so a sister row isn't
+   *  clobbered) and always ends with a `canonicalizeBySanitize`; returns the count
+   *  re-keyed. Driven by `MovieService.settle` (the periodic `SettleReaper`) and the
+   *  one-shot `scripts.EmbeddedYearBackfill`. */
+  def backfillEmbeddedYears(): Int
   def canonicalizeBySanitize(): Unit
   /** Conclusion-time scoped settle: the just-resolved record `resolved` is the
    *  new state of the row at `oldKey`. Write it (re-keyed onto its TMDB year if
@@ -376,6 +389,34 @@ class CaffeineMovieCache(
   def canonicalizeBySanitize(): Unit = {
     import scala.jdk.CollectionConverters._
     canonicalizeGroups(positive.asMap().asScala.toSeq)
+  }
+
+  def backfillEmbeddedYears(): Int = {
+    import scala.jdk.CollectionConverters._
+    val moved = positive.asMap().asScala.toSeq.iterator.collect {
+      // Only YEARLESS rows — a row that already carries a year keeps it (a scraped
+      // year wins over a title annotation, exactly as `recordCinemaScrape` orders
+      // them). Scan the raw slot spellings: the canonical key strips the annotation.
+      case (key, rec) if key.year.isEmpty =>
+        EmbeddedYear.ofAll(rec.data.values.flatMap(sd => sd.rawTitle ++ sd.title)).flatMap { year =>
+          val newKey = keyOf(key.cleanTitle, Some(year))
+          Option.when(newKey != key) {
+            // Merge into any existing occupant of the target year-key so a sister
+            // row already there isn't overwritten; `settle` then reconciles the
+            // wider cluster deterministically (±1-year windows, distinct tmdbIds).
+            val occupant = Option(positive.getIfPresent(newKey))
+            rekey(key, newKey, cur => {
+              val stamped = cur.copy(data = cur.data.view.mapValues(sd =>
+                if (sd.releaseYear.isEmpty) sd.copy(releaseYear = Some(year)) else sd).toMap)
+              occupant.fold(stamped)(o => MovieRecordMerge.union(stamped, o))
+            })
+          }
+        }.isDefined
+    }.count(identity)
+    // Always settle: fold the re-keyed rows' ±year / distinct-tmdbId clusters, and
+    // (when nothing moved) keep the plain settle semantics callers rely on.
+    canonicalizeBySanitize()
+    moved
   }
 
   private def canonicalizeGroups(pairs: Seq[(CacheKey, MovieRecord)]): Unit =

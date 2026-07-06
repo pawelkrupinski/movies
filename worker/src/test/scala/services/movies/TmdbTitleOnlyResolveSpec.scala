@@ -190,23 +190,6 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Generał (1926)", Some(2015))).flatMap(_.tmdbId) shouldBe Some(700)
   }
 
-  "MovieService.embeddedYear" should "read only a parenthesised, in-range, unambiguous year" in {
-    val max = 2027
-    def y(ts: String*) = MovieService.embeddedYear(ts, max)
-    y("Generał (1926) 4K")            shouldBe Some(1926)
-    y("KINO LETNIE 2026: Miś (1981)") shouldBe Some(1981) // bare 2026 ignored
-    y("Requiem dla snu (2000)")       shouldBe Some(2000)
-    // Scans across spellings: the stripped key title + the slot title that kept the year.
-    y("Generał", "Generał (1926)")    shouldBe Some(1926)
-    // False positives it must REFUSE:
-    y("2001: Odyseja kosmiczna")      shouldBe None // bare leading number
-    y("Blade Runner 2049")            shouldBe None // bare trailing number
-    y("1917")                         shouldBe None // bare
-    y("Rok (3000)")                   shouldBe None // out of range (future)
-    y("Coś (1887)")                   shouldBe None // before first film
-    y("Film (2018) (2020)")           shouldBe None // ambiguous — two distinct years
-    y("Film (2018)", "Inne (2020)")   shouldBe None // ambiguous across titles
-    y("Film (2018) (2018)")           shouldBe Some(2018) // same year twice = unambiguous
-    y("No year here")                 shouldBe None
-  }
+  // The pure extraction is unit-tested in common's `EmbeddedYearSpec`; these
+  // resolve-path specs cover how a scraped-yearless row USES the embedded year.
 }

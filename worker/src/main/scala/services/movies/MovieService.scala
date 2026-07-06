@@ -113,8 +113,12 @@ class MovieService(
    *  inside the fold). The cache hydrate deliberately does NOT call this — settling
    *  right after a load re-keys rows on their re-derived `displayTitle`, the
    *  per-deploy flap the reaper-on-its-own-tick avoids. Also the determinism
-   *  harness's direct-scrape settle (`FixtureTestWiring.converge`). */
-  def settle(): Unit = cache.canonicalizeBySanitize()
+   *  harness's direct-scrape settle (`FixtureTestWiring.converge`).
+   *
+   *  `backfillEmbeddedYears` first re-keys any yearless row whose title carries a
+   *  delimited year onto that year (then canonicalizes) — the settle-path home for
+   *  the title-year persist, off the async resolve so it can't race `canonicalRank`. */
+  def settle(): Unit = cache.backfillEmbeddedYears()
 
   /** Drain the dispatcher's owned pool so any in-flight inline TMDB resolution
    *  finishes — its upserts hit Mongo and its `ImdbIdMissing` event fires (the id
@@ -741,14 +745,17 @@ class MovieService(
     // once and the answer is reused for 24h. The key is built from exactly those
     // hints (sorted, so it's order-independent — see `ResolutionKeys`). Only a
     // HIT is cached; a no-match re-resolves next cycle.
-    // A row with no scraped year but a parenthesised "(YYYY)" in its title
-    // ("Klasyka w NCKF: Generał (1926) 4K") reads that as the lookup year — a
-    // deterministic hint (pure function of the title), used only for the SEARCH,
-    // not for keying, so it can't race the canonical rank. It unblocks the
-    // year-less singleton guard below: with a year the director-less branch takes
-    // the safe year-scoped exact-title path instead of refusing every multi-hit
-    // title as `searchUnique` does when the year is absent.
-    val effectiveYear = year.orElse(MovieService.embeddedYear(Seq(title) ++ candidates ++ cinemaTitles))
+    // A row whose scrape carried no year reads a DELIMITED year written into its
+    // title ("Klasyka w NCKF: Generał (1926) 4K", "Following (1998)") as the lookup
+    // year — a deterministic hint (pure function of the title). Here it's used only
+    // for the SEARCH, so it can't race the canonical rank; the same `EmbeddedYear`
+    // is separately PERSISTED onto the row at the scrape boundary
+    // (`MovieCache.recordCinemaScrape`), where `canonicalRank` owns the re-key. The
+    // `.orElse` means a persisted year already wins here. It unblocks the year-less
+    // singleton guard below: with a year the director-less branch takes the safe
+    // year-scoped exact-title path instead of refusing every multi-hit title as
+    // `searchUnique` does when the year is absent.
+    val effectiveYear = year.orElse(EmbeddedYear.ofAll(Seq(title) ++ candidates ++ cinemaTitles))
     val hintKey = ResolutionKeys.tmdb(title, effectiveYear, rowDirectors, originalTitle)
     // `freshHit` captures the SearchResult on a cache MISS (the loader runs on
     // this thread), so the caller keeps the hit's title/year as a fallback when
@@ -1032,30 +1039,6 @@ object MovieService {
    *  canonical `cleanTitle`, it reproduces the cased query the per-client casing
    *  used to produce (now that cinema slots keep their raw spelling). */
   def searchQuery(title: String): String = TitleNormalizer.apiQuery(TitleNormalizer.recase(title))
-
-  /** A release year written into the title as a parenthesised "(YYYY)" — the ONLY
-   *  form safe to read as a year. A bare trailing number is part of the title, not
-   *  an annotation ("Blade Runner 2049", "1917", "2001: Odyseja kosmiczna"), so only
-   *  the parenthesised shape is matched. Used solely as a LOOKUP hint for a row that
-   *  carries no scraped year, so a yearless retrospective screening ("Klasyka w NCKF:
-   *  Generał (1926) 4K", "KINO LETNIE 2026: Miś (1981)") resolves via the year-scoped
-   *  exact-title path instead of stalling at the year-less singleton guard. It does
-   *  NOT re-key the row (identity stays on the scraped year-less key), so it can't
-   *  race the canonical rank. Abstains when there's no parenthesised year, when it's
-   *  outside the plausible film-year range [1888, maxYear], or when SEVERAL distinct
-   *  years appear across the given titles (ambiguous) — a wrong/absent hint then
-   *  yields a MISS, never a mis-resolve (`searchYearExactTop` still requires an
-   *  exact-title top).
-   *
-   *  Scans SEVERAL title spellings, not one: the row's canonical `cleanTitle` has
-   *  the parenthesised year stripped (it's a Canonical merge-key strip — see the
-   *  'KINO LETNIE 2026: … (1984)' rule), so the year survives only on the raw
-   *  cinema-slot titles / search candidates. Collecting across them recovers it. */
-  def embeddedYear(titles: Iterable[String], maxYear: Int = java.time.Year.now().getValue + 1): Option[Int] = {
-    val years = titles.iterator.flatMap("""\((\d{4})\)""".r.findAllMatchIn(_))
-      .map(_.group(1).toInt).filter(y => y >= 1888 && y <= maxYear).toSeq.distinct
-    years match { case Seq(single) => Some(single); case _ => None }
-  }
 
   /** TMDB title-search candidates for a row, in priority order: the row's title,
    *  the cinema-provided original title, then every other reported title

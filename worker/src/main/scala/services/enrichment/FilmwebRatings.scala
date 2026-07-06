@@ -2,7 +2,7 @@ package services.enrichment
 
 import clients.TmdbClient
 import models.{Filmweb, Source, SourceData}
-import services.movies.{CacheKey, MovieCache, MovieService}
+import services.movies.{CacheKey, EmbeddedYear, MovieCache, MovieService}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import tools.BoundedParallel
 
@@ -218,11 +218,12 @@ class FilmwebRatings(
     val directors       = tmdbDirectors ++ cinemaDirectors
     // A yearless retrospective ("Konwicki: Lawa (1989)") carries no scraped year,
     // so the Filmweb search had nothing to gate a same-title collision against and
-    // took the unrelated "Lawa"/orig "Lava" (2014). Read the parenthesised "(YYYY)"
-    // off the row's raw cinema titles as the lookup year — the SAME deterministic
-    // hint `resolveTmdbId` uses (MovieService.embeddedYear), fed here so the
-    // Filmweb side gets the same disambiguation. Falls back to the scraped key year.
-    val effectiveYear = key.year.orElse(MovieService.embeddedYear(key.cleanTitle +: e.cinemaTitles.toSeq))
+    // took the unrelated "Lawa"/orig "Lava" (2014). Read a delimited "(YYYY)" (or
+    // [YYYY]/{YYYY}/<YYYY>/"- YYYY") off the row's raw cinema titles as the lookup
+    // year — the SAME deterministic hint `resolveTmdbId` uses (`EmbeddedYear`), fed
+    // here so the Filmweb side gets the same disambiguation. Falls back to the
+    // scraped key year.
+    val effectiveYear = key.year.orElse(EmbeddedYear.ofAll(key.cleanTitle +: e.cinemaTitles.toSeq))
     // TMDB's Polish blurb (same language as Filmweb's `plot`) breaks a same-year
     // same-title tie inside `lookup`; None when TMDB hasn't resolved a synopsis.
     val referenceSynopsis = e.data.get(models.Tmdb).flatMap(_.synopsis)

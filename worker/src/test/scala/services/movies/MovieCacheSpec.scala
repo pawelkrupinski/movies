@@ -58,6 +58,58 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     slot.showtimes.map(_.dateTime) should contain (LocalDateTime.of(2026, 6, 9, 20, 0)) // listing still applied
   }
 
+  it should "backfillEmbeddedYears: re-key an existing yearless row onto its delimited title year" in {
+    // A row that predates the scrape-boundary persist: stored yearless, its slot
+    // title carries the delimited "(1989)".
+    val rec   = MovieRecord(data = Map[Source, SourceData](
+      KinoMuranow -> SourceData(title = Some("Konwicki: Lawa (1989)"), rawTitle = Some("Konwicki: Lawa (1989)"))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Konwicki: Lawa (1989)", None, rec))))
+
+    cache.backfillEmbeddedYears() shouldBe 1
+    cache.get(cache.keyOf("Konwicki: Lawa (1989)", None))       shouldBe None       // old yearless key gone
+    cache.get(cache.keyOf("Konwicki: Lawa (1989)", Some(1989)))
+      .flatMap(_.releaseYear)                                   shouldBe Some(1989) // stamped + re-keyed
+  }
+
+  it should "backfillEmbeddedYears: merge into an existing yeared sister row, not clobber it" in {
+    // The same film split across two rows: a yeared plain row (already resolved)
+    // and a yearless decorated row whose title carries the year. The backfill must
+    // fold the decorated slot onto the yeared row, keeping the resolved row's tmdbId.
+    val plain     = MovieRecord(tmdbId = Some(377689), imdbId = Some("tt0097721"),
+      data = Map[Source, SourceData](KinoMuranow -> SourceData(title = Some("Lawa"), releaseYear = Some(1989))))
+    val decorated = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> SourceData(title = Some("Lawa (1989)"), rawTitle = Some("Lawa (1989)"))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(
+      ("Lawa", Some(1989), plain), ("Lawa (1989)", None, decorated))))
+
+    cache.backfillEmbeddedYears() should be >= 1
+    val merged = cache.get(cache.keyOf("Lawa", Some(1989)))
+    merged.flatMap(_.tmdbId)              shouldBe Some(377689)                 // resolved id preserved
+    merged.map(_.data.keySet).getOrElse(Set.empty) should contain allOf (KinoMuranow: Source, Multikino: Source)
+    cache.get(cache.keyOf("Lawa (1989)", None)) shouldBe None                  // decorated yearless row folded away
+  }
+
+  it should "backfillEmbeddedYears: settle to the SAME rows regardless of insertion order (determinism)" in {
+    // Off the async resolve path, over a settled corpus, the migration must be a
+    // pure function of the row set — every insertion permutation yields one outcome.
+    val rows = Seq(
+      // resolved plain row keyed on its TMDB year …
+      ("Lawa", Some(1989), MovieRecord(tmdbId = Some(377689),
+        data = Map[Source, SourceData](KinoMuranow -> SourceData(title = Some("Lawa"), releaseYear = Some(1989))))),
+      // … a yearless decorated sister that must fold onto it …
+      ("Lawa (1989)", None, MovieRecord(
+        data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Lawa (1989)"), rawTitle = Some("Lawa (1989)"))))),
+      // … and an unrelated yearless embedded row that must re-key to its own year.
+      ("Following (1998)", None, MovieRecord(
+        data = Map[Source, SourceData](Helios -> SourceData(title = Some("Following (1998)"), rawTitle = Some("Following (1998)"))))))
+    val outcomes = rows.permutations.map { ordered =>
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository(ordered))
+      cache.backfillEmbeddedYears()
+      cache.snapshot().map(r => (TitleNormalizer.sanitize(r.title), r.year)).toSet
+    }.toSet
+    outcomes shouldBe Set(Set(("lawa", Some(1989)), ("following", Some(1998))))
+  }
+
   "MovieCache" should "hydrate from the repository on construction" in {
     // Carry the title in a cinema slot, as a scraped row does: the repository
     // re-derives the display title from the record on read (like Mongo), so a

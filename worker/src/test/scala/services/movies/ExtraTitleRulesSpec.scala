@@ -510,11 +510,35 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
       "Toy Story 5 - ORG"               -> "Toy Story 5",
       "500 mil (lektor)"                -> "500 mil",
       "Milczenie owiec (1991)"          -> "Milczenie owiec",
-      "Mikey i Nicky (1976)"            -> "Mikey i Nicky"
+      "Mikey i Nicky (1976)"            -> "Mikey i Nicky",
+      // Every DELIMITED year shape `EmbeddedYear` reads is also stripped from the
+      // merge key: square / curly / angle brackets, and a separator-prefixed year.
+      "Milczenie owiec [1991]"          -> "Milczenie owiec",
+      "Osiem i pół {1963}"              -> "Osiem i pół",
+      "Lawa <1989>"                     -> "Lawa",
+      "Pan Tadeusz - 1999"              -> "Pan Tadeusz",
+      "Pan Tadeusz, 1999"               -> "Pan Tadeusz"
     )
     cases.foreach { case (variant, base) =>
       withClue(s"foldKey('$variant') vs '$base': ")(
         foldKey(withExtras, variant) shouldBe foldKey(withExtras, base))
+    }
+  }
+
+  it should "be load-bearing — the seed rules leave the paren/curly/angle/separator year spellings unmerged" in {
+    // The seed has no GLOBAL year strip (its `kinematograf-year` is PerCinema), so
+    // the paren, curly, angle and separator forms merge only WITH the extras.
+    // (Square `[1991]` is NOT here: the seed's trailing-`[…]` format-tag strip
+    // already folds it, so it isn't addition-only.)
+    Seq(
+      "Milczenie owiec (1991)" -> "Milczenie owiec",
+      "Osiem i pół {1963}"     -> "Osiem i pół",
+      "Lawa <1989>"            -> "Lawa",
+      "Pan Tadeusz - 1999"     -> "Pan Tadeusz",
+      "Pan Tadeusz, 1999"      -> "Pan Tadeusz"
+    ).foreach { case (variant, base) =>
+      withClue(s"seedOnly.foldKey('$variant') should NOT yet equal '$base': ")(
+        foldKey(seedOnly, variant) should not be foldKey(seedOnly, base))
     }
   }
 
